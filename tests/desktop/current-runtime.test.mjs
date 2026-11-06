@@ -405,32 +405,30 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
       );
       fs.writeFileSync(siteFile, originalSite);
 
+      const pollutedEnv = {
+        CONDA_PREFIX: '/opt/anaconda3',
+        PYTHONPATH: '/bad/path',
+        PYTHONPLATLIBDIR: '/bad/platlib',
+        _PYTHON_HOST_PLATFORM: 'darwin-arm64',
+        DYLD_LIBRARY_PATH: '/bad/dyld',
+        DYLD_INSERT_LIBRARIES: '/bad/inject.dylib',
+        LD_LIBRARY_PATH: '/bad/ld',
+        RDBASE: '/bad/external/rdbase'
+      };
       const envVars = currentRuntimeEnvironment({
         packaged: false,
         appPath: tmpDir,
         executable: pythonExecutablePath,
         platformId,
-        environment: {
-          CONDA_PREFIX: '/opt/anaconda3',
-          PYTHONPATH: '/bad/path',
-          PYTHONPLATLIBDIR: '/bad/platlib',
-          _PYTHON_HOST_PLATFORM: 'darwin-arm64',
-          DYLD_LIBRARY_PATH: '/bad/dyld',
-          DYLD_INSERT_LIBRARIES: '/bad/inject.dylib',
-          LD_LIBRARY_PATH: '/bad/ld',
-          RDBASE: '/bad/external/rdbase'
-        }
+        environment: pollutedEnv
       });
       const expectedDelim = platformId === 'win32-x64' ? ';' : ':';
       assert.ok(typeof envVars.PATH === 'string' && envVars.PATH.includes(expectedDelim));
-      assert.equal(envVars.CONDA_PREFIX, undefined);
-      assert.equal(envVars.PYTHONPATH, undefined);
-      assert.equal(envVars.PYTHONPLATLIBDIR, undefined);
-      assert.equal(envVars._PYTHON_HOST_PLATFORM, undefined);
-      assert.equal(envVars.DYLD_LIBRARY_PATH, undefined);
-      assert.equal(envVars.DYLD_INSERT_LIBRARIES, undefined);
-      assert.equal(envVars.LD_LIBRARY_PATH, undefined);
-      assert.equal(envVars.RDBASE, undefined);
+      const mergedEnv = { ...pollutedEnv, ...envVars };
+      for (const pollutedKey of Object.keys(pollutedEnv)) {
+        assert.equal(Object.hasOwn(envVars, pollutedKey), true, `Expected ${pollutedKey} in envVars`);
+        assert.equal(mergedEnv[pollutedKey], undefined);
+      }
       assert.equal(envVars.PYTHONNOUSERSITE, '1');
       assert.equal(envVars.PYTHONDONTWRITEBYTECODE, '1');
       if (platformId.startsWith('darwin-')) {
@@ -441,17 +439,37 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
       }
 
       if (platformId === 'win32-x64') {
+        const hostSystemRoot = resolveTrustedWindowsSystemRoot({});
         const winCaseEnv = currentRuntimeEnvironment({
           packaged: false,
           appPath: tmpDir,
           executable: pythonExecutablePath,
           platformId: 'win32-x64',
-          environment: { SYSTEMROOT: 'c:\\windows\\', windir: 'c:\\windows\\' }
+          environment: {
+            SYSTEMROOT: `${hostSystemRoot.toLowerCase()}\\`,
+            windir: `${hostSystemRoot.toLowerCase()}\\`
+          }
         });
-        assert.equal(winCaseEnv.SYSTEMROOT, 'C:\\Windows');
-        assert.equal(winCaseEnv.SystemRoot, 'C:\\Windows');
-        assert.equal(winCaseEnv.windir, 'C:\\Windows');
-        assert.equal(winCaseEnv.WINDIR, 'C:\\Windows');
+        assert.equal(winCaseEnv.SYSTEMROOT, hostSystemRoot);
+        assert.equal(winCaseEnv.SystemRoot, hostSystemRoot);
+        assert.equal(winCaseEnv.windir, hostSystemRoot);
+        assert.equal(winCaseEnv.WINDIR, hostSystemRoot);
+
+        const nonCDriveEnv = currentRuntimeEnvironment({
+          packaged: false,
+          appPath: tmpDir,
+          executable: pythonExecutablePath,
+          platform: 'darwin',
+          platformId: 'win32-x64',
+          sharedObjects: ['D:\\Windows\\System32\\kernel32.dll'],
+          environment: { SYSTEMROOT: 'd:\\windows\\', windir: 'd:\\windows\\' }
+        });
+        assert.equal(nonCDriveEnv.SYSTEMROOT, 'D:\\Windows');
+        assert.equal(nonCDriveEnv.SystemRoot, 'D:\\Windows');
+        assert.equal(nonCDriveEnv.windir, 'D:\\Windows');
+        assert.equal(nonCDriveEnv.WINDIR, 'D:\\Windows');
+        assert.ok(nonCDriveEnv.PATH.includes('D:\\Windows\\System32;D:\\Windows'));
+
         assert.throws(
           () =>
             currentRuntimeEnvironment({

@@ -707,7 +707,8 @@ function currentRuntimeEnvironment({
   environment = process.env,
   platform = process.platform,
   arch = process.arch,
-  platformId
+  platformId,
+  sharedObjects
 }) {
   if (packaged || environment.SCIYUE_PYTHON) return {};
   if (typeof executable !== 'string') return {};
@@ -756,7 +757,7 @@ function currentRuntimeEnvironment({
   let runtimePathEntries;
   let windowsSystemRoot = null;
   if (matchedLayout.platform === 'win32-x64') {
-    windowsSystemRoot = resolveTrustedWindowsSystemRoot(environment);
+    windowsSystemRoot = resolveTrustedWindowsSystemRoot(environment, platform, sharedObjects);
     const winBinAbs = path.join(appPath, runtime.root, 'python/Library/bin');
     if (hasCandidateEntry(winBinAbs)) {
       admitted(path.join(appPath, runtime.root), 'python/Library/bin', true);
