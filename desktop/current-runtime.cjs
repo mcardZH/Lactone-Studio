@@ -5,12 +5,83 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const assert = require('node:assert/strict');
 const { verifyMemberInventory } = require('./xtb-runtime-contract.cjs');
-const hashes = new Map(), documents = new Map();
+
+const hashes = new Map(), documents = new Map(), inventorySnapshots = new Map();
 const SHA = /^[a-f0-9]{64}$/;
+
+const PLATFORM_LAYOUTS = Object.freeze({
+  'win32-x64': Object.freeze({
+    platform: 'win32-x64',
+    dependenciesParent: '.local/dependencies/win-x64',
+    toolchainsParent: '.local/toolchains/win-x64',
+    pythonEntries: Object.freeze(['python/python.exe']),
+    pythonBasenames: Object.freeze(['python.exe']),
+    pythonRequiredMembers: Object.freeze(['python/python312.dll', 'python/python312._pth']),
+    xtbEntry: 'xtb/bin/xtb.exe',
+    packagedEngineEntry: 'engine.exe'
+  }),
+  'darwin-arm64': Object.freeze({
+    platform: 'darwin-arm64',
+    dependenciesParent: '.local/dependencies/darwin-arm64',
+    toolchainsParent: '.local/toolchains/darwin-arm64',
+    pythonEntries: Object.freeze(['python/bin/python3', 'python/bin/python']),
+    pythonBasenames: Object.freeze(['python3', 'python']),
+    pythonRequiredMembers: Object.freeze(['python/lib/python3.12/os.py']),
+    xtbEntry: 'xtb/bin/xtb',
+    packagedEngineEntry: 'engine'
+  }),
+  'darwin-x64': Object.freeze({
+    platform: 'darwin-x64',
+    dependenciesParent: '.local/dependencies/darwin-x64',
+    toolchainsParent: '.local/toolchains/darwin-x64',
+    pythonEntries: Object.freeze(['python/bin/python3', 'python/bin/python']),
+    pythonBasenames: Object.freeze(['python3', 'python']),
+    pythonRequiredMembers: Object.freeze(['python/lib/python3.12/os.py']),
+    xtbEntry: 'xtb/bin/xtb',
+    packagedEngineEntry: 'engine'
+  })
+});
+
+const SUPPORTED_PLATFORMS = Object.freeze(Object.keys(PLATFORM_LAYOUTS));
+
+function resolvePlatformLayout(platformId) {
+  assert(
+    typeof platformId === 'string' && Object.hasOwn(PLATFORM_LAYOUTS, platformId),
+    'Current runtime lock schema/platform'
+  );
+  return PLATFORM_LAYOUTS[platformId];
+}
+
+function defaultPlatformId(platform = process.platform, arch = process.arch) {
+  const candidate = `${platform}-${arch}`;
+  assert(
+    Object.hasOwn(PLATFORM_LAYOUTS, candidate),
+    'Current runtime lock schema/platform'
+  );
+  return candidate;
+}
+
+function hasUnsafePathDelimiter(filePath, platformId) {
+  if (
+    typeof filePath !== 'string' ||
+    filePath.length === 0 ||
+    filePath.includes('\0') ||
+    filePath.includes(';')
+  ) {
+    return true;
+  }
+  if (platformId === 'win32-x64') {
+    const withoutDrive = filePath.replace(/^[A-Za-z]:(?=[\\/]|$)/, '');
+    return withoutDrive.includes(':');
+  }
+  return filePath.includes(':');
+}
+
 function inside(root, target) {
   const part = path.relative(root, target);
   return part !== '..' && !part.startsWith('..' + path.sep) && !path.isAbsolute(part);
 }
+
 function admitted(root, relative, directory = false) {
   assert(typeof relative === 'string' && relative && !relative.includes('\\') && !relative.includes('\0') && !path.isAbsolute(relative) && relative.split('/').every(p => p && p !== '.' && p !== '..'), 'Invalid current runtime path');
   root = path.resolve(root);
@@ -26,46 +97,78 @@ function admitted(root, relative, directory = false) {
   assert(directory ? stat.isDirectory() : stat.isFile() && stat.nlink === 1, 'Current runtime requires an ordinary owned input');
   return { target, stat };
 }
-function stamp(s) { return JSON.stringify([s.dev, s.ino, s.size, s.mtimeMs, s.ctimeMs]); }
-function identity(root, relative) {
-  const { target, stat } = admitted(root, relative), key = stamp(stat), old = hashes.get(target);
-  let sha256 = old?.stamp === key ? old.sha256 : null;
-  if (!sha256) {
-    const fd = fs.openSync(target, 'r'), hash = createHash('sha256'), buffer = Buffer.alloc(1024 * 1024);
-    try {
-      assert.equal(stamp(fs.fstatSync(fd)), key, 'Runtime changed before read');
-      let length;
-      while ((length = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0) hash.update(buffer.subarray(0, length));
-      assert.equal(stamp(fs.fstatSync(fd)), key, 'Runtime changed during read');
-      sha256 = hash.digest('hex');
-    } finally { fs.closeSync(fd); }
-    if (hashes.size >= 64) hashes.clear();
-    hashes.set(target, { stamp: key, sha256 });
-  }
-  return { path: relative, bytes: stat.size, sha256 };
+
+function stamp(s) {
+  return `${s.dev}:${s.ino}:${s.size}:${s.mtimeNs ?? s.mtimeMs}:${s.ctimeNs ?? s.ctimeMs}`;
 }
+
+function digestFromStat(target, stat) {
+  const key = stamp(stat);
+  const old = hashes.get(target);
+  if (old?.stamp === key) return old.sha256;
+  const fd = fs.openSync(target, 'r');
+  const hash = createHash('sha256');
+  const buffer = Buffer.alloc(1024 * 1024);
+  try {
+    assert.equal(stamp(fs.fstatSync(fd, { bigint: true })), key, 'Runtime changed before read');
+    let length;
+    while ((length = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0) {
+      hash.update(buffer.subarray(0, length));
+    }
+    assert.equal(stamp(fs.fstatSync(fd, { bigint: true })), key, 'Runtime changed during read');
+    const sha256 = hash.digest('hex');
+    if (hashes.size >= 65536) {
+      const oldestKey = hashes.keys().next().value;
+      if (oldestKey !== undefined) hashes.delete(oldestKey);
+    }
+    hashes.set(target, { stamp: key, sha256 });
+    return sha256;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function identity(root, relative) {
+  const { target } = admitted(root, relative);
+  const stat = fs.lstatSync(target, { bigint: true });
+  const sha256 = digestFromStat(target, stat);
+  return { path: relative, bytes: Number(stat.size), sha256 };
+}
+
 function json(root, relative, maximum = 8 * 1024 * 1024) {
-  const { target, stat } = admitted(root, relative), key = stamp(stat);
-  assert(stat.size > 0 && stat.size <= maximum, 'Current runtime metadata size');
+  const { target } = admitted(root, relative);
+  const stat = fs.lstatSync(target, { bigint: true });
+  const key = stamp(stat);
+  assert(stat.size > 0n && Number(stat.size) <= maximum, 'Current runtime metadata size');
   const old = documents.get(target);
   if (old?.stamp === key) return old.value;
   const bytes = fs.readFileSync(target);
-  assert.equal(stamp(fs.lstatSync(target)), key, 'Runtime metadata changed during read');
+  assert.equal(stamp(fs.lstatSync(target, { bigint: true })), key, 'Runtime metadata changed during read');
   const value = JSON.parse(bytes.toString('utf8'));
   if (documents.size >= 32) documents.clear();
   documents.set(target, { stamp: key, value });
   return value;
 }
+
 function reference(root, row) {
   assert(row && Object.keys(row).sort().join(',') === 'bytes,path,sha256' && Number.isSafeInteger(row.bytes) && row.bytes >= 0 && SHA.test(row.sha256), 'Exact current runtime reference required');
-  assert.equal(admitted(root, row.path).stat.size, row.bytes, 'Current runtime identity differs: ' + row.path);
-  assert.deepEqual(identity(root, row.path), row, 'Current runtime identity differs: ' + row.path);
-  return admitted(root, row.path).target;
+  const { target } = admitted(root, row.path);
+  const stat = fs.lstatSync(target, { bigint: true });
+  assert.equal(Number(stat.size), row.bytes, 'Current runtime identity differs: ' + row.path);
+  const sha256 = digestFromStat(target, stat);
+  assert.equal(sha256, row.sha256, 'Current runtime identity differs: ' + row.path);
+  return target;
 }
-function lock(root, relative, schema, parent) {
+
+function lock(root, relative, schema, parent, expectedPlatform) {
   const value = json(root, relative, 1024 * 1024);
-  assert(value.schema === schema && value.platform === 'win32-x64', 'Current runtime lock schema/platform');
-  assert(typeof value.root === 'string' && value.root.startsWith(parent + '/') && value.root.split('/').length === parent.split('/').length + 1, 'Content-specific current runtime root required');
+  const layout = resolvePlatformLayout(value.platform);
+  assert(
+    value.schema === schema && (!expectedPlatform || value.platform === expectedPlatform),
+    'Current runtime lock schema/platform'
+  );
+  const expectedParent = parent || layout.dependenciesParent;
+  assert(typeof value.root === 'string' && value.root.startsWith(expectedParent + '/') && value.root.split('/').length === expectedParent.split('/').length + 1, 'Content-specific current runtime root required');
   admitted(root, value.root, true);
   let files = value.files;
   if (value.inventory) {
@@ -77,21 +180,222 @@ function lock(root, relative, schema, parent) {
     files = inventory.files;
   }
   assert(Array.isArray(files) && files.length > 0 && new Set(files.map(row => row.path)).size === files.length, 'Current runtime inventory missing/duplicated');
-  return { value, files, reference: identity(root, relative) };
+  return { value, files, layout, reference: identity(root, relative) };
 }
+
 function lockedFile(root, selected, relative) {
   const row = selected.files.find(row => row.path === relative);
   assert(row, 'Required current runtime member absent: ' + relative);
   reference(root, { path: selected.value.root + '/' + relative, bytes: row.bytes, sha256: row.sha256 });
   return path.join(root, selected.value.root, relative);
 }
-function developmentNative(appPath) {
-  admitted(appPath, 'scripts/native/dev-runtime.py');
+
+function walkContent(root, relative, foundMap = new Map(), dirList = []) {
+  const dirPath = path.join(root, relative);
+  const dirStat = fs.lstatSync(dirPath, { bigint: true });
+  assert(!dirStat.isSymbolicLink(), 'Linked current runtime input');
+  assert(dirStat.isDirectory(), 'Current runtime requires an ordinary owned input');
+  const entries = fs.readdirSync(dirPath).sort();
+  dirList.push({
+    path: dirPath,
+    dev: dirStat.dev,
+    ino: dirStat.ino,
+    mtimeNs: dirStat.mtimeNs ?? dirStat.mtimeMs,
+    ctimeNs: dirStat.ctimeNs ?? dirStat.ctimeMs,
+    entryCount: entries.length
+  });
+  for (const name of entries) {
+    const member = relative + '/' + name;
+    const fullPath = path.join(root, member);
+    const stat = fs.lstatSync(fullPath, { bigint: true });
+    assert(!stat.isSymbolicLink(), 'Linked current runtime input');
+    if (stat.isDirectory()) {
+      walkContent(root, member, foundMap, dirList);
+    } else {
+      assert(stat.isFile() && stat.nlink === 1n, 'Current runtime requires an ordinary owned input');
+      foundMap.set(member, { target: fullPath, stat });
+    }
+  }
+  return { foundMap, dirList };
+}
+
+function checkInventorySnapshot(snapshot) {
+  for (let i = 0; i < snapshot.dirs.length; i += 1) {
+    const d = snapshot.dirs[i];
+    let st;
+    try {
+      st = fs.lstatSync(d.path, { bigint: true });
+    } catch {
+      return false;
+    }
+    if (
+      st.isSymbolicLink() ||
+      !st.isDirectory() ||
+      st.dev !== d.dev ||
+      st.ino !== d.ino ||
+      (st.mtimeNs ?? st.mtimeMs) !== d.mtimeNs ||
+      (st.ctimeNs ?? st.ctimeMs) !== d.ctimeNs
+    ) {
+      return false;
+    }
+    try {
+      if (fs.readdirSync(d.path).length !== d.entryCount) return false;
+    } catch {
+      return false;
+    }
+  }
+  for (let i = 0; i < snapshot.files.length; i += 1) {
+    const f = snapshot.files[i];
+    let st;
+    try {
+      st = fs.lstatSync(f.target, { bigint: true });
+    } catch {
+      return false;
+    }
+    if (
+      st.isSymbolicLink() ||
+      !st.isFile() ||
+      st.nlink !== 1n ||
+      st.dev !== f.dev ||
+      st.ino !== f.ino ||
+      st.size !== f.size ||
+      (st.mtimeNs ?? st.mtimeMs) !== f.mtimeNs ||
+      (st.ctimeNs ?? st.ctimeMs) !== f.ctimeNs
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function normalizeContentDirs(value) {
+  return Array.isArray(value?.contentDirectories) && value.contentDirectories.length > 0
+    ? value.contentDirectories
+    : ['python'];
+}
+
+function isDirectoryCoveredByContent(relDir, contentDirs) {
+  const clean = relDir.replace(/\/+$/, '');
+  return contentDirs.some(
+    dir => typeof dir === 'string' && (clean === dir || clean.startsWith(dir + '/'))
+  );
+}
+
+function verifyNativeInventory(appPath, selected) {
+  const contentDirs = normalizeContentDirs(selected.value);
+  admitted(appPath, selected.value.root, true);
+  const memberRoot = path.join(appPath, selected.value.root);
+  for (const dir of contentDirs) {
+    admitted(memberRoot, dir, true);
+  }
+  const snapshotKey = `${path.resolve(memberRoot)}::${selected.reference?.sha256 || ''}::${contentDirs.join(',')}`;
+  const existingSnapshot = inventorySnapshots.get(snapshotKey);
+  if (existingSnapshot && checkInventorySnapshot(existingSnapshot)) {
+    return;
+  }
+
+  const actualMap = new Map();
+  const dirList = [];
+  for (const dir of contentDirs) {
+    walkContent(memberRoot, dir, actualMap, dirList);
+  }
+  const fileSnapshots = [];
+  const nextFileMap = new Map();
+  const prevFileMap = existingSnapshot?.fileMap;
+  for (const row of selected.files) {
+    assert(
+      typeof row?.path === 'string' && contentDirs.some(dir => row.path.startsWith(dir + '/')),
+      'Current runtime member outside declared content: ' + row?.path
+    );
+    const relPath = selected.value.root + '/' + row.path;
+    const rowKeys = row ? Object.keys(row).sort().join(',') : '';
+    assert(
+      row &&
+        (rowKeys === 'bytes,path,sha256' ||
+          (rowKeys === 'bytes,owner,path,sha256' && typeof row.owner === 'string' && row.owner.length > 0)) &&
+        Number.isSafeInteger(row.bytes) &&
+        row.bytes >= 0 &&
+        SHA.test(row.sha256),
+      'Exact current runtime reference required'
+    );
+    const found = actualMap.get(row.path);
+    if (!found) {
+      reference(appPath, { path: relPath, bytes: row.bytes, sha256: row.sha256 });
+    } else {
+      assert.equal(Number(found.stat.size), row.bytes, 'Current runtime identity differs: ' + relPath);
+      const mtimeNs = found.stat.mtimeNs ?? found.stat.mtimeMs;
+      const ctimeNs = found.stat.ctimeNs ?? found.stat.ctimeMs;
+      const prev = prevFileMap?.get(row.path);
+      const actualSha256 =
+        prev &&
+        prev.target === found.target &&
+        prev.dev === found.stat.dev &&
+        prev.ino === found.stat.ino &&
+        prev.size === found.stat.size &&
+        prev.mtimeNs === mtimeNs &&
+        prev.ctimeNs === ctimeNs
+          ? prev.sha256
+          : digestFromStat(found.target, found.stat);
+      assert.equal(actualSha256, row.sha256, 'Current runtime identity differs: ' + relPath);
+      const snapEntry = {
+        target: found.target,
+        dev: found.stat.dev,
+        ino: found.stat.ino,
+        size: found.stat.size,
+        mtimeNs,
+        ctimeNs,
+        sha256: actualSha256
+      };
+      fileSnapshots.push(snapEntry);
+      nextFileMap.set(row.path, snapEntry);
+    }
+  }
+  const actual = [...actualMap.keys()].sort();
+  const declared = selected.files.map(row => row.path).sort();
+  assert.deepEqual(actual, declared, 'Current runtime complete file membership differs');
+  if (inventorySnapshots.size >= 32) {
+    const oldestSnapKey = inventorySnapshots.keys().next().value;
+    if (oldestSnapKey !== undefined) inventorySnapshots.delete(oldestSnapKey);
+  }
+  inventorySnapshots.set(snapshotKey, { dirs: dirList, files: fileSnapshots, fileMap: nextFileMap });
+}
+
+function resolveProfile(appPath, expectedPlatform) {
+  const defaultRel = 'desktop/packaging/native-profile.json';
+  const platformRel = `desktop/packaging/native-profile.${expectedPlatform}.json`;
+  const hasPlatform = fs.existsSync(path.join(appPath, platformRel));
+  if (hasPlatform) {
+    return { profile: json(appPath, platformRel, 65536), profileRel: platformRel };
+  }
+  return { profile: json(appPath, defaultRel, 65536), profileRel: defaultRel };
+}
+
+function validLockPathFor(kind, expectedPlatform, actualPath) {
+  return (
+    actualPath === `desktop/packaging/${kind}.lock.json` ||
+    actualPath === `desktop/packaging/${kind}.${expectedPlatform}.lock.json`
+  );
+}
+
+function developmentNative(appPath, options = {}) {
+  const expectedPlatform = options.platformId || defaultPlatformId(options.platform, options.arch);
+  const layout = resolvePlatformLayout(expectedPlatform);
+  assert(
+    !hasUnsafePathDelimiter(path.resolve(appPath), expectedPlatform),
+    'Current runtime path contains unsafe delimiter'
+  );
   admitted(appPath, 'desktop/chemistry/engine.py');
-  const profile = json(appPath, 'desktop/packaging/native-profile.json', 65536);
-  assert(profile.schema === 'sciyue-native-profile-v1' && profile.platform === 'win32-x64' && profile.runtimeLock === 'desktop/packaging/native-runtime.lock.json' && profile.toolchainLock === 'desktop/packaging/native-toolchain.lock.json' && profile.xtbLock === 'desktop/packaging/xtb-runtime.lock.json', 'Fixed current native profile required');
-  const runtime = lock(appPath, profile.runtimeLock, 'sciyue-native-runtime-lock-v1', '.local/dependencies/win-x64');
-  const toolchain = lock(appPath, profile.toolchainLock, 'sciyue-native-toolchain-lock-v1', '.local/toolchains/win-x64');
+  const { profile } = resolveProfile(appPath, expectedPlatform);
+  assert(
+    profile.schema === 'sciyue-native-profile-v1' &&
+      profile.platform === expectedPlatform &&
+      validLockPathFor('native-runtime', expectedPlatform, profile.runtimeLock) &&
+      validLockPathFor('native-toolchain', expectedPlatform, profile.toolchainLock) &&
+      validLockPathFor('xtb-runtime', expectedPlatform, profile.xtbLock),
+    'Fixed current native profile required'
+  );
+  const runtime = lock(appPath, profile.runtimeLock, 'sciyue-native-runtime-lock-v1', layout.dependenciesParent, expectedPlatform);
+  const toolchain = lock(appPath, profile.toolchainLock, 'sciyue-native-toolchain-lock-v1', layout.toolchainsParent, expectedPlatform);
   reference(appPath, profile.preparation);
   const prepared = json(appPath, profile.preparation.path);
   assert(prepared.schema === 'sciyue-native-preparation-v1' && prepared.passed === true && prepared.scienceExecuted === false, 'Prepared current runtime required');
@@ -99,37 +403,209 @@ function developmentNative(appPath) {
   assert.deepEqual(prepared.toolchainLock, toolchain.reference);
   assert.deepEqual(prepared.xtbLock, identity(appPath, profile.xtbLock));
   reference(appPath, prepared.importProbe);
-  assert(toolchain.value.python === 'python/python.exe', 'Fixed standalone Python entry required');
+  const probeDoc = json(appPath, prepared.importProbe.path, 1024 * 1024);
+  assert(
+    probeDoc &&
+      (probeDoc.schema === 'sciyue-import-probe-v1' || probeDoc.schema === 'sciyue-native-import-probe-v1') &&
+      probeDoc.passed === true &&
+      probeDoc.scienceExecuted === false &&
+      (expectedPlatform === 'win32-x64'
+        ? probeDoc.platform === undefined || probeDoc.platform === 'win32-x64'
+        : probeDoc.platform === expectedPlatform),
+    'Prepared current import probe required'
+  );
+  assert.deepEqual(probeDoc.runtimeLock, runtime.reference, 'Prepared current import probe runtimeLock mismatch');
+  assert.deepEqual(probeDoc.toolchainLock, toolchain.reference, 'Prepared current import probe toolchainLock mismatch');
+  assert.deepEqual(probeDoc.xtbLock, prepared.xtbLock, 'Prepared current import probe xtbLock mismatch');
+  const probedSet = new Set([
+    ...(Array.isArray(probeDoc.modules) ? probeDoc.modules : []),
+    ...(probeDoc.packagePaths && typeof probeDoc.packagePaths === 'object' ? Object.keys(probeDoc.packagePaths) : [])
+  ]);
+  for (const reqMod of ['rdkit', 'ase', 'spglib', 'scipy']) {
+    assert(probedSet.has(reqMod), 'Prepared current import probe missing required module: ' + reqMod);
+  }
+  assert(
+    probedSet.has('tblite') || probedSet.has('tblite.library'),
+    'Prepared current import probe missing required module: tblite'
+  );
+  assert(layout.pythonEntries.includes(toolchain.value.python), 'Fixed standalone Python entry required');
+  const runtimeContentDirs = normalizeContentDirs(runtime.value);
+  const toolchainContentDirs = normalizeContentDirs(toolchain.value);
+  const requiredRuntimeDirs =
+    layout.platform === 'win32-x64' ? ['python/Library/bin'] : ['python/bin', 'python/lib'];
+  for (const reqDir of requiredRuntimeDirs) {
+    assert(
+      isDirectoryCoveredByContent(reqDir, runtimeContentDirs),
+      'Current runtime search directory outside declared content: ' + reqDir
+    );
+  }
+  const requiredToolchainDirs =
+    layout.platform === 'win32-x64'
+      ? [path.posix.dirname(toolchain.value.python), 'python/DLLs']
+      : [path.posix.dirname(toolchain.value.python), 'python/lib'];
+  for (const reqDir of requiredToolchainDirs) {
+    assert(
+      isDirectoryCoveredByContent(reqDir, toolchainContentDirs),
+      'Current toolchain search directory outside declared content: ' + reqDir
+    );
+  }
+  verifyNativeInventory(appPath, runtime);
+  verifyNativeInventory(appPath, toolchain);
   const executable = lockedFile(appPath, toolchain, toolchain.value.python);
-  for (const name of ['python/python312.dll', 'python/python312._pth']) lockedFile(appPath, toolchain, name);
-  return { executable, provenance: { source: 'prepared-current-locks', locked: true, runtimeLock: runtime.reference, toolchainLock: toolchain.reference, preparation: profile.preparation } };
+  for (const name of layout.pythonRequiredMembers) lockedFile(appPath, toolchain, name);
+  return {
+    executable,
+    platform: layout.platform,
+    runtimeRoot: path.join(appPath, runtime.value.root),
+    provenance: {
+      source: 'prepared-current-locks',
+      locked: true,
+      platform: layout.platform,
+      runtimeLock: runtime.reference,
+      toolchainLock: toolchain.reference,
+      preparation: profile.preparation
+    }
+  };
 }
-function developmentXtb(appPath) {
-  const selected = lock(appPath, 'desktop/packaging/xtb-runtime.lock.json', 'sciyue-xtb-lock-v1', '.local/dependencies/win-x64');
+
+function developmentXtb(appPath, options = {}) {
+  const expectedPlatform = options.platformId || defaultPlatformId(options.platform, options.arch);
+  const layout = resolvePlatformLayout(expectedPlatform);
+  assert(
+    !hasUnsafePathDelimiter(path.resolve(appPath), expectedPlatform),
+    'Current runtime path contains unsafe delimiter'
+  );
+  const { profile } = resolveProfile(appPath, expectedPlatform);
+  const xtbLockRel = validLockPathFor('xtb-runtime', expectedPlatform, profile?.xtbLock)
+    ? profile.xtbLock
+    : 'desktop/packaging/xtb-runtime.lock.json';
+  const selected = lock(appPath, xtbLockRel, 'sciyue-xtb-lock-v1', layout.dependenciesParent, expectedPlatform);
   assert.equal(selected.value.localUseReady, true, 'Current xTB lock must be explicitly ready');
-  assert(selected.value.entry === 'xtb/bin/xtb.exe' && selected.value.dataDirectory === 'xtb/share/xtb', 'Fixed current xTB entry required');
-  for (const name of ['xtb/bin/xtb.exe', 'xtb/runtime.json', 'xtb/share/xtb/param_gfn0-xtb.txt', 'xtb/share/xtb/param_gfn1-xtb.txt', 'xtb/share/xtb/param_gfn2-xtb.txt', 'xtb/share/xtb/.param_gfnff.xtb']) assert(selected.files.some(row => row.path === name), 'Required current runtime member absent: ' + name);
-  // Verify the complete selected closure, including its actual GNU DLLs and
-  // descriptor, rather than presuming a compiler-specific member count/list.
+  assert(selected.value.entry === layout.xtbEntry && selected.value.dataDirectory === 'xtb/share/xtb', 'Fixed current xTB entry required');
+  for (const name of [layout.xtbEntry, 'xtb/runtime.json', 'xtb/share/xtb/param_gfn0-xtb.txt', 'xtb/share/xtb/param_gfn1-xtb.txt', 'xtb/share/xtb/param_gfn2-xtb.txt', 'xtb/share/xtb/.param_gfnff.xtb']) {
+    assert(selected.files.some(row => row.path === name), 'Required current runtime member absent: ' + name);
+  }
   verifyMemberInventory(path.join(appPath, selected.value.root), selected.files, ['xtb']);
   const descriptor = selected.files.find(row => row.path === 'xtb/runtime.json');
   return { root: path.join(appPath, selected.value.root, 'xtb'), lock: selected.reference, manifestIdentity: { ...descriptor, path: 'runtime.json' } };
 }
-function currentRuntimeEnvironment({ packaged, appPath, executable, environment = process.env }) {
+
+function currentRuntimeEnvironment({
+  packaged,
+  appPath,
+  executable,
+  environment = process.env,
+  platform = process.platform,
+  arch = process.arch,
+  platformId
+}) {
   if (packaged || environment.SCIYUE_PYTHON) return {};
-  if (typeof executable !== 'string' || !inside(path.join(appPath, '.local/toolchains/win-x64'), executable) || path.basename(executable).toLowerCase() !== 'python.exe') return {};
-  const declared = json(appPath, 'desktop/packaging/native-toolchain.lock.json', 1024 * 1024);
-  assert(declared.schema === 'sciyue-native-toolchain-lock-v1' && declared.python === 'python/python.exe' && declared.root.startsWith('.local/toolchains/win-x64/'), 'Fixed current Python declaration required');
+  if (typeof executable !== 'string') return {};
+  let expectedPlatform;
+  try {
+    expectedPlatform = platformId || defaultPlatformId(platform, arch);
+  } catch {
+    return {};
+  }
+  const matchedLayout = resolvePlatformLayout(expectedPlatform);
+  if (
+    !inside(path.join(appPath, matchedLayout.toolchainsParent), executable) ||
+    !matchedLayout.pythonBasenames.includes(path.basename(executable).toLowerCase())
+  ) {
+    return {};
+  }
+  const { profile } = resolveProfile(appPath, expectedPlatform);
+  const toolchainLockRel = validLockPathFor('native-toolchain', expectedPlatform, profile?.toolchainLock)
+    ? profile.toolchainLock
+    : 'desktop/packaging/native-toolchain.lock.json';
+  const runtimeLockRel = validLockPathFor('native-runtime', expectedPlatform, profile?.runtimeLock)
+    ? profile.runtimeLock
+    : 'desktop/packaging/native-runtime.lock.json';
+  const declared = json(appPath, toolchainLockRel, 1024 * 1024);
+  assert(
+    declared.schema === 'sciyue-native-toolchain-lock-v1' &&
+      declared.platform === expectedPlatform &&
+      matchedLayout.pythonEntries.includes(declared.python) &&
+      declared.root.startsWith(matchedLayout.toolchainsParent + '/'),
+    'Fixed current Python declaration required'
+  );
   const expected = path.resolve(appPath, declared.root, declared.python);
-  const normalize = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
-  if (typeof executable !== 'string' || normalize(executable) !== normalize(expected)) return {};
-  developmentNative(appPath);
-  const runtime = json(appPath, 'desktop/packaging/native-runtime.lock.json', 1024 * 1024), system = environment.SystemRoot || environment.WINDIR || 'C:\\Windows';
-  const result = { PATH: [path.join(appPath, runtime.root, 'python/Library/bin'), path.dirname(expected), path.join(system, 'System32'), system].join(path.delimiter) };
-  for (const name of Object.keys(environment)) if (/^(?:CONDA_|_CONDA_|VIRTUAL_ENV$|PYTHON(?:PATH|HOME|USERBASE|STARTUP|INSPECT|EXECUTABLE)$|_CE_CONDA$|_CE_M$)/i.test(name)) result[name] = undefined;
+  const normalize = value => platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+  if (normalize(executable) !== normalize(expected)) return {};
+  developmentNative(appPath, { platform, arch, platformId: expectedPlatform });
+  const runtime = json(appPath, runtimeLockRel, 1024 * 1024);
+  const envDelimiter = matchedLayout.platform === 'win32-x64' ? ';' : ':';
+  let runtimePathEntries;
+  if (matchedLayout.platform === 'win32-x64') {
+    const system = environment.SystemRoot || environment.WINDIR || 'C:\\Windows';
+    const winBinAbs = path.join(appPath, runtime.root, 'python/Library/bin');
+    if (fs.existsSync(winBinAbs)) {
+      admitted(path.join(appPath, runtime.root), 'python/Library/bin', true);
+    }
+    assert(
+      !hasUnsafePathDelimiter(winBinAbs, expectedPlatform) &&
+        !hasUnsafePathDelimiter(path.dirname(expected), expectedPlatform),
+      'Current runtime path contains unsafe delimiter'
+    );
+    runtimePathEntries = [
+      winBinAbs,
+      path.dirname(expected),
+      path.join(system, 'System32'),
+      system
+    ];
+  } else {
+    const posixBinAbs = path.join(appPath, runtime.root, 'python/bin');
+    if (fs.existsSync(posixBinAbs)) {
+      admitted(path.join(appPath, runtime.root), 'python/bin', true);
+    }
+    assert(
+      !hasUnsafePathDelimiter(posixBinAbs, expectedPlatform) &&
+        !hasUnsafePathDelimiter(path.dirname(expected), expectedPlatform),
+      'Current runtime path contains unsafe delimiter'
+    );
+    runtimePathEntries = [
+      posixBinAbs,
+      path.dirname(expected),
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin'
+    ];
+  }
+  const result = {};
+  for (const name of Object.keys(environment)) {
+    if (
+      /^(?:CONDA_|_CONDA_|VIRTUAL_ENV$|PYTHON|_PYTHON_|_CE_CONDA$|_CE_M$|DYLD_|LD_|RDBASE$)/i.test(
+        name
+      )
+    ) {
+      result[name] = undefined;
+    }
+  }
+  result.PATH = runtimePathEntries.join(envDelimiter);
+  result.SCIYUE_APP_PATH = path.resolve(appPath);
+  result.PYTHONNOUSERSITE = '1';
+  result.PYTHONDONTWRITEBYTECODE = '1';
+  if (matchedLayout.platform.startsWith('darwin-')) {
+    const depLibAbs = path.join(appPath, runtime.root, 'python/lib');
+    const tcLibAbs = path.join(appPath, declared.root, 'python/lib');
+    if (fs.existsSync(depLibAbs)) {
+      admitted(path.join(appPath, runtime.root), 'python/lib', true);
+    }
+    if (fs.existsSync(tcLibAbs)) {
+      admitted(path.join(appPath, declared.root), 'python/lib', true);
+    }
+    assert(
+      !hasUnsafePathDelimiter(depLibAbs, expectedPlatform) &&
+        !hasUnsafePathDelimiter(tcLibAbs, expectedPlatform),
+      'Current runtime path contains unsafe delimiter'
+    );
+    result.DYLD_FALLBACK_LIBRARY_PATH = [depLibAbs, tcLibAbs, '/usr/lib'].join(envDelimiter);
+  }
   return result;
 }
-function packagedBackendInfo({ packaged, resourcesPath, provenanceRoot }) {
+
+function packagedBackendInfo({ packaged, resourcesPath, provenanceRoot, platform = process.platform }) {
   if (!packaged) return { name: 'unknown', verified: false, source: 'development-or-test' };
   try {
     assert(typeof provenanceRoot === 'string', 'Package provenance root required');
@@ -137,9 +613,27 @@ function packagedBackendInfo({ packaged, resourcesPath, provenanceRoot }) {
     admitted(path.dirname(resourcesPath), 'provenance', true);
     const summary = json(provenanceRoot, 'dependencies.json', 1024 * 1024), native = summary.native;
     assert(summary.schema === 'sciyue-portable-dependency-summary/v1' && native.backend === 'OpenBLAS', 'Explicit current backend required');
-    assert(native.entry.path === 'engine.exe' && SHA.test(native.origin.candidateReceiptSha256) && SHA.test(native.origin.buildContractSha256), 'Current native origin required');
+    const expectedEntry = platform === 'win32' ? 'engine.exe' : 'engine';
+    assert(
+      native.entry.path === expectedEntry &&
+        SHA.test(native.origin.candidateReceiptSha256) &&
+        SHA.test(native.origin.buildContractSha256),
+      'Current native origin required'
+    );
     reference(resourcesPath, { ...native.entry, path: 'chemistry/' + native.entry.path });
     return { name: 'openblas', verified: true, source: 'package-provenance-not-live-DLL-observation' };
   } catch { return { name: 'unknown', verified: false, source: 'missing-or-invalid-package-provenance' }; }
 }
-module.exports = { developmentNative, developmentXtb, currentRuntimeEnvironment, packagedBackendInfo };
+
+module.exports = {
+  PLATFORM_LAYOUTS,
+  SUPPORTED_PLATFORMS,
+  defaultPlatformId,
+  resolvePlatformLayout,
+  resolveProfile,
+  hasUnsafePathDelimiter,
+  developmentNative,
+  developmentXtb,
+  currentRuntimeEnvironment,
+  packagedBackendInfo
+};
