@@ -1,0 +1,36 @@
+# Dependencies (anchored to repository root)
+/node_modules/
+
+# Root Build & Release Outputs (anchored so scripts/release/ is never ignored)
+/dist/
+/build/
+/release/
+/.cache/
+/.local/
+/native-runtime/
+!/scripts/release/
+!/scripts/release/**
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+/.venv/
+/venv/
+
+# Test & Review artifacts
+/coverage/
+/playwright-report/
+/test-results/
+/.codex-review/
+
+# OS & Package Manager Logs (avoid global *.log so scientific .log fixtures remain trackable)
+.DS_Store
+Thumbs.db
+/npm-debug.log*
+/yarn-debug.log*
+/yarn-error.log*
+/.pnpm-debug.log*
+.env
+.env.*
+!/tests/**/*.log
