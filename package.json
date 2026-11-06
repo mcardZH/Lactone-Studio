@@ -16,7 +16,11 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "prepare:desktop": "node node_modules/electron/install.js",
     "desktop:start": "node scripts/desktop-start.mjs",
-    "desktop:dev": "node scripts/desktop-dev.mjs"
+    "desktop:dev": "node scripts/desktop-dev.mjs",
+    "test": "node scripts/workflow/run-tests.mjs",
+    "hooks:install": "node scripts/workflow/install-hooks.mjs",
+    "check:branch": "node scripts/workflow/pre-commit-check.mjs",
+    "merge:main": "node scripts/workflow/merge-to-main.mjs"
   },
   "dependencies": {
     "3dmol": "2.5.5",
