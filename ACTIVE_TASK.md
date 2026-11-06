@@ -25,13 +25,17 @@
      - 在 `developmentNative` 中强制要求 `scripts/native/dev-runtime.py` 与 `desktop/chemistry/engine.py` 通过 `admitted` 校验（普通文件、无符号链接、硬链接数为 1）。
      - 校验 `import-probe.json`：`passed === true`、`scienceExecuted === false`、平台字段匹配（Darwin 下强制要求 `probeDoc.platform === expectedPlatform`，Windows 下允许缺省或等于 `win32-x64`），且强制校验 `probeDoc.runtimeLock`、`probeDoc.toolchainLock`、`probeDoc.xtbLock` 与 `runtime.reference`、`toolchain.reference`、`xtb.reference` 严格相等；同时要求探针包含 `rdkit`、`ase`、`spglib`、`scipy`、`tblite`（或 `tblite.library`）。
      - 在 `developmentXtb` 中校验所选 `profile` 合法性（禁止在 `profile.xtbLock` 非法时静默回退）；当 `profile.preparation` 存在时复用完整三锁与探针绑定校验，当 `profile.preparation` 缺省（如仓库默认 Windows 独立 xTB 配置）时仍严格校验 `profile`、`xtb-runtime.lock.json`、`contentDirectories` 与不安全路径分隔符。
-     - 强制要求锁文件显式声明非空 `contentDirectories` 数组，并校验 `runtime` 与 `toolchain` 锁的 `contentDirectories` 完整覆盖所有非系统可执行文件与动态库搜索目录（Darwin 下覆盖 `python/bin`、`python/lib`；Windows 下覆盖 `python/Library/bin`、`python`、`python/DLLs`），防止范围过窄的 `contentDirectories` 放行 `python/lib` 下未清单化的动态库。
+     - 强制要求锁文件显式声明非空 `contentDirectories` 数组，并校验 `runtime` 与 `toolchain` 锁的 `contentDirectories` 完整覆盖所有非系统可执行文件、科学包与动态库搜索目录（Darwin 下覆盖 `python/bin`、`python/lib`；Windows 下 `runtime` 覆盖 `python/Library/bin` 与 `python/Lib/site-packages`，`toolchain` 覆盖 `python` 与 `python/DLLs`），防止范围过窄的 `contentDirectories` 放行未清单化的模块或动态库。
   4. **环境变量净化、路径分隔符注入防御与打包入口校验 (`currentRuntimeEnvironment` / `packagedBackendInfo`)**：
-     - 拒绝包含不安全路径列表分隔符（POSIX 下的 `:`、Windows 盘符后的 `:` 以及所有平台下的 `;` 或 `\0`）的项目路径，防止受控路径在拼接 `PATH` 或 `DYLD_FALLBACK_LIBRARY_PATH` 时被拆分为项目外搜索目录。
+     - 拒绝包含不安全路径列表分隔符（POSIX 下的 `:`、Windows 盘符后的 `:` 以及所有平台下的 `;` 或 `\\0`）的项目路径，防止受控路径在拼接 `PATH` 或 `DYLD_FALLBACK_LIBRARY_PATH` 时被拆分为项目外搜索目录。
+     - Windows 下通过 `process.report.getReport().sharedObjects` 获取操作系统已加载的 `kernel32.dll`/`ntdll.dll` 真实系统目录（支持单元测试注入），拒绝不一致的外部 `SystemRoot`/`WINDIR` 并显式写出规范化后的 `SystemRoot` 与 `WINDIR`。
      - 净化 `CONDA_*`、`_CONDA_*`、`VIRTUAL_ENV`、`PYTHON*`、`_PYTHON_*`、`_CE_CONDA`、`_CE_M`、`DYLD_*`、`LD_*`、`RDBASE` 等外部环境变量，按目标平台分隔符设置受控 `PATH` 与 Darwin `DYLD_FALLBACK_LIBRARY_PATH`。
      - `packagedBackendInfo` 按平台校验打包引擎入口文件名（Darwin 为 `engine`，Windows 为 `engine.exe`）。
+  5. **复核范围边界约束 (`AGENTS.md` / `scripts/workflow/codex-review.mjs`)**：
+     - 在 `AGENTS.md` 与 `buildReviewPrompt` 中明确规定：代码复核严格聚焦当前分支相对于 `main` 实际修改的文件与代码 Diff，严格尊重 `ACTIVE_TASK.md` 中声明的 `Out of Scope` 边界，严禁无限扩大审查范围。
 - **边界与非目标 (Out of Scope)**：
   - 本分支**不修改** `desktop/runtime.cjs` 与 `scripts/native/dev-runtime.py`（Python 隔离引导器将在下一微分支 `mac/phase1a2-python-dev-bootstrap` 中独立实现与复核）。
+  - 本分支**不修改** `desktop/xtb-runtime.cjs` 与 `desktop/xtb-runtime-contract.cjs`（macOS xTB 宿主执行与描述符适配不属于本分支范围，本分支仅校验 `desktop/current-runtime.cjs` 中的 `developmentXtb` 锁与库存契约）。
   - 本分支**不涉及** `.local` 科学计算环境实际构建脚本（将在 `mac/phase1a3-darwin-staging` 实现）及任务进程树管理（将在 `mac/phase1b-process-identity` 实现）。
 
 ---
@@ -40,6 +44,9 @@
 - **涉及模块与文件清单**：
   - `desktop/current-runtime.cjs`
   - `tests/desktop/current-runtime.test.mjs`
+  - `scripts/workflow/codex-review.mjs`
+  - `tests/workflow/codex-review.test.mjs`
+  - `AGENTS.md`
 - **跨平台适配考量（macOS / Windows / Linux）**：
   - 所有路径比较与测试断言均兼容 POSIX (`/`) 与 Windows (`\`)，目录链接测试在 Windows 下使用 `'junction'`，环境变量拼接按目标平台（`win32-x64` 使用 `;`，`darwin-*` 使用 `:`）处理。
 - **关键实现逻辑与架构影响**：

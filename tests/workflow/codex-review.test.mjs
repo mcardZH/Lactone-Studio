@@ -81,6 +81,7 @@ describe('ACTIVE_TASK and codex-review workflow tests', () => {
     assert.match(prompt, /开发新模块/);
     assert.match(prompt, /M src\/index\.ts/);
     assert.match(prompt, /\+ const x = 1;/);
+    assert.match(prompt, /严格范围边界（核心铁律，严禁无限扩大范围）/);
     assert.match(prompt, /需求与意图符合度/);
     assert.match(prompt, /gpt-6\.1-terra/);
   });

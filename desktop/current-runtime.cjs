@@ -77,13 +77,38 @@ function hasUnsafePathDelimiter(filePath, platformId, hostPlatform = process.pla
   return filePath.includes(':');
 }
 
-function resolveTrustedWindowsSystemRoot(environment = {}, hostPlatform = process.platform) {
-  const raw =
-    environment.SystemRoot !== undefined
-      ? environment.SystemRoot
-      : environment.WINDIR !== undefined
-        ? environment.WINDIR
-        : 'C:\\Windows';
+function detectWindowsKernelSystemRoot(hostPlatform = process.platform, sharedObjects) {
+  let loaded = sharedObjects;
+  if (!Array.isArray(loaded) && hostPlatform === 'win32') {
+    try {
+      const report =
+        process.report && typeof process.report.getReport === 'function'
+          ? process.report.getReport()
+          : null;
+      loaded = report && Array.isArray(report.sharedObjects) ? report.sharedObjects : [];
+    } catch {
+      loaded = [];
+    }
+  }
+  if (Array.isArray(loaded)) {
+    for (const entry of loaded) {
+      if (typeof entry !== 'string') continue;
+      const match = entry.match(
+        /^([A-Za-z]:[\\/][^\\/:*?"<>|]+)[\\/]System32[\\/](?:ntdll|kernel32)\.dll$/i
+      );
+      if (match) {
+        const candidate = match[1].replace(/[\\/]+$/, '');
+        const parts = candidate.split(/[\\/]+/);
+        if (parts.length === 2 && /^[A-Za-z]:$/.test(parts[0]) && parts[1] !== '.' && parts[1] !== '..') {
+          return `${parts[0].toUpperCase()}\\${parts[1]}`;
+        }
+      }
+    }
+  }
+  return 'C:\\Windows';
+}
+
+function normalizeWindowsSystemRootCandidate(raw) {
   assert(
     typeof raw === 'string' && !hasUnsafePathDelimiter(raw, 'win32-x64', 'win32'),
     'Trusted Windows SystemRoot required'
@@ -96,18 +121,38 @@ function resolveTrustedWindowsSystemRoot(environment = {}, hostPlatform = proces
       /^Windows$/i.test(segments[1]),
     'Trusted Windows SystemRoot required'
   );
-  const normalized = path.win32.normalize(`${segments[0]}\\${segments[1]}`);
+  const normalized = path.win32.normalize(`${segments[0].toUpperCase()}\\${segments[1]}`);
   assert(
     /^[A-Za-z]:\\Windows$/i.test(normalized) &&
       normalized.toLowerCase() === cleaned.replace(/\//g, '\\').toLowerCase(),
     'Trusted Windows SystemRoot required'
   );
+  return normalized;
+}
+
+function resolveTrustedWindowsSystemRoot(
+  environment = {},
+  hostPlatform = process.platform,
+  sharedObjects
+) {
+  const osSystemRoot = normalizeWindowsSystemRootCandidate(
+    detectWindowsKernelSystemRoot(hostPlatform, sharedObjects)
+  );
+  for (const key of Object.keys(environment)) {
+    if (/^(?:SYSTEMROOT|WINDIR)$/i.test(key) && environment[key] !== undefined) {
+      const candidate = normalizeWindowsSystemRootCandidate(environment[key]);
+      assert(
+        candidate.toLowerCase() === osSystemRoot.toLowerCase(),
+        'Trusted Windows SystemRoot required'
+      );
+    }
+  }
   if (hostPlatform === 'win32') {
     let rootStat, sys32Stat, kernelStat;
     try {
-      rootStat = fs.lstatSync(normalized);
-      sys32Stat = fs.lstatSync(`${normalized}\\System32`);
-      kernelStat = fs.lstatSync(`${normalized}\\System32\\kernel32.dll`);
+      rootStat = fs.lstatSync(osSystemRoot);
+      sys32Stat = fs.lstatSync(`${osSystemRoot}\\System32`);
+      kernelStat = fs.lstatSync(`${osSystemRoot}\\System32\\kernel32.dll`);
     } catch {
       assert.fail('Trusted Windows SystemRoot required');
     }
@@ -121,7 +166,7 @@ function resolveTrustedWindowsSystemRoot(environment = {}, hostPlatform = proces
       'Trusted Windows SystemRoot required'
     );
   }
-  return normalized;
+  return osSystemRoot;
 }
 
 function inside(root, target) {
@@ -547,7 +592,9 @@ function developmentNative(appPath, options = {}) {
   const runtimeContentDirs = requireContentDirs(runtime.value);
   const toolchainContentDirs = requireContentDirs(toolchain.value);
   const requiredRuntimeDirs =
-    layout.platform === 'win32-x64' ? ['python/Library/bin'] : ['python/bin', 'python/lib'];
+    layout.platform === 'win32-x64'
+      ? ['python/Library/bin', 'python/Lib/site-packages']
+      : ['python/bin', 'python/lib'];
   for (const reqDir of requiredRuntimeDirs) {
     assert(
       isDirectoryCoveredByContent(reqDir, runtimeContentDirs),
@@ -689,8 +736,9 @@ function currentRuntimeEnvironment({
   const runtime = json(appPath, profile.runtimeLock, 1024 * 1024);
   const envDelimiter = matchedLayout.platform === 'win32-x64' ? ';' : ':';
   let runtimePathEntries;
+  let windowsSystemRoot = null;
   if (matchedLayout.platform === 'win32-x64') {
-    const system = resolveTrustedWindowsSystemRoot(environment);
+    windowsSystemRoot = resolveTrustedWindowsSystemRoot(environment);
     const winBinAbs = path.join(appPath, runtime.root, 'python/Library/bin');
     if (hasCandidateEntry(winBinAbs)) {
       admitted(path.join(appPath, runtime.root), 'python/Library/bin', true);
@@ -703,8 +751,8 @@ function currentRuntimeEnvironment({
     runtimePathEntries = [
       winBinAbs,
       path.dirname(expected),
-      `${system}\\System32`,
-      system
+      `${windowsSystemRoot}\\System32`,
+      windowsSystemRoot
     ];
   } else {
     const posixBinAbs = path.join(appPath, runtime.root, 'python/bin');
@@ -728,12 +776,16 @@ function currentRuntimeEnvironment({
   const result = {};
   for (const name of Object.keys(environment)) {
     if (
-      /^(?:CONDA_|_CONDA_|VIRTUAL_ENV$|PYTHON|_PYTHON_|_CE_CONDA$|_CE_M$|DYLD_|LD_|RDBASE$)/i.test(
+      /^(?:CONDA_|_CONDA_|VIRTUAL_ENV$|PYTHON|_PYTHON_|_CE_CONDA$|_CE_M$|DYLD_|LD_|RDBASE$|SYSTEMROOT$|WINDIR$)/i.test(
         name
       )
     ) {
       result[name] = undefined;
     }
+  }
+  if (windowsSystemRoot !== null) {
+    result.SystemRoot = windowsSystemRoot;
+    result.WINDIR = windowsSystemRoot;
   }
   result.PATH = runtimePathEntries.join(envDelimiter);
   result.SCIYUE_APP_PATH = path.resolve(appPath);

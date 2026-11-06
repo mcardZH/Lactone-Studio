@@ -310,7 +310,27 @@ test('SUPPORTED_PLATFORMS, defaultPlatformId, hasUnsafePathDelimiter, and resolv
   assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\evil;semi\\Ester', 'win32-x64', 'win32'), true);
 
   assert.equal(resolveTrustedWindowsSystemRoot({}, 'darwin'), 'C:\\Windows');
-  assert.equal(resolveTrustedWindowsSystemRoot({ SystemRoot: 'D:\\Windows\\' }, 'darwin'), 'D:\\Windows');
+  assert.equal(
+    resolveTrustedWindowsSystemRoot(
+      { SystemRoot: 'D:\\Windows\\' },
+      'darwin',
+      ['D:\\Windows\\System32\\kernel32.dll']
+    ),
+    'D:\\Windows'
+  );
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'Z:\\Windows' }, 'darwin'),
+    /Trusted Windows SystemRoot required/
+  );
+  assert.throws(
+    () =>
+      resolveTrustedWindowsSystemRoot(
+        { SystemRoot: 'C:\\Windows' },
+        'darwin',
+        ['D:\\Windows\\System32\\kernel32.dll']
+      ),
+    /Trusted Windows SystemRoot required/
+  );
   assert.throws(
     () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\Windows;C:\\evil' }, 'darwin'),
     /Trusted Windows SystemRoot required/
@@ -803,6 +823,35 @@ test('security contracts: dev-runtime.py admission, dangling profile symlink, em
     assert.throws(
       () => developmentNative(narrowLibDir, { platformId: 'darwin-arm64' }),
       /Current runtime search directory outside declared content: python\/lib/
+    );
+
+    const narrowWinDir = path.join(tmpDir, 'narrow-lib-win32');
+    buildMockNativeProject(narrowWinDir, 'win32-x64', {
+      usePlatformSpecificProfile: true,
+      runtimeContentDirectories: ['python/Library/bin']
+    });
+    writeOwnedFile(
+      narrowWinDir,
+      '.local/dependencies/win-x64/dep-lock-1/python/Lib/site-packages/scipy/__init__.py',
+      'TAMPERED = True\n'
+    );
+    assert.throws(
+      () => developmentNative(narrowWinDir, { platformId: 'win32-x64' }),
+      /Current runtime search directory outside declared content: python\/Lib\/site-packages/
+    );
+
+    const untrackedWinPkgDir = path.join(tmpDir, 'untracked-pkg-win32');
+    buildMockNativeProject(untrackedWinPkgDir, 'win32-x64', {
+      usePlatformSpecificProfile: true
+    });
+    writeOwnedFile(
+      untrackedWinPkgDir,
+      '.local/dependencies/win-x64/dep-lock-1/python/Lib/site-packages/scipy/_evil.pyd',
+      'untracked-native-ext'
+    );
+    assert.throws(
+      () => developmentNative(untrackedWinPkgDir, { platformId: 'win32-x64' }),
+      /Current runtime complete file membership differs/
     );
 
     // 5. developmentXtb lock binding & delimiter checks:
