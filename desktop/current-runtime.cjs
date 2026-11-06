@@ -77,6 +77,22 @@ function hasUnsafePathDelimiter(filePath, platformId) {
   return filePath.includes(':');
 }
 
+function resolveTrustedWindowsSystemRoot(environment = {}) {
+  const raw =
+    environment.SystemRoot !== undefined
+      ? environment.SystemRoot
+      : environment.WINDIR !== undefined
+        ? environment.WINDIR
+        : 'C:\\Windows';
+  assert(
+    typeof raw === 'string' &&
+      !hasUnsafePathDelimiter(raw, 'win32-x64') &&
+      /^[A-Za-z]:[\\/](?:[^<>:"/|?*\0;]+[\\/])*Windows[\\/]*$/i.test(raw),
+    'Trusted Windows SystemRoot required'
+  );
+  return raw.replace(/[\\/]+$/, '');
+}
+
 function inside(root, target) {
   const part = path.relative(root, target);
   return part !== '..' && !part.startsWith('..' + path.sep) && !path.isAbsolute(part);
@@ -160,6 +176,23 @@ function reference(root, row) {
   return target;
 }
 
+function requireContentDirs(value) {
+  assert(
+    Array.isArray(value?.contentDirectories) &&
+      value.contentDirectories.length > 0 &&
+      value.contentDirectories.every(dir => typeof dir === 'string' && dir.trim().length > 0),
+    'Explicit current runtime contentDirectories required'
+  );
+  return value.contentDirectories;
+}
+
+function isDirectoryCoveredByContent(relDir, contentDirs) {
+  const clean = relDir.replace(/\/+$/, '');
+  return contentDirs.some(
+    dir => typeof dir === 'string' && (clean === dir || clean.startsWith(dir + '/'))
+  );
+}
+
 function lock(root, relative, schema, parent, expectedPlatform) {
   const value = json(root, relative, 1024 * 1024);
   const layout = resolvePlatformLayout(value.platform);
@@ -169,7 +202,12 @@ function lock(root, relative, schema, parent, expectedPlatform) {
   );
   const expectedParent = parent || layout.dependenciesParent;
   assert(typeof value.root === 'string' && value.root.startsWith(expectedParent + '/') && value.root.split('/').length === expectedParent.split('/').length + 1, 'Content-specific current runtime root required');
+  assert(
+    !hasUnsafePathDelimiter(path.join(root, value.root), value.platform),
+    'Current runtime path contains unsafe delimiter'
+  );
   admitted(root, value.root, true);
+  requireContentDirs(value);
   let files = value.files;
   if (value.inventory) {
     reference(root, value.inventory);
@@ -268,21 +306,8 @@ function checkInventorySnapshot(snapshot) {
   return true;
 }
 
-function normalizeContentDirs(value) {
-  return Array.isArray(value?.contentDirectories) && value.contentDirectories.length > 0
-    ? value.contentDirectories
-    : ['python'];
-}
-
-function isDirectoryCoveredByContent(relDir, contentDirs) {
-  const clean = relDir.replace(/\/+$/, '');
-  return contentDirs.some(
-    dir => typeof dir === 'string' && (clean === dir || clean.startsWith(dir + '/'))
-  );
-}
-
 function verifyNativeInventory(appPath, selected) {
-  const contentDirs = normalizeContentDirs(selected.value);
+  const contentDirs = requireContentDirs(selected.value);
   admitted(appPath, selected.value.root, true);
   const memberRoot = path.join(appPath, selected.value.root);
   for (const dir of contentDirs) {
@@ -360,11 +385,21 @@ function verifyNativeInventory(appPath, selected) {
   inventorySnapshots.set(snapshotKey, { dirs: dirList, files: fileSnapshots, fileMap: nextFileMap });
 }
 
+function hasCandidateEntry(fullPath) {
+  try {
+    fs.lstatSync(fullPath);
+    return true;
+  } catch (err) {
+    if (err && err.code === 'ENOENT') return false;
+    throw err;
+  }
+}
+
 function resolveProfile(appPath, expectedPlatform) {
+  admitted(appPath, 'desktop/packaging', true);
   const defaultRel = 'desktop/packaging/native-profile.json';
   const platformRel = `desktop/packaging/native-profile.${expectedPlatform}.json`;
-  const hasPlatform = fs.existsSync(path.join(appPath, platformRel));
-  if (hasPlatform) {
+  if (hasCandidateEntry(path.join(appPath, platformRel))) {
     return { profile: json(appPath, platformRel, 65536), profileRel: platformRel };
   }
   return { profile: json(appPath, defaultRel, 65536), profileRel: defaultRel };
@@ -377,36 +412,59 @@ function validLockPathFor(kind, expectedPlatform, actualPath) {
   );
 }
 
-function developmentNative(appPath, options = {}) {
-  const expectedPlatform = options.platformId || defaultPlatformId(options.platform, options.arch);
-  const layout = resolvePlatformLayout(expectedPlatform);
+function verifyPreparedLocks(appPath, expectedPlatform, layout) {
   assert(
     !hasUnsafePathDelimiter(path.resolve(appPath), expectedPlatform),
     'Current runtime path contains unsafe delimiter'
   );
-  admitted(appPath, 'desktop/chemistry/engine.py');
   const { profile } = resolveProfile(appPath, expectedPlatform);
   assert(
-    profile.schema === 'sciyue-native-profile-v1' &&
+    profile &&
+      profile.schema === 'sciyue-native-profile-v1' &&
       profile.platform === expectedPlatform &&
       validLockPathFor('native-runtime', expectedPlatform, profile.runtimeLock) &&
       validLockPathFor('native-toolchain', expectedPlatform, profile.toolchainLock) &&
       validLockPathFor('xtb-runtime', expectedPlatform, profile.xtbLock),
     'Fixed current native profile required'
   );
-  const runtime = lock(appPath, profile.runtimeLock, 'sciyue-native-runtime-lock-v1', layout.dependenciesParent, expectedPlatform);
-  const toolchain = lock(appPath, profile.toolchainLock, 'sciyue-native-toolchain-lock-v1', layout.toolchainsParent, expectedPlatform);
+  const runtime = lock(
+    appPath,
+    profile.runtimeLock,
+    'sciyue-native-runtime-lock-v1',
+    layout.dependenciesParent,
+    expectedPlatform
+  );
+  const toolchain = lock(
+    appPath,
+    profile.toolchainLock,
+    'sciyue-native-toolchain-lock-v1',
+    layout.toolchainsParent,
+    expectedPlatform
+  );
+  const xtb = lock(
+    appPath,
+    profile.xtbLock,
+    'sciyue-xtb-lock-v1',
+    layout.dependenciesParent,
+    expectedPlatform
+  );
   reference(appPath, profile.preparation);
   const prepared = json(appPath, profile.preparation.path);
-  assert(prepared.schema === 'sciyue-native-preparation-v1' && prepared.passed === true && prepared.scienceExecuted === false, 'Prepared current runtime required');
+  assert(
+    prepared.schema === 'sciyue-native-preparation-v1' &&
+      prepared.passed === true &&
+      prepared.scienceExecuted === false,
+    'Prepared current runtime required'
+  );
   assert.deepEqual(prepared.runtimeLock, runtime.reference);
   assert.deepEqual(prepared.toolchainLock, toolchain.reference);
-  assert.deepEqual(prepared.xtbLock, identity(appPath, profile.xtbLock));
+  assert.deepEqual(prepared.xtbLock, xtb.reference);
   reference(appPath, prepared.importProbe);
   const probeDoc = json(appPath, prepared.importProbe.path, 1024 * 1024);
   assert(
     probeDoc &&
-      (probeDoc.schema === 'sciyue-import-probe-v1' || probeDoc.schema === 'sciyue-native-import-probe-v1') &&
+      (probeDoc.schema === 'sciyue-import-probe-v1' ||
+        probeDoc.schema === 'sciyue-native-import-probe-v1') &&
       probeDoc.passed === true &&
       probeDoc.scienceExecuted === false &&
       (expectedPlatform === 'win32-x64'
@@ -414,23 +472,49 @@ function developmentNative(appPath, options = {}) {
         : probeDoc.platform === expectedPlatform),
     'Prepared current import probe required'
   );
-  assert.deepEqual(probeDoc.runtimeLock, runtime.reference, 'Prepared current import probe runtimeLock mismatch');
-  assert.deepEqual(probeDoc.toolchainLock, toolchain.reference, 'Prepared current import probe toolchainLock mismatch');
-  assert.deepEqual(probeDoc.xtbLock, prepared.xtbLock, 'Prepared current import probe xtbLock mismatch');
+  assert.deepEqual(
+    probeDoc.runtimeLock,
+    runtime.reference,
+    'Prepared current import probe runtimeLock mismatch'
+  );
+  assert.deepEqual(
+    probeDoc.toolchainLock,
+    toolchain.reference,
+    'Prepared current import probe toolchainLock mismatch'
+  );
+  assert.deepEqual(
+    probeDoc.xtbLock,
+    xtb.reference,
+    'Prepared current import probe xtbLock mismatch'
+  );
   const probedSet = new Set([
     ...(Array.isArray(probeDoc.modules) ? probeDoc.modules : []),
-    ...(probeDoc.packagePaths && typeof probeDoc.packagePaths === 'object' ? Object.keys(probeDoc.packagePaths) : [])
+    ...(probeDoc.packagePaths && typeof probeDoc.packagePaths === 'object'
+      ? Object.keys(probeDoc.packagePaths)
+      : [])
   ]);
   for (const reqMod of ['rdkit', 'ase', 'spglib', 'scipy']) {
-    assert(probedSet.has(reqMod), 'Prepared current import probe missing required module: ' + reqMod);
+    assert(
+      probedSet.has(reqMod),
+      'Prepared current import probe missing required module: ' + reqMod
+    );
   }
   assert(
     probedSet.has('tblite') || probedSet.has('tblite.library'),
     'Prepared current import probe missing required module: tblite'
   );
+  return { profile, runtime, toolchain, xtb, prepared, probeDoc };
+}
+
+function developmentNative(appPath, options = {}) {
+  const expectedPlatform = options.platformId || defaultPlatformId(options.platform, options.arch);
+  const layout = resolvePlatformLayout(expectedPlatform);
+  admitted(appPath, 'scripts/native/dev-runtime.py');
+  admitted(appPath, 'desktop/chemistry/engine.py');
+  const { profile, runtime, toolchain } = verifyPreparedLocks(appPath, expectedPlatform, layout);
   assert(layout.pythonEntries.includes(toolchain.value.python), 'Fixed standalone Python entry required');
-  const runtimeContentDirs = normalizeContentDirs(runtime.value);
-  const toolchainContentDirs = normalizeContentDirs(toolchain.value);
+  const runtimeContentDirs = requireContentDirs(runtime.value);
+  const toolchainContentDirs = requireContentDirs(toolchain.value);
   const requiredRuntimeDirs =
     layout.platform === 'win32-x64' ? ['python/Library/bin'] : ['python/bin', 'python/lib'];
   for (const reqDir of requiredRuntimeDirs) {
@@ -471,23 +555,30 @@ function developmentNative(appPath, options = {}) {
 function developmentXtb(appPath, options = {}) {
   const expectedPlatform = options.platformId || defaultPlatformId(options.platform, options.arch);
   const layout = resolvePlatformLayout(expectedPlatform);
-  assert(
-    !hasUnsafePathDelimiter(path.resolve(appPath), expectedPlatform),
-    'Current runtime path contains unsafe delimiter'
-  );
-  const { profile } = resolveProfile(appPath, expectedPlatform);
-  const xtbLockRel = validLockPathFor('xtb-runtime', expectedPlatform, profile?.xtbLock)
-    ? profile.xtbLock
-    : 'desktop/packaging/xtb-runtime.lock.json';
-  const selected = lock(appPath, xtbLockRel, 'sciyue-xtb-lock-v1', layout.dependenciesParent, expectedPlatform);
+  const { xtb: selected } = verifyPreparedLocks(appPath, expectedPlatform, layout);
   assert.equal(selected.value.localUseReady, true, 'Current xTB lock must be explicitly ready');
   assert(selected.value.entry === layout.xtbEntry && selected.value.dataDirectory === 'xtb/share/xtb', 'Fixed current xTB entry required');
+  const xtbContentDirs = requireContentDirs(selected.value);
+  assert(
+    isDirectoryCoveredByContent(path.posix.dirname(selected.value.entry), xtbContentDirs) &&
+      isDirectoryCoveredByContent(selected.value.dataDirectory, xtbContentDirs),
+    'Current xTB directory outside declared content'
+  );
+  const xtbRootAbs = path.join(appPath, selected.value.root, 'xtb');
+  const xtbEntryAbs = path.join(appPath, selected.value.root, selected.value.entry);
+  const xtbDataAbs = path.join(appPath, selected.value.root, selected.value.dataDirectory);
+  assert(
+    !hasUnsafePathDelimiter(xtbRootAbs, expectedPlatform) &&
+      !hasUnsafePathDelimiter(xtbEntryAbs, expectedPlatform) &&
+      !hasUnsafePathDelimiter(xtbDataAbs, expectedPlatform),
+    'Current runtime path contains unsafe delimiter'
+  );
   for (const name of [layout.xtbEntry, 'xtb/runtime.json', 'xtb/share/xtb/param_gfn0-xtb.txt', 'xtb/share/xtb/param_gfn1-xtb.txt', 'xtb/share/xtb/param_gfn2-xtb.txt', 'xtb/share/xtb/.param_gfnff.xtb']) {
     assert(selected.files.some(row => row.path === name), 'Required current runtime member absent: ' + name);
   }
-  verifyMemberInventory(path.join(appPath, selected.value.root), selected.files, ['xtb']);
+  verifyMemberInventory(path.join(appPath, selected.value.root), selected.files, xtbContentDirs);
   const descriptor = selected.files.find(row => row.path === 'xtb/runtime.json');
-  return { root: path.join(appPath, selected.value.root, 'xtb'), lock: selected.reference, manifestIdentity: { ...descriptor, path: 'runtime.json' } };
+  return { root: xtbRootAbs, lock: selected.reference, manifestIdentity: { ...descriptor, path: 'runtime.json' } };
 }
 
 function currentRuntimeEnvironment({
@@ -514,14 +605,22 @@ function currentRuntimeEnvironment({
   ) {
     return {};
   }
+  assert(
+    !hasUnsafePathDelimiter(path.resolve(appPath), expectedPlatform) &&
+      !hasUnsafePathDelimiter(path.resolve(executable), expectedPlatform),
+    'Current runtime path contains unsafe delimiter'
+  );
   const { profile } = resolveProfile(appPath, expectedPlatform);
-  const toolchainLockRel = validLockPathFor('native-toolchain', expectedPlatform, profile?.toolchainLock)
-    ? profile.toolchainLock
-    : 'desktop/packaging/native-toolchain.lock.json';
-  const runtimeLockRel = validLockPathFor('native-runtime', expectedPlatform, profile?.runtimeLock)
-    ? profile.runtimeLock
-    : 'desktop/packaging/native-runtime.lock.json';
-  const declared = json(appPath, toolchainLockRel, 1024 * 1024);
+  assert(
+    profile &&
+      profile.schema === 'sciyue-native-profile-v1' &&
+      profile.platform === expectedPlatform &&
+      validLockPathFor('native-runtime', expectedPlatform, profile.runtimeLock) &&
+      validLockPathFor('native-toolchain', expectedPlatform, profile.toolchainLock) &&
+      validLockPathFor('xtb-runtime', expectedPlatform, profile.xtbLock),
+    'Fixed current native profile required'
+  );
+  const declared = json(appPath, profile.toolchainLock, 1024 * 1024);
   assert(
     declared.schema === 'sciyue-native-toolchain-lock-v1' &&
       declared.platform === expectedPlatform &&
@@ -533,13 +632,13 @@ function currentRuntimeEnvironment({
   const normalize = value => platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
   if (normalize(executable) !== normalize(expected)) return {};
   developmentNative(appPath, { platform, arch, platformId: expectedPlatform });
-  const runtime = json(appPath, runtimeLockRel, 1024 * 1024);
+  const runtime = json(appPath, profile.runtimeLock, 1024 * 1024);
   const envDelimiter = matchedLayout.platform === 'win32-x64' ? ';' : ':';
   let runtimePathEntries;
   if (matchedLayout.platform === 'win32-x64') {
-    const system = environment.SystemRoot || environment.WINDIR || 'C:\\Windows';
+    const system = resolveTrustedWindowsSystemRoot(environment);
     const winBinAbs = path.join(appPath, runtime.root, 'python/Library/bin');
-    if (fs.existsSync(winBinAbs)) {
+    if (hasCandidateEntry(winBinAbs)) {
       admitted(path.join(appPath, runtime.root), 'python/Library/bin', true);
     }
     assert(
@@ -550,12 +649,12 @@ function currentRuntimeEnvironment({
     runtimePathEntries = [
       winBinAbs,
       path.dirname(expected),
-      path.join(system, 'System32'),
+      `${system}\\System32`,
       system
     ];
   } else {
     const posixBinAbs = path.join(appPath, runtime.root, 'python/bin');
-    if (fs.existsSync(posixBinAbs)) {
+    if (hasCandidateEntry(posixBinAbs)) {
       admitted(path.join(appPath, runtime.root), 'python/bin', true);
     }
     assert(
@@ -589,10 +688,10 @@ function currentRuntimeEnvironment({
   if (matchedLayout.platform.startsWith('darwin-')) {
     const depLibAbs = path.join(appPath, runtime.root, 'python/lib');
     const tcLibAbs = path.join(appPath, declared.root, 'python/lib');
-    if (fs.existsSync(depLibAbs)) {
+    if (hasCandidateEntry(depLibAbs)) {
       admitted(path.join(appPath, runtime.root), 'python/lib', true);
     }
-    if (fs.existsSync(tcLibAbs)) {
+    if (hasCandidateEntry(tcLibAbs)) {
       admitted(path.join(appPath, declared.root), 'python/lib', true);
     }
     assert(
@@ -632,6 +731,7 @@ module.exports = {
   resolvePlatformLayout,
   resolveProfile,
   hasUnsafePathDelimiter,
+  resolveTrustedWindowsSystemRoot,
   developmentNative,
   developmentXtb,
   currentRuntimeEnvironment,

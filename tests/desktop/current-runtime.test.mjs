@@ -14,6 +14,7 @@ const {
   resolvePlatformLayout,
   resolveProfile,
   hasUnsafePathDelimiter,
+  resolveTrustedWindowsSystemRoot,
   developmentNative,
   developmentXtb,
   currentRuntimeEnvironment,
@@ -41,12 +42,19 @@ function buildMockNativeProject(root, platformId, options = {}) {
   const layout = resolvePlatformLayout(platformId);
   writeOwnedFile(
     root,
+    'scripts/native/dev-runtime.py',
+    options.devRuntimeSource || '# mock dev-runtime bootstrap\n'
+  );
+  writeOwnedFile(
+    root,
     'desktop/chemistry/engine.py',
     options.engineSource || '# mock engine\n'
   );
 
-  const depRoot = `${layout.dependenciesParent}/dep-lock-1`;
-  const tcRoot = `${layout.toolchainsParent}/tc-lock-1`;
+  const depLeaf = options.depLeaf || 'dep-lock-1';
+  const tcLeaf = options.tcLeaf || 'tc-lock-1';
+  const depRoot = `${layout.dependenciesParent}/${depLeaf}`;
+  const tcRoot = `${layout.toolchainsParent}/${tcLeaf}`;
 
   const depFiles = [];
   const depMarker = writeOwnedFile(root, `${depRoot}/python/site.txt`, 'site-packages');
@@ -148,6 +156,7 @@ function buildMockNativeProject(root, platformId, options = {}) {
       platform: platformId,
       lockId: 'rt-1',
       root: depRoot,
+      contentDirectories: options.runtimeContentDirectories ?? ['python'],
       inventory: depInvRef
     })
   );
@@ -160,6 +169,7 @@ function buildMockNativeProject(root, platformId, options = {}) {
       platform: platformId,
       lockId: 'tc-1',
       root: tcRoot,
+      contentDirectories: options.toolchainContentDirectories ?? ['python'],
       python: pythonRel,
       files: tcFiles
     })
@@ -173,6 +183,7 @@ function buildMockNativeProject(root, platformId, options = {}) {
       platform: platformId,
       lockId: 'xtb-1',
       root: depRoot,
+      contentDirectories: options.xtbContentDirectories ?? ['xtb'],
       localUseReady: options.xtbReady !== undefined ? options.xtbReady : true,
       entry: layout.xtbEntry,
       dataDirectory: 'xtb/share/xtb',
@@ -255,7 +266,7 @@ function buildMockNativeProject(root, platformId, options = {}) {
   };
 }
 
-test('SUPPORTED_PLATFORMS, defaultPlatformId, and hasUnsafePathDelimiter validate platform layouts and path delimiters', () => {
+test('SUPPORTED_PLATFORMS, defaultPlatformId, hasUnsafePathDelimiter, and resolveTrustedWindowsSystemRoot validate platform contracts', () => {
   assert.deepEqual(SUPPORTED_PLATFORMS, ['win32-x64', 'darwin-arm64', 'darwin-x64']);
   assert.equal(defaultPlatformId('darwin', 'arm64'), 'darwin-arm64');
   assert.equal(defaultPlatformId('darwin', 'x64'), 'darwin-x64');
@@ -271,6 +282,21 @@ test('SUPPORTED_PLATFORMS, defaultPlatformId, and hasUnsafePathDelimiter validat
   assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\Ester-Studio', 'win32-x64'), false);
   assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\evil:colon\\Ester', 'win32-x64'), true);
   assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\evil;semi\\Ester', 'win32-x64'), true);
+
+  assert.equal(resolveTrustedWindowsSystemRoot({}), 'C:\\Windows');
+  assert.equal(resolveTrustedWindowsSystemRoot({ SystemRoot: 'D:\\Windows\\' }), 'D:\\Windows');
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\Windows;C:\\evil' }),
+    /Trusted Windows SystemRoot required/
+  );
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({ WINDIR: 'relative\\Windows' }),
+    /Trusted Windows SystemRoot required/
+  );
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\NotSystemRoot' }),
+    /Trusted Windows SystemRoot required/
+  );
 });
 
 test('developmentNative, developmentXtb, and currentRuntimeEnvironment support darwin-arm64, darwin-x64, and win32-x64 and reject incomplete or mismatched probes', () => {
@@ -337,7 +363,20 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
         );
       }
 
-      // Verify cross-platform probe spoofing (e.g. platform='win32-x64' on darwin-arm64) is rejected
+      if (platformId === 'win32-x64') {
+        assert.throws(
+          () =>
+            currentRuntimeEnvironment({
+              packaged: false,
+              appPath: tmpDir,
+              executable: pythonExecutablePath,
+              platformId: 'win32-x64',
+              environment: { SystemRoot: 'C:\\Windows;C:\\Injected' }
+            }),
+          /Trusted Windows SystemRoot required/
+        );
+      }
+
       if (platformId === 'darwin-arm64') {
         const spoofedDir = makeRealTempDir('es-spoofed-probe-');
         try {
@@ -362,7 +401,6 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
           fs.rmSync(spoofedDir, { recursive: true, force: true });
         }
 
-        // Verify stale probe (mismatched runtimeLock sha256) is rejected
         const staleProbeDir = makeRealTempDir('es-stale-probe-');
         try {
           buildMockNativeProject(staleProbeDir, 'darwin-arm64', {
@@ -399,7 +437,6 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
       xtbReady: false
     });
     assert.ok(pythonExecutablePath);
-    // Overwrite import-probe.json with only ['rdkit'] while preserving lock references
     const probeRel = '.local/preparation/darwin-arm64/import-probe.json';
     const existingProbe = JSON.parse(fs.readFileSync(path.join(badProbeDir, probeRel), 'utf8'));
     existingProbe.modules = ['rdkit'];
@@ -421,6 +458,23 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
       () => developmentNative(badProbeDir, { platformId: 'darwin-arm64' }),
       /Prepared current import probe missing required module/
     );
+
+    // Fix probe modules so verifyPreparedLocks passes, then verify developmentXtb rejects unready xTB lock
+    existingProbe.modules = ['ase', 'rdkit', 'scipy', 'spglib', 'tblite'];
+    const readyProbeRef = writeOwnedFile(
+      badProbeDir,
+      probeRel,
+      JSON.stringify(existingProbe, null, 2)
+    );
+    existingPrep.importProbe = readyProbeRef;
+    const readyPrepRef = writeOwnedFile(
+      badProbeDir,
+      prepRel,
+      JSON.stringify(existingPrep, null, 2)
+    );
+    existingProf.preparation = readyPrepRef;
+    writeOwnedFile(badProbeDir, profRel, JSON.stringify(existingProf, null, 2));
+
     assert.throws(
       () => developmentXtb(badProbeDir, { platformId: 'darwin-arm64' }),
       /Current xTB lock must be explicitly ready/
@@ -522,11 +576,9 @@ test('verifyNativeInventory warm cache handles >16384 files without cache thrash
       extraFileCount: 16505
     });
 
-    // Cold call populates inventorySnapshots and fileMap for 16,506 files
     const first = developmentNative(tmpDir, { platformId: fixturePlatformId });
     assert.equal(first.platform, fixturePlatformId);
 
-    // Warm call hits inventorySnapshots with 0 member file reads (0 fs.openSync calls)
     let warmOpenCount = 0;
     const origOpenSync = fs.openSync;
     let envVars;
@@ -552,7 +604,6 @@ test('verifyNativeInventory warm cache handles >16384 files without cache thrash
       `Expected warm currentRuntimeEnvironment to open 0 files, got ${warmOpenCount}`
     );
 
-    // Touch a single file's timestamp in the 16,506-file inventory and verify only that 1 file is re-hashed
     const layout = resolvePlatformLayout(fixturePlatformId);
     const mod0 = path.join(tmpDir, layout.dependenciesParent, 'dep-lock-1/python/pkg/mod_0.py');
     const futureTime = new Date(Date.now() + 10000);
@@ -579,7 +630,6 @@ test('verifyNativeInventory warm cache handles >16384 files without cache thrash
       `Expected single-file timestamp touch in 16,506-file inventory to re-open at most 2 files, got ${openCount}`
     );
 
-    // Mutating content of a member file invalidates snapshot and throws identity error
     fs.writeFileSync(mod0, 'TAMPERED = 999999\n');
     assert.throws(
       () =>
@@ -597,12 +647,11 @@ test('verifyNativeInventory warm cache handles >16384 files without cache thrash
   }
 });
 
-test('resolveProfile prioritizes platform-specific profile, rejects narrow contentDirectories, catches warm-cache parent symlink swap, and rejects colon/semicolon paths', () => {
+test('security contracts: dev-runtime.py admission, dangling profile symlink, empty/narrow contentDirectories, xTB lock binding, and path delimiters', () => {
   const tmpDir = makeRealTempDir('es-security-contracts-');
   const extDir = makeRealTempDir('es-external-swap-');
   try {
-    // 1. Both native-profile.win32-x64.json and legacy native-profile.json exist for win32-x64:
-    // platform-specific profile MUST take priority
+    // 1. Platform-specific profile priority & dangling symlink rejection
     buildMockNativeProject(tmpDir, 'win32-x64', {
       usePlatformSpecificProfile: true,
       usePlatformSpecificLocks: true
@@ -621,54 +670,141 @@ test('resolveProfile prioritizes platform-specific profile, rejects narrow conte
     const chosenProfile = resolveProfile(tmpDir, 'win32-x64');
     assert.equal(chosenProfile.profileRel, 'desktop/packaging/native-profile.win32-x64.json');
     const resolvedWin = developmentNative(tmpDir, { platformId: 'win32-x64' });
-    assert.equal(resolvedWin.platform, 'win32-x64');
     assert.equal(
       resolvedWin.provenance.runtimeLock.path,
       'desktop/packaging/native-runtime.win32-x64.lock.json'
     );
 
-    // 2. Narrow contentDirectories on Darwin that omits python/lib and injects an untracked dylib into python/lib MUST be rejected
-    const narrowDir = path.join(tmpDir, 'narrow-darwin');
-    const { toolchainLockRef, xtbLockRef } = buildMockNativeProject(narrowDir, 'darwin-arm64', {
+    // Replace native-profile.win32-x64.json with a dangling symlink: MUST fail with Linked current runtime input, NOT fall back to native-profile.json
+    const winProfPath = path.join(tmpDir, 'desktop/packaging/native-profile.win32-x64.json');
+    fs.unlinkSync(winProfPath);
+    fs.symlinkSync(path.join(extDir, 'nonexistent-target.json'), winProfPath);
+    assert.throws(
+      () => developmentNative(tmpDir, { platformId: 'win32-x64' }),
+      /Linked current runtime input/
+    );
+
+    // 2. scripts/native/dev-runtime.py admission: missing, symlink, parent symlink, and hardlink (nlink > 1) MUST be rejected
+    const devPyDir = path.join(tmpDir, 'dev-py-checks');
+    buildMockNativeProject(devPyDir, 'darwin-arm64', { usePlatformSpecificProfile: true });
+    const devPyPath = path.join(devPyDir, 'scripts/native/dev-runtime.py');
+    const devPyBackup = fs.readFileSync(devPyPath);
+
+    // 2a. Missing file
+    fs.unlinkSync(devPyPath);
+    assert.throws(
+      () => developmentNative(devPyDir, { platformId: 'darwin-arm64' }),
+      /ENOENT/
+    );
+
+    // 2b. Symlinked file
+    const extScript = path.join(extDir, 'ext-dev-runtime.py');
+    fs.writeFileSync(extScript, devPyBackup);
+    fs.symlinkSync(extScript, devPyPath);
+    assert.throws(
+      () => developmentNative(devPyDir, { platformId: 'darwin-arm64' }),
+      /Linked current runtime input/
+    );
+    fs.unlinkSync(devPyPath);
+    fs.writeFileSync(devPyPath, devPyBackup);
+
+    // 2c. Hardlinked file (nlink > 1)
+    const hardlinkPath = path.join(devPyDir, 'scripts/native/dev-runtime-hardlink.py');
+    fs.linkSync(devPyPath, hardlinkPath);
+    assert.throws(
+      () => developmentNative(devPyDir, { platformId: 'darwin-arm64' }),
+      /Current runtime requires an ordinary owned input/
+    );
+    fs.unlinkSync(hardlinkPath);
+
+    // 2d. Symlinked parent directory (scripts/native)
+    const nativeDir = path.join(devPyDir, 'scripts/native');
+    const movedNativeDir = path.join(extDir, 'moved-native');
+    fs.renameSync(nativeDir, movedNativeDir);
+    fs.symlinkSync(movedNativeDir, nativeDir, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.throws(
+      () => developmentNative(devPyDir, { platformId: 'darwin-arm64' }),
+      /Linked current runtime input/
+    );
+
+    // 3. Explicit non-empty contentDirectories requirement (reject empty array [] or non-array)
+    const emptyContentDir = path.join(tmpDir, 'empty-content-dirs');
+    buildMockNativeProject(emptyContentDir, 'darwin-arm64', {
       usePlatformSpecificProfile: true,
+      runtimeContentDirectories: []
+    });
+    assert.throws(
+      () => developmentNative(emptyContentDir, { platformId: 'darwin-arm64' }),
+      /Explicit current runtime contentDirectories required/
+    );
+
+    // 4. Narrow contentDirectories that covers python/bin but only covers a subdirectory of python/lib,
+    // with an untracked dylib injected into python/lib MUST fail specifically on python/lib coverage
+    const narrowLibDir = path.join(tmpDir, 'narrow-lib-darwin');
+    buildMockNativeProject(narrowLibDir, 'darwin-arm64', {
+      usePlatformSpecificProfile: true,
+      runtimeContentDirectories: ['python/bin', 'python/lib/python3.12/site-packages'],
       sitePackageModule: { name: 'ok_mod.py', content: 'OK = 1\n' }
     });
-    const rtLockPath = path.join(narrowDir, 'desktop/packaging/native-runtime.lock.json');
-    const rtLock = JSON.parse(fs.readFileSync(rtLockPath, 'utf8'));
-    rtLock.contentDirectories = ['python/lib/python3.12/site-packages'];
-    const newRtLockRef = writeOwnedFile(
-      narrowDir,
-      'desktop/packaging/native-runtime.lock.json',
-      JSON.stringify(rtLock, null, 2)
+    writeOwnedFile(
+      narrowLibDir,
+      '.local/dependencies/darwin-arm64/dep-lock-1/python/bin/marker',
+      'bin'
     );
     writeOwnedFile(
-      narrowDir,
+      narrowLibDir,
       '.local/dependencies/darwin-arm64/dep-lock-1/python/lib/untracked.dylib',
       'evil-dylib'
     );
-    const probePath = '.local/preparation/darwin-arm64/import-probe.json';
-    const probeDoc = JSON.parse(fs.readFileSync(path.join(narrowDir, probePath), 'utf8'));
-    probeDoc.runtimeLock = newRtLockRef;
-    probeDoc.toolchainLock = toolchainLockRef;
-    probeDoc.xtbLock = xtbLockRef;
-    const newProbeRef = writeOwnedFile(narrowDir, probePath, JSON.stringify(probeDoc, null, 2));
-    const prepPath = '.local/preparation/darwin-arm64/native-preparation.json';
-    const prepDoc = JSON.parse(fs.readFileSync(path.join(narrowDir, prepPath), 'utf8'));
-    prepDoc.runtimeLock = newRtLockRef;
-    prepDoc.importProbe = newProbeRef;
-    const newPrepRef = writeOwnedFile(narrowDir, prepPath, JSON.stringify(prepDoc, null, 2));
-    const profPath = 'desktop/packaging/native-profile.darwin-arm64.json';
-    const profDoc = JSON.parse(fs.readFileSync(path.join(narrowDir, profPath), 'utf8'));
-    profDoc.preparation = newPrepRef;
-    writeOwnedFile(narrowDir, profPath, JSON.stringify(profDoc, null, 2));
-
     assert.throws(
-      () => developmentNative(narrowDir, { platformId: 'darwin-arm64' }),
-      /Current runtime search directory outside declared content: python\/bin/
+      () => developmentNative(narrowLibDir, { platformId: 'darwin-arm64' }),
+      /Current runtime search directory outside declared content: python\/lib/
     );
 
-    // 3. Warm-cache parent directory symlink/junction swap:
-    // After a cold pass succeeds, moving dep-lock-1/python out to extDir and replacing it with a link MUST fail on warm cache check
+    // 5. developmentXtb lock binding & delimiter checks:
+    // 5a. Modifying xtb-runtime.lock.json without updating preparation.json / import-probe.json MUST be rejected by developmentXtb
+    const xtbStaleDir = path.join(tmpDir, 'xtb-stale');
+    buildMockNativeProject(xtbStaleDir, 'darwin-arm64', { usePlatformSpecificProfile: true });
+    const xtbLockPath = path.join(xtbStaleDir, 'desktop/packaging/xtb-runtime.lock.json');
+    const xtbLockDoc = JSON.parse(fs.readFileSync(xtbLockPath, 'utf8'));
+    xtbLockDoc.lockId = 'tampered-xtb-id';
+    writeOwnedFile(
+      xtbStaleDir,
+      'desktop/packaging/xtb-runtime.lock.json',
+      JSON.stringify(xtbLockDoc, null, 2)
+    );
+    assert.throws(
+      () => developmentXtb(xtbStaleDir, { platformId: 'darwin-arm64' }),
+      /ERR_ASSERTION/
+    );
+
+    // 5b. Invalid xtbLock path in profile MUST be rejected by developmentXtb (no fallback to default lock)
+    const xtbBadProfDir = path.join(tmpDir, 'xtb-bad-prof');
+    buildMockNativeProject(xtbBadProfDir, 'darwin-arm64', { usePlatformSpecificProfile: true });
+    const badProfFile = path.join(
+      xtbBadProfDir,
+      'desktop/packaging/native-profile.darwin-arm64.json'
+    );
+    const badProfDoc = JSON.parse(fs.readFileSync(badProfFile, 'utf8'));
+    badProfDoc.xtbLock = 'desktop/packaging/illegal-xtb.lock.json';
+    fs.writeFileSync(badProfFile, JSON.stringify(badProfDoc, null, 2));
+    assert.throws(
+      () => developmentXtb(xtbBadProfDir, { platformId: 'darwin-arm64' }),
+      /Fixed current native profile required/
+    );
+
+    // 5c. Lock root containing ';' in developmentXtb MUST be rejected with Current runtime path contains unsafe delimiter
+    const xtbSemiRootDir = path.join(tmpDir, 'xtb-semi-root');
+    buildMockNativeProject(xtbSemiRootDir, 'win32-x64', {
+      usePlatformSpecificProfile: true,
+      depLeaf: 'dep;evil'
+    });
+    assert.throws(
+      () => developmentXtb(xtbSemiRootDir, { platformId: 'win32-x64' }),
+      /Current runtime path contains unsafe delimiter/
+    );
+
+    // 6. Warm-cache parent directory symlink/junction swap MUST be rejected on warm cache check
     const swapDir = path.join(tmpDir, 'swap-darwin');
     buildMockNativeProject(swapDir, 'darwin-arm64', { usePlatformSpecificProfile: true });
     const coldOk = developmentNative(swapDir, { platformId: 'darwin-arm64' });
@@ -687,7 +823,7 @@ test('resolveProfile prioritizes platform-specific profile, rejects narrow conte
       /Linked current runtime input/
     );
 
-    // 4. Project path containing path delimiter (';' on all platforms, ':' on POSIX) MUST be rejected
+    // 7. Project path containing path delimiter (';' on all platforms, ':' on POSIX) MUST be rejected
     const semiDir = path.join(tmpDir, 'evil;semi-project');
     const { pythonExecutablePath: semiPy } = buildMockNativeProject(semiDir, 'darwin-arm64', {
       usePlatformSpecificProfile: true
