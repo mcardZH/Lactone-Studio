@@ -1,0 +1,1489 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-andradite-cod-9010061",
+  "structure": {
+    "id": "mineral-andradite-cod-9010061",
+    "name": "Andradite",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-andradite-cod-9010061:atom:1",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 1.507225,
+        "y": 0.0,
+        "z": 3.01445
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:2",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 7.536125000000001,
+        "y": 6.0289,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:3",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 3.014450000000001,
+        "y": 4.521675,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:4",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 9.043350000000002,
+        "y": 10.550575,
+        "z": 1.199781876699165e-15
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:5",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 1.4542815963953211e-15,
+        "y": 9.04335,
+        "z": 4.521675000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:6",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 6.028900000000001,
+        "y": 3.01445,
+        "z": 10.550575
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:7",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 1.507225000000001,
+        "y": 6.0289,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:8",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 7.536125,
+        "y": 0.0,
+        "z": 3.0144500000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:9",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 9.043350000000002,
+        "y": 7.536125,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:10",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 3.0144500000000005,
+        "y": 1.507225,
+        "z": 2.768727407767304e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:11",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.847605321317737e-16,
+        "y": 3.01445,
+        "z": 7.536125
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:12",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 6.028900000000002,
+        "y": 9.04335,
+        "z": 1.507225000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:13",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 10.550575000000002,
+        "y": 6.0289,
+        "z": 3.014450000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:14",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.521675,
+        "y": 0.0,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:15",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 10.550575,
+        "y": 0.0,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:16",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.521675000000001,
+        "y": 6.0289,
+        "z": 3.0144500000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:17",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 9.04335,
+        "y": 1.507225,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:18",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 3.0144500000000014,
+        "y": 7.536125,
+        "z": 6.460363951457044e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:19",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 9.04335,
+        "y": 4.521675,
+        "z": 8.306182223301912e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:20",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 3.014450000000002,
+        "y": 10.550575,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:21",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.847605321317737e-16,
+        "y": 3.01445,
+        "z": 1.5072250000000003
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:22",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 6.028900000000002,
+        "y": 9.04335,
+        "z": 7.536125000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:23",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 6.028900000000001,
+        "y": 3.01445,
+        "z": 4.521675000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:24",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 1.4542815963953211e-15,
+        "y": 9.04335,
+        "z": 10.550575
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:25",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:26",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.028900000000001,
+        "y": 6.0289,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:27",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 9.695210642635475e-16,
+        "y": 6.0289,
+        "z": 6.0289
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:28",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.0289,
+        "y": 0.0,
+        "z": 3.691636543689739e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:29",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 9.04335,
+        "y": 3.01445,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:30",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 3.0144500000000014,
+        "y": 9.04335,
+        "z": 3.014450000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:31",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 3.0144500000000005,
+        "y": 3.01445,
+        "z": 3.0144500000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:32",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 9.043350000000002,
+        "y": 9.04335,
+        "z": 9.043350000000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:33",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.0289,
+        "y": 0.0,
+        "z": 6.0289
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:34",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 9.695210642635475e-16,
+        "y": 6.0289,
+        "z": 3.691636543689739e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:35",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.028900000000001,
+        "y": 6.0289,
+        "z": 7.383273087379478e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:36",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 6.0289
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:37",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 9.043350000000002,
+        "y": 9.04335,
+        "z": 3.014450000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:38",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 3.0144500000000005,
+        "y": 3.01445,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:39",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 3.0144500000000014,
+        "y": 9.04335,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:40",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 9.04335,
+        "y": 3.01445,
+        "z": 3.014450000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:41",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.521675,
+        "y": 0.0,
+        "z": 3.0144500000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:42",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 10.550575000000002,
+        "y": 6.0289,
+        "z": 9.043350000000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:43",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 3.0144500000000005,
+        "y": 1.507225,
+        "z": 6.0289
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:44",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 9.043350000000002,
+        "y": 7.536125,
+        "z": 1.0152000495146782e-15
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:45",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.4542815963953211e-15,
+        "y": 9.04335,
+        "z": 1.5072250000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:46",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 6.028900000000001,
+        "y": 3.01445,
+        "z": 7.536125000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:47",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.521675000000001,
+        "y": 6.0289,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:48",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 10.550575,
+        "y": 0.0,
+        "z": 3.0144500000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:49",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 9.043350000000002,
+        "y": 10.550575,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:50",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 3.014450000000001,
+        "y": 4.521675,
+        "z": 4.614545679612174e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:51",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.847605321317737e-16,
+        "y": 3.01445,
+        "z": 10.550575
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:52",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 6.028900000000002,
+        "y": 9.04335,
+        "z": 4.521675000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:53",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 7.536125000000001,
+        "y": 6.0289,
+        "z": 3.014450000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:54",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.507225,
+        "y": 0.0,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:55",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 6.028900000000001,
+        "y": 3.01445,
+        "z": 1.5072250000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:56",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.4542815963953211e-15,
+        "y": 9.04335,
+        "z": 7.536125000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:57",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.847605321317737e-16,
+        "y": 3.01445,
+        "z": 4.521675
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:58",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 6.028900000000002,
+        "y": 9.04335,
+        "z": 10.550575000000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:59",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 3.0144500000000014,
+        "y": 7.536125,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:60",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 9.04335,
+        "y": 1.507225,
+        "z": 6.460363951457043e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:61",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 3.014450000000002,
+        "y": 10.550575,
+        "z": 8.306182223301912e-16
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:62",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 9.04335,
+        "y": 4.521675,
+        "z": 6.028900000000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:63",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.507225000000001,
+        "y": 6.0289,
+        "z": 3.0144500000000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:64",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 7.536125,
+        "y": 0.0,
+        "z": 9.04335
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:65",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.4750773200000001,
+        "y": 0.58721486,
+        "z": 7.90268212
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:66",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.503977320000001,
+        "y": 6.61611486,
+        "z": 1.8737821200000007
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:67",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.902682120000001,
+        "y": 5.553822680000001,
+        "z": 6.616114860000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:68",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.8737821200000015,
+        "y": 11.58272268,
+        "z": 0.5872148600000008
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:69",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.47058514,
+        "y": 1.8737821199999998,
+        "z": 5.5538226800000015
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:70",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.441685140000001,
+        "y": 7.90268212,
+        "z": 11.58272268
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:71",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.47507732000000086,
+        "y": 5.44168514,
+        "z": 1.8737821200000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:72",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.5039773200000015,
+        "y": 11.47058514,
+        "z": 7.902682120000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:73",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.1551178800000015,
+        "y": 6.50397732,
+        "z": 5.441685140000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:74",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.18401788,
+        "y": 0.47507731999999997,
+        "z": 11.47058514
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:75",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5872148600000017,
+        "y": 10.18401788,
+        "z": 6.503977320000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:76",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.616114860000001,
+        "y": 4.155117880000001,
+        "z": 0.47507732000000064
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:77",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.582722680000002,
+        "y": 6.61611486,
+        "z": 10.184017880000003
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:78",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.553822680000001,
+        "y": 0.58721486,
+        "z": 4.155117880000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:79",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.518427320000002,
+        "y": 7.169567880000001,
+        "z": 8.456135140000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:80",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.48952732,
+        "y": 1.1406678800000003,
+        "z": 2.4272351400000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:81",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.140667880000001,
+        "y": 3.6016648600000005,
+        "z": 9.51842732
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:82",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.1695678800000024,
+        "y": 9.63056486,
+        "z": 3.489527320000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:83",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.63056486,
+        "y": 2.53937268,
+        "z": 1.140667880000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:84",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.601664860000002,
+        "y": 8.56827268,
+        "z": 7.169567880000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:85",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.568272680000002,
+        "y": 10.91713212,
+        "z": 9.630564860000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:86",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.539372680000001,
+        "y": 4.88823212,
+        "z": 3.601664860000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:87",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.88823212,
+        "y": 2.42723514,
+        "z": 8.56827268
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:88",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.917132120000002,
+        "y": 8.45613514,
+        "z": 2.5393726800000014
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:89",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.45613514,
+        "y": 3.48952732,
+        "z": 4.8882321200000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:90",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4272351400000014,
+        "y": 9.51842732,
+        "z": 10.91713212
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:91",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.489527320000002,
+        "y": 10.91713212,
+        "z": 3.6016648600000014
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:92",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.51842732,
+        "y": 4.88823212,
+        "z": 9.63056486
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:93",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.169567880000001,
+        "y": 2.42723514,
+        "z": 2.5393726800000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:94",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.1406678800000016,
+        "y": 8.45613514,
+        "z": 8.56827268
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:95",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.601664860000001,
+        "y": 3.48952732,
+        "z": 10.91713212
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:96",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.630564860000002,
+        "y": 9.51842732,
+        "z": 4.8882321200000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:97",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.5393726800000014,
+        "y": 7.169567880000001,
+        "z": 2.4272351400000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:98",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.56827268,
+        "y": 1.1406678800000003,
+        "z": 8.45613514
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:99",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.91713212,
+        "y": 3.6016648600000005,
+        "z": 3.489527320000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:100",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.888232120000001,
+        "y": 9.63056486,
+        "z": 9.518427320000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:101",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4272351400000005,
+        "y": 2.53937268,
+        "z": 7.169567880000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:102",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.456135140000002,
+        "y": 8.56827268,
+        "z": 1.1406678800000014
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:103",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.8737821199999998,
+        "y": 0.47507731999999997,
+        "z": 5.44168514
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:104",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.902682120000001,
+        "y": 6.50397732,
+        "z": 11.47058514
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:105",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.441685140000001,
+        "y": 4.155117880000001,
+        "z": 6.503977320000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:106",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.470585140000003,
+        "y": 10.18401788,
+        "z": 0.4750773200000013
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:107",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.50397732,
+        "y": 0.58721486,
+        "z": 10.18401788
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:108",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.475077320000001,
+        "y": 6.61611486,
+        "z": 4.155117880000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:109",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.184017880000003,
+        "y": 11.58272268,
+        "z": 6.6161148600000015
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:110",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.1551178800000015,
+        "y": 5.553822680000001,
+        "z": 0.5872148600000006
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:111",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.616114860000001,
+        "y": 7.90268212,
+        "z": 5.5538226800000015
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:112",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5872148600000003,
+        "y": 1.8737821199999998,
+        "z": 11.58272268
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:113",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.553822680000002,
+        "y": 11.47058514,
+        "z": 1.8737821200000009
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:114",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.58272268,
+        "y": 5.44168514,
+        "z": 7.902682120000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:115",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.184017880000003,
+        "y": 6.50397732,
+        "z": 0.587214860000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:116",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.155117880000001,
+        "y": 0.47507731999999997,
+        "z": 6.61611486
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:117",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.6161148600000015,
+        "y": 10.18401788,
+        "z": 11.582722680000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:118",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5872148600000007,
+        "y": 4.155117880000001,
+        "z": 5.553822680000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:119",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.5538226800000015,
+        "y": 6.61611486,
+        "z": 7.902682120000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:120",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.58272268,
+        "y": 0.58721486,
+        "z": 1.8737821200000004
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:121",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.8737821200000007,
+        "y": 5.553822680000001,
+        "z": 11.47058514
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:122",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.9026821200000015,
+        "y": 11.58272268,
+        "z": 5.441685140000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:123",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.44168514,
+        "y": 1.8737821199999998,
+        "z": 0.4750773200000004
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:124",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.470585140000003,
+        "y": 7.90268212,
+        "z": 6.503977320000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:125",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.503977320000001,
+        "y": 5.44168514,
+        "z": 4.1551178800000015
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:126",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.4750773200000018,
+        "y": 11.47058514,
+        "z": 10.18401788
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:127",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.56827268,
+        "y": 4.88823212,
+        "z": 2.427235140000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:128",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.539372680000002,
+        "y": 10.91713212,
+        "z": 8.45613514
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:129",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.888232120000001,
+        "y": 8.45613514,
+        "z": 3.489527320000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:130",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.91713212,
+        "y": 2.42723514,
+        "z": 9.51842732
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:131",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.456135140000002,
+        "y": 9.51842732,
+        "z": 7.169567880000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:132",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4272351400000005,
+        "y": 3.48952732,
+        "z": 1.1406678800000007
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:133",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.51842732,
+        "y": 1.1406678800000003,
+        "z": 3.601664860000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:134",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.4895273200000014,
+        "y": 7.169567880000001,
+        "z": 9.63056486
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:135",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.1406678800000019,
+        "y": 9.63056486,
+        "z": 2.5393726800000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:136",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.169567880000002,
+        "y": 3.6016648600000005,
+        "z": 8.56827268
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:137",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.630564860000002,
+        "y": 8.56827268,
+        "z": 10.917132120000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:138",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.601664860000001,
+        "y": 2.53937268,
+        "z": 4.88823212
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:139",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.53937268,
+        "y": 1.1406678800000003,
+        "z": 9.63056486
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:140",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.568272680000002,
+        "y": 7.169567880000001,
+        "z": 3.6016648600000014
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:141",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.917132120000002,
+        "y": 9.63056486,
+        "z": 8.568272680000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:142",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.8882321200000005,
+        "y": 3.6016648600000005,
+        "z": 2.5393726800000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:143",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4272351400000014,
+        "y": 8.56827268,
+        "z": 4.8882321200000005
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:144",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.45613514,
+        "y": 2.53937268,
+        "z": 10.91713212
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:145",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.489527320000001,
+        "y": 4.88823212,
+        "z": 8.45613514
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:146",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.518427320000002,
+        "y": 10.91713212,
+        "z": 2.4272351400000014
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:147",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.1695678800000024,
+        "y": 8.45613514,
+        "z": 9.518427320000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:148",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.1406678800000007,
+        "y": 2.42723514,
+        "z": 3.48952732
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:149",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.601664860000002,
+        "y": 9.51842732,
+        "z": 1.1406678800000012
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:150",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.63056486,
+        "y": 3.48952732,
+        "z": 7.169567880000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:151",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.155117880000002,
+        "y": 11.58272268,
+        "z": 11.470585140000003
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:152",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.184017880000003,
+        "y": 5.553822680000001,
+        "z": 5.441685140000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:153",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5872148600000012,
+        "y": 7.90268212,
+        "z": 0.47507732000000047
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:154",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.61611486,
+        "y": 1.8737821199999998,
+        "z": 6.503977320000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:155",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.582722680000002,
+        "y": 11.47058514,
+        "z": 4.155117880000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:156",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.5538226800000015,
+        "y": 5.44168514,
+        "z": 10.18401788
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:157",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.90268212,
+        "y": 0.47507731999999997,
+        "z": 0.5872148600000006
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:158",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.8737821200000009,
+        "y": 6.50397732,
+        "z": 6.616114860000001
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:159",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.47058514,
+        "y": 4.155117880000001,
+        "z": 11.582722680000002
+      },
+      {
+        "id": "mineral-andradite-cod-9010061:atom:160",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.4416851400000015,
+        "y": 10.18401788,
+        "z": 5.5538226800000015
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9010061; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-andradite-cod-9010061:atom:1",
+      "mineral-andradite-cod-9010061:atom:2",
+      "mineral-andradite-cod-9010061:atom:3",
+      "mineral-andradite-cod-9010061:atom:4",
+      "mineral-andradite-cod-9010061:atom:5",
+      "mineral-andradite-cod-9010061:atom:6",
+      "mineral-andradite-cod-9010061:atom:7",
+      "mineral-andradite-cod-9010061:atom:8",
+      "mineral-andradite-cod-9010061:atom:9",
+      "mineral-andradite-cod-9010061:atom:10",
+      "mineral-andradite-cod-9010061:atom:11",
+      "mineral-andradite-cod-9010061:atom:12",
+      "mineral-andradite-cod-9010061:atom:13",
+      "mineral-andradite-cod-9010061:atom:14",
+      "mineral-andradite-cod-9010061:atom:15",
+      "mineral-andradite-cod-9010061:atom:16",
+      "mineral-andradite-cod-9010061:atom:17",
+      "mineral-andradite-cod-9010061:atom:18",
+      "mineral-andradite-cod-9010061:atom:19",
+      "mineral-andradite-cod-9010061:atom:20",
+      "mineral-andradite-cod-9010061:atom:21",
+      "mineral-andradite-cod-9010061:atom:22",
+      "mineral-andradite-cod-9010061:atom:23",
+      "mineral-andradite-cod-9010061:atom:24",
+      "mineral-andradite-cod-9010061:atom:25",
+      "mineral-andradite-cod-9010061:atom:26",
+      "mineral-andradite-cod-9010061:atom:27",
+      "mineral-andradite-cod-9010061:atom:28",
+      "mineral-andradite-cod-9010061:atom:29",
+      "mineral-andradite-cod-9010061:atom:30",
+      "mineral-andradite-cod-9010061:atom:31",
+      "mineral-andradite-cod-9010061:atom:32",
+      "mineral-andradite-cod-9010061:atom:33",
+      "mineral-andradite-cod-9010061:atom:34",
+      "mineral-andradite-cod-9010061:atom:35",
+      "mineral-andradite-cod-9010061:atom:36",
+      "mineral-andradite-cod-9010061:atom:37",
+      "mineral-andradite-cod-9010061:atom:38",
+      "mineral-andradite-cod-9010061:atom:39",
+      "mineral-andradite-cod-9010061:atom:40",
+      "mineral-andradite-cod-9010061:atom:41",
+      "mineral-andradite-cod-9010061:atom:42",
+      "mineral-andradite-cod-9010061:atom:43",
+      "mineral-andradite-cod-9010061:atom:44",
+      "mineral-andradite-cod-9010061:atom:45",
+      "mineral-andradite-cod-9010061:atom:46",
+      "mineral-andradite-cod-9010061:atom:47",
+      "mineral-andradite-cod-9010061:atom:48",
+      "mineral-andradite-cod-9010061:atom:49",
+      "mineral-andradite-cod-9010061:atom:50",
+      "mineral-andradite-cod-9010061:atom:51",
+      "mineral-andradite-cod-9010061:atom:52",
+      "mineral-andradite-cod-9010061:atom:53",
+      "mineral-andradite-cod-9010061:atom:54",
+      "mineral-andradite-cod-9010061:atom:55",
+      "mineral-andradite-cod-9010061:atom:56",
+      "mineral-andradite-cod-9010061:atom:57",
+      "mineral-andradite-cod-9010061:atom:58",
+      "mineral-andradite-cod-9010061:atom:59",
+      "mineral-andradite-cod-9010061:atom:60",
+      "mineral-andradite-cod-9010061:atom:61",
+      "mineral-andradite-cod-9010061:atom:62",
+      "mineral-andradite-cod-9010061:atom:63",
+      "mineral-andradite-cod-9010061:atom:64",
+      "mineral-andradite-cod-9010061:atom:65",
+      "mineral-andradite-cod-9010061:atom:66",
+      "mineral-andradite-cod-9010061:atom:67",
+      "mineral-andradite-cod-9010061:atom:68",
+      "mineral-andradite-cod-9010061:atom:69",
+      "mineral-andradite-cod-9010061:atom:70",
+      "mineral-andradite-cod-9010061:atom:71",
+      "mineral-andradite-cod-9010061:atom:72",
+      "mineral-andradite-cod-9010061:atom:73",
+      "mineral-andradite-cod-9010061:atom:74",
+      "mineral-andradite-cod-9010061:atom:75",
+      "mineral-andradite-cod-9010061:atom:76",
+      "mineral-andradite-cod-9010061:atom:77",
+      "mineral-andradite-cod-9010061:atom:78",
+      "mineral-andradite-cod-9010061:atom:79",
+      "mineral-andradite-cod-9010061:atom:80",
+      "mineral-andradite-cod-9010061:atom:81",
+      "mineral-andradite-cod-9010061:atom:82",
+      "mineral-andradite-cod-9010061:atom:83",
+      "mineral-andradite-cod-9010061:atom:84",
+      "mineral-andradite-cod-9010061:atom:85",
+      "mineral-andradite-cod-9010061:atom:86",
+      "mineral-andradite-cod-9010061:atom:87",
+      "mineral-andradite-cod-9010061:atom:88",
+      "mineral-andradite-cod-9010061:atom:89",
+      "mineral-andradite-cod-9010061:atom:90",
+      "mineral-andradite-cod-9010061:atom:91",
+      "mineral-andradite-cod-9010061:atom:92",
+      "mineral-andradite-cod-9010061:atom:93",
+      "mineral-andradite-cod-9010061:atom:94",
+      "mineral-andradite-cod-9010061:atom:95",
+      "mineral-andradite-cod-9010061:atom:96",
+      "mineral-andradite-cod-9010061:atom:97",
+      "mineral-andradite-cod-9010061:atom:98",
+      "mineral-andradite-cod-9010061:atom:99",
+      "mineral-andradite-cod-9010061:atom:100",
+      "mineral-andradite-cod-9010061:atom:101",
+      "mineral-andradite-cod-9010061:atom:102",
+      "mineral-andradite-cod-9010061:atom:103",
+      "mineral-andradite-cod-9010061:atom:104",
+      "mineral-andradite-cod-9010061:atom:105",
+      "mineral-andradite-cod-9010061:atom:106",
+      "mineral-andradite-cod-9010061:atom:107",
+      "mineral-andradite-cod-9010061:atom:108",
+      "mineral-andradite-cod-9010061:atom:109",
+      "mineral-andradite-cod-9010061:atom:110",
+      "mineral-andradite-cod-9010061:atom:111",
+      "mineral-andradite-cod-9010061:atom:112",
+      "mineral-andradite-cod-9010061:atom:113",
+      "mineral-andradite-cod-9010061:atom:114",
+      "mineral-andradite-cod-9010061:atom:115",
+      "mineral-andradite-cod-9010061:atom:116",
+      "mineral-andradite-cod-9010061:atom:117",
+      "mineral-andradite-cod-9010061:atom:118",
+      "mineral-andradite-cod-9010061:atom:119",
+      "mineral-andradite-cod-9010061:atom:120",
+      "mineral-andradite-cod-9010061:atom:121",
+      "mineral-andradite-cod-9010061:atom:122",
+      "mineral-andradite-cod-9010061:atom:123",
+      "mineral-andradite-cod-9010061:atom:124",
+      "mineral-andradite-cod-9010061:atom:125",
+      "mineral-andradite-cod-9010061:atom:126",
+      "mineral-andradite-cod-9010061:atom:127",
+      "mineral-andradite-cod-9010061:atom:128",
+      "mineral-andradite-cod-9010061:atom:129",
+      "mineral-andradite-cod-9010061:atom:130",
+      "mineral-andradite-cod-9010061:atom:131",
+      "mineral-andradite-cod-9010061:atom:132",
+      "mineral-andradite-cod-9010061:atom:133",
+      "mineral-andradite-cod-9010061:atom:134",
+      "mineral-andradite-cod-9010061:atom:135",
+      "mineral-andradite-cod-9010061:atom:136",
+      "mineral-andradite-cod-9010061:atom:137",
+      "mineral-andradite-cod-9010061:atom:138",
+      "mineral-andradite-cod-9010061:atom:139",
+      "mineral-andradite-cod-9010061:atom:140",
+      "mineral-andradite-cod-9010061:atom:141",
+      "mineral-andradite-cod-9010061:atom:142",
+      "mineral-andradite-cod-9010061:atom:143",
+      "mineral-andradite-cod-9010061:atom:144",
+      "mineral-andradite-cod-9010061:atom:145",
+      "mineral-andradite-cod-9010061:atom:146",
+      "mineral-andradite-cod-9010061:atom:147",
+      "mineral-andradite-cod-9010061:atom:148",
+      "mineral-andradite-cod-9010061:atom:149",
+      "mineral-andradite-cod-9010061:atom:150",
+      "mineral-andradite-cod-9010061:atom:151",
+      "mineral-andradite-cod-9010061:atom:152",
+      "mineral-andradite-cod-9010061:atom:153",
+      "mineral-andradite-cod-9010061:atom:154",
+      "mineral-andradite-cod-9010061:atom:155",
+      "mineral-andradite-cod-9010061:atom:156",
+      "mineral-andradite-cod-9010061:atom:157",
+      "mineral-andradite-cod-9010061:atom:158",
+      "mineral-andradite-cod-9010061:atom:159",
+      "mineral-andradite-cod-9010061:atom:160"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          12.0578,
+          0.0,
+          7.383273087379478e-16
+        ],
+        [
+          1.939042128527095e-15,
+          12.0578,
+          7.383273087379478e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.0578
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9010061 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

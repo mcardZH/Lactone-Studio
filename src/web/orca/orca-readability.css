@@ -1,0 +1,12 @@
+.orca-workbench{--orca-font-scale:1;font-size:calc(14px * var(--orca-font-scale))}
+.orca-workbench-embedded{--orca-font-scale:var(--ui-font-scale,1)}
+.orca-workbench[data-font-size=large]{--orca-font-scale:1.125}
+.orca-workbench[data-font-size=larger]{--orca-font-scale:1.25}
+.orca-workbench .orca-field,.orca-workbench .orca-check,.orca-workbench .orca-lead,.orca-workbench .orca-version{font-size:calc(13px * var(--orca-font-scale))}
+.orca-workbench .orca-note,.orca-workbench .orca-task small,.orca-workbench .orca-model-note{font-size:calc(12px * var(--orca-font-scale))}
+.orca-workbench .orca-task strong{font-size:calc(13px * var(--orca-font-scale))}
+.orca-workbench .orca-output pre{font-size:calc(12px * var(--orca-font-scale))}
+.orca-workbench .font-size-control{display:flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap}
+.orca-workbench .font-size-control select{border:1px solid #dce8df;border-radius:6px;background:#fff;color:#3f5b50;padding:6px}
+.orca-workbench .solvent-controls input,.orca-workbench .solvent-controls select{border:1px solid #dce6df;border-radius:7px;background:white;padding:8px 9px;min-height:35px;color:#3e5a4c;font:inherit}
+.orca-workbench .solvent-controls{font-size:calc(13px * var(--orca-font-scale))}

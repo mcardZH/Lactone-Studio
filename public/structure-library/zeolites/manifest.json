@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "mfi-silica-cod-1505106",
+      "category": "zeolites",
+      "name": "MFI 型纯硅沸石",
+      "nameEn": "Siliceous MFI zeolite",
+      "formula": "SiO2",
+      "aliases": [
+        "MFI",
+        "silicalite",
+        "siliceous MFI"
+      ],
+      "phase": "MFI 纯硅样品；293 K，单斜 P21/n。",
+      "structurePath": "zeolites/mfi-silica-cod-1505106/structure.json",
+      "sourcePath": "zeolites/mfi-silica-cod-1505106/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1505106",
+        "url": "https://www.crystallography.net/cod/1505106.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176729",
+        "retrievedAt": "2026-10-23T16:46:51.526474+00:00",
+        "citation": "Schmidt, W.; Wilczok, U.; Weidenthaler, C.; et al. Preparation and morphology of pyramidal MFI single-crystal segments. The Journal of Physical Chemistry B, 111 (2007), 13538.",
+        "doi": "10.1021/jp075934p",
+        "conditions": "温度 / K: 293; 压力（按来源单位）: 未知; 来源化学式: O2 Si; 来源空间群: P 1 21/n 1; 来源备注: Pure-silica sample, not an Al-substituted ZSM-5 composition."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 框架文件名 MFI 的同框架公开样品候选；不挂接 catalysts/ZSM5，因本候选纯 SiO2 且不代表 Al 含量或催化剂状态。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/n 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "theta1-ton-silica-cod-1515793",
+      "category": "zeolites",
+      "name": "Theta-1（TON）纯硅沸石",
+      "nameEn": "Siliceous Theta-1 (TON)",
+      "formula": "SiO2",
+      "aliases": [
+        "Theta-1",
+        "TON",
+        "siliceous zeolite"
+      ],
+      "phase": "Theta-1/TON 纯硅样品；COD 报告 150 K，正交 Cm c 21。",
+      "structurePath": "zeolites/theta1-ton-silica-cod-1515793/structure.json",
+      "sourcePath": "zeolites/theta1-ton-silica-cod-1515793/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1515793",
+        "url": "https://www.crystallography.net/cod/1515793.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176729",
+        "retrievedAt": "2026-10-23T16:46:51.754308+00:00",
+        "citation": "Wheatley, P. S.; Allan, P. K.; Teat, S. J.; Ashbrook, S. E.; Morris, R. E. Task specific ionic liquids for the ionothermal synthesis of siliceous zeolites. Chemical Science, 1 (2010), 483.",
+        "doi": "10.1039/C0SC00178C",
+        "conditions": "温度 / K: 150; 压力（按来源单位）: 未知; 来源化学式: O16 Si8; 来源空间群: C m c 21; sample: siliceous zeolite Theta-1; 来源备注: The COD record text search identifies this as Theta-1/TON; verify the full source CIF tags before library admission."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Possible MS name matches TON and catalyst Theta1; correspondence is recorded as name/topology candidate only until the public CIF and MS coverage mapping confirm exact phase.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C m c 21",
+        "number": 36
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

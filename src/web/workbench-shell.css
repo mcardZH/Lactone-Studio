@@ -1,0 +1,68 @@
+/* One bounded desktop shell. Only parameter content and the right tool rail scroll. */
+.app-shell.desktop-mode .unified-workbench-grid{--effective-tool-width:min(var(--tool-width,240px),max(200px,calc(100vw - 600px)));grid-template-columns:minmax(240px,min(var(--form-width,27%),calc(100% - var(--effective-tool-width) - 280px))) 8px minmax(260px,1fr) 8px var(--effective-tool-width);align-items:stretch;overflow:hidden}
+.unified-workbench-grid>.form-card,.unified-workbench-grid>.shared-orca-form{grid-column:1;grid-row:1;min-width:0;min-height:0;height:100%;max-height:100%;overflow:hidden}
+.unified-workbench-grid>.workspace-divider:not(.tool-divider){grid-column:2;grid-row:1}
+.unified-workbench-grid>.preview-column{grid-column:3;grid-row:1;min-height:0;overflow:hidden;scrollbar-gutter:auto}
+.unified-workbench-grid>.tool-divider{grid-column:4;grid-row:1}
+.unified-workbench-grid>.workbench-tool-pane{grid-column:5;grid-row:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;background:#fff;border:1px solid #dfe8e7;border-radius:10px;box-shadow:0 2px 8px #244f4210}
+.workbench-tool-host{min-width:0;min-height:0;padding:8px}
+.app-shell.desktop-mode .unified-workbench-grid>.form-card{display:grid;grid-template-rows:minmax(0,1fr) auto auto;overflow:hidden;box-shadow:0 2px 8px #244f4210}
+.engine-parameter-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;flex:1}
+.app-shell.desktop-mode .unified-workbench-grid :is(.wizard-footer,.orca-wizard-footer){position:static;flex-shrink:0;min-height:50px;padding:8px 12px;background:#fff;border-top:1px solid #e4ece5;z-index:2}
+.app-shell.desktop-mode .unified-workbench-grid .wizard-footer{display:flex}
+.unified-workbench-grid :is(.wizard-footer,.orca-wizard-footer){gap:6px}
+.unified-workbench-grid :is(.wizard-footer,.orca-wizard-footer) button{min-width:0;min-height:32px;padding:5px 8px;font-size:var(--ui-small-size)!important;white-space:normal;line-height:1.4}
+.unified-workbench-grid :is(.wizard-footer,.orca-wizard-footer)>button{flex:1}
+.unified-workbench-grid :is(.wizard-footer,.orca-wizard-footer)>span{font-size:11px;white-space:nowrap;flex-shrink:0;color:#a1aea3}
+.unified-workbench-grid :is(.wizard-footer,.orca-wizard-footer) button svg{flex-shrink:0}
+.unified-workbench-grid .wizard-footer>div{min-width:0}
+.shared-orca-form .orca-workbench-embedded{height:100%;min-height:0;overflow:hidden;background:transparent}
+.shared-orca-form .orca-workbench-embedded>.orca-layout{display:flex!important;flex:1;min-height:0;padding:0;overflow:hidden}
+.shared-orca-form .orca-form-panel{display:grid;grid-template-rows:minmax(0,1fr) auto auto;width:100%;height:auto;min-width:0;min-height:0;overflow:hidden;box-shadow:0 2px 8px #244f4210}
+.shared-orca-form .orca-step-content{min-height:0;overflow:visible;flex:none;padding:12px 13px}
+.shared-orca-form .orca-step-content>section>h1:first-child{display:none}
+.shared-orca-form .card-heading{padding:10px 13px;min-height:43px;border-bottom:1px solid #e6eeeb;display:flex;align-items:center;justify-content:space-between}
+.shared-orca-form .card-heading h2{font-size:var(--ui-primary-size);margin:0;color:#26364b}
+.app-shell.desktop-mode .page-heading h1{font-size:calc(18px * var(--ui-font-scale,1));line-height:1.4;margin:0}
+.app-shell.desktop-mode .page-heading{min-height:29px;margin:0 0 4px}
+.shared-orca-form .orca-step-content h2{margin:0 0 12px;font-size:var(--ui-primary-size);color:#26364b}
+.shared-orca-form .orca-import{margin:16px 0;padding:25px 12px}
+.unified-workbench-grid .preview-column>.sticky-structure-card{height:100%;min-height:0;overflow:hidden;border:1px solid #dfe8e7;box-shadow:0 2px 8px #244f4210}
+.unified-workbench-grid .structure-visual-content{height:100%;min-height:0}
+.unified-workbench-grid .preview-column>:is(.summary-card,.structure-notes,.completion-note){display:none!important}
+.engine-input-preview{min-height:0;border-top:1px solid #dfe8e7;background:#f7faf9;overflow:hidden;padding:7px 10px;max-height:220px;display:flex;flex-direction:column;gap:4px;color:#294454}
+.engine-input-preview[data-open=true]{height:var(--input-preview-height,160px)}
+.engine-input-preview header{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:23px;flex-shrink:0}
+.engine-input-preview header>span{font-size:var(--ui-small-size);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.engine-input-preview .input-preview-toggle{display:flex;align-items:center;gap:5px;padding:0;min-height:23px;font-size:var(--ui-small-size);flex-shrink:0}
+.engine-input-preview[data-open=false] .input-preview-toggle>svg:last-child{transform:rotate(-90deg)}
+.engine-input-preview .input-preview-controls{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:22px;flex-shrink:0}
+.engine-input-preview .check-line{margin:0;font-size:var(--ui-small-size);gap:5px;white-space:nowrap}
+.engine-input-preview select{max-width:60%;min-width:0;font-size:var(--ui-small-size);padding:2px 4px;border:1px solid #d6e3dc;border-radius:4px;background:white}
+.engine-input-preview .full-input-preview{display:block;min-height:0;flex:1;overflow:auto;margin:0;padding:6px 8px;border:1px solid #e0e7e2;border-radius:5px;font:calc(11px * var(--ui-font-scale,1))/1.6 Consolas,monospace;white-space:pre;background:#fff;color:#294454}
+.engine-input-preview .preview-valid{color:#397b68}.engine-input-preview .preview-invalid{color:#956734}
+.input-preview-issues{font-size:var(--ui-small-size);flex-shrink:0;max-height:58px;overflow:auto;color:#956734}.input-preview-issues p{margin:3px 0}
+@media(max-width:1050px){.app-shell.desktop-mode .unified-workbench-grid{grid-template-columns:minmax(225px,min(var(--form-width,27%),calc(100% - var(--effective-tool-width) - 260px))) 6px minmax(245px,1fr) 6px var(--effective-tool-width)!important}.unified-workbench-grid>.workspace-divider{width:6px}.workbench-tool-host{padding:5px}.engine-input-preview{padding:5px 7px}.input-workflow-header .topbar-actions{gap:7px}}
+@media(max-height:700px){.engine-input-preview[data-open=true]{height:min(var(--input-preview-height,160px),130px)}.app-shell.desktop-mode .unified-workbench-grid :is(.wizard-footer,.orca-wizard-footer){min-height:43px;padding:6px 9px}.desktop-mode .page-footer{display:none}}
+/* v0.17: the shared preview divider changes layout only, never scientific input. */
+.engine-input-preview{max-height:none;flex-shrink:0;position:relative}
+.engine-input-preview[data-open=true]{height:var(--input-preview-height,220px);max-height:min(1200px,70vh)}
+.input-preview-resize{height:7px;margin:-7px -10px 0;flex-shrink:0;cursor:ns-resize;touch-action:none;background:transparent}
+.input-preview-resize:hover,.input-preview-resize:focus-visible{background:#c9ddd4;outline:none}
+@media(max-height:700px){.engine-input-preview[data-open=true]{height:var(--input-preview-height,220px);max-height:65vh}}
+/* v0.18.2: all dividers use the same persisted UI bounds and remain recoverable. */
+.app-shell.desktop-mode .unified-workbench-grid{--effective-tool-width:clamp(28px,var(--tool-width,340px),calc(100% - 76px));grid-template-columns:minmax(28px,min(var(--form-width,27%),calc(100% - var(--effective-tool-width) - 48px))) 8px minmax(28px,1fr) 8px var(--effective-tool-width)!important}
+.sciyue-workspace-v18[data-module=modeling] .app-shell.desktop-mode .unified-workbench-grid{grid-template-columns:minmax(28px,1fr) 8px minmax(28px,var(--effective-tool-width))!important}
+.unified-workbench-grid>.workbench-tool-pane{position:relative}.workbench-pane-restore{display:none;position:sticky;top:0;z-index:4;width:100%;min-width:0;min-height:28px;padding:2px;border:0;border-bottom:1px solid #d4e3db;background:#eaf3ee;color:#356b59;cursor:pointer}
+.unified-workbench-grid[data-tool-pane-collapsed=true] .workbench-pane-restore{display:block}.unified-workbench-grid[data-tool-pane-collapsed=true] .workbench-tool-host{padding:2px}.unified-workbench-grid[data-tool-pane-collapsed=true] .workbench-tool-grid{display:none}
+.unified-workbench-grid .preview-column,.unified-workbench-grid .structure-visual-content{min-width:0}.unified-workbench-grid .model-workspace{min-width:0;min-height:0;overflow:auto}.unified-workbench-grid .model-workspace>.model-stage,.sciyue-workspace-v18 .model-workspace>.model-stage{min-height:28px!important;max-height:none!important;flex-shrink:0}.unified-workbench-grid .model-stage>.model-viewport{min-height:28px;grid-template-rows:minmax(0,1fr) auto}.unified-workbench-grid .model-viewport-stage{min-height:0}.sciyue-workspace-v18 .model-canvas-resize{display:flex!important;flex-shrink:0}
+.engine-input-preview[data-open=true]{max-height:calc(100% - 28px)!important;min-height:28px}.engine-input-preview{padding-top:7px}.input-preview-resize{position:relative;min-height:7px;z-index:3}.input-preview-resize:before{content:'';position:absolute;inset:-5px 0;cursor:ns-resize}.input-preview-resize:after{content:'';position:absolute;width:32px;height:3px;left:calc(50% - 16px);top:2px;background:#819e8e;border-radius:3px;pointer-events:none}
+@media(max-width:1050px){.app-shell.desktop-mode .unified-workbench-grid{grid-template-columns:minmax(28px,min(var(--form-width,27%),calc(100% - var(--effective-tool-width) - 48px))) 6px minmax(28px,1fr) 6px var(--effective-tool-width)!important}.sciyue-workspace-v18[data-module=modeling] .app-shell.desktop-mode .unified-workbench-grid{grid-template-columns:minmax(28px,1fr) 6px minmax(28px,var(--effective-tool-width))!important}}
+/* Large-window composition stays unchanged. Below a useful desktop width,
+   scroll inside the workbench instead of squeezing the default form/canvas.
+   Explicit divider settings and their persisted values remain user-owned. */
+@media(max-width:1050px){
+ .app-shell.desktop-mode .unified-workbench-grid{--narrow-form-min:220px;grid-template-columns:minmax(var(--narrow-form-min),var(--form-width,27%)) 6px minmax(360px,1fr) 6px var(--effective-tool-width)!important;overflow-x:auto;overflow-y:hidden}
+ .app-shell.desktop-mode .unified-workbench-grid[data-left-pane-custom=true]{--narrow-form-min:28px}
+ .sciyue-workspace-v18[data-module=modeling] .app-shell.desktop-mode .unified-workbench-grid{grid-template-columns:minmax(360px,1fr) 6px minmax(28px,var(--effective-tool-width))!important}
+}

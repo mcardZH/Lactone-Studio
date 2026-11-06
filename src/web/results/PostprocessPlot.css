@@ -1,0 +1,15 @@
+.postprocess-plot .postprocess-plot-controls,
+.postprocess-plot.is-compact .postprocess-plot-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.postprocess-plot .postprocess-plot-controls label {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.postprocess-plot .postprocess-plot-controls input { width: 5.5em; }

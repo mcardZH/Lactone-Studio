@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "entryId": "b2o3-trigonal",
+  "structure": {
+    "id": "b2o3-trigonal",
+    "name": "三方氧化硼",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "b2o3-trigonal:atom:1",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.21597511,
+        "y": 0.863254486222998,
+        "z": 1.8714286800000002
+      },
+      {
+        "id": "b2o3-trigonal:atom:2",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 2.98021213,
+        "y": 0.6214380925180781,
+        "z": 4.65132868
+      },
+      {
+        "id": "b2o3-trigonal:atom:3",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 2.3075127600000003,
+        "y": 2.270220366987493,
+        "z": 7.43122868
+      },
+      {
+        "id": "b2o3-trigonal:atom:4",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 0.1396127600000001,
+        "y": 1.4846925787410763,
+        "z": 6.468271320000001
+      },
+      {
+        "id": "b2o3-trigonal:atom:5",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 0.8123121300000005,
+        "y": 3.1334748532104912,
+        "z": 0.9084713200000003
+      },
+      {
+        "id": "b2o3-trigonal:atom:6",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": -0.9519248899999998,
+        "y": 2.8916584595055714,
+        "z": 3.6883713200000003
+      },
+      {
+        "id": "b2o3-trigonal:atom:7",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.2851833900000003,
+        "y": 0.5546006420841096,
+        "z": 1.0691495400000004
+      },
+      {
+        "id": "b2o3-trigonal:atom:8",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.7129100600000005,
+        "y": 1.7017265470041876,
+        "z": 3.8490495400000007
+      },
+      {
+        "id": "b2o3-trigonal:atom:9",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.50560655,
+        "y": 1.498585756640272,
+        "z": 6.62894954
+      },
+      {
+        "id": "b2o3-trigonal:atom:10",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": -0.6622934499999996,
+        "y": 2.256327189088297,
+        "z": 7.270550460000001
+      },
+      {
+        "id": "b2o3-trigonal:atom:11",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 0.5450100600000003,
+        "y": 2.0531863987243817,
+        "z": 1.71075046
+      },
+      {
+        "id": "b2o3-trigonal:atom:12",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 0.11728339000000032,
+        "y": 3.2003123036444596,
+        "z": 4.49065046
+      },
+      {
+        "id": "b2o3-trigonal:atom:13",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.69676306,
+        "y": 0.0,
+        "z": 2.7799
+      },
+      {
+        "id": "b2o3-trigonal:atom:14",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.34838152999999994,
+        "y": 0.6034145103785811,
+        "z": 5.5598
+      },
+      {
+        "id": "b2o3-trigonal:atom:15",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.8195184700000002,
+        "y": 3.1514984353499877,
+        "z": 4.456534940549979e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 1510796; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "b2o3-trigonal:atom:1",
+      "b2o3-trigonal:atom:2",
+      "b2o3-trigonal:atom:3",
+      "b2o3-trigonal:atom:4",
+      "b2o3-trigonal:atom:5",
+      "b2o3-trigonal:atom:6",
+      "b2o3-trigonal:atom:7",
+      "b2o3-trigonal:atom:8",
+      "b2o3-trigonal:atom:9",
+      "b2o3-trigonal:atom:10",
+      "b2o3-trigonal:atom:11",
+      "b2o3-trigonal:atom:12",
+      "b2o3-trigonal:atom:13",
+      "b2o3-trigonal:atom:14",
+      "b2o3-trigonal:atom:15"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.3358,
+          0.0,
+          2.654911795871547e-16
+        ],
+        [
+          -2.1678999999999995,
+          3.7549129457285693,
+          2.654911795871547e-16
+        ],
+        [
+          0.0,
+          0.0,
+          8.3397
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 1510796 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

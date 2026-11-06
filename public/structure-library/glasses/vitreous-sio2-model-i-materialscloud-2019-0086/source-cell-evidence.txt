@@ -1,0 +1,7 @@
+Source: Giacomazzi, L.; Umari, P.; Pasquarello, A. "Medium-range structure of vitreous SiO2 obtained through first-principles investigation of vibrational spectra." Physical Review B 79, 064202 (2009), Section III.A, "Origin of models", article page 064202-2.
+DOI: https://doi.org/10.1103/PhysRevB.79.064202
+Public full-text URL: https://infoscience.epfl.ch/server/api/core/bitstreams/210fc3b4-530e-41ba-aa73-f0af3319c90c/content
+
+Source text: "The simulation cells are cubic and the structures were subject to periodic boundary conditions."
+
+The same paragraph says the cell parameters were kept fixed to reproduce the experimental density of 2.2 g/cm3. Temperature and pressure are not specified there. The record's README.txt and files_description.md provide each model's atom count and cubic-axis length; the corresponding original XYZ contains coordinates only and has an empty comment line.

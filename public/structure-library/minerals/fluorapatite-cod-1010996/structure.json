@@ -1,0 +1,427 @@
+{
+  "schemaVersion": 1,
+  "entryId": "fluorapatite-cod-1010996",
+  "structure": {
+    "id": "fluorapatite-cod-1010996",
+    "name": "氟磷灰石",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "fluorapatite-cod-1010996:atom:1",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 8.881784197001252e-16,
+        "y": 5.409772022306793,
+        "z": 5.737470254005349e-16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:2",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.6850000000000005,
+        "y": 2.704886011153397,
+        "z": 3.4400000000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:3",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.6850000000000005,
+        "y": 2.704886011153397,
+        "z": 5.73747025400535e-16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:4",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 8.881784197001252e-16,
+        "y": 5.409772022306793,
+        "z": 3.4400000000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:5",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 2.3425,
+        "y": 0.0,
+        "z": 1.7200000000000002
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:6",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": -1.1712499999999997,
+        "y": 2.0286645083650474,
+        "z": 1.7200000000000002
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:7",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 3.513750000000001,
+        "y": 6.085993525095143,
+        "z": 1.7200000000000009
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:8",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 7.0275,
+        "y": 0.0,
+        "z": 5.16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:9",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": -3.513749999999999,
+        "y": 6.085993525095143,
+        "z": 5.16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:10",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 1.1712500000000001,
+        "y": 2.0286645083650474,
+        "z": 5.16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:11",
+        "sourceIndex": 3,
+        "element": "P",
+        "x": 2.216005,
+        "y": 2.9293915500791283,
+        "z": 1.7200000000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:12",
+        "sourceIndex": 3,
+        "element": "P",
+        "x": 5.72507,
+        "y": 0.45442084987377057,
+        "z": 1.7200000000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:13",
+        "sourceIndex": 3,
+        "element": "P",
+        "x": 6.113925,
+        "y": 4.730845633507291,
+        "z": 1.7200000000000009
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:14",
+        "sourceIndex": 3,
+        "element": "P",
+        "x": 2.468995,
+        "y": 5.185266483381061,
+        "z": 5.160000000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:15",
+        "sourceIndex": 3,
+        "element": "P",
+        "x": -1.0400699999999992,
+        "y": 7.6602371835864185,
+        "z": 5.160000000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:16",
+        "sourceIndex": 3,
+        "element": "P",
+        "x": -1.4289249999999996,
+        "y": 3.383812399952899,
+        "z": 5.16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:17",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.7808333333333337,
+        "y": 4.057329016730095,
+        "z": 1.7200000000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:18",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.7808333333333342,
+        "y": 6.7622150278834905,
+        "z": 1.7200000000000006
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:19",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -1.5616666666666659,
+        "y": 5.409772022306794,
+        "z": 1.7200000000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:20",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.9041666666666677,
+        "y": 4.057329016730095,
+        "z": 5.160000000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:21",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.9041666666666663,
+        "y": 1.3524430055766985,
+        "z": 5.16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:22",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.246666666666666,
+        "y": 2.7048860111533966,
+        "z": 5.160000000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:23",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.4341049999999993,
+        "y": 3.7895453016259086,
+        "z": 1.7200000000000006
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:24",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.371104999999999,
+        "y": 1.079249518450205,
+        "z": 1.7200000000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:25",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 6.24979,
+        "y": 3.245863213384076,
+        "z": 1.7200000000000006
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:26",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 1.2508950000000008,
+        "y": 4.32511273183428,
+        "z": 5.160000000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:27",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.31389500000000137,
+        "y": 7.035408515009984,
+        "z": 5.160000000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:28",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": -1.5647899999999997,
+        "y": 4.868794820076114,
+        "z": 5.16
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:29",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.9520833333333334,
+        "y": 2.0286645083650474,
+        "z": 0.4334400000000003
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:30",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 6.637083333333333,
+        "y": 0.676221502788349,
+        "z": 0.4334400000000005
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:31",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 5.465833333333334,
+        "y": 5.409772022306794,
+        "z": 0.4334400000000009
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:32",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.732916666666668,
+        "y": 6.085993525095143,
+        "z": 3.8734400000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:33",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -1.952083333333333,
+        "y": 7.438436530671841,
+        "z": 3.8734400000000004
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:34",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -0.780833333333333,
+        "y": 2.7048860111533966,
+        "z": 3.87344
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:35",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.732916666666668,
+        "y": 6.085993525095143,
+        "z": 6.446560000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:36",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -1.952083333333333,
+        "y": 7.438436530671841,
+        "z": 6.446560000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:37",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -0.780833333333333,
+        "y": 2.7048860111533966,
+        "z": 6.44656
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:38",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.9520833333333334,
+        "y": 2.0286645083650474,
+        "z": 3.0065600000000003
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:39",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 6.637083333333333,
+        "y": 0.676221502788349,
+        "z": 3.0065600000000003
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:40",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 5.465833333333334,
+        "y": 5.409772022306794,
+        "z": 3.006560000000001
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:41",
+        "sourceIndex": 7,
+        "element": "F",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.72
+      },
+      {
+        "id": "fluorapatite-cod-1010996:atom:42",
+        "sourceIndex": 7,
+        "element": "F",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 5.16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1010996; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "fluorapatite-cod-1010996:atom:1",
+      "fluorapatite-cod-1010996:atom:2",
+      "fluorapatite-cod-1010996:atom:3",
+      "fluorapatite-cod-1010996:atom:4",
+      "fluorapatite-cod-1010996:atom:5",
+      "fluorapatite-cod-1010996:atom:6",
+      "fluorapatite-cod-1010996:atom:7",
+      "fluorapatite-cod-1010996:atom:8",
+      "fluorapatite-cod-1010996:atom:9",
+      "fluorapatite-cod-1010996:atom:10",
+      "fluorapatite-cod-1010996:atom:11",
+      "fluorapatite-cod-1010996:atom:12",
+      "fluorapatite-cod-1010996:atom:13",
+      "fluorapatite-cod-1010996:atom:14",
+      "fluorapatite-cod-1010996:atom:15",
+      "fluorapatite-cod-1010996:atom:16",
+      "fluorapatite-cod-1010996:atom:17",
+      "fluorapatite-cod-1010996:atom:18",
+      "fluorapatite-cod-1010996:atom:19",
+      "fluorapatite-cod-1010996:atom:20",
+      "fluorapatite-cod-1010996:atom:21",
+      "fluorapatite-cod-1010996:atom:22",
+      "fluorapatite-cod-1010996:atom:23",
+      "fluorapatite-cod-1010996:atom:24",
+      "fluorapatite-cod-1010996:atom:25",
+      "fluorapatite-cod-1010996:atom:26",
+      "fluorapatite-cod-1010996:atom:27",
+      "fluorapatite-cod-1010996:atom:28",
+      "fluorapatite-cod-1010996:atom:29",
+      "fluorapatite-cod-1010996:atom:30",
+      "fluorapatite-cod-1010996:atom:31",
+      "fluorapatite-cod-1010996:atom:32",
+      "fluorapatite-cod-1010996:atom:33",
+      "fluorapatite-cod-1010996:atom:34",
+      "fluorapatite-cod-1010996:atom:35",
+      "fluorapatite-cod-1010996:atom:36",
+      "fluorapatite-cod-1010996:atom:37",
+      "fluorapatite-cod-1010996:atom:38",
+      "fluorapatite-cod-1010996:atom:39",
+      "fluorapatite-cod-1010996:atom:40",
+      "fluorapatite-cod-1010996:atom:41",
+      "fluorapatite-cod-1010996:atom:42"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          9.37,
+          0.0,
+          5.737470254005349e-16
+        ],
+        [
+          -4.684999999999999,
+          8.11465803346019,
+          5.737470254005349e-16
+        ],
+        [
+          0.0,
+          0.0,
+          6.88
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1010996 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

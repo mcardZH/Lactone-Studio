@@ -1,0 +1,553 @@
+{
+  "schemaVersion": 1,
+  "entryId": "fe3o4-magnetite",
+  "structure": {
+    "id": "fe3o4-magnetite",
+    "name": "磁铁矿",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "fe3o4-magnetite:atom:1",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 1.0495625000000002,
+        "y": 1.0495625,
+        "z": 1.0495625000000002
+      },
+      {
+        "id": "fe3o4-magnetite:atom:2",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 1.0495625000000008,
+        "y": 5.2478125,
+        "z": 5.2478125
+      },
+      {
+        "id": "fe3o4-magnetite:atom:3",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 5.2478125,
+        "y": 1.0495625,
+        "z": 5.2478125
+      },
+      {
+        "id": "fe3o4-magnetite:atom:4",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 5.247812500000001,
+        "y": 5.2478125,
+        "z": 1.0495625000000006
+      },
+      {
+        "id": "fe3o4-magnetite:atom:5",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 7.3469375,
+        "y": 3.1486875,
+        "z": 3.1486875000000003
+      },
+      {
+        "id": "fe3o4-magnetite:atom:6",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 7.3469375,
+        "y": 7.346937499999999,
+        "z": 7.3469375
+      },
+      {
+        "id": "fe3o4-magnetite:atom:7",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 3.1486875000000003,
+        "y": 3.1486875,
+        "z": 7.346937499999999
+      },
+      {
+        "id": "fe3o4-magnetite:atom:8",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 3.148687500000001,
+        "y": 7.346937499999999,
+        "z": 3.1486875000000003
+      },
+      {
+        "id": "fe3o4-magnetite:atom:9",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 4.198250000000001,
+        "y": 4.19825,
+        "z": 4.198250000000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:10",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 4.19825,
+        "y": 0.0,
+        "z": 2.5706867122601877e-16
+      },
+      {
+        "id": "fe3o4-magnetite:atom:11",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.751300914004939e-16,
+        "y": 4.19825,
+        "z": 2.5706867122601877e-16
+      },
+      {
+        "id": "fe3o4-magnetite:atom:12",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 4.19825
+      },
+      {
+        "id": "fe3o4-magnetite:atom:13",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 2.099125,
+        "y": 0.0,
+        "z": 6.297375
+      },
+      {
+        "id": "fe3o4-magnetite:atom:14",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 2.099125000000001,
+        "y": 4.19825,
+        "z": 2.0991250000000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:15",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.297375,
+        "y": 0.0,
+        "z": 2.0991250000000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:16",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.297375000000001,
+        "y": 4.19825,
+        "z": 6.297375000000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:17",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 3.3756504570024696e-16,
+        "y": 2.099125,
+        "z": 6.297375
+      },
+      {
+        "id": "fe3o4-magnetite:atom:18",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 1.0126951371007409e-15,
+        "y": 6.297375,
+        "z": 2.0991250000000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:19",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 4.19825,
+        "y": 2.099125,
+        "z": 2.0991250000000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:20",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 4.198250000000001,
+        "y": 6.297375,
+        "z": 6.297375000000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:21",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 2.099125000000001,
+        "y": 6.297375,
+        "z": 5.141373424520375e-16
+      },
+      {
+        "id": "fe3o4-magnetite:atom:22",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 2.0991250000000004,
+        "y": 2.099125,
+        "z": 4.19825
+      },
+      {
+        "id": "fe3o4-magnetite:atom:23",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.297375000000001,
+        "y": 6.297375,
+        "z": 4.198250000000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:24",
+        "sourceIndex": 2,
+        "element": "Fe",
+        "x": 6.297375,
+        "y": 2.099125,
+        "z": 5.141373424520375e-16
+      },
+      {
+        "id": "fe3o4-magnetite:atom:25",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1402678500000003,
+        "y": 2.14026785,
+        "z": 2.1402678500000003
+      },
+      {
+        "id": "fe3o4-magnetite:atom:26",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1402678500000007,
+        "y": 6.33851785,
+        "z": 6.338517850000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:27",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.33851785,
+        "y": 2.14026785,
+        "z": 6.338517850000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:28",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.338517850000001,
+        "y": 6.33851785,
+        "z": 2.1402678500000007
+      },
+      {
+        "id": "fe3o4-magnetite:atom:29",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.041142850000001396,
+        "y": 2.05798215,
+        "z": 4.23939285
+      },
+      {
+        "id": "fe3o4-magnetite:atom:30",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.04114285000000207,
+        "y": 6.25623215,
+        "z": 0.04114285000000145
+      },
+      {
+        "id": "fe3o4-magnetite:atom:31",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.23939285,
+        "y": 2.05798215,
+        "z": 0.04114285000000145
+      },
+      {
+        "id": "fe3o4-magnetite:atom:32",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.239392850000001,
+        "y": 6.25623215,
+        "z": 4.239392850000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:33",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.157107150000001,
+        "y": 6.33851785,
+        "z": 8.35535715
+      },
+      {
+        "id": "fe3o4-magnetite:atom:34",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.15710715,
+        "y": 2.14026785,
+        "z": 4.15710715
+      },
+      {
+        "id": "fe3o4-magnetite:atom:35",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.355357150000001,
+        "y": 6.33851785,
+        "z": 4.157107150000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:36",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.35535715,
+        "y": 2.14026785,
+        "z": 8.35535715
+      },
+      {
+        "id": "fe3o4-magnetite:atom:37",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.338517850000001,
+        "y": 4.15710715,
+        "z": 8.35535715
+      },
+      {
+        "id": "fe3o4-magnetite:atom:38",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.3385178500000015,
+        "y": 8.35535715,
+        "z": 4.157107150000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:39",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1402678500000007,
+        "y": 4.15710715,
+        "z": 4.15710715
+      },
+      {
+        "id": "fe3o4-magnetite:atom:40",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.140267850000001,
+        "y": 8.35535715,
+        "z": 8.35535715
+      },
+      {
+        "id": "fe3o4-magnetite:atom:41",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.05798215,
+        "y": 0.04114285000000106,
+        "z": 4.23939285
+      },
+      {
+        "id": "fe3o4-magnetite:atom:42",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.057982150000001,
+        "y": 4.23939285,
+        "z": 0.04114285000000145
+      },
+      {
+        "id": "fe3o4-magnetite:atom:43",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.25623215,
+        "y": 0.04114285000000106,
+        "z": 0.04114285000000145
+      },
+      {
+        "id": "fe3o4-magnetite:atom:44",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.256232150000001,
+        "y": 4.23939285,
+        "z": 4.239392850000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:45",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.25623215,
+        "y": 2.05798215,
+        "z": 2.0579821500000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:46",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.256232150000001,
+        "y": 6.25623215,
+        "z": 6.256232150000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:47",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.0579821500000004,
+        "y": 2.05798215,
+        "z": 6.25623215
+      },
+      {
+        "id": "fe3o4-magnetite:atom:48",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.057982150000001,
+        "y": 6.25623215,
+        "z": 2.0579821500000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:49",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.04114285000000174,
+        "y": 4.23939285,
+        "z": 2.0579821500000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:50",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.04114285000000107,
+        "y": 0.04114285000000106,
+        "z": 6.25623215
+      },
+      {
+        "id": "fe3o4-magnetite:atom:51",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.239392850000001,
+        "y": 4.23939285,
+        "z": 6.256232150000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:52",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.23939285,
+        "y": 0.04114285000000106,
+        "z": 2.0579821500000004
+      },
+      {
+        "id": "fe3o4-magnetite:atom:53",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.157107150000002,
+        "y": 8.35535715,
+        "z": 6.338517850000001
+      },
+      {
+        "id": "fe3o4-magnetite:atom:54",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.157107150000001,
+        "y": 4.15710715,
+        "z": 2.1402678500000003
+      },
+      {
+        "id": "fe3o4-magnetite:atom:55",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.355357150000001,
+        "y": 8.35535715,
+        "z": 2.1402678500000007
+      },
+      {
+        "id": "fe3o4-magnetite:atom:56",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.35535715,
+        "y": 4.15710715,
+        "z": 6.338517850000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9002316; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "fe3o4-magnetite:atom:1",
+      "fe3o4-magnetite:atom:2",
+      "fe3o4-magnetite:atom:3",
+      "fe3o4-magnetite:atom:4",
+      "fe3o4-magnetite:atom:5",
+      "fe3o4-magnetite:atom:6",
+      "fe3o4-magnetite:atom:7",
+      "fe3o4-magnetite:atom:8",
+      "fe3o4-magnetite:atom:9",
+      "fe3o4-magnetite:atom:10",
+      "fe3o4-magnetite:atom:11",
+      "fe3o4-magnetite:atom:12",
+      "fe3o4-magnetite:atom:13",
+      "fe3o4-magnetite:atom:14",
+      "fe3o4-magnetite:atom:15",
+      "fe3o4-magnetite:atom:16",
+      "fe3o4-magnetite:atom:17",
+      "fe3o4-magnetite:atom:18",
+      "fe3o4-magnetite:atom:19",
+      "fe3o4-magnetite:atom:20",
+      "fe3o4-magnetite:atom:21",
+      "fe3o4-magnetite:atom:22",
+      "fe3o4-magnetite:atom:23",
+      "fe3o4-magnetite:atom:24",
+      "fe3o4-magnetite:atom:25",
+      "fe3o4-magnetite:atom:26",
+      "fe3o4-magnetite:atom:27",
+      "fe3o4-magnetite:atom:28",
+      "fe3o4-magnetite:atom:29",
+      "fe3o4-magnetite:atom:30",
+      "fe3o4-magnetite:atom:31",
+      "fe3o4-magnetite:atom:32",
+      "fe3o4-magnetite:atom:33",
+      "fe3o4-magnetite:atom:34",
+      "fe3o4-magnetite:atom:35",
+      "fe3o4-magnetite:atom:36",
+      "fe3o4-magnetite:atom:37",
+      "fe3o4-magnetite:atom:38",
+      "fe3o4-magnetite:atom:39",
+      "fe3o4-magnetite:atom:40",
+      "fe3o4-magnetite:atom:41",
+      "fe3o4-magnetite:atom:42",
+      "fe3o4-magnetite:atom:43",
+      "fe3o4-magnetite:atom:44",
+      "fe3o4-magnetite:atom:45",
+      "fe3o4-magnetite:atom:46",
+      "fe3o4-magnetite:atom:47",
+      "fe3o4-magnetite:atom:48",
+      "fe3o4-magnetite:atom:49",
+      "fe3o4-magnetite:atom:50",
+      "fe3o4-magnetite:atom:51",
+      "fe3o4-magnetite:atom:52",
+      "fe3o4-magnetite:atom:53",
+      "fe3o4-magnetite:atom:54",
+      "fe3o4-magnetite:atom:55",
+      "fe3o4-magnetite:atom:56"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          8.3965,
+          0.0,
+          5.141373424520375e-16
+        ],
+        [
+          1.3502601828009878e-15,
+          8.3965,
+          5.141373424520375e-16
+        ],
+        [
+          0.0,
+          0.0,
+          8.3965
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9002316 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

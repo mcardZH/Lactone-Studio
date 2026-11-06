@@ -1,0 +1,1183 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-willemite-cod-9007627",
+  "structure": {
+    "id": "mineral-willemite-cod-9007627",
+    "name": "Willemite",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-willemite-cod-9007627:atom:1",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 12.368179780000002,
+        "y": 2.3152437113716324,
+        "z": 3.8689852500000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:2",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 5.394179780000002,
+        "y": 6.341684488700081,
+        "z": 6.973985250000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:3",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": -1.5798202199999967,
+        "y": 10.368125266028532,
+        "z": 0.7639852500000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:4",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 1.2151497600000005,
+        "y": 2.525786299618136,
+        "z": 5.44601475
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:5",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 8.189149760000001,
+        "y": 6.552227076946587,
+        "z": 8.551014750000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:6",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 1.2151497600000019,
+        "y": 10.578667854275036,
+        "z": 2.3410147500000007
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:7",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 2.79496998,
+        "y": 0.21054258824650401,
+        "z": 3.8689852499999997
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:8",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 9.76896998,
+        "y": 4.236983365574955,
+        "z": 6.973985250000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:9",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 2.794969980000002,
+        "y": 8.263424142903403,
+        "z": 0.7639852500000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:10",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": -5.39417978,
+        "y": 9.764078620613718,
+        "z": 5.446014750000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:11",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 8.55382022,
+        "y": 1.7111970659568176,
+        "z": 8.55101475
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:12",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 1.579820220000001,
+        "y": 5.737637843285268,
+        "z": 2.3410147500000003
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:13",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 5.75885024,
+        "y": 9.553536032367214,
+        "z": 3.868985250000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:14",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 5.758850239999999,
+        "y": 1.5006544777103143,
+        "z": 6.973985250000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:15",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": -1.2151497599999994,
+        "y": 5.5270952550387635,
+        "z": 0.7639852500000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:16",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 4.179030020000002,
+        "y": 11.868779743738846,
+        "z": 5.446014750000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:17",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": 4.17903002,
+        "y": 3.815898189081947,
+        "z": 8.55101475
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:18",
+        "sourceIndex": 1,
+        "element": "Zn",
+        "x": -2.794969979999998,
+        "y": 7.842338966410396,
+        "z": 2.34101475
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:19",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 12.28756034,
+        "y": 2.3188675080712278,
+        "z": 0.7582410000000009
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:20",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 5.313560340000001,
+        "y": 6.345308285399678,
+        "z": 3.8632410000000004
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:21",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": -1.660439659999997,
+        "y": 10.371749062728128,
+        "z": 6.968241000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:22",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 1.1779783400000008,
+        "y": 2.597416681046809,
+        "z": 8.556759
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:23",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 8.151978340000001,
+        "y": 6.62385745837526,
+        "z": 2.3467590000000014
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:24",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 1.177978340000002,
+        "y": 10.65029823570371,
+        "z": 5.451759
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:25",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 2.8384179999999994,
+        "y": 0.2785491729755818,
+        "z": 0.7582410000000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:26",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 9.812418,
+        "y": 4.304989950304033,
+        "z": 3.8632410000000004
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:27",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 2.8384180000000008,
+        "y": 8.331430727632481,
+        "z": 6.968241000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:28",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": -5.3135603399999995,
+        "y": 9.760454823914124,
+        "z": 8.556759
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:29",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 8.63443966,
+        "y": 1.7075732692572223,
+        "z": 2.346759000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:30",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 1.6604396600000007,
+        "y": 5.734014046585672,
+        "z": 5.451759
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:31",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 5.796021660000001,
+        "y": 9.481905650938542,
+        "z": 0.7582410000000013
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:32",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 5.79602166,
+        "y": 1.4290240962816414,
+        "z": 3.863241
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:33",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": -1.1779783399999997,
+        "y": 5.455464873610091,
+        "z": 6.968241000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:34",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 4.135582000000003,
+        "y": 11.800773159009768,
+        "z": 8.556759000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:35",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": 4.135582000000001,
+        "y": 3.7478916043528687,
+        "z": 2.3467590000000005
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:36",
+        "sourceIndex": 2,
+        "element": "Zn",
+        "x": -2.838417999999998,
+        "y": 7.774332381681318,
+        "z": 5.451759
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:37",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 12.35995046,
+        "y": 2.362353068466375,
+        "z": 6.9806610000000004
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:38",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 5.385950459999998,
+        "y": 6.388793845794825,
+        "z": 0.7706610000000009
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:39",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": -1.58804954,
+        "y": 10.415234623123276,
+        "z": 3.875661
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:40",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.2518329999999998,
+        "y": 2.5564677783413803,
+        "z": 2.334339000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:41",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 8.225833000000002,
+        "y": 6.58290855566983,
+        "z": 5.439339000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:42",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.2518330000000013,
+        "y": 10.60934933299828,
+        "z": 8.544339
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:43",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 2.8398825400000005,
+        "y": 0.19411470987500493,
+        "z": 6.980661
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:44",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 9.813882540000002,
+        "y": 4.2205554872034545,
+        "z": 0.7706610000000009
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:45",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 2.8398825400000014,
+        "y": 8.246996264531905,
+        "z": 3.875661
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:46",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": -5.385950459999998,
+        "y": 9.716969263518976,
+        "z": 2.3343390000000013
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:47",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 8.56204954,
+        "y": 1.6640877088620751,
+        "z": 5.439339000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:48",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.588049540000001,
+        "y": 5.690528486190525,
+        "z": 8.544338999999999
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:49",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 5.722167000000001,
+        "y": 9.52285455364397,
+        "z": 6.980661000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:50",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 5.722167000000001,
+        "y": 1.4699729989870691,
+        "z": 0.7706610000000005
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:51",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": -1.251832999999998,
+        "y": 5.496413776315518,
+        "z": 3.8756609999999996
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:52",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.134117460000001,
+        "y": 11.885207622110345,
+        "z": 2.3343390000000017
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:53",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.134117459999999,
+        "y": 3.8323260674534443,
+        "z": 5.439339000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:54",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": -2.839882539999999,
+        "y": 7.8587668447818935,
+        "z": 8.544338999999999
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:55",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.0306856000000002,
+        "y": 2.61396535264163,
+        "z": 6.990907499999999
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:56",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.0046856,
+        "y": 6.64040612997008,
+        "z": 0.7809074999999999
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:57",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.030685600000001756,
+        "y": 10.666846907298531,
+        "z": 3.8859075000000014
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:58",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.2791032,
+        "y": 1.2804081671904473,
+        "z": 2.324092500000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:59",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.2531032,
+        "y": 5.306848944518897,
+        "z": 5.4290925
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:60",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.2791032000000016,
+        "y": 9.333289721847347,
+        "z": 8.534092500000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:61",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -4.725582399999998,
+        "y": 10.745765146534167,
+        "z": 6.9909075
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:62",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.2224176,
+        "y": 2.6928835918772673,
+        "z": 0.7809074999999996
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:63",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.2484176000000016,
+        "y": 6.719324369205718,
+        "z": 3.885907500000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:64",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.943314400000001,
+        "y": 9.46535697934372,
+        "z": 2.3240925000000017
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:65",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.943314400000001,
+        "y": 1.41247542468682,
+        "z": 5.4290925
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:66",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -0.030685599999998647,
+        "y": 5.438916202015269,
+        "z": 8.5340925
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:67",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.6948968,
+        "y": 10.798914164794903,
+        "z": 6.9909075000000005
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:68",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.6948967999999995,
+        "y": 2.746032610138003,
+        "z": 0.7809074999999993
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:69",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -2.279103199999999,
+        "y": 6.772473387466453,
+        "z": 3.8859075000000005
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:70",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.6995824,
+        "y": 1.3335571854511827,
+        "z": 2.3240925000000012
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:71",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.7255824,
+        "y": 5.359997962779633,
+        "z": 5.4290925
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:72",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -2.2484175999999985,
+        "y": 9.386438740108082,
+        "z": 8.5340925
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:73",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 11.6730812,
+        "y": 3.8388086371049446,
+        "z": 6.976935
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:74",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.699081200000002,
+        "y": 7.865249414433395,
+        "z": 0.7669350000000014
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:75",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": -2.2749187999999974,
+        "y": 11.891690191761844,
+        "z": 3.8719350000000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:76",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.187046400000001,
+        "y": 3.889541790899283,
+        "z": 2.3380650000000003
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:77",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 9.1610464,
+        "y": 7.915982568227733,
+        "z": 5.443065000000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:78",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.1870464000000034,
+        "y": 11.942423345556183,
+        "z": 8.548065000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:79",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.4619652,
+        "y": 0.05073315379433847,
+        "z": 6.976934999999999
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:80",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 11.4359652,
+        "y": 4.077173931122788,
+        "z": 0.7669350000000014
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:81",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.461965200000001,
+        "y": 8.103614708451238,
+        "z": 3.8719350000000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:82",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": -4.699081199999998,
+        "y": 8.240513694880406,
+        "z": 2.3380650000000003
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:83",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 9.2489188,
+        "y": 0.18763214022350524,
+        "z": 5.443065000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:84",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.2749188000000005,
+        "y": 4.214072917551955,
+        "z": 8.548065
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:85",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.7869536,
+        "y": 8.189780541086067,
+        "z": 6.976935
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:86",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.7869535999999995,
+        "y": 0.13689898642916698,
+        "z": 0.7669350000000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:87",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": -2.1870464,
+        "y": 4.163339763757617,
+        "z": 3.8719349999999997
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:88",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.5120348000000003,
+        "y": 12.028589178191012,
+        "z": 2.338065000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:89",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.5120348,
+        "y": 3.975707623534112,
+        "z": 5.443065000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:90",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": -4.461965199999999,
+        "y": 8.002148400862561,
+        "z": 8.548065
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:91",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 11.9060128,
+        "y": 1.51716288489736,
+        "z": 8.314569
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:92",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 4.932012800000001,
+        "y": 5.54360366222581,
+        "z": 2.1045690000000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:93",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -2.0419871999999986,
+        "y": 9.57004443955426,
+        "z": 5.209569
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:94",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 0.29290799999999995,
+        "y": 2.526994231851336,
+        "z": 1.0004310000000007
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:95",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 7.266908000000003,
+        "y": 6.553435009179785,
+        "z": 4.105431000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:96",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 0.2929080000000015,
+        "y": 10.579875786508236,
+        "z": 7.210431000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:97",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.334895200000001,
+        "y": 1.0098313469539755,
+        "z": 8.314568999999999
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:98",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 9.3088952,
+        "y": 5.036272124282426,
+        "z": 2.1045690000000006
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:99",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.334895200000002,
+        "y": 9.062712901610876,
+        "z": 5.209569
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:100",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -4.932012799999999,
+        "y": 10.562159447087991,
+        "z": 1.0004310000000014
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:101",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 9.015987200000001,
+        "y": 2.50927789243109,
+        "z": 4.105431000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:102",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.041987200000002,
+        "y": 6.5357186697595395,
+        "z": 7.210431000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:103",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 6.681092000000003,
+        "y": 9.552328100134014,
+        "z": 8.314569
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:104",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 6.681092,
+        "y": 1.4994465454771133,
+        "z": 2.104569
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:105",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -0.29290799999999795,
+        "y": 5.525887322805563,
+        "z": 5.209569
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:106",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 4.6391048,
+        "y": 11.069490985031376,
+        "z": 1.000431000000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:107",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 4.639104799999998,
+        "y": 3.016609430374475,
+        "z": 4.105431000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:108",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": -2.334895200000001,
+        "y": 7.043050207702924,
+        "z": 7.210431000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:109",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 11.9750554,
+        "y": 1.5497770551937204,
+        "z": 5.622534000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:110",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 5.0010554,
+        "y": 5.576217832522171,
+        "z": 8.727534000000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:111",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": -1.9729445999999986,
+        "y": 9.60265860985062,
+        "z": 2.517534000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:112",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 0.35567400000000027,
+        "y": 2.483508671456188,
+        "z": 3.692466
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:113",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 7.329674000000001,
+        "y": 6.509949448784638,
+        "z": 6.797466000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:114",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 0.35567400000000227,
+        "y": 10.536390226113088,
+        "z": 0.5874660000000005
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:115",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 2.3286186,
+        "y": 0.933731616262468,
+        "z": 5.622534
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:116",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 9.3026186,
+        "y": 4.960172393590919,
+        "z": 8.727534000000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:117",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 2.3286186000000004,
+        "y": 8.986613170919368,
+        "z": 2.517534000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:118",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": -5.001055399999998,
+        "y": 10.52954527679163,
+        "z": 3.6924660000000005
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:119",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 8.9469446,
+        "y": 2.4766637221347296,
+        "z": 6.797466000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:120",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 1.9729446000000022,
+        "y": 6.50310449946318,
+        "z": 0.5874660000000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:121",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 6.6183260000000015,
+        "y": 9.595813660529162,
+        "z": 5.622534000000002
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:122",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 6.618326000000001,
+        "y": 1.5429321058722612,
+        "z": 8.727534
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:123",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": -0.35567399999999827,
+        "y": 5.56937288320071,
+        "z": 2.5175340000000004
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:124",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 4.6453814000000015,
+        "y": 11.145590715722882,
+        "z": 3.692466000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:125",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 4.645381399999999,
+        "y": 3.0927091610659825,
+        "z": 6.797466000000001
+      },
+      {
+        "id": "mineral-willemite-cod-9007627:atom:126",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": -2.3286185999999995,
+        "y": 7.119149938394432,
+        "z": 0.587466
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9007627; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-willemite-cod-9007627:atom:1",
+      "mineral-willemite-cod-9007627:atom:2",
+      "mineral-willemite-cod-9007627:atom:3",
+      "mineral-willemite-cod-9007627:atom:4",
+      "mineral-willemite-cod-9007627:atom:5",
+      "mineral-willemite-cod-9007627:atom:6",
+      "mineral-willemite-cod-9007627:atom:7",
+      "mineral-willemite-cod-9007627:atom:8",
+      "mineral-willemite-cod-9007627:atom:9",
+      "mineral-willemite-cod-9007627:atom:10",
+      "mineral-willemite-cod-9007627:atom:11",
+      "mineral-willemite-cod-9007627:atom:12",
+      "mineral-willemite-cod-9007627:atom:13",
+      "mineral-willemite-cod-9007627:atom:14",
+      "mineral-willemite-cod-9007627:atom:15",
+      "mineral-willemite-cod-9007627:atom:16",
+      "mineral-willemite-cod-9007627:atom:17",
+      "mineral-willemite-cod-9007627:atom:18",
+      "mineral-willemite-cod-9007627:atom:19",
+      "mineral-willemite-cod-9007627:atom:20",
+      "mineral-willemite-cod-9007627:atom:21",
+      "mineral-willemite-cod-9007627:atom:22",
+      "mineral-willemite-cod-9007627:atom:23",
+      "mineral-willemite-cod-9007627:atom:24",
+      "mineral-willemite-cod-9007627:atom:25",
+      "mineral-willemite-cod-9007627:atom:26",
+      "mineral-willemite-cod-9007627:atom:27",
+      "mineral-willemite-cod-9007627:atom:28",
+      "mineral-willemite-cod-9007627:atom:29",
+      "mineral-willemite-cod-9007627:atom:30",
+      "mineral-willemite-cod-9007627:atom:31",
+      "mineral-willemite-cod-9007627:atom:32",
+      "mineral-willemite-cod-9007627:atom:33",
+      "mineral-willemite-cod-9007627:atom:34",
+      "mineral-willemite-cod-9007627:atom:35",
+      "mineral-willemite-cod-9007627:atom:36",
+      "mineral-willemite-cod-9007627:atom:37",
+      "mineral-willemite-cod-9007627:atom:38",
+      "mineral-willemite-cod-9007627:atom:39",
+      "mineral-willemite-cod-9007627:atom:40",
+      "mineral-willemite-cod-9007627:atom:41",
+      "mineral-willemite-cod-9007627:atom:42",
+      "mineral-willemite-cod-9007627:atom:43",
+      "mineral-willemite-cod-9007627:atom:44",
+      "mineral-willemite-cod-9007627:atom:45",
+      "mineral-willemite-cod-9007627:atom:46",
+      "mineral-willemite-cod-9007627:atom:47",
+      "mineral-willemite-cod-9007627:atom:48",
+      "mineral-willemite-cod-9007627:atom:49",
+      "mineral-willemite-cod-9007627:atom:50",
+      "mineral-willemite-cod-9007627:atom:51",
+      "mineral-willemite-cod-9007627:atom:52",
+      "mineral-willemite-cod-9007627:atom:53",
+      "mineral-willemite-cod-9007627:atom:54",
+      "mineral-willemite-cod-9007627:atom:55",
+      "mineral-willemite-cod-9007627:atom:56",
+      "mineral-willemite-cod-9007627:atom:57",
+      "mineral-willemite-cod-9007627:atom:58",
+      "mineral-willemite-cod-9007627:atom:59",
+      "mineral-willemite-cod-9007627:atom:60",
+      "mineral-willemite-cod-9007627:atom:61",
+      "mineral-willemite-cod-9007627:atom:62",
+      "mineral-willemite-cod-9007627:atom:63",
+      "mineral-willemite-cod-9007627:atom:64",
+      "mineral-willemite-cod-9007627:atom:65",
+      "mineral-willemite-cod-9007627:atom:66",
+      "mineral-willemite-cod-9007627:atom:67",
+      "mineral-willemite-cod-9007627:atom:68",
+      "mineral-willemite-cod-9007627:atom:69",
+      "mineral-willemite-cod-9007627:atom:70",
+      "mineral-willemite-cod-9007627:atom:71",
+      "mineral-willemite-cod-9007627:atom:72",
+      "mineral-willemite-cod-9007627:atom:73",
+      "mineral-willemite-cod-9007627:atom:74",
+      "mineral-willemite-cod-9007627:atom:75",
+      "mineral-willemite-cod-9007627:atom:76",
+      "mineral-willemite-cod-9007627:atom:77",
+      "mineral-willemite-cod-9007627:atom:78",
+      "mineral-willemite-cod-9007627:atom:79",
+      "mineral-willemite-cod-9007627:atom:80",
+      "mineral-willemite-cod-9007627:atom:81",
+      "mineral-willemite-cod-9007627:atom:82",
+      "mineral-willemite-cod-9007627:atom:83",
+      "mineral-willemite-cod-9007627:atom:84",
+      "mineral-willemite-cod-9007627:atom:85",
+      "mineral-willemite-cod-9007627:atom:86",
+      "mineral-willemite-cod-9007627:atom:87",
+      "mineral-willemite-cod-9007627:atom:88",
+      "mineral-willemite-cod-9007627:atom:89",
+      "mineral-willemite-cod-9007627:atom:90",
+      "mineral-willemite-cod-9007627:atom:91",
+      "mineral-willemite-cod-9007627:atom:92",
+      "mineral-willemite-cod-9007627:atom:93",
+      "mineral-willemite-cod-9007627:atom:94",
+      "mineral-willemite-cod-9007627:atom:95",
+      "mineral-willemite-cod-9007627:atom:96",
+      "mineral-willemite-cod-9007627:atom:97",
+      "mineral-willemite-cod-9007627:atom:98",
+      "mineral-willemite-cod-9007627:atom:99",
+      "mineral-willemite-cod-9007627:atom:100",
+      "mineral-willemite-cod-9007627:atom:101",
+      "mineral-willemite-cod-9007627:atom:102",
+      "mineral-willemite-cod-9007627:atom:103",
+      "mineral-willemite-cod-9007627:atom:104",
+      "mineral-willemite-cod-9007627:atom:105",
+      "mineral-willemite-cod-9007627:atom:106",
+      "mineral-willemite-cod-9007627:atom:107",
+      "mineral-willemite-cod-9007627:atom:108",
+      "mineral-willemite-cod-9007627:atom:109",
+      "mineral-willemite-cod-9007627:atom:110",
+      "mineral-willemite-cod-9007627:atom:111",
+      "mineral-willemite-cod-9007627:atom:112",
+      "mineral-willemite-cod-9007627:atom:113",
+      "mineral-willemite-cod-9007627:atom:114",
+      "mineral-willemite-cod-9007627:atom:115",
+      "mineral-willemite-cod-9007627:atom:116",
+      "mineral-willemite-cod-9007627:atom:117",
+      "mineral-willemite-cod-9007627:atom:118",
+      "mineral-willemite-cod-9007627:atom:119",
+      "mineral-willemite-cod-9007627:atom:120",
+      "mineral-willemite-cod-9007627:atom:121",
+      "mineral-willemite-cod-9007627:atom:122",
+      "mineral-willemite-cod-9007627:atom:123",
+      "mineral-willemite-cod-9007627:atom:124",
+      "mineral-willemite-cod-9007627:atom:125",
+      "mineral-willemite-cod-9007627:atom:126"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          13.948,
+          0.0,
+          8.540686777253642e-16
+        ],
+        [
+          -6.973999999999998,
+          12.07932233198535,
+          8.540686777253642e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.315
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9007627 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

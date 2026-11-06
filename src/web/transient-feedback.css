@@ -1,0 +1,11 @@
+@import './ui-controls.css';
+.feedback-host-global{position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;pointer-events:none;padding:16px}
+.feedback-host-instance{position:relative;min-width:0;margin:5px 0}
+.feedback-message{box-sizing:border-box;display:flex;align-items:flex-start;gap:8px;max-width:min(590px,calc(100vw - 32px));padding:8px 12px;border:1px solid var(--ui-control-border);border-radius:var(--ui-control-radius);background:var(--ui-control-hover-bg);color:var(--ui-control-ink);font:var(--ui-control-caption-font)/1.5 "Segoe UI","Microsoft YaHei",sans-serif;pointer-events:auto}
+.feedback-message>svg{flex:none;margin-top:2px}.feedback-message>span{flex:1;min-width:0;overflow-wrap:anywhere}
+.feedback-message.feedback-error{border-color:#cb877b;background:#fff0ec;color:#983e33}
+.feedback-message .feedback-close{flex:none;display:inline-flex;align-items:center;justify-content:center;min-height:22px;min-width:22px;border:0;background:transparent;color:inherit;padding:2px;border-radius:4px;cursor:pointer}
+.feedback-close:focus-visible{outline:2px solid var(--ui-control-focus);outline-offset:2px}
+.feedback-message{animation:shared-feedback-life 2.8s both}
+@keyframes shared-feedback-life{0%,75%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.feedback-message{animation:none}}

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "tase2-2h-cod-2310532",
+  "structure": {
+    "id": "tase2-2h-cod-2310532",
+    "name": "二硒化钽（2H）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "tase2-2h-cod-2310532:atom:1",
+        "sourceIndex": 1,
+        "element": "Ta",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 3.1775
+      },
+      {
+        "id": "tase2-2h-cod-2310532:atom:2",
+        "sourceIndex": 1,
+        "element": "Ta",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 9.5325
+      },
+      {
+        "id": "tase2-2h-cod-2310532:atom:3",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 2.220446049250313e-16,
+        "y": 1.9803114233204167,
+        "z": 1.4997800000000003
+      },
+      {
+        "id": "tase2-2h-cod-2310532:atom:4",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 1.7150000000000005,
+        "y": 0.9901557116602083,
+        "z": 7.854780000000001
+      },
+      {
+        "id": "tase2-2h-cod-2310532:atom:5",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 2.220446049250313e-16,
+        "y": 1.9803114233204169,
+        "z": 4.85522
+      },
+      {
+        "id": "tase2-2h-cod-2310532:atom:6",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 1.7150000000000003,
+        "y": 0.9901557116602084,
+        "z": 11.210220000000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database record COD 2310532; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "tase2-2h-cod-2310532:atom:1",
+      "tase2-2h-cod-2310532:atom:2",
+      "tase2-2h-cod-2310532:atom:3",
+      "tase2-2h-cod-2310532:atom:4",
+      "tase2-2h-cod-2310532:atom:5",
+      "tase2-2h-cod-2310532:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.43,
+          0.0,
+          2.100269260537711e-16
+        ],
+        [
+          -1.7149999999999996,
+          2.970467134980625,
+          2.100269260537711e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.71
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database record COD 2310532 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

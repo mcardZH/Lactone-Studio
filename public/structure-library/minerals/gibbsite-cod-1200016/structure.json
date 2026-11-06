@@ -1,0 +1,553 @@
+{
+  "schemaVersion": 1,
+  "entryId": "gibbsite-cod-1200016",
+  "structure": {
+    "id": "gibbsite-cod-1200016",
+    "name": "三水铝石",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "gibbsite-cod-1200016:atom:1",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 1.4534687199438376,
+        "y": 2.688801,
+        "z": 9.598195676980056
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:2",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 5.781844896072001,
+        "y": 4.928199,
+        "z": 4.386504423198213
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:3",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 7.203283632312489,
+        "y": 2.389199,
+        "z": -0.5495781845437447
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:4",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.874907456184326,
+        "y": 0.14980100000000043,
+        "z": 4.662113069238099
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:5",
+        "sourceIndex": 2,
+        "element": "Al",
+        "x": 2.894817986594515,
+        "y": 0.1198408,
+        "z": 9.482772889470702
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:6",
+        "sourceIndex": 2,
+        "element": "Al",
+        "x": 7.223194162722679,
+        "y": 2.4191592,
+        "z": 4.271081635688859
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:7",
+        "sourceIndex": 2,
+        "element": "Al",
+        "x": 5.761934365661811,
+        "y": 4.958159200000001,
+        "z": -0.43415539703439043
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:8",
+        "sourceIndex": 2,
+        "element": "Al",
+        "x": 1.4335581895336482,
+        "y": 2.6588408,
+        "z": 4.777535856747454
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:9",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 0.8743319875778891,
+        "y": 0.771856,
+        "z": 8.459310366736068
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:10",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 5.202708163706052,
+        "y": 1.767144,
+        "z": 3.247619112954224
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:11",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 7.782420364678439,
+        "y": 4.306144,
+        "z": 0.5893071257002448
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:12",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 3.4540441885502746,
+        "y": 3.3108560000000002,
+        "z": 5.800998379482089
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:13",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 5.150767649592515,
+        "y": 2.909694,
+        "z": 8.372879407999607
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:14",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 0.8223914734643516,
+        "y": 4.707306000000001,
+        "z": 3.8485706617814506
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:15",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 3.5059847026638127,
+        "y": 2.1683060000000003,
+        "z": 0.6757380844367065
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:16",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 7.834360878791975,
+        "y": 0.3706939999999998,
+        "z": 5.200046830654863
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:17",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 4.354346433184932,
+        "y": 0.6956860000000001,
+        "z": 7.5404065986954665
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:18",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 0.02597025705677026,
+        "y": 1.8433140000000001,
+        "z": 3.0160978524773094
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:19",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 4.302405919071395,
+        "y": 4.382314,
+        "z": 1.5082108937408476
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:20",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 8.630782095199557,
+        "y": 3.2346860000000004,
+        "z": 6.032519639959003
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:21",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 8.405706534040892,
+        "y": 4.067478,
+        "z": 8.02679958515566
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:22",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 4.0773303579127305,
+        "y": 3.549522,
+        "z": 3.502490838937504
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:23",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.25104581821543365,
+        "y": 1.010522,
+        "z": 1.021817907280653
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:24",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 4.579421994343597,
+        "y": 1.528478000000001,
+        "z": 5.546126653498809
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:25",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.536428439211104,
+        "y": 3.676472,
+        "z": 7.6263409252838406
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:26",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 6.864804615339267,
+        "y": 3.9405280000000005,
+        "z": 2.414649671501996
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:27",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 6.120323913045223,
+        "y": 1.401528,
+        "z": 1.4222765671524729
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:28",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.79194773691706,
+        "y": 1.137472,
+        "z": 6.633967820934317
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:29",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 7.055253167088906,
+        "y": 0.8124800000000001,
+        "z": 7.325943256335595
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:30",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 2.7268769909607427,
+        "y": 1.7265199999999998,
+        "z": 2.801634510117439
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:31",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 1.6014991851674214,
+        "y": 4.26552,
+        "z": 1.7226742361007181
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:32",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.929875361295585,
+        "y": 3.3514800000000005,
+        "z": 6.246982982318873
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:33",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.5400362434664008,
+        "y": 1.1085274,
+        "z": 8.52815065190442
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:34",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.868412419594563,
+        "y": 1.4304726,
+        "z": 3.3164593981225767
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:35",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.1167161087899276,
+        "y": 3.9694726000000005,
+        "z": 0.5204668405318925
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:36",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.788339932661763,
+        "y": 3.6475274,
+        "z": 5.732158094313737
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:37",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.793098674129935,
+        "y": 3.3301524000000002,
+        "z": 8.280010825938382
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:38",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.4647224980017712,
+        "y": 4.2868476,
+        "z": 3.7557020797202245
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:39",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.863653678126393,
+        "y": 1.7478475999999998,
+        "z": 0.7686066664979323
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:40",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.192029854254556,
+        "y": 0.7911524000000009,
+        "z": 5.292915412716089
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:41",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.314525372364553,
+        "y": 0.667757,
+        "z": 8.37697015823026
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:42",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 8.642901548492716,
+        "y": 1.871243,
+        "z": 3.165278904448414
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:43",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.342226979891775,
+        "y": 4.410243,
+        "z": 0.6716473342060545
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:44",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.013850803763610553,
+        "y": 3.206757,
+        "z": 5.8833385879878985
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:45",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 8.479288929035071,
+        "y": 3.1955854,
+        "z": 8.022904033841368
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:46",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 4.150912752906909,
+        "y": 4.4214146,
+        "z": 3.4985952876232123
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:47",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 0.177463423221255,
+        "y": 1.8824146000000002,
+        "z": 1.0257134585949448
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:48",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 4.505839599349417,
+        "y": 0.6565853999999999,
+        "z": 5.550022204813101
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:49",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 2.571921123855355,
+        "y": 3.6449884000000004,
+        "z": 8.50755145700283
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:50",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 6.900297299983518,
+        "y": 3.9720116,
+        "z": 3.2958602032209843
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:51",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 6.084831228400972,
+        "y": 1.4330116000000002,
+        "z": 0.5410660354334839
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:52",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 1.756455052272809,
+        "y": 1.1059884,
+        "z": 5.752757289215327
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:53",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 7.093342877438834,
+        "y": 0.7571298000000001,
+        "z": 8.184554773302315
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:54",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 2.7649667013106702,
+        "y": 1.7818702,
+        "z": 3.660246027084158
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:55",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 1.5634094748174931,
+        "y": 4.3208702,
+        "z": 0.8640627191339983
+      },
+      {
+        "id": "gibbsite-cod-1200016:atom:56",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 5.891785650945656,
+        "y": 3.2961298,
+        "z": 5.388371465352155
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1200016; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "gibbsite-cod-1200016:atom:1",
+      "gibbsite-cod-1200016:atom:2",
+      "gibbsite-cod-1200016:atom:3",
+      "gibbsite-cod-1200016:atom:4",
+      "gibbsite-cod-1200016:atom:5",
+      "gibbsite-cod-1200016:atom:6",
+      "gibbsite-cod-1200016:atom:7",
+      "gibbsite-cod-1200016:atom:8",
+      "gibbsite-cod-1200016:atom:9",
+      "gibbsite-cod-1200016:atom:10",
+      "gibbsite-cod-1200016:atom:11",
+      "gibbsite-cod-1200016:atom:12",
+      "gibbsite-cod-1200016:atom:13",
+      "gibbsite-cod-1200016:atom:14",
+      "gibbsite-cod-1200016:atom:15",
+      "gibbsite-cod-1200016:atom:16",
+      "gibbsite-cod-1200016:atom:17",
+      "gibbsite-cod-1200016:atom:18",
+      "gibbsite-cod-1200016:atom:19",
+      "gibbsite-cod-1200016:atom:20",
+      "gibbsite-cod-1200016:atom:21",
+      "gibbsite-cod-1200016:atom:22",
+      "gibbsite-cod-1200016:atom:23",
+      "gibbsite-cod-1200016:atom:24",
+      "gibbsite-cod-1200016:atom:25",
+      "gibbsite-cod-1200016:atom:26",
+      "gibbsite-cod-1200016:atom:27",
+      "gibbsite-cod-1200016:atom:28",
+      "gibbsite-cod-1200016:atom:29",
+      "gibbsite-cod-1200016:atom:30",
+      "gibbsite-cod-1200016:atom:31",
+      "gibbsite-cod-1200016:atom:32",
+      "gibbsite-cod-1200016:atom:33",
+      "gibbsite-cod-1200016:atom:34",
+      "gibbsite-cod-1200016:atom:35",
+      "gibbsite-cod-1200016:atom:36",
+      "gibbsite-cod-1200016:atom:37",
+      "gibbsite-cod-1200016:atom:38",
+      "gibbsite-cod-1200016:atom:39",
+      "gibbsite-cod-1200016:atom:40",
+      "gibbsite-cod-1200016:atom:41",
+      "gibbsite-cod-1200016:atom:42",
+      "gibbsite-cod-1200016:atom:43",
+      "gibbsite-cod-1200016:atom:44",
+      "gibbsite-cod-1200016:atom:45",
+      "gibbsite-cod-1200016:atom:46",
+      "gibbsite-cod-1200016:atom:47",
+      "gibbsite-cod-1200016:atom:48",
+      "gibbsite-cod-1200016:atom:49",
+      "gibbsite-cod-1200016:atom:50",
+      "gibbsite-cod-1200016:atom:51",
+      "gibbsite-cod-1200016:atom:52",
+      "gibbsite-cod-1200016:atom:53",
+      "gibbsite-cod-1200016:atom:54",
+      "gibbsite-cod-1200016:atom:55",
+      "gibbsite-cod-1200016:atom:56"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          8.656752352256326,
+          0.0,
+          -0.687382507563688
+        ],
+        [
+          8.166046815057961e-16,
+          5.078,
+          3.10937822303513e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.736
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1200016 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,154 @@
+.task-dialog.task-submit-dialog {
+	overflow: hidden;
+	gap: 0;
+	padding: 0;
+}
+.task-submit-dialog > header,
+.task-submit-dialog > footer {
+	flex: 0 0 auto;
+	position: static;
+	padding: 14px 20px;
+	margin: 0;
+	background: var(--ui-control-bg);
+}
+.task-submit-dialog > header {
+	border-bottom: 1px solid var(--ui-control-border);
+}
+.task-submit-dialog > footer {
+	border-top: 1px solid var(--ui-control-border);
+	align-items: center;
+}
+.task-submit-scroll {
+	overflow: auto;
+	min-height: 0;
+	padding: 16px 20px;
+}
+.task-submit-main-fields {
+	display: grid;
+	gap: 12px;
+}
+.task-submit-main-fields > label {
+	align-items: stretch;
+}
+.task-submit-main-fields input,
+.task-submit-main-fields select {
+	width: 100%;
+}
+.task-submit-environment {
+	display: flex;
+	align-items: end;
+	gap: 8px;
+}
+.task-submit-environment label {
+	flex: 1;
+	min-width: 0;
+	align-items: stretch;
+}
+.task-submit-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 20px;
+	margin: 16px 0;
+	align-items: start;
+}
+.task-submit-summary > span {
+	flex: 1;
+}
+.task-submit-summary details {
+	max-width: 100%;
+}
+.task-submit-section {
+	margin: 16px 0;
+}
+.task-submit-section h3 {
+	margin: 0 0 10px;
+}
+.task-submit-dialog .task-resource-memory {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+.task-resource-memory input {
+	min-width: 0;
+	width: 100%;
+	flex: 1;
+}
+.task-resource-memory select {
+	flex: 0 0 auto;
+}
+.task-submit-location {
+	display: grid;
+	grid-template-columns: minmax(5em, auto) minmax(0, 1fr);
+	align-items: center;
+	gap: 6px 10px;
+	margin: 12px 0;
+}
+.task-submit-location .task-path {
+	overflow-wrap: anywhere;
+}
+.task-submit-location-actions {
+	grid-column: 2;
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+.task-submit-groups {
+	border: 1px solid var(--ui-control-border);
+	padding: 8px 10px;
+	border-radius: var(--ui-surface-radius);
+}
+.task-submit-groups .task-checkbox {
+	margin-top: 8px;
+	justify-content: start;
+}
+.task-submit-groups input[type="checkbox"] {
+	width: auto;
+}
+.task-submit-files {
+	border-top: 1px solid var(--ui-control-border);
+	padding-top: 12px;
+}
+.task-submit-file-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 12px 0;
+}
+.task-submit-file-tabs [aria-selected="true"] {
+	background: var(--ui-selected-bg, #f2dc84);
+	color: var(--ui-selected-ink, #302b19);
+}
+.task-submit-editor-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin: 8px 0;
+}
+.task-submit-editor-actions > span {
+	flex: 1;
+	overflow-wrap: anywhere;
+}
+.task-submit-status {
+	flex: 1;
+}
+.task-submit-file-expanded {
+	width: min(1200px, 96vw);
+}
+.task-submit-file-expanded textarea {
+	min-height: 40vh;
+}
+@media (max-width: 540px) {
+	.task-submit-location {
+		grid-template-columns: 1fr;
+	}
+	.task-submit-location-actions {
+		grid-column: 1;
+	}
+	.task-submit-dialog > header,
+	.task-submit-dialog > footer,
+	.task-submit-scroll {
+		padding: 12px;
+	}
+}

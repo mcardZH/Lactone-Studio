@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "entryId": "al2o3-alpha-corundum",
+  "structure": {
+    "id": "al2o3-alpha-corundum",
+    "name": "α-氧化铝",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "al2o3-alpha-corundum:atom:1",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 4.572832
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:2",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.37945,
+        "y": 1.373776098023255,
+        "z": 8.903165333333334
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:3",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.220446049250313e-16,
+        "y": 2.74755219604651,
+        "z": 0.2424986666666662
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:4",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 11.068332
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:5",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.37945,
+        "y": 1.373776098023255,
+        "z": 2.407665333333334
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:6",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.220446049250313e-16,
+        "y": 2.74755219604651,
+        "z": 6.737998666666666
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:7",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.9226680000000003
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:8",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.37945,
+        "y": 1.373776098023255,
+        "z": 6.253001333333334
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:9",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.220446049250313e-16,
+        "y": 2.74755219604651,
+        "z": 10.583334666666666
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:10",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 8.418168
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:11",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.37945,
+        "y": 1.373776098023255,
+        "z": 12.748501333333333
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:12",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.220446049250313e-16,
+        "y": 2.74755219604651,
+        "z": 4.087834666666667
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:13",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.4562233999999998,
+        "y": 0.0,
+        "z": 3.24775
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:14",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.8356733999999992,
+        "y": 1.373776098023255,
+        "z": 7.578083333333332
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:15",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.4562234000000003,
+        "y": 2.74755219604651,
+        "z": 11.908416666666666
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:16",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7281117,
+        "y": 1.261126457985348,
+        "z": 9.74325
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:17",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.1075616999999998,
+        "y": 2.634902556008603,
+        "z": 1.0825833333333357
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:18",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7281117000000008,
+        "y": 4.008678654031858,
+        "z": 5.412916666666667
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:19",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.7281116999999998,
+        "y": 1.261126457985348,
+        "z": 3.24775
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:20",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.6513383000000001,
+        "y": 2.634902556008603,
+        "z": 7.578083333333334
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:21",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.7281116999999993,
+        "y": 4.008678654031858,
+        "z": 11.908416666666666
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:22",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.3026765999999994,
+        "y": 0.0,
+        "z": 9.74325
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:23",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.9232266,
+        "y": 1.373776098023255,
+        "z": 1.0825833333333355
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:24",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -1.4562233999999996,
+        "y": 2.74755219604651,
+        "z": 5.412916666666666
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:25",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.6513383,
+        "y": 2.860201836084417,
+        "z": 3.2477500000000004
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:26",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.6513383,
+        "y": 0.11264964003790685,
+        "z": 7.578083333333334
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:27",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.7281116999999997,
+        "y": 1.4864257380611618,
+        "z": 11.908416666666666
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:28",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -1.6513382999999995,
+        "y": 2.860201836084417,
+        "z": 9.74325
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:29",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.1075616999999998,
+        "y": 0.11264964003790685,
+        "z": 1.0825833333333355
+      },
+      {
+        "id": "al2o3-alpha-corundum:atom:30",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7281117000000001,
+        "y": 1.4864257380611618,
+        "z": 5.412916666666666
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9008081; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "al2o3-alpha-corundum:atom:1",
+      "al2o3-alpha-corundum:atom:2",
+      "al2o3-alpha-corundum:atom:3",
+      "al2o3-alpha-corundum:atom:4",
+      "al2o3-alpha-corundum:atom:5",
+      "al2o3-alpha-corundum:atom:6",
+      "al2o3-alpha-corundum:atom:7",
+      "al2o3-alpha-corundum:atom:8",
+      "al2o3-alpha-corundum:atom:9",
+      "al2o3-alpha-corundum:atom:10",
+      "al2o3-alpha-corundum:atom:11",
+      "al2o3-alpha-corundum:atom:12",
+      "al2o3-alpha-corundum:atom:13",
+      "al2o3-alpha-corundum:atom:14",
+      "al2o3-alpha-corundum:atom:15",
+      "al2o3-alpha-corundum:atom:16",
+      "al2o3-alpha-corundum:atom:17",
+      "al2o3-alpha-corundum:atom:18",
+      "al2o3-alpha-corundum:atom:19",
+      "al2o3-alpha-corundum:atom:20",
+      "al2o3-alpha-corundum:atom:21",
+      "al2o3-alpha-corundum:atom:22",
+      "al2o3-alpha-corundum:atom:23",
+      "al2o3-alpha-corundum:atom:24",
+      "al2o3-alpha-corundum:atom:25",
+      "al2o3-alpha-corundum:atom:26",
+      "al2o3-alpha-corundum:atom:27",
+      "al2o3-alpha-corundum:atom:28",
+      "al2o3-alpha-corundum:atom:29",
+      "al2o3-alpha-corundum:atom:30"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.7589,
+          0.0,
+          2.9139858262311695e-16
+        ],
+        [
+          -2.3794499999999994,
+          4.121328294069765,
+          2.9139858262311695e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.991
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9008081 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

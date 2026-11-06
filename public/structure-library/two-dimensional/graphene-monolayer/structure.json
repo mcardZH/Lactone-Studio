@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "entryId": "graphene-monolayer",
+  "structure": {
+    "id": "graphene-monolayer",
+    "name": "石墨烯单层",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "graphene-monolayer:atom:1",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": -5.095908412102032e-16,
+        "y": -8.826372280478353e-16,
+        "z": 10.0
+      },
+      {
+        "id": "graphene-monolayer:atom:2",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": -5.01301097111161e-16,
+        "y": 1.422591063283237,
+        "z": 10.0
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9011577; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown.",
+      "Derived one layer from a bulk layered crystal; not an experimentally isolated monolayer."
+    ],
+    "sourceAtomIds": [
+      "graphene-monolayer:atom:1",
+      "graphene-monolayer:atom:2"
+    ],
+    "dimension": 2,
+    "cell": {
+      "vectors": [
+        [
+          2.464,
+          0.0,
+          1.508764856549539e-16
+        ],
+        [
+          -1.2319999999999998,
+          2.133886594924857,
+          1.508764856549539e-16
+        ],
+        [
+          -1.2246467991473533e-15,
+          -2.121150477449813e-15,
+          20.0
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        false
+      ],
+      "pbcProvenance": {
+        "kind": "user-confirmed",
+        "evidence": "User-approved v0.39 TTF model: COD bulk record 9011577 is retained verbatim at sourcePath; this single-layer derivative retains the source in-plane vectors, constructs a perpendicular c vector with a 20.0 Å vacuum gap, and sets PBC [true, true, false]. The isolated monolayer is derived, not an experimental isolated-layer measurement."
+      }
+    }
+  }
+}

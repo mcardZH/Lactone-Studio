@@ -1,0 +1,156 @@
+{
+  "schema": "ester-v201-public-component-sources/v1",
+  "version": "2.0.2",
+  "publicDistributionApproved": false,
+  "scope": "Exact component source and notice provision; whole-product native clean rebuild and final release identity are separate",
+  "native": {
+    "actualBuiltForVersion": "1.0.3-dev.10",
+    "versions": {
+      "numpy": "2.4.6",
+      "scipy": "1.17.1",
+      "rdkit": "2025.3.6",
+      "ase": "3.28.0",
+      "spglib": "2.7.0",
+      "tblite": "0.7.0",
+      "cffi": "2.0.0",
+      "threadpoolctl": "3.6.0"
+    },
+    "sourceIndex": "../third-party/corresponding-source-index.json",
+    "fortranSharedLibraryBuildControls": "../scripts/release/fortran-relative-source/README.md",
+    "fortranBuildControlScope": "Six shared-library source build controls; engine retains its original build identity. Actual new library identities and validation belong to final runtime provenance."
+  },
+  "xtb": {
+    "version": "6.7.0",
+    "sourceIndex": "../third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json"
+  },
+  "electron": {
+    "version": "44.7.0",
+    "upstream": "https://github.com/electron/electron/tree/v44.7.0",
+    "notices": "electron/LICENSE"
+  },
+  "chromium": {
+    "version": "152.0.7977.130",
+    "notices": "chromium/LICENSES.chromium.html"
+  },
+  "ffmpeg": {
+    "sourceIndex": "../third-party/corresponding-sources/FFMPEG-GNU-SOURCE-INDEX.json"
+  },
+  "openblas": {
+    "activeVersion": "0.3.33",
+    "notices": "openblas-0.3.33/",
+    "previousBaselineNoticesRetained": true
+  },
+  "ketcher": {
+    "version": "3.18.0",
+    "indigo": "1.46.0",
+    "notices": "2d-components/",
+    "unresolved": [],
+    "sourceIndex": "supplemental-sources/INDEX.json",
+    "sourceCommit": "b36d38f5293470721fe02ee570d9f0e6488a5b8d",
+    "cairoDistributionOption": "MPL-1.1; original dual-licence headers preserved"
+  },
+  "imageDecode": {
+    "utif": "3.1.0",
+    "pako": "1.0.11",
+    "notices": "image-decode/"
+  },
+  "ssh": [
+    {
+      "name": "ssh2",
+      "version": "1.17.0",
+      "notices": "task-system/npm/ssh2@1.17.0/LICENSE",
+      "source": "https://registry.npmjs.org/ssh2/-/ssh2-1.17.0.tgz",
+      "integrity": "sha512-wPldCk3asibAjQ/kziWQQt1Wh3PgDFpC0XpwclzKcdT1vql6KeYxf5LIt4nlFkUeR8WuphYMKqUA56X4rjbfgQ=="
+    },
+    {
+      "name": "asn1",
+      "version": "0.2.6",
+      "notices": "task-system/npm/asn1@0.2.6/LICENSE",
+      "source": "https://registry.npmjs.org/asn1/-/asn1-0.2.6.tgz",
+      "integrity": "sha512-ix/FxPn0MDjeyJ7i/yoHGFt/EX6LyNbxSEhPPXODPL+KB0VPk86UYfL0lMdy+KCnv+fmvIzySwaK5COwqVbWTQ=="
+    },
+    {
+      "name": "bcrypt-pbkdf",
+      "version": "1.0.2",
+      "notices": "task-system/npm/bcrypt-pbkdf@1.0.2/LICENSE",
+      "source": "https://registry.npmjs.org/bcrypt-pbkdf/-/bcrypt-pbkdf-1.0.2.tgz",
+      "integrity": "sha512-qeFIXtP4MSoi6NLqO12WfqARWWuCKi2Rn/9hJLEmtB5yTNr9DqFWkJRCf2qShWzPeAMRnOgCrq0sg/KLv5ES9w=="
+    },
+    {
+      "name": "safer-buffer",
+      "version": "2.1.2",
+      "notices": "task-system/npm/safer-buffer@2.1.2/LICENSE",
+      "source": "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz",
+      "integrity": "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg=="
+    },
+    {
+      "name": "tweetnacl",
+      "version": "0.14.5",
+      "notices": "task-system/npm/tweetnacl@0.14.5/LICENSE",
+      "source": "https://registry.npmjs.org/tweetnacl/-/tweetnacl-0.14.5.tgz",
+      "integrity": "sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA=="
+    }
+  ],
+  "ocr": {
+    "molvec": "0.9.8",
+    "temurin": "17.0.20.1+1",
+    "notices": "ocr/molvec/",
+    "unresolved": [],
+    "sourceIndex": "supplemental-sources/INDEX.json",
+    "portableRuntimeDirectory": "runtime/ocr-components/molvec/"
+  },
+  "correspondingSourceIndex": {
+    "path": "../third-party/corresponding-source-index.json",
+    "bytes": 382417,
+    "sha256": "4989f6b9ab0f201005ad0ef4e584dbaed8ff0c40c1f3ff8a3a041784dc190d10",
+    "schema": "sy-corresponding-sources/v2",
+    "componentScope": {
+      "sourceAcquiredAndIncluded": "completed",
+      "recursiveBuildClosure": "completed",
+      "modifiedLibraryRebuildOrReplacement": "completed",
+      "wholeProductRebuild": "deferred-by-user"
+    },
+    "components": [
+      {
+        "id": "ase",
+        "version": "3.28.0"
+      },
+      {
+        "id": "tblite",
+        "version": "0.7.0"
+      },
+      {
+        "id": "dftd4",
+        "version": "4.2.0"
+      },
+      {
+        "id": "simple-dftd3",
+        "version": "1.4.0"
+      },
+      {
+        "id": "libiconv",
+        "version": "1.18"
+      },
+      {
+        "id": "ffmpeg",
+        "version": "2b68d2babae73714846961fb0ee47e3b3d2e39a9"
+      },
+      {
+        "id": "gnu-runtime",
+        "version": "GCC13.2.0-MinGW11.0.1-dlfcn1.4.1"
+      },
+      {
+        "id": "xtb-gnu",
+        "version": "6.7.0-source-5071a886"
+      },
+      {
+        "id": "native-shared-support",
+        "version": "mctc-lib0.5.2;multicharge0.5.0;toml-f0.5.0/0.5.2;jonquil0.3.0"
+      },
+      {
+        "id": "native-gnu-runtime",
+        "version": "GCC16.2.0"
+      }
+    ]
+  }
+}

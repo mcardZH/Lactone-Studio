@@ -1,0 +1,2068 @@
+{
+  "def2SVP": {
+    "name": "def2-SVP",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/def2-SVP/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 5,
+        "cartesianD": 5
+      },
+      "2": {
+        "spherical": 5,
+        "cartesianD": 5
+      },
+      "3": {
+        "spherical": 9,
+        "cartesianD": 9
+      },
+      "4": {
+        "spherical": 9,
+        "cartesianD": 9
+      },
+      "5": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "6": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "7": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "8": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "9": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "10": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "11": {
+        "spherical": 15,
+        "cartesianD": 16
+      },
+      "12": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "13": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "14": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "15": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "16": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "17": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "18": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "19": {
+        "spherical": 24,
+        "cartesianD": 26
+      },
+      "20": {
+        "spherical": 24,
+        "cartesianD": 26
+      },
+      "21": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "22": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "23": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "24": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "25": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "26": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "27": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "28": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "29": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "30": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "31": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "32": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "33": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "34": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "35": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "36": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "37": {
+        "spherical": 24,
+        "cartesianD": 26
+      },
+      "38": {
+        "spherical": 23,
+        "cartesianD": 25
+      },
+      "39": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "40": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "41": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "42": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "43": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "44": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "45": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "46": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "47": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "48": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "49": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "50": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "51": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "52": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "53": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "54": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "55": {
+        "spherical": 24,
+        "cartesianD": 26
+      },
+      "56": {
+        "spherical": 30,
+        "cartesianD": 32
+      },
+      "57": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "58": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "59": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "60": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "61": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "62": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "63": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "64": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "65": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "66": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "67": {
+        "spherical": 78,
+        "cartesianD": 82
+      },
+      "68": {
+        "spherical": 81,
+        "cartesianD": 85
+      },
+      "69": {
+        "spherical": 81,
+        "cartesianD": 85
+      },
+      "70": {
+        "spherical": 81,
+        "cartesianD": 85
+      },
+      "71": {
+        "spherical": 81,
+        "cartesianD": 85
+      },
+      "72": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "73": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "74": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "75": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "76": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "77": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "78": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "79": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "80": {
+        "spherical": 32,
+        "cartesianD": 34
+      },
+      "81": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "82": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "83": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "84": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "85": {
+        "spherical": 26,
+        "cartesianD": 28
+      },
+      "86": {
+        "spherical": 50,
+        "cartesianD": 53
+      }
+    }
+  },
+  "def2TZVP": {
+    "name": "def2-TZVP",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/def2-TZVP/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 6,
+        "cartesianD": 6
+      },
+      "2": {
+        "spherical": 6,
+        "cartesianD": 6
+      },
+      "3": {
+        "spherical": 14,
+        "cartesianD": 14
+      },
+      "4": {
+        "spherical": 19,
+        "cartesianD": 20
+      },
+      "5": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "6": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "7": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "8": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "9": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "10": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "11": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "12": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "13": {
+        "spherical": 37,
+        "cartesianD": 39
+      },
+      "14": {
+        "spherical": 37,
+        "cartesianD": 39
+      },
+      "15": {
+        "spherical": 37,
+        "cartesianD": 39
+      },
+      "16": {
+        "spherical": 37,
+        "cartesianD": 39
+      },
+      "17": {
+        "spherical": 37,
+        "cartesianD": 39
+      },
+      "18": {
+        "spherical": 37,
+        "cartesianD": 39
+      },
+      "19": {
+        "spherical": 33,
+        "cartesianD": 36
+      },
+      "20": {
+        "spherical": 36,
+        "cartesianD": 39
+      },
+      "21": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "22": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "23": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "24": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "25": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "26": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "27": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "28": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "29": {
+        "spherical": 45,
+        "cartesianD": 49
+      },
+      "30": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "31": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "32": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "33": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "34": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "35": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "36": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "37": {
+        "spherical": 33,
+        "cartesianD": 36
+      },
+      "38": {
+        "spherical": 33,
+        "cartesianD": 36
+      },
+      "39": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "40": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "41": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "42": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "43": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "44": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "45": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "46": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "47": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "48": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "49": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "50": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "51": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "52": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "53": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "54": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "55": {
+        "spherical": 29,
+        "cartesianD": 32
+      },
+      "56": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "57": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "58": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "59": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "60": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "61": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "62": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "63": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "64": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "65": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "66": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "67": {
+        "spherical": 93,
+        "cartesianD": 98
+      },
+      "68": {
+        "spherical": 96,
+        "cartesianD": 101
+      },
+      "69": {
+        "spherical": 96,
+        "cartesianD": 101
+      },
+      "70": {
+        "spherical": 96,
+        "cartesianD": 101
+      },
+      "71": {
+        "spherical": 96,
+        "cartesianD": 101
+      },
+      "72": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "73": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "74": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "75": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "76": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "77": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "78": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "79": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "80": {
+        "spherical": 43,
+        "cartesianD": 46
+      },
+      "81": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "82": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "83": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "84": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "85": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "86": {
+        "spherical": 50,
+        "cartesianD": 53
+      }
+    }
+  },
+  "def2TZVPP": {
+    "name": "def2-TZVPP",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/def2-TZVPP/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "2": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "3": {
+        "spherical": 19,
+        "cartesianD": 20
+      },
+      "4": {
+        "spherical": 19,
+        "cartesianD": 20
+      },
+      "5": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "6": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "7": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "8": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "9": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "10": {
+        "spherical": 31,
+        "cartesianD": 33
+      },
+      "11": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "12": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "13": {
+        "spherical": 42,
+        "cartesianD": 45
+      },
+      "14": {
+        "spherical": 42,
+        "cartesianD": 45
+      },
+      "15": {
+        "spherical": 42,
+        "cartesianD": 45
+      },
+      "16": {
+        "spherical": 42,
+        "cartesianD": 45
+      },
+      "17": {
+        "spherical": 42,
+        "cartesianD": 45
+      },
+      "18": {
+        "spherical": 42,
+        "cartesianD": 45
+      },
+      "19": {
+        "spherical": 33,
+        "cartesianD": 36
+      },
+      "20": {
+        "spherical": 36,
+        "cartesianD": 39
+      },
+      "21": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "22": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "23": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "24": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "25": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "26": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "27": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "28": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "29": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "30": {
+        "spherical": 64,
+        "cartesianD": 68
+      },
+      "31": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "32": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "33": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "34": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "35": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "36": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "37": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "38": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "39": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "40": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "41": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "42": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "43": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "44": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "45": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "46": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "47": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "48": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "49": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "50": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "51": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "52": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "53": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "54": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "55": {
+        "spherical": 36,
+        "cartesianD": 39
+      },
+      "56": {
+        "spherical": 40,
+        "cartesianD": 43
+      },
+      "57": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "58": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "59": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "60": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "61": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "62": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "63": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "64": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "65": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "66": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "67": {
+        "spherical": 102,
+        "cartesianD": 107
+      },
+      "68": {
+        "spherical": 105,
+        "cartesianD": 110
+      },
+      "69": {
+        "spherical": 105,
+        "cartesianD": 110
+      },
+      "70": {
+        "spherical": 105,
+        "cartesianD": 110
+      },
+      "71": {
+        "spherical": 105,
+        "cartesianD": 110
+      },
+      "72": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "73": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "74": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "75": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "76": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "77": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "78": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "79": {
+        "spherical": 56,
+        "cartesianD": 59
+      },
+      "80": {
+        "spherical": 59,
+        "cartesianD": 62
+      },
+      "81": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "82": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "83": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "84": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "85": {
+        "spherical": 50,
+        "cartesianD": 53
+      },
+      "86": {
+        "spherical": 50,
+        "cartesianD": 53
+      }
+    }
+  },
+  "def2QZVP": {
+    "name": "def2-QZVP",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/def2-QZVP/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 30,
+        "cartesianD": 32
+      },
+      "2": {
+        "spherical": 30,
+        "cartesianD": 32
+      },
+      "3": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "4": {
+        "spherical": 36,
+        "cartesianD": 38
+      },
+      "5": {
+        "spherical": 57,
+        "cartesianD": 60
+      },
+      "6": {
+        "spherical": 57,
+        "cartesianD": 60
+      },
+      "7": {
+        "spherical": 57,
+        "cartesianD": 60
+      },
+      "8": {
+        "spherical": 57,
+        "cartesianD": 60
+      },
+      "9": {
+        "spherical": 57,
+        "cartesianD": 60
+      },
+      "10": {
+        "spherical": 57,
+        "cartesianD": 60
+      },
+      "11": {
+        "spherical": 46,
+        "cartesianD": 49
+      },
+      "12": {
+        "spherical": 51,
+        "cartesianD": 55
+      },
+      "13": {
+        "spherical": 70,
+        "cartesianD": 74
+      },
+      "14": {
+        "spherical": 70,
+        "cartesianD": 74
+      },
+      "15": {
+        "spherical": 70,
+        "cartesianD": 74
+      },
+      "16": {
+        "spherical": 70,
+        "cartesianD": 74
+      },
+      "17": {
+        "spherical": 70,
+        "cartesianD": 74
+      },
+      "18": {
+        "spherical": 70,
+        "cartesianD": 74
+      },
+      "19": {
+        "spherical": 56,
+        "cartesianD": 60
+      },
+      "20": {
+        "spherical": 56,
+        "cartesianD": 60
+      },
+      "21": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "22": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "23": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "24": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "25": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "26": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "27": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "28": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "29": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "30": {
+        "spherical": 84,
+        "cartesianD": 89
+      },
+      "31": {
+        "spherical": 75,
+        "cartesianD": 79
+      },
+      "32": {
+        "spherical": 75,
+        "cartesianD": 79
+      },
+      "33": {
+        "spherical": 75,
+        "cartesianD": 79
+      },
+      "34": {
+        "spherical": 75,
+        "cartesianD": 79
+      },
+      "35": {
+        "spherical": 75,
+        "cartesianD": 79
+      },
+      "36": {
+        "spherical": 75,
+        "cartesianD": 79
+      },
+      "37": {
+        "spherical": 49,
+        "cartesianD": 53
+      },
+      "38": {
+        "spherical": 49,
+        "cartesianD": 53
+      },
+      "39": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "40": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "41": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "42": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "43": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "44": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "45": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "46": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "47": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "48": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "49": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "50": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "51": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "52": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "53": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "54": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "55": {
+        "spherical": 48,
+        "cartesianD": 52
+      },
+      "56": {
+        "spherical": 60,
+        "cartesianD": 63
+      },
+      "57": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "58": {
+        "spherical": 121,
+        "cartesianD": 127
+      },
+      "59": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "60": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "61": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "62": {
+        "spherical": 121,
+        "cartesianD": 127
+      },
+      "63": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "64": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "65": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "66": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "67": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "68": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "69": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "70": {
+        "spherical": 121,
+        "cartesianD": 127
+      },
+      "71": {
+        "spherical": 118,
+        "cartesianD": 124
+      },
+      "72": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "73": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "74": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "75": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "76": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "77": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "78": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "79": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "80": {
+        "spherical": 72,
+        "cartesianD": 76
+      },
+      "81": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "82": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "83": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "84": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "85": {
+        "spherical": 82,
+        "cartesianD": 86
+      },
+      "86": {
+        "spherical": 82,
+        "cartesianD": 86
+      }
+    }
+  },
+  "6-31G(d)": {
+    "name": "6-31G*",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/6-31G*/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 2,
+        "cartesianD": 2
+      },
+      "2": {
+        "spherical": 2,
+        "cartesianD": 2
+      },
+      "3": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "4": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "5": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "6": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "7": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "8": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "9": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "10": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "11": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "12": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "13": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "14": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "15": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "16": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "17": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "18": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "19": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "20": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "21": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "22": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "23": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "24": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "25": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "26": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "27": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "28": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "29": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "30": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "31": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "32": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "33": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "34": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "35": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "36": {
+        "spherical": 32,
+        "cartesianD": 35
+      }
+    }
+  },
+  "6-31+G(d)": {
+    "name": "6-31+G*",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/6-31%2BG*/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 2,
+        "cartesianD": 2
+      },
+      "2": {
+        "spherical": 2,
+        "cartesianD": 2
+      },
+      "3": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "4": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "5": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "6": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "7": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "8": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "9": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "10": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "11": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "12": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "13": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "14": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "15": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "16": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "17": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "18": {
+        "spherical": 22,
+        "cartesianD": 23
+      }
+    }
+  },
+  "6-31G(d,p)": {
+    "name": "6-31G**",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/6-31G**/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 5,
+        "cartesianD": 5
+      },
+      "2": {
+        "spherical": 5,
+        "cartesianD": 5
+      },
+      "3": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "4": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "5": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "6": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "7": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "8": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "9": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "10": {
+        "spherical": 14,
+        "cartesianD": 15
+      },
+      "11": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "12": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "13": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "14": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "15": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "16": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "17": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "18": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "19": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "20": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "21": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "22": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "23": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "24": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "25": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "26": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "27": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "28": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "29": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "30": {
+        "spherical": 34,
+        "cartesianD": 36
+      },
+      "31": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "32": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "33": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "34": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "35": {
+        "spherical": 32,
+        "cartesianD": 35
+      },
+      "36": {
+        "spherical": 32,
+        "cartesianD": 35
+      }
+    }
+  },
+  "6-31+G(d,p)": {
+    "name": "6-31+G**",
+    "version": "1",
+    "source": "https://www.basissetexchange.org/api/basis/6-31%2BG**/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 5,
+        "cartesianD": 5
+      },
+      "2": {
+        "spherical": 5,
+        "cartesianD": 5
+      },
+      "3": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "4": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "5": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "6": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "7": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "8": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "9": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "10": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "11": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "12": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "13": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "14": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "15": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "16": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "17": {
+        "spherical": 22,
+        "cartesianD": 23
+      },
+      "18": {
+        "spherical": 22,
+        "cartesianD": 23
+      }
+    }
+  },
+  "6-311G(d,p)": {
+    "name": "6-311G**",
+    "version": "0",
+    "source": "https://www.basissetexchange.org/api/basis/6-311G**/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 6,
+        "cartesianD": 6
+      },
+      "2": {
+        "spherical": 6,
+        "cartesianD": 6
+      },
+      "3": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "4": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "5": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "6": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "7": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "8": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "9": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "10": {
+        "spherical": 18,
+        "cartesianD": 19
+      },
+      "11": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "12": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "13": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "14": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "15": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "16": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "17": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "18": {
+        "spherical": 26,
+        "cartesianD": 27
+      },
+      "19": {
+        "spherical": 39,
+        "cartesianD": 41
+      },
+      "20": {
+        "spherical": 39,
+        "cartesianD": 41
+      },
+      "31": {
+        "spherical": 44,
+        "cartesianD": 47
+      },
+      "32": {
+        "spherical": 44,
+        "cartesianD": 47
+      },
+      "33": {
+        "spherical": 44,
+        "cartesianD": 47
+      },
+      "34": {
+        "spherical": 44,
+        "cartesianD": 47
+      },
+      "35": {
+        "spherical": 44,
+        "cartesianD": 47
+      },
+      "36": {
+        "spherical": 44,
+        "cartesianD": 47
+      },
+      "53": {
+        "spherical": 62,
+        "cartesianD": 67
+      }
+    }
+  },
+  "6-311+G(2d,p)": {
+    "name": "6-311+G(2d,p)",
+    "version": "0",
+    "source": "https://www.basissetexchange.org/api/basis/6-311%2BG(2d%2Cp)/format/json/",
+    "elements": {
+      "1": {
+        "spherical": 6,
+        "cartesianD": 6
+      },
+      "2": {
+        "spherical": 6,
+        "cartesianD": 6
+      },
+      "3": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "4": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "5": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "6": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "7": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "8": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "9": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "10": {
+        "spherical": 27,
+        "cartesianD": 29
+      },
+      "11": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "12": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "13": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "14": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "15": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "16": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "17": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "18": {
+        "spherical": 35,
+        "cartesianD": 37
+      },
+      "19": {
+        "spherical": 48,
+        "cartesianD": 51
+      },
+      "20": {
+        "spherical": 48,
+        "cartesianD": 51
+      }
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "schema": "ester-task-system-public-notices/v1",
+  "materials": [
+    {
+      "name": "ssh2",
+      "version": "1.17.0",
+      "declaredLicense": [
+        {
+          "type": "MIT",
+          "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE"
+        }
+      ],
+      "locked": {
+        "version": "1.17.0",
+        "resolved": "https://registry.npmjs.org/ssh2/-/ssh2-1.17.0.tgz",
+        "integrity": "sha512-wPldCk3asibAjQ/kziWQQt1Wh3PgDFpC0XpwclzKcdT1vql6KeYxf5LIt4nlFkUeR8WuphYMKqUA56X4rjbfgQ=="
+      },
+      "file": "npm/ssh2@1.17.0/LICENSE",
+      "bytes": 1067,
+      "sha256": "d06b5d27bbbbe22c36b1fd88406b1208876e2d37d795f5b8eaed951a459a3111"
+    },
+    {
+      "name": "asn1",
+      "version": "0.2.6",
+      "declaredLicense": "MIT",
+      "locked": {
+        "version": "0.2.6",
+        "resolved": "https://registry.npmjs.org/asn1/-/asn1-0.2.6.tgz",
+        "integrity": "sha512-ix/FxPn0MDjeyJ7i/yoHGFt/EX6LyNbxSEhPPXODPL+KB0VPk86UYfL0lMdy+KCnv+fmvIzySwaK5COwqVbWTQ=="
+      },
+      "file": "npm/asn1@0.2.6/LICENSE",
+      "bytes": 1076,
+      "sha256": "f4b6bd1a9437d0f66ff46d8f4dca185c31a069ba11e437f3b8506ec4424be9cf"
+    },
+    {
+      "name": "bcrypt-pbkdf",
+      "version": "1.0.2",
+      "declaredLicense": "BSD-3-Clause",
+      "locked": {
+        "version": "1.0.2",
+        "resolved": "https://registry.npmjs.org/bcrypt-pbkdf/-/bcrypt-pbkdf-1.0.2.tgz",
+        "integrity": "sha512-qeFIXtP4MSoi6NLqO12WfqARWWuCKi2Rn/9hJLEmtB5yTNr9DqFWkJRCf2qShWzPeAMRnOgCrq0sg/KLv5ES9w=="
+      },
+      "file": "npm/bcrypt-pbkdf@1.0.2/LICENSE",
+      "bytes": 3195,
+      "sha256": "b5f71fac3ae50115c65ee70551bdbaeed89b4f7a76ac36dc8c576e3036bcd604"
+    },
+    {
+      "name": "safer-buffer",
+      "version": "2.1.2",
+      "declaredLicense": "MIT",
+      "locked": {
+        "version": "2.1.2",
+        "resolved": "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz",
+        "integrity": "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg=="
+      },
+      "file": "npm/safer-buffer@2.1.2/LICENSE",
+      "bytes": 1094,
+      "sha256": "4bc935e71be198c67ddf3c2b5fddb195f6edc182bfc155a96a6db61b44b494b9"
+    },
+    {
+      "name": "tweetnacl",
+      "version": "0.14.5",
+      "declaredLicense": "Unlicense",
+      "locked": {
+        "version": "0.14.5",
+        "resolved": "https://registry.npmjs.org/tweetnacl/-/tweetnacl-0.14.5.tgz",
+        "integrity": "sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA=="
+      },
+      "file": "npm/tweetnacl@0.14.5/LICENSE",
+      "bytes": 1210,
+      "sha256": "88d9b4eb60579c191ec391ca04c16130572d7eedc4a86daa58bf28c6e14c9bcd"
+    }
+  ],
+  "optionalModulesNotDistributed": [
+    "cpu-features",
+    "nan",
+    "buildcheck",
+    "sshcrypto.node"
+  ],
+  "sqlite": {
+    "provider": "node:sqlite built into locked Electron 44.7.0",
+    "externalSQLitePackageInstalled": false,
+    "existingElectronNoticesRetained": true
+  },
+  "licenseTextsCopiedVerbatim": true,
+  "publicDistributionApproved": false
+}

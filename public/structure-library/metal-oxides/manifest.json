@@ -1,0 +1,2756 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "tio2-rutile",
+      "category": "metal-oxides",
+      "name": "金红石型二氧化钛",
+      "nameEn": "Rutile titanium dioxide",
+      "formula": "TiO2",
+      "aliases": [
+        "TiO2",
+        "rutile",
+        "金红石",
+        "Rutile-type TiO2"
+      ],
+      "phase": "rutile; tetragonal TiO2",
+      "structurePath": "metal-oxides/tio2-rutile/structure.json",
+      "sourcePath": "metal-oxides/tio2-rutile/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9015662",
+        "url": "https://www.crystallography.net/cod/9015662.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 292002",
+        "retrievedAt": "2026-10-20",
+        "citation": "Howard, C. J.; Sabine, T. M.; Dickson, F. Structural and thermal parameters for rutile and anatase. Acta Crystallographica, Section B, 47, 462-468 (1991)",
+        "doi": "10.1107/S010876819100335X"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies rutile TiO2 in the cited structure/thermal-parameter paper; the accessible COD row does not specify the measurement temperature.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 42/m n m",
+        "number": 136
+      }
+    },
+    {
+      "id": "tio2-anatase",
+      "category": "metal-oxides",
+      "name": "锐钛矿型二氧化钛",
+      "nameEn": "Anatase titanium dioxide",
+      "formula": "TiO2",
+      "aliases": [
+        "TiO2",
+        "anatase",
+        "锐钛矿",
+        "Anatase-type TiO2"
+      ],
+      "phase": "anatase; tetragonal TiO2",
+      "structurePath": "metal-oxides/tio2-anatase/structure.json",
+      "sourcePath": "metal-oxides/tio2-anatase/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9015929",
+        "url": "https://www.crystallography.net/cod/9015929.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303136",
+        "retrievedAt": "2026-10-20",
+        "citation": "Howard, C. J.; Sabine, T. M.; Dickson, F. Structural and thermal parameters for rutile and anatase. Acta Crystallographica, Section B, 47, 462-468 (1991)",
+        "doi": "10.1107/S010876819100335X"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies anatase TiO2 in the cited structure/thermal-parameter paper; the accessible COD row does not specify the measurement temperature.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I 41/a m d :1",
+        "number": 141
+      }
+    },
+    {
+      "id": "tio2-brookite",
+      "category": "metal-oxides",
+      "name": "板钛矿型二氧化钛",
+      "nameEn": "Brookite titanium dioxide",
+      "formula": "TiO2",
+      "aliases": [
+        "TiO2",
+        "brookite",
+        "板钛矿",
+        "Brookite-type TiO2"
+      ],
+      "phase": "brookite; orthorhombic TiO2",
+      "structurePath": "metal-oxides/tio2-brookite/structure.json",
+      "sourcePath": "metal-oxides/tio2-brookite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9004137",
+        "url": "https://www.crystallography.net/cod/9004137.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303136",
+        "retrievedAt": "2026-10-20",
+        "citation": "Meagher, E. P.; Lager, G. A. Polyhedral thermal expansion in the TiO2 polymorphs: Refinement of the crystal structures of rutile and brookite at high temperature Sample at 25 degrees C. The Canadian Mineralogist, 17, 77-85 (1979)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies brookite in the experimental TiO2-polymorph refinement study.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b c a",
+        "number": 61
+      }
+    },
+    {
+      "id": "zno-wurtzite",
+      "category": "metal-oxides",
+      "name": "纤锌矿型氧化锌",
+      "nameEn": "Wurtzite zinc oxide",
+      "formula": "ZnO",
+      "aliases": [
+        "ZnO",
+        "zincite",
+        "wurtzite",
+        "纤锌矿",
+        "Zincite"
+      ],
+      "phase": "wurtzite; hexagonal ZnO",
+      "structurePath": "metal-oxides/zno-wurtzite/structure.json",
+      "sourcePath": "metal-oxides/zno-wurtzite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2107059",
+        "url": "https://www.crystallography.net/cod/2107059.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-20",
+        "citation": "Albertsson, J.; Abrahams, S.C.; Kvick, A. Atomic displacement, anharmonic thermal vibration, expansivity and pyroelectric coefficient thermal dependences in Zn O. Acta Crystallographica B (39,1983-), 45, 34-40 (1989)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record has the wurtzite space group and ZnO formula; selected from the single-crystal thermal-parameter study.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63 m c",
+        "number": 186
+      }
+    },
+    {
+      "id": "cuo-tenorite",
+      "category": "metal-oxides",
+      "name": "黑铜矿型氧化铜（Cc室温精修）",
+      "nameEn": "Tenorite CuO (Cc room-temperature refinement)",
+      "formula": "CuO",
+      "aliases": [
+        "CuO",
+        "tenorite",
+        "黑铜矿",
+        "Copper(II) oxide"
+      ],
+      "phase": "tenorite; specific non-centrosymmetric Cc (#9) room-temperature refinement; not the common C2/c reference setting",
+      "structurePath": "metal-oxides/cuo-tenorite/structure.json",
+      "sourcePath": "metal-oxides/cuo-tenorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9016326",
+        "url": "https://www.crystallography.net/cod/9016326.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 292100",
+        "retrievedAt": "2026-10-20",
+        "citation": "Asbrink, S.; Waskowska, A. CuO: x-ray single-crystal structure determination at 196 K and room temperature Note: T = room temperature. Journal of Physics: Condensed Matter, 3, 8173-8180 (1991)",
+        "doi": "10.1088/0953-8984/3/42/012",
+        "conditions": "Room temperature, as stated in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Retained as the exact room-temperature single-crystal refinement in COD, with its source-specific non-centrosymmetric Cc (#9) identity explicit; it is not presented as the generic C2/c tenorite reference model.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 c 1",
+        "number": 9
+      }
+    },
+    {
+      "id": "cuo-tenorite-c2c",
+      "category": "metal-oxides",
+      "name": "黑铜矿型氧化铜（C2/c）",
+      "nameEn": "Tenorite CuO (C2/c)",
+      "formula": "CuO",
+      "aliases": [
+        "CuO",
+        "tenorite",
+        "黑铜矿",
+        "Copper(II) oxide",
+        "C2/c tenorite"
+      ],
+      "phase": "tenorite; monoclinic C2/c (#15) common reference structure",
+      "structurePath": "metal-oxides/cuo-tenorite-c2c/structure.json",
+      "sourcePath": "metal-oxides/cuo-tenorite-c2c/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9014580",
+        "url": "https://www.crystallography.net/cod/9014580.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 292002",
+        "retrievedAt": "2026-10-20",
+        "citation": "Asbrink, S.; Norrby, L. J. A refinement of the crystal structure of copper(II) oxide, with a discussion of some exceptional E.s.d.'s. Acta Crystallographica, Section B, 26, 8-15 (1970)",
+        "doi": "10.1107/S0567740870001838"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record reproduces Asbrink and Norrby's single-crystal refinement of CuO, with C2/c (No. 15) symmetry and full Cu/O sites; the distinct Cc (#9) refinement is retained separately.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 2/c 1",
+        "number": 15
+      }
+    },
+    {
+      "id": "cu2o-cuprite",
+      "category": "metal-oxides",
+      "name": "赤铜矿型氧化亚铜",
+      "nameEn": "Cuprite copper(I) oxide",
+      "formula": "Cu2O",
+      "aliases": [
+        "Cu2O",
+        "cuprite",
+        "赤铜矿",
+        "Copper(I) oxide"
+      ],
+      "phase": "cuprite; cubic Cu2O",
+      "structurePath": "metal-oxides/cu2o-cuprite/structure.json",
+      "sourcePath": "metal-oxides/cu2o-cuprite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9007497",
+        "url": "https://www.crystallography.net/cod/9007497.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303136",
+        "retrievedAt": "2026-10-20",
+        "citation": "Kirfel, A.; Eichhorn, K. Accurate structure analysis with synchrotron radiation. The electron density in Al2O3 and Cu2O Note: Atomic parameters were mislabeled in the publication. They have been fixed in this dataset. Acta Crystallographica, Section A, 46, 271-284 (1990)",
+        "doi": "10.1107/S0108767389012596"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies cuprite and the synchrotron structure paper; its record notes that mislabeled published atom parameters were corrected in the dataset.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P n -3 m :1",
+        "number": 224
+      }
+    },
+    {
+      "id": "fe2o3-hematite",
+      "category": "metal-oxides",
+      "name": "赤铁矿型氧化铁",
+      "nameEn": "Hematite",
+      "formula": "Fe2O3",
+      "aliases": [
+        "Fe2O3",
+        "hematite",
+        "赤铁矿",
+        "alpha-Fe2O3",
+        "α-Fe2O3"
+      ],
+      "phase": "hematite; corundum-type alpha-Fe2O3",
+      "structurePath": "metal-oxides/fe2o3-hematite/structure.json",
+      "sourcePath": "metal-oxides/fe2o3-hematite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9015964",
+        "url": "https://www.crystallography.net/cod/9015964.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 292100",
+        "retrievedAt": "2026-10-20",
+        "citation": "Finger, L. W.; Hazen, R. M. Crystal structure and isothermal compression of Fe2O3, Cr2O3, and V2O3 to 50 kbars Note: P = 0.001 kbar. Journal of Applied Physics, 51, 5362-5367 (1980)",
+        "doi": "10.1063/1.327451",
+        "conditions": "P = 0.001 kbar in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies hematite in the experimental compression series at approximately ambient pressure.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c :H",
+        "number": 167
+      }
+    },
+    {
+      "id": "fe3o4-magnetite",
+      "category": "metal-oxides",
+      "name": "磁铁矿",
+      "nameEn": "Magnetite",
+      "formula": "Fe3O4",
+      "aliases": [
+        "Fe3O4",
+        "magnetite",
+        "磁铁矿",
+        "spinel iron oxide"
+      ],
+      "phase": "magnetite; cubic spinel; zero-pressure record",
+      "structurePath": "metal-oxides/fe3o4-magnetite/structure.json",
+      "sourcePath": "metal-oxides/fe3o4-magnetite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9002316",
+        "url": "https://www.crystallography.net/cod/9002316.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291269",
+        "retrievedAt": "2026-10-20",
+        "citation": "Haavik, C.; Stolen, S.; Fjellvag, H.; Hanfland, M.; Hausermann, D. Equation of state of magnetite and its high-pressure modification: Thermodynamics of the Fe-O system at high pressure Sample at P = 0. American Mineralogist, 85, 514-523 (2000)",
+        "conditions": "P = 0 in the COD record.; CIF pressure: 0"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies magnetite at P = 0 in an experimental equation-of-state series.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d -3 m :2",
+        "number": 227
+      }
+    },
+    {
+      "id": "al2o3-alpha-corundum",
+      "category": "metal-oxides",
+      "name": "α-氧化铝",
+      "nameEn": "Alpha-alumina (corundum)",
+      "formula": "Al2O3",
+      "aliases": [
+        "Al2O3",
+        "corundum",
+        "刚玉",
+        "alpha-alumina",
+        "α-alumina"
+      ],
+      "phase": "alpha-Al2O3; corundum structure",
+      "structurePath": "metal-oxides/al2o3-alpha-corundum/structure.json",
+      "sourcePath": "metal-oxides/al2o3-alpha-corundum/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008081",
+        "url": "https://www.crystallography.net/cod/9008081.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303136",
+        "retrievedAt": "2026-10-20",
+        "citation": "Newnham, R. E.; de Haan, Y. M. Refinement of the alpha Al2O3, Ti2O3, V2O3 and Cr2O3 structures. Zeitschrift fur Kristallographie, 117, 235-237 (1962)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the experimental refinement of alpha-Al2O3; not ruby-doped corundum.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c :H",
+        "number": 167
+      }
+    },
+    {
+      "id": "mgo-periclase",
+      "category": "metal-oxides",
+      "name": "方镁石型氧化镁",
+      "nameEn": "Periclase magnesium oxide",
+      "formula": "MgO",
+      "aliases": [
+        "MgO",
+        "periclase",
+        "方镁石",
+        "rocksalt MgO"
+      ],
+      "phase": "periclase; rocksalt MgO",
+      "structurePath": "metal-oxides/mgo-periclase/structure.json",
+      "sourcePath": "metal-oxides/mgo-periclase/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1000053",
+        "url": "https://www.crystallography.net/cod/1000053.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 202026",
+        "retrievedAt": "2026-10-20",
+        "citation": "Sasaki, Satoshi; Fujino, Kiyoshi; Tak\\'euchi, Yoshio. X-Ray Determination of Electron-Density Distributions in Oxides, MgO, MnO, CoO, and NiO, and Atomic Scattering Factors of their Constituent Atoms. Proceedings of the Japan Academy, Series B: Physical and Biological Sciences, 55, 43-48 (1979)",
+        "doi": "10.2183/pjab.55.43"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the experimental electron-density study of MgO and transition-metal oxides.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "cao-lime",
+      "category": "metal-oxides",
+      "name": "石灰型氧化钙",
+      "nameEn": "Lime calcium oxide",
+      "formula": "CaO",
+      "aliases": [
+        "CaO",
+        "lime",
+        "石灰",
+        "rocksalt CaO"
+      ],
+      "phase": "lime; rocksalt CaO",
+      "structurePath": "metal-oxides/cao-lime/structure.json",
+      "sourcePath": "metal-oxides/cao-lime/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9006694",
+        "url": "https://www.crystallography.net/cod/9006694.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-20",
+        "citation": "Fiquet, G.; Richet, P.; Montagnac, G. High-temperature thermal expansion of lime, periclase, corundum and spinel Sample: PtRh10% heating wire, T = 298 K. Physics and Chemistry of Minerals, 27, 103-111 (1999)",
+        "doi": "10.1007/s002690050246",
+        "conditions": "T = 298 K in the COD record.; CIF temperature: 298 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies lime in the experimental thermal-expansion study at 298 K.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "nio-bunsenite",
+      "category": "metal-oxides",
+      "name": "方镍矿型氧化镍",
+      "nameEn": "Bunsenite nickel(II) oxide",
+      "formula": "NiO",
+      "aliases": [
+        "NiO",
+        "bunsenite",
+        "方镍矿",
+        "rocksalt NiO"
+      ],
+      "phase": "bunsenite; rocksalt NiO",
+      "structurePath": "metal-oxides/nio-bunsenite/structure.json",
+      "sourcePath": "metal-oxides/nio-bunsenite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008693",
+        "url": "https://www.crystallography.net/cod/9008693.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-20",
+        "citation": "Wyckoff, R. W. G. Second edition. Interscience Publishers, New York, New York rocksalt structure. Crystal Structures, 1, 85-237 (1963)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD cites the Wyckoff Crystal Structures compilation for this full-occupancy bunsenite model; classified as curated because an underlying primary refinement has not been independently identified.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "coo-rocksalt",
+      "category": "metal-oxides",
+      "name": "岩盐型氧化钴",
+      "nameEn": "Cobalt(II) oxide",
+      "formula": "CoO",
+      "aliases": [
+        "CoO",
+        "cobaltous oxide",
+        "岩盐结构",
+        "rocksalt CoO"
+      ],
+      "phase": "rocksalt CoO",
+      "structurePath": "metal-oxides/coo-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/coo-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1533087",
+        "url": "https://www.crystallography.net/cod/1533087.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303120",
+        "retrievedAt": "2026-10-20",
+        "citation": "Sasaki, Satoshi; Fujino, Kiyoshi; Tak\\'euchi, Yoshio. X-Ray Determination of Electron-Density Distributions in Oxides, MgO, MnO, CoO, and NiO, and Atomic Scattering Factors of their Constituent Atoms. Proceedings of the Japan Academy, Series B: Physical and Biological Sciences, 55, 43-48 (1979)",
+        "doi": "10.2183/pjab.55.43"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the experimental electron-density study and gives the rocksalt phase.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "co3o4-normal-spinel",
+      "category": "metal-oxides",
+      "name": "尖晶石型四氧化三钴",
+      "nameEn": "Cobalt(II,III) oxide (normal spinel)",
+      "formula": "Co3O4",
+      "aliases": [
+        "Co3O4",
+        "cobalt spinel",
+        "normal spinel",
+        "尖晶石"
+      ],
+      "phase": "normal spinel; Co3O4 at 301 K",
+      "structurePath": "metal-oxides/co3o4-normal-spinel/structure.json",
+      "sourcePath": "metal-oxides/co3o4-normal-spinel/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9005887",
+        "url": "https://www.crystallography.net/cod/9005887.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 294031",
+        "retrievedAt": "2026-10-20",
+        "citation": "Liu, X.; Prewitt, C. T. High-temperature X-ray diffraction study of Co3O4: transition from normal to disordered spinel Sample: RUN I, T = 301 K. Physics and Chemistry of Minerals, 17, 168-172 (1990)",
+        "conditions": "T = 301 K in the COD record.; CIF temperature: 301 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the 301 K point in the experimental Co3O4 spinel disorder study; retained only if its CIF has full occupancies.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d -3 m :2",
+        "number": 227
+      }
+    },
+    {
+      "id": "ceo2-fluorite",
+      "category": "metal-oxides",
+      "name": "萤石型二氧化铈",
+      "nameEn": "Cerianite (cerium dioxide)",
+      "formula": "CeO2",
+      "aliases": [
+        "CeO2",
+        "cerianite",
+        "萤石结构",
+        "fluorite CeO2"
+      ],
+      "phase": "cerianite; fluorite CeO2",
+      "structurePath": "metal-oxides/ceo2-fluorite/structure.json",
+      "sourcePath": "metal-oxides/ceo2-fluorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9009008",
+        "url": "https://www.crystallography.net/cod/9009008.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-20",
+        "citation": "Wyckoff, R. W. G. Second edition. Interscience Publishers, New York, New York Fluorite structure. Crystal Structures, 1, 239-444 (1963)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD cites the Wyckoff Crystal Structures compilation for this full-occupancy fluorite model; classified as curated because an underlying primary refinement has not been independently identified.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "zro2-monoclinic",
+      "category": "metal-oxides",
+      "name": "单斜氧化锆",
+      "nameEn": "Monoclinic zirconia (baddeleyite)",
+      "formula": "ZrO2",
+      "aliases": [
+        "ZrO2",
+        "baddeleyite",
+        "斜锆石",
+        "monoclinic zirconia"
+      ],
+      "phase": "monoclinic baddeleyite; room-temperature ZrO2",
+      "structurePath": "metal-oxides/zro2-monoclinic/structure.json",
+      "sourcePath": "metal-oxides/zro2-monoclinic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9016714",
+        "url": "https://www.crystallography.net/cod/9016714.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303136",
+        "retrievedAt": "2026-10-20",
+        "citation": "Howard, C. J.; Hill, R. J.; Reichert, B. E. Structures of the ZrO2 polymorphs at room temperature by high-resolution neutron powder diffraction. Acta Crystallographica, Section B, 44, 116-120 (1988)",
+        "doi": "10.1107/S0108768187010279"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the room-temperature neutron-powder structure of the monoclinic ZrO2 polymorphs.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/c 1",
+        "number": 14
+      }
+    },
+    {
+      "id": "zro2-tetragonal",
+      "category": "metal-oxides",
+      "name": "四方氧化锆",
+      "nameEn": "Tetragonal zirconia",
+      "formula": "ZrO2",
+      "aliases": [
+        "ZrO2",
+        "tetragonal zirconia",
+        "四方相"
+      ],
+      "phase": "metastable tetragonal ZrO2",
+      "structurePath": "metal-oxides/zro2-tetragonal/structure.json",
+      "sourcePath": "metal-oxides/zro2-tetragonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1526427",
+        "url": "https://www.crystallography.net/cod/1526427.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-20",
+        "citation": "Igawa, N.; Ishii, Y. Crystal structure of metastable tetragonal zirconia up to 1473 K. Journal of the American Ceramic Society, 84, 1169-1171 (2001)",
+        "conditions": "Metastable tetragonal phase; the cited source reports measurements up to 1473 K."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record explicitly identifies metastable tetragonal zirconia in an experimental temperature-series study.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 42/n m c :1",
+        "number": 137
+      }
+    },
+    {
+      "id": "ag2o-cubic",
+      "category": "metal-oxides",
+      "name": "氧化银(I)",
+      "nameEn": "Silver(I) oxide",
+      "formula": "Ag2O",
+      "aliases": [
+        "Ag2O",
+        "silver oxide",
+        "氧化银"
+      ],
+      "phase": "cubic Ag2O, COD space group Pn-3m (#224)",
+      "structurePath": "metal-oxides/ag2o-cubic/structure.json",
+      "sourcePath": "metal-oxides/ag2o-cubic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010486",
+        "url": "https://www.crystallography.net/cod/1010486.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 201954",
+        "retrievedAt": "2026-10-23T16:42:13.271987+00:00",
+        "citation": "Niggli, P (1922). Die Kristallstruktur einiger Oxyde I.. Zeitschrift fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie (-144,1977), 57, 253-299.",
+        "conditions": "unknown (COD record does not state a measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD formula-index record; conventional cubic oxide model. This is a crystallographic candidate only; structure-library owner should verify the exact phase against target workflow.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P n -3 m :1",
+        "number": 224
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ag2o3-silver-iii",
+      "category": "metal-oxides",
+      "name": "氧化银(III)",
+      "nameEn": "Silver(III) oxide",
+      "formula": "Ag2O3",
+      "aliases": [
+        "Ag2O3",
+        "silver(III) oxide"
+      ],
+      "phase": "orthorhombic Ag2O3, Fdd2 (#43)",
+      "structurePath": "metal-oxides/ag2o3-silver-iii/structure.json",
+      "sourcePath": "metal-oxides/ag2o3-silver-iii/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1509692",
+        "url": "https://www.crystallography.net/cod/1509692.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 211196",
+        "retrievedAt": "2026-10-23T16:42:13.302563+00:00",
+        "citation": "Standke, B.; Jansen, M. (1986). Darstellung und Kristallstruktur von Ag2 O3. Zeitschrift fuer Anorganische und Allgemeine Chemie, 535, 39-46.",
+        "doi": "10.1002/zaac.19865350406",
+        "conditions": "unknown (COD record does not state a measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Standke and Jansen (1986) COD entry explicitly identifies Ag2O3; experimental CIF coordinates require owner occupancy review.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d d 2",
+        "number": 43
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "amo2-fluorite",
+      "category": "metal-oxides",
+      "name": "二氧化镅",
+      "nameEn": "Americium dioxide",
+      "formula": "AmO2",
+      "aliases": [
+        "AmO2",
+        "americium dioxide",
+        "fluorite AmO2"
+      ],
+      "phase": "fluorite-type AmO2, Fm-3m (#225)",
+      "structurePath": "metal-oxides/amo2-fluorite/structure.json",
+      "sourcePath": "metal-oxides/amo2-fluorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008998",
+        "url": "https://www.crystallography.net/cod/9008998.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:42:13.362236+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York Fluorite structure. Crystal Structures, 1, 239-444.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rare/radioactive MS-baseline phase; curated COD/Wyckoff record, retained for source review only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "bao-rocksalt",
+      "category": "metal-oxides",
+      "name": "氧化钡",
+      "nameEn": "Barium oxide",
+      "formula": "BaO",
+      "aliases": [
+        "BaO",
+        "barium monoxide",
+        "rocksalt BaO"
+      ],
+      "phase": "rocksalt BaO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/bao-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/bao-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1011362",
+        "url": "https://www.crystallography.net/cod/1011362.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301772",
+        "retrievedAt": "2026-10-23T16:42:13.469482+00:00",
+        "citation": "Gerlach, W (1922). Die Gitterstruktur der Erdalkalioxyde.. Zeitschrift fuer Physik, 9, 184-192.",
+        "doi": "10.1007/BF01326966",
+        "conditions": "unknown (COD record does not state a measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Gerlach 1922 COD entry for alkaline-earth oxides; rocksalt phase.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cdo-rocksalt",
+      "category": "metal-oxides",
+      "name": "氧化镉",
+      "nameEn": "Cadmium oxide",
+      "formula": "CdO",
+      "aliases": [
+        "CdO",
+        "cadmium oxide",
+        "rocksalt CdO"
+      ],
+      "phase": "rocksalt CdO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/cdo-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/cdo-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9006671",
+        "url": "https://www.crystallography.net/cod/9006671.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-23T16:42:13.583189+00:00",
+        "citation": "Zhang, J. (1999). Room temperature compressibilities of MnO and CdO: further examination of the role of cation type in bulk modulus systematics Sample from Run #1: P = 0.00 GPa at beginning of experiment. Physics and Chemistry of Minerals, 26, 644-648.",
+        "doi": "10.1007/s002690050229",
+        "conditions": "room temperature; P=0 GPa at the beginning of the reported run"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record from the room-temperature compressibility study; not a new chemistry or phase claim.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cr2o3-corundum",
+      "category": "metal-oxides",
+      "name": "刚玉型三氧化二铬",
+      "nameEn": "Corundum-type chromium(III) oxide",
+      "formula": "Cr2O3",
+      "aliases": [
+        "Cr2O3",
+        "alpha-Cr2O3",
+        "α-Cr2O3",
+        "eskolaite"
+      ],
+      "phase": "alpha-Cr2O3 corundum, R-3c (#167)",
+      "structurePath": "metal-oxides/cr2o3-corundum/structure.json",
+      "sourcePath": "metal-oxides/cr2o3-corundum/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008084",
+        "url": "https://www.crystallography.net/cod/9008084.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-23T16:42:13.652583+00:00",
+        "citation": "Newnham, R. E.; de Haan, Y. M. (1962). Refinement of the alpha Al2O3, Ti2O3, V2O3 and Cr2O3 structures. Zeitschrift fur Kristallographie, 117, 235-237.",
+        "conditions": "unknown (COD record does not state a measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD source is a structural refinement of alpha-Al2O3, Ti2O3, V2O3 and Cr2O3; maps both MS rhombohedral/hexagonal setting filenames to the same phase.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c :H",
+        "number": 167
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "euo-rocksalt",
+      "category": "metal-oxides",
+      "name": "氧化铕(II)",
+      "nameEn": "Europium(II) oxide",
+      "formula": "EuO",
+      "aliases": [
+        "EuO",
+        "europium monoxide",
+        "rocksalt EuO"
+      ],
+      "phase": "rocksalt EuO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/euo-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/euo-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008633",
+        "url": "https://www.crystallography.net/cod/9008633.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:42:13.802664+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York rocksalt structure. Crystal Structures, 1, 85-237.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD/Wyckoff curated structure; phase-specific experimental refinement not identified in this record.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "feo-wustite-near-stoich",
+      "category": "metal-oxides",
+      "name": "方铁矿型一氧化铁",
+      "nameEn": "Wustite (nearly stoichiometric FeO)",
+      "formula": "FeO",
+      "aliases": [
+        "FeO",
+        "wustite",
+        "wuestite",
+        "方铁矿"
+      ],
+      "phase": "rocksalt FeO, Fm-3m (#225), nearly stoichiometric sample",
+      "structurePath": "metal-oxides/feo-wustite-near-stoich/structure.json",
+      "sourcePath": "metal-oxides/feo-wustite-near-stoich/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9009766",
+        "url": "https://www.crystallography.net/cod/9009766.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:42:13.859614+00:00",
+        "citation": "Fjellvag, H.; Gronvold, F.; Stolen, S.; Hauback, B. C. (1996). On the crystallographic and magnetic structures of nearly stoichiometric iron monoxide Sample: Three-Phase Mixture FeO, T = 298 K. Journal of Solid State Chemistry, 124, 52-57.",
+        "doi": "10.1006/jssc.1996.0206",
+        "conditions": "298 K; COD title says nearly stoichiometric; actual site occupancy must be checked before admitting as exact FeO."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Retain the source composition caveat. Do not silently convert non-stoichiometric occupancy to ideal FeO.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ga2o3-beta",
+      "category": "metal-oxides",
+      "name": "β-氧化镓",
+      "nameEn": "Beta gallium oxide",
+      "formula": "Ga2O3",
+      "aliases": [
+        "Ga2O3",
+        "beta-Ga2O3",
+        "β-Ga2O3"
+      ],
+      "phase": "beta-Ga2O3, monoclinic C2/m (#12)",
+      "structurePath": "metal-oxides/ga2o3-beta/structure.json",
+      "sourcePath": "metal-oxides/ga2o3-beta/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2004987",
+        "url": "https://www.crystallography.net/cod/2004987.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303130",
+        "retrievedAt": "2026-10-23T16:42:13.898194+00:00",
+        "citation": "Åhman, J.; Svensson, G.; Albertsson, J. (1996). A Reinvestigation of β-Gallium Oxide. Acta Crystallographica Section C, 52(6), 1336-1338.",
+        "doi": "10.1107/S0108270195016404",
+        "conditions": "diffraction at 273 K; cell at 273.2 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the 1996 reinvestigation of beta-gallium oxide.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 2/m 1",
+        "number": 12
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "geo2-quartz-like",
+      "category": "metal-oxides",
+      "name": "石英型二氧化锗",
+      "nameEn": "Quartz-like germanium dioxide",
+      "formula": "GeO2",
+      "aliases": [
+        "GeO2",
+        "alpha-GeO2",
+        "quartz-like GeO2",
+        "α-GeO2"
+      ],
+      "phase": "quartz-like GeO2 polymorph of argutite; P3221 (COD setting)",
+      "structurePath": "metal-oxides/geo2-quartz-like/structure.json",
+      "sourcePath": "metal-oxides/geo2-quartz-like/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9007477",
+        "url": "https://www.crystallography.net/cod/9007477.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-23T16:42:13.919710+00:00",
+        "citation": "Smith, G. S.; Isaacs, P. B. (1964). The crystal structure of quartz-like GeO2 Note: polymorph of argutite. Acta Crystallographica, 17, 842-846.",
+        "doi": "10.1107/S0365110X64002262",
+        "conditions": "unknown (COD record does not state measurement temperature or pressure)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record explicitly names quartz-like GeO2; plausible mapping for MS GeO2_alpha, pending owner confirmation of the MS label.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 32 2 1"
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "bao2-peroxide",
+      "category": "metal-oxides",
+      "name": "过氧化钡",
+      "nameEn": "Barium peroxide",
+      "formula": "BaO2",
+      "aliases": [
+        "BaO2",
+        "barium peroxide"
+      ],
+      "phase": "tetragonal barium peroxide, I4/mmm (#139)",
+      "structurePath": "metal-oxides/bao2-peroxide/structure.json",
+      "sourcePath": "metal-oxides/bao2-peroxide/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2001842",
+        "url": "https://www.crystallography.net/cod/2001842.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303130",
+        "retrievedAt": "2026-10-23T16:49:00.841486+00:00",
+        "citation": "VerNooy, P. D. (1993). Redetermination of the structure of barium peroxide by single-crystal X-ray diffraction. Acta Crystallographica Section C, 49(3), 433-434.",
+        "doi": "10.1107/S0108270192008692",
+        "conditions": "unknown (COD record does not state a measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "VerNooy 1993 single-crystal redetermination; selected over the older record for a dedicated refinement.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order.",
+          "The CIF omits an explicit symmetry-operation loop; source-row mapping reuses the exact CifParser operations resolved from its declared source space group. No atoms or symmetry are invented beyond the source space-group declaration."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I 4/m m m"
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "geo2-rutile",
+      "category": "metal-oxides",
+      "name": "金红石型二氧化锗",
+      "nameEn": "Rutile-type germanium dioxide",
+      "formula": "GeO2",
+      "aliases": [
+        "GeO2",
+        "rutile GeO2",
+        "argutite"
+      ],
+      "phase": "rutile-type GeO2 (argutite), P42/mnm (#136)",
+      "structurePath": "metal-oxides/geo2-rutile/structure.json",
+      "sourcePath": "metal-oxides/geo2-rutile/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9007532",
+        "url": "https://www.crystallography.net/cod/9007532.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-23T16:49:00.856488+00:00",
+        "citation": "Baur, W. H.; Khan, A. A. (1971). Rutile-type compounds. IV. SiO2, GeO2 and a comparison with other rutile-type structures. Acta Crystallographica, Section B, 27(11), 2133-2139.",
+        "doi": "10.1107/S0567740871005466",
+        "conditions": "unknown (COD record does not state measurement temperature or pressure)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD entry cites Baur and Khan (1971) on rutile-type compounds; plausible mapping for MS GeO2.msi, pending owner confirmation.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 42/m n m",
+        "number": 136
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ko2-alpha-superoxide",
+      "category": "metal-oxides",
+      "name": "α-超氧化钾",
+      "nameEn": "Alpha potassium superoxide",
+      "formula": "KO2",
+      "aliases": [
+        "KO2",
+        "potassium superoxide",
+        "α-KO2"
+      ],
+      "phase": "alpha-KO2, tetragonal I4/mmm (#139)",
+      "structurePath": "metal-oxides/ko2-alpha-superoxide/structure.json",
+      "sourcePath": "metal-oxides/ko2-alpha-superoxide/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2310803",
+        "url": "https://www.crystallography.net/cod/2310803.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301809",
+        "retrievedAt": "2026-10-23T16:49:00.871537+00:00",
+        "citation": "Abrahams, S.C.; Kalnajs, J. (1955). The crystal structure of alpha-potassium superoxide. Acta Crystallographica (1,1948-23,1967), 8, 503-506.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Abrahams and Kalnajs (1955) COD entry explicitly identifies alpha-potassium superoxide.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I 4/m m m (a+b,-a+b,c)",
+        "number": 139
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "la2o3-a-type",
+      "category": "metal-oxides",
+      "name": "A型三氧化二镧",
+      "nameEn": "A-type lanthanum oxide",
+      "formula": "La2O3",
+      "aliases": [
+        "La2O3",
+        "A-La2O3",
+        "hexagonal La2O3"
+      ],
+      "phase": "A-modification of rare-earth sesquioxides, trigonal P321 (#150)",
+      "structurePath": "metal-oxides/la2o3-a-type/structure.json",
+      "sourcePath": "metal-oxides/la2o3-a-type/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010278",
+        "url": "https://www.crystallography.net/cod/1010278.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 201954",
+        "retrievedAt": "2026-10-23T16:49:00.885728+00:00",
+        "citation": "Zachariasen, W H (1926). Die Kristallstruktur der A-Modifikation von den Sesquioxyden der seltenen Erdmetalle. ( La~2~ O~3~, Ce~2~ O~3~, Pr~2~ O~3~, Nd~2~ O~3~ ). Zeitschrift fuer Physikalische Chemie (Leipzig), 123, 134-150.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Zachariasen 1926 entry explicitly identifies the A modification and includes La2O3 among the compounds.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 3 2 1",
+        "number": 150
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mno-rocksalt",
+      "category": "metal-oxides",
+      "name": "岩盐型氧化锰(II)",
+      "nameEn": "Manganese(II) oxide",
+      "formula": "MnO",
+      "aliases": [
+        "MnO",
+        "manganous oxide",
+        "manganosite",
+        "岩盐型 MnO"
+      ],
+      "phase": "rocksalt MnO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/mno-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/mno-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1514099",
+        "url": "https://www.crystallography.net/cod/1514099.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176808",
+        "retrievedAt": "2026-10-23T16:49:00.913187+00:00",
+        "citation": "Sasaki, Satoshi; Fujino, Kiyoshi; Takéuchi, Yoshio (1979). X-Ray Determination of Electron-Density Distributions in Oxides, MgO, MnO, CoO, and NiO, and Atomic Scattering Factors of their Constituent Atoms. Proceedings of the Japan Academy, Series B: Physical and Biological Sciences, 55(2), 43-48.",
+        "doi": "10.2183/pjab.55.43",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Sasaki et al. (1979) electron-density study explicitly includes MnO; retains a source-backed rocksalt structure.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mno2-pyrolusite-beta",
+      "category": "metal-oxides",
+      "name": "β-二氧化锰（软锰矿）",
+      "nameEn": "Beta manganese dioxide (pyrolusite)",
+      "formula": "MnO2",
+      "aliases": [
+        "MnO2",
+        "beta-MnO2",
+        "pyrolusite",
+        "软锰矿"
+      ],
+      "phase": "beta-MnO2 pyrolusite, P42/mnm (#136)",
+      "structurePath": "metal-oxides/mno2-pyrolusite-beta/structure.json",
+      "sourcePath": "metal-oxides/mno2-pyrolusite-beta/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1514117",
+        "url": "https://www.crystallography.net/cod/1514117.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176808",
+        "retrievedAt": "2026-10-23T16:49:00.932235+00:00",
+        "citation": "Bolzan, A. A.; Fong, C.; Kennedy, B. J.; Howard, C. J. (1993). Powder neutron diffraction study of pyrolusite, beta-Mn O2. Australian Journal of Chemistry, 46, 939-944.",
+        "doi": "10.1071/CH9930939",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record reports pyrolusite structure; preserve as the beta polymorph, not generic MnO2.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 42/m n m",
+        "number": 136
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mn3o4-hausmannite",
+      "category": "metal-oxides",
+      "name": "黑锰矿型四氧化三锰",
+      "nameEn": "Hausmannite manganese oxide",
+      "formula": "Mn3O4",
+      "aliases": [
+        "Mn3O4",
+        "hausmannite",
+        "黑锰矿"
+      ],
+      "phase": "hausmannite, tetragonal I41/amd (#141)",
+      "structurePath": "metal-oxides/mn3o4-hausmannite/structure.json",
+      "sourcePath": "metal-oxides/mn3o4-hausmannite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1514115",
+        "url": "https://www.crystallography.net/cod/1514115.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176808",
+        "retrievedAt": "2026-10-23T16:49:00.953247+00:00",
+        "citation": "Jarosch, D. (1987). Crystal structure refinement and reflectance measurements of hausmannite, Mn3 O4. Mineralogy and Petrology, 37, 15-23.",
+        "doi": "10.1007/BF01163155",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the reported experimental refinement for hausmannite.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I 41/a m d :2",
+        "number": 141
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "moo3-alpha",
+      "category": "metal-oxides",
+      "name": "α-三氧化钼",
+      "nameEn": "Alpha molybdenum trioxide",
+      "formula": "MoO3",
+      "aliases": [
+        "MoO3",
+        "alpha-MoO3",
+        "α-MoO3"
+      ],
+      "phase": "alpha-MoO3, orthorhombic Pbnm (#62)",
+      "structurePath": "metal-oxides/moo3-alpha/structure.json",
+      "sourcePath": "metal-oxides/moo3-alpha/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9014282",
+        "url": "https://www.crystallography.net/cod/9014282.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 292002",
+        "retrievedAt": "2026-10-23T16:49:00.970714+00:00",
+        "citation": "Kihlborg, L. (1963). Least squares refinement of the crystal structure of molybdenum trioxide. Arkiv for Kemi, 21, 357-364.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record for alpha-MoO3 structural refinement; retain source setting and cell.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b n m",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "na2o-antifluorite",
+      "category": "metal-oxides",
+      "name": "反萤石型氧化钠",
+      "nameEn": "Antifluorite sodium oxide",
+      "formula": "Na2O",
+      "aliases": [
+        "Na2O",
+        "sodium oxide",
+        "antifluorite Na2O"
+      ],
+      "phase": "antifluorite Na2O, Fm-3m (#225)",
+      "structurePath": "metal-oxides/na2o-antifluorite/structure.json",
+      "sourcePath": "metal-oxides/na2o-antifluorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010876",
+        "url": "https://www.crystallography.net/cod/1010876.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 201954",
+        "retrievedAt": "2026-10-23T16:49:01.004004+00:00",
+        "citation": "Zintl, E.; Harder, A.; Dauth, B. (1934). Gitterstruktur der Oxide, Sulfide, Selenide und Telluride des Lithiums, Natriums und Kaliums. Zeitschrift für Elektrochemie und angewandte physikalische Chemie, 40, 588-593.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Zintl, Harder and Dauth (1934) COD entry covers alkali-metal oxides and related compounds.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "nbo-ordered-rocksalt",
+      "category": "metal-oxides",
+      "name": "缺位有序一氧化铌",
+      "nameEn": "Ordered-vacancy niobium monoxide",
+      "formula": "NbO",
+      "aliases": [
+        "NbO",
+        "niobium monoxide",
+        "vacancy-ordered NbO"
+      ],
+      "phase": "ordered-vacancy NbO model, cubic Pm-3m (#221)",
+      "structurePath": "metal-oxides/nbo-ordered-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/nbo-ordered-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010410",
+        "url": "https://www.crystallography.net/cod/1010410.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 202026",
+        "retrievedAt": "2026-10-23T16:49:01.023703+00:00",
+        "citation": "Brauer, G (1940). Ueber die Oxyde des Niobs. Naturwissenschaften, 28, 30-30.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Brauer 1940 COD entry explicitly concerns niobium oxides. Source-site vacancies and composition must be checked from the CIF; do not add atoms into nominally vacant sites.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P m -3 m",
+        "number": 221
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "npo2-fluorite",
+      "category": "metal-oxides",
+      "name": "二氧化镎",
+      "nameEn": "Neptunium dioxide",
+      "formula": "NpO2",
+      "aliases": [
+        "NpO2",
+        "neptunium dioxide",
+        "fluorite NpO2"
+      ],
+      "phase": "fluorite-type NpO2, Fm-3m (#225)",
+      "structurePath": "metal-oxides/npo2-fluorite/structure.json",
+      "sourcePath": "metal-oxides/npo2-fluorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9009025",
+        "url": "https://www.crystallography.net/cod/9009025.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:49:01.047383+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York Fluorite structure. Crystal Structures, 1, 239-444.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rare/radioactive MS-baseline phase; curated COD/Wyckoff record, retained for source review only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "pao-protactinium-monoxide",
+      "category": "metal-oxides",
+      "name": "一氧化镤",
+      "nameEn": "Protactinium monoxide",
+      "formula": "PaO",
+      "aliases": [
+        "PaO",
+        "protactinium monoxide"
+      ],
+      "phase": "rocksalt-type PaO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/pao-protactinium-monoxide/structure.json",
+      "sourcePath": "metal-oxides/pao-protactinium-monoxide/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2311026",
+        "url": "https://www.crystallography.net/cod/2311026.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.083204+00:00",
+        "citation": "Zachariasen, W.H. (1952). Crystal chemical studies of the 5f - series of elements. XVI. identification and crystal structure of protactinium metal and of protactinium monoxide. Acta Crystallographica (1,1948-23,1967), 5, 19-21.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rare/radioactive MS-baseline phase; Zachariasen record names protactinium monoxide. Retain for review only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "pao2-protactinium-dioxide",
+      "category": "metal-oxides",
+      "name": "二氧化镤",
+      "nameEn": "Protactinium dioxide",
+      "formula": "PaO2",
+      "aliases": [
+        "PaO2",
+        "protactinium dioxide"
+      ],
+      "phase": "fluorite-type PaO2, Fm-3m (#225)",
+      "structurePath": "metal-oxides/pao2-protactinium-dioxide/structure.json",
+      "sourcePath": "metal-oxides/pao2-protactinium-dioxide/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1539308",
+        "url": "https://www.crystallography.net/cod/1539308.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.113692+00:00",
+        "citation": "Sellers, P.A. (1951). Protactinium oxide. U.S. Atomic Energy Commission Report, 1951, 3167-3167.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rare/radioactive MS-baseline phase; Sellers (1951) COD entry on protactinium oxide. Retain for review only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "pb2o-lead-suboxide",
+      "category": "metal-oxides",
+      "name": "一氧化二铅（铅亚氧化物）",
+      "nameEn": "Lead suboxide",
+      "formula": "Pb2O",
+      "aliases": [
+        "Pb2O",
+        "lead suboxide",
+        "铅亚氧化物"
+      ],
+      "phase": "Pb2O, cubic Pn-3 (#201)",
+      "structurePath": "metal-oxides/pb2o-lead-suboxide/structure.json",
+      "sourcePath": "metal-oxides/pb2o-lead-suboxide/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010382",
+        "url": "https://www.crystallography.net/cod/1010382.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303120",
+        "retrievedAt": "2026-10-23T16:49:01.135689+00:00",
+        "citation": "Ferrari, A (1926). Il sottossido di piombo. Gazzetta Chimica Italiana, 56, 630-637.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Ferrari 1926 COD entry explicitly titled lead suboxide; do not conflate with PbO.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P n -3 :1",
+        "number": 201
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "pbo-litharge",
+      "category": "metal-oxides",
+      "name": "四方氧化铅(II)（密陀僧）",
+      "nameEn": "Tetragonal lead(II) oxide (litharge)",
+      "formula": "PbO",
+      "aliases": [
+        "PbO",
+        "litharge",
+        "tetragonal PbO",
+        "密陀僧"
+      ],
+      "phase": "tetragonal PbO, P4/nmm (#129)",
+      "structurePath": "metal-oxides/pbo-litharge/structure.json",
+      "sourcePath": "metal-oxides/pbo-litharge/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010977",
+        "url": "https://www.crystallography.net/cod/1010977.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 202026",
+        "retrievedAt": "2026-10-23T16:49:01.148271+00:00",
+        "citation": "Dickinson, R G; Friauf, J B (1924). The crystal structure of tetragonal lead monoxide. Journal of the American Chemical Society, 46, 2457-2462.",
+        "doi": "10.1021/ja01676a015",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Dickinson and Friauf (1924) COD entry is explicitly the tetragonal lead monoxide structure.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 4/n m m :1",
+        "number": 129
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "poo2-fluorite",
+      "category": "metal-oxides",
+      "name": "二氧化钋",
+      "nameEn": "Polonium dioxide",
+      "formula": "PoO2",
+      "aliases": [
+        "PoO2",
+        "polonium dioxide",
+        "fluorite PoO2"
+      ],
+      "phase": "fluorite-type PoO2, Fm-3m (#225)",
+      "structurePath": "metal-oxides/poo2-fluorite/structure.json",
+      "sourcePath": "metal-oxides/poo2-fluorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1534201",
+        "url": "https://www.crystallography.net/cod/1534201.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.170271+00:00",
+        "citation": "Bagnall, K.W.; d'Eye, R.W.M. (1954). The Preparation of Polonium Metal and Polonium Dioxide. Journal of the Chemical Society, 1954, 4295-4299.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rare/highly radioactive MS-baseline phase; Bagnall and d'Eye record on preparation and X-ray study. Retain for review only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "puo2-fluorite",
+      "category": "metal-oxides",
+      "name": "二氧化钚",
+      "nameEn": "Plutonium dioxide",
+      "formula": "PuO2",
+      "aliases": [
+        "PuO2",
+        "plutonium dioxide",
+        "fluorite PuO2"
+      ],
+      "phase": "fluorite-type PuO2, Fm-3m (#225)",
+      "structurePath": "metal-oxides/puo2-fluorite/structure.json",
+      "sourcePath": "metal-oxides/puo2-fluorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9009036",
+        "url": "https://www.crystallography.net/cod/9009036.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:49:01.200347+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York Fluorite structure. Crystal Structures, 1, 239-444.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rare/radioactive MS-baseline phase; curated COD/Wyckoff record, retained for source review only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "rb2o-antifluorite",
+      "category": "metal-oxides",
+      "name": "反萤石型氧化铷",
+      "nameEn": "Antifluorite rubidium oxide",
+      "formula": "Rb2O",
+      "aliases": [
+        "Rb2O",
+        "rubidium oxide",
+        "antifluorite Rb2O"
+      ],
+      "phase": "antifluorite Rb2O, Fm-3m (#225)",
+      "structurePath": "metal-oxides/rb2o-antifluorite/structure.json",
+      "sourcePath": "metal-oxides/rb2o-antifluorite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9009067",
+        "url": "https://www.crystallography.net/cod/9009067.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:49:01.229094+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York Anti-fluorite structure. Crystal Structures, 1, 239-444.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD/Wyckoff curated structure.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "smo-rocksalt",
+      "category": "metal-oxides",
+      "name": "一氧化钐",
+      "nameEn": "Samarium monoxide",
+      "formula": "SmO",
+      "aliases": [
+        "SmO",
+        "samarium monoxide",
+        "rocksalt SmO"
+      ],
+      "phase": "rocksalt SmO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/smo-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/smo-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "4124663",
+        "url": "https://www.crystallography.net/cod/4124663.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.350493+00:00",
+        "citation": "Ellinger, F.H. (1953). The crystal structure of samarium metal and of samarium monoxide. Journal of the American Chemical Society, 75, 5650-5650.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Ellinger (1953) COD entry explicitly addresses samarium monoxide.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sno-litharge",
+      "category": "metal-oxides",
+      "name": "四方一氧化锡",
+      "nameEn": "Tetragonal tin(II) oxide",
+      "formula": "SnO",
+      "aliases": [
+        "SnO",
+        "tin(II) oxide",
+        "litharge-type SnO"
+      ],
+      "phase": "tetragonal SnO, P4/nmm (#129)",
+      "structurePath": "metal-oxides/sno-litharge/structure.json",
+      "sourcePath": "metal-oxides/sno-litharge/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9011217",
+        "url": "https://www.crystallography.net/cod/9011217.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:49:01.368432+00:00",
+        "citation": "Pannetier, J.; Denes, G. (1980). Tin(II) oxide: structure refinement and thermal expansion. Acta Crystallographica, Section B, 36, 2763-2765.",
+        "doi": "10.1107/S0567740880009934",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Pannetier and Denes (1980) structure refinement and thermal-expansion study.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 4/n m m :1",
+        "number": 129
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sno2-cassiterite",
+      "category": "metal-oxides",
+      "name": "锡石型二氧化锡",
+      "nameEn": "Cassiterite tin dioxide",
+      "formula": "SnO2",
+      "aliases": [
+        "SnO2",
+        "cassiterite",
+        "rutile-type SnO2",
+        "锡石"
+      ],
+      "phase": "cassiterite/rutile-type SnO2, P42/mnm (#136)",
+      "structurePath": "metal-oxides/sno2-cassiterite/structure.json",
+      "sourcePath": "metal-oxides/sno2-cassiterite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1000062",
+        "url": "https://www.crystallography.net/cod/1000062.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:49:01.383889+00:00",
+        "citation": "Baur, W H; Khan, A A (1971). Rutile-Type Compounds. VI. Si O2, Ge O2 and a Comparison with other Rutile-Type Structures. Acta Crystallographica B (24,1968-38,1982), 27, 2133-2139.",
+        "doi": "10.1107/S0567740871005466",
+        "conditions": "unknown (COD record does not state a measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is an actual downloadable SnO2 CIF; condition remains unknown unless explicitly in source metadata.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 42/m n m",
+        "number": 136
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sro-rocksalt",
+      "category": "metal-oxides",
+      "name": "氧化锶",
+      "nameEn": "Strontium oxide",
+      "formula": "SrO",
+      "aliases": [
+        "SrO",
+        "strontium oxide",
+        "rocksalt SrO"
+      ],
+      "phase": "rocksalt SrO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/sro-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/sro-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1011328",
+        "url": "https://www.crystallography.net/cod/1011328.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301772",
+        "retrievedAt": "2026-10-23T16:49:01.406607+00:00",
+        "citation": "Gerlach, W (1922). Die Gitterstruktur der Erdalkalioxyde.. Zeitschrift fuer Physik, 9, 184-192.",
+        "doi": "10.1007/BF01326966",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Gerlach 1922 COD record for alkaline-earth oxide lattice structures.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tao-rocksalt-gamma",
+      "category": "metal-oxides",
+      "name": "γ相一氧化钽",
+      "nameEn": "Gamma-phase tantalum monoxide",
+      "formula": "TaO",
+      "aliases": [
+        "TaO",
+        "tantalum monoxide",
+        "gamma-TaO"
+      ],
+      "phase": "gamma phase in Ta-O system, cubic Fm-3m (#225)",
+      "structurePath": "metal-oxides/tao-rocksalt-gamma/structure.json",
+      "sourcePath": "metal-oxides/tao-rocksalt-gamma/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1538733",
+        "url": "https://www.crystallography.net/cod/1538733.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.438884+00:00",
+        "citation": "Klechkovskaya, V.V.; Khitrova, V.I. (1968). An electron-diffraction study of the gamma phase in the Ta-O system. Soviet Physics, Crystallography (= Kristallografiya), 13, 428-430.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Klechkovskaya and Khitrova (1968) electron-diffraction study explicitly labels the gamma phase; exact site occupancy/composition requires CIF review.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ti2o3-corundum",
+      "category": "metal-oxides",
+      "name": "刚玉型三氧化二钛",
+      "nameEn": "Corundum-type titanium(III) oxide",
+      "formula": "Ti2O3",
+      "aliases": [
+        "Ti2O3",
+        "alpha-Ti2O3",
+        "α-Ti2O3"
+      ],
+      "phase": "corundum-type Ti2O3, R-3c (#167)",
+      "structurePath": "metal-oxides/ti2o3-corundum/structure.json",
+      "sourcePath": "metal-oxides/ti2o3-corundum/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1532065",
+        "url": "https://www.crystallography.net/cod/1532065.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 157684",
+        "retrievedAt": "2026-10-23T16:49:01.457822+00:00",
+        "citation": "Rice, C.E.; Robinson, W.R. (1976). Structural changes associated with the semiconductor-to-metal transition in Ti2 O3. Materials Research Bulletin, 11, 1355-1360.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rice and Robinson (1976) structural changes study of the semiconductor-to-metal transition in Ti2O3.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c :H",
+        "number": 167
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "uo-rocksalt",
+      "category": "metal-oxides",
+      "name": "一氧化铀",
+      "nameEn": "Uranium monoxide",
+      "formula": "UO",
+      "aliases": [
+        "UO",
+        "uranium monoxide",
+        "rocksalt UO"
+      ],
+      "phase": "rocksalt-type UO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/uo-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/uo-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008758",
+        "url": "https://www.crystallography.net/cod/9008758.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:49:01.489157+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York rocksalt structure. Crystal Structures, 1, 85-237.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Rare/radioactive MS-baseline phase; curated COD/Wyckoff entry retained for review only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "v2o3-corundum",
+      "category": "metal-oxides",
+      "name": "刚玉型三氧化二钒",
+      "nameEn": "Corundum-type vanadium(III) oxide",
+      "formula": "V2O3",
+      "aliases": [
+        "V2O3",
+        "alpha-V2O3",
+        "α-V2O3"
+      ],
+      "phase": "corundum-type V2O3, R-3c (#167)",
+      "structurePath": "metal-oxides/v2o3-corundum/structure.json",
+      "sourcePath": "metal-oxides/v2o3-corundum/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1532124",
+        "url": "https://www.crystallography.net/cod/1532124.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 157764",
+        "retrievedAt": "2026-10-23T16:49:01.510159+00:00",
+        "citation": "Rozier, P.; Ratuszna, A.; Galy, J. (2002). Comparative structural and electrical studies of V2 O3 and V2-x Nix O3 (0 < x < 0.75) solid solution. Zeitschrift fuer Anorganische und Allgemeine Chemie, 628, 1236-1242.",
+        "conditions": "solid-solution series; pure V2O3 endpoint is asserted in title/record, measurement temperature unknown"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record from comparative V2O3 and V2-xNixO3 study; verify actual CIF composition/occupancy before using as stoichiometric endpoint.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c :H",
+        "number": 167
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "vo-rocksalt",
+      "category": "metal-oxides",
+      "name": "岩盐型一氧化钒",
+      "nameEn": "Rocksalt vanadium monoxide",
+      "formula": "VO",
+      "aliases": [
+        "VO",
+        "vanadium monoxide"
+      ],
+      "phase": "rocksalt-type VO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/vo-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/vo-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1539247",
+        "url": "https://www.crystallography.net/cod/1539247.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.539185+00:00",
+        "citation": "Schoenberg, N. (1954). X-ray studies on vanadium and chromium oxides with low oxygen content. Acta Chemica Scandinavica (1-27,1973-42,1988), 8, 221-225.",
+        "conditions": "unknown (COD record does not state measurement temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Schoenberg (1954) X-ray study of vanadium/chromium oxides with low oxygen content; exact vacancy ordering and composition must be reviewed from CIF.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "vo2-m1",
+      "category": "metal-oxides",
+      "name": "M1型二氧化钒",
+      "nameEn": "M1 vanadium dioxide",
+      "formula": "VO2",
+      "aliases": [
+        "VO2",
+        "M1-VO2",
+        "monoclinic VO2"
+      ],
+      "phase": "monoclinic M1 VO2, P21/c (#14)",
+      "structurePath": "metal-oxides/vo2-m1/structure.json",
+      "sourcePath": "metal-oxides/vo2-m1/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "3000344",
+        "url": "https://www.crystallography.net/cod/3000344.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 282558",
+        "retrievedAt": "2026-10-23T16:49:01.556185+00:00",
+        "citation": "Wilson, Catrina E.; Gibson, Amanda E.; Cuillier, Paul M.; Li, Cheng-Han; Crosby, Patrice H.N.; Trigg, Edward B.; Najmr, Stan; Murray, Christopher B.; Jinschek, Joerg R.; Doan-Nguyen, Vicky (2022). Local structure elucidation of tungsten- substituted vanadium dioxide (V1-xWxO2). Scientific Reports, 12, 14767.",
+        "conditions": "COD CIF reports P21/c, formula O2V, no W atom, and preparation temperature 298 K. The cited paper studies a W-substitution series; this record is the unsubstituted VO2 composition in that series.",
+        "doi": "10.1038/s41598-022-18575-0"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Actual CIF has one fully occupied V site and two fully occupied O sites; the primary paper identifies the low-temperature VO2 phase as monoclinic P21/c and includes an unsubstituted x=0 sample.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/c 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "vo2-monoclinic-wyckoff-provisional",
+      "category": "metal-oxides",
+      "name": "单斜二氧化钒（Wyckoff候选）",
+      "nameEn": "Monoclinic vanadium dioxide (Wyckoff candidate)",
+      "formula": "VO2",
+      "aliases": [
+        "VO2",
+        "monoclinic VO2"
+      ],
+      "phase": "monoclinic VO2, P21/c (#14); phase identity not explicit in COD title",
+      "structurePath": "metal-oxides/vo2-monoclinic-wyckoff-provisional/structure.json",
+      "sourcePath": "metal-oxides/vo2-monoclinic-wyckoff-provisional/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9009089",
+        "url": "https://www.crystallography.net/cod/9009089.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:49:01.573493+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York. Crystal Structures, 1, 239-444.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Alternative public coordinate candidate; keep provisional because the COD record does not explicitly identify M1 in its title.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/c 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "yba2cu3o7-orthorhombic",
+      "category": "metal-oxides",
+      "name": "正交YBCO-123",
+      "nameEn": "Orthorhombic YBa2Cu3O7",
+      "formula": "YBa2Cu3O7",
+      "aliases": [
+        "YBa2Cu3O7",
+        "YBCO",
+        "Y123",
+        "Ba2YCu3O7"
+      ],
+      "phase": "orthorhombic superconducting YBa2Cu3O7, Pmmm (#47)",
+      "structurePath": "metal-oxides/yba2cu3o7-orthorhombic/structure.json",
+      "sourcePath": "metal-oxides/yba2cu3o7-orthorhombic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1001452",
+        "url": "https://www.crystallography.net/cod/1001452.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:49:01.593160+00:00",
+        "citation": "Capponi, J J; Chaillout, C; Hewat, A W; Lejay, P; Marezio, M; Nguyen, N; Raveau, B; Soubeyroux, J L; Tholence, J L; Tournier, R (1987). Structure of the 100 K Superconductor Ba~2~ Y Cu~3~ O~7~ between (5- 300)K by Neutron Powder Diffraction. Europhysics Letters, 3, 1301-1307.",
+        "doi": "10.1209/0295-5075/3/12/009",
+        "conditions": "source paper reports a temperature series spanning 5–300 K; the exact selected record temperature and oxygen occupancy must be verified from CIF metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Capponi et al. neutron powder diffraction; selected COD record identity is provisional until exact temperature/oxygen stoichiometry and occupancy are confirmed.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P m m m",
+        "number": 47
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ybo-rocksalt",
+      "category": "metal-oxides",
+      "name": "一氧化镱",
+      "nameEn": "Ytterbium monoxide",
+      "formula": "YbO",
+      "aliases": [
+        "YbO",
+        "ytterbium monoxide",
+        "rocksalt YbO"
+      ],
+      "phase": "rocksalt YbO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/ybo-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/ybo-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008772",
+        "url": "https://www.crystallography.net/cod/9008772.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:49:01.618294+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York rocksalt structure. Crystal Structures, 1, 85-237.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD/Wyckoff curated structure; rare-earth monoxide source review required.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "zro-rocksalt",
+      "category": "metal-oxides",
+      "name": "一氧化锆",
+      "nameEn": "Zirconium monoxide",
+      "formula": "ZrO",
+      "aliases": [
+        "ZrO",
+        "zirconium monoxide",
+        "rocksalt ZrO"
+      ],
+      "phase": "rocksalt-type ZrO, Fm-3m (#225)",
+      "structurePath": "metal-oxides/zro-rocksalt/structure.json",
+      "sourcePath": "metal-oxides/zro-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008779",
+        "url": "https://www.crystallography.net/cod/9008779.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:49:01.645727+00:00",
+        "citation": "Wyckoff, R. W. G. (1963). Second edition. Interscience Publishers, New York, New York rocksalt structure. Crystal Structures, 1, 85-237.",
+        "conditions": "unknown (COD entry cites Wyckoff compilation; no experiment temperature in record)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD/Wyckoff curated structure; review oxygen vacancy/stoichiometry against the intended MS model.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "zro2-cubic-metastable",
+      "category": "metal-oxides",
+      "name": "立方氧化锆（亚稳态纳米相）",
+      "nameEn": "Metastable cubic zirconia",
+      "formula": "ZrO2",
+      "aliases": [
+        "ZrO2",
+        "cubic zirconia",
+        "c-ZrO2"
+      ],
+      "phase": "metastable cubic ZrO2, Fm-3m (#225)",
+      "structurePath": "metal-oxides/zro2-cubic-metastable/structure.json",
+      "sourcePath": "metal-oxides/zro2-cubic-metastable/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1521753",
+        "url": "https://www.crystallography.net/cod/1521753.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.679525+00:00",
+        "citation": "Katz, G. (1971). X-ray diffraction powder pattern of metastable cubic Zr O2. Journal of the American Ceramic Society, 54, 531-531.",
+        "conditions": "COD source title identifies a metastable cubic powder pattern; exact temperature/composition and stabilizer status are not explicit in the available row"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Do not present as equilibrium pure bulk zirconia; source identity and composition need CIF/paper review.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "batio3-tetragonal",
+      "category": "metal-oxides",
+      "name": "四方钛酸钡",
+      "nameEn": "Tetragonal barium titanate",
+      "formula": "BaTiO3",
+      "aliases": [
+        "BaTiO3",
+        "barium titanate",
+        "tetragonal perovskite"
+      ],
+      "phase": "tetragonal perovskite BaTiO3, P4mm (#99)",
+      "structurePath": "metal-oxides/batio3-tetragonal/structure.json",
+      "sourcePath": "metal-oxides/batio3-tetragonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1513252",
+        "url": "https://www.crystallography.net/cod/1513252.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176729",
+        "retrievedAt": "2026-10-23T16:49:01.702523+00:00",
+        "citation": "Yasuda, Nobuhiro; Murayama, Haruno; Fukuyama, Yoshimitsu; Kim, Jungeun; Kimura, Shigeru; Toriumi, Koshiro; Tanaka, Yoshihito; Moritomo, Yutaka; Kuroiwa, Yoshihiro; Kato, Kenichi; Tanaka, Hitoshi; Takata, Masaki (2009). X-ray diffractometry for the structure determination of a submicrometre single powder grain. Journal of Synchrotron Radiation, 16(3), 352-357.",
+        "doi": "10.1107/S090904950900675X",
+        "conditions": "300(2) K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Yasuda et al. (2009) powder single-grain structure determination; COD record reports 300(2) K.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 4 m m",
+        "number": 99
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "srtio3-cubic",
+      "category": "metal-oxides",
+      "name": "立方钙钛矿钛酸锶",
+      "nameEn": "Cubic strontium titanate",
+      "formula": "SrTiO3",
+      "aliases": [
+        "SrTiO3",
+        "strontium titanate",
+        "cubic perovskite"
+      ],
+      "phase": "cubic perovskite SrTiO3, Pm-3m (#221)",
+      "structurePath": "metal-oxides/srtio3-cubic/structure.json",
+      "sourcePath": "metal-oxides/srtio3-cubic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9006864",
+        "url": "https://www.crystallography.net/cod/9006864.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-23T16:49:01.716524+00:00",
+        "citation": "Mitchell, R. H.; Chakhmouradian, A. R.; Woodward, P. M. (2000). Crystal chemistry of perovskite-type compounds in the tausonite-loparite series, (Sr1-2xNaxLax)TiO3 Sample: x = 0.00. Physics and Chemistry of Minerals, 27, 583-589.",
+        "doi": "10.1007/s002690000103",
+        "conditions": "solid-solution endpoint x=0; temperature not reported in COD record"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Mitchell et al. (2000) tausonite-loparite series; selected x=0 endmember, not a doped solid solution.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P m -3 m",
+        "number": 221
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "v2o5-orthorhombic",
+      "category": "metal-oxides",
+      "name": "正交五氧化二钒",
+      "nameEn": "Orthorhombic vanadium pentoxide",
+      "formula": "V2O5",
+      "aliases": [
+        "V2O5",
+        "vanadium pentoxide"
+      ],
+      "phase": "orthorhombic V2O5, Pmmn (#59)",
+      "structurePath": "metal-oxides/v2o5-orthorhombic/structure.json",
+      "sourcePath": "metal-oxides/v2o5-orthorhombic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2020756",
+        "url": "https://www.crystallography.net/cod/2020756.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 200783",
+        "retrievedAt": "2026-10-23T16:49:01.727103+00:00",
+        "citation": "Enjalbert, Renee; Galy, Jean (1986). A refinement of the structure of V~2~O~5~. Acta Crystallographica, Section C: Crystal Structure Communications, 42(11), 1467-1469.",
+        "doi": "10.1107/s0108270186091825",
+        "conditions": "292 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record gives the diffraction temperature as 292 K.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P m m n :2",
+        "number": 59
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "wo3-monoclinic",
+      "category": "metal-oxides",
+      "name": "单斜三氧化钨",
+      "nameEn": "Monoclinic tungsten trioxide",
+      "formula": "WO3",
+      "aliases": [
+        "WO3",
+        "monoclinic WO3",
+        "tungsten trioxide"
+      ],
+      "phase": "monoclinic WO3, P21/n (#14)",
+      "structurePath": "metal-oxides/wo3-monoclinic/structure.json",
+      "sourcePath": "metal-oxides/wo3-monoclinic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1528915",
+        "url": "https://www.crystallography.net/cod/1528915.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:49:01.743126+00:00",
+        "citation": "Tanisaki, S. (1960). Crystal structure of monoclinic tungsten oxide at room temperature. Journal of the Physical Society of Japan, 15, 573-580.",
+        "conditions": "room temperature (COD source record explicitly states room temperature)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies the room-temperature monoclinic phase.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/n 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

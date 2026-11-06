@@ -1,0 +1,10 @@
+.surface-preparation .analysis-task-results { display: grid; gap: 12px; }
+.surface-preparation .surface-identity-row { align-items: end; }
+.surface-preparation .analysis-quality-control { align-items: end; }
+.surface-preparation .analysis-quality-control > .shared-input-field { flex: 0 1 150px; }
+.analysis-controls [data-testid="surface-mapping-task"] .analysis-quality-control { align-items: end; }
+.analysis-controls .field-colorbar-settings { border-top: 1px solid var(--ui-surface-border, #d8e4de); padding-top: 9px; margin-top: 9px; }
+.analysis-controls [data-testid="surface-mapping-task"] input[type="range"] { flex: 0 0 110px; width: 110px; max-width: 110px; }
+.surface-draw-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.surface-draw-flow > .shared-input-row { display: contents; }
+.surface-draw-flow > .appearance-preset-picker { order: -1; flex: 0 1 auto; width: auto; margin: 0; }

@@ -1,0 +1,5 @@
+[wrap-file]
+directory = tblite
+source_url = https://github.com/tblite/tblite/archive/d2f08e808afe69aa71a6a12163632569ee6e9a4a.tar.gz
+source_filename = tblite-d2f08e808afe69aa71a6a12163632569ee6e9a4a.tar.gz
+source_hash = eaccb27616b30be5ddb09cdbe95567e3a81cb9f33e5ef02f2237b4b5de1b05ac

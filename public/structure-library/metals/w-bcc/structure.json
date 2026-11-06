@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "entryId": "w-bcc",
+  "structure": {
+    "id": "w-bcc",
+    "name": "Tungsten",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "cod-9012433-site-00001",
+        "element": "W",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "cod-9012433-site-00002",
+        "element": "W",
+        "x": 1.5791500000000003,
+        "y": 1.57915,
+        "z": 1.5791500000000003
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "来源为COD 9012433原始CIF；原子位置由pymatgen解析，未进行几何优化或晶胞变换。",
+      "电荷和自旋多重度未由该晶体结构来源给出，保持未知。",
+      "规范化原子稳定ID按解析后的晶胞原子顺序生成；CIF原始标签和来源编号保留在未改写的source.cif中。"
+    ],
+    "cell": {
+      "vectors": [
+        [
+          3.1583,
+          0.0,
+          1.9339009928735428e-16
+        ],
+        [
+          5.0789337644737215e-16,
+          3.1583,
+          1.9339009928735428e-16
+        ],
+        [
+          0.0,
+          0.0,
+          3.1583
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source": "COD:9012433",
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD 9012433 的原始CIF提供完整三维晶胞及晶体分数坐标；按CIF晶体结构格式语义使用三维周期。"
+      }
+    }
+  }
+}

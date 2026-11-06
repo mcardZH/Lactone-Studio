@@ -1,0 +1,1417 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-caprolactam-cod-5000169",
+  "structure": {
+    "id": "molecular-crystal-caprolactam-cod-5000169",
+    "name": "ε-己内酰胺",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:1",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 7.023652645213278,
+        "y": 0.16338000000000003,
+        "z": 0.7335232932877882
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:2",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 15.936917423402715,
+        "y": 4.053380000000001,
+        "z": -2.9384395324891304
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:3",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 10.8028769111656,
+        "y": 0.16338000000000003,
+        "z": -3.2924489448416256
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:4",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 1.8896121329761613,
+        "y": 4.053380000000001,
+        "z": 0.3795138809352936
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:5",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 10.802876911165601,
+        "y": 7.61662,
+        "z": 1.4925510551583754
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:6",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 1.8896121329761613,
+        "y": 3.72662,
+        "z": 5.164513880935294
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:7",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 7.023652645213279,
+        "y": 7.61662,
+        "z": 5.518523293287789
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:8",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 15.936917423402715,
+        "y": 3.72662,
+        "z": 1.8465604675108693
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:9",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.171407916192657,
+        "y": 2.69188,
+        "z": 1.4109113975364025
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:10",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 13.084672694382096,
+        "y": 6.58188,
+        "z": -2.2610514282405156
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:11",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 13.65512164018622,
+        "y": 2.69188,
+        "z": -3.9698370490902395
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:12",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.741856861996782,
+        "y": 6.58188,
+        "z": -0.29787422331332025
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:13",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 13.65512164018622,
+        "y": 5.08812,
+        "z": 0.8151629509097607
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:14",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.741856861996781,
+        "y": 1.1981200000000003,
+        "z": 4.48712577668668
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:15",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.171407916192658,
+        "y": 5.08812,
+        "z": 6.195911397536403
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:16",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 13.084672694382094,
+        "y": 1.1981200000000003,
+        "z": 2.523948571759484
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:17",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 4.296193623087309,
+        "y": 2.27954,
+        "z": -0.6406260820244745
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:18",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 13.209458401276748,
+        "y": 6.16954,
+        "z": -4.312588907801393
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:19",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 13.530335933291568,
+        "y": 2.27954,
+        "z": -1.918299569529362
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:20",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 4.61707115510213,
+        "y": 6.16954,
+        "z": 1.7536632562475567
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:21",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 13.530335933291568,
+        "y": 5.50046,
+        "z": 2.8667004304706376
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:22",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 4.6170711551021295,
+        "y": 1.6104600000000007,
+        "z": 6.538663256247556
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:23",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 4.2961936230873095,
+        "y": 5.50046,
+        "z": 4.144373917975527
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:24",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 13.209458401276747,
+        "y": 1.6104600000000007,
+        "z": 0.4724110921986071
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:25",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 7.808019945693948,
+        "y": 0.1945,
+        "z": -0.6710194353805807
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:26",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 16.721284723883386,
+        "y": 4.0845,
+        "z": -4.342982261157498
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:27",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 10.01850961068493,
+        "y": 0.1945,
+        "z": -1.8879062161732567
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:28",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 1.1052448324954909,
+        "y": 4.0845,
+        "z": 1.7840566096036625
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:29",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 10.018509610684932,
+        "y": 7.5855,
+        "z": 2.897093783826744
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:30",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 1.105244832495492,
+        "y": 3.6955,
+        "z": 6.569056609603662
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:31",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 7.808019945693949,
+        "y": 7.5855,
+        "z": 4.11398056461942
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:32",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 16.721284723883386,
+        "y": 3.6955,
+        "z": 0.44201773884250173
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:33",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 9.162836191978743,
+        "y": 1.50932,
+        "z": 0.723122215101327
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:34",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 0.24957141378930534,
+        "y": 5.3993199999999995,
+        "z": 4.3950850408782465
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:35",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 8.663693364400133,
+        "y": 1.50932,
+        "z": -3.2820478666551645
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:36",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 17.57695814258957,
+        "y": 5.3993199999999995,
+        "z": -6.954010692432083
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:37",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 8.663693364400135,
+        "y": 6.2706800000000005,
+        "z": 1.5029521333448366
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:38",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 17.57695814258957,
+        "y": 2.3806800000000004,
+        "z": -2.1690106924320824
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:39",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 9.162836191978744,
+        "y": 6.2706800000000005,
+        "z": 5.508122215101327
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:40",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 0.24957141378930486,
+        "y": 2.3806800000000004,
+        "z": 9.180085040878247
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:41",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 8.25368318460342,
+        "y": 2.6607600000000002,
+        "z": -0.21342757666942624
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:42",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 17.166947962792857,
+        "y": 6.550760000000001,
+        "z": -3.8853904024463457
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:43",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 9.572846371775455,
+        "y": 2.6607600000000002,
+        "z": -2.3454980748844103
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:44",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.659581593586019,
+        "y": 6.550760000000001,
+        "z": 1.3264647508925083
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:45",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 9.572846371775455,
+        "y": 5.11924,
+        "z": 2.439501925115591
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:46",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.6595815935860172,
+        "y": 1.2292399999999994,
+        "z": 6.11146475089251
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:47",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 8.25368318460342,
+        "y": 5.11924,
+        "z": 4.571572423330574
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:48",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 17.166947962792857,
+        "y": 1.2292399999999994,
+        "z": 0.8996095975536536
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:49",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 7.522795472791885,
+        "y": 1.72716,
+        "z": 2.5375933750442807
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:50",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 16.436060250981324,
+        "y": 5.61716,
+        "z": -1.1343694507326374
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:51",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 10.303734083586992,
+        "y": 1.72716,
+        "z": 4.473480973401882
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:52",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.3904693053975534,
+        "y": 5.61716,
+        "z": 8.145443799178802
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:53",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 10.303734083586994,
+        "y": 6.052840000000001,
+        "z": -0.31151902659811803
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:54",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.390469305397554,
+        "y": 2.16284,
+        "z": 3.3604437991788005
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:55",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 7.522795472791886,
+        "y": 6.052840000000001,
+        "z": -2.247406624955719
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:56",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 16.436060250981324,
+        "y": 2.16284,
+        "z": -5.9193694507326375
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:57",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 8.342815832385314,
+        "y": 3.22092,
+        "z": 2.238052795072804
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:58",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 17.256080610574752,
+        "y": 7.110919999999999,
+        "z": -1.433910030704114
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:59",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 9.483713723993562,
+        "y": 3.22092,
+        "z": 4.773021553373359
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:60",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 0.5704489458041246,
+        "y": 7.110919999999999,
+        "z": 8.444984379150277
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:61",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 9.483713723993562,
+        "y": 4.559080000000001,
+        "z": -0.011978446626640604
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:62",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 0.5704489458041246,
+        "y": 0.6690800000000006,
+        "z": 3.6599843791502775
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:63",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 8.342815832385314,
+        "y": 4.559080000000001,
+        "z": -2.546947204927196
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:64",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 17.256080610574752,
+        "y": 0.6690800000000006,
+        "z": -6.218910030704114
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:65",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 6.025366990056061,
+        "y": 3.5321200000000004,
+        "z": 2.6855531297748034
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:66",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 14.938631768245502,
+        "y": 7.42212,
+        "z": -0.9864096960021147
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:67",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 11.801162566322814,
+        "y": 3.5321200000000004,
+        "z": 4.325521218671361
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:68",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.8878977881333787,
+        "y": 7.42212,
+        "z": 7.99748404444828
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:69",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 11.801162566322814,
+        "y": 4.24788,
+        "z": -0.45947878132863984
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:70",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.8878977881333765,
+        "y": 0.3578800000000003,
+        "z": 3.2124840444482787
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:71",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 6.025366990056061,
+        "y": 4.24788,
+        "z": -2.0994468702251963
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:72",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 14.9386317682455,
+        "y": 0.3578800000000003,
+        "z": -5.771409696002116
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:73",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 6.364071051627259,
+        "y": 3.95224,
+        "z": 1.0913785423952809
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:74",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 15.277335829816696,
+        "y": 0.06224000000000006,
+        "z": -2.580584283381638
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:75",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 11.462458504751618,
+        "y": 3.95224,
+        "z": -3.6503041939491174
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:76",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 2.5491937265621796,
+        "y": 0.06224000000000006,
+        "z": 0.021658631827801145
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:77",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 11.462458504751618,
+        "y": 3.82776,
+        "z": 1.1346958060508827
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:78",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 2.549193726562181,
+        "y": 7.71776,
+        "z": 4.806658631827801
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:79",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 6.364071051627259,
+        "y": 3.82776,
+        "z": 5.8763785423952815
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:80",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 15.277335829816698,
+        "y": 7.71776,
+        "z": 2.204415716618363
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:81",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 5.169693571349874,
+        "y": 1.29926,
+        "z": 1.8513815610493873
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:82",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 14.082958349539313,
+        "y": 5.189260000000001,
+        "z": -1.8205812647275321
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:83",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 12.656835985029002,
+        "y": 1.29926,
+        "z": -4.4103072126032234
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:84",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 3.7435712068395652,
+        "y": 5.189260000000001,
+        "z": -0.7383443868263054
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:85",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 12.656835985029003,
+        "y": 6.48074,
+        "z": 0.3746927873967767
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:86",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 3.743571206839564,
+        "y": 2.59074,
+        "z": 4.046655613173695
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:87",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 5.169693571349875,
+        "y": 6.48074,
+        "z": 6.636381561049387
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:88",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 14.082958349539313,
+        "y": 2.59074,
+        "z": 2.964418735272467
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:89",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 6.1109343319266785,
+        "y": 1.24869,
+        "z": -0.7814997133526551
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:90",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 15.024199110116117,
+        "y": 5.1386899999999995,
+        "z": -4.453462539129574
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:91",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 11.715595224452198,
+        "y": 1.24869,
+        "z": -1.7774259382011812
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:92",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 2.8023304462627605,
+        "y": 5.1386899999999995,
+        "z": 1.8945368875757371
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:93",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 11.7155952244522,
+        "y": 6.53131,
+        "z": 3.0075740617988185
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:94",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 2.80233044626276,
+        "y": 2.6413100000000003,
+        "z": 6.679536887575737
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:95",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 6.110934331926679,
+        "y": 6.53131,
+        "z": 4.003500286647346
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:96",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 15.024199110116117,
+        "y": 2.6413100000000003,
+        "z": 0.33153746087042624
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:97",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 7.298181200381512,
+        "y": 0.771776,
+        "z": 0.0012478382538598787
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:98",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 16.21144597857095,
+        "y": 4.661776,
+        "z": -3.670714987523059
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:99",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 10.528348355997364,
+        "y": 0.771776,
+        "z": -2.5601734898076964
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:100",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 1.615083577807927,
+        "y": 4.661776,
+        "z": 1.1117893359692226
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:101",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 10.528348355997366,
+        "y": 7.008224,
+        "z": 2.2248265101923037
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:102",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 1.6150835778079269,
+        "y": 3.1182240000000006,
+        "z": 5.896789335969222
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:103",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 7.298181200381513,
+        "y": 7.008224,
+        "z": 4.7862478382538605
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:104",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 16.21144597857095,
+        "y": 3.1182240000000006,
+        "z": 1.114285012476941
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:105",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 8.152071966132059,
+        "y": 1.89832,
+        "z": 0.5595807995444306
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:106",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 17.0653367443215,
+        "y": 5.788320000000001,
+        "z": -3.112382026232489
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:107",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 9.674457590246815,
+        "y": 1.89832,
+        "z": -3.118506451098267
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:108",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 0.7611928120573792,
+        "y": 5.788320000000001,
+        "z": 0.5534563746786516
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:109",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 9.674457590246817,
+        "y": 5.88168,
+        "z": 1.6664935489017338
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:110",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 0.7611928120573777,
+        "y": 1.9916800000000001,
+        "z": 5.338456374678652
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:111",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 8.15207196613206,
+        "y": 5.88168,
+        "z": 5.344580799544431
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:112",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 17.0653367443215,
+        "y": 1.9916800000000001,
+        "z": 1.6726179737675118
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:113",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 7.620841385351969,
+        "y": 2.4896000000000003,
+        "z": 1.8569687839607352
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:114",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 16.534106163541406,
+        "y": 6.379600000000001,
+        "z": -1.814994041816183
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:115",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 10.205688171026907,
+        "y": 2.4896000000000003,
+        "z": 5.154105564485429
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:116",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 1.2924233928374698,
+        "y": 6.379600000000001,
+        "z": 8.826068390262348
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:117",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 10.205688171026907,
+        "y": 5.2904,
+        "z": 0.36910556448542753
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:118",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 1.2924233928374689,
+        "y": 1.4003999999999996,
+        "z": 4.041068390262346
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:119",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 7.62084138535197,
+        "y": 5.2904,
+        "z": -2.928031216039265
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:120",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 16.534106163541406,
+        "y": 1.4003999999999996,
+        "z": -6.599994041816183
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:121",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.258894527244625,
+        "y": 3.165682,
+        "z": 1.7404887037394472
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:122",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 15.172159305434063,
+        "y": 7.055682000000001,
+        "z": -1.9314741220374705
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:123",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 11.567635029134253,
+        "y": 3.165682,
+        "z": -4.299414355293285
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:124",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 2.6543702509448157,
+        "y": 7.055682000000001,
+        "z": -0.6274515295163654
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:125",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 11.567635029134253,
+        "y": 4.614318,
+        "z": 0.48558564470671417
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:126",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 2.6543702509448153,
+        "y": 0.7243179999999997,
+        "z": 4.157548470483633
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:127",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.258894527244625,
+        "y": 4.614318,
+        "z": 6.525488703739448
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:128",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 15.17215930543406,
+        "y": 0.7243179999999997,
+        "z": 2.8535258779625305
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:129",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 5.155432347704771,
+        "y": 2.24064,
+        "z": 1.2897557015706305
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:130",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 14.06869712589421,
+        "y": 6.1306400000000005,
+        "z": -2.3822071242062886
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:131",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 12.671097208674105,
+        "y": 2.24064,
+        "z": -3.848681353124467
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:132",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 3.757832430484668,
+        "y": 6.1306400000000005,
+        "z": -0.17671852734754845
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:133",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 12.671097208674107,
+        "y": 5.53936,
+        "z": 0.9363186468755327
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:134",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 3.7578324304846675,
+        "y": 1.6493599999999997,
+        "z": 4.60828147265245
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:135",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 5.155432347704772,
+        "y": 5.53936,
+        "z": 6.0747557015706315
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:136",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 14.068697125894209,
+        "y": 1.6493599999999997,
+        "z": 2.402792875793712
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:137",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 5.1768241831724255,
+        "y": 1.9512240000000003,
+        "z": -0.15072900921123433
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:138",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 14.090088961361865,
+        "y": 5.841224,
+        "z": -3.822691834988153
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:139",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 12.649705373206451,
+        "y": 1.9512240000000003,
+        "z": -2.4081966423426024
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:140",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 3.7364405950170134,
+        "y": 5.841224,
+        "z": 1.2637661834343163
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:141",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 12.649705373206453,
+        "y": 5.828776,
+        "z": 2.376803357657397
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:142",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 3.736440595017013,
+        "y": 1.9387759999999998,
+        "z": 6.048766183434315
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:143",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 5.176824183172426,
+        "y": 5.828776,
+        "z": 4.634270990788767
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:144",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 14.090088961361863,
+        "y": 1.9387759999999998,
+        "z": 0.9623081650118479
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:145",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 6.011105766410957,
+        "y": 1.002064,
+        "z": -1.994043729703954
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:146",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 14.924370544600395,
+        "y": 4.892064,
+        "z": -5.666006555480872
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:147",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 11.81542378996792,
+        "y": 1.002064,
+        "z": -0.5648819218498833
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:148",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 2.902159011778482,
+        "y": 4.892064,
+        "z": 3.1070809039270357
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:149",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 11.815423789967921,
+        "y": 6.777936,
+        "z": 4.220118078150116
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:150",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 2.9021590117784823,
+        "y": 2.887936,
+        "z": 7.8920809039270345
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:151",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 6.0111057664109575,
+        "y": 6.777936,
+        "z": 2.7909562702960464
+      },
+      {
+        "id": "molecular-crystal-caprolactam-cod-5000169:atom:152",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 14.924370544600395,
+        "y": 2.887936,
+        "z": -0.8810065554808721
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 5000169; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-caprolactam-cod-5000169:atom:1",
+      "molecular-crystal-caprolactam-cod-5000169:atom:2",
+      "molecular-crystal-caprolactam-cod-5000169:atom:3",
+      "molecular-crystal-caprolactam-cod-5000169:atom:4",
+      "molecular-crystal-caprolactam-cod-5000169:atom:5",
+      "molecular-crystal-caprolactam-cod-5000169:atom:6",
+      "molecular-crystal-caprolactam-cod-5000169:atom:7",
+      "molecular-crystal-caprolactam-cod-5000169:atom:8",
+      "molecular-crystal-caprolactam-cod-5000169:atom:9",
+      "molecular-crystal-caprolactam-cod-5000169:atom:10",
+      "molecular-crystal-caprolactam-cod-5000169:atom:11",
+      "molecular-crystal-caprolactam-cod-5000169:atom:12",
+      "molecular-crystal-caprolactam-cod-5000169:atom:13",
+      "molecular-crystal-caprolactam-cod-5000169:atom:14",
+      "molecular-crystal-caprolactam-cod-5000169:atom:15",
+      "molecular-crystal-caprolactam-cod-5000169:atom:16",
+      "molecular-crystal-caprolactam-cod-5000169:atom:17",
+      "molecular-crystal-caprolactam-cod-5000169:atom:18",
+      "molecular-crystal-caprolactam-cod-5000169:atom:19",
+      "molecular-crystal-caprolactam-cod-5000169:atom:20",
+      "molecular-crystal-caprolactam-cod-5000169:atom:21",
+      "molecular-crystal-caprolactam-cod-5000169:atom:22",
+      "molecular-crystal-caprolactam-cod-5000169:atom:23",
+      "molecular-crystal-caprolactam-cod-5000169:atom:24",
+      "molecular-crystal-caprolactam-cod-5000169:atom:25",
+      "molecular-crystal-caprolactam-cod-5000169:atom:26",
+      "molecular-crystal-caprolactam-cod-5000169:atom:27",
+      "molecular-crystal-caprolactam-cod-5000169:atom:28",
+      "molecular-crystal-caprolactam-cod-5000169:atom:29",
+      "molecular-crystal-caprolactam-cod-5000169:atom:30",
+      "molecular-crystal-caprolactam-cod-5000169:atom:31",
+      "molecular-crystal-caprolactam-cod-5000169:atom:32",
+      "molecular-crystal-caprolactam-cod-5000169:atom:33",
+      "molecular-crystal-caprolactam-cod-5000169:atom:34",
+      "molecular-crystal-caprolactam-cod-5000169:atom:35",
+      "molecular-crystal-caprolactam-cod-5000169:atom:36",
+      "molecular-crystal-caprolactam-cod-5000169:atom:37",
+      "molecular-crystal-caprolactam-cod-5000169:atom:38",
+      "molecular-crystal-caprolactam-cod-5000169:atom:39",
+      "molecular-crystal-caprolactam-cod-5000169:atom:40",
+      "molecular-crystal-caprolactam-cod-5000169:atom:41",
+      "molecular-crystal-caprolactam-cod-5000169:atom:42",
+      "molecular-crystal-caprolactam-cod-5000169:atom:43",
+      "molecular-crystal-caprolactam-cod-5000169:atom:44",
+      "molecular-crystal-caprolactam-cod-5000169:atom:45",
+      "molecular-crystal-caprolactam-cod-5000169:atom:46",
+      "molecular-crystal-caprolactam-cod-5000169:atom:47",
+      "molecular-crystal-caprolactam-cod-5000169:atom:48",
+      "molecular-crystal-caprolactam-cod-5000169:atom:49",
+      "molecular-crystal-caprolactam-cod-5000169:atom:50",
+      "molecular-crystal-caprolactam-cod-5000169:atom:51",
+      "molecular-crystal-caprolactam-cod-5000169:atom:52",
+      "molecular-crystal-caprolactam-cod-5000169:atom:53",
+      "molecular-crystal-caprolactam-cod-5000169:atom:54",
+      "molecular-crystal-caprolactam-cod-5000169:atom:55",
+      "molecular-crystal-caprolactam-cod-5000169:atom:56",
+      "molecular-crystal-caprolactam-cod-5000169:atom:57",
+      "molecular-crystal-caprolactam-cod-5000169:atom:58",
+      "molecular-crystal-caprolactam-cod-5000169:atom:59",
+      "molecular-crystal-caprolactam-cod-5000169:atom:60",
+      "molecular-crystal-caprolactam-cod-5000169:atom:61",
+      "molecular-crystal-caprolactam-cod-5000169:atom:62",
+      "molecular-crystal-caprolactam-cod-5000169:atom:63",
+      "molecular-crystal-caprolactam-cod-5000169:atom:64",
+      "molecular-crystal-caprolactam-cod-5000169:atom:65",
+      "molecular-crystal-caprolactam-cod-5000169:atom:66",
+      "molecular-crystal-caprolactam-cod-5000169:atom:67",
+      "molecular-crystal-caprolactam-cod-5000169:atom:68",
+      "molecular-crystal-caprolactam-cod-5000169:atom:69",
+      "molecular-crystal-caprolactam-cod-5000169:atom:70",
+      "molecular-crystal-caprolactam-cod-5000169:atom:71",
+      "molecular-crystal-caprolactam-cod-5000169:atom:72",
+      "molecular-crystal-caprolactam-cod-5000169:atom:73",
+      "molecular-crystal-caprolactam-cod-5000169:atom:74",
+      "molecular-crystal-caprolactam-cod-5000169:atom:75",
+      "molecular-crystal-caprolactam-cod-5000169:atom:76",
+      "molecular-crystal-caprolactam-cod-5000169:atom:77",
+      "molecular-crystal-caprolactam-cod-5000169:atom:78",
+      "molecular-crystal-caprolactam-cod-5000169:atom:79",
+      "molecular-crystal-caprolactam-cod-5000169:atom:80",
+      "molecular-crystal-caprolactam-cod-5000169:atom:81",
+      "molecular-crystal-caprolactam-cod-5000169:atom:82",
+      "molecular-crystal-caprolactam-cod-5000169:atom:83",
+      "molecular-crystal-caprolactam-cod-5000169:atom:84",
+      "molecular-crystal-caprolactam-cod-5000169:atom:85",
+      "molecular-crystal-caprolactam-cod-5000169:atom:86",
+      "molecular-crystal-caprolactam-cod-5000169:atom:87",
+      "molecular-crystal-caprolactam-cod-5000169:atom:88",
+      "molecular-crystal-caprolactam-cod-5000169:atom:89",
+      "molecular-crystal-caprolactam-cod-5000169:atom:90",
+      "molecular-crystal-caprolactam-cod-5000169:atom:91",
+      "molecular-crystal-caprolactam-cod-5000169:atom:92",
+      "molecular-crystal-caprolactam-cod-5000169:atom:93",
+      "molecular-crystal-caprolactam-cod-5000169:atom:94",
+      "molecular-crystal-caprolactam-cod-5000169:atom:95",
+      "molecular-crystal-caprolactam-cod-5000169:atom:96",
+      "molecular-crystal-caprolactam-cod-5000169:atom:97",
+      "molecular-crystal-caprolactam-cod-5000169:atom:98",
+      "molecular-crystal-caprolactam-cod-5000169:atom:99",
+      "molecular-crystal-caprolactam-cod-5000169:atom:100",
+      "molecular-crystal-caprolactam-cod-5000169:atom:101",
+      "molecular-crystal-caprolactam-cod-5000169:atom:102",
+      "molecular-crystal-caprolactam-cod-5000169:atom:103",
+      "molecular-crystal-caprolactam-cod-5000169:atom:104",
+      "molecular-crystal-caprolactam-cod-5000169:atom:105",
+      "molecular-crystal-caprolactam-cod-5000169:atom:106",
+      "molecular-crystal-caprolactam-cod-5000169:atom:107",
+      "molecular-crystal-caprolactam-cod-5000169:atom:108",
+      "molecular-crystal-caprolactam-cod-5000169:atom:109",
+      "molecular-crystal-caprolactam-cod-5000169:atom:110",
+      "molecular-crystal-caprolactam-cod-5000169:atom:111",
+      "molecular-crystal-caprolactam-cod-5000169:atom:112",
+      "molecular-crystal-caprolactam-cod-5000169:atom:113",
+      "molecular-crystal-caprolactam-cod-5000169:atom:114",
+      "molecular-crystal-caprolactam-cod-5000169:atom:115",
+      "molecular-crystal-caprolactam-cod-5000169:atom:116",
+      "molecular-crystal-caprolactam-cod-5000169:atom:117",
+      "molecular-crystal-caprolactam-cod-5000169:atom:118",
+      "molecular-crystal-caprolactam-cod-5000169:atom:119",
+      "molecular-crystal-caprolactam-cod-5000169:atom:120",
+      "molecular-crystal-caprolactam-cod-5000169:atom:121",
+      "molecular-crystal-caprolactam-cod-5000169:atom:122",
+      "molecular-crystal-caprolactam-cod-5000169:atom:123",
+      "molecular-crystal-caprolactam-cod-5000169:atom:124",
+      "molecular-crystal-caprolactam-cod-5000169:atom:125",
+      "molecular-crystal-caprolactam-cod-5000169:atom:126",
+      "molecular-crystal-caprolactam-cod-5000169:atom:127",
+      "molecular-crystal-caprolactam-cod-5000169:atom:128",
+      "molecular-crystal-caprolactam-cod-5000169:atom:129",
+      "molecular-crystal-caprolactam-cod-5000169:atom:130",
+      "molecular-crystal-caprolactam-cod-5000169:atom:131",
+      "molecular-crystal-caprolactam-cod-5000169:atom:132",
+      "molecular-crystal-caprolactam-cod-5000169:atom:133",
+      "molecular-crystal-caprolactam-cod-5000169:atom:134",
+      "molecular-crystal-caprolactam-cod-5000169:atom:135",
+      "molecular-crystal-caprolactam-cod-5000169:atom:136",
+      "molecular-crystal-caprolactam-cod-5000169:atom:137",
+      "molecular-crystal-caprolactam-cod-5000169:atom:138",
+      "molecular-crystal-caprolactam-cod-5000169:atom:139",
+      "molecular-crystal-caprolactam-cod-5000169:atom:140",
+      "molecular-crystal-caprolactam-cod-5000169:atom:141",
+      "molecular-crystal-caprolactam-cod-5000169:atom:142",
+      "molecular-crystal-caprolactam-cod-5000169:atom:143",
+      "molecular-crystal-caprolactam-cod-5000169:atom:144",
+      "molecular-crystal-caprolactam-cod-5000169:atom:145",
+      "molecular-crystal-caprolactam-cod-5000169:atom:146",
+      "molecular-crystal-caprolactam-cod-5000169:atom:147",
+      "molecular-crystal-caprolactam-cod-5000169:atom:148",
+      "molecular-crystal-caprolactam-cod-5000169:atom:149",
+      "molecular-crystal-caprolactam-cod-5000169:atom:150",
+      "molecular-crystal-caprolactam-cod-5000169:atom:151",
+      "molecular-crystal-caprolactam-cod-5000169:atom:152"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          17.826529556378876,
+          0.0,
+          -7.343925651553837
+        ],
+        [
+          1.2511194214484234e-15,
+          7.78,
+          4.763876048683205e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.57
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 5000169 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

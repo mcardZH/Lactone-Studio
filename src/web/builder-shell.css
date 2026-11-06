@@ -1,0 +1,51 @@
+/* One independent workspace, not several separately sticky cards. */
+.app-shell.builder-version{height:100dvh;min-height:0;overflow:hidden}
+.builder-version .main-shell{height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.builder-version .topbar{flex:0 0 52px;min-height:52px}
+.builder-version .workspace{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:none;padding:14px 20px 8px;overflow:hidden}
+.builder-version .page-heading{flex-shrink:0;margin-bottom:8px}.builder-version .page-heading h1{font-size:22px}
+.builder-version .page-heading .eyebrow,.builder-version .page-heading p{display:none}
+.builder-version .software-tabs{flex-shrink:0;margin-bottom:8px;gap:8px}.builder-version .software-tab{min-height:35px;padding:6px 11px;gap:8px}
+.builder-version .software-tab .software-text>span,.builder-version .software-state{display:none}.builder-version .software-symbol{width:25px;height:25px;font-size:16px}
+.builder-version .stepper{flex-shrink:0;margin-bottom:10px;padding:0}
+.builder-version .workspace-grid{grid-template-columns:minmax(300px,var(--form-width,35%)) minmax(0,1fr);gap:16px;flex:1;min-height:0;align-items:stretch;overflow:hidden}
+.builder-version .form-card{min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.builder-version .form-card .card-heading{padding:16px 20px}.builder-version .form-card .step-content{padding:17px 20px}.builder-version .form-card .two-fields{gap:10px}
+.builder-version .form-card .structure-entry-grid{grid-template-columns:1fr;gap:8px}.builder-version .form-card .structure-entry-grid .dropzone{height:154px;min-height:154px;padding:12px}
+.builder-version .form-card .draw-entry-card{min-height:66px;height:auto;padding:10px;display:grid;grid-template-columns:32px 1fr;gap:4px 10px;text-align:left}
+.builder-version .draw-entry-card .upload-icon{grid-row:1/3;width:30px;height:30px}.builder-version .draw-entry-card strong,.builder-version .draw-entry-card small{justify-self:start}
+.builder-version .preview-column{position:relative;top:auto;max-height:100%;min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;display:block}
+.builder-version .sticky-structure-card{position:relative;top:auto;margin:0 0 10px;overflow:visible}.builder-version .preview-card-heading{padding:10px 14px;min-height:39px}
+.builder-version .structure-summary{padding:10px 14px}.builder-version .structure-mass-note{display:none}.builder-version .structure-visual-content{min-width:0;padding:0}
+.builder-version .builder-workspace{border:0;border-radius:0;padding:8px 10px}.builder-version .molecule-meta{padding:6px 14px;font-size:10px}
+.builder-version .summary-card{margin:10px 0;padding:0}.builder-version .summary-card>summary{padding:10px 14px;cursor:pointer;color:#466967;font-size:12px;list-style:none;border-bottom:1px solid #e6eeeb}
+.builder-version .preview-column[data-summary-open=false] .summary-card,.builder-version .preview-column[data-summary-open=false] .structure-notes{display:none}
+.builder-version .summary-card:not([open])>summary{border:0}.builder-version .summary-card>summary:before{content:'▸';margin-right:7px}.builder-version .summary-card[open]>summary:before{content:'▾'}
+.builder-version .structure-notes{display:block;padding:9px 12px;margin:8px 0;font-size:11px}.builder-version .structure-notes>summary{cursor:pointer;color:#7a8d86}
+.builder-version .completion-note{display:none}.builder-version .page-footer{flex-shrink:0;margin-top:8px;padding-top:0;font-size:9px}
+.workspace-width-control{display:flex;align-items:center;gap:6px;color:#82948f;font-size:10px}.workspace-width-control input{width:82px;accent-color:#288779}
+.builder-version .software-tabs{height:auto}.builder-version .software-tab{height:54px}
+.builder-version .structure-summary-nine{padding:8px 14px;display:flex;align-items:center;gap:14px;min-height:54px}.builder-version .structure-source-name{margin:0;max-width:39%;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.builder-version .structure-facts-nine{flex:1;margin:0;gap:16px;align-items:center}.builder-version .structure-facts-nine>div>span{font-size:10px}.builder-version .structure-facts-nine strong{font-size:17px}.builder-version .structure-formula-nine{margin-right:auto}.builder-version .structure-mass-note{display:none}
+/* Explicit stage geometry: percentage heights inside an auto flex child used to
+   overflow its clipping frame and hide the real WebGL controls. */
+.builder-version .sticky-structure-card:has(.builder-workspace){height:100%;display:flex;flex-direction:column}
+.builder-version .sticky-structure-card>.preview-card-heading,.builder-version .structure-summary-nine,.builder-version .molecule-meta{flex-shrink:0}
+.builder-version .structure-visual-content:has(.builder-workspace){flex:1;min-height:0;display:flex;flex-direction:column}
+.builder-version .builder-workspace{flex:1;min-height:0}
+.builder-version .builder-stage{height:auto;min-height:250px;flex:1 0 250px;position:relative}
+.builder-version .builder-3d{position:absolute;inset:0;height:auto;min-height:0}
+.builder-version .builder-3d>.molecule-stage{height:100%;min-height:0}
+.builder-version .builder-3d .molecule-canvas{min-height:0}
+.app-shell.builder-version .preview-column>.sticky-structure-card{position:relative;top:auto;max-height:none;overflow:visible}
+.app-shell.builder-version .software-cards .software-tab{height:54px;padding:6px 11px}
+.app-shell.builder-version[data-font-size] .builder-workspace :is(button,select,.builder-toolbar label,.builder-selection label,summary,.builder-status,.builder-heading>span,.viewer-builder-appearance label){font-size:var(--ui-secondary-size)!important}
+.app-shell.builder-version[data-font-size] .builder-workspace input{font-size:var(--ui-primary-size)!important;min-height:30px}
+.app-shell.builder-version[data-font-size] .builder-workspace :is(.builder-cell-export input,.viewer-builder-appearance input){min-height:0}
+@media(max-height:850px) and (min-width:1001px){.builder-version .workspace{padding-top:8px}.builder-version .page-heading h1{font-size:18px}.builder-version .page-heading{margin-bottom:5px}.builder-version .software-tabs{display:none}.builder-version .stepper{margin-bottom:7px}.builder-version .structure-summary{padding-top:6px;padding-bottom:6px}.builder-version .builder-stage,.builder-version .builder-3d{min-height:300px}.builder-version .builder-heading{min-height:22px}}
+@media(max-width:1100px){.builder-version .sidebar{width:160px}.builder-version .workspace{padding-left:12px;padding-right:12px}.builder-version .workspace-grid{grid-template-columns:minmax(280px,var(--form-width,35%)) minmax(0,1fr);gap:10px}.builder-version .topbar-actions{gap:8px}}
+@media(max-width:1000px){.app-shell.builder-version,.builder-version .main-shell{height:auto;min-height:100dvh;overflow:visible}.builder-version .workspace{overflow:visible;display:block}.builder-version .workspace-grid{display:grid;grid-template-columns:1fr!important;overflow:visible}.builder-version .form-card,.builder-version .preview-column{max-height:none;overflow:visible}.builder-version .preview-column{position:static}.workspace-width-control{display:none}.builder-version .software-tabs{display:flex}.builder-version .page-footer{margin-top:14px}.builder-version .structure-entry-grid{grid-template-columns:1fr 1fr!important}.builder-version .draw-entry-card{display:flex!important;text-align:center!important;min-height:154px!important}.builder-version .draw-entry-card strong,.builder-version .draw-entry-card small{justify-self:auto}.builder-version .builder-workspace{padding:7px}.builder-version .sticky-structure-card{position:static}}
+@media(max-width:540px){.builder-version .form-card .step-content{padding:14px}.builder-version .form-card .card-heading{padding:14px}.builder-version .structure-entry-grid{grid-template-columns:1fr!important}.builder-version .draw-entry-card{min-height:66px!important}.builder-version .page-heading h1{font-size:18px}.builder-version .topbar{padding:0 12px}}
+@media(max-width:1000px){.builder-version .builder-stage{height:410px;min-height:340px}.builder-version .structure-summary-nine{flex-wrap:wrap;gap:5px}.builder-version .structure-source-name{max-width:100%;width:100%}.builder-version .structure-facts-nine{gap:12px}.builder-version .builder-3d>.molecule-stage{height:100%;min-height:0}}
+@media(max-width:1000px){.builder-version .sticky-structure-card:has(.builder-workspace){height:auto}.builder-version .builder-stage{flex:0 0 410px}}
+@media(max-height:850px) and (min-width:1001px){.builder-version .builder-stage{min-height:250px}.builder-version .builder-3d{min-height:0}}
+@media(max-width:800px){.app-shell.builder-version .preview-card:not(.mobile-preview-open) .structure-visual-content{display:none}}

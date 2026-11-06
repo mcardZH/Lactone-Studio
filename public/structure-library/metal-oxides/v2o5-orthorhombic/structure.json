@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "entryId": "v2o5-orthorhombic",
+  "structure": {
+    "id": "v2o5-orthorhombic",
+    "name": "正交五氧化二钒",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "v2o5-orthorhombic:atom:1",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 1.1647841600000004,
+        "y": 0.891,
+        "z": 3.8949456000000007
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:2",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 4.59121584,
+        "y": 0.891,
+        "z": 3.894945600000001
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:3",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 6.920784160000001,
+        "y": 2.673,
+        "z": 0.47305440000000043
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:4",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 10.34721584,
+        "y": 2.673,
+        "z": 0.4730544000000006
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.2007016000000004,
+        "y": 0.891,
+        "z": 2.319408
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.5552984,
+        "y": 0.891,
+        "z": 2.3194080000000006
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 6.956701600000001,
+        "y": 2.673,
+        "z": 2.0485920000000006
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 10.3112984,
+        "y": 2.673,
+        "z": 2.048592000000001
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 10.718823200000001,
+        "y": 0.891,
+        "z": 0.013104000000000712
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.5491768,
+        "y": 0.891,
+        "z": 0.013104000000000457
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:11",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.9628232,
+        "y": 2.673,
+        "z": 4.354896000000001
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:12",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.7931768000000005,
+        "y": 2.673,
+        "z": 4.354896
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:13",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.878,
+        "y": 0.891,
+        "z": 0.004368000000000231
+      },
+      {
+        "id": "v2o5-orthorhombic:atom:14",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.634,
+        "y": 2.673,
+        "z": 4.363632000000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2020756; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "v2o5-orthorhombic:atom:1",
+      "v2o5-orthorhombic:atom:2",
+      "v2o5-orthorhombic:atom:3",
+      "v2o5-orthorhombic:atom:4",
+      "v2o5-orthorhombic:atom:5",
+      "v2o5-orthorhombic:atom:6",
+      "v2o5-orthorhombic:atom:7",
+      "v2o5-orthorhombic:atom:8",
+      "v2o5-orthorhombic:atom:9",
+      "v2o5-orthorhombic:atom:10",
+      "v2o5-orthorhombic:atom:11",
+      "v2o5-orthorhombic:atom:12",
+      "v2o5-orthorhombic:atom:13",
+      "v2o5-orthorhombic:atom:14"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          11.512,
+          0.0,
+          7.049066975892166e-16
+        ],
+        [
+          5.731349123447533e-16,
+          3.564,
+          2.1823205960805835e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.368
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2020756 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "schema": "sciyue-native-toolchain-lock-v1",
+  "platform": "win32-x64",
+  "lockId": "python-build-41fc137da28f801a-public-v1",
+  "root": ".local/toolchains/win-x64/python-build-41fc137da28f801a-public-v1",
+  "contentDirectories": [
+    "python",
+    "tools",
+    "compiler"
+  ],
+  "pythonVersion": "3.12.13",
+  "python": "python/python.exe",
+  "buildTools": "tools",
+  "versions": {
+    "altgraph": "0.17.5",
+    "packaging": "26.3",
+    "pefile": "2024.8.26",
+    "pyinstaller": "6.22.3",
+    "pyinstaller-hooks-contrib": "2026.8",
+    "pywin32-ctypes": "0.2.3",
+    "setuptools": "84.0.0"
+  },
+  "compiler": "compiler/zig.exe",
+  "resourceCompiler": "compiler/zig.exe",
+  "compilerVersion": "0.17.0",
+  "globalEnvironmentModified": false,
+  "upstreamTools": [
+    {
+      "name": "altgraph",
+      "version": "0.17.5",
+      "filename": "altgraph-0.17.5-py2.py3-none-any.whl",
+      "bytes": 21228,
+      "sha256": "f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597",
+      "url": "https://files.pythonhosted.org/packages/a9/ba/000a1996d4308bc65120167c21241a3b205464a2e0b58deda26ae8ac21d1/altgraph-0.17.5-py2.py3-none-any.whl",
+      "metadataUrl": "https://pypi.org/pypi/altgraph/0.17.5/json"
+    },
+    {
+      "name": "packaging",
+      "version": "26.3",
+      "filename": "packaging-26.3-py3-none-any.whl",
+      "bytes": 129956,
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+      "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+      "metadataUrl": "https://pypi.org/pypi/packaging/26.3/json"
+    },
+    {
+      "name": "pefile",
+      "version": "2024.8.26",
+      "filename": "pefile-2024.8.26-py3-none-any.whl",
+      "bytes": 74766,
+      "sha256": "76f8b485dcd3b1bb8166f1128d395fa3d87af26360c2358fb75b80019b957c6f",
+      "url": "https://files.pythonhosted.org/packages/54/16/12b82f791c7f50ddec566873d5bdd245baa1491bac11d15ffb98aecc8f8b/pefile-2024.8.26-py3-none-any.whl",
+      "metadataUrl": "https://pypi.org/pypi/pefile/2024.8.26/json"
+    },
+    {
+      "name": "pyinstaller",
+      "version": "6.22.3",
+      "filename": "pyinstaller-6.22.3-py3-none-win_amd64.whl",
+      "bytes": 1454907,
+      "sha256": "500bd58c7bf7e584a8435adccbd763a0b918d5c12b08d74ff50fd79b2915458b",
+      "url": "https://files.pythonhosted.org/packages/24/83/c5422204772a27aef643280fdc887b7ef55679989096b21dceb1b9625fc4/pyinstaller-6.22.3-py3-none-win_amd64.whl",
+      "metadataUrl": "https://pypi.org/pypi/pyinstaller/6.22.3/json"
+    },
+    {
+      "name": "pyinstaller-hooks-contrib",
+      "version": "2026.8",
+      "filename": "pyinstaller_hooks_contrib-2026.8-py3-none-any.whl",
+      "bytes": 462145,
+      "sha256": "6d21d65323ea4467753afc21f52d7d0e69416ae8101dd88269bf273ad48db084",
+      "url": "https://files.pythonhosted.org/packages/8f/f1/3eee0263b487e571aed9204257b45bc2a0b6fec34d0a1adade4d8d8a968c/pyinstaller_hooks_contrib-2026.8-py3-none-any.whl",
+      "metadataUrl": "https://pypi.org/pypi/pyinstaller-hooks-contrib/2026.8/json"
+    },
+    {
+      "name": "pywin32-ctypes",
+      "version": "0.2.3",
+      "filename": "pywin32_ctypes-0.2.3-py3-none-any.whl",
+      "bytes": 30756,
+      "sha256": "8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8",
+      "url": "https://files.pythonhosted.org/packages/de/3d/8161f7711c017e01ac9f008dfddd9410dff3674334c233bde66e7ba65bbf/pywin32_ctypes-0.2.3-py3-none-any.whl",
+      "metadataUrl": "https://pypi.org/pypi/pywin32-ctypes/0.2.3/json"
+    },
+    {
+      "name": "setuptools",
+      "version": "84.0.0",
+      "filename": "setuptools-84.0.0-py3-none-any.whl",
+      "bytes": 818216,
+      "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670",
+      "url": "https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl",
+      "metadataUrl": "https://pypi.org/pypi/setuptools/84.0.0/json"
+    }
+  ],
+  "compilerSource": {
+    "version": "0.17.0",
+    "platform": "x86_64-windows",
+    "archive": {
+      "url": "https://ziglang.org/download/0.17.0/zig-x86_64-windows-0.17.0.zip",
+      "bytes": 100268137,
+      "sha256": "b5663f69581dcf391293fbf16c06cb80d81d806545ce618b4d0bab7f0eb8c428",
+      "matchesOfficialIndex": true
+    },
+    "license": "MIT",
+    "licenseFile": {
+      "path": "compiler/LICENSE",
+      "bytes": 1080,
+      "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177"
+    }
+  },
+  "entryIdentities": {
+    "python": {
+      "path": "python/python.exe",
+      "bytes": 105288,
+      "sha256": "0d84b0acc6a5a3e7906d07c63a364e19b76410fa726c4412c74d3af7408b08d5"
+    },
+    "compiler": {
+      "path": "compiler/zig.exe",
+      "bytes": 190064128,
+      "sha256": "f54b14f02a4d7d8ac62a94a0663486eb166bba3745d85b466238c1b93e723d46"
+    },
+    "resourceCompiler": {
+      "path": "compiler/zig.exe",
+      "bytes": 190064128,
+      "sha256": "f54b14f02a4d7d8ac62a94a0663486eb166bba3745d85b466238c1b93e723d46"
+    }
+  },
+  "pythonLicenseRoot": ".local/dependencies/win-x64/native-0169b0478f2d6c01-public-v1",
+  "pythonSource": {
+    "name": "python",
+    "version": "3.12.13",
+    "build": "h63b1a2d_1",
+    "license": "PSF-2.0",
+    "url": "https://repo.anaconda.com/pkgs/main/win-64/python-3.12.13-h63b1a2d_1.conda",
+    "sha256": "11c2922dfc954be1a5b867b6891d6430596eed8895983b9c1620dfca4c220e6b",
+    "licenseFiles": [
+      {
+        "path": "licenses/conda/python/LICENSE",
+        "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+      }
+    ]
+  },
+  "inventory": {
+    "path": ".local/toolchains/win-x64/python-build-41fc137da28f801a-public-v1/inventory.json",
+    "bytes": 4793265,
+    "sha256": "cb26ba63829c89b0383f138062304e3db41968910c64df09f76435634ca2598c"
+  }
+}

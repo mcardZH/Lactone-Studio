@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "entryId": "vb2-hexagonal",
+  "structure": {
+    "id": "vb2-hexagonal",
+    "name": "二硼化钒",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "vb2-hexagonal:atom:1",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "vb2-hexagonal:atom:2",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 1.1102230246251565e-16,
+        "y": 1.7307229019497412,
+        "z": 1.5280000000000002
+      },
+      {
+        "id": "vb2-hexagonal:atom:3",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 1.4988500000000002,
+        "y": 0.8653614509748708,
+        "z": 1.5280000000000002
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:2107290; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "vb2-hexagonal:atom:1",
+      "vb2-hexagonal:atom:2",
+      "vb2-hexagonal:atom:3"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          2.9977,
+          0.0,
+          1.8355618549020104e-16
+        ],
+        [
+          -1.4988499999999998,
+          2.596084352924612,
+          1.8355618549020104e-16
+        ],
+        [
+          0.0,
+          0.0,
+          3.056
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:2107290 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

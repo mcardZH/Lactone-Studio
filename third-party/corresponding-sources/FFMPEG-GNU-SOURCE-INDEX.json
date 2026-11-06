@@ -1,0 +1,167 @@
+{
+  "schema": "sy-ffmpeg-gnu-source-supplement/v1",
+  "ffmpegCommit": "2b68d2babae73714846961fb0ee47e3b3d2e39a9",
+  "opusCommit": "55513e81d8f606bd75d0ff773d2144e5f2a732f5",
+  "sourceMaterialsAcquired": true,
+  "sourceMaterialsStagedHere": true,
+  "integratedIntoFormalSourceExport": false,
+  "modifiedBuildAndPairedProbeCompleted": true,
+  "guiValidated": false,
+  "publicDistributionApproved": false,
+  "reusesExistingSourceArchive": {
+    "path": "archives/ffmpeg-2b68d2babae73714846961fb0ee47e3b3d2e39a9/2b68d2babae73714846961fb0ee47e3b3d2e39a9.tar.gz",
+    "bytes": 18820125,
+    "sha256": "cb4ea74933253f9ee582717690487796bde8e0d4ac9661a2e520615d909e2260"
+  },
+  "buildRuntimeSourceRelation": "MinGW-w64 11.0.1 R0 source materials and GCC13.2/Runtime Exception are shared with GNU runtime delivery; retain their exact source/recipe identities when integrating",
+  "members": [
+    {
+      "path": "archives/chromium-152-opus.tar.gz",
+      "bytes": 4258581,
+      "sha256": "ddc29ad0e6368cc231b75628e931bd9fe0107144a1377a9014c5400692c6e9d1",
+      "relationship": "unmodified original archive; exact Chromium tag",
+      "officialURL": "https://chromium.googlesource.com/chromium/src/+archive/refs/tags/152.0.7977.130/third_party/opus.tar.gz"
+    },
+    {
+      "path": "archives/chromium-152-generate-stubs.tar.gz",
+      "bytes": 15193,
+      "sha256": "69918e68f77a00b4b8e04905db702f16e2e4e2b72a0f1e770d896acf72c86c21",
+      "relationship": "unmodified original archive; exact Chromium tag",
+      "officialURL": "https://chromium.googlesource.com/chromium/src/+archive/refs/tags/152.0.7977.130/tools/generate_stubs.tar.gz"
+    },
+    {
+      "path": "build-support/opus-55513e81/celt_headers.mk",
+      "bytes": 1172,
+      "sha256": "e1823afc795d699a5622eef9334605f05389816ed0e1697f8e3defb7d40edc48",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/celt_headers.mk"
+    },
+    {
+      "path": "build-support/opus-55513e81/celt_sources.mk",
+      "bytes": 961,
+      "sha256": "0ecbea48a3344b76a83887247aebbfd04e6d297087a0297b3744f5006dad2209",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/celt_sources.mk"
+    },
+    {
+      "path": "build-support/opus-55513e81/lpcnet_headers.mk",
+      "bytes": 777,
+      "sha256": "59ef70b94b867048cdfb9583662ce6bf0ab791ee4c2817e8703b9913bffd8254",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/lpcnet_headers.mk"
+    },
+    {
+      "path": "build-support/opus-55513e81/lpcnet_sources.mk",
+      "bytes": 930,
+      "sha256": "4e5de14be3627d4ad4ce93e536af059b945ecaa7090656acbe2fee143adfdbc7",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/lpcnet_sources.mk"
+    },
+    {
+      "path": "build-support/opus-55513e81/opus_headers.mk",
+      "bytes": 159,
+      "sha256": "266b41f6408906c6820a6d09c47dd74041bbe75d0380e9754bdd37fa1afe772d",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/opus_headers.mk"
+    },
+    {
+      "path": "build-support/opus-55513e81/opus_sources.mk",
+      "bytes": 356,
+      "sha256": "43dced503e1ba8a9d7328615e16b878f6041502e28279d43c1335612e35450f9",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/opus_sources.mk"
+    },
+    {
+      "path": "build-support/opus-55513e81/silk_headers.mk",
+      "bytes": 1090,
+      "sha256": "3549564fd9ccff07252baeb40483585c29d160b3f4b9167f692e1f351e30e81b",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/silk_headers.mk"
+    },
+    {
+      "path": "build-support/opus-55513e81/silk_sources.mk",
+      "bytes": 4259,
+      "sha256": "e834190c31fd9b5d2606c14a1c00a180fa2ac0ea33330eeef0c45d9dc835a90a",
+      "relationship": "original upstream make source list omitted by Chromium archive; restore into opus/src",
+      "officialURL": "https://raw.githubusercontent.com/xiph/opus/55513e81d8f606bd75d0ff773d2144e5f2a732f5/silk_sources.mk"
+    },
+    {
+      "path": "licenses/FFmpeg-LGPL-2.1.txt",
+      "bytes": 26517,
+      "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30",
+      "relationship": "original applicable license text; retained for actual linked code"
+    },
+    {
+      "path": "licenses/GCC-COPYING.RUNTIME.txt",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "relationship": "original applicable license text; retained for actual linked code"
+    },
+    {
+      "path": "licenses/GCC-COPYING3.txt",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "relationship": "original applicable license text; retained for actual linked code"
+    },
+    {
+      "path": "licenses/Opus-COPYING.txt",
+      "bytes": 1945,
+      "sha256": "01e1167d54a096d123cf6dfbbeb19587278845c6481d2d66d545669846079551",
+      "relationship": "original applicable license text; retained for actual linked code"
+    },
+    {
+      "path": "licenses/Winpthreads-COPYING.txt",
+      "bytes": 2883,
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177",
+      "relationship": "original applicable license text; retained for actual linked code"
+    },
+    {
+      "path": "build-support/ffmpeg-gnu/ffmpeg-gnu-components.h",
+      "bytes": 76324,
+      "sha256": "3e98f36919abed04df89d7b7e6f83217f0bb05d191f890b9a2c935fbc6884d51",
+      "relationship": "actual generated configuration/ABI export contract of this GNU candidate"
+    },
+    {
+      "path": "build-support/ffmpeg-gnu/ffmpeg-gnu-config.h",
+      "bytes": 24046,
+      "sha256": "0152f4df146f1c2df4a48d84386560ec47110459eaf6b7b3da1ad1c678471bc7",
+      "relationship": "actual generated configuration/ABI export contract of this GNU candidate"
+    },
+    {
+      "path": "build-support/ffmpeg-gnu/ffmpeg-gnu-avconfig.h",
+      "bytes": 180,
+      "sha256": "975611ad5eba15212d9e1d5fca9d4fdf0daec6d2269b2fcab8e29af8667164bc",
+      "relationship": "actual generated configuration/ABI export contract of this GNU candidate"
+    },
+    {
+      "path": "build-support/ffmpeg-gnu/ffmpeg.def",
+      "bytes": 1166,
+      "sha256": "e344857d160f3a1968be0f8e3f833323ae4c698f986bcd2edc947a1fa5bc4455",
+      "relationship": "actual generated configuration/ABI export contract of this GNU candidate"
+    },
+    {
+      "path": "build-support/ffmpeg-gnu/paired_probe.c",
+      "bytes": 7704,
+      "sha256": "b677c096fd82eea5dd37a2a6dd913393f077af917d2e143830b6d2ca6dfd3554",
+      "relationship": "paired component self-test source; only self-generated media"
+    },
+    {
+      "path": "build-support/ffmpeg-gnu/export_names.h",
+      "bytes": 1122,
+      "sha256": "d98fbddc3e12a99f94a3dafcf9151e58659ac15f9f532045afc3b19c43f53c39",
+      "relationship": "exact original 53-name PE exports for paired self-test"
+    },
+    {
+      "path": "FFMPEG-GNU-REBUILD.md",
+      "bytes": 6948,
+      "sha256": "2785df01f040fe35ede2e977f53da48a4afc0e9a873b8778d2c7ccafb98fd975",
+      "relationship": "Same-config path-sanitized rebuild and paired probe completed; final SY GUI validation recorded separately"
+    },
+    {
+      "path": "build-support/ffmpeg-gnu/recipe.json",
+      "bytes": 7993,
+      "sha256": "dfc82ef31064f5d7b98e008655e153e3fc6b67e0303d6f0d46be508c35602f0b",
+      "relationship": "parameterized actual successful configure/compile/link commands; not an untested codec substitution"
+    }
+  ]
+}

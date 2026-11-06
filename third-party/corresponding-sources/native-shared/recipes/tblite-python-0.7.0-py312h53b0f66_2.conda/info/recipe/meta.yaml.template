@@ -1,0 +1,71 @@
+{% set name = "tblite-python" %}
+{% set version = "0.7.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/tblite/tblite/releases/download/v{{ version }}/tblite-{{ version }}.tar.gz
+  sha256: c303bc45e0c48e46dad7f032d377432c8717e17b0eb8eedb6c42c5237c3856d2
+
+build:
+  number: 2
+
+
+requirements:
+  build:
+    - {{ compiler('c') }}  # [unix]
+    - {{ stdlib('c') }}    # [unix]
+    - {{ compiler('m2w64_c') }}  # [win]
+    - {{ stdlib('m2w64_c') }}    # [win]
+    - cffi                                # [build_platform != target_platform]
+    - cross-python_{{ target_platform }}  # [build_platform != target_platform]
+    - meson-python                        # [build_platform != target_platform]
+    - pkg-config
+    - python                              # [build_platform != target_platform]
+    - python-build                        # [build_platform != target_platform]
+    - setuptools                          # [build_platform != target_platform]
+  host:
+    - cffi
+    - libblas
+    - liblapack
+    - meson-python
+    - pip
+    - python
+    - python-build
+    - setuptools
+    - tblite >={{ version }}
+  run:
+    - cffi
+    - numpy
+    - python
+
+
+test:
+  imports:
+    - tblite
+    - tblite.library
+    - tblite.interface
+  requires:
+    - pip
+    - pytest
+    - ase
+  commands:
+    - pip check
+    # - pytest --pyargs tblite -vv  # [not win]
+
+about:
+  home: https://pypi.org/project/tblite
+  dev_url: https://github.com/tblite/tblite
+  doc_url: https://tblite.readthedocs.io
+  license: LGPL-3.0-or-later
+  license_family: LGPL
+  license_file:
+    - subprojects/tblite/COPYING
+    - subprojects/tblite/COPYING.LESSER
+  summary: Python API for the tblite project
+
+extra:
+  recipe-maintainers:
+    - awvwgk

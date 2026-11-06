@@ -1,0 +1,17 @@
+export type * from './contracts';
+export { IncrementalScientificReader } from './incremental-scientific-reader';
+export { MonitorSourceOwner } from './monitor-source-owner';
+export type { MonitorRefreshResult } from './monitor-source-owner';
+export { ScientificMonitoringSession } from './scientific-parser-session';
+export { projectScientificMonitorSnapshot } from './scientific-monitor-projection';
+export { prepareScientificMonitor } from './prepared-scientific-monitor';
+export type { PreparedScientificMonitor, ScientificMonitorDelta } from './prepared-scientific-monitor';
+export { createScientificMonitorProvider, retainScientificMonitorSource } from './scientific-monitor-provider';
+export type { ScientificMonitorPublication } from './scientific-monitor-provider';
+export { classifyScientificCandidate } from './aux-classifier';
+export type { CandidateAssessment, CandidateProvenance, ClassifierPrimary, ScientificCandidateInput, CompanionCandidateKind, CandidateCapability, CandidateFieldFamily, CandidateSegment } from './aux-classifier';
+export { SCIENTIFIC_READER_IMPLEMENTATION_VERSION } from './implementation-version';
+export { preparedMonitorResultViews, createMonitorResults } from './monitor-results';
+export { readSourceOnlyMonitor, recognizeMonitorSource, validateSourceMonitorSummary } from './source-only-monitor';
+export { parseFinalInputStructure, finalInputXyzDependencies, identifyFinalInputTask } from '../integration/input-structure';
+export type { FinalInputStructureRequest, FinalInputStructureResult, FinalInputTaskResult } from '../integration/input-structure';

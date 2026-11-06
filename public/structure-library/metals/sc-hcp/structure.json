@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "entryId": "sc-hcp",
+  "structure": {
+    "id": "sc-hcp",
+    "name": "钪（hcp）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "sc-hcp:atom:1",
+        "sourceIndex": 1,
+        "element": "Sc",
+        "x": 2.220446049250313e-16,
+        "y": 1.9104520407484717,
+        "z": 1.3183250000000002
+      },
+      {
+        "id": "sc-hcp:atom:2",
+        "sourceIndex": 1,
+        "element": "Sc",
+        "x": 1.6545000000000005,
+        "y": 0.9552260203742359,
+        "z": 3.954975
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9010985; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "sc-hcp:atom:1",
+      "sc-hcp:atom:2"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.309,
+          0.0,
+          2.026178129189296e-16
+        ],
+        [
+          -1.6544999999999996,
+          2.8656780611227077,
+          2.026178129189296e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.2733
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9010985 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

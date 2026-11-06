@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "as-a7",
+  "structure": {
+    "id": "as-a7",
+    "name": "灰砷（A7）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "as-a7:atom:1",
+        "sourceIndex": 1,
+        "element": "As",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.395020825
+      },
+      {
+        "id": "as-a7:atom:2",
+        "sourceIndex": 1,
+        "element": "As",
+        "x": 1.8799,
+        "y": 1.0853607710495774,
+        "z": 5.910854158333334
+      },
+      {
+        "id": "as-a7:atom:3",
+        "sourceIndex": 1,
+        "element": "As",
+        "x": 2.220446049250313e-16,
+        "y": 2.170721542099155,
+        "z": 9.426687491666666
+      },
+      {
+        "id": "as-a7:atom:4",
+        "sourceIndex": 1,
+        "element": "As",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 8.152479175
+      },
+      {
+        "id": "as-a7:atom:5",
+        "sourceIndex": 1,
+        "element": "As",
+        "x": 1.8799,
+        "y": 1.0853607710495774,
+        "z": 1.1208125083333333
+      },
+      {
+        "id": "as-a7:atom:6",
+        "sourceIndex": 1,
+        "element": "As",
+        "x": 2.220446049250313e-16,
+        "y": 2.170721542099155,
+        "z": 4.636645841666666
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9009652; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "as-a7:atom:1",
+      "as-a7:atom:2",
+      "as-a7:atom:3",
+      "as-a7:atom:4",
+      "as-a7:atom:5",
+      "as-a7:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.7598,
+          0.0,
+          2.302213517717109e-16
+        ],
+        [
+          -1.8798999999999995,
+          3.2560823131487324,
+          2.302213517717109e-16
+        ],
+        [
+          0.0,
+          0.0,
+          10.5475
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9009652 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

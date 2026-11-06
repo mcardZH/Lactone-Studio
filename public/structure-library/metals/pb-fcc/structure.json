@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "entryId": "pb-fcc",
+  "structure": {
+    "id": "pb-fcc",
+    "name": "铅（fcc）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "pb-fcc:atom:1",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "pb-fcc:atom:2",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 3.9801357204026693e-16,
+        "y": 2.47502,
+        "z": 2.47502
+      },
+      {
+        "id": "pb-fcc:atom:3",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 2.47502,
+        "y": 0.0,
+        "z": 2.47502
+      },
+      {
+        "id": "pb-fcc:atom:4",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 2.4750200000000007,
+        "y": 2.47502,
+        "z": 3.0310253208256826e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9012004; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "pb-fcc:atom:1",
+      "pb-fcc:atom:2",
+      "pb-fcc:atom:3",
+      "pb-fcc:atom:4"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.95004,
+          0.0,
+          3.0310253208256826e-16
+        ],
+        [
+          7.960271440805339e-16,
+          4.95004,
+          3.0310253208256826e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.95004
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9012004 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

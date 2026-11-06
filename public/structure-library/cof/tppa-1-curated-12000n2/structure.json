@@ -1,0 +1,1382 @@
+{
+  "schemaVersion": 1,
+  "entryId": "tppa-1-curated-12000n2",
+  "structure": {
+    "id": "tppa-1-curated-12000n2",
+    "name": "TpPa-1",
+    "format": "cif",
+    "atoms": [
+      {
+        "id": "tppa-1-curated-12000n2-a0001",
+        "element": "O",
+        "x": 0.9513562457937264,
+        "y": 8.328945264545185,
+        "z": -4.157988323018072,
+        "sourceIndex": 1
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0002",
+        "element": "N",
+        "x": 3.4831454718895554,
+        "y": 8.79323681837039,
+        "z": -4.221331038918509,
+        "sourceIndex": 2
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0003",
+        "element": "C",
+        "x": 0.765604852649175,
+        "y": 9.353725766053216,
+        "z": -4.886367672965324,
+        "sourceIndex": 3
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0004",
+        "element": "C",
+        "x": 1.8812628141942174,
+        "y": 10.154628696401698,
+        "z": -5.357101086671882,
+        "sourceIndex": 4
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0005",
+        "element": "C",
+        "x": 3.186599773067246,
+        "y": 9.846161020230157,
+        "z": -4.992568775883708,
+        "sourceIndex": 5
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0006",
+        "element": "C",
+        "x": 4.74209406574341,
+        "y": 8.370445297267231,
+        "z": -3.7877283006740603,
+        "sourceIndex": 6
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0007",
+        "element": "C",
+        "x": 4.7967686982485285,
+        "y": 7.207331353352377,
+        "z": -3.002783452071652,
+        "sourceIndex": 7
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0008",
+        "element": "C",
+        "x": 5.939119416715718,
+        "y": 9.028562674418783,
+        "z": -4.115833823116491,
+        "sourceIndex": 8
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0009",
+        "element": "H",
+        "x": 3.8692966465980065,
+        "y": 6.6977236718421755,
+        "z": -2.751507072038818,
+        "sourceIndex": 9
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0010",
+        "element": "H",
+        "x": 3.9855731544317763,
+        "y": 10.490763061054604,
+        "z": -5.353348509752512,
+        "sourceIndex": 10
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0011",
+        "element": "H",
+        "x": 5.9275945285430405,
+        "y": 9.914373717692833,
+        "z": -4.744433261737294,
+        "sourceIndex": 11
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0012",
+        "element": "H",
+        "x": 2.602824109679193,
+        "y": 8.281562085421928,
+        "z": -3.945954554654432,
+        "sourceIndex": 12
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0013",
+        "element": "O",
+        "x": 2.685126088159059,
+        "y": 12.004480729690206,
+        "z": -6.607475210136922,
+        "sourceIndex": 13
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0014",
+        "element": "N",
+        "x": 1.0415702501544146,
+        "y": 13.522650509115914,
+        "z": -7.935654405166941,
+        "sourceIndex": 14
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0015",
+        "element": "C",
+        "x": 1.6903203317484303,
+        "y": 11.314721565137555,
+        "z": -6.217673151973206,
+        "sourceIndex": 15
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0016",
+        "element": "C",
+        "x": 0.33345891658382687,
+        "y": 11.658329115759566,
+        "z": -6.606227141783078,
+        "sourceIndex": 16
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0017",
+        "element": "C",
+        "x": 0.07806600957797727,
+        "y": 12.738283990273537,
+        "z": -7.443938148018319,
+        "sourceIndex": 17
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0018",
+        "element": "C",
+        "x": 0.8745823837878213,
+        "y": 14.671136089006142,
+        "z": -8.720298050929964,
+        "sourceIndex": 18
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0019",
+        "element": "C",
+        "x": 2.0090165059790817,
+        "y": 15.44659838626831,
+        "z": -9.011606018813904,
+        "sourceIndex": 19
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0020",
+        "element": "C",
+        "x": -0.3818788879742314,
+        "y": 15.089475499319194,
+        "z": -9.193843819190123,
+        "sourceIndex": 20
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0021",
+        "element": "H",
+        "x": 2.9802288152947742,
+        "y": 15.128272464775822,
+        "z": -8.63386133947369,
+        "sourceIndex": 21
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0022",
+        "element": "H",
+        "x": -0.9602822331889316,
+        "y": 12.948010209278829,
+        "z": -7.698537187929714,
+        "sourceIndex": 22
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0023",
+        "element": "H",
+        "x": -1.274806786696013,
+        "y": 14.503386914593268,
+        "z": -8.991043908444844,
+        "sourceIndex": 23
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0024",
+        "element": "H",
+        "x": 1.9880338112252893,
+        "y": 13.213069805246848,
+        "z": -7.604262770027081,
+        "sourceIndex": 24
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0025",
+        "element": "O",
+        "x": -2.0015552660733844,
+        "y": 11.276401611551297,
+        "z": -6.422287847214529,
+        "sourceIndex": 25
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0026",
+        "element": "N",
+        "x": -2.9244840170483983,
+        "y": 9.328285132966904,
+        "z": -4.996279274259538,
+        "sourceIndex": 26
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0027",
+        "element": "C",
+        "x": -0.8192385411663272,
+        "y": 10.914985617768867,
+        "z": -6.114639021459396,
+        "sourceIndex": 27
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0028",
+        "element": "C",
+        "x": -0.5833377386592877,
+        "y": 9.76665904183543,
+        "z": -5.2616571597311665,
+        "sourceIndex": 28
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0029",
+        "element": "C",
+        "x": -1.6430521621789316,
+        "y": 9.042873030529835,
+        "z": -4.730788694642672,
+        "sourceIndex": 29
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0030",
+        "element": "C",
+        "x": -4.053428965718293,
+        "y": 8.648543217691987,
+        "z": -4.527325227277711,
+        "sourceIndex": 30
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0031",
+        "element": "C",
+        "x": -5.325302931564764,
+        "y": 9.157037871504661,
+        "z": -4.8469716548475485,
+        "sourceIndex": 31
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0032",
+        "element": "C",
+        "x": -3.967801063870267,
+        "y": 7.4652357712648705,
+        "z": -3.7775003118795034,
+        "sourceIndex": 32
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0033",
+        "element": "H",
+        "x": -5.3999557986627025,
+        "y": 10.070515603260075,
+        "z": -5.4337557376456305,
+        "sourceIndex": 33
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0034",
+        "element": "H",
+        "x": -1.4050756764866614,
+        "y": 8.218119506662937,
+        "z": -4.06403660458977,
+        "sourceIndex": 34
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0035",
+        "element": "H",
+        "x": -3.0004895252478727,
+        "y": 7.044034289729607,
+        "z": -3.5171244475280607,
+        "sourceIndex": 35
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0036",
+        "element": "H",
+        "x": -2.9979393689637734,
+        "y": 10.171483115821381,
+        "z": -5.617341292945346,
+        "sourceIndex": 36
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0037",
+        "element": "O",
+        "x": 10.952482620711102,
+        "y": 7.4846342539931845,
+        "z": -2.3977561089203197,
+        "sourceIndex": 37
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0038",
+        "element": "N",
+        "x": 8.454975372053507,
+        "y": 6.963578287594143,
+        "z": -2.393412203617753,
+        "sourceIndex": 38
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0039",
+        "element": "C",
+        "x": 11.147965291351603,
+        "y": 6.4576276970901,
+        "z": -1.670539405903328,
+        "sourceIndex": 39
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0040",
+        "element": "C",
+        "x": 10.045127360713781,
+        "y": 5.622697919988676,
+        "z": -1.2272954400245575,
+        "sourceIndex": 40
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0041",
+        "element": "C",
+        "x": 8.740104901631904,
+        "y": 5.917809263789904,
+        "z": -1.6094689827883624,
+        "sourceIndex": 41
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0042",
+        "element": "C",
+        "x": 7.205642296691091,
+        "y": 7.378896622728197,
+        "z": -2.855612992623798,
+        "sourceIndex": 42
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0043",
+        "element": "C",
+        "x": 7.152506416441583,
+        "y": 8.536286424198634,
+        "z": -3.649524811669094,
+        "sourceIndex": 43
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0044",
+        "element": "C",
+        "x": 6.010387354480241,
+        "y": 6.712670043780384,
+        "z": -2.5439574295765697,
+        "sourceIndex": 44
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0045",
+        "element": "H",
+        "x": 8.07791859257096,
+        "y": 9.047325141319938,
+        "z": -3.9045726943775727,
+        "sourceIndex": 45
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0046",
+        "element": "H",
+        "x": 7.938305080843427,
+        "y": 5.272412203181509,
+        "z": -1.2560398205266996,
+        "sourceIndex": 46
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0047",
+        "element": "H",
+        "x": 6.022516209203758,
+        "y": 5.820180834321178,
+        "z": -1.9269957814605505,
+        "sourceIndex": 47
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0048",
+        "element": "H",
+        "x": 9.342140811360196,
+        "y": 7.4811361669438154,
+        "z": -2.6450727845744697,
+        "sourceIndex": 48
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0049",
+        "element": "O",
+        "x": 9.28313462287667,
+        "y": 3.7262577273608573,
+        "z": -0.013184573339981354,
+        "sourceIndex": 49
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0050",
+        "element": "N",
+        "x": 10.950363077398103,
+        "y": 2.264693356552195,
+        "z": 1.350786765103573,
+        "sourceIndex": 50
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0051",
+        "element": "C",
+        "x": 10.25951979383283,
+        "y": 4.4548138573701355,
+        "z": -0.38084881757614175,
+        "sourceIndex": 51
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0052",
+        "element": "C",
+        "x": 11.626451326831885,
+        "y": 4.139986022927016,
+        "z": 0.015076647156291756,
+        "sourceIndex": 52
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0053",
+        "element": "C",
+        "x": 11.90162382385215,
+        "y": 3.0628932196352547,
+        "z": 0.8516670701324116,
+        "sourceIndex": 53
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0054",
+        "element": "C",
+        "x": 11.126773207422694,
+        "y": 1.1300411209026504,
+        "z": 2.150663954421073,
+        "sourceIndex": 54
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0055",
+        "element": "C",
+        "x": 9.991059557744496,
+        "y": 0.35855392256021906,
+        "z": 2.450626015126141,
+        "sourceIndex": 55
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0056",
+        "element": "C",
+        "x": 12.381632292225268,
+        "y": 0.7185388807315432,
+        "z": 2.634771109606835,
+        "sourceIndex": 56
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0057",
+        "element": "H",
+        "x": 9.02072408538291,
+        "y": 0.6816499627563898,
+        "z": 2.076383497639651,
+        "sourceIndex": 57
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0058",
+        "element": "H",
+        "x": 12.944237680160066,
+        "y": 2.8768585901915933,
+        "z": 1.1057294783340228,
+        "sourceIndex": 58
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0059",
+        "element": "H",
+        "x": 13.274593245163077,
+        "y": 1.3079665485500496,
+        "z": 2.440627413901221,
+        "sourceIndex": 59
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0060",
+        "element": "H",
+        "x": 10.001387715191251,
+        "y": 2.5472433877670553,
+        "z": 1.0060314335659557,
+        "sourceIndex": 60
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0061",
+        "element": "O",
+        "x": 13.957466310920402,
+        "y": 4.597122398696698,
+        "z": -0.132365727548176,
+        "sourceIndex": 61
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0062",
+        "element": "N",
+        "x": 14.82181372659582,
+        "y": 6.618539701361028,
+        "z": -1.504295441160569,
+        "sourceIndex": 62
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0063",
+        "element": "C",
+        "x": 12.767393082515518,
+        "y": 4.923875529899026,
+        "z": -0.4499921914810905,
+        "sourceIndex": 63
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0064",
+        "element": "C",
+        "x": 12.501584207918476,
+        "y": 6.083014374894146,
+        "z": -1.2796583070359806,
+        "sourceIndex": 64
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0065",
+        "element": "C",
+        "x": 13.536251564268113,
+        "y": 6.862769778989629,
+        "z": -1.7816447497919001,
+        "sourceIndex": 65
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0066",
+        "element": "C",
+        "x": 15.94059151452408,
+        "y": 7.318793127061783,
+        "z": -1.963828037561962,
+        "sourceIndex": 66
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0067",
+        "element": "C",
+        "x": 17.21219795742367,
+        "y": 6.814432576125635,
+        "z": -1.6392603130265364,
+        "sourceIndex": 67
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0068",
+        "element": "C",
+        "x": 15.852840302451039,
+        "y": 8.504644636797531,
+        "z": -2.709725126353098,
+        "sourceIndex": 68
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0069",
+        "element": "H",
+        "x": 17.283869947427096,
+        "y": 5.901749864154168,
+        "z": -1.0525621882007203,
+        "sourceIndex": 69
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0070",
+        "element": "H",
+        "x": 13.274455630082599,
+        "y": 7.694519476955263,
+        "z": -2.4315521060923633,
+        "sourceIndex": 70
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0071",
+        "element": "H",
+        "x": 14.884083826764734,
+        "y": 8.926005122289586,
+        "z": -2.968159400266756,
+        "sourceIndex": 71
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0072",
+        "element": "H",
+        "x": 14.911734298548982,
+        "y": 5.763575425704133,
+        "z": -0.9011078940348756,
+        "sourceIndex": 72
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0073",
+        "element": "O",
+        "x": 0.8912001533006535,
+        "y": 8.422598595094174,
+        "z": -0.2150012040043272,
+        "sourceIndex": 73
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0074",
+        "element": "N",
+        "x": 3.4046325056395252,
+        "y": 8.89881544567859,
+        "z": -0.27880492588989636,
+        "sourceIndex": 74
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0075",
+        "element": "C",
+        "x": 0.7010450283073126,
+        "y": 9.446266068904679,
+        "z": -0.9452392664646094,
+        "sourceIndex": 75
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0076",
+        "element": "C",
+        "x": 1.8063649335805545,
+        "y": 10.261161347450633,
+        "z": -1.4141875410831837,
+        "sourceIndex": 76
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0077",
+        "element": "C",
+        "x": 3.1144952776615,
+        "y": 9.95014960797046,
+        "z": -1.054254313527533,
+        "sourceIndex": 77
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0078",
+        "element": "C",
+        "x": 4.6596655751909175,
+        "y": 8.462985600118696,
+        "z": 0.15435111670540547,
+        "sourceIndex": 78
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0079",
+        "element": "C",
+        "x": 4.710452113159583,
+        "y": 7.300348668074206,
+        "z": 0.9431470040042083,
+        "sourceIndex": 79
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0080",
+        "element": "C",
+        "x": 5.860739082820269,
+        "y": 9.108859672597458,
+        "z": -0.1802705939741731,
+        "sourceIndex": 80
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0081",
+        "element": "H",
+        "x": 3.7809311578943134,
+        "y": 6.797578156705953,
+        "z": 1.2037453915796128,
+        "sourceIndex": 81
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0082",
+        "element": "H",
+        "x": 3.917290645130427,
+        "y": 10.587596470739381,
+        "z": -1.4186860557720609,
+        "sourceIndex": 82
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0083",
+        "element": "H",
+        "x": 5.854128077855514,
+        "y": 9.994670715871507,
+        "z": -0.8079286517816318,
+        "sourceIndex": 83
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0084",
+        "element": "H",
+        "x": 2.518688506572288,
+        "y": 8.393977882872072,
+        "z": -0.0008886849474976088,
+        "sourceIndex": 84
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0085",
+        "element": "O",
+        "x": 2.581431164146716,
+        "y": 12.144881223535295,
+        "z": -2.6332086658964435,
+        "sourceIndex": 85
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0086",
+        "element": "N",
+        "x": 0.91522822130311,
+        "y": 13.632681247214217,
+        "z": -3.973391376400289,
+        "sourceIndex": 86
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0087",
+        "element": "C",
+        "x": 1.5986290856712388,
+        "y": 11.433179512945697,
+        "z": -2.2551786996290266,
+        "sourceIndex": 87
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0088",
+        "element": "C",
+        "x": 0.2314712436227193,
+        "y": 11.765974794506025,
+        "z": -2.6331189342850516,
+        "sourceIndex": 88
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0089",
+        "element": "C",
+        "x": -0.03745270617702978,
+        "y": 12.840364530532367,
+        "z": -3.4735244606078437,
+        "sourceIndex": 89
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0090",
+        "element": "C",
+        "x": 0.7405911737681663,
+        "y": 14.767015474950183,
+        "z": -4.775470690950943,
+        "sourceIndex": 90
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0091",
+        "element": "C",
+        "x": 1.8703567148919404,
+        "y": 15.553290041274034,
+        "z": -5.058464953820275,
+        "sourceIndex": 91
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0092",
+        "element": "C",
+        "x": -0.5111875942981641,
+        "y": 15.161981303615185,
+        "z": -5.280152214675412,
+        "sourceIndex": 92
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0093",
+        "element": "H",
+        "x": 2.8380640731257536,
+        "y": 15.249433479849387,
+        "z": -4.661083240302935,
+        "sourceIndex": 93
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0094",
+        "element": "H",
+        "x": -1.0773063699898788,
+        "y": 13.033395334074765,
+        "z": -3.731504718466658,
+        "sourceIndex": 94
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0095",
+        "element": "H",
+        "x": -1.3966369303881212,
+        "y": 14.557766267815262,
+        "z": -5.098517997264925,
+        "sourceIndex": 95
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0096",
+        "element": "H",
+        "x": 1.8652735368006805,
+        "y": 13.3464741249932,
+        "z": -3.632557560110037,
+        "sourceIndex": 96
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0097",
+        "element": "O",
+        "x": -2.1040778464314434,
+        "y": 11.379436175550863,
+        "z": -2.4033696152003143,
+        "sourceIndex": 97
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0098",
+        "element": "N",
+        "x": -2.9832746495505713,
+        "y": 9.37614532396053,
+        "z": -1.0181526673731467,
+        "sourceIndex": 98
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0099",
+        "element": "C",
+        "x": -0.9141862084694834,
+        "y": 11.014999106589434,
+        "z": -2.132457700008038,
+        "sourceIndex": 99
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0100",
+        "element": "C",
+        "x": -0.6533435413810107,
+        "y": 9.849500103322734,
+        "z": -1.3105923127805417,
+        "sourceIndex": 100
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0101",
+        "element": "C",
+        "x": -1.696303001109536,
+        "y": 9.094867324399987,
+        "z": -0.7885009412112867,
+        "sourceIndex": 101
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0102",
+        "element": "C",
+        "x": -4.103734655498608,
+        "y": 8.688612214802932,
+        "z": -0.5379703790757748,
+        "sourceIndex": 102
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0103",
+        "element": "C",
+        "x": -5.37682738785634,
+        "y": 9.192177745955131,
+        "z": -0.8576557902692468,
+        "sourceIndex": 103
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0104",
+        "element": "C",
+        "x": -4.014243553648765,
+        "y": 7.5119829345609705,
+        "z": 0.22480088425752953,
+        "sourceIndex": 104
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0105",
+        "element": "H",
+        "x": -5.453316772147796,
+        "y": 10.10708651332165,
+        "z": -1.442651526351459,
+        "sourceIndex": 105
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0106",
+        "element": "H",
+        "x": -1.437799354591026,
+        "y": 8.24642221097146,
+        "z": -0.1588208347903688,
+        "sourceIndex": 106
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0107",
+        "element": "H",
+        "x": -3.0451122326860993,
+        "y": 7.106999856618231,
+        "z": 0.5041115397957503,
+        "sourceIndex": 107
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0108",
+        "element": "H",
+        "x": -3.0766201415253156,
+        "y": 10.239695813284055,
+        "z": -1.6088996844920889,
+        "sourceIndex": 108
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0109",
+        "element": "O",
+        "x": 10.892323854489842,
+        "y": 7.570496390659489,
+        "z": 1.5492175865313795,
+        "sourceIndex": 109
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0110",
+        "element": "N",
+        "x": 8.376733017969016,
+        "y": 7.03417604440866,
+        "z": 1.524403515762363,
+        "sourceIndex": 110
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0111",
+        "element": "C",
+        "x": 11.081803418547079,
+        "y": 6.544125849583563,
+        "z": 2.2777571961080048,
+        "sourceIndex": 111
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0112",
+        "element": "C",
+        "x": 9.970111047367416,
+        "y": 5.716192246580875,
+        "z": 2.716588929370759,
+        "sourceIndex": 112
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0113",
+        "element": "C",
+        "x": 8.66623308668335,
+        "y": 5.999060285709315,
+        "z": 2.321891591280103,
+        "sourceIndex": 113
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0114",
+        "element": "C",
+        "x": 7.12331605800534,
+        "y": 7.450607407240241,
+        "z": 1.0713591061917525,
+        "sourceIndex": 114
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0115",
+        "element": "C",
+        "x": 7.073811859748626,
+        "y": 8.60418111374773,
+        "z": 0.27207197641888303,
+        "sourceIndex": 115
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0116",
+        "element": "C",
+        "x": 5.9239991750060375,
+        "y": 6.796306125051637,
+        "z": 1.3975531689108527,
+        "sourceIndex": 116
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0117",
+        "element": "H",
+        "x": 8.004433148792458,
+        "y": 9.098842423319722,
+        "z": 0.0015588154737304905,
+        "sourceIndex": 117
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0118",
+        "element": "H",
+        "x": 7.869545751392615,
+        "y": 5.3479390826565,
+        "z": 2.6762688181631313,
+        "sourceIndex": 118
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0119",
+        "element": "H",
+        "x": 5.931807002669247,
+        "y": 5.904611935376379,
+        "z": 2.0187435009055115,
+        "sourceIndex": 119
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0120",
+        "element": "H",
+        "x": 9.257404469417926,
+        "y": 7.556504042462017,
+        "z": 1.2714190939393548,
+        "sourceIndex": 120
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0121",
+        "element": "O",
+        "x": 9.179255157699568,
+        "y": 3.8469417305640525,
+        "z": 3.950363310627786,
+        "sourceIndex": 121
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0122",
+        "element": "N",
+        "x": 10.821404321815892,
+        "y": 2.360731746453025,
+        "z": 5.294119357874337,
+        "sourceIndex": 122
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0123",
+        "element": "C",
+        "x": 10.167544705445971,
+        "y": 4.556417385758597,
+        "z": 3.5764662507913147,
+        "sourceIndex": 123
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0124",
+        "element": "C",
+        "x": 11.52720752700306,
+        "y": 4.233639353476005,
+        "z": 3.9810745148548037,
+        "sourceIndex": 124
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0125",
+        "element": "C",
+        "x": 11.78604462411511,
+        "y": 3.148119340474402,
+        "z": 4.811135003157679,
+        "sourceIndex": 125
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0126",
+        "element": "C",
+        "x": 10.98719536548403,
+        "y": 1.2181293129640078,
+        "z": 6.083302862250159,
+        "sourceIndex": 126
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0127",
+        "element": "C",
+        "x": 9.85712924719734,
+        "y": 0.4326497664241047,
+        "z": 6.363606468445415,
+        "sourceIndex": 127
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0128",
+        "element": "C",
+        "x": 12.240380530445037,
+        "y": 0.8169623299842153,
+        "z": 6.57863162198807,
+        "sourceIndex": 128
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0129",
+        "element": "H",
+        "x": 8.887612940032836,
+        "y": 0.7385733792870144,
+        "z": 5.973496329174502,
+        "sourceIndex": 129
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0130",
+        "element": "H",
+        "x": 12.823245694756015,
+        "y": 2.9428452322592165,
+        "z": 5.067464099633877,
+        "sourceIndex": 130
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0131",
+        "element": "H",
+        "x": 13.127856687840115,
+        "y": 1.4164072470804574,
+        "z": 6.3897831860135605,
+        "sourceIndex": 131
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0132",
+        "element": "H",
+        "x": 9.877847231229257,
+        "y": 2.66522432370483,
+        "z": 4.9506719645712405,
+        "sourceIndex": 132
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0133",
+        "element": "O",
+        "x": 13.862135777156311,
+        "y": 4.657384898319901,
+        "z": 3.8369628793924795,
+        "sourceIndex": 133
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0134",
+        "element": "N",
+        "x": 14.765598745423954,
+        "y": 6.653679575811497,
+        "z": 2.4680307137959057,
+        "sourceIndex": 134
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0135",
+        "element": "C",
+        "x": 12.67816200575776,
+        "y": 4.9986073895900685,
+        "z": 3.5156160508718655,
+        "sourceIndex": 135
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0136",
+        "element": "C",
+        "x": 12.4320858828277,
+        "y": 6.156951214801242,
+        "z": 2.67784955225291,
+        "sourceIndex": 136
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0137",
+        "element": "C",
+        "x": 13.48445663430782,
+        "y": 6.920011203433832,
+        "z": 2.1873785166199147,
+        "sourceIndex": 137
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0138",
+        "element": "C",
+        "x": 15.892963450947171,
+        "y": 7.351070930290043,
+        "z": 2.0231332817761167,
+        "sourceIndex": 138
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0139",
+        "element": "C",
+        "x": 17.16544391857585,
+        "y": 6.85656862467484,
+        "z": 2.3585026082182026,
+        "sourceIndex": 139
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0140",
+        "element": "C",
+        "x": 15.804136799630207,
+        "y": 8.537876463766528,
+        "z": 1.2779847207232367,
+        "sourceIndex": 140
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0141",
+        "element": "H",
+        "x": 17.242040763693605,
+        "y": 5.9492920472342155,
+        "z": 2.9555405452755794,
+        "sourceIndex": 141
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0142",
+        "element": "H",
+        "x": 13.238772741702887,
+        "y": 7.760188111109308,
+        "z": 1.5402084572011798,
+        "sourceIndex": 142
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0143",
+        "element": "H",
+        "x": 14.835452056825982,
+        "y": 8.955738862209213,
+        "z": 1.0147131835830345,
+        "sourceIndex": 143
+      },
+      {
+        "id": "tppa-1-curated-12000n2-a0144",
+        "element": "H",
+        "x": 14.84236607058141,
+        "y": 5.791560122099077,
+        "z": 3.0647304537906885,
+        "sourceIndex": 144
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [],
+    "cell": {
+      "vectors": [
+        [
+          22.33583276328691,
+          0.0,
+          1.7231191515617763
+        ],
+        [
+          -10.47870981095113,
+          15.900395678945412,
+          -12.387301311861698
+        ],
+        [
+          0.0,
+          0.0,
+          8.03278
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Source CIF provides a crystallographic unit cell and fractional atomic coordinates; CIF crystal structures are 3D periodic."
+      }
+    },
+    "sourceAtomIds": [
+      "tppa-1-curated-12000n2-a0001",
+      "tppa-1-curated-12000n2-a0002",
+      "tppa-1-curated-12000n2-a0003",
+      "tppa-1-curated-12000n2-a0004",
+      "tppa-1-curated-12000n2-a0005",
+      "tppa-1-curated-12000n2-a0006",
+      "tppa-1-curated-12000n2-a0007",
+      "tppa-1-curated-12000n2-a0008",
+      "tppa-1-curated-12000n2-a0009",
+      "tppa-1-curated-12000n2-a0010",
+      "tppa-1-curated-12000n2-a0011",
+      "tppa-1-curated-12000n2-a0012",
+      "tppa-1-curated-12000n2-a0013",
+      "tppa-1-curated-12000n2-a0014",
+      "tppa-1-curated-12000n2-a0015",
+      "tppa-1-curated-12000n2-a0016",
+      "tppa-1-curated-12000n2-a0017",
+      "tppa-1-curated-12000n2-a0018",
+      "tppa-1-curated-12000n2-a0019",
+      "tppa-1-curated-12000n2-a0020",
+      "tppa-1-curated-12000n2-a0021",
+      "tppa-1-curated-12000n2-a0022",
+      "tppa-1-curated-12000n2-a0023",
+      "tppa-1-curated-12000n2-a0024",
+      "tppa-1-curated-12000n2-a0025",
+      "tppa-1-curated-12000n2-a0026",
+      "tppa-1-curated-12000n2-a0027",
+      "tppa-1-curated-12000n2-a0028",
+      "tppa-1-curated-12000n2-a0029",
+      "tppa-1-curated-12000n2-a0030",
+      "tppa-1-curated-12000n2-a0031",
+      "tppa-1-curated-12000n2-a0032",
+      "tppa-1-curated-12000n2-a0033",
+      "tppa-1-curated-12000n2-a0034",
+      "tppa-1-curated-12000n2-a0035",
+      "tppa-1-curated-12000n2-a0036",
+      "tppa-1-curated-12000n2-a0037",
+      "tppa-1-curated-12000n2-a0038",
+      "tppa-1-curated-12000n2-a0039",
+      "tppa-1-curated-12000n2-a0040",
+      "tppa-1-curated-12000n2-a0041",
+      "tppa-1-curated-12000n2-a0042",
+      "tppa-1-curated-12000n2-a0043",
+      "tppa-1-curated-12000n2-a0044",
+      "tppa-1-curated-12000n2-a0045",
+      "tppa-1-curated-12000n2-a0046",
+      "tppa-1-curated-12000n2-a0047",
+      "tppa-1-curated-12000n2-a0048",
+      "tppa-1-curated-12000n2-a0049",
+      "tppa-1-curated-12000n2-a0050",
+      "tppa-1-curated-12000n2-a0051",
+      "tppa-1-curated-12000n2-a0052",
+      "tppa-1-curated-12000n2-a0053",
+      "tppa-1-curated-12000n2-a0054",
+      "tppa-1-curated-12000n2-a0055",
+      "tppa-1-curated-12000n2-a0056",
+      "tppa-1-curated-12000n2-a0057",
+      "tppa-1-curated-12000n2-a0058",
+      "tppa-1-curated-12000n2-a0059",
+      "tppa-1-curated-12000n2-a0060",
+      "tppa-1-curated-12000n2-a0061",
+      "tppa-1-curated-12000n2-a0062",
+      "tppa-1-curated-12000n2-a0063",
+      "tppa-1-curated-12000n2-a0064",
+      "tppa-1-curated-12000n2-a0065",
+      "tppa-1-curated-12000n2-a0066",
+      "tppa-1-curated-12000n2-a0067",
+      "tppa-1-curated-12000n2-a0068",
+      "tppa-1-curated-12000n2-a0069",
+      "tppa-1-curated-12000n2-a0070",
+      "tppa-1-curated-12000n2-a0071",
+      "tppa-1-curated-12000n2-a0072",
+      "tppa-1-curated-12000n2-a0073",
+      "tppa-1-curated-12000n2-a0074",
+      "tppa-1-curated-12000n2-a0075",
+      "tppa-1-curated-12000n2-a0076",
+      "tppa-1-curated-12000n2-a0077",
+      "tppa-1-curated-12000n2-a0078",
+      "tppa-1-curated-12000n2-a0079",
+      "tppa-1-curated-12000n2-a0080",
+      "tppa-1-curated-12000n2-a0081",
+      "tppa-1-curated-12000n2-a0082",
+      "tppa-1-curated-12000n2-a0083",
+      "tppa-1-curated-12000n2-a0084",
+      "tppa-1-curated-12000n2-a0085",
+      "tppa-1-curated-12000n2-a0086",
+      "tppa-1-curated-12000n2-a0087",
+      "tppa-1-curated-12000n2-a0088",
+      "tppa-1-curated-12000n2-a0089",
+      "tppa-1-curated-12000n2-a0090",
+      "tppa-1-curated-12000n2-a0091",
+      "tppa-1-curated-12000n2-a0092",
+      "tppa-1-curated-12000n2-a0093",
+      "tppa-1-curated-12000n2-a0094",
+      "tppa-1-curated-12000n2-a0095",
+      "tppa-1-curated-12000n2-a0096",
+      "tppa-1-curated-12000n2-a0097",
+      "tppa-1-curated-12000n2-a0098",
+      "tppa-1-curated-12000n2-a0099",
+      "tppa-1-curated-12000n2-a0100",
+      "tppa-1-curated-12000n2-a0101",
+      "tppa-1-curated-12000n2-a0102",
+      "tppa-1-curated-12000n2-a0103",
+      "tppa-1-curated-12000n2-a0104",
+      "tppa-1-curated-12000n2-a0105",
+      "tppa-1-curated-12000n2-a0106",
+      "tppa-1-curated-12000n2-a0107",
+      "tppa-1-curated-12000n2-a0108",
+      "tppa-1-curated-12000n2-a0109",
+      "tppa-1-curated-12000n2-a0110",
+      "tppa-1-curated-12000n2-a0111",
+      "tppa-1-curated-12000n2-a0112",
+      "tppa-1-curated-12000n2-a0113",
+      "tppa-1-curated-12000n2-a0114",
+      "tppa-1-curated-12000n2-a0115",
+      "tppa-1-curated-12000n2-a0116",
+      "tppa-1-curated-12000n2-a0117",
+      "tppa-1-curated-12000n2-a0118",
+      "tppa-1-curated-12000n2-a0119",
+      "tppa-1-curated-12000n2-a0120",
+      "tppa-1-curated-12000n2-a0121",
+      "tppa-1-curated-12000n2-a0122",
+      "tppa-1-curated-12000n2-a0123",
+      "tppa-1-curated-12000n2-a0124",
+      "tppa-1-curated-12000n2-a0125",
+      "tppa-1-curated-12000n2-a0126",
+      "tppa-1-curated-12000n2-a0127",
+      "tppa-1-curated-12000n2-a0128",
+      "tppa-1-curated-12000n2-a0129",
+      "tppa-1-curated-12000n2-a0130",
+      "tppa-1-curated-12000n2-a0131",
+      "tppa-1-curated-12000n2-a0132",
+      "tppa-1-curated-12000n2-a0133",
+      "tppa-1-curated-12000n2-a0134",
+      "tppa-1-curated-12000n2-a0135",
+      "tppa-1-curated-12000n2-a0136",
+      "tppa-1-curated-12000n2-a0137",
+      "tppa-1-curated-12000n2-a0138",
+      "tppa-1-curated-12000n2-a0139",
+      "tppa-1-curated-12000n2-a0140",
+      "tppa-1-curated-12000n2-a0141",
+      "tppa-1-curated-12000n2-a0142",
+      "tppa-1-curated-12000n2-a0143",
+      "tppa-1-curated-12000n2-a0144"
+    ],
+    "libraryProvenance": {
+      "entryId": "tppa-1-curated-12000n2",
+      "category": "cof",
+      "name": "TpPa-1",
+      "formula": "C6H4NO",
+      "phase": "TpPa-1：β-酮烯胺键合二维 COF（Tp/对苯二胺），c 轴 2 倍重复，堆垛沿档案结构。",
+      "source": {
+        "name": "Materials Cloud CURATED covalent organic frameworks database",
+        "recordId": "12000N2_ddec.cif (cifs_cellopt_Jun21.zip)",
+        "url": "https://doi.org/10.24435/materialscloud:z6-jn",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T04:21:23Z",
+        "citation": "D. Ongari et al., Building a consistent and reproducible database for adsorption evaluation in Covalent-Organic Frameworks, Materials Cloud Archive 2021.100 (2021), DOI: 10.24435/materialscloud:z6-jn.",
+        "doi": "10.24435/materialscloud:z6-jn",
+        "version": "Materials Cloud Archive 2021.100, version v9 (June 2021 snapshot)",
+        "conditions": "The source archive describes DFT-optimized coordinates and unit cell. TpPa-1 is the beta-ketoenamine framework from Tp and p-phenylenediamine; the source-record cell repeat is 2x along C. No AA/AB stacking assignment is added here. Source CIF charge metadata remains raw-only; original framework DOI: 10.1021/ja308278w."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Materials Cloud v9 file 12000N2_ddec.cif selected from the archive in memory; no other database CIF was written.",
+          "CURATED-COFs source modification note retained verbatim: replicated 2x in C direction.",
+          "No additional cell replication or stacking change was applied by this pipeline.",
+          "Raw source CIF bytes preserved unchanged.",
+          "No hydrogen, solvent, guest, symmetry, or cell edits were applied by this retrieval pipeline.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "CIF has no explicit symmetry-operation loop; pymatgen used the stated space-group symbol, as indicated by its CIF parser.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      }
+    }
+  }
+}

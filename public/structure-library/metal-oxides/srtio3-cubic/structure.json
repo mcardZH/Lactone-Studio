@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "entryId": "srtio3-cubic",
+  "structure": {
+    "id": "srtio3-cubic",
+    "name": "立方钙钛矿钛酸锶",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "srtio3-cubic:atom:1",
+        "sourceIndex": 1,
+        "element": "Sr",
+        "x": 1.9526400000000002,
+        "y": 1.95264,
+        "z": 1.9526400000000002
+      },
+      {
+        "id": "srtio3-cubic:atom:2",
+        "sourceIndex": 2,
+        "element": "Ti",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "srtio3-cubic:atom:3",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.95264,
+        "y": 0.0,
+        "z": 1.1956471629435437e-16
+      },
+      {
+        "id": "srtio3-cubic:atom:4",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.1400846106645877e-16,
+        "y": 1.95264,
+        "z": 1.1956471629435437e-16
+      },
+      {
+        "id": "srtio3-cubic:atom:5",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.95264
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9006864; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "srtio3-cubic:atom:1",
+      "srtio3-cubic:atom:2",
+      "srtio3-cubic:atom:3",
+      "srtio3-cubic:atom:4",
+      "srtio3-cubic:atom:5"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.90528,
+          0.0,
+          2.3912943258870875e-16
+        ],
+        [
+          6.280169221329175e-16,
+          3.90528,
+          2.3912943258870875e-16
+        ],
+        [
+          0.0,
+          0.0,
+          3.90528
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9006864 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "sciyue-portable-brand-asset/v1",
+  "asset": {
+    "path": "scripts/portable/assets/sciyue.ico",
+    "bytes": 26368,
+    "sha256": "dba64c879d5de53e44bad5c80a68f791f0fb6c7e6513df76f386ac044ee0e463"
+  },
+  "svg": {
+    "path": "public/favicon.svg",
+    "bytes": 359,
+    "sha256": "d725d657e25e9afc808fcc315bf63b16c62fd95ae0dec06ae3fbd1b713ba8d19"
+  },
+  "png": {
+    "path": "public/brand-icon.png",
+    "bytes": 9085,
+    "sha256": "07f7f50b6a456ba7570f5d766342fee6b5f9e085735f9947ee798ee69dbec81a"
+  },
+  "contentChanged": true,
+  "licenseRelationship": "User-authorized Ester Studio ES branding update. Original teal rounded-square palette retained; original ES vector paths replace the former cube mark. PNG and seven-size ICO are rendered from this same SVG. Existing product ownership and distribution boundaries apply; no unselected website icon candidate is used."
+}

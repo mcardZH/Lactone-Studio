@@ -1,0 +1,10 @@
+.atom-selection-controls { min-width: 0; width: 100%; }
+.atom-selection-controls > label { display: flex; align-items: center; gap: 7px; white-space: nowrap; font-size: var(--ui-secondary-size, 14px); }
+.atom-selection-controls input { flex: 1 1 90px; min-width: 0; width: 100%; padding: 4px 6px; font: inherit; border: 1px solid #c9d8e3; border-radius: 5px; background: #fff; }
+.atom-selection-controls input[aria-invalid="true"] { border-color: #ad534b; }
+.atom-selection-message { display: block; margin-top: 4px; color: #7a5541; font-size: var(--ui-secondary-size, 14px); line-height: 1.4; white-space: normal; }
+.bond-selection-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; min-width: 0; }
+.bond-selection-controls > label { display: flex; align-items: center; flex: 1 1 100px; min-width: 0; gap: 5px; white-space: nowrap; font-size: var(--ui-secondary-size, 14px); }
+.bond-selection-controls input[type="range"] { width: 72px; flex: 1 1 60px; min-width: 40px; margin: 0; padding: 0; accent-color: #4b839b; }
+.bond-selection-controls output { min-width: 1ch; font: inherit; }
+.bond-selection-controls button[aria-pressed="true"] { background: #e5eef4; border-color: #6c97ac; }

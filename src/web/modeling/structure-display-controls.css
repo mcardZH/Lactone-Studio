@@ -1,0 +1,5 @@
+.model-structure-display{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px 12px;max-width:100%;vertical-align:middle}
+.model-structure-display>label{display:inline-flex;align-items:center;flex-wrap:nowrap;gap:5px;white-space:nowrap;max-width:100%}
+.model-structure-display>label>select{width:auto;min-width:90px;max-width:100%;font:inherit}
+.model-structure-display.model-structure-display>.model-structure-size>input[type=range]{flex:0 1 72px;width:72px;min-width:44px;max-width:72px;margin:0;padding:0}
+.model-structure-display.model-structure-display>.model-structure-size>input[type=number]{flex:0 0 58px;width:58px;min-width:58px;box-sizing:border-box;font:inherit;padding:3px 4px}

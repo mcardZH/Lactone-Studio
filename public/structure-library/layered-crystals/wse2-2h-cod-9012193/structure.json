@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "wse2-2h-cod-9012193",
+  "structure": {
+    "id": "wse2-2h-cod-9012193",
+    "name": "二硒化钨（2H）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "wse2-2h-cod-9012193:atom:1",
+        "sourceIndex": 1,
+        "element": "W",
+        "x": 2.220446049250313e-16,
+        "y": 1.894863583480352,
+        "z": 3.24
+      },
+      {
+        "id": "wse2-2h-cod-9012193:atom:2",
+        "sourceIndex": 1,
+        "element": "W",
+        "x": 1.6410000000000005,
+        "y": 0.947431791740176,
+        "z": 9.72
+      },
+      {
+        "id": "wse2-2h-cod-9012193:atom:3",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 2.220446049250313e-16,
+        "y": 1.894863583480352,
+        "z": 8.049456000000001
+      },
+      {
+        "id": "wse2-2h-cod-9012193:atom:4",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 1.6410000000000005,
+        "y": 0.947431791740176,
+        "z": 1.5694560000000002
+      },
+      {
+        "id": "wse2-2h-cod-9012193:atom:5",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 0.0,
+        "y": 1.8948635834803522,
+        "z": 11.390544
+      },
+      {
+        "id": "wse2-2h-cod-9012193:atom:6",
+        "sourceIndex": 2,
+        "element": "Se",
+        "x": 1.641,
+        "y": 0.947431791740176,
+        "z": 4.910544000000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database record COD 9012193; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "wse2-2h-cod-9012193:atom:1",
+      "wse2-2h-cod-9012193:atom:2",
+      "wse2-2h-cod-9012193:atom:3",
+      "wse2-2h-cod-9012193:atom:4",
+      "wse2-2h-cod-9012193:atom:5",
+      "wse2-2h-cod-9012193:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.282,
+          0.0,
+          2.0096453974008067e-16
+        ],
+        [
+          -1.6409999999999996,
+          2.842295375220528,
+          2.0096453974008067e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.96
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database record COD 9012193 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

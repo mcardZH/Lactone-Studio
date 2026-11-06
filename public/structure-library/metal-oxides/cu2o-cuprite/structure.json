@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "cu2o-cuprite",
+  "structure": {
+    "id": "cu2o-cuprite",
+    "name": "赤铜矿型氧化亚铜",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "cu2o-cuprite:atom:1",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 1.0671250000000003,
+        "y": 1.067125,
+        "z": 1.0671250000000003
+      },
+      {
+        "id": "cu2o-cuprite:atom:2",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 3.2013750000000005,
+        "y": 1.067125,
+        "z": 3.201375000000001
+      },
+      {
+        "id": "cu2o-cuprite:atom:3",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 1.0671250000000005,
+        "y": 3.2013750000000005,
+        "z": 3.201375000000001
+      },
+      {
+        "id": "cu2o-cuprite:atom:4",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 3.201375000000001,
+        "y": 3.2013750000000005,
+        "z": 1.0671250000000005
+      },
+      {
+        "id": "cu2o-cuprite:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "cu2o-cuprite:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.1342500000000006,
+        "y": 2.13425,
+        "z": 2.1342500000000006
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9007497; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "cu2o-cuprite:atom:1",
+      "cu2o-cuprite:atom:2",
+      "cu2o-cuprite:atom:3",
+      "cu2o-cuprite:atom:4",
+      "cu2o-cuprite:atom:5",
+      "cu2o-cuprite:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.2685,
+          0.0,
+          2.6137024310802386e-16
+        ],
+        [
+          6.864271530144724e-16,
+          4.2685,
+          2.6137024310802386e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.2685
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9007497 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

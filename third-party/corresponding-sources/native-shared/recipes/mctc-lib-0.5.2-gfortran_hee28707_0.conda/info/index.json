@@ -1,0 +1,20 @@
+{
+  "arch": "x86_64",
+  "build": "gfortran_hee28707_0",
+  "build_number": 0,
+  "depends": [
+    "jonquil >=0.3.0,<0.4.0a0 gfortran_*",
+    "libgcc >=14",
+    "libgfortran",
+    "libgfortran5 >=14.3.0",
+    "libwinpthread >=12.0.0.r4.gg4f2fc60ca",
+    "toml-f >=0.5.0,<0.6.0a0 gfortran_*",
+    "ucrt >=10.0.20348.0"
+  ],
+  "license": "Apache-2.0",
+  "name": "mctc-lib",
+  "platform": "win",
+  "subdir": "win-64",
+  "timestamp": 1781337364270,
+  "version": "0.5.2"
+}

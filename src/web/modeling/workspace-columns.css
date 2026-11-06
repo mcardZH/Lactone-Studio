@@ -1,0 +1,28 @@
+.workspace-three-columns {
+	display: grid;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+	position: relative;
+}
+.workspace-column-divider {
+	width: 6px;
+	min-width: 0;
+	touch-action: none;
+	cursor: col-resize;
+	background: #e2ede7;
+}
+.workspace-three-columns > .workspace-column-divider {
+	display: block;
+}
+.workspace-column-divider:hover,
+.workspace-column-divider:focus-visible {
+	background: #a5cdbb;
+}
+.workspace-three-columns > aside {
+	min-width: 0;
+	min-height: 0;
+	overflow: auto;
+}

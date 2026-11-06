@@ -1,0 +1,269 @@
+{
+  "passed": true,
+  "scientificSourceFilesUnchanged": 947,
+  "unexpectedChanges": [],
+  "components": [
+    {
+      "name": "xtb",
+      "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+      "originalFilesChecked": 549,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\cpx.wrap",
+          "beforeSha256": "0707eadcb8195a18912903e51ee5d1decc873256883ebfe19c6ff39b8ba8b023",
+          "afterSha256": "4f46423c7da0295da086a2e3a253b7914748ded1d9effae95ed539a17b5e3cc1"
+        },
+        {
+          "path": "subprojects\\dftd4.wrap",
+          "beforeSha256": "600d934ea075876d4b78826000a2aaa6641a8504a7abd40532ebf268dc736d80",
+          "afterSha256": "73611da8e34a4be76e797d69e8887b427c920d12988828f45e39f14bf4cade41"
+        },
+        {
+          "path": "subprojects\\mctc-lib.wrap",
+          "beforeSha256": "0d1a10383e321b8460f8697334e5b99278fcb63c4bd03f7a423b5bb99527fae5",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        },
+        {
+          "path": "subprojects\\mstore.wrap",
+          "beforeSha256": "569e47bb227c7a054fa33add1dfed7671e7acc1f57d6cef92685efa635311ef3",
+          "afterSha256": "d9a20987fef1e64d602f0c3e73917f312c88e1d2a08884a2ce7dd4b574ff8bdf"
+        },
+        {
+          "path": "subprojects\\multicharge.wrap",
+          "beforeSha256": "8746873a7a5207b0bd16d4e83449603dd9e098787a04b265b6979735ed1934a1",
+          "afterSha256": "a9bcd9980abc251844d3e9bf10e030a1a4271fbb5162b7cb4522879acb4891bc"
+        },
+        {
+          "path": "subprojects\\numsa.wrap",
+          "beforeSha256": "ece2cce1005f7c4f2f4cc6efa542a037ae4b6fbd5e749663f1ae2ffe433e39c2",
+          "afterSha256": "7de40756c02ff090f91cff47f4cd1b23d0a179aa1ad83f0debdc0b7a0ce4712c"
+        },
+        {
+          "path": "subprojects\\s-dftd3.wrap",
+          "beforeSha256": "bc90f5f2d5101b8703ed51c8f024571a31f9c721576c3bb23bf34fbf3f530d02",
+          "afterSha256": "9c899eb3e7ef897a9672089d62ab210877bcd2310135eccf6886c0ba0ee3b883"
+        },
+        {
+          "path": "subprojects\\tblite.wrap",
+          "beforeSha256": "d758f156710d02f562086349cc1a716f05b0265dcb64303c8331d0120738d9e5",
+          "afterSha256": "67accab13a70ede2c58b1b0a1389e547be4d2773d9c8bb4326d0b7aa15d84de7"
+        },
+        {
+          "path": "subprojects\\test-drive.wrap",
+          "beforeSha256": "5e70e207eb29716bbbb3311cd24c5901750d6595b31f481d4375c8d7c218c922",
+          "afterSha256": "a737e1be34af9474bb5526904f0d71f881021ae07f9995d93cf91a6e2f6561ec"
+        },
+        {
+          "path": "subprojects\\toml-f.wrap",
+          "beforeSha256": "7132c254e567f7adc514e0da0e491b70a4d047c541ad738fd0ea0d1711b776c6",
+          "afterSha256": "b229144eec3e0c694de6b28da747fd0780d45123562be554f550018e41b117d3"
+        }
+      ]
+    },
+    {
+      "name": "dftd4",
+      "commit": "f572723f5a5cb8243ea88b0253e182088311c6f3",
+      "originalFilesChecked": 116,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\dftd4\\assets\\dftd4.wrap",
+          "beforeSha256": "18a2ee8ebad52207bd8d0707553d65ef00da94e8c7cc4c49eb5741a56aa87796",
+          "afterSha256": "73611da8e34a4be76e797d69e8887b427c920d12988828f45e39f14bf4cade41"
+        },
+        {
+          "path": "subprojects\\dftd4\\subprojects\\mctc-lib.wrap",
+          "beforeSha256": "d466ca78d27a3db0cfb056de93858f128075b22042d098e82bfce6249374e48e",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        },
+        {
+          "path": "subprojects\\dftd4\\subprojects\\mstore.wrap",
+          "beforeSha256": "569e47bb227c7a054fa33add1dfed7671e7acc1f57d6cef92685efa635311ef3",
+          "afterSha256": "d9a20987fef1e64d602f0c3e73917f312c88e1d2a08884a2ce7dd4b574ff8bdf"
+        },
+        {
+          "path": "subprojects\\dftd4\\subprojects\\multicharge.wrap",
+          "beforeSha256": "614725917be5fead1b18fbb5cdf47db1d734279b563bd8aae5964a402d5030ae",
+          "afterSha256": "a9bcd9980abc251844d3e9bf10e030a1a4271fbb5162b7cb4522879acb4891bc"
+        }
+      ]
+    },
+    {
+      "name": "mctc-lib",
+      "commit": "87a46cdf5281ad75909083c4f72354d54abdf95d",
+      "originalFilesChecked": 124,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\mctc-lib\\subprojects\\json-fortran-8.2.5.wrap",
+          "beforeSha256": "24e2385b51dde363c8c7198cf00438319557fb58f1ad0022868ac91828520302",
+          "afterSha256": "b1a67d45301f41c6aad0f6f94c39a9a0bdcb5d1a10d702f7f0384152ecc8580e"
+        }
+      ]
+    },
+    {
+      "name": "tblite",
+      "commit": "d2f08e808afe69aa71a6a12163632569ee6e9a4a",
+      "originalFilesChecked": 441,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\tblite\\subprojects\\dftd4.wrap",
+          "beforeSha256": "14447a669616a6951eea7a93400eae7ccbbd3734286f3b2169ab31f950d62186",
+          "afterSha256": "73611da8e34a4be76e797d69e8887b427c920d12988828f45e39f14bf4cade41"
+        },
+        {
+          "path": "subprojects\\tblite\\subprojects\\mctc-lib.wrap",
+          "beforeSha256": "415e7f152c444116e8cdd93dedcbc316914e9d9b9e645b829dc8fc47a0d7af8c",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        },
+        {
+          "path": "subprojects\\tblite\\subprojects\\mstore.wrap",
+          "beforeSha256": "569e47bb227c7a054fa33add1dfed7671e7acc1f57d6cef92685efa635311ef3",
+          "afterSha256": "d9a20987fef1e64d602f0c3e73917f312c88e1d2a08884a2ce7dd4b574ff8bdf"
+        },
+        {
+          "path": "subprojects\\tblite\\subprojects\\multicharge.wrap",
+          "beforeSha256": "8746873a7a5207b0bd16d4e83449603dd9e098787a04b265b6979735ed1934a1",
+          "afterSha256": "a9bcd9980abc251844d3e9bf10e030a1a4271fbb5162b7cb4522879acb4891bc"
+        },
+        {
+          "path": "subprojects\\tblite\\subprojects\\s-dftd3.wrap",
+          "beforeSha256": "fdedfeb7ab1986d6ec7f8a162aa44c232173ce7c7e13928eb71706db6b4e469c",
+          "afterSha256": "9c899eb3e7ef897a9672089d62ab210877bcd2310135eccf6886c0ba0ee3b883"
+        },
+        {
+          "path": "subprojects\\tblite\\subprojects\\toml-f.wrap",
+          "beforeSha256": "6ba1aec2d65ca83626aec99eb9baa56f9e772bb15e66d0ac99f4c2717e2efca6",
+          "afterSha256": "b229144eec3e0c694de6b28da747fd0780d45123562be554f550018e41b117d3"
+        }
+      ]
+    },
+    {
+      "name": "cpcmx",
+      "commit": "b41feaf44f09be0e90f5845eb7a8a6d2ade5471d",
+      "originalFilesChecked": 600,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\cpx\\meson.build",
+          "beforeSha256": "0b020a75db0ccfa200686dabd979427f91be5977d6eb77e0c3a22bd03035cdc2",
+          "afterSha256": "8da29893db371216f6fb34feb57d5af88b69cebf582dafbdf63b31dd744bc05c"
+        },
+        {
+          "path": "subprojects\\cpx\\subprojects\\mctc-lib.wrap",
+          "beforeSha256": "0d1a10383e321b8460f8697334e5b99278fcb63c4bd03f7a423b5bb99527fae5",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        },
+        {
+          "path": "subprojects\\cpx\\subprojects\\mstore.wrap",
+          "beforeSha256": "569e47bb227c7a054fa33add1dfed7671e7acc1f57d6cef92685efa635311ef3",
+          "afterSha256": "d9a20987fef1e64d602f0c3e73917f312c88e1d2a08884a2ce7dd4b574ff8bdf"
+        },
+        {
+          "path": "subprojects\\cpx\\subprojects\\numsa.wrap",
+          "beforeSha256": "ece2cce1005f7c4f2f4cc6efa542a037ae4b6fbd5e749663f1ae2ffe433e39c2",
+          "afterSha256": "7de40756c02ff090f91cff47f4cd1b23d0a179aa1ad83f0debdc0b7a0ce4712c"
+        },
+        {
+          "path": "subprojects\\cpx\\subprojects\\test-drive.wrap",
+          "beforeSha256": "b46f7f80ad04b511fcaa5670e6ba8c4b6e382182dc596ff64b189435d67525e7",
+          "afterSha256": "a737e1be34af9474bb5526904f0d71f881021ae07f9995d93cf91a6e2f6561ec"
+        },
+        {
+          "path": "subprojects\\cpx\\subprojects\\toml-f.wrap",
+          "beforeSha256": "038f0f0ff6bdeff0b9f4c6b00175bf574668063ae3156c1f1859f583e9482309",
+          "afterSha256": "b229144eec3e0c694de6b28da747fd0780d45123562be554f550018e41b117d3"
+        }
+      ]
+    },
+    {
+      "name": "multicharge",
+      "commit": "46ea4e370b1a59e01cc022d1f65c64bae8dbf968",
+      "originalFilesChecked": 56,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\multicharge\\subprojects\\mctc-lib.wrap",
+          "beforeSha256": "d466ca78d27a3db0cfb056de93858f128075b22042d098e82bfce6249374e48e",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        },
+        {
+          "path": "subprojects\\multicharge\\subprojects\\mstore.wrap",
+          "beforeSha256": "c52950408b25c9f4dd43315b7e52d4a4ffea2edb0bf96ef0f026125c8cc126b4",
+          "afterSha256": "d9a20987fef1e64d602f0c3e73917f312c88e1d2a08884a2ce7dd4b574ff8bdf"
+        }
+      ]
+    },
+    {
+      "name": "toml-f",
+      "commit": "6290b0bc5f5ebeff231625a3b6685de85f33fc79",
+      "originalFilesChecked": 216,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\toml-f\\subprojects\\test-drive.wrap",
+          "beforeSha256": "a136417cef7cf002c0d41737556d5de442da438e8c78944f66977cefad19f9cd",
+          "afterSha256": "a737e1be34af9474bb5526904f0d71f881021ae07f9995d93cf91a6e2f6561ec"
+        }
+      ]
+    },
+    {
+      "name": "s-dftd3",
+      "commit": "5ee8c4d71414bf54db0b680ee3c532215847e0f9",
+      "originalFilesChecked": 191,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\s-dftd3\\subprojects\\mctc-lib.wrap",
+          "beforeSha256": "415e7f152c444116e8cdd93dedcbc316914e9d9b9e645b829dc8fc47a0d7af8c",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        },
+        {
+          "path": "subprojects\\s-dftd3\\subprojects\\mstore.wrap",
+          "beforeSha256": "569e47bb227c7a054fa33add1dfed7671e7acc1f57d6cef92685efa635311ef3",
+          "afterSha256": "d9a20987fef1e64d602f0c3e73917f312c88e1d2a08884a2ce7dd4b574ff8bdf"
+        },
+        {
+          "path": "subprojects\\s-dftd3\\subprojects\\toml-f.wrap",
+          "beforeSha256": "285aa6c51d143d0d81a876521a3e43f6beecabe927310210e36ca3e2fe558e60",
+          "afterSha256": "b229144eec3e0c694de6b28da747fd0780d45123562be554f550018e41b117d3"
+        }
+      ]
+    },
+    {
+      "name": "numsa",
+      "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+      "originalFilesChecked": 49,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\numsa\\subprojects\\mctc-lib.wrap",
+          "beforeSha256": "105f8b187b9999d8e72fa5bdcb965fde2485b803102ec9cd062a98db100eacbd",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        },
+        {
+          "path": "subprojects\\numsa\\subprojects\\mstore.wrap",
+          "beforeSha256": "ff74f3d5b5dec6c5b47a5f2fa75befdecefd2a84b169a9ce1e79932dfd010fa3",
+          "afterSha256": "d9a20987fef1e64d602f0c3e73917f312c88e1d2a08884a2ce7dd4b574ff8bdf"
+        }
+      ]
+    },
+    {
+      "name": "json-fortran",
+      "commit": "77c9f99d7d5c6a0ec9011f7225db3dbb6894ef6d",
+      "originalFilesChecked": 126,
+      "changedBuildFiles": []
+    },
+    {
+      "name": "mstore",
+      "commit": "974fb59092f74c7db86a1a11b1aafb3cbf311aa3",
+      "originalFilesChecked": 45,
+      "changedBuildFiles": [
+        {
+          "path": "subprojects\\mstore\\subprojects\\mctc-lib.wrap",
+          "beforeSha256": "0d1a10383e321b8460f8697334e5b99278fcb63c4bd03f7a423b5bb99527fae5",
+          "afterSha256": "2eb5cace55f1a86303bd6132d256f19921794f7471a3be568b41f150e6f60e6b"
+        }
+      ]
+    },
+    {
+      "name": "test-drive",
+      "commit": "9c3401e30dbd2da1add77aaa252a4c6928fe39a1",
+      "originalFilesChecked": 24,
+      "changedBuildFiles": []
+    }
+  ]
+}

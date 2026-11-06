@@ -1,0 +1,1057 @@
+{
+  "schemaVersion": 1,
+  "entryId": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr",
+  "structure": {
+    "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr",
+    "name": "七嗪型 g-C3N4（起伏模型，112原子）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:1",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 11.667658923427043,
+        "y": 5.32022326969157,
+        "z": 6.12631563672206
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:2",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 5.633965916113503,
+        "y": 6.368664097856407,
+        "z": 2.6953208233325125
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:3",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 9.729885701525705,
+        "y": 4.56269391980502,
+        "z": 7.006322337643617
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:4",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 3.7306864316471806,
+        "y": 6.115191617937516,
+        "z": 3.87073151129691
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:5",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 9.672559403273878,
+        "y": 5.118809005962166,
+        "z": 4.823095084807935
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:6",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 1.624164206784948,
+        "y": 6.132985765644093,
+        "z": 5.120641314897554
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:7",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": 6.164841629731702,
+        "y": 1.7280255267888414,
+        "z": 12.788575596328517
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:8",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 0.22054747102682362,
+        "y": 1.7962145315619,
+        "z": 0.5364827723763349
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:9",
+        "sourceIndex": 17,
+        "element": "C",
+        "x": 5.723374983265622,
+        "y": 5.251975548918896,
+        "z": 7.198757795401538
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:10",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 0.22056448414223725,
+        "y": 1.727980295741476,
+        "z": 7.198747301401322
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:11",
+        "sourceIndex": 19,
+        "element": "C",
+        "x": 5.723374139184138,
+        "y": 5.32020335659161,
+        "z": 0.5364880125380569
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:12",
+        "sourceIndex": 20,
+        "element": "C",
+        "x": 11.667665790661873,
+        "y": 5.251999511353422,
+        "z": 12.788582405010636
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:13",
+        "sourceIndex": 21,
+        "element": "C",
+        "x": 6.164831180770634,
+        "y": 1.7962043145087698,
+        "z": 6.126297500254028
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:14",
+        "sourceIndex": 22,
+        "element": "C",
+        "x": 0.30996183340994315,
+        "y": 0.6795666451704064,
+        "z": 9.357600424250522
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:15",
+        "sourceIndex": 23,
+        "element": "C",
+        "x": 6.254255414832814,
+        "y": 2.844661251242822,
+        "z": 3.967469997199486
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:16",
+        "sourceIndex": 24,
+        "element": "C",
+        "x": 11.578242441978814,
+        "y": 4.203528667684649,
+        "z": 10.629759364118456
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:17",
+        "sourceIndex": 25,
+        "element": "C",
+        "x": 6.25424439692879,
+        "y": 0.6795528066995629,
+        "z": 10.629740742141678
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:18",
+        "sourceIndex": 26,
+        "element": "C",
+        "x": 11.578259872613089,
+        "y": 6.368642978420676,
+        "z": 3.9674642883417155
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:19",
+        "sourceIndex": 27,
+        "element": "C",
+        "x": 5.633991353182068,
+        "y": 4.203557222604729,
+        "z": 9.357630340329637
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:20",
+        "sourceIndex": 28,
+        "element": "C",
+        "x": 0.30997888037605326,
+        "y": 2.84468860770675,
+        "z": 2.6953002556783474
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:21",
+        "sourceIndex": 29,
+        "element": "C",
+        "x": 8.102620469778868,
+        "y": 2.485520633579902,
+        "z": 0.34403343508060935
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:22",
+        "sourceIndex": 30,
+        "element": "C",
+        "x": 2.158330770508321,
+        "y": 1.0387120811073056,
+        "z": 12.981021971717373
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:23",
+        "sourceIndex": 31,
+        "element": "C",
+        "x": 3.78560166726514,
+        "y": 6.009490891817894,
+        "z": 6.318750219740522
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:24",
+        "sourceIndex": 32,
+        "element": "C",
+        "x": 2.158338526703203,
+        "y": 2.48550347131962,
+        "z": 6.318737576272286
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:25",
+        "sourceIndex": 33,
+        "element": "C",
+        "x": 3.78559546766522,
+        "y": 4.562699080539344,
+        "z": 12.98102973331374
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:26",
+        "sourceIndex": 34,
+        "element": "C",
+        "x": 9.729882139154252,
+        "y": 6.009502200938229,
+        "z": 0.34403928639806824
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:27",
+        "sourceIndex": 35,
+        "element": "C",
+        "x": 8.10261245787399,
+        "y": 1.0386923357417295,
+        "z": 7.006316848707845
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:28",
+        "sourceIndex": 36,
+        "element": "C",
+        "x": 2.2132498796046405,
+        "y": 0.9330394513957199,
+        "z": 10.53300204024531
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:29",
+        "sourceIndex": 37,
+        "element": "C",
+        "x": 8.157528153112755,
+        "y": 2.5911927473103833,
+        "z": 2.7920560783096633
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:30",
+        "sourceIndex": 38,
+        "element": "C",
+        "x": 9.674972353316292,
+        "y": 4.4569908640176745,
+        "z": 9.454341859074612
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:31",
+        "sourceIndex": 39,
+        "element": "C",
+        "x": 8.15753782440332,
+        "y": 0.9330139740093787,
+        "z": 9.45434154084475
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:32",
+        "sourceIndex": 40,
+        "element": "C",
+        "x": 9.674971690069123,
+        "y": 6.115173805333833,
+        "z": 2.7920613404879098
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:33",
+        "sourceIndex": 41,
+        "element": "C",
+        "x": 3.7306774392619384,
+        "y": 4.4570231810397845,
+        "z": 10.533006377795639
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:34",
+        "sourceIndex": 42,
+        "element": "C",
+        "x": 2.2132452641385876,
+        "y": 2.591221240560819,
+        "z": 3.8707201614357216
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:35",
+        "sourceIndex": 43,
+        "element": "C",
+        "x": 8.159952196947929,
+        "y": 1.9293763286624332,
+        "z": 11.48537624744356
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:36",
+        "sourceIndex": 44,
+        "element": "C",
+        "x": 2.2156832667889965,
+        "y": 1.594857444205391,
+        "z": 1.8396727843084981
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:37",
+        "sourceIndex": 45,
+        "element": "C",
+        "x": 3.728305339398868,
+        "y": 5.453402760835015,
+        "z": 8.501988953450683
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:38",
+        "sourceIndex": 46,
+        "element": "C",
+        "x": 2.215663828700603,
+        "y": 1.9293985916577612,
+        "z": 8.501966972377172
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:39",
+        "sourceIndex": 47,
+        "element": "C",
+        "x": 3.7282563268390443,
+        "y": 5.118840957054227,
+        "z": 1.8396857799442214
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:40",
+        "sourceIndex": 48,
+        "element": "C",
+        "x": 9.672539126279258,
+        "y": 5.453361374301468,
+        "z": 11.485384848265317
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:41",
+        "sourceIndex": 49,
+        "element": "C",
+        "x": 8.159950529691045,
+        "y": 1.5948173126455827,
+        "z": 4.823093022204258
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:42",
+        "sourceIndex": 50,
+        "element": "C",
+        "x": 4.319769729090305,
+        "y": 0.9152455756276069,
+        "z": 11.782910350461496
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:43",
+        "sourceIndex": 51,
+        "element": "C",
+        "x": 10.264052725422028,
+        "y": 2.6089843081480555,
+        "z": 1.54215210772582
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:44",
+        "sourceIndex": 52,
+        "element": "C",
+        "x": 7.56845257935796,
+        "y": 4.439199057333084,
+        "z": 8.204432644491327
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:45",
+        "sourceIndex": 53,
+        "element": "C",
+        "x": 10.264056288194181,
+        "y": 0.9152223966583378,
+        "z": 8.20442464515205
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:46",
+        "sourceIndex": 54,
+        "element": "C",
+        "x": 7.56844630019806,
+        "y": 6.132973880296697,
+        "z": 1.5421564573217457
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:47",
+        "sourceIndex": 55,
+        "element": "C",
+        "x": 1.6241619467858284,
+        "y": 4.439228826976006,
+        "z": 11.782915796830078
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:48",
+        "sourceIndex": 56,
+        "element": "C",
+        "x": 4.3197671980132535,
+        "y": 2.608990102134479,
+        "z": 5.12062595376544
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:49",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 10.998678000396747,
+        "y": 4.914531660460605,
+        "z": 7.193077503290988
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:50",
+        "sourceIndex": 8,
+        "element": "N",
+        "x": 4.9100734360425085,
+        "y": 6.722244413258704,
+        "z": 3.755985742716224
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:51",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 1.0944313266869468,
+        "y": 5.481398422225055,
+        "z": 6.145245063668138
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:52",
+        "sourceIndex": 10,
+        "element": "N",
+        "x": 6.922704178823965,
+        "y": 6.697806421100202,
+        "z": 2.568302038610355
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:53",
+        "sourceIndex": 11,
+        "element": "N",
+        "x": 3.1611144739175083,
+        "y": 6.121812455644107,
+        "z": 7.496854694602094
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:54",
+        "sourceIndex": 12,
+        "element": "N",
+        "x": 9.052129474861925,
+        "y": 5.329027432922093,
+        "z": 3.6640741849302145
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:55",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 3.0457338252176758,
+        "y": 6.253383735134335,
+        "z": 5.13063638886961
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:56",
+        "sourceIndex": 14,
+        "element": "N",
+        "x": 10.968252752482568,
+        "y": 5.610698310106786,
+        "z": 4.968024392777896
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:57",
+        "sourceIndex": 57,
+        "element": "N",
+        "x": 6.833809260271952,
+        "y": 2.1337473545120202,
+        "z": 0.5307667401232682
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:58",
+        "sourceIndex": 58,
+        "element": "N",
+        "x": 0.8895187522618866,
+        "y": 1.390480980411143,
+        "z": 12.79429181894373
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:59",
+        "sourceIndex": 59,
+        "element": "N",
+        "x": 5.054390483071325,
+        "y": 5.657652340069052,
+        "z": 6.131997485195524
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:60",
+        "sourceIndex": 60,
+        "element": "N",
+        "x": 0.8895500338576517,
+        "y": 2.133654727918493,
+        "z": 6.131981533940125
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:61",
+        "sourceIndex": 61,
+        "element": "N",
+        "x": 5.054404224003718,
+        "y": 4.9144778521947154,
+        "z": 12.794296621921166
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:62",
+        "sourceIndex": 62,
+        "element": "N",
+        "x": 10.998692413388328,
+        "y": 5.657728989023305,
+        "z": 0.530771570631066
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:63",
+        "sourceIndex": 63,
+        "element": "N",
+        "x": 6.833806061414701,
+        "y": 1.390479849629497,
+        "z": 7.193055720261032
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:64",
+        "sourceIndex": 64,
+        "element": "N",
+        "x": 1.0338645064435381,
+        "y": 0.3259872434021294,
+        "z": 10.418258783108842
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:65",
+        "sourceIndex": 65,
+        "element": "N",
+        "x": 6.978154940373676,
+        "y": 3.1982632425313358,
+        "z": 2.9068174762583863
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:66",
+        "sourceIndex": 66,
+        "element": "N",
+        "x": 10.85434784874869,
+        "y": 3.8499232530824634,
+        "z": 9.569102642339011
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:67",
+        "sourceIndex": 67,
+        "element": "N",
+        "x": 6.978148730234001,
+        "y": 0.3259615821979604,
+        "z": 9.56908688156486
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:68",
+        "sourceIndex": 68,
+        "element": "N",
+        "x": 10.854358840701352,
+        "y": 6.722223730162135,
+        "z": 2.9068050415082314
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:69",
+        "sourceIndex": 69,
+        "element": "N",
+        "x": 4.910059873533208,
+        "y": 3.8499539171043793,
+        "z": 10.418261837177877
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:70",
+        "sourceIndex": 70,
+        "element": "N",
+        "x": 1.033869778348802,
+        "y": 3.1982875368049326,
+        "z": 3.755961485250976
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:71",
+        "sourceIndex": 71,
+        "element": "N",
+        "x": 4.849496137403429,
+        "y": 1.5668606975282822,
+        "z": 12.807500378961917
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:72",
+        "sourceIndex": 72,
+        "element": "N",
+        "x": 10.793776270748815,
+        "y": 1.957364461485726,
+        "z": 0.5175632553931836
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:73",
+        "sourceIndex": 73,
+        "element": "N",
+        "x": 7.038715057221084,
+        "y": 5.090766120340712,
+        "z": 7.179814266056301
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:74",
+        "sourceIndex": 74,
+        "element": "N",
+        "x": 10.793790891499441,
+        "y": 1.5668117953680416,
+        "z": 7.179822069950263
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:75",
+        "sourceIndex": 75,
+        "element": "N",
+        "x": 7.038718383328277,
+        "y": 5.481360402346636,
+        "z": 0.5175654833542049
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:76",
+        "sourceIndex": 76,
+        "element": "N",
+        "x": 1.0944363051458643,
+        "y": 5.090841848605939,
+        "z": 12.807508065243908
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:77",
+        "sourceIndex": 77,
+        "element": "N",
+        "x": 4.849493451659971,
+        "y": 1.9573845555068032,
+        "z": 6.145225093342822
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:78",
+        "sourceIndex": 78,
+        "element": "N",
+        "x": 10.90979832858082,
+        "y": 0.35040553367391614,
+        "z": 9.230581878703973
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:79",
+        "sourceIndex": 79,
+        "element": "N",
+        "x": 4.965516264192647,
+        "y": 3.1738059014267797,
+        "z": 4.094476780480519
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:80",
+        "sourceIndex": 80,
+        "element": "N",
+        "x": 0.9784154823428611,
+        "y": 3.8744015457685514,
+        "z": 10.756771623140294
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:81",
+        "sourceIndex": 81,
+        "element": "N",
+        "x": 4.965508003565421,
+        "y": 0.3504077913114954,
+        "z": 10.756763959798233
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:82",
+        "sourceIndex": 82,
+        "element": "N",
+        "x": 0.9784246917261483,
+        "y": 6.697800131578804,
+        "z": 4.094481354313916
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:83",
+        "sourceIndex": 83,
+        "element": "N",
+        "x": 6.92272309032709,
+        "y": 3.874393750619789,
+        "z": 9.230605909574328
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:84",
+        "sourceIndex": 84,
+        "element": "N",
+        "x": 10.909804449934333,
+        "y": 3.1738141242950513,
+        "z": 2.5682911639156543
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:85",
+        "sourceIndex": 85,
+        "element": "N",
+        "x": 2.7828572934705527,
+        "y": 0.9264249017515994,
+        "z": 0.8345495734492874
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:86",
+        "sourceIndex": 86,
+        "element": "N",
+        "x": 8.727136469690544,
+        "y": 2.597799481831825,
+        "z": 12.49050447048702
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:87",
+        "sourceIndex": 87,
+        "element": "N",
+        "x": 9.1053909404843,
+        "y": 4.450369565311111,
+        "z": 5.828222645161656
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:88",
+        "sourceIndex": 88,
+        "element": "N",
+        "x": 8.727126838770937,
+        "y": 0.92638954163208,
+        "z": 5.8282200594861635
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:89",
+        "sourceIndex": 89,
+        "element": "N",
+        "x": 9.105359594715795,
+        "y": 6.121789009247068,
+        "z": 12.490509961489035
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:90",
+        "sourceIndex": 90,
+        "element": "N",
+        "x": 3.161077419410946,
+        "y": 4.450413414761101,
+        "z": 0.8345587039793785
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:91",
+        "sourceIndex": 91,
+        "element": "N",
+        "x": 2.7828348236651697,
+        "y": 2.5978332566115596,
+        "z": 7.496836069906143
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:92",
+        "sourceIndex": 92,
+        "element": "N",
+        "x": 8.78037968365126,
+        "y": 1.7191557032536893,
+        "z": 10.326353752120522
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:93",
+        "sourceIndex": 93,
+        "element": "N",
+        "x": 2.836082909623137,
+        "y": 1.805063008329392,
+        "z": 2.998714946388611
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:94",
+        "sourceIndex": 94,
+        "element": "N",
+        "x": 3.1078618473874617,
+        "y": 5.2431919508866764,
+        "z": 9.661004107433026
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:95",
+        "sourceIndex": 95,
+        "element": "N",
+        "x": 2.8360935811090435,
+        "y": 1.7191835755718579,
+        "z": 9.660987579922793
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:96",
+        "sourceIndex": 96,
+        "element": "N",
+        "x": 3.1078415640951325,
+        "y": 5.329052266893178,
+        "z": 2.998717267077552
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:97",
+        "sourceIndex": 97,
+        "element": "N",
+        "x": 9.052137751444134,
+        "y": 5.243153448941934,
+        "z": 10.326344191983273
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:98",
+        "sourceIndex": 98,
+        "element": "N",
+        "x": 8.780360402686144,
+        "y": 1.8050233026918632,
+        "z": 3.664055817328569
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:99",
+        "sourceIndex": 99,
+        "element": "N",
+        "x": 2.898198769746357,
+        "y": 0.7948422183248378,
+        "z": 11.79290390810918
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:100",
+        "sourceIndex": 100,
+        "element": "N",
+        "x": 8.842483607924642,
+        "y": 2.7293971759742215,
+        "z": 1.5321552443406565
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:101",
+        "sourceIndex": 101,
+        "element": "N",
+        "x": 8.990019830176836,
+        "y": 4.31879585180812,
+        "z": 8.194436127640104
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:102",
+        "sourceIndex": 102,
+        "element": "N",
+        "x": 8.842485588598441,
+        "y": 0.7948210976204738,
+        "z": 8.19443446444527
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:103",
+        "sourceIndex": 103,
+        "element": "N",
+        "x": 8.990017185177932,
+        "y": 6.25337494350984,
+        "z": 1.5321602746177458
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:104",
+        "sourceIndex": 104,
+        "element": "N",
+        "x": 3.0457284358350676,
+        "y": 4.3188189502474055,
+        "z": 11.792909118404292
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:105",
+        "sourceIndex": 105,
+        "element": "N",
+        "x": 2.898201678521484,
+        "y": 2.7294102332492507,
+        "z": 5.130623527190513
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:106",
+        "sourceIndex": 106,
+        "element": "N",
+        "x": 6.86424745600437,
+        "y": 1.4375099868539558,
+        "z": 11.630295532669058
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:107",
+        "sourceIndex": 107,
+        "element": "N",
+        "x": 0.9199995035989326,
+        "y": 2.086750134337691,
+        "z": 1.6947325796634614
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:108",
+        "sourceIndex": 108,
+        "element": "N",
+        "x": 5.02401605534373,
+        "y": 4.9615344277242945,
+        "z": 8.357085850818246
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:109",
+        "sourceIndex": 109,
+        "element": "N",
+        "x": 0.9199674068017814,
+        "y": 1.4375131114257753,
+        "z": 8.35704210472531
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:110",
+        "sourceIndex": 110,
+        "element": "N",
+        "x": 5.023951300079014,
+        "y": 5.610722343669318,
+        "z": 1.694756223875982
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:111",
+        "sourceIndex": 111,
+        "element": "N",
+        "x": 10.968226874640253,
+        "y": 4.961474677387307,
+        "z": 11.63032141387361
+      },
+      {
+        "id": "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:112",
+        "sourceIndex": 112,
+        "element": "N",
+        "x": 6.864264815886937,
+        "y": 2.08671146836579,
+        "z": 4.968030747503112
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: NOMAD Repository record NOMAD entry uwyb7k0JRpwE4JVLtj-TXIjqxaWr; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based source.cif atom row and maps to the same ordered geometry.in atom record; the retained raw FHI-aims file contains no independent atom-site labels.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:1",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:2",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:3",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:4",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:5",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:6",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:7",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:8",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:9",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:10",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:11",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:12",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:13",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:14",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:15",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:16",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:17",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:18",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:19",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:20",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:21",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:22",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:23",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:24",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:25",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:26",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:27",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:28",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:29",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:30",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:31",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:32",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:33",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:34",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:35",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:36",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:37",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:38",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:39",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:40",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:41",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:42",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:43",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:44",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:45",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:46",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:47",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:48",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:49",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:50",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:51",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:52",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:53",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:54",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:55",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:56",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:57",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:58",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:59",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:60",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:61",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:62",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:63",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:64",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:65",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:66",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:67",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:68",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:69",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:70",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:71",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:72",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:73",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:74",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:75",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:76",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:77",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:78",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:79",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:80",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:81",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:82",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:83",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:84",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:85",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:86",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:87",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:88",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:89",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:90",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:91",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:92",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:93",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:94",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:95",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:96",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:97",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:98",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:99",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:100",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:101",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:102",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:103",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:104",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:105",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:106",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:107",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:108",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:109",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:110",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:111",
+      "gc3n4-heptazine-corrugated-112-nomad-uwyb7k0jrpwe4jvltjtxijqxaawr:atom:112"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          11.88856950164386,
+          0.0,
+          -1.8245563395638715e-06
+        ],
+        [
+          0.00018592430998031948,
+          7.047959351456651,
+          7.32857378525879e-05
+        ],
+        [
+          0.0,
+          0.0,
+          13.324564469052
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "NOMAD Repository record NOMAD entry uwyb7k0JRpwE4JVLtj-TXIjqxaWr defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

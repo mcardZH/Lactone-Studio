@@ -1,0 +1,47 @@
+/* Both engines use the same shared input tokens; native code keeps one mono face. */
+.engine-input-preview.native-input-preview {
+  padding: var(--input-card-padding, 10px 12px);
+  gap: var(--input-gap, 8px);
+  color: var(--input-color, #294454);
+  background: var(--input-card-bg, #f1f8f3);
+  border-color: var(--input-card-border, #d4e5db);
+}
+.native-input-preview .shared-input-card-header,
+.native-input-preview .input-preview-controls { gap: var(--input-gap, 8px); }
+.engine-input-preview.native-input-preview .input-preview-toggle,
+.engine-input-preview.native-input-preview header > span,
+.engine-input-preview.native-input-preview .input-preview-issues,
+.engine-input-preview.native-input-preview .input-preview-state-note {
+  font-size: var(--input-caption-font, var(--ui-secondary-size, 14px));
+  line-height: 1.6;
+}
+.engine-input-preview.native-input-preview .input-preview-controls .shared-input-checkbox {
+  margin: 0;
+  color: var(--input-color, #294454);
+}
+.engine-input-preview.native-input-preview select {
+  font-size: var(--input-caption-font, var(--ui-secondary-size, 14px));
+  color: var(--input-color, #294454);
+  border-color: var(--input-border, #cadfd1);
+  border-radius: var(--input-control-radius, 7px);
+}
+.engine-input-preview.native-input-preview .full-input-preview {
+  font: var(--input-caption-font, var(--ui-secondary-size, 14px))/1.6 Consolas, "Courier New", monospace;
+  padding: var(--input-gap, 8px) 10px;
+  color: var(--input-color, #294454);
+  border-color: var(--input-border, #cadfd1);
+  border-radius: var(--input-control-radius, 7px);
+  background: var(--input-control-bg, #fff);
+}
+.native-input-preview .input-preview-state-note { margin: 0; color: #956734; }
+.engine-input-preview.native-input-preview button.input-preview-toggle { display:inline-flex; align-items:center; justify-content:flex-start; gap:5px; min-height:30px; padding:3px 5px; margin:0; border:0; border-radius:5px; background:transparent; color:#386b57; font:var(--input-caption-font,var(--ui-secondary-size,14px))/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
+.engine-input-preview.native-input-preview button.input-preview-toggle:hover { background:#e3f0e7; border-color:transparent; }
+.native-input-preview .input-preview-resize { margin: -10px -12px 0; }
+.engine-input-preview.native-input-preview[data-open=true] { height:var(--input-preview-height,300px); min-height:104px; max-height:calc(100% - 52px)!important; box-sizing:border-box; }
+.engine-input-preview.native-input-preview .full-input-preview { max-height:none; min-height:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:calc(13px * var(--ui-font-scale,1))/1.6 Consolas,"Courier New",monospace; }
+.native-input-preview .shared-input-card-header { margin-bottom:0; }
+
+/* Preview and scroll region follow the actual requested size; the drag handle
+   remains outside the code scroller and can grow beyond the old 220px cap. */
+.engine-input-preview.native-input-preview[data-open=true] { height:var(--input-preview-height,360px); max-height:min(1600px,70vh)!important; flex:0 0 auto; }
+.engine-input-preview.native-input-preview .full-input-preview { white-space:pre; overflow-wrap:normal; }

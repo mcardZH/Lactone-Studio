@@ -1,0 +1,12 @@
+/* Shared catalog placement is explicit and independent of translated labels. */
+:root .catalog-popup.card-dropdown-popup{overflow:hidden;max-width:calc(100vw - 24px)}
+:root .catalog-popup.card-dropdown-popup [role=listbox]{flex:1;overscroll-behavior:contain;scrollbar-gutter:stable;overflow-x:hidden}
+:root .catalog-popup .card-dropdown-footer{flex-shrink:0;max-height:25vh;overflow-y:auto;overscroll-behavior:contain}
+.advanced-options-stack .section-default-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.advanced-options-stack .section-default-heading h3{margin:0}
+.advanced-options-stack .section-default-heading .text-button{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+/* The outer layer owns centering; the inner layer owns the existing fade. */
+:root .notice-toast-position{position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;pointer-events:none;padding:16px}
+:root .notice-toast-position>.toast.fading-toast{position:relative;inset:auto;transform:none;margin:0;max-width:min(590px,calc(100vw - 32px));pointer-events:auto;animation:notice-center-life 4.4s both}
+@keyframes notice-center-life{0%{opacity:0;transform:translateY(8px)}8%,78%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-8px)}}
+@media(prefers-reduced-motion:reduce){:root .notice-toast-position>.toast.fading-toast{animation:none;opacity:1;transform:none}}

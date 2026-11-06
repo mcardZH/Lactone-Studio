@@ -1,0 +1,220 @@
+{
+  "schema": "sy-ffmpeg-gnu-reproduction-recipe/v1",
+  "electronVersion": "44.7.0",
+  "chromiumVersion": "152.0.7977.130",
+  "ffmpegCommit": "2b68d2babae73714846961fb0ee47e3b3d2e39a9",
+  "opusCommit": "55513e81d8f606bd75d0ff773d2144e5f2a732f5",
+  "parameters": {
+    "WORK": "fresh work root; source/ffmpeg, source/opus, source/generate_stubs, build/ and output/ children",
+    "GNU_BIN": "GCC13.2/MinGW-w64 11.0.1/UCRT/POSIX tools bin",
+    "WINPTHREAD_STATIC": "R0 source-built MinGW11.0.1 libwinpthread.a",
+    "GIT_SH": "existing Git POSIX sh",
+    "GNU_ROOT": "Canonical parent of GNU_BIN, normalized to forward slashes",
+    "PYTHON": "Existing Python interpreter for the original DEF generator; no installation implied",
+    "GIT_BASH": "Existing Git for Windows bash executable"
+  },
+  "steps": [
+    {
+      "name": "01-opus-configure",
+      "argv": [
+        "${GNU_BIN}/cmake.exe",
+        "-S",
+        "${WORK}/source/opus/src",
+        "-B",
+        "${WORK}/build/opus",
+        "-G",
+        "Ninja",
+        "-DCMAKE_MAKE_PROGRAM=${GNU_BIN}/ninja.exe",
+        "-DCMAKE_C_COMPILER=${GNU_BIN}/gcc.exe",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_C_FLAGS=-DCHROMIUM_NO_LOGGING -ffile-prefix-map=${WORK}=sy-ffmpeg-build -fmacro-prefix-map=${WORK}=sy-ffmpeg-build -fdebug-prefix-map=${WORK}=sy-ffmpeg-build -ffile-prefix-map=${GNU_ROOT}=gnu-toolchain -fmacro-prefix-map=${GNU_ROOT}=gnu-toolchain -fdebug-prefix-map=${GNU_ROOT}=gnu-toolchain",
+        "-DCMAKE_C_FLAGS_RELEASE=-O2 -DNDEBUG",
+        "-DOPUS_BUILD_SHARED_LIBRARY=OFF",
+        "-DBUILD_SHARED_LIBS=OFF",
+        "-DBUILD_TESTING=OFF",
+        "-DOPUS_BUILD_TESTING=OFF",
+        "-DOPUS_BUILD_PROGRAMS=OFF",
+        "-DOPUS_DRED=OFF",
+        "-DOPUS_OSCE=OFF",
+        "-DOPUS_DEEP_PLC=OFF",
+        "-DOPUS_FIXED_POINT=OFF",
+        "-DOPUS_ASSERTIONS=OFF",
+        "-DOPUS_HARDENING=ON"
+      ],
+      "cwd": "${WORK}"
+    },
+    {
+      "name": "02-opus-build",
+      "argv": [
+        "${GNU_BIN}/cmake.exe",
+        "--build",
+        "${WORK}/build/opus",
+        "--parallel",
+        "4"
+      ],
+      "cwd": "${WORK}"
+    },
+    {
+      "name": "03-ffmpeg-configure",
+      "argv": [
+        "${GIT_BASH}",
+        "${WORK}/source/ffmpeg/configure",
+        "--disable-everything",
+        "--disable-all",
+        "--disable-doc",
+        "--disable-static",
+        "--enable-avcodec",
+        "--enable-avformat",
+        "--enable-avutil",
+        "--enable-static",
+        "--disable-shared",
+        "--enable-libopus",
+        "--disable-debug",
+        "--disable-bzlib",
+        "--disable-error-resilience",
+        "--disable-iconv",
+        "--disable-network",
+        "--disable-schannel",
+        "--disable-sdl2",
+        "--disable-symver",
+        "--disable-xlib",
+        "--disable-zlib",
+        "--disable-securetransport",
+        "--disable-faan",
+        "--disable-alsa",
+        "--disable-iamf",
+        "--disable-checkasm",
+        "--disable-autodetect",
+        "--disable-linux-perf",
+        "--x86asmexe=nasm",
+        "--optflags=-O2",
+        "--target-os=mingw32",
+        "--arch=x86_64",
+        "--cc=gcc",
+        "--ld=gcc",
+        "--ar=ar",
+        "--nm=nm",
+        "--extra-cflags=-I${WORK}/source/opus/src/include -DCHROMIUM_NO_LOGGING -ffile-prefix-map=${WORK}=sy-ffmpeg-build -fmacro-prefix-map=${WORK}=sy-ffmpeg-build -fdebug-prefix-map=${WORK}=sy-ffmpeg-build -ffile-prefix-map=${GNU_ROOT}=gnu-toolchain -fmacro-prefix-map=${GNU_ROOT}=gnu-toolchain -fdebug-prefix-map=${GNU_ROOT}=gnu-toolchain",
+        "--extra-ldflags=-L${WORK}/build/opus",
+        "--extra-libs=-lopus",
+        "--enable-decoder=h264,aac,flac,mp3,vorbis,pcm_alaw,pcm_f32le,pcm_mulaw,pcm_s16be,pcm_s16le,pcm_s24be,pcm_s24le,pcm_s32le,pcm_u8,libopus",
+        "--enable-parser=aac,flac,h264,mpegaudio,opus,vorbis,vp9",
+        "--enable-demuxer=aac,flac,matroska,mov,mp3,ogg,wav"
+      ],
+      "cwd": "${WORK}/build/ffmpeg"
+    },
+    {
+      "name": "04b-ffmpeg-build",
+      "argv": [
+        "${GNU_BIN}/mingw32-make.exe",
+        "-j4",
+        "SHELL=${GIT_SH}",
+        "libavcodec/libavcodec.a",
+        "libavformat/libavformat.a",
+        "libavutil/libavutil.a"
+      ],
+      "cwd": "${WORK}/build/ffmpeg"
+    },
+    {
+      "name": "05-original-def",
+      "argv": [
+        "${PYTHON}",
+        "-I",
+        "-B",
+        "${WORK}/source/generate_stubs/generate_stubs.py",
+        "-t",
+        "windows_def",
+        "-m",
+        "ffmpeg.dll",
+        "-i",
+        "${WORK}/output",
+        "-o",
+        "${WORK}/output",
+        "${WORK}/source/ffmpeg/chromium/ffmpeg.sigs"
+      ],
+      "cwd": "${WORK}"
+    },
+    {
+      "name": "08-r0-static-monolithic-link",
+      "argv": [
+        "${GNU_BIN}/gcc.exe",
+        "-shared",
+        "-static-libgcc",
+        "-Wl,--strip-all",
+        "-Wl,--exclude-all-symbols",
+        "-Wl,--nxcompat,--dynamicbase,--high-entropy-va",
+        "-Wl,--out-implib,${WORK}/output-r0/libffmpeg.dll.a",
+        "-o",
+        "${WORK}/output-r0/ffmpeg.dll",
+        "${WORK}/output/ffmpeg.def",
+        "-Wl,--start-group",
+        "${WORK}/build/ffmpeg/libavformat/libavformat.a",
+        "${WORK}/build/ffmpeg/libavcodec/libavcodec.a",
+        "${WORK}/build/ffmpeg/libavutil/libavutil.a",
+        "${WORK}/build/opus/libopus.a",
+        "${WINPTHREAD_STATIC}",
+        "-Wl,--end-group",
+        "-lopus",
+        "-lm",
+        "-latomic",
+        "-lole32",
+        "-luser32",
+        "-lbcrypt",
+        "-L${WORK}/build/opus"
+      ],
+      "cwd": "${WORK}"
+    }
+  ],
+  "generatedOnlyAdjustments": [
+    "config.h FFMPEG_CONFIGURATION string replaced by NULL, matching original Chromium elision",
+    "generated makefile and config.mak source prefix normalized from MSYS to native-make syntax; codec/config content unchanged"
+  ],
+  "originalPatch": "build-support/electron-44.7.0/patches/ffmpeg/link_with_loader_path.patch",
+  "enabledComponents": 29,
+  "componentGate": "all macros exactly equal original Chrome/win/x64 config_components.h",
+  "linkedR0Winpthreads": {
+    "bytes": 75096,
+    "sha256": "6e41e0dae40ba035f5dd1aeb5043e520349444855cb150c3ffdcfeeeaa52c539"
+  },
+  "output": {
+    "bytes": 2476032,
+    "sha256": "fc526bd15a767c6e0c198b5c71e9691992c22f32d39be0d8751f9c2fef74904c"
+  },
+  "pairedProbe": {
+    "exports": 53,
+    "wavSamples": 4800,
+    "wavExact": true,
+    "opusSamples": 960,
+    "opusMaxS16Difference": 0
+  },
+  "guiValidated": false,
+  "fullCodecMatrixValidated": false,
+  "publicDistributionApproved": false,
+  "guiScope": "Pending for this prefix-mapped DLL; the earlier candidate GUI result belongs to previousOutput.",
+  "pathNormalization": "Resolve WORK, GNU_ROOT and GNU_BIN before invocation and normalize all source/build/tool paths to forward slashes. Prefix maps apply recursively; verification covers both slash variants.",
+  "previousOutput": {
+    "bytes": 2972052,
+    "sha256": "262cfb4b3be42d570621ae23d1ecf2dd702f5ad703cd6c53a1acde341889f2fd"
+  },
+  "prefixMapFlags": [
+    "-ffile-prefix-map=${WORK}=sy-ffmpeg-build",
+    "-fmacro-prefix-map=${WORK}=sy-ffmpeg-build",
+    "-fdebug-prefix-map=${WORK}=sy-ffmpeg-build",
+    "-ffile-prefix-map=${GNU_ROOT}=gnu-toolchain",
+    "-fmacro-prefix-map=${GNU_ROOT}=gnu-toolchain",
+    "-fdebug-prefix-map=${GNU_ROOT}=gnu-toolchain"
+  ],
+  "privacyRepair": {
+    "method": "compile-time file/macro/debug prefix maps for Opus and FFmpeg; final linker strips only local symbol/debug metadata",
+    "binarySearchReplace": false,
+    "hardeningAndAssertionsChanged": false,
+    "componentMacrosChanged": false,
+    "rawScanViews": [
+      "raw",
+      "utf16le-align0",
+      "utf16le-align1"
+    ],
+    "targetedLocalPathFindings": 0,
+    "unstrippedMappedLinkRetainedPrivately": true
+  }
+}

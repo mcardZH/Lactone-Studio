@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "entryId": "cristobalite-high-cod-1010921",
+  "structure": {
+    "id": "cristobalite-high-cod-1010921",
+    "name": "高温方石英",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "cristobalite-high-cod-1010921:atom:1",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.8258000000000003,
+        "y": 1.8258,
+        "z": 1.8258000000000003
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:2",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 5.4058,
+        "y": 1.7542,
+        "z": 5.3342
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:3",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 5.334200000000001,
+        "y": 5.4058,
+        "z": 1.7542000000000006
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:4",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.7542000000000009,
+        "y": 5.3342,
+        "z": 5.4058
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:5",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 7.102720000000001,
+        "y": 7.10272,
+        "z": 7.102720000000001
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:6",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 3.5227200000000005,
+        "y": 3.63728,
+        "z": 0.05728000000000044
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:7",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 0.057280000000000574,
+        "y": 3.52272,
+        "z": 3.63728
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:8",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 3.63728,
+        "y": 0.057280000000000005,
+        "z": 3.5227200000000005
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.8950000000000001,
+        "y": 0.895,
+        "z": 0.8950000000000001
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.475,
+        "y": 2.685,
+        "z": 6.265000000000001
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:11",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.2650000000000015,
+        "y": 4.475,
+        "z": 2.6850000000000005
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:12",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.685000000000001,
+        "y": 6.265000000000001,
+        "z": 4.4750000000000005
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:13",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.725600000000001,
+        "y": 4.7256,
+        "z": 0.44392000000000054
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:14",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.7256,
+        "y": 0.44392,
+        "z": 4.7256
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:15",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.44392000000000076,
+        "y": 4.7256,
+        "z": 4.7256
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:16",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.145600000000002,
+        "y": 6.0144,
+        "z": 6.71608
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:17",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.1456000000000015,
+        "y": 3.13608,
+        "z": 2.4344
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:18",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.023920000000001,
+        "y": 6.0144,
+        "z": 2.4344
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:19",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4343999999999997,
+        "y": 1.145600000000001,
+        "z": 3.13608
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:20",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4344,
+        "y": 4.02392,
+        "z": 6.0144
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:21",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.71608,
+        "y": 1.145600000000001,
+        "z": 6.014400000000001
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:22",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.0144,
+        "y": 2.4343999999999997,
+        "z": 4.023920000000001
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:23",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.014400000000001,
+        "y": 6.71608,
+        "z": 1.145600000000002
+      },
+      {
+        "id": "cristobalite-high-cod-1010921:atom:24",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.1360800000000006,
+        "y": 2.4343999999999997,
+        "z": 1.1456000000000015
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1010921; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "cristobalite-high-cod-1010921:atom:1",
+      "cristobalite-high-cod-1010921:atom:2",
+      "cristobalite-high-cod-1010921:atom:3",
+      "cristobalite-high-cod-1010921:atom:4",
+      "cristobalite-high-cod-1010921:atom:5",
+      "cristobalite-high-cod-1010921:atom:6",
+      "cristobalite-high-cod-1010921:atom:7",
+      "cristobalite-high-cod-1010921:atom:8",
+      "cristobalite-high-cod-1010921:atom:9",
+      "cristobalite-high-cod-1010921:atom:10",
+      "cristobalite-high-cod-1010921:atom:11",
+      "cristobalite-high-cod-1010921:atom:12",
+      "cristobalite-high-cod-1010921:atom:13",
+      "cristobalite-high-cod-1010921:atom:14",
+      "cristobalite-high-cod-1010921:atom:15",
+      "cristobalite-high-cod-1010921:atom:16",
+      "cristobalite-high-cod-1010921:atom:17",
+      "cristobalite-high-cod-1010921:atom:18",
+      "cristobalite-high-cod-1010921:atom:19",
+      "cristobalite-high-cod-1010921:atom:20",
+      "cristobalite-high-cod-1010921:atom:21",
+      "cristobalite-high-cod-1010921:atom:22",
+      "cristobalite-high-cod-1010921:atom:23",
+      "cristobalite-high-cod-1010921:atom:24"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          7.16,
+          0.0,
+          4.3842355409475246e-16
+        ],
+        [
+          1.1514158171684718e-15,
+          7.16,
+          4.3842355409475246e-16
+        ],
+        [
+          0.0,
+          0.0,
+          7.16
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1010921 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

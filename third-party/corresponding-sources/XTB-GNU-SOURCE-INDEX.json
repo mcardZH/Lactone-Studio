@@ -1,0 +1,440 @@
+{
+  "schema": "sy-xtb-gnu-corresponding-source-index-v1",
+  "mainCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "reportedVersion": "6.7.0",
+  "sourceArchives": [
+    {
+      "name": "xtb",
+      "repository": "https://github.com/grimme-lab/xtb",
+      "tag": null,
+      "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+      "materializePrefix": "",
+      "path": "archives/xtb-gnu/xtb-5071a886-source.tar.gz",
+      "archiveName": "xtb-5071a886-source.tar.gz",
+      "bytes": 1681547,
+      "sha256": "2e4b378c644a053da66137f82aeeb8c796c81714fdfce917f71d94eac65f06fc",
+      "officialUrl": "https://github.com/grimme-lab/xtb/archive/5071a8869720fb0ecd788af977159869b64a277c.tar.gz",
+      "commitBinding": "Exact fixed main-source archive reused and independently compared",
+      "role": "main"
+    },
+    {
+      "name": "dftd4",
+      "repository": "https://github.com/dftd4/dftd4",
+      "tag": "v3.4.0",
+      "commit": "f572723f5a5cb8243ea88b0253e182088311c6f3",
+      "materializePrefix": "subprojects/dftd4",
+      "path": "archives/xtb-gnu/dftd4-f572723f5a5cb8243ea88b0253e182088311c6f3.tar.gz",
+      "archiveName": "dftd4-f572723f5a5cb8243ea88b0253e182088311c6f3.tar.gz",
+      "bytes": 226543,
+      "sha256": "d753ddf4e5504278a37fdbea33ba2c8945794d1b082043d316855df5df386c77",
+      "officialUrl": "https://github.com/dftd4/dftd4/archive/f572723f5a5cb8243ea88b0253e182088311c6f3.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "mctc-lib",
+      "repository": "https://github.com/grimme-lab/mctc-lib",
+      "tag": "v0.3.1",
+      "commit": "87a46cdf5281ad75909083c4f72354d54abdf95d",
+      "materializePrefix": "subprojects/mctc-lib",
+      "path": "archives/xtb-gnu/mctc-lib-87a46cdf5281ad75909083c4f72354d54abdf95d.tar.gz",
+      "archiveName": "mctc-lib-87a46cdf5281ad75909083c4f72354d54abdf95d.tar.gz",
+      "bytes": 130898,
+      "sha256": "9bab9cc10327cc4f2f12da88ec57bb036a70d97e6c5278afb439edf30c565ca9",
+      "officialUrl": "https://github.com/grimme-lab/mctc-lib/archive/87a46cdf5281ad75909083c4f72354d54abdf95d.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "tblite",
+      "repository": "https://github.com/tblite/tblite",
+      "tag": null,
+      "commit": "d2f08e808afe69aa71a6a12163632569ee6e9a4a",
+      "materializePrefix": "subprojects/tblite",
+      "path": "archives/xtb-gnu/tblite-d2f08e808afe69aa71a6a12163632569ee6e9a4a.tar.gz",
+      "archiveName": "tblite-d2f08e808afe69aa71a6a12163632569ee6e9a4a.tar.gz",
+      "bytes": 581128,
+      "sha256": "eaccb27616b30be5ddb09cdbe95567e3a81cb9f33e5ef02f2237b4b5de1b05ac",
+      "officialUrl": "https://github.com/tblite/tblite/archive/d2f08e808afe69aa71a6a12163632569ee6e9a4a.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "cpcmx",
+      "repository": "https://github.com/grimme-lab/CPCM-X",
+      "tag": "v1.0.0",
+      "commit": "b41feaf44f09be0e90f5845eb7a8a6d2ade5471d",
+      "materializePrefix": "subprojects/cpx",
+      "path": "archives/xtb-gnu/cpcmx-b41feaf44f09be0e90f5845eb7a8a6d2ade5471d.tar.gz",
+      "archiveName": "cpcmx-b41feaf44f09be0e90f5845eb7a8a6d2ade5471d.tar.gz",
+      "bytes": 16885873,
+      "sha256": "133f75b0ae7e769facad787e8a163069d8eb14f9643d2c395819e96c4a89bc90",
+      "officialUrl": "https://github.com/grimme-lab/CPCM-X/archive/b41feaf44f09be0e90f5845eb7a8a6d2ade5471d.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "multicharge",
+      "repository": "https://github.com/grimme-lab/multicharge",
+      "tag": "v0.2.0",
+      "commit": "46ea4e370b1a59e01cc022d1f65c64bae8dbf968",
+      "materializePrefix": "subprojects/multicharge",
+      "path": "archives/xtb-gnu/multicharge-46ea4e370b1a59e01cc022d1f65c64bae8dbf968.tar.gz",
+      "archiveName": "multicharge-46ea4e370b1a59e01cc022d1f65c64bae8dbf968.tar.gz",
+      "bytes": 38486,
+      "sha256": "493aacf2c47fa939c84c725f35ec58c927dc027853de64c857236bb94afc0e20",
+      "officialUrl": "https://github.com/grimme-lab/multicharge/archive/46ea4e370b1a59e01cc022d1f65c64bae8dbf968.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "toml-f",
+      "repository": "https://github.com/toml-f/toml-f",
+      "tag": "v0.4.1",
+      "commit": "6290b0bc5f5ebeff231625a3b6685de85f33fc79",
+      "materializePrefix": "subprojects/toml-f",
+      "path": "archives/xtb-gnu/toml-f-6290b0bc5f5ebeff231625a3b6685de85f33fc79.tar.gz",
+      "archiveName": "toml-f-6290b0bc5f5ebeff231625a3b6685de85f33fc79.tar.gz",
+      "bytes": 437954,
+      "sha256": "0b4b1320a93ad3dcbffd79cdbe92c3c396fc95290018b3e1bdfe4bc43b2a0916",
+      "officialUrl": "https://github.com/toml-f/toml-f/archive/6290b0bc5f5ebeff231625a3b6685de85f33fc79.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "s-dftd3",
+      "repository": "https://github.com/dftd3/simple-dftd3",
+      "tag": "v1.0.0",
+      "commit": "5ee8c4d71414bf54db0b680ee3c532215847e0f9",
+      "materializePrefix": "subprojects/s-dftd3",
+      "path": "archives/xtb-gnu/s-dftd3-5ee8c4d71414bf54db0b680ee3c532215847e0f9.tar.gz",
+      "archiveName": "s-dftd3-5ee8c4d71414bf54db0b680ee3c532215847e0f9.tar.gz",
+      "bytes": 449139,
+      "sha256": "b61d7acfd5d3775f7626afc8ef1acf74f5f359e4e80e9d299b01cdd197037c39",
+      "officialUrl": "https://github.com/dftd3/simple-dftd3/archive/5ee8c4d71414bf54db0b680ee3c532215847e0f9.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "numsa",
+      "repository": "https://github.com/grimme-lab/numsa",
+      "tag": "v0.2.0",
+      "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+      "materializePrefix": "subprojects/numsa",
+      "path": "archives/xtb-gnu/numsa-3145b756c05883cec9698142b436c057546e2ac7.tar.gz",
+      "archiveName": "numsa-3145b756c05883cec9698142b436c057546e2ac7.tar.gz",
+      "bytes": 85423,
+      "sha256": "ef4699aa3c162cbab7cb95e3774b10e26040f4803301c735d40251a14798d0dd",
+      "officialUrl": "https://github.com/grimme-lab/numsa/archive/3145b756c05883cec9698142b436c057546e2ac7.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime"
+    },
+    {
+      "name": "json-fortran",
+      "repository": "https://github.com/jacobwilliams/json-fortran",
+      "tag": "8.2.5",
+      "commit": "77c9f99d7d5c6a0ec9011f7225db3dbb6894ef6d",
+      "materializePrefix": "subprojects/json-fortran-8.2.5",
+      "path": "archives/xtb-gnu/json-fortran-77c9f99d7d5c6a0ec9011f7225db3dbb6894ef6d.tar.gz",
+      "archiveName": "json-fortran-77c9f99d7d5c6a0ec9011f7225db3dbb6894ef6d.tar.gz",
+      "bytes": 1805250,
+      "sha256": "16eec827f64340c226ba9a8463f001901d469bc400a1e88b849f258f9ef0d100",
+      "officialUrl": "https://github.com/jacobwilliams/json-fortran/archive/refs/tags/8.2.5.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "runtime-json-enabled"
+    },
+    {
+      "name": "mstore",
+      "repository": "https://github.com/grimme-lab/mstore",
+      "tag": "v0.2.0",
+      "commit": "974fb59092f74c7db86a1a11b1aafb3cbf311aa3",
+      "materializePrefix": "subprojects/mstore",
+      "path": "archives/xtb-gnu/mstore-974fb59092f74c7db86a1a11b1aafb3cbf311aa3.tar.gz",
+      "archiveName": "mstore-974fb59092f74c7db86a1a11b1aafb3cbf311aa3.tar.gz",
+      "bytes": 240435,
+      "sha256": "1adae8cd0368465e1b2ba2e8774bd5868b49987d153b4bc9b65555febfbef337",
+      "officialUrl": "https://github.com/grimme-lab/mstore/archive/974fb59092f74c7db86a1a11b1aafb3cbf311aa3.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "build-tests"
+    },
+    {
+      "name": "test-drive",
+      "repository": "https://github.com/fortran-lang/test-drive",
+      "tag": "v0.4.0",
+      "commit": "9c3401e30dbd2da1add77aaa252a4c6928fe39a1",
+      "materializePrefix": "subprojects/test-drive",
+      "path": "archives/xtb-gnu/test-drive-9c3401e30dbd2da1add77aaa252a4c6928fe39a1.tar.gz",
+      "archiveName": "test-drive-9c3401e30dbd2da1add77aaa252a4c6928fe39a1.tar.gz",
+      "bytes": 26354,
+      "sha256": "721fbc41d28bfbc42314dd0787a1803e3fd7036829cedfa49e4efc2ba322247b",
+      "officialUrl": "https://github.com/fortran-lang/test-drive/archive/9c3401e30dbd2da1add77aaa252a4c6928fe39a1.tar.gz",
+      "commitBinding": "all tracked Git blobs match official recursive tree",
+      "role": "build-tests"
+    }
+  ],
+  "sourceArchiveCount": 12,
+  "excludedNonBuildDependency": "Go toml-test: upstream test-only, not needed or fetched by the built xtb.exe target",
+  "preferredSourceTree": {
+    "path": "XTB-SOURCE-TREE.json",
+    "bytes": 356453,
+    "sha256": "82b67757fcc3100ee890c47d2dec23e33f21118b068162f3374808138504afd9"
+  },
+  "buildOverlays": {
+    "path": "build-support/xtb-gnu/BUILD-OVERLAYS.json",
+    "bytes": 19025,
+    "sha256": "63d4f962e2061addfbc86fa88dbdc669f9ca78b1a5b14c79dc1ce2e5f3dd2ad7"
+  },
+  "sourceByteVerification": {
+    "path": "XTB-SOURCE-VERIFICATION.json",
+    "bytes": 12066,
+    "sha256": "058e8782220283c8031a0fa3960d11b6a9b28a4a477260f88f0991de7f956f89"
+  },
+  "scientificSourceFilesUnchanged": 947,
+  "allPreferredSourceFilesMatchActualBuildTree": true,
+  "parameters": [
+    {
+      "sourcePath": ".param_gfnff.xtb",
+      "installPath": "share/xtb/.param_gfnff.xtb",
+      "bytes": 10664,
+      "sha256": "5cf2d1259dd3c65aa9594ea32a0c9a21bb819b6e16b81521888c5a3a1ec513e8"
+    },
+    {
+      "sourcePath": "param_gfn0-xtb.txt",
+      "installPath": "share/xtb/param_gfn0-xtb.txt",
+      "bytes": 39220,
+      "sha256": "278461cabbf89b14379aedc78ef3e141c8cef1f911f3a3c72530aec7a52b6d34"
+    },
+    {
+      "sourcePath": "param_gfn1-si-xtb.txt",
+      "installPath": "share/xtb/param_gfn1-si-xtb.txt",
+      "bytes": 28007,
+      "sha256": "f878fd7f8eea16f326aff283fbc7ca23800045992c0f86536e18ad91816cf7ca"
+    },
+    {
+      "sourcePath": "param_gfn1-xtb.txt",
+      "installPath": "share/xtb/param_gfn1-xtb.txt",
+      "bytes": 27800,
+      "sha256": "81a9d7afdee31f5d8fd67a4d8ec966179317c7b100261c9c82d724bafb460399"
+    },
+    {
+      "sourcePath": "param_gfn2-xtb.txt",
+      "installPath": "share/xtb/param_gfn2-xtb.txt",
+      "bytes": 35849,
+      "sha256": "f6f05c6c5264cb2f75c54f8ac6838044541c1e493b16f1a4d4ee4fa64de5f545"
+    },
+    {
+      "sourcePath": "param_ipea-xtb.txt",
+      "installPath": "share/xtb/param_ipea-xtb.txt",
+      "bytes": 27805,
+      "sha256": "08a39b7854b915501d8ba87b7d3330f28932f293479a0dc52b502f039c19f122"
+    }
+  ],
+  "licenseFiles": [
+    {
+      "path": "licenses/xtb-gnu/COPYING",
+      "sourcePath": "COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "licenses/xtb-gnu/COPYING.LESSER",
+      "sourcePath": "COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "licenses/xtb-gnu/src/solv/ddcosmo/LICENSE",
+      "sourcePath": "src/solv/ddcosmo/LICENSE",
+      "bytes": 2707,
+      "sha256": "394b189fb23f54384e85d20e74f6cf0d4dda870345e8fcb5e3867880fd25ff6d"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/dftd4/COPYING",
+      "sourcePath": "subprojects/dftd4/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/dftd4/COPYING.LESSER",
+      "sourcePath": "subprojects/dftd4/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/json-fortran-8.2.5/LICENSE",
+      "sourcePath": "subprojects/json-fortran-8.2.5/LICENSE",
+      "bytes": 2849,
+      "sha256": "93ea4d9f66cf7f4598292a8f4e3f9797f10465bd37fc4d49d07c6c03c2f63d88"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/mctc-lib/LICENSE",
+      "sourcePath": "subprojects/mctc-lib/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/mstore/LICENSE",
+      "sourcePath": "subprojects/mstore/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/multicharge/LICENSE",
+      "sourcePath": "subprojects/multicharge/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/numsa/COPYING",
+      "sourcePath": "subprojects/numsa/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/numsa/COPYING.LESSER",
+      "sourcePath": "subprojects/numsa/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/s-dftd3/COPYING",
+      "sourcePath": "subprojects/s-dftd3/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/s-dftd3/COPYING.LESSER",
+      "sourcePath": "subprojects/s-dftd3/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/tblite/COPYING",
+      "sourcePath": "subprojects/tblite/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/tblite/COPYING.LESSER",
+      "sourcePath": "subprojects/tblite/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/test-drive/LICENSE-Apache",
+      "sourcePath": "subprojects/test-drive/LICENSE-Apache",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/test-drive/LICENSE-MIT",
+      "sourcePath": "subprojects/test-drive/LICENSE-MIT",
+      "bytes": 1078,
+      "sha256": "d34e0235cb56e251ea1c23f9c803857267d083459aeedcd06b538c0335d69e46"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/toml-f/LICENSE-Apache",
+      "sourcePath": "subprojects/toml-f/LICENSE-Apache",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/toml-f/LICENSE-MIT",
+      "sourcePath": "subprojects/toml-f/LICENSE-MIT",
+      "bytes": 1061,
+      "sha256": "aae148780b8012a964c33894d1414ff183b0b67a76fcc63f8893d3f816909e39"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/dftd4/python/COPYING",
+      "sourcePath": "subprojects/dftd4/python/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/dftd4/python/COPYING.LESSER",
+      "sourcePath": "subprojects/dftd4/python/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/json-fortran-8.2.5/pages/development-resources/LICENSE.md",
+      "sourcePath": "subprojects/json-fortran-8.2.5/pages/development-resources/LICENSE.md",
+      "bytes": 41,
+      "sha256": "751ffaf99ae811cbd5aba51e7e27eef1c3bf4fbfff105dc39d4dc29bd3a6b6ed"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/s-dftd3/python/COPYING",
+      "sourcePath": "subprojects/s-dftd3/python/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "licenses/xtb-gnu/subprojects/s-dftd3/python/COPYING.LESSER",
+      "sourcePath": "subprojects/s-dftd3/python/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    }
+  ],
+  "bootstrapToolsNotBundled": [
+    {
+      "name": "winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.1-r7.zip",
+      "url": "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0posix-18.1.3-11.0.1-ucrt-r7/winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.1-r7.zip",
+      "bytes": 225869222,
+      "sha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+      "notBundled": true
+    },
+    {
+      "name": "meson-1.4.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/44/b2/d4433391a7c5e94a39b50ca7295a8ceba736e7c72c455752a60122f52453/meson-1.4.1-py3-none-any.whl",
+      "bytes": 937686,
+      "sha256": "d5acc3abae2dad3c70ddcbd10acac92b78b144d34d43f40f5b8ac31dfd8a826a",
+      "notBundled": true
+    }
+  ],
+  "openblas": {
+    "version": "0.3.34",
+    "abi": "LP64",
+    "dllName": "openblas.dll",
+    "bytes": 28410880,
+    "sha256": "d0073463ce449d6bb4a3f720b1ebf8a858b49ca2e376271585a7f75f6a1795d8",
+    "config": "OpenBLAS 0.3.34 DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=128",
+    "generatedImportLibraryNotSource": true
+  },
+  "recipe": "XTB-GNU-REBUILD.md",
+  "script": "build-support/xtb-gnu/rebuild-xtb.py",
+  "sourceAvailable": true,
+  "parameterizedPublicControlRebuiltHere": false,
+  "publicDistributionApproved": false,
+  "vcRuntime": {
+    "dllName": "VCRUNTIME140.dll",
+    "bytes": 124496,
+    "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60"
+  },
+  "controlFiles": [
+    {
+      "path": "build-support/xtb-gnu/bounded-command.py",
+      "bytes": 12383,
+      "sha256": "bcbde69d27437735cef263c74dd0cbdcb83c8fcc23cee0473cefacd949ed8876"
+    },
+    {
+      "path": "build-support/xtb-gnu/meson-entry.py",
+      "bytes": 577,
+      "sha256": "c6d85a1d55e0307941a61bdaffbe1304f4f85a0895c948c2d5ac5efc4c43a30c"
+    },
+    {
+      "path": "build-support/xtb-gnu/rebuild-xtb.py",
+      "bytes": 13230,
+      "sha256": "6aca132b59aac6acd5429a383f3406870843e8db0f6ba7a5cbd8b5fdf7189553"
+    }
+  ],
+  "recipeFile": {
+    "path": "XTB-GNU-REBUILD.md",
+    "bytes": 12334,
+    "sha256": "4330c1de31b62258be8c306448840b67dd9593f4b7c5351ee587ec1e4638f5e4"
+  },
+  "actualBuildEvidence": {
+    "path": "XTB-ACTUAL-BUILD-EVIDENCE.json",
+    "bytes": 2223,
+    "sha256": "1d1ce3e0bbc4c96982288ae36eff0362fbc09f95c6773ab16f3e8bf39c99ab10"
+  }
+}

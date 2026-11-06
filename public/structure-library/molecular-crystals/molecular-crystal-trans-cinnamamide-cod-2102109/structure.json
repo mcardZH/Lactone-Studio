@@ -1,0 +1,769 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-trans-cinnamamide-cod-2102109",
+  "structure": {
+    "id": "molecular-crystal-trans-cinnamamide-cod-2102109",
+    "name": "反式肉桂酰胺",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:1",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 15.494513984843742,
+        "y": 1.4591079999999998,
+        "z": 3.395107676958845
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:2",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 8.515579999934785,
+        "y": 4.001107999999999,
+        "z": 4.484674880312091
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:3",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.5122153383419429,
+        "y": 3.624892,
+        "z": 5.052747361221779
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:4",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 7.4911493232509,
+        "y": 1.082892,
+        "z": 3.963180157868533
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:5",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 14.8702515412395,
+        "y": 0.579576,
+        "z": 2.3085053304697993
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:6",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 9.139842443539026,
+        "y": 3.1215759999999997,
+        "z": 5.571277226801136
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:7",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.1364777819461835,
+        "y": 4.504423999999999,
+        "z": 6.139349707710825
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:8",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 6.86688687964666,
+        "y": 1.962424,
+        "z": 2.8765778113794873
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:9",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 13.820210097638519,
+        "y": 1.428604,
+        "z": 0.40873243996515085
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:10",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 10.189883887140008,
+        "y": 3.970604,
+        "z": 7.471050117305785
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:11",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 2.186519225547166,
+        "y": 3.6553959999999996,
+        "z": 8.039122598215473
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:12",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.816845436045677,
+        "y": 1.1133959999999998,
+        "z": 0.9768049208748388
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:13",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 14.902264999885872,
+        "y": 3.985856,
+        "z": -0.19519095945383824
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:14",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 9.107828984892654,
+        "y": 1.443856,
+        "z": 8.074973516724775
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:15",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 1.1044643232998117,
+        "y": 1.0981439999999998,
+        "z": 8.643045997634463
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:16",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 6.898900338293032,
+        "y": 3.6401439999999994,
+        "z": 0.3728815214558498
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:17",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 12.597295977347134,
+        "y": 1.5353679999999998,
+        "z": 8.057309915048151
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:18",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 11.412798007431393,
+        "y": 4.077368,
+        "z": -0.1775273577772155
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:19",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 3.4094333458385506,
+        "y": 3.5486319999999996,
+        "z": 0.3905451231324726
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:20",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 4.59393131575429,
+        "y": 1.006632,
+        "z": 8.625382395957839
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:21",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 11.716925864571921,
+        "y": 1.5557039999999998,
+        "z": 5.934645887948216
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:22",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 12.293168120206605,
+        "y": 4.097704,
+        "z": 1.9451366693227194
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:23",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 4.289803458613765,
+        "y": 3.5282959999999997,
+        "z": 2.5132091502324077
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:24",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 3.7135612029790783,
+        "y": 0.986296,
+        "z": 6.502718368857904
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:25",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 12.38920849614572,
+        "y": 3.157164,
+        "z": 4.315151799551803
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:26",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 11.620885488632807,
+        "y": 0.6151639999999999,
+        "z": 3.5646307577191325
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:27",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 3.617520827039965,
+        "y": 1.9268359999999998,
+        "z": 4.132703238628821
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:28",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 4.385843834552879,
+        "y": 4.468836,
+        "z": 4.883224280461492
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:29",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 14.053908345757032,
+        "y": 4.7687919999999995,
+        "z": 5.030800723522588
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:30",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 9.956185639021495,
+        "y": 2.2267919999999997,
+        "z": 2.848981833748348
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:31",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 1.9528209774286533,
+        "y": 0.31520800000000027,
+        "z": 3.417054314658036
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:32",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 6.050543684164191,
+        "y": 2.857208,
+        "z": 5.598873204432275
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:33",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 14.8702515412395,
+        "y": 4.738288,
+        "z": 7.1675933304698
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:34",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 9.139842443539026,
+        "y": 2.1962879999999996,
+        "z": 0.7121892268011365
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:35",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 1.1364777819461829,
+        "y": 0.34571199999999974,
+        "z": 1.2802617077108245
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:36",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 6.8668868796466604,
+        "y": 2.8877119999999996,
+        "z": 7.735665811379488
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:37",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 14.918591863795521,
+        "y": 2.4631979999999998,
+        "z": 1.872835772685106
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:38",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 9.091502120983005,
+        "y": 5.005197999999999,
+        "z": 6.00694678458583
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:39",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 1.0881374593901638,
+        "y": 2.6208020000000003,
+        "z": 6.575019265495518
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:40",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 6.91522720220268,
+        "y": 0.07880200000000007,
+        "z": 2.4409082535947935
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:41",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 14.297210631469452,
+        "y": 2.272548,
+        "z": 0.5368449201029326
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:42",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 9.712883353309074,
+        "y": 4.814548,
+        "z": 7.342937637168003
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:43",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 1.7095186917162317,
+        "y": 2.8114519999999996,
+        "z": 7.911010118077691
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:44",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 6.293845969876611,
+        "y": 0.2694519999999999,
+        "z": 1.1049174010126206
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:45",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 14.394211411167957,
+        "y": 3.1907184,
+        "z": -0.4006465183656922
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:46",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 9.61588257361057,
+        "y": 0.6487184000000008,
+        "z": 8.28042907563663
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:47",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 1.6125179120177269,
+        "y": 1.8932815999999997,
+        "z": 8.848501556546317
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:48",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.3908467495751164,
+        "y": 4.4352816,
+        "z": 0.1674259625439959
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:49",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 13.81924969387913,
+        "y": 3.16479,
+        "z": 7.82777500866286
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:50",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 10.190844290899397,
+        "y": 0.6227900000000002,
+        "z": 0.05200754860807566
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:51",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 2.187479629306556,
+        "y": 1.9192099999999996,
+        "z": 0.6200800295177639
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:52",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 5.815885032286287,
+        "y": 4.4612099999999995,
+        "z": 8.395847489572548
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:53",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 12.867809702908971,
+        "y": 2.2303507999999996,
+        "z": 7.441984265193404
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:54",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 11.142284281869555,
+        "y": 4.7723508,
+        "z": 0.4377982920775322
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:55",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 3.138919620276714,
+        "y": 2.8536492,
+        "z": 1.00587077298722
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:56",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 4.864445041316131,
+        "y": 0.31164920000000007,
+        "z": 8.010056746103091
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:57",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 12.345990326973117,
+        "y": 2.2430608,
+        "z": 6.160264190948714
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:58",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 11.66410365780541,
+        "y": 4.7850608,
+        "z": 1.7195183663222213
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:59",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 3.6607389962125665,
+        "y": 2.8409391999999998,
+        "z": 2.2875908472319093
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:60",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 4.342625665380278,
+        "y": 0.29893920000000007,
+        "z": 6.728336671858402
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:61",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 12.771769326969858,
+        "y": 3.169874,
+        "z": 5.249273134964319
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:62",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 11.238324657808668,
+        "y": 0.6278739999999997,
+        "z": 2.630509422306616
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:63",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 3.234959996215826,
+        "y": 1.9141259999999996,
+        "z": 3.198581903216304
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:64",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 4.768404665377017,
+        "y": 4.456125999999999,
+        "z": 5.817345615874007
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:65",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 13.692156263053036,
+        "y": 4.1088888,
+        "z": 5.612349599659706
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:66",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 10.31793772172549,
+        "y": 1.5668888,
+        "z": 2.2674329576112298
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:67",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 2.3145730601326493,
+        "y": 0.9751111999999997,
+        "z": 2.8355054385209177
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:68",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 5.688791601460192,
+        "y": 3.5171111999999995,
+        "z": 6.180422080569394
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:69",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 14.217176984853525,
+        "y": 4.111939199999999,
+        "z": 6.89671764491203
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:70",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 9.792916999925001,
+        "y": 1.5699391999999996,
+        "z": 0.983064912358906
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:71",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.7895523383321599,
+        "y": 0.9720608000000002,
+        "z": 1.5511373932685941
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:72",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 6.213812323260681,
+        "y": 3.5140607999999998,
+        "z": 7.464790125821718
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:73",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 15.00630874048658,
+        "y": 1.3874235999999998,
+        "z": 2.6457888982943345
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:74",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 9.003785244291947,
+        "y": 3.9294235999999994,
+        "z": 5.233993658976601
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:75",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 1.000420582699106,
+        "y": 3.6965764,
+        "z": 5.802066139886289
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:76",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 7.002944078893737,
+        "y": 1.1545764,
+        "z": 3.213861379204023
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:77",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 15.31683928935638,
+        "y": 3.5730351999999996,
+        "z": 2.2394292860350387
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:78",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 8.693254695422146,
+        "y": 1.0310351999999992,
+        "z": 5.640353271235897
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:79",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 0.6898900338293037,
+        "y": 1.5109648,
+        "z": 6.208425752145585
+      },
+      {
+        "id": "molecular-crystal-trans-cinnamamide-cod-2102109:atom:80",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 7.313474627763542,
+        "y": 4.0529648,
+        "z": 2.8075017669447266
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2102109; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:1",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:2",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:3",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:4",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:5",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:6",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:7",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:8",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:9",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:10",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:11",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:12",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:13",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:14",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:15",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:16",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:17",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:18",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:19",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:20",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:21",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:22",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:23",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:24",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:25",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:26",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:27",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:28",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:29",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:30",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:31",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:32",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:33",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:34",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:35",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:36",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:37",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:38",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:39",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:40",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:41",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:42",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:43",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:44",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:45",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:46",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:47",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:48",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:49",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:50",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:51",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:52",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:53",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:54",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:55",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:56",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:57",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:58",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:59",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:60",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:61",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:62",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:63",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:64",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:65",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:66",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:67",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:68",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:69",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:70",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:71",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:72",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:73",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:74",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:75",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:76",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:77",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:78",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:79",
+      "molecular-crystal-trans-cinnamamide-cod-2102109:atom:80"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          16.006729323185684,
+          0.0,
+          -1.1361449618193762
+        ],
+        [
+          8.17569555095602e-16,
+          5.084,
+          3.1130521634325716e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.584
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2102109 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

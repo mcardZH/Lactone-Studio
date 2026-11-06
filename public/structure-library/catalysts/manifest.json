@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "framework-ticl3codrecordr3h-cod-1535644",
+      "category": "catalysts",
+      "name": "TiCl3（COD R-3:H 记录）",
+      "nameEn": "TiCl3 COD record, R-3:H",
+      "formula": "TiCl3",
+      "aliases": [
+        "TiCl3",
+        "alpha-TiCl3 paper"
+      ],
+      "phase": "TiCl3 COD record, R-3:H; COD reported formula Cl3 Ti; space group R -3 :H.",
+      "structurePath": "catalysts/framework-ticl3codrecordr3h-cod-1535644/structure.json",
+      "sourcePath": "catalysts/framework-ticl3codrecordr3h-cod-1535644/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1535644",
+        "url": "https://www.crystallography.net/cod/1535644.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T17:18:33.964605+00:00",
+        "citation": "Troyanov, S.I.; Snigireva, E.M.; Rybakov, V.B.. X-ray diffraction study of phase transition in alfa-TiCl3. Zhurnal Neorganicheskoi Khimii, 36, 1991, 1117-1122.",
+        "conditions": "来源化学式: Cl3 Ti; 来源空间群: R -3 :H; spaceGroupNumber: 148; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: COD metadata copied as reported; null conditions are unknown. Source sample composition and guest/cation state are preserved; no idealized coordinates are inferred."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Targeted public COD coordinate source candidate only; keep the COD composition/phase and experimental conditions distinct from the MS filename, and require data-owner occupancy/phase review before admission.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 :H",
+        "number": 148
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "framework-ticl3codrecordp31c-cod-1535650",
+      "category": "catalysts",
+      "name": "TiCl3（COD P-31c 记录）",
+      "nameEn": "TiCl3 COD record, P-31c",
+      "formula": "TiCl3",
+      "aliases": [
+        "TiCl3",
+        "alpha-TiCl3 paper"
+      ],
+      "phase": "TiCl3 COD record, P-31c; COD reported formula Cl3 Ti; space group P -3 1 c.",
+      "structurePath": "catalysts/framework-ticl3codrecordp31c-cod-1535650/structure.json",
+      "sourcePath": "catalysts/framework-ticl3codrecordp31c-cod-1535650/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1535650",
+        "url": "https://www.crystallography.net/cod/1535650.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T17:18:33.984692+00:00",
+        "citation": "Troyanov, S.I.; Snigireva, E.M.; Rybakov, V.B.. X-ray diffraction study of phase transition in alpha-TiCl3. Zhurnal Neorganicheskoi Khimii, 36, 1991, 1117-1122.",
+        "conditions": "来源化学式: Cl3 Ti; 来源空间群: P -3 1 c; spaceGroupNumber: 163; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: COD metadata copied as reported; null conditions are unknown. Source sample composition and guest/cation state are preserved; no idealized coordinates are inferred."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Targeted public COD coordinate source candidate only; keep the COD composition/phase and experimental conditions distinct from the MS filename, and require data-owner occupancy/phase review before admission.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P -3 1 c",
+        "number": 163
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "framework-ticl3codrecordc2m-cod-1535654",
+      "category": "catalysts",
+      "name": "TiCl3（COD C2/m 记录）",
+      "nameEn": "TiCl3 COD record, C2/m",
+      "formula": "TiCl3",
+      "aliases": [
+        "TiCl3",
+        "alpha-TiCl3 paper"
+      ],
+      "phase": "TiCl3 COD record, C2/m; COD reported formula Cl3 Ti; space group C 1 2/m 1.",
+      "structurePath": "catalysts/framework-ticl3codrecordc2m-cod-1535654/structure.json",
+      "sourcePath": "catalysts/framework-ticl3codrecordc2m-cod-1535654/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1535654",
+        "url": "https://www.crystallography.net/cod/1535654.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T17:18:34.013670+00:00",
+        "citation": "Troyanov, S.I.; Snigireva, E.M.; Rybakov, V.B.. X-ray diffraction study of phase transition in alpha-TiCl3. Zhurnal Neorganicheskoi Khimii, 36, 1991, 1117-1122.",
+        "conditions": "来源化学式: Cl3 Ti; 来源空间群: C 1 2/m 1; spaceGroupNumber: 12; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: COD metadata copied as reported; null conditions are unknown. Source sample composition and guest/cation state are preserved; no idealized coordinates are inferred."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Targeted public COD coordinate source candidate only; keep the COD composition/phase and experimental conditions distinct from the MS filename, and require data-owner occupancy/phase review before admission.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 2/m 1",
+        "number": 12
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

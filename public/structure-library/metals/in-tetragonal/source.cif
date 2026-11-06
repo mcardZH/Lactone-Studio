@@ -1,0 +1,91 @@
+#------------------------------------------------------------------------------
+#$Date: 2024-05-16 09:36:09 +0300 (Thu, 16 May 2024) $
+#$Revision: 291877 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/9/01/23/9012375.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided the American Mineralogist Crystal Structure Database,
+# http://rruff.geo.arizona.edu/AMS/amcsd.php
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_9012375
+loop_
+_publ_author_name
+'Smith, J. F.'
+'Schneider, V. L.'
+_publ_section_title
+;
+ Anisotropic thermal expansion of indium
+ Sample: 99.999% indium
+;
+_journal_name_full               'Journal of the Less-Common Metals'
+_journal_page_first              17
+_journal_page_last               22
+_journal_paper_doi               10.1016/0022-5088(64)90013-X
+_journal_volume                  7
+_journal_year                    1964
+_chemical_formula_sum            In
+_chemical_name_mineral           Indium
+_space_group_IT_number           139
+_symmetry_space_group_name_Hall  '-I 4 2'
+_symmetry_space_group_name_H-M   'I 4/m m m'
+_cell_angle_alpha                90
+_cell_angle_beta                 90
+_cell_angle_gamma                90
+_cell_length_a                   4.5899
+_cell_length_b                   4.5899
+_cell_length_c                   4.9379
+_cell_formula_units_Z            2
+_cell_volume                     104.028
+_exptl_crystal_density_diffrn    3.666
+_cod_database_code               9012375
+loop_
+_symmetry_equiv_pos_as_xyz
+x,y,z
+1/2+x,1/2+y,1/2+z
+-y,-x,z
+1/2-y,1/2-x,1/2+z
+y,x,-z
+1/2+y,1/2+x,1/2-z
+y,-x,-z
+1/2+y,1/2-x,1/2-z
+-y,x,z
+1/2-y,1/2+x,1/2+z
+x,-y,z
+1/2+x,1/2-y,1/2+z
+-x,y,-z
+1/2-x,1/2+y,1/2-z
+x,y,-z
+1/2+x,1/2+y,1/2-z
+-x,-y,z
+1/2-x,1/2-y,1/2+z
+y,x,z
+1/2+y,1/2+x,1/2+z
+-y,-x,-z
+1/2-y,1/2-x,1/2-z
+-y,x,-z
+1/2-y,1/2+x,1/2-z
+y,-x,z
+1/2+y,1/2-x,1/2+z
+-x,y,z
+1/2-x,1/2+y,1/2+z
+x,-y,-z
+1/2+x,1/2-y,1/2-z
+-x,-y,-z
+1/2-x,1/2-y,1/2-z
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+In 0.00000 0.00000 0.00000
+loop_
+_cod_related_entry_id
+_cod_related_entry_database
+_cod_related_entry_code
+1 ChemSpider 4514408

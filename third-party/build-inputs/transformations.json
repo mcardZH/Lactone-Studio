@@ -1,0 +1,560 @@
+[
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/ase-3.28.0.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/Lib/site-packages/ase-3.28.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/ase-3.28.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/ase-3.28.0.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "python/Lib/site-packages/ase-3.28.0.dist-info/RECORD",
+      "bytes": 181092,
+      "sha256": "fc3a364ab1414e2afc6e71de10e68212d58d1d920461aee7d8f9dbaaaec59997"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/ase-3.28.0.dist-info/RECORD",
+      "bytes": 111186,
+      "sha256": "25a6bee3191ee5983c2a60ca5906bc6925bf6b125a257c483e39bd744fe1cc41"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/numpy-2.4.6.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/Lib/site-packages/numpy-2.4.6.dist-info/INSTALLER",
+      "bytes": 5,
+      "sha256": "0b77bdb04e0461147a7c783c200bc11a6591886e59e2509f5d7f6cb7179d01ab"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/numpy-2.4.6.dist-info/INSTALLER",
+      "bytes": 5,
+      "sha256": "0b77bdb04e0461147a7c783c200bc11a6591886e59e2509f5d7f6cb7179d01ab"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/numpy-2.4.6.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "python/Lib/site-packages/numpy-2.4.6.dist-info/RECORD",
+      "bytes": 86465,
+      "sha256": "9ad67a01b762d24c7b17bb76f6d5a19648f6928339eb35a6e49a21322ca27a57"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/numpy-2.4.6.dist-info/RECORD",
+      "bytes": 86465,
+      "sha256": "9ad67a01b762d24c7b17bb76f6d5a19648f6928339eb35a6e49a21322ca27a57"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/openbabel_wheel-3.1.1.23.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/Lib/site-packages/openbabel_wheel-3.1.1.23.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/openbabel_wheel-3.1.1.23.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/openbabel_wheel-3.1.1.23.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "python/Lib/site-packages/openbabel_wheel-3.1.1.23.dist-info/RECORD",
+      "bytes": 21202,
+      "sha256": "6993042d24c2b9c9a7ca636de8a3fb9bcf066f1b8448070e4a09dadc9c2d6d86"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/openbabel_wheel-3.1.1.23.dist-info/RECORD",
+      "bytes": 20607,
+      "sha256": "f2ea9ab66ee1d19b9a63e1424a71e637644db38f7e820fc500a5ffb463c0d14a"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/psutil-7.2.2.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/Lib/site-packages/psutil-7.2.2.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/psutil-7.2.2.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/psutil-7.2.2.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "python/Lib/site-packages/psutil-7.2.2.dist-info/RECORD",
+      "bytes": 1788,
+      "sha256": "ba431e5c7c55206ac3e21d5c8f9aceefe1a40a7c1f0d33220f4ac59a649eb0cf"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/psutil-7.2.2.dist-info/RECORD",
+      "bytes": 1220,
+      "sha256": "c2beb439b78dc605156d8fa39ab6f2de33d2d0b48dcfffa3b92b1106646b58b6"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/rdkit/CTestTestfile.cmake",
+    "input": {
+      "bytes": 761,
+      "sha256": "ed2872e475acd4c43e2a160ba03a1b2765a31a87dbee3a226cc20e8dc6ed07de"
+    },
+    "output": null,
+    "reason": "Upstream CTest-only build file is not a runtime or freeze dependency; omit machine/build prefix"
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/rdkit/Chem/CTestTestfile.cmake",
+    "input": {
+      "bytes": 313,
+      "sha256": "2d16f32a7db8609a726a5be4e646d09fa58927d9043c74849324393480685c54"
+    },
+    "output": null,
+    "reason": "Upstream CTest-only build file is not a runtime or freeze dependency; omit machine/build prefix"
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/rdkit/RDPaths.py",
+    "reason": "Relocate installed RDKit path configuration to package-relative location; no method/parameter changes; complete optional RDKit example Data was not in original preparation",
+    "input": {
+      "path": "python/Lib/site-packages/rdkit/RDPaths.py",
+      "bytes": 481,
+      "sha256": "4754ba6e5d9b53f865b9fe18638241dddf1b76e46e2ef40261610121af15acb1"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/rdkit/RDPaths.py",
+      "bytes": 427,
+      "sha256": "dd6a93a8d47690891368e6092275337705b02fc04e17d7e0b4215fa694d2a428"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/scipy-1.17.1.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/Lib/site-packages/scipy-1.17.1.dist-info/INSTALLER",
+      "bytes": 5,
+      "sha256": "0b77bdb04e0461147a7c783c200bc11a6591886e59e2509f5d7f6cb7179d01ab"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/scipy-1.17.1.dist-info/INSTALLER",
+      "bytes": 5,
+      "sha256": "0b77bdb04e0461147a7c783c200bc11a6591886e59e2509f5d7f6cb7179d01ab"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/scipy-1.17.1.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "python/Lib/site-packages/scipy-1.17.1.dist-info/RECORD",
+      "bytes": 145961,
+      "sha256": "a1e3a5f7bfbd27c79820df5ba19f7b1be67434ea5914396001b1b66cf237981a"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/scipy-1.17.1.dist-info/RECORD",
+      "bytes": 145961,
+      "sha256": "a1e3a5f7bfbd27c79820df5ba19f7b1be67434ea5914396001b1b66cf237981a"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/spglib-2.7.0.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/Lib/site-packages/spglib-2.7.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/spglib-2.7.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/spglib-2.7.0.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "python/Lib/site-packages/spglib-2.7.0.dist-info/RECORD",
+      "bytes": 3489,
+      "sha256": "5e76baf4e4c16a918029e54cec60fdc833faf27a0623ff10a22bd517b320cadf"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/spglib-2.7.0.dist-info/RECORD",
+      "bytes": 2628,
+      "sha256": "ec9db7db74f5e0941a7fa7c2f1b43988e48ca53ea9cdf686dce207766d692043"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/threadpoolctl-3.6.0.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/Lib/site-packages/threadpoolctl-3.6.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/threadpoolctl-3.6.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-runtime",
+    "path": "python/Lib/site-packages/threadpoolctl-3.6.0.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "python/Lib/site-packages/threadpoolctl-3.6.0.dist-info/RECORD",
+      "bytes": 546,
+      "sha256": "a11fd1efc57e45a797ec0a092f745c4a3e54c40a7b1badd55c82f10327d04a29"
+    },
+    "output": {
+      "path": "python/Lib/site-packages/threadpoolctl-3.6.0.dist-info/RECORD",
+      "bytes": 402,
+      "sha256": "f834ba52503ed5d2a5cddda97fa0c5d58028d9bee91f703a4af816beb4b30313"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/altgraph-0.17.5.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "tools/altgraph-0.17.5.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "tools/altgraph-0.17.5.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/altgraph-0.17.5.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "tools/altgraph-0.17.5.dist-info/RECORD",
+      "bytes": 1215,
+      "sha256": "5069a760c9231e7195f4ef4f8d03cc14e5fc96520f1641283709428996144045"
+    },
+    "output": {
+      "path": "tools/altgraph-0.17.5.dist-info/RECORD",
+      "bytes": 1022,
+      "sha256": "f0d9f813b84710662cc315b16ac9c506969ad93e052ba98395aaadbdd0e27b9d"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/bin/pyi-archive_viewer.exe",
+    "input": {
+      "bytes": 108355,
+      "sha256": "38dbb310a4eab68d99c24c470fca13d868cacaae6414fee1c264c3859b339855"
+    },
+    "output": null,
+    "reason": "Unused path-bound pip-generated CLI omitted; unchanged PyInstaller module entrypoint retained"
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/bin/pyi-bindepend.exe",
+    "input": {
+      "bytes": 108350,
+      "sha256": "fb29063195519fa5a1d12f8e0fd9bfacdeea3153e222ca84ba30bcb5636aa1e9"
+    },
+    "output": null,
+    "reason": "Unused path-bound pip-generated CLI omitted; unchanged PyInstaller module entrypoint retained"
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/bin/pyi-grab_version.exe",
+    "input": {
+      "bytes": 108353,
+      "sha256": "fed08913a53d4740c12fb967245abec11043b399685bc5fcf8cb1d21013afc56"
+    },
+    "output": null,
+    "reason": "Unused path-bound pip-generated CLI omitted; unchanged PyInstaller module entrypoint retained"
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/bin/pyi-makespec.exe",
+    "input": {
+      "bytes": 108349,
+      "sha256": "0a6176a56fdedcb38e0c17eb6479a0f6442a8331ec35254cdd58236eb39deb6a"
+    },
+    "output": null,
+    "reason": "Unused path-bound pip-generated CLI omitted; unchanged PyInstaller module entrypoint retained"
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/bin/pyi-set_version.exe",
+    "input": {
+      "bytes": 108352,
+      "sha256": "c30568636ad72dc1aee50b9e6285b709ca92afd7fdc3307218e11a648cce57f8"
+    },
+    "output": null,
+    "reason": "Unused path-bound pip-generated CLI omitted; unchanged PyInstaller module entrypoint retained"
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/bin/pyinstaller.exe",
+    "input": {
+      "bytes": 108366,
+      "sha256": "6be499dc7d398b58517bb7986a18259538c4fad3459860addebd8f52c6592af4"
+    },
+    "output": null,
+    "reason": "Unused path-bound pip-generated CLI omitted; unchanged PyInstaller module entrypoint retained"
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/packaging-26.3.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "tools/packaging-26.3.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "tools/packaging-26.3.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/packaging-26.3.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "tools/packaging-26.3.dist-info/RECORD",
+      "bytes": 2546,
+      "sha256": "7074c2b63752a891e4032b7c2043f0d237bc170e33c85c7c1af0d99140469905"
+    },
+    "output": {
+      "path": "tools/packaging-26.3.dist-info/RECORD",
+      "bytes": 2339,
+      "sha256": "49910a2cb1de4511589f678097f0fd771a2b4266f944806edb1b846f11af324c"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pefile-2024.8.26.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "tools/pefile-2024.8.26.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "tools/pefile-2024.8.26.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pefile-2024.8.26.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "tools/pefile-2024.8.26.dist-info/RECORD",
+      "bytes": 1039,
+      "sha256": "b4bfa3e39e938777ee1ee76771744c4d13f4a999382819c4aa3bac94ee687fe0"
+    },
+    "output": {
+      "path": "tools/pefile-2024.8.26.dist-info/RECORD",
+      "bytes": 846,
+      "sha256": "8bbfd2bb82f780f2c1dea0d29a987916773d8ab196b5b24a02a9989b48b923ff"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pyinstaller-6.22.3.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "tools/pyinstaller-6.22.3.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "tools/pyinstaller-6.22.3.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pyinstaller-6.22.3.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "tools/pyinstaller-6.22.3.dist-info/RECORD",
+      "bytes": 59684,
+      "sha256": "44f653c49917d6e05282f7446fab078cd09bc9c304a381d9ee96e7b247e2240c"
+    },
+    "output": {
+      "path": "tools/pyinstaller-6.22.3.dist-info/RECORD",
+      "bytes": 58398,
+      "sha256": "89cd0e642b8794f9f08115ee0534c78faa8da4150c5a8d4d5f98be7dca26d142"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pyinstaller_hooks_contrib-2026.8.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "tools/pyinstaller_hooks_contrib-2026.8.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "tools/pyinstaller_hooks_contrib-2026.8.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pyinstaller_hooks_contrib-2026.8.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "tools/pyinstaller_hooks_contrib-2026.8.dist-info/RECORD",
+      "bytes": 82734,
+      "sha256": "0fbb5a3181fb78b00950c412dff9b99712ff8af1cee963aa184ab1ddef29176c"
+    },
+    "output": {
+      "path": "tools/pyinstaller_hooks_contrib-2026.8.dist-info/RECORD",
+      "bytes": 81800,
+      "sha256": "a5623a26112a7a3734c41222f6cad23759ac4481f33557a5490d831f7caa88d4"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pywin32_ctypes-0.2.3.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "tools/pywin32_ctypes-0.2.3.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "tools/pywin32_ctypes-0.2.3.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/pywin32_ctypes-0.2.3.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "tools/pywin32_ctypes-0.2.3.dist-info/RECORD",
+      "bytes": 3666,
+      "sha256": "64b5b005ca5369b92965df0e9ef2995325c5667ef76247f445358f112d5c8c02"
+    },
+    "output": {
+      "path": "tools/pywin32_ctypes-0.2.3.dist-info/RECORD",
+      "bytes": 3437,
+      "sha256": "a7466d033aa07ca2bd27a806017af8b3167fe9c9c85972ea09da18f25108bfaf"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/setuptools-84.0.0.dist-info/INSTALLER",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "tools/setuptools-84.0.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    "output": {
+      "path": "tools/setuptools-84.0.0.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "tools/setuptools-84.0.0.dist-info/RECORD",
+    "reason": "Use original wheel RECORD, without developer-installed bytecode/CLI bookkeeping",
+    "input": {
+      "path": "tools/setuptools-84.0.0.dist-info/RECORD",
+      "bytes": 34034,
+      "sha256": "65a7d2a5ba39fcf46a621c21e5cb77c34b0fbcd6e8431805d5be3c4e44bcec6c"
+    },
+    "output": {
+      "path": "tools/setuptools-84.0.0.dist-info/RECORD",
+      "bytes": 33507,
+      "sha256": "8e50621059df808724912520d74765c1384bdb36be51ec3a92342dbbea30d630"
+    }
+  },
+  {
+    "payload": "native-toolchain",
+    "path": "python/python312._pth",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "python/python312._pth",
+      "bytes": 11,
+      "sha256": "0670228d44c72d20a5f4f2331317f528dc7500391fb2d746a091c1849996bb39"
+    },
+    "output": {
+      "path": "python/python312._pth",
+      "bytes": 11,
+      "sha256": "0670228d44c72d20a5f4f2331317f528dc7500391fb2d746a091c1849996bb39"
+    }
+  },
+  {
+    "payload": "xtb-runtime",
+    "path": "xtb/bin/xtb.exe",
+    "input": {
+      "bytes": 58998784,
+      "sha256": "90bff4e570ffa10a1558364ee393711900bff239f02d313685353e055324f4c3"
+    },
+    "output": {
+      "bytes": 58998784,
+      "sha256": "615f4117e6dad2eaaf4e1adb96b8cdd8c7a071629cccb9f5638e6b6b1be0567b"
+    },
+    "reason": "Existing documented header-only PE stack reserve correction, no code/data/parameters changed"
+  },
+  {
+    "payload": "xtb-runtime",
+    "path": "xtb/runtime.json",
+    "reason": "Explicit deterministic installed metadata / isolated Python path configuration; no developer absolute path",
+    "input": {
+      "path": "xtb/runtime.json",
+      "bytes": 1656,
+      "sha256": "5a570b48777807b09c9577f5def8d4fe4ae0caa55134c32b4f148342aa161cb5"
+    },
+    "output": {
+      "path": "xtb/runtime.json",
+      "bytes": 1656,
+      "sha256": "5a570b48777807b09c9577f5def8d4fe4ae0caa55134c32b4f148342aa161cb5"
+    }
+  }
+]

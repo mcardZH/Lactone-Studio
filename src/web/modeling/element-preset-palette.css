@@ -1,0 +1,33 @@
+.element-preset-palette { display: flex; align-items: stretch; gap: 3px; height: 98px; box-sizing: border-box; flex: 0 0 auto; border: 1px solid #ccdcd6; border-radius: 7px; background: #f7fbf9; padding: 4px; min-width: 0; }
+.element-preset-heading { display: flex; flex: 0 0 38px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: .8rem; }
+.element-preset-heading span { font-size: .65rem; color: #60756a; white-space: nowrap; }
+.element-preset-heading > button { border: 0; background: transparent; color: #455b53; width: 22px; height: 22px; cursor: pointer; }
+.element-preset-heading .element-preset-legend { font-size: 8px; line-height: 11px; text-align: center; }
+.element-preset-atom { display: flex; flex: 0 0 78px; padding: 2px 0; }
+.element-preset-palette .element-preset-more { display: flex; flex: 0 0 36px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid #d6e1dc; border-radius: 4px; padding: 2px; background: #eaf3ed; color: #456951; font-size: 10px; cursor: pointer; }
+.element-preset-palette .element-preset-more[aria-expanded="true"] { background: #dcecdf; }
+.element-preset-palette .element-preset-more:focus-visible { outline: 2px solid #195b8a; outline-offset: 2px; }
+.element-preset-group-divider { display: flex; flex: 0 0 24px; align-items: center; justify-content: center; border-left: 1px solid #ccdcd6; color: #60756a; font-size: 10px; writing-mode: vertical-rl; }
+.element-preset-palette .element-preset-scroll { flex: 0 0 19px; min-width: 19px; padding: 0; border: 0; border-radius: 4px; background: #eaf3ed; color: #456951; font-size: 20px; cursor: pointer; }
+.element-preset-palette .element-preset-scroll:disabled { opacity: .25; cursor: default; }
+.element-preset-grid { display: flex; flex: 1 1 auto; flex-wrap: nowrap; gap: 5px; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain; scrollbar-width: thin; padding: 2px; }
+.element-preset-palette .element-preset-card { display: flex; flex: 0 0 106px; flex-direction: column; align-items: center; justify-content: center; gap: 0; height: 76px; box-sizing: border-box; min-width: 0; padding: 2px 4px; border: 1px solid #d6e1dc; border-radius: 6px; background: white; color: #233c32; cursor: pointer; text-align: center; }
+.element-preset-atom .element-preset-card { flex-basis: 78px; width: 78px; }
+.element-preset-palette .element-preset-card:hover { background: #edf6f0; border-color: #80ab92; }
+.element-preset-palette .element-preset-card[aria-pressed="true"] { border: 2px solid #448765; padding: 1px 3px; background: #e5f2e9; box-shadow: 0 0 0 1px #d2e8d9; }
+.element-preset-palette .element-preset-card:focus-visible { outline: 2px solid #195b8a; outline-offset: 2px; }
+.element-preset-palette .element-preset-card:disabled { opacity: .55; cursor: default; }
+.element-preset-preview { width: 78px; max-width: 100%; height: 54px; flex: 0 0 54px; overflow: visible; }
+.element-preset-preview line { stroke: #4c655a; stroke-width: 1.6; }
+.element-preset-preview .element-preset-wedge { fill: #4c655a; }
+.element-preset-preview .element-preset-hydrogen { fill: #fff; stroke: #8fa69a; stroke-width: 1; }
+.element-preset-preview .element-preset-open { fill: #fff; stroke: #5e786b; stroke-width: 1.5; }
+.element-preset-preview .element-preset-center { fill: #d4e9dc; stroke: #507762; stroke-width: 1.1; }
+.element-preset-preview text { text-anchor: middle; user-select: none; }
+.element-preset-preview .element-preset-h-label { font-size: 9px; fill: #435b4e; }
+.element-preset-preview .element-preset-element { font-size: 12px; font-weight: 650; fill: #173c29; }
+.element-preset-name { display: block; width: 100%; font-size: 11px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 600px) { .element-preset-grid .element-preset-card { flex-basis: 94px; } }
+/* The workbench rail shows the same complete palette in a compact height.
+   Wider standalone palette fixtures keep their original 98px presentation. */
+.workbench-tool-grid [data-action-id="elements"] .element-preset-palette{height:76px;padding:2px;gap:2px}.workbench-tool-grid [data-action-id="elements"] .element-preset-heading{flex-basis:25px;gap:1px;font-size:11px}.workbench-tool-grid [data-action-id="elements"] .element-preset-heading>span:not(.element-preset-legend){display:none}.workbench-tool-grid [data-action-id="elements"] .element-preset-legend{font-size:7px;line-height:9px}.workbench-tool-grid [data-action-id="elements"] .element-preset-atom{flex-basis:46px}.workbench-tool-grid [data-action-id="elements"] .element-preset-atom .element-preset-card{width:46px;flex-basis:46px}.workbench-tool-grid [data-action-id="elements"] .element-preset-card{height:59px;flex-basis:70px;padding:1px 2px}.workbench-tool-grid [data-action-id="elements"] .element-preset-card[aria-pressed=true]{padding:0 1px}.workbench-tool-grid [data-action-id="elements"] .element-preset-preview{width:54px;height:38px;flex-basis:38px}.workbench-tool-grid [data-action-id="elements"] .element-preset-atom .element-preset-preview{width:38px}.workbench-tool-grid [data-action-id="elements"] .element-preset-name{font-size:9px;line-height:13px}.workbench-tool-grid [data-action-id="elements"] .element-preset-scroll{flex-basis:13px;min-width:13px;font-size:15px}.workbench-tool-grid [data-action-id="elements"] .element-preset-more{flex-basis:24px;font-size:8px;gap:1px;padding:1px}.workbench-tool-grid [data-action-id="elements"] .element-preset-grid{gap:3px;padding:1px}

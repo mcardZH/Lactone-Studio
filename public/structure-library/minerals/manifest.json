@@ -1,0 +1,1220 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "pyrite-cod-5000115",
+      "category": "minerals",
+      "name": "黄铁矿",
+      "nameEn": "Pyrite",
+      "formula": "FeS2",
+      "aliases": [
+        "pyrite",
+        "iron pyrite"
+      ],
+      "phase": "黄铁矿立方相；COD 记录报告组成 FeS2，空间群 Pa-3。",
+      "structurePath": "minerals/pyrite-cod-5000115/structure.json",
+      "sourcePath": "minerals/pyrite-cod-5000115/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "5000115",
+        "url": "https://www.crystallography.net/cod/5000115.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 202022",
+        "retrievedAt": "2026-10-23T16:46:51.039921+00:00",
+        "citation": "Brostigen, G.; Kjekshus, A. Redetermined crystal structure of FeS2 (pyrite). Acta Chemica Scandinavica, 23 (1969), 2186.",
+        "doi": "10.3891/acta.chem.scand.23-2186",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: Fe S2; 来源空间群: P a -3; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 pyrite；只下载公开 COD 原 CIF，尚未准入。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P a -3",
+        "number": 205
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "calcite-cod-1010928",
+      "category": "minerals",
+      "name": "方解石",
+      "nameEn": "Calcite",
+      "formula": "CaCO3",
+      "aliases": [
+        "calcite",
+        "方解石"
+      ],
+      "phase": "方解石型 CaCO3；COD 记录报告空间群 R-3c（菱方设置）。",
+      "structurePath": "minerals/calcite-cod-1010928/structure.json",
+      "sourcePath": "minerals/calcite-cod-1010928/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010928",
+        "url": "https://www.crystallography.net/cod/1010928.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301772",
+        "retrievedAt": "2026-10-23T16:46:51.052824+00:00",
+        "citation": "Elliott, N. A Redetermination of the Carbon-Oxygen Distance in Calcite and the Nitrogen-Oxygen Distance in Sodium Nitrate. Journal of the American Chemical Society, 59 (1937), 1380.",
+        "doi": "10.1021/ja01286a065",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: C Ca O3; 来源空间群: R -3 c RS; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 calcite；只下载公开 COD 原 CIF，尚未准入。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c RS",
+        "number": 167
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "dolomite-cod-1200014",
+      "category": "minerals",
+      "name": "白云石",
+      "nameEn": "Dolomite",
+      "formula": "CaMg(CO3)2",
+      "aliases": [
+        "dolomite",
+        "白云石"
+      ],
+      "phase": "白云石 CaMg(CO3)2；COD 记录空间群 R-3（六方设置）。",
+      "structurePath": "minerals/dolomite-cod-1200014/structure.json",
+      "sourcePath": "minerals/dolomite-cod-1200014/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1200014",
+        "url": "https://www.crystallography.net/cod/1200014.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303120",
+        "retrievedAt": "2026-10-23T16:46:51.071800+00:00",
+        "citation": "Beran, A.; Zemann, J. Refinement and comparison of the crystal structures of a dolomite and of an Fe-rich ankerite. TMPM, Tschermaks Mineralogische und Petrographische Mitteilungen, 24 (1977), 279.",
+        "doi": "10.1007/BF01081130",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: C2 Ca Mg O6; 来源空间群: R -3 :H; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 dolomite；论文标题包含 Fe-rich ankerite 对比，准入前须确认该记录对应的 dolomite 样品组成。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 :H",
+        "number": 148
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "anorthite-cod-1000034",
+      "category": "minerals",
+      "name": "钙长石",
+      "nameEn": "Anorthite",
+      "formula": "CaAl2Si2O8",
+      "aliases": [
+        "anorthite",
+        "钙长石",
+        "plagioclase endmember"
+      ],
+      "phase": "钙长石端元 CaAl2Si2O8；COD 记录空间群 P-1。",
+      "structurePath": "minerals/anorthite-cod-1000034/structure.json",
+      "sourcePath": "minerals/anorthite-cod-1000034/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1000034",
+        "url": "https://www.crystallography.net/cod/1000034.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:46:51.116282+00:00",
+        "citation": "Wainwright, J. E.; Starkey, J. A refinement of the structure of anorthite. Zeitschrift fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie, 133 (1971), 75.",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: Al2 Ca O8 Si2; 来源空间群: P -1; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 anorthite；温度未知，不推定为室温。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P -1",
+        "number": 2
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "forsterite-cod-1572966",
+      "category": "minerals",
+      "name": "镁橄榄石",
+      "nameEn": "Forsterite",
+      "formula": "Mg2SiO4",
+      "aliases": [
+        "forsterite",
+        "olivine Mg endmember",
+        "镁橄榄石"
+      ],
+      "phase": "镁橄榄石端元，Pbmn/Pbnm 报告设置；COD 记录为 295 K。",
+      "structurePath": "minerals/forsterite-cod-1572966/structure.json",
+      "sourcePath": "minerals/forsterite-cod-1572966/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1572966",
+        "url": "https://www.crystallography.net/cod/1572966.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 295660",
+        "retrievedAt": "2026-10-23T16:46:51.155760+00:00",
+        "citation": "Jundullah Hanafi, M. I.; Bastonero, L.; Murshed, M. M.; et al. Synthesis, structural and spectroscopic characterization of defect-rich forsterite as a representative phase of Martian regolith. IUCrJ, 11 (2024).",
+        "doi": "10.1107/S2052252524009722",
+        "conditions": "温度 / K: 295; 压力（按来源单位）: 未知; 来源化学式: Mg2 O4 Si; 来源空间群: P b n m; sample: study of defect-rich forsterite; selected COD record nominal formula is stoichiometric; 来源备注: Inspect raw occupancies before considering use; do not infer that a nominal formula proves a fully occupied model."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS file-name candidate forsterite; recent COD record is from a defect-rich forsterite study, so occupancy/defect state must be checked before any admission.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b n m",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "gypsum-cod-2300258",
+      "category": "minerals",
+      "name": "石膏",
+      "nameEn": "Gypsum",
+      "formula": "CaSO4·2H2O",
+      "aliases": [
+        "gypsum",
+        "石膏"
+      ],
+      "phase": "石膏 CaSO4·2H2O；COD 中子粉末衍射结构，300 K，单斜 C2/c。",
+      "structurePath": "minerals/gypsum-cod-2300258/structure.json",
+      "sourcePath": "minerals/gypsum-cod-2300258/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2300258",
+        "url": "https://www.crystallography.net/cod/2300258.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176809",
+        "retrievedAt": "2026-10-23T16:50:10.691821+00:00",
+        "citation": "Henry, P. F.; Weller, M. T.; Wilson, C. C. Neutron powder diffraction in materials with incoherent scattering: an illustration of Rietveld refinement quality from nondeuterated gypsum. Journal of Applied Crystallography, 42 (2009), 1176.",
+        "doi": "10.1107/S0021889809043210",
+        "conditions": "温度 / K: 300; 压力（按来源单位）: 未知; 来源化学式: Ca H4 O6 S; 来源空间群: C 1 2/c 1; 来源备注: Nondeuterated neutron powder refinement."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 gypsum；保留来源的非氘代中子衍射模型及 300 K 条件。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 2/c 1",
+        "number": 15
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "gibbsite-cod-1200016",
+      "category": "minerals",
+      "name": "三水铝石",
+      "nameEn": "Gibbsite",
+      "formula": "Al(OH)3",
+      "aliases": [
+        "gibbsite",
+        "hydrargillite",
+        "三水铝石"
+      ],
+      "phase": "三水铝石 Al(OH)3；COD 记录空间群 P21/n。",
+      "structurePath": "minerals/gibbsite-cod-1200016/structure.json",
+      "sourcePath": "minerals/gibbsite-cod-1200016/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1200016",
+        "url": "https://www.crystallography.net/cod/1200016.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 282068",
+        "retrievedAt": "2026-10-23T16:50:10.986489+00:00",
+        "citation": "Saalfeld, H.; Wedde, M. Refinement of the crystal structure of gibbsite, Al(OH)3. Zeitschrift fuer Kristallographie, 139 (1974), 129.",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: Al H3 O3; 来源空间群: P 1 21/n 1; 来源备注: Temperature and pressure are not reported in the COD record; source lists hydrogen in the formula."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 gibbsite；仅保留来源坐标，不补氢。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/n 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "lepidocrocite-cod-1011026",
+      "category": "minerals",
+      "name": "纤铁矿",
+      "nameEn": "Lepidocrocite",
+      "formula": "FeOOH",
+      "aliases": [
+        "lepidocrocite",
+        "γ-FeOOH",
+        "纤铁矿"
+      ],
+      "phase": "纤铁矿 FeOOH；COD 记录报告空间群 Amam。",
+      "structurePath": "minerals/lepidocrocite-cod-1011026/structure.json",
+      "sourcePath": "minerals/lepidocrocite-cod-1011026/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1011026",
+        "url": "https://www.crystallography.net/cod/1011026.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303120",
+        "retrievedAt": "2026-10-23T16:50:11.025018+00:00",
+        "citation": "Ewing, F. J. The Crystal Structure of Lepidocrocite. Journal of Chemical Physics, 3 (1935), 420.",
+        "doi": "10.1063/1.1749692",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: Fe H O2; 来源空间群: A m a m; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 lepidocrocite；氢坐标与占位以原 CIF 为准。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "A m a m",
+        "number": 63
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "siderite-cod-5000036",
+      "category": "minerals",
+      "name": "菱铁矿",
+      "nameEn": "Siderite",
+      "formula": "FeCO3",
+      "aliases": [
+        "siderite",
+        "菱铁矿"
+      ],
+      "phase": "菱铁矿 FeCO3；方解石型碳酸盐，R-3c 六方设置。",
+      "structurePath": "minerals/siderite-cod-5000036/structure.json",
+      "sourcePath": "minerals/siderite-cod-5000036/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "5000036",
+        "url": "https://www.crystallography.net/cod/5000036.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303133",
+        "retrievedAt": "2026-10-23T16:50:11.079492+00:00",
+        "citation": "Effenberger, H.; Mereiter, K.; Zemann, J. Crystal structure refinements of magnesite, calcite, rhodochrosite, siderite, smithonite, and dolomite, with discussion of some aspects of the stereochemistry of calcite-type carbonates. Zeitschrift fuer Kristallographie, 156 (1981), 233.",
+        "doi": "10.1524/zkri.1981.156.3-4.233",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: C Fe O3; 来源空间群: R -3 c :H; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 siderite；与同论文 dolomite 来源分开记录为独立矿相。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c :H",
+        "number": 167
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "magnesite-cod-9000380",
+      "category": "minerals",
+      "name": "菱镁矿",
+      "nameEn": "Magnesite",
+      "formula": "MgCO3",
+      "aliases": [
+        "magnesite",
+        "菱镁矿"
+      ],
+      "phase": "菱镁矿 MgCO3；方解石型碳酸盐，R-3c 六方设置。",
+      "structurePath": "minerals/magnesite-cod-9000380/structure.json",
+      "sourcePath": "minerals/magnesite-cod-9000380/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9000380",
+        "url": "https://www.crystallography.net/cod/9000380.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291269",
+        "retrievedAt": "2026-10-23T17:18:32.152433+00:00",
+        "citation": "Oh, K. D.; Morikawa, H.; Iwai, S. I.; Aoki, H. The crystal structure of magnesite. American Mineralogist, 58 (1973), 1029.",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: C Mg O3; 来源空间群: R -3 c :H; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 magnesite；方解石型组内仍保持独立化学组成与稳定 ID。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 c :H",
+        "number": 167
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "barite-cod-1000037",
+      "category": "minerals",
+      "name": "重晶石",
+      "nameEn": "Barite",
+      "formula": "BaSO4",
+      "aliases": [
+        "barite",
+        "baryte",
+        "重晶石"
+      ],
+      "phase": "重晶石 BaSO4；正交 Pnma。",
+      "structurePath": "minerals/barite-cod-1000037/structure.json",
+      "sourcePath": "minerals/barite-cod-1000037/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1000037",
+        "url": "https://www.crystallography.net/cod/1000037.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303120",
+        "retrievedAt": "2026-10-23T17:18:32.194436+00:00",
+        "citation": "Colville, A. A.; Staudhammer, K. A Refinement of the Structure of Barite. American Mineralogist, 52 (1967), 1877.",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: Ba O4 S; 来源空间群: P n m a; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名为英式拼写 baryte；别名统一映射至同一重晶石候选。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P n m a",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "fluorapatite-cod-1010996",
+      "category": "minerals",
+      "name": "氟磷灰石",
+      "nameEn": "Fluorapatite",
+      "formula": "Ca5F(PO4)3",
+      "aliases": [
+        "fluorapatite",
+        "氟磷灰石",
+        "apatite"
+      ],
+      "phase": "氟磷灰石端元；COD 报告单胞式 Ca5FO12P3，空间群 P63/m。",
+      "structurePath": "minerals/fluorapatite-cod-1010996/structure.json",
+      "sourcePath": "minerals/fluorapatite-cod-1010996/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010996",
+        "url": "https://www.crystallography.net/cod/1010996.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301772",
+        "retrievedAt": "2026-10-23T17:18:32.255834+00:00",
+        "citation": "Hendricks, S. B.; Jefferson, M. E.; Mosley, V. M. The Crystal Structures of Some Natural and Synthetic Apatite-Like Substances. Zeitschrift fuer Kristallographie, 81 (1932), 352.",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: Ca5 F O12 P3; 来源空间群: P 63/m; 来源备注: Temperature and pressure are not reported in the COD record; this is specifically the F-bearing endmember."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名 apatite 是族名；本候选明确为氟磷灰石，不替代羟基磷灰石或氯磷灰石。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m",
+        "number": 176
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "fayalite-cod-1000064",
+      "category": "minerals",
+      "name": "铁橄榄石",
+      "nameEn": "Fayalite",
+      "formula": "Fe2SiO4",
+      "aliases": [
+        "fayalite",
+        "iron olivine endmember",
+        "铁橄榄石"
+      ],
+      "phase": "铁橄榄石端元 Fe2SiO4；正交 Pbnm。",
+      "structurePath": "minerals/fayalite-cod-1000064/structure.json",
+      "sourcePath": "minerals/fayalite-cod-1000064/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1000064",
+        "url": "https://www.crystallography.net/cod/1000064.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 282068",
+        "retrievedAt": "2026-10-23T17:18:32.302614+00:00",
+        "citation": "Fujino, K.; Sasaki, S.; Takeuchi, Y.; Sadanaga, R. X-ray Determination of Electron Distributions in Forsterite, Fayalite and Tephroite. Acta Crystallographica Section B, 37 (1981), 513.",
+        "doi": "10.1107/S0567740881003506",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: Fe2 O4 Si; 来源空间群: P b n m; 来源备注: Temperature and pressure are not reported in the COD record."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 fayalite；保留 olivine 族中不同端元的组分区分。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b n m",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "quartz-high-cod-9005026",
+      "category": "minerals",
+      "name": "高温石英",
+      "nameEn": "High quartz (beta quartz)",
+      "formula": "SiO2",
+      "aliases": [
+        "quartz high",
+        "beta quartz",
+        "高温石英",
+        "β-quartz"
+      ],
+      "phase": "高温 β-quartz，COD 衍射温度 854 K，空间群 P6222。",
+      "structurePath": "minerals/quartz-high-cod-9005026/structure.json",
+      "sourcePath": "minerals/quartz-high-cod-9005026/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9005026",
+        "url": "https://www.crystallography.net/cod/9005026.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291351",
+        "retrievedAt": "2026-10-23T17:18:32.331128+00:00",
+        "citation": "Kihara, K. An X-ray study of the temperature dependence of the quartz structure. European Journal of Mineralogy, 2 (1990), 63.",
+        "doi": "10.1127/ejm/2/1/0063",
+        "conditions": "温度 / K: 854; 压力（按来源单位）: 未知; 来源化学式: O2 Si; 来源空间群: P 62 2 2; 来源备注: COD marks diffraction temperature 854 K; this is distinct from alpha-quartz and not a room-temperature structure."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 quartz_beta；温度标记是材料相身份的一部分，不能与当前 alpha-quartz 条目去重合并。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 62 2 2",
+        "number": 180
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cristobalite-high-cod-1010921",
+      "category": "minerals",
+      "name": "高温方石英",
+      "nameEn": "High cristobalite",
+      "formula": "SiO2",
+      "aliases": [
+        "cristobalite high",
+        "high cristobalite",
+        "高温方石英"
+      ],
+      "phase": "COD 标记为 high-cristobalite 结构；空间群 P213，温度未报告。",
+      "structurePath": "minerals/cristobalite-high-cod-1010921/structure.json",
+      "sourcePath": "minerals/cristobalite-high-cod-1010921/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010921",
+        "url": "https://www.crystallography.net/cod/1010921.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T17:18:32.372756+00:00",
+        "citation": "Barth, T. F. W. The Cristobalite Structures. I. High-Cristobalite. American Journal of Science, 23 (1932), 350.",
+        "conditions": "温度 / K: 未知; 压力（按来源单位）: 未知; 来源化学式: O2 Si; 来源空间群: P 21 3; 来源备注: COD record names the high-cristobalite form but does not report its measurement temperature; do not infer a numeric temperature."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS 文件名精确候选 cristobalite_high；不与已有 low-cristobalite 条目合并。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 21 3",
+        "number": 198
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-ameghinite-cod-9000459",
+      "category": "minerals",
+      "name": "Ameghinite",
+      "nameEn": "Ameghinite",
+      "formula": "NaB3H4O7",
+      "aliases": [
+        "Ameghinite",
+        "ameghinite"
+      ],
+      "phase": "Ameghinite; COD reported composition B3 H4 Na O7; space group C 1 2/c 1.",
+      "structurePath": "minerals/mineral-ameghinite-cod-9000459/structure.json",
+      "sourcePath": "minerals/mineral-ameghinite-cod-9000459/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9000459",
+        "url": "https://www.crystallography.net/cod/9000459.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303136",
+        "retrievedAt": "2026-10-23T17:18:32.417185+00:00",
+        "citation": "Dal Negro, A.; Pozas, J. M. M.; Ungaretti, L.. The crystal structure of ameghinite. American Mineralogist, 60, 1975, 879-883.",
+        "conditions": "来源化学式: B3 H4 Na O7; 来源空间群: C 1 2/c 1; spaceGroupNumber: 15; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 2/c 1",
+        "number": 15
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-anhydrite-cod-9012207",
+      "category": "minerals",
+      "name": "Anhydrite",
+      "nameEn": "Anhydrite",
+      "formula": "CaSO4",
+      "aliases": [
+        "Anhydrite",
+        "anhydrite"
+      ],
+      "phase": "Anhydrite; COD reported composition Ca O4 S; space group C 2 2 2.",
+      "structurePath": "minerals/mineral-anhydrite-cod-9012207/structure.json",
+      "sourcePath": "minerals/mineral-anhydrite-cod-9012207/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9012207",
+        "url": "https://www.crystallography.net/cod/9012207.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T17:18:32.459108+00:00",
+        "citation": "Bezou, C.; Nonat, A.; Mutin, J. C.; Christensen, A. N.; Lehmann, M. S.. Of the crystal structure of gamma-CaSO4, CaSO4*0.5(H2O), and CaSO4*0.6(H2O) by powder diffraction methods. Journal of Solid State Chemistry, 117, 1995, 165-176.",
+        "doi": "10.1006/jssc.1995.1260",
+        "conditions": "来源化学式: Ca O4 S; 来源空间群: C 2 2 2; spaceGroupNumber: 21; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: Maurienne, France; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 2 2 2",
+        "number": 21
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-andradite-cod-9010061",
+      "category": "minerals",
+      "name": "Andradite",
+      "nameEn": "Andradite",
+      "formula": "Ca3Fe2(SiO4)3",
+      "aliases": [
+        "Andradite",
+        "andradite"
+      ],
+      "phase": "Andradite; COD reported composition Ca3 Fe2 O12 Si3; space group I a -3 d.",
+      "structurePath": "minerals/mineral-andradite-cod-9010061/structure.json",
+      "sourcePath": "minerals/mineral-andradite-cod-9010061/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9010061",
+        "url": "https://www.crystallography.net/cod/9010061.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T17:18:32.538995+00:00",
+        "citation": "Quartieri, S.; Oberti, R.; Boiocchi, M.; Dalconi, M. C.; Boscherini, F.; Safonova, O.; Woodland, A. B.. Site preference and local geometry of Sc in garnets: Part II. The crystal-chemistry of octahedral Sc in the andradite-Ca3Sc2Si3O12 join Sample: adr100. American Mineralogist, 91, 2006, 1240-1248.",
+        "doi": "10.2138/am.2006.2038",
+        "conditions": "来源化学式: Ca3 Fe2 O12 Si3; 来源空间群: I a -3 d; spaceGroupNumber: 230; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I a -3 d",
+        "number": 230
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-pyrope-cod-2108142",
+      "category": "minerals",
+      "name": "pyrope",
+      "nameEn": "pyrope",
+      "formula": "Mg3Al2(SiO4)3",
+      "aliases": [
+        "pyrope"
+      ],
+      "phase": "pyrope; COD reported composition Al2 Mg3 O12 Si3; space group I a -3 d.",
+      "structurePath": "minerals/mineral-pyrope-cod-2108142/structure.json",
+      "sourcePath": "minerals/mineral-pyrope-cod-2108142/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2108142",
+        "url": "https://www.crystallography.net/cod/2108142.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 199403",
+        "retrievedAt": "2026-10-23T17:18:32.671406+00:00",
+        "citation": "Destro, Riccardo; Ruffo, Riccardo; Roversi, Pietro; Soave, Raffaella; Loconte, Laura; Lo Presti, Leonardo. Anharmonic motions <i>versus</i> dynamic disorder at the Mg ion from the charge densities in pyrope (Mg~3~Al~2~Si~3~O~12~) crystals at 30K: six of one, half a dozen of the other. Acta Crystallographica Section B, 73, 2017, 722-736.",
+        "doi": "10.1107/S2052520617006102",
+        "conditions": "来源化学式: Al2 Mg3 O12 Si3; 来源空间群: I a -3 d; spaceGroupNumber: 230; cellTemperatureK: 30; diffractionTemperatureK: 30; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I a -3 d",
+        "number": 230
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-tephroite-cod-9014320",
+      "category": "minerals",
+      "name": "Tephroite",
+      "nameEn": "Tephroite",
+      "formula": "Mn2SiO4",
+      "aliases": [
+        "Tephroite",
+        "tephroite"
+      ],
+      "phase": "Tephroite; COD reported composition Mn2 O4 Si; space group P n m a.",
+      "structurePath": "minerals/mineral-tephroite-cod-9014320/structure.json",
+      "sourcePath": "minerals/mineral-tephroite-cod-9014320/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9014320",
+        "url": "https://www.crystallography.net/cod/9014320.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 292002",
+        "retrievedAt": "2026-10-23T17:18:32.757930+00:00",
+        "citation": "Yamazaki, S.; Toraya, H.. Rietveld refinement of site-occupancy parameters of Mg2-xMnxSiO4 using a new weight function in least-squares fitting Note: e = 1. Journal of Applied Crystallography, 32, 1999, 51-59.",
+        "doi": "10.1107/S0021889898010206",
+        "conditions": "来源化学式: Mn2 O4 Si; 来源空间群: P n m a; spaceGroupNumber: 62; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: Synthetic; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P n m a",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-willemite-cod-9007627",
+      "category": "minerals",
+      "name": "Willemite",
+      "nameEn": "Willemite",
+      "formula": "Zn2SiO4",
+      "aliases": [
+        "Willemite",
+        "willemite"
+      ],
+      "phase": "Willemite; COD reported composition O4 Si Zn2; space group R -3 :H.",
+      "structurePath": "minerals/mineral-willemite-cod-9007627/structure.json",
+      "sourcePath": "minerals/mineral-willemite-cod-9007627/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9007627",
+        "url": "https://www.crystallography.net/cod/9007627.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-23T17:18:32.821975+00:00",
+        "citation": "Klaska, K.-H.; Eck, J. C.; Pohl, D.. New investigation of willemite Note: Anisotropic displacement parameters are from ICSD. Acta Crystallographica, Section B, 34, 1978, 3324-3325.",
+        "doi": "10.1107/S0567740878010778",
+        "conditions": "来源化学式: O4 Si Zn2; 来源空间群: R -3 :H; spaceGroupNumber: 148; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: Synthetic; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 :H",
+        "number": 148
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-xonotlite-cod-9008437",
+      "category": "minerals",
+      "name": "Xonotlite",
+      "nameEn": "Xonotlite",
+      "formula": "Ca6Si6O19",
+      "aliases": [
+        "Xonotlite",
+        "xonotlite"
+      ],
+      "phase": "Xonotlite; COD reported composition Ca6 O19 Si6; space group A 1 2/a 1.",
+      "structurePath": "minerals/mineral-xonotlite-cod-9008437/structure.json",
+      "sourcePath": "minerals/mineral-xonotlite-cod-9008437/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008437",
+        "url": "https://www.crystallography.net/cod/9008437.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T17:18:32.889710+00:00",
+        "citation": "Hejny, C.; Armbruster, T.. Polytypism in xonotlite Ca6Si6O17(OH)2 Note: polytype derived from structure in Kudoh and Takeuchi (1979). Zeitschrift fur Kristallographie, 216, 2001, 396-408.",
+        "doi": "10.1524/zkri.216.7.396.20363",
+        "conditions": "来源化学式: Ca6 O19 Si6; 来源空间群: A 1 2/a 1; spaceGroupNumber: 15; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: model structure, not experimentally determined; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "A 1 2/a 1",
+        "number": 15
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-kaolinite-cod-1550598",
+      "category": "minerals",
+      "name": "Kaolinite",
+      "nameEn": "Kaolinite",
+      "formula": "Al2Si2H4O9",
+      "aliases": [
+        "Kaolinite",
+        "kaolinite"
+      ],
+      "phase": "Kaolinite; COD reported composition Al2 H4 O9 Si2; space group P 1.",
+      "structurePath": "minerals/mineral-kaolinite-cod-1550598/structure.json",
+      "sourcePath": "minerals/mineral-kaolinite-cod-1550598/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1550598",
+        "url": "https://www.crystallography.net/cod/1550598.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 213663",
+        "retrievedAt": "2026-10-23T17:18:32.952986+00:00",
+        "citation": "Richard, D.; Rendtorff, N. M.. First principles study of structural properties and electric field gradients in kaolinite. Applied Clay Science, 169, 2019, 67-73.",
+        "doi": "10.1016/j.clay.2018.12.013",
+        "conditions": "来源化学式: Al2 H4 O9 Si2; 来源空间群: P 1; spaceGroupNumber: 1; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1",
+        "number": 1
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-halite-cod-9003308",
+      "category": "minerals",
+      "name": "Halite",
+      "nameEn": "Halite",
+      "formula": "NaCl",
+      "aliases": [
+        "Halite",
+        "halite"
+      ],
+      "phase": "Halite; COD reported composition Cl Na; space group F m -3 m.",
+      "structurePath": "minerals/mineral-halite-cod-9003308/structure.json",
+      "sourcePath": "minerals/mineral-halite-cod-9003308/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9003308",
+        "url": "https://www.crystallography.net/cod/9003308.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291351",
+        "retrievedAt": "2026-10-23T17:18:33.098249+00:00",
+        "citation": "Walker, D.; Verma, P. K.; Cranswick, L. M. D.; Jones, R. L.; Clark, S. M.; Buhre, S.. Halite-sylvite thermoelasticity Sample: msl416031, T = 25 C, P = 0.0 kbar, cell volume = 179.42 ang**3. American Mineralogist, 89, 2004, 204-210.",
+        "conditions": "来源化学式: Cl Na; 来源空间群: F m -3 m; spaceGroupNumber: 225; cellTemperatureK: 未知; diffractionTemperatureK: 298.15; cellPressure: 未知; diffractionPressure: 0; compoundSource: 未知; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-grossular-cod-1011055",
+      "category": "minerals",
+      "name": "Grossular",
+      "nameEn": "Grossular",
+      "formula": "Ca3Al2(SiO4)3",
+      "aliases": [
+        "Grossular",
+        "grossular"
+      ],
+      "phase": "Grossular; COD reported composition Al2 Ca3 O12 Si3; space group I a -3 d.",
+      "structurePath": "minerals/mineral-grossular-cod-1011055/structure.json",
+      "sourcePath": "minerals/mineral-grossular-cod-1011055/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1011055",
+        "url": "https://www.crystallography.net/cod/1011055.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T17:18:33.312311+00:00",
+        "citation": "Menzer, G. Die Kristallstruktur von Granat.. Zeitschrift fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie (-144,1977), 63, 1926, 157-158.",
+        "conditions": "来源化学式: Al2 Ca3 O12 Si3; 来源空间群: I a -3 d; spaceGroupNumber: 230; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: from Xalostoc, Mexico; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I a -3 d",
+        "number": 230
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-olivineco-cod-9000392",
+      "category": "minerals",
+      "name": "Co-Olivine",
+      "nameEn": "Co-Olivine",
+      "formula": "Co2SiO4",
+      "aliases": [
+        "Co-Olivine",
+        "olivine_Co"
+      ],
+      "phase": "Co-Olivine; COD reported composition Co2 O4 Si; space group P b n m.",
+      "structurePath": "minerals/mineral-olivineco-cod-9000392/structure.json",
+      "sourcePath": "minerals/mineral-olivineco-cod-9000392/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9000392",
+        "url": "https://www.crystallography.net/cod/9000392.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291269",
+        "retrievedAt": "2026-10-23T17:18:33.399607+00:00",
+        "citation": "Morimoto, N.; Tokonami, M.; Watanabe, M.; Koto, K.. Crystal structures of three polymorphs of Co2SiO4 olivine. American Mineralogist, 59, 1974, 475-485.",
+        "conditions": "来源化学式: Co2 O4 Si; 来源空间群: P b n m; spaceGroupNumber: 62; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: 未知; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b n m",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-olivinegammaca-cod-9012681",
+      "category": "minerals",
+      "name": "Calcio-olivine",
+      "nameEn": "Calcio-olivine",
+      "formula": "Ca2SiO4",
+      "aliases": [
+        "Calcio-olivine",
+        "olivine_gamma_Ca"
+      ],
+      "phase": "Calcio-olivine; COD reported composition Ca2 O4 Si; space group P b n m.",
+      "structurePath": "minerals/mineral-olivinegammaca-cod-9012681/structure.json",
+      "sourcePath": "minerals/mineral-olivinegammaca-cod-9012681/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9012681",
+        "url": "https://www.crystallography.net/cod/9012681.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T17:18:33.434922+00:00",
+        "citation": "Gobechiya, E. R.; Yamnova, N. A.; Zadov, A. E.; Gazeev, V. M.. Calcio-olivine gamma-Ca2SiO4: I. Rietveld refinement of the crystal structure. Crystallography Reports, 53, 2008, 404-408.",
+        "doi": "10.1134/S1063774508030073",
+        "conditions": "来源化学式: Ca2 O4 Si; 来源空间群: P b n m; spaceGroupNumber: 62; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: Lakargi Mountain, North Caucasus, Kabardino-Balkaria, Russia; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b n m",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-talc-cod-9008297",
+      "category": "minerals",
+      "name": "Talc",
+      "nameEn": "Talc",
+      "formula": "Mg3Si4(HO6)2",
+      "aliases": [
+        "Talc",
+        "talc"
+      ],
+      "phase": "Talc; COD reported composition H2 Mg3 O12 Si4; space group C -1.",
+      "structurePath": "minerals/mineral-talc-cod-9008297/structure.json",
+      "sourcePath": "minerals/mineral-talc-cod-9008297/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008297",
+        "url": "https://www.crystallography.net/cod/9008297.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-23T17:18:33.515743+00:00",
+        "citation": "Perdikatsis, B.; Burzlaff, H.. Strukturverfeinerung am talk Mg3[(OH)2Si4O10]. Zeitschrift fur Kristallographie, 156, 1981, 177-186.",
+        "conditions": "来源化学式: H2 Mg3 O12 Si4; 来源空间群: C -1; spaceGroupNumber: 2; cellTemperatureK: 未知; diffractionTemperatureK: 未知; cellPressure: 未知; diffractionPressure: 未知; compoundSource: Harford County, Maryland, USA; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C -1",
+        "number": 2
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mineral-mgsio3-cod-9005757",
+      "category": "minerals",
+      "name": "MgSiO3",
+      "nameEn": "MgSiO3",
+      "formula": "MgSiO3",
+      "aliases": [
+        "MgSiO3"
+      ],
+      "phase": "MgSiO3; COD reported composition Mg O3 Si; space group P b n m.",
+      "structurePath": "minerals/mineral-mgsio3-cod-9005757/structure.json",
+      "sourcePath": "minerals/mineral-mgsio3-cod-9005757/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9005757",
+        "url": "https://www.crystallography.net/cod/9005757.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291351",
+        "retrievedAt": "2026-10-23T17:18:33.546693+00:00",
+        "citation": "Yagi, T.; Mao, H. K.; Bell, P. M.. Structure and crystal chemistry of perovskite-type MgSiO3 Sample: P = 1 bar, T = 25 C. Physics and Chemistry of Minerals, 3, 1978, 97-110.",
+        "doi": "10.1007/BF00308114",
+        "conditions": "来源化学式: Mg O3 Si; 来源空间群: P b n m; spaceGroupNumber: 62; cellTemperatureK: 未知; diffractionTemperatureK: 298.15; cellPressure: 未知; diffractionPressure: 100; compoundSource: Synthetic; 来源备注: Copied from COD metadata; null conditions mean unreported. Actual sample substitutions and occupancy remain as stated in the source CIF."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record was found by explicit MS mineral-name metadata mapping and its CIF is retained in raw/. Name matching does not establish phase equivalence or product admission; check sample composition, occupancy and structural normalization.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b n m",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

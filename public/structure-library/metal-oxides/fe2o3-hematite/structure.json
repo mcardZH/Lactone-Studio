@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "entryId": "fe2o3-hematite",
+  "structure": {
+    "id": "fe2o3-hematite",
+    "name": "赤铁矿型氧化铁",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "fe2o3-hematite:atom:1",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 4.8849655819999995
+      },
+      {
+        "id": "fe2o3-hematite:atom:2",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.5173,
+        "y": 1.453363832631045,
+        "z": 9.467398915333332
+      },
+      {
+        "id": "fe2o3-hematite:atom:3",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.220446049250313e-16,
+        "y": 2.90672766526209,
+        "z": 0.3025322486666648
+      },
+      {
+        "id": "fe2o3-hematite:atom:4",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 11.758615582
+      },
+      {
+        "id": "fe2o3-hematite:atom:5",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.5173,
+        "y": 1.453363832631045,
+        "z": 2.5937489153333355
+      },
+      {
+        "id": "fe2o3-hematite:atom:6",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.220446049250313e-16,
+        "y": 2.90672766526209,
+        "z": 7.176182248666666
+      },
+      {
+        "id": "fe2o3-hematite:atom:7",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.988684418
+      },
+      {
+        "id": "fe2o3-hematite:atom:8",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.5173,
+        "y": 1.453363832631045,
+        "z": 6.571117751333333
+      },
+      {
+        "id": "fe2o3-hematite:atom:9",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.220446049250313e-16,
+        "y": 2.90672766526209,
+        "z": 11.153551084666665
+      },
+      {
+        "id": "fe2o3-hematite:atom:10",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 8.862334418
+      },
+      {
+        "id": "fe2o3-hematite:atom:11",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.5173,
+        "y": 1.453363832631045,
+        "z": 13.444767751333332
+      },
+      {
+        "id": "fe2o3-hematite:atom:12",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.220446049250313e-16,
+        "y": 2.90672766526209,
+        "z": 4.279901084666666
+      },
+      {
+        "id": "fe2o3-hematite:atom:13",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.53857376,
+        "y": 0.0,
+        "z": 3.436825
+      },
+      {
+        "id": "fe2o3-hematite:atom:14",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.05587376,
+        "y": 1.453363832631045,
+        "z": 8.019258333333331
+      },
+      {
+        "id": "fe2o3-hematite:atom:15",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.5385737600000005,
+        "y": 2.90672766526209,
+        "z": 12.601691666666666
+      },
+      {
+        "id": "fe2o3-hematite:atom:16",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7692868800000001,
+        "y": 1.332443961756142,
+        "z": 10.310475
+      },
+      {
+        "id": "fe2o3-hematite:atom:17",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.28658688,
+        "y": 2.7858077943871873,
+        "z": 1.1456083333333358
+      },
+      {
+        "id": "fe2o3-hematite:atom:18",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7692868800000006,
+        "y": 4.239171627018232,
+        "z": 5.728041666666667
+      },
+      {
+        "id": "fe2o3-hematite:atom:19",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.7692868799999999,
+        "y": 1.332443961756142,
+        "z": 3.436825
+      },
+      {
+        "id": "fe2o3-hematite:atom:20",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.74801312,
+        "y": 2.7858077943871873,
+        "z": 8.019258333333333
+      },
+      {
+        "id": "fe2o3-hematite:atom:21",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.7692868799999997,
+        "y": 4.239171627018232,
+        "z": 12.601691666666666
+      },
+      {
+        "id": "fe2o3-hematite:atom:22",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.4960262400000004,
+        "y": 0.0,
+        "z": 10.310475
+      },
+      {
+        "id": "fe2o3-hematite:atom:23",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.9787262400000002,
+        "y": 1.453363832631045,
+        "z": 1.1456083333333356
+      },
+      {
+        "id": "fe2o3-hematite:atom:24",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -1.5385737599999998,
+        "y": 2.90672766526209,
+        "z": 5.728041666666666
+      },
+      {
+        "id": "fe2o3-hematite:atom:25",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.7480131200000006,
+        "y": 3.0276475361369934,
+        "z": 3.4368250000000002
+      },
+      {
+        "id": "fe2o3-hematite:atom:26",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.74801312,
+        "y": 0.12091987087490295,
+        "z": 8.019258333333333
+      },
+      {
+        "id": "fe2o3-hematite:atom:27",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.7692868799999998,
+        "y": 1.574283703505948,
+        "z": 12.601691666666666
+      },
+      {
+        "id": "fe2o3-hematite:atom:28",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -1.7480131199999998,
+        "y": 3.0276475361369934,
+        "z": 10.310475
+      },
+      {
+        "id": "fe2o3-hematite:atom:29",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.2865868799999998,
+        "y": 0.12091987087490295,
+        "z": 1.1456083333333356
+      },
+      {
+        "id": "fe2o3-hematite:atom:30",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7692868800000001,
+        "y": 1.574283703505948,
+        "z": 5.728041666666666
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9015964; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "fe2o3-hematite:atom:1",
+      "fe2o3-hematite:atom:2",
+      "fe2o3-hematite:atom:3",
+      "fe2o3-hematite:atom:4",
+      "fe2o3-hematite:atom:5",
+      "fe2o3-hematite:atom:6",
+      "fe2o3-hematite:atom:7",
+      "fe2o3-hematite:atom:8",
+      "fe2o3-hematite:atom:9",
+      "fe2o3-hematite:atom:10",
+      "fe2o3-hematite:atom:11",
+      "fe2o3-hematite:atom:12",
+      "fe2o3-hematite:atom:13",
+      "fe2o3-hematite:atom:14",
+      "fe2o3-hematite:atom:15",
+      "fe2o3-hematite:atom:16",
+      "fe2o3-hematite:atom:17",
+      "fe2o3-hematite:atom:18",
+      "fe2o3-hematite:atom:19",
+      "fe2o3-hematite:atom:20",
+      "fe2o3-hematite:atom:21",
+      "fe2o3-hematite:atom:22",
+      "fe2o3-hematite:atom:23",
+      "fe2o3-hematite:atom:24",
+      "fe2o3-hematite:atom:25",
+      "fe2o3-hematite:atom:26",
+      "fe2o3-hematite:atom:27",
+      "fe2o3-hematite:atom:28",
+      "fe2o3-hematite:atom:29",
+      "fe2o3-hematite:atom:30"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.0346,
+          0.0,
+          3.0828033874936323e-16
+        ],
+        [
+          -2.5172999999999996,
+          4.360091497893135,
+          3.0828033874936323e-16
+        ],
+        [
+          0.0,
+          0.0,
+          13.7473
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9015964 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

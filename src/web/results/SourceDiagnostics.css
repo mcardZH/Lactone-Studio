@@ -1,0 +1,12 @@
+.source-diagnostics{width:min(760px,calc(100vw - 40px));max-height:calc(100vh - 48px);display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.source-diagnostics-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.source-diagnostics-heading h2,.source-diagnostics-heading h3{margin:0;overflow-wrap:anywhere}
+.source-diagnostics-list{min-height:0;overflow:auto;display:grid;gap:12px}
+.source-diagnostics-list article{border:1px solid var(--border,#d5e2dc);border-radius:8px;padding:12px;background:var(--surface,#fff);overflow-wrap:anywhere}
+.source-diagnostics-list h3{font-size:16px;line-height:24px;font-weight:600}
+.source-diagnostics-list dl{margin:10px 0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px}
+.source-diagnostics-list dl>div{display:contents}
+.source-diagnostics-list dd{margin:0;min-width:0}
+.source-diagnostics-list dt{font-weight:600}
+.source-diagnostics-list pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;background:#f2f7f4;padding:8px;border-radius:4px}
+.source-diagnostics-list p{margin:8px 0}

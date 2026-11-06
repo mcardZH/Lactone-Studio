@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mgo-periclase",
+  "structure": {
+    "id": "mgo-periclase",
+    "name": "方镁石型氧化镁",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mgo-periclase:atom:1",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "mgo-periclase:atom:2",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 3.390726606843188e-16,
+        "y": 2.1085,
+        "z": 2.1085
+      },
+      {
+        "id": "mgo-periclase:atom:3",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 2.1085,
+        "y": 0.0,
+        "z": 2.1085
+      },
+      {
+        "id": "mgo-periclase:atom:4",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 2.1085000000000003,
+        "y": 2.1085,
+        "z": 2.5821677760021943e-16
+      },
+      {
+        "id": "mgo-periclase:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.1085000000000003,
+        "y": 2.1085,
+        "z": 2.1085000000000003
+      },
+      {
+        "id": "mgo-periclase:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.1085,
+        "y": 0.0,
+        "z": 1.2910838880010971e-16
+      },
+      {
+        "id": "mgo-periclase:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.390726606843188e-16,
+        "y": 2.1085,
+        "z": 1.2910838880010971e-16
+      },
+      {
+        "id": "mgo-periclase:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.1085
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 1000053; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mgo-periclase:atom:1",
+      "mgo-periclase:atom:2",
+      "mgo-periclase:atom:3",
+      "mgo-periclase:atom:4",
+      "mgo-periclase:atom:5",
+      "mgo-periclase:atom:6",
+      "mgo-periclase:atom:7",
+      "mgo-periclase:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.217,
+          0.0,
+          2.5821677760021943e-16
+        ],
+        [
+          6.781453213686376e-16,
+          4.217,
+          2.5821677760021943e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.217
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 1000053 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

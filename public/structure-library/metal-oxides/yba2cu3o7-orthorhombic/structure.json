@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "entryId": "yba2cu3o7-orthorhombic",
+  "structure": {
+    "id": "yba2cu3o7-orthorhombic",
+    "name": "正交YBCO-123",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:1",
+        "sourceIndex": 1,
+        "element": "Ba",
+        "x": 1.9064000000000003,
+        "y": 1.9403,
+        "z": 2.1236927800000007
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:2",
+        "sourceIndex": 1,
+        "element": "Ba",
+        "x": 1.9064000000000003,
+        "y": 1.9403,
+        "z": 9.506607220000001
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:3",
+        "sourceIndex": 2,
+        "element": "Y",
+        "x": 1.9064000000000003,
+        "y": 1.9403,
+        "z": 5.81515
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:4",
+        "sourceIndex": 3,
+        "element": "Cu",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:5",
+        "sourceIndex": 4,
+        "element": "Cu",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 4.11945226
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:6",
+        "sourceIndex": 4,
+        "element": "Cu",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 7.510847739999999
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:7",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.85503285
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:8",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 9.775267150000001
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:9",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.9064,
+        "y": 0.0,
+        "z": 4.38811219
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:10",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.9064,
+        "y": 0.0,
+        "z": 7.242187810000001
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:11",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.120240377167578e-16,
+        "y": 1.9403,
+        "z": 4.38346007
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:12",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.120240377167578e-16,
+        "y": 1.9403,
+        "z": 7.24683993
+      },
+      {
+        "id": "yba2cu3o7-orthorhombic:atom:13",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 3.120240377167578e-16,
+        "y": 1.9403,
+        "z": 1.1880910921928047e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1001452; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "yba2cu3o7-orthorhombic:atom:1",
+      "yba2cu3o7-orthorhombic:atom:2",
+      "yba2cu3o7-orthorhombic:atom:3",
+      "yba2cu3o7-orthorhombic:atom:4",
+      "yba2cu3o7-orthorhombic:atom:5",
+      "yba2cu3o7-orthorhombic:atom:6",
+      "yba2cu3o7-orthorhombic:atom:7",
+      "yba2cu3o7-orthorhombic:atom:8",
+      "yba2cu3o7-orthorhombic:atom:9",
+      "yba2cu3o7-orthorhombic:atom:10",
+      "yba2cu3o7-orthorhombic:atom:11",
+      "yba2cu3o7-orthorhombic:atom:12",
+      "yba2cu3o7-orthorhombic:atom:13"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.8128,
+          0.0,
+          2.3346666578945145e-16
+        ],
+        [
+          6.240480754335156e-16,
+          3.8806,
+          2.3761821843856095e-16
+        ],
+        [
+          0.0,
+          0.0,
+          11.6303
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1001452 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

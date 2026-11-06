@@ -1,0 +1,12 @@
+.analysis-environment-control{font-size:var(--model-control-font-size,13px);min-width:0}
+.analysis-environment-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.analysis-environment-row>span{font-size:12px;color:#73847f}.analysis-environment-row>.is-configured{color:#127c69}
+.analysis-environment-button,.analysis-settings-dialog button,.workspace-import-choice .modal-buttons button{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1px solid #c6dcd3;border-radius:5px;color:#28514f;padding:7px 10px;font-size:var(--model-control-font-size,13px)}
+.analysis-environment-button:hover:not(:disabled),.analysis-settings-dialog button:hover:not(:disabled),.workspace-import-choice .modal-buttons button:hover:not(:disabled){border-color:#3e9b7e;background:#edf7f1}
+.analysis-environment-button:disabled{opacity:.55}.analysis-environment-path{font-size:12px;line-height:1.6;color:#637e78;overflow-wrap:anywhere;margin:8px 0}.analysis-environment-error{font-size:12px;color:#a53d32;overflow-wrap:anywhere}
+.analysis-settings-backdrop{position:fixed;inset:0;z-index:1800;background:#153a4255;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.analysis-settings-dialog{width:min(480px,100%);background:#fff;border:1px solid #c6dcd3;border-radius:10px;padding:20px;color:#254f51;box-shadow:0 12px 40px #153a4233}
+.analysis-settings-dialog>header{display:flex;align-items:center;justify-content:space-between}.analysis-settings-dialog h2{font-size:17px;margin:0}.analysis-settings-dialog h3{font-size:14px;border-top:1px solid #dce7e1;padding-top:16px;margin-top:16px}
+.analysis-settings-dialog{max-height:calc(100vh - 40px);overflow-y:auto}.analysis-settings-dialog .input-settings-section,.analysis-settings-dialog .global-settings-section{margin-top:14px}.analysis-settings-dialog .analysis-environment-path{margin-bottom:0}
+.analysis-settings-dialog .shared-input-card-title{border:0;padding:0;margin:0}.analysis-settings-dialog>.shared-input-card{margin-top:14px}
+.workspace-module-rail button.workspace-global-settings{font-size:23px;font-weight:800;color:#167b6b;padding:5px 0 12px}
+.workspace-import-choice.modal{border:1px solid #ccded5;border-radius:12px;box-shadow:0 14px 55px #23494122}.workspace-import-choice .modal-buttons{display:flex;gap:8px;flex-wrap:wrap}.workspace-import-choice .modal-buttons button{padding:10px 14px;min-height:40px}.workspace-import-choice .modal-buttons button:first-child{background:#e4f1eb;color:#087666;border-color:#56a58b}

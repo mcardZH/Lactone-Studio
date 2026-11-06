@@ -1,0 +1,116 @@
+{
+  "schema": "sy-gcc-public-privacy-derivatives/v1",
+  "archiveEncoding": "PAX tar; gzip level1, mtime0, empty gzip filename. Equivalent PAX long-path/directory-slash headers may differ from original archive encoding.",
+  "derivatives": [
+    {
+      "component": "GCC",
+      "version": "13.2.0",
+      "modifiedSourceDistribution": true,
+      "officialInput": {
+        "filename": "gcc-13.2.0.tar.xz",
+        "url": "https://gcc.gnu.org/pub/gcc/releases/gcc-13.2.0/gcc-13.2.0.tar.xz",
+        "identity": {
+          "bytes": 87858592,
+          "sha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da"
+        },
+        "upstreamSha512": "d99e4826a70db04504467e349e9fbaedaa5870766cda7c5cab50cdebedc4be755ebca5b789e1232a34a20be1a0b60097de9280efe47bdb71c73251e30b0862a2"
+      },
+      "suppliedArchive": {
+        "path": "privacy-source-derivatives/gcc-13.2.0-privacy-sanitized.tar.gz",
+        "bytes": 190090491,
+        "sha256": "eec4f8257562dc72814bace281a9fbdeec0258125fbb34ce4ca3694e3f23e43a"
+      },
+      "excludedMembers": [
+        {
+          "path": "gcc-13.2.0/libgo/go/debug/elf/testdata/hello-world-core.gz",
+          "compressedIdentity": {
+            "bytes": 12678,
+            "sha256": "6cbaef86ba040903e15c351f17988579dc20cc69557dff723938bed5f71d29f1"
+          },
+          "decodedIdentity": {
+            "bytes": 245760,
+            "sha256": "54f64d4ea6a14d2d02ab8d0ecef5cfcd7f901e9c56ce4090b0b1117c5b9f6725"
+          },
+          "reason": "Upstream non-build Go debug/elf ELF-core test snapshot contains environment credential material; no validity testing or credential use."
+        }
+      ],
+      "retainedMembers": 129834,
+      "independentRemainingMemberProof": {
+        "allRemainingContentAndLogicalMetadataIdentical": true,
+        "canonicalLogicalRowsSha256": "39cba0351c82028952d8813da35ab77fcdc153d8759696390708c245b0d1ec4e",
+        "rowFields": [
+          "path",
+          "type",
+          "bytes",
+          "sha256",
+          "mode",
+          "uid",
+          "gid",
+          "uname",
+          "gname",
+          "mtime",
+          "linkname"
+        ],
+        "order": "original tar member order",
+        "paxHeaderTreatment": "Equivalent long-path PAX serialization permitted; every pre-existing non-path PAX header retained."
+      },
+      "compilerRuntimeBuildInputsUnchanged": true
+    },
+    {
+      "component": "GCC",
+      "version": "16.2.0",
+      "modifiedSourceDistribution": true,
+      "officialInput": {
+        "filename": "gcc-16.2.0.tar.gz",
+        "url": "https://ftp.gnu.org/gnu/gcc/gcc-16.2.0/gcc-16.2.0.tar.gz",
+        "identity": {
+          "bytes": 193311409,
+          "sha256": "071d00a097579e5ef7ce97fc4a9e58e73fd3503c0a013c765c970370a5a53b9b"
+        }
+      },
+      "suppliedArchive": {
+        "path": "privacy-source-derivatives/gcc-16.2.0-privacy-sanitized.tar.gz",
+        "bytes": 240230783,
+        "sha256": "3dada6b4c7a9ea8ee9b5e32d9fd0e7c4a37a5b9c6db65bb265092b89c30920f6"
+      },
+      "excludedMembers": [
+        {
+          "path": "gcc-16.2.0/libgo/go/debug/elf/testdata/hello-world-core.gz",
+          "compressedIdentity": {
+            "bytes": 12678,
+            "sha256": "6cbaef86ba040903e15c351f17988579dc20cc69557dff723938bed5f71d29f1"
+          },
+          "decodedIdentity": {
+            "bytes": 245760,
+            "sha256": "54f64d4ea6a14d2d02ab8d0ecef5cfcd7f901e9c56ce4090b0b1117c5b9f6725"
+          },
+          "reason": "Upstream non-build Go debug/elf ELF-core test snapshot contains environment credential material; no validity testing or credential use."
+        }
+      ],
+      "retainedMembers": 165078,
+      "independentRemainingMemberProof": {
+        "allRemainingContentAndLogicalMetadataIdentical": true,
+        "canonicalLogicalRowsSha256": "f5978252cb8b74a59fa6c26648cf41da421ae757bc1cf48b6d6753199498ba4d",
+        "rowFields": [
+          "path",
+          "type",
+          "bytes",
+          "sha256",
+          "mode",
+          "uid",
+          "gid",
+          "uname",
+          "gname",
+          "mtime",
+          "linkname"
+        ],
+        "order": "original tar member order",
+        "paxHeaderTreatment": "Equivalent long-path PAX serialization permitted; every pre-existing non-path PAX header retained."
+      },
+      "compilerRuntimeBuildInputsUnchanged": true
+    }
+  ],
+  "sanitizer": "sanitize-gcc-source.py",
+  "controlLicense": "SANITIZER-LICENSE.txt",
+  "publicDistributionApproved": false
+}

@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "graphene-monolayer",
+      "category": "two-dimensional",
+      "name": "石墨烯单层",
+      "nameEn": "Graphene monolayer",
+      "formula": "C",
+      "aliases": [
+        "graphene",
+        "graphite-derived graphene",
+        "石墨烯"
+      ],
+      "phase": "single graphene layer derived from 2H graphite bulk",
+      "structurePath": "two-dimensional/graphene-monolayer/structure.json",
+      "sourcePath": "two-dimensional/graphene-monolayer/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9011577",
+        "url": "https://www.crystallography.net/cod/9011577.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "derived",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-20",
+        "citation": "Trucano, P.; Chen, R. Structure of graphite by neutron diffraction Note: natural crystals. Nature, 258, 136-137 (1975)",
+        "doi": "10.1038/258136a0"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Derived from COD 2H graphite neutron-diffraction bulk record; not an experimental isolated monolayer.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order.",
+          "Derived one layer from COD bulk record 9011577; the complete original 3D-periodic CIF remains source.cif.",
+          "Layer selection used plane coordinates in the source fractional c direction and retained 2 formula unit(s) in the selected layer; no H, guest, or atom type was added.",
+          "Retained the source a and b vectors; constructed a perpendicular c vector with a 20.0 Å empty gap between repeated layer images; centered the layer along c.",
+          "Set PBC to [true, true, false] under the user-approved v0.39 TTF monolayer model. This is a derived monolayer model, not an experimentally isolated monolayer."
+        ]
+      }
+    },
+    {
+      "id": "hbn-monolayer",
+      "category": "two-dimensional",
+      "name": "六方氮化硼单层",
+      "nameEn": "Hexagonal boron nitride monolayer",
+      "formula": "BN",
+      "aliases": [
+        "h-BN",
+        "hexagonal boron nitride",
+        "氮化硼",
+        "hexagonal BN"
+      ],
+      "phase": "single h-BN layer derived from hexagonal bulk BN",
+      "structurePath": "two-dimensional/hbn-monolayer/structure.json",
+      "sourcePath": "two-dimensional/hbn-monolayer/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008997",
+        "url": "https://www.crystallography.net/cod/9008997.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "derived",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-20",
+        "citation": "Wyckoff, R. W. G. Second edition. Interscience Publishers, New York, New York. Crystal Structures, 1, 85-237 (1963)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Derived from the COD hexagonal P63/mmc bulk BN CIF; not an experimental isolated monolayer.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order.",
+          "Derived one layer from COD bulk record 9008997; the complete original 3D-periodic CIF remains source.cif.",
+          "Layer selection used plane coordinates in the source fractional c direction and retained 1 formula unit(s) in the selected layer; no H, guest, or atom type was added.",
+          "Retained the source a and b vectors; constructed a perpendicular c vector with a 20.0 Å empty gap between repeated layer images; centered the layer along c.",
+          "Set PBC to [true, true, false] under the user-approved v0.39 TTF monolayer model. This is a derived monolayer model, not an experimentally isolated monolayer."
+        ]
+      }
+    },
+    {
+      "id": "mos2-2h-monolayer",
+      "category": "two-dimensional",
+      "name": "2H-MoS2单层",
+      "nameEn": "2H-MoS2 monolayer",
+      "formula": "MoS2",
+      "aliases": [
+        "MoS2",
+        "molybdenite",
+        "2H-MoS2",
+        "二硫化钼"
+      ],
+      "phase": "one trigonal-prismatic S-Mo-S layer derived from 2H bulk MoS2",
+      "structurePath": "two-dimensional/mos2-2h-monolayer/structure.json",
+      "sourcePath": "two-dimensional/mos2-2h-monolayer/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9007660",
+        "url": "https://www.crystallography.net/cod/9007660.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "derived",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-20",
+        "citation": "Schonfeld, B.; Huang, J. J.; Moss, S. C. Anisotropic mean-square displacements (MSD) in single crystals of 2H- and 3R-MoS2 Note: 2H polytype, this is the most common in nature. Acta Crystallographica, Section B, 39, 404-407 (1983)",
+        "doi": "10.1107/S0108768183002645"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Derived from the COD record explicitly marked 2H MoS2; not an experimental isolated monolayer.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order.",
+          "Derived one layer from COD bulk record 9007660; the complete original 3D-periodic CIF remains source.cif.",
+          "Layer selection used host-centered coordinates in the source fractional c direction and retained 1 formula unit(s) in the selected layer; no H, guest, or atom type was added.",
+          "Retained the source a and b vectors; constructed a perpendicular c vector with a 20.0 Å empty gap between repeated layer images; centered the layer along c.",
+          "Set PBC to [true, true, false] under the user-approved v0.39 TTF monolayer model. This is a derived monolayer model, not an experimentally isolated monolayer."
+        ]
+      }
+    },
+    {
+      "id": "ws2-2h-monolayer",
+      "category": "two-dimensional",
+      "name": "2H-WS2单层",
+      "nameEn": "2H-WS2 monolayer",
+      "formula": "WS2",
+      "aliases": [
+        "WS2",
+        "tungstenite",
+        "2H-WS2",
+        "二硫化钨"
+      ],
+      "phase": "one trigonal-prismatic S-W-S layer derived from 2H bulk WS2",
+      "structurePath": "two-dimensional/ws2-2h-monolayer/structure.json",
+      "sourcePath": "two-dimensional/ws2-2h-monolayer/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9012191",
+        "url": "https://www.crystallography.net/cod/9012191.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "derived",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-20",
+        "citation": "Schutte, W. J.; de Boer, J. L.; Jellinek, F. Crystal structures of tungsten disulfide and diselenide Sample: 2H polytype. Journal of Solid State Chemistry, 70, 207-209 (1987)",
+        "doi": "10.1016/0022-4596(87)90057-0"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Derived from the COD record explicitly marked 2H WS2; not an experimental isolated monolayer.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order.",
+          "Derived one layer from COD bulk record 9012191; the complete original 3D-periodic CIF remains source.cif.",
+          "Layer selection used host-centered coordinates in the source fractional c direction and retained 1 formula unit(s) in the selected layer; no H, guest, or atom type was added.",
+          "Retained the source a and b vectors; constructed a perpendicular c vector with a 20.0 Å empty gap between repeated layer images; centered the layer along c.",
+          "Set PBC to [true, true, false] under the user-approved v0.39 TTF monolayer model. This is a derived monolayer model, not an experimentally isolated monolayer."
+        ]
+      }
+    },
+    {
+      "id": "gc3n4-heptazine-monolayer",
+      "category": "two-dimensional",
+      "name": "heptazine-based g-C3N4单层",
+      "nameEn": "Heptazine-based g-C3N4 monolayer",
+      "formula": "C3N4",
+      "aliases": [
+        "g-C3N4",
+        "g-h-C3N4",
+        "heptazine carbon nitride",
+        "石墨相氮化碳",
+        "heptazine"
+      ],
+      "phase": "heptazine-based C6N8 network; monolayer derived from a published periodic g-h-C3N4 model",
+      "structurePath": "two-dimensional/gc3n4-heptazine-monolayer/structure.json",
+      "sourcePath": "two-dimensional/gc3n4-heptazine-monolayer/source.cif",
+      "source": {
+        "name": "NOMAD Repository",
+        "recordId": "ibE9rFgMJfrRhwWYQDmtbjBXieZI",
+        "url": "https://nomad-lab.eu/prod/v1/api/v1/entries/ibE9rFgMJfrRhwWYQDmtbjBXieZI/raw/geometry.in",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "derived",
+        "version": "NOMAD upload _tzVGb2vTYaPtjTo3zUfZg; published 2017-04-19",
+        "retrievedAt": "2026-10-20",
+        "citation": "Botari, T.; Huhn, W. P.; Lau, V. W.-h.; Lotsch, B. V.; Blum, V. Thermodynamic Equilibria in Carbon Nitride Photocatalyst Materials and Conditions for the Existence of Graphitic Carbon Nitride g-C3N4. Chemistry of Materials, 29(10), 4445-4453 (2017), DOI: 10.1021/acs.chemmater.7b00965; NOMAD dataset DOI: 10.17172/NOMAD/2017.04.20-1.",
+        "doi": "10.17172/NOMAD/2017.04.20-1"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Source is the published NOMAD g-h-C3N4_SSP_Tyborski model (14-atom C6N8 cell) from Botari et al.; the full periodic source is retained. This one-layer derivative is not an experimentally isolated monolayer.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Converted the retained FHI-aims geometry.in to a P1 source.cif preserving lattice metric, fractional geometry, and atom order; pymatgen may express the same crystal in a rotated Cartesian basis. Source labels are element-index labels because geometry.in has no site labels.",
+          "Derived one layer from NOMAD Repository record ibE9rFgMJfrRhwWYQDmtbjBXieZI; The raw NOMAD geometry.in is retained at two-dimensional/gc3n4-heptazine-monolayer/source.geometry.in; source.cif is a P1 format conversion preserving the lattice metric, fractional geometry, and atom order; the raw file preserves the original Cartesian basis.",
+          "Layer selection used source-cell coordinates in the source cell and retained 2 formula unit(s) in the selected layer; no H, guest, or atom type was added.",
+          "Retained the source a and b vectors; constructed a perpendicular c vector with a 20.0 Å empty gap between repeated layer images; centered the layer along c.",
+          "Set PBC to [true, true, false] under the user-approved v0.39 TTF monolayer model. This is a derived monolayer model, not an experimentally isolated monolayer.",
+          "The single corrugated sheet crosses the source c-cell boundary; fractional c coordinates were unwrapped across the largest empty periodic interval without changing any atom or in-plane coordinate."
+        ]
+      }
+    }
+  ]
+}

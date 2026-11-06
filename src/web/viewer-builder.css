@@ -1,0 +1,33 @@
+.viewer-builder-stage .viewer-editing-overlay{position:absolute;inset:0 0 27px;z-index:3;touch-action:none;cursor:crosshair}
+.viewer-builder-stage[data-editing-mode=move] .viewer-editing-overlay{cursor:grab}
+.viewer-builder-stage[data-moving=true] .viewer-editing-overlay{cursor:grabbing}
+.molecule-stage.viewer-highlights-stage.viewer-builder-stage .viewer-viewport>.molecule-canvas,.molecule-stage.viewer-highlights-stage.viewer-builder-stage .viewer-viewport>.fallback-view,.molecule-stage.viewer-highlights-stage.viewer-builder-stage .viewer-viewport>.selection-overlay,.viewer-builder-stage .viewer-editing-overlay{top:var(--viewer-appearance-height,42px)}
+.viewer-builder-stage .viewer-builder-appearance{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px 9px;align-items:center;padding:6px 8px;min-height:38px;box-sizing:border-box;border-bottom:1px solid #dfe9e3;background:#fcfefd;color:#3e6755;font-size:12px}
+.viewer-builder-stage .viewer-builder-appearance label{display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px}
+.viewer-builder-stage .viewer-builder-appearance input{margin:0;accent-color:#2d8971}
+.viewer-builder-stage .viewer-builder-appearance select{font:inherit;color:inherit;min-height:26px;border:1px solid #ccdcd2;border-radius:5px;background:#f6fbf7;padding:3px 5px;width:auto;min-width:0}
+.viewer-builder-stage .viewer-builder-appearance button{font:inherit;color:#3c6655;min-height:25px;padding:3px 7px}
+.viewer-builder-stage .viewer-builder-appearance .segmented{border-color:#d7e2db;background:#f1f6f3}
+.viewer-builder-stage .viewer-builder-appearance .segmented button.active{background:#fff;color:#30644d}
+.viewer-builder-stage .viewer-builder-appearance .viewer-reset-view{margin-left:auto;display:grid;place-items:center;border:0;background:transparent}
+.viewer-builder-stage .viewer-builder-appearance .viewer-orient-diagram{border:1px solid #ccdcd2;border-radius:5px;background:#f6fbf7}
+.viewer-builder-stage .viewer-builder-appearance .viewer-orient-diagram:disabled{opacity:.45;cursor:default}
+.viewer-builder-stage .viewer-bottom-controls{gap:6px;padding:6px 9px;font-size:12px}
+.viewer-builder-stage .viewer-bottom-controls:empty{padding:0;border:0}
+.viewer-builder-stage .viewer-bottom-controls button{min-height:26px;padding:3px 7px;font-size:12px}
+.viewer-builder-stage .viewer-bottom-controls .viewer-label-toggles label,.viewer-builder-stage .viewer-highlight-controls{font-size:12px}
+.viewer-builder-stage .viewer-highlight-controls{width:auto;gap:8px}
+.viewer-builder-stage .viewer-toolbar .segmented{background:#f1f6f3;border-color:#d7e2db}
+.viewer-builder-stage .viewer-toolbar .segmented button.active{color:#30644d;background:#fff}
+.viewer-builder-stage .viewer-side-legend{position:absolute;right:10px;top:calc(var(--viewer-appearance-height,42px) + 9px);width:150px;max-height:calc(100% - var(--viewer-appearance-height,42px) - 47px);overflow:auto;z-index:4}
+.molecule-stage.viewer-highlights-stage.viewer-builder-stage.viewer-has-legend .viewer-viewport>.molecule-canvas,.molecule-stage.viewer-highlights-stage.viewer-builder-stage.viewer-has-legend .viewer-viewport>.selection-overlay,.viewer-builder-stage.viewer-has-legend .viewer-editing-overlay{right:170px}
+.viewer-builder-stage .viewer-side-legend .region-legend{display:flex;flex-direction:column;gap:5px;padding:7px;border:1px solid #d9e5de;border-radius:7px;background:#fffffff0;font-size:11px;color:#426551}
+.viewer-builder-stage .viewer-side-legend .region-legend span{display:flex;gap:5px;align-items:center;line-height:1.4}
+.viewer-builder-stage .viewer-side-legend .region-legend i{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.viewer-builder-stage .viewer-color-empty{padding:7px;border:1px solid #d9e5de;border-radius:7px;background:#fffffff0;font-size:11px;color:#426551}
+.viewer-builder-stage .viewer-editing-hint{position:absolute;left:10px;top:calc(var(--viewer-appearance-height,42px) + 9px);right:170px;z-index:4;background:#fffffff0;color:#476a59;border:1px solid #dce7df;border-radius:5px;padding:4px 6px;font-size:11px;pointer-events:none;max-width:max-content}
+.viewer-builder-stage .viewer-move-axis{display:flex;gap:5px;align-items:center;font-size:12px}
+.viewer-builder-stage .viewer-move-axis select{font:inherit;border:1px solid #ccdcd2;border-radius:5px;background:#f6fbf7;color:#315b49;padding:3px}
+.viewer-builder-stage .viewer-overlay-legend{font-size:11px;width:auto;gap:8px}
+.viewer-builder-stage .viewer-caption{white-space:normal;font-size:10px;line-height:1.3;left:10px;right:10px}
+@media(max-width:740px){.viewer-builder-stage .viewer-builder-appearance{gap:5px 7px;padding:5px 6px}.viewer-builder-stage .viewer-builder-appearance label{font-size:11px}.viewer-builder-stage .viewer-side-legend{width:116px;right:6px;top:calc(var(--viewer-appearance-height,42px) + 6px)}.viewer-builder-stage .viewer-side-legend .region-legend{font-size:10px;padding:5px}.viewer-builder-stage .viewer-editing-hint{right:128px}.viewer-builder-stage .viewer-bottom-controls{padding:6px;gap:6px}.molecule-stage.viewer-highlights-stage.viewer-builder-stage.viewer-has-legend .viewer-viewport>.molecule-canvas,.molecule-stage.viewer-highlights-stage.viewer-builder-stage.viewer-has-legend .viewer-viewport>.selection-overlay,.viewer-builder-stage.viewer-has-legend .viewer-editing-overlay{right:128px}}

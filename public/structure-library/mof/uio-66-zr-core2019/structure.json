@@ -1,0 +1,1109 @@
+{
+  "schemaVersion": 1,
+  "entryId": "uio-66-zr-core2019",
+  "structure": {
+    "id": "uio-66-zr-core2019",
+    "name": "UiO-66",
+    "format": "cif",
+    "atoms": [
+      {
+        "id": "uio-66-zr-core2019-a0001",
+        "element": "C",
+        "x": 7.4187484708002795,
+        "y": 0.9376226239634827,
+        "z": 11.29974924,
+        "sourceIndex": 1
+      },
+      {
+        "id": "uio-66-zr-core2019-a0002",
+        "element": "O",
+        "x": 13.282228869654652,
+        "y": 11.184930527151481,
+        "z": 16.28135912,
+        "sourceIndex": 2
+      },
+      {
+        "id": "uio-66-zr-core2019-a0003",
+        "element": "H",
+        "x": 8.197409086358677,
+        "y": 1.7437361134433131,
+        "z": 11.508378232000002,
+        "sourceIndex": 3
+      },
+      {
+        "id": "uio-66-zr-core2019-a0004",
+        "element": "C",
+        "x": 3.356915244398097,
+        "y": 6.681922260839116,
+        "z": 18.33505076,
+        "sourceIndex": 4
+      },
+      {
+        "id": "uio-66-zr-core2019-a0005",
+        "element": "O",
+        "x": 14.97266325368387,
+        "y": 8.794295294955555,
+        "z": 13.35344088,
+        "sourceIndex": 5
+      },
+      {
+        "id": "uio-66-zr-core2019-a0006",
+        "element": "H",
+        "x": 4.3764798693404146,
+        "y": 7.147346033018151,
+        "z": 18.126421768,
+        "sourceIndex": 6
+      },
+      {
+        "id": "uio-66-zr-core2019-a0007",
+        "element": "C",
+        "x": 9.690911286580441,
+        "y": 11.160733814275003,
+        "z": 18.33505076,
+        "sourceIndex": 7
+      },
+      {
+        "id": "uio-66-zr-core2019-a0008",
+        "element": "O",
+        "x": 3.827430887726067,
+        "y": 0.9134259110870057,
+        "z": 13.35344088,
+        "sourceIndex": 8
+      },
+      {
+        "id": "uio-66-zr-core2019-a0009",
+        "element": "H",
+        "x": 8.912250671022043,
+        "y": 10.354620324795173,
+        "z": 18.126421768,
+        "sourceIndex": 9
+      },
+      {
+        "id": "uio-66-zr-core2019-a0010",
+        "element": "C",
+        "x": 13.752744512982623,
+        "y": 5.4164341773993705,
+        "z": 11.29974924,
+        "sourceIndex": 10
+      },
+      {
+        "id": "uio-66-zr-core2019-a0011",
+        "element": "O",
+        "x": 2.136996503696852,
+        "y": 3.3040611432829308,
+        "z": 16.281359119999998,
+        "sourceIndex": 11
+      },
+      {
+        "id": "uio-66-zr-core2019-a0012",
+        "element": "H",
+        "x": 12.733179888040306,
+        "y": 4.951010405220336,
+        "z": 11.508378232000002,
+        "sourceIndex": 12
+      },
+      {
+        "id": "uio-66-zr-core2019-a0013",
+        "element": "C",
+        "x": 8.107412276034854,
+        "y": 6.681922260839116,
+        "z": 8.5570485,
+        "sourceIndex": 13
+      },
+      {
+        "id": "uio-66-zr-core2019-a0014",
+        "element": "O",
+        "x": 6.613738979215517,
+        "y": 8.794295294955555,
+        "z": 21.1073863,
+        "sourceIndex": 14
+      },
+      {
+        "id": "uio-66-zr-core2019-a0015",
+        "element": "H",
+        "x": 7.778307970601635,
+        "y": 7.147346033018151,
+        "z": 9.544331862000002,
+        "sourceIndex": 15
+      },
+      {
+        "id": "uio-66-zr-core2019-a0016",
+        "element": "C",
+        "x": 12.169245502437036,
+        "y": 0.9376226239634827,
+        "z": 15.592350020000001,
+        "sourceIndex": 16
+      },
+      {
+        "id": "uio-66-zr-core2019-a0017",
+        "element": "O",
+        "x": 4.923304595186303,
+        "y": 11.184930527151481,
+        "z": 18.17946806,
+        "sourceIndex": 17
+      },
+      {
+        "id": "uio-66-zr-core2019-a0018",
+        "element": "H",
+        "x": 11.599237187619899,
+        "y": 1.7437361134433131,
+        "z": 16.162375398000002,
+        "sourceIndex": 18
+      },
+      {
+        "id": "uio-66-zr-core2019-a0019",
+        "element": "C",
+        "x": 9.002247481345865,
+        "y": 5.4164341773993705,
+        "z": 21.077751499999998,
+        "sourceIndex": 19
+      },
+      {
+        "id": "uio-66-zr-core2019-a0020",
+        "element": "O",
+        "x": 10.495920778165202,
+        "y": 3.3040611432829308,
+        "z": 8.5274137,
+        "sourceIndex": 20
+      },
+      {
+        "id": "uio-66-zr-core2019-a0021",
+        "element": "H",
+        "x": 9.331351786779084,
+        "y": 4.951010405220336,
+        "z": 20.090468138,
+        "sourceIndex": 21
+      },
+      {
+        "id": "uio-66-zr-core2019-a0022",
+        "element": "C",
+        "x": 4.940414254943684,
+        "y": 11.160733814275003,
+        "z": 14.04244998,
+        "sourceIndex": 22
+      },
+      {
+        "id": "uio-66-zr-core2019-a0023",
+        "element": "O",
+        "x": 12.186355162194417,
+        "y": 0.9134259110870057,
+        "z": 11.45533194,
+        "sourceIndex": 23
+      },
+      {
+        "id": "uio-66-zr-core2019-a0024",
+        "element": "H",
+        "x": 5.510422569760822,
+        "y": 10.354620324795173,
+        "z": 13.472424602,
+        "sourceIndex": 24
+      },
+      {
+        "id": "uio-66-zr-core2019-a0025",
+        "element": "C",
+        "x": 2.9094976417425915,
+        "y": 5.4164341773993705,
+        "z": 12.074699260000001,
+        "sourceIndex": 25
+      },
+      {
+        "id": "uio-66-zr-core2019-a0026",
+        "element": "O",
+        "x": 13.031572354209025,
+        "y": 3.3040611432829308,
+        "z": 19.643427180000003,
+        "sourceIndex": 26
+      },
+      {
+        "id": "uio-66-zr-core2019-a0027",
+        "element": "H",
+        "x": 3.5999579612516905,
+        "y": 4.951010405220336,
+        "z": 12.85335363,
+        "sourceIndex": 27
+      },
+      {
+        "id": "uio-66-zr-core2019-a0028",
+        "element": "C",
+        "x": 11.033164094546958,
+        "y": 11.160733814275003,
+        "z": 12.074699260000003,
+        "sourceIndex": 28
+      },
+      {
+        "id": "uio-66-zr-core2019-a0029",
+        "element": "O",
+        "x": 9.650703586150595,
+        "y": 0.9134259110870057,
+        "z": 19.64342718,
+        "sourceIndex": 29
+      },
+      {
+        "id": "uio-66-zr-core2019-a0030",
+        "element": "H",
+        "x": 11.241816395288216,
+        "y": 10.354620324795173,
+        "z": 12.853353630000003,
+        "sourceIndex": 30
+      },
+      {
+        "id": "uio-66-zr-core2019-a0031",
+        "element": "C",
+        "x": 14.200162115638129,
+        "y": 6.681922260839116,
+        "z": 17.560100740000003,
+        "sourceIndex": 31
+      },
+      {
+        "id": "uio-66-zr-core2019-a0032",
+        "element": "O",
+        "x": 4.078087403171695,
+        "y": 8.794295294955555,
+        "z": 9.991372820000002,
+        "sourceIndex": 32
+      },
+      {
+        "id": "uio-66-zr-core2019-a0033",
+        "element": "H",
+        "x": 13.509701796129029,
+        "y": 7.147346033018151,
+        "z": 16.78144637,
+        "sourceIndex": 33
+      },
+      {
+        "id": "uio-66-zr-core2019-a0034",
+        "element": "C",
+        "x": 6.0764956628337625,
+        "y": 0.9376226239634827,
+        "z": 17.56010074,
+        "sourceIndex": 34
+      },
+      {
+        "id": "uio-66-zr-core2019-a0035",
+        "element": "O",
+        "x": 7.458956171230126,
+        "y": 11.184930527151481,
+        "z": 9.991372820000002,
+        "sourceIndex": 35
+      },
+      {
+        "id": "uio-66-zr-core2019-a0036",
+        "element": "H",
+        "x": 5.867843362092504,
+        "y": 1.7437361134433131,
+        "z": 16.781446369999998,
+        "sourceIndex": 36
+      },
+      {
+        "id": "uio-66-zr-core2019-a0037",
+        "element": "C",
+        "x": 3.356915244398097,
+        "y": 6.681922260839116,
+        "z": 11.29974924,
+        "sourceIndex": 37
+      },
+      {
+        "id": "uio-66-zr-core2019-a0038",
+        "element": "O",
+        "x": 14.97266325368387,
+        "y": 8.794295294955555,
+        "z": 16.28135912,
+        "sourceIndex": 38
+      },
+      {
+        "id": "uio-66-zr-core2019-a0039",
+        "element": "H",
+        "x": 4.3764798693404146,
+        "y": 7.147346033018151,
+        "z": 11.508378232000002,
+        "sourceIndex": 39
+      },
+      {
+        "id": "uio-66-zr-core2019-a0040",
+        "element": "C",
+        "x": 7.4187484708002795,
+        "y": 0.9376226239634827,
+        "z": 18.33505076,
+        "sourceIndex": 40
+      },
+      {
+        "id": "uio-66-zr-core2019-a0041",
+        "element": "O",
+        "x": 13.282228869654652,
+        "y": 11.184930527151481,
+        "z": 13.35344088,
+        "sourceIndex": 41
+      },
+      {
+        "id": "uio-66-zr-core2019-a0042",
+        "element": "H",
+        "x": 8.197409086358677,
+        "y": 1.7437361134433131,
+        "z": 18.126421768,
+        "sourceIndex": 42
+      },
+      {
+        "id": "uio-66-zr-core2019-a0043",
+        "element": "C",
+        "x": 13.752744512982623,
+        "y": 5.4164341773993705,
+        "z": 18.33505076,
+        "sourceIndex": 43
+      },
+      {
+        "id": "uio-66-zr-core2019-a0044",
+        "element": "O",
+        "x": 2.136996503696852,
+        "y": 3.3040611432829308,
+        "z": 13.35344088,
+        "sourceIndex": 44
+      },
+      {
+        "id": "uio-66-zr-core2019-a0045",
+        "element": "H",
+        "x": 12.733179888040306,
+        "y": 4.951010405220336,
+        "z": 18.126421768,
+        "sourceIndex": 45
+      },
+      {
+        "id": "uio-66-zr-core2019-a0046",
+        "element": "C",
+        "x": 9.690911286580441,
+        "y": 11.160733814275003,
+        "z": 11.29974924,
+        "sourceIndex": 46
+      },
+      {
+        "id": "uio-66-zr-core2019-a0047",
+        "element": "O",
+        "x": 3.827430887726067,
+        "y": 0.9134259110870057,
+        "z": 16.281359119999998,
+        "sourceIndex": 47
+      },
+      {
+        "id": "uio-66-zr-core2019-a0048",
+        "element": "H",
+        "x": 8.912250671022043,
+        "y": 10.354620324795173,
+        "z": 11.508378232000002,
+        "sourceIndex": 48
+      },
+      {
+        "id": "uio-66-zr-core2019-a0049",
+        "element": "C",
+        "x": 9.002247481345865,
+        "y": 5.4164341773993705,
+        "z": 8.5570485,
+        "sourceIndex": 49
+      },
+      {
+        "id": "uio-66-zr-core2019-a0050",
+        "element": "O",
+        "x": 10.495920778165202,
+        "y": 3.3040611432829308,
+        "z": 21.1073863,
+        "sourceIndex": 50
+      },
+      {
+        "id": "uio-66-zr-core2019-a0051",
+        "element": "H",
+        "x": 9.331351786779084,
+        "y": 4.951010405220336,
+        "z": 9.544331862000002,
+        "sourceIndex": 51
+      },
+      {
+        "id": "uio-66-zr-core2019-a0052",
+        "element": "C",
+        "x": 4.940414254943684,
+        "y": 11.160733814275003,
+        "z": 15.592350020000001,
+        "sourceIndex": 52
+      },
+      {
+        "id": "uio-66-zr-core2019-a0053",
+        "element": "O",
+        "x": 12.186355162194417,
+        "y": 0.9134259110870057,
+        "z": 18.17946806,
+        "sourceIndex": 53
+      },
+      {
+        "id": "uio-66-zr-core2019-a0054",
+        "element": "H",
+        "x": 5.510422569760822,
+        "y": 10.354620324795173,
+        "z": 16.162375398000002,
+        "sourceIndex": 54
+      },
+      {
+        "id": "uio-66-zr-core2019-a0055",
+        "element": "C",
+        "x": 8.107412276034854,
+        "y": 6.681922260839116,
+        "z": 21.077751499999998,
+        "sourceIndex": 55
+      },
+      {
+        "id": "uio-66-zr-core2019-a0056",
+        "element": "O",
+        "x": 6.613738979215517,
+        "y": 8.794295294955555,
+        "z": 8.5274137,
+        "sourceIndex": 56
+      },
+      {
+        "id": "uio-66-zr-core2019-a0057",
+        "element": "H",
+        "x": 7.778307970601635,
+        "y": 7.147346033018151,
+        "z": 20.090468138,
+        "sourceIndex": 57
+      },
+      {
+        "id": "uio-66-zr-core2019-a0058",
+        "element": "C",
+        "x": 12.169245502437036,
+        "y": 0.9376226239634827,
+        "z": 14.04244998,
+        "sourceIndex": 58
+      },
+      {
+        "id": "uio-66-zr-core2019-a0059",
+        "element": "O",
+        "x": 4.923304595186303,
+        "y": 11.184930527151481,
+        "z": 11.45533194,
+        "sourceIndex": 59
+      },
+      {
+        "id": "uio-66-zr-core2019-a0060",
+        "element": "H",
+        "x": 11.599237187619899,
+        "y": 1.7437361134433131,
+        "z": 13.472424602,
+        "sourceIndex": 60
+      },
+      {
+        "id": "uio-66-zr-core2019-a0061",
+        "element": "C",
+        "x": 6.0764956628337625,
+        "y": 0.9376226239634827,
+        "z": 12.074699260000001,
+        "sourceIndex": 61
+      },
+      {
+        "id": "uio-66-zr-core2019-a0062",
+        "element": "O",
+        "x": 7.458956171230126,
+        "y": 11.184930527151481,
+        "z": 19.643427180000003,
+        "sourceIndex": 62
+      },
+      {
+        "id": "uio-66-zr-core2019-a0063",
+        "element": "H",
+        "x": 5.867843362092504,
+        "y": 1.7437361134433131,
+        "z": 12.85335363,
+        "sourceIndex": 63
+      },
+      {
+        "id": "uio-66-zr-core2019-a0064",
+        "element": "C",
+        "x": 14.200162115638129,
+        "y": 6.681922260839116,
+        "z": 12.074699260000003,
+        "sourceIndex": 64
+      },
+      {
+        "id": "uio-66-zr-core2019-a0065",
+        "element": "O",
+        "x": 4.078087403171695,
+        "y": 8.794295294955555,
+        "z": 19.64342718,
+        "sourceIndex": 65
+      },
+      {
+        "id": "uio-66-zr-core2019-a0066",
+        "element": "H",
+        "x": 13.509701796129029,
+        "y": 7.147346033018151,
+        "z": 12.853353630000003,
+        "sourceIndex": 66
+      },
+      {
+        "id": "uio-66-zr-core2019-a0067",
+        "element": "C",
+        "x": 11.033164094546958,
+        "y": 11.160733814275003,
+        "z": 17.560100740000003,
+        "sourceIndex": 67
+      },
+      {
+        "id": "uio-66-zr-core2019-a0068",
+        "element": "O",
+        "x": 9.650703586150595,
+        "y": 0.9134259110870057,
+        "z": 9.991372820000002,
+        "sourceIndex": 68
+      },
+      {
+        "id": "uio-66-zr-core2019-a0069",
+        "element": "H",
+        "x": 11.241816395288216,
+        "y": 10.354620324795173,
+        "z": 16.78144637,
+        "sourceIndex": 69
+      },
+      {
+        "id": "uio-66-zr-core2019-a0070",
+        "element": "C",
+        "x": 2.9094976417425915,
+        "y": 5.4164341773993705,
+        "z": 17.56010074,
+        "sourceIndex": 70
+      },
+      {
+        "id": "uio-66-zr-core2019-a0071",
+        "element": "O",
+        "x": 13.031572354209025,
+        "y": 3.3040611432829308,
+        "z": 9.991372820000002,
+        "sourceIndex": 71
+      },
+      {
+        "id": "uio-66-zr-core2019-a0072",
+        "element": "H",
+        "x": 3.5999579612516905,
+        "y": 4.951010405220336,
+        "z": 16.781446369999998,
+        "sourceIndex": 72
+      },
+      {
+        "id": "uio-66-zr-core2019-a0073",
+        "element": "Zr",
+        "x": 14.993194845392726,
+        "y": 10.601789746828386,
+        "z": 14.817400000000001,
+        "sourceIndex": 73
+      },
+      {
+        "id": "uio-66-zr-core2019-a0074",
+        "element": "Zr",
+        "x": 2.116464911987995,
+        "y": 1.4965666914101008,
+        "z": 14.8174,
+        "sourceIndex": 74
+      },
+      {
+        "id": "uio-66-zr-core2019-a0075",
+        "element": "Zr",
+        "x": 5.335647395339178,
+        "y": 10.601789746828386,
+        "z": 20.39318762,
+        "sourceIndex": 75
+      },
+      {
+        "id": "uio-66-zr-core2019-a0076",
+        "element": "Zr",
+        "x": 11.774012362041542,
+        "y": 1.4965666914101008,
+        "z": 9.241612380000001,
+        "sourceIndex": 76
+      },
+      {
+        "id": "uio-66-zr-core2019-a0077",
+        "element": "Zr",
+        "x": 11.774012362041542,
+        "y": 1.4965666914101008,
+        "z": 20.39318762,
+        "sourceIndex": 77
+      },
+      {
+        "id": "uio-66-zr-core2019-a0078",
+        "element": "Zr",
+        "x": 5.335647395339178,
+        "y": 10.601789746828386,
+        "z": 9.241612380000001,
+        "sourceIndex": 78
+      },
+      {
+        "id": "uio-66-zr-core2019-a0079",
+        "element": "C",
+        "x": 8.82088508791763,
+        "y": 0.0,
+        "z": 9.72465962,
+        "sourceIndex": 79
+      },
+      {
+        "id": "uio-66-zr-core2019-a0080",
+        "element": "C",
+        "x": 7.6146540750222895,
+        "y": 0.0,
+        "z": 10.421077420000001,
+        "sourceIndex": 80
+      },
+      {
+        "id": "uio-66-zr-core2019-a0081",
+        "element": "C",
+        "x": 2.940295029305877,
+        "y": 8.316410215645135,
+        "z": 5.092740380000001,
+        "sourceIndex": 81
+      },
+      {
+        "id": "uio-66-zr-core2019-a0082",
+        "element": "C",
+        "x": 2.5382180250074304,
+        "y": 7.179164710450718,
+        "z": 4.396322580000001,
+        "sourceIndex": 82
+      },
+      {
+        "id": "uio-66-zr-core2019-a0083",
+        "element": "C",
+        "x": 4.01135973011791,
+        "y": 0.0,
+        "z": 12.50144038,
+        "sourceIndex": 83
+      },
+      {
+        "id": "uio-66-zr-core2019-a0084",
+        "element": "C",
+        "x": 5.21759074301325,
+        "y": 0.0,
+        "z": 11.80502258,
+        "sourceIndex": 84
+      },
+      {
+        "id": "uio-66-zr-core2019-a0085",
+        "element": "C",
+        "x": 1.3371199100393034,
+        "y": 3.781946222593351,
+        "z": 2.3159596200000006,
+        "sourceIndex": 85
+      },
+      {
+        "id": "uio-66-zr-core2019-a0086",
+        "element": "C",
+        "x": 1.7391969143377506,
+        "y": 4.919191727787768,
+        "z": 3.012377420000001,
+        "sourceIndex": 86
+      },
+      {
+        "id": "uio-66-zr-core2019-a0087",
+        "element": "C",
+        "x": 6.951654759423787,
+        "y": 8.316410215645135,
+        "z": 7.408700000000001,
+        "sourceIndex": 87
+      },
+      {
+        "id": "uio-66-zr-core2019-a0088",
+        "element": "C",
+        "x": 7.755808768020681,
+        "y": 7.179164710450718,
+        "z": 7.408700000000002,
+        "sourceIndex": 88
+      },
+      {
+        "id": "uio-66-zr-core2019-a0089",
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 10.185480759999999,
+        "sourceIndex": 89
+      },
+      {
+        "id": "uio-66-zr-core2019-a0090",
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 8.79264516,
+        "sourceIndex": 90
+      },
+      {
+        "id": "uio-66-zr-core2019-a0091",
+        "element": "C",
+        "x": 10.158004997956933,
+        "y": 3.781946222593351,
+        "z": 7.408700000000001,
+        "sourceIndex": 91
+      },
+      {
+        "id": "uio-66-zr-core2019-a0092",
+        "element": "C",
+        "x": 9.35385098936004,
+        "y": 4.919191727787768,
+        "z": 7.408700000000002,
+        "sourceIndex": 92
+      },
+      {
+        "id": "uio-66-zr-core2019-a0093",
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 4.631919239999999,
+        "sourceIndex": 93
+      },
+      {
+        "id": "uio-66-zr-core2019-a0094",
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 6.02475484,
+        "sourceIndex": 94
+      },
+      {
+        "id": "uio-66-zr-core2019-a0095",
+        "element": "C",
+        "x": 1.3371199100393034,
+        "y": 3.781946222593351,
+        "z": 12.50144038,
+        "sourceIndex": 95
+      },
+      {
+        "id": "uio-66-zr-core2019-a0096",
+        "element": "C",
+        "x": 1.7391969143377506,
+        "y": 4.919191727787768,
+        "z": 11.80502258,
+        "sourceIndex": 96
+      },
+      {
+        "id": "uio-66-zr-core2019-a0097",
+        "element": "C",
+        "x": 8.82088508791763,
+        "y": 0.0,
+        "z": 5.092740380000001,
+        "sourceIndex": 97
+      },
+      {
+        "id": "uio-66-zr-core2019-a0098",
+        "element": "C",
+        "x": 7.6146540750222895,
+        "y": 0.0,
+        "z": 4.396322580000001,
+        "sourceIndex": 98
+      },
+      {
+        "id": "uio-66-zr-core2019-a0099",
+        "element": "C",
+        "x": 2.940295029305877,
+        "y": 8.316410215645135,
+        "z": 9.72465962,
+        "sourceIndex": 99
+      },
+      {
+        "id": "uio-66-zr-core2019-a0100",
+        "element": "C",
+        "x": 2.5382180250074304,
+        "y": 7.179164710450718,
+        "z": 10.421077420000001,
+        "sourceIndex": 100
+      },
+      {
+        "id": "uio-66-zr-core2019-a0101",
+        "element": "C",
+        "x": 4.01135973011791,
+        "y": 0.0,
+        "z": 2.3159596200000006,
+        "sourceIndex": 101
+      },
+      {
+        "id": "uio-66-zr-core2019-a0102",
+        "element": "C",
+        "x": 5.21759074301325,
+        "y": 0.0,
+        "z": 3.012377420000001,
+        "sourceIndex": 102
+      },
+      {
+        "id": "uio-66-zr-core2019-a0103",
+        "element": "O",
+        "x": 10.395829268584524,
+        "y": 0.8614029784025802,
+        "z": 7.408700000000001,
+        "sourceIndex": 103
+      },
+      {
+        "id": "uio-66-zr-core2019-a0104",
+        "element": "O",
+        "x": 4.277414939345181,
+        "y": 9.514147503030745,
+        "z": 7.408700000000001,
+        "sourceIndex": 104
+      },
+      {
+        "id": "uio-66-zr-core2019-a0105",
+        "element": "O",
+        "x": 1.2182077747255073,
+        "y": 0.8614029784025802,
+        "z": 12.707402239999999,
+        "sourceIndex": 105
+      },
+      {
+        "id": "uio-66-zr-core2019-a0106",
+        "element": "O",
+        "x": 1.2182077747255073,
+        "y": 0.8614029784025802,
+        "z": 2.1099977599999997,
+        "sourceIndex": 106
+      },
+      {
+        "id": "uio-66-zr-core2019-a0107",
+        "element": "O",
+        "x": 15.89145198265521,
+        "y": 11.236953459835906,
+        "z": 16.92739776,
+        "sourceIndex": 107
+      },
+      {
+        "id": "uio-66-zr-core2019-a0108",
+        "element": "H",
+        "x": 15.508195604089883,
+        "y": 10.965950275619363,
+        "z": 17.591069106000003,
+        "sourceIndex": 108
+      },
+      {
+        "id": "uio-66-zr-core2019-a0109",
+        "element": "O",
+        "x": 15.89145198265521,
+        "y": 11.236953459835906,
+        "z": 27.52480224,
+        "sourceIndex": 109
+      },
+      {
+        "id": "uio-66-zr-core2019-a0110",
+        "element": "H",
+        "x": 15.508195604089883,
+        "y": 10.965950275619363,
+        "z": 26.860982720000003,
+        "sourceIndex": 110
+      },
+      {
+        "id": "uio-66-zr-core2019-a0111",
+        "element": "O",
+        "x": 6.713830488796194,
+        "y": 11.236953459835906,
+        "z": 22.2261,
+        "sourceIndex": 111
+      },
+      {
+        "id": "uio-66-zr-core2019-a0112",
+        "element": "H",
+        "x": 7.480214923478671,
+        "y": 10.965950275619363,
+        "z": 22.226025913,
+        "sourceIndex": 112
+      },
+      {
+        "id": "uio-66-zr-core2019-a0113",
+        "element": "O",
+        "x": 12.832244818035537,
+        "y": 2.584208935207741,
+        "z": 22.2261,
+        "sourceIndex": 113
+      },
+      {
+        "id": "uio-66-zr-core2019-a0114",
+        "element": "H",
+        "x": 12.832202043886145,
+        "y": 3.3970975042929843,
+        "z": 22.226025913,
+        "sourceIndex": 114
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [],
+    "cell": {
+      "vectors": [
+        [
+          12.832244818035539,
+          0.0,
+          7.408700000000001
+        ],
+        [
+          4.277414939345181,
+          12.098356438238486,
+          7.408700000000001
+        ],
+        [
+          0.0,
+          0.0,
+          14.8174
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Source CIF provides a crystallographic unit cell and fractional atomic coordinates; CIF crystal structures are 3D periodic."
+      }
+    },
+    "sourceAtomIds": [
+      "uio-66-zr-core2019-a0001",
+      "uio-66-zr-core2019-a0002",
+      "uio-66-zr-core2019-a0003",
+      "uio-66-zr-core2019-a0004",
+      "uio-66-zr-core2019-a0005",
+      "uio-66-zr-core2019-a0006",
+      "uio-66-zr-core2019-a0007",
+      "uio-66-zr-core2019-a0008",
+      "uio-66-zr-core2019-a0009",
+      "uio-66-zr-core2019-a0010",
+      "uio-66-zr-core2019-a0011",
+      "uio-66-zr-core2019-a0012",
+      "uio-66-zr-core2019-a0013",
+      "uio-66-zr-core2019-a0014",
+      "uio-66-zr-core2019-a0015",
+      "uio-66-zr-core2019-a0016",
+      "uio-66-zr-core2019-a0017",
+      "uio-66-zr-core2019-a0018",
+      "uio-66-zr-core2019-a0019",
+      "uio-66-zr-core2019-a0020",
+      "uio-66-zr-core2019-a0021",
+      "uio-66-zr-core2019-a0022",
+      "uio-66-zr-core2019-a0023",
+      "uio-66-zr-core2019-a0024",
+      "uio-66-zr-core2019-a0025",
+      "uio-66-zr-core2019-a0026",
+      "uio-66-zr-core2019-a0027",
+      "uio-66-zr-core2019-a0028",
+      "uio-66-zr-core2019-a0029",
+      "uio-66-zr-core2019-a0030",
+      "uio-66-zr-core2019-a0031",
+      "uio-66-zr-core2019-a0032",
+      "uio-66-zr-core2019-a0033",
+      "uio-66-zr-core2019-a0034",
+      "uio-66-zr-core2019-a0035",
+      "uio-66-zr-core2019-a0036",
+      "uio-66-zr-core2019-a0037",
+      "uio-66-zr-core2019-a0038",
+      "uio-66-zr-core2019-a0039",
+      "uio-66-zr-core2019-a0040",
+      "uio-66-zr-core2019-a0041",
+      "uio-66-zr-core2019-a0042",
+      "uio-66-zr-core2019-a0043",
+      "uio-66-zr-core2019-a0044",
+      "uio-66-zr-core2019-a0045",
+      "uio-66-zr-core2019-a0046",
+      "uio-66-zr-core2019-a0047",
+      "uio-66-zr-core2019-a0048",
+      "uio-66-zr-core2019-a0049",
+      "uio-66-zr-core2019-a0050",
+      "uio-66-zr-core2019-a0051",
+      "uio-66-zr-core2019-a0052",
+      "uio-66-zr-core2019-a0053",
+      "uio-66-zr-core2019-a0054",
+      "uio-66-zr-core2019-a0055",
+      "uio-66-zr-core2019-a0056",
+      "uio-66-zr-core2019-a0057",
+      "uio-66-zr-core2019-a0058",
+      "uio-66-zr-core2019-a0059",
+      "uio-66-zr-core2019-a0060",
+      "uio-66-zr-core2019-a0061",
+      "uio-66-zr-core2019-a0062",
+      "uio-66-zr-core2019-a0063",
+      "uio-66-zr-core2019-a0064",
+      "uio-66-zr-core2019-a0065",
+      "uio-66-zr-core2019-a0066",
+      "uio-66-zr-core2019-a0067",
+      "uio-66-zr-core2019-a0068",
+      "uio-66-zr-core2019-a0069",
+      "uio-66-zr-core2019-a0070",
+      "uio-66-zr-core2019-a0071",
+      "uio-66-zr-core2019-a0072",
+      "uio-66-zr-core2019-a0073",
+      "uio-66-zr-core2019-a0074",
+      "uio-66-zr-core2019-a0075",
+      "uio-66-zr-core2019-a0076",
+      "uio-66-zr-core2019-a0077",
+      "uio-66-zr-core2019-a0078",
+      "uio-66-zr-core2019-a0079",
+      "uio-66-zr-core2019-a0080",
+      "uio-66-zr-core2019-a0081",
+      "uio-66-zr-core2019-a0082",
+      "uio-66-zr-core2019-a0083",
+      "uio-66-zr-core2019-a0084",
+      "uio-66-zr-core2019-a0085",
+      "uio-66-zr-core2019-a0086",
+      "uio-66-zr-core2019-a0087",
+      "uio-66-zr-core2019-a0088",
+      "uio-66-zr-core2019-a0089",
+      "uio-66-zr-core2019-a0090",
+      "uio-66-zr-core2019-a0091",
+      "uio-66-zr-core2019-a0092",
+      "uio-66-zr-core2019-a0093",
+      "uio-66-zr-core2019-a0094",
+      "uio-66-zr-core2019-a0095",
+      "uio-66-zr-core2019-a0096",
+      "uio-66-zr-core2019-a0097",
+      "uio-66-zr-core2019-a0098",
+      "uio-66-zr-core2019-a0099",
+      "uio-66-zr-core2019-a0100",
+      "uio-66-zr-core2019-a0101",
+      "uio-66-zr-core2019-a0102",
+      "uio-66-zr-core2019-a0103",
+      "uio-66-zr-core2019-a0104",
+      "uio-66-zr-core2019-a0105",
+      "uio-66-zr-core2019-a0106",
+      "uio-66-zr-core2019-a0107",
+      "uio-66-zr-core2019-a0108",
+      "uio-66-zr-core2019-a0109",
+      "uio-66-zr-core2019-a0110",
+      "uio-66-zr-core2019-a0111",
+      "uio-66-zr-core2019-a0112",
+      "uio-66-zr-core2019-a0113",
+      "uio-66-zr-core2019-a0114"
+    ],
+    "libraryProvenance": {
+      "entryId": "uio-66-zr-core2019",
+      "category": "mof",
+      "name": "UiO-66",
+      "formula": "C24H14O16Zr3",
+      "phase": "UiO-66（Zr）化学计量比原胞；CoRE整理版含理想化补入的H坐标。",
+      "source": {
+        "name": "CoRE-MOF 2019 public ASR dataset",
+        "recordId": "RUBTAK01_SL",
+        "url": "https://doi.org/10.5281/zenodo.7691378",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "curated",
+        "retrievedAt": "2026-10-20T04:33:17Z",
+        "citation": "CoRE-MOF 2019 dataset v1.1.4; accompanying paper DOI: 10.1021/acs.jced.9b00835.",
+        "doi": "10.5281/zenodo.7691378",
+        "version": "Zenodo 7691378, version 1.1.4; public ASR subset",
+        "conditions": "CoRE public=Y, DISORDER field empty, from_CSD=Y; ASR means all solvents removed. Source CIF has formula C48H28O32Zr6 and full occupancy. RSC 2020 identifies CSD RUBTAK01 as containing siteless hydrogens: their coordinates are not experimental positions and are supplied by ideal-geometry hydrogen addition based on neutron-diffraction averages (DOI: 10.1039/D0CE00299B). The CoRE `_clean_h` CIF H coordinates are preserved exactly as distributed, not re-positioned or independently refined here. The opaque SL filename suffix is retained as an ID, not interpreted."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "CoRE metadata from_CSD=Y; CSD refcode RUBTAK01.",
+          "CoRE metadata Extension=SL; this label is preserved without interpretation.",
+          "Source is the selected CIF from the public ASR archive; source file bytes are preserved unchanged.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P1' differs from geometric recognition F-43m at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      }
+    }
+  }
+}

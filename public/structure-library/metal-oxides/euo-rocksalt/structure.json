@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "euo-rocksalt",
+  "structure": {
+    "id": "euo-rocksalt",
+    "name": "氧化铕(II)",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "euo-rocksalt:atom:1",
+        "sourceIndex": 1,
+        "element": "Eu",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "euo-rocksalt:atom:2",
+        "sourceIndex": 1,
+        "element": "Eu",
+        "x": 4.1360110488358257e-16,
+        "y": 2.57195,
+        "z": 2.57195
+      },
+      {
+        "id": "euo-rocksalt:atom:3",
+        "sourceIndex": 1,
+        "element": "Eu",
+        "x": 2.57195,
+        "y": 0.0,
+        "z": 2.57195
+      },
+      {
+        "id": "euo-rocksalt:atom:4",
+        "sourceIndex": 1,
+        "element": "Eu",
+        "x": 2.5719500000000006,
+        "y": 2.57195,
+        "z": 3.1497303350670353e-16
+      },
+      {
+        "id": "euo-rocksalt:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.5719500000000006,
+        "y": 2.57195,
+        "z": 2.5719500000000006
+      },
+      {
+        "id": "euo-rocksalt:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.57195,
+        "y": 0.0,
+        "z": 1.5748651675335176e-16
+      },
+      {
+        "id": "euo-rocksalt:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.1360110488358257e-16,
+        "y": 2.57195,
+        "z": 1.5748651675335176e-16
+      },
+      {
+        "id": "euo-rocksalt:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.57195
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9008633; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "euo-rocksalt:atom:1",
+      "euo-rocksalt:atom:2",
+      "euo-rocksalt:atom:3",
+      "euo-rocksalt:atom:4",
+      "euo-rocksalt:atom:5",
+      "euo-rocksalt:atom:6",
+      "euo-rocksalt:atom:7",
+      "euo-rocksalt:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.1439,
+          0.0,
+          3.1497303350670353e-16
+        ],
+        [
+          8.272022097671651e-16,
+          5.1439,
+          3.1497303350670353e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.1439
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9008633 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

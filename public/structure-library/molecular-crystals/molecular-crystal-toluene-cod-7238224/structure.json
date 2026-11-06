@@ -1,0 +1,1129 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-toluene-cod-7238224",
+  "structure": {
+    "id": "molecular-crystal-toluene-cod-7238224",
+    "name": "甲苯",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:1",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 4.672118174557484,
+        "y": 0.8762811600000003,
+        "z": 12.031353662726971
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:2",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 2.617815004655317,
+        "y": 3.7855811600000004,
+        "z": -0.6494476512946546
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:3",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 2.6178150046553172,
+        "y": 4.9423188399999995,
+        "z": 12.841552348705344
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:4",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 4.672118174557484,
+        "y": 2.0330188399999995,
+        "z": 25.52235366272697
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:5",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.4388539773886109,
+        "y": 2.10458762,
+        "z": 9.443547941888225
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:6",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 6.851079201824191,
+        "y": 5.01388762,
+        "z": 1.938358069544091
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:7",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 6.851079201824191,
+        "y": 3.71401238,
+        "z": 15.42935806954409
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:8",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.4388539773886107,
+        "y": 0.8047123799999999,
+        "z": 22.934547941888226
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:9",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.196635699084814,
+        "y": 4.2778347199999995,
+        "z": 7.450375086013071
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:10",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.093297480127988,
+        "y": 1.368534719999999,
+        "z": 3.9315309254192456
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:11",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.093297480127988,
+        "y": 1.5407652800000002,
+        "z": 17.422530925419245
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:12",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.196635699084814,
+        "y": 4.4500652800000005,
+        "z": 20.94137508601307
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:13",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 6.44648791037788,
+        "y": 3.91184478,
+        "z": 9.702111585909599
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:14",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 0.8434452688349213,
+        "y": 1.0025447799999994,
+        "z": 1.6797944255227182
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:15",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 0.8434452688349215,
+        "y": 1.90675522,
+        "z": 15.170794425522717
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:16",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 6.44648791037788,
+        "y": 4.81605522,
+        "z": 23.193111585909598
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:17",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 6.859098128321325,
+        "y": 4.46402992,
+        "z": 12.534567666156669
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:18",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.4308350508914771,
+        "y": 1.5547299199999993,
+        "z": 25.829338345275648
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:19",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.43083505089147706,
+        "y": 1.35457008,
+        "z": 12.338338345275648
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:20",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 6.859098128321325,
+        "y": 4.26387008,
+        "z": -0.9564323338433325
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:21",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.752486271716822,
+        "y": 3.3951531,
+        "z": 12.09383573362124
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:22",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.5374469074959796,
+        "y": 0.4858530999999995,
+        "z": 26.270070277811072
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:23",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.53744690749598,
+        "y": 2.4234469,
+        "z": 12.779070277811076
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:24",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.752486271716822,
+        "y": 5.3327469,
+        "z": -1.3971642663787582
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:25",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.346436993634669,
+        "y": 4.62695072,
+        "z": 13.031565068784461
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:26",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 1.9434961855781325,
+        "y": 1.7176507199999995,
+        "z": 25.332340942647853
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:27",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 1.9434961855781325,
+        "y": 1.1916492799999998,
+        "z": 11.841340942647856
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:28",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.346436993634669,
+        "y": 4.10094928,
+        "z": -0.4594349312155388
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:29",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 4.849992544130276,
+        "y": 1.4139198000000006,
+        "z": 8.03242516940592
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:30",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 2.4399406350825252,
+        "y": 4.3232198,
+        "z": 3.349480842026396
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:31",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 2.4399406350825252,
+        "y": 4.4046802,
+        "z": 16.840480842026395
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:32",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 4.849992544130276,
+        "y": 1.4953801999999994,
+        "z": 21.523425169405918
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:33",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 4.194627551319045,
+        "y": 2.1523001399999995,
+        "z": 10.143151118978155
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:34",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 3.095305627893756,
+        "y": 5.0616001399999995,
+        "z": 1.2387548924541618
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:35",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 3.0953056278937554,
+        "y": 3.6662998600000005,
+        "z": 14.72975489245416
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:36",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 4.194627551319045,
+        "y": 0.7569998600000006,
+        "z": 23.634151118978156
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:37",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 5.992325073312923,
+        "y": 5.2047377,
+        "z": 7.817952741397364
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:38",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 1.2976081058998792,
+        "y": 2.295437699999999,
+        "z": 3.563953270034953
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:39",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 1.2976081058998787,
+        "y": 0.6138623000000002,
+        "z": 17.05495327003495
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:40",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 5.992325073312923,
+        "y": 3.5231623,
+        "z": 21.308952741397366
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:41",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 1.5170350945941848,
+        "y": 5.14480612,
+        "z": 9.574117740979066
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:42",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 5.7728980846186175,
+        "y": 2.2355061199999993,
+        "z": 1.807788270453252
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:43",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 5.7728980846186175,
+        "y": 0.6737938800000001,
+        "z": 15.298788270453251
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:44",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 1.5170350945941846,
+        "y": 3.5830938800000003,
+        "z": 23.065117740979066
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:45",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 2.8977484387370893,
+        "y": 4.459375039999999,
+        "z": 10.005700939544345
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:46",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 4.392184740475713,
+        "y": 1.5500750399999998,
+        "z": 1.3762050718879713
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:47",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 4.392184740475713,
+        "y": 1.3592249600000001,
+        "z": 14.867205071887971
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:48",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 2.8977484387370893,
+        "y": 4.268524960000001,
+        "z": 23.496700939544343
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:49",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 1.5141191213224994,
+        "y": 3.9083536199999998,
+        "z": 10.589484578574494
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:50",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 5.775814057890302,
+        "y": 0.9990536199999998,
+        "z": 0.7924214328578243
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:51",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 5.775814057890302,
+        "y": 1.9102463800000002,
+        "z": 14.283421432857823
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:52",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 1.5141191213224994,
+        "y": 4.81954638,
+        "z": 24.080484578574495
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:53",
+        "sourceIndex": 26,
+        "element": "H",
+        "x": 1.6570018116350698,
+        "y": 0.94319506,
+        "z": 5.766935936398566
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:54",
+        "sourceIndex": 26,
+        "element": "H",
+        "x": 5.632931367577731,
+        "y": 3.8524950600000003,
+        "z": 5.61497007503375
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:55",
+        "sourceIndex": 26,
+        "element": "H",
+        "x": 5.632931367577731,
+        "y": 4.87540494,
+        "z": 19.105970075033753
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:56",
+        "sourceIndex": 26,
+        "element": "H",
+        "x": 1.6570018116350698,
+        "y": 1.96610494,
+        "z": 19.257935936398564
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:57",
+        "sourceIndex": 28,
+        "element": "H",
+        "x": 3.075622808309881,
+        "y": 2.79060056,
+        "z": 5.6694974462232945
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:58",
+        "sourceIndex": 28,
+        "element": "H",
+        "x": 4.214310370902921,
+        "y": 5.699900560000001,
+        "z": 5.7124085652090235
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:59",
+        "sourceIndex": 28,
+        "element": "H",
+        "x": 4.214310370902921,
+        "y": 3.02799944,
+        "z": 19.203408565209024
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:60",
+        "sourceIndex": 28,
+        "element": "H",
+        "x": 3.0756228083098804,
+        "y": 0.11869943999999985,
+        "z": 19.160497446223292
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:61",
+        "sourceIndex": 30,
+        "element": "H",
+        "x": 0.3192990732495208,
+        "y": 0.62142648,
+        "z": 7.6541538833007365
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:62",
+        "sourceIndex": 30,
+        "element": "H",
+        "x": 6.970634105963281,
+        "y": 3.5307264800000002,
+        "z": 3.7277521281315797
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:63",
+        "sourceIndex": 30,
+        "element": "H",
+        "x": 6.970634105963281,
+        "y": 5.19717352,
+        "z": 17.21875212813158
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:64",
+        "sourceIndex": 30,
+        "element": "H",
+        "x": 0.31929907324952106,
+        "y": 2.2878735199999998,
+        "z": 21.145153883300736
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:65",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 1.840853926414817,
+        "y": 3.3462768599999997,
+        "z": 8.646687986006889
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:66",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 5.449079252797984,
+        "y": 0.4369768599999997,
+        "z": 2.7352180254254277
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:67",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 5.449079252797984,
+        "y": 2.4723231400000003,
+        "z": 16.226218025425425
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:68",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 1.8408539264148174,
+        "y": 5.38162314,
+        "z": 22.137687986006892
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:69",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 5.607708198777656,
+        "y": 5.1669168,
+        "z": 11.068314420234195
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:70",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 1.6822249804351461,
+        "y": 2.257616799999999,
+        "z": 0.31359159119812213
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:71",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 1.6822249804351457,
+        "y": 0.6516831999999999,
+        "z": 13.804591591198122
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:72",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 5.607708198777656,
+        "y": 3.5609832,
+        "z": 24.559314420234195
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:73",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.939075527580257,
+        "y": 0.5638223399999999,
+        "z": 11.175418120865622
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:74",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 2.3508576516325443,
+        "y": 3.4731223399999998,
+        "z": 0.2064878905666937
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:75",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 2.350857651632545,
+        "y": 5.25477766,
+        "z": 13.697487890566693
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:76",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.939075527580257,
+        "y": 2.3454776600000002,
+        "z": 24.666418120865625
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:77",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 0.983339086544015,
+        "y": 2.24947076,
+        "z": 8.679464351882105
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:78",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.306594092668787,
+        "y": 5.15877076,
+        "z": 2.702441659550211
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:79",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.306594092668787,
+        "y": 3.5691292399999996,
+        "z": 16.19344165955021
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:80",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 0.9833390865440148,
+        "y": 0.65982924,
+        "z": 22.170464351882107
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:81",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.6111811654622334,
+        "y": 3.53130834,
+        "z": 7.50373382423494
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:82",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 4.678752013750567,
+        "y": 0.6220083399999999,
+        "z": 3.878172187197376
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:83",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 4.678752013750567,
+        "y": 2.28729166,
+        "z": 17.36917218719737
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:84",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.611181165462234,
+        "y": 5.19659166,
+        "z": 20.994733824234945
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:85",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 5.99086708667708,
+        "y": 4.73983156,
+        "z": 9.800742100195077
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:86",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 1.2990660925357214,
+        "y": 1.8305315599999998,
+        "z": 1.5811639112372384
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:87",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 1.2990660925357214,
+        "y": 1.0787684400000002,
+        "z": 15.072163911237238
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:88",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 5.99086708667708,
+        "y": 3.98806844,
+        "z": 23.291742100195076
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:89",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 5.918696748202874,
+        "y": 4.34125746,
+        "z": 12.288316570681896
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:90",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.3712364310099283,
+        "y": 1.43195746,
+        "z": 26.07558944075042
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:91",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.3712364310099283,
+        "y": 1.47734254,
+        "z": 12.584589440750419
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:92",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 5.918696748202874,
+        "y": 4.38664254,
+        "z": -1.202683429318106
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:93",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": 5.043831867365545,
+        "y": 0.89199138,
+        "z": 8.801184100249905
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:94",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": 2.2461013118472564,
+        "y": 3.80129138,
+        "z": 2.580721911182411
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:95",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": 2.246101311847257,
+        "y": 4.92660862,
+        "z": 16.07172191118241
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:96",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": 5.043831867365545,
+        "y": 2.01730862,
+        "z": 22.292184100249905
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:97",
+        "sourceIndex": 17,
+        "element": "C",
+        "x": 4.656371918890384,
+        "y": 1.3272226599999999,
+        "z": 10.052192665742277
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:98",
+        "sourceIndex": 17,
+        "element": "C",
+        "x": 2.633561260322417,
+        "y": 4.236522659999999,
+        "z": 1.3297133456900383
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:99",
+        "sourceIndex": 17,
+        "element": "C",
+        "x": 2.633561260322417,
+        "y": 4.4913773400000006,
+        "z": 14.820713345690038
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:100",
+        "sourceIndex": 17,
+        "element": "C",
+        "x": 4.656371918890384,
+        "y": 1.58207734,
+        "z": 23.543192665742275
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:101",
+        "sourceIndex": 19,
+        "element": "C",
+        "x": 5.716984297134055,
+        "y": 5.50672304,
+        "z": 8.676043921345567
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:102",
+        "sourceIndex": 19,
+        "element": "C",
+        "x": 1.5729488820787465,
+        "y": 2.5974230400000007,
+        "z": 2.7058620900867503
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:103",
+        "sourceIndex": 19,
+        "element": "C",
+        "x": 1.572948882078746,
+        "y": 0.31187695999999987,
+        "z": 16.196862090086746
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:104",
+        "sourceIndex": 19,
+        "element": "C",
+        "x": 5.716984297134055,
+        "y": 3.2211769599999998,
+        "z": 22.167043921345567
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:105",
+        "sourceIndex": 21,
+        "element": "C",
+        "x": 1.9520254073978123,
+        "y": 4.29761796,
+        "z": 9.80443050268123
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:106",
+        "sourceIndex": 21,
+        "element": "C",
+        "x": 5.337907771814988,
+        "y": 1.3883179599999995,
+        "z": 1.577475508751086
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:107",
+        "sourceIndex": 21,
+        "element": "C",
+        "x": 5.337907771814988,
+        "y": 1.5209820399999998,
+        "z": 15.068475508751087
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:108",
+        "sourceIndex": 21,
+        "element": "C",
+        "x": 1.9520254073978123,
+        "y": 4.43028204,
+        "z": 23.29543050268123
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:109",
+        "sourceIndex": 25,
+        "element": "C",
+        "x": 1.6968048467935717,
+        "y": 1.5553117799999998,
+        "z": 6.493377983220987
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:110",
+        "sourceIndex": 25,
+        "element": "C",
+        "x": 5.59312833241923,
+        "y": 4.46461178,
+        "z": 4.888528028211329
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:111",
+        "sourceIndex": 25,
+        "element": "C",
+        "x": 5.59312833241923,
+        "y": 4.26328822,
+        "z": 18.379528028211332
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:112",
+        "sourceIndex": 25,
+        "element": "C",
+        "x": 1.6968048467935717,
+        "y": 1.3539882200000002,
+        "z": 19.984377983220984
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:113",
+        "sourceIndex": 27,
+        "element": "C",
+        "x": 2.540104316964909,
+        "y": 2.64571742,
+        "z": 6.439890910623476
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:114",
+        "sourceIndex": 27,
+        "element": "C",
+        "x": 4.749828862247893,
+        "y": 5.5550174199999995,
+        "z": 4.942015100808841
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:115",
+        "sourceIndex": 27,
+        "element": "C",
+        "x": 4.749828862247893,
+        "y": 3.17288258,
+        "z": 18.43301510080884
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:116",
+        "sourceIndex": 27,
+        "element": "C",
+        "x": 2.5401043169649085,
+        "y": 0.26358258000000007,
+        "z": 19.930890910623475
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:117",
+        "sourceIndex": 29,
+        "element": "C",
+        "x": 0.9116790433923531,
+        "y": 1.36329798,
+        "z": 7.612552325789725
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:118",
+        "sourceIndex": 29,
+        "element": "C",
+        "x": 6.378254135820449,
+        "y": 4.27259798,
+        "z": 3.7693536856425913
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:119",
+        "sourceIndex": 29,
+        "element": "C",
+        "x": 6.378254135820449,
+        "y": 4.45530202,
+        "z": 17.260353685642592
+      },
+      {
+        "id": "molecular-crystal-toluene-cod-7238224:atom:120",
+        "sourceIndex": 29,
+        "element": "C",
+        "x": 0.9116790433923531,
+        "y": 1.54600202,
+        "z": 21.103552325789725
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 7238224; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-toluene-cod-7238224:atom:1",
+      "molecular-crystal-toluene-cod-7238224:atom:2",
+      "molecular-crystal-toluene-cod-7238224:atom:3",
+      "molecular-crystal-toluene-cod-7238224:atom:4",
+      "molecular-crystal-toluene-cod-7238224:atom:5",
+      "molecular-crystal-toluene-cod-7238224:atom:6",
+      "molecular-crystal-toluene-cod-7238224:atom:7",
+      "molecular-crystal-toluene-cod-7238224:atom:8",
+      "molecular-crystal-toluene-cod-7238224:atom:9",
+      "molecular-crystal-toluene-cod-7238224:atom:10",
+      "molecular-crystal-toluene-cod-7238224:atom:11",
+      "molecular-crystal-toluene-cod-7238224:atom:12",
+      "molecular-crystal-toluene-cod-7238224:atom:13",
+      "molecular-crystal-toluene-cod-7238224:atom:14",
+      "molecular-crystal-toluene-cod-7238224:atom:15",
+      "molecular-crystal-toluene-cod-7238224:atom:16",
+      "molecular-crystal-toluene-cod-7238224:atom:17",
+      "molecular-crystal-toluene-cod-7238224:atom:18",
+      "molecular-crystal-toluene-cod-7238224:atom:19",
+      "molecular-crystal-toluene-cod-7238224:atom:20",
+      "molecular-crystal-toluene-cod-7238224:atom:21",
+      "molecular-crystal-toluene-cod-7238224:atom:22",
+      "molecular-crystal-toluene-cod-7238224:atom:23",
+      "molecular-crystal-toluene-cod-7238224:atom:24",
+      "molecular-crystal-toluene-cod-7238224:atom:25",
+      "molecular-crystal-toluene-cod-7238224:atom:26",
+      "molecular-crystal-toluene-cod-7238224:atom:27",
+      "molecular-crystal-toluene-cod-7238224:atom:28",
+      "molecular-crystal-toluene-cod-7238224:atom:29",
+      "molecular-crystal-toluene-cod-7238224:atom:30",
+      "molecular-crystal-toluene-cod-7238224:atom:31",
+      "molecular-crystal-toluene-cod-7238224:atom:32",
+      "molecular-crystal-toluene-cod-7238224:atom:33",
+      "molecular-crystal-toluene-cod-7238224:atom:34",
+      "molecular-crystal-toluene-cod-7238224:atom:35",
+      "molecular-crystal-toluene-cod-7238224:atom:36",
+      "molecular-crystal-toluene-cod-7238224:atom:37",
+      "molecular-crystal-toluene-cod-7238224:atom:38",
+      "molecular-crystal-toluene-cod-7238224:atom:39",
+      "molecular-crystal-toluene-cod-7238224:atom:40",
+      "molecular-crystal-toluene-cod-7238224:atom:41",
+      "molecular-crystal-toluene-cod-7238224:atom:42",
+      "molecular-crystal-toluene-cod-7238224:atom:43",
+      "molecular-crystal-toluene-cod-7238224:atom:44",
+      "molecular-crystal-toluene-cod-7238224:atom:45",
+      "molecular-crystal-toluene-cod-7238224:atom:46",
+      "molecular-crystal-toluene-cod-7238224:atom:47",
+      "molecular-crystal-toluene-cod-7238224:atom:48",
+      "molecular-crystal-toluene-cod-7238224:atom:49",
+      "molecular-crystal-toluene-cod-7238224:atom:50",
+      "molecular-crystal-toluene-cod-7238224:atom:51",
+      "molecular-crystal-toluene-cod-7238224:atom:52",
+      "molecular-crystal-toluene-cod-7238224:atom:53",
+      "molecular-crystal-toluene-cod-7238224:atom:54",
+      "molecular-crystal-toluene-cod-7238224:atom:55",
+      "molecular-crystal-toluene-cod-7238224:atom:56",
+      "molecular-crystal-toluene-cod-7238224:atom:57",
+      "molecular-crystal-toluene-cod-7238224:atom:58",
+      "molecular-crystal-toluene-cod-7238224:atom:59",
+      "molecular-crystal-toluene-cod-7238224:atom:60",
+      "molecular-crystal-toluene-cod-7238224:atom:61",
+      "molecular-crystal-toluene-cod-7238224:atom:62",
+      "molecular-crystal-toluene-cod-7238224:atom:63",
+      "molecular-crystal-toluene-cod-7238224:atom:64",
+      "molecular-crystal-toluene-cod-7238224:atom:65",
+      "molecular-crystal-toluene-cod-7238224:atom:66",
+      "molecular-crystal-toluene-cod-7238224:atom:67",
+      "molecular-crystal-toluene-cod-7238224:atom:68",
+      "molecular-crystal-toluene-cod-7238224:atom:69",
+      "molecular-crystal-toluene-cod-7238224:atom:70",
+      "molecular-crystal-toluene-cod-7238224:atom:71",
+      "molecular-crystal-toluene-cod-7238224:atom:72",
+      "molecular-crystal-toluene-cod-7238224:atom:73",
+      "molecular-crystal-toluene-cod-7238224:atom:74",
+      "molecular-crystal-toluene-cod-7238224:atom:75",
+      "molecular-crystal-toluene-cod-7238224:atom:76",
+      "molecular-crystal-toluene-cod-7238224:atom:77",
+      "molecular-crystal-toluene-cod-7238224:atom:78",
+      "molecular-crystal-toluene-cod-7238224:atom:79",
+      "molecular-crystal-toluene-cod-7238224:atom:80",
+      "molecular-crystal-toluene-cod-7238224:atom:81",
+      "molecular-crystal-toluene-cod-7238224:atom:82",
+      "molecular-crystal-toluene-cod-7238224:atom:83",
+      "molecular-crystal-toluene-cod-7238224:atom:84",
+      "molecular-crystal-toluene-cod-7238224:atom:85",
+      "molecular-crystal-toluene-cod-7238224:atom:86",
+      "molecular-crystal-toluene-cod-7238224:atom:87",
+      "molecular-crystal-toluene-cod-7238224:atom:88",
+      "molecular-crystal-toluene-cod-7238224:atom:89",
+      "molecular-crystal-toluene-cod-7238224:atom:90",
+      "molecular-crystal-toluene-cod-7238224:atom:91",
+      "molecular-crystal-toluene-cod-7238224:atom:92",
+      "molecular-crystal-toluene-cod-7238224:atom:93",
+      "molecular-crystal-toluene-cod-7238224:atom:94",
+      "molecular-crystal-toluene-cod-7238224:atom:95",
+      "molecular-crystal-toluene-cod-7238224:atom:96",
+      "molecular-crystal-toluene-cod-7238224:atom:97",
+      "molecular-crystal-toluene-cod-7238224:atom:98",
+      "molecular-crystal-toluene-cod-7238224:atom:99",
+      "molecular-crystal-toluene-cod-7238224:atom:100",
+      "molecular-crystal-toluene-cod-7238224:atom:101",
+      "molecular-crystal-toluene-cod-7238224:atom:102",
+      "molecular-crystal-toluene-cod-7238224:atom:103",
+      "molecular-crystal-toluene-cod-7238224:atom:104",
+      "molecular-crystal-toluene-cod-7238224:atom:105",
+      "molecular-crystal-toluene-cod-7238224:atom:106",
+      "molecular-crystal-toluene-cod-7238224:atom:107",
+      "molecular-crystal-toluene-cod-7238224:atom:108",
+      "molecular-crystal-toluene-cod-7238224:atom:109",
+      "molecular-crystal-toluene-cod-7238224:atom:110",
+      "molecular-crystal-toluene-cod-7238224:atom:111",
+      "molecular-crystal-toluene-cod-7238224:atom:112",
+      "molecular-crystal-toluene-cod-7238224:atom:113",
+      "molecular-crystal-toluene-cod-7238224:atom:114",
+      "molecular-crystal-toluene-cod-7238224:atom:115",
+      "molecular-crystal-toluene-cod-7238224:atom:116",
+      "molecular-crystal-toluene-cod-7238224:atom:117",
+      "molecular-crystal-toluene-cod-7238224:atom:118",
+      "molecular-crystal-toluene-cod-7238224:atom:119",
+      "molecular-crystal-toluene-cod-7238224:atom:120"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          7.289933179212801,
+          0.0,
+          -2.1090939885676834
+        ],
+        [
+          9.357022449408478e-16,
+          5.8186,
+          3.5628649327593947e-16
+        ],
+        [
+          0.0,
+          0.0,
+          26.982
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 7238224 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

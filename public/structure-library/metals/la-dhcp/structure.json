@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "entryId": "la-dhcp",
+  "structure": {
+    "id": "la-dhcp",
+    "name": "镧（dhcp）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "la-dhcp:atom:1",
+        "sourceIndex": 1,
+        "element": "La",
+        "x": 2.220446049250313e-16,
+        "y": 2.176610514844889,
+        "z": 3.0397500000000006
+      },
+      {
+        "id": "la-dhcp:atom:2",
+        "sourceIndex": 1,
+        "element": "La",
+        "x": 1.8850000000000005,
+        "y": 1.0883052574224445,
+        "z": 9.119250000000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9010986; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "la-dhcp:atom:1",
+      "la-dhcp:atom:2"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.77,
+          0.0,
+          2.3084592163927607e-16
+        ],
+        [
+          -1.8849999999999996,
+          3.264915772267334,
+          2.3084592163927607e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.159
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9010986 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

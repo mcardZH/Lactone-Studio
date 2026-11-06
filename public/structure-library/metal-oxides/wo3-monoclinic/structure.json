@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 1,
+  "entryId": "wo3-monoclinic",
+  "structure": {
+    "id": "wo3-monoclinic",
+    "name": "单斜三氧化钨",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "wo3-monoclinic:atom:1",
+        "sourceIndex": 2,
+        "element": "W",
+        "x": 1.8028775560276822,
+        "y": 0.24849000000000002,
+        "z": 5.969758136155056
+      },
+      {
+        "id": "wo3-monoclinic:atom:2",
+        "sourceIndex": 2,
+        "element": "W",
+        "x": 1.8466721525303795,
+        "y": 4.01349,
+        "z": 5.492910155656798
+      },
+      {
+        "id": "wo3-monoclinic:atom:3",
+        "sourceIndex": 2,
+        "element": "W",
+        "x": 5.496221861088441,
+        "y": 7.28151,
+        "z": 1.5955784474686525
+      },
+      {
+        "id": "wo3-monoclinic:atom:4",
+        "sourceIndex": 2,
+        "element": "W",
+        "x": 5.452427264585744,
+        "y": 3.51651,
+        "z": 2.0724264279669105
+      },
+      {
+        "id": "wo3-monoclinic:atom:5",
+        "sourceIndex": 8,
+        "element": "W",
+        "x": 1.8393730531132628,
+        "y": 0.19578,
+        "z": 2.159904819073174
+      },
+      {
+        "id": "wo3-monoclinic:atom:6",
+        "sourceIndex": 8,
+        "element": "W",
+        "x": 1.8101766554447989,
+        "y": 3.96078,
+        "z": 1.6227634727386802
+      },
+      {
+        "id": "wo3-monoclinic:atom:7",
+        "sourceIndex": 8,
+        "element": "W",
+        "x": 5.459726364002861,
+        "y": 7.33422,
+        "z": 5.405431764550534
+      },
+      {
+        "id": "wo3-monoclinic:atom:8",
+        "sourceIndex": 8,
+        "element": "W",
+        "x": 5.488922761671325,
+        "y": 3.56922,
+        "z": 5.942573110885029
+      },
+      {
+        "id": "wo3-monoclinic:atom:9",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.043747836792515,
+        "y": 1.8072,
+        "z": 7.417494243414638
+      },
+      {
+        "id": "wo3-monoclinic:atom:10",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.6058018717655476,
+        "y": 5.5722000000000005,
+        "z": 4.045174048397216
+      },
+      {
+        "id": "wo3-monoclinic:atom:11",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 5.255351580323609,
+        "y": 5.7228,
+        "z": 0.1478423402090705
+      },
+      {
+        "id": "wo3-monoclinic:atom:12",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 5.693297545350576,
+        "y": 1.9578000000000002,
+        "z": 3.5201625352264925
+      },
+      {
+        "id": "wo3-monoclinic:atom:13",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.75185268723091e-16,
+        "y": 3.57675,
+        "z": 1.6896000000000002
+      },
+      {
+        "id": "wo3-monoclinic:atom:14",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.6495497085580624,
+        "y": 7.34175,
+        "z": 2.093068291811855
+      },
+      {
+        "id": "wo3-monoclinic:atom:15",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.357310864834164e-16,
+        "y": 3.95325,
+        "z": 5.9904
+      },
+      {
+        "id": "wo3-monoclinic:atom:16",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.649549708558061,
+        "y": 0.18825000000000017,
+        "z": 5.4722682918118535
+      },
+      {
+        "id": "wo3-monoclinic:atom:17",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.0437478367925146,
+        "y": 0.3012,
+        "z": 0.19829424341463842
+      },
+      {
+        "id": "wo3-monoclinic:atom:18",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.6058018717655473,
+        "y": 4.0662,
+        "z": 3.5843740483972155
+      },
+      {
+        "id": "wo3-monoclinic:atom:19",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.255351580323609,
+        "y": 7.2288,
+        "z": 7.36704234020907
+      },
+      {
+        "id": "wo3-monoclinic:atom:20",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.6932975453505765,
+        "y": 3.4638,
+        "z": 3.9809625352264932
+      },
+      {
+        "id": "wo3-monoclinic:atom:21",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 1.532810877594386,
+        "y": 2.1837,
+        "z": 5.620720682560979
+      },
+      {
+        "id": "wo3-monoclinic:atom:22",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.1167388309636768,
+        "y": 5.9487000000000005,
+        "z": 5.841947609250876
+      },
+      {
+        "id": "wo3-monoclinic:atom:23",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 5.766288539521738,
+        "y": 5.3463,
+        "z": 1.9446159010627302
+      },
+      {
+        "id": "wo3-monoclinic:atom:24",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 5.182360586152447,
+        "y": 1.5812999999999997,
+        "z": 1.723388974372833
+      },
+      {
+        "id": "wo3-monoclinic:atom:25",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.116738830963676,
+        "y": 2.1837,
+        "z": 2.001947609250876
+      },
+      {
+        "id": "wo3-monoclinic:atom:26",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.5328108775943867,
+        "y": 5.9487000000000005,
+        "z": 1.780720682560979
+      },
+      {
+        "id": "wo3-monoclinic:atom:27",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 5.1823605861524475,
+        "y": 5.3463,
+        "z": 5.563388974372834
+      },
+      {
+        "id": "wo3-monoclinic:atom:28",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 5.766288539521737,
+        "y": 1.5812999999999997,
+        "z": 5.784615901062729
+      },
+      {
+        "id": "wo3-monoclinic:atom:29",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.027290888016269e-17,
+        "y": 0.18825000000000003,
+        "z": 1.6896
+      },
+      {
+        "id": "wo3-monoclinic:atom:30",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.6495497085580615,
+        "y": 3.95325,
+        "z": 2.093068291811855
+      },
+      {
+        "id": "wo3-monoclinic:atom:31",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 1.1806434463263447e-15,
+        "y": 7.34175,
+        "z": 5.990400000000001
+      },
+      {
+        "id": "wo3-monoclinic:atom:32",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.6495497085580615,
+        "y": 3.57675,
+        "z": 5.4722682918118535
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1528915; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "wo3-monoclinic:atom:1",
+      "wo3-monoclinic:atom:2",
+      "wo3-monoclinic:atom:3",
+      "wo3-monoclinic:atom:4",
+      "wo3-monoclinic:atom:5",
+      "wo3-monoclinic:atom:6",
+      "wo3-monoclinic:atom:7",
+      "wo3-monoclinic:atom:8",
+      "wo3-monoclinic:atom:9",
+      "wo3-monoclinic:atom:10",
+      "wo3-monoclinic:atom:11",
+      "wo3-monoclinic:atom:12",
+      "wo3-monoclinic:atom:13",
+      "wo3-monoclinic:atom:14",
+      "wo3-monoclinic:atom:15",
+      "wo3-monoclinic:atom:16",
+      "wo3-monoclinic:atom:17",
+      "wo3-monoclinic:atom:18",
+      "wo3-monoclinic:atom:19",
+      "wo3-monoclinic:atom:20",
+      "wo3-monoclinic:atom:21",
+      "wo3-monoclinic:atom:22",
+      "wo3-monoclinic:atom:23",
+      "wo3-monoclinic:atom:24",
+      "wo3-monoclinic:atom:25",
+      "wo3-monoclinic:atom:26",
+      "wo3-monoclinic:atom:27",
+      "wo3-monoclinic:atom:28",
+      "wo3-monoclinic:atom:29",
+      "wo3-monoclinic:atom:30",
+      "wo3-monoclinic:atom:31",
+      "wo3-monoclinic:atom:32"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          7.299099417116122,
+          0.0,
+          -0.11466341637629146
+        ],
+        [
+          1.2109163552065074e-15,
+          7.53,
+          4.610795198789785e-16
+        ],
+        [
+          0.0,
+          0.0,
+          7.68
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1528915 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

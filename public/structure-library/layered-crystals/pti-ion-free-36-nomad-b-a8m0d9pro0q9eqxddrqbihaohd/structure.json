@@ -1,0 +1,373 @@
+{
+  "schemaVersion": 1,
+  "entryId": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd",
+  "structure": {
+    "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd",
+    "name": "无离子 PTI 候选（36原子）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:1",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 2.3350846877143305,
+        "y": 0.00804620636737395,
+        "z": 1.6692799771378701
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:2",
+        "sourceIndex": 32,
+        "element": "H",
+        "x": -1.1598255330495297,
+        "y": 2.0253615078360196,
+        "z": 1.6675309500729052
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:3",
+        "sourceIndex": 33,
+        "element": "H",
+        "x": 3.1492330834818962,
+        "y": 5.4534179021906395,
+        "z": 1.6621667600536982
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:4",
+        "sourceIndex": 34,
+        "element": "H",
+        "x": 1.1601785023577333,
+        "y": 2.00979253651113,
+        "z": 5.006228609915674
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:5",
+        "sourceIndex": 35,
+        "element": "H",
+        "x": 5.469247706428222,
+        "y": 5.437845248216019,
+        "z": 5.000930192496477
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:6",
+        "sourceIndex": 36,
+        "element": "H",
+        "x": 1.9743354745567583,
+        "y": 7.455163059752823,
+        "z": 4.99917146308344
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:7",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": -0.8475260434245322,
+        "y": 4.011729551953324,
+        "z": 1.6650269630357588
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:8",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 1.2732005792655787,
+        "y": 4.730193504457231,
+        "z": 1.6638232723234616
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:9",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": -0.40941057038281814,
+        "y": 6.207476343772239,
+        "z": 1.6625148989177352
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:10",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 5.156944975576014,
+        "y": 3.451475703125046,
+        "z": 5.0034234614385475
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:11",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 3.0362184213791954,
+        "y": 2.7330107072724963,
+        "z": 5.0046141232074115
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:12",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 4.718830694176939,
+        "y": 1.2557290461212207,
+        "z": 5.005949985283293
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:13",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 3.899471078855196,
+        "y": 1.271339517456078,
+        "z": 1.667427200004838
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:14",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 3.461460347199879,
+        "y": 3.4671465606123992,
+        "z": 1.6649227803380395
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:15",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 5.5821123517963205,
+        "y": 2.7485781691534643,
+        "z": 1.6653393544809534
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:16",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 0.4099490644908874,
+        "y": 6.191865488350572,
+        "z": 5.001033704593105
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:17",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 0.8479604933295346,
+        "y": 3.9960602500447875,
+        "z": 5.003513572318296
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:18",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": -1.2726931890937214,
+        "y": 4.7146277108952725,
+        "z": 5.003115919332902
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:19",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": -1.3535380717668644,
+        "y": 5.2401772399801185,
+        "z": 1.6636499538112814
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:20",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 3.350947438643897,
+        "y": 0.008030696848428887,
+        "z": 1.6690558534417947
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:21",
+        "sourceIndex": 16,
+        "element": "N",
+        "x": 0.4622890765511536,
+        "y": 3.6777010474783576,
+        "z": 1.6652004179004365
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:22",
+        "sourceIndex": 17,
+        "element": "N",
+        "x": 0.9074801698212243,
+        "y": 6.0314565569832705,
+        "z": 1.6625091024664926
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:23",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 5.662956995097705,
+        "y": 2.2230288856387994,
+        "z": 5.0048107597724005
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:24",
+        "sourceIndex": 19,
+        "element": "N",
+        "x": 3.847129982843484,
+        "y": 3.7855047230914214,
+        "z": 5.003226086018932
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:25",
+        "sourceIndex": 20,
+        "element": "N",
+        "x": 3.4019385644605404,
+        "y": 1.4317477971586552,
+        "z": 5.005959932959289
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:26",
+        "sourceIndex": 21,
+        "element": "N",
+        "x": 5.216367726141166,
+        "y": 1.4472877853960462,
+        "z": 1.6668260302710938
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:27",
+        "sourceIndex": 22,
+        "element": "N",
+        "x": 2.955410105407808,
+        "y": 2.238683937521479,
+        "z": 1.6666186184352259
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:28",
+        "sourceIndex": 23,
+        "element": "N",
+        "x": 4.77124864901319,
+        "y": 3.801096348403647,
+        "z": 1.6642681541959479
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:29",
+        "sourceIndex": 24,
+        "element": "N",
+        "x": -0.9069465228530817,
+        "y": 6.015918209892912,
+        "z": 5.001634363187233
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:30",
+        "sourceIndex": 25,
+        "element": "N",
+        "x": 1.3540127172128704,
+        "y": 5.224523541755865,
+        "z": 5.001835913319745
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:31",
+        "sourceIndex": 26,
+        "element": "N",
+        "x": -0.4618262779648066,
+        "y": 3.662112136833819,
+        "z": 5.004172676567949
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:32",
+        "sourceIndex": 27,
+        "element": "N",
+        "x": 2.6414589961799733,
+        "y": 4.573571337712683,
+        "z": 1.6635115977908803
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:33",
+        "sourceIndex": 28,
+        "element": "N",
+        "x": 0.9584725749378125,
+        "y": 7.455175420979349,
+        "z": 4.999407020027468
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:34",
+        "sourceIndex": 29,
+        "element": "N",
+        "x": 5.976986427414463,
+        "y": 4.557972992750719,
+        "z": 5.001941067060737
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:35",
+        "sourceIndex": 30,
+        "element": "N",
+        "x": 1.6679612704217097,
+        "y": 2.8896343579084145,
+        "z": 5.004890556049571
+      },
+      {
+        "id": "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:36",
+        "sourceIndex": 31,
+        "element": "N",
+        "x": -1.6675662838809129,
+        "y": 2.9052326147648175,
+        "z": 1.6665214969149496
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: NOMAD Repository record NOMAD entry ba_8m0D9Pro0Q9eQxDDRqBiaHOhD; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based source.cif atom row and maps to the same ordered geometry.in atom record; the retained raw FHI-aims file contains no independent atom-site labels.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:1",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:2",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:3",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:4",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:5",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:6",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:7",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:8",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:9",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:10",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:11",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:12",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:13",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:14",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:15",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:16",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:17",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:18",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:19",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:20",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:21",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:22",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:23",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:24",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:25",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:26",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:27",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:28",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:29",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:30",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:31",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:32",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:33",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:34",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:35",
+      "pti-ion-free-36-nomad-b-a8m0d9pro0q9eqxddrqbihaohd:atom:36"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          8.61797323627414,
+          0.0,
+          -0.0014859717087305692
+        ],
+        [
+          -4.308692355781644,
+          7.462778272615029,
+          -0.00773230931701906
+        ],
+        [
+          0.0,
+          0.0,
+          6.677666108806
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "NOMAD Repository record NOMAD entry ba_8m0D9Pro0Q9eQxDDRqBiaHOhD defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

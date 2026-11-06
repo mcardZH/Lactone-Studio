@@ -1,0 +1,499 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "uio-66-zr-core2019",
+      "category": "mof",
+      "name": "UiO-66",
+      "nameEn": "UiO-66 (Zr)",
+      "formula": "C24H14O16Zr3",
+      "aliases": [
+        "UiO66",
+        "CSD RUBTAK01"
+      ],
+      "phase": "UiO-66（Zr）化学计量比原胞；CoRE整理版含理想化补入的H坐标。",
+      "structurePath": "mof/uio-66-zr-core2019/structure.json",
+      "sourcePath": "mof/uio-66-zr-core2019/source.cif",
+      "source": {
+        "name": "CoRE-MOF 2019 public ASR dataset",
+        "recordId": "RUBTAK01_SL",
+        "url": "https://doi.org/10.5281/zenodo.7691378",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "curated",
+        "retrievedAt": "2026-10-20T04:33:17Z",
+        "citation": "CoRE-MOF 2019 dataset v1.1.4; accompanying paper DOI: 10.1021/acs.jced.9b00835.",
+        "doi": "10.5281/zenodo.7691378",
+        "version": "Zenodo 7691378, version 1.1.4; public ASR subset",
+        "conditions": "CoRE public=Y, DISORDER field empty, from_CSD=Y; ASR means all solvents removed. Source CIF has formula C48H28O32Zr6 and full occupancy. RSC 2020 identifies CSD RUBTAK01 as containing siteless hydrogens: their coordinates are not experimental positions and are supplied by ideal-geometry hydrogen addition based on neutron-diffraction averages (DOI: 10.1039/D0CE00299B). The CoRE `_clean_h` CIF H coordinates are preserved exactly as distributed, not re-positioned or independently refined here. The opaque SL filename suffix is retained as an ID, not interpreted."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "CoRE metadata from_CSD=Y; CSD refcode RUBTAK01.",
+          "CoRE metadata Extension=SL; this label is preserved without interpretation.",
+          "Source is the selected CIF from the public ASR archive; source file bytes are preserved unchanged.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P1' differs from geometric recognition F-43m at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F-43m",
+        "number": 216
+      },
+      "pointGroup": "-43m"
+    },
+    {
+      "id": "mil-53-al-oh-lp-ortho-core2019",
+      "category": "mof",
+      "name": "OH-MIL-53(Al) 大孔正交相",
+      "nameEn": "OH-MIL-53(Al), large-pore orthorhombic",
+      "formula": "C8H5AlO5",
+      "aliases": [
+        "MIL-53(Al)",
+        "MIL-53-Al lp-ortho"
+      ],
+      "phase": "OH-MIL-53(Al) 大孔正交相（CoRE整理记录）。",
+      "structurePath": "mof/mil-53-al-oh-lp-ortho-core2019/structure.json",
+      "sourcePath": "mof/mil-53-al-oh-lp-ortho-core2019/source.cif",
+      "source": {
+        "name": "CoRE-MOF 2019 public ASR dataset",
+        "recordId": "cm503311x_OH-mil-53-Al-lp-ortho_clean",
+        "url": "https://doi.org/10.5281/zenodo.7691378",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "curated",
+        "retrievedAt": "2026-10-20T04:33:17Z",
+        "citation": "CoRE-MOF 2019 dataset v1.1.4; accompanying paper DOI: 10.1021/acs.jced.9b00835.",
+        "doi": "10.5281/zenodo.7691378",
+        "version": "Zenodo 7691378, version 1.1.4; public ASR subset",
+        "conditions": "CoRE public=Y, DISORDER field empty, from_CSD=N; ASR means all solvents removed. Source CIF has full occupancy and no added solvent species."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "CoRE metadata from_CSD=N; CoRE source record marks from_CSD=N.",
+          "CoRE metadata Extension=clean; this label is preserved without interpretation.",
+          "Source is the selected CIF from the public ASR archive; source file bytes are preserved unchanged.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1"
+    },
+    {
+      "id": "uio-67-core2019-wizmav02",
+      "category": "mof",
+      "name": "UiO-67",
+      "nameEn": "UiO-67 (Zr)",
+      "formula": "C42H26O16Zr3",
+      "aliases": [
+        "UiO67",
+        "CSD WIZMAV02"
+      ],
+      "phase": "UiO-67：CoRE ASR 去客体化学计量框架。",
+      "structurePath": "mof/uio-67-core2019-wizmav02/structure.json",
+      "sourcePath": "mof/uio-67-core2019-wizmav02/source.cif",
+      "source": {
+        "name": "CoRE-MOF 2019 public ASR dataset",
+        "recordId": "WIZMAV02_auto",
+        "url": "https://doi.org/10.5281/zenodo.7691378",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "curated",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "CoRE-MOF 2019 dataset v1.1.4; accompanying paper DOI: 10.1021/acs.jced.9b00835.",
+        "doi": "10.5281/zenodo.7691378",
+        "version": "Zenodo 7691378, version 1.1.4; public ASR subset",
+        "conditions": "CoRE public=Y, DISORDER field empty, from_CSD=Y; ASR means all solvents removed. CSD refcode WIZMAV02. Source CIF has 696 explicitly listed ordered sites, formula Zr3C42H26O16, full occupancy, and no guest species."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "CoRE metadata from_CSD=Y; CSD refcode WIZMAV02.",
+          "CoRE metadata Extension=auto; this label is preserved without interpretation.",
+          "The selected CoRE-MOF 2019 public ASR CIF payload is preserved byte-for-byte.",
+          "Retrieved the exact single record through the MOFX API (record id 185741, retrieval snapshot dc8a0295db); CIF SHA256 was checked against the independent source audit.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P1' differs from geometric recognition P2 at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P2",
+        "number": 3
+      },
+      "pointGroup": "2"
+    },
+    {
+      "id": "hkust-1-qmof-8b5bb88",
+      "category": "mof",
+      "name": "HKUST-1",
+      "nameEn": "HKUST-1 (Cu-BTC)",
+      "formula": "C6H2CuO4",
+      "aliases": [
+        "Cu-BTC",
+        "MOF-199",
+        "QMOF DOTSOV01_FSR"
+      ],
+      "phase": "HKUST-1（Cu-BTC）：QMOF PBE-D3BJ 优化的 tbo 框架（DOTSOV01_FSR）。",
+      "structurePath": "mof/hkust-1-qmof-8b5bb88/structure.json",
+      "sourcePath": "mof/hkust-1-qmof-8b5bb88/source.cif",
+      "source": {
+        "name": "QMOF Database v18 (QMOF-PBE)",
+        "recordId": "qmof-8b5bb88",
+        "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T05:14:14Z",
+        "citation": "QMOF v18 DFT record qmof-8b5bb88; original structure DOI: 10.1002/anie.200803925.",
+        "doi": "10.6084/m9.figshare.13147324.v18",
+        "version": "QMOF Figshare v18; NOMAD QMOF-PBE public dataset",
+        "conditions": "QMOF v18 record qmof-8b5bb88 (DOTSOV01_FSR), tbo topology, QMOF FSR framework, PBE-D3BJ optimized; QMOF source flag=CSD. Only the QMOF-released DFT structure is used; no original CSD CIF is redistributed. The upstream final CONTCAR is preserved as source.contcar (NOMAD upload EIDyjluDQ3eZnt-gI7Fc4Q, path vasp_files/DOTSOV01_FSR/CONTCAR); source.cif is its P1 CifWriter serialization. Full indexed cell formula Cu12C72H24O48; ordered sites, guest-free composition. QMOF calculation metadata: spin-polarized=True, ENCUT=520 eV, k-points=[1, 1, 1], Gamma-centered=True."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "QMOF recordName=DOTSOV01_FSR, indexed topology=tbo, source flag=CSD.",
+          "Downloaded the public final NOMAD CONTCAR for entry ka5m_V4UrxO_pOXwjTQo0cTU4kHf from the QMOF-PBE dataset; byte count and SHA256 match source evidence.",
+          "The exact upstream CONTCAR bytes are retained as source.contcar; no original CSD structure file is included.",
+          "source.cif is generated with pymatgen CifWriter(symprec=None, refine_struct=False); no symmetry refinement, geometry optimization, atom addition/removal, or cell transformation is applied.",
+          "CIF atom-site row order is preserved from the CONTCAR and its element sequence/fractional coordinates are checked site by site; sourceIndex refers to the derived source.cif rows.",
+          "CIF serialization round-trip metric tensor max delta=1.47e-07 Å²; fractional-coordinate max delta=4.99e-09.",
+          "Serialized source.cif SHA256 matches the independent QMOF extraction evidence (3feaba55d9c923b73ded4726c959e6c4b5488c1c86e2d2297e114c31d52f8bbd).",
+          "QMOF input metadata: spin-polarized=True, ENCUT=520 eV, k-points=[1, 1, 1], Gamma-centered=True.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P 1' differs from geometric recognition Fm-3m at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "Fm-3m",
+        "number": 225
+      },
+      "pointGroup": "m-3m"
+    },
+    {
+      "id": "mg-mof-74-core2019-opagix",
+      "category": "mof",
+      "name": "Mg-MOF-74",
+      "nameEn": "Mg-MOF-74 (CPO-27-Mg)",
+      "formula": "C4HMgO3",
+      "aliases": [
+        "CPO-27-Mg",
+        "MOF-74-Mg",
+        "CSD OPAGIX"
+      ],
+      "phase": "Mg-MOF-74：CoRE ASR 去客体化学计量框架。",
+      "structurePath": "mof/mg-mof-74-core2019-opagix/structure.json",
+      "sourcePath": "mof/mg-mof-74-core2019-opagix/source.cif",
+      "source": {
+        "name": "CoRE-MOF 2019 public ASR dataset",
+        "recordId": "OPAGIX_clean",
+        "url": "https://doi.org/10.5281/zenodo.7691378",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "curated",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "CoRE-MOF 2019 dataset v1.1.4; accompanying paper DOI: 10.1021/acs.jced.9b00835.",
+        "doi": "10.5281/zenodo.7691378",
+        "version": "Zenodo 7691378, version 1.1.4; public ASR subset",
+        "conditions": "CoRE public=Y, DISORDER field empty, from_CSD=Y; ASR means all solvents removed. CSD refcode OPAGIX. Source CIF has 162 explicitly listed ordered sites, formula Mg18C72H18O54, full occupancy, and no guest species."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "CoRE metadata from_CSD=Y; CSD refcode OPAGIX.",
+          "CoRE metadata Extension=clean; this label is preserved without interpretation.",
+          "The selected CoRE-MOF 2019 public ASR CIF payload is preserved byte-for-byte.",
+          "Retrieved the exact single record through the MOFX API (record id 180650, retrieval snapshot dc8a0295db); CIF SHA256 was checked against the independent source audit.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P 1' differs from geometric recognition R-3 at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R-3",
+        "number": 148
+      },
+      "pointGroup": "-3"
+    },
+    {
+      "id": "zif-8-qmof-e3dcc4d",
+      "category": "mof",
+      "name": "ZIF-8",
+      "nameEn": "ZIF-8",
+      "formula": "C8H10N4Zn",
+      "aliases": [
+        "ZIF 8",
+        "OFERUN03",
+        "sod ZIF-8"
+      ],
+      "phase": "ZIF-8：QMOF PBE-D3BJ 优化的 SOD 框架（FSR）。",
+      "structurePath": "mof/zif-8-qmof-e3dcc4d/structure.json",
+      "sourcePath": "mof/zif-8-qmof-e3dcc4d/source.cif",
+      "source": {
+        "name": "QMOF Database v18 (QMOF-PBE)",
+        "recordId": "qmof-e3dcc4d",
+        "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "QMOF v18 DFT record qmof-e3dcc4d; original structure DOI: 10.1021/ja202154j.",
+        "doi": "10.6084/m9.figshare.13147324.v18",
+        "version": "QMOF Figshare v18; NOMAD QMOF-PBE public dataset",
+        "conditions": "QMOF v18 record qmof-e3dcc4d (OFERUN03_FSR), sod topology, QMOF FSR framework, PBE-D3BJ optimized; QMOF source flag=CSD. Only the QMOF-released DFT structure is used; no original CSD CIF is redistributed. The upstream final CONTCAR is preserved as source.contcar (NOMAD upload EIDyjluDQ3eZnt-gI7Fc4Q, path vasp_files/OFERUN03_FSR/CONTCAR); source.cif is its P1 CifWriter serialization. Full indexed cell formula C48H60N24Zn6; ordered sites, guest-free composition."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "QMOF recordName=OFERUN03_FSR, indexed topology=sod, source flag=CSD.",
+          "Downloaded the public final NOMAD CONTCAR for entry 3zS5GB4fVURjJ-EeCZDfYf4XQitJ from the QMOF-PBE dataset; byte count and SHA256 match source evidence.",
+          "The exact upstream CONTCAR bytes are retained as source.contcar; no original CSD structure file is included.",
+          "source.cif is generated with pymatgen CifWriter(symprec=None, refine_struct=False); no symmetry refinement, geometry optimization, atom addition/removal, or cell transformation is applied.",
+          "CIF atom-site row order is preserved from the CONTCAR and its element sequence/fractional coordinates are checked site by site; sourceIndex refers to the derived source.cif rows.",
+          "CIF serialization round-trip metric tensor max delta=6.86e-08 Å²; fractional-coordinate max delta=4.99e-09.",
+          "Serialized source.cif SHA256 matches the independent QMOF extraction evidence (f19ddf5ae089315ae0b0974fed92f52d62676873ba78e127ed1ba2bfac8517e1).",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P 1' differs from geometric recognition I-43m at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I-43m",
+        "number": 217
+      },
+      "pointGroup": "-43m",
+      "bandGap": {
+        "value": 4.379815,
+        "unit": "eV",
+        "method": "PBE-D3BJ (QMOF v18)",
+        "source": {
+          "name": "QMOF Database v18",
+          "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+          "citation": "QMOF Database v18, record qmof-e3dcc4d (OFERUN03_FSR), field outputs.pbe.bandgap; dataset DOI 10.6084/m9.figshare.13147324.v18",
+          "doi": "10.6084/m9.figshare.13147324.v18"
+        }
+      }
+    },
+    {
+      "id": "zif-67-qmof-8d7621b",
+      "category": "mof",
+      "name": "ZIF-67",
+      "nameEn": "ZIF-67",
+      "formula": "C8H10CoN4",
+      "aliases": [
+        "ZIF 67",
+        "GITTOT",
+        "sod ZIF-67"
+      ],
+      "phase": "ZIF-67：QMOF PBE-D3BJ 优化的 SOD 框架（FSR）。",
+      "structurePath": "mof/zif-67-qmof-8d7621b/structure.json",
+      "sourcePath": "mof/zif-67-qmof-8d7621b/source.cif",
+      "source": {
+        "name": "QMOF Database v18 (QMOF-PBE)",
+        "recordId": "qmof-8d7621b",
+        "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "QMOF v18 DFT record qmof-8d7621b; no original structure DOI is listed by QMOF.",
+        "doi": "10.6084/m9.figshare.13147324.v18",
+        "version": "QMOF Figshare v18; NOMAD QMOF-PBE public dataset",
+        "conditions": "QMOF v18 record qmof-8d7621b (core_GITTOT_manual), sod topology, QMOF FSR framework, PBE-D3BJ optimized; QMOF source flag=CoRE. Only the QMOF-released DFT structure is used; no original CSD CIF is redistributed. The upstream final CONTCAR is preserved as source.contcar (NOMAD upload EIDyjluDQ3eZnt-gI7Fc4Q, path vasp_files/core_GITTOT_manual/CONTCAR); source.cif is its P1 CifWriter serialization. Full indexed cell formula C48H60Co6N24; ordered sites, guest-free composition."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "QMOF recordName=core_GITTOT_manual, indexed topology=sod, source flag=CoRE.",
+          "Downloaded the public final NOMAD CONTCAR for entry EOV_M-8rNlEEJK5f4pz7w4YLUF4j from the QMOF-PBE dataset; byte count and SHA256 match source evidence.",
+          "The exact upstream CONTCAR bytes are retained as source.contcar; no original CSD structure file is included.",
+          "source.cif is generated with pymatgen CifWriter(symprec=None, refine_struct=False); no symmetry refinement, geometry optimization, atom addition/removal, or cell transformation is applied.",
+          "CIF atom-site row order is preserved from the CONTCAR and its element sequence/fractional coordinates are checked site by site; sourceIndex refers to the derived source.cif rows.",
+          "CIF serialization round-trip metric tensor max delta=2.58e-08 Å²; fractional-coordinate max delta=5e-09.",
+          "Serialized source.cif SHA256 matches the independent QMOF extraction evidence (80612a025febd3fd2c3065227e404aa72ca4cf1e2f52298a2947a3c0f83d9728).",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1",
+      "bandGap": {
+        "value": 1.129702,
+        "unit": "eV",
+        "method": "PBE-D3BJ (QMOF v18)",
+        "source": {
+          "name": "QMOF Database v18",
+          "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+          "citation": "QMOF Database v18, record qmof-8d7621b (core_GITTOT_manual), field outputs.pbe.bandgap; dataset DOI 10.6084/m9.figshare.13147324.v18",
+          "doi": "10.6084/m9.figshare.13147324.v18"
+        }
+      }
+    },
+    {
+      "id": "mof-5-qmof-a2d95c3",
+      "category": "mof",
+      "name": "MOF-5",
+      "nameEn": "MOF-5 (IRMOF-1)",
+      "formula": "C24H12O13Zn4",
+      "aliases": [
+        "IRMOF-1",
+        "MIBQAR01",
+        "pcu MOF-5"
+      ],
+      "phase": "MOF-5（IRMOF-1）：QMOF PBE-D3BJ 优化的 PCU 框架（FSR）。",
+      "structurePath": "mof/mof-5-qmof-a2d95c3/structure.json",
+      "sourcePath": "mof/mof-5-qmof-a2d95c3/source.cif",
+      "source": {
+        "name": "QMOF Database v18 (QMOF-PBE)",
+        "recordId": "qmof-a2d95c3",
+        "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "QMOF v18 DFT record qmof-a2d95c3; original structure DOI: 10.1021/jp103212z.",
+        "doi": "10.6084/m9.figshare.13147324.v18",
+        "version": "QMOF Figshare v18; NOMAD QMOF-PBE public dataset",
+        "conditions": "QMOF v18 record qmof-a2d95c3 (MIBQAR01_FSR), pcu topology, QMOF FSR framework, PBE-D3BJ optimized; QMOF source flag=CSD. Only the QMOF-released DFT structure is used; no original CSD CIF is redistributed. The upstream final CONTCAR is preserved as source.contcar (NOMAD upload EIDyjluDQ3eZnt-gI7Fc4Q, path vasp_files/MIBQAR01_FSR/CONTCAR); source.cif is its P1 CifWriter serialization. Full indexed cell formula C48H24O26Zn8; ordered sites, guest-free composition."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "QMOF recordName=MIBQAR01_FSR, indexed topology=pcu, source flag=CSD.",
+          "Downloaded the public final NOMAD CONTCAR for entry QmgKGlo0jOczazz3ut6EZZ8I9SCY from the QMOF-PBE dataset; byte count and SHA256 match source evidence.",
+          "The exact upstream CONTCAR bytes are retained as source.contcar; no original CSD structure file is included.",
+          "source.cif is generated with pymatgen CifWriter(symprec=None, refine_struct=False); no symmetry refinement, geometry optimization, atom addition/removal, or cell transformation is applied.",
+          "CIF atom-site row order is preserved from the CONTCAR and its element sequence/fractional coordinates are checked site by site; sourceIndex refers to the derived source.cif rows.",
+          "CIF serialization round-trip metric tensor max delta=1.63e-07 Å²; fractional-coordinate max delta=4.97e-09.",
+          "Serialized source.cif SHA256 matches the independent QMOF extraction evidence (52aa9b1414ef23b4c04fa717ad9711292318afef8ef7f6fa384a5fd162da8fa3).",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P 1' differs from geometric recognition Fm-3m at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "Fm-3m",
+        "number": 225
+      },
+      "pointGroup": "m-3m",
+      "bandGap": {
+        "value": 3.551834,
+        "unit": "eV",
+        "method": "PBE-D3BJ (QMOF v18)",
+        "source": {
+          "name": "QMOF Database v18",
+          "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+          "citation": "QMOF Database v18, record qmof-a2d95c3 (MIBQAR01_FSR), field outputs.pbe.bandgap; dataset DOI 10.6084/m9.figshare.13147324.v18",
+          "doi": "10.6084/m9.figshare.13147324.v18"
+        }
+      }
+    },
+    {
+      "id": "uio-66-nh2-author-zenodo-4044212",
+      "category": "mof",
+      "name": "UiO-66-NH2",
+      "nameEn": "UiO-66-NH2",
+      "formula": "C24H17N3O16Zr3",
+      "aliases": [
+        "NH2-UiO-66",
+        "UiO-66-NH2 P1 primitive"
+      ],
+      "phase": "UiO-66-NH2：P1 原胞 DFT 优化框架。",
+      "structurePath": "mof/uio-66-nh2-author-zenodo-4044212/structure.json",
+      "sourcePath": "mof/uio-66-nh2-author-zenodo-4044212/source.cif",
+      "source": {
+        "name": "Author-deposited characterization data for A data-driven perspective on the colours of metal-organic frameworks",
+        "recordId": "sample_005/spectra/xray/uio-66-nh2_prim_dftopt_DDEC.cif",
+        "url": "https://doi.org/10.5281/zenodo.4044212",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "A data-driven perspective on the colours of metal-organic frameworks, DOI: 10.1039/D0SC05337F.",
+        "doi": "10.5281/zenodo.4044212",
+        "version": "Zenodo record 4044212; author CIF file",
+        "conditions": "Author CIF sample_005/spectra/xray/uio-66-nh2_prim_dftopt_DDEC.cif; file name identifies a primitive DFT-optimized framework. Composition Zr6C48H34N6O32, 126 ordered P1 sites, no guest species. CIF omits _atom_site_occupancy, so coreCIF default 1.0 applies. DDEC atom-site charge tags remain only in source.cif and are not model charges or calculated results."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Exact author-deposited Zenodo CIF bytes preserved unchanged; license, file path, source size, and SHA256 match source evidence.",
+          "Source CIF is P1 with identity-only symmetry; site ordering is verified against source atom-site rows.",
+          "The source CIF omits _atom_site_occupancy; IUCr coreCIF 2.4.5 defines the enumeration default as 1.0, and pymatgen parses all sites as ordered.",
+          "Per-atom DDEC charge tags are preserved in source.cif only; they are not promoted to charge or results.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed by this normalization.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1"
+    }
+  ]
+}

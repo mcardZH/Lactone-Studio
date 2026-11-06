@@ -1,0 +1,10 @@
+.sampling-sphere-editor { min-width: 0; }
+.sampling-sphere-editor fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.sampling-sphere-control-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.sampling-sphere-control-flow > label,
+.sampling-sphere-minimum { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; white-space: nowrap; }
+.sampling-sphere-control-flow input[type="number"] { width: 7rem; }
+.sampling-sphere-control-flow button { flex: 0 0 auto; white-space: nowrap; }
+.sampling-sphere-minimum { font-variant-numeric: tabular-nums; }
+.sampling-sphere-error { color: var(--ui-error-color, #a12525); margin: 6px 0 0; }
+.sampling-sphere-empty { color: var(--ui-control-muted); margin: 4px 0; }

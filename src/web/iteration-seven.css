@@ -1,0 +1,31 @@
+.method-chooser .card-dropdown-trigger{background:#f7faf8;border-color:#d4e3da;color:#416d59}
+.method-chooser .card-dropdown-trigger:hover{background:#f0f7f2;border-color:#accbb8}
+:root .card-dropdown-popup{background:#fbfdfb;border-color:#cedfd3}
+:root .dropdown-option{background:#fafcfb;border-color:#e3ece6}
+:root .dropdown-option.selected{background:#f0f7f1;border-color:#9dc4aa}
+:root .dropdown-option[data-active=true]{background:#f2f8f3;outline-color:#a8cbb2}
+.method-catalog-popup.card-dropdown-popup{position:fixed;z-index:160;right:auto;display:flex;flex-direction:column;box-shadow:0 14px 48px #233e2b26}
+.method-catalog-popup.card-dropdown-popup [role=listbox]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;max-height:none;min-height:0;overflow-y:auto;padding:12px;align-items:stretch}
+.method-catalog-popup .dropdown-option{margin:0;padding:13px 15px}
+.method-catalog-popup .dropdown-option-title strong{font-size:16px;line-height:1.4;font-weight:650;color:#315c45}
+.method-family{display:inline-block;color:#708c78;font-size:10px;border-radius:4px;background:#f0f5f1;padding:1px 6px}
+.zindo-method-note{border:1px solid #d8e7dd;background:#f8fbf9;border-radius:9px;padding:16px;margin:16px 0 22px;color:#4d7760;font-size:12px;line-height:1.9}
+.zindo-method-note strong{font-size:15px}.zindo-method-note p{margin-top:6px}
+.advanced-options-stack{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.advanced-options-stack>.advanced-details{margin:0}.advanced-options-stack .classic-options>summary{display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:550}
+.advanced-options-stack .classic-options>summary>svg:last-child{margin-left:auto}.advanced-options-stack .classic-options>summary::marker{content:''}
+.molecule-editor-backdrop .molecule-editor-modal{height:min(900px,94dvh)}
+.molecule-editor-modal>header,.editor-chem-toolbar,.molecule-editor-modal>footer{flex-shrink:0}
+.editor-workspace{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);flex:1;min-height:0;overflow:hidden}
+.editor-workspace>section{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.editor-three-dimensional{border-left:1px solid #e4ece7;background:#f9fbfa}
+.editor-pane-heading{display:flex;justify-content:space-between;gap:12px;flex-shrink:0;padding:10px 14px;border-bottom:1px solid #e8eeea;color:#496d59;font-size:11px}
+.editor-pane-heading span{font-size:10px;color:#90a296}
+.molecule-editor-modal .editor-workspace iframe{min-height:0!important;height:100%;flex:1;width:100%}
+.molecule-editor-modal .editor-three-dimensional>.molecule-stage{flex:1;min-height:0;height:auto;border:0}
+.molecule-editor-modal .editor-three-dimensional .molecule-canvas,.molecule-editor-modal .editor-three-dimensional .fallback-view{inset:77px 0 26px;min-height:0}
+.editor-preview-empty{display:grid;place-items:center;flex:1;padding:30px;line-height:1.9;text-align:center;color:#93a598;font-size:12px}
+.editor-view-tabs{display:none}
+.molecule-editor-modal>footer>div{min-width:160px}.molecule-editor-backdrop .molecule-editor-modal>footer{padding:12px 16px}.molecule-editor-modal footer small{max-width:650px}
+@media(max-width:800px){.method-catalog-popup.card-dropdown-popup [role=listbox]{grid-template-columns:repeat(2,minmax(0,1fr))}:root .molecule-editor-backdrop{padding:7px}.molecule-editor-backdrop .molecule-editor-modal{width:100%;height:calc(100dvh - 14px);max-height:calc(100dvh - 14px)}.editor-view-tabs{display:flex;flex-shrink:0;gap:4px;padding:6px 10px;border-bottom:1px solid #e6eee8}.editor-view-tabs button{flex:1;padding:7px;border:1px solid #dce9e0;background:#fafcfb;border-radius:5px;color:#6e8877;font-size:11px}.editor-view-tabs button[aria-pressed=true]{background:#eef6f0;color:#38674b;border-color:#aecdb8}.editor-workspace{display:block;min-height:170px}.editor-workspace>section{height:100%}.editor-workspace[data-mobile-pane='2d']>.editor-three-dimensional,.editor-workspace[data-mobile-pane='3d']>.editor-two-dimensional{display:none}.editor-three-dimensional{border-left:0}.molecule-editor-backdrop .molecule-editor-modal>footer{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:9px 10px}.molecule-editor-modal>footer>div{grid-column:1/-1;min-width:0}.molecule-editor-modal>footer>.field{min-width:0;grid-column:1/-1}.molecule-editor-modal>footer>.field select{min-height:30px;padding:4px 8px}.molecule-editor-backdrop .molecule-editor-modal footer small{display:none}.molecule-editor-modal .editor-chem-toolbar{gap:7px;padding:8px 10px}.molecule-editor-modal .smiles-field{flex-basis:100%;min-width:0}.molecule-editor-modal .editor-chem-toolbar .button{min-height:30px}.molecule-editor-backdrop .molecule-editor-modal>header{padding:10px 12px}.molecule-editor-backdrop .molecule-editor-modal header p{font-size:9px;line-height:1.5}.editor-operation-status{font-size:10px;line-height:1.6}.editor-pane-heading{padding:7px 10px}}
+@media(max-width:560px){.method-catalog-popup.card-dropdown-popup [role=listbox]{grid-template-columns:1fr;gap:7px}.method-catalog-popup .dropdown-option-title strong{font-size:15px}.method-catalog-popup .dropdown-option{padding:10px 12px}.method-catalog-popup .dropdown-option small{line-height:1.6}.molecule-editor-modal .editor-three-dimensional .molecule-canvas,.molecule-editor-modal .editor-three-dimensional .fallback-view{inset:77px 0 25px}}

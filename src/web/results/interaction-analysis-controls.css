@@ -1,0 +1,28 @@
+.interaction-analysis-task .interaction-fragments {
+  display: grid;
+  gap: 8px;
+}
+
+.interaction-analysis-task .interaction-fragments > div {
+  min-width: 0;
+}
+
+.interaction-analysis-task .interaction-grid-dimensions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 9px;
+}
+
+.interaction-analysis-task .interaction-grid-dimensions input {
+  width: 6em;
+}
+
+.interaction-analysis-task .shared-input-field:has(input[type="number"]) {
+  flex: 0 1 auto;
+}
+.interaction-analysis-task .field-colorbar-settings { border-top: 1px solid var(--ui-surface-border, #d8e4de); padding-top: 9px; margin-top: 9px; }
+.interaction-analysis-task input[type="range"] { flex: 0 0 110px; width: 110px; max-width: 110px; }
+.interaction-surface-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.interaction-surface-flow > .shared-input-row { display: contents; }
+.interaction-surface-flow > .appearance-preset-picker { order: -1; flex: 0 1 auto; width: auto; margin: 0; }

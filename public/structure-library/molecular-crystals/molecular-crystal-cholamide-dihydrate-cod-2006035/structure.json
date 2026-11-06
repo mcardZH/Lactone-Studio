@@ -1,0 +1,1417 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-cholamide-dihydrate-cod-2006035",
+  "structure": {
+    "id": "molecular-crystal-cholamide-dihydrate-cod-2006035",
+    "name": "胆酰胺二水合物",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:1",
+        "sourceIndex": 32,
+        "element": "H",
+        "x": 5.001215095744925,
+        "y": 2.0658941999999985,
+        "z": 8.950456920827747
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:2",
+        "sourceIndex": 32,
+        "element": "H",
+        "x": 4.7858985945582555,
+        "y": 7.4739942,
+        "z": -0.9069247861354838
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:3",
+        "sourceIndex": 33,
+        "element": "H",
+        "x": 6.528004831432221,
+        "y": 2.2065048,
+        "z": 8.45549993383974
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:4",
+        "sourceIndex": 33,
+        "element": "H",
+        "x": 3.2591088588709605,
+        "y": 7.6146047999999995,
+        "z": -0.41196779914747683
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:5",
+        "sourceIndex": 34,
+        "element": "H",
+        "x": 0.019574227380607948,
+        "y": 9.7670286,
+        "z": 10.991779064269386
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:6",
+        "sourceIndex": 34,
+        "element": "H",
+        "x": 9.767539462922572,
+        "y": 4.3589286000000005,
+        "z": -2.948246929577121
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:7",
+        "sourceIndex": 35,
+        "element": "H",
+        "x": 1.1646665291460798,
+        "y": 9.3776454,
+        "z": 10.455812324028381
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:8",
+        "sourceIndex": 35,
+        "element": "H",
+        "x": 8.622447161157101,
+        "y": 3.9695454,
+        "z": -2.412280189336117
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:9",
+        "sourceIndex": 36,
+        "element": "H",
+        "x": 6.909702265354046,
+        "y": 6.197682599999999,
+        "z": -1.3884303129072628
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:10",
+        "sourceIndex": 36,
+        "element": "H",
+        "x": 2.8774114249491354,
+        "y": 0.7895826,
+        "z": 9.431962447599526
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:11",
+        "sourceIndex": 37,
+        "element": "H",
+        "x": 1.497428394616388,
+        "y": 8.274393,
+        "z": 1.2158898166079162
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:12",
+        "sourceIndex": 37,
+        "element": "H",
+        "x": 8.289685295686793,
+        "y": 2.866293,
+        "z": 6.827642318084346
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:13",
+        "sourceIndex": 38,
+        "element": "H",
+        "x": 0.6263752761794033,
+        "y": 2.1416075999999995,
+        "z": 1.0987928566203045
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:14",
+        "sourceIndex": 38,
+        "element": "H",
+        "x": 9.160738414123779,
+        "y": 7.5497076,
+        "z": 6.944739278071959
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:15",
+        "sourceIndex": 39,
+        "element": "H",
+        "x": 8.27989818199649,
+        "y": 0.9842741999999997,
+        "z": 7.759236185949653
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:16",
+        "sourceIndex": 39,
+        "element": "H",
+        "x": 1.50721550830669,
+        "y": 6.3923742,
+        "z": 0.2842959487426099
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:17",
+        "sourceIndex": 40,
+        "element": "H",
+        "x": 9.376054915310446,
+        "y": 0.6706044000000007,
+        "z": -2.645078214964812
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:18",
+        "sourceIndex": 40,
+        "element": "H",
+        "x": 0.4110587749927349,
+        "y": 6.0787044,
+        "z": 10.688610349657074
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:19",
+        "sourceIndex": 41,
+        "element": "H",
+        "x": 7.943221471050063,
+        "y": 9.017465940000001,
+        "z": 1.9662876805162401
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:20",
+        "sourceIndex": 41,
+        "element": "H",
+        "x": 1.8438922192531189,
+        "y": 3.60936594,
+        "z": 6.077244454176023
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:21",
+        "sourceIndex": 42,
+        "element": "H",
+        "x": 8.212367097533399,
+        "y": 10.36840932,
+        "z": 1.2239872142202777
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:22",
+        "sourceIndex": 42,
+        "element": "H",
+        "x": 1.574746592769783,
+        "y": 4.96030932,
+        "z": 6.819544920471985
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:23",
+        "sourceIndex": 43,
+        "element": "H",
+        "x": 6.5377919451225255,
+        "y": 9.16240302,
+        "z": 0.12838026597443264
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:24",
+        "sourceIndex": 43,
+        "element": "H",
+        "x": 3.249321745180657,
+        "y": 3.7543030200000005,
+        "z": 7.915151868717832
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:25",
+        "sourceIndex": 44,
+        "element": "H",
+        "x": 7.766074713255576,
+        "y": 9.36574758,
+        "z": -0.8311910511216902
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:26",
+        "sourceIndex": 44,
+        "element": "H",
+        "x": 2.0210389770476063,
+        "y": 3.95764758,
+        "z": 8.874723185813954
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:27",
+        "sourceIndex": 45,
+        "element": "H",
+        "x": 7.334462999513204,
+        "y": 7.006734359999999,
+        "z": 0.679729581738381
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:28",
+        "sourceIndex": 45,
+        "element": "H",
+        "x": 2.4526506907899766,
+        "y": 1.59863436,
+        "z": 7.3638025529538815
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:29",
+        "sourceIndex": 46,
+        "element": "H",
+        "x": 9.334949037811175,
+        "y": 7.516177379999999,
+        "z": -1.2631558499305195
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:30",
+        "sourceIndex": 46,
+        "element": "H",
+        "x": 0.45216465249200744,
+        "y": 2.10807738,
+        "z": 9.306687984622783
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:31",
+        "sourceIndex": 47,
+        "element": "H",
+        "x": 9.144100320850262,
+        "y": 6.12954054,
+        "z": -0.551947926557018
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:32",
+        "sourceIndex": 47,
+        "element": "H",
+        "x": 0.6430133694529199,
+        "y": 0.72144054,
+        "z": 8.595480061249281
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:33",
+        "sourceIndex": 48,
+        "element": "H",
+        "x": 9.658902500960211,
+        "y": 7.0575705,
+        "z": 1.5004526637277937
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:34",
+        "sourceIndex": 48,
+        "element": "H",
+        "x": 0.12821118934297085,
+        "y": 1.6494705,
+        "z": 6.54307947096447
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:35",
+        "sourceIndex": 49,
+        "element": "H",
+        "x": 2.08759135014167,
+        "y": 7.1603244,
+        "z": 4.66639680432986
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:36",
+        "sourceIndex": 49,
+        "element": "H",
+        "x": 7.699522340161511,
+        "y": 1.7522244,
+        "z": 3.3771353303624028
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:37",
+        "sourceIndex": 50,
+        "element": "H",
+        "x": 1.6540222136612388,
+        "y": 6.23662092,
+        "z": 3.480642330762993
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:38",
+        "sourceIndex": 50,
+        "element": "H",
+        "x": 8.133091476641942,
+        "y": 0.82852092,
+        "z": 4.56288980392927
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:39",
+        "sourceIndex": 51,
+        "element": "H",
+        "x": 3.357958707143022,
+        "y": 7.81145964,
+        "z": 2.9483450754129157
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:40",
+        "sourceIndex": 51,
+        "element": "H",
+        "x": 6.429154983160159,
+        "y": 2.40335964,
+        "z": 5.095187059279347
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:41",
+        "sourceIndex": 52,
+        "element": "H",
+        "x": 2.646435541857981,
+        "y": 9.61343856,
+        "z": 4.103102489220789
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:42",
+        "sourceIndex": 52,
+        "element": "H",
+        "x": 7.140678148445201,
+        "y": 4.2053385599999995,
+        "z": 3.940429645471474
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:43",
+        "sourceIndex": 53,
+        "element": "H",
+        "x": 0.3493999587438246,
+        "y": 9.72592704,
+        "z": 2.462977097208514
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:44",
+        "sourceIndex": 53,
+        "element": "H",
+        "x": 9.437713731559356,
+        "y": 4.31782704,
+        "z": 5.58055503748375
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:45",
+        "sourceIndex": 54,
+        "element": "H",
+        "x": 0.849521468318316,
+        "y": 0.8058069000000001,
+        "z": 4.483996989291289
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:46",
+        "sourceIndex": 54,
+        "element": "H",
+        "x": 8.937592221984865,
+        "y": 6.2139069000000005,
+        "z": 3.5595351454009743
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:47",
+        "sourceIndex": 55,
+        "element": "H",
+        "x": 9.473926052213478,
+        "y": 0.8523165599999998,
+        "z": 0.12247010638210964
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:48",
+        "sourceIndex": 55,
+        "element": "H",
+        "x": 0.313187638089703,
+        "y": 6.26041656,
+        "z": 7.9210620283101525
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:49",
+        "sourceIndex": 56,
+        "element": "H",
+        "x": 1.3809617417017792,
+        "y": 2.450950919999999,
+        "z": 2.9733139842050775
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:50",
+        "sourceIndex": 56,
+        "element": "H",
+        "x": 8.406151948601403,
+        "y": 7.8590509200000005,
+        "z": 5.070218150487185
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:51",
+        "sourceIndex": 57,
+        "element": "H",
+        "x": 2.585755436978102,
+        "y": 10.375980660000002,
+        "z": 1.4036141899856966
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:52",
+        "sourceIndex": 57,
+        "element": "H",
+        "x": 7.201358253325081,
+        "y": 4.96788066,
+        "z": 6.639917944706568
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:53",
+        "sourceIndex": 58,
+        "element": "H",
+        "x": 4.935641434019895,
+        "y": 9.97578126,
+        "z": 2.9156084555253092
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:54",
+        "sourceIndex": 58,
+        "element": "H",
+        "x": 4.851472256283286,
+        "y": 4.5676812600000005,
+        "z": 5.127923679166955
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:55",
+        "sourceIndex": 59,
+        "element": "H",
+        "x": 4.635177043727588,
+        "y": 9.44037936,
+        "z": 1.4597552189902565
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:56",
+        "sourceIndex": 59,
+        "element": "H",
+        "x": 5.151936646575594,
+        "y": 4.03227936,
+        "z": 6.583776915702008
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:57",
+        "sourceIndex": 60,
+        "element": "H",
+        "x": 5.8194178002542705,
+        "y": 0.9691315199999989,
+        "z": 1.9535462072880192
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:58",
+        "sourceIndex": 60,
+        "element": "H",
+        "x": 3.9676958900489097,
+        "y": 6.3772315200000005,
+        "z": 6.089985927404244
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:59",
+        "sourceIndex": 61,
+        "element": "H",
+        "x": 5.246871649371535,
+        "y": 0.5635240200000003,
+        "z": 0.543362177408522
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:60",
+        "sourceIndex": 61,
+        "element": "H",
+        "x": 4.540242040931646,
+        "y": 5.97162402,
+        "z": 7.50016995728374
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:61",
+        "sourceIndex": 62,
+        "element": "H",
+        "x": 3.4049368528564767,
+        "y": 1.7846730000000004,
+        "z": 0.7849984296594379
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:62",
+        "sourceIndex": 62,
+        "element": "H",
+        "x": 6.382176837446704,
+        "y": 7.192773000000001,
+        "z": 7.258533705032825
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:63",
+        "sourceIndex": 63,
+        "element": "H",
+        "x": 3.3863413368449002,
+        "y": 2.258422560000001,
+        "z": 4.357835318603524
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:64",
+        "sourceIndex": 63,
+        "element": "H",
+        "x": 6.40077235345828,
+        "y": 7.66652256,
+        "z": 3.6856968160887393
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:65",
+        "sourceIndex": 64,
+        "element": "H",
+        "x": 4.449221883611825,
+        "y": 1.1357009999999998,
+        "z": 4.119023108431103
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:66",
+        "sourceIndex": 64,
+        "element": "H",
+        "x": 5.337891806691355,
+        "y": 6.543801,
+        "z": 3.924509026261161
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:67",
+        "sourceIndex": 65,
+        "element": "H",
+        "x": 3.0535794713745927,
+        "y": 0.7744399200000012,
+        "z": 4.738806426023985
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:68",
+        "sourceIndex": 65,
+        "element": "H",
+        "x": 6.733534218928588,
+        "y": 6.18253992,
+        "z": 3.3047257086682778
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:69",
+        "sourceIndex": 66,
+        "element": "H",
+        "x": 0.4110587749927356,
+        "y": 10.19102364,
+        "z": 6.083591749657076
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:70",
+        "sourceIndex": 66,
+        "element": "H",
+        "x": 9.376054915310446,
+        "y": 4.78292364,
+        "z": 1.9599403850351882
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:71",
+        "sourceIndex": 67,
+        "element": "H",
+        "x": 1.5571297881272377,
+        "y": 9.1721376,
+        "z": 5.78248656262954
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:72",
+        "sourceIndex": 67,
+        "element": "H",
+        "x": 8.229983902175944,
+        "y": 3.7640376,
+        "z": 2.2610455720627236
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:73",
+        "sourceIndex": 68,
+        "element": "H",
+        "x": 0.21531650118667153,
+        "y": 8.67242916,
+        "z": 6.41696810696323
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:74",
+        "sourceIndex": 68,
+        "element": "H",
+        "x": 9.57179718911651,
+        "y": 3.2643291600000004,
+        "z": 1.6265640277290334
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:75",
+        "sourceIndex": 69,
+        "element": "H",
+        "x": 4.933684011281834,
+        "y": 3.1053310200000017,
+        "z": 2.7753833490983695
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:76",
+        "sourceIndex": 69,
+        "element": "H",
+        "x": 4.853429679021349,
+        "y": 8.51343102,
+        "z": 5.268148785593894
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:77",
+        "sourceIndex": 70,
+        "element": "H",
+        "x": 2.8118377632241045,
+        "y": 4.180461299999998,
+        "z": 1.2826457822970867
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:78",
+        "sourceIndex": 70,
+        "element": "H",
+        "x": 6.975275927079078,
+        "y": 9.5885613,
+        "z": 6.760886352395175
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:79",
+        "sourceIndex": 71,
+        "element": "H",
+        "x": 3.797400111837635,
+        "y": 5.07928752,
+        "z": 2.109672468260599
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:80",
+        "sourceIndex": 71,
+        "element": "H",
+        "x": 5.9897135784655475,
+        "y": 10.48738752,
+        "z": 5.9338596664316645
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:81",
+        "sourceIndex": 72,
+        "element": "H",
+        "x": 2.875454002211074,
+        "y": 4.048503659999999,
+        "z": 2.843802341172587
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:82",
+        "sourceIndex": 72,
+        "element": "H",
+        "x": 6.911659688092108,
+        "y": 9.45660366,
+        "z": 5.199729793519677
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:83",
+        "sourceIndex": 73,
+        "element": "H",
+        "x": 5.947628989597243,
+        "y": 4.380561,
+        "z": 1.1545012782524884
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:84",
+        "sourceIndex": 73,
+        "element": "H",
+        "x": 3.839484700705939,
+        "y": 9.788661000000001,
+        "z": 6.889030856439774
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:85",
+        "sourceIndex": 74,
+        "element": "H",
+        "x": 6.190349409116763,
+        "y": 2.873864340000001,
+        "z": 0.8040600751928553
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:86",
+        "sourceIndex": 74,
+        "element": "H",
+        "x": 3.5967642811864198,
+        "y": 8.28196434,
+        "z": 7.239472059499407
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:87",
+        "sourceIndex": 75,
+        "element": "H",
+        "x": 4.194756927663944,
+        "y": 3.1972687199999985,
+        "z": -0.700808327070896
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:88",
+        "sourceIndex": 75,
+        "element": "H",
+        "x": 5.5923567626392385,
+        "y": 8.60536872,
+        "z": 8.744340461763159
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:89",
+        "sourceIndex": 76,
+        "element": "H",
+        "x": 4.609730548132799,
+        "y": 4.7104551,
+        "z": -0.6165437645599436
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:90",
+        "sourceIndex": 76,
+        "element": "H",
+        "x": 5.177383142170384,
+        "y": 10.1185551,
+        "z": 8.660075899252206
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:91",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 8.30436596622225,
+        "y": 9.404685899999999,
+        "z": 1.1530266162863856
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:92",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 1.4827477240809321,
+        "y": 3.9965859,
+        "z": 6.890505518405878
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:93",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 7.4685464570703575,
+        "y": 8.9287731,
+        "z": -0.016776028016333377
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:94",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.318567233232825,
+        "y": 3.5206731,
+        "z": 8.060308162708596
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:95",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 7.60262991462751,
+        "y": 7.430729400000001,
+        "z": -0.1622246377710499
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:96",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 2.184483775675671,
+        "y": 2.0226294,
+        "z": 8.205756772463312
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:97",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 9.054058874899473,
+        "y": 7.08893748,
+        "z": -0.4384754221961873
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:98",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 0.7330548154037081,
+        "y": 1.68083748,
+        "z": 8.48200755688845
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:99",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 0.17029577821127626,
+        "y": 7.55295246,
+        "z": 4.028033859143647
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:100",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 9.616817912091905,
+        "y": 2.14485246,
+        "z": 4.015498275548617
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:101",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.6334692749116022,
+        "y": 7.148426580000001,
+        "z": 3.8091557132801386
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:102",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 8.153644415391579,
+        "y": 1.7403265799999998,
+        "z": 4.234376421412124
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:103",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 2.4095873905526437,
+        "y": 8.033191740000001,
+        "z": 2.8370124115612354
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:104",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 7.377526299750537,
+        "y": 2.6250917400000002,
+        "z": 5.206519723131028
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:105",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 2.252993571507793,
+        "y": 9.50527656,
+        "z": 3.2116524974061593
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:106",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 7.534120118795389,
+        "y": 4.09717656,
+        "z": 4.831879637286104
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:107",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 0.767309713319771,
+        "y": 9.92278188,
+        "z": 3.3279517193598736
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:108",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 9.01980397698341,
+        "y": 4.51468188,
+        "z": 4.71558041533239
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:109",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": 0.02642520696382039,
+        "y": 9.06073074,
+        "z": 4.393815136763669
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:110",
+        "sourceIndex": 15,
+        "element": "C",
+        "x": 9.760688483339361,
+        "y": 3.65263074,
+        "z": 3.6497169979285946
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:111",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 0.6195242965961916,
+        "y": 0.6165233999999994,
+        "z": 3.56098878412602
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:112",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 9.16758939370699,
+        "y": 6.0246234,
+        "z": 4.482543350566242
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:113",
+        "sourceIndex": 17,
+        "element": "C",
+        "x": 1.4612160739622648,
+        "y": 1.5240025800000003,
+        "z": 2.6631887477095555
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:114",
+        "sourceIndex": 17,
+        "element": "C",
+        "x": 8.325897616340917,
+        "y": 6.9321025800000005,
+        "z": 5.380343386982709
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:115",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 2.9449425094122264,
+        "y": 1.1032523999999986,
+        "z": 2.6975316193289025
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:116",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 6.842171180890954,
+        "y": 6.5113524,
+        "z": 5.346000515363361
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:117",
+        "sourceIndex": 19,
+        "element": "C",
+        "x": 3.0114948825062897,
+        "y": 10.4430411,
+        "z": 2.2829770378448098
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:118",
+        "sourceIndex": 19,
+        "element": "C",
+        "x": 6.775618807796892,
+        "y": 5.0349411,
+        "z": 5.760555096847454
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:119",
+        "sourceIndex": 20,
+        "element": "C",
+        "x": 4.496200029325283,
+        "y": 10.1780442,
+        "z": 2.0749774626776256
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:120",
+        "sourceIndex": 20,
+        "element": "C",
+        "x": 5.2909136609779,
+        "y": 4.7699442,
+        "z": 5.968554672014638
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:121",
+        "sourceIndex": 21,
+        "element": "C",
+        "x": 5.023725457232622,
+        "y": 0.6825022199999993,
+        "z": 1.4802628447375383
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:122",
+        "sourceIndex": 21,
+        "element": "C",
+        "x": 4.763388233070558,
+        "y": 6.090602220000001,
+        "z": 6.563269289954724
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:123",
+        "sourceIndex": 22,
+        "element": "C",
+        "x": 3.893313826002606,
+        "y": 1.7435714400000002,
+        "z": 1.634033483180582
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:124",
+        "sourceIndex": 22,
+        "element": "C",
+        "x": 5.893799864300576,
+        "y": 7.15167144,
+        "z": 6.409498651511681
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:125",
+        "sourceIndex": 23,
+        "element": "C",
+        "x": 3.512595103449811,
+        "y": 1.3390455600000015,
+        "z": 4.111647283141053
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:126",
+        "sourceIndex": 23,
+        "element": "C",
+        "x": 6.274518586853369,
+        "y": 6.747145560000001,
+        "z": 3.9318848515512097
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:127",
+        "sourceIndex": 24,
+        "element": "C",
+        "x": 0.6058223374297679,
+        "y": 9.29544228,
+        "z": 5.802812439137451
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:128",
+        "sourceIndex": 24,
+        "element": "C",
+        "x": 9.181291352873414,
+        "y": 3.88734228,
+        "z": 2.2407196955548114
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:129",
+        "sourceIndex": 25,
+        "element": "C",
+        "x": 4.468796110992432,
+        "y": 3.151840679999999,
+        "z": 1.913839172700487
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:130",
+        "sourceIndex": 25,
+        "element": "C",
+        "x": 5.31831757931075,
+        "y": 8.55994068,
+        "z": 6.129692961991776
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:131",
+        "sourceIndex": 26,
+        "element": "C",
+        "x": 3.3892774709519924,
+        "y": 4.2129099,
+        "z": 2.0492175782439306
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:132",
+        "sourceIndex": 26,
+        "element": "C",
+        "x": 6.3978362193511895,
+        "y": 9.621009899999999,
+        "z": 5.994314556448334
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:133",
+        "sourceIndex": 27,
+        "element": "C",
+        "x": 5.513081141747782,
+        "y": 3.566101139999999,
+        "z": 0.8575870514721515
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:134",
+        "sourceIndex": 27,
+        "element": "C",
+        "x": 4.2740325485554,
+        "y": 8.97420114,
+        "z": 7.185945083220112
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:135",
+        "sourceIndex": 28,
+        "element": "C",
+        "x": 4.939556279496015,
+        "y": 3.8008126799999995,
+        "z": -0.5477203316208152
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:136",
+        "sourceIndex": 28,
+        "element": "C",
+        "x": 4.847557410807167,
+        "y": 9.208912680000001,
+        "z": 8.59125246631308
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:137",
+        "sourceIndex": 29,
+        "element": "C",
+        "x": 5.99950069215585,
+        "y": 3.567182760000001,
+        "z": -1.5888304014336427
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:138",
+        "sourceIndex": 29,
+        "element": "C",
+        "x": 3.787612998147332,
+        "y": 8.97528276,
+        "z": 9.632362536125905
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:139",
+        "sourceIndex": 5,
+        "element": "N",
+        "x": 5.797886150135604,
+        "y": 2.556949680000002,
+        "z": 8.947340636591695
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:140",
+        "sourceIndex": 5,
+        "element": "N",
+        "x": 3.9892275401675774,
+        "y": 7.965049680000001,
+        "z": -0.9038085018994324
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:141",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 6.732555507559558,
+        "y": 6.973204140000001,
+        "z": -1.2056564445451918
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:142",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 3.0545581827436235,
+        "y": 1.56510414,
+        "z": 9.249188579237456
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:143",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.077804236451367,
+        "y": 7.75629702,
+        "z": 1.4667674721951682
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:144",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 7.709309453851814,
+        "y": 2.3481970199999997,
+        "z": 6.576764662497096
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:145",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.9620732757568033,
+        "y": 1.429901640000001,
+        "z": 1.315603608840249
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:146",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.825040414546379,
+        "y": 6.83800164,
+        "z": 6.727928525852013
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:147",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.0124669591022295,
+        "y": 4.27564386,
+        "z": -1.649378025492993
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:148",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.774646731200953,
+        "y": 9.68374386,
+        "z": 9.692910160185257
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:149",
+        "sourceIndex": 30,
+        "element": "O",
+        "x": 0.38854841350503727,
+        "y": 9.05207778,
+        "z": 10.990518625747283
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:150",
+        "sourceIndex": 30,
+        "element": "O",
+        "x": 9.398565276798143,
+        "y": 3.6439777799999997,
+        "z": -2.9469864910550214
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:151",
+        "sourceIndex": 31,
+        "element": "O",
+        "x": 8.566660613122373,
+        "y": 0.2217320999999996,
+        "z": 8.327818277496137
+      },
+      {
+        "id": "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:152",
+        "sourceIndex": 31,
+        "element": "O",
+        "x": 1.2204530771808078,
+        "y": 5.6298321,
+        "z": -0.28428614280387376
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2006035; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:1",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:2",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:3",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:4",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:5",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:6",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:7",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:8",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:9",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:10",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:11",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:12",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:13",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:14",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:15",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:16",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:17",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:18",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:19",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:20",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:21",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:22",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:23",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:24",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:25",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:26",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:27",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:28",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:29",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:30",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:31",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:32",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:33",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:34",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:35",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:36",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:37",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:38",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:39",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:40",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:41",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:42",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:43",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:44",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:45",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:46",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:47",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:48",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:49",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:50",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:51",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:52",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:53",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:54",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:55",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:56",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:57",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:58",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:59",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:60",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:61",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:62",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:63",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:64",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:65",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:66",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:67",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:68",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:69",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:70",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:71",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:72",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:73",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:74",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:75",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:76",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:77",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:78",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:79",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:80",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:81",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:82",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:83",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:84",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:85",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:86",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:87",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:88",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:89",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:90",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:91",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:92",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:93",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:94",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:95",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:96",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:97",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:98",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:99",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:100",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:101",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:102",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:103",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:104",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:105",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:106",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:107",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:108",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:109",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:110",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:111",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:112",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:113",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:114",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:115",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:116",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:117",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:118",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:119",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:120",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:121",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:122",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:123",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:124",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:125",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:126",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:127",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:128",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:129",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:130",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:131",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:132",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:133",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:134",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:135",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:136",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:137",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:138",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:139",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:140",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:141",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:142",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:143",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:144",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:145",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:146",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:147",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:148",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:149",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:150",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:151",
+      "molecular-crystal-cholamide-dihydrate-cod-2006035:atom:152"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          9.78711369030318,
+          0.0,
+          -3.3184678653077375
+        ],
+        [
+          1.7393776203432437e-15,
+          10.8162,
+          6.623012354468801e-16
+        ],
+        [
+          0.0,
+          0.0,
+          11.362
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2006035 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

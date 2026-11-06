@@ -1,0 +1,5 @@
+[wrap-file]
+directory = s-dftd3
+source_url = https://github.com/dftd3/simple-dftd3/archive/5ee8c4d71414bf54db0b680ee3c532215847e0f9.tar.gz
+source_filename = s-dftd3-5ee8c4d71414bf54db0b680ee3c532215847e0f9.tar.gz
+source_hash = b61d7acfd5d3775f7626afc8ef1acf74f5f359e4e80e9d299b01cdd197037c39

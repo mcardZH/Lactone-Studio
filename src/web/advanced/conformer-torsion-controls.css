@@ -1,0 +1,11 @@
+.conformer-torsion-controls .coordinate-draft>header{justify-content:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:7px}
+.conformer-torsion-controls .coordinate-draft>header .shared-coordinate-row-delete{margin-left:auto}
+.conformer-torsion-controls .conformer-torsion-angle{font-size:var(--ui-control-small-font,13px);color:var(--ui-control-ink,#294454)}
+.geometry-controls.conformer-torsion-controls .coordinate-list article>.conformer-torsion-body{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
+.conformer-torsion-body>.interactive-selection-field{display:grid;flex:1 1 25em;max-width:100%}
+.conformer-torsion-body>.interactive-selection-field>:is(p,.interactive-selection-actions,.interactive-selection-conflict){flex-basis:100%}
+.conformer-torsion-controls .conformer-torsion-count-group{display:inline-flex;flex:0 1 auto;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%;min-width:0}
+.conformer-torsion-controls .conformer-torsion-body .conformer-torsion-points{display:inline-flex;flex:0 0 auto;flex-wrap:nowrap;align-items:center;gap:6px;margin:0}
+.conformer-torsion-controls .conformer-torsion-points>.shared-input-field-control{flex:0 0 auto}
+.conformer-torsion-controls .conformer-torsion-points input{width:7ch!important;min-width:7ch!important;max-width:7ch!important}
+.conformer-torsion-controls .conformer-torsion-auto{color:#65786d;font-size:var(--ui-control-small-font,13px)}

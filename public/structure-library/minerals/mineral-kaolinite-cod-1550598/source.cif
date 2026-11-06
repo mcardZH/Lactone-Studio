@@ -1,0 +1,97 @@
+#------------------------------------------------------------------------------
+#$Date: 2019-02-15 22:56:36 +0200 (Fri, 15 Feb 2019) $
+#$Revision: 213663 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/1/55/05/1550598.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/
+#
+# All data on this site have been placed in the public domain by the
+# contributors.
+#
+data_1550598
+loop_
+_publ_author_name
+'Richard, D.'
+'Rendtorff, N. M.'
+_publ_section_title
+;
+ First principles study of structural properties and electric field
+ gradients in kaolinite
+;
+_journal_name_full               'Applied Clay Science'
+_journal_page_first              67
+_journal_page_last               73
+_journal_paper_doi               10.1016/j.clay.2018.12.013
+_journal_volume                  169
+_journal_year                    2019
+_chemical_formula_sum            'Al2 H4 O9 Si2'
+_chemical_name_mineral           Kaolinite
+_space_group_IT_number           1
+_symmetry_Int_Tables_number      1
+_symmetry_space_group_name_Hall  'P 1'
+_symmetry_space_group_name_H-M   'P 1'
+_cell_angle_alpha                91.68430
+_cell_angle_beta                 105.12793
+_cell_angle_gamma                89.75488
+_cell_formula_units_Z            2
+_cell_length_a                   5.17375
+_cell_length_b                   8.98502
+_cell_length_c                   7.35224
+_cell_volume                     329.789
+_pd_phase_name                   WC-GGA-vcrelaxed
+_cod_data_source_file            1550598.cif
+_cod_data_source_block           1550598
+_cod_depositor_comments
+;Changed to the most representative structure of the paper, WC-GGA
+ vcrelaxed (doi 10.1016/j.clay.2018.12.013 )
+;
+_cod_original_cell_volume        329.8
+_cod_database_code               1550598
+loop_
+_symmetry_equiv_pos_as_xyz
+'x, y, z'
+loop_
+_atom_site_label
+_atom_site_occupancy
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_adp_type
+_atom_site_B_iso_or_equiv
+_atom_site_type_symbol
+Al1 1.0 0.297147 0.493633 0.479417 Biso 1.000000 Al
+Al2 1.0 0.797147 0.993632 0.479417 Biso 1.000000 Al
+Al3 1.0 0.789574 0.329432 0.476219 Biso 1.000000 Al
+Al4 1.0 0.289574 0.829432 0.476219 Biso 1.000000 Al
+Si1 1.0 0.992578 0.338298 0.088993 Biso 1.000000 Si
+Si2 1.0 0.492578 0.838298 0.088993 Biso 1.000000 Si
+Si3 1.0 0.506723 0.166674 0.090596 Biso 1.000000 Si
+Si4 1.0 0.006723 0.666674 0.090596 Biso 1.000000 Si
+O1 1.0 0.046560 0.352656 0.314858 Biso 1.000000 O
+O2 1.0 0.546560 0.852655 0.314858 Biso 1.000000 O
+O3 1.0 0.118232 0.661923 0.316163 Biso 1.000000 O
+O4 1.0 0.618232 0.161923 0.316162 Biso 1.000000 O
+O5 1.0 -0.001026 0.499784 -0.006917 Biso 1.000000 O
+O6 1.0 0.498974 -0.000216 -0.006917 Biso 1.000000 O
+O7 1.0 0.201767 0.229398 0.017111 Biso 1.000000 O
+O8 1.0 0.701768 0.729399 0.017111 Biso 1.000000 O
+O9 1.0 0.195266 0.766570 -0.006380 Biso 1.000000 O
+O10 1.0 0.695266 0.266570 -0.006380 Biso 1.000000 O
+O11 1.0 0.044944 0.967959 0.324405 Biso 1.000000 O
+O12 1.0 0.544944 0.467959 0.324405 Biso 1.000000 O
+O13 1.0 0.955660 0.165645 0.606370 Biso 1.000000 O
+O14 1.0 0.455660 0.665646 0.606369 Biso 1.000000 O
+O15 1.0 0.034160 0.471397 0.605974 Biso 1.000000 O
+O16 1.0 0.534160 0.971397 0.605974 Biso 1.000000 O
+O17 1.0 0.035727 0.856041 0.611962 Biso 1.000000 O
+O18 1.0 0.535728 0.356041 0.611962 Biso 1.000000 O
+H1 1.0 0.139289 0.061976 0.325415 Biso 1.000000 H
+H2 1.0 0.639289 0.561976 0.325415 Biso 1.000000 H
+H3 1.0 0.058405 0.171698 0.737653 Biso 1.000000 H
+H4 1.0 0.558405 0.671698 0.737653 Biso 1.000000 H
+H5 1.0 0.040960 0.501730 0.735497 Biso 1.000000 H
+H6 1.0 0.540960 0.001730 0.735497 Biso 1.000000 H
+H7 1.0 0.548033 0.315486 0.735267 Biso 1.000000 H
+H8 1.0 0.048033 0.815485 0.735267 Biso 1.000000 H

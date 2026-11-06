@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "hgs-cinnabar",
+  "structure": {
+    "id": "hgs-cinnabar",
+    "name": "硫化汞（α-HgS，辰砂）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "hgs-cinnabar:atom:1",
+        "sourceIndex": 1,
+        "element": "Hg",
+        "x": 1.3866666666666667,
+        "y": 0.0,
+        "z": 3.1799999999999997
+      },
+      {
+        "id": "hgs-cinnabar:atom:2",
+        "sourceIndex": 1,
+        "element": "Hg",
+        "x": -0.6933333333333331,
+        "y": 1.2008885599144217,
+        "z": 6.359999999999999
+      },
+      {
+        "id": "hgs-cinnabar:atom:3",
+        "sourceIndex": 1,
+        "element": "Hg",
+        "x": 1.3866666666666674,
+        "y": 2.401777119828844,
+        "z": 3.396353789635327e-16
+      },
+      {
+        "id": "hgs-cinnabar:atom:4",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 0.8736,
+        "y": 0.0,
+        "z": 7.949681999999999
+      },
+      {
+        "id": "hgs-cinnabar:atom:5",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": -0.4367999999999999,
+        "y": 0.7565597927460856,
+        "z": 1.5896820000000007
+      },
+      {
+        "id": "hgs-cinnabar:atom:6",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.6432000000000007,
+        "y": 2.84610588699718,
+        "z": 4.7696819999999995
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:1011369; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "hgs-cinnabar:atom:1",
+      "hgs-cinnabar:atom:2",
+      "hgs-cinnabar:atom:3",
+      "hgs-cinnabar:atom:4",
+      "hgs-cinnabar:atom:5",
+      "hgs-cinnabar:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.16,
+          0.0,
+          2.547265342226495e-16
+        ],
+        [
+          -2.0799999999999996,
+          3.6026656797432652,
+          2.547265342226495e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.54
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:1011369 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

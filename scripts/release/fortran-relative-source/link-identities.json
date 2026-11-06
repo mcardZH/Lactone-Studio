@@ -1,0 +1,56 @@
+{
+  "schema": "es-fortran-neutral-link-imports/v2",
+  "importLibraries": [
+    {
+      "path": "libblas.dll.a",
+      "bytes": 108748,
+      "sha256": "085736e9d132f6ad4a67ca27bd8fdcfdf67bb87c1e9ed2d2914a6231cd7fbf0b"
+    },
+    {
+      "path": "liblapack.dll.a",
+      "bytes": 1405276,
+      "sha256": "5e0c98e6bd7fd6df75c8d0753ae19c334b9df7885a38316bbe0a53ca425cec2b"
+    }
+  ],
+  "exportDefinitions": [
+    {
+      "path": "libblas.dll.def",
+      "bytes": 2202,
+      "sha256": "98835ff1b6303e234400a613438c43a3515d6600b0a7f2b05d800211f1f4ecd6"
+    },
+    {
+      "path": "liblapack.dll.def",
+      "bytes": 33290,
+      "sha256": "dabaa0a01f546378f5f6797b9fa8c7f1f79810b7f2dc81c08eb9732bb724339d"
+    }
+  ],
+  "importInterfacesEquivalentToOriginal": true,
+  "machine": "AMD64",
+  "regeneratedWithRelativeOutputFilenames": true,
+  "numericalImplementationIncluded": false,
+  "actualValidatedSixDllBuildUsed": "Original interface-equivalent import archives; regenerated archives are public build inputs only",
+  "commands": [
+    [
+      "dlltool.exe",
+      "--machine",
+      "i386:x86-64",
+      "--dllname",
+      "libblas.dll",
+      "--input-def",
+      "libblas.dll.def",
+      "--output-lib",
+      "libblas.dll.a"
+    ],
+    [
+      "dlltool.exe",
+      "--machine",
+      "i386:x86-64",
+      "--dllname",
+      "liblapack.dll",
+      "--input-def",
+      "liblapack.dll.def",
+      "--output-lib",
+      "liblapack.dll.a"
+    ]
+  ]
+}

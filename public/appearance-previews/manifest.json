@@ -1,0 +1,284 @@
+{
+  "schema": "sciyue-appearance-preview/v1",
+  "renderer": "Ester Studio ModelViewport and PNG export",
+  "purpose": "Current appearance choices rendered from identified retained sources and self-authored models/numerical fields. Appearance presets do not supply scientific results to a user project.",
+  "dimensions": [
+    640,
+    480
+  ],
+  "sources": {
+    "caffeine": {
+      "title": "Caffeine, PubChem CID 2519, retained PubChem3D conformer",
+      "url": "https://pubchem.ncbi.nlm.nih.gov/compound/2519",
+      "retrievalUrl": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/2519/SDF?record_type=3d",
+      "sourceFormat": "SDF",
+      "sourceSha256": "e506ea9252b10a927823ae137b5c3fe6796091bd4bed53b780f55e828735c101",
+      "atoms": 24,
+      "bonds": 25,
+      "coordinateUnit": "angstrom",
+      "identity": "Retained source coordinates, elements and original bond orders; not a SY-optimized geometry. Original retained PNG bytes are unchanged."
+    },
+    "water-orbital": {
+      "title": "Self-authored water HOMO amplitude, retained original GFN2-xTB calculation",
+      "charge": 0,
+      "multiplicity": 1,
+      "coordinateUnit": "angstrom",
+      "coordinates": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0.9572,
+          0,
+          0
+        ],
+        [
+          -0.2399872,
+          0.927297,
+          0
+        ]
+      ],
+      "elements": [
+        "O",
+        "H",
+        "H"
+      ],
+      "identity": "Original self-generated selected HOMO amplitude, positive and negative phases. Original retained PNG bytes and field threshold are unchanged. This orbital example does not claim a complete all-electron water density.",
+      "orbitalAmplitudeIsovalue": 0.03,
+      "orbitalAmplitudeUnit": "bohr^-3/2"
+    },
+    "self-h4-gfn2": {
+      "title": "Self-authored rigid H2-pair illustrative model",
+      "charge": 0,
+      "multiplicity": 1,
+      "coordinateUnit": "angstrom",
+      "elements": [
+        "H",
+        "H",
+        "H",
+        "H"
+      ],
+      "coordinates": [
+        [
+          -0.37,
+          0,
+          -0.9
+        ],
+        [
+          0.37,
+          0,
+          -0.9
+        ],
+        [
+          -0.37,
+          0,
+          0.9
+        ],
+        [
+          0.37,
+          0,
+          0.9
+        ]
+      ],
+      "optimized": false,
+      "electronicMethod": "GFN2-xTB, gas phase, fixed single point, GNU/OpenBLAS isolated candidate reporting 6.7.0",
+      "nativeBinarySha256": "8ee086b79963b1214a1bec753712cc46e5e430d510f0fad3c88f20b130b6db3b",
+      "postprocessor": "Multiwfn 2026.10.18",
+      "postprocessorSha256": "678c7064bb50b0aaafdf818c936ea9596a9f7595ed00adf3fbed9e1fb31c3aa1",
+      "representedElectrons": 4,
+      "physicalElectrons": 4,
+      "missingCoreElectrons": 0,
+      "identity": "Own formula-defined illustrative model, not an optimized or experimental hydrogen cluster. Native electron/charge readback and independent density/orbital normalization checks passed."
+    },
+    "self-h14-hirshfeld": {
+      "title": "Self-authored H14 finite cluster with central H2 target",
+      "coordinateUnit": "angstrom",
+      "construction": "Seven rigid H2 molecules aligned along X, each with bond .74 Angstrom: one centered at the origin and six centered at +/-X, +/-Y and +/-Z at 2.8 Angstrom.",
+      "targetAtomIndices": [
+        1,
+        2
+      ],
+      "environmentAtomIndices": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "method": "Existing Multiwfn/native finite-cluster Hirshfeld-weight 0.5 surface and standard dnorm, explicit .15 Bohr grid; closed surface verified",
+      "identity": "Own illustrative finite geometry, not a crystal or an optimized cluster. No external PDB/CIF or quantum wavefunction used."
+    },
+    "self-water-angle-schematic": {
+      "title": "Self-authored schematic angle-change displacement",
+      "coordinateUnit": "angstrom",
+      "elements": [
+        "O",
+        "H",
+        "H"
+      ],
+      "coordinates": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0.758602,
+          0,
+          0.504284
+        ],
+        [
+          -0.758602,
+          0,
+          0.504284
+        ]
+      ],
+      "displacementDefinition": "O fixed; H1 tangent proportional to (.504284,0,-.758602), H2 tangent proportional to (-.504284,0,-.758602). Jointly normalized, displayed at .8 Angstrom scale.",
+      "identity": "Geometric illustration only; no calculated frequency or quantum normal mode is claimed."
+    }
+  },
+  "images": [
+    {
+      "file": "structure-original.png",
+      "source": "caffeine",
+      "preset": "original",
+      "bytes": 60422,
+      "sha256": "93b126dbb64169ae75ea176b08386699c6be0a3f247af9821ab73a42728eb685"
+    },
+    {
+      "file": "structure-gallery-pastel.png",
+      "source": "caffeine",
+      "preset": "gallery-pastel",
+      "bytes": 72281,
+      "sha256": "fe4d06896dda3b5c9411f77375499096a4503d79f0090d975af2849ae1cf687e"
+    },
+    {
+      "file": "structure-gallery-cpk-glossy.png",
+      "source": "caffeine",
+      "preset": "gallery-cpk-glossy",
+      "bytes": 54158,
+      "sha256": "9951463d58f7fd0fdc10e7cc135ef58652729532d33fabef00bf2fb216cd4822"
+    },
+    {
+      "file": "structure-gallery-vmd-glossy.png",
+      "source": "caffeine",
+      "preset": "gallery-vmd-glossy",
+      "bytes": 46344,
+      "sha256": "2e6636c46afb00ba047a1a9f6320cad37d44915598f7e4eb94be9277539419f6"
+    },
+    {
+      "file": "surface-gallery-orbital.png",
+      "source": "water-orbital",
+      "preset": "gallery-orbital",
+      "bytes": 57833,
+      "sha256": "9f253b9228f3b07d3e921cb21170fa25f6ca52265ae667ebd4093238ca60c9a3"
+    },
+    {
+      "file": "surface-gallery-density.png",
+      "source": "self-h4-gfn2",
+      "preset": "gallery-density",
+      "definition": "Represented electron density with no missing core",
+      "isovalue": 0.001,
+      "isovalueUnit": "e/bohr^3",
+      "bytes": 50593,
+      "sha256": "8179cbd34984789861b90de73011b12138f9579bb777346c42dfd42aba58e0af"
+    },
+    {
+      "file": "surface-gallery-esp.png",
+      "source": "self-h4-gfn2",
+      "preset": "gallery-esp",
+      "definition": "Actual ESP on the same density .001 isosurface; original direct-node domain retained",
+      "displayRange": [
+        -0.05,
+        0.05
+      ],
+      "displayRangeUnit": "a.u.",
+      "bytes": 48483,
+      "sha256": "91da6a2206488a2e061241b1d8e0db70be9439ec2f5657574d3f6d5807cf915e"
+    },
+    {
+      "file": "surface-gallery-iri.png",
+      "source": "self-h4-gfn2",
+      "preset": "gallery-iri",
+      "definition": "Actual IRI mapped by sign(lambda2)rho; original low-density cutoff domain retained",
+      "isovalue": 1,
+      "displayRange": [
+        -0.05,
+        0.05
+      ],
+      "bytes": 31850,
+      "sha256": "a4f529db7ae7fb74ddea78b7eeba0d517a67431d7185f656b24142076e52146c"
+    },
+    {
+      "file": "surface-gallery-igmh.png",
+      "source": "self-h4-gfn2",
+      "preset": "gallery-igmh",
+      "definition": "Actual interfragment IGMH delta-g mapped by sign(lambda2)rho",
+      "fragments": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "isovalue": 0.01,
+      "displayRange": [
+        -0.05,
+        0.05
+      ],
+      "bytes": 48565,
+      "sha256": "63565bd4db334eed828fc0d3098e2bca84a3059c241fba1289bd61fbeb017099"
+    },
+    {
+      "file": "surface-gallery-dual.png",
+      "source": "self-h4-gfn2",
+      "preset": "gallery-dual",
+      "definition": "Actual HOMO opposite wavefunction phases illustrate cyan/green appearance; not TD/EH/NTO",
+      "amplitudeIsovalue": 0.044721359549995794,
+      "amplitudeUnit": "bohr^-3/2",
+      "equivalentProbabilityIsovalue": 0.002,
+      "bytes": 37071,
+      "sha256": "beb18c45e7fd8d42d38c40464cee89708f0fe5f982c4552ca12a81c4fa536a39"
+    },
+    {
+      "file": "surface-gallery-hirshfeld.png",
+      "source": "self-h14-hirshfeld",
+      "preset": "gallery-hirshfeld",
+      "definition": "Native Hirshfeld weight at .5 with standard dnorm mapping; zero stays white",
+      "displayRange": [
+        -0.15,
+        1.5
+      ],
+      "bytes": 30209,
+      "sha256": "277469f55b4a8335f36737ffe7469f21a88dfe64f3e33547fb4c0b998a890253"
+    },
+    {
+      "file": "vector-standard.png",
+      "source": "self-water-angle-schematic",
+      "preset": "standard",
+      "bytes": 16094,
+      "sha256": "c02f6fb0796e7264ea3dcb78ef4860af30069c77bc0af349ced89541aac51a02"
+    },
+    {
+      "file": "vector-teal.png",
+      "source": "self-water-angle-schematic",
+      "preset": "teal",
+      "identity": "Same schematic geometry, displacements, camera and arrow scale as standard",
+      "bytes": 16299,
+      "sha256": "0b7c2e24142cdbf47f153c24b8cef1e48a495ba89f3b287fb01b499a4996d998"
+    }
+  ],
+  "publicDistributionApproved": false
+}

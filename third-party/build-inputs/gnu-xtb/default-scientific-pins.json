@@ -1,0 +1,122 @@
+{
+  "schema": "sy-xtb-scientific-pins-v1",
+  "pins": [
+    {
+      "name": "xtb",
+      "repository": "https://github.com/grimme-lab/xtb",
+      "tag": null,
+      "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+      "role": "main",
+      "sourceArchiveUrl": "https://github.com/grimme-lab/xtb/archive/5071a8869720fb0ecd788af977159869b64a277c.tar.gz",
+      "archiveSha256": "2e4b378c644a053da66137f82aeeb8c796c81714fdfce917f71d94eac65f06fc"
+    },
+    {
+      "name": "dftd4",
+      "repository": "https://github.com/dftd4/dftd4",
+      "tag": "v3.4.0",
+      "commit": "f572723f5a5cb8243ea88b0253e182088311c6f3",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/dftd4/dftd4/archive/f572723f5a5cb8243ea88b0253e182088311c6f3.tar.gz",
+      "archiveSha256": "d753ddf4e5504278a37fdbea33ba2c8945794d1b082043d316855df5df386c77"
+    },
+    {
+      "name": "mctc-lib",
+      "repository": "https://github.com/grimme-lab/mctc-lib",
+      "tag": "v0.3.1",
+      "commit": "87a46cdf5281ad75909083c4f72354d54abdf95d",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/grimme-lab/mctc-lib/archive/87a46cdf5281ad75909083c4f72354d54abdf95d.tar.gz",
+      "archiveSha256": "9bab9cc10327cc4f2f12da88ec57bb036a70d97e6c5278afb439edf30c565ca9"
+    },
+    {
+      "name": "tblite",
+      "repository": "https://github.com/tblite/tblite",
+      "tag": null,
+      "commit": "d2f08e808afe69aa71a6a12163632569ee6e9a4a",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/tblite/tblite/archive/d2f08e808afe69aa71a6a12163632569ee6e9a4a.tar.gz",
+      "archiveSha256": "eaccb27616b30be5ddb09cdbe95567e3a81cb9f33e5ef02f2237b4b5de1b05ac"
+    },
+    {
+      "name": "cpcmx",
+      "repository": "https://github.com/grimme-lab/CPCM-X",
+      "tag": "v1.0.0",
+      "commit": "b41feaf44f09be0e90f5845eb7a8a6d2ade5471d",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/grimme-lab/CPCM-X/archive/b41feaf44f09be0e90f5845eb7a8a6d2ade5471d.tar.gz",
+      "archiveSha256": "133f75b0ae7e769facad787e8a163069d8eb14f9643d2c395819e96c4a89bc90"
+    },
+    {
+      "name": "multicharge",
+      "repository": "https://github.com/grimme-lab/multicharge",
+      "tag": "v0.2.0",
+      "commit": "46ea4e370b1a59e01cc022d1f65c64bae8dbf968",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/grimme-lab/multicharge/archive/46ea4e370b1a59e01cc022d1f65c64bae8dbf968.tar.gz",
+      "archiveSha256": "493aacf2c47fa939c84c725f35ec58c927dc027853de64c857236bb94afc0e20"
+    },
+    {
+      "name": "toml-f",
+      "repository": "https://github.com/toml-f/toml-f",
+      "tag": "v0.4.1",
+      "commit": "6290b0bc5f5ebeff231625a3b6685de85f33fc79",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/toml-f/toml-f/archive/6290b0bc5f5ebeff231625a3b6685de85f33fc79.tar.gz",
+      "archiveSha256": "0b4b1320a93ad3dcbffd79cdbe92c3c396fc95290018b3e1bdfe4bc43b2a0916"
+    },
+    {
+      "name": "s-dftd3",
+      "repository": "https://github.com/dftd3/simple-dftd3",
+      "tag": "v1.0.0",
+      "commit": "5ee8c4d71414bf54db0b680ee3c532215847e0f9",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/dftd3/simple-dftd3/archive/5ee8c4d71414bf54db0b680ee3c532215847e0f9.tar.gz",
+      "archiveSha256": "b61d7acfd5d3775f7626afc8ef1acf74f5f359e4e80e9d299b01cdd197037c39"
+    },
+    {
+      "name": "numsa",
+      "repository": "https://github.com/grimme-lab/numsa",
+      "tag": "v0.2.0",
+      "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+      "role": "runtime",
+      "sourceArchiveUrl": "https://github.com/grimme-lab/numsa/archive/3145b756c05883cec9698142b436c057546e2ac7.tar.gz",
+      "archiveSha256": "ef4699aa3c162cbab7cb95e3774b10e26040f4803301c735d40251a14798d0dd"
+    },
+    {
+      "name": "json-fortran",
+      "repository": "https://github.com/jacobwilliams/json-fortran",
+      "tag": "8.2.5",
+      "commit": "77c9f99d7d5c6a0ec9011f7225db3dbb6894ef6d",
+      "role": "runtime-json-enabled",
+      "sourceArchiveUrl": "https://github.com/jacobwilliams/json-fortran/archive/refs/tags/8.2.5.tar.gz",
+      "archiveSha256": "16eec827f64340c226ba9a8463f001901d469bc400a1e88b849f258f9ef0d100"
+    },
+    {
+      "name": "mstore",
+      "repository": "https://github.com/grimme-lab/mstore",
+      "tag": "v0.2.0",
+      "commit": "974fb59092f74c7db86a1a11b1aafb3cbf311aa3",
+      "role": "build-tests",
+      "sourceArchiveUrl": "https://github.com/grimme-lab/mstore/archive/974fb59092f74c7db86a1a11b1aafb3cbf311aa3.tar.gz",
+      "archiveSha256": "1adae8cd0368465e1b2ba2e8774bd5868b49987d153b4bc9b65555febfbef337"
+    },
+    {
+      "name": "test-drive",
+      "repository": "https://github.com/fortran-lang/test-drive",
+      "tag": "v0.4.0",
+      "commit": "9c3401e30dbd2da1add77aaa252a4c6928fe39a1",
+      "role": "build-tests",
+      "sourceArchiveUrl": "https://github.com/fortran-lang/test-drive/archive/9c3401e30dbd2da1add77aaa252a4c6928fe39a1.tar.gz",
+      "archiveSha256": "721fbc41d28bfbc42314dd0787a1803e3fd7036829cedfa49e4efc2ba322247b"
+    },
+    {
+      "name": "toml-test",
+      "repository": "https://github.com/toml-lang/toml-test",
+      "tag": "v1.1.0",
+      "commit": "4f6d38300ca184205490204812fc26fdfe7b5e45",
+      "role": "excluded-standalone-tests-only",
+      "sourceArchiveUrl": "https://github.com/BurntSushi/toml-test/archive/refs/tags/v1.1.0.tar.gz",
+      "archiveSha256": "dd6c681efd62a23593cb58fb8a81d6ab7d34d90a90f79e627f7361e3dac851c9"
+    }
+  ]
+}

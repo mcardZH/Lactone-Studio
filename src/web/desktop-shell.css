@@ -1,0 +1,36 @@
+/* Desktop composition keeps the parameter panel and model tools independently scrollable. */
+.app-shell.desktop-mode .main-shell{margin-left:0;height:100dvh;min-height:0;overflow:hidden}
+.app-shell.desktop-mode .topbar{flex-basis:39px;min-height:39px;height:39px;padding:0 14px}
+.desktop-mode .topbar .breadcrumb>span,.desktop-mode .topbar .breadcrumb>svg,.desktop-mode .avatar{display:none}
+.desktop-mode .workspace{padding:7px 10px 5px;overflow:hidden;min-height:0}
+.desktop-mode .page-heading{margin-bottom:4px;min-height:27px;align-items:center}
+.desktop-mode .page-heading h1{font-size:16px;letter-spacing:0}
+.desktop-mode .page-heading .new-input{min-height:27px;margin:0;padding:3px 9px;font-size:11px}
+.desktop-mode .stepper{margin:3px 0 7px;max-width:580px;min-height:30px}
+.desktop-mode .step{font-size:var(--ui-small-size,13px);gap:5px}.desktop-mode .step-number{height:22px;width:22px}
+.desktop-mode .workspace-grid{display:grid;grid-template-columns:minmax(270px,var(--form-width,30%)) 8px minmax(0,1fr);gap:0;min-height:0;flex:1;overflow:hidden;align-items:stretch}
+.desktop-mode .workspace-divider{height:100%;width:8px;touch-action:none;cursor:col-resize;position:relative;outline-offset:-1px;border-radius:4px}
+.desktop-mode .workspace-divider:before{content:'';position:absolute;left:3px;top:0;bottom:0;width:2px;background:#d8e5df;border-radius:2px}
+.desktop-mode .workspace-divider:hover:before,.desktop-mode .workspace-divider:focus-visible:before{background:#398777}
+.desktop-mode .form-card{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.desktop-mode .form-card .card-heading{padding:10px 13px}.desktop-mode .form-card .step-content{padding:12px 13px}
+.desktop-mode .form-card .card-heading p,.desktop-mode .recommended-card,.desktop-mode .task-footnote,.desktop-mode .editor-footnote,.desktop-mode .footer-security{display:none}
+.desktop-mode .section-divider{margin:14px 0 12px}.desktop-mode .wizard-footer{padding:10px 13px;min-height:52px}
+.desktop-mode .preview-column{min-height:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;display:block;position:relative;top:auto}
+.app-shell.desktop-mode .preview-column>.sticky-structure-card{height:auto;min-height:100%;max-height:none;overflow:visible;margin:0;display:flex;flex-direction:column;position:relative;top:auto}
+.desktop-mode .preview-card-heading{padding:6px 10px;min-height:32px}.desktop-mode .mobile-preview-toggle{display:none!important}
+.desktop-mode .structure-summary-nine{padding:5px 10px;min-height:43px}
+.app-shell.desktop-mode .structure-visual-content{display:flex!important;flex:1;min-height:0;flex-direction:column;padding:0}
+.desktop-mode .model-workspace{border:0;border-radius:0;padding:7px 9px;flex:1;min-height:0}
+.desktop-mode .model-stage{height:clamp(320px,calc(100dvh - 390px),760px);min-height:320px;flex-shrink:0}
+.desktop-mode .molecule-meta{padding:4px 10px}.desktop-mode .page-footer{margin-top:4px;padding:0;font-size:calc(10px * var(--ui-font-scale,1));color:#526879;min-height:12px}
+.desktop-mode .summary-card{margin-top:8px}
+@media(max-width:850px){
+  .app-shell.desktop-mode,.app-shell.desktop-mode .main-shell{height:100dvh;min-height:0;overflow:hidden}
+  .desktop-mode .workspace{display:flex;overflow:hidden}
+  .desktop-mode .workspace-grid{grid-template-columns:minmax(230px,var(--form-width,30%)) 8px minmax(340px,1fr)!important;overflow-x:auto;overflow-y:hidden}
+  .desktop-mode .form-card,.desktop-mode .preview-column{max-height:100%;overflow-y:auto}
+  .desktop-mode .structure-entry-grid{grid-template-columns:1fr!important}
+  .desktop-mode .draw-entry-card{min-height:60px!important;display:grid!important;text-align:left!important}
+  .desktop-mode .page-footer>span:last-child{display:none}
+}

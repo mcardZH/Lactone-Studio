@@ -1,0 +1,311 @@
+.task-environment-dialog .task-form-grid,
+.task-submit-dialog .task-resource-editor {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+	gap: 12px;
+	align-items: start;
+}
+.task-environment-dialog label,
+.task-submit-dialog label {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+.task-environment-dialog .task-checkbox,
+.task-submit-dialog .task-checkbox {
+	flex-direction: row;
+	align-items: center;
+}
+.task-path-field {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+.task-path-field input {
+	min-width: 0;
+	flex: 1;
+}
+.task-field-heading {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+.task-field-help {
+	padding: 2px 7px !important;
+}
+.task-environment-dialog textarea,
+.task-submit-dialog textarea {
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+	min-height: 90px;
+}
+.task-environment-dialog .task-assistant-panel,
+.task-environment-dialog .task-import-preview,
+.task-remote-browser {
+	padding: 12px;
+	border: 1px solid var(--border, #b8c8c1);
+	border-radius: 10px;
+	margin: 10px 0;
+	max-height: 55vh;
+	overflow: auto;
+}
+.task-assistant-panel pre,
+.task-import-preview pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.task-check-pending {
+	background: #f1ce62 !important;
+	color: #352b10 !important;
+}
+.task-check-passed,
+.task-save-environment {
+	background: #35825d !important;
+	color: white !important;
+}
+.task-remote-browser ul {
+	list-style: none;
+	padding: 0;
+}
+.task-remote-browser li button {
+	width: 100%;
+	text-align: left;
+}
+.task-environment-dialog footer,
+.task-submit-dialog footer {
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.task-resource-editor small {
+	grid-column: 1/-1;
+}
+.task-environment-dialog .task-environment-feedback pre {
+	max-height: 160px;
+	overflow: auto;
+	white-space: pre-wrap;
+}
+.task-environment-dialog .task-form-grid input,
+.task-environment-dialog .task-form-grid select,
+.task-submit-dialog input {
+	max-width: 100%;
+	box-sizing: border-box;
+}
+/* Environment P21: one main scroll owner, a fixed semantic label column. */
+.task-environment-dialog {
+	width: min(780px, calc(100vw - 32px));
+	max-height: calc(100vh - 40px);
+	overflow: hidden !important;
+	display: flex;
+	flex-direction: column;
+}
+.task-environment-dialog > header,
+.task-environment-dialog > footer {
+	flex: 0 0 auto;
+}
+.task-environment-dialog .task-environment-body {
+	overflow-y: auto;
+	min-height: 0;
+	padding: 0 6px 12px 0;
+	container-type: inline-size;
+}
+.task-environment-dialog .task-env-section {
+	margin: 18px 0;
+}
+.task-environment-dialog h3 {
+	font-size: 1em;
+	margin: 12px 0;
+}
+.task-environment-dialog .task-env-row {
+	display: grid;
+	grid-template-columns: minmax(145px, 24%) minmax(0, 1fr);
+	gap: 10px;
+	align-items: start;
+	margin: 10px 0;
+}
+.task-environment-dialog .task-env-row > .task-field-heading,
+.task-environment-dialog .task-env-row > span:first-child {
+	padding-top: 6px;
+}
+.task-environment-dialog .task-env-row input,
+.task-environment-dialog .task-env-row select {
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+}
+.task-environment-dialog .task-env-row input[aria-invalid="true"] {
+	border-color: #bb493d;
+	outline-color: #bb493d;
+}
+.task-environment-dialog .task-env-saved {
+	flex-direction: row;
+	align-items: center;
+	flex: 1 1 280px;
+	gap: 8px;
+}
+.task-environment-dialog .task-env-saved select {
+	flex: 1 1 140px;
+	min-width: 0;
+}
+.task-environment-dialog .task-env-panel {
+	border: 1px solid var(--ui-control-border);
+	border-radius: 8px;
+	padding: 12px;
+	margin: 12px 0;
+}
+.task-environment-dialog .task-env-panel pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	max-height: none;
+	overflow: visible;
+}
+.task-environment-dialog .task-import-preview {
+	max-height: none;
+	overflow: visible;
+}
+.task-environment-dialog .task-env-more > button,
+.task-environment-dialog .task-env-panel > button {
+	margin: 5px;
+}
+.task-environment-dialog .task-env-more > label {
+	margin: 10px 0;
+}
+.task-environment-dialog .task-environment-advanced {
+	border-top: 1px solid var(--ui-control-border);
+	padding: 12px 0;
+}
+.task-environment-dialog .task-env-group-heading {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin-top: 12px;
+}
+.task-environment-dialog .task-env-template {
+	margin-left: 0;
+}
+.task-environment-dialog .task-environment-status {
+	flex: 1 1 220px;
+}
+.task-environment-dialog dl > div {
+	display: grid;
+	grid-template-columns: minmax(110px, 30%) minmax(0, 1fr);
+	gap: 8px;
+	margin: 8px 0;
+}
+.task-environment-dialog dd {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+/* Keep label/control groups intact; the dialog's public label rule centers
+   flex children, so environment fields explicitly own their alignment. */
+.task-environment-dialog label {
+	align-items: stretch;
+}
+.task-environment-dialog .task-checkbox {
+	align-items: center;
+}
+.task-environment-dialog .task-env-toolbar,
+.task-environment-dialog .task-env-site-manager,
+.task-environment-dialog .task-env-site-editor {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.task-environment-dialog .task-env-toolbar > button {
+	flex: 0 0 auto;
+}
+.task-environment-dialog .task-env-pair {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+	gap: 8px 16px;
+	align-items: start;
+}
+.task-environment-dialog .task-env-pair > .task-env-row {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	margin: 6px 0;
+}
+.task-environment-dialog .task-env-pair > .task-env-row > span:first-child {
+	padding-top: 0;
+}
+.task-environment-dialog .task-env-host-port {
+	grid-template-columns: minmax(0, 1fr) minmax(100px, 140px);
+}
+.task-environment-dialog .task-env-row > *,
+.task-environment-dialog .task-env-site-manager > label,
+.task-environment-dialog .task-env-site-editor > label {
+	min-width: 0;
+}
+.task-environment-dialog .task-env-site-manager {
+	border-top: 1px solid var(--ui-control-border);
+	padding-top: 10px;
+	margin-top: 10px;
+}
+.task-environment-dialog .task-env-site-manager > label,
+.task-environment-dialog .task-env-site-editor > label {
+	flex: 1 1 220px;
+}
+.task-environment-dialog .task-env-site-editor {
+	flex: 1 1 100%;
+}
+.task-environment-dialog .task-env-summary {
+	margin-left: 10px;
+	color: var(--ui-muted-ink);
+}
+.task-environment-dialog input::placeholder {
+	color: var(--ui-muted-ink, #7b8381);
+	opacity: 1;
+}
+.task-environment-dialog .task-environment-feedback pre {
+	max-height: none;
+	overflow: visible;
+}
+@container (max-width: 520px) {
+	.task-environment-dialog .task-env-row,
+	.task-environment-dialog .task-env-host-port {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.task-environment-dialog .task-env-saved {
+		flex-basis: 100%;
+	}
+}
+.task-field-help {
+	flex: 0 0 auto;
+	width: 22px;
+	height: 22px;
+	min-height: 0 !important;
+	padding: 0 !important;
+	border-radius: 50%;
+	line-height: 20px;
+}
+.task-short-help {
+	position: fixed;
+	z-index: 11000;
+	box-sizing: border-box;
+	width: min(300px, calc(100vw - 24px));
+	padding: 10px 12px;
+	background: var(--ui-control-bg, #fff);
+	color: var(--ui-control-ink, #20382e);
+	border: 1px solid var(--ui-control-border, #a6b8af);
+	border-radius: 8px;
+	box-shadow: 0 4px 18px #0003;
+	font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+	font-size: var(--ui-control-caption-font, 14px);
+	line-height: 1.5;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+@media (max-width: 580px) {
+	.task-environment-dialog .task-env-row {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 5px;
+	}
+	.task-environment-dialog {
+		max-height: calc(100vh - 20px);
+	}
+}

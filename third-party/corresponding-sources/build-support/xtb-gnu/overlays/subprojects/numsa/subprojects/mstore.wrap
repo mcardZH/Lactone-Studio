@@ -1,0 +1,5 @@
+[wrap-file]
+directory = mstore
+source_url = https://github.com/grimme-lab/mstore/archive/974fb59092f74c7db86a1a11b1aafb3cbf311aa3.tar.gz
+source_filename = mstore-974fb59092f74c7db86a1a11b1aafb3cbf311aa3.tar.gz
+source_hash = 1adae8cd0368465e1b2ba2e8774bd5868b49987d153b4bc9b65555febfbef337

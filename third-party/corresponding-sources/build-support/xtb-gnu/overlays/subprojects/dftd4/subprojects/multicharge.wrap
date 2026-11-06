@@ -1,0 +1,5 @@
+[wrap-file]
+directory = multicharge
+source_url = https://github.com/grimme-lab/multicharge/archive/46ea4e370b1a59e01cc022d1f65c64bae8dbf968.tar.gz
+source_filename = multicharge-46ea4e370b1a59e01cc022d1f65c64bae8dbf968.tar.gz
+source_hash = 493aacf2c47fa939c84c725f35ec58c927dc027853de64c857236bb94afc0e20

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "si3n4-beta",
+      "category": "ceramics",
+      "status": "product-source-hold",
+      "reason": "Original CIF expands to 18 atoms through the current product importer but 14 atoms through the existing pymatgen normalizer. Source agreement is not established; not counted as an available library object.",
+      "sourcePath": "ceramics/si3n4-beta/source.cif",
+      "snapshotPath": "ceramics/si3n4-beta/structure.json"
+    },
+    {
+      "id": "vb2-hexagonal",
+      "category": "ceramics",
+      "status": "product-source-hold",
+      "reason": "Original CIF is rejected by the current product importer because all rounding merges cannot be explained by one coordinate correction. The strict importer is unchanged; not counted as an available library object.",
+      "sourcePath": "ceramics/vb2-hexagonal/source.cif",
+      "snapshotPath": "ceramics/vb2-hexagonal/structure.json"
+    }
+  ]
+}

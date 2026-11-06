@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mgb2-hexagonal",
+  "structure": {
+    "id": "mgb2-hexagonal",
+    "name": "二硼化镁",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mgb2-hexagonal:atom:1",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "mgb2-hexagonal:atom:2",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 2.220446049250313e-16,
+        "y": 1.7795667347231836,
+        "z": 1.7573050000000001
+      },
+      {
+        "id": "mgb2-hexagonal:atom:3",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 1.5411500000000005,
+        "y": 0.8897833673615918,
+        "z": 1.7573050000000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:1526507; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mgb2-hexagonal:atom:1",
+      "mgb2-hexagonal:atom:2",
+      "mgb2-hexagonal:atom:3"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.0823,
+          0.0,
+          1.8873644145059435e-16
+        ],
+        [
+          -1.5411499999999996,
+          2.6693501020847754,
+          1.8873644145059435e-16
+        ],
+        [
+          0.0,
+          0.0,
+          3.51461
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:1526507 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

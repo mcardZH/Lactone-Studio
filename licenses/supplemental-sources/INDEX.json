@@ -1,0 +1,93 @@
+{
+  "schema": "ester-v201-supplemental-corresponding-sources/v1",
+  "version": "2.0.2",
+  "release": "https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.2",
+  "sourceLocation": "Companion source ZIP, licenses/supplemental-sources/archives/",
+  "archives": [
+    {
+      "path": "archives/Indigo-b36d38f5293470721fe02ee570d9f0e6488a5b8d.tar.gz",
+      "bytes": 134233915,
+      "sha256": "829f1eed979e2e2e86522799268818e7590829e7c65d0e7c065ef62951121caf",
+      "component": "indigo",
+      "version": "1.46.0",
+      "url": "https://codeload.github.com/epam/Indigo/tar.gz/refs/tags/indigo-1.46.0",
+      "archiveRoot": "Indigo-indigo-1.46.0/",
+      "originalArchiveUnmodified": true
+    },
+    {
+      "path": "archives/OpenJDK17U-jdk-sources_17.0.20.1_1.tar.gz",
+      "bytes": 109272338,
+      "sha256": "21e2a065d244ab048e737f21af5d1fc74daaeb6707de36477ead8db1dca71214",
+      "component": "openjdk",
+      "version": "17.0.20.1+1",
+      "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk-sources_17.0.20.1_1.tar.gz",
+      "archiveRoot": "jdk-17.0.20.1+1-src/",
+      "originalArchiveUnmodified": true
+    },
+    {
+      "path": "archives/temurin-build-e6ba7dec3d07654074559310376a3ae89da5f4ac.tar.gz",
+      "bytes": 584568,
+      "sha256": "b1340378b9ed62b32acfacd012dd069ec2b9d940fc39d3c73f32142d64e89713",
+      "component": "temurin-build",
+      "version": "e6ba7dec3d07654074559310376a3ae89da5f4ac",
+      "url": "https://codeload.github.com/adoptium/temurin-build/tar.gz/e6ba7dec3d07654074559310376a3ae89da5f4ac",
+      "archiveRoot": "temurin-build-e6ba7dec3d07654074559310376a3ae89da5f4ac/",
+      "originalArchiveUnmodified": true
+    },
+    {
+      "path": "archives/emscripten-5.0.7.tar.gz",
+      "bytes": 34555228,
+      "sha256": "66a6537a8dede6b0e5945839f0d0641e73e64f728729d26900e9d918040f0210",
+      "component": "emscripten",
+      "version": "5.0.7",
+      "url": "https://codeload.github.com/emscripten-core/emscripten/tar.gz/refs/tags/5.0.7",
+      "archiveRoot": "emscripten-5.0.7/",
+      "originalArchiveUnmodified": true
+    },
+    {
+      "path": "archives/emsdk-5.0.7.tar.gz",
+      "bytes": 171769,
+      "sha256": "266df4b9644dde18303af05dce7d04854273b0bb527246cb7fb6a09591774ccf",
+      "component": "emsdk",
+      "version": "5.0.7",
+      "url": "https://codeload.github.com/emscripten-core/emsdk/tar.gz/refs/tags/5.0.7",
+      "archiveRoot": "emsdk-5.0.7/",
+      "originalArchiveUnmodified": true
+    }
+  ],
+  "indigo": {
+    "commit": "b36d38f5293470721fe02ee570d9f0e6488a5b8d",
+    "wasm": {
+      "bytes": 11803444,
+      "sha256": "fce4bf2c93e5cc3188883c254a1b9f2a6558fcb999c974305a3b1dbdc764f120",
+      "version": [
+        "1.46.0.0-gb36d38f52-wasm32-wasm-clang-23.0.0"
+      ]
+    },
+    "sourceSubtrees": {
+      "cairo": "Indigo-indigo-1.46.0/third_party/cairo/",
+      "inchi": "Indigo-indigo-1.46.0/third_party/inchi/"
+    },
+    "cairoVersion": "1.17.4",
+    "cairoDistributionOption": "MPL-1.1; original dual-licence headers preserved",
+    "inchiVersion": "1.06",
+    "inchiDistributionRoute": "Complete actual vendor source and build scripts at the same release; InChI Licence 1.0 sections 4 and 6(a)/(d)",
+    "applicationModificationsToVendorTrees": false,
+    "toolchain": "emscripten/emsdk:5.0.7",
+    "toolchainEvidence": "The fixed source commit CI configuration and its successful upstream build_indigo_ketcher job",
+    "upstreamBuild": "https://github.com/epam/Indigo/actions/runs/32517516963/job/97489829489",
+    "independentBitForBitRebuild": false
+  },
+  "temurin": {
+    "version": "17.0.20.1+1",
+    "platform": "Windows x64",
+    "jreArchiveSHA256": "bc21a93923103cdaac93ee337b0ae4365e739fde36df823dd456bc67c8a9d352",
+    "sourceCommit": "79597447bd94ff9f8216e2e3a573d5261ee49f2e",
+    "buildCommit": "e6ba7dec3d07654074559310376a3ae89da5f4ac",
+    "vendorScmRef": "jdk-17.0.20.1+1_adopt",
+    "distributionRoute": "Official exact-release source archive plus exact vendor build scripts, directly available in companion source ZIP at the same release",
+    "jreVendorMetadata": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jre_x64_windows_hotspot_17.0.20.1_1.zip.json"
+  },
+  "wholeProductNativeCleanRebuildClaimed": false,
+  "writtenSourceOfferUsed": false
+}

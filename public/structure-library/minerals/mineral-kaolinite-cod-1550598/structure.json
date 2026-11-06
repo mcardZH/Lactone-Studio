@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-kaolinite-cod-1550598",
+  "structure": {
+    "id": "mineral-kaolinite-cod-1550598",
+    "name": "Kaolinite",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:1",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 1.4685006712067548,
+        "y": 4.433358711635274,
+        "z": 2.9932110721701397
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:2",
+        "sourceIndex": 2,
+        "element": "Al",
+        "x": 3.949940797290891,
+        "y": 8.923890994644971,
+        "z": 2.1860559179988264
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:3",
+        "sourceIndex": 3,
+        "element": "Al",
+        "x": 3.933090714775638,
+        "y": 2.9586559794248597,
+        "z": 2.3481777963512602
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:4",
+        "sourceIndex": 4,
+        "element": "Al",
+        "x": 1.4200743842065284,
+        "y": 7.449197243517084,
+        "z": 2.891242389978659
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:5",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 4.946705391983053,
+        "y": 3.038282257119743,
+        "z": -0.7752421824335752
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:6",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 2.433689061413943,
+        "y": 7.528823521211968,
+        "z": -0.23217758880617645
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:7",
+        "sourceIndex": 7,
+        "element": "Si",
+        "x": 2.5255430055150314,
+        "y": 1.496912949302615,
+        "z": -0.062121074149872224
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:8",
+        "sourceIndex": 8,
+        "element": "Si",
+        "x": 0.012526906504986085,
+        "y": 5.9873883521229665,
+        "z": 0.480945456143574
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:9",
+        "sourceIndex": 27,
+        "element": "H",
+        "x": 0.6937158721864221,
+        "y": 0.5566115707667595,
+        "z": 2.188091091416356
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:10",
+        "sourceIndex": 28,
+        "element": "H",
+        "x": 3.175155966694322,
+        "y": 5.047152834858984,
+        "z": 1.380935673154218
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:11",
+        "sourceIndex": 29,
+        "element": "H",
+        "x": 0.2862796509273851,
+        "y": 1.5420339079242136,
+        "z": 5.2991984265174565
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:12",
+        "sourceIndex": 30,
+        "element": "H",
+        "x": 2.767719745435285,
+        "y": 6.032575172016439,
+        "z": 4.492043008255319
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:13",
+        "sourceIndex": 31,
+        "element": "H",
+        "x": 0.18873019025216345,
+        "y": 4.506078536865984,
+        "z": 5.219743162149017
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:14",
+        "sourceIndex": 32,
+        "element": "H",
+        "x": 2.701746520821273,
+        "y": 0.015537272773759098,
+        "z": 4.676678568521618
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:15",
+        "sourceIndex": 33,
+        "element": "H",
+        "x": 2.727165077594222,
+        "y": 2.833405802486799,
+        "z": 4.582577366403426
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:16",
+        "sourceIndex": 34,
+        "element": "H",
+        "x": 0.21414877860134818,
+        "y": 7.323938085496496,
+        "z": 5.12564222412165
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:17",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.22140634204718349,
+        "y": 3.1672326400594155,
+        "z": 2.1589121243140346
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:18",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 2.7028464681313196,
+        "y": 7.657764923069112,
+        "z": 1.3517569701427217
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:19",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 0.5696035351473606,
+        "y": 5.944785090303436,
+        "z": 1.9900592517595763
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:20",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 3.0826198657164707,
+        "y": 1.4542438262112107,
+        "z": 1.4469873058921772
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:21",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 4.973550815221265,
+        "y": 4.488601350266137,
+        "z": 5.820561501063414
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:22",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 2.4605344846521553,
+        "y": 8.979142614358363,
+        "z": 6.363626094690813
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:23",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 1.0004729641185437,
+        "y": 2.060242369800456,
+        "z": -0.20720756948847593
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:24",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 3.4819180215066323,
+        "y": 6.55079261497521,
+        "z": -1.0143646020614503
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:25",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": 0.9510421330216456,
+        "y": 6.884628433630353,
+        "z": 6.839236544518126
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:26",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": 3.4640584635907556,
+        "y": 2.3940871695381287,
+        "z": 6.296171950890727
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:27",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 0.19390634768708837,
+        "y": 8.693319662898892,
+        "z": 2.0687900384630193
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:28",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 2.706922678256198,
+        "y": 4.202778398806667,
+        "z": 1.5257254448356203
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:29",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": 4.7677717815667355,
+        "y": 1.487671415381113,
+        "z": 3.124081187591024
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:30",
+        "sourceIndex": 22,
+        "element": "O",
+        "x": 2.25475541942139,
+        "y": 5.978221660555866,
+        "z": 3.667138164887599
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:31",
+        "sourceIndex": 23,
+        "element": "O",
+        "x": 0.15572568853008445,
+        "y": 4.233655360538565,
+        "z": 4.2846511436935115
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:32",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 2.637165783037984,
+        "y": 8.724196624630789,
+        "z": 3.477495725431374
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:33",
+        "sourceIndex": 25,
+        "element": "O",
+        "x": 0.15140639200465209,
+        "y": 7.688174868509545,
+        "z": 4.224979610904076
+      },
+      {
+        "id": "mineral-kaolinite-cod-1550598:atom:34",
+        "sourceIndex": 26,
+        "element": "O",
+        "x": 2.6644277170301867,
+        "y": 3.1976336044173195,
+        "z": 3.6819136670566657
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1550598; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-kaolinite-cod-1550598:atom:1",
+      "mineral-kaolinite-cod-1550598:atom:2",
+      "mineral-kaolinite-cod-1550598:atom:3",
+      "mineral-kaolinite-cod-1550598:atom:4",
+      "mineral-kaolinite-cod-1550598:atom:5",
+      "mineral-kaolinite-cod-1550598:atom:6",
+      "mineral-kaolinite-cod-1550598:atom:7",
+      "mineral-kaolinite-cod-1550598:atom:8",
+      "mineral-kaolinite-cod-1550598:atom:9",
+      "mineral-kaolinite-cod-1550598:atom:10",
+      "mineral-kaolinite-cod-1550598:atom:11",
+      "mineral-kaolinite-cod-1550598:atom:12",
+      "mineral-kaolinite-cod-1550598:atom:13",
+      "mineral-kaolinite-cod-1550598:atom:14",
+      "mineral-kaolinite-cod-1550598:atom:15",
+      "mineral-kaolinite-cod-1550598:atom:16",
+      "mineral-kaolinite-cod-1550598:atom:17",
+      "mineral-kaolinite-cod-1550598:atom:18",
+      "mineral-kaolinite-cod-1550598:atom:19",
+      "mineral-kaolinite-cod-1550598:atom:20",
+      "mineral-kaolinite-cod-1550598:atom:21",
+      "mineral-kaolinite-cod-1550598:atom:22",
+      "mineral-kaolinite-cod-1550598:atom:23",
+      "mineral-kaolinite-cod-1550598:atom:24",
+      "mineral-kaolinite-cod-1550598:atom:25",
+      "mineral-kaolinite-cod-1550598:atom:26",
+      "mineral-kaolinite-cod-1550598:atom:27",
+      "mineral-kaolinite-cod-1550598:atom:28",
+      "mineral-kaolinite-cod-1550598:atom:29",
+      "mineral-kaolinite-cod-1550598:atom:30",
+      "mineral-kaolinite-cod-1550598:atom:31",
+      "mineral-kaolinite-cod-1550598:atom:32",
+      "mineral-kaolinite-cod-1550598:atom:33",
+      "mineral-kaolinite-cod-1550598:atom:34"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.99445642507701,
+          0.0,
+          -1.3502200118895364
+        ],
+        [
+          -0.03157623606120998,
+          8.98108252818445,
+          -0.264090824634739
+        ],
+        [
+          0.0,
+          0.0,
+          7.35224
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1550598 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p",
+  "structure": {
+    "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p",
+    "name": "三碘化铬（C2/m计算模型）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:1",
+        "sourceIndex": 7,
+        "element": "Cr",
+        "x": 3.2475635732993346,
+        "y": 3.935151751441119,
+        "z": 1.0343011545483567
+      },
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:2",
+        "sourceIndex": 8,
+        "element": "Cr",
+        "x": 6.495367839866059,
+        "y": 1.9675758757205595,
+        "z": 2.068678966356443
+      },
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:3",
+        "sourceIndex": 1,
+        "element": "I",
+        "x": 5.083792523264018,
+        "y": 0.0,
+        "z": 3.2466715402303628
+      },
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:4",
+        "sourceIndex": 2,
+        "element": "I",
+        "x": 1.4114945609746545,
+        "y": 0.0,
+        "z": 5.817251706648458
+      },
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:5",
+        "sourceIndex": 3,
+        "element": "I",
+        "x": 8.110802159264704,
+        "y": 3.812491350271943,
+        "z": 7.965279968571725
+      },
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:6",
+        "sourceIndex": 4,
+        "element": "I",
+        "x": 4.879779520876053,
+        "y": 3.812491350271943,
+        "z": 3.16729891754006
+      },
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:7",
+        "sourceIndex": 5,
+        "element": "I",
+        "x": 1.632129253900645,
+        "y": 2.090236276889735,
+        "z": 2.13297015233306
+      },
+      {
+        "id": "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:8",
+        "sourceIndex": 6,
+        "element": "I",
+        "x": 4.863151892289341,
+        "y": 2.090236276889735,
+        "z": 6.930951203364739
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: NOMAD Repository (Alexandria PBEsol) record NOMAD entry eY52zuvCPqREcR9Kfuyb4CQMR6P-; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:1",
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:2",
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:3",
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:4",
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:5",
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:6",
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:7",
+      "cri3-c2m-nomad-eY52zuvcprecr9kfuyb4cqmr6p:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          6.495287084238672,
+          0.0,
+          2.0686532468788204
+        ],
+        [
+          3.2476443289267216,
+          5.902727627161679,
+          1.0343268740259794
+        ],
+        [
+          0.0,
+          0.0,
+          6.99527
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "NOMAD Repository (Alexandria PBEsol) record NOMAD entry eY52zuvCPqREcR9Kfuyb4CQMR6P- defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

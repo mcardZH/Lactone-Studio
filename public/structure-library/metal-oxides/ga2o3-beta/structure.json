@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "entryId": "ga2o3-beta",
+  "structure": {
+    "id": "ga2o3-beta",
+    "name": "β-氧化镓",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "ga2o3-beta:atom:1",
+        "sourceIndex": 1,
+        "element": "Ga",
+        "x": 1.0733215827147784,
+        "y": 0.0,
+        "z": 4.342941221535938
+      },
+      {
+        "id": "ga2o3-beta:atom:2",
+        "sourceIndex": 1,
+        "element": "Ga",
+        "x": 7.0032750783765385,
+        "y": 1.51855,
+        "z": 2.88311227974554
+      },
+      {
+        "id": "ga2o3-beta:atom:3",
+        "sourceIndex": 1,
+        "element": "Ga",
+        "x": 10.78658540860874,
+        "y": 0.0,
+        "z": -1.4644991051167322
+      },
+      {
+        "id": "ga2o3-beta:atom:4",
+        "sourceIndex": 1,
+        "element": "Ga",
+        "x": 4.856631912946981,
+        "y": 1.51855,
+        "z": -0.004670163326335075
+      },
+      {
+        "id": "ga2o3-beta:atom:5",
+        "sourceIndex": 2,
+        "element": "Ga",
+        "x": 1.88169284324339,
+        "y": 1.51855,
+        "z": 1.3574864421910715
+      },
+      {
+        "id": "ga2o3-beta:atom:6",
+        "sourceIndex": 2,
+        "element": "Ga",
+        "x": 7.81164633890515,
+        "y": 0.0,
+        "z": -0.10234249959932584
+      },
+      {
+        "id": "ga2o3-beta:atom:7",
+        "sourceIndex": 2,
+        "element": "Ga",
+        "x": 9.978214148080129,
+        "y": 1.51855,
+        "z": 1.5209556742281345
+      },
+      {
+        "id": "ga2o3-beta:atom:8",
+        "sourceIndex": 2,
+        "element": "Ga",
+        "x": 4.04826065241837,
+        "y": 0.0,
+        "z": 2.980784616018532
+      },
+      {
+        "id": "ga2o3-beta:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.950954700072719,
+        "y": 0.0,
+        "z": 0.1563476581509593
+      },
+      {
+        "id": "ga2o3-beta:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.880908195734478,
+        "y": 1.51855,
+        "z": -1.3034812836394378
+      },
+      {
+        "id": "ga2o3-beta:atom:11",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 9.9089522912508,
+        "y": 0.0,
+        "z": 2.7220944582682463
+      },
+      {
+        "id": "ga2o3-beta:atom:12",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.9789987955890416,
+        "y": 1.51855,
+        "z": 4.181923400058643
+      },
+      {
+        "id": "ga2o3-beta:atom:13",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.0553218815963663,
+        "y": 0.0,
+        "z": 2.7595132087754486
+      },
+      {
+        "id": "ga2o3-beta:atom:14",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.985275377258126,
+        "y": 1.51855,
+        "z": 1.2996842669850515
+      },
+      {
+        "id": "ga2o3-beta:atom:15",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.804585109727153,
+        "y": 0.0,
+        "z": 0.11892890764375696
+      },
+      {
+        "id": "ga2o3-beta:atom:16",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.874631614065394,
+        "y": 1.51855,
+        "z": 1.578757849434154
+      },
+      {
+        "id": "ga2o3-beta:atom:17",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 11.811281372659094,
+        "y": 1.51855,
+        "z": -1.419894826258113
+      },
+      {
+        "id": "ga2o3-beta:atom:18",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 5.881327876997333,
+        "y": 0.0,
+        "z": 0.039934115532283876
+      },
+      {
+        "id": "ga2o3-beta:atom:19",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.048625618664426676,
+        "y": 1.51855,
+        "z": 4.298336942677319
+      },
+      {
+        "id": "ga2o3-beta:atom:20",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 5.978579114326187,
+        "y": 0.0,
+        "z": 2.8385080008869217
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2004987; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "ga2o3-beta:atom:1",
+      "ga2o3-beta:atom:2",
+      "ga2o3-beta:atom:3",
+      "ga2o3-beta:atom:4",
+      "ga2o3-beta:atom:5",
+      "ga2o3-beta:atom:6",
+      "ga2o3-beta:atom:7",
+      "ga2o3-beta:atom:8",
+      "ga2o3-beta:atom:9",
+      "ga2o3-beta:atom:10",
+      "ga2o3-beta:atom:11",
+      "ga2o3-beta:atom:12",
+      "ga2o3-beta:atom:13",
+      "ga2o3-beta:atom:14",
+      "ga2o3-beta:atom:15",
+      "ga2o3-beta:atom:16",
+      "ga2o3-beta:atom:17",
+      "ga2o3-beta:atom:18",
+      "ga2o3-beta:atom:19",
+      "ga2o3-beta:atom:20"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          11.85990699132352,
+          0.0,
+          -2.9196578835807943
+        ],
+        [
+          4.884029299332913e-16,
+          3.0371,
+          1.8596873968452133e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.7981
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2004987 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

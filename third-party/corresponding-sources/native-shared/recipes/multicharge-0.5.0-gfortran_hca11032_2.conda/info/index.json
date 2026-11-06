@@ -1,0 +1,22 @@
+{
+  "arch": "x86_64",
+  "build": "gfortran_hca11032_2",
+  "build_number": 2,
+  "depends": [
+    "libblas >=3.9.0,<4.0a0",
+    "libgcc >=14",
+    "libgfortran",
+    "libgfortran5 >=14.3.0",
+    "libgomp",
+    "liblapack >=3.9.0,<4.0a0",
+    "libwinpthread >=12.0.0.r4.gg4f2fc60ca",
+    "mctc-lib >=0.5.2,<0.6.0a0 gfortran_*",
+    "ucrt >=10.0.20348.0"
+  ],
+  "license": "Apache-2.0",
+  "name": "multicharge",
+  "platform": "win",
+  "subdir": "win-64",
+  "timestamp": 1784030234996,
+  "version": "0.5.0"
+}

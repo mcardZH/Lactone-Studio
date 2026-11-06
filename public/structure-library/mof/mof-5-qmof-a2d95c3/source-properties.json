@@ -1,0 +1,38 @@
+{
+  "schema": "sciyue-structure-library-source-properties-v1",
+  "entryId": "mof-5-qmof-a2d95c3",
+  "property": "PBE electronic band gap",
+  "value": 3.551834,
+  "unit": "eV",
+  "directGap": false,
+  "method": "PBE-D3BJ",
+  "source": {
+    "name": "QMOF Database v18",
+    "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+    "citation": "QMOF Database v18, record qmof-a2d95c3 (MIBQAR01_FSR), field outputs.pbe.bandgap; dataset DOI 10.6084/m9.figshare.13147324.v18",
+    "doi": "10.6084/m9.figshare.13147324.v18",
+    "recordId": "qmof-a2d95c3",
+    "recordName": "MIBQAR01_FSR",
+    "datasetVersion": 18,
+    "sourceFileMember": "qmof_database/qmof.csv",
+    "field": "outputs.pbe.bandgap"
+  },
+  "bandEdges_eV": {
+    "vbm": -5.271614,
+    "cbm": -1.71978
+  },
+  "spinPolarized": false,
+  "spinBandGaps_eV": null,
+  "spinDirectGaps": null,
+  "nomadCrossCheck": {
+    "entryId": "QmgKGlo0jOczazz3ut6EZZ8I9SCY",
+    "uploadId": "EIDyjluDQ3eZnt-gI7Fc4Q",
+    "mainfile": "vasp_files/MIBQAR01_FSR/OUTCAR",
+    "datasetId": "O-FUAo0mThSUeXg70cMN3Q",
+    "chemicalFormulaReduced": "C24H12O13Zn4",
+    "program": "VASP",
+    "finalEnergyTotal_J": -1.1622589185335333e-16,
+    "finalEnergyTotalConverted_eV": -725.42495869,
+    "archiveBandGap": null
+  }
+}

@@ -1,0 +1,5 @@
+.dismissible-notice { display:flex; align-items:flex-start; gap:6px; min-width:0; }
+.dismissible-notice-content { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
+.dismissible-notice-close { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; padding:0; border:0; border-radius:4px; background:transparent; color:inherit; font:inherit; font-size:18px; line-height:1; cursor:pointer; }
+.dismissible-notice-close:hover { background:rgba(0,0,0,.07); }
+.dismissible-notice-close:focus-visible { outline:2px solid currentColor; outline-offset:1px; }

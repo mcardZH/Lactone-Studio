@@ -1,0 +1,320 @@
+@import './ui-controls.css';
+/* One presentation owner for G/O. Callers supply values and capabilities. */
+.desktop-mode .engine-parameter-scroll .engine-step-content { padding:12px 13px; min-width:0; box-sizing:border-box; }
+.input-settings-layout {
+  --input-font:var(--ui-control-font); --input-caption-font:var(--ui-control-caption-font);
+  --input-color:var(--ui-control-ink); --input-muted:var(--ui-control-muted); --input-border:var(--ui-control-border);
+  --input-card-border:var(--ui-surface-border); --input-card-bg:var(--ui-surface-bg); --input-control-bg:var(--ui-control-bg);
+  --input-radius:var(--ui-surface-radius); --input-control-radius:var(--ui-control-radius); --input-control-height:var(--ui-control-height);
+  --input-card-padding:10px 12px; --input-gap:8px; --input-row-gap:16px;
+  color:var(--input-color); font:var(--input-font)/1.6 "Segoe UI","Microsoft YaHei",sans-serif; min-width:0;
+}
+.shared-input-card,
+.input-settings-layout.input-settings-surface :is(.shared-input-card,.orca-group,.advanced-details,.source-options) {
+  box-sizing:border-box; padding:var(--input-card-padding,10px 12px); margin:0 0 12px;
+  border:1px solid var(--input-card-border,#d4e5db); border-radius:var(--input-radius,11px);
+  background:var(--input-card-bg,#f1f8f3); color:var(--input-color,#294454); min-width:0; font:inherit;
+}
+.shared-input-card-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin:0 0 8px; }
+.shared-input-card .shared-input-card-title,.shared-input-card.base-electronic-state-card h3,
+.input-settings-layout.input-settings-surface :is(h2,h3,.subheading h3,.section-default-heading h3) {
+  display:flex; align-items:center; gap:6px; margin:0; font-size:var(--input-font,var(--ui-primary-size,16px)); color:var(--input-color,#294454); line-height:1.6; font-weight:600;
+}
+.shared-input-card.base-electronic-state-card h3 { margin-bottom:8px; }
+.shared-input-card-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-left:auto; }
+:where(.shared-input-card,.input-settings-layout.input-settings-surface) .shared-input-action {
+  display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:3px 5px; min-height:30px;
+  border:0; border-radius:var(--ui-control-radius); background:transparent; color:var(--ui-control-ink); cursor:pointer;
+  font:var(--input-caption-font,var(--ui-secondary-size,14px))/1.6 "Segoe UI","Microsoft YaHei",sans-serif;
+}
+.shared-input-action:hover:not(:disabled) { background:var(--ui-control-hover-bg); }
+.shared-input-action:disabled { opacity:.5; cursor:default; }
+/* Result actions share a visible control surface; input resets and navigation keep their own presentation. */
+:is(.postprocess-display,.postprocess-plot-deck) button[data-input-action],.shared-input-action[data-input-variant=surface] {
+  padding:var(--ui-control-compact-padding); border:1px solid var(--ui-control-border);
+  background:var(--ui-control-bg); color:var(--ui-control-ink);
+}
+:is(.postprocess-display,.postprocess-plot-deck) button[data-input-action]:hover:not(:disabled),.shared-input-action[data-input-variant=surface]:hover:not(:disabled) {
+  background:var(--ui-control-hover-bg); border-color:var(--ui-control-accent);
+}
+:is(.postprocess-display,.postprocess-plot-deck) button[data-input-action]:disabled,.shared-input-action[data-input-variant=surface]:disabled {
+  background:var(--ui-action-disabled-bg,#edf2ef); border-color:var(--ui-control-border);
+  color:var(--ui-action-disabled-ink,#81918a); opacity:1; cursor:default;
+}
+.shared-input-row,.shared-input-card .base-electronic-state-fields { display:flex; flex-wrap:wrap; align-items:center; gap:8px var(--input-row-gap,16px); min-width:0; }
+.shared-input-card .shared-input-field,.input-settings-layout.input-settings-surface .shared-input-field {
+  display:flex; flex:1 1 210px; flex-direction:row; flex-wrap:wrap; align-items:center; gap:5px 8px; min-width:0; margin:0;
+  font-size:var(--input-font,var(--ui-primary-size,16px)); line-height:1.6; color:var(--input-color,#294454);
+}
+.shared-input-field-label { flex:0 0 auto; }
+.shared-input-field-control { display:flex; flex:1 1 64px; min-width:0; gap:8px; align-items:center; }
+.shared-input-field.field>span { position:static; color:inherit; font-size:inherit; }
+.shared-input-field-caption { flex-basis:100%; color:var(--input-muted,#526879); font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); line-height:1.6; }
+.shared-input-card .shared-input-field-control :is(input,select,textarea),
+.input-settings-layout.input-settings-surface :is(.field,.orca-field) :is(input,select,textarea):not([type=checkbox]):not([type=radio]):not([type=color]) {
+  box-sizing:border-box; min-width:0; min-height:var(--input-control-height,36px); height:auto; padding:5px 9px;
+  border:1px solid var(--input-border,#cadfd1); border-radius:var(--input-control-radius,7px); background-color:var(--input-control-bg,#fff); color:var(--input-color,#294454); font:inherit;
+}
+.shared-input-field-control :is(input,select,textarea) { width:100%; }
+.input-settings-layout.input-settings-surface .shared-input-row-compact>.shared-input-field { flex:0 1 auto; max-width:100%; }
+.shared-input-row-compact>.shared-input-field>.shared-input-field-control { flex:1 1 48px; }
+.shared-input-row-compact .shared-input-field-control :is(input[type=number],select) { width:auto; max-width:100%; }
+.shared-input-row-compact .shared-input-field-control input[type=number] { width:5.5em; }
+.shared-input-action[data-input-action][data-input-variant=primary] { border:1px solid var(--teal); background:var(--teal); color:#fff; font:inherit; }
+.shared-input-action[data-input-action][data-input-variant=primary]:hover:not(:disabled) { background:var(--teal-dark); border-color:var(--teal-dark); }
+.shared-input-card .base-electronic-state-fields .shared-input-field { flex-basis:145px; }
+.shared-input-card .base-electronic-state-fields .shared-input-field-control { flex-basis:48px; }
+.base-electronic-state-card[data-state=pending] .shared-input-field { --input-border:#d8bd73; --input-control-bg:#fffaf0; --input-color:#765b20; padding:5px 7px; border:1px solid #d8bd73; border-radius:7px; background:#fff5d8; color:#765b20; }
+.base-electronic-state-card[data-state=pending] .shared-input-field input { border-color:#d8bd73; background:#fffaf0; }
+.base-electronic-state-card[data-state=error] .shared-input-field { padding:5px 7px; border:1px solid var(--input-border,#cadfd1); border-radius:7px; background:#fff; }
+.base-electronic-state-card[data-state=error] .shared-input-field input { border-color:var(--input-border,#cadfd1); background:#fff; }
+.base-electronic-state-card[data-state=confirmed] .shared-input-field { padding:5px 7px; border:1px solid #a4cdb3; border-radius:7px; background:#e8f5ed; }
+.base-electronic-state-card[data-state=confirmed] .shared-input-field input { background:#f5fbf7; }
+.input-parameter-settings .shared-input-checkbox,.input-parameter-settings :is(.check-line,.orca-check,.option-explanation) { font-size:var(--input-font); }
+.shared-input-card.base-electronic-state-card .base-electronic-state-error { font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); }
+.input-settings-layout.input-settings-surface :is(.field,.orca-field):not(.shared-input-field) { display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; gap:5px 8px; margin:0 0 8px; color:var(--input-color); font-size:var(--input-font); line-height:1.6; }
+.input-settings-layout.input-settings-surface :is(.field,.orca-field):not(.shared-input-field)>:is(input,select) { flex:1 1 120px; width:auto; }
+.input-settings-layout.input-settings-surface :is(.field,.orca-field)>span { position:static; color:inherit; font-size:inherit; }
+.shared-input-checkbox,.input-settings-layout.input-settings-surface :is(.check-line,.orca-check,.option-explanation) { display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:7px; margin:6px 0 9px; color:var(--input-color,#294454); font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); line-height:1.6; }
+.shared-input-checkbox>span { display:inline-flex; align-items:center; gap:5px; min-width:0; }
+.shared-input-checkbox input[type=checkbox],.input-settings-layout.input-settings-surface :is(.check-line,.orca-check,.option-explanation) input[type=checkbox] { flex:0 0 auto; width:15px; height:15px; min-height:0; margin:0; padding:0; accent-color:var(--ui-control-accent); }
+.shared-reference-row { margin:0 0 12px; gap:8px 20px; }
+.shared-reference-row .shared-input-checkbox { margin:0; }
+.input-settings-layout.input-settings-surface :is(.orca-note,.muted-note,.field-caption,.field>small,.orca-field>small,.shared-input-field-caption,.task-notice p,.catalog-intro,.reference-file-note,.source-hessian-field small) { font-size:var(--input-caption-font); color:var(--input-muted); line-height:1.6; margin:5px 0; }
+.input-settings-layout.input-settings-surface :is(.shared-input-section,.orca-group,.advanced-details)>summary,.input-settings-layout.input-settings-surface .shared-input-subsection>summary { padding:0; margin:0; color:var(--input-color); font-size:var(--input-font); font-weight:600; line-height:1.6; cursor:pointer; text-align:left; }
+.input-settings-layout.input-settings-surface :is(.shared-input-section,.orca-group,.advanced-details)[open]>summary { margin-bottom:8px; }
+.input-settings-layout.input-settings-surface .shared-input-subsection { margin:8px 0; }
+.input-settings-layout.input-settings-surface .shared-input-subsection>summary { margin-bottom:8px; }
+.input-settings-layout.input-settings-surface .geometry-controls { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
+.input-settings-layout.input-settings-surface .coordinate-list { display:block; margin:0; }
+.input-settings-layout.input-settings-surface article.coordinate-draft { display:block; box-sizing:border-box; margin:8px 0; padding:10px; border:1px solid var(--input-border); border-radius:var(--input-control-radius); background:var(--input-control-bg); min-width:0; }
+.input-settings-layout.input-settings-surface :is(.coordinate-draft,.orca-coordinate-row)>header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.input-settings-layout.input-settings-surface .shared-coordinate-row-header { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; margin:0 0 8px; }
+.input-settings-layout.input-settings-surface .shared-coordinate-row-header>.check-line { display:inline-flex; align-items:center; flex-wrap:nowrap; gap:7px; min-width:0; margin:0; }
+.input-settings-layout.input-settings-surface .shared-coordinate-row-title { display:block; min-width:0; margin:0; color:var(--input-color,#294454); font:600 var(--input-font,var(--ui-primary-size,16px))/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
+.input-settings-layout.input-settings-surface .shared-coordinate-row-delete { box-sizing:border-box; flex:0 0 36px; display:inline-flex; align-items:center; justify-content:center; gap:0; width:36px; min-width:36px; height:36px; min-height:36px; padding:5px; border:1px solid var(--input-border,#cadfd1); border-radius:var(--input-control-radius,7px); background:var(--input-control-bg,#fff); color:var(--input-color,#294454); font:inherit; cursor:pointer; }
+.input-settings-layout.input-settings-surface .shared-coordinate-row-delete>svg { width:14px; height:14px; flex:0 0 14px; }
+.input-settings-layout.input-settings-surface .shared-coordinate-row-delete:hover:not(:disabled) { background:#e8f4ec; border-color:#8ab49b; }
+.input-settings-layout.input-settings-surface .coordinate-add-buttons { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+.shared-numeric-row { align-items:flex-start; }
+.input-settings-layout.input-settings-surface .shared-numeric-row>.shared-input-field { flex:1 1 200px; }
+.input-settings-layout.input-settings-surface .coordinate-scan-parameters { margin:8px 0; }
+.input-settings-layout.input-settings-surface .coordinate-measurement { padding:8px 10px; margin:8px 0; border-radius:7px; font:var(--input-caption-font)/1.6 Consolas,monospace; }
+.input-settings-layout.input-settings-surface .freeze-not-inherited { margin:5px 0; color:#8a6a2f; font-size:var(--input-caption-font); line-height:1.6; }
+/* A default must never outrank a named consumer such as a table heading. */
+:where(.input-settings-layout.input-settings-surface button:not(.shared-input-action):not(.card-dropdown-trigger):not(.shared-task-choice):not(.icon-button):not(.solvent-toggle)) { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:var(--ui-control-padding); min-height:var(--input-control-height); border:1px solid var(--input-border); border-radius:var(--input-control-radius); background:var(--input-control-bg); color:var(--input-color); font:inherit; cursor:pointer; }
+.input-settings-surface .button { font:inherit; min-height:var(--input-control-height); padding:var(--ui-control-padding); border-radius:var(--input-control-radius); }
+.input-settings-layout.input-settings-surface .input-level-card>.method-chooser.shared-input-card { padding:0; margin:0; border:0; border-radius:0; background:transparent; }
+.shared-method-fields { display:flex; align-items:stretch; flex-wrap:wrap; gap:8px 16px; }
+.shared-method-fields>.card-dropdown { display:flex; flex:1 1 210px; align-items:center; flex-wrap:wrap; gap:8px; margin:0; min-width:0; }
+.shared-method-fields .card-dropdown-label { margin:0; flex:0 0 auto; color:#294454; font-size:var(--input-font,var(--ui-primary-size,16px)); line-height:1.6; }
+.shared-method-fields .card-dropdown-trigger,.input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-trigger { flex:1 1 150px; width:auto; min-width:0; min-height:var(--input-control-height,36px); padding:5px 9px; gap:8px; border-radius:var(--input-control-radius,7px); background:var(--input-control-bg,#fff); border-color:var(--input-border,#cadfd1); justify-content:space-between; text-align:left; }
+.shared-method-fields .card-dropdown-trigger>span { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 5px; }
+.shared-method-fields .card-dropdown-trigger strong { display:inline; line-height:1.6; font-size:var(--input-font,var(--ui-primary-size,16px)); white-space:nowrap; }
+.shared-method-fields .card-dropdown-trigger>svg { flex:0 0 auto; }
+.shared-method-fields .card-dropdown-summary { display:inline; margin:0; line-height:1.6; color:#526879; }
+.shared-method-fields .card-dropdown-summary::before { content:'·'; margin-right:5px; }
+.shared-method-fields .card-dropdown-summary .basis-stat,.input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-summary .basis-stat { display:inline; margin:0; white-space:nowrap; font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); }
+.shared-method-fields>.orca-note { flex:1 1 210px; margin:0; align-self:center; }
+.input-settings-layout.input-settings-surface .input-level-card { container-type:inline-size; }
+@container (min-width:380px) {
+  .input-settings-layout.input-settings-surface .shared-method-fields { display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); gap:8px; }
+  .input-settings-layout.input-settings-surface .shared-method-fields>.card-dropdown { display:block; }
+  .input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-trigger { width:100%; }
+}
+.input-task-picker { container:input-tasks / inline-size; min-width:0; }
+.input-task-picker .task-category { margin:0 0 16px; }
+.input-task-picker .task-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:stretch; }
+@container input-tasks (min-width:600px) { .input-task-picker .task-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.task-card.shared-task-choice,.input-settings-layout.input-settings-surface .task-card.shared-task-choice { box-sizing:border-box; display:block; width:100%; min-width:0; height:auto; min-height:0; padding:8px 10px; border:1px solid #d4e5db; border-radius:11px; background:#f7fbf8; text-align:left; color:#294454; cursor:pointer; font:var(--input-font,var(--ui-primary-size,16px))/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
+.task-card.shared-task-choice .task-top { display:grid; grid-template-columns:32px minmax(0,1fr) auto 17px; align-items:center; width:100%; min-width:0; gap:8px; margin:0; }
+.shared-task-choice .task-top .task-title,.input-settings-layout.input-settings-surface .shared-task-choice .task-top .task-title { display:block; min-width:0; margin:0; text-align:left; overflow-wrap:anywhere; color:inherit; font:inherit; font-weight:600; line-height:1.4; }
+.task-card.shared-task-choice .task-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:7px; background:#eaf4ed; color:#4d8067; }
+.task-card.shared-task-choice.selected .task-icon { background:#dceee2; color:#386f52; }
+.task-card.shared-task-choice .task-code { margin:0; padding:0; justify-self:end; white-space:nowrap; color:#526879; font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); }
+.task-card.shared-task-choice .task-check { display:grid; place-items:center; width:17px; height:17px; margin:0; border-radius:50%; background:#548f74; color:#fff; visibility:hidden; }
+.shared-task-choice.selected .task-check { visibility:visible; }
+.shared-task-choice.selected,.input-settings-layout.input-settings-surface .shared-task-choice.selected { border-color:#548f74; background:#e8f4ec; box-shadow:0 0 0 1px #548f74; }
+.shared-task-choice:disabled { opacity:.5; cursor:default; }
+.shared-input-card :focus-visible,.input-settings-layout :focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
+.input-settings-layout .shared-freeze-records { min-width:0; margin:0; padding:0; border:0; }
+.desktop-mode [data-testid="engine-navigation"] { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 13px; min-height:52px; border-top:1px solid #eff2f5; background:#fff; font:var(--ui-primary-size,16px)/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
+.desktop-mode [data-testid="engine-navigation"]>.button { display:inline-flex; flex:1 1 0; align-items:center; justify-content:center; gap:6px; height:40px; min-height:40px; padding:5px 12px; border:1px solid transparent; border-radius:7px; font:inherit; }
+.desktop-mode [data-testid="engine-navigation"]>.button-quiet { background:transparent; color:#526879; }
+.desktop-mode [data-testid="engine-navigation"]>.button-primary { background:var(--teal); border-color:var(--teal); color:#fff; }
+.desktop-mode [data-testid="engine-navigation"]>.button-quiet:hover:not(:disabled) { background:#edf7f1; border-color:transparent; }
+.desktop-mode [data-testid="engine-navigation"]>.button-primary:hover:not(:disabled) { background:var(--teal-dark); border-color:var(--teal-dark); }
+.desktop-mode [data-testid="engine-navigation"]>.button:disabled { opacity:.45; cursor:default; }
+.desktop-mode [data-testid="engine-navigation"]>span { flex:0 0 auto; font:var(--ui-secondary-size,14px)/1.6 "Segoe UI","Microsoft YaHei",sans-serif; color:#71818c; }
+.input-capability-paused { padding:9px 12px; margin:9px 0; border:1px solid #d9bc81; border-radius:8px; background:#fff8e9; color:#74561f; }
+.input-capability-paused p { margin:0 0 7px; font-size:var(--ui-secondary-size,14px); }
+.engine-step-content .input-settings-layout .task-category>h3{font-family:inherit;font-size:var(--input-field-font,var(--ui-primary-size,16px));font-weight:600;line-height:1.6;color:#294454;margin:0 0 12px;padding-bottom:8px}
+.shared-input-enable-card>.shared-input-card-header{margin:0;justify-content:flex-start}
+.shared-input-enable-card[data-enabled=true]>.shared-input-card-header{margin-bottom:6px}
+.shared-input-card .shared-input-enable-toggle,.input-settings-layout.input-settings-surface .shared-input-enable-toggle{display:inline-flex;align-items:center;justify-content:flex-start;gap:7px;min-height:30px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.shared-input-switch-track{display:inline-flex;align-items:center;flex:0 0 30px;width:30px;height:18px;padding:2px;border-radius:10px;background:#aebdb5;box-sizing:border-box}
+.shared-input-switch-track>span{width:14px;height:14px;background:white;border-radius:50%;box-shadow:0 1px 2px #0002}
+[aria-checked=true]>.shared-input-switch-track{background:var(--ui-control-accent,#548f74)}
+[aria-checked=true]>.shared-input-switch-track>span{transform:translateX(12px)}
+.shared-input-option-grid{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;margin:6px 0}
+.shared-input-option-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border:1px solid #d5e3da;border-radius:6px;background:#fff;max-width:100%;box-sizing:border-box}
+.shared-input-option-card .shared-input-checkbox{margin:0}
+.input-settings-layout.input-settings-surface .shared-input-option-card .shared-input-field{margin:0}
+.input-settings-layout.input-settings-surface .shared-reference-row{margin:6px 0 0}
+.input-settings-layout.input-settings-surface .shared-input-action:not([data-input-variant=primary]){padding:var(--ui-control-compact-padding);border:1px solid var(--ui-control-border);background:var(--ui-control-bg);min-height:var(--input-control-height)}
+.input-settings-layout.input-settings-surface .solvent-controls-row>label{flex:0 1 auto;flex-wrap:nowrap}
+.input-settings-layout.input-settings-surface .solvent-controls-row select{width:auto;max-width:100%}
+.input-settings-layout.input-settings-surface .solvent-controls>.shared-input-enable-content{display:grid;gap:6px}
+/* Opt-in parameter presentation keeps orbital and Hirshfeld consumers stable. */
+.input-settings-layout.input-parameter-settings{--input-card-border:#c9dcd2;--input-card-bg:#f6fbf8ed;--input-radius:8px;--input-card-padding:7px 8px;--input-gap:6px;--input-row-gap:10px}
+.input-parameter-settings :is(.shared-input-card,.orca-group,.advanced-details,.source-options){margin-bottom:10px}
+.input-settings-layout.input-parameter-settings .shared-input-field{display:grid;grid-template-columns:max-content minmax(0,auto);flex:0 1 auto;max-width:100%}
+.input-settings-layout.input-parameter-settings .shared-input-field-caption{grid-column:1/-1}
+.input-settings-layout.input-parameter-settings .shared-input-field-control{flex:0 1 auto}
+.input-parameter-settings .shared-input-field-control :is(input,textarea){width:18ch;max-width:100%}
+.input-parameter-settings .shared-input-field-control input[type=number]{width:7.5ch}
+.input-parameter-settings .shared-input-field-control select{width:auto;max-width:100%}
+.input-settings-layout.input-parameter-settings .base-electronic-state-fields .shared-input-field{flex-basis:auto}
+.input-settings-layout.input-parameter-settings .base-electronic-state-fields .shared-input-field-control{flex-basis:auto}
+.input-settings-layout.input-parameter-settings .shared-numeric-row>.shared-input-field{flex:0 1 auto}
+.input-parameter-settings .shared-input-option-card>input[type=number]{width:8ch}
+.input-parameter-settings .advanced-options-stack{gap:10px;margin-top:0;margin-bottom:10px}
+.input-settings-layout.input-parameter-settings .advanced-options-stack>.shared-input-card{margin:0}
+.input-settings-layout.input-parameter-settings :is(.field,.orca-field):not(.shared-input-field)>:is(input,select){flex:0 1 auto;width:auto;max-width:100%}
+.input-settings-layout.input-parameter-settings :is(.field,.orca-field):not(.shared-input-field)>input[type=number]{width:8ch}
+.input-parameter-settings :is(.two-fields,.orca-grid){display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+.input-settings-layout.input-parameter-settings .shared-method-fields{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+.input-settings-layout.input-parameter-settings .shared-method-fields>.card-dropdown{display:flex;align-items:center;flex:0 1 auto;flex-wrap:nowrap;max-width:100%}
+.input-settings-layout.input-parameter-settings .shared-method-fields .card-dropdown-label{position:static;width:auto;height:auto;margin:0;overflow:visible;clip-path:none;white-space:nowrap}
+.input-settings-layout.input-parameter-settings .shared-method-fields .card-dropdown-trigger{flex:0 1 auto;width:auto;max-width:100%}
+.input-settings-layout.input-parameter-settings { --input-font:calc(14px * var(--ui-font-scale,1)); --input-caption-font:calc(13px * var(--ui-font-scale,1)); }
+.input-settings-layout.input-parameter-settings :is(.shared-input-card-title,.base-electronic-state-card h3,.shared-input-section>summary,.source-options .subheading h3) { font-size:calc(16px * var(--ui-font-scale,1)); font-weight:600; }
+.input-settings-layout.input-parameter-settings .input-task-name-row { margin:0 0 10px; flex-wrap:nowrap; gap:8px; }
+.input-settings-layout.input-parameter-settings .input-task-name-row .shared-input-field { flex:1 1 0!important; width:auto; flex-wrap:nowrap; min-width:0; }
+.input-task-name-row .shared-input-field-label { flex:0 0 42px; }
+.input-task-name-row .shared-input-field-control input { width:100%; min-width:0; }
+.input-settings-layout .resource-preset-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.input-settings-layout .resource-preset-row .shared-input-field { flex:1 1 220px; }
+/* Explicit card levels: nested settings own a white surface; deeper details stay inline. */
+.shared-input-card.shared-input-subcard,
+.input-settings-layout.input-settings-surface .shared-input-card.shared-input-subcard {
+  box-sizing:border-box; min-width:0; margin:8px 0; padding:var(--input-card-padding,10px 12px);
+  border:1px solid var(--input-card-border,#d4e5db); border-radius:var(--input-radius,8px);
+  background:#fff; color:var(--input-color,#294454);
+}
+.shared-input-card.shared-input-inline,
+.input-settings-layout.input-settings-surface .shared-input-card.shared-input-inline {
+  min-width:0; margin:8px 0; padding:8px 0 0; border:0; border-top:1px solid #dce8e0;
+  border-radius:0; background:transparent; box-shadow:none;
+}
+.shared-input-subcard>.shared-input-card-header { margin:0 0 8px; }
+.shared-input-subcard>summary,
+.shared-input-inline>summary,
+.input-settings-layout.input-settings-surface :is(.shared-input-subcard,.shared-input-inline)>summary {
+  padding:0; margin:0; color:var(--input-color,#294454); font-size:calc(16px * var(--ui-font-scale,1));
+  font-weight:600; line-height:1.6; cursor:pointer; text-align:left;
+}
+.shared-input-section>summary.shared-input-card-title { display:flex; align-items:center; gap:8px; list-style:none; }
+.shared-input-section>summary.shared-input-card-title::-webkit-details-marker { display:none; }
+.shared-input-section>summary.shared-input-card-title::before { content:'▸'; flex:0 0 auto; }
+.shared-input-section[open]>summary.shared-input-card-title::before { transform:rotate(90deg); }
+.shared-input-subcard[open]>summary,.shared-input-inline[open]>summary,
+.input-settings-layout.input-settings-surface :is(.shared-input-subcard,.shared-input-inline)[open]>summary { margin-bottom:8px; }
+.input-settings-layout.input-settings-surface .shared-input-subcard .coordinate-draft {
+  padding:8px 0 0; border:0; border-top:1px solid #dce8e0; border-radius:0; background:transparent;
+}
+/* Shared v0.58 input roles follow the global font scale. */
+.input-settings-layout.input-parameter-settings {
+  --input-font:calc(14px * var(--ui-font-scale,1));
+  --input-caption-font:calc(14px * var(--ui-font-scale,1));
+  --input-card-padding:10px 12px; --input-row-gap:8px; --input-gap:4px;
+  line-height:calc(20px * var(--ui-font-scale,1));
+}
+.input-settings-layout.input-parameter-settings :is(.shared-input-card,.orca-group,.advanced-details,.source-options) { margin-bottom:12px; }
+.input-settings-layout.input-parameter-settings :is(.shared-input-card-title,.base-electronic-state-card h3,.shared-input-section>summary,.source-options .subheading h3,.orca-group>summary) {
+  font-size:calc(16px * var(--ui-font-scale,1)); font-weight:600; line-height:calc(24px * var(--ui-font-scale,1));
+}
+.input-settings-layout.input-parameter-settings :is(.shared-input-row,.two-fields,.orca-grid) { align-items:center; row-gap:4px; column-gap:8px; }
+.input-settings-layout.input-parameter-settings :is(.shared-input-field,.field,.orca-field,.shared-input-checkbox,.check-line,.orca-check,.muted-note,.orca-note,.field-caption,.shared-input-field-caption) { font-size:var(--input-font); font-weight:400; line-height:calc(20px * var(--ui-font-scale,1)); }
+.input-settings-layout.input-parameter-settings :is(.field,.orca-field):not(.shared-input-field) { margin-bottom:4px; }
+.input-settings-layout.input-parameter-settings :is(.shared-input-checkbox,.check-line,.orca-check) { margin:4px 0; }
+.input-settings-layout.input-parameter-settings .shared-input-card-header { gap:8px; margin-bottom:8px; }
+.input-settings-layout.input-parameter-settings .advanced-options-stack { gap:12px; margin-bottom:12px; }
+.input-settings-layout.input-parameter-settings .shared-input-card.shared-input-subcard { background:#fff; margin:8px 0; }
+.input-settings-layout.input-parameter-settings .shared-input-card.shared-input-subcard .shared-input-subcard { border:0; border-top:1px solid var(--input-card-border); background:transparent; border-radius:0; padding:8px 0 0; }
+.input-settings-layout.input-settings-surface .shared-input-action[data-input-reset=true] {
+  flex:0 0 30px; width:30px; height:30px; min-width:30px; min-height:30px; padding:0;
+  border:1px solid var(--input-border); border-radius:var(--input-control-radius); background:#fff;
+}
+.shared-input-action[data-input-reset=true]>span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.input-settings-layout .input-card-unavailable { opacity:.5; }
+.input-settings-layout .input-card-unavailable .shared-input-card-header { margin-bottom:0; }
+.input-settings-layout .shared-input-enable-card[data-enabled=false]>.shared-input-card-header { margin-bottom:0; }
+.input-settings-layout.input-parameter-settings [data-state=pending] :is(.resource-fields,.orca-grid) :is(input,select) { border-color:#d8bd73; background:#fffaf0; }
+.input-settings-layout.input-parameter-settings [data-state=confirmed] :is(.resource-fields,.orca-grid) :is(input,select) { border-color:#a4cdb3; background:#f5fbf7; }
+.input-settings-layout.input-parameter-settings [data-input-section=naming-resources][data-state=pending] :is(input,select),
+.input-settings-layout.input-parameter-settings .fragment-editor[data-state=pending] input { border-color:#d8bd73; background:#fffaf0; }
+.input-settings-layout.input-parameter-settings [data-input-section=naming-resources][data-state=confirmed] :is(input,select),
+.input-settings-layout.input-parameter-settings .fragment-editor[data-state=confirmed] input { border-color:#a4cdb3; background:#f5fbf7; }
+
+.input-settings-layout.input-parameter-settings .base-electronic-state-card h3 { margin-bottom:0; }
+/* v0.59: parameter density is scoped to the input workbench. */
+.input-settings-layout.input-parameter-settings {
+  --input-control-height:calc(30px + (var(--ui-font-scale,1) - 1) * 32px);
+  --ui-control-height:var(--input-control-height); --input-radius:8px;
+  --input-card-padding:10px 12px; --input-row-gap:8px;
+}
+.input-settings-layout.input-parameter-settings :is(input,select,textarea,button) { font-family:"Segoe UI","Microsoft YaHei",sans-serif; }
+.input-settings-layout.input-parameter-settings :is(.shared-input-row,.two-fields,.orca-grid,.input-control-flow) { gap:4px 8px; }
+.input-settings-layout.input-parameter-settings .input-control-flow { display:flex; flex-wrap:wrap; align-items:center; min-width:0; }
+.input-settings-layout.input-parameter-settings .task-core-group>.input-control-flow>:is(.shared-input-row,.two-fields,.orca-grid),
+.input-settings-layout.input-parameter-settings .excited-stage-controls { display:contents; }
+.input-settings-layout.input-parameter-settings .input-control-flow>:is(.field,.orca-field,.shared-input-field),
+.input-settings-layout.input-parameter-settings .input-option-group {
+  display:inline-flex; flex:0 1 auto; flex-wrap:nowrap; align-items:center; gap:7px;
+  margin:0; min-width:0; max-width:100%; font:inherit;
+}
+.input-settings-layout.input-parameter-settings .input-option-group :is(input,select) {
+  box-sizing:border-box; min-height:var(--input-control-height); max-width:100%; min-width:0;
+  padding:4px 8px; border:1px solid var(--input-border); border-radius:7px; background:#fff; color:inherit; font:inherit;
+}
+.input-settings-layout.input-parameter-settings .input-option-group input[type=number] { width:7.5ch; }
+.input-settings-layout.input-parameter-settings .input-option-group .shared-input-checkbox { flex:0 0 auto; margin:0; }
+.input-settings-layout.input-parameter-settings .input-control-flow :is(.check-line,.orca-check) { flex:0 0 auto; margin:0; }
+.input-settings-layout.input-parameter-settings .task-core-number { flex:0 1 auto; flex-wrap:nowrap; gap:8px; }
+.input-settings-layout.input-parameter-settings .task-core-number>.shared-input-field { display:inline-flex; flex:0 1 auto; flex-wrap:nowrap; }
+.input-settings-layout.input-parameter-settings .task-core-number input { width:9ch; }
+.input-settings-layout.input-parameter-settings .task-core-number>.shared-input-action { white-space:nowrap; }
+.input-settings-layout.input-parameter-settings .input-hessian-group { display:inline-flex; flex:0 1 auto; flex-wrap:wrap; align-items:center; gap:4px 8px; min-width:0; max-width:100%; }
+.input-settings-layout.input-parameter-settings .input-hessian-group .shared-input-field { display:inline-flex; flex-wrap:nowrap; margin:0; }
+.input-settings-layout.input-parameter-settings .input-control-flow :is(.field,.orca-field)>select { max-width:25em; }
+.input-settings-layout.input-parameter-settings .input-option-group :is(input,select):disabled { background:#edf2ef; color:#81918a; }
+.input-settings-layout.input-parameter-settings .shared-input-action[data-input-variant=primary],
+.input-settings-layout.input-parameter-settings .electronic-state-confirm { min-width:64px; min-height:max(36px,var(--input-control-height)); }
+.input-settings-layout.input-parameter-settings .resource-preset-row { flex-wrap:wrap; align-items:flex-end; }
+.input-settings-layout.input-parameter-settings .resource-preset-row .resource-preset-field { display:flex; flex:1 1 16em; flex-wrap:wrap; min-width:0; }
+.input-settings-layout.input-parameter-settings .resource-preset-field .shared-input-field-label { white-space:nowrap; }
+.input-settings-layout.input-parameter-settings .resource-preset-field .shared-input-field-control { flex:1 1 10.5em; min-width:min(100%,10.5em); }
+.input-settings-layout.input-parameter-settings .resource-preset-row select { width:100%; max-width:100%; }
+.input-settings-layout.input-parameter-settings .resource-preset-row>.shared-input-action { flex:0 0 auto; }
+.input-settings-layout.input-parameter-settings .checkpoint-file-row { min-height:var(--input-control-height); }
+.input-settings-layout.input-parameter-settings .checkpoint-file-row>.check-line { flex:0 0 calc(112px * var(--ui-font-scale,1)); white-space:nowrap; }
+.input-settings-layout.input-parameter-settings .checkpoint-file-row>:is(input,select) { min-height:var(--input-control-height); }
+.input-settings-layout.input-parameter-settings .fragment-editor>.fragment-electronic-state { margin-top:4px; }
+.input-settings-layout.input-parameter-settings .fragment-electronic-state .two-fields { margin:0; }
+.input-settings-layout.input-parameter-settings .fragment-assignment-status { margin:4px 0; font-size:var(--input-font); }
+/* Validation is a separate row within the affected semantic control group. */
+.input-settings-layout.input-settings-surface .input-validation-host,
+.input-settings-layout.input-settings-surface .input-control-flow .input-validation-host {
+  flex:0 1 auto; flex-wrap:wrap; min-width:0; max-width:100%;
+}
+.input-settings-layout.input-settings-surface .input-validation-host>.field-validation-message {
+  display:block; flex:0 0 100%; box-sizing:border-box; width:100%; min-width:0; max-width:100%;
+  margin:0; white-space:normal; overflow-wrap:anywhere; color:#af6b40;
+}
+/* Subcard headings keep their own role even under the global h3/summary scale. */
+:root[data-font-size] .input-settings-layout.input-settings-surface.input-parameter-settings :is(.shared-input-subcard,.shared-input-inline)>summary,
+:root[data-font-size] .input-settings-layout.input-settings-surface.input-parameter-settings :is(.shared-input-subcard,.shared-input-inline)>.shared-input-card-header>.shared-input-card-title {
+  font-size:calc(14px * var(--ui-font-scale,1))!important; font-weight:600; line-height:calc(20px * var(--ui-font-scale,1));
+}

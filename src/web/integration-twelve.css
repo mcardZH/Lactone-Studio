@@ -1,0 +1,11 @@
+.engine-switch{display:inline-flex;gap:3px;padding:2px;border:1px solid #d9e6df;border-radius:7px;margin-left:12px;background:#f5faf7}
+.engine-switch button{border:0;border-radius:5px;background:transparent;color:#486477;padding:3px 9px;font:inherit;font-size:var(--ui-small-size,13px);cursor:pointer}
+.engine-switch button[aria-pressed=true]{background:#e1f0e9;color:#1b6559}
+.engine-switch button:disabled{opacity:.5;cursor:default}
+.system-name-field{margin-bottom:12px}
+.app-shell .notice-toast-position{inset:48px auto auto 14px;width:min(410px,calc(100vw - 28px));padding:0;align-items:flex-start;justify-content:flex-start;z-index:170}
+.app-shell .notice-toast-position>.toast.fading-toast{max-width:100%;font-size:var(--ui-small-size,13px);box-shadow:0 3px 12px #183c2b14}
+.desktop-mode .notice-toast-position{width:calc(var(--form-width,30%) - 22px)}
+.summary-card:focus{outline:2px solid #39917c;outline-offset:2px}
+.basis-shell-choice{margin:8px 0 12px}
+@media(max-width:850px){.desktop-mode .notice-toast-position{width:min(360px,calc(100vw - 28px))}.engine-switch{margin-left:4px}.engine-switch button{padding:3px 5px}}

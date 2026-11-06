@@ -1,0 +1,8 @@
+.mesh-finish-controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0;font-size:var(--ui-secondary-size,14px)}
+.mesh-finish-controls.mesh-finish-inline{display:contents}
+.mesh-finish-controls label{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-width:0}
+.mesh-finish-controls select{width:auto;max-width:100%;min-height:30px}
+.mesh-finish-controls .mesh-finish-numeric{display:flex;flex:0 1 245px;gap:6px;min-height:30px}
+.mesh-finish-numeric>span{flex:none}
+.mesh-finish-controls input[type=range]{width:85px;min-width:55px;max-width:120px;flex:1 1 85px;padding:0}
+.mesh-finish-controls input[type=number]{width:64px;min-width:64px;flex:0 0 64px;min-height:30px;box-sizing:border-box;padding:3px 5px}

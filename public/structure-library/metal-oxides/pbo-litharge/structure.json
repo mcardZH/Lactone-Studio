@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "entryId": "pbo-litharge",
+  "structure": {
+    "id": "pbo-litharge",
+    "name": "四方氧化铅(II)（密陀僧）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "pbo-litharge:atom:1",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 3.2082046861048903e-16,
+        "y": 1.995,
+        "z": 1.2024000000000001
+      },
+      {
+        "id": "pbo-litharge:atom:2",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 1.995,
+        "y": 0.0,
+        "z": 3.8076
+      },
+      {
+        "id": "pbo-litharge:atom:3",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "pbo-litharge:atom:4",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.9950000000000003,
+        "y": 1.995,
+        "z": 2.4431703642989695e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1010977; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "pbo-litharge:atom:1",
+      "pbo-litharge:atom:2",
+      "pbo-litharge:atom:3",
+      "pbo-litharge:atom:4"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.99,
+          0.0,
+          2.4431703642989695e-16
+        ],
+        [
+          6.416409372209781e-16,
+          3.99,
+          2.4431703642989695e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.01
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1010977 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

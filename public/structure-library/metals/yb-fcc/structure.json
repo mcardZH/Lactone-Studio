@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "entryId": "yb-fcc",
+  "structure": {
+    "id": "yb-fcc",
+    "name": "镱（fcc）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "yb-fcc:atom:1",
+        "sourceIndex": 1,
+        "element": "Yb",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "yb-fcc:atom:2",
+        "sourceIndex": 1,
+        "element": "Yb",
+        "x": 4.411241240327982e-16,
+        "y": 2.7431,
+        "z": 2.7431
+      },
+      {
+        "id": "yb-fcc:atom:3",
+        "sourceIndex": 1,
+        "element": "Yb",
+        "x": 2.7431,
+        "y": 0.0,
+        "z": 2.7431
+      },
+      {
+        "id": "yb-fcc:atom:4",
+        "sourceIndex": 1,
+        "element": "Yb",
+        "x": 2.7431000000000005,
+        "y": 2.7431,
+        "z": 3.359328634741105e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9010997; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "yb-fcc:atom:1",
+      "yb-fcc:atom:2",
+      "yb-fcc:atom:3",
+      "yb-fcc:atom:4"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.4862,
+          0.0,
+          3.359328634741105e-16
+        ],
+        [
+          8.822482480655964e-16,
+          5.4862,
+          3.359328634741105e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.4862
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9010997 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

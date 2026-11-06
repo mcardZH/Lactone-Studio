@@ -1,0 +1,97 @@
+{% set name = "tblite" %}
+{% set version = "0.7.0" %}
+
+package:
+  name: {{ name }}-pkg
+  version: {{ version }}
+
+source:
+  url: https://github.com/tblite/tblite/releases/download/v{{ version }}/tblite-{{ version }}.tar.xz
+  sha256: 3a7cb4602101e828caf41c38ca5e30f82de82d0d26d5db40168acdcad3462b92
+  patches:
+    - find-lib.patch  # [win]
+
+build:
+  number: 0
+
+outputs:
+  - name: {{ name }}
+    script: build_pkg.sh   # [unix]
+    script: build_pkg.bat  # [win]
+    build:
+      string: {{ module_abi }}_h{{ PKG_HASH }}_{{PKG_BUILDNUM }}
+      run_exports:
+        - {{ pin_subpackage(name, max_pin='x.x') }}
+
+    requirements:
+      build:
+        - {{ stdlib('c') }}  # [unix]
+        - {{ stdlib('m2w64_c') }}  # [win]
+        - {{ compiler('c') }}  # [unix]
+        - {{ compiler('fortran') }}  # [unix]
+        - {{ compiler('m2w64_c') }}  # [win]
+        - {{ compiler('m2w64_fortran') }}  # [win]
+        - meson
+        - ninja
+        - pkg-config
+        - asciidoctor  # [unix]
+        - llvm-openmp  # [osx]
+      host:
+        - libgomp  # [linux]
+        - llvm-openmp  # [osx]
+        - libblas
+        - liblapack
+        - dftd4-devel >=4,<5 {{ module_abi }}_*
+        - toml-f-devel >=0.4 {{ module_abi }}_*
+        - mctc-lib-devel >=0.5 {{ module_abi }}_*
+        - simple-dftd3-devel >=1.4,<2 {{ module_abi }}_*
+      run:
+        - llvm-openmp  # [osx]
+
+    test:
+      requires:
+        - pkg-config
+      commands:
+        - {{ name }} --version  # [build_platform == target_platform]
+        - pkg-config {{ name }} --modversion
+        - pkg-config {{ name }} --exact-version {{ version }}
+        - test -f $PREFIX/include/{{ name }}.h  # [unix]
+        - test -f $PREFIX/lib/lib{{ name }}$SHLIB_EXT  # [unix]
+        - if not exist %LIBRARY_BIN%\\lib{{ name }}-0.dll exit 1  # [win]
+
+  - name: {{ name }}-devel
+    build:
+      string: {{ module_abi }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}
+      run_exports:
+        - {{ pin_subpackage(name, max_pin='x.x') }} {{ module_abi }}_*
+
+    requirements:
+      run:
+        - {{ pin_subpackage(name, max_pin='x.x') }} {{ module_abi }}_*
+
+    test:
+      requires:
+        - pkg-config
+      commands:
+        - {{ name }} --version  # [build_platform == target_platform]
+        - pkg-config {{ name }} --modversion
+        - pkg-config {{ name }} --exact-version {{ version }}
+        - test -f $PREFIX/include/{{ name }}.h  # [unix]
+        - test -f $PREFIX/lib/lib{{ name }}$SHLIB_EXT  # [unix]
+        - if not exist %LIBRARY_BIN%\\lib{{ name }}-0.dll exit 1  # [win]
+
+about:
+  home: https://github.com/tblite/tblite
+  license: LGPL-3.0-or-later
+  license_file:
+    - COPYING
+    - COPYING.LESSER
+  summary: Light-weight tight-binding framework
+  doc_url: https://tblite.readthedocs.io
+  dev_url: https://github.com/tblite/tblite
+
+extra:
+  recipe-maintainers:
+    - yuzie007
+    - awvwgk
+  feedstock-name: {{ name }}

@@ -1,0 +1,30 @@
+/* The model comes first; every interactive control lives below its viewport. */
+.molecule-stage.viewer-highlights-stage{display:flex;flex-direction:column;min-height:390px}
+.viewer-highlights-stage .viewer-viewport{position:relative;flex:1;min-height:200px;isolation:isolate;overflow:hidden}
+.molecule-stage.viewer-highlights-stage .viewer-viewport>.molecule-canvas{inset:0 0 27px;min-height:0}
+.molecule-stage.viewer-highlights-stage .viewer-viewport>.fallback-view{inset:0 0 27px}
+.molecule-stage.viewer-highlights-stage .viewer-viewport>.selection-overlay{inset:0 0 27px;z-index:3}
+.viewer-highlights-stage .viewer-bottom-controls{flex-shrink:0;background:#fcfefd;border-top:1px solid #e1e9e4;padding:9px 12px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;color:#345b4d;font-size:.875rem}
+.viewer-highlights-stage .viewer-bottom-controls>.viewer-toolbar,.viewer-highlights-stage .viewer-bottom-controls>.viewer-selection-modes,.viewer-highlights-stage .viewer-bottom-controls>.viewer-label-toggles{position:static;inset:auto;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0;padding:0;width:auto;z-index:auto}
+.viewer-highlights-stage .viewer-toolbar{gap:10px}.viewer-highlights-stage .viewer-toolbar .segmented{gap:3px}
+.viewer-highlights-stage .viewer-bottom-controls button{font-size:.8125rem;min-height:30px;color:#3c6655;padding:4px 8px}
+.viewer-highlights-stage .viewer-bottom-controls .viewer-label-toggles label{font-size:.8125rem;color:#3e6254;display:flex;gap:5px;align-items:center}
+.viewer-highlights-stage .viewer-selection-modes .clear-selection{margin-left:0}
+.viewer-highlight-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;font-size:.8125rem}
+.viewer-highlight-controls label{display:flex;gap:6px;align-items:center;color:#3d6352}
+.viewer-highlight-controls select{font:inherit;border:1px solid #ccdcd2;border-radius:5px;background:#f6fbf7;color:#315b49;padding:5px;max-width:100%;min-width:0}
+.viewer-highlight-controls input,.viewer-bottom-controls input{margin:0;accent-color:#2d8971}
+.viewer-bottom-controls>.region-legend{display:flex;flex-wrap:wrap;padding:3px 0;border:0;width:100%;font-size:.8125rem;gap:5px;line-height:1.6}.viewer-bottom-controls>.region-legend span{display:inline-flex;align-items:center;gap:5px;color:#385f4d;border:1px solid #dce8e0;border-radius:4px;padding:2px 6px}.viewer-bottom-controls>.region-legend i{display:inline-block;flex-shrink:0;width:9px;height:9px;border-radius:50%}.viewer-bottom-controls>.region-legend small{color:#496a58;font-size:.75rem}
+.viewer-overlay-legend{display:flex;flex-wrap:wrap;gap:10px;width:100%;font-size:.8125rem;color:#3c6052}.viewer-overlay-legend span{display:inline-flex;gap:5px;align-items:center}.viewer-overlay-legend i{width:18px;border-top:2px dashed}.viewer-overlay-legend .freeze-legend-marker{height:10px;width:10px;border:2px dashed;border-radius:50%}
+.viewer-highlights-stage .viewer-caption{font-size:.6875rem;color:#496477;bottom:7px}.viewer-highlights-stage .viewer-loading{font-size:.875rem;color:#476b5a}
+.viewer-highlights-stage .coordinate-guide-value{font-size:.8125rem;bottom:30px}.viewer-highlights-stage .fallback-view span{font-size:.75rem;color:#456b58}
+.atom-picker-view .molecule-stage.viewer-highlights-stage{min-height:430px;height:100%}.atom-picker-dialog .atom-picker-view.with-regions>.molecule-stage.viewer-highlights-stage{min-height:430px}
+.atom-picker-dialog .viewer-highlights-stage .viewer-label-toggles label,.atom-picker-dialog .viewer-highlights-stage .viewer-selection-modes button,.atom-picker-dialog .viewer-highlights-stage .viewer-toolbar .segmented button{font-size:.8125rem}
+@media(max-width:740px){.molecule-stage.viewer-highlights-stage{min-height:410px}.atom-picker-view .molecule-stage.viewer-highlights-stage,.atom-picker-dialog .atom-picker-view.with-regions>.molecule-stage.viewer-highlights-stage{height:auto;min-height:480px}.viewer-highlights-stage .viewer-viewport{min-height:250px}.viewer-highlights-stage .viewer-bottom-controls{padding:8px;gap:8px}.viewer-highlight-controls label:first-child{max-width:100%}}
+/* On phones the dialog body scrolls as two full-height rows. Never compress the
+   model's grid row below its contents: its viewport would cover the number form. */
+@media(max-width:740px){
+  .atom-picker-dialog .atom-picker-body{grid-auto-rows:max-content;align-content:start}
+  .atom-picker-dialog .atom-picker-view,.atom-picker-dialog .atom-picker-view.with-regions{min-height:480px;align-self:start}
+  .atom-picker-dialog .atom-picker-view>.molecule-stage.viewer-highlights-stage,.atom-picker-dialog .atom-picker-view.with-regions>.molecule-stage.viewer-highlights-stage{flex:none;height:auto}
+}

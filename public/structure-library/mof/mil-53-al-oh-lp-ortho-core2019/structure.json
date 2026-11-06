@@ -1,0 +1,1450 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mil-53-al-oh-lp-ortho-core2019",
+  "structure": {
+    "id": "mil-53-al-oh-lp-ortho-core2019",
+    "name": "OH-MIL-53(Al) 大孔正交相",
+    "format": "cif",
+    "atoms": [
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0001",
+        "element": "H",
+        "x": 5.4736685640000005,
+        "y": 7.604915472,
+        "z": 7.458437160000001,
+        "sourceIndex": 1
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0002",
+        "element": "H",
+        "x": 5.468865696000002,
+        "y": 9.65659464,
+        "z": 6.015709830000001,
+        "sourceIndex": 2
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0003",
+        "element": "H",
+        "x": 1.2264657090000015,
+        "y": 9.272956896,
+        "z": 5.478757360000001,
+        "sourceIndex": 3
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0004",
+        "element": "H",
+        "x": 1.2306015120000011,
+        "y": 7.214375952,
+        "z": 6.917722520000002,
+        "sourceIndex": 4
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0005",
+        "element": "H",
+        "x": 5.4371134020000005,
+        "y": 1.21706928,
+        "z": 6.93847932,
+        "sourceIndex": 5
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0006",
+        "element": "H",
+        "x": 1.1873757000000003,
+        "y": 0.853295184,
+        "z": 7.427431690000001,
+        "sourceIndex": 6
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0007",
+        "element": "H",
+        "x": 2.095784817,
+        "y": 1.190640528,
+        "z": 12.42982049,
+        "sourceIndex": 7
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0008",
+        "element": "H",
+        "x": 4.595811024000003,
+        "y": 15.572426688,
+        "z": 0.4165630300000012,
+        "sourceIndex": 8
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0009",
+        "element": "H",
+        "x": 2.1009879240000027,
+        "y": 15.971551344000002,
+        "z": 0.913169470000001,
+        "sourceIndex": 9
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0010",
+        "element": "H",
+        "x": 4.556320776,
+        "y": 0.782594064,
+        "z": 11.92011132,
+        "sourceIndex": 10
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0011",
+        "element": "H",
+        "x": 4.564592382000001,
+        "y": 7.133069664000001,
+        "z": 12.546058570000001,
+        "sourceIndex": 11
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0012",
+        "element": "H",
+        "x": 2.133674109000001,
+        "y": 7.577813376,
+        "z": 11.964349250000001,
+        "sourceIndex": 12
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0013",
+        "element": "H",
+        "x": 1.1899105470000026,
+        "y": 15.65019792,
+        "z": 5.956163760000001,
+        "sourceIndex": 13
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0014",
+        "element": "H",
+        "x": 5.442049683000003,
+        "y": 16.009090272,
+        "z": 5.465784360000001,
+        "sourceIndex": 14
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0015",
+        "element": "H",
+        "x": 2.130071958000001,
+        "y": 9.619055712000002,
+        "z": 0.44951445000000073,
+        "sourceIndex": 15
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0016",
+        "element": "H",
+        "x": 4.528437459000002,
+        "y": 9.184243824000001,
+        "z": 1.0166940100000008,
+        "sourceIndex": 16
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0017",
+        "element": "H",
+        "x": 12.103227360000002,
+        "y": 7.648851168,
+        "z": 7.480361530000001,
+        "sourceIndex": 17
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0018",
+        "element": "H",
+        "x": 12.065204655000002,
+        "y": 9.696321936,
+        "z": 6.022326060000003,
+        "sourceIndex": 18
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0019",
+        "element": "H",
+        "x": 7.857625461000002,
+        "y": 9.144684864,
+        "z": 5.363427390000002,
+        "sourceIndex": 19
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0020",
+        "element": "H",
+        "x": 7.894714275000001,
+        "y": 7.101759168,
+        "z": 6.819516910000001,
+        "sourceIndex": 20
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0021",
+        "element": "H",
+        "x": 12.105228555,
+        "y": 1.271273472,
+        "z": 6.897225180000001,
+        "sourceIndex": 21
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0022",
+        "element": "H",
+        "x": 7.887243147,
+        "y": 0.754650288,
+        "z": 7.508772400000001,
+        "sourceIndex": 22
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0023",
+        "element": "H",
+        "x": 8.775773727,
+        "y": 1.2995539200000001,
+        "z": 12.52205852,
+        "sourceIndex": 23
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0024",
+        "element": "H",
+        "x": 11.193083874000001,
+        "y": 15.606598896,
+        "z": 0.4091684200000017,
+        "sourceIndex": 24
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0025",
+        "element": "H",
+        "x": 8.816064453000003,
+        "y": 16.096119984,
+        "z": 1.0222724000000016,
+        "sourceIndex": 25
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0026",
+        "element": "H",
+        "x": 11.189214897000001,
+        "y": 0.81979632,
+        "z": 11.92646809,
+        "sourceIndex": 26
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0027",
+        "element": "H",
+        "x": 11.231907057000003,
+        "y": 7.184243808,
+        "z": 12.503117940000003,
+        "sourceIndex": 27
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0028",
+        "element": "H",
+        "x": 8.773905945000001,
+        "y": 7.673764896,
+        "z": 11.885084220000001,
+        "sourceIndex": 28
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0029",
+        "element": "H",
+        "x": 7.926199743000003,
+        "y": 15.536739456000001,
+        "z": 6.051126120000003,
+        "sourceIndex": 29
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0030",
+        "element": "H",
+        "x": 12.144185151000002,
+        "y": 16.0592544,
+        "z": 5.436854570000002,
+        "sourceIndex": 30
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0031",
+        "element": "H",
+        "x": 8.735749827000001,
+        "y": 9.729484128000001,
+        "z": 0.35766561000000113,
+        "sourceIndex": 31
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0032",
+        "element": "H",
+        "x": 11.228038080000003,
+        "y": 9.232219584000001,
+        "z": 0.9847804300000014,
+        "sourceIndex": 32
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0033",
+        "element": "C",
+        "x": 5.481006279,
+        "y": 0.438346944,
+        "z": 12.38130147,
+        "sourceIndex": 33
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0034",
+        "element": "C",
+        "x": 13.312349379,
+        "y": 1.122969456,
+        "z": 12.099787370000001,
+        "sourceIndex": 34
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0035",
+        "element": "C",
+        "x": 6.640365249,
+        "y": 2.361249072,
+        "z": 11.259655890000001,
+        "sourceIndex": 35
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0036",
+        "element": "C",
+        "x": 1.2079213020000015,
+        "y": 9.078192144,
+        "z": 0.24337348000000064,
+        "sourceIndex": 36
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0037",
+        "element": "C",
+        "x": 2.1492834300000014,
+        "y": 8.896389264,
+        "z": 5.918152870000001,
+        "sourceIndex": 37
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0038",
+        "element": "C",
+        "x": 3.346665105000002,
+        "y": 9.583873488,
+        "z": 5.663103690000001,
+        "sourceIndex": 38
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0039",
+        "element": "C",
+        "x": 3.3329235660000016,
+        "y": 10.804141152,
+        "z": 4.795728910000001,
+        "sourceIndex": 39
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0040",
+        "element": "C",
+        "x": 4.515496398,
+        "y": 0.6810874560000001,
+        "z": 6.714954530000001,
+        "sourceIndex": 40
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0041",
+        "element": "C",
+        "x": 1.2111232140000014,
+        "y": 7.943439168,
+        "z": 12.41269613,
+        "sourceIndex": 41
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0042",
+        "element": "C",
+        "x": 6.672651195000001,
+        "y": 7.2783436319999995,
+        "z": 12.13507393,
+        "sourceIndex": 42
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0043",
+        "element": "C",
+        "x": 0.02521505700000097,
+        "y": 6.038548992,
+        "z": 11.2878073,
+        "sourceIndex": 43
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0044",
+        "element": "C",
+        "x": 5.503152837000004,
+        "y": 16.141402368,
+        "z": 0.21794640000000134,
+        "sourceIndex": 44
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0045",
+        "element": "C",
+        "x": 4.518298071000003,
+        "y": 16.385489568,
+        "z": 5.903104190000001,
+        "sourceIndex": 45
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0046",
+        "element": "C",
+        "x": 3.3170474190000028,
+        "y": 15.711977232,
+        "z": 5.628854970000001,
+        "sourceIndex": 46
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0047",
+        "element": "C",
+        "x": 3.328120698000002,
+        "y": 14.504839776,
+        "z": 4.749804490000002,
+        "sourceIndex": 47
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0048",
+        "element": "C",
+        "x": 2.1535526460000014,
+        "y": 7.7549028479999995,
+        "z": 6.713268040000002,
+        "sourceIndex": 48
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0049",
+        "element": "C",
+        "x": 1.1775031380000027,
+        "y": 16.349297328000002,
+        "z": 0.4766280200000011,
+        "sourceIndex": 49
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0050",
+        "element": "C",
+        "x": 6.709206357000002,
+        "y": 15.712987248000001,
+        "z": 0.7942070600000013,
+        "sourceIndex": 50
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0051",
+        "element": "C",
+        "x": 13.332628155000002,
+        "y": 14.455854,
+        "z": 1.617862830000002,
+        "sourceIndex": 51
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0052",
+        "element": "C",
+        "x": 5.472467847000001,
+        "y": 7.7076004320000004,
+        "z": 12.72236164,
+        "sourceIndex": 52
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0053",
+        "element": "C",
+        "x": 4.550450604000001,
+        "y": 7.972897968,
+        "z": 7.013203800000001,
+        "sourceIndex": 53
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0054",
+        "element": "C",
+        "x": 3.3541362330000015,
+        "y": 7.282047024,
+        "z": 7.264880000000002,
+        "sourceIndex": 54
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0055",
+        "element": "C",
+        "x": 3.363741969000001,
+        "y": 6.057234288,
+        "z": 8.1249899,
+        "sourceIndex": 55
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0056",
+        "element": "C",
+        "x": 2.113928985000003,
+        "y": 16.182139680000002,
+        "z": 6.176575030000001,
+        "sourceIndex": 56
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0057",
+        "element": "C",
+        "x": 5.4509883540000015,
+        "y": 8.848245168000002,
+        "z": 0.5453849200000009,
+        "sourceIndex": 57
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0058",
+        "element": "C",
+        "x": 0.007471128000001534,
+        "y": 9.543136176,
+        "z": 0.8004341000000006,
+        "sourceIndex": 58
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0059",
+        "element": "C",
+        "x": 6.608346129000002,
+        "y": 10.802794464,
+        "z": 1.6264250100000013,
+        "sourceIndex": 59
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0060",
+        "element": "C",
+        "x": 1.174434639,
+        "y": 0.6512919840000001,
+        "z": 12.64621013,
+        "sourceIndex": 60
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0061",
+        "element": "C",
+        "x": 2.1104602470000002,
+        "y": 0.47723256000000003,
+        "z": 6.9885551,
+        "sourceIndex": 61
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0062",
+        "element": "C",
+        "x": 3.311444073,
+        "y": 1.150408224,
+        "z": 7.2609881000000005,
+        "sourceIndex": 62
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0063",
+        "element": "C",
+        "x": 3.3042397710000007,
+        "y": 2.358724032,
+        "z": 8.1392602,
+        "sourceIndex": 63
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0064",
+        "element": "C",
+        "x": 4.546581627000002,
+        "y": 9.113879376,
+        "z": 6.2173102500000015,
+        "sourceIndex": 64
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0065",
+        "element": "C",
+        "x": 12.112833096,
+        "y": 0.44373369600000007,
+        "z": 12.3645663,
+        "sourceIndex": 65
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0066",
+        "element": "C",
+        "x": 6.663845937,
+        "y": 1.154448288,
+        "z": 12.13987394,
+        "sourceIndex": 66
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0067",
+        "element": "C",
+        "x": 13.305945555,
+        "y": 2.33902872,
+        "z": 11.230726100000004,
+        "sourceIndex": 67
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0068",
+        "element": "C",
+        "x": 7.830142383000003,
+        "y": 9.151249968,
+        "z": 0.17824902000000103,
+        "sourceIndex": 68
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0069",
+        "element": "C",
+        "x": 8.779909530000003,
+        "y": 8.812052928,
+        "z": 5.837590540000001,
+        "sourceIndex": 69
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0070",
+        "element": "C",
+        "x": 9.958479972000003,
+        "y": 9.541452816000001,
+        "z": 5.616400890000001,
+        "sourceIndex": 70
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0071",
+        "element": "C",
+        "x": 9.939802152000002,
+        "y": 10.758185424,
+        "z": 4.749155840000001,
+        "sourceIndex": 71
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0072",
+        "element": "C",
+        "x": 11.198420394000001,
+        "y": 0.699099408,
+        "z": 6.706003160000002,
+        "sourceIndex": 72
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0073",
+        "element": "C",
+        "x": 7.850954811000002,
+        "y": 8.009931888,
+        "z": 12.355355470000003,
+        "sourceIndex": 73
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0074",
+        "element": "C",
+        "x": 0.014275191000001167,
+        "y": 7.255786608000001,
+        "z": 12.156998300000001,
+        "sourceIndex": 74
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0075",
+        "element": "C",
+        "x": 6.697732839,
+        "y": 6.0558876,
+        "z": 11.27172078,
+        "sourceIndex": 75
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0076",
+        "element": "C",
+        "x": 12.116835486000003,
+        "y": 16.142244048,
+        "z": 0.19563284000000172,
+        "sourceIndex": 76
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0077",
+        "element": "C",
+        "x": 11.219499648000003,
+        "y": 16.397273088,
+        "z": 5.902325810000002,
+        "sourceIndex": 77
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0078",
+        "element": "C",
+        "x": 10.038661185000002,
+        "y": 15.674774976,
+        "z": 5.668811810000002,
+        "sourceIndex": 78
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0079",
+        "element": "C",
+        "x": 10.059340200000003,
+        "y": 14.456527344000001,
+        "z": 4.800918110000002,
+        "sourceIndex": 79
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0080",
+        "element": "C",
+        "x": 8.801922675000002,
+        "y": 7.676289936000001,
+        "z": 6.640100320000001,
+        "sourceIndex": 80
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0081",
+        "element": "C",
+        "x": 7.891112124000003,
+        "y": 16.431950304,
+        "z": 0.5557633200000015,
+        "sourceIndex": 81
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0082",
+        "element": "C",
+        "x": 13.319020029000002,
+        "y": 15.669893232,
+        "z": 0.7438718200000018,
+        "sourceIndex": 82
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0083",
+        "element": "C",
+        "x": 6.728951481000003,
+        "y": 14.501136384,
+        "z": 1.6665115800000012,
+        "sourceIndex": 83
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0084",
+        "element": "C",
+        "x": 12.154591365000002,
+        "y": 7.723592352000001,
+        "z": 12.711594050000002,
+        "sourceIndex": 84
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0085",
+        "element": "C",
+        "x": 11.180809878000002,
+        "y": 7.982661456000001,
+        "z": 7.007365950000001,
+        "sourceIndex": 85
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0086",
+        "element": "C",
+        "x": 10.002506262,
+        "y": 7.252419888,
+        "z": 7.2301123600000015,
+        "sourceIndex": 86
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0087",
+        "element": "C",
+        "x": 10.029188862000002,
+        "y": 6.0368656320000005,
+        "z": 8.101638500000004,
+        "sourceIndex": 87
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0088",
+        "element": "C",
+        "x": 8.833808382,
+        "y": 16.10723016,
+        "z": 6.244813010000002,
+        "sourceIndex": 88
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0089",
+        "element": "C",
+        "x": 12.150455562000001,
+        "y": 8.859018672000001,
+        "z": 0.5418822100000014,
+        "sourceIndex": 89
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0090",
+        "element": "C",
+        "x": 6.628891731000001,
+        "y": 9.579496751999999,
+        "z": 0.763850240000001,
+        "sourceIndex": 90
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0091",
+        "element": "C",
+        "x": 13.337964675000002,
+        "y": 10.755660383999999,
+        "z": 1.6739061900000016,
+        "sourceIndex": 91
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0092",
+        "element": "C",
+        "x": 7.869232392000001,
+        "y": 0.728726544,
+        "z": 12.718469740000002,
+        "sourceIndex": 92
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0093",
+        "element": "C",
+        "x": 8.81192865,
+        "y": 0.409224816,
+        "z": 7.04836063,
+        "sourceIndex": 93
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0094",
+        "element": "C",
+        "x": 9.994234656,
+        "y": 1.1283562080000002,
+        "z": 7.284858420000002,
+        "sourceIndex": 94
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0095",
+        "element": "C",
+        "x": 9.972354924000001,
+        "y": 2.341890432,
+        "z": 8.157422400000002,
+        "sourceIndex": 95
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0096",
+        "element": "C",
+        "x": 11.160130863000001,
+        "y": 9.118424448,
+        "z": 6.204985900000001,
+        "sourceIndex": 96
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0097",
+        "element": "O",
+        "x": 1.0855815810000005,
+        "y": 2.8921808159999998,
+        "z": 10.985795860000001,
+        "sourceIndex": 97
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0098",
+        "element": "O",
+        "x": 5.465663784000002,
+        "y": 11.197037375999999,
+        "z": 2.040004250000001,
+        "sourceIndex": 98
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0099",
+        "element": "O",
+        "x": 4.454926896000002,
+        "y": 11.363858352,
+        "z": 4.5482040700000015,
+        "sourceIndex": 99
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0100",
+        "element": "O",
+        "x": 2.1715634010000007,
+        "y": 2.7556603200000005,
+        "z": 8.56230973,
+        "sourceIndex": 100
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0101",
+        "element": "O",
+        "x": 5.580665790000001,
+        "y": 5.491288656,
+        "z": 11.022120260000001,
+        "sourceIndex": 101
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0102",
+        "element": "O",
+        "x": 1.1266727850000022,
+        "y": 14.06783952,
+        "z": 2.0387069500000012,
+        "sourceIndex": 102
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0103",
+        "element": "O",
+        "x": 2.206384194000002,
+        "y": 13.947647616,
+        "z": 4.496052610000001,
+        "sourceIndex": 103
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0104",
+        "element": "O",
+        "x": 4.503756054000001,
+        "y": 5.647504464000001,
+        "z": 8.525206950000001,
+        "sourceIndex": 104
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0105",
+        "element": "O",
+        "x": 5.613085149000002,
+        "y": 13.947815952000001,
+        "z": 1.9228580600000011,
+        "sourceIndex": 105
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0106",
+        "element": "O",
+        "x": 1.166029620000001,
+        "y": 5.63420592,
+        "z": 10.88577403,
+        "sourceIndex": 106
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0107",
+        "element": "O",
+        "x": 2.239070379000001,
+        "y": 5.5155290400000005,
+        "z": 8.38899045,
+        "sourceIndex": 107
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0108",
+        "element": "O",
+        "x": 4.459596351000003,
+        "y": 14.115141936,
+        "z": 4.322214410000002,
+        "sourceIndex": 108
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0109",
+        "element": "O",
+        "x": 1.1185345920000018,
+        "y": 11.313357552,
+        "z": 1.9220796800000006,
+        "sourceIndex": 109
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0110",
+        "element": "O",
+        "x": 5.506488162,
+        "y": 2.7332716319999997,
+        "z": 10.817536050000001,
+        "sourceIndex": 110
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0111",
+        "element": "O",
+        "x": 4.425442623000001,
+        "y": 2.9059843680000004,
+        "z": 8.393531000000001,
+        "sourceIndex": 111
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0112",
+        "element": "O",
+        "x": 2.197845762000002,
+        "y": 11.1901356,
+        "z": 4.373976680000001,
+        "sourceIndex": 112
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0113",
+        "element": "O",
+        "x": 7.753163082000001,
+        "y": 2.9335914720000003,
+        "z": 11.02237972,
+        "sourceIndex": 113
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0114",
+        "element": "O",
+        "x": 12.206755848000002,
+        "y": 11.144516544,
+        "z": 2.1013665400000017,
+        "sourceIndex": 114
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0115",
+        "element": "O",
+        "x": 11.056468962000002,
+        "y": 11.309822496,
+        "z": 4.495793150000003,
+        "sourceIndex": 115
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0116",
+        "element": "O",
+        "x": 8.840078793,
+        "y": 2.715764688,
+        "z": 8.60278549,
+        "sourceIndex": 116
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0117",
+        "element": "O",
+        "x": 12.242777358000001,
+        "y": 5.498358768,
+        "z": 11.018617550000004,
+        "sourceIndex": 117
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0118",
+        "element": "O",
+        "x": 7.868431914000002,
+        "y": 14.104705104,
+        "z": 2.0864475900000015,
+        "sourceIndex": 118
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0119",
+        "element": "O",
+        "x": 8.942940216000002,
+        "y": 13.901860224,
+        "z": 4.546647310000002,
+        "sourceIndex": 119
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0120",
+        "element": "O",
+        "x": 11.172271446000003,
+        "y": 5.6567629440000005,
+        "z": 8.520536670000002,
+        "sourceIndex": 120
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0121",
+        "element": "O",
+        "x": 12.210357999000003,
+        "y": 13.897988496,
+        "z": 1.8726525500000017,
+        "sourceIndex": 121
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0122",
+        "element": "O",
+        "x": 7.840014945000001,
+        "y": 5.670566496,
+        "z": 10.85399018,
+        "sourceIndex": 122
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0123",
+        "element": "O",
+        "x": 8.913189117,
+        "y": 5.473276704,
+        "z": 8.356557950000001,
+        "sourceIndex": 123
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0124",
+        "element": "O",
+        "x": 11.201889132000003,
+        "y": 14.061779424,
+        "z": 4.385392920000002,
+        "sourceIndex": 124
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0125",
+        "element": "O",
+        "x": 7.725012939000003,
+        "y": 11.357124912,
+        "z": 1.877193100000001,
+        "sourceIndex": 125
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0126",
+        "element": "O",
+        "x": 12.174336489,
+        "y": 2.737648368,
+        "z": 10.805211700000003,
+        "sourceIndex": 126
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0127",
+        "element": "O",
+        "x": 11.08528617,
+        "y": 2.918272896,
+        "z": 8.38600666,
+        "sourceIndex": 127
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0128",
+        "element": "O",
+        "x": 8.800588545000002,
+        "y": 11.155458384000001,
+        "z": 4.331554970000002,
+        "sourceIndex": 128
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0129",
+        "element": "O",
+        "x": 0.00226802100000068,
+        "y": 4.226748624,
+        "z": 8.87729417,
+        "sourceIndex": 129
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0130",
+        "element": "O",
+        "x": 3.3305221320000022,
+        "y": 12.649777056000001,
+        "z": 2.385215780000001,
+        "sourceIndex": 130
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0131",
+        "element": "O",
+        "x": 6.664779828000002,
+        "y": 12.651797088,
+        "z": 4.0299327200000015,
+        "sourceIndex": 131
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0132",
+        "element": "O",
+        "x": 3.3386603250000007,
+        "y": 4.21345008,
+        "z": 10.51357866,
+        "sourceIndex": 132
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0133",
+        "element": "O",
+        "x": 6.674919216000001,
+        "y": 4.211935056,
+        "z": 8.88144553,
+        "sourceIndex": 133
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0134",
+        "element": "O",
+        "x": 10.003306740000003,
+        "y": 12.610723104000002,
+        "z": 2.389496870000001,
+        "sourceIndex": 134
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0135",
+        "element": "O",
+        "x": 13.337431023000002,
+        "y": 12.612743136,
+        "z": 4.035381380000002,
+        "sourceIndex": 135
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0136",
+        "element": "O",
+        "x": 10.009176912000001,
+        "y": 4.22691696,
+        "z": 10.51422731,
+        "sourceIndex": 136
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0137",
+        "element": "Al",
+        "x": 1.6669954350000007,
+        "y": 4.1925764160000005,
+        "z": 9.703804,
+        "sourceIndex": 137
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0138",
+        "element": "Al",
+        "x": 4.997784393000002,
+        "y": 12.661055568,
+        "z": 3.207055330000001,
+        "sourceIndex": 138
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0139",
+        "element": "Al",
+        "x": 5.004455043000001,
+        "y": 4.188873024,
+        "z": 9.69134992,
+        "sourceIndex": 139
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0140",
+        "element": "Al",
+        "x": 1.662726219000002,
+        "y": 12.633111792,
+        "z": 3.208352630000001,
+        "sourceIndex": 140
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0141",
+        "element": "Al",
+        "x": 8.338712739,
+        "y": 4.1915664,
+        "z": 9.7063986,
+        "sourceIndex": 141
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0142",
+        "element": "Al",
+        "x": 11.670035349000003,
+        "y": 12.604831343999999,
+        "z": 3.2139310200000013,
+        "sourceIndex": 142
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0143",
+        "element": "Al",
+        "x": 11.672036544000001,
+        "y": 4.195101456,
+        "z": 9.685382340000002,
+        "sourceIndex": 143
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0144",
+        "element": "Al",
+        "x": 8.334443523000003,
+        "y": 12.633280128,
+        "z": 3.2108175000000014,
+        "sourceIndex": 144
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0145",
+        "element": "H",
+        "x": 3.3307889580000016,
+        "y": 12.18836808,
+        "z": 1.532889680000001,
+        "sourceIndex": 145
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0146",
+        "element": "H",
+        "x": 10.013979780000003,
+        "y": 13.077013824,
+        "z": 1.5396356400000013,
+        "sourceIndex": 146
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0147",
+        "element": "H",
+        "x": 6.655040679000002,
+        "y": 12.212945136,
+        "z": 4.8940642500000004,
+        "sourceIndex": 147
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0148",
+        "element": "H",
+        "x": 13.338498327000002,
+        "y": 13.100412528,
+        "z": 4.873437180000002,
+        "sourceIndex": 148
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0149",
+        "element": "H",
+        "x": 3.3451975620000014,
+        "y": 4.597929504,
+        "z": 11.402618350000001,
+        "sourceIndex": 149
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0150",
+        "element": "H",
+        "x": 10.019049474000001,
+        "y": 4.650113664,
+        "z": 11.385623720000002,
+        "sourceIndex": 150
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0151",
+        "element": "H",
+        "x": 6.682390344000001,
+        "y": 4.603484592,
+        "z": 7.995519360000001,
+        "sourceIndex": 151
+      },
+      {
+        "id": "mil-53-al-oh-lp-ortho-core2019-a0152",
+        "element": "H",
+        "x": 0.010939866000000747,
+        "y": 4.645063584000001,
+        "z": 8.00356262,
+        "sourceIndex": 152
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [],
+    "cell": {
+      "vectors": [
+        [
+          13.3413,
+          0.0,
+          8.169190170732292e-16
+        ],
+        [
+          2.7070493435596632e-15,
+          16.8336,
+          1.0307607179063443e-15
+        ],
+        [
+          0.0,
+          0.0,
+          12.973
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Source CIF provides a crystallographic unit cell and fractional atomic coordinates; CIF crystal structures are 3D periodic."
+      }
+    },
+    "sourceAtomIds": [
+      "mil-53-al-oh-lp-ortho-core2019-a0001",
+      "mil-53-al-oh-lp-ortho-core2019-a0002",
+      "mil-53-al-oh-lp-ortho-core2019-a0003",
+      "mil-53-al-oh-lp-ortho-core2019-a0004",
+      "mil-53-al-oh-lp-ortho-core2019-a0005",
+      "mil-53-al-oh-lp-ortho-core2019-a0006",
+      "mil-53-al-oh-lp-ortho-core2019-a0007",
+      "mil-53-al-oh-lp-ortho-core2019-a0008",
+      "mil-53-al-oh-lp-ortho-core2019-a0009",
+      "mil-53-al-oh-lp-ortho-core2019-a0010",
+      "mil-53-al-oh-lp-ortho-core2019-a0011",
+      "mil-53-al-oh-lp-ortho-core2019-a0012",
+      "mil-53-al-oh-lp-ortho-core2019-a0013",
+      "mil-53-al-oh-lp-ortho-core2019-a0014",
+      "mil-53-al-oh-lp-ortho-core2019-a0015",
+      "mil-53-al-oh-lp-ortho-core2019-a0016",
+      "mil-53-al-oh-lp-ortho-core2019-a0017",
+      "mil-53-al-oh-lp-ortho-core2019-a0018",
+      "mil-53-al-oh-lp-ortho-core2019-a0019",
+      "mil-53-al-oh-lp-ortho-core2019-a0020",
+      "mil-53-al-oh-lp-ortho-core2019-a0021",
+      "mil-53-al-oh-lp-ortho-core2019-a0022",
+      "mil-53-al-oh-lp-ortho-core2019-a0023",
+      "mil-53-al-oh-lp-ortho-core2019-a0024",
+      "mil-53-al-oh-lp-ortho-core2019-a0025",
+      "mil-53-al-oh-lp-ortho-core2019-a0026",
+      "mil-53-al-oh-lp-ortho-core2019-a0027",
+      "mil-53-al-oh-lp-ortho-core2019-a0028",
+      "mil-53-al-oh-lp-ortho-core2019-a0029",
+      "mil-53-al-oh-lp-ortho-core2019-a0030",
+      "mil-53-al-oh-lp-ortho-core2019-a0031",
+      "mil-53-al-oh-lp-ortho-core2019-a0032",
+      "mil-53-al-oh-lp-ortho-core2019-a0033",
+      "mil-53-al-oh-lp-ortho-core2019-a0034",
+      "mil-53-al-oh-lp-ortho-core2019-a0035",
+      "mil-53-al-oh-lp-ortho-core2019-a0036",
+      "mil-53-al-oh-lp-ortho-core2019-a0037",
+      "mil-53-al-oh-lp-ortho-core2019-a0038",
+      "mil-53-al-oh-lp-ortho-core2019-a0039",
+      "mil-53-al-oh-lp-ortho-core2019-a0040",
+      "mil-53-al-oh-lp-ortho-core2019-a0041",
+      "mil-53-al-oh-lp-ortho-core2019-a0042",
+      "mil-53-al-oh-lp-ortho-core2019-a0043",
+      "mil-53-al-oh-lp-ortho-core2019-a0044",
+      "mil-53-al-oh-lp-ortho-core2019-a0045",
+      "mil-53-al-oh-lp-ortho-core2019-a0046",
+      "mil-53-al-oh-lp-ortho-core2019-a0047",
+      "mil-53-al-oh-lp-ortho-core2019-a0048",
+      "mil-53-al-oh-lp-ortho-core2019-a0049",
+      "mil-53-al-oh-lp-ortho-core2019-a0050",
+      "mil-53-al-oh-lp-ortho-core2019-a0051",
+      "mil-53-al-oh-lp-ortho-core2019-a0052",
+      "mil-53-al-oh-lp-ortho-core2019-a0053",
+      "mil-53-al-oh-lp-ortho-core2019-a0054",
+      "mil-53-al-oh-lp-ortho-core2019-a0055",
+      "mil-53-al-oh-lp-ortho-core2019-a0056",
+      "mil-53-al-oh-lp-ortho-core2019-a0057",
+      "mil-53-al-oh-lp-ortho-core2019-a0058",
+      "mil-53-al-oh-lp-ortho-core2019-a0059",
+      "mil-53-al-oh-lp-ortho-core2019-a0060",
+      "mil-53-al-oh-lp-ortho-core2019-a0061",
+      "mil-53-al-oh-lp-ortho-core2019-a0062",
+      "mil-53-al-oh-lp-ortho-core2019-a0063",
+      "mil-53-al-oh-lp-ortho-core2019-a0064",
+      "mil-53-al-oh-lp-ortho-core2019-a0065",
+      "mil-53-al-oh-lp-ortho-core2019-a0066",
+      "mil-53-al-oh-lp-ortho-core2019-a0067",
+      "mil-53-al-oh-lp-ortho-core2019-a0068",
+      "mil-53-al-oh-lp-ortho-core2019-a0069",
+      "mil-53-al-oh-lp-ortho-core2019-a0070",
+      "mil-53-al-oh-lp-ortho-core2019-a0071",
+      "mil-53-al-oh-lp-ortho-core2019-a0072",
+      "mil-53-al-oh-lp-ortho-core2019-a0073",
+      "mil-53-al-oh-lp-ortho-core2019-a0074",
+      "mil-53-al-oh-lp-ortho-core2019-a0075",
+      "mil-53-al-oh-lp-ortho-core2019-a0076",
+      "mil-53-al-oh-lp-ortho-core2019-a0077",
+      "mil-53-al-oh-lp-ortho-core2019-a0078",
+      "mil-53-al-oh-lp-ortho-core2019-a0079",
+      "mil-53-al-oh-lp-ortho-core2019-a0080",
+      "mil-53-al-oh-lp-ortho-core2019-a0081",
+      "mil-53-al-oh-lp-ortho-core2019-a0082",
+      "mil-53-al-oh-lp-ortho-core2019-a0083",
+      "mil-53-al-oh-lp-ortho-core2019-a0084",
+      "mil-53-al-oh-lp-ortho-core2019-a0085",
+      "mil-53-al-oh-lp-ortho-core2019-a0086",
+      "mil-53-al-oh-lp-ortho-core2019-a0087",
+      "mil-53-al-oh-lp-ortho-core2019-a0088",
+      "mil-53-al-oh-lp-ortho-core2019-a0089",
+      "mil-53-al-oh-lp-ortho-core2019-a0090",
+      "mil-53-al-oh-lp-ortho-core2019-a0091",
+      "mil-53-al-oh-lp-ortho-core2019-a0092",
+      "mil-53-al-oh-lp-ortho-core2019-a0093",
+      "mil-53-al-oh-lp-ortho-core2019-a0094",
+      "mil-53-al-oh-lp-ortho-core2019-a0095",
+      "mil-53-al-oh-lp-ortho-core2019-a0096",
+      "mil-53-al-oh-lp-ortho-core2019-a0097",
+      "mil-53-al-oh-lp-ortho-core2019-a0098",
+      "mil-53-al-oh-lp-ortho-core2019-a0099",
+      "mil-53-al-oh-lp-ortho-core2019-a0100",
+      "mil-53-al-oh-lp-ortho-core2019-a0101",
+      "mil-53-al-oh-lp-ortho-core2019-a0102",
+      "mil-53-al-oh-lp-ortho-core2019-a0103",
+      "mil-53-al-oh-lp-ortho-core2019-a0104",
+      "mil-53-al-oh-lp-ortho-core2019-a0105",
+      "mil-53-al-oh-lp-ortho-core2019-a0106",
+      "mil-53-al-oh-lp-ortho-core2019-a0107",
+      "mil-53-al-oh-lp-ortho-core2019-a0108",
+      "mil-53-al-oh-lp-ortho-core2019-a0109",
+      "mil-53-al-oh-lp-ortho-core2019-a0110",
+      "mil-53-al-oh-lp-ortho-core2019-a0111",
+      "mil-53-al-oh-lp-ortho-core2019-a0112",
+      "mil-53-al-oh-lp-ortho-core2019-a0113",
+      "mil-53-al-oh-lp-ortho-core2019-a0114",
+      "mil-53-al-oh-lp-ortho-core2019-a0115",
+      "mil-53-al-oh-lp-ortho-core2019-a0116",
+      "mil-53-al-oh-lp-ortho-core2019-a0117",
+      "mil-53-al-oh-lp-ortho-core2019-a0118",
+      "mil-53-al-oh-lp-ortho-core2019-a0119",
+      "mil-53-al-oh-lp-ortho-core2019-a0120",
+      "mil-53-al-oh-lp-ortho-core2019-a0121",
+      "mil-53-al-oh-lp-ortho-core2019-a0122",
+      "mil-53-al-oh-lp-ortho-core2019-a0123",
+      "mil-53-al-oh-lp-ortho-core2019-a0124",
+      "mil-53-al-oh-lp-ortho-core2019-a0125",
+      "mil-53-al-oh-lp-ortho-core2019-a0126",
+      "mil-53-al-oh-lp-ortho-core2019-a0127",
+      "mil-53-al-oh-lp-ortho-core2019-a0128",
+      "mil-53-al-oh-lp-ortho-core2019-a0129",
+      "mil-53-al-oh-lp-ortho-core2019-a0130",
+      "mil-53-al-oh-lp-ortho-core2019-a0131",
+      "mil-53-al-oh-lp-ortho-core2019-a0132",
+      "mil-53-al-oh-lp-ortho-core2019-a0133",
+      "mil-53-al-oh-lp-ortho-core2019-a0134",
+      "mil-53-al-oh-lp-ortho-core2019-a0135",
+      "mil-53-al-oh-lp-ortho-core2019-a0136",
+      "mil-53-al-oh-lp-ortho-core2019-a0137",
+      "mil-53-al-oh-lp-ortho-core2019-a0138",
+      "mil-53-al-oh-lp-ortho-core2019-a0139",
+      "mil-53-al-oh-lp-ortho-core2019-a0140",
+      "mil-53-al-oh-lp-ortho-core2019-a0141",
+      "mil-53-al-oh-lp-ortho-core2019-a0142",
+      "mil-53-al-oh-lp-ortho-core2019-a0143",
+      "mil-53-al-oh-lp-ortho-core2019-a0144",
+      "mil-53-al-oh-lp-ortho-core2019-a0145",
+      "mil-53-al-oh-lp-ortho-core2019-a0146",
+      "mil-53-al-oh-lp-ortho-core2019-a0147",
+      "mil-53-al-oh-lp-ortho-core2019-a0148",
+      "mil-53-al-oh-lp-ortho-core2019-a0149",
+      "mil-53-al-oh-lp-ortho-core2019-a0150",
+      "mil-53-al-oh-lp-ortho-core2019-a0151",
+      "mil-53-al-oh-lp-ortho-core2019-a0152"
+    ],
+    "libraryProvenance": {
+      "entryId": "mil-53-al-oh-lp-ortho-core2019",
+      "category": "mof",
+      "name": "OH-MIL-53(Al) 大孔正交相",
+      "formula": "C8H5AlO5",
+      "phase": "OH-MIL-53(Al) 大孔正交相（CoRE整理记录）。",
+      "source": {
+        "name": "CoRE-MOF 2019 public ASR dataset",
+        "recordId": "cm503311x_OH-mil-53-Al-lp-ortho_clean",
+        "url": "https://doi.org/10.5281/zenodo.7691378",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "curated",
+        "retrievedAt": "2026-10-20T04:33:17Z",
+        "citation": "CoRE-MOF 2019 dataset v1.1.4; accompanying paper DOI: 10.1021/acs.jced.9b00835.",
+        "doi": "10.5281/zenodo.7691378",
+        "version": "Zenodo 7691378, version 1.1.4; public ASR subset",
+        "conditions": "CoRE public=Y, DISORDER field empty, from_CSD=N; ASR means all solvents removed. Source CIF has full occupancy and no added solvent species."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "CoRE metadata from_CSD=N; CoRE source record marks from_CSD=N.",
+          "CoRE metadata Extension=clean; this label is preserved without interpretation.",
+          "Source is the selected CIF from the public ASR archive; source file bytes are preserved unchanged.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "entryId": "vo2-monoclinic-wyckoff-provisional",
+  "structure": {
+    "id": "vo2-monoclinic-wyckoff-provisional",
+    "name": "单斜二氧化钒（Wyckoff候选）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:1",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 1.1708453960749163,
+        "y": 4.404075000000001,
+        "z": -0.6144118696272481
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:2",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 1.1708453960749161,
+        "y": 2.3714250000000003,
+        "z": 2.0730881303727515
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:3",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 3.667358719937133,
+        "y": 2.1455750000000005,
+        "z": 0.20775125133283368
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:4",
+        "sourceIndex": 1,
+        "element": "V",
+        "x": 3.6673587199371327,
+        "y": 0.11292500000000011,
+        "z": 2.8952512513328332
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.483820411601205,
+        "y": 0.94857,
+        "z": 0.7655839381705585
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.48382041160120504,
+        "y": 1.3099300000000003,
+        "z": 3.4530839381705585
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.354383704410845,
+        "y": 3.20707,
+        "z": -1.1722445564649735
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.354383704410845,
+        "y": 3.5684300000000007,
+        "z": 1.5152554435350263
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.8868996052446994,
+        "y": 3.11673,
+        "z": 0.35202735886517833
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.8868996052446996,
+        "y": 3.6587700000000005,
+        "z": 3.039527358865178
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:11",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.9513045107673492,
+        "y": 0.8582299999999998,
+        "z": -0.7586879771595929
+      },
+      {
+        "id": "vo2-monoclinic-wyckoff-provisional:atom:12",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.9513045107673497,
+        "y": 1.4002700000000003,
+        "z": 1.9288120228404066
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9009089; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "vo2-monoclinic-wyckoff-provisional:atom:1",
+      "vo2-monoclinic-wyckoff-provisional:atom:2",
+      "vo2-monoclinic-wyckoff-provisional:atom:3",
+      "vo2-monoclinic-wyckoff-provisional:atom:4",
+      "vo2-monoclinic-wyckoff-provisional:atom:5",
+      "vo2-monoclinic-wyckoff-provisional:atom:6",
+      "vo2-monoclinic-wyckoff-provisional:atom:7",
+      "vo2-monoclinic-wyckoff-provisional:atom:8",
+      "vo2-monoclinic-wyckoff-provisional:atom:9",
+      "vo2-monoclinic-wyckoff-provisional:atom:10",
+      "vo2-monoclinic-wyckoff-provisional:atom:11",
+      "vo2-monoclinic-wyckoff-provisional:atom:12"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.838204116012048,
+          0.0,
+          -3.094160618294415
+        ],
+        [
+          7.263890008589368e-16,
+          4.517,
+          2.7658647958742976e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.375
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9009089 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

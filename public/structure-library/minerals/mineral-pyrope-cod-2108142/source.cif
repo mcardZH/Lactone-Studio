@@ -1,0 +1,468 @@
+#------------------------------------------------------------------------------
+#$Date: 2017-07-29 09:09:03 +0300 (Sat, 29 Jul 2017) $
+#$Revision: 199403 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/2/10/81/2108142.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided by IUCr Journals, http://journals.iucr.org/.
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_2108142
+loop_
+_publ_author_name
+'Destro, Riccardo'
+'Ruffo, Riccardo'
+'Roversi, Pietro'
+'Soave, Raffaella'
+'Loconte, Laura'
+'Lo Presti, Leonardo'
+_publ_section_title
+;
+ Anharmonic motions <i>versus</i> dynamic disorder at the Mg ion from the
+ charge densities in pyrope (Mg~3~Al~2~Si~3~O~12~) crystals at 30K: six of
+ one, half a dozen of the other
+;
+_journal_coeditor_code           PI5032
+_journal_issue                   4
+_journal_name_full               'Acta Crystallographica Section B'
+_journal_page_first              722
+_journal_page_last               736
+_journal_paper_doi               10.1107/S2052520617006102
+_journal_volume                  73
+_journal_year                    2017
+_chemical_formula_moiety         '2(AL) 3(MG) 3(SIO4)'
+_chemical_formula_sum            'Al2 Mg3 O12 Si3'
+_chemical_formula_weight         403.16
+_chemical_name_common            pyrope
+_space_group_crystal_system      cubic
+_space_group_IT_number           230
+_space_group_name_Hall           '-I 4bd 2c 3'
+_space_group_name_H-M_alt        'I a -3 d'
+_symmetry_space_group_name_Hall  '-I 4bd 2c 3'
+_symmetry_space_group_name_H-M   'I a -3 d'
+_atom_sites_solution_primary     direct
+_atom_sites_solution_secondary   difmap
+_audit_creation_method
+'Created with CONVERT.DLL (www.crystalimpact.com)'
+_cell_angle_alpha                90
+_cell_angle_beta                 90
+_cell_angle_gamma                90
+_cell_formula_units_Z            8
+_cell_length_a                   11.4405(3)
+_cell_length_b                   11.4405(3)
+_cell_length_c                   11.4405(3)
+_cell_measurement_reflns_used    406
+_cell_measurement_temperature    30.0(3)
+_cell_measurement_theta_max      53.52
+_cell_measurement_theta_min      11.01
+_cell_volume                     1497.39(7)
+_computing_structure_refinement
+;
+VALRAY2000 (Stewart, Spackman & Flensburg, 2000)'
+;
+_computing_structure_solution    'SHELXS-97 (Sheldrick, 1990)'
+_diffrn_ambient_temperature      30.0(3)
+_diffrn_measured_fraction_theta_full 1.0
+_diffrn_measurement_device_type  'Syntex P1-'
+_diffrn_measurement_method       '2\q/\w scans'
+_diffrn_radiation_monochromator  graphite
+_diffrn_radiation_type           MoK\a
+_diffrn_radiation_wavelength     0.71073
+_diffrn_reflns_av_R_equivalents  0.0134
+_diffrn_reflns_limit_h_max       26
+_diffrn_reflns_limit_h_min       0
+_diffrn_reflns_limit_k_max       18
+_diffrn_reflns_limit_k_min       0
+_diffrn_reflns_limit_l_max       14
+_diffrn_reflns_limit_l_min       0
+_diffrn_reflns_number            7486
+_diffrn_reflns_theta_full        54.5
+_diffrn_reflns_theta_max         54.5
+_diffrn_reflns_theta_min         1.000
+_diffrn_standards_decay_%        0
+_diffrn_standards_interval_count 97
+_diffrn_standards_number         3
+_exptl_absorpt_coefficient_mu    1.218
+_exptl_absorpt_correction_T_max  0.6868
+_exptl_absorpt_correction_T_min  0.6680
+_exptl_absorpt_correction_type   sphere
+_exptl_absorpt_process_details   'TBAR, home written program'
+_exptl_crystal_colour            colourless
+_exptl_crystal_density_diffrn    3.576
+_exptl_crystal_density_method    'not measured'
+_exptl_crystal_description       sphere
+_exptl_crystal_F_000             1600
+_exptl_crystal_size_max          0.45
+_exptl_crystal_size_mid          0.45
+_exptl_crystal_size_min          0.45
+_exptl_crystal_size_rad          0.45
+_refine_diff_density_max         0.12
+_refine_diff_density_min         -0.16
+_refine_ls_extinction_coef       0.248
+_refine_ls_extinction_method     'type 1'
+_refine_ls_goodness_of_fit_ref   0.7596
+_refine_ls_matrix_type           full
+_refine_ls_number_parameters     93
+_refine_ls_number_reflns         785
+_refine_ls_number_restraints     0
+_refine_ls_restrained_S_all      0.7596
+_refine_ls_R_factor_all          0.0084
+_refine_ls_R_factor_gt           0.0084
+_refine_ls_shift/su_max          0.0013
+_refine_ls_shift/su_mean         0.0001
+_refine_ls_structure_factor_coef Fsqd
+_refine_ls_weighting_scheme      calc
+_refine_ls_wR_factor_gt          0.0081
+_refine_ls_wR_factor_ref         0.0081
+_reflns_number_gt                785
+_reflns_number_total             788
+_reflns_threshold_expression     >0
+_cod_data_source_file            pi5032sup1.cif
+_cod_data_source_block           I
+_cod_original_cell_volume        1497.39(12)
+_cod_database_code               2108142
+_shelx_space_group_comment
+;
+The symmetry employed for this shelxl refinement is uniquely defined
+by the following loop, which should always be used as a source of
+symmetry information in preference to the above space-group names.
+They are only intended as comments.
+;
+loop_
+_space_group_symop_operation_xyz
+'x, y, z'
+'-y+1/4, x+3/4, z+1/4'
+'-x, -y+1/2, z'
+'y+1/4, -x+1/4, z+3/4'
+'x+1/4, -z+1/4, y+3/4'
+'x, -y, -z+1/2'
+'x+3/4, z+1/4, -y+1/4'
+'z+3/4, y+1/4, -x+1/4'
+'-x+1/2, y, -z'
+'-z+1/4, y+3/4, x+1/4'
+'z, x, y'
+'y, z, x'
+'-y, -z+1/2, x'
+'z, -x, -y+1/2'
+'-y+1/2, z, -x'
+'-z, -x+1/2, y'
+'-z+1/2, x, -y'
+'y, -z, -x+1/2'
+'y+3/4, x+1/4, -z+1/4'
+'-y+1/4, -x+1/4, -z+1/4'
+'-x+1/4, z+3/4, y+1/4'
+'-x+1/4, -z+1/4, -y+1/4'
+'z+1/4, -y+1/4, x+3/4'
+'-z+1/4, -y+1/4, -x+1/4'
+'x+1/2, y+1/2, z+1/2'
+'-y+3/4, x+5/4, z+3/4'
+'-x+1/2, -y+1, z+1/2'
+'y+3/4, -x+3/4, z+5/4'
+'x+3/4, -z+3/4, y+5/4'
+'x+1/2, -y+1/2, -z+1'
+'x+5/4, z+3/4, -y+3/4'
+'z+5/4, y+3/4, -x+3/4'
+'-x+1, y+1/2, -z+1/2'
+'-z+3/4, y+5/4, x+3/4'
+'z+1/2, x+1/2, y+1/2'
+'y+1/2, z+1/2, x+1/2'
+'-y+1/2, -z+1, x+1/2'
+'z+1/2, -x+1/2, -y+1'
+'-y+1, z+1/2, -x+1/2'
+'-z+1/2, -x+1, y+1/2'
+'-z+1, x+1/2, -y+1/2'
+'y+1/2, -z+1/2, -x+1'
+'y+5/4, x+3/4, -z+3/4'
+'-y+3/4, -x+3/4, -z+3/4'
+'-x+3/4, z+5/4, y+3/4'
+'-x+3/4, -z+3/4, -y+3/4'
+'z+3/4, -y+3/4, x+5/4'
+'-z+3/4, -y+3/4, -x+3/4'
+'-x, -y, -z'
+'y-1/4, -x-3/4, -z-1/4'
+'x, y-1/2, -z'
+'-y-1/4, x-1/4, -z-3/4'
+'-x-1/4, z-1/4, -y-3/4'
+'-x, y, z-1/2'
+'-x-3/4, -z-1/4, y-1/4'
+'-z-3/4, -y-1/4, x-1/4'
+'x-1/2, -y, z'
+'z-1/4, -y-3/4, -x-1/4'
+'-z, -x, -y'
+'-y, -z, -x'
+'y, z-1/2, -x'
+'-z, x, y-1/2'
+'y-1/2, -z, x'
+'z, x-1/2, -y'
+'z-1/2, -x, y'
+'-y, z, x-1/2'
+'-y-3/4, -x-1/4, z-1/4'
+'y-1/4, x-1/4, z-1/4'
+'x-1/4, -z-3/4, -y-1/4'
+'x-1/4, z-1/4, y-1/4'
+'-z-1/4, y-1/4, -x-3/4'
+'z-1/4, y-1/4, x-1/4'
+'-x+1/2, -y+1/2, -z+1/2'
+'y+1/4, -x-1/4, -z+1/4'
+'x+1/2, y, -z+1/2'
+'-y+1/4, x+1/4, -z-1/4'
+'-x+1/4, z+1/4, -y-1/4'
+'-x+1/2, y+1/2, z'
+'-x-1/4, -z+1/4, y+1/4'
+'-z-1/4, -y+1/4, x+1/4'
+'x, -y+1/2, z+1/2'
+'z+1/4, -y-1/4, -x+1/4'
+'-z+1/2, -x+1/2, -y+1/2'
+'-y+1/2, -z+1/2, -x+1/2'
+'y+1/2, z, -x+1/2'
+'-z+1/2, x+1/2, y'
+'y, -z+1/2, x+1/2'
+'z+1/2, x, -y+1/2'
+'z, -x+1/2, y+1/2'
+'-y+1/2, z+1/2, x'
+'-y-1/4, -x+1/4, z+1/4'
+'y+1/4, x+1/4, z+1/4'
+'x+1/4, -z-1/4, -y+1/4'
+'x+1/4, z+1/4, y+1/4'
+'-z+1/4, y+1/4, -x-1/4'
+'z+1/4, y+1/4, x+1/4'
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+Al1 0.00217(4) 0.00217(4) 0.00217(4) 0.00001(2) 0.00001(2) 0.00001(2)
+Mg1 0.00485(7) 0.00485(7) 0.00298(8) 0.00096(5) 0.0000 0.0000
+Si1 0.00180(2) 0.00180(2) 0.00153(2) 0.0000 0.0000 0.0000
+O1 0.00321(4) 0.00375(4) 0.00261(4) 0.00040(2) -0.00057(2) 0.00009(2)
+loop_
+_atom_site_type_symbol
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+_atom_site_thermal_displace_type
+_atom_site_calc_flag
+_atom_site_occupancy
+_atom_site_symmetry_multiplicity
+Al Al1 0.0000 0.0000 0.0000 0.00217 Uani d 1.000 16
+Mg Mg1 0.0000 0.2500 0.1250 0.00423 Uani d 1.000 24
+Si Si1 0.0000 0.2500 0.3750 0.00171 Uani d 1.000 24
+O O1 0.03282(3) 0.05077(3) 0.65326(3) 0.00319 Uani d 1.000 96
+loop_
+_atom_type_symbol
+_atom_type_description
+_atom_type_scat_dispersion_real
+_atom_type_scat_dispersion_imag
+_atom_type_scat_source
+Al Al 0.0645 0.0514 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+Mg Mg 0.0486 0.0363 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+Si Si 0.0817 0.0704 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+O O 0.0106 0.0060 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+loop_
+_geom_angle_atom_site_label_1
+_geom_angle_atom_site_label_2
+_geom_angle_atom_site_label_3
+_geom_angle_site_symmetry_1
+_geom_angle_site_symmetry_3
+_geom_angle
+O1 Al1 O1 65 17 180.0(2)
+O1 Al1 O1 65 61 87.70(2)
+O1 Al1 O1 17 61 92.30(2)
+O1 Al1 O1 65 13 92.30(2)
+O1 Al1 O1 17 13 87.70(2)
+O1 Al1 O1 61 13 180.0(2)
+O1 Al1 O1 65 54 87.70(2)
+O1 Al1 O1 17 54 92.30(2)
+O1 Al1 O1 61 54 87.70(2)
+O1 Al1 O1 13 54 92.30(2)
+O1 Al1 O1 65 6 92.30(2)
+O1 Al1 O1 17 6 87.70(2)
+O1 Al1 O1 61 6 92.30(2)
+O1 Al1 O1 13 6 87.70(2)
+O1 Al1 O1 54 6 180.0(2)
+O1 Al1 Mg1 65 49 87.690(10)
+O1 Al1 Mg1 17 49 92.310(10)
+O1 Al1 Mg1 61 49 137.990(10)
+O1 Al1 Mg1 13 49 42.010(10)
+O1 Al1 Mg1 54 49 133.770(10)
+O1 Al1 Mg1 6 49 46.230(10)
+O1 Al1 Mg1 65 58_565 133.770(10)
+O1 Al1 Mg1 17 58_565 46.230(10)
+O1 Al1 Mg1 61 58_565 87.690(10)
+O1 Al1 Mg1 13 58_565 92.310(10)
+O1 Al1 Mg1 54 58_565 137.990(10)
+O1 Al1 Mg1 6 58_565 42.010(10)
+Mg1 Al1 Mg1 49 58_565 66.4220(10)
+O1 Al1 Mg1 65 10_545 46.230(10)
+O1 Al1 Mg1 17 10_545 133.770(10)
+O1 Al1 Mg1 61 10_545 92.310(10)
+O1 Al1 Mg1 13 10_545 87.690(10)
+O1 Al1 Mg1 54 10_545 42.010(10)
+O1 Al1 Mg1 6 10_545 137.990(10)
+Mg1 Al1 Mg1 49 10_545 113.5780(10)
+Mg1 Al1 Mg1 58_565 10_545 180.000
+O1 Al1 Mg1 65 53_556 137.990(10)
+O1 Al1 Mg1 17 53_556 42.010(10)
+O1 Al1 Mg1 61 53_556 133.770(10)
+O1 Al1 Mg1 13 53_556 46.230(10)
+O1 Al1 Mg1 54 53_556 87.690(10)
+O1 Al1 Mg1 6 53_556 92.310(10)
+Mg1 Al1 Mg1 49 53_556 66.4220(10)
+Mg1 Al1 Mg1 58_565 53_556 66.4220(10)
+Mg1 Al1 Mg1 10_545 53_556 113.5780(10)
+O1 Al1 Mg1 65 5_554 42.010(10)
+O1 Al1 Mg1 17 5_554 137.990(10)
+O1 Al1 Mg1 61 5_554 46.230(10)
+O1 Al1 Mg1 13 5_554 133.770(10)
+O1 Al1 Mg1 54 5_554 92.310(10)
+O1 Al1 Mg1 6 5_554 87.690(10)
+Mg1 Al1 Mg1 49 5_554 113.5780(10)
+Mg1 Al1 Mg1 58_565 5_554 113.5780(10)
+Mg1 Al1 Mg1 10_545 5_554 66.4220(10)
+Mg1 Al1 Mg1 53_556 5_554 180.000
+O1 Al1 Mg1 65 . 92.310(10)
+O1 Al1 Mg1 17 . 87.690(10)
+O1 Al1 Mg1 61 . 42.010(10)
+O1 Al1 Mg1 13 . 137.990(10)
+O1 Al1 Mg1 54 . 46.230(10)
+O1 Al1 Mg1 6 . 133.770(10)
+Mg1 Al1 Mg1 49 . 180.000
+Mg1 Al1 Mg1 58_565 . 113.5780(10)
+Mg1 Al1 Mg1 10_545 . 66.4220(10)
+Mg1 Al1 Mg1 53_556 . 113.5780(10)
+Mg1 Al1 Mg1 5_554 . 66.4220(10)
+O1 Mg1 O1 80_655 96_455 69.390(10)
+O1 Mg1 O1 80_655 61 114.1670(10)
+O1 Mg1 O1 96_455 61 160.490(10)
+O1 Mg1 O1 80_655 60_565 160.490(10)
+O1 Mg1 O1 96_455 60_565 114.170(10)
+O1 Mg1 O1 61 60_565 69.390(10)
+O1 Mg1 O1 80_655 81_554 93.640(10)
+O1 Mg1 O1 96_455 81_554 73.070(10)
+O1 Mg1 O1 61 81_554 124.330(10)
+O1 Mg1 O1 60_565 81_554 70.370(10)
+O1 Mg1 O1 80_655 54 73.070(10)
+O1 Mg1 O1 96_455 54 93.640(10)
+O1 Mg1 O1 61 54 70.370(10)
+O1 Mg1 O1 60_565 54 124.330(10)
+O1 Mg1 O1 81_554 54 164.080(10)
+O1 Mg1 O1 80_655 50_566 124.330(10)
+O1 Mg1 O1 96_455 50_566 70.370(10)
+O1 Mg1 O1 61 50_566 93.640(10)
+O1 Mg1 O1 60_565 50_566 73.070(10)
+O1 Mg1 O1 81_554 50_566 109.490(10)
+O1 Mg1 O1 54 50_566 72.830(10)
+O1 Mg1 O1 80_655 76_556 70.370(10)
+O1 Mg1 O1 96_455 76_556 124.330(10)
+O1 Mg1 O1 61 76_556 73.070(10)
+O1 Mg1 O1 60_565 76_556 93.640(10)
+O1 Mg1 O1 81_554 76_556 72.830(10)
+O1 Mg1 O1 54 76_556 109.490(10)
+O1 Mg1 O1 50_566 76_556 164.080(10)
+O1 Mg1 Si1 80_655 . 34.700(10)
+O1 Mg1 Si1 96_455 . 34.700(10)
+O1 Mg1 Si1 61 . 145.300(10)
+O1 Mg1 Si1 60_565 . 145.300(10)
+O1 Mg1 Si1 81_554 . 82.040(9)
+O1 Mg1 Si1 54 . 82.040(9)
+O1 Mg1 Si1 50_566 . 97.960(8)
+O1 Mg1 Si1 76_556 . 97.960(8)
+O1 Mg1 Si1 80_655 54 145.300(10)
+O1 Mg1 Si1 96_455 54 145.300(10)
+O1 Mg1 Si1 61 54 34.700(10)
+O1 Mg1 Si1 60_565 54 34.700(10)
+O1 Mg1 Si1 81_554 54 97.960(9)
+O1 Mg1 Si1 54 54 97.960(9)
+O1 Mg1 Si1 50_566 54 82.040(9)
+O1 Mg1 Si1 76_556 54 82.040(9)
+Si1 Mg1 Si1 . 54 180.0
+O1 Mg1 Al1 80_655 20 35.060(10)
+O1 Mg1 Al1 96_455 20 94.780(10)
+O1 Mg1 Al1 61 20 97.530(10)
+O1 Mg1 Al1 60_565 20 127.180(10)
+O1 Mg1 Al1 81_554 20 78.112(9)
+O1 Mg1 Al1 54 20 94.702(9)
+O1 Mg1 Al1 50_566 20 159.386(9)
+O1 Mg1 Al1 76_556 20 35.707(9)
+Si1 Mg1 Al1 . 20 63.4350(10)
+Si1 Mg1 Al1 54 20 116.5650(10)
+O1 Mg1 Al1 80_655 7_455 94.780(10)
+O1 Mg1 Al1 96_455 7_455 35.060(10)
+O1 Mg1 Al1 61 7_455 127.180(10)
+O1 Mg1 Al1 60_565 7_455 97.530(10)
+O1 Mg1 Al1 81_554 7_455 94.702(9)
+O1 Mg1 Al1 54 7_455 78.112(9)
+O1 Mg1 Al1 50_566 7_455 35.707(9)
+O1 Mg1 Al1 76_556 7_455 159.386(9)
+Si1 Mg1 Al1 . 7_455 63.4350(10)
+Si1 Mg1 Al1 54 7_455 116.5650(10)
+Al1 Mg1 Al1 20 7_455 126.870(2)
+O1 Si1 O1 18_565 96_455 114.57(2)
+O1 Si1 O1 18_565 39_445 99.69(2)
+O1 Si1 O1 96_455 39_445 114.57(2)
+O1 Si1 O1 18_565 80_655 114.57(2)
+O1 Si1 O1 96_455 80_655 99.69(2)
+O1 Si1 O1 39_445 80_655 114.57(2)
+O1 Si1 Mg1 18_565 . 130.150(10)
+O1 Si1 Mg1 96_455 . 49.850(10)
+O1 Si1 Mg1 39_445 . 130.150(10)
+O1 Si1 Mg1 80_655 . 49.850(10)
+O1 Si1 Mg1 18_565 50_566 49.850(10)
+O1 Si1 Mg1 96_455 50_566 130.150(10)
+O1 Si1 Mg1 39_445 50_566 49.850(10)
+O1 Si1 Mg1 80_655 50_566 130.150(10)
+Mg1 Si1 Mg1 . 50_566 180.000
+Si1 O1 Al1 58_566 6 130.43(2)
+Si1 O1 Mg1 58_566 58_566 95.45(2)
+Al1 O1 Mg1 6 58_566 102.93(2)
+Si1 O1 Mg1 58_566 50_566 122.99(2)
+Al1 O1 Mg1 6 50_566 98.07(2)
+Mg1 O1 Mg1 58_566 50_566 101.31(2)
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_site_symmetry_2
+_geom_bond_distance
+Al1 O1 65 1.8848(3)
+Al1 O1 17 1.8848(3)
+Al1 O1 61 1.8848(3)
+Al1 O1 13 1.8848(3)
+Al1 O1 54 1.8848(3)
+Al1 O1 6 1.8848(3)
+Al1 Mg1 49 3.19770(10)
+Al1 Mg1 58_565 3.19770(10)
+Al1 Mg1 10_545 3.19770(10)
+Al1 Mg1 53_556 3.19770(10)
+Al1 Mg1 5_554 3.19770(10)
+Al1 Mg1 . 3.19770(10)
+Mg1 O1 80_655 2.1960(4)
+Mg1 O1 96_455 2.1960(4)
+Mg1 O1 61 2.1960(4)
+Mg1 O1 60_565 2.1960(4)
+Mg1 O1 81_554 2.3326(4)
+Mg1 O1 54 2.3326(4)
+Mg1 O1 50_566 2.3326(4)
+Mg1 O1 76_556 2.3326(4)
+Mg1 Si1 . 2.86010(10)
+Mg1 Si1 54 2.86010(10)
+Mg1 Al1 20 3.19770(10)
+Mg1 Al1 7_455 3.19770(10)
+Si1 O1 18_565 1.6354(4)
+Si1 O1 96_455 1.6354(4)
+Si1 O1 39_445 1.6354(4)
+Si1 O1 80_655 1.6354(4)
+Si1 Mg1 50_566 2.86010(10)
+O1 Si1 58_566 1.6354(4)
+O1 Al1 6 1.8848(3)
+O1 Mg1 58_566 2.1960(4)
+O1 Mg1 50_566 2.3326(4)

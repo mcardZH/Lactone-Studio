@@ -1,0 +1,698 @@
+{
+  "schemaVersion": 1,
+  "entryId": "vitreous-sio2-model-ii-materialscloud-2019-0086",
+  "structure": {
+    "id": "vitreous-sio2-model-ii-materialscloud-2019-0086",
+    "name": "玻璃态二氧化硅 Model II",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:1",
+        "sourceIndex": 49,
+        "element": "Si",
+        "x": 1.459336999997509,
+        "y": 9.281780999999853,
+        "z": 8.437492999995
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:2",
+        "sourceIndex": 50,
+        "element": "Si",
+        "x": 7.285431000002464,
+        "y": 3.732487000004708,
+        "z": 8.051230000001725
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:3",
+        "sourceIndex": 51,
+        "element": "Si",
+        "x": 2.962785000004646,
+        "y": 6.796460000004094,
+        "z": 7.030488999999849
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:4",
+        "sourceIndex": 52,
+        "element": "Si",
+        "x": 8.151708000001118,
+        "y": 3.2591099999998283,
+        "z": 0.8599689999989603
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:5",
+        "sourceIndex": 53,
+        "element": "Si",
+        "x": 1.656097999995782,
+        "y": 3.9073940000048117,
+        "z": 7.499173999995111
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:6",
+        "sourceIndex": 54,
+        "element": "Si",
+        "x": 6.762213999996998,
+        "y": 0.4821480000004506,
+        "z": 1.5990009999964383
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:7",
+        "sourceIndex": 55,
+        "element": "Si",
+        "x": 0.6614169999968111,
+        "y": 4.462358000002063,
+        "z": 0.10231000000308753
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:8",
+        "sourceIndex": 56,
+        "element": "Si",
+        "x": 7.289403999996423,
+        "y": 0.8305390000031921,
+        "z": 6.898923000002234
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:9",
+        "sourceIndex": 57,
+        "element": "Si",
+        "x": 3.6146030000017646,
+        "y": 2.519694000001036,
+        "z": 4.11470300000184
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:10",
+        "sourceIndex": 58,
+        "element": "Si",
+        "x": 5.824543999999008,
+        "y": 4.453212000004887,
+        "z": 5.475727000003178
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:11",
+        "sourceIndex": 59,
+        "element": "Si",
+        "x": 9.98797599999731,
+        "y": 7.393470999998762,
+        "z": 10.01898900000139
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:12",
+        "sourceIndex": 60,
+        "element": "Si",
+        "x": 8.531921000000088,
+        "y": 4.311616999995165,
+        "z": 3.834982999994913
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:13",
+        "sourceIndex": 61,
+        "element": "Si",
+        "x": 7.76684199999814,
+        "y": 7.833325000000628,
+        "z": 1.9439750000032605
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:14",
+        "sourceIndex": 62,
+        "element": "Si",
+        "x": 4.625474000000126,
+        "y": 7.22691500000438,
+        "z": 4.5150749999954325
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:15",
+        "sourceIndex": 63,
+        "element": "Si",
+        "x": 0.5704419999967801,
+        "y": 2.5253920000044388,
+        "z": 5.043310000004548
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:16",
+        "sourceIndex": 64,
+        "element": "Si",
+        "x": 3.39323699999816,
+        "y": 3.5841049999959043,
+        "z": 1.1904580000016034
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:17",
+        "sourceIndex": 65,
+        "element": "Si",
+        "x": 9.992521000004816,
+        "y": 9.933410000003084,
+        "z": 5.911987000001117
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:18",
+        "sourceIndex": 66,
+        "element": "Si",
+        "x": 5.188164000003857,
+        "y": 7.347048999996353,
+        "z": 8.965658000000658
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:19",
+        "sourceIndex": 67,
+        "element": "Si",
+        "x": 8.814557999997362,
+        "y": 7.292657999995325,
+        "z": 4.803843000004994
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:20",
+        "sourceIndex": 68,
+        "element": "Si",
+        "x": 5.568464000003443,
+        "y": 0.07662000000080381,
+        "z": 9.135153000004133
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:21",
+        "sourceIndex": 69,
+        "element": "Si",
+        "x": 3.1683270000004544,
+        "y": 1.6901189999998547,
+        "z": 8.886593999995355
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:22",
+        "sourceIndex": 70,
+        "element": "Si",
+        "x": 5.389362000002827,
+        "y": 0.10666900000287402,
+        "z": 4.450720999997329
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:23",
+        "sourceIndex": 71,
+        "element": "Si",
+        "x": 5.068254000002349,
+        "y": 6.286575999998866,
+        "z": 1.5638470000003981
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:24",
+        "sourceIndex": 72,
+        "element": "Si",
+        "x": 8.036564000001114,
+        "y": 6.571961999998786,
+        "z": 7.7739029999975156
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:25",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 5.139497000003102,
+        "y": 8.788631999998131,
+        "z": 4.53184499999552
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:26",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.3413529999995952,
+        "y": 7.175117999996133,
+        "z": 5.50288000000049
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:27",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.9508239999960052,
+        "y": 4.04177700000402,
+        "z": 8.905852999998487
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:28",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.741738999995921,
+        "y": 6.973345999999704,
+        "z": 0.15387000000183274
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:29",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 9.193411999999084,
+        "y": 7.236560999996828,
+        "z": 8.64020399999883
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:30",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.9137959999962388,
+        "y": 4.209070999995133,
+        "z": 1.07676100000172
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:31",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 9.696198999995799,
+        "y": 3.2331969999990346,
+        "z": 4.177517999998218
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:32",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 9.886537000002676,
+        "y": 8.496963999995385,
+        "z": 5.132809000000817
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:33",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.4546869999982241,
+        "y": 6.041716999996311,
+        "z": 0.0732809999954946
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:34",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 6.677468999995754,
+        "y": 6.952187000004233,
+        "z": 8.533311999997444
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:35",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 7.3352369999984255,
+        "y": 3.5446549999980395,
+        "z": 9.719165000000348
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:36",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 8.099295999995597,
+        "y": 7.071639000002243,
+        "z": 6.242295999999281
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:37",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 2.2001700000008273,
+        "y": 5.367214000000431,
+        "z": 7.0539710000048785
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:38",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 6.141341999996971,
+        "y": 0.5316780000019059,
+        "z": 3.081111999997839
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:39",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 2.239793999999932,
+        "y": 8.047452999996848,
+        "z": 7.737668999995203
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:40",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 4.277402999998479,
+        "y": 6.5929010000025166,
+        "z": 7.905990999998848
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:41",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": 5.534843999997846,
+        "y": 6.0160549999954105,
+        "z": 5.115365000004217
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:42",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": 0.4934130000000501,
+        "y": 9.772885000001335,
+        "z": 7.272884999996229
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:43",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 4.612791999996001,
+        "y": 3.546648000004537,
+        "z": 4.884864999999616
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:44",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 8.271157000002658,
+        "y": 4.981502999996169,
+        "z": 7.825103999999859
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:45",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": 4.514010000002411,
+        "y": 4.775994000002726,
+        "z": 1.2986360000003063
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:46",
+        "sourceIndex": 22,
+        "element": "O",
+        "x": 6.639598999999432,
+        "y": 6.689268999997503,
+        "z": 1.7235889999965717
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:47",
+        "sourceIndex": 23,
+        "element": "O",
+        "x": 8.519331999999821,
+        "y": 0.055708999998456805,
+        "z": 6.2949109999993835
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:48",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 2.0671700000015236,
+        "y": 2.6997929999957293,
+        "z": 4.487645000001358
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:49",
+        "sourceIndex": 25,
+        "element": "O",
+        "x": 0.2930269999999932,
+        "y": 0.9323239999957917,
+        "z": 5.150378000001385
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:50",
+        "sourceIndex": 26,
+        "element": "O",
+        "x": 6.913700999998079,
+        "y": 0.12987699999730812,
+        "z": 8.286467000004187
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:51",
+        "sourceIndex": 27,
+        "element": "O",
+        "x": 4.408326999999692,
+        "y": 6.839890000001415,
+        "z": 2.945650000004919
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:52",
+        "sourceIndex": 28,
+        "element": "O",
+        "x": 2.2529209999988185,
+        "y": 0.32686699999733126,
+        "z": 8.929175000002967
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:53",
+        "sourceIndex": 29,
+        "element": "O",
+        "x": 8.043736999995721,
+        "y": 4.095976000004391,
+        "z": 2.279763000005045
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:54",
+        "sourceIndex": 30,
+        "element": "O",
+        "x": 6.0224950000045725,
+        "y": 4.191105000005116,
+        "z": 7.0807550000038235
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:55",
+        "sourceIndex": 31,
+        "element": "O",
+        "x": 9.130957000001363,
+        "y": 5.783049000000904,
+        "z": 4.247481999996848
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:56",
+        "sourceIndex": 32,
+        "element": "O",
+        "x": 0.6878089999969909,
+        "y": 8.626473999998842,
+        "z": 9.70629599999655
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:57",
+        "sourceIndex": 33,
+        "element": "O",
+        "x": 8.017571000000823,
+        "y": 7.883180000004161,
+        "z": 3.534721999996562
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:58",
+        "sourceIndex": 34,
+        "element": "O",
+        "x": 5.715420999999968,
+        "y": 0.4583460000046277,
+        "z": 0.3808070000003577
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:59",
+        "sourceIndex": 35,
+        "element": "O",
+        "x": 4.609538999999354,
+        "y": 1.1559700000046227,
+        "z": 8.47180200000006
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:60",
+        "sourceIndex": 36,
+        "element": "O",
+        "x": 7.6700080000022,
+        "y": 2.3383370000001067,
+        "z": 7.3384629999959445
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:61",
+        "sourceIndex": 37,
+        "element": "O",
+        "x": 7.726843999999685,
+        "y": 1.751909000000772,
+        "z": 1.3007500000017462
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:62",
+        "sourceIndex": 38,
+        "element": "O",
+        "x": 7.412223000001126,
+        "y": 9.330295999997512,
+        "z": 1.519231000004814
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:63",
+        "sourceIndex": 39,
+        "element": "O",
+        "x": 9.693648999999306,
+        "y": 3.566897999998506,
+        "z": 0.5142999999997391
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:64",
+        "sourceIndex": 40,
+        "element": "O",
+        "x": 3.3954940000029863,
+        "y": 2.5269660000027434,
+        "z": 10.25890599999669
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:65",
+        "sourceIndex": 41,
+        "element": "O",
+        "x": 7.2116109999957905,
+        "y": 4.091526999997215,
+        "z": 4.734563999996799
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:66",
+        "sourceIndex": 42,
+        "element": "O",
+        "x": 4.050554000002829,
+        "y": 1.0017289999999117,
+        "z": 4.418677999996805
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:67",
+        "sourceIndex": 43,
+        "element": "O",
+        "x": 6.169408999996765,
+        "y": 0.6335419999976728,
+        "z": 5.758342000002307
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:68",
+        "sourceIndex": 44,
+        "element": "O",
+        "x": 3.656456000004311,
+        "y": 2.770455999995785,
+        "z": 2.5344020000037246
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:69",
+        "sourceIndex": 45,
+        "element": "O",
+        "x": 2.740466000003252,
+        "y": 2.737983000003446,
+        "z": 7.746141999998122
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:70",
+        "sourceIndex": 46,
+        "element": "O",
+        "x": 0.6124920000009668,
+        "y": 3.3252230000016962,
+        "z": 6.4379669999996185
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:71",
+        "sourceIndex": 47,
+        "element": "O",
+        "x": 9.026463000003679,
+        "y": 7.553126999996572,
+        "z": 0.9936169999979062
+      },
+      {
+        "id": "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:72",
+        "sourceIndex": 48,
+        "element": "O",
+        "x": 4.971450000002008,
+        "y": 8.922470999995477,
+        "z": 8.911523000000505
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Materials Cloud Archive record zx7s8-a0v65; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown.",
+      "Original XYZ and independently supplied source-cell metadata are retained alongside source.cif; no atoms or cell dimensions were generated."
+    ],
+    "sourceAtomIds": [
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:1",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:2",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:3",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:4",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:5",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:6",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:7",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:8",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:9",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:10",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:11",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:12",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:13",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:14",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:15",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:16",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:17",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:18",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:19",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:20",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:21",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:22",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:23",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:24",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:25",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:26",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:27",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:28",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:29",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:30",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:31",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:32",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:33",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:34",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:35",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:36",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:37",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:38",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:39",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:40",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:41",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:42",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:43",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:44",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:45",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:46",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:47",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:48",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:49",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:50",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:51",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:52",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:53",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:54",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:55",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:56",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:57",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:58",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:59",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:60",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:61",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:62",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:63",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:64",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:65",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:66",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:67",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:68",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:69",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:70",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:71",
+      "vitreous-sio2-model-ii-materialscloud-2019-0086:atom:72"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          10.3007,
+          0.0,
+          6.307359641988571e-16
+        ],
+        [
+          1.6564788977524133e-15,
+          10.3007,
+          6.307359641988571e-16
+        ],
+        [
+          0.0,
+          0.0,
+          10.3007
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "source-explicit",
+        "evidence": "PRB 79, 064202 (2009), Sec. III.A states cubic simulation cells and periodic boundary conditions; the official README gives 10.3007 angstrom for x, y, and z."
+      }
+    }
+  }
+}

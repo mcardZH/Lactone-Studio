@@ -1,0 +1,10 @@
+.base-electronic-state-card { padding: 10px 12px; border: 1px solid var(--border, #e1e5e3); border-radius: 9px; }
+.base-electronic-state-card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.base-electronic-state-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.base-electronic-state-fields .field { margin: 0; font-size: 12px; }
+.base-electronic-state-fields input { min-width: 0; width: 100%; box-sizing: border-box; }
+.base-electronic-state-error { margin: 7px 0 0; font-size: 12px; color: var(--error, #a63c32); }
+.base-electronic-state-fields .electronic-state-confirm { margin-left:auto; flex:0 0 auto; background:var(--teal,#478870); border:1px solid var(--teal,#478870); color:#fff; padding:5px 12px; border-radius:7px; min-height:36px; font:inherit; cursor:pointer; }
+.base-electronic-state-fields .electronic-state-confirm:disabled { opacity:.55; cursor:default; }
+.base-electronic-state-card[data-state=error] .shared-input-field { background:#fff; color:var(--input-color,#294454); }
+.base-electronic-state-card[data-state=error] .shared-input-field input { background:#fff; }

@@ -1,0 +1,141 @@
+{
+  "schema": "sciyue-xtb-lock-v1",
+  "platform": "win32-x64",
+  "lockId": "xtb-67a9dc7514663bdc-public-v1",
+  "root": ".local/dependencies/win-x64/xtb-67a9dc7514663bdc-public-v1",
+  "contentDirectories": [
+    "xtb"
+  ],
+  "version": "6.7.1pre",
+  "entry": "xtb/bin/xtb.exe",
+  "dataDirectory": "xtb/share/xtb",
+  "methods": [
+    "gfn0",
+    "gfn1",
+    "gfn2",
+    "gfnff"
+  ],
+  "source": {
+    "release": "v6.7.1",
+    "url": "https://github.com/grimme-lab/xtb/releases/download/v6.7.1/xtb-6.7.1pre-windows-x86_64.zip",
+    "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+    "binaryVersion": "6.7.1pre",
+    "sha256": "043e578da4a7e114a4d584972959a875e3ffb9f2767a86723b95aa6719d28d9c"
+  },
+  "license": {
+    "spdx": "LGPL-3.0-or-later AND LicenseRef-Intel-Developer-Tools-EULA AND LicenseRef-Microsoft-VC-Runtime",
+    "redistributionAllowed": false,
+    "redistributionStatus": "not-reviewed; local internal experimental use only",
+    "parametersIncluded": true,
+    "files": [
+      "licenses/ddcosmo-LICENSE.txt",
+      "licenses/Intel-OpenMP-EULA-April-2023.txt",
+      "licenses/Intel-OpenMP-third-party-programs.txt",
+      "licenses/jsonfortran-LICENSE.txt",
+      "licenses/Microsoft-VC-runtime-license.rtf",
+      "licenses/xtb-COPYING-GPL-3.0.txt",
+      "licenses/xtb-COPYING.LESSER-LGPL-3.0.txt"
+    ],
+    "pending": [
+      "Public/commercial redistribution has not been reviewed or approved in this local-experimental scope.",
+      "Identify complete corresponding-source/build identities for the Windows binary static dependencies: mctc-lib/tblite wraps are head, and Windows release notes report dftd4 v3.4.0 rather than source wrap v3.5.0.",
+      "Confirm exact Intel static compiler/BLAS components and applicable redistribution/notice requirements. Exact bundled OpenMP DLL is identified against Intel publisher 2023.2.0, whose package includes Developer Tools EULA April 2023 and third-party notices.",
+      "Before third-party redistribution, verify Microsoft Visual Studio redistributable licensing entitlement and applicable distributable-code terms; the downloaded runtime use license alone is not asserted to grant redistribution rights.",
+      "Clean Windows / cross-CPU portable acceptance remains untested; supported local baseline uses Windows 10+ UCRT OS APIs."
+    ]
+  },
+  "scope": "local-experimental",
+  "localUseReady": true,
+  "publicRedistributionReviewed": false,
+  "distributionLicenseReady": false,
+  "threadLimit": 2,
+  "internalModification": {
+    "kind": "internal-modified-pe-header",
+    "field": "IMAGE_OPTIONAL_HEADER64.SizeOfStackReserve",
+    "fieldFileOffset": 360,
+    "oldReserveBytes": 16777216,
+    "newReserveBytes": 67108864,
+    "stackCommitBytes": 4096,
+    "publicRedistributionReviewed": false,
+    "note": "Header-only local correction: code/data, parameters, methods, upstream version and licenses are unchanged. Exact PE comparison, same-point E/G/topology/images equality and overflow-free native calls validate stack capacity only; periodic convergence and performance acceptance remain separate.",
+    "originalExecutableSha256": "90bff4e570ffa10a1558364ee393711900bff239f02d313685353e055324f4c3"
+  },
+  "localUseStatus": "validated-header-only-local-experimental",
+  "files": [
+    {
+      "path": "xtb/bin/libiomp5md.dll",
+      "bytes": 2062976,
+      "sha256": "8a90e1e81634eae33d65d34a1bc9e02a8f424df2f3ef203069c4f2e632e6fe65"
+    },
+    {
+      "path": "xtb/bin/vcruntime140.dll",
+      "bytes": 124544,
+      "sha256": "d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066"
+    },
+    {
+      "path": "xtb/bin/xtb.exe",
+      "bytes": 58998784,
+      "sha256": "615f4117e6dad2eaaf4e1adb96b8cdd8c7a071629cccb9f5638e6b6b1be0567b"
+    },
+    {
+      "path": "xtb/licenses/ddcosmo-LICENSE.txt",
+      "bytes": 2707,
+      "sha256": "394b189fb23f54384e85d20e74f6cf0d4dda870345e8fcb5e3867880fd25ff6d"
+    },
+    {
+      "path": "xtb/licenses/Intel-OpenMP-EULA-April-2023.txt",
+      "bytes": 26661,
+      "sha256": "4f22ba1dfcf3b6c34bc84c2f9a9d7e05ad84475558bb44574da7b6c381126fd7"
+    },
+    {
+      "path": "xtb/licenses/Intel-OpenMP-third-party-programs.txt",
+      "bytes": 71667,
+      "sha256": "7723b626fe7313c8f8a24143e9bfa008874241aaf54432ea22fd50387c9f1ddf"
+    },
+    {
+      "path": "xtb/licenses/jsonfortran-LICENSE.txt",
+      "bytes": 2849,
+      "sha256": "93ea4d9f66cf7f4598292a8f4e3f9797f10465bd37fc4d49d07c6c03c2f63d88"
+    },
+    {
+      "path": "xtb/licenses/Microsoft-VC-runtime-license.rtf",
+      "bytes": 9235,
+      "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b"
+    },
+    {
+      "path": "xtb/licenses/xtb-COPYING-GPL-3.0.txt",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "xtb/licenses/xtb-COPYING.LESSER-LGPL-3.0.txt",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "xtb/runtime.json",
+      "bytes": 1656,
+      "sha256": "5a570b48777807b09c9577f5def8d4fe4ae0caa55134c32b4f148342aa161cb5"
+    },
+    {
+      "path": "xtb/share/xtb/.param_gfnff.xtb",
+      "bytes": 10664,
+      "sha256": "5cf2d1259dd3c65aa9594ea32a0c9a21bb819b6e16b81521888c5a3a1ec513e8"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn0-xtb.txt",
+      "bytes": 39220,
+      "sha256": "278461cabbf89b14379aedc78ef3e141c8cef1f911f3a3c72530aec7a52b6d34"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn1-xtb.txt",
+      "bytes": 27800,
+      "sha256": "81a9d7afdee31f5d8fd67a4d8ec966179317c7b100261c9c82d724bafb460399"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn2-xtb.txt",
+      "bytes": 35849,
+      "sha256": "f6f05c6c5264cb2f75c54f8ac6838044541c1e493b16f1a4d4ee4fa64de5f545"
+    }
+  ]
+}

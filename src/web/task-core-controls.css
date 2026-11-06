@@ -1,0 +1,11 @@
+.task-core-number{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px;max-width:100%}
+.task-core-number .shared-input-field{margin:0;flex:0 0 auto;min-width:0;max-width:100%}
+.task-core-number>.shared-input-action{flex:0 0 auto;white-space:nowrap}
+.scf-compact-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0;font-size:14px}
+.scf-compact-row>.shared-input-checkbox,.scf-compact-row>label{flex:0 0 92px;margin:0}
+.scf-compact-row>input{width:96px;min-width:70px}
+.scf-compact-description{flex:1 1 100px;min-width:0;font-size:13px;color:#667b6c;line-height:1.45}
+.input-settings-layout.input-parameter-settings .task-core-number { align-items:center; gap:4px 8px; }
+.input-settings-layout.input-parameter-settings .scf-compact-row { gap:4px 8px; margin:4px 0; font:inherit; }
+.input-settings-layout.input-parameter-settings .scf-compact-description { font-size:var(--input-font); line-height:calc(20px * var(--ui-font-scale,1)); }
+.input-settings-layout.input-parameter-settings .scf-compact-row>input { min-height:var(--input-control-height); padding:5px 9px; border:1px solid var(--input-border); border-radius:var(--input-control-radius); background:#fff; color:inherit; font:inherit; }

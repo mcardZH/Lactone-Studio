@@ -1,0 +1,44 @@
+{
+  "schema": "es-fortran-build-tool-identities/v1",
+  "platform": "Windows x64 UCRT POSIX threads SEH",
+  "gfortranVersion": "13.2.0",
+  "gccVersion": "13.2.0",
+  "cmakeVersion": "3.29.2",
+  "files": [
+    {
+      "name": "gfortran.exe",
+      "bytes": 1712654,
+      "sha256": "9e2d70c5a2f0a9cc13110f5d74c5ef85d82ea7bb071e883d4dc19b0a86537e25"
+    },
+    {
+      "name": "gcc.exe",
+      "bytes": 1710094,
+      "sha256": "e787d06596871cac79b0caaa443393b0cdc1b7f1e80b43cbc82efcd772b0a5df"
+    },
+    {
+      "name": "cmake.exe",
+      "bytes": 12626446,
+      "sha256": "5061e87973a451c2f476d666929f15acee80c58e1a0bbd800ac43a3f4d2753fe"
+    },
+    {
+      "name": "ninja.exe",
+      "bytes": 359438,
+      "sha256": "558095509b0fbdd81f0f74252b76964603d453ae03222ca3fc5b4baf27bc681a"
+    },
+    {
+      "name": "ar.exe",
+      "bytes": 1224206,
+      "sha256": "98dee1a4bd1572c720f540fa8ee64112d17cddf1f930aaedf2664eb327e7481b"
+    },
+    {
+      "name": "dlltool.exe",
+      "bytes": 1255438,
+      "sha256": "b9c6d44f659372c22a760c58470a5e4da1248e4f923cff4dcf4c975b3feed22e"
+    },
+    {
+      "name": "ld.exe",
+      "bytes": 1812494,
+      "sha256": "f64b26bdc4cfaed2ec6eeec35b8b152a78a3b46009894760d5f3a88f4e78ddeb"
+    }
+  ]
+}

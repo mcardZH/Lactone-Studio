@@ -1,0 +1,251 @@
+#------------------------------------------------------------------------------
+#$Date: 2025-08-19 00:06:14 +0300 (Tue, 19 Aug 2025) $
+#$Revision: 301780 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/1/55/84/1558408.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/
+#
+# All data on this site have been placed in the public domain by the
+# contributors.
+#
+data_1558408
+loop_
+_publ_author_name
+'Mostad, Arvid'
+_publ_section_title
+;
+ X-Ray Crystallographic Study of alpha-Glucose at 140 K
+;
+_journal_name_full               'Acta Chemica Scandinavica'
+_journal_page_first              276
+_journal_page_last               278
+_journal_paper_doi               10.3891/acta.chem.scand.48-0276
+_journal_volume                  48
+_journal_year                    1994
+_chemical_formula_sum            'C6 H12 O6'
+_chemical_formula_weight         180.16
+_chemical_name_common
+;
+alpha-glucose
+;
+_space_group_IT_number           19
+_space_group_name_Hall           'P 2ac 2ab'
+_space_group_name_H-M_alt        'P 21 21 21'
+_symmetry_cell_setting           orthorhombic
+_symmetry_Int_Tables_number      19
+_symmetry_space_group_name_Hall  'P 2ac 2ab'
+_symmetry_space_group_name_H-M   'P 21 21 21'
+_cell_angle_alpha                90.
+_cell_angle_beta                 90.
+_cell_angle_gamma                90.
+_cell_formula_units_Z            4
+_cell_length_a                   4.9464(7)
+_cell_length_b                   10.3440(15)
+_cell_length_c                   14.8472(22)
+_cell_volume                     759.67(19)
+_diffrn_ambient_temperature      140
+_diffrn_radiation_probe          x-ray
+_diffrn_radiation_type           MoK\a
+_diffrn_radiation_wavelength     0.71069
+_exptl_absorpt_coefficient_mu    0.143
+_exptl_crystal_density_diffrn    1.575
+_exptl_crystal_F_000             384
+_refine_ls_number_reflns         2949
+_refine_ls_R_factor_gt           0.037
+_refine_ls_wR_factor_gt          0.043
+_cod_data_source_file            Acta-Chem-Scand-1994-48-276.cif
+_cod_data_source_block           1
+_cod_original_cell_volume        759.7(14)
+_cod_database_code               1558408
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+1 x,y,z
+2 1/2-x,-y,1/2+z
+3 1/2+x,1/2-y,-z
+4 -x,1/2+y,1/2-z
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_thermal_displace_type
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_U_iso_or_equiv
+_atom_site_calc_flag
+_atom_site_refinement_flags
+_atom_site_disorder_assembly
+_atom_site_disorder_group
+O1 O Uiso 0.1461(2) 0.34650(10) 0.10120(10) 1.000 0.0200 . . . .
+O2 O Uiso 0.4366(2) 0.38660(10) 0.26060(10) 1.000 0.0180 . . . .
+O3 O Uiso 0.6671(2) 0.63280(10) 0.21610(10) 1.000 0.0210 . . . .
+O4 O Uiso 0.5698(2) 0.71790(10) 0.03500(10) 1.000 0.0160 . . . .
+O5 O Uiso 0.5399(2) 0.36470(10) 0.01510(10) 1.000 0.0130 . . . .
+O6 O Uiso 0.4435(2) 0.44620(10) -0.16930(10) 1.000 0.0220 . . . .
+C1 C Uiso 0.4256(2) 0.33200(10) 0.10100(10) 1.000 0.0130 . . . .
+C2 C Uiso 0.5477(2) 0.41800(10) 0.17480(10) 1.000 0.0130 . . . .
+C3 C Uiso 0.5170(2) 0.56060(10) 0.15190(10) 1.000 0.0120 . . . .
+C4 C Uiso 0.6223(2) 0.58560(10) 0.05710(10) 1.000 0.0120 . . . .
+C5 C Uiso 0.4890(2) 0.49580(10) -0.01140(10) 1.000 0.0120 . . . .
+C6 C Uiso 0.6021(3) 0.51470(10) -0.10490(10) 1.000 0.0180 . . . .
+H1 H Uiso 0.483(3) 0.2340(10) 0.1150(10) 1.000 0.0050 . . . .
+Ho1 H Uiso 0.082(5) 0.275(2) 0.0760(10) 1.000 0.0540 . . . .
+H2 H Uiso 0.747(3) 0.3990(10) 0.1770(10) 1.000 0.0120 . . . .
+Ho2 H Uiso 0.297(5) 0.445(2) 0.2750(10) 1.000 0.0370 . . . .
+H3 H Uiso 0.308(3) 0.5850(10) 0.1560(10) 1.000 0.0130 . . . .
+Ho3 H Uiso 0.631(6) 0.702(3) 0.211(2) 1.000 0.0610 . . . .
+H4 H Uiso 0.809(3) 0.5700(10) 0.0540(10) 1.000 0.0130 . . . .
+Ho4 H Uiso 0.686(5) 0.747(2) 0.011(2) 1.000 0.0410 . . . .
+H5 H Uiso 0.287(4) 0.511(2) -0.0110(10) 1.000 0.0190 . . . .
+Ho6 H Uiso 0.549(5) 0.4202(2) -0.2070(10) 1.000 0.0380 . . . .
+H61 H Uiso 0.614(4) 0.605(2) -0.1220(10) 1.000 0.0260 . . . .
+H62 H Uiso 0.804(4) 0.482(2) -0.1020(10) 1.000 0.0220 . . . .
+loop_
+_atom_type_symbol
+_atom_type_description
+_atom_type_scat_dispersion_real
+_atom_type_scat_dispersion_imag
+_atom_type_scat_source
+C C 0.0033 0.0016 ' International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+H H 0.0000 0.0000 ' International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+O O 0.0106 0.0060 ' International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+loop_
+_geom_angle_atom_site_label_1
+_geom_angle_atom_site_label_2
+_geom_angle_atom_site_label_3
+_geom_angle
+_geom_angle_site_symmetry_1
+_geom_angle_site_symmetry_2
+_geom_angle_site_symmetry_3
+_geom_angle_publ_flag
+C1 O5 C5 113.41(10) . . . yes
+C1 O1 Ho1 105.3(16) . . . no
+C2 O2 Ho2 109.8(10) . . . no
+C3 O3 Ho3 108(2) . . . no
+C4 O4 Ho4 111.0(17) . . . no
+C6 O6 Ho6 105.9(14) . . . no
+O1 C1 O5 111.60(12) . . . yes
+O1 C1 C2 109.09(10) . . . yes
+O5 C1 C2 110.04(9) . . . yes
+O2 C2 C1 110.75(9) . . . yes
+C1 C2 C3 111.29(11) . . . no
+O2 C2 C3 112.48(10) . . . yes
+O3 C3 C4 110.62(9) . . . yes
+C2 C3 C4 109.70(10) . . . no
+O3 C3 C2 107.92(11) . . . yes
+O4 C4 C5 110.53(11) . . . yes
+C3 C4 C5 111.38(9) . . . no
+O4 C4 C3 108.19(10) . . . yes
+C4 C5 C6 111.94(9) . . . no
+O5 C5 C4 108.46(11) . . . yes
+O5 C5 C6 108.04(10) . . . yes
+O6 C6 C5 110.40(11) . . . yes
+O1 C1 H1 111.4(8) . . . no
+O5 C1 H1 106.9(8) . . . no
+C2 C1 H1 107.8(8) . . . no
+O2 C2 H2 107.7(8) . . . no
+C1 C2 H2 107.2(7) . . . no
+C3 C2 H2 107.1(6) . . . no
+O3 C3 H3 110.1(7) . . . no
+C2 C3 H3 108.3(6) . . . no
+C4 C3 H3 110.1(8) . . . no
+O4 C4 H4 109.4(7) . . . no
+C3 C4 H4 110.7(9) . . . no
+C5 C4 H4 106.7(8) . . . no
+O5 C5 H5 108.6(11) . . . no
+C4 C5 H5 109.2(10) . . . no
+C6 C5 H5 110.6(9) . . . no
+O6 C6 H61 109.7(10) . . . no
+O6 C6 H62 112.9(10) . . . no
+C5 C6 H61 112.8(10) . . . no
+C5 C6 H62 105.8(8) . . . no
+H61 C6 H62 105.2(16) . . . no
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+_geom_bond_site_symmetry_1
+_geom_bond_site_symmetry_2
+_geom_bond_publ_flag
+O1 C1 1.3906(14) . . yes
+O2 C2 1.425(2) . . yes
+O3 C3 1.4204(18) . . yes
+O4 C4 1.4311(15) . . yes
+O5 C1 1.436(2) . . yes
+O5 C5 1.4343(15) . . yes
+O6 C6 1.4254(19) . . yes
+O1 Ho1 0.89(2) . . no
+O2 Ho2 0.94(2) . . no
+O3 Ho3 0.74(3) . . no
+O4 Ho4 0.74(3) . . no
+O6 Ho6 0.811(19) . . no
+C1 C2 1.5352(18) . . no
+C2 C3 1.5213(15) . . no
+C3 C4 1.523(2) . . no
+C4 C5 1.5271(18) . . no
+C5 C6 1.509(2) . . no
+C1 H1 1.073(11) . . no
+C2 H2 1.006(15) . . no
+C3 H3 1.066(15) . . no
+C4 H4 0.939(15) . . no
+C5 H5 1.01(2) . . no
+C6 H61 0.97(2) . . no
+C6 H62 1.06(2) . . no
+loop_
+_geom_hbond_atom_site_label_D
+_geom_hbond_atom_site_label_H
+_geom_hbond_atom_site_label_A
+_geom_hbond_distance_DH
+_geom_hbond_distance_HA
+_geom_hbond_distance_DA
+_geom_hbond_angle_DHA
+_geom_hbond_site_symmetry_A
+_geom_hbond_publ_flag
+O1 Ho1 O5 0.89(2) 1.990(18) 2.8338(18) 158.3(18) 3_455 yes
+O2 Ho2 O6 0.94(2) 1.84(2) 2.7585(16) 166.2(15) 2_565 yes
+O3 Ho3 O2 0.74(3) 1.98(3) 2.6972(15) 161(3) 4_655 yes
+O4 Ho4 O4 0.74(3) 2.05(3) 2.7637(16) 162(2) 3_565 yes
+O6 Ho6 O3 0.811(19) 1.89(2) 2.6968(18) 172(2) 2_664 yes
+C2 H2 O1 1.006(15) 2.336(15) 3.2407(16) 149.1(12) 1_655 yes
+C5 H5 O1 1.01(2) 2.481(18) 2.8384(17) 100.1(12) . yes
+loop_
+_geom_torsion_atom_site_label_1
+_geom_torsion_atom_site_label_2
+_geom_torsion_atom_site_label_3
+_geom_torsion_atom_site_label_4
+_geom_torsion
+_geom_torsion_site_symmetry_1
+_geom_torsion_site_symmetry_2
+_geom_torsion_site_symmetry_3
+_geom_torsion_site_symmetry_4
+_geom_torsion_publ_flag
+C5 O5 C1 O1 60.35(13) . . . . no
+C5 O5 C1 C2 -60.91(12) . . . . no
+C1 O5 C5 C4 62.34(12) . . . . no
+C1 O5 C5 C6 -176.13(10) . . . . no
+O1 C1 C2 O2 57.36(13) . . . . no
+O1 C1 C2 C3 -68.54(13) . . . . no
+O5 C1 C2 O2 -179.90(9) . . . . no
+O5 C1 C2 C3 54.20(11) . . . . no
+O2 C2 C3 O3 63.22(12) . . . . no
+O2 C2 C3 C4 -176.19(9) . . . . no
+C1 C2 C3 O3 -171.84(10) . . . . no
+C1 C2 C3 C4 -51.25(11) . . . . no
+O3 C3 C4 O4 -65.83(11) . . . . no
+O3 C3 C4 C5 172.50(9) . . . . no
+C2 C3 C4 O4 175.23(9) . . . . no
+C2 C3 C4 C5 53.56(11) . . . . no
+O4 C4 C5 O5 -178.20(10) . . . . no
+O4 C4 C5 C6 62.69(12) . . . . no
+C3 C4 C5 O5 -57.89(11) . . . . no
+C3 C4 C5 C6 -177.00(9) . . . . no
+O5 C5 C6 O6 70.51(12) . . . . no
+C4 C5 C6 O6 -170.13(9) . . . . no
+loop_
+_cod_related_entry_id
+_cod_related_entry_database
+_cod_related_entry_code
+1 PubChem 79025

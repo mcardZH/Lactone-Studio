@@ -1,0 +1,1489 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-pyrope-cod-2108142",
+  "structure": {
+    "id": "mineral-pyrope-cod-2108142",
+    "name": "pyrope",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:1",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 4.59943179340639e-16,
+        "y": 2.860125,
+        "z": 1.4300625000000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:2",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 1.3798295380219171e-15,
+        "y": 8.580375,
+        "z": 4.290187500000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:3",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 5.720250000000001,
+        "y": 2.860125,
+        "z": 10.0104375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:4",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 2.8601250000000005,
+        "y": 1.4300625,
+        "z": 2.626982194808493e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:5",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 8.580375,
+        "y": 4.2901875,
+        "z": 7.880946584425479e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:6",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 10.010437500000002,
+        "y": 5.72025,
+        "z": 2.860125000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:7",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 1.4300625,
+        "y": 0.0,
+        "z": 2.860125
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:8",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 4.2901875,
+        "y": 0.0,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:9",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 2.860125000000002,
+        "y": 10.0104375,
+        "z": 5.720250000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:10",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 5.720250000000002,
+        "y": 8.580375,
+        "z": 7.150312500000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:11",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 8.580375000000002,
+        "y": 7.1503125,
+        "z": 5.720250000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:12",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 7.150312500000001,
+        "y": 5.72025,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:13",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 1.3798295380219171e-15,
+        "y": 8.580375,
+        "z": 10.0104375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:14",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 4.59943179340639e-16,
+        "y": 2.860125,
+        "z": 7.1503125
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:15",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 5.720250000000002,
+        "y": 8.580375,
+        "z": 1.430062500000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:16",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 8.580375000000002,
+        "y": 10.0104375,
+        "z": 1.1383589510836803e-15
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:17",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 2.8601250000000014,
+        "y": 7.1503125,
+        "z": 6.129625121219815e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:18",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 1.430062500000001,
+        "y": 5.72025,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:19",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 10.0104375,
+        "y": 0.0,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:20",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 7.1503125,
+        "y": 0.0,
+        "z": 2.8601250000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:21",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 8.580375,
+        "y": 1.4300625,
+        "z": 5.720250000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:22",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 5.720250000000001,
+        "y": 2.860125,
+        "z": 4.290187500000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:23",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 2.860125000000001,
+        "y": 4.2901875,
+        "z": 5.72025
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:24",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 4.290187500000001,
+        "y": 5.72025,
+        "z": 2.8601250000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:25",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:26",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.8601250000000014,
+        "y": 8.580375,
+        "z": 2.860125000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:27",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 9.19886358681278e-16,
+        "y": 5.72025,
+        "z": 3.5026429264113236e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:28",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.8601250000000005,
+        "y": 2.860125,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:29",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 5.72025
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:30",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 8.580375,
+        "y": 2.860125,
+        "z": 2.860125000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:31",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 5.72025,
+        "y": 0.0,
+        "z": 3.5026429264113236e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:32",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.8601250000000005,
+        "y": 2.860125,
+        "z": 2.8601250000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:33",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 5.720250000000001,
+        "y": 5.72025,
+        "z": 5.720250000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:34",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 8.580375,
+        "y": 2.860125,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:35",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 5.72025,
+        "y": 0.0,
+        "z": 5.72025
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:36",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 8.580375000000002,
+        "y": 8.580375,
+        "z": 2.860125000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:37",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 5.720250000000001,
+        "y": 5.72025,
+        "z": 7.005285852822647e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:38",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 2.8601250000000014,
+        "y": 8.580375,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:39",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 9.19886358681278e-16,
+        "y": 5.72025,
+        "z": 5.72025
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:40",
+        "sourceIndex": 1,
+        "element": "Al",
+        "x": 8.580375000000002,
+        "y": 8.580375,
+        "z": 8.580375000000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:41",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.59943179340639e-16,
+        "y": 2.860125,
+        "z": 4.2901875
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:42",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.3798295380219171e-15,
+        "y": 8.580375,
+        "z": 7.150312500000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:43",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 5.720250000000001,
+        "y": 2.860125,
+        "z": 1.4300625000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:44",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 2.860125000000002,
+        "y": 10.0104375,
+        "z": 7.880946584425479e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:45",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.3798295380219171e-15,
+        "y": 8.580375,
+        "z": 1.4300625000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:46",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 8.580375000000002,
+        "y": 7.1503125,
+        "z": 9.63226804763114e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:47",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.430062500000001,
+        "y": 5.72025,
+        "z": 2.8601250000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:48",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 5.720250000000001,
+        "y": 2.860125,
+        "z": 7.150312500000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:49",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 10.0104375,
+        "y": 0.0,
+        "z": 2.8601250000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:50",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.2901875,
+        "y": 0.0,
+        "z": 2.8601250000000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:51",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 2.860125000000001,
+        "y": 4.2901875,
+        "z": 4.3783036580141547e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:52",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 8.580375,
+        "y": 1.4300625,
+        "z": 6.129625121219816e-16
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:53",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 7.150312500000001,
+        "y": 5.72025,
+        "z": 2.860125000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:54",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 1.4300625,
+        "y": 0.0,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:55",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 2.8601250000000014,
+        "y": 7.1503125,
+        "z": 5.720250000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:56",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.59943179340639e-16,
+        "y": 2.860125,
+        "z": 10.0104375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:57",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 2.8601250000000005,
+        "y": 1.4300625,
+        "z": 5.72025
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:58",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 7.1503125,
+        "y": 0.0,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:59",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 5.720250000000002,
+        "y": 8.580375,
+        "z": 10.0104375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:60",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 8.580375,
+        "y": 4.2901875,
+        "z": 5.720250000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:61",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 4.290187500000001,
+        "y": 5.72025,
+        "z": 8.580375
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:62",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 10.010437500000002,
+        "y": 5.72025,
+        "z": 8.580375000000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:63",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 8.580375000000002,
+        "y": 10.0104375,
+        "z": 5.720250000000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:64",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 5.720250000000002,
+        "y": 8.580375,
+        "z": 4.290187500000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:65",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.3754772100000001,
+        "y": 0.5808341850000001,
+        "z": 7.473621029999999
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:66",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.2792908150000013,
+        "y": 8.95585221,
+        "z": 10.33374603
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:67",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.06502279,
+        "y": 5.139415815,
+        "z": 7.47362103
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:68",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.440959185,
+        "y": 2.48464779,
+        "z": 4.613496029999999
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:69",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.235602210000001,
+        "y": 6.827003970000001,
+        "z": 9.161209185
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:70",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.3754772100000017,
+        "y": 10.859665815,
+        "z": 9.68712897
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:71",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.955852210000002,
+        "y": 10.33374603,
+        "z": 2.2792908150000013
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:72",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.61349603,
+        "y": 3.4409591849999996,
+        "z": 2.4846477900000004
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:73",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.3447727899999995,
+        "y": 0.5808341850000001,
+        "z": 3.966878970000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:74",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.8270039700000025,
+        "y": 9.161209185,
+        "z": 3.235602210000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:75",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.473621029999999,
+        "y": 0.37547721,
+        "z": 0.5808341850000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:76",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5808341850000013,
+        "y": 7.473621029999999,
+        "z": 0.3754772100000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:77",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.859665815000001,
+        "y": 9.68712897,
+        "z": 0.3754772100000013
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:78",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.473621030000001,
+        "y": 11.06502279,
+        "z": 5.139415815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:79",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.139415815000001,
+        "y": 7.473621029999999,
+        "z": 11.06502279
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:80",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.9668789700000016,
+        "y": 5.3447727899999995,
+        "z": 0.5808341850000006
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:81",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.68712897,
+        "y": 0.37547721,
+        "z": 10.859665815
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:82",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5808341850000007,
+        "y": 3.9668789700000007,
+        "z": 5.3447727899999995
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:83",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.161209185,
+        "y": 3.23560221,
+        "z": 6.827003970000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:84",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.2792908150000004,
+        "y": 2.48464779,
+        "z": 6.827003970000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:85",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.484647790000001,
+        "y": 4.613496029999999,
+        "z": 3.440959185
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:86",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.484647790000001,
+        "y": 6.827003970000001,
+        "z": 2.2792908150000004
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:87",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.33374603,
+        "y": 2.279290815,
+        "z": 8.95585221
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:88",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.827003970000001,
+        "y": 2.279290815,
+        "z": 2.4846477900000004
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:89",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.095727210000001,
+        "y": 6.301084185,
+        "z": 1.75337103
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:90",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.999540815000001,
+        "y": 3.235602210000001,
+        "z": 4.61349603
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:91",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.344772790000001,
+        "y": 10.859665815,
+        "z": 1.7533710300000003
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:92",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.161209185000002,
+        "y": 8.20489779,
+        "z": 10.333746030000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:93",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.95585221,
+        "y": 1.1067539700000006,
+        "z": 3.440959185
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:94",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.095727210000001,
+        "y": 5.139415815,
+        "z": 3.9668789700000016
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:95",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.235602210000002,
+        "y": 4.613496029999999,
+        "z": 7.999540815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:96",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.333746030000002,
+        "y": 9.161209185,
+        "z": 8.204897790000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:97",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.065022790000002,
+        "y": 6.301084185,
+        "z": 9.687128970000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:98",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.106753970000001,
+        "y": 3.4409591849999996,
+        "z": 8.95585221
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:99",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.7533710300000003,
+        "y": 6.09572721,
+        "z": 6.301084185000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:100",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.301084185,
+        "y": 1.7533710299999994,
+        "z": 6.095727210000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:101",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.139415815000001,
+        "y": 3.9668789700000007,
+        "z": 6.095727210000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:102",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.7533710300000003,
+        "y": 5.3447727899999995,
+        "z": 10.859665815
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:103",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.859665815,
+        "y": 1.7533710299999994,
+        "z": 5.34477279
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:104",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.687128970000002,
+        "y": 11.06502279,
+        "z": 6.301084185000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:105",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.9668789700000016,
+        "y": 6.09572721,
+        "z": 5.139415815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:106",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.3010841850000014,
+        "y": 9.68712897,
+        "z": 11.065022790000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:107",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.440959185000001,
+        "y": 8.95585221,
+        "z": 1.1067539700000013
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:108",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.999540815000001,
+        "y": 8.20489779,
+        "z": 1.1067539700000015
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:109",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.204897790000002,
+        "y": 10.33374603,
+        "z": 9.161209185000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:110",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.20489779,
+        "y": 1.1067539700000006,
+        "z": 7.999540815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:111",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.61349603,
+        "y": 7.9995408150000005,
+        "z": 3.235602210000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:112",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.106753970000002,
+        "y": 7.9995408150000005,
+        "z": 8.20489779
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:113",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.065022790000002,
+        "y": 10.859665815,
+        "z": 3.966878970000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:114",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.161209185,
+        "y": 2.4846477900000004,
+        "z": 1.1067539700000013
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:115",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.375477210000001,
+        "y": 6.301084185,
+        "z": 3.966878970000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:116",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.999540815000002,
+        "y": 8.955852210000002,
+        "z": 6.827003970000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:117",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.204897789999999,
+        "y": 4.613496029999999,
+        "z": 2.2792908150000013
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:118",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 11.06502279,
+        "y": 0.5808341850000001,
+        "z": 1.75337103
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:119",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4846477900000004,
+        "y": 1.1067539700000006,
+        "z": 9.161209185
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:120",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.827003970000002,
+        "y": 7.9995408150000005,
+        "z": 8.955852210000003
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:121",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.095727210000002,
+        "y": 10.859665815,
+        "z": 7.47362103
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:122",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.613496029999999,
+        "y": 2.2792908150000004,
+        "z": 8.204897789999999
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:123",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.9668789700000024,
+        "y": 11.06502279,
+        "z": 10.859665815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:124",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.859665815,
+        "y": 3.9668789700000007,
+        "z": 11.065022790000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:125",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5808341850000004,
+        "y": 1.7533710299999994,
+        "z": 11.06502279
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:126",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.9668789700000007,
+        "y": 0.37547721,
+        "z": 6.301084185
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:127",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.301084185000001,
+        "y": 3.9668789700000007,
+        "z": 0.3754772100000006
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:128",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.47362103,
+        "y": 6.095727210000001,
+        "z": 10.859665815
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:129",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.7533710300000012,
+        "y": 11.06502279,
+        "z": 0.5808341850000008
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:130",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.859665815000001,
+        "y": 7.473621029999999,
+        "z": 6.0957272100000015
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:131",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.2792908150000017,
+        "y": 8.204897789999999,
+        "z": 4.61349603
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:132",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.161209185000002,
+        "y": 8.955852210000002,
+        "z": 4.61349603
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:133",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.955852210000003,
+        "y": 6.827003970000001,
+        "z": 7.999540815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:134",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.955852210000002,
+        "y": 4.613496029999999,
+        "z": 9.161209185
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:135",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.1067539700000022,
+        "y": 9.161209185,
+        "z": 2.484647790000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:136",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.613496030000001,
+        "y": 9.161209185,
+        "z": 8.955852210000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:137",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.34477279,
+        "y": 5.139415815,
+        "z": 9.68712897
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:138",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.440959185000001,
+        "y": 8.204897789999999,
+        "z": 6.827003970000002
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:139",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.09572721,
+        "y": 0.5808341850000001,
+        "z": 9.68712897
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:140",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.2792908150000004,
+        "y": 3.23560221,
+        "z": 1.106753970000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:141",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.4846477900000017,
+        "y": 10.33374603,
+        "z": 7.999540815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:142",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.34477279,
+        "y": 6.301084185,
+        "z": 7.47362103
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:143",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 8.20489779,
+        "y": 6.827003970000001,
+        "z": 3.4409591850000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:144",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.106753970000001,
+        "y": 2.279290815,
+        "z": 3.23560221
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:145",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.37547721000000084,
+        "y": 5.139415815,
+        "z": 1.7533710299999998
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:146",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.333746030000002,
+        "y": 7.9995408150000005,
+        "z": 2.4846477900000012
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:147",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.68712897,
+        "y": 5.3447727899999995,
+        "z": 5.139415815000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:148",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.139415815000002,
+        "y": 9.68712897,
+        "z": 5.34477279
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:149",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.301084185000001,
+        "y": 7.473621029999999,
+        "z": 5.34477279
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:150",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 9.687128970000002,
+        "y": 6.09572721,
+        "z": 0.5808341850000011
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:151",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5808341850000016,
+        "y": 9.68712897,
+        "z": 6.095727210000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:152",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.7533710299999994,
+        "y": 0.37547721,
+        "z": 5.139415815
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:153",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.47362103,
+        "y": 5.3447727899999995,
+        "z": 6.301084185000001
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:154",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 5.139415815,
+        "y": 1.7533710299999994,
+        "z": 0.37547721000000045
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:155",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.9995408150000005,
+        "y": 2.48464779,
+        "z": 10.33374603
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:156",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.440959185,
+        "y": 3.23560221,
+        "z": 10.33374603
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:157",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.23560221,
+        "y": 1.1067539700000006,
+        "z": 2.2792908150000004
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:158",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.235602210000002,
+        "y": 10.33374603,
+        "z": 3.4409591850000005
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:159",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.827003970000002,
+        "y": 3.4409591849999996,
+        "z": 8.204897789999999
+      },
+      {
+        "id": "mineral-pyrope-cod-2108142:atom:160",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 10.33374603,
+        "y": 3.4409591849999996,
+        "z": 3.235602210000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2108142; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-pyrope-cod-2108142:atom:1",
+      "mineral-pyrope-cod-2108142:atom:2",
+      "mineral-pyrope-cod-2108142:atom:3",
+      "mineral-pyrope-cod-2108142:atom:4",
+      "mineral-pyrope-cod-2108142:atom:5",
+      "mineral-pyrope-cod-2108142:atom:6",
+      "mineral-pyrope-cod-2108142:atom:7",
+      "mineral-pyrope-cod-2108142:atom:8",
+      "mineral-pyrope-cod-2108142:atom:9",
+      "mineral-pyrope-cod-2108142:atom:10",
+      "mineral-pyrope-cod-2108142:atom:11",
+      "mineral-pyrope-cod-2108142:atom:12",
+      "mineral-pyrope-cod-2108142:atom:13",
+      "mineral-pyrope-cod-2108142:atom:14",
+      "mineral-pyrope-cod-2108142:atom:15",
+      "mineral-pyrope-cod-2108142:atom:16",
+      "mineral-pyrope-cod-2108142:atom:17",
+      "mineral-pyrope-cod-2108142:atom:18",
+      "mineral-pyrope-cod-2108142:atom:19",
+      "mineral-pyrope-cod-2108142:atom:20",
+      "mineral-pyrope-cod-2108142:atom:21",
+      "mineral-pyrope-cod-2108142:atom:22",
+      "mineral-pyrope-cod-2108142:atom:23",
+      "mineral-pyrope-cod-2108142:atom:24",
+      "mineral-pyrope-cod-2108142:atom:25",
+      "mineral-pyrope-cod-2108142:atom:26",
+      "mineral-pyrope-cod-2108142:atom:27",
+      "mineral-pyrope-cod-2108142:atom:28",
+      "mineral-pyrope-cod-2108142:atom:29",
+      "mineral-pyrope-cod-2108142:atom:30",
+      "mineral-pyrope-cod-2108142:atom:31",
+      "mineral-pyrope-cod-2108142:atom:32",
+      "mineral-pyrope-cod-2108142:atom:33",
+      "mineral-pyrope-cod-2108142:atom:34",
+      "mineral-pyrope-cod-2108142:atom:35",
+      "mineral-pyrope-cod-2108142:atom:36",
+      "mineral-pyrope-cod-2108142:atom:37",
+      "mineral-pyrope-cod-2108142:atom:38",
+      "mineral-pyrope-cod-2108142:atom:39",
+      "mineral-pyrope-cod-2108142:atom:40",
+      "mineral-pyrope-cod-2108142:atom:41",
+      "mineral-pyrope-cod-2108142:atom:42",
+      "mineral-pyrope-cod-2108142:atom:43",
+      "mineral-pyrope-cod-2108142:atom:44",
+      "mineral-pyrope-cod-2108142:atom:45",
+      "mineral-pyrope-cod-2108142:atom:46",
+      "mineral-pyrope-cod-2108142:atom:47",
+      "mineral-pyrope-cod-2108142:atom:48",
+      "mineral-pyrope-cod-2108142:atom:49",
+      "mineral-pyrope-cod-2108142:atom:50",
+      "mineral-pyrope-cod-2108142:atom:51",
+      "mineral-pyrope-cod-2108142:atom:52",
+      "mineral-pyrope-cod-2108142:atom:53",
+      "mineral-pyrope-cod-2108142:atom:54",
+      "mineral-pyrope-cod-2108142:atom:55",
+      "mineral-pyrope-cod-2108142:atom:56",
+      "mineral-pyrope-cod-2108142:atom:57",
+      "mineral-pyrope-cod-2108142:atom:58",
+      "mineral-pyrope-cod-2108142:atom:59",
+      "mineral-pyrope-cod-2108142:atom:60",
+      "mineral-pyrope-cod-2108142:atom:61",
+      "mineral-pyrope-cod-2108142:atom:62",
+      "mineral-pyrope-cod-2108142:atom:63",
+      "mineral-pyrope-cod-2108142:atom:64",
+      "mineral-pyrope-cod-2108142:atom:65",
+      "mineral-pyrope-cod-2108142:atom:66",
+      "mineral-pyrope-cod-2108142:atom:67",
+      "mineral-pyrope-cod-2108142:atom:68",
+      "mineral-pyrope-cod-2108142:atom:69",
+      "mineral-pyrope-cod-2108142:atom:70",
+      "mineral-pyrope-cod-2108142:atom:71",
+      "mineral-pyrope-cod-2108142:atom:72",
+      "mineral-pyrope-cod-2108142:atom:73",
+      "mineral-pyrope-cod-2108142:atom:74",
+      "mineral-pyrope-cod-2108142:atom:75",
+      "mineral-pyrope-cod-2108142:atom:76",
+      "mineral-pyrope-cod-2108142:atom:77",
+      "mineral-pyrope-cod-2108142:atom:78",
+      "mineral-pyrope-cod-2108142:atom:79",
+      "mineral-pyrope-cod-2108142:atom:80",
+      "mineral-pyrope-cod-2108142:atom:81",
+      "mineral-pyrope-cod-2108142:atom:82",
+      "mineral-pyrope-cod-2108142:atom:83",
+      "mineral-pyrope-cod-2108142:atom:84",
+      "mineral-pyrope-cod-2108142:atom:85",
+      "mineral-pyrope-cod-2108142:atom:86",
+      "mineral-pyrope-cod-2108142:atom:87",
+      "mineral-pyrope-cod-2108142:atom:88",
+      "mineral-pyrope-cod-2108142:atom:89",
+      "mineral-pyrope-cod-2108142:atom:90",
+      "mineral-pyrope-cod-2108142:atom:91",
+      "mineral-pyrope-cod-2108142:atom:92",
+      "mineral-pyrope-cod-2108142:atom:93",
+      "mineral-pyrope-cod-2108142:atom:94",
+      "mineral-pyrope-cod-2108142:atom:95",
+      "mineral-pyrope-cod-2108142:atom:96",
+      "mineral-pyrope-cod-2108142:atom:97",
+      "mineral-pyrope-cod-2108142:atom:98",
+      "mineral-pyrope-cod-2108142:atom:99",
+      "mineral-pyrope-cod-2108142:atom:100",
+      "mineral-pyrope-cod-2108142:atom:101",
+      "mineral-pyrope-cod-2108142:atom:102",
+      "mineral-pyrope-cod-2108142:atom:103",
+      "mineral-pyrope-cod-2108142:atom:104",
+      "mineral-pyrope-cod-2108142:atom:105",
+      "mineral-pyrope-cod-2108142:atom:106",
+      "mineral-pyrope-cod-2108142:atom:107",
+      "mineral-pyrope-cod-2108142:atom:108",
+      "mineral-pyrope-cod-2108142:atom:109",
+      "mineral-pyrope-cod-2108142:atom:110",
+      "mineral-pyrope-cod-2108142:atom:111",
+      "mineral-pyrope-cod-2108142:atom:112",
+      "mineral-pyrope-cod-2108142:atom:113",
+      "mineral-pyrope-cod-2108142:atom:114",
+      "mineral-pyrope-cod-2108142:atom:115",
+      "mineral-pyrope-cod-2108142:atom:116",
+      "mineral-pyrope-cod-2108142:atom:117",
+      "mineral-pyrope-cod-2108142:atom:118",
+      "mineral-pyrope-cod-2108142:atom:119",
+      "mineral-pyrope-cod-2108142:atom:120",
+      "mineral-pyrope-cod-2108142:atom:121",
+      "mineral-pyrope-cod-2108142:atom:122",
+      "mineral-pyrope-cod-2108142:atom:123",
+      "mineral-pyrope-cod-2108142:atom:124",
+      "mineral-pyrope-cod-2108142:atom:125",
+      "mineral-pyrope-cod-2108142:atom:126",
+      "mineral-pyrope-cod-2108142:atom:127",
+      "mineral-pyrope-cod-2108142:atom:128",
+      "mineral-pyrope-cod-2108142:atom:129",
+      "mineral-pyrope-cod-2108142:atom:130",
+      "mineral-pyrope-cod-2108142:atom:131",
+      "mineral-pyrope-cod-2108142:atom:132",
+      "mineral-pyrope-cod-2108142:atom:133",
+      "mineral-pyrope-cod-2108142:atom:134",
+      "mineral-pyrope-cod-2108142:atom:135",
+      "mineral-pyrope-cod-2108142:atom:136",
+      "mineral-pyrope-cod-2108142:atom:137",
+      "mineral-pyrope-cod-2108142:atom:138",
+      "mineral-pyrope-cod-2108142:atom:139",
+      "mineral-pyrope-cod-2108142:atom:140",
+      "mineral-pyrope-cod-2108142:atom:141",
+      "mineral-pyrope-cod-2108142:atom:142",
+      "mineral-pyrope-cod-2108142:atom:143",
+      "mineral-pyrope-cod-2108142:atom:144",
+      "mineral-pyrope-cod-2108142:atom:145",
+      "mineral-pyrope-cod-2108142:atom:146",
+      "mineral-pyrope-cod-2108142:atom:147",
+      "mineral-pyrope-cod-2108142:atom:148",
+      "mineral-pyrope-cod-2108142:atom:149",
+      "mineral-pyrope-cod-2108142:atom:150",
+      "mineral-pyrope-cod-2108142:atom:151",
+      "mineral-pyrope-cod-2108142:atom:152",
+      "mineral-pyrope-cod-2108142:atom:153",
+      "mineral-pyrope-cod-2108142:atom:154",
+      "mineral-pyrope-cod-2108142:atom:155",
+      "mineral-pyrope-cod-2108142:atom:156",
+      "mineral-pyrope-cod-2108142:atom:157",
+      "mineral-pyrope-cod-2108142:atom:158",
+      "mineral-pyrope-cod-2108142:atom:159",
+      "mineral-pyrope-cod-2108142:atom:160"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          11.4405,
+          0.0,
+          7.005285852822647e-16
+        ],
+        [
+          1.839772717362556e-15,
+          11.4405,
+          7.005285852822647e-16
+        ],
+        [
+          0.0,
+          0.0,
+          11.4405
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2108142 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

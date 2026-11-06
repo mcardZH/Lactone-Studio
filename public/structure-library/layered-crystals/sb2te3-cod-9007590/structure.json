@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "entryId": "sb2te3-cod-9007590",
+  "structure": {
+    "id": "sb2te3-cod-9007590",
+    "name": "碲化锑",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "sb2te3-cod-9007590:atom:1",
+        "sourceIndex": 1,
+        "element": "Sb",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 12.146650399999999
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:2",
+        "sourceIndex": 1,
+        "element": "Sb",
+        "x": 2.132,
+        "y": 1.2309107739122822,
+        "z": 22.299317066666664
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:3",
+        "sourceIndex": 1,
+        "element": "Sb",
+        "x": 2.220446049250313e-16,
+        "y": 2.4618215478245644,
+        "z": 1.9939837333333303
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:4",
+        "sourceIndex": 1,
+        "element": "Sb",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 18.311349599999996
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:5",
+        "sourceIndex": 1,
+        "element": "Sb",
+        "x": 2.132,
+        "y": 1.2309107739122822,
+        "z": 28.464016266666665
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:6",
+        "sourceIndex": 1,
+        "element": "Sb",
+        "x": 2.220446049250313e-16,
+        "y": 2.4618215478245644,
+        "z": 8.158682933333331
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:7",
+        "sourceIndex": 2,
+        "element": "Te",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 23.9765376
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:8",
+        "sourceIndex": 2,
+        "element": "Te",
+        "x": 2.132,
+        "y": 1.2309107739122822,
+        "z": 3.671204266666668
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:9",
+        "sourceIndex": 2,
+        "element": "Te",
+        "x": 2.220446049250313e-16,
+        "y": 2.4618215478245644,
+        "z": 13.823870933333332
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:10",
+        "sourceIndex": 2,
+        "element": "Te",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 6.481462399999999
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:11",
+        "sourceIndex": 2,
+        "element": "Te",
+        "x": 2.132,
+        "y": 1.2309107739122822,
+        "z": 16.634129066666667
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:12",
+        "sourceIndex": 2,
+        "element": "Te",
+        "x": 2.220446049250313e-16,
+        "y": 2.4618215478245644,
+        "z": 26.78679573333333
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:13",
+        "sourceIndex": 3,
+        "element": "Te",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:14",
+        "sourceIndex": 3,
+        "element": "Te",
+        "x": 2.132,
+        "y": 1.2309107739122822,
+        "z": 10.152666666666665
+      },
+      {
+        "id": "sb2te3-cod-9007590:atom:15",
+        "sourceIndex": 3,
+        "element": "Te",
+        "x": 2.220446049250313e-16,
+        "y": 2.4618215478245644,
+        "z": 20.30533333333333
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database record COD 9007590; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "sb2te3-cod-9007590:atom:1",
+      "sb2te3-cod-9007590:atom:2",
+      "sb2te3-cod-9007590:atom:3",
+      "sb2te3-cod-9007590:atom:4",
+      "sb2te3-cod-9007590:atom:5",
+      "sb2te3-cod-9007590:atom:6",
+      "sb2te3-cod-9007590:atom:7",
+      "sb2te3-cod-9007590:atom:8",
+      "sb2te3-cod-9007590:atom:9",
+      "sb2te3-cod-9007590:atom:10",
+      "sb2te3-cod-9007590:atom:11",
+      "sb2te3-cod-9007590:atom:12",
+      "sb2te3-cod-9007590:atom:13",
+      "sb2te3-cod-9007590:atom:14",
+      "sb2te3-cod-9007590:atom:15"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.264,
+          0.0,
+          2.610946975782157e-16
+        ],
+        [
+          -2.1319999999999997,
+          3.692732321736847,
+          2.610946975782157e-16
+        ],
+        [
+          0.0,
+          0.0,
+          30.458
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database record COD 9007590 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

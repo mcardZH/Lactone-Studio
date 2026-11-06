@@ -1,0 +1,40 @@
+CI: github_actions
+CONDA_BUILD_SKIP_TESTS: '0'
+c_compiler: vs2017
+channel_sources: conda-forge
+channel_targets: conda-forge main
+cpu_optimization_target: nocona
+cran_mirror: https://cran.r-project.org
+cxx_compiler: vs2017
+extend_keys:
+- ignore_version
+- pin_run_as_build
+- ignore_build_only_deps
+- extend_keys
+fortran_compiler: gfortran
+ignore_build_only_deps:
+- numpy
+- python
+libblas: 3.9.* *netlib
+liblapack: 3.9.* *netlib
+lua: '5'
+m2w64_c_compiler: gcc
+m2w64_c_compiler_version: '15'
+m2w64_c_stdlib: m2w64-sysroot
+m2w64_c_stdlib_version: '12'
+numpy: '1.26'
+perl: 5.26.2
+pin_run_as_build:
+  python:
+    max_pin: x.x
+    min_pin: x.x
+  r-base:
+    max_pin: x.x
+    min_pin: x.x
+python: 3.12.* *_cpython
+r_base: '3.4'
+target_platform: win-64
+vc: '14'
+zip_keys:
+- - python
+  - channel_sources

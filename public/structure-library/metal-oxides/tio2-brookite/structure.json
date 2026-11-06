@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "entryId": "tio2-brookite",
+  "structure": {
+    "id": "tio2-brookite",
+    "name": "板钛矿型二氧化钛",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "tio2-brookite:atom:1",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 1.1825285999999997,
+        "y": 0.5296428,
+        "z": 4.4330664
+      },
+      {
+        "id": "tio2-brookite:atom:2",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 1.1825286000000002,
+        "y": 2.1948572,
+        "z": 1.8640664000000002
+      },
+      {
+        "id": "tio2-brookite:atom:3",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 7.9914714,
+        "y": 3.2541427999999994,
+        "z": 3.2739336000000008
+      },
+      {
+        "id": "tio2-brookite:atom:4",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 3.4044714000000003,
+        "y": 3.2541427999999994,
+        "z": 4.4330664
+      },
+      {
+        "id": "tio2-brookite:atom:5",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 5.7695286,
+        "y": 2.1948572,
+        "z": 0.7049336000000004
+      },
+      {
+        "id": "tio2-brookite:atom:6",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 5.7695286,
+        "y": 0.5296428,
+        "z": 3.2739336000000003
+      },
+      {
+        "id": "tio2-brookite:atom:7",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 3.4044714000000007,
+        "y": 4.9193572,
+        "z": 1.8640664000000005
+      },
+      {
+        "id": "tio2-brookite:atom:8",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 7.9914714,
+        "y": 4.9193572,
+        "z": 0.7049336000000007
+      },
+      {
+        "id": "tio2-brookite:atom:9",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.08715300000000012,
+        "y": 0.8124459,
+        "z": 0.942823
+      },
+      {
+        "id": "tio2-brookite:atom:10",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0871530000000003,
+        "y": 1.9120541,
+        "z": 3.5118229999999997
+      },
+      {
+        "id": "tio2-brookite:atom:11",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 9.086847,
+        "y": 3.5369459,
+        "z": 1.6261770000000006
+      },
+      {
+        "id": "tio2-brookite:atom:12",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.499847000000001,
+        "y": 3.5369459,
+        "z": 0.9428230000000004
+      },
+      {
+        "id": "tio2-brookite:atom:13",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.674153,
+        "y": 1.9120541,
+        "z": 4.195177
+      },
+      {
+        "id": "tio2-brookite:atom:14",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.674153,
+        "y": 0.8124459,
+        "z": 1.6261770000000004
+      },
+      {
+        "id": "tio2-brookite:atom:15",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.499847000000001,
+        "y": 4.6365541,
+        "z": 3.511823
+      },
+      {
+        "id": "tio2-brookite:atom:16",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 9.086847,
+        "y": 4.6365541,
+        "z": 4.195177000000001
+      },
+      {
+        "id": "tio2-brookite:atom:17",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1228635999999996,
+        "y": 0.604839,
+        "z": 2.7570507999999996
+      },
+      {
+        "id": "tio2-brookite:atom:18",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1228636,
+        "y": 2.119661,
+        "z": 0.18805080000000007
+      },
+      {
+        "id": "tio2-brookite:atom:19",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.0511364,
+        "y": 3.329339,
+        "z": 4.949949200000001
+      },
+      {
+        "id": "tio2-brookite:atom:20",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.4641364000000006,
+        "y": 3.329339,
+        "z": 2.7570508
+      },
+      {
+        "id": "tio2-brookite:atom:21",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.7098636,
+        "y": 2.119661,
+        "z": 2.3809492000000008
+      },
+      {
+        "id": "tio2-brookite:atom:22",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.7098636,
+        "y": 0.604839,
+        "z": 4.949949200000001
+      },
+      {
+        "id": "tio2-brookite:atom:23",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.464136400000001,
+        "y": 4.844161,
+        "z": 0.18805080000000027
+      },
+      {
+        "id": "tio2-brookite:atom:24",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.0511364,
+        "y": 4.844161,
+        "z": 2.380949200000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9004137; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "tio2-brookite:atom:1",
+      "tio2-brookite:atom:2",
+      "tio2-brookite:atom:3",
+      "tio2-brookite:atom:4",
+      "tio2-brookite:atom:5",
+      "tio2-brookite:atom:6",
+      "tio2-brookite:atom:7",
+      "tio2-brookite:atom:8",
+      "tio2-brookite:atom:9",
+      "tio2-brookite:atom:10",
+      "tio2-brookite:atom:11",
+      "tio2-brookite:atom:12",
+      "tio2-brookite:atom:13",
+      "tio2-brookite:atom:14",
+      "tio2-brookite:atom:15",
+      "tio2-brookite:atom:16",
+      "tio2-brookite:atom:17",
+      "tio2-brookite:atom:18",
+      "tio2-brookite:atom:19",
+      "tio2-brookite:atom:20",
+      "tio2-brookite:atom:21",
+      "tio2-brookite:atom:22",
+      "tio2-brookite:atom:23",
+      "tio2-brookite:atom:24"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          9.174,
+          0.0,
+          5.617454867688908e-16
+        ],
+        [
+          8.762660318087992e-16,
+          5.449,
+          3.3365502042769636e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.138
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9004137 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

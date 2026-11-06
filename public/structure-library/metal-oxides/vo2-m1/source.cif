@@ -1,0 +1,83 @@
+#------------------------------------------------------------------------------
+#$Date: 2023-04-11 18:44:31 +0300 (Tue, 11 Apr 2023) $
+#$Revision: 282558 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/3/00/03/3000344.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/
+#
+# All data on this site have been placed in the public domain by the
+# contributors.
+#
+data_3000344
+loop_
+_publ_author_name
+'Wilson, Catrina E.'
+'Gibson, Amanda E.'
+'Cuillier, Paul M.'
+'Li, Cheng-Han'
+'Crosby, Patrice H.N.'
+'Trigg, Edward B.'
+'Najmr, Stan'
+'Murray, Christopher B.'
+'Jinschek, Joerg R.'
+'Doan-Nguyen, Vicky'
+_publ_section_title
+;
+ Local structure elucidation of tungsten- substituted vanadium dioxide
+ (V1-xWxO2)
+;
+_journal_name_full               'Scientific Reports'
+_journal_page_first              14767
+_journal_volume                  12
+_journal_year                    2022
+_chemical_formula_sum            'O2 V'
+_chemical_formula_weight         82.94
+_space_group_IT_number           14
+_space_group_name_Hall           '-P 2ybc'
+_space_group_name_H-M_alt        'P 1 21/c 1'
+_symmetry_cell_setting           monoclinic
+_symmetry_space_group_name_H-M   'P 1 21/c 1'
+_cell_angle_alpha                90
+_cell_angle_beta                 122.6112
+_cell_angle_gamma                90
+_cell_formula_units_Z            4
+_cell_length_a                   5.752316
+_cell_length_b                   4.525392
+_cell_length_c                   5.382368
+_cell_volume                     118.022
+_exptl_crystal_density_diffrn    4.6678
+_pd_phase_name                   P21/c
+_pd_prep_temperature             298
+_journal_article_reference       https://doi.org/10.1038/s41598-022-18575-0
+_cod_data_source_file            VO2_F_AG8_P21overc_01_6p144.cif
+_cod_data_source_block           P21/c
+_cod_depositor_comments
+'Releasing structure 3000344 into public domain as published material.'
+_cod_database_code               3000344
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+1 x,y,z
+2 -x,1/2+y,1/2-z
+3 -x,-y,-z
+4 x,1/2-y,1/2+z
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_adp_type
+_atom_site_U_iso_or_equiv
+_atom_site_symmetry_multiplicity
+V1 V3+ 0.23890(24) 0.97981(26) 0.02646(26) 1.000 Uiso 0.00365(25) 4
+O1 O2- 0.1043(12) 0.2122(11) 0.2055(12) 1.000 Uiso 0.0066(5) 4
+O2 O2- 0.4058(11) 0.7070(11) 0.3018(12) 1.000 Uiso 0.0066 4
+loop_
+_atom_type_symbol
+_atom_type_number_in_cell
+O2- 8
+V3+ 4

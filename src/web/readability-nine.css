@@ -1,0 +1,81 @@
+/* v0.9: readable, customer-controlled type and a structure-only following card. */
+.app-shell[data-font-size]{--ui-font-scale:1;--ui-primary-size:calc(16px * var(--ui-font-scale));--ui-secondary-size:calc(14px * var(--ui-font-scale));--ui-small-size:calc(13px * var(--ui-font-scale));font-size:var(--ui-primary-size);color:#283d4c;--muted:#54697b}
+.app-shell[data-font-size="large"]{--ui-font-scale:1.125}
+.app-shell[data-font-size="larger"]{--ui-font-scale:1.25}
+:root[data-font-size]{--ui-font-scale:1;--ui-primary-size:calc(16px * var(--ui-font-scale));--ui-secondary-size:calc(14px * var(--ui-font-scale));--ui-small-size:calc(13px * var(--ui-font-scale))}
+:root[data-font-size="large"]{--ui-font-scale:1.125}
+:root[data-font-size="larger"]{--ui-font-scale:1.25}
+/* Catalog portals own their typography, independent of the app-shell ancestor. */
+.catalog-popup.card-dropdown-popup { color:var(--ui-control-ink); font:var(--ui-control-caption-font)/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
+.catalog-popup.card-dropdown-popup .dropdown-option { font-size:var(--ui-control-caption-font); color:var(--ui-control-ink); }
+.catalog-popup .dropdown-option-title strong { font-size:var(--ui-control-font); color:var(--ui-control-ink); }
+.catalog-popup .dropdown-option :is(small,.basis-stat),.catalog-popup .card-dropdown-footer,.catalog-popup .method-family { font-size:var(--ui-control-small-font); color:var(--ui-control-muted); }
+.app-shell[data-font-size] :is(.field,.field input,.field select,.field textarea,.button,.text-button,.check-line,.option-explanation,.task-card p,.task-category>h3,.structure-tool-buttons .button,.fragment-editor .structure-tool-buttons .button,.subheading h3,.task-specific .subheading h3,.classic-options section h3,.card-dropdown-label,.card-dropdown-trigger strong,.dropdown-option-title strong,.resource-controls-eight select,.coordinate-list strong,.coordinate-draft strong):not(.input-settings-layout *){font-size:var(--ui-primary-size)!important}
+.app-shell[data-font-size] :is(.muted-note,.field>small,.task-specific .field>small,.field-caption,.selected-count,.card-dropdown-summary,.card-dropdown-summary .basis-stat,.dropdown-option,.dropdown-option small,.dropdown-option .basis-stat,.card-dropdown-footer,.catalog-sources,.basis-stat,.task-notice,.task-notice p,.task-notice strong,.state-hint,.field-validation-message,.inline-selection-error,.selection-pending,.region-legend,.region-legend span,.molecule-meta,.structure-name,.summary-card dt,.summary-card dd,.summary-file-options,.preview-controls,.route-preview-label,.route-preview,.full-input-preview,.editor-textarea,.geometry-choices strong,.geometry-choices small,.draw-entry-card small,.dropzone span,.atom-picker-dialog button,.atom-picker-controls h3,.atom-picker-controls label,.atom-picker-number-row input,.atom-picker-measurement,.atom-picker-hint,.atom-picker-error,.atom-picker-footer>span,.atom-picker-selected>p,.viewer-label-toggles label,.viewer-selection-modes button,.viewer-caption,.molecule-region-labels,.molecule-editor-modal header p,.molecule-editor-modal footer small,.editor-operation-status,.local-forcefield summary,.reference-cards summary,.group-details summary,.group-details p,.mapping-list):not(.input-settings-layout *){font-size:var(--ui-secondary-size)!important}
+.app-shell[data-font-size] :is(.muted-note,.field>small,.field-caption,.dropdown-option small,.card-dropdown-footer,.catalog-sources,.state-hint,.task-specific .field>small,.molecule-meta,.structure-name,.summary-card dt,.summary-file-options,.atom-picker-hint,.atom-picker-footer>span,.viewer-label-toggles label,.viewer-caption,.molecule-region-labels,.group-details p,.mapping-list,.molecule-editor-modal header p,.molecule-editor-modal footer small,.draw-entry-card small):not(.input-settings-layout *){color:#526879}
+.app-shell[data-font-size] :is(.field input,.field select,.field textarea,.selected-serials textarea,.paste-details textarea,.editor-textarea):not(.input-settings-layout *){color:#294454}
+.app-shell[data-font-size] :is(input,textarea):not(.input-settings-layout *)::placeholder{font-size:var(--ui-secondary-size);color:#617785;opacity:1}
+.app-shell[data-font-size] :is(.button-white,.text-button,.icon-button):not(.input-settings-layout *){color:#3b6269}
+.app-shell[data-font-size] :is(.field,.check-line,.muted-note,.task-notice,.option-explanation):not(.input-settings-layout *){line-height:1.65}
+.app-shell[data-font-size] :is(.button,.field input,.field select):not(.input-settings-layout *){min-height:40px;height:auto}
+.app-shell[data-font-size] :is(.button,.text-button):not(.input-settings-layout *){white-space:normal;text-align:center}
+.app-shell[data-font-size] :is(.full-input-preview,.route-preview,.editor-textarea):not(.input-settings-layout *){line-height:1.65}
+.app-shell[data-font-size] .code-editor textarea{font-size:var(--ui-secondary-size)!important;line-height:1.65;color:#294454}
+:root[data-font-size] :is(.atom-picker-dialog button,.atom-picker-dialog input,.atom-picker-controls h3,.atom-picker-controls label,.atom-picker-measurement,.atom-picker-hint,.atom-picker-error,.atom-picker-footer>span,.atom-picker-selected>p,.atom-picker-dialog .viewer-label-toggles label,.atom-picker-dialog .viewer-selection-modes button,.atom-picker-dialog .viewer-caption,.atom-picker-dialog .region-legend,.atom-picker-dialog .viewer-highlight-controls,.atom-picker-dialog .viewer-overlay-legend,.molecule-editor-modal header p,.molecule-editor-modal footer small,.molecule-editor-modal .button,.molecule-editor-modal .field,.molecule-editor-modal .field input){font-size:var(--ui-secondary-size)!important}
+:root[data-font-size] :is(.atom-picker-hint,.atom-picker-footer>span,.atom-picker-dialog .viewer-caption,.molecule-editor-modal header p,.molecule-editor-modal footer small){color:#526879}
+:root[data-font-size] :is(.modal,.modal p,.modal .button,.toast,.toast .icon-button){font-size:var(--ui-secondary-size)!important;line-height:1.65}
+:root[data-font-size] :is(.modal h2,.atom-picker-header h2,.molecule-editor-modal h2){font-size:calc(19px * var(--ui-font-scale))!important}
+.app-shell[data-font-size] :is(.viewer-bottom-controls button,.viewer-highlight-controls label,.viewer-highlight-controls select,.viewer-overlay-legend,.viewer-overlay-legend span,.viewer-loading,.coordinate-guide-value){font-size:var(--ui-secondary-size)!important}
+.app-shell[data-font-size] :is(.viewer-overlay-legend,.viewer-highlight-controls label){color:#425f64}
+.app-shell[data-font-size] :is(.preview-card-heading h2,.task-card strong,.task-specific .task-notice strong):not(.input-settings-layout *){font-size:calc(17px * var(--ui-font-scale))!important}
+.app-shell[data-font-size] .page-heading h1{font-size:calc(29px * var(--ui-font-scale))}
+.app-shell[data-font-size] .page-heading p{font-size:var(--ui-secondary-size);color:#526879}
+.app-shell[data-font-size] .selected-serials textarea{font-size:var(--ui-primary-size)!important;min-height:66px;max-height:150px;color:#294c44;line-height:1.6}
+.shared-selection-panel .selected-serials{align-items:flex-end}
+.shared-selection-panel .selection-pending{color:#806328;line-height:1.6;margin:7px 0}
+.shared-selection-panel .button{margin-top:9px}
+.shared-selection-panel .selected-serials .button{margin-top:0;flex-shrink:0}
+.font-size-control{display:flex;align-items:center;gap:9px;color:#415d67;font-size:var(--ui-secondary-size,14px);white-space:nowrap}
+.font-size-control select{font:inherit;min-height:var(--ui-control-height);border:1px solid var(--ui-control-border);background:var(--ui-control-bg);border-radius:var(--ui-control-radius);color:var(--ui-control-ink);padding:var(--ui-control-padding)}
+.structure-summary-nine{padding:17px 20px;border-bottom:1px solid #dbe7e1;background:#fbfdfc}
+.structure-source-name{font-size:var(--ui-primary-size,16px);font-weight:600;color:#314e60;overflow-wrap:anywhere;margin-bottom:13px}
+.structure-source-name>span{font-size:var(--ui-secondary-size,14px);font-weight:400}
+.structure-facts-nine{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.structure-facts-nine>div{min-width:0;display:flex;flex-direction:column;gap:6px}
+.structure-facts-nine>div>span{font-size:var(--ui-secondary-size,14px);color:#526879}
+.structure-facts-nine strong{font-size:calc(25px * var(--ui-font-scale,1));color:#244b59;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
+.structure-facts-nine .structure-formula-nine{flex:1;min-width:100px}
+.structure-facts-nine strong small{font-size:var(--ui-secondary-size,14px);font-weight:400}
+.structure-facts-nine sub{font-size:.65em}
+.structure-mass-note,.structure-reference-note{font-size:var(--ui-small-size,13px);line-height:1.6;color:#526879;margin-top:12px}
+.structure-mass-note a{color:#246b61;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.structure-reference-note{color:#875f29}
+.app-shell .preview-column{position:relative;top:auto;max-height:none;overflow:visible;align-self:stretch;display:block}
+/* Reserve the workspace footer as well as the top inset. Without this lower
+   reserve, the containing block pushes a viewport-height sticky card above 0
+   at the last settings row, even though position:sticky itself is active. */
+.app-shell .preview-column>:is(.structure-follow-card,.sticky-structure-card){position:sticky;top:18px;max-height:calc(100dvh - 110px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;z-index:2;background:#fff}
+.app-shell .preview-column>.summary-card{position:relative;z-index:1;margin-top:20px}
+.mobile-structure-summary{display:none}
+.app-shell .preview-card .mobile-preview-toggle{display:none}
+@media(max-width:1000px){
+  .app-shell .preview-column>:is(.structure-follow-card,.sticky-structure-card){position:static;max-height:none;overflow:visible}
+  .mobile-structure-summary{display:flex;align-items:center;gap:8px;font-size:var(--ui-primary-size,16px);cursor:pointer}
+  .app-shell .preview-card .mobile-preview-toggle{display:inline-flex}
+  .sticky-structure-card:not(.mobile-preview-open) :is(.structure-visual-content,.structure-selection-content){display:none}
+  .app-shell .topbar{height:auto;min-height:65px;padding-top:10px;padding-bottom:10px;gap:10px;flex-wrap:wrap}
+  .app-shell .topbar-actions{gap:12px;flex-wrap:wrap}
+}
+@media(max-width:650px){
+  .app-shell .structure-entry-grid{grid-template-columns:1fr;align-items:stretch}
+  .app-shell .structure-entry-grid .dropzone,.app-shell .draw-entry-card{height:auto;min-height:218px;padding:18px;overflow-wrap:anywhere}
+  .app-shell .geometry-choices{grid-template-columns:1fr}
+  .structure-summary-nine{padding:14px}
+  .structure-facts-nine{gap:12px}
+  .structure-facts-nine strong{font-size:calc(21px * var(--ui-font-scale,1))}
+  .shared-selection-panel .selected-serials{align-items:stretch;flex-wrap:wrap}
+  .shared-selection-panel .selected-serials .field{flex-basis:100%}
+  .shared-selection-panel .selected-serials .button{margin:0 0 7px auto}
+  .app-shell[data-font-size] .two-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .font-size-control{gap:6px}
+}

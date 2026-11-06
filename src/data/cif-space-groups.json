@@ -1,0 +1,7861 @@
+{
+  "groups": {
+    "1": {
+      "fullSymbol": "P1",
+      "hallAliases": [
+        "P 1"
+      ],
+      "nameAliases": [
+        "P1"
+      ],
+      "number": 1,
+      "operations": [
+        "x,y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P1"
+    },
+    "10": {
+      "fullSymbol": "P12/m1",
+      "hallAliases": [
+        "-P 2y"
+      ],
+      "nameAliases": [
+        "P12/m1",
+        "P2/m"
+      ],
+      "number": 10,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,y,-z",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P12/m1"
+    },
+    "100": {
+      "fullSymbol": "P4bm",
+      "hallAliases": [
+        "P 4 -2ab"
+      ],
+      "nameAliases": [
+        "P4bm"
+      ],
+      "number": 100,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "-y+1/2,-x+1/2,z",
+        "-y,x,z",
+        "x+1/2,-y+1/2,z",
+        "y+1/2,x+1/2,z",
+        "y,-x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4bm"
+    },
+    "101": {
+      "fullSymbol": "P4_2cm",
+      "hallAliases": [
+        "P 4c -2c"
+      ],
+      "nameAliases": [
+        "P42cm",
+        "P4_2cm"
+      ],
+      "number": 101,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "-y,-x,z",
+        "-y,x,z+1/2",
+        "x,-y,z+1/2",
+        "y,-x,z+1/2",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2cm"
+    },
+    "102": {
+      "fullSymbol": "P4_2nm",
+      "hallAliases": [
+        "P 4n -2n"
+      ],
+      "nameAliases": [
+        "P42nm",
+        "P4_2nm"
+      ],
+      "number": 102,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2nm"
+    },
+    "103": {
+      "fullSymbol": "P4cc",
+      "hallAliases": [
+        "P 4 -2c"
+      ],
+      "nameAliases": [
+        "P4cc"
+      ],
+      "number": 103,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "-y,-x,z+1/2",
+        "-y,x,z",
+        "x,-y,z+1/2",
+        "y,-x,z",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4cc"
+    },
+    "104": {
+      "fullSymbol": "P4nc",
+      "hallAliases": [
+        "P 4 -2n"
+      ],
+      "nameAliases": [
+        "P4nc"
+      ],
+      "number": 104,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y,x,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4nc"
+    },
+    "105": {
+      "fullSymbol": "P4_2mc",
+      "hallAliases": [
+        "P 4c -2"
+      ],
+      "nameAliases": [
+        "P42mc",
+        "P4_2mc"
+      ],
+      "number": 105,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z",
+        "-y,-x,z+1/2",
+        "-y,x,z+1/2",
+        "x,-y,z",
+        "y,-x,z+1/2",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2mc"
+    },
+    "106": {
+      "fullSymbol": "P4_2bc",
+      "hallAliases": [
+        "P 4c -2ab"
+      ],
+      "nameAliases": [
+        "P42bc",
+        "P4_2bc"
+      ],
+      "number": 106,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y,x,z+1/2",
+        "x+1/2,-y+1/2,z",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2bc"
+    },
+    "107": {
+      "fullSymbol": "I4mm",
+      "hallAliases": [
+        "I 4 -2"
+      ],
+      "nameAliases": [
+        "I4mm"
+      ],
+      "number": 107,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,z",
+        "-y,x,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,z",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4mm"
+    },
+    "108": {
+      "fullSymbol": "I4cm",
+      "hallAliases": [
+        "I 4 -2c"
+      ],
+      "nameAliases": [
+        "I4cm"
+      ],
+      "number": 108,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "-y+1/2,-x+1/2,z+1",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,z+1/2",
+        "-y,x,z",
+        "x+1/2,-y+1/2,z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,z+1",
+        "y,-x,z",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4cm"
+    },
+    "109": {
+      "fullSymbol": "I4_1md",
+      "hallAliases": [
+        "I 4bw -2"
+      ],
+      "nameAliases": [
+        "I41md",
+        "I4_1md"
+      ],
+      "number": 109,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z+1",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,y,z",
+        "-y+1/2,-x+1,z+3/4",
+        "-y+1/2,x+1,z+3/4",
+        "-y,-x+1/2,z+1/4",
+        "-y,x+1/2,z+1/4",
+        "x+1,-y+1,z+1",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "y+1,-x+1/2,z+5/4",
+        "y+1,x+1/2,z+5/4",
+        "y+1/2,-x,z+3/4",
+        "y+1/2,x,z+3/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_1md"
+    },
+    "11": {
+      "fullSymbol": "P12_1/m1",
+      "hallAliases": [
+        "-P 2yb"
+      ],
+      "nameAliases": [
+        "P121/m1",
+        "P12_1/m1",
+        "P2_1/m"
+      ],
+      "number": 11,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,y+1/2,-z",
+        "x,-y-1/2,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P12_1/m1"
+    },
+    "110": {
+      "fullSymbol": "I4_1cd",
+      "hallAliases": [
+        "I 4bw -2c"
+      ],
+      "nameAliases": [
+        "I41cd",
+        "I4_1cd"
+      ],
+      "number": 110,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z+1",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1",
+        "-x,y,z+1/2",
+        "-y+1/2,-x+1,z+5/4",
+        "-y+1/2,x+1,z+3/4",
+        "-y,-x+1/2,z+3/4",
+        "-y,x+1/2,z+1/4",
+        "x+1,-y+1,z+1/2",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,z+1/2",
+        "y+1,-x+1/2,z+5/4",
+        "y+1,x+1/2,z+3/4",
+        "y+1/2,-x,z+3/4",
+        "y+1/2,x,z+1/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_1cd"
+    },
+    "111": {
+      "fullSymbol": "P-42m",
+      "hallAliases": [
+        "P -4 2"
+      ],
+      "nameAliases": [
+        "P-42m"
+      ],
+      "number": 111,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y,-x,z",
+        "-y,x,-z",
+        "x,-y,-z",
+        "y,-x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-42m"
+    },
+    "112": {
+      "fullSymbol": "P-42c",
+      "hallAliases": [
+        "P -4 2c"
+      ],
+      "nameAliases": [
+        "P-42c"
+      ],
+      "number": 112,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-y,-x,z+1/2",
+        "-y,x,-z",
+        "x,-y,-z+1/2",
+        "y,-x,-z",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-42c"
+    },
+    "113": {
+      "fullSymbol": "P-42_1m",
+      "hallAliases": [
+        "P -4 2ab"
+      ],
+      "nameAliases": [
+        "P-421m",
+        "P-42_1m"
+      ],
+      "number": 113,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,z",
+        "-y+1/2,-x+1/2,z",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,-z",
+        "y+1/2,x+1/2,z",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-42_1m"
+    },
+    "114": {
+      "fullSymbol": "P-42_1c",
+      "hallAliases": [
+        "P -4 2n"
+      ],
+      "nameAliases": [
+        "P-421c",
+        "P-42_1c"
+      ],
+      "number": 114,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-42_1c"
+    },
+    "115": {
+      "fullSymbol": "P-4m2",
+      "hallAliases": [
+        "P -4 -2"
+      ],
+      "nameAliases": [
+        "P-4m2"
+      ],
+      "number": 115,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z",
+        "-y,-x,-z",
+        "-y,x,-z",
+        "x,-y,z",
+        "y,-x,-z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-4m2"
+    },
+    "116": {
+      "fullSymbol": "P-4c2",
+      "hallAliases": [
+        "P -4 -2c"
+      ],
+      "nameAliases": [
+        "P-4c2"
+      ],
+      "number": 116,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "-y,-x,-z+1/2",
+        "-y,x,-z",
+        "x,-y,z+1/2",
+        "y,-x,-z",
+        "y,x,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-4c2"
+    },
+    "117": {
+      "fullSymbol": "P-4b2",
+      "hallAliases": [
+        "P -4 -2ab"
+      ],
+      "nameAliases": [
+        "P-4b2"
+      ],
+      "number": 117,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "-y+1/2,-x+1/2,-z",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,z",
+        "y+1/2,x+1/2,-z",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-4b2"
+    },
+    "118": {
+      "fullSymbol": "P-4n2",
+      "hallAliases": [
+        "P -4 -2n"
+      ],
+      "nameAliases": [
+        "P-4n2"
+      ],
+      "number": 118,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,z+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-4n2"
+    },
+    "119": {
+      "fullSymbol": "I-4m2",
+      "hallAliases": [
+        "I -4 -2"
+      ],
+      "nameAliases": [
+        "I-4m2"
+      ],
+      "number": 119,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y,-x,-z",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-x,-z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I-4m2"
+    },
+    "12": {
+      "fullSymbol": "C12/m1",
+      "hallAliases": [
+        "-C 2y"
+      ],
+      "nameAliases": [
+        "C12/m1",
+        "C2/m"
+      ],
+      "number": 12,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,-z",
+        "-x,y,-z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,z",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "C12/m1"
+    },
+    "120": {
+      "fullSymbol": "I-4c2",
+      "hallAliases": [
+        "I -4 -2c"
+      ],
+      "nameAliases": [
+        "I-4c2"
+      ],
+      "number": 120,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "-y+1/2,-x+1/2,-z+1",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y,-x,-z+1/2",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,z+1/2",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,x+1/2,-z+1",
+        "y,-x,-z",
+        "y,x,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I-4c2"
+    },
+    "121": {
+      "fullSymbol": "I-42m",
+      "hallAliases": [
+        "I -4 2"
+      ],
+      "nameAliases": [
+        "I-42m"
+      ],
+      "number": 121,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y,-x,z",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I-42m"
+    },
+    "122": {
+      "fullSymbol": "I-42d",
+      "hallAliases": [
+        "I -4 2bw"
+      ],
+      "nameAliases": [
+        "I-42d"
+      ],
+      "number": 122,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1,-z+3/4",
+        "-x,-y,z",
+        "-x,y+1/2,-z+1/4",
+        "-y+1,-x+1/2,z+5/4",
+        "-y+1/2,-x,z+3/4",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y,x,-z",
+        "x+1/2,-y+1,-z+3/4",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y+1/2,-z+1/4",
+        "y+1,x+1/2,z+5/4",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,x,z+3/4",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I-42d"
+    },
+    "123": {
+      "fullSymbol": "P4/m2/m2/m",
+      "hallAliases": [
+        "-P 4 2"
+      ],
+      "nameAliases": [
+        "P4/m2/m2/m",
+        "P4/mmm"
+      ],
+      "number": 123,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,x,-z",
+        "-y,x,z",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z",
+        "y,-x,-z",
+        "y,-x,z",
+        "y,x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/mmm"
+    },
+    "124": {
+      "fullSymbol": "P4/m2/c2/c",
+      "hallAliases": [
+        "-P 4 2c"
+      ],
+      "nameAliases": [
+        "P4/m2/c2/c",
+        "P4/mcc"
+      ],
+      "number": 124,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-x,y,z-1/2",
+        "-y,-x,-z+1/2",
+        "-y,-x,z-1/2",
+        "-y,x,-z",
+        "-y,x,z",
+        "x,-y,-z+1/2",
+        "x,-y,z-1/2",
+        "x,y,-z",
+        "y,-x,-z",
+        "y,-x,z",
+        "y,x,-z+1/2",
+        "y,x,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/mcc"
+    },
+    "125": {
+      "fullSymbol": "P4/n2/b2/m",
+      "hallAliases": [
+        "P 4 2 -1ab"
+      ],
+      "nameAliases": [
+        "P4/n2/b2/m",
+        "P4/nbm",
+        "P4/nbm:1"
+      ],
+      "number": 125,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-x+1/2,z",
+        "-y+1/2,x+1/2,-z",
+        "-y,-x,-z",
+        "-y,x,z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,-z",
+        "x,-y,-z",
+        "y+1/2,-x+1/2,-z",
+        "y+1/2,x+1/2,z",
+        "y,-x,z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/nbm"
+    },
+    "126": {
+      "fullSymbol": "P4/n2/n2/c",
+      "hallAliases": [
+        "P 4 2 -1n"
+      ],
+      "nameAliases": [
+        "P4/n2/n2/c",
+        "P4/nnc",
+        "P4/nnc:1"
+      ],
+      "number": 126,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y,-x,-z",
+        "-y,x,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x,-y,-z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/nnc"
+    },
+    "127": {
+      "fullSymbol": "P4/m2_1/b2/m",
+      "hallAliases": [
+        "-P 4 2ab"
+      ],
+      "nameAliases": [
+        "P4/m2_1/b2/m",
+        "P4/mbm"
+      ],
+      "number": 127,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x-1/2,y-1/2,z",
+        "-y+1/2,-x+1/2,-z",
+        "-y,x,-z",
+        "-y,x,z",
+        "-y-1/2,-x-1/2,z",
+        "x+1/2,-y+1/2,-z",
+        "x,y,-z",
+        "x-1/2,-y-1/2,z",
+        "y+1/2,x+1/2,-z",
+        "y,-x,-z",
+        "y,-x,z",
+        "y-1/2,x-1/2,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/mbm"
+    },
+    "128": {
+      "fullSymbol": "P4/m2_1/n2/c",
+      "hallAliases": [
+        "-P 4 2n"
+      ],
+      "nameAliases": [
+        "P4/m2_1/n2/c",
+        "P4/mnc"
+      ],
+      "number": 128,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x-1/2,y-1/2,z-1/2",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y,x,-z",
+        "-y,x,z",
+        "-y-1/2,-x-1/2,z-1/2",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x,y,-z",
+        "x-1/2,-y-1/2,z-1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-x,-z",
+        "y,-x,z",
+        "y-1/2,x-1/2,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/mnc"
+    },
+    "129": {
+      "fullSymbol": "P4/n2_1/m2/m",
+      "hallAliases": [
+        "P 4ab 2ab -1ab"
+      ],
+      "nameAliases": [
+        "P4/n2_1/m2/m",
+        "P4/nmm",
+        "P4/nmm:1"
+      ],
+      "number": 129,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,z",
+        "-x,y,z",
+        "-y+1/2,-x+1/2,z",
+        "-y+1/2,x+1/2,z",
+        "-y,-x,-z",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,y+1/2,-z",
+        "x,-y,z",
+        "y+1/2,-x+1/2,z",
+        "y+1/2,x+1/2,z",
+        "y,-x,-z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/nmm"
+    },
+    "13": {
+      "fullSymbol": "P12/c1",
+      "hallAliases": [
+        "-P 2yc"
+      ],
+      "nameAliases": [
+        "P12/c1",
+        "P2/c"
+      ],
+      "number": 13,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,y,-z+1/2",
+        "x,-y,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P12/c1"
+    },
+    "130": {
+      "fullSymbol": "P4/n2_1/c2/c",
+      "hallAliases": [
+        "P 4ab 2n -1ab"
+      ],
+      "nameAliases": [
+        "P4/n2_1/c2/c",
+        "P4/ncc",
+        "P4/ncc:1"
+      ],
+      "number": 130,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-x,y,z-1/2",
+        "-y+1/2,-x+1/2,z-1/2",
+        "-y+1/2,x+1/2,z",
+        "-y,-x,-z+1/2",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,y+1/2,-z",
+        "x,-y,z-1/2",
+        "y+1/2,-x+1/2,z",
+        "y+1/2,x+1/2,z-1/2",
+        "y,-x,-z",
+        "y,x,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/ncc"
+    },
+    "131": {
+      "fullSymbol": "P4_2/m2/m2/c",
+      "hallAliases": [
+        "-P 4c 2"
+      ],
+      "nameAliases": [
+        "P42/mmc",
+        "P4_2/m2/m2/c",
+        "P4_2/mmc"
+      ],
+      "number": 131,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "-y,-x,-z+1/2",
+        "-y,-x,z-1/2",
+        "-y,x,-z-1/2",
+        "-y,x,z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z",
+        "y,-x,-z-1/2",
+        "y,-x,z+1/2",
+        "y,x,-z+1/2",
+        "y,x,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/mmc"
+    },
+    "132": {
+      "fullSymbol": "P4_2/m2/c2/m",
+      "hallAliases": [
+        "-P 4c 2c"
+      ],
+      "nameAliases": [
+        "P42/mcm",
+        "P4_2/m2/c2/m",
+        "P4_2/mcm"
+      ],
+      "number": 132,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-x,y,z-1/2",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,x,-z-1/2",
+        "-y,x,z+1/2",
+        "x,-y,-z+1/2",
+        "x,-y,z-1/2",
+        "x,y,-z",
+        "y,-x,-z-1/2",
+        "y,-x,z+1/2",
+        "y,x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/mcm"
+    },
+    "133": {
+      "fullSymbol": "P4_2/n2/b2/c",
+      "hallAliases": [
+        "P 4n 2c -1n"
+      ],
+      "nameAliases": [
+        "P42/nbc",
+        "P42/nbc:1",
+        "P4_2/n2/b2/c",
+        "P4_2/nbc"
+      ],
+      "number": 133,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-y+1/2,-x+1/2,-z",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,z+1/2",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,-z+1/2",
+        "x,-y,-z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,-z",
+        "y,-x,-z",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/nbc"
+    },
+    "134": {
+      "fullSymbol": "P4_2/n2/n2/m",
+      "hallAliases": [
+        "P 4n 2 -1n"
+      ],
+      "nameAliases": [
+        "P42/nnm",
+        "P42/nnm:1",
+        "P4_2/n2/n2/m",
+        "P4_2/nnm"
+      ],
+      "number": 134,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,z",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x,-y,-z",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/nnm"
+    },
+    "135": {
+      "fullSymbol": "P4_2/m2_1/b2/c",
+      "hallAliases": [
+        "-P 4c 2ab"
+      ],
+      "nameAliases": [
+        "P42/mbc",
+        "P4_2/m2_1/b2/c",
+        "P4_2/mbc"
+      ],
+      "number": 135,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x-1/2,y-1/2,z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y,x,-z-1/2",
+        "-y,x,z+1/2",
+        "-y-1/2,-x-1/2,z-1/2",
+        "x+1/2,-y+1/2,-z",
+        "x,y,-z",
+        "x-1/2,-y-1/2,z",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-x,-z-1/2",
+        "y,-x,z+1/2",
+        "y-1/2,x-1/2,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/mbc"
+    },
+    "136": {
+      "fullSymbol": "P4_2/m2_1/n2/m",
+      "hallAliases": [
+        "-P 4n 2n"
+      ],
+      "nameAliases": [
+        "P42/mnm",
+        "P4_2/m2_1/n2/m",
+        "P4_2/mnm"
+      ],
+      "number": 136,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x-1/2,y-1/2,z-1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y-1/2,x-1/2,-z-1/2",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x,y,-z",
+        "x-1/2,-y-1/2,z-1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y,x,-z",
+        "y,x,z",
+        "y-1/2,-x-1/2,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/mnm"
+    },
+    "137": {
+      "fullSymbol": "P4_2/n2_1/m2/c",
+      "hallAliases": [
+        "P 4n 2n -1n"
+      ],
+      "nameAliases": [
+        "P42/nmc",
+        "P42/nmc:1",
+        "P4_2/n2_1/m2/c",
+        "P4_2/nmc"
+      ],
+      "number": 137,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-x,y,z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,-z",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x,-y,z",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,-z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/nmc"
+    },
+    "138": {
+      "fullSymbol": "P4_2/n2_1/c2/m",
+      "hallAliases": [
+        "P 4n 2ab -1n"
+      ],
+      "nameAliases": [
+        "P42/ncm",
+        "P42/ncm:1",
+        "P4_2/n2_1/c2/m",
+        "P4_2/ncm"
+      ],
+      "number": 138,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "-y+1/2,-x+1/2,z",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,-z+1/2",
+        "-y,x,-z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,y+1/2,-z+1/2",
+        "x,-y,z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,z",
+        "y,-x,-z",
+        "y,x,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/ncm"
+    },
+    "139": {
+      "fullSymbol": "I4/m2/m2/m",
+      "hallAliases": [
+        "-I 4 2"
+      ],
+      "nameAliases": [
+        "I4/m2/m2/m",
+        "I4/mmm"
+      ],
+      "number": 139,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,x,-z",
+        "-y,x,z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-x,-z",
+        "y,-x,z",
+        "y,x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4/mmm"
+    },
+    "14": {
+      "fullSymbol": "P12_1/c1",
+      "hallAliases": [
+        "-P 2ybc"
+      ],
+      "nameAliases": [
+        "P121/c1",
+        "P12_1/c1",
+        "P2_1/c"
+      ],
+      "number": 14,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,y+1/2,-z+1/2",
+        "x,-y-1/2,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P12_1/c1"
+    },
+    "140": {
+      "fullSymbol": "I4/m2/c2/m",
+      "hallAliases": [
+        "-I 4 2c"
+      ],
+      "nameAliases": [
+        "I4/m2/c2/m",
+        "I4/mcm"
+      ],
+      "number": 140,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-x,y,z-1/2",
+        "-y+1/2,-x+1/2,-z+1",
+        "-y+1/2,-x+1/2,z",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,-z+1/2",
+        "-y,-x,z-1/2",
+        "-y,x,-z",
+        "-y,x,z",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z+1/2",
+        "x,-y,z-1/2",
+        "x,y,-z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,-z+1",
+        "y+1/2,x+1/2,z",
+        "y,-x,-z",
+        "y,-x,z",
+        "y,x,-z+1/2",
+        "y,x,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4/mcm"
+    },
+    "141": {
+      "fullSymbol": "I4_1/a2/m2/d",
+      "hallAliases": [
+        "I 4bw 2bw -1bw"
+      ],
+      "nameAliases": [
+        "I41/amd",
+        "I41/amd:1",
+        "I4_1/a2/m2/d",
+        "I4_1/amd"
+      ],
+      "number": 141,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z+1",
+        "-x+1,y+1/2,-z+5/4",
+        "-x+1/2,-y+1,-z+3/4",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x+1/2,y,-z+3/4",
+        "-x,-y+1/2,-z+1/4",
+        "-x,y,z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,x+1,z+3/4",
+        "-y,-x+1/2,z+1/4",
+        "-y,-x,-z",
+        "-y,x+1,-z",
+        "-y,x+1/2,z+1/4",
+        "-y-1/2,-x,z-1/4",
+        "-y-1/2,x+1/2,-z-1/2",
+        "x+1/2,-y+1,-z+3/4",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y+1,z",
+        "x,-y+1/2,-z+1/4",
+        "x,y+1/2,-z+1/4",
+        "x-1/2,-y+1/2,z-1/2",
+        "x-1/2,y,-z-1/4",
+        "y+1,-x+1/2,z+5/4",
+        "y+1,x+1,-z+1",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x,z+3/4",
+        "y+1/2,x+1,z+3/4",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-x,-z",
+        "y,x+1/2,z+1/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_1/amd"
+    },
+    "142": {
+      "fullSymbol": "I4_1/a2/c2/d",
+      "hallAliases": [
+        "I 4bw 2aw -1bw"
+      ],
+      "nameAliases": [
+        "I41/acd",
+        "I41/acd:1",
+        "I4_1/a2/c2/d",
+        "I4_1/acd"
+      ],
+      "number": 142,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z+1",
+        "-x+1/2,-y+1,-z+3/4",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1,-z+5/4",
+        "-x,-y+1/2,-z+1/4",
+        "-x,y+1,z+1/2",
+        "-x,y+1/2,-z+3/4",
+        "-x-1/2,y+1/2,z",
+        "-y+1,-x+1,-z+1/2",
+        "-y+1/2,-x+1,z+1/4",
+        "-y+1/2,-x+1/2,-z",
+        "-y+1/2,x+1,z+3/4",
+        "-y,-x+1/2,z-1/4",
+        "-y,x+1,-z",
+        "-y,x+1/2,z+1/4",
+        "-y-1/2,x+1/2,-z-1/2",
+        "x+1,-y+1/2,-z+3/4",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,-y,-z+1/4",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,z-1/2",
+        "x,y+1/2,-z+1/4",
+        "x-1/2,y,-z-1/4",
+        "y+1,-x+1/2,z+5/4",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x,z+3/4",
+        "y+1/2,x+1/2,-z+1",
+        "y,-x,-z",
+        "y,x+1/2,z+3/4",
+        "y,x,-z+1/2",
+        "y-1/2,x,z+1/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_1/acd"
+    },
+    "143": {
+      "fullSymbol": "P3",
+      "hallAliases": [
+        "P 3"
+      ],
+      "nameAliases": [
+        "P3"
+      ],
+      "number": 143,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-y,x-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3"
+    },
+    "144": {
+      "fullSymbol": "P3_1",
+      "hallAliases": [
+        "P 31"
+      ],
+      "nameAliases": [
+        "P31",
+        "P3_1"
+      ],
+      "number": 144,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+2/3",
+        "-y,x-y,z+1/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3_1"
+    },
+    "145": {
+      "fullSymbol": "P3_2",
+      "hallAliases": [
+        "P 32"
+      ],
+      "nameAliases": [
+        "P32",
+        "P3_2"
+      ],
+      "number": 145,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+1/3",
+        "-y,x-y,z+2/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3_2"
+    },
+    "146": {
+      "fullSymbol": "R3",
+      "hallAliases": [
+        "R 3"
+      ],
+      "nameAliases": [
+        "R3",
+        "R3:H"
+      ],
+      "number": 146,
+      "operations": [
+        "x,y,z",
+        "-x+y+1/3,-x+2/3,z+2/3",
+        "-x+y+2/3,-x+1/3,z+1/3",
+        "-x+y,-x,z",
+        "-y+1/3,x-y+2/3,z+2/3",
+        "-y+2/3,x-y+1/3,z+1/3",
+        "-y,x-y,z",
+        "x+1/3,y+2/3,z+2/3",
+        "x+2/3,y+1/3,z+1/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "R3"
+    },
+    "147": {
+      "fullSymbol": "P-3",
+      "hallAliases": [
+        "-P 3"
+      ],
+      "nameAliases": [
+        "P-3"
+      ],
+      "number": 147,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x,-y,-z",
+        "-y,x-y,z",
+        "x-y,x,-z",
+        "y,-x+y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-3"
+    },
+    "148": {
+      "fullSymbol": "R-3",
+      "hallAliases": [
+        "-R 3"
+      ],
+      "nameAliases": [
+        "R-3",
+        "R-3:H"
+      ],
+      "number": 148,
+      "operations": [
+        "x,y,z",
+        "-x+1/3,-y+2/3,-z+2/3",
+        "-x+2/3,-y+1/3,-z+1/3",
+        "-x+y+1/3,-x+2/3,z+2/3",
+        "-x+y+2/3,-x+1/3,z+1/3",
+        "-x+y,-x,z",
+        "-x,-y,-z",
+        "-y+1/3,x-y+2/3,z+2/3",
+        "-y+2/3,x-y+1/3,z+1/3",
+        "-y,x-y,z",
+        "x+1/3,y+2/3,z+2/3",
+        "x+2/3,y+1/3,z+1/3",
+        "x-y+1/3,x+2/3,-z+2/3",
+        "x-y+2/3,x+1/3,-z+1/3",
+        "x-y,x,-z",
+        "y+1/3,-x+y+2/3,-z+2/3",
+        "y+2/3,-x+y+1/3,-z+1/3",
+        "y,-x+y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "R-3"
+    },
+    "149": {
+      "fullSymbol": "P312",
+      "hallAliases": [
+        "P 3 2"
+      ],
+      "nameAliases": [
+        "P312"
+      ],
+      "number": 149,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,-z",
+        "-y,-x,-z",
+        "-y,x-y,z",
+        "x,x-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P312"
+    },
+    "15": {
+      "fullSymbol": "C12/c1",
+      "hallAliases": [
+        "-C 2yc"
+      ],
+      "nameAliases": [
+        "C12/c1",
+        "C2/c"
+      ],
+      "number": 15,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,-z",
+        "-x,y,-z+1/2",
+        "x+1/2,-y+1/2,z-1/2",
+        "x+1/2,y+1/2,z",
+        "x,-y,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "C12/c1"
+    },
+    "150": {
+      "fullSymbol": "P321",
+      "hallAliases": [
+        "P 3 2\""
+      ],
+      "nameAliases": [
+        "P321"
+      ],
+      "number": 150,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x,-x+y,-z",
+        "-y,x-y,z",
+        "x-y,-y,-z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P321"
+    },
+    "151": {
+      "fullSymbol": "P3_112",
+      "hallAliases": [
+        "P 31 2 (0 0 4)"
+      ],
+      "nameAliases": [
+        "P3112",
+        "P3_112"
+      ],
+      "number": 151,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+2/3",
+        "-x+y,y,-z+1/3",
+        "-y,-x,-z+2/3",
+        "-y,x-y,z+1/3",
+        "x,x-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3_112"
+    },
+    "152": {
+      "fullSymbol": "P3_121",
+      "hallAliases": [
+        "P 31 2\""
+      ],
+      "nameAliases": [
+        "P3121",
+        "P3_121"
+      ],
+      "number": 152,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+2/3",
+        "-x,-x+y,-z+1/3",
+        "-y,x-y,z+1/3",
+        "x-y,-y,-z+2/3",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3_121"
+    },
+    "153": {
+      "fullSymbol": "P3_212",
+      "hallAliases": [
+        "P 32 2 (0 0 2)"
+      ],
+      "nameAliases": [
+        "P3212",
+        "P3_212"
+      ],
+      "number": 153,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+1/3",
+        "-x+y,y,-z+2/3",
+        "-y,-x,-z+1/3",
+        "-y,x-y,z+2/3",
+        "x,x-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3_212"
+    },
+    "154": {
+      "fullSymbol": "P3_221",
+      "hallAliases": [
+        "P 32 2\""
+      ],
+      "nameAliases": [
+        "P3221",
+        "P3_221"
+      ],
+      "number": 154,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+1/3",
+        "-x,-x+y,-z+2/3",
+        "-y,x-y,z+2/3",
+        "x-y,-y,-z+1/3",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3_221"
+    },
+    "155": {
+      "fullSymbol": "R32",
+      "hallAliases": [
+        "R 3 2\""
+      ],
+      "nameAliases": [
+        "R32",
+        "R32:H"
+      ],
+      "number": 155,
+      "operations": [
+        "x,y,z",
+        "-x+1/3,-x+y+2/3,-z+2/3",
+        "-x+2/3,-x+y+1/3,-z+1/3",
+        "-x+y+1/3,-x+2/3,z+2/3",
+        "-x+y+2/3,-x+1/3,z+1/3",
+        "-x+y,-x,z",
+        "-x,-x+y,-z",
+        "-y+1/3,x-y+2/3,z+2/3",
+        "-y+2/3,x-y+1/3,z+1/3",
+        "-y,x-y,z",
+        "x+1/3,y+2/3,z+2/3",
+        "x+2/3,y+1/3,z+1/3",
+        "x-y+1/3,-y+2/3,-z+2/3",
+        "x-y+2/3,-y+1/3,-z+1/3",
+        "x-y,-y,-z",
+        "y+1/3,x+2/3,-z+2/3",
+        "y+2/3,x+1/3,-z+1/3",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "R32"
+    },
+    "156": {
+      "fullSymbol": "P3m1",
+      "hallAliases": [
+        "P 3 -2\""
+      ],
+      "nameAliases": [
+        "P3m1"
+      ],
+      "number": 156,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z",
+        "-y,-x,z",
+        "-y,x-y,z",
+        "x,x-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3m1"
+    },
+    "157": {
+      "fullSymbol": "P31m",
+      "hallAliases": [
+        "P 3 -2"
+      ],
+      "nameAliases": [
+        "P31m"
+      ],
+      "number": 157,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x,-x+y,z",
+        "-y,x-y,z",
+        "x-y,-y,z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P31m"
+    },
+    "158": {
+      "fullSymbol": "P3c1",
+      "hallAliases": [
+        "P 3 -2\"c"
+      ],
+      "nameAliases": [
+        "P3c1"
+      ],
+      "number": 158,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z+1/2",
+        "-y,-x,z+1/2",
+        "-y,x-y,z",
+        "x,x-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P3c1"
+    },
+    "159": {
+      "fullSymbol": "P31c",
+      "hallAliases": [
+        "P 3 -2c"
+      ],
+      "nameAliases": [
+        "P31c"
+      ],
+      "number": 159,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x,-x+y,z+1/2",
+        "-y,x-y,z",
+        "x-y,-y,z+1/2",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P31c"
+    },
+    "16": {
+      "fullSymbol": "P222",
+      "hallAliases": [
+        "P 2 2"
+      ],
+      "nameAliases": [
+        "P222"
+      ],
+      "number": 16,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P222"
+    },
+    "160": {
+      "fullSymbol": "R3m",
+      "hallAliases": [
+        "R 3 -2\""
+      ],
+      "nameAliases": [
+        "R3m",
+        "R3m:H"
+      ],
+      "number": 160,
+      "operations": [
+        "x,y,z",
+        "-x+y+1/3,-x+2/3,z+2/3",
+        "-x+y+1/3,y+2/3,z+2/3",
+        "-x+y+2/3,-x+1/3,z+1/3",
+        "-x+y+2/3,y+1/3,z+1/3",
+        "-x+y,-x,z",
+        "-x+y,y,z",
+        "-y+1/3,-x+2/3,z+2/3",
+        "-y+1/3,x-y+2/3,z+2/3",
+        "-y+2/3,-x+1/3,z+1/3",
+        "-y+2/3,x-y+1/3,z+1/3",
+        "-y,-x,z",
+        "-y,x-y,z",
+        "x+1/3,x-y+2/3,z+2/3",
+        "x+1/3,y+2/3,z+2/3",
+        "x+2/3,x-y+1/3,z+1/3",
+        "x+2/3,y+1/3,z+1/3",
+        "x,x-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "R3m"
+    },
+    "161": {
+      "fullSymbol": "R3c",
+      "hallAliases": [
+        "R 3 -2\"c"
+      ],
+      "nameAliases": [
+        "R3c",
+        "R3c:H"
+      ],
+      "number": 161,
+      "operations": [
+        "x,y,z",
+        "-x+y+1/3,-x+2/3,z+2/3",
+        "-x+y+1/3,y+2/3,z+7/6",
+        "-x+y+2/3,-x+1/3,z+1/3",
+        "-x+y+2/3,y+1/3,z+5/6",
+        "-x+y,-x,z",
+        "-x+y,y,z+1/2",
+        "-y+1/3,-x+2/3,z+7/6",
+        "-y+1/3,x-y+2/3,z+2/3",
+        "-y+2/3,-x+1/3,z+5/6",
+        "-y+2/3,x-y+1/3,z+1/3",
+        "-y,-x,z+1/2",
+        "-y,x-y,z",
+        "x+1/3,x-y+2/3,z+7/6",
+        "x+1/3,y+2/3,z+2/3",
+        "x+2/3,x-y+1/3,z+5/6",
+        "x+2/3,y+1/3,z+1/3",
+        "x,x-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "R3c"
+    },
+    "162": {
+      "fullSymbol": "P-312/m",
+      "hallAliases": [
+        "-P 3 2"
+      ],
+      "nameAliases": [
+        "P-312/m",
+        "P-31m"
+      ],
+      "number": 162,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,-z",
+        "-x,-x+y,z",
+        "-x,-y,-z",
+        "-y,-x,-z",
+        "-y,x-y,z",
+        "x,x-y,-z",
+        "x-y,-y,z",
+        "x-y,x,-z",
+        "y,-x+y,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-31m"
+    },
+    "163": {
+      "fullSymbol": "P-312/c",
+      "hallAliases": [
+        "-P 3 2c"
+      ],
+      "nameAliases": [
+        "P-312/c",
+        "P-31c"
+      ],
+      "number": 163,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,-z+1/2",
+        "-x,-x+y,z-1/2",
+        "-x,-y,-z",
+        "-y,-x,-z+1/2",
+        "-y,x-y,z",
+        "x,x-y,-z+1/2",
+        "x-y,-y,z-1/2",
+        "x-y,x,-z",
+        "y,-x+y,-z",
+        "y,x,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-31c"
+    },
+    "164": {
+      "fullSymbol": "P-32/m1",
+      "hallAliases": [
+        "-P 3 2\""
+      ],
+      "nameAliases": [
+        "P-32/m1",
+        "P-3m1"
+      ],
+      "number": 164,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z",
+        "-x,-x+y,-z",
+        "-x,-y,-z",
+        "-y,-x,z",
+        "-y,x-y,z",
+        "x,x-y,z",
+        "x-y,-y,-z",
+        "x-y,x,-z",
+        "y,-x+y,-z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-3m1"
+    },
+    "165": {
+      "fullSymbol": "P-32/c1",
+      "hallAliases": [
+        "-P 3 2\"c"
+      ],
+      "nameAliases": [
+        "P-32/c1",
+        "P-3c1"
+      ],
+      "number": 165,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z-1/2",
+        "-x,-x+y,-z+1/2",
+        "-x,-y,-z",
+        "-y,-x,z-1/2",
+        "-y,x-y,z",
+        "x,x-y,z-1/2",
+        "x-y,-y,-z+1/2",
+        "x-y,x,-z",
+        "y,-x+y,-z",
+        "y,x,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-3c1"
+    },
+    "166": {
+      "fullSymbol": "R-32/m",
+      "hallAliases": [
+        "-R 3 2\""
+      ],
+      "nameAliases": [
+        "R-32/m",
+        "R-3m",
+        "R-3m:H"
+      ],
+      "number": 166,
+      "operations": [
+        "x,y,z",
+        "-x+1/3,-x+y+2/3,-z+2/3",
+        "-x+1/3,-y+2/3,-z+2/3",
+        "-x+2/3,-x+y+1/3,-z+1/3",
+        "-x+2/3,-y+1/3,-z+1/3",
+        "-x+y+1/3,-x+2/3,z+2/3",
+        "-x+y+1/3,y+2/3,z+2/3",
+        "-x+y+2/3,-x+1/3,z+1/3",
+        "-x+y+2/3,y+1/3,z+1/3",
+        "-x+y,-x,z",
+        "-x+y,y,z",
+        "-x,-x+y,-z",
+        "-x,-y,-z",
+        "-y+1/3,-x+2/3,z+2/3",
+        "-y+1/3,x-y+2/3,z+2/3",
+        "-y+2/3,-x+1/3,z+1/3",
+        "-y+2/3,x-y+1/3,z+1/3",
+        "-y,-x,z",
+        "-y,x-y,z",
+        "x+1/3,x-y+2/3,z+2/3",
+        "x+1/3,y+2/3,z+2/3",
+        "x+2/3,x-y+1/3,z+1/3",
+        "x+2/3,y+1/3,z+1/3",
+        "x,x-y,z",
+        "x-y+1/3,-y+2/3,-z+2/3",
+        "x-y+1/3,x+2/3,-z+2/3",
+        "x-y+2/3,-y+1/3,-z+1/3",
+        "x-y+2/3,x+1/3,-z+1/3",
+        "x-y,-y,-z",
+        "x-y,x,-z",
+        "y+1/3,-x+y+2/3,-z+2/3",
+        "y+1/3,x+2/3,-z+2/3",
+        "y+2/3,-x+y+1/3,-z+1/3",
+        "y+2/3,x+1/3,-z+1/3",
+        "y,-x+y,-z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "R-3m"
+    },
+    "167": {
+      "fullSymbol": "R-32/c",
+      "hallAliases": [
+        "-R 3 2\"c"
+      ],
+      "nameAliases": [
+        "R-32/c",
+        "R-3c",
+        "R-3c:H"
+      ],
+      "number": 167,
+      "operations": [
+        "x,y,z",
+        "-x+1/3,-x+y+2/3,-z+7/6",
+        "-x+1/3,-y+2/3,-z+2/3",
+        "-x+2/3,-x+y+1/3,-z+5/6",
+        "-x+2/3,-y+1/3,-z+1/3",
+        "-x+y+1/3,-x+2/3,z+2/3",
+        "-x+y+1/3,y+2/3,z+1/6",
+        "-x+y+2/3,-x+1/3,z+1/3",
+        "-x+y+2/3,y+1/3,z-1/6",
+        "-x+y,-x,z",
+        "-x+y,y,z-1/2",
+        "-x,-x+y,-z+1/2",
+        "-x,-y,-z",
+        "-y+1/3,-x+2/3,z+1/6",
+        "-y+1/3,x-y+2/3,z+2/3",
+        "-y+2/3,-x+1/3,z-1/6",
+        "-y+2/3,x-y+1/3,z+1/3",
+        "-y,-x,z-1/2",
+        "-y,x-y,z",
+        "x+1/3,x-y+2/3,z+1/6",
+        "x+1/3,y+2/3,z+2/3",
+        "x+2/3,x-y+1/3,z-1/6",
+        "x+2/3,y+1/3,z+1/3",
+        "x,x-y,z-1/2",
+        "x-y+1/3,-y+2/3,-z+7/6",
+        "x-y+1/3,x+2/3,-z+2/3",
+        "x-y+2/3,-y+1/3,-z+5/6",
+        "x-y+2/3,x+1/3,-z+1/3",
+        "x-y,-y,-z+1/2",
+        "x-y,x,-z",
+        "y+1/3,-x+y+2/3,-z+2/3",
+        "y+1/3,x+2/3,-z+7/6",
+        "y+2/3,-x+y+1/3,-z+1/3",
+        "y+2/3,x+1/3,-z+5/6",
+        "y,-x+y,-z",
+        "y,x,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "R-3c"
+    },
+    "168": {
+      "fullSymbol": "P6",
+      "hallAliases": [
+        "P 6"
+      ],
+      "nameAliases": [
+        "P6"
+      ],
+      "number": 168,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x,-y,z",
+        "-y,x-y,z",
+        "x-y,x,z",
+        "y,-x+y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6"
+    },
+    "169": {
+      "fullSymbol": "P6_1",
+      "hallAliases": [
+        "P 61"
+      ],
+      "nameAliases": [
+        "P61",
+        "P6_1"
+      ],
+      "number": 169,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+2/3",
+        "-x,-y,z+1/2",
+        "-y,x-y,z+1/3",
+        "x-y,x,z+1/6",
+        "y,-x+y,z+5/6"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_1"
+    },
+    "17": {
+      "fullSymbol": "P222_1",
+      "hallAliases": [
+        "P 2c 2"
+      ],
+      "nameAliases": [
+        "P2221",
+        "P222_1"
+      ],
+      "number": 17,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z+1/2",
+        "-x,y,-z+1/2",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P222_1"
+    },
+    "170": {
+      "fullSymbol": "P6_5",
+      "hallAliases": [
+        "P 65"
+      ],
+      "nameAliases": [
+        "P65",
+        "P6_5"
+      ],
+      "number": 170,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+1/3",
+        "-x,-y,z+1/2",
+        "-y,x-y,z+2/3",
+        "x-y,x,z+5/6",
+        "y,-x+y,z+1/6"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_5"
+    },
+    "171": {
+      "fullSymbol": "P6_2",
+      "hallAliases": [
+        "P 62"
+      ],
+      "nameAliases": [
+        "P62",
+        "P6_2"
+      ],
+      "number": 171,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+1/3",
+        "-x,-y,z",
+        "-y,x-y,z+2/3",
+        "x-y,x,z+1/3",
+        "y,-x+y,z+2/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_2"
+    },
+    "172": {
+      "fullSymbol": "P6_4",
+      "hallAliases": [
+        "P 64"
+      ],
+      "nameAliases": [
+        "P64",
+        "P6_4"
+      ],
+      "number": 172,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+2/3",
+        "-x,-y,z",
+        "-y,x-y,z+1/3",
+        "x-y,x,z+2/3",
+        "y,-x+y,z+1/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_4"
+    },
+    "173": {
+      "fullSymbol": "P6_3",
+      "hallAliases": [
+        "P 6c"
+      ],
+      "nameAliases": [
+        "P63",
+        "P6_3"
+      ],
+      "number": 173,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x,-y,z+1/2",
+        "-y,x-y,z",
+        "x-y,x,z+1/2",
+        "y,-x+y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_3"
+    },
+    "174": {
+      "fullSymbol": "P-6",
+      "hallAliases": [
+        "P -6"
+      ],
+      "nameAliases": [
+        "P-6"
+      ],
+      "number": 174,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z",
+        "-x+y,-x,z",
+        "-y,x-y,-z",
+        "-y,x-y,z",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-6"
+    },
+    "175": {
+      "fullSymbol": "P6/m",
+      "hallAliases": [
+        "-P 6"
+      ],
+      "nameAliases": [
+        "P6/m"
+      ],
+      "number": 175,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z",
+        "-x+y,-x,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-y,x-y,-z",
+        "-y,x-y,z",
+        "x,y,-z",
+        "x-y,x,-z",
+        "x-y,x,z",
+        "y,-x+y,-z",
+        "y,-x+y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6/m"
+    },
+    "176": {
+      "fullSymbol": "P6_3/m",
+      "hallAliases": [
+        "-P 6c"
+      ],
+      "nameAliases": [
+        "P63/m",
+        "P6_3/m"
+      ],
+      "number": 176,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z-1/2",
+        "-x+y,-x,z",
+        "-x,-y,-z",
+        "-x,-y,z+1/2",
+        "-y,x-y,-z-1/2",
+        "-y,x-y,z",
+        "x,y,-z-1/2",
+        "x-y,x,-z",
+        "x-y,x,z+1/2",
+        "y,-x+y,-z",
+        "y,-x+y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_3/m"
+    },
+    "177": {
+      "fullSymbol": "P622",
+      "hallAliases": [
+        "P 6 2"
+      ],
+      "nameAliases": [
+        "P622"
+      ],
+      "number": 177,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,-z",
+        "-x,-x+y,-z",
+        "-x,-y,z",
+        "-y,-x,-z",
+        "-y,x-y,z",
+        "x,x-y,-z",
+        "x-y,-y,-z",
+        "x-y,x,z",
+        "y,-x+y,z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P622"
+    },
+    "178": {
+      "fullSymbol": "P6_122",
+      "hallAliases": [
+        "P 61 2 (0 0 5)"
+      ],
+      "nameAliases": [
+        "P6122",
+        "P6_122"
+      ],
+      "number": 178,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+2/3",
+        "-x+y,y,-z+1/2",
+        "-x,-x+y,-z+2/3",
+        "-x,-y,z+1/2",
+        "-y,-x,-z+5/6",
+        "-y,x-y,z+1/3",
+        "x,x-y,-z+1/6",
+        "x-y,-y,-z",
+        "x-y,x,z+1/6",
+        "y,-x+y,z+5/6",
+        "y,x,-z+1/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_122"
+    },
+    "179": {
+      "fullSymbol": "P6_522",
+      "hallAliases": [
+        "P 65 2 (0 0 1)"
+      ],
+      "nameAliases": [
+        "P6522",
+        "P6_522"
+      ],
+      "number": 179,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+1/3",
+        "-x+y,y,-z+1/2",
+        "-x,-x+y,-z+1/3",
+        "-x,-y,z+1/2",
+        "-y,-x,-z+1/6",
+        "-y,x-y,z+2/3",
+        "x,x-y,-z+5/6",
+        "x-y,-y,-z",
+        "x-y,x,z+5/6",
+        "y,-x+y,z+1/6",
+        "y,x,-z+2/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_522"
+    },
+    "18": {
+      "fullSymbol": "P2_12_12",
+      "hallAliases": [
+        "P 2 2ab"
+      ],
+      "nameAliases": [
+        "P21212",
+        "P2_12_12"
+      ],
+      "number": 18,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,z",
+        "x+1/2,-y+1/2,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P2_12_12"
+    },
+    "180": {
+      "fullSymbol": "P6_222",
+      "hallAliases": [
+        "P 62 2 (0 0 4)"
+      ],
+      "nameAliases": [
+        "P6222",
+        "P6_222"
+      ],
+      "number": 180,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+1/3",
+        "-x+y,y,-z",
+        "-x,-x+y,-z+1/3",
+        "-x,-y,z",
+        "-y,-x,-z+2/3",
+        "-y,x-y,z+2/3",
+        "x,x-y,-z+1/3",
+        "x-y,-y,-z",
+        "x-y,x,z+1/3",
+        "y,-x+y,z+2/3",
+        "y,x,-z+2/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_222"
+    },
+    "181": {
+      "fullSymbol": "P6_422",
+      "hallAliases": [
+        "P 64 2 (0 0 2)"
+      ],
+      "nameAliases": [
+        "P6422",
+        "P6_422"
+      ],
+      "number": 181,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z+2/3",
+        "-x+y,y,-z",
+        "-x,-x+y,-z+2/3",
+        "-x,-y,z",
+        "-y,-x,-z+1/3",
+        "-y,x-y,z+1/3",
+        "x,x-y,-z+2/3",
+        "x-y,-y,-z",
+        "x-y,x,z+2/3",
+        "y,-x+y,z+1/3",
+        "y,x,-z+1/3"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_422"
+    },
+    "182": {
+      "fullSymbol": "P6_322",
+      "hallAliases": [
+        "P 6c 2c"
+      ],
+      "nameAliases": [
+        "P6322",
+        "P6_322"
+      ],
+      "number": 182,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,-z+1/2",
+        "-x,-x+y,-z",
+        "-x,-y,z+1/2",
+        "-y,-x,-z+1/2",
+        "-y,x-y,z",
+        "x,x-y,-z+1/2",
+        "x-y,-y,-z",
+        "x-y,x,z+1/2",
+        "y,-x+y,z+1/2",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_322"
+    },
+    "183": {
+      "fullSymbol": "P6mm",
+      "hallAliases": [
+        "P 6 -2"
+      ],
+      "nameAliases": [
+        "P6mm"
+      ],
+      "number": 183,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z",
+        "-x,-x+y,z",
+        "-x,-y,z",
+        "-y,-x,z",
+        "-y,x-y,z",
+        "x,x-y,z",
+        "x-y,-y,z",
+        "x-y,x,z",
+        "y,-x+y,z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6mm"
+    },
+    "184": {
+      "fullSymbol": "P6cc",
+      "hallAliases": [
+        "P 6 -2c"
+      ],
+      "nameAliases": [
+        "P6cc"
+      ],
+      "number": 184,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z+1/2",
+        "-x,-x+y,z+1/2",
+        "-x,-y,z",
+        "-y,-x,z+1/2",
+        "-y,x-y,z",
+        "x,x-y,z+1/2",
+        "x-y,-y,z+1/2",
+        "x-y,x,z",
+        "y,-x+y,z",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6cc"
+    },
+    "185": {
+      "fullSymbol": "P6_3cm",
+      "hallAliases": [
+        "P 6c -2"
+      ],
+      "nameAliases": [
+        "P63cm",
+        "P6_3cm"
+      ],
+      "number": 185,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z+1/2",
+        "-x,-x+y,z",
+        "-x,-y,z+1/2",
+        "-y,-x,z+1/2",
+        "-y,x-y,z",
+        "x,x-y,z+1/2",
+        "x-y,-y,z",
+        "x-y,x,z+1/2",
+        "y,-x+y,z+1/2",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_3cm"
+    },
+    "186": {
+      "fullSymbol": "P6_3mc",
+      "hallAliases": [
+        "P 6c -2c"
+      ],
+      "nameAliases": [
+        "P63mc",
+        "P6_3mc"
+      ],
+      "number": 186,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,z",
+        "-x+y,y,z",
+        "-x,-x+y,z+1/2",
+        "-x,-y,z+1/2",
+        "-y,-x,z",
+        "-y,x-y,z",
+        "x,x-y,z",
+        "x-y,-y,z+1/2",
+        "x-y,x,z+1/2",
+        "y,-x+y,z+1/2",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_3mc"
+    },
+    "187": {
+      "fullSymbol": "P-6m2",
+      "hallAliases": [
+        "P -6 2"
+      ],
+      "nameAliases": [
+        "P-6m2"
+      ],
+      "number": 187,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z",
+        "-x+y,-x,z",
+        "-x+y,y,-z",
+        "-x+y,y,z",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,x-y,-z",
+        "-y,x-y,z",
+        "x,x-y,-z",
+        "x,x-y,z",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-6m2"
+    },
+    "188": {
+      "fullSymbol": "P-6c2",
+      "hallAliases": [
+        "P -6c 2"
+      ],
+      "nameAliases": [
+        "P-6c2"
+      ],
+      "number": 188,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z+1/2",
+        "-x+y,-x,z",
+        "-x+y,y,-z",
+        "-x+y,y,z+1/2",
+        "-y,-x,-z",
+        "-y,-x,z+1/2",
+        "-y,x-y,-z+1/2",
+        "-y,x-y,z",
+        "x,x-y,-z",
+        "x,x-y,z+1/2",
+        "x,y,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-6c2"
+    },
+    "189": {
+      "fullSymbol": "P-62m",
+      "hallAliases": [
+        "P -6 -2"
+      ],
+      "nameAliases": [
+        "P-62m"
+      ],
+      "number": 189,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z",
+        "-x+y,-x,z",
+        "-x,-x+y,-z",
+        "-x,-x+y,z",
+        "-y,x-y,-z",
+        "-y,x-y,z",
+        "x,y,-z",
+        "x-y,-y,-z",
+        "x-y,-y,z",
+        "y,x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-62m"
+    },
+    "19": {
+      "fullSymbol": "P2_12_12_1",
+      "hallAliases": [
+        "P 2ac 2ab"
+      ],
+      "nameAliases": [
+        "P212121",
+        "P2_12_12_1"
+      ],
+      "number": 19,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x,y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P2_12_12_1"
+    },
+    "190": {
+      "fullSymbol": "P-62c",
+      "hallAliases": [
+        "P -6c -2c"
+      ],
+      "nameAliases": [
+        "P-62c"
+      ],
+      "number": 190,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z+1/2",
+        "-x+y,-x,z",
+        "-x,-x+y,-z",
+        "-x,-x+y,z+1/2",
+        "-y,x-y,-z+1/2",
+        "-y,x-y,z",
+        "x,y,-z+1/2",
+        "x-y,-y,-z",
+        "x-y,-y,z+1/2",
+        "y,x,-z",
+        "y,x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-62c"
+    },
+    "191": {
+      "fullSymbol": "P6/m2/m2/m",
+      "hallAliases": [
+        "-P 6 2"
+      ],
+      "nameAliases": [
+        "P6/m2/m2/m",
+        "P6/mmm"
+      ],
+      "number": 191,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z",
+        "-x+y,-x,z",
+        "-x+y,y,-z",
+        "-x+y,y,z",
+        "-x,-x+y,-z",
+        "-x,-x+y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,x-y,-z",
+        "-y,x-y,z",
+        "x,x-y,-z",
+        "x,x-y,z",
+        "x,y,-z",
+        "x-y,-y,-z",
+        "x-y,-y,z",
+        "x-y,x,-z",
+        "x-y,x,z",
+        "y,-x+y,-z",
+        "y,-x+y,z",
+        "y,x,-z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6/mmm"
+    },
+    "192": {
+      "fullSymbol": "P6/m2/c2/c",
+      "hallAliases": [
+        "-P 6 2c"
+      ],
+      "nameAliases": [
+        "P6/m2/c2/c",
+        "P6/mcc"
+      ],
+      "number": 192,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z",
+        "-x+y,-x,z",
+        "-x+y,y,-z+1/2",
+        "-x+y,y,z-1/2",
+        "-x,-x+y,-z+1/2",
+        "-x,-x+y,z-1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-y,-x,-z+1/2",
+        "-y,-x,z-1/2",
+        "-y,x-y,-z",
+        "-y,x-y,z",
+        "x,x-y,-z+1/2",
+        "x,x-y,z-1/2",
+        "x,y,-z",
+        "x-y,-y,-z+1/2",
+        "x-y,-y,z-1/2",
+        "x-y,x,-z",
+        "x-y,x,z",
+        "y,-x+y,-z",
+        "y,-x+y,z",
+        "y,x,-z+1/2",
+        "y,x,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6/mcc"
+    },
+    "193": {
+      "fullSymbol": "P6_3/m2/c2/m",
+      "hallAliases": [
+        "-P 6c 2"
+      ],
+      "nameAliases": [
+        "P63/mcm",
+        "P6_3/m2/c2/m",
+        "P6_3/mcm"
+      ],
+      "number": 193,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z-1/2",
+        "-x+y,-x,z",
+        "-x+y,y,-z",
+        "-x+y,y,z-1/2",
+        "-x,-x+y,-z+1/2",
+        "-x,-x+y,z",
+        "-x,-y,-z",
+        "-x,-y,z+1/2",
+        "-y,-x,-z",
+        "-y,-x,z-1/2",
+        "-y,x-y,-z-1/2",
+        "-y,x-y,z",
+        "x,x-y,-z",
+        "x,x-y,z-1/2",
+        "x,y,-z-1/2",
+        "x-y,-y,-z+1/2",
+        "x-y,-y,z",
+        "x-y,x,-z",
+        "x-y,x,z+1/2",
+        "y,-x+y,-z",
+        "y,-x+y,z+1/2",
+        "y,x,-z+1/2",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_3/mcm"
+    },
+    "194": {
+      "fullSymbol": "P6_3/m2/m2/c",
+      "hallAliases": [
+        "-P 6c 2c"
+      ],
+      "nameAliases": [
+        "P63/mmc",
+        "P6_3/m2/m2/c",
+        "P6_3/mmc"
+      ],
+      "number": 194,
+      "operations": [
+        "x,y,z",
+        "-x+y,-x,-z-1/2",
+        "-x+y,-x,z",
+        "-x+y,y,-z+1/2",
+        "-x+y,y,z",
+        "-x,-x+y,-z",
+        "-x,-x+y,z-1/2",
+        "-x,-y,-z",
+        "-x,-y,z+1/2",
+        "-y,-x,-z+1/2",
+        "-y,-x,z",
+        "-y,x-y,-z-1/2",
+        "-y,x-y,z",
+        "x,x-y,-z+1/2",
+        "x,x-y,z",
+        "x,y,-z-1/2",
+        "x-y,-y,-z",
+        "x-y,-y,z-1/2",
+        "x-y,x,-z",
+        "x-y,x,z+1/2",
+        "y,-x+y,-z",
+        "y,-x+y,z+1/2",
+        "y,x,-z",
+        "y,x,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P6_3/mmc"
+    },
+    "195": {
+      "fullSymbol": "P23",
+      "hallAliases": [
+        "P 2 2 3"
+      ],
+      "nameAliases": [
+        "P23"
+      ],
+      "number": 195,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-z,-x,y",
+        "-z,x,-y",
+        "x,-y,-z",
+        "y,-z,-x",
+        "y,z,x",
+        "z,-x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P23"
+    },
+    "196": {
+      "fullSymbol": "F23",
+      "hallAliases": [
+        "F 2 2 3"
+      ],
+      "nameAliases": [
+        "F23"
+      ],
+      "number": 196,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y,-z+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,-z",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/2,z,-x+1/2",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,z+1/2,-x+1/2",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,x,-y+1/2",
+        "-z,-x+1/2,y+1/2",
+        "-z,-x,y",
+        "-z,x+1/2,-y+1/2",
+        "-z,x,-y",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,y+1/2,z+1/2",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y,-z+1/2,-x+1/2",
+        "y,-z,-x",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,x+1/2,y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "F23"
+    },
+    "197": {
+      "fullSymbol": "I23",
+      "hallAliases": [
+        "I 2 2 3"
+      ],
+      "nameAliases": [
+        "I23"
+      ],
+      "number": 197,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-z+1/2,x+1/2",
+        "-y+1/2,z+1/2,-x+1/2",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,y+1/2",
+        "-z+1/2,x+1/2,-y+1/2",
+        "-z,-x,y",
+        "-z,x,-y",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z",
+        "y+1/2,-z+1/2,-x+1/2",
+        "y+1/2,z+1/2,x+1/2",
+        "y,-z,-x",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1/2",
+        "z+1/2,x+1/2,y+1/2",
+        "z,-x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I23"
+    },
+    "198": {
+      "fullSymbol": "P2_13",
+      "hallAliases": [
+        "P 2ac 2ab 3"
+      ],
+      "nameAliases": [
+        "P213",
+        "P2_13"
+      ],
+      "number": 198,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x,y+1/2,-z+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y,z+1/2,-x+1/2",
+        "-z+1/2,-x,y+1/2",
+        "-z,x+1/2,-y+1/2",
+        "x+1/2,-y+1/2,-z",
+        "y+1/2,-z+1/2,-x",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P2_13"
+    },
+    "199": {
+      "fullSymbol": "I2_13",
+      "hallAliases": [
+        "I 2b 2c 3"
+      ],
+      "nameAliases": [
+        "I213",
+        "I2_13"
+      ],
+      "number": 199,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,y+1,-z+1",
+        "-x,-y+1/2,z",
+        "-x,y+1/2,-z+1/2",
+        "-y+1,-z+1/2,x+1",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1,-x+1",
+        "-y,z+1/2,-x+1/2",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,x+1,-y+1",
+        "-z,-x+1/2,y",
+        "-z,x+1/2,-y+1/2",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z+1/2",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,z+1/2,x+1/2",
+        "y,-z,-x+1/2",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1",
+        "z+1/2,x+1/2,y+1/2",
+        "z,-x,-y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I2_13"
+    },
+    "2": {
+      "fullSymbol": "P-1",
+      "hallAliases": [
+        "-P 1"
+      ],
+      "nameAliases": [
+        "P-1"
+      ],
+      "number": 2,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-1"
+    },
+    "20": {
+      "fullSymbol": "C222_1",
+      "hallAliases": [
+        "C 2c 2"
+      ],
+      "nameAliases": [
+        "C2221",
+        "C222_1"
+      ],
+      "number": 20,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z+1/2",
+        "-x,y,-z+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "C222_1"
+    },
+    "200": {
+      "fullSymbol": "P2/m-3",
+      "hallAliases": [
+        "-P 2 2 3"
+      ],
+      "nameAliases": [
+        "P2/m-3",
+        "Pm-3"
+      ],
+      "number": 200,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-y,z,x",
+        "-z,-x,-y",
+        "-z,-x,y",
+        "-z,x,-y",
+        "-z,x,y",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z",
+        "y,-z,-x",
+        "y,-z,x",
+        "y,z,-x",
+        "y,z,x",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pm-3"
+    },
+    "201": {
+      "fullSymbol": "P2/n-3",
+      "hallAliases": [
+        "P 2 2 3 -1n"
+      ],
+      "nameAliases": [
+        "P2/n-3",
+        "Pn-3",
+        "Pn-3:1"
+      ],
+      "number": 201,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-z+1/2,-x+1/2",
+        "-y+1/2,z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,-y+1/2",
+        "-z+1/2,x+1/2,y+1/2",
+        "-z,-x,y",
+        "-z,x,-y",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x,-y,-z",
+        "y+1/2,-z+1/2,x+1/2",
+        "y+1/2,z+1/2,-x+1/2",
+        "y,-z,-x",
+        "y,z,x",
+        "z+1/2,-x+1/2,y+1/2",
+        "z+1/2,x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pn-3"
+    },
+    "202": {
+      "fullSymbol": "F2/m-3",
+      "hallAliases": [
+        "-F 2 2 3"
+      ],
+      "nameAliases": [
+        "F2/m-3",
+        "Fm-3"
+      ],
+      "number": 202,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,-z+1/2",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,-z+1/2",
+        "-x+1/2,y,z+1/2",
+        "-x,-y+1/2,-z+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y+1/2,z+1/2",
+        "-x,y,-z",
+        "-x,y,z",
+        "-y+1/2,-z+1/2,-x",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,-x+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/2,z+1/2,x",
+        "-y+1/2,z,-x+1/2",
+        "-y+1/2,z,x+1/2",
+        "-y,-z+1/2,-x+1/2",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,z+1/2,-x+1/2",
+        "-y,z+1/2,x+1/2",
+        "-y,z,-x",
+        "-y,z,x",
+        "-z+1/2,-x+1/2,-y",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-x,-y+1/2",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,x+1/2,y",
+        "-z+1/2,x,-y+1/2",
+        "-z+1/2,x,y+1/2",
+        "-z,-x+1/2,-y+1/2",
+        "-z,-x+1/2,y+1/2",
+        "-z,-x,-y",
+        "-z,-x,y",
+        "-z,x+1/2,-y+1/2",
+        "-z,x+1/2,y+1/2",
+        "-z,x,-y",
+        "-z,x,y",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-y,z+1/2",
+        "x+1/2,y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,-z+1/2",
+        "x+1/2,y,z+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y+1/2,z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y+1/2,-z+1/2",
+        "x,y+1/2,z+1/2",
+        "x,y,-z",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,-z+1/2,x",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,-z,x+1/2",
+        "y+1/2,z+1/2,-x",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,-x+1/2",
+        "y+1/2,z,x+1/2",
+        "y,-z+1/2,-x+1/2",
+        "y,-z+1/2,x+1/2",
+        "y,-z,-x",
+        "y,-z,x",
+        "y,z+1/2,-x+1/2",
+        "y,z+1/2,x+1/2",
+        "y,z,-x",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x+1/2,y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,-x,y+1/2",
+        "z+1/2,x+1/2,-y",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,-y+1/2",
+        "z+1/2,x,y+1/2",
+        "z,-x+1/2,-y+1/2",
+        "z,-x+1/2,y+1/2",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,x+1/2,-y+1/2",
+        "z,x+1/2,y+1/2",
+        "z,x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fm-3"
+    },
+    "203": {
+      "fullSymbol": "F2/d-3",
+      "hallAliases": [
+        "F 2 2 3 -1d"
+      ],
+      "nameAliases": [
+        "F2/d-3",
+        "Fd-3",
+        "Fd-3:1"
+      ],
+      "number": 203,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y,-z+1/2",
+        "-x+1/4,-y+1/4,-z+1/4",
+        "-x+1/4,-y+3/4,-z+3/4",
+        "-x+1/4,y+1/4,z+1/4",
+        "-x+1/4,y+3/4,z+3/4",
+        "-x+3/4,-y+1/4,-z+3/4",
+        "-x+3/4,-y+3/4,-z+1/4",
+        "-x+3/4,y+1/4,z+3/4",
+        "-x+3/4,y+3/4,z+1/4",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,-z",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/2,z,-x+1/2",
+        "-y+1/4,-z+1/4,-x+1/4",
+        "-y+1/4,-z+3/4,-x+3/4",
+        "-y+1/4,z+1/4,x+1/4",
+        "-y+1/4,z+3/4,x+3/4",
+        "-y+3/4,-z+1/4,-x+3/4",
+        "-y+3/4,-z+3/4,-x+1/4",
+        "-y+3/4,z+1/4,x+3/4",
+        "-y+3/4,z+3/4,x+1/4",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,z+1/2,-x+1/2",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,x,-y+1/2",
+        "-z+1/4,-x+1/4,-y+1/4",
+        "-z+1/4,-x+3/4,-y+3/4",
+        "-z+1/4,x+1/4,y+1/4",
+        "-z+1/4,x+3/4,y+3/4",
+        "-z+3/4,-x+1/4,-y+3/4",
+        "-z+3/4,-x+3/4,-y+1/4",
+        "-z+3/4,x+1/4,y+3/4",
+        "-z+3/4,x+3/4,y+1/4",
+        "-z,-x+1/2,y+1/2",
+        "-z,-x,y",
+        "-z,x+1/2,-y+1/2",
+        "-z,x,-y",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/4,-y+1/4,z+1/4",
+        "x+1/4,-y+3/4,z+3/4",
+        "x+1/4,y+1/4,-z+1/4",
+        "x+1/4,y+3/4,-z+3/4",
+        "x+3/4,-y+1/4,z+3/4",
+        "x+3/4,-y+3/4,z+1/4",
+        "x+3/4,y+1/4,-z+3/4",
+        "x+3/4,y+3/4,-z+1/4",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,y+1/2,z+1/2",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y+1/4,-z+1/4,x+1/4",
+        "y+1/4,-z+3/4,x+3/4",
+        "y+1/4,z+1/4,-x+1/4",
+        "y+1/4,z+3/4,-x+3/4",
+        "y+3/4,-z+1/4,x+3/4",
+        "y+3/4,-z+3/4,x+1/4",
+        "y+3/4,z+1/4,-x+3/4",
+        "y+3/4,z+3/4,-x+1/4",
+        "y,-z+1/2,-x+1/2",
+        "y,-z,-x",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/4,-x+1/4,y+1/4",
+        "z+1/4,-x+3/4,y+3/4",
+        "z+1/4,x+1/4,-y+1/4",
+        "z+1/4,x+3/4,-y+3/4",
+        "z+3/4,-x+1/4,y+3/4",
+        "z+3/4,-x+3/4,y+1/4",
+        "z+3/4,x+1/4,-y+3/4",
+        "z+3/4,x+3/4,-y+1/4",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,x+1/2,y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fd-3"
+    },
+    "204": {
+      "fullSymbol": "I2/m-3",
+      "hallAliases": [
+        "-I 2 2 3"
+      ],
+      "nameAliases": [
+        "I2/m-3",
+        "Im-3"
+      ],
+      "number": 204,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "-y+1/2,-z+1/2,-x+1/2",
+        "-y+1/2,-z+1/2,x+1/2",
+        "-y+1/2,z+1/2,-x+1/2",
+        "-y+1/2,z+1/2,x+1/2",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-y,z,x",
+        "-z+1/2,-x+1/2,-y+1/2",
+        "-z+1/2,-x+1/2,y+1/2",
+        "-z+1/2,x+1/2,-y+1/2",
+        "-z+1/2,x+1/2,y+1/2",
+        "-z,-x,-y",
+        "-z,-x,y",
+        "-z,x,-y",
+        "-z,x,y",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z",
+        "y+1/2,-z+1/2,-x+1/2",
+        "y+1/2,-z+1/2,x+1/2",
+        "y+1/2,z+1/2,-x+1/2",
+        "y+1/2,z+1/2,x+1/2",
+        "y,-z,-x",
+        "y,-z,x",
+        "y,z,-x",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1/2",
+        "z+1/2,-x+1/2,y+1/2",
+        "z+1/2,x+1/2,-y+1/2",
+        "z+1/2,x+1/2,y+1/2",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Im-3"
+    },
+    "205": {
+      "fullSymbol": "P2_1/a-3",
+      "hallAliases": [
+        "-P 2ac 2ab 3"
+      ],
+      "nameAliases": [
+        "P2_1/a-3",
+        "Pa-3"
+      ],
+      "number": 205,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x,-y,-z",
+        "-x,y+1/2,-z+1/2",
+        "-x-1/2,y-1/2,z",
+        "-y+1/2,-z,x+1/2",
+        "-y,-z,-x",
+        "-y,z+1/2,-x+1/2",
+        "-y-1/2,z-1/2,x",
+        "-z+1/2,-x,y+1/2",
+        "-z,-x,-y",
+        "-z,x+1/2,-y+1/2",
+        "-z-1/2,x-1/2,y",
+        "x+1/2,-y+1/2,-z",
+        "x,-y-1/2,z-1/2",
+        "x-1/2,y,-z-1/2",
+        "y+1/2,-z+1/2,-x",
+        "y,-z-1/2,x-1/2",
+        "y,z,x",
+        "y-1/2,z,-x-1/2",
+        "z+1/2,-x+1/2,-y",
+        "z,-x-1/2,y-1/2",
+        "z,x,y",
+        "z-1/2,x,-y-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pa-3"
+    },
+    "206": {
+      "fullSymbol": "I2_1/a-3",
+      "hallAliases": [
+        "-I 2b 2c 3"
+      ],
+      "nameAliases": [
+        "I2_1/a-3",
+        "Ia-3"
+      ],
+      "number": 206,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1,-z+1",
+        "-x+1/2,y+1/2,z",
+        "-x,-y+1/2,z",
+        "-x,-y,-z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,z-1/2",
+        "-y+1,-z+1/2,x+1",
+        "-y+1/2,-z+1/2,-x+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1,-x+1",
+        "-y+1/2,z+1/2,x",
+        "-y,-z,-x",
+        "-y,z+1/2,-x+1/2",
+        "-y,z,x-1/2",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,-x+1/2,-y+1/2",
+        "-z+1/2,x+1,-y+1",
+        "-z+1/2,x+1/2,y",
+        "-z,-x+1/2,y",
+        "-z,-x,-y",
+        "-z,x+1/2,-y+1/2",
+        "-z,x,y-1/2",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,-y,z",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/2,y,-z+1/2",
+        "x,-y,-z+1/2",
+        "x,-y-1/2,z-1/2",
+        "x,y-1/2,-z",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,-z,x",
+        "y+1/2,z+1/2,x+1/2",
+        "y,-z,-x+1/2",
+        "y,-z-1/2,x-1/2",
+        "y,z+1/2,-x",
+        "y,z,x",
+        "y-1/2,z,-x-1/2",
+        "z+1/2,-x+1/2,-y+1",
+        "z+1/2,-x,y",
+        "z+1/2,x+1/2,y+1/2",
+        "z+1/2,x,-y+1/2",
+        "z,-x,-y+1/2",
+        "z,-x-1/2,y-1/2",
+        "z,x,y",
+        "z,x-1/2,-y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ia-3"
+    },
+    "207": {
+      "fullSymbol": "P432",
+      "hallAliases": [
+        "P 4 2 3"
+      ],
+      "nameAliases": [
+        "P432"
+      ],
+      "number": 207,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,-z,-y",
+        "-x,y,-z",
+        "-x,z,y",
+        "-y,-x,-z",
+        "-y,-z,x",
+        "-y,x,z",
+        "-y,z,-x",
+        "-z,-x,y",
+        "-z,-y,-x",
+        "-z,x,-y",
+        "-z,y,x",
+        "x,-y,-z",
+        "x,-z,y",
+        "x,z,-y",
+        "y,-x,z",
+        "y,-z,-x",
+        "y,x,-z",
+        "y,z,x",
+        "z,-x,-y",
+        "z,-y,x",
+        "z,x,y",
+        "z,y,-x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P432"
+    },
+    "208": {
+      "fullSymbol": "P4_232",
+      "hallAliases": [
+        "P 4n 2 3"
+      ],
+      "nameAliases": [
+        "P4232",
+        "P4_232"
+      ],
+      "number": 208,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-z+1/2,-y+1/2",
+        "-x+1/2,z+1/2,y+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-z+1/2,-y+1/2,-x+1/2",
+        "-z+1/2,y+1/2,x+1/2",
+        "-z,-x,y",
+        "-z,x,-y",
+        "x+1/2,-z+1/2,y+1/2",
+        "x+1/2,z+1/2,-y+1/2",
+        "x,-y,-z",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-z,-x",
+        "y,z,x",
+        "z+1/2,-y+1/2,x+1/2",
+        "z+1/2,y+1/2,-x+1/2",
+        "z,-x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_232"
+    },
+    "209": {
+      "fullSymbol": "F432",
+      "hallAliases": [
+        "F 4 2 3"
+      ],
+      "nameAliases": [
+        "F432"
+      ],
+      "number": 209,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,-z+1/2,-y",
+        "-x+1/2,-z,-y+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y,-z+1/2",
+        "-x+1/2,z+1/2,y",
+        "-x+1/2,z,y+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,-z+1/2,-y+1/2",
+        "-x,-z,-y",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,-z",
+        "-x,z+1/2,y+1/2",
+        "-x,z,y",
+        "-y+1/2,-x+1/2,-z",
+        "-y+1/2,-x,-z+1/2",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,x+1/2,z",
+        "-y+1/2,x,z+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/2,z,-x+1/2",
+        "-y,-x+1/2,-z+1/2",
+        "-y,-x,-z",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,x+1/2,z+1/2",
+        "-y,x,z",
+        "-y,z+1/2,-x+1/2",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,-y+1/2,-x",
+        "-z+1/2,-y,-x+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,x,-y+1/2",
+        "-z+1/2,y+1/2,x",
+        "-z+1/2,y,x+1/2",
+        "-z,-x+1/2,y+1/2",
+        "-z,-x,y",
+        "-z,-y+1/2,-x+1/2",
+        "-z,-y,-x",
+        "-z,x+1/2,-y+1/2",
+        "-z,x,-y",
+        "-z,y+1/2,x+1/2",
+        "-z,y,x",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-z+1/2,y",
+        "x+1/2,-z,y+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/2,z+1/2,-y",
+        "x+1/2,z,-y+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,-z+1/2,y+1/2",
+        "x,-z,y",
+        "x,y+1/2,z+1/2",
+        "x,z+1/2,-y+1/2",
+        "x,z,-y",
+        "y+1/2,-x+1/2,z",
+        "y+1/2,-x,z+1/2",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,x+1/2,-z",
+        "y+1/2,x,-z+1/2",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y,-x+1/2,z+1/2",
+        "y,-x,z",
+        "y,-z+1/2,-x+1/2",
+        "y,-z,-x",
+        "y,x+1/2,-z+1/2",
+        "y,x,-z",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,-y+1/2,x",
+        "z+1/2,-y,x+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/2,y+1/2,-x",
+        "z+1/2,y,-x+1/2",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,-y+1/2,x+1/2",
+        "z,-y,x",
+        "z,x+1/2,y+1/2",
+        "z,x,y",
+        "z,y+1/2,-x+1/2",
+        "z,y,-x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "F432"
+    },
+    "21": {
+      "fullSymbol": "C222",
+      "hallAliases": [
+        "C 2 2"
+      ],
+      "nameAliases": [
+        "C222"
+      ],
+      "number": 21,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "C222"
+    },
+    "210": {
+      "fullSymbol": "F4_132",
+      "hallAliases": [
+        "F 4d 2 3"
+      ],
+      "nameAliases": [
+        "F4132",
+        "F4_132"
+      ],
+      "number": 210,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,z+1",
+        "-x+1/2,y+1,-z+1/2",
+        "-x+1/2,y+1/2,-z+1",
+        "-x+1/4,z+1/4,y+1/4",
+        "-x+1/4,z+3/4,y+3/4",
+        "-x+3/4,-z+1/4,-y+3/4",
+        "-x+3/4,-z+3/4,-y+5/4",
+        "-x+3/4,z+1/4,y+3/4",
+        "-x+3/4,z+3/4,y+1/4",
+        "-x+5/4,-z+1/4,-y+5/4",
+        "-x+5/4,-z+3/4,-y+3/4",
+        "-x,-y+1,z+1",
+        "-x,-y+1/2,z+1/2",
+        "-x,y+1,-z+1",
+        "-x,y+1/2,-z+1/2",
+        "-y+1,z+1,-x",
+        "-y+1,z+1/2,-x+1/2",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1,-x+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/4,x+1/4,z+1/4",
+        "-y+1/4,x+3/4,z+3/4",
+        "-y+3/4,-x+1/4,-z+3/4",
+        "-y+3/4,-x+3/4,-z+5/4",
+        "-y+3/4,x+1/4,z+3/4",
+        "-y+3/4,x+3/4,z+1/4",
+        "-y+5/4,-x+1/4,-z+5/4",
+        "-y+5/4,-x+3/4,-z+3/4",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,-x+1/2,y+1",
+        "-z+1/2,x+1,-y+1/2",
+        "-z+1/2,x+1/2,-y+1",
+        "-z+1/4,-y+1/4,-x+1/4",
+        "-z+1/4,-y+3/4,-x+3/4",
+        "-z+3/4,-y+1/4,-x+3/4",
+        "-z+3/4,-y+3/4,-x+1/4",
+        "-z+3/4,y+3/4,x+1/4",
+        "-z+3/4,y+5/4,x+3/4",
+        "-z+5/4,y+3/4,x+3/4",
+        "-z+5/4,y+5/4,x+1/4",
+        "-z,-x+1,y+1",
+        "-z,-x+1/2,y+1/2",
+        "-z,x+1,-y+1",
+        "-z,x+1/2,-y+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/4,z+1/4,-y+1/4",
+        "x+1/4,z+3/4,-y+3/4",
+        "x+3/4,-z+1/4,y+3/4",
+        "x+3/4,-z+3/4,y+5/4",
+        "x+3/4,z+1/4,-y+3/4",
+        "x+3/4,z+3/4,-y+1/4",
+        "x+5/4,-z+1/4,y+5/4",
+        "x+5/4,-z+3/4,y+3/4",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,y+1/2,z+1/2",
+        "y+1,-z+1/2,-x+1/2",
+        "y+1,-z,-x+1",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y+1/4,x+1/4,-z+1/4",
+        "y+1/4,x+3/4,-z+3/4",
+        "y+3/4,-x+1/4,z+3/4",
+        "y+3/4,-x+3/4,z+5/4",
+        "y+3/4,x+1/4,-z+3/4",
+        "y+3/4,x+3/4,-z+1/4",
+        "y+5/4,-x+1/4,z+5/4",
+        "y+5/4,-x+3/4,z+3/4",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/4,-y+3/4,x+3/4",
+        "z+1/4,-y+5/4,x+5/4",
+        "z+1/4,y+3/4,-x+3/4",
+        "z+1/4,y+5/4,-x+5/4",
+        "z+3/4,-y+3/4,x+5/4",
+        "z+3/4,-y+5/4,x+3/4",
+        "z+3/4,y+3/4,-x+5/4",
+        "z+3/4,y+5/4,-x+3/4",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,x+1/2,y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "F4_132"
+    },
+    "211": {
+      "fullSymbol": "I432",
+      "hallAliases": [
+        "I 4 2 3"
+      ],
+      "nameAliases": [
+        "I432"
+      ],
+      "number": 211,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,-z+1/2,-y+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,z+1/2,y+1/2",
+        "-x,-y,z",
+        "-x,-z,-y",
+        "-x,y,-z",
+        "-x,z,y",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,-z+1/2,x+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y+1/2,z+1/2,-x+1/2",
+        "-y,-x,-z",
+        "-y,-z,x",
+        "-y,x,z",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,y+1/2",
+        "-z+1/2,-y+1/2,-x+1/2",
+        "-z+1/2,x+1/2,-y+1/2",
+        "-z+1/2,y+1/2,x+1/2",
+        "-z,-x,y",
+        "-z,-y,-x",
+        "-z,x,-y",
+        "-z,y,x",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-z+1/2,y+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/2,z+1/2,-y+1/2",
+        "x,-y,-z",
+        "x,-z,y",
+        "x,z,-y",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,-z+1/2,-x+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y+1/2,z+1/2,x+1/2",
+        "y,-x,z",
+        "y,-z,-x",
+        "y,x,-z",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1/2",
+        "z+1/2,-y+1/2,x+1/2",
+        "z+1/2,x+1/2,y+1/2",
+        "z+1/2,y+1/2,-x+1/2",
+        "z,-x,-y",
+        "z,-y,x",
+        "z,x,y",
+        "z,y,-x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I432"
+    },
+    "212": {
+      "fullSymbol": "P4_332",
+      "hallAliases": [
+        "P 4acd 2ab 3"
+      ],
+      "nameAliases": [
+        "P4332",
+        "P4_332"
+      ],
+      "number": 212,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/4,-z+1/4,-y+1/4",
+        "-x+3/4,z+1/4,y+3/4",
+        "-x,y+1/2,-z+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/4,-x+1/4,-z+1/4",
+        "-y+3/4,x+1/4,z+3/4",
+        "-y,z+1/2,-x+1/2",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/4,-y+1/4,-x+1/4",
+        "-z+3/4,y+1/4,x+3/4",
+        "-z,x+1/2,-y+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/4,z+3/4,-y+3/4",
+        "x+3/4,-z+3/4,y+1/4",
+        "y+1/2,-z+1/2,-x",
+        "y+1/4,x+3/4,-z+3/4",
+        "y+3/4,-x+3/4,z+1/4",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/4,y+3/4,-x+3/4",
+        "z+3/4,-y+3/4,x+1/4",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_332"
+    },
+    "213": {
+      "fullSymbol": "P4_132",
+      "hallAliases": [
+        "P 4bd 2ab 3"
+      ],
+      "nameAliases": [
+        "P4132",
+        "P4_132"
+      ],
+      "number": 213,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/4,z+3/4,y+1/4",
+        "-x+3/4,-z+3/4,-y+3/4",
+        "-x,y+1/2,-z+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/4,x+3/4,z+1/4",
+        "-y+3/4,-x+3/4,-z+3/4",
+        "-y,z+1/2,-x+1/2",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/4,y+3/4,x+1/4",
+        "-z+3/4,-y+3/4,-x+3/4",
+        "-z,x+1/2,-y+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/4,-z+1/4,y+3/4",
+        "x+3/4,z+1/4,-y+1/4",
+        "y+1/2,-z+1/2,-x",
+        "y+1/4,-x+1/4,z+3/4",
+        "y+3/4,x+1/4,-z+1/4",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/4,-y+1/4,x+3/4",
+        "z+3/4,y+1/4,-x+1/4",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_132"
+    },
+    "214": {
+      "fullSymbol": "I4_132",
+      "hallAliases": [
+        "I 4bd 2c 3"
+      ],
+      "nameAliases": [
+        "I4132",
+        "I4_132"
+      ],
+      "number": 214,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1/2,z+1",
+        "-x+1,y+1/2,-z+1/2",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y,-z",
+        "-x+1/4,-z+1/4,-y+1/4",
+        "-x+1/4,z+3/4,y+1/4",
+        "-x+3/4,-z+3/4,-y+3/4",
+        "-x+3/4,z+5/4,y+3/4",
+        "-y+1,-z+1/2,x+1",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1,-x+1",
+        "-y+1/4,-x+1/4,-z+1/4",
+        "-y+1/4,x+3/4,z+1/4",
+        "-y+3/4,-x+3/4,-z+3/4",
+        "-y+3/4,x+5/4,z+3/4",
+        "-y,z+1/2,-x+1/2",
+        "-z+1,-x+1/2,y+1",
+        "-z+1,x+1/2,-y+1/2",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,x,-y",
+        "-z+1/4,-y+1/4,-x+1/4",
+        "-z+3/4,-y+3/4,-x+3/4",
+        "-z+3/4,y+1/4,x+3/4",
+        "-z+5/4,y+3/4,x+5/4",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/4,-z+1/4,y+3/4",
+        "x+1/4,z+3/4,-y+3/4",
+        "x+3/4,-z+3/4,y+5/4",
+        "x+3/4,z+5/4,-y+5/4",
+        "x,-y,-z+1/2",
+        "y+1,-z+1,-x+1/2",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,z+1/2,x+1/2",
+        "y+1/4,-x+1/4,z+3/4",
+        "y+1/4,x+3/4,-z+3/4",
+        "y+3/4,-x+3/4,z+5/4",
+        "y+3/4,x+5/4,-z+5/4",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1",
+        "z+1/2,x+1/2,y+1/2",
+        "z+3/4,-y+3/4,x+1/4",
+        "z+3/4,y+1/4,-x+1/4",
+        "z+5/4,-y+5/4,x+3/4",
+        "z+5/4,y+3/4,-x+3/4",
+        "z,-x,-y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_132"
+    },
+    "215": {
+      "fullSymbol": "P-43m",
+      "hallAliases": [
+        "P -4 2 3"
+      ],
+      "nameAliases": [
+        "P-43m"
+      ],
+      "number": 215,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,-z,y",
+        "-x,y,-z",
+        "-x,z,-y",
+        "-y,-x,z",
+        "-y,-z,x",
+        "-y,x,-z",
+        "-y,z,-x",
+        "-z,-x,y",
+        "-z,-y,x",
+        "-z,x,-y",
+        "-z,y,-x",
+        "x,-y,-z",
+        "x,-z,-y",
+        "x,z,y",
+        "y,-x,-z",
+        "y,-z,-x",
+        "y,x,z",
+        "y,z,x",
+        "z,-x,-y",
+        "z,-y,-x",
+        "z,x,y",
+        "z,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-43m"
+    },
+    "216": {
+      "fullSymbol": "F-43m",
+      "hallAliases": [
+        "F -4 2 3"
+      ],
+      "nameAliases": [
+        "F-43m"
+      ],
+      "number": 216,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,-z+1/2,y",
+        "-x+1/2,-z,y+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y,-z+1/2",
+        "-x+1/2,z+1/2,-y",
+        "-x+1/2,z,-y+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,-z+1/2,y+1/2",
+        "-x,-z,y",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,-z",
+        "-x,z+1/2,-y+1/2",
+        "-x,z,-y",
+        "-y+1/2,-x+1/2,z",
+        "-y+1/2,-x,z+1/2",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,x+1/2,-z",
+        "-y+1/2,x,-z+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/2,z,-x+1/2",
+        "-y,-x+1/2,z+1/2",
+        "-y,-x,z",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,x+1/2,-z+1/2",
+        "-y,x,-z",
+        "-y,z+1/2,-x+1/2",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,-y+1/2,x",
+        "-z+1/2,-y,x+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,x,-y+1/2",
+        "-z+1/2,y+1/2,-x",
+        "-z+1/2,y,-x+1/2",
+        "-z,-x+1/2,y+1/2",
+        "-z,-x,y",
+        "-z,-y+1/2,x+1/2",
+        "-z,-y,x",
+        "-z,x+1/2,-y+1/2",
+        "-z,x,-y",
+        "-z,y+1/2,-x+1/2",
+        "-z,y,-x",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-z+1/2,-y",
+        "x+1/2,-z,-y+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/2,z+1/2,y",
+        "x+1/2,z,y+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,-z+1/2,-y+1/2",
+        "x,-z,-y",
+        "x,y+1/2,z+1/2",
+        "x,z+1/2,y+1/2",
+        "x,z,y",
+        "y+1/2,-x+1/2,-z",
+        "y+1/2,-x,-z+1/2",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,x+1/2,z",
+        "y+1/2,x,z+1/2",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y,-x+1/2,-z+1/2",
+        "y,-x,-z",
+        "y,-z+1/2,-x+1/2",
+        "y,-z,-x",
+        "y,x+1/2,z+1/2",
+        "y,x,z",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,-y+1/2,-x",
+        "z+1/2,-y,-x+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/2,y+1/2,x",
+        "z+1/2,y,x+1/2",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,-y+1/2,-x+1/2",
+        "z,-y,-x",
+        "z,x+1/2,y+1/2",
+        "z,x,y",
+        "z,y+1/2,x+1/2",
+        "z,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "F-43m"
+    },
+    "217": {
+      "fullSymbol": "I-43m",
+      "hallAliases": [
+        "I -4 2 3"
+      ],
+      "nameAliases": [
+        "I-43m"
+      ],
+      "number": 217,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,-z+1/2,y+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,z+1/2,-y+1/2",
+        "-x,-y,z",
+        "-x,-z,y",
+        "-x,y,-z",
+        "-x,z,-y",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,-z+1/2,x+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y+1/2,z+1/2,-x+1/2",
+        "-y,-x,z",
+        "-y,-z,x",
+        "-y,x,-z",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,y+1/2",
+        "-z+1/2,-y+1/2,x+1/2",
+        "-z+1/2,x+1/2,-y+1/2",
+        "-z+1/2,y+1/2,-x+1/2",
+        "-z,-x,y",
+        "-z,-y,x",
+        "-z,x,-y",
+        "-z,y,-x",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-z+1/2,-y+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/2,z+1/2,y+1/2",
+        "x,-y,-z",
+        "x,-z,-y",
+        "x,z,y",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-z+1/2,-x+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y+1/2,z+1/2,x+1/2",
+        "y,-x,-z",
+        "y,-z,-x",
+        "y,x,z",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1/2",
+        "z+1/2,-y+1/2,-x+1/2",
+        "z+1/2,x+1/2,y+1/2",
+        "z+1/2,y+1/2,x+1/2",
+        "z,-x,-y",
+        "z,-y,-x",
+        "z,x,y",
+        "z,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I-43m"
+    },
+    "218": {
+      "fullSymbol": "P-43n",
+      "hallAliases": [
+        "P -4n 2 3"
+      ],
+      "nameAliases": [
+        "P-43n"
+      ],
+      "number": 218,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-z+1/2,y+1/2",
+        "-x+1/2,z+1/2,-y+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-z+1/2,-y+1/2,x+1/2",
+        "-z+1/2,y+1/2,-x+1/2",
+        "-z,-x,y",
+        "-z,x,-y",
+        "x+1/2,-z+1/2,-y+1/2",
+        "x+1/2,z+1/2,y+1/2",
+        "x,-y,-z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y,-z,-x",
+        "y,z,x",
+        "z+1/2,-y+1/2,-x+1/2",
+        "z+1/2,y+1/2,x+1/2",
+        "z,-x,-y",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-43n"
+    },
+    "219": {
+      "fullSymbol": "F-43c",
+      "hallAliases": [
+        "F -4a 2 3"
+      ],
+      "nameAliases": [
+        "F-43c"
+      ],
+      "number": 219,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z",
+        "-x+1,-y+1/2,z+1/2",
+        "-x+1,-z+1/2,y",
+        "-x+1,-z,y+1/2",
+        "-x+1,y+1,-z",
+        "-x+1,y+1/2,-z+1/2",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-z+1/2,y+1/2",
+        "-x+1/2,-z,y",
+        "-x+1/2,y+1,-z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,z+1,-y",
+        "-x+1/2,z+1/2,-y+1/2",
+        "-x,z+1,-y+1/2",
+        "-x,z+1/2,-y",
+        "-y+1,-x+1/2,z",
+        "-y+1,-x,z+1/2",
+        "-y+1,z+1/2,-x+1/2",
+        "-y+1,z,-x+1",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,-x,z",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,x+1,-z",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y+1/2,z+1/2,-x+1",
+        "-y+1/2,z,-x+1/2",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,x+1,-z+1/2",
+        "-y,x+1/2,-z",
+        "-z+1,-x+1,y",
+        "-z+1,-x+1/2,y+1/2",
+        "-z+1,x+1,-y",
+        "-z+1,x+1/2,-y+1/2",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-y+1/2,x+1/2",
+        "-z+1/2,-y,x+1",
+        "-z+1/2,x+1,-y+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,y+1/2,-x+1/2",
+        "-z+1/2,y,-x+1",
+        "-z,-y+1/2,x+1",
+        "-z,-y,x+1/2",
+        "-z,y+1/2,-x+1",
+        "-z,y,-x+1/2",
+        "x+1,-z+1/2,-y",
+        "x+1,-z,-y+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-z+1/2,-y+1/2",
+        "x+1/2,-z,-y",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/2,z+1,y",
+        "x+1/2,z+1/2,y+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,y+1/2,z+1/2",
+        "x,z+1,y+1/2",
+        "x,z+1/2,y",
+        "y+1,-x+1/2,-z",
+        "y+1,-x,-z+1/2",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x,-z",
+        "y+1/2,-z+1,-x+1/2",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,x+1,z",
+        "y+1/2,x+1/2,z+1/2",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y,-z+1,-x+1",
+        "y,-z+1/2,-x+1/2",
+        "y,x+1,z+1/2",
+        "y,x+1/2,z",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "z+1,-y+1,-x+1/2",
+        "z+1,-y+1/2,-x+1",
+        "z+1,y+1/2,x",
+        "z+1,y,x+1/2",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,-y+1,-x+1",
+        "z+1/2,-y+1/2,-x+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/2,y+1/2,x+1/2",
+        "z+1/2,y,x",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,x+1/2,y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "F-43c"
+    },
+    "22": {
+      "fullSymbol": "F222",
+      "hallAliases": [
+        "F 2 2"
+      ],
+      "nameAliases": [
+        "F222"
+      ],
+      "number": 22,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y,-z+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,-z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "F222"
+    },
+    "220": {
+      "fullSymbol": "I-43d",
+      "hallAliases": [
+        "I -4bd 2c 3"
+      ],
+      "nameAliases": [
+        "I-43d"
+      ],
+      "number": 220,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,y+1,-z+1",
+        "-x+1/4,-z+3/4,y+3/4",
+        "-x+3/4,-z+5/4,y+5/4",
+        "-x+3/4,z+3/4,-y+1/4",
+        "-x+5/4,z+5/4,-y+3/4",
+        "-x,-y+1/2,z",
+        "-x,y+1/2,-z+1/2",
+        "-y+1,-z+1/2,x+1",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1,-x+1",
+        "-y+1/4,-x+3/4,z+3/4",
+        "-y+3/4,-x+5/4,z+5/4",
+        "-y+3/4,x+3/4,-z+1/4",
+        "-y+5/4,x+5/4,-z+3/4",
+        "-y,z+1/2,-x+1/2",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,x+1,-y+1",
+        "-z+1/4,-y+3/4,x+3/4",
+        "-z+1/4,y+1/4,-x+3/4",
+        "-z+3/4,-y+5/4,x+5/4",
+        "-z+3/4,y+3/4,-x+5/4",
+        "-z,-x+1/2,y",
+        "-z,x+1/2,-y+1/2",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/4,-z+3/4,-y+1/4",
+        "x+3/4,-z+5/4,-y+3/4",
+        "x+3/4,z+3/4,y+3/4",
+        "x+5/4,z+5/4,y+5/4",
+        "x,-y,-z+1/2",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,z+1/2,x+1/2",
+        "y+1/4,-x+3/4,-z+1/4",
+        "y+3/4,-x+5/4,-z+3/4",
+        "y+3/4,x+3/4,z+3/4",
+        "y+5/4,x+5/4,z+5/4",
+        "y,-z,-x+1/2",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1",
+        "z+1/2,x+1/2,y+1/2",
+        "z+1/4,y+1/4,x+1/4",
+        "z+3/4,-y+1/4,-x+3/4",
+        "z+3/4,y+3/4,x+3/4",
+        "z+5/4,-y+3/4,-x+5/4",
+        "z,-x,-y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I-43d"
+    },
+    "221": {
+      "fullSymbol": "P4/m-32/m",
+      "hallAliases": [
+        "-P 4 2 3"
+      ],
+      "nameAliases": [
+        "P4/m-32/m",
+        "Pm-3m"
+      ],
+      "number": 221,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,-z,-y",
+        "-x,-z,y",
+        "-x,y,-z",
+        "-x,y,z",
+        "-x,z,-y",
+        "-x,z,y",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,x,-z",
+        "-y,x,z",
+        "-y,z,-x",
+        "-y,z,x",
+        "-z,-x,-y",
+        "-z,-x,y",
+        "-z,-y,-x",
+        "-z,-y,x",
+        "-z,x,-y",
+        "-z,x,y",
+        "-z,y,-x",
+        "-z,y,x",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,-z,-y",
+        "x,-z,y",
+        "x,y,-z",
+        "x,z,-y",
+        "x,z,y",
+        "y,-x,-z",
+        "y,-x,z",
+        "y,-z,-x",
+        "y,-z,x",
+        "y,x,-z",
+        "y,x,z",
+        "y,z,-x",
+        "y,z,x",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,-y,-x",
+        "z,-y,x",
+        "z,x,-y",
+        "z,x,y",
+        "z,y,-x",
+        "z,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pm-3m"
+    },
+    "222": {
+      "fullSymbol": "P4/n-32/n",
+      "hallAliases": [
+        "P 4 2 3 -1n"
+      ],
+      "nameAliases": [
+        "P4/n-32/n",
+        "Pn-3n",
+        "Pn-3n:1"
+      ],
+      "number": 222,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-z+1/2,y+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x+1/2,z+1/2,-y+1/2",
+        "-x,-y,z",
+        "-x,-z,-y",
+        "-x,y,-z",
+        "-x,z,y",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,-z+1/2,-x+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y+1/2,z+1/2,x+1/2",
+        "-y,-x,-z",
+        "-y,-z,x",
+        "-y,x,z",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,-y+1/2",
+        "-z+1/2,-y+1/2,x+1/2",
+        "-z+1/2,x+1/2,y+1/2",
+        "-z+1/2,y+1/2,-x+1/2",
+        "-z,-x,y",
+        "-z,-y,-x",
+        "-z,x,-y",
+        "-z,y,x",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,-z+1/2,-y+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,z+1/2,y+1/2",
+        "x,-y,-z",
+        "x,-z,y",
+        "x,z,-y",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-z+1/2,x+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y+1/2,z+1/2,-x+1/2",
+        "y,-x,z",
+        "y,-z,-x",
+        "y,x,-z",
+        "y,z,x",
+        "z+1/2,-x+1/2,y+1/2",
+        "z+1/2,-y+1/2,-x+1/2",
+        "z+1/2,x+1/2,-y+1/2",
+        "z+1/2,y+1/2,x+1/2",
+        "z,-x,-y",
+        "z,-y,x",
+        "z,x,y",
+        "z,y,-x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pn-3n"
+    },
+    "223": {
+      "fullSymbol": "P4_2/m-32/n",
+      "hallAliases": [
+        "-P 4n 2 3"
+      ],
+      "nameAliases": [
+        "P4_2/m-32/n",
+        "Pm-3n"
+      ],
+      "number": 223,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-z+1/2,-y+1/2",
+        "-x+1/2,z+1/2,y+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "-x-1/2,-z-1/2,y-1/2",
+        "-x-1/2,z-1/2,-y-1/2",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,z,-x",
+        "-y,z,x",
+        "-y-1/2,-x-1/2,z-1/2",
+        "-y-1/2,x-1/2,-z-1/2",
+        "-z+1/2,-y+1/2,-x+1/2",
+        "-z+1/2,y+1/2,x+1/2",
+        "-z,-x,-y",
+        "-z,-x,y",
+        "-z,x,-y",
+        "-z,x,y",
+        "-z-1/2,-y-1/2,x-1/2",
+        "-z-1/2,y-1/2,-x-1/2",
+        "x+1/2,-z+1/2,y+1/2",
+        "x+1/2,z+1/2,-y+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z",
+        "x-1/2,-z-1/2,-y-1/2",
+        "x-1/2,z-1/2,y-1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-z,-x",
+        "y,-z,x",
+        "y,z,-x",
+        "y,z,x",
+        "y-1/2,-x-1/2,-z-1/2",
+        "y-1/2,x-1/2,z-1/2",
+        "z+1/2,-y+1/2,x+1/2",
+        "z+1/2,y+1/2,-x+1/2",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,x,-y",
+        "z,x,y",
+        "z-1/2,-y-1/2,-x-1/2",
+        "z-1/2,y-1/2,x-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pm-3n"
+    },
+    "224": {
+      "fullSymbol": "P4_2/n-32/m",
+      "hallAliases": [
+        "P 4n 2 3 -1n"
+      ],
+      "nameAliases": [
+        "P4_2/n-32/m",
+        "Pn-3m",
+        "Pn-3m:1"
+      ],
+      "number": 224,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-z+1/2,-y+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x+1/2,z+1/2,y+1/2",
+        "-x,-y,z",
+        "-x,-z,y",
+        "-x,y,-z",
+        "-x,z,-y",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,-z+1/2,-x+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y+1/2,z+1/2,x+1/2",
+        "-y,-x,z",
+        "-y,-z,x",
+        "-y,x,-z",
+        "-y,z,-x",
+        "-z+1/2,-x+1/2,-y+1/2",
+        "-z+1/2,-y+1/2,-x+1/2",
+        "-z+1/2,x+1/2,y+1/2",
+        "-z+1/2,y+1/2,x+1/2",
+        "-z,-x,y",
+        "-z,-y,x",
+        "-z,x,-y",
+        "-z,y,-x",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,-z+1/2,y+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,z+1/2,-y+1/2",
+        "x,-y,-z",
+        "x,-z,-y",
+        "x,z,y",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,-z+1/2,x+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y+1/2,z+1/2,-x+1/2",
+        "y,-x,-z",
+        "y,-z,-x",
+        "y,x,z",
+        "y,z,x",
+        "z+1/2,-x+1/2,y+1/2",
+        "z+1/2,-y+1/2,x+1/2",
+        "z+1/2,x+1/2,-y+1/2",
+        "z+1/2,y+1/2,-x+1/2",
+        "z,-x,-y",
+        "z,-y,-x",
+        "z,x,y",
+        "z,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pn-3m"
+    },
+    "225": {
+      "fullSymbol": "F4/m-32/m",
+      "hallAliases": [
+        "-F 4 2 3"
+      ],
+      "nameAliases": [
+        "F4/m-32/m",
+        "Fm-3m"
+      ],
+      "number": 225,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,-z+1/2",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,-z+1/2,-y",
+        "-x+1/2,-z+1/2,y",
+        "-x+1/2,-z,-y+1/2",
+        "-x+1/2,-z,y+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,-z+1/2",
+        "-x+1/2,y,z+1/2",
+        "-x+1/2,z+1/2,-y",
+        "-x+1/2,z+1/2,y",
+        "-x+1/2,z,-y+1/2",
+        "-x+1/2,z,y+1/2",
+        "-x,-y+1/2,-z+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,-z+1/2,-y+1/2",
+        "-x,-z+1/2,y+1/2",
+        "-x,-z,-y",
+        "-x,-z,y",
+        "-x,y+1/2,-z+1/2",
+        "-x,y+1/2,z+1/2",
+        "-x,y,-z",
+        "-x,y,z",
+        "-x,z+1/2,-y+1/2",
+        "-x,z+1/2,y+1/2",
+        "-x,z,-y",
+        "-x,z,y",
+        "-y+1/2,-x+1/2,-z",
+        "-y+1/2,-x+1/2,z",
+        "-y+1/2,-x,-z+1/2",
+        "-y+1/2,-x,z+1/2",
+        "-y+1/2,-z+1/2,-x",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,-x+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,x+1/2,-z",
+        "-y+1/2,x+1/2,z",
+        "-y+1/2,x,-z+1/2",
+        "-y+1/2,x,z+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/2,z+1/2,x",
+        "-y+1/2,z,-x+1/2",
+        "-y+1/2,z,x+1/2",
+        "-y,-x+1/2,-z+1/2",
+        "-y,-x+1/2,z+1/2",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,-z+1/2,-x+1/2",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,x+1/2,-z+1/2",
+        "-y,x+1/2,z+1/2",
+        "-y,x,-z",
+        "-y,x,z",
+        "-y,z+1/2,-x+1/2",
+        "-y,z+1/2,x+1/2",
+        "-y,z,-x",
+        "-y,z,x",
+        "-z+1/2,-x+1/2,-y",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-x,-y+1/2",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,-y+1/2,-x",
+        "-z+1/2,-y+1/2,x",
+        "-z+1/2,-y,-x+1/2",
+        "-z+1/2,-y,x+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,x+1/2,y",
+        "-z+1/2,x,-y+1/2",
+        "-z+1/2,x,y+1/2",
+        "-z+1/2,y+1/2,-x",
+        "-z+1/2,y+1/2,x",
+        "-z+1/2,y,-x+1/2",
+        "-z+1/2,y,x+1/2",
+        "-z,-x+1/2,-y+1/2",
+        "-z,-x+1/2,y+1/2",
+        "-z,-x,-y",
+        "-z,-x,y",
+        "-z,-y+1/2,-x+1/2",
+        "-z,-y+1/2,x+1/2",
+        "-z,-y,-x",
+        "-z,-y,x",
+        "-z,x+1/2,-y+1/2",
+        "-z,x+1/2,y+1/2",
+        "-z,x,-y",
+        "-z,x,y",
+        "-z,y+1/2,-x+1/2",
+        "-z,y+1/2,x+1/2",
+        "-z,y,-x",
+        "-z,y,x",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-y,z+1/2",
+        "x+1/2,-z+1/2,-y",
+        "x+1/2,-z+1/2,y",
+        "x+1/2,-z,-y+1/2",
+        "x+1/2,-z,y+1/2",
+        "x+1/2,y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,-z+1/2",
+        "x+1/2,y,z+1/2",
+        "x+1/2,z+1/2,-y",
+        "x+1/2,z+1/2,y",
+        "x+1/2,z,-y+1/2",
+        "x+1/2,z,y+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y+1/2,z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,-z+1/2,-y+1/2",
+        "x,-z+1/2,y+1/2",
+        "x,-z,-y",
+        "x,-z,y",
+        "x,y+1/2,-z+1/2",
+        "x,y+1/2,z+1/2",
+        "x,y,-z",
+        "x,z+1/2,-y+1/2",
+        "x,z+1/2,y+1/2",
+        "x,z,-y",
+        "x,z,y",
+        "y+1/2,-x+1/2,-z",
+        "y+1/2,-x+1/2,z",
+        "y+1/2,-x,-z+1/2",
+        "y+1/2,-x,z+1/2",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,-z+1/2,x",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,-z,x+1/2",
+        "y+1/2,x+1/2,-z",
+        "y+1/2,x+1/2,z",
+        "y+1/2,x,-z+1/2",
+        "y+1/2,x,z+1/2",
+        "y+1/2,z+1/2,-x",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,-x+1/2",
+        "y+1/2,z,x+1/2",
+        "y,-x+1/2,-z+1/2",
+        "y,-x+1/2,z+1/2",
+        "y,-x,-z",
+        "y,-x,z",
+        "y,-z+1/2,-x+1/2",
+        "y,-z+1/2,x+1/2",
+        "y,-z,-x",
+        "y,-z,x",
+        "y,x+1/2,-z+1/2",
+        "y,x+1/2,z+1/2",
+        "y,x,-z",
+        "y,x,z",
+        "y,z+1/2,-x+1/2",
+        "y,z+1/2,x+1/2",
+        "y,z,-x",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x+1/2,y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,-x,y+1/2",
+        "z+1/2,-y+1/2,-x",
+        "z+1/2,-y+1/2,x",
+        "z+1/2,-y,-x+1/2",
+        "z+1/2,-y,x+1/2",
+        "z+1/2,x+1/2,-y",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,-y+1/2",
+        "z+1/2,x,y+1/2",
+        "z+1/2,y+1/2,-x",
+        "z+1/2,y+1/2,x",
+        "z+1/2,y,-x+1/2",
+        "z+1/2,y,x+1/2",
+        "z,-x+1/2,-y+1/2",
+        "z,-x+1/2,y+1/2",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,-y+1/2,-x+1/2",
+        "z,-y+1/2,x+1/2",
+        "z,-y,-x",
+        "z,-y,x",
+        "z,x+1/2,-y+1/2",
+        "z,x+1/2,y+1/2",
+        "z,x,-y",
+        "z,x,y",
+        "z,y+1/2,-x+1/2",
+        "z,y+1/2,x+1/2",
+        "z,y,-x",
+        "z,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fm-3m"
+    },
+    "226": {
+      "fullSymbol": "F4/m-32/c",
+      "hallAliases": [
+        "-F 4a 2 3"
+      ],
+      "nameAliases": [
+        "F4/m-32/c",
+        "Fm-3c"
+      ],
+      "number": 226,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z",
+        "-x+1,-y+1/2,z+1/2",
+        "-x+1,y+1,-z",
+        "-x+1,y+1/2,-z+1/2",
+        "-x+1,z+1/2,y",
+        "-x+1,z,y+1/2",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,-z+1/2",
+        "-x+1/2,-z+1,-y",
+        "-x+1/2,-z+1/2,-y+1/2",
+        "-x+1/2,y+1,-z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,z+1/2",
+        "-x+1/2,z+1/2,y+1/2",
+        "-x+1/2,z,-y",
+        "-x+1/2,z,y",
+        "-x+1/2,z-1/2,-y+1/2",
+        "-x,-y+1/2,-z+1/2",
+        "-x,-y,-z",
+        "-x,-z+1,-y+1/2",
+        "-x,-z+1/2,-y",
+        "-x,-z+1/2,y",
+        "-x,-z,y+1/2",
+        "-x,y+1/2,z+1/2",
+        "-x,y,z",
+        "-x,z,-y+1/2",
+        "-x,z-1/2,-y",
+        "-x-1/2,-z+1/2,y+1/2",
+        "-x-1/2,-z,y",
+        "-y+1,x+1/2,z",
+        "-y+1,x,z+1/2",
+        "-y+1,z+1/2,-x+1/2",
+        "-y+1,z,-x+1",
+        "-y+1/2,-x+1,-z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,-z+1/2,-x",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,-x+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y+1/2,x,-z",
+        "-y+1/2,x,z",
+        "-y+1/2,x-1/2,-z+1/2",
+        "-y+1/2,z+1/2,-x+1",
+        "-y+1/2,z,-x+1/2",
+        "-y+1/2,z,x-1/2",
+        "-y+1/2,z-1/2,x",
+        "-y,-x+1,-z+1/2",
+        "-y,-x+1/2,-z",
+        "-y,-x+1/2,z",
+        "-y,-x,z+1/2",
+        "-y,-z+1/2,-x+1/2",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,x,-z+1/2",
+        "-y,x-1/2,-z",
+        "-y,z,x",
+        "-y,z-1/2,x-1/2",
+        "-y-1/2,-x+1/2,z+1/2",
+        "-y-1/2,-x,z",
+        "-z+1,-x+1,y",
+        "-z+1,-x+1/2,y+1/2",
+        "-z+1,-y+1/2,-x",
+        "-z+1,-y,-x+1/2",
+        "-z+1,x+1,-y",
+        "-z+1,x+1/2,-y+1/2",
+        "-z+1,y+1,x+1/2",
+        "-z+1,y+1/2,x+1",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,-x+1/2,-y",
+        "-z+1/2,-x+1/2,y",
+        "-z+1/2,-x,-y+1/2",
+        "-z+1/2,-y+1/2,-x+1/2",
+        "-z+1/2,-y+1/2,x-1/2",
+        "-z+1/2,-y,-x",
+        "-z+1/2,-y,x",
+        "-z+1/2,x+1,-y+1/2",
+        "-z+1/2,x+1/2,-y",
+        "-z+1/2,x+1/2,y",
+        "-z+1/2,x,y+1/2",
+        "-z+1/2,y+1,x+1",
+        "-z+1/2,y+1/2,-x-1/2",
+        "-z+1/2,y+1/2,x+1/2",
+        "-z+1/2,y,-x",
+        "-z,-x+1/2,-y+1/2",
+        "-z,-x,-y",
+        "-z,-y+1/2,x",
+        "-z,-y,x-1/2",
+        "-z,x+1/2,y+1/2",
+        "-z,x,y",
+        "-z,y+1/2,-x",
+        "-z,y,-x-1/2",
+        "x+1,z+1/2,-y",
+        "x+1,z,-y+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-z+1,y",
+        "x+1/2,-z+1/2,y+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/2,z+1/2,-y+1/2",
+        "x+1/2,z,-y",
+        "x+1/2,z,y",
+        "x+1/2,z-1/2,y+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,-y-1/2,z+1/2",
+        "x,-z+1,y+1/2",
+        "x,-z+1/2,-y",
+        "x,-z+1/2,y",
+        "x,-z,-y+1/2",
+        "x,y+1/2,z+1/2",
+        "x,y,-z",
+        "x,y-1/2,-z+1/2",
+        "x,z,y+1/2",
+        "x,z-1/2,y",
+        "x-1/2,-y,z+1/2",
+        "x-1/2,-y-1/2,z",
+        "x-1/2,-z+1/2,-y+1/2",
+        "x-1/2,-z,-y",
+        "x-1/2,y,-z+1/2",
+        "x-1/2,y-1/2,-z",
+        "y+1,x+1/2,-z",
+        "y+1,x,-z+1/2",
+        "y+1/2,-x+1,z",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,-z+1,-x+1/2",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,x+1/2,-z+1/2",
+        "y+1/2,x,-z",
+        "y+1/2,x,z",
+        "y+1/2,x-1/2,z+1/2",
+        "y+1/2,z+1/2,-x",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,-x+1/2",
+        "y+1/2,z,x+1/2",
+        "y,-x+1,z+1/2",
+        "y,-x+1/2,-z",
+        "y,-x+1/2,z",
+        "y,-x,-z+1/2",
+        "y,-z+1,-x+1",
+        "y,-z+1/2,-x+1/2",
+        "y,-z+1/2,x-1/2",
+        "y,-z,x",
+        "y,x,z+1/2",
+        "y,x-1/2,z",
+        "y,z+1/2,-x+1/2",
+        "y,z+1/2,x+1/2",
+        "y,z,-x",
+        "y,z,x",
+        "y-1/2,-x+1/2,-z+1/2",
+        "y-1/2,-x,-z",
+        "y-1/2,-z+1/2,x",
+        "y-1/2,-z,x-1/2",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,-y+1/2,x+1/2",
+        "z+1/2,-y,x+1",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/2,y+1/2,-x+1/2",
+        "z+1/2,y,-x+1",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,-x-1/2,y+1/2",
+        "z,-y+1/2,x+1",
+        "z,-y,-x-1/2",
+        "z,-y,x+1/2",
+        "z,-y-1/2,-x",
+        "z,x+1/2,y+1/2",
+        "z,x,-y",
+        "z,x,y",
+        "z,x-1/2,-y+1/2",
+        "z,y+1/2,-x+1",
+        "z,y+1/2,x",
+        "z,y,-x+1/2",
+        "z,y,x+1/2",
+        "z-1/2,-x,y+1/2",
+        "z-1/2,-x-1/2,y",
+        "z-1/2,-y,-x",
+        "z-1/2,-y-1/2,-x-1/2",
+        "z-1/2,x,-y+1/2",
+        "z-1/2,x-1/2,-y",
+        "z-1/2,y+1/2,x+1/2",
+        "z-1/2,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fm-3c"
+    },
+    "227": {
+      "fullSymbol": "F4_1/d-32/m",
+      "hallAliases": [
+        "F 4d 2 3 -1d"
+      ],
+      "nameAliases": [
+        "F4_1/d-32/m",
+        "Fd-3m",
+        "Fd-3m:1"
+      ],
+      "number": 227,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,z+1",
+        "-x+1/2,-z+1/2,y",
+        "-x+1/2,-z,y+1/2",
+        "-x+1/2,y+1,-z+1/2",
+        "-x+1/2,y+1/2,-z+1",
+        "-x+1/4,-y+1/4,-z+1/4",
+        "-x+1/4,-y+3/4,-z+3/4",
+        "-x+1/4,y+1/4,z+1/4",
+        "-x+1/4,y+3/4,z+3/4",
+        "-x+1/4,z+1/4,y+1/4",
+        "-x+1/4,z+3/4,y+3/4",
+        "-x+3/4,-y+1/4,-z+3/4",
+        "-x+3/4,-y+3/4,-z+1/4",
+        "-x+3/4,-z+1/4,-y+3/4",
+        "-x+3/4,-z+3/4,-y+5/4",
+        "-x+3/4,y+1/4,z+3/4",
+        "-x+3/4,y+3/4,z+1/4",
+        "-x+3/4,z+1/4,y+3/4",
+        "-x+3/4,z+3/4,y+1/4",
+        "-x+5/4,-z+1/4,-y+5/4",
+        "-x+5/4,-z+3/4,-y+3/4",
+        "-x,-y+1,z+1",
+        "-x,-y+1/2,z+1/2",
+        "-x,-z+1/2,y+1/2",
+        "-x,-z,y",
+        "-x,y+1,-z+1",
+        "-x,y+1/2,-z+1/2",
+        "-x,z+1/2,-y-1/2",
+        "-x,z,-y",
+        "-x-1/2,z+1/2,-y",
+        "-x-1/2,z,-y-1/2",
+        "-y+1,z+1,-x",
+        "-y+1,z+1/2,-x+1/2",
+        "-y+1/2,-x+1/2,z",
+        "-y+1/2,-x,z+1/2",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1,-x+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/4,-z+1/4,-x+1/4",
+        "-y+1/4,-z+3/4,-x+3/4",
+        "-y+1/4,x+1/4,z+1/4",
+        "-y+1/4,x+3/4,z+3/4",
+        "-y+1/4,z+1/4,x+1/4",
+        "-y+1/4,z+3/4,x-1/4",
+        "-y+3/4,-x+1/4,-z+3/4",
+        "-y+3/4,-x+3/4,-z+5/4",
+        "-y+3/4,-z+1/4,-x+3/4",
+        "-y+3/4,-z+3/4,-x+1/4",
+        "-y+3/4,x+1/4,z+3/4",
+        "-y+3/4,x+3/4,z+1/4",
+        "-y+5/4,-x+1/4,-z+5/4",
+        "-y+5/4,-x+3/4,-z+3/4",
+        "-y,-x+1/2,z+1/2",
+        "-y,-x,z",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,x+1/2,-z-1/2",
+        "-y,x,-z",
+        "-y-1/2,x+1/2,-z",
+        "-y-1/2,x,-z-1/2",
+        "-y-1/4,z+1/4,x-1/4",
+        "-y-1/4,z+3/4,x+1/4",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,-x+1/2,y+1",
+        "-z+1/2,-y,x-1/2",
+        "-z+1/2,-y-1/2,x",
+        "-z+1/2,x+1,-y+1/2",
+        "-z+1/2,x+1/2,-y+1",
+        "-z+1/2,y,-x-1/2",
+        "-z+1/2,y-1/2,-x",
+        "-z+1/4,-x+1/4,-y+1/4",
+        "-z+1/4,-x+3/4,-y+3/4",
+        "-z+1/4,-y+1/4,-x+1/4",
+        "-z+1/4,-y+3/4,-x+3/4",
+        "-z+1/4,x+1/4,y+1/4",
+        "-z+1/4,x+3/4,y+3/4",
+        "-z+3/4,-x+1/4,-y+3/4",
+        "-z+3/4,-x+3/4,-y+1/4",
+        "-z+3/4,-y+1/4,-x+3/4",
+        "-z+3/4,-y+3/4,-x+1/4",
+        "-z+3/4,x+1/4,y+3/4",
+        "-z+3/4,x+3/4,y+1/4",
+        "-z+3/4,y+3/4,x+1/4",
+        "-z+3/4,y+5/4,x+3/4",
+        "-z+5/4,y+3/4,x+3/4",
+        "-z+5/4,y+5/4,x+1/4",
+        "-z,-x+1,y+1",
+        "-z,-x+1/2,y+1/2",
+        "-z,-y,x",
+        "-z,-y-1/2,x-1/2",
+        "-z,x+1,-y+1",
+        "-z,x+1/2,-y+1/2",
+        "-z,y,-x",
+        "-z,y-1/2,-x-1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-z+1/2,-y",
+        "x+1/2,-z,-y+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/4,-y+1/4,z+1/4",
+        "x+1/4,-y-1/4,z-1/4",
+        "x+1/4,y+1/4,-z+1/4",
+        "x+1/4,y-1/4,-z-1/4",
+        "x+1/4,z+1/4,-y+1/4",
+        "x+1/4,z+3/4,-y+3/4",
+        "x+3/4,-y+1/4,z-1/4",
+        "x+3/4,-y-1/4,z+1/4",
+        "x+3/4,-z+1/4,y+3/4",
+        "x+3/4,-z+3/4,y+5/4",
+        "x+3/4,y+1/4,-z-1/4",
+        "x+3/4,y-1/4,-z+1/4",
+        "x+3/4,z+1/4,-y+3/4",
+        "x+3/4,z+3/4,-y+1/4",
+        "x+5/4,-z+1/4,y+5/4",
+        "x+5/4,-z+3/4,y+3/4",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,-z+1/2,-y+1/2",
+        "x,-z,-y",
+        "x,y+1/2,z+1/2",
+        "x,z+1/2,y-1/2",
+        "x,z,y",
+        "x-1/2,z+1/2,y",
+        "x-1/2,z,y-1/2",
+        "y+1,-z+1/2,-x+1/2",
+        "y+1,-z,-x+1",
+        "y+1/2,-x+1/2,-z",
+        "y+1/2,-x,-z+1/2",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y+1/4,-z+1/4,x+1/4",
+        "y+1/4,-z-1/4,x+3/4",
+        "y+1/4,x+1/4,-z+1/4",
+        "y+1/4,x+3/4,-z+3/4",
+        "y+1/4,z+1/4,-x+1/4",
+        "y+1/4,z+3/4,-x+3/4",
+        "y+3/4,-x+1/4,z+3/4",
+        "y+3/4,-x+3/4,z+5/4",
+        "y+3/4,x+1/4,-z+3/4",
+        "y+3/4,x+3/4,-z+1/4",
+        "y+3/4,z+1/4,-x+3/4",
+        "y+3/4,z+3/4,-x+1/4",
+        "y+5/4,-x+1/4,z+5/4",
+        "y+5/4,-x+3/4,z+3/4",
+        "y,-x+1/2,-z+1/2",
+        "y,-x,-z",
+        "y,x+1/2,z-1/2",
+        "y,x,z",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "y-1/2,x+1/2,z",
+        "y-1/2,x,z-1/2",
+        "y-1/4,-z+1/4,x+3/4",
+        "y-1/4,-z-1/4,x+1/4",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/2,y+1/2,x",
+        "z+1/2,y,x+1/2",
+        "z+1/4,-x+1/4,y+1/4",
+        "z+1/4,-x-1/4,y-1/4",
+        "z+1/4,-y+3/4,x+3/4",
+        "z+1/4,-y+5/4,x+5/4",
+        "z+1/4,x+1/4,-y+1/4",
+        "z+1/4,x-1/4,-y-1/4",
+        "z+1/4,y+3/4,-x+3/4",
+        "z+1/4,y+5/4,-x+5/4",
+        "z+3/4,-x+1/4,y-1/4",
+        "z+3/4,-x-1/4,y+1/4",
+        "z+3/4,-y+3/4,x+5/4",
+        "z+3/4,-y+5/4,x+3/4",
+        "z+3/4,x+1/4,-y-1/4",
+        "z+3/4,x-1/4,-y+1/4",
+        "z+3/4,y+3/4,-x+5/4",
+        "z+3/4,y+5/4,-x+3/4",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,-y,-x",
+        "z,-y-1/2,-x+1/2",
+        "z,x+1/2,y+1/2",
+        "z,x,y",
+        "z,y+1/2,x+1/2",
+        "z,y,x",
+        "z-1/2,-y,-x+1/2",
+        "z-1/2,-y-1/2,-x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fd-3m"
+    },
+    "228": {
+      "fullSymbol": "F4_1/d-32/c",
+      "hallAliases": [
+        "F 4d 2 3 -1ad"
+      ],
+      "nameAliases": [
+        "F4_1/d-32/c",
+        "Fd-3c",
+        "Fd-3c:1"
+      ],
+      "number": 228,
+      "operations": [
+        "x,y,z",
+        "-x+1,-z+1/2,y",
+        "-x+1,-z,y+1/2",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,z+1",
+        "-x+1/2,-z+1/2,y+1/2",
+        "-x+1/2,-z,y",
+        "-x+1/2,y+1,-z+1/2",
+        "-x+1/2,y+1/2,-z+1",
+        "-x+1/2,z+1/2,-y-1/2",
+        "-x+1/2,z,-y",
+        "-x+1/4,z+1/4,y+1/4",
+        "-x+1/4,z+3/4,y+3/4",
+        "-x+3/4,-y+1/4,-z+1/4",
+        "-x+3/4,-y+3/4,-z+3/4",
+        "-x+3/4,-z+1/4,-y+3/4",
+        "-x+3/4,-z+3/4,-y+5/4",
+        "-x+3/4,y+1/4,z+1/4",
+        "-x+3/4,y+3/4,z+3/4",
+        "-x+3/4,z+1/4,y+3/4",
+        "-x+3/4,z+3/4,y+1/4",
+        "-x+5/4,-y+1/4,-z+3/4",
+        "-x+5/4,-y+3/4,-z+1/4",
+        "-x+5/4,-z+1/4,-y+5/4",
+        "-x+5/4,-z+3/4,-y+3/4",
+        "-x+5/4,y+1/4,z+3/4",
+        "-x+5/4,y+3/4,z+1/4",
+        "-x,-y+1,z+1",
+        "-x,-y+1/2,z+1/2",
+        "-x,y+1,-z+1",
+        "-x,y+1/2,-z+1/2",
+        "-x,z+1/2,-y",
+        "-x,z,-y-1/2",
+        "-y+1,-x+1/2,z",
+        "-y+1,-x,z+1/2",
+        "-y+1,z+1,-x",
+        "-y+1,z+1/2,-x+1/2",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,-x,z",
+        "-y+1/2,-z+1/2,x",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,x+1/2,-z-1/2",
+        "-y+1/2,x,-z",
+        "-y+1/2,z+1,-x+1/2",
+        "-y+1/2,z+1/2,-x",
+        "-y+1/4,x+1/4,z+1/4",
+        "-y+1/4,x+3/4,z+3/4",
+        "-y+1/4,z+1/4,x-1/4",
+        "-y+1/4,z+3/4,x+1/4",
+        "-y+3/4,-x+1/4,-z+3/4",
+        "-y+3/4,-x+3/4,-z+5/4",
+        "-y+3/4,-z+1/4,-x+1/4",
+        "-y+3/4,-z+3/4,-x+3/4",
+        "-y+3/4,x+1/4,z+3/4",
+        "-y+3/4,x+3/4,z+1/4",
+        "-y+3/4,z+1/4,x+1/4",
+        "-y+3/4,z+3/4,x-1/4",
+        "-y+5/4,-x+1/4,-z+5/4",
+        "-y+5/4,-x+3/4,-z+3/4",
+        "-y+5/4,-z+1/4,-x+3/4",
+        "-y+5/4,-z+3/4,-x+1/4",
+        "-y,-z+1/2,x+1/2",
+        "-y,-z,x",
+        "-y,x+1/2,-z",
+        "-y,x,-z-1/2",
+        "-z+1,-y,x-1/2",
+        "-z+1,-y-1/2,x",
+        "-z+1,y,-x-1/2",
+        "-z+1,y-1/2,-x",
+        "-z+1/2,-x+1,y+1/2",
+        "-z+1/2,-x+1/2,y+1",
+        "-z+1/2,-y,x",
+        "-z+1/2,-y-1/2,x-1/2",
+        "-z+1/2,x+1,-y+1/2",
+        "-z+1/2,x+1/2,-y+1",
+        "-z+1/2,y,-x",
+        "-z+1/2,y-1/2,-x-1/2",
+        "-z+1/4,-y+1/4,-x+1/4",
+        "-z+1/4,-y+3/4,-x+3/4",
+        "-z+3/4,-x+1/4,-y+1/4",
+        "-z+3/4,-x+3/4,-y+3/4",
+        "-z+3/4,-y+1/4,-x+3/4",
+        "-z+3/4,-y+3/4,-x+1/4",
+        "-z+3/4,x+1/4,y+1/4",
+        "-z+3/4,x+3/4,y+3/4",
+        "-z+3/4,y+3/4,x+1/4",
+        "-z+3/4,y+5/4,x+3/4",
+        "-z+5/4,-x+1/4,-y+3/4",
+        "-z+5/4,-x+3/4,-y+1/4",
+        "-z+5/4,x+1/4,y+3/4",
+        "-z+5/4,x+3/4,y+1/4",
+        "-z+5/4,y+3/4,x+3/4",
+        "-z+5/4,y+5/4,x+1/4",
+        "-z,-x+1,y+1",
+        "-z,-x+1/2,y+1/2",
+        "-z,x+1,-y+1",
+        "-z,x+1/2,-y+1/2",
+        "x+1,-z+1/2,-y",
+        "x+1,-z,-y+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-z+1/2,-y+1/2",
+        "x+1/2,-z,-y",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/2,z+1/2,y-1/2",
+        "x+1/2,z,y",
+        "x+1/4,z+1/4,-y+1/4",
+        "x+1/4,z+3/4,-y+3/4",
+        "x+3/4,-y+1/4,z+1/4",
+        "x+3/4,-y-1/4,z-1/4",
+        "x+3/4,-z+1/4,y+3/4",
+        "x+3/4,-z+3/4,y+5/4",
+        "x+3/4,y+1/4,-z+1/4",
+        "x+3/4,y-1/4,-z-1/4",
+        "x+3/4,z+1/4,-y+3/4",
+        "x+3/4,z+3/4,-y+1/4",
+        "x+5/4,-y+1/4,z-1/4",
+        "x+5/4,-y-1/4,z+1/4",
+        "x+5/4,-z+1/4,y+5/4",
+        "x+5/4,-z+3/4,y+3/4",
+        "x+5/4,y+1/4,-z-1/4",
+        "x+5/4,y-1/4,-z+1/4",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,y+1/2,z+1/2",
+        "x,z+1/2,y",
+        "x,z,y-1/2",
+        "y+1,-x+1/2,-z",
+        "y+1,-x,-z+1/2",
+        "y+1,-z+1/2,-x+1/2",
+        "y+1,-z,-x+1",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x,-z",
+        "y+1/2,-z+1/2,-x+1",
+        "y+1/2,-z,-x+1/2",
+        "y+1/2,x+1/2,z-1/2",
+        "y+1/2,x,z",
+        "y+1/2,z+1/2,x",
+        "y+1/2,z,x+1/2",
+        "y+1/4,-z+1/4,x+3/4",
+        "y+1/4,-z-1/4,x+1/4",
+        "y+1/4,x+1/4,-z+1/4",
+        "y+1/4,x+3/4,-z+3/4",
+        "y+3/4,-x+1/4,z+3/4",
+        "y+3/4,-x+3/4,z+5/4",
+        "y+3/4,-z+1/4,x+1/4",
+        "y+3/4,-z-1/4,x+3/4",
+        "y+3/4,x+1/4,-z+3/4",
+        "y+3/4,x+3/4,-z+1/4",
+        "y+3/4,z+1/4,-x+1/4",
+        "y+3/4,z+3/4,-x+3/4",
+        "y+5/4,-x+1/4,z+5/4",
+        "y+5/4,-x+3/4,z+3/4",
+        "y+5/4,z+1/4,-x+3/4",
+        "y+5/4,z+3/4,-x+1/4",
+        "y,x+1/2,z",
+        "y,x,z-1/2",
+        "y,z+1/2,x+1/2",
+        "y,z,x",
+        "z+1,y+1/2,x",
+        "z+1,y,x+1/2",
+        "z+1/2,-x+1/2,-y",
+        "z+1/2,-x,-y+1/2",
+        "z+1/2,-y,-x",
+        "z+1/2,-y-1/2,-x+1/2",
+        "z+1/2,x+1/2,y",
+        "z+1/2,x,y+1/2",
+        "z+1/2,y+1/2,x+1/2",
+        "z+1/2,y,x",
+        "z+1/4,-y+3/4,x+3/4",
+        "z+1/4,-y+5/4,x+5/4",
+        "z+1/4,y+3/4,-x+3/4",
+        "z+1/4,y+5/4,-x+5/4",
+        "z+3/4,-x+1/4,y+1/4",
+        "z+3/4,-x-1/4,y-1/4",
+        "z+3/4,-y+3/4,x+5/4",
+        "z+3/4,-y+5/4,x+3/4",
+        "z+3/4,x+1/4,-y+1/4",
+        "z+3/4,x-1/4,-y-1/4",
+        "z+3/4,y+3/4,-x+5/4",
+        "z+3/4,y+5/4,-x+3/4",
+        "z+5/4,-x+1/4,y-1/4",
+        "z+5/4,-x-1/4,y+1/4",
+        "z+5/4,x+1/4,-y-1/4",
+        "z+5/4,x-1/4,-y+1/4",
+        "z,-x+1/2,-y+1/2",
+        "z,-x,-y",
+        "z,-y,-x+1/2",
+        "z,-y-1/2,-x",
+        "z,x+1/2,y+1/2",
+        "z,x,y"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fd-3c"
+    },
+    "229": {
+      "fullSymbol": "I4/m-32/m",
+      "hallAliases": [
+        "-I 4 2 3"
+      ],
+      "nameAliases": [
+        "I4/m-32/m",
+        "Im-3m"
+      ],
+      "number": 229,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,-z+1/2,-y+1/2",
+        "-x+1/2,-z+1/2,y+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x+1/2,z+1/2,-y+1/2",
+        "-x+1/2,z+1/2,y+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,-z,-y",
+        "-x,-z,y",
+        "-x,y,-z",
+        "-x,y,z",
+        "-x,z,-y",
+        "-x,z,y",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,-x+1/2,z+1/2",
+        "-y+1/2,-z+1/2,-x+1/2",
+        "-y+1/2,-z+1/2,x+1/2",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y+1/2,z+1/2,-x+1/2",
+        "-y+1/2,z+1/2,x+1/2",
+        "-y,-x,-z",
+        "-y,-x,z",
+        "-y,-z,-x",
+        "-y,-z,x",
+        "-y,x,-z",
+        "-y,x,z",
+        "-y,z,-x",
+        "-y,z,x",
+        "-z+1/2,-x+1/2,-y+1/2",
+        "-z+1/2,-x+1/2,y+1/2",
+        "-z+1/2,-y+1/2,-x+1/2",
+        "-z+1/2,-y+1/2,x+1/2",
+        "-z+1/2,x+1/2,-y+1/2",
+        "-z+1/2,x+1/2,y+1/2",
+        "-z+1/2,y+1/2,-x+1/2",
+        "-z+1/2,y+1/2,x+1/2",
+        "-z,-x,-y",
+        "-z,-x,y",
+        "-z,-y,-x",
+        "-z,-y,x",
+        "-z,x,-y",
+        "-z,x,y",
+        "-z,y,-x",
+        "-z,y,x",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,-z+1/2,-y+1/2",
+        "x+1/2,-z+1/2,y+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/2,z+1/2,-y+1/2",
+        "x+1/2,z+1/2,y+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,-z,-y",
+        "x,-z,y",
+        "x,y,-z",
+        "x,z,-y",
+        "x,z,y",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,-z+1/2,-x+1/2",
+        "y+1/2,-z+1/2,x+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y+1/2,x+1/2,z+1/2",
+        "y+1/2,z+1/2,-x+1/2",
+        "y+1/2,z+1/2,x+1/2",
+        "y,-x,-z",
+        "y,-x,z",
+        "y,-z,-x",
+        "y,-z,x",
+        "y,x,-z",
+        "y,x,z",
+        "y,z,-x",
+        "y,z,x",
+        "z+1/2,-x+1/2,-y+1/2",
+        "z+1/2,-x+1/2,y+1/2",
+        "z+1/2,-y+1/2,-x+1/2",
+        "z+1/2,-y+1/2,x+1/2",
+        "z+1/2,x+1/2,-y+1/2",
+        "z+1/2,x+1/2,y+1/2",
+        "z+1/2,y+1/2,-x+1/2",
+        "z+1/2,y+1/2,x+1/2",
+        "z,-x,-y",
+        "z,-x,y",
+        "z,-y,-x",
+        "z,-y,x",
+        "z,x,-y",
+        "z,x,y",
+        "z,y,-x",
+        "z,y,x"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Im-3m"
+    },
+    "23": {
+      "fullSymbol": "I222",
+      "hallAliases": [
+        "I 2 2"
+      ],
+      "nameAliases": [
+        "I222"
+      ],
+      "number": 23,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I222"
+    },
+    "230": {
+      "fullSymbol": "I4_1/a-32/d",
+      "hallAliases": [
+        "-I 4bd 2c 3"
+      ],
+      "nameAliases": [
+        "I4_1/a-32/d",
+        "Ia-3d"
+      ],
+      "number": 230,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1/2,z+1",
+        "-x+1,y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,-z",
+        "-x+1/4,-z+1/4,-y+1/4",
+        "-x+1/4,-z-1/4,y-1/4",
+        "-x+1/4,z+1/4,-y-1/4",
+        "-x+1/4,z+3/4,y+1/4",
+        "-x+3/4,-z+3/4,-y+3/4",
+        "-x+3/4,z+5/4,y+3/4",
+        "-x,-y,-z",
+        "-x,y,z-1/2",
+        "-x-1/4,-z-3/4,y-3/4",
+        "-x-1/4,z-1/4,-y-3/4",
+        "-y+1,-z+1/2,x+1",
+        "-y+1/2,-z+1/2,-x+1/2",
+        "-y+1/2,-z,x+1/2",
+        "-y+1/2,z+1,-x+1",
+        "-y+1/4,-x+1/4,-z+1/4",
+        "-y+1/4,-x-1/4,z-1/4",
+        "-y+1/4,x+1/4,-z-1/4",
+        "-y+1/4,x+3/4,z+1/4",
+        "-y+3/4,-x+3/4,-z+3/4",
+        "-y+3/4,x+5/4,z+3/4",
+        "-y,-z,-x",
+        "-y,z+1/2,-x+1/2",
+        "-y,z,x+1/2",
+        "-y-1/2,z-1/2,x",
+        "-y-1/4,-x-3/4,z-3/4",
+        "-y-1/4,x-1/4,-z-3/4",
+        "-z+1,-x+1/2,y+1",
+        "-z+1,x+1/2,-y+1/2",
+        "-z+1/2,-x+1/2,-y+1/2",
+        "-z+1/2,-x,y+1/2",
+        "-z+1/2,x+1/2,y",
+        "-z+1/2,x,-y",
+        "-z+1/4,-y+1/4,-x+1/4",
+        "-z+3/4,-y+3/4,-x+3/4",
+        "-z+3/4,y+1/4,x+3/4",
+        "-z+5/4,y+3/4,x+5/4",
+        "-z,-x,-y",
+        "-z,x,y-1/2",
+        "-z-1/4,-y+1/4,x+1/4",
+        "-z-1/4,y-1/4,-x+1/4",
+        "-z-3/4,-y-1/4,x-1/4",
+        "-z-3/4,y-3/4,-x-1/4",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/4,-z+1/4,y+3/4",
+        "x+1/4,-z-1/4,-y+1/4",
+        "x+1/4,z+1/4,y+1/4",
+        "x+1/4,z+3/4,-y+3/4",
+        "x+3/4,-z+3/4,y+5/4",
+        "x+3/4,z+5/4,-y+5/4",
+        "x,-y+1/2,z+1/2",
+        "x,-y,-z+1/2",
+        "x,y+1/2,-z",
+        "x-1/2,-y,z",
+        "x-1/2,y,-z-1/2",
+        "x-1/4,-z-3/4,-y-1/4",
+        "x-1/4,z-1/4,y-1/4",
+        "y+1,-z+1,-x+1/2",
+        "y+1/2,-z+1/2,-x",
+        "y+1/2,-z,x",
+        "y+1/2,z+1/2,x+1/2",
+        "y+1/4,-x+1/4,z+3/4",
+        "y+1/4,-x-1/4,-z+1/4",
+        "y+1/4,x+1/4,z+1/4",
+        "y+1/4,x+3/4,-z+3/4",
+        "y+3/4,-x+3/4,z+5/4",
+        "y+3/4,x+5/4,-z+5/4",
+        "y,-z-1/2,x-1/2",
+        "y,z+1/2,-x",
+        "y,z,x",
+        "y-1/2,z,-x-1/2",
+        "y-1/4,-x-3/4,-z-1/4",
+        "y-1/4,x-1/4,z-1/4",
+        "z+1/2,-x+1/2,-y+1",
+        "z+1/2,x+1/2,y+1/2",
+        "z+1/4,y+1/4,x+1/4",
+        "z+3/4,-y+3/4,x+1/4",
+        "z+3/4,y+1/4,-x+1/4",
+        "z+5/4,-y+5/4,x+3/4",
+        "z+5/4,y+3/4,-x+3/4",
+        "z,-x+1/2,y+1/2",
+        "z,-x,-y+1/2",
+        "z,x+1/2,-y",
+        "z,x,y",
+        "z-1/2,-x,y",
+        "z-1/2,x,-y-1/2",
+        "z-1/4,-y+1/4,-x-1/4",
+        "z-1/4,y-1/4,x-1/4",
+        "z-3/4,-y-1/4,-x-3/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ia-3d"
+    },
+    "24": {
+      "fullSymbol": "I2_12_12_1",
+      "hallAliases": [
+        "I 2b 2c"
+      ],
+      "nameAliases": [
+        "I212121",
+        "I2_12_12_1"
+      ],
+      "number": 24,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,y+1,-z+1",
+        "-x,-y+1/2,z",
+        "-x,y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I2_12_12_1"
+    },
+    "25": {
+      "fullSymbol": "Pmm2",
+      "hallAliases": [
+        "P 2 -2"
+      ],
+      "nameAliases": [
+        "Pmm2"
+      ],
+      "number": 25,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pmm2"
+    },
+    "26": {
+      "fullSymbol": "Pmc2_1",
+      "hallAliases": [
+        "P 2c -2"
+      ],
+      "nameAliases": [
+        "Pmc21",
+        "Pmc2_1"
+      ],
+      "number": 26,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z+1/2",
+        "-x,y,z",
+        "x,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pmc2_1"
+    },
+    "27": {
+      "fullSymbol": "Pcc2",
+      "hallAliases": [
+        "P 2 -2c"
+      ],
+      "nameAliases": [
+        "Pcc2"
+      ],
+      "number": 27,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "x,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pcc2"
+    },
+    "28": {
+      "fullSymbol": "Pma2",
+      "hallAliases": [
+        "P 2 -2a"
+      ],
+      "nameAliases": [
+        "Pma2"
+      ],
+      "number": 28,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y,z",
+        "-x,-y,z",
+        "x+1/2,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pma2"
+    },
+    "29": {
+      "fullSymbol": "Pca2_1",
+      "hallAliases": [
+        "P 2c -2ac"
+      ],
+      "nameAliases": [
+        "Pca21",
+        "Pca2_1"
+      ],
+      "number": 29,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y,z+1/2",
+        "-x,-y,z+1/2",
+        "x+1/2,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pca2_1"
+    },
+    "3": {
+      "fullSymbol": "P121",
+      "hallAliases": [
+        "P 2y"
+      ],
+      "nameAliases": [
+        "P121",
+        "P2"
+      ],
+      "number": 3,
+      "operations": [
+        "x,y,z",
+        "-x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P121"
+    },
+    "30": {
+      "fullSymbol": "Pnc2",
+      "hallAliases": [
+        "P 2 -2bc"
+      ],
+      "nameAliases": [
+        "Pnc2"
+      ],
+      "number": 30,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y+1/2,z+1/2",
+        "x,-y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pnc2"
+    },
+    "31": {
+      "fullSymbol": "Pmn2_1",
+      "hallAliases": [
+        "P 2ac -2"
+      ],
+      "nameAliases": [
+        "Pmn21",
+        "Pmn2_1"
+      ],
+      "number": 31,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x,y,z",
+        "x+1/2,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pmn2_1"
+    },
+    "32": {
+      "fullSymbol": "Pba2",
+      "hallAliases": [
+        "P 2 -2ab"
+      ],
+      "nameAliases": [
+        "Pba2"
+      ],
+      "number": 32,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "x+1/2,-y+1/2,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pba2"
+    },
+    "33": {
+      "fullSymbol": "Pna2_1",
+      "hallAliases": [
+        "P 2c -2n"
+      ],
+      "nameAliases": [
+        "Pna21",
+        "Pna2_1"
+      ],
+      "number": 33,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z+1/2",
+        "x+1/2,-y+1/2,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pna2_1"
+    },
+    "34": {
+      "fullSymbol": "Pnn2",
+      "hallAliases": [
+        "P 2 -2n"
+      ],
+      "nameAliases": [
+        "Pnn2"
+      ],
+      "number": 34,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "x+1/2,-y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pnn2"
+    },
+    "35": {
+      "fullSymbol": "Cmm2",
+      "hallAliases": [
+        "C 2 -2"
+      ],
+      "nameAliases": [
+        "Cmm2"
+      ],
+      "number": 35,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,z",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Cmm2"
+    },
+    "36": {
+      "fullSymbol": "Cmc2_1",
+      "hallAliases": [
+        "C 2c -2"
+      ],
+      "nameAliases": [
+        "Cmc21",
+        "Cmc2_1"
+      ],
+      "number": 36,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z+1/2",
+        "-x,y,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,z",
+        "x,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Cmc2_1"
+    },
+    "37": {
+      "fullSymbol": "Ccc2",
+      "hallAliases": [
+        "C 2 -2c"
+      ],
+      "nameAliases": [
+        "Ccc2"
+      ],
+      "number": 37,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,z",
+        "x,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ccc2"
+    },
+    "38": {
+      "fullSymbol": "Amm2",
+      "hallAliases": [
+        "A 2 -2"
+      ],
+      "nameAliases": [
+        "Amm2"
+      ],
+      "number": 38,
+      "operations": [
+        "x,y,z",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y+1/2,z+1/2",
+        "-x,y,z",
+        "x,-y+1/2,z+1/2",
+        "x,-y,z",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Amm2"
+    },
+    "39": {
+      "fullSymbol": "Aem2",
+      "hallAliases": [
+        "A 2 -2b"
+      ],
+      "nameAliases": [
+        "Aem2"
+      ],
+      "number": 39,
+      "operations": [
+        "x,y,z",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y+1,z+1/2",
+        "-x,y+1/2,z",
+        "x,-y+1,z+1/2",
+        "x,-y+1/2,z",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Aem2"
+    },
+    "4": {
+      "fullSymbol": "P12_11",
+      "hallAliases": [
+        "P 2yb"
+      ],
+      "nameAliases": [
+        "P1211",
+        "P12_11",
+        "P2_1"
+      ],
+      "number": 4,
+      "operations": [
+        "x,y,z",
+        "-x,y+1/2,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P12_11"
+    },
+    "40": {
+      "fullSymbol": "Ama2",
+      "hallAliases": [
+        "A 2 -2a"
+      ],
+      "nameAliases": [
+        "Ama2"
+      ],
+      "number": 40,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x+1/2,y,z",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,-y,z",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ama2"
+    },
+    "41": {
+      "fullSymbol": "Aea2",
+      "hallAliases": [
+        "A 2 -2ab"
+      ],
+      "nameAliases": [
+        "Aea2"
+      ],
+      "number": 41,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1,z+1/2",
+        "-x+1/2,y+1/2,z",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "x+1/2,-y+1,z+1/2",
+        "x+1/2,-y+1/2,z",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Aea2"
+    },
+    "42": {
+      "fullSymbol": "Fmm2",
+      "hallAliases": [
+        "F 2 -2"
+      ],
+      "nameAliases": [
+        "Fmm2"
+      ],
+      "number": 42,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,z+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y+1/2,z+1/2",
+        "-x,y,z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,-y,z+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x,-y+1/2,z+1/2",
+        "x,-y,z",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fmm2"
+    },
+    "43": {
+      "fullSymbol": "Fdd2",
+      "hallAliases": [
+        "F 2 -2d"
+      ],
+      "nameAliases": [
+        "Fdd2"
+      ],
+      "number": 43,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/4,y+1/4,z+1/4",
+        "-x+1/4,y+3/4,z+3/4",
+        "-x+3/4,y+1/4,z+3/4",
+        "-x+3/4,y+3/4,z+1/4",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+3/4,-y+3/4,z+1/4",
+        "x+3/4,-y+5/4,z+3/4",
+        "x+5/4,-y+3/4,z+3/4",
+        "x+5/4,-y+5/4,z+1/4",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fdd2"
+    },
+    "44": {
+      "fullSymbol": "Imm2",
+      "hallAliases": [
+        "I 2 -2"
+      ],
+      "nameAliases": [
+        "Imm2"
+      ],
+      "number": 44,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Imm2"
+    },
+    "45": {
+      "fullSymbol": "Iba2",
+      "hallAliases": [
+        "I 2 -2c"
+      ],
+      "nameAliases": [
+        "Iba2"
+      ],
+      "number": 45,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,z+1",
+        "-x,-y,z",
+        "-x,y,z+1/2",
+        "x+1/2,-y+1/2,z+1",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Iba2"
+    },
+    "46": {
+      "fullSymbol": "Ima2",
+      "hallAliases": [
+        "I 2 -2a"
+      ],
+      "nameAliases": [
+        "Ima2"
+      ],
+      "number": 46,
+      "operations": [
+        "x,y,z",
+        "-x+1,y+1/2,z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y,z",
+        "-x,-y,z",
+        "x+1,-y+1/2,z+1/2",
+        "x+1/2,-y,z",
+        "x+1/2,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ima2"
+    },
+    "47": {
+      "fullSymbol": "P2/m2/m2/m",
+      "hallAliases": [
+        "-P 2 2"
+      ],
+      "nameAliases": [
+        "P2/m2/m2/m",
+        "Pmmm"
+      ],
+      "number": 47,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pmmm"
+    },
+    "48": {
+      "fullSymbol": "P2/n2/n2/n",
+      "hallAliases": [
+        "P 2 2 -1n"
+      ],
+      "nameAliases": [
+        "P2/n2/n2/n",
+        "Pnnn",
+        "Pnnn:1"
+      ],
+      "number": 48,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pnnn"
+    },
+    "49": {
+      "fullSymbol": "P2/c2/c2/m",
+      "hallAliases": [
+        "-P 2 2c"
+      ],
+      "nameAliases": [
+        "P2/c2/c2/m",
+        "Pccm"
+      ],
+      "number": 49,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-x,y,z-1/2",
+        "x,-y,-z+1/2",
+        "x,-y,z-1/2",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pccm"
+    },
+    "5": {
+      "fullSymbol": "C121",
+      "hallAliases": [
+        "C 2y"
+      ],
+      "nameAliases": [
+        "C121",
+        "C2"
+      ],
+      "number": 5,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,y,-z",
+        "x+1/2,y+1/2,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "C121"
+    },
+    "50": {
+      "fullSymbol": "P2/b2/a2/n",
+      "hallAliases": [
+        "P 2 2 -1ab"
+      ],
+      "nameAliases": [
+        "P2/b2/a2/n",
+        "Pban",
+        "Pban:1"
+      ],
+      "number": 50,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,-z",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pban"
+    },
+    "51": {
+      "fullSymbol": "P2_1/m2/m2/a",
+      "hallAliases": [
+        "-P 2a 2a"
+      ],
+      "nameAliases": [
+        "P2_1/m2/m2/a",
+        "Pmma"
+      ],
+      "number": 51,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z",
+        "-x,-y,-z",
+        "-x,y,-z",
+        "-x-1/2,y,z",
+        "x+1/2,-y,-z",
+        "x,-y,z",
+        "x-1/2,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pmma"
+    },
+    "52": {
+      "fullSymbol": "P2/n2_1/n2/a",
+      "hallAliases": [
+        "-P 2a 2bc"
+      ],
+      "nameAliases": [
+        "P2/n2_1/n2/a",
+        "Pnna"
+      ],
+      "number": 52,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,-z",
+        "-x,y-1/2,z-1/2",
+        "x,-y+1/2,-z+1/2",
+        "x-1/2,-y-1/2,z-1/2",
+        "x-1/2,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pnna"
+    },
+    "53": {
+      "fullSymbol": "P2/m2/n2_1/a",
+      "hallAliases": [
+        "-P 2ac 2"
+      ],
+      "nameAliases": [
+        "P2/m2/n2_1/a",
+        "Pmna"
+      ],
+      "number": 53,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y,-z+1/2",
+        "-x,-y,-z",
+        "-x,y,z",
+        "x,-y,-z",
+        "x-1/2,-y,z-1/2",
+        "x-1/2,y,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pmna"
+    },
+    "54": {
+      "fullSymbol": "P2_1/c2/c2/a",
+      "hallAliases": [
+        "-P 2a 2ac"
+      ],
+      "nameAliases": [
+        "P2_1/c2/c2/a",
+        "Pcca"
+      ],
+      "number": 54,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z",
+        "-x,-y,-z",
+        "-x,y,-z+1/2",
+        "-x-1/2,y,z-1/2",
+        "x+1/2,-y,-z+1/2",
+        "x,-y,z-1/2",
+        "x-1/2,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pcca"
+    },
+    "55": {
+      "fullSymbol": "P2_1/b2_1/a2/m",
+      "hallAliases": [
+        "-P 2 2ab"
+      ],
+      "nameAliases": [
+        "P2_1/b2_1/a2/m",
+        "Pbam"
+      ],
+      "number": 55,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x-1/2,y-1/2,z",
+        "x+1/2,-y+1/2,-z",
+        "x,y,-z",
+        "x-1/2,-y-1/2,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pbam"
+    },
+    "56": {
+      "fullSymbol": "P2_1/c2_1/c2/n",
+      "hallAliases": [
+        "-P 2ab 2ac"
+      ],
+      "nameAliases": [
+        "P2_1/c2_1/c2/n",
+        "Pccn"
+      ],
+      "number": 56,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x,-y,-z",
+        "-x,y+1/2,-z+1/2",
+        "-x-1/2,y,z-1/2",
+        "x+1/2,-y,-z+1/2",
+        "x,-y-1/2,z-1/2",
+        "x-1/2,y-1/2,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pccn"
+    },
+    "57": {
+      "fullSymbol": "P2/b2_1/c2_1/m",
+      "hallAliases": [
+        "-P 2c 2b"
+      ],
+      "nameAliases": [
+        "P2/b2_1/c2_1/m",
+        "Pbcm"
+      ],
+      "number": 57,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z+1/2",
+        "-x,y+1/2,-z+1/2",
+        "-x,y-1/2,z",
+        "x,-y+1/2,-z",
+        "x,-y-1/2,z-1/2",
+        "x,y,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pbcm"
+    },
+    "58": {
+      "fullSymbol": "P2_1/n2_1/n2/m",
+      "hallAliases": [
+        "-P 2 2n"
+      ],
+      "nameAliases": [
+        "P2_1/n2_1/n2/m",
+        "Pnnm"
+      ],
+      "number": 58,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x-1/2,y-1/2,z-1/2",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x,y,-z",
+        "x-1/2,-y-1/2,z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pnnm"
+    },
+    "59": {
+      "fullSymbol": "P2_1/m2_1/m2/n",
+      "hallAliases": [
+        "P 2 2ab -1ab"
+      ],
+      "nameAliases": [
+        "P2_1/m2_1/m2/n",
+        "Pmmn",
+        "Pmmn:1"
+      ],
+      "number": 59,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,y+1/2,-z",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pmmn"
+    },
+    "6": {
+      "fullSymbol": "P1m1",
+      "hallAliases": [
+        "P -2y"
+      ],
+      "nameAliases": [
+        "P1m1",
+        "Pm"
+      ],
+      "number": 6,
+      "operations": [
+        "x,y,z",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P1m1"
+    },
+    "60": {
+      "fullSymbol": "P2_1/b2/c2_1/n",
+      "hallAliases": [
+        "-P 2n 2ab"
+      ],
+      "nameAliases": [
+        "P2_1/b2/c2_1/n",
+        "Pbcn"
+      ],
+      "number": 60,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,y,-z+1/2",
+        "-x-1/2,y-1/2,z",
+        "x+1/2,-y+1/2,-z",
+        "x,-y,z-1/2",
+        "x-1/2,y-1/2,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pbcn"
+    },
+    "61": {
+      "fullSymbol": "P2_1/b2_1/c2_1/a",
+      "hallAliases": [
+        "-P 2ac 2ab"
+      ],
+      "nameAliases": [
+        "P2_1/b2_1/c2_1/a",
+        "Pbca"
+      ],
+      "number": 61,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x,-y,-z",
+        "-x,y+1/2,-z+1/2",
+        "-x-1/2,y-1/2,z",
+        "x+1/2,-y+1/2,-z",
+        "x,-y-1/2,z-1/2",
+        "x-1/2,y,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pbca"
+    },
+    "62": {
+      "fullSymbol": "P2_1/n2_1/m2_1/a",
+      "hallAliases": [
+        "-P 2ac 2n"
+      ],
+      "nameAliases": [
+        "P2_1/n2_1/m2_1/a",
+        "Pnma"
+      ],
+      "number": 62,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y,z+1/2",
+        "-x,-y,-z",
+        "-x,y+1/2,-z",
+        "-x-1/2,y-1/2,z-1/2",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x,-y-1/2,z",
+        "x-1/2,y,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Pnma"
+    },
+    "63": {
+      "fullSymbol": "C2/m2/c2_1/m",
+      "hallAliases": [
+        "-C 2c 2"
+      ],
+      "nameAliases": [
+        "C2/m2/c2_1/m",
+        "Cmcm"
+      ],
+      "number": 63,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,-z",
+        "-x,-y,z+1/2",
+        "-x,y,-z+1/2",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y+1/2,z-1/2",
+        "x+1/2,y+1/2,-z-1/2",
+        "x+1/2,y+1/2,z",
+        "x,-y,-z",
+        "x,-y,z-1/2",
+        "x,y,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Cmcm"
+    },
+    "64": {
+      "fullSymbol": "C2/m2/c2_1/e",
+      "hallAliases": [
+        "-C 2ac 2"
+      ],
+      "nameAliases": [
+        "C2/m2/c2_1/e",
+        "Cmce"
+      ],
+      "number": 64,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1/2,z+1/2",
+        "-x+1,y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,-z+1/2",
+        "-x,-y,-z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x,-y+1/2,z-1/2",
+        "x,-y,-z",
+        "x,y+1/2,-z-1/2",
+        "x-1/2,-y,z-1/2",
+        "x-1/2,y,-z-1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Cmce"
+    },
+    "65": {
+      "fullSymbol": "C2/m2/m2/m",
+      "hallAliases": [
+        "-C 2 2"
+      ],
+      "nameAliases": [
+        "C2/m2/m2/m",
+        "Cmmm"
+      ],
+      "number": 65,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Cmmm"
+    },
+    "66": {
+      "fullSymbol": "C2/c2/c2/m",
+      "hallAliases": [
+        "-C 2 2c"
+      ],
+      "nameAliases": [
+        "C2/c2/c2/m",
+        "Cccm"
+      ],
+      "number": 66,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z-1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-x,y,z-1/2",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,z-1/2",
+        "x+1/2,y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x,-y,-z+1/2",
+        "x,-y,z-1/2",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Cccm"
+    },
+    "67": {
+      "fullSymbol": "C2/m2/m2/e",
+      "hallAliases": [
+        "-C 2a 2"
+      ],
+      "nameAliases": [
+        "C2/m2/m2/e",
+        "Cmma",
+        "Cmme"
+      ],
+      "number": 67,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y,z",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,-z",
+        "-x,-y+1/2,z",
+        "-x,-y,-z",
+        "-x,y+1/2,-z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,z",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,-z",
+        "x,-y+1/2,z",
+        "x,-y,-z",
+        "x,y+1/2,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Cmme"
+    },
+    "68": {
+      "fullSymbol": "C2/c2/c2/e",
+      "hallAliases": [
+        "C 2 2 -1ac"
+      ],
+      "nameAliases": [
+        "C2/c2/c2/e",
+        "Ccce",
+        "Ccce:1"
+      ],
+      "number": 68,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1/2,-z+1/2",
+        "-x+1,y+1/2,z+1/2",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,-z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y,z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "x+1,-y+1/2,z+1/2",
+        "x+1,y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,z+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,-z+1/2",
+        "x,-y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ccce"
+    },
+    "69": {
+      "fullSymbol": "F2/m2/m2/m",
+      "hallAliases": [
+        "-F 2 2"
+      ],
+      "nameAliases": [
+        "F2/m2/m2/m",
+        "Fmmm"
+      ],
+      "number": 69,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,-z+1/2",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y+1/2,z",
+        "-x+1/2,y,-z+1/2",
+        "-x+1/2,y,z+1/2",
+        "-x,-y+1/2,-z+1/2",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y+1/2,z+1/2",
+        "-x,y,-z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,-y,z+1/2",
+        "x+1/2,y+1/2,-z",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,-z+1/2",
+        "x+1/2,y,z+1/2",
+        "x,-y+1/2,-z+1/2",
+        "x,-y+1/2,z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y+1/2,-z+1/2",
+        "x,y+1/2,z+1/2",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fmmm"
+    },
+    "7": {
+      "fullSymbol": "P1c1",
+      "hallAliases": [
+        "P -2yc"
+      ],
+      "nameAliases": [
+        "P1c1",
+        "Pc"
+      ],
+      "number": 7,
+      "operations": [
+        "x,y,z",
+        "x,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P1c1"
+    },
+    "70": {
+      "fullSymbol": "F2/d2/d2/d",
+      "hallAliases": [
+        "F 2 2 -1d"
+      ],
+      "nameAliases": [
+        "F2/d2/d2/d",
+        "Fddd",
+        "Fddd:1"
+      ],
+      "number": 70,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z",
+        "-x+1/2,-y,z+1/2",
+        "-x+1/2,y+1/2,-z",
+        "-x+1/2,y,-z+1/2",
+        "-x+1/4,-y+1/4,-z+1/4",
+        "-x+1/4,-y+3/4,-z+3/4",
+        "-x+1/4,y+1/4,z+1/4",
+        "-x+1/4,y+3/4,z+3/4",
+        "-x+3/4,-y+1/4,-z+3/4",
+        "-x+3/4,-y+3/4,-z+1/4",
+        "-x+3/4,y+1/4,z+3/4",
+        "-x+3/4,y+3/4,z+1/4",
+        "-x,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,-z",
+        "x+1/2,-y+1/2,-z",
+        "x+1/2,-y,-z+1/2",
+        "x+1/2,y+1/2,z",
+        "x+1/2,y,z+1/2",
+        "x+1/4,-y+1/4,z+1/4",
+        "x+1/4,-y+3/4,z+3/4",
+        "x+1/4,y+1/4,-z+1/4",
+        "x+1/4,y+3/4,-z+3/4",
+        "x+3/4,-y+1/4,z+3/4",
+        "x+3/4,-y+3/4,z+1/4",
+        "x+3/4,y+1/4,-z+3/4",
+        "x+3/4,y+3/4,-z+1/4",
+        "x,-y+1/2,-z+1/2",
+        "x,-y,-z",
+        "x,y+1/2,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Fddd"
+    },
+    "71": {
+      "fullSymbol": "I2/m2/m2/m",
+      "hallAliases": [
+        "-I 2 2"
+      ],
+      "nameAliases": [
+        "I2/m2/m2/m",
+        "Immm"
+      ],
+      "number": 71,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z",
+        "x,-y,z",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Immm"
+    },
+    "72": {
+      "fullSymbol": "I2/b2/a2/m",
+      "hallAliases": [
+        "-I 2 2c"
+      ],
+      "nameAliases": [
+        "I2/b2/a2/m",
+        "Ibam"
+      ],
+      "number": 72,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1",
+        "-x+1/2,y+1/2,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-x,y,-z+1/2",
+        "-x,y,z-1/2",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z+1/2",
+        "x,-y,z-1/2",
+        "x,y,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ibam"
+    },
+    "73": {
+      "fullSymbol": "I2_1/b2_1/c2_1/a",
+      "hallAliases": [
+        "-I 2b 2c"
+      ],
+      "nameAliases": [
+        "I2_1/b2_1/c2_1/a",
+        "Ibca"
+      ],
+      "number": 73,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1,-z+1",
+        "-x+1/2,y+1/2,z",
+        "-x,-y+1/2,z",
+        "-x,-y,-z",
+        "-x,y+1/2,-z+1/2",
+        "-x,y,z-1/2",
+        "x+1/2,-y+1/2,-z+1",
+        "x+1/2,-y,z",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/2,y,-z+1/2",
+        "x,-y,-z+1/2",
+        "x,-y-1/2,z-1/2",
+        "x,y-1/2,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Ibca"
+    },
+    "74": {
+      "fullSymbol": "I2_1/m2_1/m2_1/a",
+      "hallAliases": [
+        "-I 2b 2"
+      ],
+      "nameAliases": [
+        "I2_1/m2_1/m2_1/a",
+        "Imma"
+      ],
+      "number": 74,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1,z+1/2",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,y+1,-z+1/2",
+        "-x+1/2,y+1/2,z+1/2",
+        "-x,-y+1/2,z",
+        "-x,-y,-z",
+        "-x,y+1/2,-z",
+        "-x,y,z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,-y,z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x+1/2,y,-z+1/2",
+        "x,-y,-z",
+        "x,-y-1/2,z",
+        "x,y-1/2,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "Imma"
+    },
+    "75": {
+      "fullSymbol": "P4",
+      "hallAliases": [
+        "P 4"
+      ],
+      "nameAliases": [
+        "P4"
+      ],
+      "number": 75,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-y,x,z",
+        "y,-x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4"
+    },
+    "76": {
+      "fullSymbol": "P4_1",
+      "hallAliases": [
+        "P 4w"
+      ],
+      "nameAliases": [
+        "P41",
+        "P4_1"
+      ],
+      "number": 76,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z+1/2",
+        "-y,x,z+1/4",
+        "y,-x,z+3/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_1"
+    },
+    "77": {
+      "fullSymbol": "P4_2",
+      "hallAliases": [
+        "P 4c"
+      ],
+      "nameAliases": [
+        "P42",
+        "P4_2"
+      ],
+      "number": 77,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-y,x,z+1/2",
+        "y,-x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2"
+    },
+    "78": {
+      "fullSymbol": "P4_3",
+      "hallAliases": [
+        "P 4cw"
+      ],
+      "nameAliases": [
+        "P43",
+        "P4_3"
+      ],
+      "number": 78,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z+1/2",
+        "-y,x,z+3/4",
+        "y,-x,z+1/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_3"
+    },
+    "79": {
+      "fullSymbol": "I4",
+      "hallAliases": [
+        "I 4"
+      ],
+      "nameAliases": [
+        "I4"
+      ],
+      "number": 79,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,x,z",
+        "x+1/2,y+1/2,z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y,-x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4"
+    },
+    "8": {
+      "fullSymbol": "C1m1",
+      "hallAliases": [
+        "C -2y"
+      ],
+      "nameAliases": [
+        "C1m1",
+        "Cm"
+      ],
+      "number": 8,
+      "operations": [
+        "x,y,z",
+        "x+1/2,-y+1/2,z",
+        "x+1/2,y+1/2,z",
+        "x,-y,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "C1m1"
+    },
+    "80": {
+      "fullSymbol": "I4_1",
+      "hallAliases": [
+        "I 4bw"
+      ],
+      "nameAliases": [
+        "I41",
+        "I4_1"
+      ],
+      "number": 80,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z+1",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-y+1/2,x+1,z+3/4",
+        "-y,x+1/2,z+1/4",
+        "x+1/2,y+1/2,z+1/2",
+        "y+1,-x+1/2,z+5/4",
+        "y+1/2,-x,z+3/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_1"
+    },
+    "81": {
+      "fullSymbol": "P-4",
+      "hallAliases": [
+        "P -4"
+      ],
+      "nameAliases": [
+        "P-4"
+      ],
+      "number": 81,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-y,x,-z",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P-4"
+    },
+    "82": {
+      "fullSymbol": "I-4",
+      "hallAliases": [
+        "I -4"
+      ],
+      "nameAliases": [
+        "I-4"
+      ],
+      "number": 82,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y,x,-z",
+        "x+1/2,y+1/2,z+1/2",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I-4"
+    },
+    "83": {
+      "fullSymbol": "P4/m",
+      "hallAliases": [
+        "-P 4"
+      ],
+      "nameAliases": [
+        "P4/m"
+      ],
+      "number": 83,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-y,x,-z",
+        "-y,x,z",
+        "x,y,-z",
+        "y,-x,-z",
+        "y,-x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/m"
+    },
+    "84": {
+      "fullSymbol": "P4_2/m",
+      "hallAliases": [
+        "-P 4c"
+      ],
+      "nameAliases": [
+        "P42/m",
+        "P4_2/m"
+      ],
+      "number": 84,
+      "operations": [
+        "x,y,z",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-y,x,-z-1/2",
+        "-y,x,z+1/2",
+        "x,y,-z",
+        "y,-x,-z-1/2",
+        "y,-x,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/m"
+    },
+    "85": {
+      "fullSymbol": "P4/n",
+      "hallAliases": [
+        "P 4ab -1ab"
+      ],
+      "nameAliases": [
+        "P4/n",
+        "P4/n:1"
+      ],
+      "number": 85,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,z",
+        "-y,x,-z",
+        "x+1/2,y+1/2,-z",
+        "y+1/2,-x+1/2,z",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4/n"
+    },
+    "86": {
+      "fullSymbol": "P4_2/n",
+      "hallAliases": [
+        "P 4n -1n"
+      ],
+      "nameAliases": [
+        "P42/n",
+        "P42/n:1",
+        "P4_2/n"
+      ],
+      "number": 86,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,x,-z",
+        "x+1/2,y+1/2,-z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_2/n"
+    },
+    "87": {
+      "fullSymbol": "I4/m",
+      "hallAliases": [
+        "-I 4"
+      ],
+      "nameAliases": [
+        "I4/m"
+      ],
+      "number": 87,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,-z+1/2",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x,-y,-z",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,x,-z",
+        "-y,x,z",
+        "x+1/2,y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,y,-z",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y,-x,-z",
+        "y,-x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4/m"
+    },
+    "88": {
+      "fullSymbol": "I4_1/a",
+      "hallAliases": [
+        "I 4bw -1bw"
+      ],
+      "nameAliases": [
+        "I41/a",
+        "I41/a:1",
+        "I4_1/a"
+      ],
+      "number": 88,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z+1",
+        "-x+1/2,-y+1,-z+3/4",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x,-y+1/2,-z+1/4",
+        "-y+1/2,x+1,z+3/4",
+        "-y,x+1,-z",
+        "-y,x+1/2,z+1/4",
+        "-y-1/2,x+1/2,-z-1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,y+1/2,-z+1/4",
+        "x-1/2,y,-z-1/4",
+        "y+1,-x+1/2,z+5/4",
+        "y+1/2,-x+1/2,-z+1/2",
+        "y+1/2,-x,z+3/4",
+        "y,-x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_1/a"
+    },
+    "89": {
+      "fullSymbol": "P422",
+      "hallAliases": [
+        "P 4 2"
+      ],
+      "nameAliases": [
+        "P422"
+      ],
+      "number": 89,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y,-x,-z",
+        "-y,x,z",
+        "x,-y,-z",
+        "y,-x,z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P422"
+    },
+    "9": {
+      "fullSymbol": "C1c1",
+      "hallAliases": [
+        "C -2yc"
+      ],
+      "nameAliases": [
+        "C1c1",
+        "Cc"
+      ],
+      "number": 9,
+      "operations": [
+        "x,y,z",
+        "x+1/2,-y+1/2,z+1/2",
+        "x+1/2,y+1/2,z",
+        "x,-y,z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "C1c1"
+    },
+    "90": {
+      "fullSymbol": "P42_12",
+      "hallAliases": [
+        "P 4ab 2ab"
+      ],
+      "nameAliases": [
+        "P4212",
+        "P42_12"
+      ],
+      "number": 90,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,z",
+        "-y,-x,-z",
+        "x+1/2,-y+1/2,-z",
+        "y+1/2,-x+1/2,z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P42_12"
+    },
+    "91": {
+      "fullSymbol": "P4_122",
+      "hallAliases": [
+        "P 4w 2c"
+      ],
+      "nameAliases": [
+        "P4122",
+        "P4_122"
+      ],
+      "number": 91,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z+1/2",
+        "-x,y,-z",
+        "-y,-x,-z+1/4",
+        "-y,x,z+1/4",
+        "x,-y,-z+1/2",
+        "y,-x,z+3/4",
+        "y,x,-z+3/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_122"
+    },
+    "92": {
+      "fullSymbol": "P4_12_12",
+      "hallAliases": [
+        "P 4abw 2nw"
+      ],
+      "nameAliases": [
+        "P41212",
+        "P4_12_12"
+      ],
+      "number": 92,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z+1/4",
+        "-x,-y,z+1/2",
+        "-y+1/2,x+1/2,z+1/4",
+        "-y,-x,-z+1/2",
+        "x+1/2,-y+1/2,-z+3/4",
+        "y+1/2,-x+1/2,z+3/4",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_12_12"
+    },
+    "93": {
+      "fullSymbol": "P4_222",
+      "hallAliases": [
+        "P 4c 2"
+      ],
+      "nameAliases": [
+        "P4222",
+        "P4_222"
+      ],
+      "number": 93,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y,-x,-z+1/2",
+        "-y,x,z+1/2",
+        "x,-y,-z",
+        "y,-x,z+1/2",
+        "y,x,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_222"
+    },
+    "94": {
+      "fullSymbol": "P4_22_12",
+      "hallAliases": [
+        "P 4n 2n"
+      ],
+      "nameAliases": [
+        "P42212",
+        "P4_22_12"
+      ],
+      "number": 94,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,-z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "y+1/2,-x+1/2,z+1/2",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_22_12"
+    },
+    "95": {
+      "fullSymbol": "P4_322",
+      "hallAliases": [
+        "P 4cw 2c"
+      ],
+      "nameAliases": [
+        "P4322",
+        "P4_322"
+      ],
+      "number": 95,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z+1/2",
+        "-x,y,-z",
+        "-y,-x,-z+3/4",
+        "-y,x,z+3/4",
+        "x,-y,-z+1/2",
+        "y,-x,z+1/4",
+        "y,x,-z+1/4"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_322"
+    },
+    "96": {
+      "fullSymbol": "P4_32_12",
+      "hallAliases": [
+        "P 4nw 2abw"
+      ],
+      "nameAliases": [
+        "P43212",
+        "P4_32_12"
+      ],
+      "number": 96,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,y+1/2,-z+3/4",
+        "-x,-y,z+1/2",
+        "-y+1/2,x+1/2,z+3/4",
+        "-y,-x,-z+1/2",
+        "x+1/2,-y+1/2,-z+1/4",
+        "y+1/2,-x+1/2,z+1/4",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4_32_12"
+    },
+    "97": {
+      "fullSymbol": "I422",
+      "hallAliases": [
+        "I 4 2"
+      ],
+      "nameAliases": [
+        "I422"
+      ],
+      "number": 97,
+      "operations": [
+        "x,y,z",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y+1/2,-z+1/2",
+        "-x,-y,z",
+        "-x,y,-z",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,x+1/2,z+1/2",
+        "-y,-x,-z",
+        "-y,x,z",
+        "x+1/2,-y+1/2,-z+1/2",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y,-z",
+        "y+1/2,-x+1/2,z+1/2",
+        "y+1/2,x+1/2,-z+1/2",
+        "y,-x,z",
+        "y,x,-z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I422"
+    },
+    "98": {
+      "fullSymbol": "I4_122",
+      "hallAliases": [
+        "I 4bw 2bw"
+      ],
+      "nameAliases": [
+        "I4122",
+        "I4_122"
+      ],
+      "number": 98,
+      "operations": [
+        "x,y,z",
+        "-x+1,-y+1,z+1",
+        "-x+1,y+1/2,-z+5/4",
+        "-x+1/2,-y+1/2,z+1/2",
+        "-x+1/2,y,-z+3/4",
+        "-y+1/2,-x+1/2,-z+1/2",
+        "-y+1/2,x+1,z+3/4",
+        "-y,-x,-z",
+        "-y,x+1/2,z+1/4",
+        "x+1/2,-y+1,-z+3/4",
+        "x+1/2,y+1/2,z+1/2",
+        "x,-y+1/2,-z+1/4",
+        "y+1,-x+1/2,z+5/4",
+        "y+1,x+1,-z+1",
+        "y+1/2,-x,z+3/4",
+        "y+1/2,x+1/2,-z+1/2"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "I4_122"
+    },
+    "99": {
+      "fullSymbol": "P4mm",
+      "hallAliases": [
+        "P 4 -2"
+      ],
+      "nameAliases": [
+        "P4mm"
+      ],
+      "number": 99,
+      "operations": [
+        "x,y,z",
+        "-x,-y,z",
+        "-x,y,z",
+        "-y,-x,z",
+        "-y,x,z",
+        "x,-y,z",
+        "y,-x,z",
+        "y,x,z"
+      ],
+      "standardSetting": "SpaceGroup.from_int_number(number, hexagonal=True)",
+      "symbol": "P4mm"
+    }
+  },
+  "provenance": {
+    "acknowledgment": "pymatgen groups.py thanks Marc De Graef for sharing SpaceGroup data published in Structure of Materials.",
+    "api": "pymatgen.symmetry.groups.SpaceGroup.from_int_number; symmetry_ops; supplied symbol aliases only",
+    "documentationURL": "https://pymatgen.org/pymatgen.symmetry.html#pymatgen.symmetry.groups.SpaceGroup",
+    "generationScript": "scripts/generate-cif-space-groups.py",
+    "installedSourceSHA256": {
+      "groups.py": "1a50b0855b52961a2314c213cc7d23779cf88413848228e01c626e1dea48c7cf",
+      "symm_data.json": "57cb5c1c6cd50c4e7c56acbf00326427ed61ac897187473051e9ac6626193e5b",
+      "symm_ops.json": "f8a0f69a39e7f4c0330be3620e30c1304c70af90e0adc6959b40bf85f77a4af5"
+    },
+    "license": "MIT",
+    "licenseNotice": "The MIT License (MIT)\nCopyright (c) 2011-2012 MIT & The Regents of the University of California,\nthrough Lawrence Berkeley National Laboratory\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+    "pymatgenCoreVersion": "2026.5.18",
+    "pymatgenVersion": "2026.5.4",
+    "scope": "230 specified International numbers in the installed pymatgen default conventional settings. Rhombohedral groups use the hexagonal setting. Only aliases/Hall symbols with exactly matching operation sets are included. No atom-based symmetry detection.",
+    "sourceURL": "https://github.com/materialsproject/pymatgen-core/blob/v2026.5.18/src/pymatgen/symmetry/groups.py"
+  },
+  "schemaVersion": 1
+}

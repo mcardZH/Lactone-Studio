@@ -1,0 +1,14 @@
+.result-analysis-colorbar{position:absolute;box-sizing:border-box;background:transparent;color:#153846;font-family:system-ui,"Microsoft YaHei",sans-serif;z-index:15;user-select:none;touch-action:none}
+.analysis-colorbar-title,.analysis-colorbar-gradient,.analysis-colorbar-values{position:absolute;box-sizing:border-box}
+.analysis-colorbar-title>span,.analysis-colorbar-title button>span{display:block;white-space:pre}
+.analysis-colorbar-title button{display:block;border:0!important;border-radius:2px;background:transparent!important;padding:0!important;min-height:0!important;width:100%;font:inherit!important;line-height:inherit!important;color:inherit!important;text-align:left;cursor:grab;touch-action:none}
+.analysis-colorbar-title button:active{cursor:grabbing}
+.analysis-colorbar-values{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.analysis-colorbar-resize{position:absolute;right:-6px;width:16px;min-width:16px!important;height:20px;min-height:20px!important;padding:0!important;border:1px solid var(--ui-control-border)!important;border-radius:3px;background:#fffffff0;color:var(--ui-control-muted);cursor:ew-resize;touch-action:none;font:inherit!important;font-size:11px!important;opacity:0;pointer-events:none}
+.analysis-colorbar-resize-left{left:-6px;right:auto}
+.result-analysis-colorbar:hover .analysis-colorbar-resize,.result-analysis-colorbar:focus-within .analysis-colorbar-resize,.result-analysis-colorbar[data-editing=true] .analysis-colorbar-resize{opacity:1;pointer-events:auto}
+.analysis-colorbar-layout-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.analysis-colorbar-layout-controls label{display:flex;align-items:center;gap:5px;white-space:nowrap;font:inherit}
+.analysis-colorbar-layout-controls input[type=number]{width:4.5rem;min-width:0;font-variant-numeric:tabular-nums}
+.analysis-colorbar-layout-controls input[type=range]{width:100px;accent-color:var(--ui-control-accent)}
+.analysis-colorbar-layout-controls button{font:inherit;white-space:nowrap}

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "entryId": "ti-alpha-hcp",
+  "structure": {
+    "id": "ti-alpha-hcp",
+    "name": "Titanium alpha phase",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "cod-9017383-site-00001",
+        "element": "Ti",
+        "x": 2.220446049250313e-16,
+        "y": 1.703183294109396,
+        "z": 1.1715000000000002
+      },
+      {
+        "id": "cod-9017383-site-00002",
+        "element": "Ti",
+        "x": 1.4750000000000005,
+        "y": 0.851591647054698,
+        "z": 3.5145
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "来源为COD 9017383原始CIF；原子位置由pymatgen解析，未进行几何优化或晶胞变换。",
+      "电荷和自旋多重度未由该晶体结构来源给出，保持未知。",
+      "规范化原子稳定ID按解析后的晶胞原子顺序生成；CIF原始标签和来源编号保留在未改写的source.cif中。"
+    ],
+    "cell": {
+      "vectors": [
+        [
+          2.95,
+          0.0,
+          1.806354028742346e-16
+        ],
+        [
+          -1.4749999999999999,
+          2.5547749411640943,
+          1.806354028742346e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.686
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source": "COD:9017383",
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD 9017383 的原始CIF提供完整三维晶胞及晶体分数坐标；按CIF晶体结构格式语义使用三维周期。"
+      }
+    }
+  }
+}

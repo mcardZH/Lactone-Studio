@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "entryId": "zro2-monoclinic",
+  "structure": {
+    "id": "zro2-monoclinic",
+    "name": "单斜氧化锆",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "zro2-monoclinic:atom:1",
+        "sourceIndex": 1,
+        "element": "Zr",
+        "x": 1.400082229493217,
+        "y": 0.2058582,
+        "z": 0.8800773745502151
+      },
+      {
+        "id": "zro2-monoclinic:atom:2",
+        "sourceIndex": 1,
+        "element": "Zr",
+        "x": 1.4000822294932174,
+        "y": 2.3999418,
+        "z": 3.5387273745502155
+      },
+      {
+        "id": "zro2-monoclinic:atom:3",
+        "sourceIndex": 1,
+        "element": "Zr",
+        "x": 3.6837312399810647,
+        "y": 2.8116581999999997,
+        "z": 0.9524425766125114
+      },
+      {
+        "id": "zro2-monoclinic:atom:4",
+        "sourceIndex": 1,
+        "element": "Zr",
+        "x": 3.683731239981065,
+        "y": 5.0057418,
+        "z": 3.6110925766125117
+      },
+      {
+        "id": "zro2-monoclinic:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.3558669428632,
+        "y": 1.72868772,
+        "z": 1.775044206581391
+      },
+      {
+        "id": "zro2-monoclinic:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.35586694286319986,
+        "y": 0.87711228,
+        "z": 4.433694206581392
+      },
+      {
+        "id": "zro2-monoclinic:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.727946526611082,
+        "y": 4.334487719999999,
+        "z": 0.05747574458133553
+      },
+      {
+        "id": "zro2-monoclinic:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.727946526611082,
+        "y": 3.48291228,
+        "z": 2.716125744581336
+      },
+      {
+        "id": "zro2-monoclinic:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.285682535875637,
+        "y": 3.94466004,
+        "z": 2.176622090042762
+      },
+      {
+        "id": "zro2-monoclinic:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.285682535875637,
+        "y": 3.8727399599999996,
+        "z": 4.835272090042762
+      },
+      {
+        "id": "zro2-monoclinic:atom:11",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.798130933598644,
+        "y": 1.3388600399999995,
+        "z": -0.34410213888003555
+      },
+      {
+        "id": "zro2-monoclinic:atom:12",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.798130933598644,
+        "y": 1.2669399599999998,
+        "z": 2.314547861119964
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9016714; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "zro2-monoclinic:atom:1",
+      "zro2-monoclinic:atom:2",
+      "zro2-monoclinic:atom:3",
+      "zro2-monoclinic:atom:4",
+      "zro2-monoclinic:atom:5",
+      "zro2-monoclinic:atom:6",
+      "zro2-monoclinic:atom:7",
+      "zro2-monoclinic:atom:8",
+      "zro2-monoclinic:atom:9",
+      "zro2-monoclinic:atom:10",
+      "zro2-monoclinic:atom:11",
+      "zro2-monoclinic:atom:12"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.083813469474281,
+          0.0,
+          -0.8261300488372739
+        ],
+        [
+          8.380892001054759e-16,
+          5.2116,
+          3.1911846292181727e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.3173
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9016714 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

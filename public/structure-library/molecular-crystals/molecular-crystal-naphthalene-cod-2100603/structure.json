@@ -1,0 +1,373 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-naphthalene-cod-2100603",
+  "structure": {
+    "id": "molecular-crystal-naphthalene-cod-2100603",
+    "name": "萘",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:1",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 0.8794774823126934,
+        "y": 0.35103804,
+        "z": 3.301838287710811
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:2",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 2.467088279912168,
+        "y": 3.2959880399999997,
+        "z": 3.0405505544155633
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:3",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 5.813654042137029,
+        "y": 5.53886196,
+        "z": 0.8179393965419375
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:4",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 4.2260432445375535,
+        "y": 2.5939119600000002,
+        "z": 1.0792271298371854
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:5",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 1.208110240163175,
+        "y": 1.7787498,
+        "z": 1.5298868720076209
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:6",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 2.1384555220616868,
+        "y": 4.7236998,
+        "z": 4.8125019701187535
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:7",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 5.485021284286548,
+        "y": 4.1111502,
+        "z": 2.5898908122451276
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:8",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 4.554676002388035,
+        "y": 1.1662001999999998,
+        "z": -0.6927242858660052
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:9",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 0.919636271459392,
+        "y": 2.30353989,
+        "z": 7.665585953816327
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:10",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 2.42692949076547,
+        "y": 5.24848989,
+        "z": -1.3231971116899532
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:11",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 5.7734952529903305,
+        "y": 3.5863601099999998,
+        "z": -3.5458082695635795
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:12",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 4.266202033684252,
+        "y": 0.6414101099999999,
+        "z": 5.4429747959427015
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:13",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 6.493006891868675,
+        "y": 4.18477395,
+        "z": -1.4601651685064088
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:14",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 3.5466903948059074,
+        "y": 1.2398239500000001,
+        "z": 3.357331694885531
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:15",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 0.20012463258104693,
+        "y": 1.7051260499999998,
+        "z": 5.5799428527591575
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:16",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 3.1464411296438146,
+        "y": 4.65007605,
+        "z": 0.762445989367218
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:17",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 0.5809638163222358,
+        "y": 0.11073012,
+        "z": 2.4543087029931385
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:18",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 2.7656019459026253,
+        "y": 3.0556801200000003,
+        "z": 3.888080139133235
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:19",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 6.112167708127486,
+        "y": 5.7791698799999995,
+        "z": 1.6654689812596093
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:20",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 3.9275295785470967,
+        "y": 2.8342198799999996,
+        "z": 0.23169754511951268
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:21",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 0.7750646305312778,
+        "y": 0.9665325899999999,
+        "z": 1.3943817558364682
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:22",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 2.571501131693583,
+        "y": 3.91148259,
+        "z": 4.9480070862899055
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:23",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 5.918066893918445,
+        "y": 4.92336741,
+        "z": 2.72539592841628
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:24",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.121630392756138,
+        "y": 1.9784174099999998,
+        "z": -0.8282294020371579
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:25",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 0.31725443425891686,
+        "y": 0.61726152,
+        "z": 0.09164096223358026
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:26",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 3.029311327965944,
+        "y": 3.56221152,
+        "z": 6.250747879892794
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:27",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.375877090190805,
+        "y": 5.2726384799999995,
+        "z": 4.028136722019167
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:28",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 3.663820196483778,
+        "y": 2.32768848,
+        "z": -2.130970195640046
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:29",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 0.49930761172394944,
+        "y": 1.4830768200000002,
+        "z": 7.542190915245254
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:30",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 2.8472581505009122,
+        "y": 4.42802682,
+        "z": -1.1998020731188808
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:31",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 6.193823912725773,
+        "y": 4.40682318,
+        "z": -3.4224132309925066
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:32",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 3.8458733739488102,
+        "y": 1.4618731799999998,
+        "z": 5.319579757371629
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:33",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 6.624861582900335,
+        "y": 4.75845021,
+        "z": -2.1806895481266295
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:34",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 3.4148357037742483,
+        "y": 1.81350021,
+        "z": 4.0778560745057515
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:35",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 0.06826994154938734,
+        "y": 1.13144979,
+        "z": 6.300467232379377
+      },
+      {
+        "id": "molecular-crystal-naphthalene-cod-2100603:atom:36",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 3.2782958206754738,
+        "y": 4.07639979,
+        "z": 0.041921609746996324
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2100603; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-naphthalene-cod-2100603:atom:1",
+      "molecular-crystal-naphthalene-cod-2100603:atom:2",
+      "molecular-crystal-naphthalene-cod-2100603:atom:3",
+      "molecular-crystal-naphthalene-cod-2100603:atom:4",
+      "molecular-crystal-naphthalene-cod-2100603:atom:5",
+      "molecular-crystal-naphthalene-cod-2100603:atom:6",
+      "molecular-crystal-naphthalene-cod-2100603:atom:7",
+      "molecular-crystal-naphthalene-cod-2100603:atom:8",
+      "molecular-crystal-naphthalene-cod-2100603:atom:9",
+      "molecular-crystal-naphthalene-cod-2100603:atom:10",
+      "molecular-crystal-naphthalene-cod-2100603:atom:11",
+      "molecular-crystal-naphthalene-cod-2100603:atom:12",
+      "molecular-crystal-naphthalene-cod-2100603:atom:13",
+      "molecular-crystal-naphthalene-cod-2100603:atom:14",
+      "molecular-crystal-naphthalene-cod-2100603:atom:15",
+      "molecular-crystal-naphthalene-cod-2100603:atom:16",
+      "molecular-crystal-naphthalene-cod-2100603:atom:17",
+      "molecular-crystal-naphthalene-cod-2100603:atom:18",
+      "molecular-crystal-naphthalene-cod-2100603:atom:19",
+      "molecular-crystal-naphthalene-cod-2100603:atom:20",
+      "molecular-crystal-naphthalene-cod-2100603:atom:21",
+      "molecular-crystal-naphthalene-cod-2100603:atom:22",
+      "molecular-crystal-naphthalene-cod-2100603:atom:23",
+      "molecular-crystal-naphthalene-cod-2100603:atom:24",
+      "molecular-crystal-naphthalene-cod-2100603:atom:25",
+      "molecular-crystal-naphthalene-cod-2100603:atom:26",
+      "molecular-crystal-naphthalene-cod-2100603:atom:27",
+      "molecular-crystal-naphthalene-cod-2100603:atom:28",
+      "molecular-crystal-naphthalene-cod-2100603:atom:29",
+      "molecular-crystal-naphthalene-cod-2100603:atom:30",
+      "molecular-crystal-naphthalene-cod-2100603:atom:31",
+      "molecular-crystal-naphthalene-cod-2100603:atom:32",
+      "molecular-crystal-naphthalene-cod-2100603:atom:33",
+      "molecular-crystal-naphthalene-cod-2100603:atom:34",
+      "molecular-crystal-naphthalene-cod-2100603:atom:35",
+      "molecular-crystal-naphthalene-cod-2100603:atom:36"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          6.693131524449721,
+          0.0,
+          -4.445222315747252
+        ],
+        [
+          9.471681594330422e-16,
+          5.8899,
+          3.6065235911489976e-16
+        ],
+        [
+          0.0,
+          0.0,
+          8.565
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2100603 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

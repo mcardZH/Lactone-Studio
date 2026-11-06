@@ -1,0 +1,1381 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "silicon-diamond",
+      "category": "semiconductors",
+      "name": "硅",
+      "nameEn": "Silicon",
+      "formula": "Si",
+      "aliases": [
+        "Si",
+        "elemental silicon"
+      ],
+      "phase": "金刚石型立方结构；298.15 K",
+      "structurePath": "semiconductors/silicon-diamond/structure.json",
+      "sourcePath": "semiconductors/silicon-diamond/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011998",
+        "url": "https://www.crystallography.net/cod/9011998.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Hom, T.; Kiszenick, W.; Post, B. (1975) Accurate lattice constants from multiple reflection measurements. II. Lattice constants of germanium silicon, and diamond. Journal of Applied Crystallography, 8, 457–458. DOI: 10.1107/S0021889875010965.",
+        "version": "COD CIF revision 291877",
+        "conditions": "衍射温度为 298.15 K（25 °C）；原文测量锗、硅和金刚石的晶格常数。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1107/S0021889875010965"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d -3 m :1",
+        "number": 227
+      }
+    },
+    {
+      "id": "germanium-diamond",
+      "category": "semiconductors",
+      "name": "锗",
+      "nameEn": "Germanium",
+      "formula": "Ge",
+      "aliases": [
+        "Ge",
+        "elemental germanium"
+      ],
+      "phase": "金刚石型立方结构；298.15 K",
+      "structurePath": "semiconductors/germanium-diamond/structure.json",
+      "sourcePath": "semiconductors/germanium-diamond/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011999",
+        "url": "https://www.crystallography.net/cod/9011999.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Hom, T.; Kiszenick, W.; Post, B. (1975) Accurate lattice constants from multiple reflection measurements. II. Lattice constants of germanium silicon, and diamond. Journal of Applied Crystallography, 8, 457–458. DOI: 10.1107/S0021889875010965.",
+        "version": "COD CIF revision 291877",
+        "conditions": "衍射温度为 298.15 K（25 °C）；原文测量锗、硅和金刚石的晶格常数。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1107/S0021889875010965"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d -3 m :1",
+        "number": 227
+      }
+    },
+    {
+      "id": "gaas-zincblende",
+      "category": "semiconductors",
+      "name": "砷化镓",
+      "nameEn": "Gallium arsenide",
+      "formula": "GaAs",
+      "aliases": [
+        "GaAs",
+        "zinc blende"
+      ],
+      "phase": "闪锌矿（zinc blende），立方；汇编记录，温度未报告",
+      "structurePath": "semiconductors/gaas-zincblende/structure.json",
+      "sourcePath": "semiconductors/gaas-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008845",
+        "url": "https://www.crystallography.net/cod/9008845.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "citation": "Wyckoff, R. W. G. (1963) Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures, 1, 85–237.",
+        "version": "COD CIF revision 291735",
+        "conditions": "COD引用Wyckoff晶体结构汇编中的GaAs型结构；该条目未记录衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      }
+    },
+    {
+      "id": "gan-wurtzite",
+      "category": "semiconductors",
+      "name": "氮化镓",
+      "nameEn": "Gallium nitride",
+      "formula": "GaN",
+      "aliases": [
+        "GaN",
+        "wurtzite"
+      ],
+      "phase": "纤锌矿（wurtzite），六方；温度未报告",
+      "structurePath": "semiconductors/gan-wurtzite/structure.json",
+      "sourcePath": "semiconductors/gan-wurtzite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1010168",
+        "url": "https://www.crystallography.net/cod/1010168.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Juza, R; Hahn, H (1938) Ueber die Kristallstrukturen von Cu~3~ N, Ga N und In N. Zeitschrift fuer Anorganische und Allgemeine Chemie, 239, 282–287. DOI: 10.1002/zaac.19382390307.",
+        "version": "COD CIF revision 130149",
+        "conditions": "1938年晶体结构实验；COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1002/zaac.19382390307"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63 m c",
+        "number": 186
+      }
+    },
+    {
+      "id": "inp-zincblende",
+      "category": "semiconductors",
+      "name": "磷化铟",
+      "nameEn": "Indium phosphide",
+      "formula": "InP",
+      "aliases": [
+        "InP",
+        "zinc blende"
+      ],
+      "phase": "闪锌矿（zinc blende），立方；温度未报告",
+      "structurePath": "semiconductors/inp-zincblende/structure.json",
+      "sourcePath": "semiconductors/inp-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1010146",
+        "url": "https://www.crystallography.net/cod/1010146.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Iandelli, A (1940) Sulla struttura dei composti In P, In As e In Sb. Gazzetta Chimica Italiana, 70, 58–62.",
+        "version": "COD CIF revision 130149",
+        "conditions": "1940年In-P、In-As和In-Sb晶体结构实验；COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      }
+    },
+    {
+      "id": "zns-sphalerite",
+      "category": "semiconductors",
+      "name": "闪锌矿型硫化锌",
+      "nameEn": "Zinc sulfide, sphalerite",
+      "formula": "ZnS",
+      "aliases": [
+        "ZnS",
+        "sphalerite",
+        "zinc blende"
+      ],
+      "phase": "闪锌矿（sphalerite / zinc blende），立方；温度未报告",
+      "structurePath": "semiconductors/zns-sphalerite/structure.json",
+      "sourcePath": "semiconductors/zns-sphalerite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9000107",
+        "url": "https://www.crystallography.net/cod/9000107.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Skinner, B. J. (1961) Unit-cell edges of natural and synthetic sphalerites. American Mineralogist, 46, 1399–1411.",
+        "version": "COD CIF revision 291269",
+        "conditions": "Skinner关于天然及合成闪锌矿晶胞的实验记录；COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      }
+    },
+    {
+      "id": "zns-wurtzite-2h",
+      "category": "semiconductors",
+      "name": "纤锌矿型硫化锌",
+      "nameEn": "Zinc sulfide, wurtzite",
+      "formula": "ZnS",
+      "aliases": [
+        "ZnS",
+        "wurtzite",
+        "2H-ZnS"
+      ],
+      "phase": "纤锌矿（wurtzite，2H），六方；温度未报告",
+      "structurePath": "semiconductors/zns-wurtzite-2h/structure.json",
+      "sourcePath": "semiconductors/zns-wurtzite-2h/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1100044",
+        "url": "https://www.crystallography.net/cod/1100044.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Kisi, E. H.; Elcombe, M. M. (1989) u parameters for the wurtzite structure of ZnS and ZnO using powder neutron diffraction. Acta Crystallographica Section C, 45(12), 1867–1870. DOI: 10.1107/S0108270189004269.",
+        "version": "COD CIF revision 278161",
+        "conditions": "粉末中子衍射测得wurtzite ZnS；COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1107/S0108270189004269"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63 m c",
+        "number": 186
+      }
+    },
+    {
+      "id": "cds-sphalerite",
+      "category": "semiconductors",
+      "name": "闪锌矿型硫化镉",
+      "nameEn": "Cadmium sulfide, sphalerite",
+      "formula": "CdS",
+      "aliases": [
+        "CdS",
+        "sphalerite",
+        "beta-CdS"
+      ],
+      "phase": "闪锌矿（sphalerite），立方；温度未报告",
+      "structurePath": "semiconductors/cds-sphalerite/structure.json",
+      "sourcePath": "semiconductors/cds-sphalerite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011260",
+        "url": "https://www.crystallography.net/cod/1011260.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Ulrich, F.; Zachariasen, W. (1925) XIV. Über die Kristallstruktur des α- und β-CdS, sowie des Wurtzits. Zeitschrift fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie (-144,1977), 62(1-6), 260–273. DOI: 10.1524/zkri.1925.62.1.260.",
+        "version": "COD CIF revision 200075",
+        "conditions": "COD所引CdS多晶型晶体结构实验；该条目为立方结构，未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1524/zkri.1925.62.1.260"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      }
+    },
+    {
+      "id": "cds-wurtzite",
+      "category": "semiconductors",
+      "name": "纤锌矿型硫化镉",
+      "nameEn": "Cadmium sulfide, wurtzite",
+      "formula": "CdS",
+      "aliases": [
+        "CdS",
+        "wurtzite",
+        "alpha-CdS"
+      ],
+      "phase": "纤锌矿（wurtzite），六方；温度未报告",
+      "structurePath": "semiconductors/cds-wurtzite/structure.json",
+      "sourcePath": "semiconductors/cds-wurtzite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011054",
+        "url": "https://www.crystallography.net/cod/1011054.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Ulrich, F.; Zachariasen, W. (1925) XIV. Über die Kristallstruktur des α- und β-CdS, sowie des Wurtzits. Zeitschrift fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie (-144,1977), 62(1-6), 260–273. DOI: 10.1524/zkri.1925.62.1.260.",
+        "version": "COD CIF revision 200075",
+        "conditions": "COD所引CdS与wurtzite晶体结构实验；该条目为六方结构，未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1524/zkri.1925.62.1.260"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63 m c",
+        "number": 186
+      }
+    },
+    {
+      "id": "sic-3c",
+      "category": "semiconductors",
+      "name": "碳化硅 3C",
+      "nameEn": "Silicon carbide 3C",
+      "formula": "SiC",
+      "aliases": [
+        "SiC",
+        "3C-SiC",
+        "carborundum"
+      ],
+      "phase": "3C-SiC（闪锌矿型，立方）；温度未报告",
+      "structurePath": "semiconductors/sic-3c/structure.json",
+      "sourcePath": "semiconductors/sic-3c/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011031",
+        "url": "https://www.crystallography.net/cod/1011031.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Burdick, C L; Owen, E A (1918) The Atomic Structure of Carborundum Determined by X-Rays. Journal of the American Chemical Society, 40, 1749–1759. DOI: 10.1021/ja02245a001.",
+        "version": "COD CIF revision 278158",
+        "conditions": "原始X射线研究确定立方碳化硅结构；COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1021/ja02245a001"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      }
+    },
+    {
+      "id": "sic-6h",
+      "category": "semiconductors",
+      "name": "碳化硅 6H",
+      "nameEn": "Silicon carbide 6H",
+      "formula": "SiC",
+      "aliases": [
+        "SiC",
+        "6H-SiC",
+        "moissanite"
+      ],
+      "phase": "6H-SiC，纤锌矿型六方；温度未报告",
+      "structurePath": "semiconductors/sic-6h/structure.json",
+      "sourcePath": "semiconductors/sic-6h/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010158",
+        "url": "https://www.crystallography.net/cod/9010158.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Capitani, G. C.; Di Pierro, S.; Tempesta, G. (2007) The 6H-SiC structure model: Further refinement from SCXRD data from a terrestrial moissanite. American Mineralogist, 92, 403–407. DOI: 10.2138/am.2007.2346.",
+        "version": "COD CIF revision 303136",
+        "conditions": "来源为天然moissanite单晶X射线衍射进一步精修；COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.2138/am.2007.2346"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63 m c",
+        "number": 186
+      }
+    },
+    {
+      "id": "sn-alpha-diamond",
+      "category": "semiconductors",
+      "name": "灰锡（α-Sn）",
+      "nameEn": "gray tin",
+      "formula": "Sn",
+      "aliases": [
+        "Sn",
+        "alpha tin",
+        "gray tin"
+      ],
+      "phase": "金刚石型立方，空间群 Fd-3m (#227)",
+      "structurePath": "semiconductors/sn-alpha-diamond/structure.json",
+      "sourcePath": "semiconductors/sn-alpha-diamond/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008568",
+        "url": "https://www.crystallography.net/cod/9008568.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 282068",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Original source-type description: reference-structure; experimental provenance not explicit in this entry"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考条目标注金刚石型结构；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d -3 m :1",
+        "number": 227
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "al-as-zincblende",
+      "category": "semiconductors",
+      "name": "砷化铝",
+      "nameEn": "aluminium arsenide",
+      "formula": "AlAs",
+      "aliases": [
+        "AlAs",
+        "aluminum arsenide",
+        "aluminium arsenide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/al-as-zincblende/structure.json",
+      "sourcePath": "semiconductors/al-as-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1540257",
+        "url": "https://www.crystallography.net/cod/1540257.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 211196",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Leszczynski, M.; Ciepielewska, A.; Micovic, M.; Mendonca, C.A.C.; Ciepielewski, P.. Lattice constant of Al As. Crystal Research and Technology 1992 27, pp. 97-100",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Lattice constant of Al As Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录标题为AlAs晶格常数；未给出温度与DOI。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "al-sb-zincblende",
+      "category": "semiconductors",
+      "name": "锑化铝",
+      "nameEn": "aluminum antimonide",
+      "formula": "AlSb",
+      "aliases": [
+        "AlSb",
+        "aluminum antimonide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/al-sb-zincblende/structure.json",
+      "sourcePath": "semiconductors/al-sb-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1010152",
+        "url": "https://www.crystallography.net/cod/1010152.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Owen, E A; Preston, G D. The Atomic Structure of Two Intermetallic Compounds. Proceedings of the Physical Society, London 1924 36, pp. 341-348. DOI: 10.1088/1478-7814/36/1/339",
+        "doi": "10.1088/1478-7814/36/1/339",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The Atomic Structure of Two Intermetallic Compounds Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录引用Owen与Preston的晶体结构论文；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "bp-zincblende",
+      "category": "semiconductors",
+      "name": "磷化硼",
+      "nameEn": "boron phosphide",
+      "formula": "BP",
+      "aliases": [
+        "BP",
+        "boron phosphide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/bp-zincblende/structure.json",
+      "sourcePath": "semiconductors/bp-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1541726",
+        "url": "https://www.crystallography.net/cod/1541726.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 211196",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Popper, P.; Ingles, T.A.. Boron Phosphide, a III - V Compound of Zinc-Blende Structure. Nature (London) 1957 179, pp. 1075-1075",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Boron Phosphide, a III - V Compound of Zinc-Blende Structure Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录标题为Zinc-Blende结构的磷化硼；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cdse-wurtzite",
+      "category": "semiconductors",
+      "name": "硒化镉（wurtzite）",
+      "nameEn": "wurtzite CdSe",
+      "formula": "CdSe",
+      "aliases": [
+        "CdSe",
+        "cadmium selenide",
+        "wurtzite CdSe"
+      ],
+      "phase": "纤锌矿型，空间群 P63mc (#186)",
+      "structurePath": "semiconductors/cdse-wurtzite/structure.json",
+      "sourcePath": "semiconductors/cdse-wurtzite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9016056",
+        "url": "https://www.crystallography.net/cod/9016056.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 292100",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Freeman, D. K.; Mair, S. L.; Barnea, Z.. The structure and Bijvoet ratios of cadmium selenide. Acta Crystallographica, Section A 1977 33, pp. 355-359. DOI: 10.1107/S0567739477000977",
+        "doi": "10.1107/S0567739477000977",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：compoundsource=Synthetic；COD记录标题/样品说明：The structure and Bijvoet ratios of cadmium selenide Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录为1977年CdSe结构研究；与立方多晶型分开保留。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63 m c",
+        "number": 186
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "al-p-zincblende",
+      "category": "semiconductors",
+      "name": "磷化铝",
+      "nameEn": "aluminum phosphide",
+      "formula": "AlP",
+      "aliases": [
+        "AlP",
+        "aluminum phosphide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/al-p-zincblende/structure.json",
+      "sourcePath": "semiconductors/al-p-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011301",
+        "url": "https://www.crystallography.net/cod/1011301.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Passerini, L. Struttura cristallina di alcuni fosfuri di metalli bivalenti e trivalenti. Gazzetta Chimica Italiana 1928 58, pp. 655-664",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Struttura cristallina di alcuni fosfuri di metalli bivalenti e trivalenti"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录引用1928年金属磷化物晶体结构研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "bas-zincblende",
+      "category": "semiconductors",
+      "name": "砷化硼（参考模型）",
+      "nameEn": "boron arsenide",
+      "formula": "BAs",
+      "aliases": [
+        "BAs",
+        "boron arsenide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/bas-zincblende/structure.json",
+      "sourcePath": "semiconductors/bas-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008833",
+        "url": "https://www.crystallography.net/cod/9008833.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；温压及实验来源未明确。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "bes-zincblende",
+      "category": "semiconductors",
+      "name": "硫化铍（参考模型）",
+      "nameEn": "beryllium sulfide",
+      "formula": "BeS",
+      "aliases": [
+        "BeS",
+        "beryllium sulfide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/bes-zincblende/structure.json",
+      "sourcePath": "semiconductors/bes-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008836",
+        "url": "https://www.crystallography.net/cod/9008836.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "bese-zincblende",
+      "category": "semiconductors",
+      "name": "硒化铍（参考模型）",
+      "nameEn": "beryllium selenide",
+      "formula": "BeSe",
+      "aliases": [
+        "BeSe",
+        "beryllium selenide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/bese-zincblende/structure.json",
+      "sourcePath": "semiconductors/bese-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008837",
+        "url": "https://www.crystallography.net/cod/9008837.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "bete-zincblende",
+      "category": "semiconductors",
+      "name": "碲化铍（参考模型）",
+      "nameEn": "beryllium telluride",
+      "formula": "BeTe",
+      "aliases": [
+        "BeTe",
+        "beryllium telluride"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/bete-zincblende/structure.json",
+      "sourcePath": "semiconductors/bete-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008838",
+        "url": "https://www.crystallography.net/cod/9008838.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cdte-zincblende",
+      "category": "semiconductors",
+      "name": "碲化镉",
+      "nameEn": "cadmium telluride",
+      "formula": "CdTe",
+      "aliases": [
+        "CdTe",
+        "cadmium telluride"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/cdte-zincblende/structure.json",
+      "sourcePath": "semiconductors/cdte-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008840",
+        "url": "https://www.crystallography.net/cod/9008840.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未明确。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "gap-zincblende",
+      "category": "semiconductors",
+      "name": "磷化镓（参考模型）",
+      "nameEn": "gallium phosphide",
+      "formula": "GaP",
+      "aliases": [
+        "GaP",
+        "gallium phosphide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/gap-zincblende/structure.json",
+      "sourcePath": "semiconductors/gap-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008846",
+        "url": "https://www.crystallography.net/cod/9008846.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "gasb-zincblende",
+      "category": "semiconductors",
+      "name": "锑化镓（参考模型）",
+      "nameEn": "gallium antimonide",
+      "formula": "GaSb",
+      "aliases": [
+        "GaSb",
+        "gallium antimonide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/gasb-zincblende/structure.json",
+      "sourcePath": "semiconductors/gasb-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008847",
+        "url": "https://www.crystallography.net/cod/9008847.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "hgs-cinnabar",
+      "category": "semiconductors",
+      "name": "硫化汞（α-HgS，辰砂）",
+      "nameEn": "cinnabar",
+      "formula": "HgS",
+      "aliases": [
+        "HgS",
+        "alpha-HgS",
+        "cinnabar"
+      ],
+      "phase": "辰砂型，空间群 P3121 (#152)",
+      "structurePath": "semiconductors/hgs-cinnabar/structure.json",
+      "sourcePath": "semiconductors/hgs-cinnabar/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011369",
+        "url": "https://www.crystallography.net/cod/1011369.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Buckley, H E; Vernon, W S. The cyrstal-structures of the sulphides of mercury.. Mineralogical Magazine and Journal of the Mineralogical Society (1876- 1968) 1925 20, pp. 382-392. DOI: 10.1180/minmag.1925.020.110.02",
+        "doi": "10.1180/minmag.1925.020.110.02",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The cyrstal-structures of the sulphides of mercury."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1925年汞硫化物晶体结构研究；与立方metacinnabar候选分开。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 31 2 1",
+        "number": 152
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "hgs-metacinnabar",
+      "category": "semiconductors",
+      "name": "硫化汞（立方候选）",
+      "nameEn": "metacinnabar",
+      "formula": "HgS",
+      "aliases": [
+        "HgS",
+        "beta-HgS",
+        "metacinnabar"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/hgs-metacinnabar/structure.json",
+      "sourcePath": "semiconductors/hgs-metacinnabar/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008848",
+        "url": "https://www.crystallography.net/cod/9008848.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；温压及实验来源未明确。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "hgse-zincblende",
+      "category": "semiconductors",
+      "name": "硒化汞（参考模型）",
+      "nameEn": "tiemannite",
+      "formula": "HgSe",
+      "aliases": [
+        "HgSe",
+        "mercury selenide",
+        "tiemannite"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/hgse-zincblende/structure.json",
+      "sourcePath": "semiconductors/hgse-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9000047",
+        "url": "https://www.crystallography.net/cod/9000047.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291269",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Earley, J. W.. Description and syntheses of the selenide minerals. American Mineralogist 1950 35 5-6, pp. 337-364",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Description and syntheses of the selenide minerals"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD硒化物矿物结构记录；源标题未给温度。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "hgte-zincblende",
+      "category": "semiconductors",
+      "name": "碲化汞（参考模型）",
+      "nameEn": "mercury telluride",
+      "formula": "HgTe",
+      "aliases": [
+        "HgTe",
+        "mercury telluride"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/hgte-zincblende/structure.json",
+      "sourcePath": "semiconductors/hgte-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008850",
+        "url": "https://www.crystallography.net/cod/9008850.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未明确。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "inas-zincblende",
+      "category": "semiconductors",
+      "name": "砷化铟",
+      "nameEn": "indium arsenide",
+      "formula": "InAs",
+      "aliases": [
+        "InAs",
+        "indium arsenide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/inas-zincblende/structure.json",
+      "sourcePath": "semiconductors/inas-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1535065",
+        "url": "https://www.crystallography.net/cod/1535065.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Massidda, S.; Continenza, A.; Freeman, A.J.; de Pascale, T.M.; Meloni, F.; Serra, M.. Structural and electronic properties of narrow-band-gap semiconductors: In P, In As, and In Sb. Physical Review, Serie 3. B - Condensed Matter (18,1978-) 1990 41, pp. 12079-12085",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Structural and electronic properties of narrow-band-gap semiconductors: In P, In As, and In Sb"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用窄带隙半导体结构研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "znse-zincblende",
+      "category": "semiconductors",
+      "name": "硒化锌（参考模型）",
+      "nameEn": "zinc selenide",
+      "formula": "ZnSe",
+      "aliases": [
+        "ZnSe",
+        "zinc selenide"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/znse-zincblende/structure.json",
+      "sourcePath": "semiconductors/znse-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008857",
+        "url": "https://www.crystallography.net/cod/9008857.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未明确。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "znte-zincblende",
+      "category": "semiconductors",
+      "name": "碲化锌（参考模型）",
+      "nameEn": "zinc telluride",
+      "formula": "ZnTe",
+      "aliases": [
+        "ZnTe",
+        "zinc telluride"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "semiconductors/znte-zincblende/structure.json",
+      "sourcePath": "semiconductors/znte-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008858",
+        "url": "https://www.crystallography.net/cod/9008858.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；实验来源与温压条件未明确。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sic-14h",
+      "category": "semiconductors",
+      "name": "碳化硅（14H）",
+      "nameEn": "14H-SiC",
+      "formula": "SiC",
+      "aliases": [
+        "SiC",
+        "14H-SiC"
+      ],
+      "phase": "14H多型，空间群 P3m1 (#156)",
+      "structurePath": "semiconductors/sic-14h/structure.json",
+      "sourcePath": "semiconductors/sic-14h/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1541759",
+        "url": "https://www.crystallography.net/cod/1541759.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Yuasa, T.; Tomita, T.; Ohta, K.. The crystal structure of Si C 14H. Journal of the Physical Society of Japan 1966 21, pp. 2084-2084",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structure of Si C 14H"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录标题明确为14H-SiC晶体结构；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 3 m 1",
+        "number": 156
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sic-19h",
+      "category": "semiconductors",
+      "name": "碳化硅（19H）",
+      "nameEn": "19H-SiC",
+      "formula": "SiC",
+      "aliases": [
+        "SiC",
+        "19H-SiC"
+      ],
+      "phase": "19H多型，空间群 P3m1 (#156)",
+      "structurePath": "semiconductors/sic-19h/structure.json",
+      "sourcePath": "semiconductors/sic-19h/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1538515",
+        "url": "https://www.crystallography.net/cod/1538515.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Ramsdell, L.S.; Mitchell, R.S.. A new hexagonal polymorph of silicon carbide, 19H. American Mineralogist 1953 38, pp. 56-59",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：A new hexagonal polymorph of silicon carbide, 19H"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录标题明确为19H多型；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 3 m 1",
+        "number": 156
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

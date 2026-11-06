@@ -1,0 +1,985 @@
+{
+  "schemaVersion": 1,
+  "entryId": "anorthite-cod-1000034",
+  "structure": {
+    "id": "anorthite-cod-1000034",
+    "name": "钙长石",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "anorthite-cod-1000034:atom:1",
+        "sourceIndex": 33,
+        "element": "Ca",
+        "x": 1.3033183744064363,
+        "y": 12.65880275158645,
+        "z": -0.40809006344692067
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:2",
+        "sourceIndex": 33,
+        "element": "Ca",
+        "x": 5.393552487232879,
+        "y": 0.1745333712708587,
+        "z": 10.302585166598107
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:3",
+        "sourceIndex": 34,
+        "element": "Ca",
+        "x": 1.9585459482524394,
+        "y": 0.400400087033148,
+        "z": 6.715385270995482
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:4",
+        "sourceIndex": 34,
+        "element": "Ca",
+        "x": 4.738324913386876,
+        "y": 12.43293603582416,
+        "z": 3.179109832155703
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:5",
+        "sourceIndex": 35,
+        "element": "Ca",
+        "x": 5.336986417014769,
+        "y": 6.877384828239232,
+        "z": 4.5281962793678385
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:6",
+        "sourceIndex": 35,
+        "element": "Ca",
+        "x": 1.3598844446245457,
+        "y": 5.9559512946180755,
+        "z": 5.366298823783348
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:7",
+        "sourceIndex": 36,
+        "element": "Ca",
+        "x": 5.28135850247981,
+        "y": 6.483401409267511,
+        "z": -2.021533361118003
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:8",
+        "sourceIndex": 36,
+        "element": "Ca",
+        "x": 1.4155123591595054,
+        "y": 6.349934713589796,
+        "z": 11.91602846426919
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:9",
+        "sourceIndex": 38,
+        "element": "Al",
+        "x": -0.056840733905561165,
+        "y": 2.0661671157800265,
+        "z": 8.521559326434254
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:10",
+        "sourceIndex": 38,
+        "element": "Al",
+        "x": 6.753711595544876,
+        "y": 10.76716900707728,
+        "z": 1.3729357767169308
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:11",
+        "sourceIndex": 40,
+        "element": "Al",
+        "x": 3.228173095092819,
+        "y": 8.544435190598394,
+        "z": -0.6475961077181487
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:12",
+        "sourceIndex": 40,
+        "element": "Al",
+        "x": 3.4686977665464966,
+        "y": 4.288900932258913,
+        "z": 10.542091210869334
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:13",
+        "sourceIndex": 41,
+        "element": "Al",
+        "x": 6.753113620597427,
+        "y": 10.461735607353278,
+        "z": -2.44412182642888
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:14",
+        "sourceIndex": 41,
+        "element": "Al",
+        "x": -0.0562427589581113,
+        "y": 2.37160051550403,
+        "z": 12.338616929580065
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:15",
+        "sourceIndex": 43,
+        "element": "Al",
+        "x": 3.5234918091653946,
+        "y": 4.036084210638624,
+        "z": 6.767610271219356
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:16",
+        "sourceIndex": 43,
+        "element": "Al",
+        "x": 3.1733790524739205,
+        "y": 8.797251912218684,
+        "z": 3.1268848319318288
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:17",
+        "sourceIndex": 45,
+        "element": "Al",
+        "x": 4.958000375712095,
+        "y": 1.4501669818828757,
+        "z": -0.37210099099664573
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:18",
+        "sourceIndex": 45,
+        "element": "Al",
+        "x": 1.73887048592722,
+        "y": 11.383169140974433,
+        "z": 10.266596094147832
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:19",
+        "sourceIndex": 47,
+        "element": "Al",
+        "x": 1.0020469890317316,
+        "y": 7.841168371065815,
+        "z": 8.345606607842422
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:20",
+        "sourceIndex": 47,
+        "element": "Al",
+        "x": 5.694823872607584,
+        "y": 4.992167751791492,
+        "z": 1.548888495308764
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:21",
+        "sourceIndex": 50,
+        "element": "Al",
+        "x": 4.434908077046785,
+        "y": 11.189385765519287,
+        "z": 6.484694250851641
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:22",
+        "sourceIndex": 50,
+        "element": "Al",
+        "x": 2.26196278459253,
+        "y": 1.643950357338021,
+        "z": 3.409800852299543
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:23",
+        "sourceIndex": 52,
+        "element": "Al",
+        "x": 1.1144184648565933,
+        "y": 4.844584386378633,
+        "z": 1.6470765156313836
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:24",
+        "sourceIndex": 52,
+        "element": "Al",
+        "x": 5.582452396782721,
+        "y": 7.988751736478674,
+        "z": 8.247418587519801
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:25",
+        "sourceIndex": 37,
+        "element": "Si",
+        "x": -0.036549489101785515,
+        "y": 2.0430671107588836,
+        "z": 1.33470897938564
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:26",
+        "sourceIndex": 37,
+        "element": "Si",
+        "x": 6.733420350741101,
+        "y": 10.790269012098424,
+        "z": 8.559786123765544
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:27",
+        "sourceIndex": 39,
+        "element": "Si",
+        "x": 3.2919262100676594,
+        "y": 8.418668496594394,
+        "z": 6.292074816819196
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:28",
+        "sourceIndex": 39,
+        "element": "Si",
+        "x": 3.4049446515716557,
+        "y": 4.414667626262913,
+        "z": 3.602420286331989
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:29",
+        "sourceIndex": 42,
+        "element": "Si",
+        "x": -0.48875879002841505,
+        "y": 10.464302274577848,
+        "z": 8.09859339117309
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:30",
+        "sourceIndex": 42,
+        "element": "Si",
+        "x": 7.18562965166773,
+        "y": 2.3690338482794586,
+        "z": 1.7959017119780958
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:31",
+        "sourceIndex": 44,
+        "element": "Si",
+        "x": 3.496106739879065,
+        "y": 4.111800893763482,
+        "z": -0.467648201228237
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:32",
+        "sourceIndex": 44,
+        "element": "Si",
+        "x": 3.2007641217602503,
+        "y": 8.721535229093826,
+        "z": 10.362143304379423
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:33",
+        "sourceIndex": 46,
+        "element": "Si",
+        "x": 4.941493706418931,
+        "y": 1.3269669551034458,
+        "z": 6.908075637124662
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:34",
+        "sourceIndex": 46,
+        "element": "Si",
+        "x": 1.755377155220384,
+        "y": 11.506369167753862,
+        "z": 2.9864194660265224
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:35",
+        "sourceIndex": 48,
+        "element": "Si",
+        "x": 0.8622461837456895,
+        "y": 7.785985025737529,
+        "z": 1.0818481797012445
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:36",
+        "sourceIndex": 48,
+        "element": "Si",
+        "x": 5.8346246778936255,
+        "y": 5.047351097119779,
+        "z": 8.812646923449941
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:37",
+        "sourceIndex": 49,
+        "element": "Si",
+        "x": 4.378456079552396,
+        "y": 11.330552462870717,
+        "z": -0.3676716146559462
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:38",
+        "sourceIndex": 49,
+        "element": "Si",
+        "x": 2.3184147820869194,
+        "y": 1.5027836599865905,
+        "z": 10.262166717807132
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:39",
+        "sourceIndex": 51,
+        "element": "Si",
+        "x": 1.0473408184971715,
+        "y": 4.862551056950634,
+        "z": 8.644589958997297
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:40",
+        "sourceIndex": 51,
+        "element": "Si",
+        "x": 5.649530043142144,
+        "y": 7.970785065906673,
+        "z": 1.2499051441538884
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:41",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 0.11647225144403907,
+        "y": 1.5939003464588777,
+        "z": 13.925464745326005
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:42",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 6.580398610195276,
+        "y": 11.23943577639843,
+        "z": -4.030969642174821
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:43",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 7.1308128876418015,
+        "y": 1.6131503506431637,
+        "z": 3.256429263841588
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:44",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -0.43394202600248644,
+        "y": 11.220185772214144,
+        "z": 6.638065839309597
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:45",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.1753328666455443,
+        "y": 8.009285074275246,
+        "z": 4.7181871554398445
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:46",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.5215379949937704,
+        "y": 4.824051048582062,
+        "z": 5.17630794771134
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:47",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.391067724575283,
+        "y": 8.016985075948961,
+        "z": 11.834078359580653
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:48",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.305803137064032,
+        "y": 4.8163510469083475,
+        "z": -1.9395832564294677
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:49",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.5738613145327247,
+        "y": 12.721686098588448,
+        "z": -0.7130700112323654
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:50",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.1230095471065904,
+        "y": 0.1116500242688591,
+        "z": 10.60756511438355
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:51",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.557265300725969,
+        "y": 12.701152760791878,
+        "z": 6.301212615850401
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:52",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.139605560913346,
+        "y": 0.13218336206542997,
+        "z": 3.5932824873007845
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:53",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 0.21835596327675016,
+        "y": 6.2562513598929375,
+        "z": 8.398661233150666
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:54",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 6.478514898362565,
+        "y": 6.577084762964369,
+        "z": 1.495833870000519
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:55",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 0.2168312392982028,
+        "y": 6.329401375793225,
+        "z": 1.3564342601613322
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:56",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 6.4800396223411125,
+        "y": 6.503934747064083,
+        "z": 8.538060842989852
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:57",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 5.927611675608695,
+        "y": 1.306433617306874,
+        "z": -1.8417671675438085
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:58",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.7692591860306198,
+        "y": 11.526902505550433,
+        "z": 11.736262270694994
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:59",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 5.908829872370829,
+        "y": 1.2422669366925874,
+        "z": 5.610483558820915
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:60",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 0.7880409892684864,
+        "y": 11.59106918616472,
+        "z": 4.284011544330269
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:61",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 2.054470251423087,
+        "y": 7.644818328386098,
+        "z": 6.9616937654759425
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:62",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 4.642400610216229,
+        "y": 5.18851779447121,
+        "z": 2.932801337675243
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:63",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 1.703186257730662,
+        "y": 7.7436350165321,
+        "z": -0.3106712537549554
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:64",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 4.993684603908653,
+        "y": 5.089701106325207,
+        "z": 10.20516635690614
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:65",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 5.449889992263513,
+        "y": 10.977635719492142,
+        "z": -1.4736148893995789
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:66",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 1.246980869375802,
+        "y": 1.855700403365166,
+        "z": 11.368109992550764
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:67",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 5.406667940770182,
+        "y": 10.931435709449854,
+        "z": 5.054196715784453
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:68",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 1.2902029208691326,
+        "y": 1.9019004134074529,
+        "z": 4.840298387366733
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:69",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 1.9629233790459888,
+        "y": 4.567384326124916,
+        "z": 7.3463231334297685
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:70",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 4.733947482593327,
+        "y": 8.265951796732391,
+        "z": 2.548171969721417
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:71",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 2.278666149079249,
+        "y": 4.603317667268916,
+        "z": 0.41636809770429517
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:72",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 4.418204712560067,
+        "y": 8.230018455588391,
+        "z": 9.47812700544689
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:73",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": -0.0793185616719806,
+        "y": 3.5882007799509035,
+        "z": 1.6679311562073005
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:74",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": 6.776189423311296,
+        "y": 9.245135342906403,
+        "z": 8.226563946943884
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:75",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": -0.03966517105776532,
+        "y": 3.7332174781391907,
+        "z": 8.893905031265732
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:76",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": 6.736536032697081,
+        "y": 9.100118644718117,
+        "z": 1.0005900718854535
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:77",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 3.2363327667509205,
+        "y": 9.970218833847843,
+        "z": 6.623936869123904
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:78",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 3.4605380948883946,
+        "y": 2.8631172890094647,
+        "z": 3.2705582340272805
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:79",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 3.2220361800427826,
+        "y": 10.221752221855846,
+        "z": -0.23640737547108737
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:80",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 3.474834681596533,
+        "y": 2.6115839010014623,
+        "z": 10.130902478622271
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:81",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": -0.4395068003735147,
+        "y": 8.734368565216684,
+        "z": 1.0003273980294147
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:82",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": 7.136377662012829,
+        "y": 4.098967557640624,
+        "z": 8.89416770512177
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:83",
+        "sourceIndex": 22,
+        "element": "O",
+        "x": -0.38604743200246716,
+        "y": 8.853718591159256,
+        "z": 8.003486181360431
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:84",
+        "sourceIndex": 22,
+        "element": "O",
+        "x": 7.082918293641782,
+        "y": 3.9796175316980515,
+        "z": 1.8910089217907546
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:85",
+        "sourceIndex": 23,
+        "element": "O",
+        "x": 3.679926258286362,
+        "y": 2.2946004987668864,
+        "z": 6.6723543369625435
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:86",
+        "sourceIndex": 23,
+        "element": "O",
+        "x": 3.016944603352953,
+        "y": 10.538735624090421,
+        "z": 3.222140766188641
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:87",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 3.5993721864691093,
+        "y": 2.5191838809168896,
+        "z": -0.5672811390247703
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:88",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 3.097498675170206,
+        "y": 10.314152241940418,
+        "z": 10.461776242175956
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:89",
+        "sourceIndex": 25,
+        "element": "O",
+        "x": 1.2730414577947666,
+        "y": 1.3590502954105887,
+        "z": 1.9892385485401334
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:90",
+        "sourceIndex": 25,
+        "element": "O",
+        "x": 5.423829403844549,
+        "y": 11.47428582744672,
+        "z": 7.905256554611052
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:91",
+        "sourceIndex": 26,
+        "element": "O",
+        "x": 1.5171233987916857,
+        "y": 1.3154169525928738,
+        "z": 8.857452404320137
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:92",
+        "sourceIndex": 26,
+        "element": "O",
+        "x": 5.179747462847629,
+        "y": 11.517919170264433,
+        "z": 1.0370426988310477
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:93",
+        "sourceIndex": 27,
+        "element": "O",
+        "x": 4.739993870490563,
+        "y": 7.801385029084957,
+        "z": 6.696975008767464
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:94",
+        "sourceIndex": 27,
+        "element": "O",
+        "x": 1.9568769911487518,
+        "y": 5.03195109377235,
+        "z": 3.197520094383722
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:95",
+        "sourceIndex": 28,
+        "element": "O",
+        "x": 4.682804395480419,
+        "y": 7.7551850190426705,
+        "z": -0.02970025283496147
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:96",
+        "sourceIndex": 28,
+        "element": "O",
+        "x": 2.014066466158896,
+        "y": 5.078151103814637,
+        "z": 9.924195355986146
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:97",
+        "sourceIndex": 29,
+        "element": "O",
+        "x": 0.9262402694051138,
+        "y": 11.216335771377286,
+        "z": 1.6458634200051598
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:98",
+        "sourceIndex": 29,
+        "element": "O",
+        "x": 5.770630592234202,
+        "y": 1.6170003514800209,
+        "z": 8.248631683146025
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:99",
+        "sourceIndex": 30,
+        "element": "O",
+        "x": 0.6959008265522358,
+        "y": 10.990469055614998,
+        "z": 8.985655536804025
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:100",
+        "sourceIndex": 30,
+        "element": "O",
+        "x": 6.000970035087079,
+        "y": 1.8428670672423086,
+        "z": 0.908839566347162
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:101",
+        "sourceIndex": 31,
+        "element": "O",
+        "x": 4.823200062852499,
+        "y": 4.655934345372631,
+        "z": 7.673509889565455
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:102",
+        "sourceIndex": 31,
+        "element": "O",
+        "x": 1.873670798786816,
+        "y": 8.177401777484675,
+        "z": 2.2209852135857298
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:103",
+        "sourceIndex": 32,
+        "element": "O",
+        "x": 4.908370232134185,
+        "y": 4.744484364620346,
+        "z": 0.029840665760473062
+      },
+      {
+        "id": "anorthite-cod-1000034:atom:104",
+        "sourceIndex": 32,
+        "element": "O",
+        "x": 1.78850062950513,
+        "y": 8.088851758236961,
+        "z": 9.86465443739071
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1000034; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "anorthite-cod-1000034:atom:1",
+      "anorthite-cod-1000034:atom:2",
+      "anorthite-cod-1000034:atom:3",
+      "anorthite-cod-1000034:atom:4",
+      "anorthite-cod-1000034:atom:5",
+      "anorthite-cod-1000034:atom:6",
+      "anorthite-cod-1000034:atom:7",
+      "anorthite-cod-1000034:atom:8",
+      "anorthite-cod-1000034:atom:9",
+      "anorthite-cod-1000034:atom:10",
+      "anorthite-cod-1000034:atom:11",
+      "anorthite-cod-1000034:atom:12",
+      "anorthite-cod-1000034:atom:13",
+      "anorthite-cod-1000034:atom:14",
+      "anorthite-cod-1000034:atom:15",
+      "anorthite-cod-1000034:atom:16",
+      "anorthite-cod-1000034:atom:17",
+      "anorthite-cod-1000034:atom:18",
+      "anorthite-cod-1000034:atom:19",
+      "anorthite-cod-1000034:atom:20",
+      "anorthite-cod-1000034:atom:21",
+      "anorthite-cod-1000034:atom:22",
+      "anorthite-cod-1000034:atom:23",
+      "anorthite-cod-1000034:atom:24",
+      "anorthite-cod-1000034:atom:25",
+      "anorthite-cod-1000034:atom:26",
+      "anorthite-cod-1000034:atom:27",
+      "anorthite-cod-1000034:atom:28",
+      "anorthite-cod-1000034:atom:29",
+      "anorthite-cod-1000034:atom:30",
+      "anorthite-cod-1000034:atom:31",
+      "anorthite-cod-1000034:atom:32",
+      "anorthite-cod-1000034:atom:33",
+      "anorthite-cod-1000034:atom:34",
+      "anorthite-cod-1000034:atom:35",
+      "anorthite-cod-1000034:atom:36",
+      "anorthite-cod-1000034:atom:37",
+      "anorthite-cod-1000034:atom:38",
+      "anorthite-cod-1000034:atom:39",
+      "anorthite-cod-1000034:atom:40",
+      "anorthite-cod-1000034:atom:41",
+      "anorthite-cod-1000034:atom:42",
+      "anorthite-cod-1000034:atom:43",
+      "anorthite-cod-1000034:atom:44",
+      "anorthite-cod-1000034:atom:45",
+      "anorthite-cod-1000034:atom:46",
+      "anorthite-cod-1000034:atom:47",
+      "anorthite-cod-1000034:atom:48",
+      "anorthite-cod-1000034:atom:49",
+      "anorthite-cod-1000034:atom:50",
+      "anorthite-cod-1000034:atom:51",
+      "anorthite-cod-1000034:atom:52",
+      "anorthite-cod-1000034:atom:53",
+      "anorthite-cod-1000034:atom:54",
+      "anorthite-cod-1000034:atom:55",
+      "anorthite-cod-1000034:atom:56",
+      "anorthite-cod-1000034:atom:57",
+      "anorthite-cod-1000034:atom:58",
+      "anorthite-cod-1000034:atom:59",
+      "anorthite-cod-1000034:atom:60",
+      "anorthite-cod-1000034:atom:61",
+      "anorthite-cod-1000034:atom:62",
+      "anorthite-cod-1000034:atom:63",
+      "anorthite-cod-1000034:atom:64",
+      "anorthite-cod-1000034:atom:65",
+      "anorthite-cod-1000034:atom:66",
+      "anorthite-cod-1000034:atom:67",
+      "anorthite-cod-1000034:atom:68",
+      "anorthite-cod-1000034:atom:69",
+      "anorthite-cod-1000034:atom:70",
+      "anorthite-cod-1000034:atom:71",
+      "anorthite-cod-1000034:atom:72",
+      "anorthite-cod-1000034:atom:73",
+      "anorthite-cod-1000034:atom:74",
+      "anorthite-cod-1000034:atom:75",
+      "anorthite-cod-1000034:atom:76",
+      "anorthite-cod-1000034:atom:77",
+      "anorthite-cod-1000034:atom:78",
+      "anorthite-cod-1000034:atom:79",
+      "anorthite-cod-1000034:atom:80",
+      "anorthite-cod-1000034:atom:81",
+      "anorthite-cod-1000034:atom:82",
+      "anorthite-cod-1000034:atom:83",
+      "anorthite-cod-1000034:atom:84",
+      "anorthite-cod-1000034:atom:85",
+      "anorthite-cod-1000034:atom:86",
+      "anorthite-cod-1000034:atom:87",
+      "anorthite-cod-1000034:atom:88",
+      "anorthite-cod-1000034:atom:89",
+      "anorthite-cod-1000034:atom:90",
+      "anorthite-cod-1000034:atom:91",
+      "anorthite-cod-1000034:atom:92",
+      "anorthite-cod-1000034:atom:93",
+      "anorthite-cod-1000034:atom:94",
+      "anorthite-cod-1000034:atom:95",
+      "anorthite-cod-1000034:atom:96",
+      "anorthite-cod-1000034:atom:97",
+      "anorthite-cod-1000034:atom:98",
+      "anorthite-cod-1000034:atom:99",
+      "anorthite-cod-1000034:atom:100",
+      "anorthite-cod-1000034:atom:101",
+      "anorthite-cod-1000034:atom:102",
+      "anorthite-cod-1000034:atom:103",
+      "anorthite-cod-1000034:atom:104"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          7.3512755351650965,
+          0.0,
+          -3.571649059759808
+        ],
+        [
+          -0.6544046735257814,
+          12.833336122857308,
+          -0.6988558370890059
+        ],
+        [
+          0.0,
+          0.0,
+          14.165
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1000034 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

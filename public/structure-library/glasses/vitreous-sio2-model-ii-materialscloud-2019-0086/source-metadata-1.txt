@@ -1,0 +1,20 @@
+Files:
+
+model_I_sio2.xyz :   
+The atomic structure of the bulk vitreous silica labelled as Model I in Phys. Rev. B 79, 064202 (2009). 
+The model was generated through the combined use of classical and first-principles molecular dynamics.
+This model contains 144 atoms, with the lattice parameters of 12.960055 angstrom in the x, y and z direction, respectively. 
+
+
+model_II_sio2.xyz :  
+The atomic structure of the bulk vitreous silica labelled as Model II in Phys. Rev. B 79, 064202 (2009). 
+The model was generated through the combined use of classical and first-principles molecular dynamics.
+This model contains 72 atoms, with the lattice parameters of 10.3007 angstrom in the x, y and z direction, respectively.
+
+
+model_III_sio2.xyz : 
+The atomic structure of the bulk vitreous silica labelled as Model III in Phys. Rev. B 79, 064202 (2009). 
+This model III was previously generated within a fully first-principles scheme in Phys. Rev. Lett. 74, 4682 (1995). 
+This model contains 72 atoms, with the lattice parameters of 10.3004 angstrom in the x, y and z direction, respectively.
+
+

@@ -1,0 +1,83 @@
+{% set name = "toml-f" %}
+{% set version = "0.5.2" %}
+
+package:
+  name: {{ name|lower }}-pkg
+  version: {{ version }}
+
+source:
+  url: https://github.com/toml-f/toml-f/releases/download/v{{ version }}/toml-f-{{ version }}.tar.xz
+  sha256: e18ccc26ac1e7580ffb22feda0fbafd228473248f71e84eac171a455a7915d59
+
+build:
+  number: 0
+
+outputs:
+  - name: {{ name }}
+    script: build_pkg.sh  # [unix]
+    script: build_pkg.bat  # [win]
+    build:
+      string: {{ module_abi }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}
+      run_exports:
+        - {{ pin_subpackage(name, max_pin='x.x') }}
+      ignore_run_exports:
+        - test-drive  # test dependency only
+
+    requirements:
+      build:
+        - {{ stdlib('c') }}  # [unix or (win and module_abi == "flang")]
+        - {{ stdlib('m2w64_c') }}  # [win and module_abi == "gfortran"]
+        - {{ compiler('c') }}  # [unix or (win and module_abi == "flang")]
+        - {{ compiler('fortran') }}  # [unix or (win and module_abi == "flang")]
+        - {{ compiler('m2w64_c') }}  # [win and module_abi == "gfortran"]
+        - {{ compiler('m2w64_fortran') }}  # [win and module_abi == "gfortran"]
+        - ifx_{{ target_platform }} 2025.*  # [module_abi == "ifx"]
+        - meson  # [module_abi == "gfortran"]
+        - cmake  # [module_abi != "gfortran"]
+        - ninja
+        - pkg-config
+      host:
+        - test-drive-devel * {{ module_abi }}_*
+
+    test:
+      requires:
+        - pkg-config
+      commands:
+        - pkg-config {{ name }} --exact-version {{ version }}
+        - test -f $PREFIX/lib/lib{{ name }}$SHLIB_EXT  # [unix]
+        - test ! -f $PREFIX/lib/lib{{ name }}.a  # [unix]
+        - test ! -f $PREFIX/lib/libtest-drive$SHLIB_EXT  # [unix]
+
+  - name: {{ name }}-devel
+    build:
+      string: {{ module_abi }}_h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}
+      run_exports:
+        - {{ pin_subpackage(name, max_pin='x.x') }} {{ module_abi }}_*
+
+    requirements:
+      run:
+        - {{ pin_subpackage(name, max_pin='x.x') }} {{ module_abi }}_*
+
+    test:
+      requires:
+        - pkg-config
+      commands:
+        - pkg-config {{ name }} --exact-version {{ version }}
+        - test -f $PREFIX/lib/lib{{ name }}$SHLIB_EXT  # [unix]
+        - test ! -f $PREFIX/lib/lib{{ name }}.a  # [unix]
+        - test ! -f $PREFIX/lib/libtest-drive$SHLIB_EXT  # [unix]
+
+about:
+  home: https://toml-f.readthedocs.io
+  dev_url: https://github.com/toml-f/toml-f
+  doc_url: https://toml-f.github.io/toml-f
+  license: Apache-2.0 OR MIT
+  license_file:
+    - LICENSE-Apache
+    - LICENSE-MIT
+  summary: >-
+    TOML parser implementation for data serialization and deserialization in Fortran 
+extra:
+  recipe-maintainers:
+    - awvwgk
+  feedstock-name: {{ name }}

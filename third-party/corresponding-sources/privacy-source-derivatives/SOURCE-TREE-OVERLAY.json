@@ -1,0 +1,24 @@
+{
+  "schema": "sy-gnu-runtime-source-tree-privacy-overlay/v1",
+  "originalSourceTree": {
+    "path": "GNU-RUNTIME-SOURCE-TREE.json",
+    "bytes": 20949164,
+    "sha256": "0f098ce8615363999a220c107e4e74fd29d3c3afd33829ccf524210165b0e2be"
+  },
+  "originalInventoryMeaning": "Historical operation on original source; unchanged and still lists the omitted fixture. It is not the current derivative inventory.",
+  "omittedFiles": [
+    {
+      "path": "source/gcc-13.2.0/libgo/go/debug/elf/testdata/hello-world-core.gz",
+      "bytes": 12678,
+      "sha256": "6cbaef86ba040903e15c351f17988579dc20cc69557dff723938bed5f71d29f1"
+    }
+  ],
+  "effectiveSourceFiles": 128911,
+  "remainingFiles": "Every other original inventory row retains its exact path/bytes/SHA256.",
+  "reason": "Exact non-build ELF-core privacy exclusion; GCC13 runtime/helper targets do not use this Go parser test input.",
+  "derivedArchive": {
+    "path": "privacy-source-derivatives/gcc-13.2.0-privacy-sanitized.tar.gz",
+    "bytes": 190090491,
+    "sha256": "eec4f8257562dc72814bace281a9fbdeec0258125fbb34ce4ca3694e3f23e43a"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "sciyue-xtb-bundled-runtime/v1",
+  "version": "6.7.1pre",
+  "platform": "win32-x64",
+  "scope": "local-experimental",
+  "localUseReady": true,
+  "publicRedistributionReviewed": false,
+  "distributionLicenseReady": false,
+  "entry": "bin/xtb.exe",
+  "dataDirectory": "share/xtb",
+  "methods": [
+    "gfn0",
+    "gfn1",
+    "gfn2",
+    "gfnff"
+  ],
+  "source": {
+    "release": "v6.7.1",
+    "url": "https://github.com/grimme-lab/xtb/releases/download/v6.7.1/xtb-6.7.1pre-windows-x86_64.zip",
+    "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+    "binaryVersion": "6.7.1pre",
+    "sha256": "043e578da4a7e114a4d584972959a875e3ffb9f2767a86723b95aa6719d28d9c"
+  },
+  "notes": [
+    "Public/commercial redistribution has not been reviewed or approved in this local-experimental scope.",
+    "Identify complete corresponding-source/build identities for the Windows binary static dependencies: mctc-lib/tblite wraps are head, and Windows release notes report dftd4 v3.4.0 rather than source wrap v3.5.0.",
+    "Confirm exact Intel static compiler/BLAS components and applicable redistribution/notice requirements. Exact bundled OpenMP DLL is identified against Intel publisher 2023.2.0, whose package includes Developer Tools EULA April 2023 and third-party notices.",
+    "Before third-party redistribution, verify Microsoft Visual Studio redistributable licensing entitlement and applicable distributable-code terms; the downloaded runtime use license alone is not asserted to grant redistribution rights.",
+    "Clean Windows / cross-CPU portable acceptance remains untested; supported local baseline uses Windows 10+ UCRT OS APIs."
+  ]
+}

@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878",
+  "structure": {
+    "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878",
+    "name": "L-组氨酸（单斜候选）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:1",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 4.811315890959314,
+        "y": 4.75289154,
+        "z": 6.700203705825965
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:2",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 0.32130187195866555,
+        "y": 1.0529915400000007,
+        "z": 2.05942064431908
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:3",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 0.044140512761094985,
+        "y": 4.18310694,
+        "z": 8.958438049411248
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:4",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 5.088477250156884,
+        "y": 0.483206940000001,
+        "z": -0.19881369926620296
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:5",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 4.30472651775931,
+        "y": 5.63716764,
+        "z": 8.087509742466649
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:6",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.8278912451586702,
+        "y": 1.9372676400000002,
+        "z": 0.6721146076783961
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:7",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.553311277268117,
+        "y": 3.24037242,
+        "z": 2.1246834576054145
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:8",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 1.5793064856498629,
+        "y": 6.940272419999999,
+        "z": 6.63494089253963
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:9",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.069471482008529,
+        "y": 2.1696213600000003,
+        "z": 3.982066777978482
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:10",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 3.0631462809094505,
+        "y": 5.86952136,
+        "z": 4.777557572166563
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:11",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.3871805215331525,
+        "y": 4.62561498,
+        "z": 7.3222804852524614
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:12",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.7454372413848263,
+        "y": 0.92571498,
+        "z": 1.437343864892584
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:13",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 0.34542517544438023,
+        "y": 4.51461798,
+        "z": 3.890888478764762
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:14",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 4.787192587473599,
+        "y": 0.8147179800000006,
+        "z": 4.868735871380282
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:15",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 4.000362284418272,
+        "y": 2.02532526,
+        "z": 7.154918418503048
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:16",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 1.132255478499707,
+        "y": 5.72522526,
+        "z": 1.6047059316419976
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:17",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 2.28658121337996,
+        "y": 2.20440042,
+        "z": 6.779235687989616
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:18",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 2.8460365495380198,
+        "y": 5.90430042,
+        "z": 1.9803886621554279
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:19",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 2.822426507828597,
+        "y": 3.47864598,
+        "z": -0.38491808985524023
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:20",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 2.310191255089383,
+        "y": 7.17854598,
+        "z": 9.144542440000286
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:21",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 3.5969385282529194,
+        "y": 3.08423664,
+        "z": 5.332398504581647
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:22",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.5356792346650603,
+        "y": 6.784136640000001,
+        "z": 3.4272258455633975
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:23",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 2.9594674020985066,
+        "y": 2.74754574,
+        "z": 4.162773800293633
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:24",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 2.173150360819473,
+        "y": 6.44744574,
+        "z": 4.596850549851412
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:25",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 3.1657986361678097,
+        "y": 3.94335342,
+        "z": 7.6810306351694635
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:26",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 1.9668191267501691,
+        "y": 0.24345342000000111,
+        "z": 1.078593714975581
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:27",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 4.739459242278462,
+        "y": 3.95371314,
+        "z": 3.718791364923934
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:28",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 0.39315852063951723,
+        "y": 0.25381314,
+        "z": 5.04083298522111
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:29",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 3.2530531381374153,
+        "y": 2.72460636,
+        "z": 6.747597753121929
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:30",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 1.8795646247805646,
+        "y": 6.4245063600000005,
+        "z": 2.012026597023115
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:31",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 4.457678527094266,
+        "y": 4.6856273580000005,
+        "z": 7.680105460100971
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:32",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 0.674939235823714,
+        "y": 0.9857273580000003,
+        "z": 1.0795188900440733
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:33",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 3.707803071931948,
+        "y": 3.30697062,
+        "z": 3.1489159585447806
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:34",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 1.4248146909860318,
+        "y": 7.006870620000001,
+        "z": 5.610708391600265
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:35",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 4.718415509450498,
+        "y": 3.8419761599999998,
+        "z": 5.044452841088339
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:36",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 0.4142022534674808,
+        "y": 0.14207616000000078,
+        "z": 3.7151715090567055
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:37",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.6116419775562456,
+        "y": 3.29439096,
+        "z": -0.13769811405445576
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:38",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 3.5209757853617343,
+        "y": 6.99429096,
+        "z": 8.897322464199501
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:39",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.779146458836508,
+        "y": 3.2744115,
+        "z": 0.3835942890117954
+      },
+      {
+        "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:40",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.3534713040814723,
+        "y": 6.9743115,
+        "z": 8.37603006113325
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2108878; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:1",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:2",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:3",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:4",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:5",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:6",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:7",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:8",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:9",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:10",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:11",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:12",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:13",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:14",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:15",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:16",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:17",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:18",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:19",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:20",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:21",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:22",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:23",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:24",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:25",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:26",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:27",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:28",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:29",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:30",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:31",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:32",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:33",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:34",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:35",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:36",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:37",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:38",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:39",
+      "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878:atom:40"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.132617762917978,
+          0.0,
+          -0.7379756498549559
+        ],
+        [
+          1.1899785983077176e-15,
+          7.3998,
+          4.531070692165292e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.4976
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2108878 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

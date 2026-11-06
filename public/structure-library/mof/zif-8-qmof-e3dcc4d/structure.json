@@ -1,0 +1,1326 @@
+{
+  "schemaVersion": 1,
+  "entryId": "zif-8-qmof-e3dcc4d",
+  "structure": {
+    "id": "zif-8-qmof-e3dcc4d",
+    "name": "ZIF-8",
+    "format": "cif",
+    "atoms": [
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0001",
+        "element": "Zn",
+        "x": 1.7384452701975084,
+        "y": 9.033447925165158,
+        "z": -2.4586148551028733,
+        "sourceIndex": 1
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0002",
+        "element": "Zn",
+        "x": 6.953826908380175,
+        "y": 6.022264731347389,
+        "z": -2.4585265800236673,
+        "sourceIndex": 2
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0003",
+        "element": "Zn",
+        "x": -2.65673537702682e-06,
+        "y": 6.022310741657902,
+        "z": 7.37575187677201,
+        "sourceIndex": 3
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0004",
+        "element": "Zn",
+        "x": 5.215391359268568,
+        "y": 3.0111333292404066,
+        "z": 7.375836660779598,
+        "sourceIndex": 4
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0005",
+        "element": "Zn",
+        "x": 8.69229070427415,
+        "y": 3.0111273069484548,
+        "z": 2.4586559065804066,
+        "sourceIndex": 5
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0006",
+        "element": "Zn",
+        "x": -1.7384560218569214,
+        "y": 9.033439975739782,
+        "z": 2.4585645222913985,
+        "sourceIndex": 6
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0007",
+        "element": "H",
+        "x": 4.460808169804336,
+        "y": 10.655642837736142,
+        "z": -1.9231366713942402,
+        "sourceIndex": 7
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0008",
+        "element": "H",
+        "x": -1.265404268583807,
+        "y": 7.898826561583009,
+        "z": -2.595887393896649,
+        "sourceIndex": 8
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0009",
+        "element": "H",
+        "x": 7.473160843484483,
+        "y": 2.853524047007653,
+        "z": -2.595797934491477,
+        "sourceIndex": 9
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0010",
+        "element": "H",
+        "x": -2.1109671432258015,
+        "y": 6.434213830930995,
+        "z": 9.763948071078806,
+        "sourceIndex": 10
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0011",
+        "element": "H",
+        "x": 6.627596995242758,
+        "y": 1.3889450411905706,
+        "z": 9.764061182048014,
+        "sourceIndex": 11
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0012",
+        "element": "H",
+        "x": 2.4493407617312144,
+        "y": 1.4646076719267744,
+        "z": 7.911197906917131,
+        "sourceIndex": 12
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0013",
+        "element": "H",
+        "x": 0.04363707935739791,
+        "y": 2.8535424752210266,
+        "z": 7.91120552908293,
+        "sourceIndex": 13
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0014",
+        "element": "H",
+        "x": 4.8428537931932745,
+        "y": 5.6103707959580635,
+        "z": -0.07033608553334147,
+        "sourceIndex": 14
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0015",
+        "element": "H",
+        "x": 2.437130292408474,
+        "y": 6.999290543522434,
+        "z": -0.07036696508819063,
+        "sourceIndex": 15
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0016",
+        "element": "H",
+        "x": 8.27505027019246,
+        "y": 1.4645958682345483,
+        "z": -0.3276547735551478,
+        "sourceIndex": 16
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0017",
+        "element": "H",
+        "x": -2.8692344485629375,
+        "y": 7.898846073808934,
+        "z": -0.3277723589053343,
+        "sourceIndex": 17
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0018",
+        "element": "H",
+        "x": -0.3262566656917869,
+        "y": 10.65563934480681,
+        "z": 4.846783767244741,
+        "sourceIndex": 18
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0019",
+        "element": "H",
+        "x": 9.390987184623167,
+        "y": 5.0453045621546195,
+        "z": 4.846898270112992,
+        "sourceIndex": 19
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0020",
+        "element": "H",
+        "x": -4.504495234665627,
+        "y": 10.579970209995297,
+        "z": 2.9939205453107283,
+        "sourceIndex": 20
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0021",
+        "element": "H",
+        "x": 5.68844301754142,
+        "y": 4.145756499510141,
+        "z": 2.321383901890427,
+        "sourceIndex": 21
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0022",
+        "element": "H",
+        "x": 11.414667671962958,
+        "y": 1.3889485341199028,
+        "z": 2.9941327776408366,
+        "sourceIndex": 22
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0023",
+        "element": "H",
+        "x": 0.7460471059844105,
+        "y": 6.999276090021751,
+        "z": 2.3212690458095215,
+        "sourceIndex": 23
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0024",
+        "element": "H",
+        "x": 1.3212076675827227,
+        "y": 10.579994419608944,
+        "z": -5.244924562847528,
+        "sourceIndex": 24
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0025",
+        "element": "H",
+        "x": 0.5193185118533084,
+        "y": 9.191052028226833,
+        "z": 7.238469186674353,
+        "sourceIndex": 25
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0026",
+        "element": "H",
+        "x": 8.501796004965858,
+        "y": 6.43425213270781,
+        "z": -5.244845208692607,
+        "sourceIndex": 26
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0027",
+        "element": "H",
+        "x": 7.699889742790048,
+        "y": 5.045312150242479,
+        "z": 7.238548688148621,
+        "sourceIndex": 27
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0028",
+        "element": "H",
+        "x": 4.084611655502263,
+        "y": 4.145726026712864,
+        "z": 4.589498101046432,
+        "sourceIndex": 28
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0029",
+        "element": "H",
+        "x": 6.997472096925592,
+        "y": 9.191025891479761,
+        "z": -1.923083181452676,
+        "sourceIndex": 29
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0030",
+        "element": "H",
+        "x": 1.5479448773436664,
+        "y": 5.610323340297481,
+        "z": 4.589430498801734,
+        "sourceIndex": 30
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0031",
+        "element": "H",
+        "x": -0.17325534339779303,
+        "y": 11.152792794495538,
+        "z": -3.284204411757299,
+        "sourceIndex": 31
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0032",
+        "element": "H",
+        "x": 2.17851263163738,
+        "y": 9.463071367615647,
+        "z": 0.44823452539847164,
+        "sourceIndex": 32
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0033",
+        "element": "H",
+        "x": 7.105855484132636,
+        "y": 6.618200149684783,
+        "z": 0.44831143208429935,
+        "sourceIndex": 33
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0034",
+        "element": "H",
+        "x": -1.1275689929084616,
+        "y": 3.7366623276493516,
+        "z": 5.848556400792493,
+        "sourceIndex": 34
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0035",
+        "element": "H",
+        "x": 3.7997757371019407,
+        "y": 0.8918025520731948,
+        "z": 5.848659122677972,
+        "sourceIndex": 35
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0036",
+        "element": "H",
+        "x": 4.335847080562069,
+        "y": 5.72641735072919,
+        "z": 6.550204661085189,
+        "sourceIndex": 36
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0037",
+        "element": "H",
+        "x": 2.791228017545943,
+        "y": 6.618217132548087,
+        "z": 6.5501847386851475,
+        "sourceIndex": 37
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0038",
+        "element": "H",
+        "x": 5.826266719004781,
+        "y": 8.307920612997961,
+        "z": -3.9857434748960405,
+        "sourceIndex": 38
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0039",
+        "element": "H",
+        "x": 4.281643970428794,
+        "y": 9.199734246088347,
+        "z": -3.985753759689527,
+        "sourceIndex": 39
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0040",
+        "element": "H",
+        "x": 7.620719591396782,
+        "y": 5.7264090399662955,
+        "z": 1.9046151322410596,
+        "sourceIndex": 40
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0041",
+        "element": "H",
+        "x": 1.1487681066622866,
+        "y": 9.463069440482222,
+        "z": 1.9045379228457344,
+        "sourceIndex": 41
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0042",
+        "element": "H",
+        "x": -3.1540902634431895,
+        "y": 11.152797612329099,
+        "z": 0.9313726142237329,
+        "sourceIndex": 42
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0043",
+        "element": "H",
+        "x": 11.23549544369302,
+        "y": 2.844850862584068,
+        "z": 0.931521346710567,
+        "sourceIndex": 43
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0044",
+        "element": "H",
+        "x": -2.6179849003559132,
+        "y": 6.318170046414167,
+        "z": 1.6329452633723633,
+        "sourceIndex": 44
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0045",
+        "element": "H",
+        "x": 9.132363479799475,
+        "y": 2.5815092845607226,
+        "z": 5.365509393438744,
+        "sourceIndex": 45
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0046",
+        "element": "H",
+        "x": 6.780616289756045,
+        "y": 0.8917978546854721,
+        "z": 1.633073983410739,
+        "sourceIndex": 46
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0047",
+        "element": "H",
+        "x": -2.3305742603972037,
+        "y": 9.1997325598466,
+        "z": 5.365386454740964,
+        "sourceIndex": 47
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0048",
+        "element": "H",
+        "x": 0.6668781532285624,
+        "y": 6.318178116285382,
+        "z": -3.01265095297631,
+        "sourceIndex": 48
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0049",
+        "element": "H",
+        "x": 0.15201247764788972,
+        "y": 5.4263886928086436,
+        "z": 10.282592832537546,
+        "sourceIndex": 49
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0050",
+        "element": "H",
+        "x": 5.1381459480955005,
+        "y": 3.7366607618534444,
+        "z": -3.01259245211922,
+        "sourceIndex": 50
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0051",
+        "element": "H",
+        "x": 4.623278325465981,
+        "y": 2.844857366659376,
+        "z": 10.282649956589719,
+        "sourceIndex": 51
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0052",
+        "element": "H",
+        "x": 8.102620067423343,
+        "y": 2.5815155477443525,
+        "z": 6.8218011863346675,
+        "sourceIndex": 52
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0053",
+        "element": "H",
+        "x": 9.745063472859524,
+        "y": 5.426369301028558,
+        "z": -3.28410129711438,
+        "sourceIndex": 53
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0054",
+        "element": "H",
+        "x": -1.8156995832838625,
+        "y": 8.30793325981106,
+        "z": 6.821685237850929,
+        "sourceIndex": 54
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0055",
+        "element": "H",
+        "x": 6.5480281849706365,
+        "y": 4.095158527432768e-06,
+        "z": 3.146742649451224,
+        "sourceIndex": 55
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0056",
+        "element": "H",
+        "x": 1.1051393469485111,
+        "y": 10.833236132245249,
+        "z": 0.7814355477905401,
+        "sourceIndex": 56
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0057",
+        "element": "H",
+        "x": 8.829144503210905,
+        "y": 6.373700275600316,
+        "z": 0.7815415633630112,
+        "sourceIndex": 57
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0058",
+        "element": "H",
+        "x": -2.57465432162277,
+        "y": 4.459533447728154,
+        "z": 5.124738223537719,
+        "sourceIndex": 58
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0059",
+        "element": "H",
+        "x": 5.149364116449398,
+        "y": 9.033437928160518e-06,
+        "z": 5.1248537785676564,
+        "sourceIndex": 59
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0060",
+        "element": "H",
+        "x": 3.679828437764894,
+        "y": 6.373701239167028,
+        "z": 8.06386343732992,
+        "sourceIndex": 60
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0061",
+        "element": "H",
+        "x": 4.379177319479736,
+        "y": 7.5850522631734565,
+        "z": -4.709551765500834,
+        "sourceIndex": 61
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0062",
+        "element": "H",
+        "x": -3.2740134566691323,
+        "y": 5.670880015238537,
+        "z": 3.146609693926669,
+        "sourceIndex": 62
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0063",
+        "element": "H",
+        "x": 8.059003052629535,
+        "y": 1.2113442790394415,
+        "z": 5.6987080585834065,
+        "sourceIndex": 63
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0064",
+        "element": "H",
+        "x": -2.980488672964328,
+        "y": 7.585061417057223,
+        "z": 5.698605532964901,
+        "sourceIndex": 64
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0065",
+        "element": "H",
+        "x": 1.8753104665884108,
+        "y": 5.670892902943314,
+        "z": -4.135718867346124,
+        "sourceIndex": 65
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0066",
+        "element": "H",
+        "x": 3.9733552270784567,
+        "y": 4.459528389002913,
+        "z": -4.135673832026419,
+        "sourceIndex": 66
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0067",
+        "element": "C",
+        "x": 8.567909354767473,
+        "y": 1.5657959075478232e-06,
+        "z": 2.4144539704416355,
+        "sourceIndex": 67
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0068",
+        "element": "C",
+        "x": 0.10377419555017209,
+        "y": 9.069144940265435,
+        "z": 0.0733764084719688,
+        "sourceIndex": 68
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0069",
+        "element": "C",
+        "x": 7.802070358738529,
+        "y": 4.624447167869618,
+        "z": 0.07346642138548276,
+        "sourceIndex": 69
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0070",
+        "element": "C",
+        "x": 11.341557152866937,
+        "y": 4.444690786537152,
+        "z": 2.3561617408952324,
+        "sourceIndex": 70
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0071",
+        "element": "C",
+        "x": 5.132202530585979,
+        "y": 7.226750342528414e-07,
+        "z": 7.273303009126913,
+        "sourceIndex": 71
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0072",
+        "element": "C",
+        "x": 2.6698795105824336,
+        "y": 4.624456321753385,
+        "z": 7.331559519109558,
+        "sourceIndex": 72
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0073",
+        "element": "C",
+        "x": 4.387718830544193,
+        "y": 7.5998957674853305,
+        "z": -2.5611028176797515,
+        "sourceIndex": 73
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0074",
+        "element": "C",
+        "x": -4.2839590506470335,
+        "y": 7.420124330422985,
+        "z": 2.4142947363010085,
+        "sourceIndex": 74
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0075",
+        "element": "C",
+        "x": 7.057618023232277,
+        "y": 2.975432339427443,
+        "z": 4.990645934315392,
+        "sourceIndex": 75
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0076",
+        "element": "C",
+        "x": -0.9520553526991957,
+        "y": 7.599885409143173,
+        "z": 4.990539102385862,
+        "sourceIndex": 76
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0077",
+        "element": "C",
+        "x": 0.8482269297782139,
+        "y": 7.420139024815348,
+        "z": 9.907734095645905,
+        "sourceIndex": 77
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0078",
+        "element": "C",
+        "x": 6.001792704974729,
+        "y": 4.444692472778899,
+        "z": -4.8437371553325885,
+        "sourceIndex": 78
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0079",
+        "element": "C",
+        "x": 3.6505596241958393,
+        "y": 11.35687622416854,
+        "z": -2.0934463133758063,
+        "sourceIndex": 79
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0080",
+        "element": "C",
+        "x": -1.0498159354352246,
+        "y": 8.22760238924526,
+        "z": -1.584640472353421,
+        "sourceIndex": 80
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0081",
+        "element": "C",
+        "x": 7.650088228843557,
+        "y": 3.2046306536741564,
+        "z": -1.5845273952723553,
+        "sourceIndex": 81
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0082",
+        "element": "C",
+        "x": -2.5029324542810127,
+        "y": 5.710707359051245,
+        "z": 9.056779080367562,
+        "sourceIndex": 82
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0083",
+        "element": "C",
+        "x": 6.196981167248007,
+        "y": 0.6877192428460315,
+        "z": 9.056898697437735,
+        "sourceIndex": 83
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0084",
+        "element": "C",
+        "x": 2.247210001111929,
+        "y": 2.5169221305077993,
+        "z": 7.7409333664752324,
+        "sourceIndex": 84
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0085",
+        "element": "C",
+        "x": 1.056025009179085,
+        "y": 3.2046510090209543,
+        "z": 7.740932109144123,
+        "sourceIndex": 85
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0086",
+        "element": "C",
+        "x": 4.45089567981489,
+        "y": 6.33388015853795,
+        "z": -0.7775127526486969,
+        "sourceIndex": 86
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0087",
+        "element": "C",
+        "x": 3.2596990749675943,
+        "y": 7.021611566413724,
+        "z": -0.7775220742918432,
+        "sourceIndex": 87
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0088",
+        "element": "C",
+        "x": 8.047135303414054,
+        "y": 2.516912615286515,
+        "z": -0.4614790118251588,
+        "sourceIndex": 88
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0089",
+        "element": "C",
+        "x": -1.8439532269630519,
+        "y": 8.227619131216887,
+        "z": -0.4615803648836492,
+        "sourceIndex": 89
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0090",
+        "element": "C",
+        "x": -0.7568812769368671,
+        "y": 11.356864300030475,
+        "z": 4.13961443163838,
+        "sourceIndex": 90
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0091",
+        "element": "C",
+        "x": 10.213556953784298,
+        "y": 5.022971856016944,
+        "z": 4.139743888338591,
+        "sourceIndex": 91
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0092",
+        "element": "C",
+        "x": -4.706633506331996,
+        "y": 9.52766466440636,
+        "z": 2.82366360313185,
+        "sourceIndex": 92
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0093",
+        "element": "C",
+        "x": 5.904030063715556,
+        "y": 3.8169642912137807,
+        "z": 3.332630204320388,
+        "sourceIndex": 93
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0094",
+        "element": "C",
+        "x": 10.604409690559432,
+        "y": 0.6877253855838227,
+        "z": 2.8238414434951666,
+        "sourceIndex": 94
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0095",
+        "element": "C",
+        "x": 0.35353147926100537,
+        "y": 7.02160084673405,
+        "z": 3.332542126128982,
+        "sourceIndex": 95
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0096",
+        "element": "C",
+        "x": 1.093299306089528,
+        "y": 9.527669120902406,
+        "z": -5.378755560822176,
+        "sourceIndex": 96
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0097",
+        "element": "C",
+        "x": 0.6962371131163598,
+        "y": 8.839959031940142,
+        "z": 8.249745931375477,
+        "sourceIndex": 97
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0098",
+        "element": "C",
+        "x": 7.704421093179011,
+        "y": 5.710703986567752,
+        "z": -5.378690601050322,
+        "sourceIndex": 98
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0099",
+        "element": "C",
+        "x": 7.307374824514678,
+        "y": 5.022983418817491,
+        "z": 8.249822299206494,
+        "sourceIndex": 99
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0100",
+        "element": "C",
+        "x": 5.109888878090036,
+        "y": 3.8169530897507498,
+        "z": 4.455687558180323,
+        "sourceIndex": 100
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0101",
+        "element": "C",
+        "x": 8.009850199586001,
+        "y": 8.839929161372059,
+        "z": -2.0933635247837454,
+        "sourceIndex": 101
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0102",
+        "element": "C",
+        "x": 0.7505783452161352,
+        "y": 6.3338829287922485,
+        "z": 4.455590362058171,
+        "sourceIndex": 102
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0103",
+        "element": "C",
+        "x": 7.094029582263139,
+        "y": 3.011145976053506e-06,
+        "z": 2.1902587204191533,
+        "sourceIndex": 103
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0104",
+        "element": "C",
+        "x": 1.1920435601147563,
+        "y": 9.73704638609299,
+        "z": 0.8428741430811915,
+        "sourceIndex": 104
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0105",
+        "element": "C",
+        "x": 7.83636571827398,
+        "y": 5.900855807376267,
+        "z": 0.8429736373948344,
+        "sourceIndex": 105
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0106",
+        "element": "C",
+        "x": -2.2147532398759053,
+        "y": 3.8361819066163103,
+        "z": 5.958335210217271,
+        "sourceIndex": 106
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0107",
+        "element": "C",
+        "x": 4.429570934870769,
+        "y": 5.179171078812031e-06,
+        "z": 5.958436130508659,
+        "sourceIndex": 107
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0108",
+        "element": "C",
+        "x": 3.4068434602642874,
+        "y": 5.900854000688682,
+        "z": 7.107377280928356,
+        "sourceIndex": 108
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0109",
+        "element": "C",
+        "x": 4.739071853164895,
+        "y": 8.208402238489391,
+        "z": -3.8759599453994062,
+        "sourceIndex": 109
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0110",
+        "element": "C",
+        "x": -3.547001435259052,
+        "y": 6.1437262901501715,
+        "z": 2.1901088360406846,
+        "sourceIndex": 110
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0111",
+        "element": "C",
+        "x": 8.145890901898486,
+        "y": 2.3075413723878846,
+        "z": 5.760146601991661,
+        "sourceIndex": 111
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0112",
+        "element": "C",
+        "x": -2.074611447812955,
+        "y": 8.208411151481481,
+        "z": 5.760061005227066,
+        "sourceIndex": 112
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0113",
+        "element": "C",
+        "x": 0.8825218658158982,
+        "y": 6.143733757792191,
+        "z": -4.074281826134008,
+        "sourceIndex": 113
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0114",
+        "element": "C",
+        "x": 4.879229404017565,
+        "y": 3.8361643215238104,
+        "z": 10.677327721452963,
+        "sourceIndex": 114
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0115",
+        "element": "N",
+        "x": 2.3631439911911336,
+        "y": 10.928139263093401,
+        "z": -2.356410555664067,
+        "sourceIndex": 115
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0116",
+        "element": "N",
+        "x": 0.17995720103572044,
+        "y": 8.756195936744998,
+        "z": -1.2401202622190208,
+        "sourceIndex": 116
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0117",
+        "element": "N",
+        "x": 7.4929692199500675,
+        "y": 4.5339405510381825,
+        "z": -1.2400349487205373,
+        "sourceIndex": 117
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0118",
+        "element": "N",
+        "x": -1.7931110143250844,
+        "y": 5.338691234281187,
+        "z": 7.930633233296861,
+        "sourceIndex": 118
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0119",
+        "element": "N",
+        "x": 5.5199315319266535,
+        "y": 1.1164424730955194,
+        "z": 7.930752229814851,
+        "sourceIndex": 119
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0120",
+        "element": "N",
+        "x": 3.262217259785183,
+        "y": 3.417507713609786,
+        "z": 7.477961321852956,
+        "sourceIndex": 120
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0121",
+        "element": "N",
+        "x": 1.328458979610251,
+        "y": 4.533950186705305,
+        "z": 7.47797864530205,
+        "sourceIndex": 121
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0122",
+        "element": "N",
+        "x": 5.1607283298652575,
+        "y": 6.705895681078813,
+        "z": -1.903650873820113,
+        "sourceIndex": 122
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0123",
+        "element": "N",
+        "x": 3.2269721358890173,
+        "y": 7.822312619656455,
+        "z": -1.903668806486392,
+        "sourceIndex": 123
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0124",
+        "element": "N",
+        "x": 8.137548832369102,
+        "y": 3.4174847084545292,
+        "z": 0.5831181287516323,
+        "sourceIndex": 124
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0125",
+        "element": "N",
+        "x": -1.1092296722991457,
+        "y": 8.75620954712481,
+        "z": 0.5830076049398913,
+        "sourceIndex": 125
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0126",
+        "element": "N",
+        "x": -1.4339385051599844,
+        "y": 10.928135288380712,
+        "z": 3.0134628715647276,
+        "sourceIndex": 126
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0127",
+        "element": "N",
+        "x": 10.180815175268279,
+        "y": 4.222258758190309,
+        "z": 3.0135993842750377,
+        "sourceIndex": 127
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0128",
+        "element": "N",
+        "x": -3.6916366147955637,
+        "y": 8.627071493216516,
+        "z": 2.560697377364571,
+        "sourceIndex": 128
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0129",
+        "element": "N",
+        "x": 7.133799453673303,
+        "y": 3.288377006897673,
+        "z": 3.677148027557285,
+        "sourceIndex": 129
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0130",
+        "element": "N",
+        "x": 9.316990176618805,
+        "y": 1.1164431957705536,
+        "z": 2.5608741801753854,
+        "sourceIndex": 130
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0131",
+        "element": "N",
+        "x": -0.7191106685608806,
+        "y": 7.822318762394246,
+        "z": 3.6770378663437455,
+        "sourceIndex": 131
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0132",
+        "element": "N",
+        "x": 1.1837078222965385,
+        "y": 8.62709847308446,
+        "z": -4.334161501499577,
+        "sourceIndex": 132
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0133",
+        "element": "N",
+        "x": 0.5391376253402544,
+        "y": 7.510655156868068,
+        "z": 8.594228729464412,
+        "sourceIndex": 133
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0134",
+        "element": "N",
+        "x": 6.879291024398816,
+        "y": 5.338710626061273,
+        "z": -4.334092188998021,
+        "sourceIndex": 134
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0135",
+        "element": "N",
+        "x": 6.234736890828129,
+        "y": 4.2222568310568835,
+        "z": 8.594309400854875,
+        "sourceIndex": 135
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0136",
+        "element": "N",
+        "x": 5.8446155009914715,
+        "y": 3.2883684552431016,
+        "z": 5.5002778124932945,
+        "sourceIndex": 136
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0137",
+        "element": "N",
+        "x": 8.282289435725492,
+        "y": 7.510636608208856,
+        "z": -2.3563122299507846,
+        "sourceIndex": 137
+      },
+      {
+        "id": "zif-8-qmof-e3dcc4d-a0138",
+        "element": "N",
+        "x": -0.07454051339208245,
+        "y": 6.705879300444702,
+        "z": 5.500184256311373,
+        "sourceIndex": 138
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [],
+    "cell": {
+      "vectors": [
+        [
+          13.907676375579584,
+          0.0,
+          -4.91702563653317
+        ],
+        [
+          -6.953860468556209,
+          12.044583904214024,
+          -4.917282753294279
+        ],
+        [
+          0.0,
+          0.0,
+          14.75154357
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Source CIF provides a crystallographic unit cell and fractional atomic coordinates; CIF crystal structures are 3D periodic."
+      }
+    },
+    "sourceAtomIds": [
+      "zif-8-qmof-e3dcc4d-a0001",
+      "zif-8-qmof-e3dcc4d-a0002",
+      "zif-8-qmof-e3dcc4d-a0003",
+      "zif-8-qmof-e3dcc4d-a0004",
+      "zif-8-qmof-e3dcc4d-a0005",
+      "zif-8-qmof-e3dcc4d-a0006",
+      "zif-8-qmof-e3dcc4d-a0007",
+      "zif-8-qmof-e3dcc4d-a0008",
+      "zif-8-qmof-e3dcc4d-a0009",
+      "zif-8-qmof-e3dcc4d-a0010",
+      "zif-8-qmof-e3dcc4d-a0011",
+      "zif-8-qmof-e3dcc4d-a0012",
+      "zif-8-qmof-e3dcc4d-a0013",
+      "zif-8-qmof-e3dcc4d-a0014",
+      "zif-8-qmof-e3dcc4d-a0015",
+      "zif-8-qmof-e3dcc4d-a0016",
+      "zif-8-qmof-e3dcc4d-a0017",
+      "zif-8-qmof-e3dcc4d-a0018",
+      "zif-8-qmof-e3dcc4d-a0019",
+      "zif-8-qmof-e3dcc4d-a0020",
+      "zif-8-qmof-e3dcc4d-a0021",
+      "zif-8-qmof-e3dcc4d-a0022",
+      "zif-8-qmof-e3dcc4d-a0023",
+      "zif-8-qmof-e3dcc4d-a0024",
+      "zif-8-qmof-e3dcc4d-a0025",
+      "zif-8-qmof-e3dcc4d-a0026",
+      "zif-8-qmof-e3dcc4d-a0027",
+      "zif-8-qmof-e3dcc4d-a0028",
+      "zif-8-qmof-e3dcc4d-a0029",
+      "zif-8-qmof-e3dcc4d-a0030",
+      "zif-8-qmof-e3dcc4d-a0031",
+      "zif-8-qmof-e3dcc4d-a0032",
+      "zif-8-qmof-e3dcc4d-a0033",
+      "zif-8-qmof-e3dcc4d-a0034",
+      "zif-8-qmof-e3dcc4d-a0035",
+      "zif-8-qmof-e3dcc4d-a0036",
+      "zif-8-qmof-e3dcc4d-a0037",
+      "zif-8-qmof-e3dcc4d-a0038",
+      "zif-8-qmof-e3dcc4d-a0039",
+      "zif-8-qmof-e3dcc4d-a0040",
+      "zif-8-qmof-e3dcc4d-a0041",
+      "zif-8-qmof-e3dcc4d-a0042",
+      "zif-8-qmof-e3dcc4d-a0043",
+      "zif-8-qmof-e3dcc4d-a0044",
+      "zif-8-qmof-e3dcc4d-a0045",
+      "zif-8-qmof-e3dcc4d-a0046",
+      "zif-8-qmof-e3dcc4d-a0047",
+      "zif-8-qmof-e3dcc4d-a0048",
+      "zif-8-qmof-e3dcc4d-a0049",
+      "zif-8-qmof-e3dcc4d-a0050",
+      "zif-8-qmof-e3dcc4d-a0051",
+      "zif-8-qmof-e3dcc4d-a0052",
+      "zif-8-qmof-e3dcc4d-a0053",
+      "zif-8-qmof-e3dcc4d-a0054",
+      "zif-8-qmof-e3dcc4d-a0055",
+      "zif-8-qmof-e3dcc4d-a0056",
+      "zif-8-qmof-e3dcc4d-a0057",
+      "zif-8-qmof-e3dcc4d-a0058",
+      "zif-8-qmof-e3dcc4d-a0059",
+      "zif-8-qmof-e3dcc4d-a0060",
+      "zif-8-qmof-e3dcc4d-a0061",
+      "zif-8-qmof-e3dcc4d-a0062",
+      "zif-8-qmof-e3dcc4d-a0063",
+      "zif-8-qmof-e3dcc4d-a0064",
+      "zif-8-qmof-e3dcc4d-a0065",
+      "zif-8-qmof-e3dcc4d-a0066",
+      "zif-8-qmof-e3dcc4d-a0067",
+      "zif-8-qmof-e3dcc4d-a0068",
+      "zif-8-qmof-e3dcc4d-a0069",
+      "zif-8-qmof-e3dcc4d-a0070",
+      "zif-8-qmof-e3dcc4d-a0071",
+      "zif-8-qmof-e3dcc4d-a0072",
+      "zif-8-qmof-e3dcc4d-a0073",
+      "zif-8-qmof-e3dcc4d-a0074",
+      "zif-8-qmof-e3dcc4d-a0075",
+      "zif-8-qmof-e3dcc4d-a0076",
+      "zif-8-qmof-e3dcc4d-a0077",
+      "zif-8-qmof-e3dcc4d-a0078",
+      "zif-8-qmof-e3dcc4d-a0079",
+      "zif-8-qmof-e3dcc4d-a0080",
+      "zif-8-qmof-e3dcc4d-a0081",
+      "zif-8-qmof-e3dcc4d-a0082",
+      "zif-8-qmof-e3dcc4d-a0083",
+      "zif-8-qmof-e3dcc4d-a0084",
+      "zif-8-qmof-e3dcc4d-a0085",
+      "zif-8-qmof-e3dcc4d-a0086",
+      "zif-8-qmof-e3dcc4d-a0087",
+      "zif-8-qmof-e3dcc4d-a0088",
+      "zif-8-qmof-e3dcc4d-a0089",
+      "zif-8-qmof-e3dcc4d-a0090",
+      "zif-8-qmof-e3dcc4d-a0091",
+      "zif-8-qmof-e3dcc4d-a0092",
+      "zif-8-qmof-e3dcc4d-a0093",
+      "zif-8-qmof-e3dcc4d-a0094",
+      "zif-8-qmof-e3dcc4d-a0095",
+      "zif-8-qmof-e3dcc4d-a0096",
+      "zif-8-qmof-e3dcc4d-a0097",
+      "zif-8-qmof-e3dcc4d-a0098",
+      "zif-8-qmof-e3dcc4d-a0099",
+      "zif-8-qmof-e3dcc4d-a0100",
+      "zif-8-qmof-e3dcc4d-a0101",
+      "zif-8-qmof-e3dcc4d-a0102",
+      "zif-8-qmof-e3dcc4d-a0103",
+      "zif-8-qmof-e3dcc4d-a0104",
+      "zif-8-qmof-e3dcc4d-a0105",
+      "zif-8-qmof-e3dcc4d-a0106",
+      "zif-8-qmof-e3dcc4d-a0107",
+      "zif-8-qmof-e3dcc4d-a0108",
+      "zif-8-qmof-e3dcc4d-a0109",
+      "zif-8-qmof-e3dcc4d-a0110",
+      "zif-8-qmof-e3dcc4d-a0111",
+      "zif-8-qmof-e3dcc4d-a0112",
+      "zif-8-qmof-e3dcc4d-a0113",
+      "zif-8-qmof-e3dcc4d-a0114",
+      "zif-8-qmof-e3dcc4d-a0115",
+      "zif-8-qmof-e3dcc4d-a0116",
+      "zif-8-qmof-e3dcc4d-a0117",
+      "zif-8-qmof-e3dcc4d-a0118",
+      "zif-8-qmof-e3dcc4d-a0119",
+      "zif-8-qmof-e3dcc4d-a0120",
+      "zif-8-qmof-e3dcc4d-a0121",
+      "zif-8-qmof-e3dcc4d-a0122",
+      "zif-8-qmof-e3dcc4d-a0123",
+      "zif-8-qmof-e3dcc4d-a0124",
+      "zif-8-qmof-e3dcc4d-a0125",
+      "zif-8-qmof-e3dcc4d-a0126",
+      "zif-8-qmof-e3dcc4d-a0127",
+      "zif-8-qmof-e3dcc4d-a0128",
+      "zif-8-qmof-e3dcc4d-a0129",
+      "zif-8-qmof-e3dcc4d-a0130",
+      "zif-8-qmof-e3dcc4d-a0131",
+      "zif-8-qmof-e3dcc4d-a0132",
+      "zif-8-qmof-e3dcc4d-a0133",
+      "zif-8-qmof-e3dcc4d-a0134",
+      "zif-8-qmof-e3dcc4d-a0135",
+      "zif-8-qmof-e3dcc4d-a0136",
+      "zif-8-qmof-e3dcc4d-a0137",
+      "zif-8-qmof-e3dcc4d-a0138"
+    ],
+    "libraryProvenance": {
+      "entryId": "zif-8-qmof-e3dcc4d",
+      "category": "mof",
+      "name": "ZIF-8",
+      "formula": "C8H10N4Zn",
+      "phase": "ZIF-8：QMOF PBE-D3BJ 优化的 SOD 框架（FSR）。",
+      "source": {
+        "name": "QMOF Database v18 (QMOF-PBE)",
+        "recordId": "qmof-e3dcc4d",
+        "url": "https://doi.org/10.6084/m9.figshare.13147324.v18",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "QMOF v18 DFT record qmof-e3dcc4d; original structure DOI: 10.1021/ja202154j.",
+        "doi": "10.6084/m9.figshare.13147324.v18",
+        "version": "QMOF Figshare v18; NOMAD QMOF-PBE public dataset",
+        "conditions": "QMOF v18 record qmof-e3dcc4d (OFERUN03_FSR), sod topology, QMOF FSR framework, PBE-D3BJ optimized; QMOF source flag=CSD. Only the QMOF-released DFT structure is used; no original CSD CIF is redistributed. The upstream final CONTCAR is preserved as source.contcar (NOMAD upload EIDyjluDQ3eZnt-gI7Fc4Q, path vasp_files/OFERUN03_FSR/CONTCAR); source.cif is its P1 CifWriter serialization. Full indexed cell formula C48H60N24Zn6; ordered sites, guest-free composition."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "QMOF recordName=OFERUN03_FSR, indexed topology=sod, source flag=CSD.",
+          "Downloaded the public final NOMAD CONTCAR for entry 3zS5GB4fVURjJ-EeCZDfYf4XQitJ from the QMOF-PBE dataset; byte count and SHA256 match source evidence.",
+          "The exact upstream CONTCAR bytes are retained as source.contcar; no original CSD structure file is included.",
+          "source.cif is generated with pymatgen CifWriter(symprec=None, refine_struct=False); no symmetry refinement, geometry optimization, atom addition/removal, or cell transformation is applied.",
+          "CIF atom-site row order is preserved from the CONTCAR and its element sequence/fractional coordinates are checked site by site; sourceIndex refers to the derived source.cif rows.",
+          "CIF serialization round-trip metric tensor max delta=6.86e-08 Å²; fractional-coordinate max delta=4.99e-09.",
+          "Serialized source.cif SHA256 matches the independent QMOF extraction evidence (f19ddf5ae089315ae0b0974fed92f52d62676873ba78e127ed1ba2bfac8517e1).",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "CIF space-group label 'P 1' differs from geometric recognition I-43m at the recorded tolerance.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "All explicitly stated site occupancies were 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      }
+    }
+  }
+}

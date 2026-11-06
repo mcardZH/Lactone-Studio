@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "sno2-cassiterite",
+  "structure": {
+    "id": "sno2-cassiterite",
+    "name": "锡石型二氧化锡",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "sno2-cassiterite:atom:1",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "sno2-cassiterite:atom:2",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 2.3690000000000007,
+        "y": 2.369,
+        "z": 1.5932500000000003
+      },
+      {
+        "id": "sno2-cassiterite:atom:3",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.4550398000000002,
+        "y": 1.4550398,
+        "z": 1.781909833702005e-16
+      },
+      {
+        "id": "sno2-cassiterite:atom:4",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.282960200000001,
+        "y": 3.2829602000000007,
+        "z": 4.020466700658155e-16
+      },
+      {
+        "id": "sno2-cassiterite:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.8240398,
+        "y": 0.9139602000000001,
+        "z": 1.5932500000000003
+      },
+      {
+        "id": "sno2-cassiterite:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.9139602000000008,
+        "y": 3.8240398,
+        "z": 1.5932500000000003
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1000062; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "sno2-cassiterite:atom:1",
+      "sno2-cassiterite:atom:2",
+      "sno2-cassiterite:atom:3",
+      "sno2-cassiterite:atom:4",
+      "sno2-cassiterite:atom:5",
+      "sno2-cassiterite:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.738,
+          0.0,
+          2.90118826718008e-16
+        ],
+        [
+          7.619285114167904e-16,
+          4.738,
+          2.90118826718008e-16
+        ],
+        [
+          0.0,
+          0.0,
+          3.1865
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1000062 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

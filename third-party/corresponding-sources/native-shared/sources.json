@@ -1,0 +1,131 @@
+{
+  "schema": "sy-native-corresponding-source-supplement/v1",
+  "archives": [
+    {
+      "component": "gcc-runtime",
+      "version": "16.2.0",
+      "url": "https://mirrors.ocf.berkeley.edu/gnu/gcc/gcc-16.2.0/gcc-16.2.0.tar.gz",
+      "originalUrl": "https://ftp.gnu.org/gnu/gcc/gcc-16.2.0/gcc-16.2.0.tar.gz",
+      "path": "third-party/corresponding-sources/privacy-source-derivatives/gcc-16.2.0-privacy-sanitized.tar.gz",
+      "bytes": 240230783,
+      "sha256": "3dada6b4c7a9ea8ee9b5e32d9fd0e7c4a37a5b9c6db65bb265092b89c30920f6",
+      "modified": true,
+      "officialInput": {
+        "bytes": 193311409,
+        "sha256": "071d00a097579e5ef7ce97fc4a9e58e73fd3503c0a013c765c970370a5a53b9b",
+        "url": "https://mirrors.ocf.berkeley.edu/gnu/gcc/gcc-16.2.0/gcc-16.2.0.tar.gz"
+      },
+      "privacyDerivative": "third-party/corresponding-sources/privacy-source-derivatives/DERIVATIVES.json"
+    },
+    {
+      "component": "mctc-lib",
+      "version": "0.5.2",
+      "url": "https://github.com/grimme-lab/mctc-lib/archive/refs/tags/v0.5.2.tar.gz",
+      "path": "third-party/corresponding-sources/native-shared/archives/v0.5.2.tar.gz",
+      "bytes": 202932,
+      "sha256": "25b2a3d18343079e92449b9c8d73a23fa8dc0ede2faf5c94ad6cfa4676355133",
+      "modified": false
+    },
+    {
+      "component": "multicharge",
+      "version": "0.5.0",
+      "url": "https://github.com/grimme-lab/multicharge/releases/download/v0.5.0/multicharge-0.5.0-source.tar.xz",
+      "path": "third-party/corresponding-sources/native-shared/archives/multicharge-0.5.0-source.tar.xz",
+      "bytes": 714780,
+      "sha256": "fc6dee93fd6957a516137205f5a6754b218904bc38bf60f5a509f2a1b14735be",
+      "modified": false
+    },
+    {
+      "component": "toml-f",
+      "version": "0.5.2",
+      "url": "https://github.com/toml-f/toml-f/releases/download/v0.5.2/toml-f-0.5.2.tar.xz",
+      "path": "third-party/corresponding-sources/native-shared/archives/toml-f-0.5.2.tar.xz",
+      "bytes": 421700,
+      "sha256": "e18ccc26ac1e7580ffb22feda0fbafd228473248f71e84eac171a455a7915d59",
+      "modified": false
+    },
+    {
+      "component": "toml-f-static-in-mctc",
+      "version": "0.5.0",
+      "url": "https://github.com/toml-f/toml-f/releases/download/v0.5.0/toml-f-0.5.0.tar.xz",
+      "path": "third-party/corresponding-sources/native-shared/archives/toml-f-0.5.0.tar.xz",
+      "bytes": 385264,
+      "sha256": "9a6c129836d093efd0cab5a2a013330020682a82e8f59a3882e9ae3249c8281f",
+      "modified": false
+    },
+    {
+      "component": "jonquil-static-in-mctc",
+      "version": "0.3.0",
+      "url": "https://github.com/toml-f/jonquil/releases/download/v0.3.0/jonquil-0.3.0.tar.xz",
+      "path": "third-party/corresponding-sources/native-shared/archives/jonquil-0.3.0.tar.xz",
+      "bytes": 380688,
+      "sha256": "4bc3f0ae47ac2e009a0dc733ad9d0f16db4dfed13b50f58b9a06bb3a579eec47",
+      "modified": false
+    }
+  ],
+  "existingPrimaryArchives": [
+    {
+      "component": "tblite-0.7.0-library",
+      "archiveFilename": "tblite-0.7.0.tar.xz",
+      "bytes": 2353188,
+      "sha256": "3a7cb4602101e828caf41c38ca5e30f82de82d0d26d5db40168acdcad3462b92",
+      "url": "https://github.com/tblite/tblite/releases/download/v0.7.0/tblite-0.7.0.tar.xz",
+      "delivery": "Original primary archive is supplied in the existing corresponding-sources archive set; this supplement does not replace it."
+    },
+    {
+      "component": "tblite-0.7.0-python",
+      "archiveFilename": "tblite-0.7.0.tar.gz",
+      "bytes": 3477727,
+      "sha256": "c303bc45e0c48e46dad7f032d377432c8717e17b0eb8eedb6c42c5237c3856d2",
+      "url": "https://github.com/tblite/tblite/releases/download/v0.7.0/tblite-0.7.0.tar.gz",
+      "delivery": "Original primary archive is supplied in the existing corresponding-sources archive set; this supplement does not replace it."
+    },
+    {
+      "component": "dftd4-4.2.0",
+      "archiveFilename": "dftd4-4.2.0.tar.xz",
+      "bytes": 1036728,
+      "sha256": "467e024071510ad82b862c66c383c2ebc164fc1140e15dfc79f48d2f999fd184",
+      "url": "https://github.com/dftd4/dftd4/releases/download/v4.2.0/dftd4-4.2.0.tar.xz",
+      "delivery": "Original primary archive is supplied in the existing corresponding-sources archive set; this supplement does not replace it."
+    },
+    {
+      "component": "simple-dftd3-1.4.0",
+      "archiveFilename": "v1.4.0.tar.gz",
+      "bytes": 675580,
+      "sha256": "c548629115c3d5f180d06a70bc29dcf42e4018fbc9e4ba7c99abc1cdbfda7c1e",
+      "url": "https://github.com/dftd3/simple-dftd3/archive/refs/tags/v1.4.0.tar.gz",
+      "delivery": "Original primary archive is supplied in the existing corresponding-sources archive set; this supplement does not replace it."
+    },
+    {
+      "component": "libiconv-1.18",
+      "archiveFilename": "libiconv-1.18.tar.gz",
+      "bytes": 5822590,
+      "sha256": "3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8",
+      "url": "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz",
+      "delivery": "Original primary archive is supplied in the existing corresponding-sources archive set; this supplement does not replace it."
+    }
+  ],
+  "linkage": {
+    "libtblite-0.dll": [
+      "libdftd4-4.dll",
+      "libs-dftd3-1.dll",
+      "libmctc-lib-0.dll",
+      "libmulticharge-0.dll",
+      "libtoml-f-0.dll",
+      "original LP64 BLAS/LAPACK forwarders"
+    ],
+    "libmctc-lib-0.dll": {
+      "dynamicVersion": "0.5.2",
+      "staticSources": [
+        "jonquil0.3.0",
+        "toml-f0.5.0"
+      ]
+    },
+    "libquadmath-0.dll": {
+      "sourceVersion": "16.2.0",
+      "license": "LGPL-2.1-or-later; preserve individual file notices and soft-fp additional linking permission"
+    }
+  },
+  "scope": "Exact source/recipe material for the distributed libraries. Local component rebuild is separate from a full application rebuild.",
+  "pathBase": "public source-code root"
+}

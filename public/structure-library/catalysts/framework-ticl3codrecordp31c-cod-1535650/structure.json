@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "entryId": "framework-ticl3codrecordp31c-cod-1535650",
+  "structure": {
+    "id": "framework-ticl3codrecordp31c-cod-1535650",
+    "name": "TiCl3（COD P-31c 记录）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:1",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 8.788499999999999
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:2",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.9295
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:3",
+        "sourceIndex": 2,
+        "element": "Ti",
+        "x": 3.0714999999999995,
+        "y": 1.7733313518159355,
+        "z": 8.788499999999999
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:4",
+        "sourceIndex": 2,
+        "element": "Ti",
+        "x": 4.440892098500626e-16,
+        "y": 3.5466627036318714,
+        "z": 2.9295000000000004
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:5",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 5.0888612,
+        "y": 1.7396380561314329,
+        "z": 7.412806800000001
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:6",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 2.0919986500000003,
+        "y": 3.537264047467247,
+        "z": 7.412806800000001
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:7",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 2.0336401499999996,
+        "y": 0.043091951849127216,
+        "z": 7.4128068
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:8",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 4.10935985,
+        "y": 0.043091951849127216,
+        "z": 10.1641932
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:9",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 4.05100135,
+        "y": 3.537264047467247,
+        "z": 10.1641932
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:10",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 1.0541387999999998,
+        "y": 1.7396380561314329,
+        "z": 10.1641932
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:11",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": -2.0173611999999994,
+        "y": 3.580355999316374,
+        "z": 4.3051932
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:12",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 0.9795013500000003,
+        "y": 1.7827300079805597,
+        "z": 4.3051932
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:13",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 1.0378598500000011,
+        "y": 5.27690210359868,
+        "z": 4.305193200000001
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:14",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": -1.0378598499999994,
+        "y": 5.27690210359868,
+        "z": 1.553806800000001
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:15",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": -0.9795013499999996,
+        "y": 1.7827300079805597,
+        "z": 1.5538068000000007
+      },
+      {
+        "id": "framework-ticl3codrecordp31c-cod-1535650:atom:16",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 2.0173612000000007,
+        "y": 3.580355999316374,
+        "z": 1.553806800000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1535650; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "framework-ticl3codrecordp31c-cod-1535650:atom:1",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:2",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:3",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:4",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:5",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:6",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:7",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:8",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:9",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:10",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:11",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:12",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:13",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:14",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:15",
+      "framework-ticl3codrecordp31c-cod-1535650:atom:16"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          6.143,
+          0.0,
+          3.761502643581095e-16
+        ],
+        [
+          -3.071499999999999,
+          5.319994055447807,
+          3.761502643581095e-16
+        ],
+        [
+          0.0,
+          0.0,
+          11.718
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1535650 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

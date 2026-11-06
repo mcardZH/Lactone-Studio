@@ -1,0 +1,12 @@
+.scientific-plot-settings{margin:0 0 10px;color:inherit;font-size:14px;line-height:20px;min-width:0}
+.scientific-plot-settings>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font-size:16px;font-weight:600;line-height:24px}
+.scientific-plot-settings>summary>span::before{content:'▸ ';font-size:12px}.scientific-plot-settings[open]>summary>span::before{content:'▾ '}
+.scientific-plot-settings button{font:inherit;font-size:14px;line-height:20px;border:1px solid #ccd8e2;background:#f8fafc;border-radius:5px;padding:4px 8px;color:#285f7b;cursor:pointer}
+.scientific-plot-settings-body{display:flex;flex-direction:column;gap:8px;padding-top:8px;min-width:0}
+.scientific-plot-setting-row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;min-width:0}
+.scientific-plot-settings label{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-width:0}
+.scientific-plot-settings input,.scientific-plot-settings select{box-sizing:border-box;font:inherit;min-width:0;border:1px solid #ccd8e2;border-radius:5px;background:#fff;padding:4px 6px}
+.scientific-plot-settings input{width:10em}.scientific-plot-settings input[type=number]{width:5em}
+.scientific-plot-settings .scientific-plot-title-field{display:flex}.scientific-plot-title-field input{flex:1;width:10em}
+.scientific-plot-name-field{display:flex!important;margin-top:6px;flex-wrap:wrap}.scientific-plot-name-field span{overflow-wrap:anywhere}.scientific-plot-name-field input{flex:1;min-width:6em}
+.scientific-plot-settings details>summary{cursor:pointer}

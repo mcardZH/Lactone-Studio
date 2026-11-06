@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "entryId": "in-tetragonal",
+  "structure": {
+    "id": "in-tetragonal",
+    "name": "铟（四方）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "in-tetragonal:atom:1",
+        "sourceIndex": 1,
+        "element": "In",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "in-tetragonal:atom:2",
+        "sourceIndex": 1,
+        "element": "In",
+        "x": 2.2949500000000005,
+        "y": 2.29495,
+        "z": 2.4689500000000004
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9012375; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "in-tetragonal:atom:1",
+      "in-tetragonal:atom:2"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.5899,
+          0.0,
+          2.810503171703218e-16
+        ],
+        [
+          7.381122149750795e-16,
+          4.5899,
+          2.810503171703218e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.9379
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9012375 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "arch": "x86_64",
+  "build": "gfortran_hca11032_0",
+  "build_number": 0,
+  "depends": [
+    "dftd4 >=4.2.0,<4.3.0a0 gfortran_*",
+    "libblas >=3.9.0,<4.0a0",
+    "libgcc >=14",
+    "libgfortran",
+    "libgfortran5 >=14.3.0",
+    "liblapack >=3.9.0,<4.0a0",
+    "libwinpthread >=12.0.0.r4.gg4f2fc60ca",
+    "mctc-lib >=0.5.2,<0.6.0a0 gfortran_*",
+    "simple-dftd3 >=1.4.0,<1.5.0a0 gfortran_*",
+    "toml-f >=0.5.2,<0.6.0a0 gfortran_*",
+    "ucrt >=10.0.20348.0"
+  ],
+  "license": "LGPL-3.0-or-later",
+  "name": "tblite",
+  "platform": "win",
+  "subdir": "win-64",
+  "timestamp": 1784060902822,
+  "version": "0.7.0"
+}

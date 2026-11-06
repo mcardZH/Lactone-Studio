@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "entryId": "npo2-fluorite",
+  "structure": {
+    "id": "npo2-fluorite",
+    "name": "二氧化镎",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "npo2-fluorite:atom:1",
+        "sourceIndex": 1,
+        "element": "Np",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "npo2-fluorite:atom:2",
+        "sourceIndex": 1,
+        "element": "Np",
+        "x": 4.3693496453039054e-16,
+        "y": 2.71705,
+        "z": 2.71705
+      },
+      {
+        "id": "npo2-fluorite:atom:3",
+        "sourceIndex": 1,
+        "element": "Np",
+        "x": 2.71705,
+        "y": 0.0,
+        "z": 2.71705
+      },
+      {
+        "id": "npo2-fluorite:atom:4",
+        "sourceIndex": 1,
+        "element": "Np",
+        "x": 2.7170500000000004,
+        "y": 2.71705,
+        "z": 3.327426585623316e-16
+      },
+      {
+        "id": "npo2-fluorite:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.3585250000000002,
+        "y": 1.358525,
+        "z": 1.3585250000000002
+      },
+      {
+        "id": "npo2-fluorite:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.3585250000000006,
+        "y": 4.075575,
+        "z": 4.075575
+      },
+      {
+        "id": "npo2-fluorite:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.075575,
+        "y": 1.358525,
+        "z": 4.075575
+      },
+      {
+        "id": "npo2-fluorite:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.075575000000001,
+        "y": 4.075575,
+        "z": 1.3585250000000004
+      },
+      {
+        "id": "npo2-fluorite:atom:9",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.3585250000000006,
+        "y": 4.075575,
+        "z": 1.3585250000000002
+      },
+      {
+        "id": "npo2-fluorite:atom:10",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.3585250000000002,
+        "y": 1.358525,
+        "z": 4.075575
+      },
+      {
+        "id": "npo2-fluorite:atom:11",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.075575000000001,
+        "y": 4.075575,
+        "z": 4.075575000000001
+      },
+      {
+        "id": "npo2-fluorite:atom:12",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.075575,
+        "y": 1.358525,
+        "z": 1.3585250000000002
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9009025; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "npo2-fluorite:atom:1",
+      "npo2-fluorite:atom:2",
+      "npo2-fluorite:atom:3",
+      "npo2-fluorite:atom:4",
+      "npo2-fluorite:atom:5",
+      "npo2-fluorite:atom:6",
+      "npo2-fluorite:atom:7",
+      "npo2-fluorite:atom:8",
+      "npo2-fluorite:atom:9",
+      "npo2-fluorite:atom:10",
+      "npo2-fluorite:atom:11",
+      "npo2-fluorite:atom:12"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.4341,
+          0.0,
+          3.327426585623316e-16
+        ],
+        [
+          8.738699290607811e-16,
+          5.4341,
+          3.327426585623316e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.4341
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9009025 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,50 @@
+.orbital-selector{--orbital-columns:32px 46px minmax(0,1fr);--orbital-column-gap:6px;min-width:0;font-size:var(--ui-small-size,13px)}
+.orbital-list-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:9px 0 6px}
+.orbital-list-toolbar label{display:flex;gap:4px;align-items:center}
+.input-settings-layout.input-settings-surface .orbital-frontier-jump{min-height:28px;padding:4px 7px;font-size:var(--ui-small-size,13px);white-space:nowrap}
+.orbital-channels{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}
+.orbital-channels.is-spin-split{--orbital-columns:24px 42px minmax(0,1fr);--orbital-column-gap:4px;grid-template-columns:repeat(2,minmax(164px,1fr));overflow-x:auto}
+.orbital-channel{min-width:0;border:1px solid #cadfd1;border-radius:5px;overflow:hidden}
+.orbital-channel h4{margin:0;padding:3px;text-align:center;background:#eff6f2;font-size:inherit}
+.orbital-column-heading,.orbital-select-row{display:grid;grid-template-columns:var(--orbital-columns);gap:var(--orbital-column-gap);align-items:center}
+.orbital-column-heading{padding:4px 5px;font-size:var(--ui-small-size,13px);color:#667d72;background:#f6faf7}
+.orbital-column-heading>span:first-child,.orbital-column-heading>span:nth-child(2){text-align:center}
+.orbital-column-heading>span:last-child{text-align:center}
+.orbital-header-unit{display:block;font-size:inherit;font-weight:400}
+.orbital-channel-scroll{position:relative;max-height:310px;overflow:auto;overflow-anchor:none;scrollbar-gutter:stable}
+/* More specific than the shared action's inline-flex presentation; these are fixed table-like rows. */
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row{display:grid;grid-template-columns:var(--orbital-columns);gap:var(--orbital-column-gap);box-sizing:border-box;width:100%;min-height:38px;padding:4px 5px;text-align:left;border:0;border-bottom:1px solid #e8eeea;border-radius:0;background:#fff;color:#294454;font:inherit;line-height:1.3}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row:hover{background:#eff7f3}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row[aria-pressed=true]{background:#e0f0e6;color:#214b35;box-shadow:inset 0 0 0 1px #75a689;font-weight:600}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row[aria-pressed=true] .orbital-energy small{color:#396f4f}
+.orbital-index{white-space:nowrap;text-align:center;font-variant-numeric:tabular-nums}
+.orbital-electron-box{display:flex;align-items:center;justify-content:center;width:46px;min-width:46px;height:29px;border:1px solid #829d90;border-radius:2px;font:22px/1 "Segoe UI Symbol",system-ui,sans-serif;letter-spacing:1px}
+.orbital-energy{min-width:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-align:center;font-size:var(--ui-secondary-size,14px);font-weight:500}
+.orbital-energy small{display:block;color:var(--ui-control-muted);font-size:var(--ui-control-small-font);font-weight:600}
+.is-spin-split .orbital-electron-box{width:42px;min-width:42px}
+.orbital-draw-options{padding:9px;border:1px solid var(--ui-surface-border);border-radius:var(--ui-control-radius);background:var(--ui-surface-bg);margin-bottom:9px}
+.orbital-draw-options>h4{margin:0 0 7px;font-size:var(--ui-small-size,13px)}
+.orbital-draw-options.is-embedded{padding:0;border:0;background:transparent;margin:0}
+.orbital-draw-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:flex-start;margin:6px 0;min-width:0;font-size:var(--ui-secondary-size,14px)}
+.orbital-draw-row label{display:inline-flex;align-items:center;gap:5px;min-width:0;white-space:nowrap}
+.orbital-draw-row .shared-input-checkbox{flex:none;margin:0}
+.orbital-draw-row input[type=color]{width:34px;height:28px;min-height:28px;padding:1px;flex:none}
+.orbital-draw-row select{width:auto;max-width:100%;min-height:30px;flex:none}
+.orbital-draw-flow>label,.orbital-draw-flow>.shared-input-checkbox,.orbital-draw-flow>.orbital-draw-quality{flex:0 0 auto;max-width:100%}
+.orbital-draw-color-pair{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto}
+.orbital-draw-flow>.orbital-draw-quality{display:inline-flex;align-items:center;margin:0}
+.orbital-draw-flow>.orbital-draw-quality>label{max-width:100%;white-space:normal}
+.orbital-draw-numbers{align-items:stretch}
+.orbital-draw-numbers .orbital-numeric-control{display:inline-flex;flex:0 0 auto;max-width:100%;gap:7px;min-height:32px}
+.orbital-numeric-control>span{flex:0 0 4em}
+.orbital-draw-row .orbital-numeric-control input[type=range]{flex:0 0 110px;width:110px;max-width:110px;min-width:55px;padding:0}
+.orbital-draw-row .orbital-numeric-control input[type=number]{flex:0 0 72px;width:72px;min-width:72px;min-height:30px;box-sizing:border-box;padding:3px 5px}
+.orbital-draw-quality{margin-bottom:0}
+.orbital-single-status{font-size:var(--ui-small-size,13px);min-height:20px;color:#536f62}
+.orbital-controls .analysis-controls .scientific-table,.orbital-controls .analysis-angular{font-size:var(--ui-secondary-size,14px)}
+.orbital-draw-options.is-embedded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.orbital-draw-options.is-embedded > .orbital-draw-row { display: contents; }
+.orbital-draw-options.is-embedded > .appearance-preset-picker { flex: 0 1 auto; width: auto; max-width: 100%; margin: 0; }
+.orbital-draw-options .appearance-preset-toolbar { flex-wrap: wrap; }
+.orbital-grid-preview { font-size: var(--ui-small-size,13px); color: var(--ui-control-muted); }
+.orbital-export-menu { margin-top: 8px; }

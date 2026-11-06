@@ -1,0 +1,884 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "wc-hexagonal",
+      "category": "ceramics",
+      "name": "碳化钨（WC）",
+      "nameEn": "tungsten carbide",
+      "formula": "WC",
+      "aliases": [
+        "WC",
+        "tungsten carbide"
+      ],
+      "phase": "六方，空间群 P-6m2 (#187)",
+      "structurePath": "ceramics/wc-hexagonal/structure.json",
+      "sourcePath": "ceramics/wc-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1501516",
+        "url": "https://www.crystallography.net/cod/1501516.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Litasov, Konstantin D.; Shatskiy, Anton; Fei, Yingwei; Suzuki, Akio; Ohtani, Eiji; Funakoshi, Kenichi. Pressure-volume-temperature equation of state of tungsten carbide to 32 GPa and 1673 K. Journal of Applied Physics 2010 108 5. DOI: 10.1063/1.3481667",
+        "doi": "10.1063/1.3481667",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=300; diffrpressure=101；COD记录标题/样品说明：Pressure-volume-temperature equation of state of tungsten carbide to 32 GPa and 1673 K Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报300 K，来源为WC的压力-体积-温度研究。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P -6 m 2",
+        "number": 187
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cbn-zincblende",
+      "category": "ceramics",
+      "name": "立方氮化硼",
+      "nameEn": "cubic boron nitride",
+      "formula": "BN",
+      "aliases": [
+        "BN",
+        "c-BN",
+        "cubic boron nitride"
+      ],
+      "phase": "闪锌矿型，空间群 F-43m (#216)",
+      "structurePath": "ceramics/cbn-zincblende/structure.json",
+      "sourcePath": "ceramics/cbn-zincblende/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008834",
+        "url": "https://www.crystallography.net/cod/9008834.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure. Crystal Structures 1963 1, pp. 85-237",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Note: ZnS structure, sphalerite structure Original source-type description: reference-structure; experimental provenance not explicit in this entry"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD 1963参考结构记录；与层状h-BN严格区分。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F -4 3 m",
+        "number": 216
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "aln-wurtzite",
+      "category": "ceramics",
+      "name": "氮化铝",
+      "nameEn": "aluminum nitride",
+      "formula": "AlN",
+      "aliases": [
+        "AlN",
+        "aluminum nitride"
+      ],
+      "phase": "纤锌矿型，空间群 P63mc (#186)",
+      "structurePath": "ceramics/aln-wurtzite/structure.json",
+      "sourcePath": "ceramics/aln-wurtzite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1010514",
+        "url": "https://www.crystallography.net/cod/1010514.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Ott, H. Das Gitter des Aluminiumnitrids (Al N).. Zeitschrift fuer Physik 1924 22, pp. 201-214. DOI: 10.1007/BF01328124",
+        "doi": "10.1007/BF01328124",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Das Gitter des Aluminiumnitrids (Al N)."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1924年AlN晶格结构研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63 m c",
+        "number": 186
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tin-rocksalt",
+      "category": "ceramics",
+      "name": "氮化钛（陨硫钛矿）",
+      "nameEn": "osbornite",
+      "formula": "TiN",
+      "aliases": [
+        "TiN",
+        "titanium nitride",
+        "osbornite"
+      ],
+      "phase": "岩盐型，空间群 Fm-3m (#225)",
+      "structurePath": "ceramics/tin-rocksalt/structure.json",
+      "sourcePath": "ceramics/tin-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1100034",
+        "url": "https://www.crystallography.net/cod/1100034.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Bannister, F A. Osbornite, meteoric titanium nitride.. Mineralogical Magazine (1969-) 1941 26, pp. 36-44. DOI: 10.1180/minmag.1941.026.173.02",
+        "doi": "10.1180/minmag.1941.026.173.02",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Osbornite, meteoric titanium nitride."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录为陨石来源的osbornite；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "zrn-rocksalt",
+      "category": "ceramics",
+      "name": "氮化锆",
+      "nameEn": "zirconium nitride",
+      "formula": "ZrN",
+      "aliases": [
+        "ZrN",
+        "zirconium nitride"
+      ],
+      "phase": "岩盐型，空间群 Fm-3m (#225)",
+      "structurePath": "ceramics/zrn-rocksalt/structure.json",
+      "sourcePath": "ceramics/zrn-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011361",
+        "url": "https://www.crystallography.net/cod/1011361.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 130149",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Becker, K; Ebert, F. Die Kristallstrukturen einiger binaerer Carbide und Nitride.. Zeitschrift fuer Physik 1925 31, pp. 268-272. DOI: 10.1007/BF02980580",
+        "doi": "10.1007/BF02980580",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Die Kristallstrukturen einiger binaerer Carbide und Nitride."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1925年二元碳化物/氮化物晶体结构论文；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "b4c-rhombohedral",
+      "category": "ceramics",
+      "name": "碳化硼（菱方）",
+      "nameEn": "boron carbide",
+      "formula": "B4C",
+      "aliases": [
+        "B4C",
+        "boron carbide"
+      ],
+      "phase": "菱方，空间群 R-3m (#166)",
+      "structurePath": "ceramics/b4c-rhombohedral/structure.json",
+      "sourcePath": "ceramics/b4c-rhombohedral/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:4124697",
+        "url": "https://www.crystallography.net/cod/4124697.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Clark, H.K.; Hoard, J.L.. The crystal structure of boron carbide. Journal of the American Chemical Society 1943 65, pp. 2115-2119",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structure of boron carbide"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录化学计量比为B4C，来源为1943年晶体结构研究。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 m :H",
+        "number": 166
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tic-rocksalt",
+      "category": "ceramics",
+      "name": "碳化钛",
+      "nameEn": "titanium carbide",
+      "formula": "TiC",
+      "aliases": [
+        "TiC",
+        "titanium carbide"
+      ],
+      "phase": "岩盐型，空间群 Fm-3m (#225)",
+      "structurePath": "ceramics/tic-rocksalt/structure.json",
+      "sourcePath": "ceramics/tic-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011320",
+        "url": "https://www.crystallography.net/cod/1011320.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 278158",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Becker, K; Ebert, F. Die Kristallstrukturen einiger binaerer Carbide und Nitride.. Zeitschrift fuer Physik 1925 31, pp. 268-272. DOI: 10.1007/BF02980580",
+        "doi": "10.1007/BF02980580",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：compoundsource=synthetic；COD记录标题/样品说明：Die Kristallstrukturen einiger binaerer Carbide und Nitride."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1925年二元碳化物/氮化物晶体结构论文；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "zrc-rocksalt",
+      "category": "ceramics",
+      "name": "碳化锆",
+      "nameEn": "zirconium carbide",
+      "formula": "ZrC",
+      "aliases": [
+        "ZrC",
+        "zirconium carbide"
+      ],
+      "phase": "岩盐型，空间群 Fm-3m (#225)",
+      "structurePath": "ceramics/zrc-rocksalt/structure.json",
+      "sourcePath": "ceramics/zrc-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1562921",
+        "url": "https://www.crystallography.net/cod/1562921.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 265549",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Chinthaka Silva, G.W.; Kercher, Andrew A.; Hunn, John D.; Martin, Rodger C.; Jellison, Gerald E.; Meyer, Harry M.. Characterization of zirconium carbides using electron microscopy, optical anisotropy, Auger depth profiles, X-ray diffraction, and electron density calculated by charge flipping method. Journal of Solid State Chemistry 2012 194, pp. 91-99. DOI: 10.1016/j.jssc.2012.04.047",
+        "doi": "10.1016/j.jssc.2012.04.047",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298; celltemp=298; compoundsource=Syn；COD记录标题/样品说明：Characterization of zirconium carbides using electron microscopy, optical anisotropy, Auger depth profiles, X-ray diffraction, and electron density calculated by charge flipping method"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298 K，来源为碳化锆表征及X射线衍射研究。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "nbc-rocksalt",
+      "category": "ceramics",
+      "name": "碳化铌",
+      "nameEn": "niobium carbide",
+      "formula": "NbC",
+      "aliases": [
+        "NbC",
+        "niobium carbide"
+      ],
+      "phase": "岩盐型，空间群 Fm-3m (#225)",
+      "structurePath": "ceramics/nbc-rocksalt/structure.json",
+      "sourcePath": "ceramics/nbc-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011323",
+        "url": "https://www.crystallography.net/cod/1011323.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 278158",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Becker, K; Ebert, F. Die Kristallstrukturen einiger binaerer Carbide und Nitride.. Zeitschrift fuer Physik 1925 31, pp. 268-272. DOI: 10.1007/BF02980580",
+        "doi": "10.1007/BF02980580",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Die Kristallstrukturen einiger binaerer Carbide und Nitride."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1925年二元碳化物/氮化物晶体结构论文；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tac-rocksalt",
+      "category": "ceramics",
+      "name": "碳化钽",
+      "nameEn": "tantalum carbide",
+      "formula": "TaC",
+      "aliases": [
+        "TaC",
+        "tantalum carbide"
+      ],
+      "phase": "岩盐型，空间群 Fm-3m (#225)",
+      "structurePath": "ceramics/tac-rocksalt/structure.json",
+      "sourcePath": "ceramics/tac-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011324",
+        "url": "https://www.crystallography.net/cod/1011324.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 278158",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Becker, K; Ebert, F. Die Kristallstrukturen einiger binaerer Carbide und Nitride.. Zeitschrift fuer Physik 1925 31, pp. 268-272. DOI: 10.1007/BF02980580",
+        "doi": "10.1007/BF02980580",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Die Kristallstrukturen einiger binaerer Carbide und Nitride."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1925年二元碳化物/氮化物晶体结构论文；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "vc-rocksalt",
+      "category": "ceramics",
+      "name": "碳化钒",
+      "nameEn": "vanadium carbide",
+      "formula": "VC",
+      "aliases": [
+        "VC",
+        "vanadium carbide"
+      ],
+      "phase": "岩盐型，空间群 Fm-3m (#225)",
+      "structurePath": "ceramics/vc-rocksalt/structure.json",
+      "sourcePath": "ceramics/vc-rocksalt/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1011321",
+        "url": "https://www.crystallography.net/cod/1011321.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 278158",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Becker, K; Ebert, F. Die Kristallstrukturen einiger binaerer Carbide und Nitride.. Zeitschrift fuer Physik 1925 31, pp. 268-272. DOI: 10.1007/BF02980580",
+        "doi": "10.1007/BF02980580",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Die Kristallstrukturen einiger binaerer Carbide und Nitride."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1925年二元碳化物/氮化物晶体结构论文；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mo2c-orthorhombic",
+      "category": "ceramics",
+      "name": "碳化钼（Mo2C）",
+      "nameEn": "molybdenum carbide",
+      "formula": "Mo2C",
+      "aliases": [
+        "Mo2C",
+        "molybdenum carbide"
+      ],
+      "phase": "正交，空间群 Pnca (#60)",
+      "structurePath": "ceramics/mo2c-orthorhombic/structure.json",
+      "sourcePath": "ceramics/mo2c-orthorhombic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1539795",
+        "url": "https://www.crystallography.net/cod/1539795.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Epicier, T.; Dubois, J.; Esnouf, C.; Fantozzi, G.; Convert, P.. Neutron powder diffraction studies of transition metal hemicarbides M2 C1-x - II. In situ high temperature study on W2 C1-x and Mo2 C1-x. Acta Metallurgica 1988 36, pp. 1903-1921",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Neutron powder diffraction studies of transition metal hemicarbides M2 C1-x - II. In situ high temperature study on W2 C1-x and Mo2 C1-x"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用Mo2C1-x中子粉末衍射研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b c n",
+        "number": 60
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mgb2-hexagonal",
+      "category": "ceramics",
+      "name": "二硼化镁",
+      "nameEn": "magnesium diboride",
+      "formula": "MgB2",
+      "aliases": [
+        "MgB2",
+        "magnesium diboride"
+      ],
+      "phase": "AlB2型六方，空间群 P6/mmm (#191)",
+      "structurePath": "ceramics/mgb2-hexagonal/structure.json",
+      "sourcePath": "ceramics/mgb2-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1526507",
+        "url": "https://www.crystallography.net/cod/1526507.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176429",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Jorgensen, J.D.; Hinks, D.G.; Short, S.. Lattice properties of Mg B2 versus temperature and pressure. Physical Review, Serie 3. B - Condensed Matter (18,1978-) 2001 63, pp. 2245221-2245225",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Lattice properties of Mg B2 versus temperature and pressure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD关联MgB2晶格性质研究；温压与实验/理论类型需核。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 6/m m m",
+        "number": 191
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "zrb2-hexagonal",
+      "category": "ceramics",
+      "name": "二硼化锆",
+      "nameEn": "zirconium diboride",
+      "formula": "ZrB2",
+      "aliases": [
+        "ZrB2",
+        "zirconium diboride"
+      ],
+      "phase": "AlB2型六方，空间群 P6/mmm (#191)",
+      "structurePath": "ceramics/zrb2-hexagonal/structure.json",
+      "sourcePath": "ceramics/zrb2-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1510857",
+        "url": "https://www.crystallography.net/cod/1510857.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Blumenthal, H.; Norton, J.T.; Sindeband, S.J.. Structures of diborides of titanium, zirconium, columbium, tantalum and vanadium. Transactions of the American Institute of Mining, Metallurgical and Petroleum Engineers 1949 185, pp. 749-751",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Structures of diborides of titanium, zirconium, columbium, tantalum and vanadium"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1949年过渡金属二硼化物结构研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 6/m m m",
+        "number": 191
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "crb2-hexagonal",
+      "category": "ceramics",
+      "name": "二硼化铬",
+      "nameEn": "chromium diboride",
+      "formula": "CrB2",
+      "aliases": [
+        "CrB2",
+        "chromium diboride"
+      ],
+      "phase": "AlB2型六方，空间群 P6/mmm (#191)",
+      "structurePath": "ceramics/crb2-hexagonal/structure.json",
+      "sourcePath": "ceramics/crb2-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1510641",
+        "url": "https://www.crystallography.net/cod/1510641.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Moskowitz, D.; Glaser, F.W.; Post, B.. Transition metal diborides. Acta Metallurgica 1954 2, pp. 20-25. DOI: 10.1016/0001-6160(54)90090-5",
+        "doi": "10.1016/0001-6160(54)90090-5",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Transition metal diborides"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1954年过渡金属二硼化物研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 6/m m m",
+        "number": 191
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "nbb2-hexagonal",
+      "category": "ceramics",
+      "name": "二硼化铌",
+      "nameEn": "niobium diboride",
+      "formula": "NbB2",
+      "aliases": [
+        "NbB2",
+        "niobium diboride"
+      ],
+      "phase": "AlB2型六方，空间群 P6/mmm (#191)",
+      "structurePath": "ceramics/nbb2-hexagonal/structure.json",
+      "sourcePath": "ceramics/nbb2-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1510778",
+        "url": "https://www.crystallography.net/cod/1510778.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Loennberg, B.. Thermal expansion studies on the group IV-VII transition metal diborides. Journal of the Less-Common Metals 1988 141, pp. 145-156. DOI: 10.1016/0022-5088(88)90219-6",
+        "doi": "10.1016/0022-5088(88)90219-6",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Thermal expansion studies on the group IV-VII transition metal diborides"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1988年IV–VII族过渡金属二硼化物热膨胀研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 6/m m m",
+        "number": 191
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tab2-hexagonal",
+      "category": "ceramics",
+      "name": "二硼化钽",
+      "nameEn": "tantalum diboride",
+      "formula": "TaB2",
+      "aliases": [
+        "TaB2",
+        "tantalum diboride"
+      ],
+      "phase": "AlB2型六方，空间群 P6/mmm (#191)",
+      "structurePath": "ceramics/tab2-hexagonal/structure.json",
+      "sourcePath": "ceramics/tab2-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1510843",
+        "url": "https://www.crystallography.net/cod/1510843.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Kiessling, R.. The borides of tantalum. Acta Chemica Scandinavica (1-27,1973-42,1988) 1949 3, pp. 603-615. DOI: 10.3891/acta.chem.scand.03-0603",
+        "doi": "10.3891/acta.chem.scand.03-0603",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The borides of tantalum"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1949年钽硼化物研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 6/m m m",
+        "number": 191
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "hfb2-hexagonal",
+      "category": "ceramics",
+      "name": "二硼化铪",
+      "nameEn": "hafnium diboride",
+      "formula": "HfB2",
+      "aliases": [
+        "HfB2",
+        "hafnium diboride"
+      ],
+      "phase": "AlB2型六方，空间群 P6/mmm (#191)",
+      "structurePath": "ceramics/hfb2-hexagonal/structure.json",
+      "sourcePath": "ceramics/hfb2-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1510711",
+        "url": "https://www.crystallography.net/cod/1510711.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Holleck, H.. Legierungsverhalten von Hf B2 mit Uran- und Uebergangsmetalldiboriden. Journal of Nuclear Materials 1967 21, pp. 14-20. DOI: 10.1016/0022-3115(67)90724-6",
+        "doi": "10.1016/0022-3115(67)90724-6",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Legierungsverhalten von Hf B2 mit Uran- und Uebergangsmetalldiboriden"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用HfB2与过渡金属二硼化物合金研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 6/m m m",
+        "number": 191
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "mob2-hexagonal",
+      "category": "ceramics",
+      "name": "二硼化钼（缺硼候选）",
+      "nameEn": "molybdenum diboride",
+      "formula": "MoB2",
+      "aliases": [
+        "MoB2",
+        "molybdenum diboride"
+      ],
+      "phase": "AlB2型六方候选，空间群 P6/mmm (#191)",
+      "structurePath": "ceramics/mob2-hexagonal/structure.json",
+      "sourcePath": "ceramics/mob2-hexagonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1510765",
+        "url": "https://www.crystallography.net/cod/1510765.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 176435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Aselage, T.L.; Klesnar, H.; Lawson, A.C.jr.; Kwei, G.H.; Morosin, B.. The diboride compounds of molybdenum: Mo B2-x and Mo2 B5-y. Journal of Alloys Compd. 1996 241, pp. 180-186. DOI: 10.1016/0925-8388(96)02294-3",
+        "doi": "10.1016/0925-8388(96)02294-3",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The diboride compounds of molybdenum: Mo B2-x and Mo2 B5-y"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD题名报告MoB2-x与Mo2B5-y；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 6/m m m",
+        "number": 191
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "feb-orthorhombic",
+      "category": "ceramics",
+      "name": "一硼化铁",
+      "nameEn": "iron monoboride",
+      "formula": "FeB",
+      "aliases": [
+        "FeB",
+        "iron monoboride"
+      ],
+      "phase": "正交，空间群 Pnma (#62)",
+      "structurePath": "ceramics/feb-orthorhombic/structure.json",
+      "sourcePath": "ceramics/feb-orthorhombic/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:4003012",
+        "url": "https://www.crystallography.net/cod/4003012.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 220435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Bocarsly, Joshua D.; Levin, Emily E.; Humphrey, Samuel A.; Faske, Tom; Donner, Wolfgang; Wilson, Stephen D.; Seshadri, Ram. Magnetostructural Coupling Drives Magnetocaloric Behavior: The Case of MnB versus FeB. Chemistry of Materials 2019 31 13, pp. 4873. DOI: 10.1021/acs.chemmater.9b01476",
+        "doi": "10.1021/acs.chemmater.9b01476",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=300; celltemp=300；COD记录标题/样品说明：Magnetostructural Coupling Drives Magnetocaloric Behavior: The Case of MnB versus FeB"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报300 K，来源研究FeB磁结构耦合。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P n m a",
+        "number": 62
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ni2b-tetragonal",
+      "category": "ceramics",
+      "name": "二硼化镍（Ni2B）",
+      "nameEn": "nickel boride",
+      "formula": "Ni2B",
+      "aliases": [
+        "Ni2B",
+        "nickel boride"
+      ],
+      "phase": "四方，空间群 I4/mcm (#140)",
+      "structurePath": "ceramics/ni2b-tetragonal/structure.json",
+      "sourcePath": "ceramics/ni2b-tetragonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1511265",
+        "url": "https://www.crystallography.net/cod/1511265.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 176435",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Hokkeling, P.; Havinga, E.E.; Damsma, H.. Compounds and pseudo-binary alloys with the Cu Al2 (C16)type structure. I. Preparation and X-ray results. Journal of the Less-Common Metals 1972 27, pp. 169-186. DOI: 10.1016/0022-5088(72)90028-8",
+        "doi": "10.1016/0022-5088(72)90028-8",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Compounds and pseudo-binary alloys with the Cu Al2 (C16)type structure. I. Preparation and X-ray results"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用C16型结构化合物研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I 4/m c m",
+        "number": 140
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

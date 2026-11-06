@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "entryId": "hbn-monolayer",
+  "structure": {
+    "id": "hbn-monolayer",
+    "name": "六方氮化硼单层",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "hbn-monolayer:atom:1",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": -2.7925649218612976e-16,
+        "y": 1.4456793005481299,
+        "z": 10.0
+      },
+      {
+        "id": "hbn-monolayer:atom:2",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 1.2519949999999995,
+        "y": 0.7228396502740645,
+        "z": 10.0
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9008997; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown.",
+      "Derived one layer from a bulk layered crystal; not an experimentally isolated monolayer."
+    ],
+    "sourceAtomIds": [
+      "hbn-monolayer:atom:1",
+      "hbn-monolayer:atom:2"
+    ],
+    "dimension": 2,
+    "cell": {
+      "vectors": [
+        [
+          2.50399,
+          0.0,
+          1.5332516692984906e-16
+        ],
+        [
+          -1.2519949999999997,
+          2.1685189508221967,
+          1.5332516692984906e-16
+        ],
+        [
+          -1.2246467991473535e-15,
+          -2.121150477449814e-15,
+          20.0
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        false
+      ],
+      "pbcProvenance": {
+        "kind": "user-confirmed",
+        "evidence": "User-approved v0.39 TTF model: COD bulk record 9008997 is retained verbatim at sourcePath; this single-layer derivative retains the source in-plane vectors, constructs a perpendicular c vector with a 20.0 Å vacuum gap, and sets PBC [true, true, false]. The isolated monolayer is derived, not an experimental isolated-layer measurement."
+      }
+    }
+  }
+}

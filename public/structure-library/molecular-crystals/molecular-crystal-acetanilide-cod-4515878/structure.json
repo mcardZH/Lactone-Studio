@@ -1,0 +1,1417 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-acetanilide-cod-4515878",
+  "structure": {
+    "id": "molecular-crystal-acetanilide-cod-4515878",
+    "name": "乙酰苯胺",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:1",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 5.197606408,
+        "y": 1.97453781,
+        "z": 19.1231122461
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:2",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 8.858893592000001,
+        "y": 5.81226219,
+        "z": 9.358062246100003
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:3",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 0.5121064080000006,
+        "y": 1.9188621900000002,
+        "z": 0.4069877539000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:4",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 4.173393592000001,
+        "y": 5.86793781,
+        "z": 10.172037753900002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:5",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 4.173393592000001,
+        "y": 5.81226219,
+        "z": 0.40698775390000064
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:6",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 0.5121064080000006,
+        "y": 1.97453781,
+        "z": 10.172037753900002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:7",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 8.858893592000001,
+        "y": 5.86793781,
+        "z": 19.1231122461
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:8",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 5.197606408,
+        "y": 1.9188621900000002,
+        "z": 9.358062246100001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:9",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 3.3255898510000015,
+        "y": 7.5078612504,
+        "z": 14.137351137500001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:10",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 1.359910149,
+        "y": 0.27893874960000004,
+        "z": 4.3723011375
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:11",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 8.011089851000001,
+        "y": 4.172338749600001,
+        "z": 5.392748862500001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:12",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 6.045410149000001,
+        "y": 3.6144612504,
+        "z": 15.1577988625
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:13",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 6.045410149,
+        "y": 0.27893874960000004,
+        "z": 5.3927488625
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:14",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 8.011089851000003,
+        "y": 7.5078612504,
+        "z": 15.157798862500002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:15",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 1.3599101490000007,
+        "y": 3.6144612504,
+        "z": 14.137351137500001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:16",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 3.325589851000001,
+        "y": 4.172338749600001,
+        "z": 4.372301137500001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:17",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.372160025,
+        "y": 1.0971834804,
+        "z": 14.631521257800001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:18",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 8.684339975000002,
+        "y": 6.6896165196,
+        "z": 4.866471257800002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:19",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 0.6866600250000002,
+        "y": 2.7962165196,
+        "z": 4.8985787422
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:20",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 3.9988399750000014,
+        "y": 4.990583480400001,
+        "z": 14.6636287422
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:21",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 3.9988399750000014,
+        "y": 6.6896165196,
+        "z": 4.898578742200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:22",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 0.686660025,
+        "y": 1.0971834804,
+        "z": 14.6636287422
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:23",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 8.684339975,
+        "y": 4.990583480400001,
+        "z": 14.631521257800001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:24",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.372160025000001,
+        "y": 2.7962165196,
+        "z": 4.866471257800002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:25",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.7303852420000005,
+        "y": 1.9567761192000002,
+        "z": 16.9342372284
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:26",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 8.326114758000003,
+        "y": 5.8300238808,
+        "z": 7.1691872284
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:27",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 1.044885242,
+        "y": 1.9366238808,
+        "z": 2.5958627716000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:28",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 3.6406147580000012,
+        "y": 5.8501761192,
+        "z": 12.3609127716
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:29",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 3.6406147580000012,
+        "y": 5.8300238808,
+        "z": 2.5958627716000007
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:30",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 1.044885242,
+        "y": 1.9567761192000002,
+        "z": 12.3609127716
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:31",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 8.326114758000003,
+        "y": 5.8501761192,
+        "z": 16.9342372284
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:32",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.7303852420000005,
+        "y": 1.9366238808,
+        "z": 7.1691872284
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:33",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.2358456320000015,
+        "y": 7.6645939608,
+        "z": 18.263123822700003
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:34",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.449654368,
+        "y": 0.1222060392,
+        "z": 8.4980738227
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:35",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 6.921345632000001,
+        "y": 4.0156060392,
+        "z": 1.2669761773000008
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:36",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 7.135154368000001,
+        "y": 3.7711939608000002,
+        "z": 11.0320261773
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:37",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 7.135154368,
+        "y": 0.1222060392,
+        "z": 1.2669761773000006
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:38",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 6.921345632000001,
+        "y": 7.6645939608,
+        "z": 11.032026177300002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:39",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.4496543680000005,
+        "y": 3.7711939608000002,
+        "z": 18.263123822700003
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:40",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.2358456320000006,
+        "y": 4.0156060392,
+        "z": 8.4980738227
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:41",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.8680713660000012,
+        "y": 6.828073610400001,
+        "z": 15.9756803903
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:42",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 2.817428634,
+        "y": 0.9587263896,
+        "z": 6.210630390300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:43",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 6.553571366000002,
+        "y": 4.8521263895999995,
+        "z": 3.554419609700001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:44",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 7.502928634000001,
+        "y": 2.9346736104,
+        "z": 13.3194696097
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:45",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 7.502928634,
+        "y": 0.9587263896,
+        "z": 3.5544196097000005
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:46",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 6.553571366000002,
+        "y": 6.828073610400001,
+        "z": 13.3194696097
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:47",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 2.8174286340000005,
+        "y": 2.9346736104,
+        "z": 15.9756803903
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:48",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.868071366000001,
+        "y": 4.8521263895999995,
+        "z": 6.210630390300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:49",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 5.0399487039999995,
+        "y": 2.5988055660000002,
+        "z": 1.6252753919000005
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:50",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 9.016551296000001,
+        "y": 5.187994434,
+        "z": 11.390325391900001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:51",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 0.354448704000001,
+        "y": 1.294594434,
+        "z": 17.9048246081
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:52",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 4.331051296000002,
+        "y": 6.492205566,
+        "z": 8.1397746081
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:53",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 4.331051296000002,
+        "y": 5.187994434,
+        "z": 17.9048246081
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:54",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 0.3544487040000012,
+        "y": 2.5988055660000002,
+        "z": 8.1397746081
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:55",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 9.016551296000003,
+        "y": 6.492205566,
+        "z": 1.625275391900001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:56",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 5.0399487039999995,
+        "y": 1.294594434,
+        "z": 11.390325391900001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:57",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 3.4465132350000003,
+        "y": 3.2519545632,
+        "z": 1.8887169108000006
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:58",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 1.238986765000001,
+        "y": 4.5348454368,
+        "z": 11.653766910800002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:59",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 8.132013235,
+        "y": 0.6414454368000001,
+        "z": 17.6413830892
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:60",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 5.924486765000001,
+        "y": 7.145354563200001,
+        "z": 7.876333089200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:61",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 5.924486765000001,
+        "y": 4.5348454368,
+        "z": 17.6413830892
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:62",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 8.132013235,
+        "y": 3.2519545632,
+        "z": 7.876333089200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:63",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 1.2389867650000015,
+        "y": 7.145354563200001,
+        "z": 1.8887169108000006
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:64",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 3.446513235,
+        "y": 0.6414454368000001,
+        "z": 11.653766910800002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:65",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 3.8634665090000007,
+        "y": 1.7852251284,
+        "z": 2.6079714336000004
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:66",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 0.822033491000001,
+        "y": 6.0015748716,
+        "z": 12.3730214336
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:67",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 8.548966509000001,
+        "y": 2.1081748716,
+        "z": 16.9221285664
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:68",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 5.507533491,
+        "y": 5.6786251284,
+        "z": 7.157078566400002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:69",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 5.507533491,
+        "y": 6.0015748716,
+        "z": 16.9221285664
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:70",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 8.548966509000001,
+        "y": 1.7852251284,
+        "z": 7.157078566400002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:71",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 0.8220334910000009,
+        "y": 5.6786251284,
+        "z": 2.6079714336000004
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:72",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 3.8634665090000007,
+        "y": 2.1081748716,
+        "z": 12.3730214336
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:73",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 3.54795431,
+        "y": 0.06307308,
+        "z": 15.1335424783
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:74",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 1.1375456900000014,
+        "y": 7.723726920000001,
+        "z": 5.368492478300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:75",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 8.23345431,
+        "y": 3.83032692,
+        "z": 4.396557521700001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:76",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 5.823045690000001,
+        "y": 3.9564730800000003,
+        "z": 14.1616075217
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:77",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 5.823045690000001,
+        "y": 7.723726920000001,
+        "z": 4.396557521700001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:78",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 8.23345431,
+        "y": 0.06307308,
+        "z": 14.1616075217
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:79",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 1.1375456900000007,
+        "y": 3.9564730800000003,
+        "z": 15.1335424783
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:80",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 3.5479543100000006,
+        "y": 3.83032692,
+        "z": 5.368492478300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:81",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.6689133300000005,
+        "y": 0.850474296,
+        "z": 15.408330985300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:82",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 0.01658667000000106,
+        "y": 6.936325704000001,
+        "z": 5.6432809853000006
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:83",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 9.35441333,
+        "y": 3.0429257040000004,
+        "z": 4.121769014700002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:84",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.702086670000002,
+        "y": 4.743874296,
+        "z": 13.8868190147
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:85",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.702086670000002,
+        "y": 6.936325704000001,
+        "z": 4.121769014700002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:86",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 9.35441333,
+        "y": 0.850474296,
+        "z": 13.8868190147
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:87",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 0.016586670000000706,
+        "y": 4.743874296,
+        "z": 15.408330985300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:88",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.668913330000001,
+        "y": 3.0429257040000004,
+        "z": 5.643280985300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:89",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 4.90047074,
+        "y": 1.310829912,
+        "z": 16.7022587006
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:90",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 9.156029260000002,
+        "y": 6.475970088,
+        "z": 6.937208700600002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:91",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 0.21497074000000005,
+        "y": 2.582570088,
+        "z": 2.8278412994
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:92",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 4.470529260000001,
+        "y": 5.204229912,
+        "z": 12.5928912994
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:93",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 4.470529260000001,
+        "y": 6.475970088,
+        "z": 2.827841299400001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:94",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 0.21497073999999985,
+        "y": 1.310829912,
+        "z": 12.5928912994
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:95",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 9.15602926,
+        "y": 5.204229912,
+        "z": 16.7022587006
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:96",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 4.90047074,
+        "y": 2.582570088,
+        "z": 6.937208700600002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:97",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 4.009476060000001,
+        "y": 0.991415376,
+        "z": 17.7370805792
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:98",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 0.676023940000001,
+        "y": 6.795384624,
+        "z": 7.972030579200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:99",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 8.69497606,
+        "y": 2.9019846240000002,
+        "z": 1.7930194208000008
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:100",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 5.3615239400000005,
+        "y": 4.884815376000001,
+        "z": 11.5580694208
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:101",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 5.3615239400000005,
+        "y": 6.795384624,
+        "z": 1.7930194208000008
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:102",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 8.69497606,
+        "y": 0.991415376,
+        "z": 11.5580694208
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:103",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 0.6760239400000007,
+        "y": 4.884815376000001,
+        "z": 17.7370805792
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:104",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 4.009476060000002,
+        "y": 2.9019846240000002,
+        "z": 7.9720305792
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:105",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.91138228,
+        "y": 0.161264628,
+        "z": 17.4742054332
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:106",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 1.7741177200000013,
+        "y": 7.625535372000001,
+        "z": 7.7091554332
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:107",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 7.596882280000002,
+        "y": 3.732135372,
+        "z": 2.055894566800001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:108",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 6.459617720000001,
+        "y": 4.054664628,
+        "z": 11.820944566800001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:109",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 6.459617720000001,
+        "y": 7.625535372000001,
+        "z": 2.055894566800001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:110",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 7.596882280000001,
+        "y": 0.161264628,
+        "z": 11.820944566800001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:111",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 1.7741177200000007,
+        "y": 4.054664628,
+        "z": 17.4742054332
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:112",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.9113822800000007,
+        "y": 3.732135372,
+        "z": 7.709155433199999
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:113",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 2.689008450000001,
+        "y": 7.496897436,
+        "z": 16.1713524622
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:114",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 1.9964915500000002,
+        "y": 0.28990256400000003,
+        "z": 6.406302462200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:115",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 7.374508450000001,
+        "y": 4.183302564,
+        "z": 3.3587475378000007
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:116",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 6.681991550000001,
+        "y": 3.6034974360000005,
+        "z": 13.1237975378
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:117",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 6.68199155,
+        "y": 0.28990256400000003,
+        "z": 3.3587475378000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:118",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 7.374508450000001,
+        "y": 7.496897436,
+        "z": 13.123797537800002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:119",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 1.996491550000001,
+        "y": 3.6034974360000005,
+        "z": 16.1713524622
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:120",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 2.6890084500000007,
+        "y": 4.183302564,
+        "z": 6.406302462200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:121",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 3.451433010000001,
+        "y": 1.652047488,
+        "z": 0.5354762818000004
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:122",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 1.2340669900000008,
+        "y": 6.134752512,
+        "z": 10.300526281800002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:123",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 8.13693301,
+        "y": 2.241352512,
+        "z": 18.9946237182
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:124",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 5.919566990000001,
+        "y": 5.545447488000001,
+        "z": 9.229573718200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:125",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 5.919566990000001,
+        "y": 6.134752512,
+        "z": 18.9946237182
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:126",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 8.13693301,
+        "y": 1.652047488,
+        "z": 9.229573718200001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:127",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 1.2340669900000008,
+        "y": 5.545447488000001,
+        "z": 0.5354762818000005
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:128",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 3.451433010000001,
+        "y": 2.241352512,
+        "z": 10.300526281800002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:129",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 4.01153768,
+        "y": 2.370146184,
+        "z": 1.7372609853000005
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:130",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 0.6739623200000008,
+        "y": 5.416653816,
+        "z": 11.502310985300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:131",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 8.697037680000001,
+        "y": 1.5232538160000002,
+        "z": 17.7928390147
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:132",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 5.359462320000001,
+        "y": 6.263546184,
+        "z": 8.0277890147
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:133",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 5.359462320000001,
+        "y": 5.416653816,
+        "z": 17.7928390147
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:134",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 8.697037680000001,
+        "y": 2.370146184,
+        "z": 8.0277890147
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:135",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 0.6739623200000009,
+        "y": 6.263546184,
+        "z": 1.7372609853000005
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:136",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 4.01153768,
+        "y": 1.5232538160000002,
+        "z": 11.502310985300001
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:137",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 4.29482301,
+        "y": 1.5389052840000002,
+        "z": 19.009232233000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:138",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 0.39067699000000106,
+        "y": 6.247894716,
+        "z": 9.244182233000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:139",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 8.980323010000001,
+        "y": 2.3544947160000005,
+        "z": 0.5208677670000007
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:140",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 5.076176990000001,
+        "y": 5.432305284,
+        "z": 10.285917766999999
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:141",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 5.076176990000001,
+        "y": 6.247894716,
+        "z": 0.5208677670000007
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:142",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 8.980323010000001,
+        "y": 1.5389052840000002,
+        "z": 10.285917766999999
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:143",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 0.39067699000000095,
+        "y": 5.432305284,
+        "z": 19.009232233000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:144",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 4.29482301,
+        "y": 2.3544947160000005,
+        "z": 9.244182233000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:145",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.29167805,
+        "y": 1.219179276,
+        "z": 0.5314921414000002
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:146",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.3938219500000013,
+        "y": 6.567620724,
+        "z": 10.2965421414
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:147",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 6.977178050000001,
+        "y": 2.6742207240000004,
+        "z": 18.998607858600003
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:148",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 7.079321950000001,
+        "y": 5.112579276,
+        "z": 9.2335578586
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:149",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 7.079321950000001,
+        "y": 6.567620724,
+        "z": 18.998607858600003
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:150",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 6.977178050000001,
+        "y": 1.219179276,
+        "z": 9.2335578586
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:151",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.3938219500000013,
+        "y": 5.112579276,
+        "z": 0.5314921414000005
+      },
+      {
+        "id": "molecular-crystal-acetanilide-cod-4515878:atom:152",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.2916780500000002,
+        "y": 2.6742207240000004,
+        "z": 10.2965421414
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 4515878; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-acetanilide-cod-4515878:atom:1",
+      "molecular-crystal-acetanilide-cod-4515878:atom:2",
+      "molecular-crystal-acetanilide-cod-4515878:atom:3",
+      "molecular-crystal-acetanilide-cod-4515878:atom:4",
+      "molecular-crystal-acetanilide-cod-4515878:atom:5",
+      "molecular-crystal-acetanilide-cod-4515878:atom:6",
+      "molecular-crystal-acetanilide-cod-4515878:atom:7",
+      "molecular-crystal-acetanilide-cod-4515878:atom:8",
+      "molecular-crystal-acetanilide-cod-4515878:atom:9",
+      "molecular-crystal-acetanilide-cod-4515878:atom:10",
+      "molecular-crystal-acetanilide-cod-4515878:atom:11",
+      "molecular-crystal-acetanilide-cod-4515878:atom:12",
+      "molecular-crystal-acetanilide-cod-4515878:atom:13",
+      "molecular-crystal-acetanilide-cod-4515878:atom:14",
+      "molecular-crystal-acetanilide-cod-4515878:atom:15",
+      "molecular-crystal-acetanilide-cod-4515878:atom:16",
+      "molecular-crystal-acetanilide-cod-4515878:atom:17",
+      "molecular-crystal-acetanilide-cod-4515878:atom:18",
+      "molecular-crystal-acetanilide-cod-4515878:atom:19",
+      "molecular-crystal-acetanilide-cod-4515878:atom:20",
+      "molecular-crystal-acetanilide-cod-4515878:atom:21",
+      "molecular-crystal-acetanilide-cod-4515878:atom:22",
+      "molecular-crystal-acetanilide-cod-4515878:atom:23",
+      "molecular-crystal-acetanilide-cod-4515878:atom:24",
+      "molecular-crystal-acetanilide-cod-4515878:atom:25",
+      "molecular-crystal-acetanilide-cod-4515878:atom:26",
+      "molecular-crystal-acetanilide-cod-4515878:atom:27",
+      "molecular-crystal-acetanilide-cod-4515878:atom:28",
+      "molecular-crystal-acetanilide-cod-4515878:atom:29",
+      "molecular-crystal-acetanilide-cod-4515878:atom:30",
+      "molecular-crystal-acetanilide-cod-4515878:atom:31",
+      "molecular-crystal-acetanilide-cod-4515878:atom:32",
+      "molecular-crystal-acetanilide-cod-4515878:atom:33",
+      "molecular-crystal-acetanilide-cod-4515878:atom:34",
+      "molecular-crystal-acetanilide-cod-4515878:atom:35",
+      "molecular-crystal-acetanilide-cod-4515878:atom:36",
+      "molecular-crystal-acetanilide-cod-4515878:atom:37",
+      "molecular-crystal-acetanilide-cod-4515878:atom:38",
+      "molecular-crystal-acetanilide-cod-4515878:atom:39",
+      "molecular-crystal-acetanilide-cod-4515878:atom:40",
+      "molecular-crystal-acetanilide-cod-4515878:atom:41",
+      "molecular-crystal-acetanilide-cod-4515878:atom:42",
+      "molecular-crystal-acetanilide-cod-4515878:atom:43",
+      "molecular-crystal-acetanilide-cod-4515878:atom:44",
+      "molecular-crystal-acetanilide-cod-4515878:atom:45",
+      "molecular-crystal-acetanilide-cod-4515878:atom:46",
+      "molecular-crystal-acetanilide-cod-4515878:atom:47",
+      "molecular-crystal-acetanilide-cod-4515878:atom:48",
+      "molecular-crystal-acetanilide-cod-4515878:atom:49",
+      "molecular-crystal-acetanilide-cod-4515878:atom:50",
+      "molecular-crystal-acetanilide-cod-4515878:atom:51",
+      "molecular-crystal-acetanilide-cod-4515878:atom:52",
+      "molecular-crystal-acetanilide-cod-4515878:atom:53",
+      "molecular-crystal-acetanilide-cod-4515878:atom:54",
+      "molecular-crystal-acetanilide-cod-4515878:atom:55",
+      "molecular-crystal-acetanilide-cod-4515878:atom:56",
+      "molecular-crystal-acetanilide-cod-4515878:atom:57",
+      "molecular-crystal-acetanilide-cod-4515878:atom:58",
+      "molecular-crystal-acetanilide-cod-4515878:atom:59",
+      "molecular-crystal-acetanilide-cod-4515878:atom:60",
+      "molecular-crystal-acetanilide-cod-4515878:atom:61",
+      "molecular-crystal-acetanilide-cod-4515878:atom:62",
+      "molecular-crystal-acetanilide-cod-4515878:atom:63",
+      "molecular-crystal-acetanilide-cod-4515878:atom:64",
+      "molecular-crystal-acetanilide-cod-4515878:atom:65",
+      "molecular-crystal-acetanilide-cod-4515878:atom:66",
+      "molecular-crystal-acetanilide-cod-4515878:atom:67",
+      "molecular-crystal-acetanilide-cod-4515878:atom:68",
+      "molecular-crystal-acetanilide-cod-4515878:atom:69",
+      "molecular-crystal-acetanilide-cod-4515878:atom:70",
+      "molecular-crystal-acetanilide-cod-4515878:atom:71",
+      "molecular-crystal-acetanilide-cod-4515878:atom:72",
+      "molecular-crystal-acetanilide-cod-4515878:atom:73",
+      "molecular-crystal-acetanilide-cod-4515878:atom:74",
+      "molecular-crystal-acetanilide-cod-4515878:atom:75",
+      "molecular-crystal-acetanilide-cod-4515878:atom:76",
+      "molecular-crystal-acetanilide-cod-4515878:atom:77",
+      "molecular-crystal-acetanilide-cod-4515878:atom:78",
+      "molecular-crystal-acetanilide-cod-4515878:atom:79",
+      "molecular-crystal-acetanilide-cod-4515878:atom:80",
+      "molecular-crystal-acetanilide-cod-4515878:atom:81",
+      "molecular-crystal-acetanilide-cod-4515878:atom:82",
+      "molecular-crystal-acetanilide-cod-4515878:atom:83",
+      "molecular-crystal-acetanilide-cod-4515878:atom:84",
+      "molecular-crystal-acetanilide-cod-4515878:atom:85",
+      "molecular-crystal-acetanilide-cod-4515878:atom:86",
+      "molecular-crystal-acetanilide-cod-4515878:atom:87",
+      "molecular-crystal-acetanilide-cod-4515878:atom:88",
+      "molecular-crystal-acetanilide-cod-4515878:atom:89",
+      "molecular-crystal-acetanilide-cod-4515878:atom:90",
+      "molecular-crystal-acetanilide-cod-4515878:atom:91",
+      "molecular-crystal-acetanilide-cod-4515878:atom:92",
+      "molecular-crystal-acetanilide-cod-4515878:atom:93",
+      "molecular-crystal-acetanilide-cod-4515878:atom:94",
+      "molecular-crystal-acetanilide-cod-4515878:atom:95",
+      "molecular-crystal-acetanilide-cod-4515878:atom:96",
+      "molecular-crystal-acetanilide-cod-4515878:atom:97",
+      "molecular-crystal-acetanilide-cod-4515878:atom:98",
+      "molecular-crystal-acetanilide-cod-4515878:atom:99",
+      "molecular-crystal-acetanilide-cod-4515878:atom:100",
+      "molecular-crystal-acetanilide-cod-4515878:atom:101",
+      "molecular-crystal-acetanilide-cod-4515878:atom:102",
+      "molecular-crystal-acetanilide-cod-4515878:atom:103",
+      "molecular-crystal-acetanilide-cod-4515878:atom:104",
+      "molecular-crystal-acetanilide-cod-4515878:atom:105",
+      "molecular-crystal-acetanilide-cod-4515878:atom:106",
+      "molecular-crystal-acetanilide-cod-4515878:atom:107",
+      "molecular-crystal-acetanilide-cod-4515878:atom:108",
+      "molecular-crystal-acetanilide-cod-4515878:atom:109",
+      "molecular-crystal-acetanilide-cod-4515878:atom:110",
+      "molecular-crystal-acetanilide-cod-4515878:atom:111",
+      "molecular-crystal-acetanilide-cod-4515878:atom:112",
+      "molecular-crystal-acetanilide-cod-4515878:atom:113",
+      "molecular-crystal-acetanilide-cod-4515878:atom:114",
+      "molecular-crystal-acetanilide-cod-4515878:atom:115",
+      "molecular-crystal-acetanilide-cod-4515878:atom:116",
+      "molecular-crystal-acetanilide-cod-4515878:atom:117",
+      "molecular-crystal-acetanilide-cod-4515878:atom:118",
+      "molecular-crystal-acetanilide-cod-4515878:atom:119",
+      "molecular-crystal-acetanilide-cod-4515878:atom:120",
+      "molecular-crystal-acetanilide-cod-4515878:atom:121",
+      "molecular-crystal-acetanilide-cod-4515878:atom:122",
+      "molecular-crystal-acetanilide-cod-4515878:atom:123",
+      "molecular-crystal-acetanilide-cod-4515878:atom:124",
+      "molecular-crystal-acetanilide-cod-4515878:atom:125",
+      "molecular-crystal-acetanilide-cod-4515878:atom:126",
+      "molecular-crystal-acetanilide-cod-4515878:atom:127",
+      "molecular-crystal-acetanilide-cod-4515878:atom:128",
+      "molecular-crystal-acetanilide-cod-4515878:atom:129",
+      "molecular-crystal-acetanilide-cod-4515878:atom:130",
+      "molecular-crystal-acetanilide-cod-4515878:atom:131",
+      "molecular-crystal-acetanilide-cod-4515878:atom:132",
+      "molecular-crystal-acetanilide-cod-4515878:atom:133",
+      "molecular-crystal-acetanilide-cod-4515878:atom:134",
+      "molecular-crystal-acetanilide-cod-4515878:atom:135",
+      "molecular-crystal-acetanilide-cod-4515878:atom:136",
+      "molecular-crystal-acetanilide-cod-4515878:atom:137",
+      "molecular-crystal-acetanilide-cod-4515878:atom:138",
+      "molecular-crystal-acetanilide-cod-4515878:atom:139",
+      "molecular-crystal-acetanilide-cod-4515878:atom:140",
+      "molecular-crystal-acetanilide-cod-4515878:atom:141",
+      "molecular-crystal-acetanilide-cod-4515878:atom:142",
+      "molecular-crystal-acetanilide-cod-4515878:atom:143",
+      "molecular-crystal-acetanilide-cod-4515878:atom:144",
+      "molecular-crystal-acetanilide-cod-4515878:atom:145",
+      "molecular-crystal-acetanilide-cod-4515878:atom:146",
+      "molecular-crystal-acetanilide-cod-4515878:atom:147",
+      "molecular-crystal-acetanilide-cod-4515878:atom:148",
+      "molecular-crystal-acetanilide-cod-4515878:atom:149",
+      "molecular-crystal-acetanilide-cod-4515878:atom:150",
+      "molecular-crystal-acetanilide-cod-4515878:atom:151",
+      "molecular-crystal-acetanilide-cod-4515878:atom:152"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          9.371,
+          0.0,
+          5.738082577404924e-16
+        ],
+        [
+          1.2522129448502035e-15,
+          7.7868,
+          4.768039847800305e-16
+        ],
+        [
+          0.0,
+          0.0,
+          19.5301
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 4515878 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

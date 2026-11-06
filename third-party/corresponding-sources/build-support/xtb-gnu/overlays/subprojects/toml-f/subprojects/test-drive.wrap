@@ -1,0 +1,5 @@
+[wrap-file]
+directory = test-drive
+source_url = https://github.com/fortran-lang/test-drive/archive/9c3401e30dbd2da1add77aaa252a4c6928fe39a1.tar.gz
+source_filename = test-drive-9c3401e30dbd2da1add77aaa252a4c6928fe39a1.tar.gz
+source_hash = 721fbc41d28bfbc42314dd0787a1803e3fd7036829cedfa49e4efc2ba322247b

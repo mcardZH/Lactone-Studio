@@ -1,0 +1,913 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-benzophenone-cod-2300384",
+  "structure": {
+    "id": "molecular-crystal-benzophenone-cod-2300384",
+    "name": "二苯甲酮",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:1",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 0.9622674000000009,
+        "y": 5.6753576,
+        "z": 11.6213006
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:2",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 3.027232600000001,
+        "y": 4.598642399999999,
+        "z": 5.5698006
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:3",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 4.951767400000002,
+        "y": 9.7356424,
+        "z": 0.4816994000000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:4",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 7.0167326,
+        "y": 0.5383576,
+        "z": 6.5331994
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:5",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 1.3372804000000005,
+        "y": 3.2650772,
+        "z": 11.9287168
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:6",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 2.652219600000002,
+        "y": 7.008922799999999,
+        "z": 5.877216800000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:7",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 5.3267804,
+        "y": 1.8719227999999997,
+        "z": 0.17428320000000005
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:8",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 6.641719600000002,
+        "y": 8.4020772,
+        "z": 6.2257832
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:9",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 2.6506238000000004,
+        "y": 1.9797997999999999,
+        "z": 10.2948118
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:10",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 1.3388762000000014,
+        "y": 8.294200199999999,
+        "z": 4.243311800000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:11",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 6.640123800000001,
+        "y": 3.1572002,
+        "z": 1.8081882000000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:12",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 5.3283762,
+        "y": 7.116799799999999,
+        "z": 7.859688200000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:13",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.5522508000000004,
+        "y": 3.1119945999999996,
+        "z": 8.2953962
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:14",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 0.4372492000000013,
+        "y": 7.1620054,
+        "z": 2.2438962000000005
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:15",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 7.5417508,
+        "y": 2.0250054,
+        "z": 3.8076038000000003
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:16",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.426749200000001,
+        "y": 8.2489946,
+        "z": 9.8591038
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:17",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 3.126970100000001,
+        "y": 5.5325489999999995,
+        "z": 7.9323062
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:18",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 0.8625299000000006,
+        "y": 4.741451,
+        "z": 1.8808062
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:19",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 7.116470100000002,
+        "y": 9.878451,
+        "z": 4.170693800000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:20",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 4.8520299,
+        "y": 0.39554899999999976,
+        "z": 10.2221938
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:21",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 0.2848503000000015,
+        "y": 9.376052399999999,
+        "z": 9.3423057
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:22",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 3.7046497,
+        "y": 0.8979476000000003,
+        "z": 3.290805700000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:23",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 4.274350300000001,
+        "y": 6.0349476,
+        "z": 2.7606943
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:24",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 7.694149700000001,
+        "y": 4.2390523999999985,
+        "z": 8.8121943
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:25",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 0.018351700000000137,
+        "y": 0.8712351999999998,
+        "z": 11.0476184
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:26",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 3.971148300000001,
+        "y": 9.4027648,
+        "z": 4.9961183999999985
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:27",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 4.007851700000001,
+        "y": 4.2657647999999995,
+        "z": 1.0553816000000011
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:28",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 7.960648300000001,
+        "y": 6.0082352,
+        "z": 7.106881600000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:29",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 1.2104143,
+        "y": 0.6821936000000001,
+        "z": 1.0820081999999993
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:30",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 2.7790857000000013,
+        "y": 9.5918064,
+        "z": 7.1335082
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:31",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 5.1999143000000005,
+        "y": 4.4548064,
+        "z": 11.020991800000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:32",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 6.768585700000002,
+        "y": 5.819193599999999,
+        "z": 4.969491800000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:33",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 2.6218994000000015,
+        "y": 8.9989966,
+        "z": 1.5685487999999999
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:34",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 1.3676006000000003,
+        "y": 1.2750033999999997,
+        "z": 7.620048799999999
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:35",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 6.611399400000001,
+        "y": 6.4120034,
+        "z": 10.534451200000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:36",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 5.357100600000001,
+        "y": 3.861996600000001,
+        "z": 4.482951200000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:37",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 2.8453114000000013,
+        "y": 7.206183599999999,
+        "z": 11.9928627
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:38",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 1.1441886000000008,
+        "y": 3.0678163999999994,
+        "z": 5.941362699999998
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:39",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 6.834811400000001,
+        "y": 8.204816399999999,
+        "z": 0.11013730000000088
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:40",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 5.1336886,
+        "y": 2.0691836,
+        "z": 6.1616373
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:41",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 1.543936500000001,
+        "y": 5.116452,
+        "z": 10.8866485
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:42",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 2.445563500000001,
+        "y": 5.157547999999999,
+        "z": 4.835148500000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:43",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 5.5334365000000005,
+        "y": 0.020548000000000018,
+        "z": 1.216351500000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:44",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 6.435063500000002,
+        "y": 10.253452,
+        "z": 7.267851500000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:45",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 1.7521884000000005,
+        "y": 3.7602839999999995,
+        "z": 11.0681935
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:46",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 2.237311600000001,
+        "y": 6.513716,
+        "z": 5.016693499999999
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:47",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 5.7416884,
+        "y": 1.376716,
+        "z": 1.0348065000000006
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:48",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 6.226811600000001,
+        "y": 8.897283999999999,
+        "z": 7.086306500000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:49",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 2.4710963,
+        "y": 3.0390492,
+        "z": 10.1495758
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:50",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 1.5184037000000012,
+        "y": 7.234950799999999,
+        "z": 4.098075800000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:51",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.4605963,
+        "y": 2.0979507999999996,
+        "z": 1.9534242000000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:52",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 5.507903700000001,
+        "y": 8.1760492,
+        "z": 8.0049242
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:53",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.9905292000000006,
+        "y": 3.6739823999999994,
+        "z": 9.0239968
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:54",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 0.9989708000000009,
+        "y": 6.6000176,
+        "z": 2.972496800000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:55",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 6.980029200000001,
+        "y": 1.4630176000000001,
+        "z": 3.0790032
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:56",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 4.988470800000002,
+        "y": 8.810982399999999,
+        "z": 9.1305032
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:57",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 2.768713000000001,
+        "y": 5.038369599999999,
+        "z": 8.8206664
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:58",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 1.2207870000000012,
+        "y": 5.2356304,
+        "z": 2.769166400000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:59",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 6.758213,
+        "y": 0.09863039999999997,
+        "z": 3.2823336000000003
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:60",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 5.210287000000002,
+        "y": 10.175369599999998,
+        "z": 9.333833600000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:61",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 2.044219800000001,
+        "y": 5.7647414,
+        "z": 9.76796821
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:62",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.945280200000001,
+        "y": 4.509258599999999,
+        "z": 3.71646821
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:63",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 6.033719800000002,
+        "y": 9.6462586,
+        "z": 2.3350317900000013
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:64",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 5.9347802000000005,
+        "y": 0.6277414000000016,
+        "z": 8.386531790000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:65",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 1.7593695000000011,
+        "y": 7.188717799999999,
+        "z": 9.4609151
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:66",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 2.2301305,
+        "y": 3.0852822,
+        "z": 3.4094150999999986
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:67",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 5.748869500000001,
+        "y": 8.222282199999999,
+        "z": 2.6420849000000013
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:68",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 6.2196305,
+        "y": 2.0517177999999996,
+        "z": 8.693584900000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:69",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 1.5798420000000015,
+        "y": 8.1791314,
+        "z": 10.5550263
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:70",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 2.4096580000000003,
+        "y": 2.0948685999999994,
+        "z": 4.503526300000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:71",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 5.569342000000001,
+        "y": 7.231868599999999,
+        "z": 1.5479737000000011
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:72",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 6.399158000000002,
+        "y": 3.0421314,
+        "z": 7.599473700000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:73",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 0.7851336000000014,
+        "y": 9.3113262,
+        "z": 10.2948118
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:74",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 3.2043664,
+        "y": 0.9626738,
+        "z": 4.2433118
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:75",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 4.774633600000001,
+        "y": 6.0996738,
+        "z": 1.8081882000000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:76",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 7.193866400000001,
+        "y": 4.1743261999999985,
+        "z": 7.859688200000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:77",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 0.6399157999999999,
+        "y": 0.018493200000000244,
+        "z": 11.254579699999999
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:78",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 3.349584200000002,
+        "y": 10.2555068,
+        "z": 5.2030797
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:79",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 4.629415800000001,
+        "y": 5.1185068,
+        "z": 0.8484203000000011
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:80",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 7.3390842,
+        "y": 5.1554931999999996,
+        "z": 6.899920300000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:81",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 1.3077581000000016,
+        "y": 10.186671,
+        "z": 0.354617900000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:82",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 2.6817419,
+        "y": 0.0873289999999995,
+        "z": 6.406117900000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:83",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 5.2972581000000005,
+        "y": 5.224328999999999,
+        "z": 11.748382099999999
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:84",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 6.671241900000002,
+        "y": 5.049671,
+        "z": 5.6968821
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:85",
+        "sourceIndex": 20,
+        "element": "C",
+        "x": 2.1056581000000016,
+        "y": 9.0739968,
+        "z": 0.6208838999999995
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:86",
+        "sourceIndex": 20,
+        "element": "C",
+        "x": 1.8838419,
+        "y": 1.2000032,
+        "z": 6.672383899999999
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:87",
+        "sourceIndex": 20,
+        "element": "C",
+        "x": 6.095158100000001,
+        "y": 6.3370032,
+        "z": 11.4821161
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:88",
+        "sourceIndex": 20,
+        "element": "C",
+        "x": 5.873341900000001,
+        "y": 3.9369967999999993,
+        "z": 5.430616100000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:89",
+        "sourceIndex": 22,
+        "element": "C",
+        "x": 2.2365137000000015,
+        "y": 8.072281799999999,
+        "z": 11.7786396
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:90",
+        "sourceIndex": 22,
+        "element": "C",
+        "x": 1.7529863000000006,
+        "y": 2.2017182,
+        "z": 5.727139599999998
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:91",
+        "sourceIndex": 22,
+        "element": "C",
+        "x": 6.226013700000001,
+        "y": 7.3387182,
+        "z": 0.3243604000000014
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:92",
+        "sourceIndex": 22,
+        "element": "C",
+        "x": 5.742486300000001,
+        "y": 2.935281799999998,
+        "z": 6.375860400000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:93",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 1.683569000000001,
+        "y": 7.5441981999999985,
+        "z": 8.2978168
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:94",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 2.3059310000000006,
+        "y": 2.7298018,
+        "z": 2.2463168000000002
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:95",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 5.673069000000001,
+        "y": 7.8668018,
+        "z": 3.805183200000001
+      },
+      {
+        "id": "molecular-crystal-benzophenone-cod-2300384:atom:96",
+        "sourceIndex": 24,
+        "element": "O",
+        "x": 6.295431000000001,
+        "y": 2.4071981999999994,
+        "z": 9.856683199999999
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2300384; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-benzophenone-cod-2300384:atom:1",
+      "molecular-crystal-benzophenone-cod-2300384:atom:2",
+      "molecular-crystal-benzophenone-cod-2300384:atom:3",
+      "molecular-crystal-benzophenone-cod-2300384:atom:4",
+      "molecular-crystal-benzophenone-cod-2300384:atom:5",
+      "molecular-crystal-benzophenone-cod-2300384:atom:6",
+      "molecular-crystal-benzophenone-cod-2300384:atom:7",
+      "molecular-crystal-benzophenone-cod-2300384:atom:8",
+      "molecular-crystal-benzophenone-cod-2300384:atom:9",
+      "molecular-crystal-benzophenone-cod-2300384:atom:10",
+      "molecular-crystal-benzophenone-cod-2300384:atom:11",
+      "molecular-crystal-benzophenone-cod-2300384:atom:12",
+      "molecular-crystal-benzophenone-cod-2300384:atom:13",
+      "molecular-crystal-benzophenone-cod-2300384:atom:14",
+      "molecular-crystal-benzophenone-cod-2300384:atom:15",
+      "molecular-crystal-benzophenone-cod-2300384:atom:16",
+      "molecular-crystal-benzophenone-cod-2300384:atom:17",
+      "molecular-crystal-benzophenone-cod-2300384:atom:18",
+      "molecular-crystal-benzophenone-cod-2300384:atom:19",
+      "molecular-crystal-benzophenone-cod-2300384:atom:20",
+      "molecular-crystal-benzophenone-cod-2300384:atom:21",
+      "molecular-crystal-benzophenone-cod-2300384:atom:22",
+      "molecular-crystal-benzophenone-cod-2300384:atom:23",
+      "molecular-crystal-benzophenone-cod-2300384:atom:24",
+      "molecular-crystal-benzophenone-cod-2300384:atom:25",
+      "molecular-crystal-benzophenone-cod-2300384:atom:26",
+      "molecular-crystal-benzophenone-cod-2300384:atom:27",
+      "molecular-crystal-benzophenone-cod-2300384:atom:28",
+      "molecular-crystal-benzophenone-cod-2300384:atom:29",
+      "molecular-crystal-benzophenone-cod-2300384:atom:30",
+      "molecular-crystal-benzophenone-cod-2300384:atom:31",
+      "molecular-crystal-benzophenone-cod-2300384:atom:32",
+      "molecular-crystal-benzophenone-cod-2300384:atom:33",
+      "molecular-crystal-benzophenone-cod-2300384:atom:34",
+      "molecular-crystal-benzophenone-cod-2300384:atom:35",
+      "molecular-crystal-benzophenone-cod-2300384:atom:36",
+      "molecular-crystal-benzophenone-cod-2300384:atom:37",
+      "molecular-crystal-benzophenone-cod-2300384:atom:38",
+      "molecular-crystal-benzophenone-cod-2300384:atom:39",
+      "molecular-crystal-benzophenone-cod-2300384:atom:40",
+      "molecular-crystal-benzophenone-cod-2300384:atom:41",
+      "molecular-crystal-benzophenone-cod-2300384:atom:42",
+      "molecular-crystal-benzophenone-cod-2300384:atom:43",
+      "molecular-crystal-benzophenone-cod-2300384:atom:44",
+      "molecular-crystal-benzophenone-cod-2300384:atom:45",
+      "molecular-crystal-benzophenone-cod-2300384:atom:46",
+      "molecular-crystal-benzophenone-cod-2300384:atom:47",
+      "molecular-crystal-benzophenone-cod-2300384:atom:48",
+      "molecular-crystal-benzophenone-cod-2300384:atom:49",
+      "molecular-crystal-benzophenone-cod-2300384:atom:50",
+      "molecular-crystal-benzophenone-cod-2300384:atom:51",
+      "molecular-crystal-benzophenone-cod-2300384:atom:52",
+      "molecular-crystal-benzophenone-cod-2300384:atom:53",
+      "molecular-crystal-benzophenone-cod-2300384:atom:54",
+      "molecular-crystal-benzophenone-cod-2300384:atom:55",
+      "molecular-crystal-benzophenone-cod-2300384:atom:56",
+      "molecular-crystal-benzophenone-cod-2300384:atom:57",
+      "molecular-crystal-benzophenone-cod-2300384:atom:58",
+      "molecular-crystal-benzophenone-cod-2300384:atom:59",
+      "molecular-crystal-benzophenone-cod-2300384:atom:60",
+      "molecular-crystal-benzophenone-cod-2300384:atom:61",
+      "molecular-crystal-benzophenone-cod-2300384:atom:62",
+      "molecular-crystal-benzophenone-cod-2300384:atom:63",
+      "molecular-crystal-benzophenone-cod-2300384:atom:64",
+      "molecular-crystal-benzophenone-cod-2300384:atom:65",
+      "molecular-crystal-benzophenone-cod-2300384:atom:66",
+      "molecular-crystal-benzophenone-cod-2300384:atom:67",
+      "molecular-crystal-benzophenone-cod-2300384:atom:68",
+      "molecular-crystal-benzophenone-cod-2300384:atom:69",
+      "molecular-crystal-benzophenone-cod-2300384:atom:70",
+      "molecular-crystal-benzophenone-cod-2300384:atom:71",
+      "molecular-crystal-benzophenone-cod-2300384:atom:72",
+      "molecular-crystal-benzophenone-cod-2300384:atom:73",
+      "molecular-crystal-benzophenone-cod-2300384:atom:74",
+      "molecular-crystal-benzophenone-cod-2300384:atom:75",
+      "molecular-crystal-benzophenone-cod-2300384:atom:76",
+      "molecular-crystal-benzophenone-cod-2300384:atom:77",
+      "molecular-crystal-benzophenone-cod-2300384:atom:78",
+      "molecular-crystal-benzophenone-cod-2300384:atom:79",
+      "molecular-crystal-benzophenone-cod-2300384:atom:80",
+      "molecular-crystal-benzophenone-cod-2300384:atom:81",
+      "molecular-crystal-benzophenone-cod-2300384:atom:82",
+      "molecular-crystal-benzophenone-cod-2300384:atom:83",
+      "molecular-crystal-benzophenone-cod-2300384:atom:84",
+      "molecular-crystal-benzophenone-cod-2300384:atom:85",
+      "molecular-crystal-benzophenone-cod-2300384:atom:86",
+      "molecular-crystal-benzophenone-cod-2300384:atom:87",
+      "molecular-crystal-benzophenone-cod-2300384:atom:88",
+      "molecular-crystal-benzophenone-cod-2300384:atom:89",
+      "molecular-crystal-benzophenone-cod-2300384:atom:90",
+      "molecular-crystal-benzophenone-cod-2300384:atom:91",
+      "molecular-crystal-benzophenone-cod-2300384:atom:92",
+      "molecular-crystal-benzophenone-cod-2300384:atom:93",
+      "molecular-crystal-benzophenone-cod-2300384:atom:94",
+      "molecular-crystal-benzophenone-cod-2300384:atom:95",
+      "molecular-crystal-benzophenone-cod-2300384:atom:96"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          7.979,
+          0.0,
+          4.885728405198366e-16
+        ],
+        [
+          1.6521852102777763e-15,
+          10.274,
+          6.291010607219953e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.103
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2300384 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

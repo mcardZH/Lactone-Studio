@@ -1,0 +1,100 @@
+{
+  "schema": "ester-image-decode-public-notices/v1",
+  "packages": [
+    {
+      "name": "utif",
+      "version": "3.1.0",
+      "license": "MIT",
+      "tarball": "https://registry.npmjs.org/utif/-/utif-3.1.0.tgz",
+      "integrity": "sha512-WEo4D/xOvFW53K5f5QTaTbbiORcm2/pCL9P6qmJnup+17eYfKaEhDeX9PeQkuyEoIxlbGklDuGl8xwuXYMrrXQ==",
+      "files": [
+        {
+          "path": "licenses/image-decode/npm/utif@3.1.0/LICENSE",
+          "bytes": 1065,
+          "sha256": "c1fb8861eca211bf5aea574358aba7039396c0c1824c2a1477cc126d398efd89"
+        }
+      ]
+    },
+    {
+      "name": "pako",
+      "version": "1.0.11",
+      "license": "(MIT AND Zlib)",
+      "tarball": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
+      "integrity": "sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==",
+      "files": [
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/LICENSE",
+          "bytes": 1104,
+          "sha256": "a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/README.md",
+          "bytes": 6066,
+          "sha256": "8174ca473d9df9da15064d199064e8e3ff88d46beb66b545e048756e6f0fb469"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/adler32.js",
+          "bytes": 1656,
+          "sha256": "99618eb68a96858148e2dd56f478aa7e4321c434f5f2ee6c57f59c0c568f0596"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/constants.js",
+          "bytes": 2312,
+          "sha256": "e0c4148ed267a27f03aba9f9a34cba4bade2090c0f12905907539e38c842abbc"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/crc32.js",
+          "bytes": 1750,
+          "sha256": "213f85e8b2e52e2cf6f7634897197400f7ddaed587274f160045f0b548ec21da"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/deflate.js",
+          "bytes": 61184,
+          "sha256": "4b9b71ae7f42e506fe1fb134f1c21b944ef2b7ef79667ba1fe59eb963c353d22"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/gzheader.js",
+          "bytes": 2240,
+          "sha256": "8fa0b4995cea477be96b8783a7d6c7cf5fec96765c2108c3bd52e77104bfdbd3"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/inffast.js",
+          "bytes": 12668,
+          "sha256": "b1beb3b55270e8338f23fc397132d179942d5866153ca4e9be264200b00c0d44"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/inflate.js",
+          "bytes": 50284,
+          "sha256": "d31799a23f2ae87f0c52d21241c92278b41d23bb5365b452f2706d41b00c4245"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/inftrees.js",
+          "bytes": 12500,
+          "sha256": "75f75d8ae4a7bed86f90a4a38f70c5d95e807515e9326801f9a073a7f2bf8bc7"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/messages.js",
+          "bytes": 1538,
+          "sha256": "eec5f5d6b8120ada9cd48a3ca0a253c64777906e835477b090e053434d38cf6c"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/README",
+          "bytes": 2180,
+          "sha256": "d8b499598e43d755ea8918448128259ff01820c50d94d5a48c8883d0a594ddb1"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/trees.js",
+          "bytes": 39879,
+          "sha256": "718adbbf68f4343bf17d61edffd9d0788a96a93e4e191d857459d95257e614cf"
+        },
+        {
+          "path": "licenses/image-decode/npm/pako@1.0.11/lib/zlib/zstream.js",
+          "bytes": 1811,
+          "sha256": "5fa10c7a59ca99113cf92d1260e56cbd6282e15afa85dc8a0eb8e8d6d2321298"
+        }
+      ]
+    }
+  ],
+  "originalsUnchanged": true,
+  "publicDistributionApproved": false
+}

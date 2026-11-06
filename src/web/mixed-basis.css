@@ -1,0 +1,23 @@
+.mixed-basis-options{border:1px solid #cbded7;border-radius:12px;background:#fbfdfc;padding:1rem;margin:1rem 0;color:#234d45;font-size:1rem}
+.mixed-basis-options>summary{cursor:pointer;font-weight:650;line-height:1.5}
+.mixed-basis-heading,.mixed-basis-region-title,.mixed-basis-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:.8rem 0}
+.mixed-basis-heading{justify-content:space-between}
+.mixed-basis-heading .text-button{display:inline-flex;align-items:center;gap:.3rem}
+.mixed-basis-region{border:1px solid #c9ded5;border-radius:10px;background:#fff;padding:1rem;margin:1rem 0}
+.mixed-basis-region-title .field{flex:1;min-width:12rem;margin:0}
+.mixed-basis-region-title>.button{align-self:flex-end}
+.mixed-basis-numbers{display:flex;align-items:flex-end;gap:.6rem;margin-top:.8rem}
+.mixed-basis-numbers .field{flex:1;min-width:0;margin:0}
+.mixed-basis-elements{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin:.8rem 0}
+.mixed-basis-elements button{display:inline-flex;gap:.45rem;align-items:center;border:1px solid #c7dbd1;border-radius:6px;padding:.4rem .65rem;background:white;color:#28574c;cursor:pointer;font:inherit}
+.mixed-basis-elements button[aria-pressed=true]{background:#e4f2eb;border-color:#609e88}
+.mixed-basis-elements small{font-size:.85em;color:#47665f}
+.mixed-basis-hint,.mixed-basis-options .field small{color:#4c625d;font-size:.9em;line-height:1.65}
+.mixed-basis-error{color:#a33c2c;font-size:.95em;line-height:1.6}
+.mixed-basis-total{display:flex;gap:.6rem 1rem;flex-wrap:wrap;padding:.9rem;border-radius:8px;background:#edf6f1;margin-top:1rem;line-height:1.55}
+.mixed-basis-total>strong{font-size:1.1em}
+.mixed-basis-total>span{font-size:.9em}
+.mixed-basis-count{display:block;font-size:.9em;color:#355c50;margin-top:.7rem}
+@media(max-width:600px){.mixed-basis-numbers{flex-wrap:wrap}.mixed-basis-numbers .field{flex-basis:100%}.mixed-basis-region{padding:.7rem}.mixed-basis-options{padding:.8rem}}
+/* The method card already owns the outer surface; regions are its white subcards. */
+.input-settings-layout.input-settings-surface .mixed-basis-options{padding:0;margin:8px 0;border:0;border-radius:0;background:transparent;font:inherit;color:inherit}

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "nio-bunsenite",
+  "structure": {
+    "id": "nio-bunsenite",
+    "name": "方镍矿型氧化镍",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "nio-bunsenite:atom:1",
+        "sourceIndex": 1,
+        "element": "Ni",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "nio-bunsenite:atom:2",
+        "sourceIndex": 1,
+        "element": "Ni",
+        "x": 3.351649226456046e-16,
+        "y": 2.0842,
+        "z": 2.0842
+      },
+      {
+        "id": "nio-bunsenite:atom:3",
+        "sourceIndex": 1,
+        "element": "Ni",
+        "x": 2.0842,
+        "y": 0.0,
+        "z": 2.0842
+      },
+      {
+        "id": "nio-bunsenite:atom:4",
+        "sourceIndex": 1,
+        "element": "Ni",
+        "x": 2.0842000000000005,
+        "y": 2.0842,
+        "z": 2.5524088587829137e-16
+      },
+      {
+        "id": "nio-bunsenite:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.0842000000000005,
+        "y": 2.0842,
+        "z": 2.0842000000000005
+      },
+      {
+        "id": "nio-bunsenite:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.0842,
+        "y": 0.0,
+        "z": 1.2762044293914569e-16
+      },
+      {
+        "id": "nio-bunsenite:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.351649226456046e-16,
+        "y": 2.0842,
+        "z": 1.2762044293914569e-16
+      },
+      {
+        "id": "nio-bunsenite:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.0842
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9008693; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "nio-bunsenite:atom:1",
+      "nio-bunsenite:atom:2",
+      "nio-bunsenite:atom:3",
+      "nio-bunsenite:atom:4",
+      "nio-bunsenite:atom:5",
+      "nio-bunsenite:atom:6",
+      "nio-bunsenite:atom:7",
+      "nio-bunsenite:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.1684,
+          0.0,
+          2.5524088587829137e-16
+        ],
+        [
+          6.703298452912092e-16,
+          4.1684,
+          2.5524088587829137e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.1684
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9008693 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

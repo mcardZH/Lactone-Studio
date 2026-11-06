@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "entryId": "rb-bcc",
+  "structure": {
+    "id": "rb-bcc",
+    "name": "铷（bcc）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "rb-bcc:atom:1",
+        "sourceIndex": 1,
+        "element": "Rb",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "rb-bcc:atom:2",
+        "sourceIndex": 1,
+        "element": "Rb",
+        "x": 2.8500000000000005,
+        "y": 2.85,
+        "z": 2.8500000000000005
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9012876; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "rb-bcc:atom:1",
+      "rb-bcc:atom:2"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.7,
+          0.0,
+          3.4902433775699566e-16
+        ],
+        [
+          9.166299103156829e-16,
+          5.7,
+          3.4902433775699566e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.7
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9012876 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

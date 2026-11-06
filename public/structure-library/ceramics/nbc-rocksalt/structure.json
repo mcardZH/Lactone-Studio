@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "nbc-rocksalt",
+  "structure": {
+    "id": "nbc-rocksalt",
+    "name": "碳化铌",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "nbc-rocksalt:atom:1",
+        "sourceIndex": 1,
+        "element": "Nb",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "nbc-rocksalt:atom:2",
+        "sourceIndex": 1,
+        "element": "Nb",
+        "x": 3.5378698292886007e-16,
+        "y": 2.2,
+        "z": 2.2
+      },
+      {
+        "id": "nbc-rocksalt:atom:3",
+        "sourceIndex": 1,
+        "element": "Nb",
+        "x": 2.2,
+        "y": 0.0,
+        "z": 2.2
+      },
+      {
+        "id": "nbc-rocksalt:atom:4",
+        "sourceIndex": 1,
+        "element": "Nb",
+        "x": 2.2000000000000006,
+        "y": 2.2,
+        "z": 2.6942229581241775e-16
+      },
+      {
+        "id": "nbc-rocksalt:atom:5",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.2000000000000006,
+        "y": 2.2,
+        "z": 2.2000000000000006
+      },
+      {
+        "id": "nbc-rocksalt:atom:6",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.2,
+        "y": 0.0,
+        "z": 1.3471114790620887e-16
+      },
+      {
+        "id": "nbc-rocksalt:atom:7",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 3.5378698292886007e-16,
+        "y": 2.2,
+        "z": 1.3471114790620887e-16
+      },
+      {
+        "id": "nbc-rocksalt:atom:8",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.2
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:1011323; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "nbc-rocksalt:atom:1",
+      "nbc-rocksalt:atom:2",
+      "nbc-rocksalt:atom:3",
+      "nbc-rocksalt:atom:4",
+      "nbc-rocksalt:atom:5",
+      "nbc-rocksalt:atom:6",
+      "nbc-rocksalt:atom:7",
+      "nbc-rocksalt:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.4,
+          0.0,
+          2.6942229581241775e-16
+        ],
+        [
+          7.075739658577201e-16,
+          4.4,
+          2.6942229581241775e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.4
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:1011323 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

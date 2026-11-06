@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>二维分子编辑</title>
+<link rel="stylesheet" href="./chemistry/themes/default/kekule.css">
+<style>html,body{margin:0;width:100%;height:100%;font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:#fff;color:#526776}#editor{width:100%;height:100%}.K-Chem-Composer{border:0!important}.K-Widget{font-size:11px}.K-Chem-Editor{background:#fff!important}.K-Chem-Composer .K-Chem-Composer-Chem-Toolbar .K-Button{box-sizing:border-box!important;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;padding:1px!important}.K-Chem-Composer .K-Chem-Composer-Assoc-Toolbar .K-Button,.K-Chem-Composer .K-Chem-Composer-Zoom-Toolbar .K-Button{box-sizing:border-box!important;height:26px!important;min-height:26px!important;padding:1px 3px!important}.K-Chem-Composer-Bottom-Region{overflow-x:auto;overflow-y:hidden;max-width:100%}.K-Chem-Composer-Left-Region{overflow-y:auto;overflow-x:hidden}</style>
+<script src="./chemistry/kekule.js?modules=io,chemWidget,algorithm,calculation&language=zh"></script></head><body><div id="editor"></div>
+<script>
+(function(){
+  const channel='sciyue-molecule-editor';let composer;let loading=false;let loaded=false;let lastGraph='';let queued;let revision=0;
+  function send(data){parent.postMessage({channel,...data},location.origin);}
+  function reply(id,result,error){send({id,result,error});}
+  function currentMol(){const object=composer.getChemObj();if(!object)return null;const used=new Set();for(const fragment of Kekule.ChemStructureUtils.getAllStructFragments(object,true)){for(let i=0;i<fragment.getNodeCount();i++){const node=fragment.getNodeAt(i);let id=node.getInfoValue('sciyueAtomId');if(!id||used.has(id)){id=crypto.randomUUID();node.setInfoValue('sciyueAtomId',id);}used.add(id);}}return Kekule.ChemStructureUtils.getTotalStructFragment(object);}
+  function exportGraph(){
+    const mol=currentMol();if(!mol)return {atoms:[],bonds:[],layout2D:{},revision};
+    const atoms=[],bonds=[],layout2D={},used=new Set(),nodes=[];
+    for(let i=0;i<mol.getNodeCount();i++){
+      const node=mol.getNodeAt(i);if(!node.getSymbol)throw new Error('仅支持明确元素原子，请展开缩写或片段。');
+      let id=node.getInfoValue('sciyueAtomId');if(!id||used.has(id))id=crypto.randomUUID();used.add(id);node.setInfoValue('sciyueAtomId',id);
+      const c=node.getCoord2D()||{x:0,y:0};const symbol=node.getSymbol();if(!symbol)throw new Error('请指定元素。');
+      atoms.push({id,element:symbol,formalCharge:node.getCharge()||0,x:c.x,y:c.y,z:0});layout2D[id]={x:c.x,y:c.y};nodes.push(node);
+    }
+    for(let i=0;i<mol.getConnectorCount();i++){
+      const bond=mol.getConnectorAt(i);const ends=bond.getConnectedObjs();if(ends.length!==2)throw new Error('二维连接表仅支持两中心键。');
+      let a=nodes.indexOf(ends[0]),b=nodes.indexOf(ends[1]);if(a<0||b<0)throw new Error('连接表含未展开片段。');
+      const order=bond.getBondOrder(),stereo=bond.getStereo?.()||0;if([2,4,9].includes(stereo))[a,b]=[b,a];const mdlStereo=[1,2].includes(stereo)?1:[3,4].includes(stereo)?6:[8,9].includes(stereo)?4:stereo===20?3:undefined;bonds.push({a,b,order:order===10?1.5:order,aromatic:order===10||undefined,stereo:mdlStereo});
+    }
+    atoms.forEach((atom,index)=>{const node=nodes[index],neighbours=bonds.filter(bond=>bond.aromatic&&(bond.a===index||bond.b===index)).map(bond=>atoms[bond.a===index?bond.b:bond.a].id).sort();const signature=JSON.stringify([atom.element,atom.formalCharge,neighbours]);if(node.getInfoValue('sciyueAromaticHydrogen')&&atom.element==='N'&&neighbours.length===2&&signature===node.getInfoValue('sciyueAromaticSignature'))atom.aromaticHydrogen=true;else node.setInfoValue('sciyueAromaticHydrogen',false);});
+    return {atoms,bonds,layout2D,revision};
+  }
+  function changed(){if(loading||!loaded)return;clearTimeout(queued);queued=setTimeout(()=>{if(loading||!loaded)return;try{const graph=exportGraph(),signature=JSON.stringify(graph);if(signature===lastGraph)return;lastGraph=signature;send({type:'changed',graph});}catch(error){send({type:'bridge-error',error:error.message||String(error)});}},0);}
+  function loadGraph(graph){
+    loading=true;clearTimeout(queued);
+    try{
+      revision=graph.revision||0;const mol=new Kekule.Molecule(),nodes=[];
+      for(const atom of graph.atoms){const node=new Kekule.Atom(null,atom.element);node.setCharge(atom.formalCharge||0);node.setInfoValue('sciyueAtomId',atom.id);const p=graph.layout2D?.[atom.id]||atom;node.setCoord2D({x:p.x,y:p.y});mol.appendNode(node);nodes.push(node);}
+      for(const data of graph.bonds||[]){const bond=new Kekule.Bond();bond.setBondOrder(data.aromatic?10:data.order);if(data.stereo)bond.setStereo(data.stereo===6?3:data.stereo===4?8:data.stereo===3?20:data.stereo);mol.appendConnector(bond);bond.appendConnectedObj(nodes[data.a]);bond.appendConnectedObj(nodes[data.b]);}
+      graph.atoms.forEach((atom,index)=>{const neighbours=(graph.bonds||[]).filter(bond=>(bond.aromatic||bond.order===1.5)&&(bond.a===index||bond.b===index)).map(bond=>graph.atoms[bond.a===index?bond.b:bond.a].id).sort();nodes[index].setInfoValue('sciyueAromaticHydrogen',!!atom.aromaticHydrogen);nodes[index].setInfoValue('sciyueAromaticSignature',JSON.stringify([atom.element,atom.formalCharge||0,neighbours]));});
+      composer.setChemObj(mol);loaded=true;lastGraph=JSON.stringify(exportGraph());
+    }finally{loading=false;}
+  }
+  function init(){
+    if(!window.Kekule?.Editor?.Composer){setTimeout(init,50);return;}
+    composer=new Kekule.Editor.Composer(document.getElementById('editor'));composer.setDimension('100%','100%');composer.setEnableCreateNewDoc(false);composer.setEnableLoadNewFile(false);composer.setCommonToolButtons([]);composer.setChemToolButtons(['manipulate','erase','bond','atom','ring','charge']);
+    if(composer.setEnableStyleToolbar)composer.setEnableStyleToolbar(false);
+    const editor=composer.getEditor();editor.addEventListener('operChange',changed);
+    editor.addEventListener('selectionChange',()=>{if(loading)return;const ids=(editor.getSelection()||[]).map(node=>node.getInfoValue?.('sciyueAtomId')).filter(Boolean);send({type:'selection',atomIds:ids});});
+    document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='z'){event.preventDefault();event.stopImmediatePropagation();send({type:event.shiftKey?'redo':'undo'});}},true);
+    window.addEventListener('message',event=>{
+      if(event.origin!==location.origin||event.source!==parent||event.data?.channel!==channel)return;
+      const {id,type,molfile,atomIds,graph}=event.data;
+      try{
+        if(type==='load-graph'){loadGraph(graph);reply(id,{loaded:true});}
+        else if(type==='select'){loading=true;try{const mol=currentMol();const chosen=[];if(mol)for(let i=0;i<mol.getNodeCount();i++){const node=mol.getNodeAt(i);if(atomIds.includes(node.getInfoValue('sciyueAtomId')))chosen.push(node);}editor.setSelection(chosen);}finally{loading=false;}reply(id,{selected:true});}
+        else if(type==='export-graph'){reply(id,exportGraph());}
+        else if(type==='load'){
+          loading=true;try{const mol=molfile?Kekule.IO.loadFormatData(molfile,'mol'):new Kekule.Molecule();for(let i=0;i<mol.getNodeCount();i++){const atom=mol.getNodeAt(i);atom.setInfoValue('sciyueAtomId',atomIds?.[i]||crypto.randomUUID());const c=atom.getCoord2D()||atom.getCoord3D();if(c)atom.setCoord2D({x:c.x,y:c.y});}composer.setChemObj(mol);loaded=true;lastGraph=JSON.stringify(exportGraph());}finally{loading=false;}reply(id,{loaded:true});
+        }else if(type==='export'){
+          const data=exportGraph(),mol=currentMol();if(!mol||!data.atoms.length)throw new Error('请先绘制分子。');const writer=new Kekule.IO.MdlWriter();writer.setCoordMode(Kekule.CoordMode.COORD2D);try{reply(id,{...data,molfile:writer.writeData(mol,Kekule.IO.ChemDataType.TEXT,'mol'),atomIds:data.atoms.map(atom=>atom.id),elements:data.atoms.map(atom=>atom.element)});}finally{writer.finalize();}
+        }else if(type==='clear'){loadGraph({atoms:[],bonds:[],revision});reply(id,{cleared:true});send({type:'changed',graph:exportGraph()});}
+      }catch(error){reply(id,null,error.message||String(error));}
+    });send({type:'ready'});
+  }window.addEventListener('load',init);
+})();
+</script></body></html>

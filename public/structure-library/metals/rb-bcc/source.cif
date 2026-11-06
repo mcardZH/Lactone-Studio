@@ -1,0 +1,161 @@
+#------------------------------------------------------------------------------
+#$Date: 2024-05-16 09:36:09 +0300 (Thu, 16 May 2024) $
+#$Revision: 291877 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/9/01/28/9012876.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided the American Mineralogist Crystal Structure Database,
+# http://rruff.geo.arizona.edu/AMS/amcsd.php
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_9012876
+loop_
+_publ_author_name
+'Kelly, F. M.'
+'Pearson, W. B.'
+_publ_section_title
+;
+ The rubidium transition at ~180 K
+ Sample: at T = 297 K
+ Note: specimen III lattice parameter for this T is estimated
+;
+_journal_name_full               'Canadian Journal of Physics'
+_journal_page_first              17
+_journal_page_last               24
+_journal_paper_doi               10.1139/p55-003
+_journal_volume                  33
+_journal_year                    1955
+_chemical_compound_source        Synthetic
+_chemical_formula_sum            Rb
+_chemical_name_mineral           Rubidium
+_space_group_IT_number           229
+_symmetry_space_group_name_Hall  '-I 4 2 3'
+_symmetry_space_group_name_H-M   'I m -3 m'
+_cell_angle_alpha                90
+_cell_angle_beta                 90
+_cell_angle_gamma                90
+_cell_length_a                   5.700
+_cell_length_b                   5.700
+_cell_length_c                   5.700
+_cell_formula_units_Z            2
+_cell_volume                     185.193
+_database_code_amcsd             0012170
+_diffrn_ambient_temperature      297
+_exptl_crystal_density_diffrn    1.533
+_cod_original_sg_symbol_H-M      'I m 3 m'
+_cod_database_code               9012876
+loop_
+_space_group_symop_operation_xyz
+x,y,z
+1/2+x,1/2+y,1/2+z
+z,-x,y
+1/2+z,1/2-x,1/2+y
+-y,z,-x
+1/2-y,1/2+z,1/2-x
+x,-y,z
+1/2+x,1/2-y,1/2+z
+-z,x,-y
+1/2-z,1/2+x,1/2-y
+y,-z,x
+1/2+y,1/2-z,1/2+x
+-x,y,-z
+1/2-x,1/2+y,1/2-z
+x,-z,-y
+1/2+x,1/2-z,1/2-y
+-z,y,x
+1/2-z,1/2+y,1/2+x
+y,-x,-z
+1/2+y,1/2-x,1/2-z
+-x,z,y
+1/2-x,1/2+z,1/2+y
+z,-y,-x
+1/2+z,1/2-y,1/2-x
+-y,x,z
+1/2-y,1/2+x,1/2+z
+x,z,y
+1/2+x,1/2+z,1/2+y
+-z,-y,-x
+1/2-z,1/2-y,1/2-x
+y,x,z
+1/2+y,1/2+x,1/2+z
+-x,-z,-y
+1/2-x,1/2-z,1/2-y
+z,y,x
+1/2+z,1/2+y,1/2+x
+-y,-x,-z
+1/2-y,1/2-x,1/2-z
+z,x,-y
+1/2+z,1/2+x,1/2-y
+-y,-z,x
+1/2-y,1/2-z,1/2+x
+x,y,-z
+1/2+x,1/2+y,1/2-z
+-z,-x,y
+1/2-z,1/2-x,1/2+y
+y,z,-x
+1/2+y,1/2+z,1/2-x
+-x,-y,z
+1/2-x,1/2-y,1/2+z
+-z,x,y
+1/2-z,1/2+x,1/2+y
+y,-z,-x
+1/2+y,1/2-z,1/2-x
+-x,y,z
+1/2-x,1/2+y,1/2+z
+z,-x,-y
+1/2+z,1/2-x,1/2-y
+-y,z,x
+1/2-y,1/2+z,1/2+x
+x,-y,-z
+1/2+x,1/2-y,1/2-z
+-x,z,-y
+1/2-x,1/2+z,1/2-y
+z,-y,x
+1/2+z,1/2-y,1/2+x
+-y,x,-z
+1/2-y,1/2+x,1/2-z
+x,-z,y
+1/2+x,1/2-z,1/2+y
+-z,y,-x
+1/2-z,1/2+y,1/2-x
+y,-x,z
+1/2+y,1/2-x,1/2+z
+-x,-z,y
+1/2-x,1/2-z,1/2+y
+z,y,-x
+1/2+z,1/2+y,1/2-x
+-y,-x,z
+1/2-y,1/2-x,1/2+z
+x,z,-y
+1/2+x,1/2+z,1/2-y
+-z,-y,x
+1/2-z,1/2-y,1/2+x
+y,x,-z
+1/2+y,1/2+x,1/2-z
+-z,-x,-y
+1/2-z,1/2-x,1/2-y
+y,z,x
+1/2+y,1/2+z,1/2+x
+-x,-y,-z
+1/2-x,1/2-y,1/2-z
+z,x,y
+1/2+z,1/2+x,1/2+y
+-y,-z,-x
+1/2-y,1/2-z,1/2-x
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Rb 0.00000 0.00000 0.00000
+loop_
+_cod_related_entry_id
+_cod_related_entry_database
+_cod_related_entry_code
+1 ChemSpider 4512975
+2 AMCSD 0012170

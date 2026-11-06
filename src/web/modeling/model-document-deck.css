@@ -1,0 +1,98 @@
+.model-document-deck {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+  background: var(--border, #dfe5ed);
+}
+.model-document-deck[data-mode="single"] { overflow: hidden; scrollbar-gutter:auto; }
+.model-document-deck[data-mode="tiled"] { overflow-x:hidden; }
+/* Explicit client dimensions include the reserved gutter. Percentage minima
+   would restore the pre-scrollbar width/height and create a feedback loop. */
+.model-document-deck-stage { position: relative; }
+.model-document-pane {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel-bg, #fff);
+  isolation: isolate;
+}
+.model-document-pane[hidden], .model-document-handle[hidden], .model-document-resize[hidden] { display: none; }
+.model-document-content { flex: 1 1 auto; min-width: 0; min-height: 0; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+.model-document-content > * { min-width: 0; min-height: 0; }
+.model-document-deck[data-mode="free"] .model-document-pane { box-shadow: 0 1px 5px #20334530; border: 1px solid #aebbc9; }
+.model-document-deck[data-mode="free"] .model-document-pane[data-active="true"] { box-shadow: 0 0 0 1px #70a5d0, 0 2px 7px #20334535; border-color: #79a8cb; }
+.model-document-pane[data-drop-target="true"] { outline: 2px solid #6197c1; outline-offset: -2px; }
+.model-document-pane[data-dragging="true"] > .model-document-handle { background: #cbdfee; }
+.model-document-handle {
+  appearance: none;
+  flex: 0 0 12px;
+  height: 12px;
+  min-height: 12px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #edf1f5;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.model-document-handle span { width: 26px; height: 3px; border-top: 1px solid #9cabb9; border-bottom: 1px solid #9cabb9; }
+.model-document-deck[data-mode="free"] .model-document-handle { flex-basis: 28px; height: 28px; min-height: 28px; }
+.model-document-deck[data-mode="free"] .model-document-handle span { width: 44px; height: 4px; }
+.model-document-handle:active { cursor: grabbing; }
+.model-document-handle:hover { background: #dce8f1; }
+.model-document-deck:not([data-mode="single"]) .model-document-pane[data-active="true"] { outline: 1px solid #78ad9b; outline-offset: -1px; }
+.model-document-pane[data-active="true"] > .model-document-handle { background: #d6ebe3; }
+.model-document-handle:focus-visible, .model-document-splitter:focus-visible { outline: 2px solid #527fa4; outline-offset: -2px; }
+/* Header actions own their complete button hit boxes, including the top-right
+   corner. Keep the remaining perimeter resize grips above the drag handle. */
+.model-document-titlebar > button:not(.model-document-handle) { position: relative; z-index: 6; }
+.model-document-resize {
+  appearance: none;
+  position: absolute;
+  z-index: 5;
+  width: 12px;
+  height: 12px;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+  touch-action: none;
+  background: transparent;
+}
+.model-document-resize::before { content: ""; position: absolute; inset: -4px; }
+.model-document-resize[data-direction="n"] { top: 0; left: 12px; width: calc(100% - 24px); height: 4px; cursor: ns-resize; }
+.model-document-resize[data-direction="s"] { bottom: 0; left: 12px; width: calc(100% - 24px); height: 4px; cursor: ns-resize; }
+.model-document-resize[data-direction="e"] { right: 0; top: 12px; height: calc(100% - 24px); width: 4px; cursor: ew-resize; }
+.model-document-resize[data-direction="w"] { left: 0; top: 12px; height: calc(100% - 24px); width: 4px; cursor: ew-resize; }
+.model-document-resize[data-direction="ne"] { right: 0; top: 0; cursor: nesw-resize; }
+.model-document-resize[data-direction="sw"] { left: 0; bottom: 0; cursor: nesw-resize; }
+.model-document-resize[data-direction="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.model-document-resize[data-direction="se"] {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 40%, #7b92a4 41%, #7b92a4 47%, transparent 48%, transparent 61%, #7b92a4 62%, #7b92a4 68%, transparent 69%);
+}
+.model-document-splitter { position: absolute; z-index: 5; touch-action: none; background: transparent; }
+.model-document-splitter::before { content: ""; position: absolute; }
+.model-document-splitter-column::before { inset:0 -5px; }
+.model-document-splitter-row::before { inset:-5px 0; }
+.model-document-splitter-column { cursor: col-resize; }
+.model-document-splitter-row { cursor: row-resize; }
+.model-document-splitter:hover, .model-document-splitter:active { background: #86accb; }

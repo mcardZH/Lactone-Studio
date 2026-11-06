@@ -1,0 +1,805 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-anhydrous-citric-acid-cod-5000063",
+  "structure": {
+    "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063",
+    "name": "无水柠檬酸",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:1",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 1.6404570405697345,
+        "y": 3.1899504,
+        "z": 2.3003827813203923
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:2",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 4.333530725525438,
+        "y": 0.37595040000000013,
+        "z": 6.845060704915559
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:3",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 10.307518491620609,
+        "y": 2.4380496,
+        "z": 4.525504191151512
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:4",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 7.614444806664906,
+        "y": 5.2520496,
+        "z": -0.0191737324436545
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:5",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 2.769540728361722,
+        "y": 2.690184,
+        "z": 3.2205891002189873
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:6",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.2044470377334506,
+        "y": 5.504184,
+        "z": 5.924854386016965
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:7",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 9.17843480382862,
+        "y": 2.937816,
+        "z": 3.605297872252917
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:8",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 8.743528494456893,
+        "y": 0.1238160000000001,
+        "z": 0.90103258645494
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:9",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 2.6452817828269426,
+        "y": 1.7548103999999998,
+        "z": 0.3647513757052798
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:10",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 3.3287059832682298,
+        "y": 4.5688104,
+        "z": 8.780692110530675
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:11",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 9.302693749363401,
+        "y": 3.8731896000000003,
+        "z": 6.461135596766627
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:12",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 8.619269548922114,
+        "y": 1.0591896000000003,
+        "z": -1.9548051380587674
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:13",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 3.803040611896187,
+        "y": 1.5308160000000002,
+        "z": 1.4320408233378072
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:14",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 2.170947154198986,
+        "y": 4.344816,
+        "z": 7.713402662898144
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:15",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 8.144934920294157,
+        "y": 4.097184,
+        "z": 5.393846149134097
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:16",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 9.777028377991359,
+        "y": 1.2831839999999999,
+        "z": -0.8875156904262398
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:17",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 0.33693291000776826,
+        "y": 3.8563056000000002,
+        "z": 5.507664012623708
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:18",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 5.637054856087404,
+        "y": 1.0423056,
+        "z": 3.6377794736122446
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:19",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 11.611042622182575,
+        "y": 1.7716944000000001,
+        "z": 1.318222959848197
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:20",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 6.31092067610294,
+        "y": 4.5856943999999995,
+        "z": 3.188107498859661
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:21",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 4.595191389680407,
+        "y": 4.366765200000001,
+        "z": 0.09720362961269502
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:22",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 1.378796376414766,
+        "y": 1.5527652000000003,
+        "z": 9.048239856623256
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:23",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 7.352784142509936,
+        "y": 1.2612347999999998,
+        "z": 6.72868334285921
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:24",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 10.569179155775577,
+        "y": 4.0752348,
+        "z": -2.222352884151353
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:25",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 11.28247329504734,
+        "y": 1.3028820000000003,
+        "z": -4.22593693189478
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:26",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 6.6394900032381745,
+        "y": 4.116882,
+        "z": 8.732267390602638
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:27",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 0.6655022371430027,
+        "y": 4.325118,
+        "z": 11.051823904366685
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:28",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.308485528952169,
+        "y": 1.5111179999999997,
+        "z": -1.9063804181307324
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:29",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 1.7157292864225342,
+        "y": 5.451843599999999,
+        "z": 3.528866869246966
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:30",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.258258479672638,
+        "y": 2.6378435999999996,
+        "z": 5.616576616988987
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:31",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 10.23224624576781,
+        "y": 0.1761564000000006,
+        "z": 3.29702010322494
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:32",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 7.689717052517705,
+        "y": 2.9901564000000005,
+        "z": 1.209310355482918
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:33",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 1.0657594174713791,
+        "y": 2.5731216000000003,
+        "z": 4.166458617944495
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:34",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 4.908228348623794,
+        "y": 5.3871216,
+        "z": 4.978984868291459
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:35",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 10.882216114718965,
+        "y": 3.0548783999999998,
+        "z": 2.659428354527411
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:36",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 7.03974718356655,
+        "y": 0.24087839999999971,
+        "z": 1.8469021041804474
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:37",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 1.9104812875972361,
+        "y": 2.473506,
+        "z": 2.9350313268982573
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:38",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 4.063506478497937,
+        "y": 5.2875060000000005,
+        "z": 6.210412159337696
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:39",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 10.037494244593107,
+        "y": 3.154494,
+        "z": 3.8908556455736476
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:40",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 7.884469053692406,
+        "y": 0.340494,
+        "z": 0.6154748131342105
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:41",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 1.94274082153415,
+        "y": 1.094646,
+        "z": 2.240338221723932
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:42",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.031246944561023,
+        "y": 3.908646,
+        "z": 6.905105264512022
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:43",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 10.005234710656193,
+        "y": 4.533354,
+        "z": 4.585548750747975
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:44",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 7.916728587629321,
+        "y": 1.719354,
+        "z": -0.07921829204011566
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:45",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 2.95712394421711,
+        "y": 1.1694984,
+        "z": 1.0943735256867964
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:46",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 3.016863821878062,
+        "y": 3.9834983999999998,
+        "z": 8.051069960549157
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:47",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 8.990851587973232,
+        "y": 4.4585016,
+        "z": 5.73151344678511
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:48",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 8.931111710312281,
+        "y": 1.6445016000000001,
+        "z": -1.2251829880772513
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:49",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 3.223563798584955,
+        "y": 5.4434016000000005,
+        "z": 0.4853148051729206
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:50",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 2.750423967510218,
+        "y": 2.6294016000000004,
+        "z": 8.660128681063034
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:51",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 8.724411733605388,
+        "y": 0.18459839999999966,
+        "z": 6.340572167298986
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:52",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 9.197551564680126,
+        "y": 2.9985983999999997,
+        "z": -1.8342417085911276
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:53",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 0.5448276842678798,
+        "y": 0.7473984000000001,
+        "z": 1.7088439459447191
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:54",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 5.429160081827293,
+        "y": 3.5613984000000003,
+        "z": 7.436599540291233
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:55",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 11.403147847922463,
+        "y": 4.8806016,
+        "z": 5.117043026527186
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:56",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 6.518815450363051,
+        "y": 2.0666016,
+        "z": -0.6107125678193281
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:57",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 0.9379160792769424,
+        "y": 3.7803275999999997,
+        "z": 4.625397627339044
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:58",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 5.03607168681823,
+        "y": 0.9663276000000002,
+        "z": 4.520045858896908
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:59",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 11.010059452913401,
+        "y": 1.8476724,
+        "z": 2.20048934513286
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:60",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 6.911903845372114,
+        "y": 4.6616724000000005,
+        "z": 2.305841113574997
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:61",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 0.5448276842678799,
+        "y": 1.5825936,
+        "z": 4.697769445944719
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:62",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 5.429160081827293,
+        "y": 4.3965936,
+        "z": 4.4476740402912345
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:63",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 11.403147847922463,
+        "y": 4.0454064,
+        "z": 2.128117526527186
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:64",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 6.518815450363051,
+        "y": 1.2314064,
+        "z": 2.3782129321806718
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:65",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": 4.507971168295418,
+        "y": 5.200272,
+        "z": 0.40393615471364996
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:66",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": 1.4660165977997552,
+        "y": 2.3862719999999995,
+        "z": 8.741507331522305
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:67",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": 7.440004363894927,
+        "y": 0.4277280000000004,
+        "z": 6.4219508177582565
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:68",
+        "sourceIndex": 17,
+        "element": "O",
+        "x": 10.481958934390587,
+        "y": 3.2417280000000006,
+        "z": -1.9156203590503975
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:69",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": 2.3812315235655364,
+        "y": 4.659984000000001,
+        "z": 0.11071427361365105
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:70",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": 3.592756242529636,
+        "y": 1.8459840000000005,
+        "z": 9.0347292126223
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:71",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": 9.566744008624807,
+        "y": 0.9680159999999997,
+        "z": 6.715172698858254
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:72",
+        "sourceIndex": 18,
+        "element": "O",
+        "x": 8.355219289660708,
+        "y": 3.7820159999999996,
+        "z": -2.208842240150396
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:73",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 0.17563524032319827,
+        "y": 1.5285647999999998,
+        "z": 0.7160110384953372
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:74",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 5.798352525771975,
+        "y": 4.3425648,
+        "z": 8.429432447740616
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:75",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 11.772340291867144,
+        "y": 4.0994352,
+        "z": 6.10987593397657
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:76",
+        "sourceIndex": 19,
+        "element": "O",
+        "x": 6.149623006418369,
+        "y": 1.2854352000000002,
+        "z": -1.6035454752687097
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:77",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 11.817742598889469,
+        "y": 5.492928,
+        "z": -2.472107695528038
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:78",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 6.104220699396047,
+        "y": 2.678928,
+        "z": 6.978438154235897
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:79",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 0.13023293330087476,
+        "y": 0.13507200000000014,
+        "z": 9.297994667999944
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:80",
+        "sourceIndex": 20,
+        "element": "O",
+        "x": 5.843754832794297,
+        "y": 2.949072,
+        "z": -0.1525511817639913
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:81",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": 2.3931794990977258,
+        "y": 0.07879200000000007,
+        "z": 3.103026160586123
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:82",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": 3.5808082669974457,
+        "y": 2.892792,
+        "z": 6.04241732564983
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:83",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": 9.554796033092618,
+        "y": 5.549208,
+        "z": 3.722860811885783
+      },
+      {
+        "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:84",
+        "sourceIndex": 21,
+        "element": "O",
+        "x": 8.367167265192897,
+        "y": 2.735208,
+        "z": 0.7834696468220756
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 5000063; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:1",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:2",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:3",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:4",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:5",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:6",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:7",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:8",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:9",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:10",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:11",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:12",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:13",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:14",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:15",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:16",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:17",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:18",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:19",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:20",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:21",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:22",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:23",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:24",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:25",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:26",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:27",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:28",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:29",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:30",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:31",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:32",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:33",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:34",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:35",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:36",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:37",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:38",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:39",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:40",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:41",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:42",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:43",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:44",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:45",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:46",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:47",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:48",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:49",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:50",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:51",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:52",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:53",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:54",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:55",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:56",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:57",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:58",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:59",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:60",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:61",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:62",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:63",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:64",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:65",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:66",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:67",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:68",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:69",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:70",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:71",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:72",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:73",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:74",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:75",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:76",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:77",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:78",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:79",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:80",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:81",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:82",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:83",
+      "molecular-crystal-anhydrous-citric-acid-cod-5000063:atom:84"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          11.947975532190343,
+          0.0,
+          -4.6391130275280945
+        ],
+        [
+          9.050514272380111e-16,
+          5.628,
+          3.446156092800652e-16
+        ],
+        [
+          0.0,
+          0.0,
+          11.465
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 5000063 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "sciyue-xtb-lock-v1",
+  "platform": "win32-x64",
+  "lockId": "xtb-source-build-required",
+  "root": ".local/dependencies/win-x64/xtb-source-build-required",
+  "contentDirectories": [
+    "xtb"
+  ],
+  "status": "source-build-required",
+  "sourceBuildRequired": true,
+  "scope": "local-experimental",
+  "localUseReady": false,
+  "publicRedistributionReviewed": false,
+  "distributionLicenseReady": false,
+  "publicDistribution": false,
+  "officialAcceptance": false,
+  "scientificAccepted": false,
+  "source": {
+    "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+    "defaultScientificPins": {
+      "path": "third-party/build-inputs/gnu-xtb/default-scientific-pins.json",
+      "bytes": 5616,
+      "sha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b"
+    }
+  },
+  "bootstrap": {
+    "materializeSelection": "--skip-xtb",
+    "runtimeGuide": "third-party/corresponding-sources/GNU-RUNTIME-REBUILD.md",
+    "scientificGuide": "third-party/corresponding-sources/XTB-GNU-REBUILD.md",
+    "admission": "scripts/release/admit-built-xtb.py --raw-output ... --local-modified --apply --activate"
+  },
+  "notice": "Blueprint only. No files or inventory are declared. Build and explicitly admit a complete GNU runtime before prepare; no legacy binary fallback."
+}

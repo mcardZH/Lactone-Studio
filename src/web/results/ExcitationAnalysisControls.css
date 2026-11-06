@@ -1,0 +1,11 @@
+.excitation-analysis .excitation-target { flex:1 1 100%; min-width:0; }
+.excitation-analysis .excitation-target label { min-width:0; max-width:100%; }
+.excitation-analysis .excitation-target select { min-width:5.5em; max-width:min(24em,100%); flex:1 1 auto; }
+.excitation-analysis .analysis-task-results { gap:8px; }
+.excitation-analysis .analysis-task-section-body > .spectroscopy-control-row { flex:1 1 100%; }
+.excitation-analysis .analysis-task-section-body > .postprocess-metadata-details { flex:1 1 100%; min-width:0; }
+.excitation-analysis .postprocess-metadata-details > summary { cursor:pointer; }
+.excitation-analysis .postprocess-metadata-details[open] > summary { margin-bottom:8px; }
+.excitation-analysis .nto-pair-list .scientific-table-actions > .scientific-table-parameters { width:auto; flex:0 0 auto; }
+.excitation-analysis .nto-pair-list .scientific-table-actions > .scientific-table-layout-actions { width:auto; flex:1 1 auto; }
+.excitation-analysis .excitation-nto-side[aria-pressed=true] { background:#e1f1e7!important; border-color:#76ad94!important; color:#214b35!important; font-weight:600; }

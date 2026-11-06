@@ -1,0 +1,872 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "molecular-crystal-cholamide-dihydrate-cod-2006035",
+      "category": "molecular-crystals",
+      "name": "胆酰胺二水合物",
+      "nameEn": "cholamide dihydrate",
+      "formula": "C24H45NO6",
+      "aliases": [
+        "cholamide_dihydrate"
+      ],
+      "phase": "3α,7α,12α-trihydroxy-5β-cholan-24-amide dihydrate",
+      "structurePath": "molecular-crystals/molecular-crystal-cholamide-dihydrate-cod-2006035/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-cholamide-dihydrate-cod-2006035/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2006035",
+        "url": "https://www.crystallography.net/cod/2006035.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301791",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Cholamide Dihydrate. Acta Crystallographica Section C. 53 (1997) 480–482",
+        "doi": "10.1107/S0108270196014382",
+        "conditions": "COD cell temperature 296 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record name, formula, and source title agree; 296 K recorded.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order.",
+          "The CIF omits an explicit symmetry-operation loop; source-row mapping reuses the exact CifParser operations resolved from its declared source space group. No atoms or symmetry are invented beyond the source space-group declaration."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21 1"
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-acetanilide-cod-4515878",
+      "category": "molecular-crystals",
+      "name": "乙酰苯胺",
+      "nameEn": "acetanilide",
+      "formula": "C8H9NO",
+      "aliases": [
+        "acetanilide"
+      ],
+      "phase": "orthorhombic acetanilide; Pbca; 100 K",
+      "structurePath": "molecular-crystals/molecular-crystal-acetanilide-cod-4515878/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-acetanilide-cod-4515878/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "4515878",
+        "url": "https://www.crystallography.net/cod/4515878.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301843",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Supramolecular Packing of a Series of N-Phenylamides and the Role of NH···O=C Interactions.. ACS omega. 3 (2018) 13850–13861",
+        "doi": "10.1021/acsomega.8b01801",
+        "conditions": "COD cell temperature 100 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD has two acetanilide entries; this candidate is one 100 K Pbca record and the alternate is not counted separately.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P b c a",
+        "number": 61
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-ethanol-cod-5910115",
+      "category": "molecular-crystals",
+      "name": "乙醇",
+      "nameEn": "ethanol",
+      "formula": "C2H6O",
+      "aliases": [
+        "ethanol"
+      ],
+      "phase": "ethanol; P21/a; 87 K diffraction temperature",
+      "structurePath": "molecular-crystals/molecular-crystal-ethanol-cod-5910115/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-ethanol-cod-5910115/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "5910115",
+        "url": "https://www.crystallography.net/cod/5910115.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301844",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Hydrogen bond studies. CXIII. The crystal structure of ethanol at 87 K. Acta Crystallogr.,Sect.B:Struct.Crystallogr.Cryst.Chem.. 32 (1976) 232–235",
+        "doi": "10.1107/S0567740876002653",
+        "conditions": "COD diffraction temperature 87 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD reports diffraction temperature 87 K; pressure is not reported.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 c 1",
+        "number": 7
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-sodium-oxalate-cod-9011221",
+      "category": "molecular-crystals",
+      "name": "草酸钠",
+      "nameEn": "sodium oxalate",
+      "formula": "C2Na2O4",
+      "aliases": [
+        "sodium oxalate",
+        "sodium_oxalate"
+      ],
+      "phase": "sodium oxalate; P21/c; 140 K",
+      "structurePath": "molecular-crystals/molecular-crystal-sodium-oxalate-cod-9011221/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-sodium-oxalate-cod-9011221/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9011221",
+        "url": "https://www.crystallography.net/cod/9011221.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Sodium oxalate structure refinement Sample: T = 140 K. Acta Crystallographica, Section B. 37 (1981) 938–939",
+        "doi": "10.1107/S0567740881004676",
+        "conditions": "COD diffraction temperature 140 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record cites a 140 K refinement; pressure not reported.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/c 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-toluene-cod-7238224",
+      "category": "molecular-crystals",
+      "name": "甲苯",
+      "nameEn": "toluene",
+      "formula": "C7H8",
+      "aliases": [
+        "toluene"
+      ],
+      "phase": "toluene; P21/c; 150 K",
+      "structurePath": "molecular-crystals/molecular-crystal-toluene-cod-7238224/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-toluene-cod-7238224/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "7238224",
+        "url": "https://www.crystallography.net/cod/7238224.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301866",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Directing role of functional groups in selective generation of C–H⋯π interactions: In situ cryo-crystallographic studies on benzyl derivatives. CrystEngComm. 12 (2010) 3112",
+        "doi": "10.1039/c001190h",
+        "conditions": "COD cell temperature 150 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD reports cell/diffraction temperature 150 K; pressure not reported.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/c 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-trans-cinnamamide-cod-2102109",
+      "category": "molecular-crystals",
+      "name": "反式肉桂酰胺",
+      "nameEn": "trans-cinnamamide",
+      "formula": "C9H9NO",
+      "aliases": [
+        "cinnamide"
+      ],
+      "phase": "trans-cinnamamide crystal; P21/c; 298 K",
+      "structurePath": "molecular-crystals/molecular-crystal-trans-cinnamamide-cod-2102109/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-trans-cinnamamide-cod-2102109/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2102109",
+        "url": "https://www.crystallography.net/cod/2102109.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301802",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Crystal-to-crystal photodimerization of trans-cinnamamides. Acta Crystallographica Section B. 56 (2000) 682–689",
+        "doi": "10.1107/S0108768100002329",
+        "conditions": "COD cell temperature 298 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD returned two entries (2102109, 2102110) for this formula/source. Stage one CIF only; do not count both or claim it matches the MS polymorph.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/a 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-adipic-acid-cod-4116152",
+      "category": "molecular-crystals",
+      "name": "己二酸",
+      "nameEn": "adipic acid",
+      "formula": "C6H10O4",
+      "aliases": [
+        "adipic acid",
+        "adipic_acid"
+      ],
+      "phase": "monoclinic adipic acid; P21/c; 298 K",
+      "structurePath": "molecular-crystals/molecular-crystal-adipic-acid-cod-4116152/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-adipic-acid-cod-4116152/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "4116152",
+        "url": "https://www.crystallography.net/cod/4116152.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 178932",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "The Melting Point Alternation in α,ω-Alkanedicarboxylic Acids. Journal of the American Chemical Society. 122 (2000) 9227–9236",
+        "doi": "10.1021/ja0011459",
+        "conditions": "COD cell temperature 298 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD has multiple polymorph records; this is one ambient-temperature monoclinic candidate only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/c 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-l-alanine-cod-1574529",
+      "category": "molecular-crystals",
+      "name": "L-丙氨酸",
+      "nameEn": "L-alanine",
+      "formula": "C3H7NO2",
+      "aliases": [
+        "alanine"
+      ],
+      "phase": "L-alanine; P212121; 200 K",
+      "structurePath": "molecular-crystals/molecular-crystal-l-alanine-cod-1574529/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-l-alanine-cod-1574529/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1574529",
+        "url": "https://www.crystallography.net/cod/1574529.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 299422",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Accurate temperature dependence of structure factors of L-alanine and taurine for quantum crystallography.. IUCrJ. 12 (2025)",
+        "doi": "10.1107/S2052252525002647",
+        "conditions": "COD cell temperature 200 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS filename does not state stereochemistry; this L-enantiomer is an option, not a confirmed mapping.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 21 21 21",
+        "number": 19
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-dl-alanine-cod-2012001",
+      "category": "molecular-crystals",
+      "name": "DL-丙氨酸",
+      "nameEn": "DL-alanine",
+      "formula": "C3H7NO2",
+      "aliases": [
+        "alanine"
+      ],
+      "phase": "DL-alanine; Pna21; 293 K",
+      "structurePath": "molecular-crystals/molecular-crystal-dl-alanine-cod-2012001/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-dl-alanine-cod-2012001/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2012001",
+        "url": "https://www.crystallography.net/cod/2012001.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301798",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "DL-Alanine. Acta Crystallographica Section C. 57 (2001) 614–615",
+        "doi": "10.1107/S010827010100261X",
+        "conditions": "COD cell temperature 293 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS filename does not state stereochemistry; this racemic form is an option, not a confirmed mapping.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P n a 21",
+        "number": 33
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-l-aspartic-acid-cod-2015971",
+      "category": "molecular-crystals",
+      "name": "L-天冬氨酸",
+      "nameEn": "L-aspartic acid",
+      "formula": "C4H7NO4",
+      "aliases": [
+        "aspartic acid",
+        "aspartic_acid"
+      ],
+      "phase": "L-aspartic acid; 100 K",
+      "structurePath": "molecular-crystals/molecular-crystal-l-aspartic-acid-cod-2015971/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-l-aspartic-acid-cod-2015971/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2015971",
+        "url": "https://www.crystallography.net/cod/2015971.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301798",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "The experimental library multipolar atom model refinement of L-aspartic acid. Acta Crystallographica, Section C. 63 (2007) o361–o364",
+        "doi": "10.1107/S0108270107021671",
+        "conditions": "COD cell temperature 100 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS filename does not state stereochemistry; retain as an alternative only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21 1",
+        "number": 4
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-dl-aspartic-acid-cod-2215349",
+      "category": "molecular-crystals",
+      "name": "DL-天冬氨酸",
+      "nameEn": "DL-aspartic acid",
+      "formula": "C4H7NO4",
+      "aliases": [
+        "aspartic acid",
+        "aspartic_acid"
+      ],
+      "phase": "DL-aspartic acid; P21/c; 293 K",
+      "structurePath": "molecular-crystals/molecular-crystal-dl-aspartic-acid-cod-2215349/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-dl-aspartic-acid-cod-2215349/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2215349",
+        "url": "https://www.crystallography.net/cod/2215349.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301804",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "DL-Aspartic acid. Acta Crystallographica Section E. 63 (2007) o4003–o4003",
+        "doi": "10.1107/S1600536807043097",
+        "conditions": "COD cell temperature 293 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "MS filename does not state stereochemistry; retain as an alternative only.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 2/c 1",
+        "number": 15
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-benzamide-cod-1500039",
+      "category": "molecular-crystals",
+      "name": "苯甲酰胺",
+      "nameEn": "benzamide",
+      "formula": "C7H7NO",
+      "aliases": [
+        "benzamide"
+      ],
+      "phase": "benzamide polymorph; P21/c",
+      "structurePath": "molecular-crystals/molecular-crystal-benzamide-cod-1500039/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-benzamide-cod-1500039/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1500039",
+        "url": "https://www.crystallography.net/cod/1500039.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301775",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Polymorphism in benzamide: solving a 175-year-old riddle.. Angewandte Chemie (International ed. in English). 46 (2007) 6729–6731",
+        "doi": "10.1002/anie.200701383",
+        "conditions": "temperature not reported in COD metadata; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "The COD source concerns benzamide polymorphism but the returned record does not identify the form in its name; temperature is not reported in the COD row.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/c 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-benzophenone-cod-2300384",
+      "category": "molecular-crystals",
+      "name": "二苯甲酮",
+      "nameEn": "benzophenone",
+      "formula": "C13H10O",
+      "aliases": [
+        "benzophenone"
+      ],
+      "phase": "benzophenone; P212121; 300 K",
+      "structurePath": "molecular-crystals/molecular-crystal-benzophenone-cod-2300384/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-benzophenone-cod-2300384/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2300384",
+        "url": "https://www.crystallography.net/cod/2300384.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301808",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Predicting anisotropic displacement parameters using molecular dynamics: density functional theory plus dispersion modelling of thermal motion in benzophenone. Journal of Applied Crystallography. 46 (2013) 656–662",
+        "doi": "10.1107/S0021889813006225",
+        "conditions": "COD cell temperature 300 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD also lists metastable β-benzophenone records; this source row does not label its polymorph, so do not count polymorph coverage as resolved.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 21 21 21",
+        "number": 19
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-caprolactam-cod-5000169",
+      "category": "molecular-crystals",
+      "name": "ε-己内酰胺",
+      "nameEn": "caprolactam",
+      "formula": "C6H11NO",
+      "aliases": [
+        "caprolactam"
+      ],
+      "phase": "caprolactam; P21/c",
+      "structurePath": "molecular-crystals/molecular-crystal-caprolactam-cod-5000169/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-caprolactam-cod-5000169/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "5000169",
+        "url": "https://www.crystallography.net/cod/5000169.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301844",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Medium-ring compounds. XIX. Caprolactam: structure refinement. Acta Crystallographica Section B. 31 (1975) 268–269",
+        "doi": "10.1107/S0567740875002440",
+        "conditions": "temperature not reported in COD metadata; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record has coordinates and a 1975 structure-refinement citation; temperature and pressure are not reported in the COD row.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "C 1 2/c 1",
+        "number": 15
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-anhydrous-citric-acid-cod-5000063",
+      "category": "molecular-crystals",
+      "name": "无水柠檬酸",
+      "nameEn": "anhydrous citric acid",
+      "formula": "C6H8O7",
+      "aliases": [
+        "citric acid",
+        "citric_acid"
+      ],
+      "phase": "anhydrous citric acid; P21/c",
+      "structurePath": "molecular-crystals/molecular-crystal-anhydrous-citric-acid-cod-5000063/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-anhydrous-citric-acid-cod-5000063/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "5000063",
+        "url": "https://www.crystallography.net/cod/5000063.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301844",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "X-ray crystal analysis of the substrates of aconitase. IX. A refinement of the structure of anhydrous citric acid. Acta Crystallographica Section B. 25 (1969) 1066–1072",
+        "doi": "10.1107/S0567740869003542",
+        "conditions": "temperature not reported in COD metadata; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "The COD source title explicitly identifies anhydrous citric acid; temperature and pressure are not reported.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/a 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-alpha-d-glucose-cod-1558408",
+      "category": "molecular-crystals",
+      "name": "α-D-葡萄糖",
+      "nameEn": "alpha-D-glucose",
+      "formula": "C6H12O6",
+      "aliases": [
+        "glucose"
+      ],
+      "phase": "alpha-glucose; P212121; 140 K",
+      "structurePath": "molecular-crystals/molecular-crystal-alpha-d-glucose-cod-1558408/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-alpha-d-glucose-cod-1558408/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1558408",
+        "url": "https://www.crystallography.net/cod/1558408.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301780",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "X-Ray Crystallographic Study of alpha-Glucose at 140 K. Acta Chemica Scandinavica. 48 (1994) 276–278",
+        "doi": "10.3891/acta.chem.scand.48-0276",
+        "conditions": "COD diffraction temperature 140 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "The source is a specific alpha-glucose polymorph; the MS filename is unqualified, so do not claim phase identity is established.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 21 21 21",
+        "number": 19
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-alpha-glycine-cod-1556577",
+      "category": "molecular-crystals",
+      "name": "α-甘氨酸",
+      "nameEn": "alpha-glycine",
+      "formula": "C2H5NO2",
+      "aliases": [
+        "glycine"
+      ],
+      "phase": "alpha-glycine; P21/c; 103 K",
+      "structurePath": "molecular-crystals/molecular-crystal-alpha-glycine-cod-1556577/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-alpha-glycine-cod-1556577/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1556577",
+        "url": "https://www.crystallography.net/cod/1556577.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301780",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Polymorph evolution during crystal growth studied by 3D electron diffraction. IUCrJ. 7 (2020) 5–9",
+        "doi": "10.1107/S2052252519016105",
+        "conditions": "COD cell temperature 103 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "A public alpha polymorph is available; the MS filename does not identify a polymorph.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/n 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-naphthalene-cod-2100603",
+      "category": "molecular-crystals",
+      "name": "萘",
+      "nameEn": "naphthalene",
+      "formula": "C10H8",
+      "aliases": [
+        "naphthalene"
+      ],
+      "phase": "naphthalene; P21/c; 298 K",
+      "structurePath": "molecular-crystals/molecular-crystal-naphthalene-cod-2100603/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-naphthalene-cod-2100603/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2100603",
+        "url": "https://www.crystallography.net/cod/2100603.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301802",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Exploration of the high-pressure behaviour of polycyclic aromatic hydrocarbons: naphthalene, phenanthrene and pyrene. Acta Crystallographica Section B. 62 (2006) 826–842",
+        "doi": "10.1107/S0108768106026814",
+        "conditions": "COD cell temperature 298 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD row has no pressure although its source title is a high-pressure study; do not imply ambient pressure.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/a 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878",
+      "category": "molecular-crystals",
+      "name": "L-组氨酸（单斜候选）",
+      "nameEn": "L-histidine monoclinic polymorph candidate",
+      "formula": "C6H9N3O2",
+      "aliases": [
+        "histidine_resolved"
+      ],
+      "phase": "L-histidine; P21; 295 K",
+      "structurePath": "molecular-crystals/molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-l-histidine-monoclinic-polymorph-candidate-cod-2108878/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2108878",
+        "url": "https://www.crystallography.net/cod/2108878.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 269240",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Accurate H-atom parameters for the two polymorphs of L-histidine at 5, 105 and 295K. Acta Crystallographica Section B. 77 (2021)",
+        "doi": "10.1107/S205252062100740X",
+        "conditions": "COD cell temperature 295 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "The MS filename denotes resolved histidine but does not identify L/D or polymorph; this is one L-histidine form candidate.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21 1",
+        "number": 4
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881",
+      "category": "molecular-crystals",
+      "name": "L-组氨酸（正交候选）",
+      "nameEn": "L-histidine orthorhombic polymorph candidate",
+      "formula": "C6H9N3O2",
+      "aliases": [
+        "histidine_resolved"
+      ],
+      "phase": "L-histidine; P212121; 295 K",
+      "structurePath": "molecular-crystals/molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2108881",
+        "url": "https://www.crystallography.net/cod/2108881.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 269240",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Accurate H-atom parameters for the two polymorphs of L-histidine at 5, 105 and 295K. Acta Crystallographica Section B. 77 (2021)",
+        "doi": "10.1107/S205252062100740X",
+        "conditions": "COD cell temperature 295 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "The same paper reports a second L-histidine polymorph; the MS filename does not identify which form.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 21 21 21",
+        "number": 19
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "molecular-crystal-indigo-b-polymorph-cod-2232260",
+      "category": "molecular-crystals",
+      "name": "靛蓝 B 型",
+      "nameEn": "indigo B polymorph",
+      "formula": "C16H10N2O2",
+      "aliases": [
+        "indigo_1",
+        "indigo_2"
+      ],
+      "phase": "indigo B; P21/c; 213 K",
+      "structurePath": "molecular-crystals/molecular-crystal-indigo-b-polymorph-cod-2232260/structure.json",
+      "sourcePath": "molecular-crystals/molecular-crystal-indigo-b-polymorph-cod-2232260/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "2232260",
+        "url": "https://www.crystallography.net/cod/2232260.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 301806",
+        "retrievedAt": "2026-10-23T16:56:44.756653+00:00",
+        "citation": "Selective crystallization of indigo B by a modified sublimation method and its redetermined structure. Acta Crystallographica Section E. 67 (2011) o2867",
+        "doi": "10.1107/S1600536811040220",
+        "conditions": "COD cell temperature 213 K; pressure not reported in COD metadata."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Only one COD indigo B record was found. Names _1 and _2 do not identify which MS polymorph it corresponds to; stage once and do not duplicate-count or map to both.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 1 21/n 1",
+        "number": 14
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

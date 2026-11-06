@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "uo-rocksalt",
+  "structure": {
+    "id": "uo-rocksalt",
+    "name": "一氧化铀",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "uo-rocksalt:atom:1",
+        "sourceIndex": 1,
+        "element": "U",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "uo-rocksalt:atom:2",
+        "sourceIndex": 1,
+        "element": "U",
+        "x": 3.955981718204526e-16,
+        "y": 2.46,
+        "z": 2.46
+      },
+      {
+        "id": "uo-rocksalt:atom:3",
+        "sourceIndex": 1,
+        "element": "U",
+        "x": 2.46,
+        "y": 0.0,
+        "z": 2.46
+      },
+      {
+        "id": "uo-rocksalt:atom:4",
+        "sourceIndex": 1,
+        "element": "U",
+        "x": 2.4600000000000004,
+        "y": 2.46,
+        "z": 3.0126311259024886e-16
+      },
+      {
+        "id": "uo-rocksalt:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.4600000000000004,
+        "y": 2.46,
+        "z": 2.4600000000000004
+      },
+      {
+        "id": "uo-rocksalt:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.46,
+        "y": 0.0,
+        "z": 1.5063155629512443e-16
+      },
+      {
+        "id": "uo-rocksalt:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.955981718204526e-16,
+        "y": 2.46,
+        "z": 1.5063155629512443e-16
+      },
+      {
+        "id": "uo-rocksalt:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.46
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9008758; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "uo-rocksalt:atom:1",
+      "uo-rocksalt:atom:2",
+      "uo-rocksalt:atom:3",
+      "uo-rocksalt:atom:4",
+      "uo-rocksalt:atom:5",
+      "uo-rocksalt:atom:6",
+      "uo-rocksalt:atom:7",
+      "uo-rocksalt:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.92,
+          0.0,
+          3.0126311259024886e-16
+        ],
+        [
+          7.911963436409052e-16,
+          4.92,
+          3.0126311259024886e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.92
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9008758 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

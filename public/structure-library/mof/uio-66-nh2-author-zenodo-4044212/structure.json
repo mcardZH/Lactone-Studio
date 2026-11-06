@@ -1,0 +1,1215 @@
+{
+  "schemaVersion": 1,
+  "entryId": "uio-66-nh2-author-zenodo-4044212",
+  "structure": {
+    "id": "uio-66-nh2-author-zenodo-4044212",
+    "name": "UiO-66-NH2",
+    "format": "cif",
+    "atoms": [
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0001",
+        "element": "Zr",
+        "x": -0.9602270260327164,
+        "y": 1.6011796481494804,
+        "z": 1.7308372646133257,
+        "sourceIndex": 1
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0002",
+        "element": "Zr",
+        "x": 2.1041575355550326,
+        "y": 1.6298239398622998,
+        "z": -0.02510220137977437,
+        "sourceIndex": 2
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0003",
+        "element": "Zr",
+        "x": -0.9542915627501533,
+        "y": 1.5621412252666091,
+        "z": 12.984026511581401,
+        "sourceIndex": 3
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0004",
+        "element": "Zr",
+        "x": 2.3343450607628515,
+        "y": 10.783790226939105,
+        "z": 7.374127432504613,
+        "sourceIndex": 4
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0005",
+        "element": "Zr",
+        "x": -7.3998237600292045,
+        "y": 10.823916407735123,
+        "z": 1.7438419635461635,
+        "sourceIndex": 5
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0006",
+        "element": "Zr",
+        "x": -7.398024516107838,
+        "y": 10.785482294803996,
+        "z": 12.996505751151915,
+        "sourceIndex": 6
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0007",
+        "element": "H",
+        "x": 3.6459275432654215,
+        "y": 5.114033397656173,
+        "z": 2.0079485417923735,
+        "sourceIndex": 7
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0008",
+        "element": "H",
+        "x": -3.042493082409653,
+        "y": 5.416188373529791,
+        "z": 1.968513302032505,
+        "sourceIndex": 8
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0009",
+        "element": "H",
+        "x": 8.369063018425164,
+        "y": 1.4846686894526133,
+        "z": 2.97760592645568,
+        "sourceIndex": 9
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0010",
+        "element": "H",
+        "x": 7.129767284461084,
+        "y": 6.77951162467156,
+        "z": 5.404845610341031,
+        "sourceIndex": 10
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0011",
+        "element": "H",
+        "x": 0.9321542884620007,
+        "y": 7.079491084718888,
+        "z": 5.6594145427347495,
+        "sourceIndex": 11
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0012",
+        "element": "H",
+        "x": 5.518151402458906,
+        "y": 2.312452461355979,
+        "z": -2.7125221862341524,
+        "sourceIndex": 12
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0013",
+        "element": "H",
+        "x": -0.5866600356765386,
+        "y": 2.154244115988553,
+        "z": 8.701134585436737,
+        "sourceIndex": 13
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0014",
+        "element": "H",
+        "x": -1.3154450418605972,
+        "y": 10.329590867205882,
+        "z": 9.738007035951117,
+        "sourceIndex": 14
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0015",
+        "element": "H",
+        "x": -4.127381488458566,
+        "y": 11.192787202281636,
+        "z": 4.63845395267175,
+        "sourceIndex": 15
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0016",
+        "element": "H",
+        "x": 0.7683218027308234,
+        "y": 7.306228178614452,
+        "z": 9.331141775011641,
+        "sourceIndex": 16
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0017",
+        "element": "H",
+        "x": 3.7231378320084927,
+        "y": 4.948815056848478,
+        "z": -2.2510868404037065,
+        "sourceIndex": 17
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0018",
+        "element": "H",
+        "x": 5.342777023223706,
+        "y": 10.396548409859475,
+        "z": -1.3779568011462038,
+        "sourceIndex": 18
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0019",
+        "element": "H",
+        "x": 0.0430831515202339,
+        "y": 3.56361578545346,
+        "z": -0.03557233095958634,
+        "sourceIndex": 19
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0020",
+        "element": "H",
+        "x": 2.776497654484559,
+        "y": 11.074100727758477,
+        "z": 4.583782398793617,
+        "sourceIndex": 20
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0021",
+        "element": "H",
+        "x": 2.7521735769399402,
+        "y": 11.126192245599091,
+        "z": -4.629506939276254,
+        "sourceIndex": 21
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0022",
+        "element": "H",
+        "x": -5.203535003890941,
+        "y": 11.128609485406079,
+        "z": -0.02881859566307199,
+        "sourceIndex": 22
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0023",
+        "element": "H",
+        "x": -0.6475175644078529,
+        "y": 2.2557681878820883,
+        "z": 6.1934824646236235,
+        "sourceIndex": 23
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0024",
+        "element": "H",
+        "x": 4.5522812728656,
+        "y": 6.998634413175108,
+        "z": -3.452806683460225,
+        "sourceIndex": 24
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0025",
+        "element": "H",
+        "x": 6.213495600523407,
+        "y": 1.581841729693569,
+        "z": 1.6931093806167157,
+        "sourceIndex": 25
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0026",
+        "element": "H",
+        "x": -4.4704899863948455,
+        "y": 7.482444960543947,
+        "z": 2.055782429603368,
+        "sourceIndex": 26
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0027",
+        "element": "H",
+        "x": 4.464895695526549,
+        "y": 7.156842758542534,
+        "z": 3.22547031767148,
+        "sourceIndex": 27
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0028",
+        "element": "H",
+        "x": -3.5135487008942956,
+        "y": 10.276049005481077,
+        "z": 10.95695470672899,
+        "sourceIndex": 28
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0029",
+        "element": "H",
+        "x": -0.9873328098783825,
+        "y": 5.8550382604886355,
+        "z": 9.993521418992724,
+        "sourceIndex": 29
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0030",
+        "element": "H",
+        "x": 7.657087427727954,
+        "y": 4.625750956644405,
+        "z": 4.454519091993581,
+        "sourceIndex": 30
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0031",
+        "element": "H",
+        "x": 5.577781473349157,
+        "y": 9.180797648934384,
+        "z": 0.6496943392892707,
+        "sourceIndex": 31
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0032",
+        "element": "H",
+        "x": 7.25069737599384,
+        "y": 3.536663561605533,
+        "z": -3.858183833140186,
+        "sourceIndex": 32
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0033",
+        "element": "H",
+        "x": -0.7166356730136498,
+        "y": 5.4374600838312945,
+        "z": 5.250950865905474,
+        "sourceIndex": 33
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0034",
+        "element": "H",
+        "x": -2.9272057527314432,
+        "y": 10.864526036492537,
+        "z": 6.703773772047884,
+        "sourceIndex": 34
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0035",
+        "element": "H",
+        "x": 8.945072311262914,
+        "y": 3.6484609026787727,
+        "z": 5.05725355600773,
+        "sourceIndex": 35
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0036",
+        "element": "H",
+        "x": -1.2071429765836097,
+        "y": 11.032645065068618,
+        "z": 6.800063556256788,
+        "sourceIndex": 36
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0037",
+        "element": "H",
+        "x": 5.484917776179899,
+        "y": 9.945733185856035,
+        "z": 2.2109905837166517,
+        "sourceIndex": 37
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0038",
+        "element": "H",
+        "x": 8.617929607223717,
+        "y": 2.7445340768552544,
+        "z": -4.566206896025298,
+        "sourceIndex": 38
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0039",
+        "element": "H",
+        "x": -0.5171441911193244,
+        "y": 4.174814870650616,
+        "z": 4.050789542114629,
+        "sourceIndex": 39
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0040",
+        "element": "H",
+        "x": -0.7223314173105413,
+        "y": 4.464400199527892,
+        "z": 11.000203044753654,
+        "sourceIndex": 40
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0041",
+        "element": "C",
+        "x": 1.391940741738372,
+        "y": 3.7959125309050985,
+        "z": 2.312480012775041,
+        "sourceIndex": 41
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0042",
+        "element": "C",
+        "x": 1.363437909308411,
+        "y": 3.794220463040206,
+        "z": 12.414667906636804,
+        "sourceIndex": 42
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0043",
+        "element": "C",
+        "x": 10.147124126073663,
+        "y": 3.7553029021476836,
+        "z": 7.384777450379075,
+        "sourceIndex": 43
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0044",
+        "element": "C",
+        "x": 8.912511327253416,
+        "y": 0.21610123874481216,
+        "z": 5.215032840074635,
+        "sourceIndex": 44
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0045",
+        "element": "C",
+        "x": 0.11738590787041411,
+        "y": 0.2530850077917431,
+        "z": 4.485549890385767,
+        "sourceIndex": 45
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0046",
+        "element": "C",
+        "x": -5.921352302124114,
+        "y": 8.514848082108927,
+        "z": 0.010015178787112694,
+        "sourceIndex": 46
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0047",
+        "element": "C",
+        "x": 3.1374192016830786,
+        "y": 8.491884303942532,
+        "z": 5.2000684439846365,
+        "sourceIndex": 47
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0048",
+        "element": "C",
+        "x": 3.119511005151261,
+        "y": 8.522099801529894,
+        "z": -5.211035635369188,
+        "sourceIndex": 48
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0049",
+        "element": "C",
+        "x": 3.8953231123182483,
+        "y": 0.21537606680271545,
+        "z": 12.430744431558516,
+        "sourceIndex": 49
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0050",
+        "element": "C",
+        "x": 0.1722839426350643,
+        "y": 0.16932764847957596,
+        "z": 10.263132783464252,
+        "sourceIndex": 50
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0051",
+        "element": "C",
+        "x": 8.889999977001033,
+        "y": 0.22045227039739226,
+        "z": 9.536131236374322,
+        "sourceIndex": 51
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0052",
+        "element": "C",
+        "x": 3.909883419082018,
+        "y": 0.2875306750413356,
+        "z": 2.3214396890212448,
+        "sourceIndex": 52
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0053",
+        "element": "C",
+        "x": 1.8363503069531366,
+        "y": 4.942167647379258,
+        "z": 3.1351083195553557,
+        "sourceIndex": 53
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0054",
+        "element": "C",
+        "x": 1.789029756164048,
+        "y": 4.966340045449148,
+        "z": 11.616818874474168,
+        "sourceIndex": 54
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0055",
+        "element": "C",
+        "x": 9.242580520556885,
+        "y": 4.924521796788238,
+        "z": 7.3602257997366864,
+        "sourceIndex": 55
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0056",
+        "element": "C",
+        "x": 7.590375928359805,
+        "y": 0.2611827611451561,
+        "z": 4.554020948203533,
+        "sourceIndex": 56
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0057",
+        "element": "C",
+        "x": 0.17493419767819693,
+        "y": 0.2662589647398329,
+        "z": 5.977191847914817,
+        "sourceIndex": 57
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0058",
+        "element": "C",
+        "x": 7.655512802682659,
+        "y": 7.239512359941557,
+        "z": -7.353510073159537,
+        "sourceIndex": 58
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0059",
+        "element": "C",
+        "x": 2.722999411902218,
+        "y": 7.236490810182821,
+        "z": 4.50372684437467,
+        "sourceIndex": 59
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0060",
+        "element": "C",
+        "x": 2.6885112555534008,
+        "y": 7.2715407873841595,
+        "z": -4.511992767649127,
+        "sourceIndex": 60
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0061",
+        "element": "C",
+        "x": 5.1420923055572745,
+        "y": 0.25695259148292543,
+        "z": 11.60852420517324,
+        "sourceIndex": 61
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0062",
+        "element": "C",
+        "x": 0.24488776526482423,
+        "y": 0.18129298552417128,
+        "z": 8.786657332483196,
+        "sourceIndex": 62
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0063",
+        "element": "C",
+        "x": 7.580981516205047,
+        "y": 0.29913342611488264,
+        "z": 10.217132994625016,
+        "sourceIndex": 63
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0064",
+        "element": "C",
+        "x": 5.172035570595742,
+        "y": 0.3370840910846091,
+        "z": 3.1223552494913567,
+        "sourceIndex": 64
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0065",
+        "element": "C",
+        "x": 3.068232536214338,
+        "y": 5.555783972383403,
+        "z": 2.816526583485474,
+        "sourceIndex": 65
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0066",
+        "element": "C",
+        "x": 0.9231594005234749,
+        "y": 5.625642202805384,
+        "z": 10.688780611170651,
+        "sourceIndex": 66
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0067",
+        "element": "C",
+        "x": -3.6408866823569976,
+        "y": 5.719310245326207,
+        "z": 1.1123136848772357,
+        "sourceIndex": 67
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0068",
+        "element": "C",
+        "x": 7.475673129957991,
+        "y": 0.9863547032418412,
+        "z": 3.347356639506792,
+        "sourceIndex": 68
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0069",
+        "element": "C",
+        "x": -0.28168350534018993,
+        "y": 1.3764972080898579,
+        "z": 6.715773732524458,
+        "sourceIndex": 69
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0070",
+        "element": "C",
+        "x": 7.6993543410025165,
+        "y": 6.459469074226222,
+        "z": 6.275518252146467,
+        "sourceIndex": 70
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0071",
+        "element": "C",
+        "x": 1.5213190333448718,
+        "y": 6.635806718146066,
+        "z": 4.859506563802209,
+        "sourceIndex": 71
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0072",
+        "element": "C",
+        "x": 3.55163842555163,
+        "y": 6.608129322356042,
+        "z": -3.6154345269534627,
+        "sourceIndex": 72
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0073",
+        "element": "C",
+        "x": 5.885174663645728,
+        "y": 1.4314894136988565,
+        "z": -3.235849637199152,
+        "sourceIndex": 73
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0074",
+        "element": "C",
+        "x": -0.24066057938738383,
+        "y": 1.3166705228668811,
+        "z": 8.099489320446448,
+        "sourceIndex": 74
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0075",
+        "element": "C",
+        "x": 7.108553836226429,
+        "y": 1.4965131645068592,
+        "z": -3.9413857020472496,
+        "sourceIndex": 75
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0076",
+        "element": "C",
+        "x": 6.290597352036747,
+        "y": 1.0418303568122376,
+        "z": 2.632598938658143,
+        "sourceIndex": 76
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0077",
+        "element": "C",
+        "x": -1.7056523766306269,
+        "y": 11.218047358264672,
+        "z": 10.22935299697063,
+        "sourceIndex": 77
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0078",
+        "element": "C",
+        "x": -3.2464247931339694,
+        "y": 11.725909441713048,
+        "z": 4.285460828315745,
+        "sourceIndex": 78
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0079",
+        "element": "C",
+        "x": -7.754490000757163,
+        "y": 11.155924295225054,
+        "z": 7.996649501834296,
+        "sourceIndex": 79
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0080",
+        "element": "C",
+        "x": -4.4235942864723174,
+        "y": 6.860126572234641,
+        "z": 1.1665114889754724,
+        "sourceIndex": 80
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0081",
+        "element": "C",
+        "x": 3.5223912219856492,
+        "y": 6.6819759984595555,
+        "z": 3.4820883105500586,
+        "sourceIndex": 81
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0082",
+        "element": "C",
+        "x": 1.4085915454198261,
+        "y": 6.779995072632957,
+        "z": 10.036071635177912,
+        "sourceIndex": 82
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0083",
+        "element": "C",
+        "x": 1.050331905157293,
+        "y": 5.476015058752768,
+        "z": 4.205072731844278,
+        "sourceIndex": 83
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0084",
+        "element": "C",
+        "x": 3.0911937990468115,
+        "y": 5.477223678656263,
+        "z": -2.9611069422978167,
+        "sourceIndex": 84
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0085",
+        "element": "C",
+        "x": -2.052028840649581,
+        "y": 11.676839473631173,
+        "z": 5.041016857863833,
+        "sourceIndex": 85
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0086",
+        "element": "C",
+        "x": -7.812482361093647,
+        "y": 11.232429935116254,
+        "z": 6.589590645728565,
+        "sourceIndex": 86
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0087",
+        "element": "C",
+        "x": -2.914654107460567,
+        "y": 11.180459279265992,
+        "z": 10.902558856792716,
+        "sourceIndex": 87
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0088",
+        "element": "C",
+        "x": 8.476997699089289,
+        "y": 5.281789840261206,
+        "z": 6.207937797957291,
+        "sourceIndex": 88
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0089",
+        "element": "N",
+        "x": 8.486585764081388,
+        "y": 4.5572222081162685,
+        "z": 5.033761624786423,
+        "sourceIndex": 89
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0090",
+        "element": "N",
+        "x": -2.041833511809245,
+        "y": 10.969071658144808,
+        "z": 6.221678408859827,
+        "sourceIndex": 90
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0091",
+        "element": "N",
+        "x": -0.11547672391995656,
+        "y": 4.900591122699049,
+        "z": 4.639569454141619,
+        "sourceIndex": 91
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0092",
+        "element": "N",
+        "x": 5.588804626562052,
+        "y": 10.029732269148901,
+        "z": 1.2019475008606708,
+        "sourceIndex": 92
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0093",
+        "element": "N",
+        "x": 7.794228708306959,
+        "y": 2.689179285275207,
+        "z": -3.9719220293970148,
+        "sourceIndex": 93
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0094",
+        "element": "N",
+        "x": -0.34164534752447384,
+        "y": 5.179057148464175,
+        "z": 10.383340262487463,
+        "sourceIndex": 94
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0095",
+        "element": "O",
+        "x": 0.048232008781512015,
+        "y": 2.5933357269280957,
+        "z": -0.033102360731893876,
+        "sourceIndex": 95
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0096",
+        "element": "O",
+        "x": 3.224399722250631,
+        "y": 11.40212016956688,
+        "z": 5.379590495262185,
+        "sourceIndex": 96
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0097",
+        "element": "O",
+        "x": 3.21411511369082,
+        "y": 11.441883764391847,
+        "z": -5.42248433290194,
+        "sourceIndex": 97
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0098",
+        "element": "O",
+        "x": -6.11999991655248,
+        "y": 11.448168587890018,
+        "z": -0.03026401139921253,
+        "sourceIndex": 98
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0099",
+        "element": "O",
+        "x": 0.9163107690990392,
+        "y": 0.7470479623499351,
+        "z": 13.301299137983348,
+        "sourceIndex": 99
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0100",
+        "element": "O",
+        "x": 11.16656821782867,
+        "y": 0.7401588289000166,
+        "z": 7.388452444979785,
+        "sourceIndex": 100
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0101",
+        "element": "O",
+        "x": 0.9116267151532552,
+        "y": 0.7770217359565981,
+        "z": 1.449343191754043,
+        "sourceIndex": 101
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0102",
+        "element": "O",
+        "x": 4.379032258181016,
+        "y": 10.440300450365976,
+        "z": 7.389466448231374,
+        "sourceIndex": 102
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0103",
+        "element": "O",
+        "x": 0.21030978911956666,
+        "y": 3.317299049121286,
+        "z": 2.5353775595033508,
+        "sourceIndex": 103
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0104",
+        "element": "O",
+        "x": 2.1725891990940682,
+        "y": 3.33180248796322,
+        "z": -1.4855882478395077,
+        "sourceIndex": 104
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0105",
+        "element": "O",
+        "x": 10.498583054817768,
+        "y": 3.2439358209791718,
+        "z": 6.255955380386042,
+        "sourceIndex": 105
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0106",
+        "element": "O",
+        "x": 0.6248604487411074,
+        "y": 11.377101737564542,
+        "z": 6.0485425992348585,
+        "sourceIndex": 106
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0107",
+        "element": "O",
+        "x": -7.7495786490302425,
+        "y": 11.388946212618789,
+        "z": 3.855802671034308,
+        "sourceIndex": 107
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0108",
+        "element": "O",
+        "x": -6.186660387357884,
+        "y": 9.0456739437237,
+        "z": 1.1451477665823968,
+        "sourceIndex": 108
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0109",
+        "element": "O",
+        "x": 4.277509138460203,
+        "y": 8.987539326365615,
+        "z": 4.88830527679969,
+        "sourceIndex": 109
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0110",
+        "element": "O",
+        "x": 2.294654511211026,
+        "y": 9.023435337499402,
+        "z": 8.724810203218256,
+        "sourceIndex": 110
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0111",
+        "element": "O",
+        "x": -5.392577186349726,
+        "y": 11.315462122486325,
+        "z": 12.190491653147442,
+        "sourceIndex": 111
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0112",
+        "element": "O",
+        "x": -7.726970957810014,
+        "y": 11.292860930290978,
+        "z": 10.849852882821942,
+        "sourceIndex": 112
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0113",
+        "element": "O",
+        "x": 0.6107929062889008,
+        "y": 11.312440572727589,
+        "z": 8.709792495507221,
+        "sourceIndex": 113
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0114",
+        "element": "O",
+        "x": -5.411656584535542,
+        "y": 11.434752906961231,
+        "z": 2.556840882447573,
+        "sourceIndex": 114
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0115",
+        "element": "O",
+        "x": 9.752889521209353,
+        "y": 1.1412997748698328,
+        "z": -4.98639407258726,
+        "sourceIndex": 115
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0116",
+        "element": "O",
+        "x": 3.764773425252005,
+        "y": 1.1655930349300718,
+        "z": 1.3989456483924267,
+        "sourceIndex": 116
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0117",
+        "element": "O",
+        "x": -0.5001864574798915,
+        "y": 1.0928341167397044,
+        "z": 10.847133400235085,
+        "sourceIndex": 117
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0118",
+        "element": "O",
+        "x": -6.238730737718787,
+        "y": 8.997208285593572,
+        "z": 13.648087326763331,
+        "sourceIndex": 118
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0119",
+        "element": "O",
+        "x": 2.3108264916213086,
+        "y": 8.997329147583923,
+        "z": 6.03921573363496,
+        "sourceIndex": 119
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0120",
+        "element": "O",
+        "x": 4.2587843206364004,
+        "y": 9.015821032107386,
+        "z": -4.9022061933683645,
+        "sourceIndex": 120
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0121",
+        "element": "O",
+        "x": 2.1793601047159923,
+        "y": 3.355128852100663,
+        "z": 1.4012225917949408,
+        "sourceIndex": 121
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0122",
+        "element": "O",
+        "x": 0.1809019820204738,
+        "y": 3.312706293488007,
+        "z": 12.199971671282698,
+        "sourceIndex": 122
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0123",
+        "element": "O",
+        "x": 9.790650667256056,
+        "y": 1.0888456710581726,
+        "z": 4.863619785740855,
+        "sourceIndex": 123
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0124",
+        "element": "O",
+        "x": -0.5683472856750892,
+        "y": 1.1645052770169269,
+        "z": 3.9024277284250455,
+        "sourceIndex": 124
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0125",
+        "element": "O",
+        "x": 3.7271258301199803,
+        "y": 1.145409082541714,
+        "z": -1.4861491848418813,
+        "sourceIndex": 125
+      },
+      {
+        "id": "uio-66-nh2-author-zenodo-4044212-a0126",
+        "element": "O",
+        "x": -2.2470388630132434,
+        "y": 3.3336154178184616,
+        "z": 1.1187001373007346,
+        "sourceIndex": 126
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [],
+    "cell": {
+      "vectors": [
+        [
+          12.798290753931123,
+          0.0,
+          -7.369390442929531
+        ],
+        [
+          -8.494300851135478,
+          12.086199034944752,
+          -0.0392238154656059
+        ],
+        [
+          0.0,
+          0.0,
+          14.78123
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Source CIF provides a crystallographic unit cell and fractional atomic coordinates; CIF crystal structures are 3D periodic."
+      }
+    },
+    "sourceAtomIds": [
+      "uio-66-nh2-author-zenodo-4044212-a0001",
+      "uio-66-nh2-author-zenodo-4044212-a0002",
+      "uio-66-nh2-author-zenodo-4044212-a0003",
+      "uio-66-nh2-author-zenodo-4044212-a0004",
+      "uio-66-nh2-author-zenodo-4044212-a0005",
+      "uio-66-nh2-author-zenodo-4044212-a0006",
+      "uio-66-nh2-author-zenodo-4044212-a0007",
+      "uio-66-nh2-author-zenodo-4044212-a0008",
+      "uio-66-nh2-author-zenodo-4044212-a0009",
+      "uio-66-nh2-author-zenodo-4044212-a0010",
+      "uio-66-nh2-author-zenodo-4044212-a0011",
+      "uio-66-nh2-author-zenodo-4044212-a0012",
+      "uio-66-nh2-author-zenodo-4044212-a0013",
+      "uio-66-nh2-author-zenodo-4044212-a0014",
+      "uio-66-nh2-author-zenodo-4044212-a0015",
+      "uio-66-nh2-author-zenodo-4044212-a0016",
+      "uio-66-nh2-author-zenodo-4044212-a0017",
+      "uio-66-nh2-author-zenodo-4044212-a0018",
+      "uio-66-nh2-author-zenodo-4044212-a0019",
+      "uio-66-nh2-author-zenodo-4044212-a0020",
+      "uio-66-nh2-author-zenodo-4044212-a0021",
+      "uio-66-nh2-author-zenodo-4044212-a0022",
+      "uio-66-nh2-author-zenodo-4044212-a0023",
+      "uio-66-nh2-author-zenodo-4044212-a0024",
+      "uio-66-nh2-author-zenodo-4044212-a0025",
+      "uio-66-nh2-author-zenodo-4044212-a0026",
+      "uio-66-nh2-author-zenodo-4044212-a0027",
+      "uio-66-nh2-author-zenodo-4044212-a0028",
+      "uio-66-nh2-author-zenodo-4044212-a0029",
+      "uio-66-nh2-author-zenodo-4044212-a0030",
+      "uio-66-nh2-author-zenodo-4044212-a0031",
+      "uio-66-nh2-author-zenodo-4044212-a0032",
+      "uio-66-nh2-author-zenodo-4044212-a0033",
+      "uio-66-nh2-author-zenodo-4044212-a0034",
+      "uio-66-nh2-author-zenodo-4044212-a0035",
+      "uio-66-nh2-author-zenodo-4044212-a0036",
+      "uio-66-nh2-author-zenodo-4044212-a0037",
+      "uio-66-nh2-author-zenodo-4044212-a0038",
+      "uio-66-nh2-author-zenodo-4044212-a0039",
+      "uio-66-nh2-author-zenodo-4044212-a0040",
+      "uio-66-nh2-author-zenodo-4044212-a0041",
+      "uio-66-nh2-author-zenodo-4044212-a0042",
+      "uio-66-nh2-author-zenodo-4044212-a0043",
+      "uio-66-nh2-author-zenodo-4044212-a0044",
+      "uio-66-nh2-author-zenodo-4044212-a0045",
+      "uio-66-nh2-author-zenodo-4044212-a0046",
+      "uio-66-nh2-author-zenodo-4044212-a0047",
+      "uio-66-nh2-author-zenodo-4044212-a0048",
+      "uio-66-nh2-author-zenodo-4044212-a0049",
+      "uio-66-nh2-author-zenodo-4044212-a0050",
+      "uio-66-nh2-author-zenodo-4044212-a0051",
+      "uio-66-nh2-author-zenodo-4044212-a0052",
+      "uio-66-nh2-author-zenodo-4044212-a0053",
+      "uio-66-nh2-author-zenodo-4044212-a0054",
+      "uio-66-nh2-author-zenodo-4044212-a0055",
+      "uio-66-nh2-author-zenodo-4044212-a0056",
+      "uio-66-nh2-author-zenodo-4044212-a0057",
+      "uio-66-nh2-author-zenodo-4044212-a0058",
+      "uio-66-nh2-author-zenodo-4044212-a0059",
+      "uio-66-nh2-author-zenodo-4044212-a0060",
+      "uio-66-nh2-author-zenodo-4044212-a0061",
+      "uio-66-nh2-author-zenodo-4044212-a0062",
+      "uio-66-nh2-author-zenodo-4044212-a0063",
+      "uio-66-nh2-author-zenodo-4044212-a0064",
+      "uio-66-nh2-author-zenodo-4044212-a0065",
+      "uio-66-nh2-author-zenodo-4044212-a0066",
+      "uio-66-nh2-author-zenodo-4044212-a0067",
+      "uio-66-nh2-author-zenodo-4044212-a0068",
+      "uio-66-nh2-author-zenodo-4044212-a0069",
+      "uio-66-nh2-author-zenodo-4044212-a0070",
+      "uio-66-nh2-author-zenodo-4044212-a0071",
+      "uio-66-nh2-author-zenodo-4044212-a0072",
+      "uio-66-nh2-author-zenodo-4044212-a0073",
+      "uio-66-nh2-author-zenodo-4044212-a0074",
+      "uio-66-nh2-author-zenodo-4044212-a0075",
+      "uio-66-nh2-author-zenodo-4044212-a0076",
+      "uio-66-nh2-author-zenodo-4044212-a0077",
+      "uio-66-nh2-author-zenodo-4044212-a0078",
+      "uio-66-nh2-author-zenodo-4044212-a0079",
+      "uio-66-nh2-author-zenodo-4044212-a0080",
+      "uio-66-nh2-author-zenodo-4044212-a0081",
+      "uio-66-nh2-author-zenodo-4044212-a0082",
+      "uio-66-nh2-author-zenodo-4044212-a0083",
+      "uio-66-nh2-author-zenodo-4044212-a0084",
+      "uio-66-nh2-author-zenodo-4044212-a0085",
+      "uio-66-nh2-author-zenodo-4044212-a0086",
+      "uio-66-nh2-author-zenodo-4044212-a0087",
+      "uio-66-nh2-author-zenodo-4044212-a0088",
+      "uio-66-nh2-author-zenodo-4044212-a0089",
+      "uio-66-nh2-author-zenodo-4044212-a0090",
+      "uio-66-nh2-author-zenodo-4044212-a0091",
+      "uio-66-nh2-author-zenodo-4044212-a0092",
+      "uio-66-nh2-author-zenodo-4044212-a0093",
+      "uio-66-nh2-author-zenodo-4044212-a0094",
+      "uio-66-nh2-author-zenodo-4044212-a0095",
+      "uio-66-nh2-author-zenodo-4044212-a0096",
+      "uio-66-nh2-author-zenodo-4044212-a0097",
+      "uio-66-nh2-author-zenodo-4044212-a0098",
+      "uio-66-nh2-author-zenodo-4044212-a0099",
+      "uio-66-nh2-author-zenodo-4044212-a0100",
+      "uio-66-nh2-author-zenodo-4044212-a0101",
+      "uio-66-nh2-author-zenodo-4044212-a0102",
+      "uio-66-nh2-author-zenodo-4044212-a0103",
+      "uio-66-nh2-author-zenodo-4044212-a0104",
+      "uio-66-nh2-author-zenodo-4044212-a0105",
+      "uio-66-nh2-author-zenodo-4044212-a0106",
+      "uio-66-nh2-author-zenodo-4044212-a0107",
+      "uio-66-nh2-author-zenodo-4044212-a0108",
+      "uio-66-nh2-author-zenodo-4044212-a0109",
+      "uio-66-nh2-author-zenodo-4044212-a0110",
+      "uio-66-nh2-author-zenodo-4044212-a0111",
+      "uio-66-nh2-author-zenodo-4044212-a0112",
+      "uio-66-nh2-author-zenodo-4044212-a0113",
+      "uio-66-nh2-author-zenodo-4044212-a0114",
+      "uio-66-nh2-author-zenodo-4044212-a0115",
+      "uio-66-nh2-author-zenodo-4044212-a0116",
+      "uio-66-nh2-author-zenodo-4044212-a0117",
+      "uio-66-nh2-author-zenodo-4044212-a0118",
+      "uio-66-nh2-author-zenodo-4044212-a0119",
+      "uio-66-nh2-author-zenodo-4044212-a0120",
+      "uio-66-nh2-author-zenodo-4044212-a0121",
+      "uio-66-nh2-author-zenodo-4044212-a0122",
+      "uio-66-nh2-author-zenodo-4044212-a0123",
+      "uio-66-nh2-author-zenodo-4044212-a0124",
+      "uio-66-nh2-author-zenodo-4044212-a0125",
+      "uio-66-nh2-author-zenodo-4044212-a0126"
+    ],
+    "libraryProvenance": {
+      "entryId": "uio-66-nh2-author-zenodo-4044212",
+      "category": "mof",
+      "name": "UiO-66-NH2",
+      "formula": "C24H17N3O16Zr3",
+      "phase": "UiO-66-NH2：P1 原胞 DFT 优化框架。",
+      "source": {
+        "name": "Author-deposited characterization data for A data-driven perspective on the colours of metal-organic frameworks",
+        "recordId": "sample_005/spectra/xray/uio-66-nh2_prim_dftopt_DDEC.cif",
+        "url": "https://doi.org/10.5281/zenodo.4044212",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T05:01:36Z",
+        "citation": "A data-driven perspective on the colours of metal-organic frameworks, DOI: 10.1039/D0SC05337F.",
+        "doi": "10.5281/zenodo.4044212",
+        "version": "Zenodo record 4044212; author CIF file",
+        "conditions": "Author CIF sample_005/spectra/xray/uio-66-nh2_prim_dftopt_DDEC.cif; file name identifies a primitive DFT-optimized framework. Composition Zr6C48H34N6O32, 126 ordered P1 sites, no guest species. CIF omits _atom_site_occupancy, so coreCIF default 1.0 applies. DDEC atom-site charge tags remain only in source.cif and are not model charges or calculated results."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Exact author-deposited Zenodo CIF bytes preserved unchanged; license, file path, source size, and SHA256 match source evidence.",
+          "Source CIF is P1 with identity-only symmetry; site ordering is verified against source atom-site rows.",
+          "The source CIF omits _atom_site_occupancy; IUCr coreCIF 2.4.5 defines the enumeration default as 1.0, and pymatgen parses all sites as ordered.",
+          "Per-atom DDEC charge tags are preserved in source.cif only; they are not promoted to charge or results.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed by this normalization.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      }
+    }
+  }
+}

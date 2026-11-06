@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "feb-orthorhombic",
+  "structure": {
+    "id": "feb-orthorhombic",
+    "name": "一硼化铁",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "feb-orthorhombic:atom:1",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 0.9743505967200001,
+        "y": 0.7370615,
+        "z": 0.48666532752000013
+      },
+      {
+        "id": "feb-orthorhombic:atom:2",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 4.52765740328,
+        "y": 2.2111845,
+        "z": 3.5729386724800007
+      },
+      {
+        "id": "feb-orthorhombic:atom:3",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 1.7766534032800005,
+        "y": 2.2111845,
+        "z": 2.5164673275200005
+      },
+      {
+        "id": "feb-orthorhombic:atom:4",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 3.72535459672,
+        "y": 0.7370615,
+        "z": 1.5431366724800004
+      },
+      {
+        "id": "feb-orthorhombic:atom:5",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 0.1997228904000001,
+        "y": 0.7370615,
+        "z": 2.4930028164
+      },
+      {
+        "id": "feb-orthorhombic:atom:6",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 5.3022851096,
+        "y": 2.2111845,
+        "z": 1.5666011836000007
+      },
+      {
+        "id": "feb-orthorhombic:atom:7",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 2.5512811096000005,
+        "y": 2.2111845,
+        "z": 0.46320081640000066
+      },
+      {
+        "id": "feb-orthorhombic:atom:8",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 2.9507268904,
+        "y": 0.7370615,
+        "z": 3.5964031836000006
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:4003012; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "feb-orthorhombic:atom:1",
+      "feb-orthorhombic:atom:2",
+      "feb-orthorhombic:atom:3",
+      "feb-orthorhombic:atom:4",
+      "feb-orthorhombic:atom:5",
+      "feb-orthorhombic:atom:6",
+      "feb-orthorhombic:atom:7",
+      "feb-orthorhombic:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.502008,
+          0.0,
+          3.369008243041565e-16
+        ],
+        [
+          4.741141169418546e-16,
+          2.948246,
+          1.8052800134994938e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.059604
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:4003012 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

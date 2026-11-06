@@ -1,0 +1,181 @@
+{
+  "schema": "sy-active-microsoft-vc-runtime-sources/v1",
+  "productCandidate": "v0721-local-candidate",
+  "publicDistributionApproved": false,
+  "publisherQualificationEvidence": "private-not-included",
+  "originalRuntimeLicense": {
+    "path": "MICROSOFT_VC_RUNTIME_LICENSE.rtf",
+    "bytes": 9235,
+    "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b"
+  },
+  "archives": [
+    {
+      "url": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe",
+      "bytes": 25633440,
+      "sha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a"
+    },
+    {
+      "url": "https://download.visualstudio.microsoft.com/download/pr/1754ea58-11a6-44ab-a262-696e194ce543/3642E3F95D50CC193E4B5A0B0FFBF7FE2C08801517758B4C8AEB7105A091208A/VC_redist.x64.exe",
+      "bytes": 25397512,
+      "sha256": "3642e3f95d50cc193e4b5a0b0ffbf7fe2c08801517758b4c8aeb7105a091208a",
+      "version": "14.40.33810.0"
+    }
+  ],
+  "files": [
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/concrt140.dll",
+      "bytes": 324720,
+      "sha256": "8bf82e025265d30fb25fda7161f8e8d73b96f83fde10f95b0fc4887bd6b09b5e",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/concrt140.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/msvcp140.dll",
+      "bytes": 557648,
+      "sha256": "8f141b4454fa78db34bc1f28c571b4da0e00cd2c43f7ad0e282f313036826aae",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/msvcp140.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/msvcp140_1.dll",
+      "bytes": 35952,
+      "sha256": "4d547db5eb3aabfb1bbe25604c37fe1c253fba3bf25fae654d78d7cd44b7dd3d",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/msvcp140_1.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/msvcp140_2.dll",
+      "bytes": 280176,
+      "sha256": "8f481c24983fe695e29df1bff55a44072a1c96927322e70844ef5e6a58ecf8d1",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/msvcp140_2.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/msvcp140_atomic_wait.dll",
+      "bytes": 50288,
+      "sha256": "44843c7541b75e30f8ff191bf5d5785a0885f9d694f6e10e545c3346acd5d0c3",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/msvcp140_atomic_wait.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/msvcp140_codecvt_ids.dll",
+      "bytes": 31880,
+      "sha256": "2a61faa8f81e397e04e8afcd82be7ca95309b144f148b2bd8e6a1e93bef04bda",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/msvcp140_codecvt_ids.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+      "bytes": 575056,
+      "sha256": "a4c2229bdc2a2a630acdc095b4d86008e5c3e3bc7773174354f3da4f5beb9cde",
+      "sourceStatus": "exact-official-archive-member",
+      "retainedNotices": "native/wheels/numpy-2.4.6.dist-info/",
+      "wheelSource": {
+        "filename": "numpy-2.4.6-cp312-cp312-win_amd64.whl",
+        "sha256": "d8e8286dd7cea7895157318d1b91cdacac64c479f3cbc8dce548331728484751",
+        "url": "https://files.pythonhosted.org/packages/ab/ca/feab00bd44aa5fe1ad2c18f08b4d3bb92e26484b0b1d1443897809ed528c/numpy-2.4.6-cp312-cp312-win_amd64.whl",
+        "version": "2.4.6",
+        "bytes": 12321687
+      },
+      "wheelMember": "numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+      "wheelRecordVerified": true,
+      "fileVersion": "14.40.33810.0",
+      "originalFilename": "msvcp140.dll",
+      "microsoftSignatureStatus": "Valid",
+      "officialMicrosoftArchiveDirectMatch": true,
+      "publicDistributionApproved": false,
+      "recipientRuntimeTermsScopeIncluded": true,
+      "distributionCategory": "VS2022-17.10-v14.40-runtime-family",
+      "directMicrosoftArchiveMatchVerified": true,
+      "wheelContainsMicrosoftEULA": false,
+      "directCarrierEulaEquivalenceVerified": true,
+      "automaticProhibitionFromMissingCarrier": false,
+      "publisherQualification": "Main-adopted-existing-Community2022-qualification; private-evidence-not-included",
+      "recipientLicense": "MICROSOFT_VC_RUNTIME_LICENSE.rtf",
+      "officialArchiveSha256": "3642e3f95d50cc193e4b5a0b0ffbf7fe2c08801517758b4c8aeb7105a091208a",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/1754ea58-11a6-44ab-a262-696e194ce543/3642E3F95D50CC193E4B5A0B0FFBF7FE2C08801517758B4C8AEB7105A091208A/VC_redist.x64.exe",
+      "chain": "cab@650704/a12/cab@0/msvcp140.dll_amd64",
+      "carrierRuntimeLicense": {
+        "path": "MICROSOFT_VC_RUNTIME_LICENSE.rtf",
+        "bytes": 9235,
+        "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b",
+        "chain": "cab@463360/u4"
+      },
+      "officialArchiveManifest": {
+        "repository": "microsoft/winget-pkgs",
+        "commit": "e66930882ee14ff24e8f8fc0fdf2c8da56de5d52",
+        "url": "https://raw.githubusercontent.com/microsoft/winget-pkgs/e66930882ee14ff24e8f8fc0fdf2c8da56de5d52/manifests/m/Microsoft/VCRedist/2015%2B/x64/14.40.33810.0/Microsoft.VCRedist.2015%2B.x64.installer.yaml",
+        "sha256": "7daf802ff101c6678ecc1f752bc59f0615cbe5b9c1bb8759dbbf044abd9abd40"
+      }
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/vcamp140.dll",
+      "bytes": 418896,
+      "sha256": "009cfafab5d38e0e10f827f8baf09373005ba93c8e89922c5e6937328ff5fc3c",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/vcamp140.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/vccorlib140.dll",
+      "bytes": 352336,
+      "sha256": "6fbc46f26f0ed1d6ea837890e60bb2c5b5cf7e1df7c66d16267b8a9fd3545f9c",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/vccorlib140.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/vcruntime140.dll",
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/vcruntime140.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/vcruntime140_1.dll",
+      "bytes": 49744,
+      "sha256": "963e45edd064545962e216c12d68071ced94dc8e11862a18f07f14eb2690a57c",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/vcruntime140_1.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/chemistry/_internal/vcruntime140_threads.dll",
+      "bytes": 38480,
+      "sha256": "18186dd0af0e8cb6b0111adb585ad70dd555c1c6950eca7ba3a4900558d6eb37",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/vcruntime140_threads.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    },
+    {
+      "candidatePath": "runtime/resources/xtb/bin/VCRUNTIME140.dll",
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60",
+      "sourceStatus": "exact-official-archive-member",
+      "officialArchiveSha256": "d62841375b90782b1829483ac75695ccef680a8f13e7de569b992ef33c6cd14a",
+      "chain": "cab@686128/a12/cab@0/vcruntime140.dll_amd64",
+      "officialArchiveUrl": "https://download.visualstudio.microsoft.com/download/pr/40b59c73-1480-4caf-ab5b-4886f176bf71/D62841375B90782B1829483AC75695CCEF680A8F13E7DE569B992EF33C6CD14A/vc_redist.x64.exe"
+    }
+  ],
+  "unresolved": [],
+  "evidenceLimitations": [],
+  "originalHistoricalTwelveRowTable": "preserved unchanged in earlier materials; this independent current member table does not overwrite it"
+}

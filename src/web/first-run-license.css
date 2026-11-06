@@ -1,0 +1,7 @@
+.dialog-shell.first-run-license{width:min(820px,100%);display:flex;flex-direction:column;gap:12px;overflow:hidden;max-height:calc(100dvh - 36px)}
+.first-run-license header,.first-run-license footer{flex:none}
+.first-run-license h2{margin:0;font-size:18px;line-height:1.5}
+.first-run-license header p{margin:4px 0 0;opacity:.75}
+.first-run-license-text{min-height:0;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;flex:1 1 auto;margin:0;padding:12px;border:1px solid var(--ui-control-border);border-radius:var(--ui-surface-radius);font:inherit;line-height:1.65}
+.first-run-license footer{display:flex;justify-content:flex-end;gap:8px}
+.first-run-license-error{margin:0;flex:none;overflow-wrap:anywhere}

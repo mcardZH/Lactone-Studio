@@ -1,0 +1,553 @@
+{
+  "schemaVersion": 1,
+  "entryId": "co3o4-normal-spinel",
+  "structure": {
+    "id": "co3o4-normal-spinel",
+    "name": "尖晶石型四氧化三钴",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "co3o4-normal-spinel:atom:1",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 1.0102625000000003,
+        "y": 1.0102625,
+        "z": 1.0102625000000003
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:2",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 1.010262500000001,
+        "y": 5.0513125,
+        "z": 5.0513125
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:3",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 5.0513125,
+        "y": 1.0102625,
+        "z": 5.0513125
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:4",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 5.051312500000001,
+        "y": 5.0513125,
+        "z": 1.0102625000000007
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:5",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 7.071837500000002,
+        "y": 3.0307875,
+        "z": 3.0307875000000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:6",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 7.071837500000002,
+        "y": 7.071837500000001,
+        "z": 7.071837500000002
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:7",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 3.0307875000000006,
+        "y": 3.0307875,
+        "z": 7.071837500000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:8",
+        "sourceIndex": 1,
+        "element": "Co",
+        "x": 3.0307875000000015,
+        "y": 7.071837500000001,
+        "z": 3.0307875000000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:9",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 4.041050000000001,
+        "y": 4.04105,
+        "z": 4.041050000000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:10",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 4.04105,
+        "y": 0.0,
+        "z": 2.474429473847206e-16
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:11",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 6.498504033475772e-16,
+        "y": 4.04105,
+        "z": 2.474429473847206e-16
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:12",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 4.04105
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:13",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 2.020525,
+        "y": 0.0,
+        "z": 6.061575
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:14",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 2.0205250000000006,
+        "y": 4.04105,
+        "z": 2.0205250000000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:15",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 6.061575,
+        "y": 0.0,
+        "z": 2.0205250000000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:16",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 6.061575000000001,
+        "y": 4.04105,
+        "z": 6.061575000000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:17",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 3.249252016737886e-16,
+        "y": 2.020525,
+        "z": 6.061575
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:18",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 9.74775605021366e-16,
+        "y": 6.061575,
+        "z": 2.0205250000000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:19",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 4.04105,
+        "y": 2.020525,
+        "z": 2.0205250000000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:20",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 4.041050000000001,
+        "y": 6.061575,
+        "z": 6.061575000000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:21",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 2.020525000000001,
+        "y": 6.061575,
+        "z": 4.948858947694412e-16
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:22",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 2.0205250000000006,
+        "y": 2.020525,
+        "z": 4.04105
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:23",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 6.061575000000001,
+        "y": 6.061575,
+        "z": 4.041050000000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:24",
+        "sourceIndex": 2,
+        "element": "Co",
+        "x": 6.061575,
+        "y": 2.020525,
+        "z": 4.948858947694412e-16
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:25",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1231676700000004,
+        "y": 2.12316767,
+        "z": 2.1231676700000004
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:26",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.123167670000001,
+        "y": 6.16421767,
+        "z": 6.164217670000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:27",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.16421767,
+        "y": 2.12316767,
+        "z": 6.164217670000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:28",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.164217670000001,
+        "y": 6.16421767,
+        "z": 2.123167670000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:29",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.10264266999999977,
+        "y": 1.9178823300000003,
+        "z": 4.14369267
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:30",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.10264267000000042,
+        "y": 5.9589323300000006,
+        "z": 0.10264266999999984
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:31",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.14369267,
+        "y": 1.9178823300000003,
+        "z": 0.10264266999999984
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:32",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.143692670000001,
+        "y": 5.9589323300000006,
+        "z": 4.143692670000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:33",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.9384073300000013,
+        "y": 6.16421767,
+        "z": 7.979457330000002
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:34",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.938407330000001,
+        "y": 2.12316767,
+        "z": 3.938407330000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:35",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.979457330000002,
+        "y": 6.16421767,
+        "z": 3.9384073300000013
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:36",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.979457330000001,
+        "y": 2.12316767,
+        "z": 7.979457330000002
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:37",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.164217670000001,
+        "y": 3.9384073300000004,
+        "z": 7.979457330000002
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:38",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 6.164217670000001,
+        "y": 7.979457330000001,
+        "z": 3.9384073300000013
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:39",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1231676700000004,
+        "y": 3.9384073300000004,
+        "z": 3.938407330000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:40",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1231676700000013,
+        "y": 7.979457330000001,
+        "z": 7.979457330000002
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:41",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.9178823300000003,
+        "y": 0.10264266999999946,
+        "z": 4.14369267
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:42",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.917882330000001,
+        "y": 4.14369267,
+        "z": 0.10264266999999984
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:43",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.9589323300000006,
+        "y": 0.10264266999999946,
+        "z": 0.10264266999999984
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:44",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.958932330000001,
+        "y": 4.14369267,
+        "z": 4.143692670000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:45",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.9589323300000006,
+        "y": 1.9178823300000003,
+        "z": 1.9178823300000007
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:46",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.958932330000001,
+        "y": 5.9589323300000006,
+        "z": 5.958932330000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:47",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.9178823300000005,
+        "y": 1.9178823300000003,
+        "z": 5.9589323300000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:48",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.9178823300000012,
+        "y": 5.9589323300000006,
+        "z": 1.9178823300000007
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:49",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.10264267000000013,
+        "y": 4.14369267,
+        "z": 1.9178823300000005
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:50",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.10264266999999948,
+        "y": 0.10264266999999946,
+        "z": 5.9589323300000006
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:51",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.143692670000001,
+        "y": 4.14369267,
+        "z": 5.958932330000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:52",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.14369267,
+        "y": 0.10264266999999946,
+        "z": 1.9178823300000005
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:53",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.9384073300000018,
+        "y": 7.979457330000001,
+        "z": 6.164217670000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:54",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.938407330000001,
+        "y": 3.9384073300000004,
+        "z": 2.1231676700000004
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:55",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.979457330000002,
+        "y": 7.979457330000001,
+        "z": 2.123167670000001
+      },
+      {
+        "id": "co3o4-normal-spinel:atom:56",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.979457330000002,
+        "y": 3.9384073300000004,
+        "z": 6.164217670000001
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9005887; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "co3o4-normal-spinel:atom:1",
+      "co3o4-normal-spinel:atom:2",
+      "co3o4-normal-spinel:atom:3",
+      "co3o4-normal-spinel:atom:4",
+      "co3o4-normal-spinel:atom:5",
+      "co3o4-normal-spinel:atom:6",
+      "co3o4-normal-spinel:atom:7",
+      "co3o4-normal-spinel:atom:8",
+      "co3o4-normal-spinel:atom:9",
+      "co3o4-normal-spinel:atom:10",
+      "co3o4-normal-spinel:atom:11",
+      "co3o4-normal-spinel:atom:12",
+      "co3o4-normal-spinel:atom:13",
+      "co3o4-normal-spinel:atom:14",
+      "co3o4-normal-spinel:atom:15",
+      "co3o4-normal-spinel:atom:16",
+      "co3o4-normal-spinel:atom:17",
+      "co3o4-normal-spinel:atom:18",
+      "co3o4-normal-spinel:atom:19",
+      "co3o4-normal-spinel:atom:20",
+      "co3o4-normal-spinel:atom:21",
+      "co3o4-normal-spinel:atom:22",
+      "co3o4-normal-spinel:atom:23",
+      "co3o4-normal-spinel:atom:24",
+      "co3o4-normal-spinel:atom:25",
+      "co3o4-normal-spinel:atom:26",
+      "co3o4-normal-spinel:atom:27",
+      "co3o4-normal-spinel:atom:28",
+      "co3o4-normal-spinel:atom:29",
+      "co3o4-normal-spinel:atom:30",
+      "co3o4-normal-spinel:atom:31",
+      "co3o4-normal-spinel:atom:32",
+      "co3o4-normal-spinel:atom:33",
+      "co3o4-normal-spinel:atom:34",
+      "co3o4-normal-spinel:atom:35",
+      "co3o4-normal-spinel:atom:36",
+      "co3o4-normal-spinel:atom:37",
+      "co3o4-normal-spinel:atom:38",
+      "co3o4-normal-spinel:atom:39",
+      "co3o4-normal-spinel:atom:40",
+      "co3o4-normal-spinel:atom:41",
+      "co3o4-normal-spinel:atom:42",
+      "co3o4-normal-spinel:atom:43",
+      "co3o4-normal-spinel:atom:44",
+      "co3o4-normal-spinel:atom:45",
+      "co3o4-normal-spinel:atom:46",
+      "co3o4-normal-spinel:atom:47",
+      "co3o4-normal-spinel:atom:48",
+      "co3o4-normal-spinel:atom:49",
+      "co3o4-normal-spinel:atom:50",
+      "co3o4-normal-spinel:atom:51",
+      "co3o4-normal-spinel:atom:52",
+      "co3o4-normal-spinel:atom:53",
+      "co3o4-normal-spinel:atom:54",
+      "co3o4-normal-spinel:atom:55",
+      "co3o4-normal-spinel:atom:56"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          8.0821,
+          0.0,
+          4.948858947694412e-16
+        ],
+        [
+          1.2997008066951545e-15,
+          8.0821,
+          4.948858947694412e-16
+        ],
+        [
+          0.0,
+          0.0,
+          8.0821
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9005887 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

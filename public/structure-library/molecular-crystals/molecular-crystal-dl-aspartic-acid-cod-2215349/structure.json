@@ -1,0 +1,1201 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-dl-aspartic-acid-cod-2215349",
+  "structure": {
+    "id": "molecular-crystal-dl-aspartic-acid-cod-2215349",
+    "name": "DL-天冬氨酸",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:1",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 1.5837319503984206,
+        "y": 1.5171275999999998,
+        "z": 3.169469650238566
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:2",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 14.159130379605758,
+        "y": 1.5171275999999998,
+        "z": -6.406277202539103
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:3",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 9.455163115400511,
+        "y": 5.235577599999999,
+        "z": -0.7441091259117028
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:4",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 6.28769921460367,
+        "y": 5.235577599999999,
+        "z": -2.492698426388834
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:5",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 14.15913037960576,
+        "y": 5.9197724,
+        "z": -1.815927202539104
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:6",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 1.5837319503984213,
+        "y": 5.9197724,
+        "z": 7.759819650238567
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:7",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 6.287699214603669,
+        "y": 2.2013224,
+        "z": 2.097651573611165
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:8",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 9.455163115400511,
+        "y": 2.2013224,
+        "z": 3.8462408740882985
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:9",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 1.870252044804497,
+        "y": 2.7814006,
+        "z": 4.064434482786697
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:10",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 13.872610285199682,
+        "y": 2.7814006,
+        "z": 1.879457964912766
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:11",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 9.741683209806588,
+        "y": 6.499850599999999,
+        "z": 0.15085570663642756
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:12",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 6.001179120197594,
+        "y": 6.499850599999999,
+        "z": 5.793036741063036
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:13",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 13.872610285199682,
+        "y": 4.6554994,
+        "z": -2.710892035087234
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:14",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 1.8702520448044972,
+        "y": 4.6554994,
+        "z": -0.5259155172133032
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:15",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 6.001179120197593,
+        "y": 0.9370493999999999,
+        "z": 1.2026867410630349
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:16",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 9.741683209806586,
+        "y": 0.9370493999999999,
+        "z": -4.439494293363572
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:17",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 2.0654635376965484,
+        "y": 0.1041166,
+        "z": 5.009387179138169
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:18",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 13.677398792307631,
+        "y": 0.1041166,
+        "z": 0.9345052685612929
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:19",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 9.936894702698638,
+        "y": 3.8225666,
+        "z": 1.0958084029879007
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:20",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 5.8059676273055425,
+        "y": 3.8225666,
+        "z": 4.8480840447115625
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:21",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 13.677398792307633,
+        "y": 7.332783399999999,
+        "z": -3.655844731438706
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:22",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 2.06546353769655,
+        "y": 7.332783399999999,
+        "z": 0.4190371791381695
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:23",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 5.8059676273055425,
+        "y": 3.6143333999999996,
+        "z": 0.2577340447115617
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:24",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 9.936894702698638,
+        "y": 3.6143333999999996,
+        "z": -3.494541597012099
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:25",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 14.165427524537762,
+        "y": 2.5136722000000002,
+        "z": -3.838812065560024
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:26",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 1.5774348054664191,
+        "y": 2.5136722000000002,
+        "z": 0.6020045132594865
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:27",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 6.293996359535671,
+        "y": 6.2321222,
+        "z": 0.0747667105902452
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:28",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 9.448865970468509,
+        "y": 6.2321222,
+        "z": -3.3115742628907823
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:29",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 1.5774348054664196,
+        "y": 4.923227799999999,
+        "z": 5.192354513259486
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:30",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 14.165427524537762,
+        "y": 4.923227799999999,
+        "z": 0.751537934439976
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:31",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 9.448865970468507,
+        "y": 1.2047777999999998,
+        "z": 1.2787757371092177
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:32",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 6.2939963595356705,
+        "y": 1.2047777999999998,
+        "z": 4.665116710590245
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:33",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 2.8337152194007524,
+        "y": 2.3649342,
+        "z": 6.440610140585903
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:34",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 12.909147110603428,
+        "y": 2.3649342,
+        "z": -0.49671769288644185
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:35",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 10.705146384402843,
+        "y": 6.0833842,
+        "z": 2.5270313644356355
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:36",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.037715945601338,
+        "y": 6.0833842,
+        "z": 3.416861083263828
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:37",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 12.909147110603428,
+        "y": 5.071965799999999,
+        "z": -5.087067692886441
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:38",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 2.833715219400753,
+        "y": 5.071965799999999,
+        "z": 1.8502601405859034
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:39",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 5.037715945601337,
+        "y": 1.3535157999999998,
+        "z": -1.1734889167361717
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:40",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 10.705146384402841,
+        "y": 1.3535157999999998,
+        "z": -2.063318635564365
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:41",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.9580838318077856,
+        "y": 0.9370493999999999,
+        "z": 6.89289479592273
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:42",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 12.784778498196395,
+        "y": 0.9370493999999999,
+        "z": -0.9490023482232672
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:43",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 10.829514996809873,
+        "y": 4.6554994,
+        "z": 2.9793160197724617
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:44",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 4.913347333194305,
+        "y": 4.6554994,
+        "z": 2.964576427927003
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:45",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 12.784778498196397,
+        "y": 6.499850599999999,
+        "z": -5.539352348223267
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:46",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.9580838318077864,
+        "y": 6.499850599999999,
+        "z": 2.3025447959227296
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:47",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 4.913347333194305,
+        "y": 2.7814006,
+        "z": -1.625773572072998
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:48",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 10.829514996809873,
+        "y": 2.7814006,
+        "z": -1.6110339802275386
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:49",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.6104948163594277,
+        "y": 1.5096907,
+        "z": 6.7090943823996545
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:50",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 14.13236751364475,
+        "y": 1.5096907,
+        "z": -0.7652019347001913
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:51",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 9.481925981361519,
+        "y": 5.2281407,
+        "z": 2.795515606249385
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:52",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 6.260936348642663,
+        "y": 5.2281407,
+        "z": 3.1483768414500775
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:53",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 14.132367513644752,
+        "y": 5.9272092999999995,
+        "z": -5.355551934700191
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:54",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.6104948163594284,
+        "y": 5.9272092999999995,
+        "z": 2.118744382399655
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:55",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 6.260936348642662,
+        "y": 2.2087592999999996,
+        "z": -1.4419731585499231
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:56",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 9.481925981361519,
+        "y": 2.2087592999999996,
+        "z": -1.7948343937506146
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:57",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 0.10768117833722889,
+        "y": 1.85699393,
+        "z": 4.489990672342265
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:58",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 15.635181151666952,
+        "y": 1.85699393,
+        "z": -7.726798224642803
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:59",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 7.9791123433393185,
+        "y": 5.57544393,
+        "z": 0.5764118961919968
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:60",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 7.763749986664862,
+        "y": 5.57544393,
+        "z": -3.8132194484925326
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:61",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 15.635181151666954,
+        "y": 5.57990607,
+        "z": -3.1364482246428027
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:62",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 0.10768117833722948,
+        "y": 5.57990607,
+        "z": 9.080340672342263
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:63",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 7.763749986664861,
+        "y": 1.8614560699999996,
+        "z": 0.7771305515074665
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:64",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 7.979112343339318,
+        "y": 1.8614560699999996,
+        "z": 5.166761896191995
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:65",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 1.5557096554510133,
+        "y": 1.8391453699999998,
+        "z": 4.061627752681661
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:66",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 14.187152674553166,
+        "y": 1.8391453699999998,
+        "z": 1.8822646950178008
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:67",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 9.427140820453104,
+        "y": 5.55759537,
+        "z": 0.14804897653139193
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:68",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 6.315721509551077,
+        "y": 5.55759537,
+        "z": 5.7958434711680695
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:69",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 14.187152674553168,
+        "y": 5.59775463,
+        "z": -2.7080853049821982
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:70",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 1.555709655451014,
+        "y": 5.59775463,
+        "z": -0.5287222473183387
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:71",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 6.315721509551076,
+        "y": 1.8793046300000003,
+        "z": 1.2054934711680705
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:72",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 9.427140820453102,
+        "y": 1.8793046300000003,
+        "z": -4.442301023468608
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:73",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 2.421724512224543,
+        "y": 0.97795235,
+        "z": 4.966296823729609
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:74",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 13.321137817779636,
+        "y": 0.97795235,
+        "z": 0.9775956239698536
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:75",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 10.293155677226633,
+        "y": 4.69640235,
+        "z": 1.05271804757934
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:76",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 5.4497066527775475,
+        "y": 4.69640235,
+        "z": 4.891174400120123
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:77",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 13.321137817779638,
+        "y": 6.45894765,
+        "z": -3.612754376030146
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:78",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 2.421724512224544,
+        "y": 6.45894765,
+        "z": 0.3759468237296091
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:79",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 5.449706652777547,
+        "y": 2.74049765,
+        "z": 0.3008244001201228
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:80",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 10.293155677226633,
+        "y": 2.74049765,
+        "z": -3.53763195242066
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:81",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 3.8595201288238243,
+        "y": 0.8537561199999999,
+        "z": 4.436341822478
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:82",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 11.883342201180353,
+        "y": 0.8537561199999999,
+        "z": 1.5075506252214623
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:83",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 11.730951293825916,
+        "y": 4.57220612,
+        "z": 0.5227630463277313
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:84",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 4.011911036178266,
+        "y": 4.57220612,
+        "z": 5.421129401371731
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:85",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 11.883342201180355,
+        "y": 6.58314388,
+        "z": -3.082799374778537
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:86",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 3.8595201288238252,
+        "y": 6.58314388,
+        "z": -0.15400817752199947
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:87",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 4.011911036178266,
+        "y": 2.86469388,
+        "z": 0.8307794013717316
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:88",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 11.730951293825916,
+        "y": 2.86469388,
+        "z": -4.067586953672269
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:89",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 2.439828803904048,
+        "y": 1.4977916599999999,
+        "z": 6.3626771485444635
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:90",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 13.303033526100132,
+        "y": 1.4977916599999999,
+        "z": -0.4187847008450012
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:91",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 10.311259968906137,
+        "y": 5.21624166,
+        "z": 2.449098372394195
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:92",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 5.431602361098043,
+        "y": 5.21624166,
+        "z": 3.4947940753052684
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:93",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 13.303033526100133,
+        "y": 5.93910834,
+        "z": -5.009134700845001
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:94",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 2.4398288039040485,
+        "y": 5.93910834,
+        "z": 1.7723271485444632
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:95",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 5.431602361098042,
+        "y": 2.2206583399999995,
+        "z": -1.0955559246947315
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:96",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 10.311259968906137,
+        "y": 2.2206583399999995,
+        "z": -2.1412516276058056
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:97",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 15.469093954085407,
+        "y": 1.28881477,
+        "z": -2.3343802534660307
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:98",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 0.2737683759187729,
+        "y": 1.28881477,
+        "z": 8.278272701165493
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:99",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 7.5976627890833175,
+        "y": 5.00726477,
+        "z": 1.579198522684238
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:100",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 8.145199540920862,
+        "y": 5.00726477,
+        "z": 4.3646939250152235
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:101",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 0.2737683759187737,
+        "y": 6.1480852299999995,
+        "z": 3.6879227011654936
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:102",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 15.469093954085409,
+        "y": 6.1480852299999995,
+        "z": -6.924730253466031
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:103",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 8.145199540920862,
+        "y": 2.4296352299999997,
+        "z": -0.22565607498477602
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:104",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 7.597662789083317,
+        "y": 2.4296352299999997,
+        "z": -3.011151477315762
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:105",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 15.0676509646703,
+        "y": 2.515308318,
+        "z": -4.1431576678823685
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:106",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.6752113653338796,
+        "y": 2.515308318,
+        "z": 0.9063501155818303
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:107",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 7.196219799668212,
+        "y": 6.233758318,
+        "z": -0.2295788917320989
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:108",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 8.546642530335971,
+        "y": 6.233758318,
+        "z": -3.0072286605684386
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:109",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.6752113653338799,
+        "y": 4.921591682,
+        "z": 5.49670011558183
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:110",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 15.0676509646703,
+        "y": 4.921591682,
+        "z": 0.4471923321176323
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:111",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 8.54664253033597,
+        "y": 1.2031416819999998,
+        "z": 1.5831213394315613
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:112",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 7.196219799668211,
+        "y": 1.2031416819999998,
+        "z": 4.360771108267901
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:113",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 4.769300142874766,
+        "y": 1.31335654,
+        "z": 5.159139987530552
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:114",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.973562187129412,
+        "y": 1.31335654,
+        "z": 0.7847524601689111
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:115",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 12.640731307876857,
+        "y": 5.03180654,
+        "z": 1.2455612113802825
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:116",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 3.1021310221273244,
+        "y": 5.03180654,
+        "z": 4.698331236319179
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:117",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.973562187129414,
+        "y": 6.12354346,
+        "z": -3.805597539831089
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:118",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 4.769300142874767,
+        "y": 6.12354346,
+        "z": 0.5687899875305522
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:119",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 3.102131022127324,
+        "y": 2.4050934600000002,
+        "z": 0.10798123631917944
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:120",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 12.640731307876857,
+        "y": 2.4050934600000002,
+        "z": -3.344788788619718
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:121",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 4.007660463349164,
+        "y": 0.275760252,
+        "z": 3.337938535910853
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:122",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 11.735201866655016,
+        "y": 0.275760252,
+        "z": 2.6059539117886095
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:123",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 11.879091628351253,
+        "y": 3.994210252,
+        "z": -0.5756402402394158
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:124",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 3.8637707016529257,
+        "y": 3.994210252,
+        "z": 6.519532687938879
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:125",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 11.735201866655018,
+        "y": 7.161139747999999,
+        "z": -1.98439608821139
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:126",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 4.007660463349165,
+        "y": 7.161139747999999,
+        "z": -1.2524114640891473
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:127",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 3.8637707016529257,
+        "y": 3.442689748,
+        "z": 1.9291826879388791
+      },
+      {
+        "id": "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:128",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 11.879091628351253,
+        "y": 3.442689748,
+        "z": -5.165990240239417
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2215349; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:1",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:2",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:3",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:4",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:5",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:6",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:7",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:8",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:9",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:10",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:11",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:12",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:13",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:14",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:15",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:16",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:17",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:18",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:19",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:20",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:21",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:22",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:23",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:24",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:25",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:26",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:27",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:28",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:29",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:30",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:31",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:32",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:33",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:34",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:35",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:36",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:37",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:38",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:39",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:40",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:41",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:42",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:43",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:44",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:45",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:46",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:47",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:48",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:49",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:50",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:51",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:52",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:53",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:54",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:55",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:56",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:57",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:58",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:59",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:60",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:61",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:62",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:63",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:64",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:65",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:66",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:67",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:68",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:69",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:70",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:71",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:72",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:73",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:74",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:75",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:76",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:77",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:78",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:79",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:80",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:81",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:82",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:83",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:84",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:85",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:86",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:87",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:88",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:89",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:90",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:91",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:92",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:93",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:94",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:95",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:96",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:97",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:98",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:99",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:100",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:101",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:102",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:103",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:104",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:105",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:106",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:107",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:108",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:109",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:110",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:111",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:112",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:113",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:114",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:115",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:116",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:117",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:118",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:119",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:120",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:121",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:122",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:123",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:124",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:125",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:126",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:127",
+      "molecular-crystal-dl-aspartic-acid-cod-2215349:atom:128"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          15.74286233000418,
+          0.0,
+          -7.8271575523005374
+        ],
+        [
+          1.1959447333380178e-15,
+          7.4369,
+          4.553787890289476e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.1807
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2215349 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

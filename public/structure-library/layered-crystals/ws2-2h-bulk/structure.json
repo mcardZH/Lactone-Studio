@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "ws2-2h-bulk",
+  "structure": {
+    "id": "ws2-2h-bulk",
+    "name": "2H-WS2",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "ws2-2h-bulk:atom:1",
+        "sourceIndex": 1,
+        "element": "W",
+        "x": 2.220446049250313e-16,
+        "y": 1.820500868808728,
+        "z": 3.08075
+      },
+      {
+        "id": "ws2-2h-bulk:atom:2",
+        "sourceIndex": 1,
+        "element": "W",
+        "x": 1.5766000000000004,
+        "y": 0.910250434404364,
+        "z": 9.24225
+      },
+      {
+        "id": "ws2-2h-bulk:atom:3",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 2.220446049250313e-16,
+        "y": 1.820500868808728,
+        "z": 7.671067500000001
+      },
+      {
+        "id": "ws2-2h-bulk:atom:4",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.5766000000000004,
+        "y": 0.910250434404364,
+        "z": 1.5095675000000008
+      },
+      {
+        "id": "ws2-2h-bulk:atom:5",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 0.0,
+        "y": 1.8205008688087283,
+        "z": 10.8134325
+      },
+      {
+        "id": "ws2-2h-bulk:atom:6",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.5766,
+        "y": 0.910250434404364,
+        "z": 4.651932499999999
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9012191; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "ws2-2h-bulk:atom:1",
+      "ws2-2h-bulk:atom:2",
+      "ws2-2h-bulk:atom:3",
+      "ws2-2h-bulk:atom:4",
+      "ws2-2h-bulk:atom:5",
+      "ws2-2h-bulk:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.1532,
+          0.0,
+          1.930778143535717e-16
+        ],
+        [
+          -1.5765999999999996,
+          2.730751303213092,
+          1.930778143535717e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.323
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9012191 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

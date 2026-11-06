@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "entryId": "calcite-cod-1010928",
+  "structure": {
+    "id": "calcite-cod-1010928",
+    "name": "方解石",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "calcite-cod-1010928:atom:1",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 1.6147994285850213,
+        "y": 1.0452260855326816,
+        "z": 3.7950178139170854
+      },
+      {
+        "id": "calcite-cod-1010928:atom:2",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.844398285755064,
+        "y": 3.1356782565980446,
+        "z": 11.385053441751257
+      },
+      {
+        "id": "calcite-cod-1010928:atom:3",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "calcite-cod-1010928:atom:4",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 3.2295988571700427,
+        "y": 2.090452171065363,
+        "z": 7.590035627834171
+      },
+      {
+        "id": "calcite-cod-1010928:atom:5",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.5895608534393277,
+        "y": 3.0791942389358584,
+        "z": 4.409991527477892
+      },
+      {
+        "id": "calcite-cod-1010928:atom:6",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.49445581170801395,
+        "y": 1.1016682941514464,
+        "z": 5.8461207879343045
+      },
+      {
+        "id": "calcite-cod-1010928:atom:7",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.3751164572156,
+        "y": 0.0,
+        "z": 4.923807139543589
+      },
+      {
+        "id": "calcite-cod-1010928:atom:8",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.5165306477838985,
+        "y": 3.192162274260231,
+        "z": 7.5900797281904495
+      },
+      {
+        "id": "calcite-cod-1010928:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.437187470241344,
+        "y": 2.090452171065363,
+        "z": 7.076264116124753
+      },
+      {
+        "id": "calcite-cod-1010928:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.7351430454620287,
+        "y": 0.9887838769139168,
+        "z": 8.103914839899868
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1010928; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "calcite-cod-1010928:atom:1",
+      "calcite-cod-1010928:atom:2",
+      "calcite-cod-1010928:atom:3",
+      "calcite-cod-1010928:atom:4",
+      "calcite-cod-1010928:atom:5",
+      "calcite-cod-1010928:atom:6",
+      "calcite-cod-1010928:atom:7",
+      "calcite-cod-1010928:atom:8",
+      "calcite-cod-1010928:atom:9",
+      "calcite-cod-1010928:atom:10"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.582705070286901,
+          0.0,
+          4.410035627834171
+        ],
+        [
+          1.8764926440531837,
+          4.180904342130726,
+          4.410035627834171
+        ],
+        [
+          0.0,
+          0.0,
+          6.36
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1010928 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

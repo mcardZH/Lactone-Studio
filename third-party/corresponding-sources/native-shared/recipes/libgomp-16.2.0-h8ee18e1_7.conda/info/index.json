@@ -1,0 +1,17 @@
+{
+  "arch": "x86_64",
+  "build": "h8ee18e1_7",
+  "build_number": 7,
+  "constrains": [
+    "msys2-conda-epoch <0.0a0"
+  ],
+  "depends": [
+    "libwinpthread >=12.0.0.r4.gg4f2fc60ca"
+  ],
+  "license": "GPL-3.0-only WITH GCC-exception-3.1",
+  "name": "libgomp",
+  "platform": "win",
+  "subdir": "win-64",
+  "timestamp": 1790304345963,
+  "version": "16.2.0"
+}

@@ -1,0 +1,23 @@
+.spectroscopy-control-row { display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:8px 0;font-size:var(--ui-small-size,13px); }
+.spectroscopy-control-row label { display:inline-flex;align-items:center;gap:6px;white-space:nowrap; }
+.spectroscopy-control-row input[type=number] { width:6.5em;min-width:0; }
+.spectroscopy-control-row select { width:auto;max-width:16em; }
+.spectroscopy-control-row input[type=range] { width:9em; }
+.spectroscopy-card .scientific-data-table[data-variant=legacy] { margin-top:8px;overflow-x:auto; }
+.spectroscopy-card .analysis-comparison-table td,.spectroscopy-card .analysis-comparison-table th { text-align:center; }
+.spectroscopy-card .scientific-data-table[data-variant=legacy] .analysis-comparison-table tbody tr[aria-selected=true] { background:#e8f3e9; }
+.spectroscopy-card.analysis-task-card .spectroscopy-control-row { gap:6px 10px;margin:0;font-size:inherit; }
+.spectroscopy-level-labels { display:flex;flex-wrap:wrap;gap:8px 16px; }
+.spectroscopy-missing { color:var(--muted-text,#64748b); }
+.spectroscopy-vibration-playback { display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;flex:1 1 100%;min-width:0; }
+.spectroscopy-vibration-playback > .spectroscopy-control-row,
+.spectroscopy-card .scientific-plot-tools > .spectroscopy-control-row { display:contents; }
+.spectroscopy-current-mode { flex:1 1 100%;margin:0; }
+.spectroscopy-export-panel { flex:1 1 100%;min-width:0; }
+.spectroscopy-export-panel > summary { cursor:pointer;width:fit-content;font-weight:600; }
+.spectroscopy-export-panel[open] > summary { margin-bottom:6px; }
+.spectroscopy-card .postprocess-note { margin:0; }
+.spectroscopy-vibration-playback .spectroscopy-range-field { flex:0 1 auto; flex-wrap:wrap; min-width:0; max-width:100%; }
+.spectroscopy-range-inputs { display:inline-flex; flex:0 1 auto; align-items:center; gap:6px; min-width:0; max-width:100%; }
+.spectroscopy-range-inputs input[type=range] { flex:0 1 100px; width:100px; min-width:60px; }
+.spectroscopy-range-inputs input[type=number] { flex:0 0 5em; width:5em; min-width:0; }

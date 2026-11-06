@@ -1,0 +1,2501 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "al-fcc",
+      "category": "metals",
+      "name": "铝",
+      "nameEn": "Aluminum",
+      "formula": "Al",
+      "aliases": [
+        "Al",
+        "aluminium"
+      ],
+      "phase": "fcc（面心立方；298.15 K）",
+      "structurePath": "metals/al-fcc/structure.json",
+      "sourcePath": "metals/al-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012428",
+        "url": "https://www.crystallography.net/cod/9012428.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Locality: synthetic Sample: at T = 25 C Note: lattice parameter is average of two samples. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 293656",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为合成样品。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "cu-fcc",
+      "category": "metals",
+      "name": "铜",
+      "nameEn": "Copper",
+      "formula": "Cu",
+      "aliases": [
+        "Cu"
+      ],
+      "phase": "fcc（面心立方；COD未记录测量温度）",
+      "structurePath": "metals/cu-fcc/structure.json",
+      "sourcePath": "metals/cu-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011604",
+        "url": "https://www.crystallography.net/cod/9011604.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Davey, W. P. (1925) Precision Measurements of the Lattice Constants of Twelve Common Metals. Physical Review, 25, 753–761. DOI: 10.1103/PhysRev.25.753.",
+        "version": "COD CIF revision 264647",
+        "conditions": "COD原始条目称合成样品；晶格参数为 runs 1、2、3 的平均；未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1103/PhysRev.25.753"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "ag-fcc",
+      "category": "metals",
+      "name": "银",
+      "nameEn": "Silver",
+      "formula": "Ag",
+      "aliases": [
+        "Ag"
+      ],
+      "phase": "fcc（面心立方；298.15 K）",
+      "structurePath": "metals/ag-fcc/structure.json",
+      "sourcePath": "metals/ag-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012431",
+        "url": "https://www.crystallography.net/cod/9012431.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25 C Note: lattice parameter is average of 1 sample. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文注记为“lattice parameter is average of 1 sample”。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "au-fcc",
+      "category": "metals",
+      "name": "金",
+      "nameEn": "Gold",
+      "formula": "Au",
+      "aliases": [
+        "Au"
+      ],
+      "phase": "fcc（面心立方；298.15 K）",
+      "structurePath": "metals/au-fcc/structure.json",
+      "sourcePath": "metals/au-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012430",
+        "url": "https://www.crystallography.net/cod/9012430.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25 C Note: lattice parameter is average of 1 sample. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为一个样品平均。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "fe-alpha-bcc",
+      "category": "metals",
+      "name": "铁 α 相",
+      "nameEn": "Iron alpha phase",
+      "formula": "Fe",
+      "aliases": [
+        "Fe",
+        "α-Fe",
+        "alpha iron"
+      ],
+      "phase": "α-Fe，bcc（体心立方；298.15 K）",
+      "structurePath": "metals/fe-alpha-bcc/structure.json",
+      "sourcePath": "metals/fe-alpha-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9013463",
+        "url": "https://www.crystallography.net/cod/9013463.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25C Note: lattice parameter is average of four samples. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为四个样品平均。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      }
+    },
+    {
+      "id": "fe-gamma-fcc",
+      "category": "metals",
+      "name": "铁 γ 相",
+      "nameEn": "Iron gamma phase",
+      "formula": "Fe",
+      "aliases": [
+        "Fe",
+        "γ-Fe",
+        "gamma iron",
+        "奥氏体铁"
+      ],
+      "phase": "γ-Fe，fcc（面心立方；1347 K）",
+      "structurePath": "metals/fe-gamma-fcc/structure.json",
+      "sourcePath": "metals/fe-gamma-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012709",
+        "url": "https://www.crystallography.net/cod/9012709.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Basinski, Z. S.; Hume-Rothery W; Sutton, A. L. (1955) The lattice expansion of iron Sample: at T = 1347 K. Proceedings of the Royal Society of London A, 229, 459–467. DOI: 10.1098/rspa.1955.0102.",
+        "version": "COD CIF revision 291877",
+        "conditions": "高温衍射测量温度为 1347 K；COD条目未记录压力。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1098/rspa.1955.0102"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "ni-fcc",
+      "category": "metals",
+      "name": "镍",
+      "nameEn": "Nickel",
+      "formula": "Ni",
+      "aliases": [
+        "Ni"
+      ],
+      "phase": "fcc（面心立方；298.15 K）",
+      "structurePath": "metals/ni-fcc/structure.json",
+      "sourcePath": "metals/ni-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012427",
+        "url": "https://www.crystallography.net/cod/9012427.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25C Note: latice parameter is average of four samples. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为四个样品平均。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "co-hcp",
+      "category": "metals",
+      "name": "钴",
+      "nameEn": "Cobalt",
+      "formula": "Co",
+      "aliases": [
+        "Co"
+      ],
+      "phase": "hcp（六方密排；原文称室温）",
+      "structurePath": "metals/co-hcp/structure.json",
+      "sourcePath": "metals/co-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011615",
+        "url": "https://www.crystallography.net/cod/9011615.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Marick, L. (1936) Variation of resistance and structure of cobalt with temperature and a discussion of its photoelectric emission Sample: at room T Note: cell edge a is average of photographs 1 & 2. Physical Review, 49, 831–837. DOI: 10.1103/PhysRev.49.831.",
+        "version": "COD CIF revision 291877",
+        "conditions": "COD原文称室温；未提供数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1103/PhysRev.49.831"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      }
+    },
+    {
+      "id": "zn-hcp",
+      "category": "metals",
+      "name": "锌",
+      "nameEn": "Zinc",
+      "formula": "Zn",
+      "aliases": [
+        "Zn"
+      ],
+      "phase": "hcp（六方密排；298.15 K）",
+      "structurePath": "metals/zn-hcp/structure.json",
+      "sourcePath": "metals/zn-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012435",
+        "url": "https://www.crystallography.net/cod/9012435.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25 C Note: lattice parameter is average of three samples. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为三个样品平均。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      }
+    },
+    {
+      "id": "mg-hcp",
+      "category": "metals",
+      "name": "镁",
+      "nameEn": "Magnesium",
+      "formula": "Mg",
+      "aliases": [
+        "Mg"
+      ],
+      "phase": "hcp（六方密排；298.15 K）",
+      "structurePath": "metals/mg-hcp/structure.json",
+      "sourcePath": "metals/mg-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012434",
+        "url": "https://www.crystallography.net/cod/9012434.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25 C Note: lattice parameter is average of four samples. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为四个样品平均。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      }
+    },
+    {
+      "id": "ti-alpha-hcp",
+      "category": "metals",
+      "name": "钛 α 相",
+      "nameEn": "Titanium alpha phase",
+      "formula": "Ti",
+      "aliases": [
+        "Ti",
+        "α-Ti",
+        "alpha titanium"
+      ],
+      "phase": "α-Ti，hcp（六方密排；天然样品，温度未报告）",
+      "structurePath": "metals/ti-alpha-hcp/structure.json",
+      "sourcePath": "metals/ti-alpha-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9017383",
+        "url": "https://www.crystallography.net/cod/9017383.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Fang, Q.; Bai, W.; Yang, J.; Rong, H.; Shi, N.; Li, G.; Xiong, M.; Ma, Z. (2013) Titanium, Ti, a new mineral species from Luobusha, Tibet, China. Acta Geologica Sinica, 87, 1275–1280. DOI: 10.1111/1755-6724.12128.",
+        "version": "COD CIF revision 292100",
+        "conditions": "天然Luobusha钛矿样品；原文报告组成 99.23–100 wt% Ti，COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1111/1755-6724.12128"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      }
+    },
+    {
+      "id": "w-bcc",
+      "category": "metals",
+      "name": "钨",
+      "nameEn": "Tungsten",
+      "formula": "W",
+      "aliases": [
+        "W"
+      ],
+      "phase": "bcc（体心立方；298.15 K）",
+      "structurePath": "metals/w-bcc/structure.json",
+      "sourcePath": "metals/w-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012433",
+        "url": "https://www.crystallography.net/cod/9012433.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25 C Note: sample 1. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为样品1。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      }
+    },
+    {
+      "id": "mo-bcc",
+      "category": "metals",
+      "name": "钼",
+      "nameEn": "Molybdenum",
+      "formula": "Mo",
+      "aliases": [
+        "Mo"
+      ],
+      "phase": "bcc（体心立方；298.15 K）",
+      "structurePath": "metals/mo-bcc/structure.json",
+      "sourcePath": "metals/mo-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012432",
+        "url": "https://www.crystallography.net/cod/9012432.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Jette, E. R.; Foote, F. (1935) Precision determination of lattice constants Sample: at T = 25 C Note: lattice parameter is average of two samples. Journal of Chemical Physics, 3, 605–616. DOI: 10.1063/1.1749562.",
+        "version": "COD CIF revision 282067",
+        "conditions": "衍射温度为 298.15 K（25 °C）；COD原文记录为两个样品平均。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749562"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      }
+    },
+    {
+      "id": "cr-bcc",
+      "category": "metals",
+      "name": "铬",
+      "nameEn": "Chromium",
+      "formula": "Cr",
+      "aliases": [
+        "Cr"
+      ],
+      "phase": "bcc（体心立方；COD未记录测量温度）",
+      "structurePath": "metals/cr-bcc/structure.json",
+      "sourcePath": "metals/cr-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:5000220",
+        "url": "https://www.crystallography.net/cod/5000220.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Swanson, H E; Gilfrich, N T; Ugrinic, G M (1955) Standard X-ray diffraction powder patterns. National Bureau of Standards (U.S.), Circular, 539, 5.",
+        "version": "COD CIF revision 202022",
+        "conditions": "来源为NBS标准X射线粉末衍射数据；该COD条目未记录测量温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      }
+    },
+    {
+      "id": "pt-fcc",
+      "category": "metals",
+      "name": "铂",
+      "nameEn": "Platinum",
+      "formula": "Pt",
+      "aliases": [
+        "Pt"
+      ],
+      "phase": "fcc（面心立方；COD未记录测量温度）",
+      "structurePath": "metals/pt-fcc/structure.json",
+      "sourcePath": "metals/pt-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9013417",
+        "url": "https://www.crystallography.net/cod/9013417.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Davey, W. P. (1925) Precision Measurements of the Lattice Constants of Twelve Common Metals. Physical Review, 25, 753–761. DOI: 10.1103/PhysRev.25.753.",
+        "version": "COD CIF revision 264647",
+        "conditions": "COD原文记录为合成样品；晶格参数为三次测量的平均；未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1103/PhysRev.25.753"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "pd-fcc",
+      "category": "metals",
+      "name": "钯",
+      "nameEn": "Palladium",
+      "formula": "Pd",
+      "aliases": [
+        "Pd"
+      ],
+      "phase": "fcc（面心立方；COD未记录测量温度）",
+      "structurePath": "metals/pd-fcc/structure.json",
+      "sourcePath": "metals/pd-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9013416",
+        "url": "https://www.crystallography.net/cod/9013416.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Davey, W. P. (1925) Precision Measurements of the Lattice Constants of Twelve Common Metals. Physical Review, 25, 753–761. DOI: 10.1103/PhysRev.25.753.",
+        "version": "COD CIF revision 264647",
+        "conditions": "COD原文记录为合成样品；晶格参数为 runs 1 & 2 的平均；未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1103/PhysRev.25.753"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      }
+    },
+    {
+      "id": "ba-bcc",
+      "category": "metals",
+      "name": "钡（bcc）",
+      "nameEn": "barium",
+      "formula": "Ba",
+      "aliases": [
+        "Ba",
+        "barium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/ba-bcc/structure.json",
+      "sourcePath": "metals/ba-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012729",
+        "url": "https://www.crystallography.net/cod/9012729.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Hirst, R. G.; King, A. J.; Kanda, F. A.. The barium-strontium equilibrium system Sample: at T = 25 C. Journal of Physical Chemistry 1956 60, pp. 302-304. DOI: 10.1021/j150537a011",
+        "doi": "10.1021/j150537a011",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298.15; compoundsource=Synthetic；COD记录标题/样品说明：The barium-strontium equilibrium system Sample: at T = 25 C Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298.15 K；来源为Ba-Sr平衡体系。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "be-hcp",
+      "category": "metals",
+      "name": "铍（hcp）",
+      "nameEn": "beryllium",
+      "formula": "Be",
+      "aliases": [
+        "Be",
+        "beryllium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/be-hcp/structure.json",
+      "sourcePath": "metals/be-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012008",
+        "url": "https://www.crystallography.net/cod/9012008.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Gordon, P.. A high temperature precision X-ray camera: some measurements of the thermal coefficients of expansion of beryllium Sample: at T = 25 C. Journal of Applied Physics 1949 20, pp. 908-917. DOI: 10.1063/1.1698252",
+        "doi": "10.1063/1.1698252",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298.15; compoundsource=Synthetic；COD记录标题/样品说明：A high temperature precision X-ray camera: some measurements of the thermal coefficients of expansion of beryllium Sample: at T = 25 C Original source-type description: experimental (as indicated by COD metadata/title)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298.15 K；来源为铍热膨胀X射线测量。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ca-fcc",
+      "category": "metals",
+      "name": "钙（fcc）",
+      "nameEn": "calcium",
+      "formula": "Ca",
+      "aliases": [
+        "Ca",
+        "calcium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/ca-fcc/structure.json",
+      "sourcePath": "metals/ca-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011033",
+        "url": "https://www.crystallography.net/cod/9011033.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Bernstein, B. T.; Smith, J. F.. Coefficients of thermal expansion for face-centered cubic and body-centered cubic calcium Sample: at T = 26 C. Acta Crystallographica 1959 12, pp. 419-420. DOI: 10.1107/S0365110X59001268",
+        "doi": "10.1107/S0365110X59001268",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=299.15; compoundsource=Synthetic；COD记录标题/样品说明：Coefficients of thermal expansion for face-centered cubic and body-centered cubic calcium Sample: at T = 26 C Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报299.15 K；来源研究测量fcc与bcc钙。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cd-hcp",
+      "category": "metals",
+      "name": "镉（hcp）",
+      "nameEn": "cadmium",
+      "formula": "Cd",
+      "aliases": [
+        "Cd",
+        "cadmium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/cd-hcp/structure.json",
+      "sourcePath": "metals/cd-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012436",
+        "url": "https://www.crystallography.net/cod/9012436.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 282067",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Jette, E. R.; Foote, F.. Precision determination of lattice constants Sample: at T = 25 C Note: lattice parameter is average of two samples. Journal of Chemical Physics 1935 3, pp. 605-616. DOI: 10.1063/1.1749562",
+        "doi": "10.1063/1.1749562",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298.15; compoundsource=Synthetic；COD记录标题/样品说明：Precision determination of lattice constants Sample: at T = 25 C Note: lattice parameter is average of two samples Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298.15 K；原文称两个样品的晶格常数平均。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ce-fcc",
+      "category": "metals",
+      "name": "铈（fcc）",
+      "nameEn": "cerium",
+      "formula": "Ce",
+      "aliases": [
+        "Ce",
+        "cerium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/ce-fcc/structure.json",
+      "sourcePath": "metals/ce-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010987",
+        "url": "https://www.crystallography.net/cod/9010987.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为高纯合成样品（99.9%）；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "dy-hcp",
+      "category": "metals",
+      "name": "镝（hcp）",
+      "nameEn": "dysprosium",
+      "formula": "Dy",
+      "aliases": [
+        "Dy",
+        "dysprosium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/dy-hcp/structure.json",
+      "sourcePath": "metals/dy-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008495",
+        "url": "https://www.crystallography.net/cod/9008495.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Sample at T = 293 K Hexagonal closest packed, hcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=293；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Sample at T = 293 K Hexagonal closest packed, hcp, structure Original source-type description: reference-structure; experimental provenance not explicit in this entry"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考条目报293 K。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "eu-bcc",
+      "category": "metals",
+      "name": "铕（bcc）",
+      "nameEn": "europium",
+      "formula": "Eu",
+      "aliases": [
+        "Eu",
+        "europium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/eu-bcc/structure.json",
+      "sourcePath": "metals/eu-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010990",
+        "url": "https://www.crystallography.net/cod/9010990.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 98-99% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 98-99% pure Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为98–99%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "gd-hcp",
+      "category": "metals",
+      "name": "钆（hcp）",
+      "nameEn": "gadolinium",
+      "formula": "Gd",
+      "aliases": [
+        "Gd",
+        "gadolinium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/gd-hcp/structure.json",
+      "sourcePath": "metals/gd-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010991",
+        "url": "https://www.crystallography.net/cod/9010991.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.7% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：compoundsource=Synthetic；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.7% pure Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.7%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "hf-hcp",
+      "category": "metals",
+      "name": "铪（hcp）",
+      "nameEn": "hafnium",
+      "formula": "Hf",
+      "aliases": [
+        "Hf",
+        "hafnium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/hf-hcp/structure.json",
+      "sourcePath": "metals/hf-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008501",
+        "url": "https://www.crystallography.net/cod/9008501.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure Original source-type description: reference-structure; experimental provenance not explicit in this entry"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考条目；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "in-tetragonal",
+      "category": "metals",
+      "name": "铟（四方）",
+      "nameEn": "indium",
+      "formula": "In",
+      "aliases": [
+        "In",
+        "indium"
+      ],
+      "phase": "体心四方，空间群 I4/mmm (#139)",
+      "structurePath": "metals/in-tetragonal/structure.json",
+      "sourcePath": "metals/in-tetragonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012375",
+        "url": "https://www.crystallography.net/cod/9012375.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Smith, J. F.; Schneider, V. L.. Anisotropic thermal expansion of indium Sample: 99.999% indium. Journal of the Less-Common Metals 1964 7, pp. 17-22. DOI: 10.1016/0022-5088(64)90013-X",
+        "doi": "10.1016/0022-5088(64)90013-X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Anisotropic thermal expansion of indium Sample: 99.999% indium Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录来源称样品纯度99.999%；温度字段未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I 4/m m m",
+        "number": 139
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "li-bcc",
+      "category": "metals",
+      "name": "锂（bcc，7Li样品）",
+      "nameEn": "lithium",
+      "formula": "Li",
+      "aliases": [
+        "Li",
+        "lithium",
+        "7Li"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/li-bcc/structure.json",
+      "sourcePath": "metals/li-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012448",
+        "url": "https://www.crystallography.net/cod/9012448.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Covington, E. J.; Montgomery, D. J.. Sample: at T = 20 C Note: Li7 isotope. Journal of Chemical Physics 1957 27, pp. 1030-1032. DOI: 10.1063/1.1743926",
+        "doi": "10.1063/1.1743926",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=293.15; compoundsource=Synthetic；COD记录标题/样品说明：Sample: at T = 20 C Note: Li7 isotope Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报293.15 K，样品标注为7Li同位素。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "na-bcc",
+      "category": "metals",
+      "name": "钠（bcc）",
+      "nameEn": "sodium",
+      "formula": "Na",
+      "aliases": [
+        "Na",
+        "sodium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/na-bcc/structure.json",
+      "sourcePath": "metals/na-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008545",
+        "url": "https://www.crystallography.net/cod/9008545.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Sample at T = 293 K Body centered cubic, bcc, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=293；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Sample at T = 293 K Body centered cubic, bcc, structure Original source-type description: reference-structure; experimental provenance not explicit in this entry"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考条目报293 K。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "pb-fcc",
+      "category": "metals",
+      "name": "铅（fcc）",
+      "nameEn": "lead",
+      "formula": "Pb",
+      "aliases": [
+        "Pb",
+        "lead"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/pb-fcc/structure.json",
+      "sourcePath": "metals/pb-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012004",
+        "url": "https://www.crystallography.net/cod/9012004.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 264409",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Straumanis, M. E.. The precision determination of lattice constants by the powder and rotation crystal methods and applications Locality: synthetic Sample: at T = 25 C. Journal of Applied Physics 1949 20, pp. 726-734. DOI: 10.1063/1.1698520",
+        "doi": "10.1063/1.1698520",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298.15；COD记录标题/样品说明：The precision determination of lattice constants by the powder and rotation crystal methods and applications Locality: synthetic Sample: at T = 25 C Original source-type description: experimental (as indicated by COD metadata/title)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298.15 K；合成样品。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "rb-bcc",
+      "category": "metals",
+      "name": "铷（bcc）",
+      "nameEn": "rubidium",
+      "formula": "Rb",
+      "aliases": [
+        "Rb",
+        "rubidium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/rb-bcc/structure.json",
+      "sourcePath": "metals/rb-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012876",
+        "url": "https://www.crystallography.net/cod/9012876.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Kelly, F. M.; Pearson, W. B.. The rubidium transition at ~180 K Sample: at T = 297 K Note: specimen III lattice parameter for this T is estimated. Canadian Journal of Physics 1955 33, pp. 17-24. DOI: 10.1139/p55-003",
+        "doi": "10.1139/p55-003",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=297; compoundsource=Synthetic；COD记录标题/样品说明：The rubidium transition at ~180 K Sample: at T = 297 K Note: specimen III lattice parameter for this T is estimated Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报297 K；原记录注明该温度下晶格参数为估计值。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "v-bcc",
+      "category": "metals",
+      "name": "钒（bcc）",
+      "nameEn": "vanadium",
+      "formula": "V",
+      "aliases": [
+        "V",
+        "vanadium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/v-bcc/structure.json",
+      "sourcePath": "metals/v-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012770",
+        "url": "https://www.crystallography.net/cod/9012770.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "James, W. J.; Straumanis, M. E.. Lattice parameter and expansion coefficient of vanadium Sample: at T = 25C. Journal of the Electrochemical Society 1960 107, pp. 69-69",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298.15; compoundsource=Synthetic；COD记录标题/样品说明：Lattice parameter and expansion coefficient of vanadium Sample: at T = 25C Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298.15 K；标题为晶格参数与热膨胀系数研究。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "co-fcc",
+      "category": "metals",
+      "name": "钴（fcc候选）",
+      "nameEn": "fcc cobalt",
+      "formula": "Co",
+      "aliases": [
+        "Co",
+        "cobalt",
+        "fcc cobalt"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/co-fcc/structure.json",
+      "sourcePath": "metals/co-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011618",
+        "url": "https://www.crystallography.net/cod/9011618.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Marick, L.. Variation of resistance and structure of cobalt with temperature and a discussion of its photoelectric emission Sample: at room T Note: cell parameter is average of photographs 5-8. Physical Review 1936 49, pp. 831-837. DOI: 10.1103/PhysRev.49.831",
+        "doi": "10.1103/PhysRev.49.831",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：compoundsource=Synthetic；COD记录标题/样品说明：Variation of resistance and structure of cobalt with temperature and a discussion of its photoelectric emission Sample: at room T Note: cell parameter is average of photographs 5-8 Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD源标题标注fcc及room T；与已有hcp-Co为不同候选相。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sn-beta-tetragonal",
+      "category": "metals",
+      "name": "白锡（β-Sn）",
+      "nameEn": "white tin",
+      "formula": "Sn",
+      "aliases": [
+        "Sn",
+        "beta tin",
+        "white tin"
+      ],
+      "phase": "体心四方，空间群 I41/amd (#141)",
+      "structurePath": "metals/sn-beta-tetragonal/structure.json",
+      "sourcePath": "metals/sn-beta-tetragonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012005",
+        "url": "https://www.crystallography.net/cod/9012005.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 279509",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Straumanis, M. E.. The precision determination of lattice constants by the powder and rotation crystal methods and applications Locality: synthetic Sample: at T = 25 C. Journal of Applied Physics 1949 20, pp. 726-734. DOI: 10.1063/1.1698520",
+        "doi": "10.1063/1.1698520",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298.15；COD记录标题/样品说明：The precision determination of lattice constants by the powder and rotation crystal methods and applications Locality: synthetic Sample: at T = 25 C Original source-type description: experimental (as indicated by COD metadata/title)"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298.15 K；来源标注合成样品。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I 41/a m d :1",
+        "number": 141
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ac-fcc",
+      "category": "metals",
+      "name": "锕（fcc候选）",
+      "nameEn": "actinium",
+      "formula": "Ac",
+      "aliases": [
+        "Ac",
+        "actinium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/ac-fcc/structure.json",
+      "sourcePath": "metals/ac-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008458",
+        "url": "https://www.crystallography.net/cod/9008458.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目；测量条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "am-dhcp",
+      "category": "metals",
+      "name": "镅（dhcp候选）",
+      "nameEn": "americium",
+      "formula": "Am",
+      "aliases": [
+        "Am",
+        "americium"
+      ],
+      "phase": "双六方密排，空间群 P63/mmc (#194)",
+      "structurePath": "metals/am-dhcp/structure.json",
+      "sourcePath": "metals/am-dhcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008524",
+        "url": "https://www.crystallography.net/cod/9008524.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Double hexagonal closest packed, dhcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Double hexagonal closest packed, dhcp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注dhcp；测量条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "cs-bcc",
+      "category": "metals",
+      "name": "铯（bcc，5 K）",
+      "nameEn": "cesium",
+      "formula": "Cs",
+      "aliases": [
+        "Cs",
+        "cesium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/cs-bcc/structure.json",
+      "sourcePath": "metals/cs-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011010",
+        "url": "https://www.crystallography.net/cod/9011010.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Barrett, C. S.. X-ray study of the alkali metals at low temperatures Locality: synthetic Sample: at T = 5 K Note: lattice parameters are average of 4 values. Acta Crystallographica 1956 9, pp. 671-677. DOI: 10.1107/S0365110X56001790",
+        "doi": "10.1107/S0365110X56001790",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=5；COD记录标题/样品说明：X-ray study of the alkali metals at low temperatures Locality: synthetic Sample: at T = 5 K Note: lattice parameters are average of 4 values"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录为5 K低温测量；不改写为室温数据。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "er-hcp",
+      "category": "metals",
+      "name": "铒（hcp）",
+      "nameEn": "erbium",
+      "formula": "Er",
+      "aliases": [
+        "Er",
+        "erbium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/er-hcp/structure.json",
+      "sourcePath": "metals/er-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010995",
+        "url": "https://www.crystallography.net/cod/9010995.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.8% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.8% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.8%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ho-hcp",
+      "category": "metals",
+      "name": "钬（hcp）",
+      "nameEn": "holmium",
+      "formula": "Ho",
+      "aliases": [
+        "Ho",
+        "holmium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/ho-hcp/structure.json",
+      "sourcePath": "metals/ho-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010994",
+        "url": "https://www.crystallography.net/cod/9010994.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.4% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.4% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.4%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ir-fcc",
+      "category": "metals",
+      "name": "铱（fcc）",
+      "nameEn": "iridium",
+      "formula": "Ir",
+      "aliases": [
+        "Ir",
+        "iridium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/ir-fcc/structure.json",
+      "sourcePath": "metals/ir-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008470",
+        "url": "https://www.crystallography.net/cod/9008470.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目；测量条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "k-bcc",
+      "category": "metals",
+      "name": "钾（bcc，66 K）",
+      "nameEn": "potassium",
+      "formula": "K",
+      "aliases": [
+        "K",
+        "potassium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/k-bcc/structure.json",
+      "sourcePath": "metals/k-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011006",
+        "url": "https://www.crystallography.net/cod/9011006.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Barrett, C. S.. X-ray study of the alkali metals at low temperatures Sample: at T = 66 K. Acta Crystallographica 1956 9, pp. 671-677. DOI: 10.1107/S0365110X56001790",
+        "doi": "10.1107/S0365110X56001790",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=66; compoundsource=Synthetic；COD记录标题/样品说明：X-ray study of the alkali metals at low temperatures Sample: at T = 66 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD低温X射线研究记录报66 K；未知室温坐标不另行推断。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "la-dhcp",
+      "category": "metals",
+      "name": "镧（dhcp）",
+      "nameEn": "lanthanum",
+      "formula": "La",
+      "aliases": [
+        "La",
+        "lanthanum"
+      ],
+      "phase": "双六方密排，空间群 P63/mmc (#194)",
+      "structurePath": "metals/la-dhcp/structure.json",
+      "sourcePath": "metals/la-dhcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010986",
+        "url": "https://www.crystallography.net/cod/9010986.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.8% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：compoundsource=Synthetic；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.8% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.8%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "lu-hcp",
+      "category": "metals",
+      "name": "镥（hcp）",
+      "nameEn": "lutetium",
+      "formula": "Lu",
+      "aliases": [
+        "Lu",
+        "lutetium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/lu-hcp/structure.json",
+      "sourcePath": "metals/lu-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010998",
+        "url": "https://www.crystallography.net/cod/9010998.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.9%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "nb-bcc",
+      "category": "metals",
+      "name": "铌（bcc）",
+      "nameEn": "niobium",
+      "formula": "Nb",
+      "aliases": [
+        "Nb",
+        "niobium"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/nb-bcc/structure.json",
+      "sourcePath": "metals/nb-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008546",
+        "url": "https://www.crystallography.net/cod/9008546.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Body centered cubic, bcc, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Body centered cubic, bcc, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注bcc；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "nd-dhcp",
+      "category": "metals",
+      "name": "钕（dhcp）",
+      "nameEn": "neodymium",
+      "formula": "Nd",
+      "aliases": [
+        "Nd",
+        "neodymium"
+      ],
+      "phase": "双六方密排，空间群 P63/mmc (#194)",
+      "structurePath": "metals/nd-dhcp/structure.json",
+      "sourcePath": "metals/nd-dhcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010989",
+        "url": "https://www.crystallography.net/cod/9010989.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.8% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：compoundsource=Synthetic；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.8% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.8%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "os-hcp",
+      "category": "metals",
+      "name": "锇（hcp）",
+      "nameEn": "osmium",
+      "formula": "Os",
+      "aliases": [
+        "Os",
+        "osmium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/os-hcp/structure.json",
+      "sourcePath": "metals/os-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008510",
+        "url": "https://www.crystallography.net/cod/9008510.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注hcp；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "pr-dhcp",
+      "category": "metals",
+      "name": "镨（dhcp）",
+      "nameEn": "praseodymium",
+      "formula": "Pr",
+      "aliases": [
+        "Pr",
+        "praseodymium"
+      ],
+      "phase": "双六方密排，空间群 P63/mmc (#194)",
+      "structurePath": "metals/pr-dhcp/structure.json",
+      "sourcePath": "metals/pr-dhcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010988",
+        "url": "https://www.crystallography.net/cod/9010988.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.9% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：compoundsource=Synthetic；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Note: sample 99.9% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.9%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "re-hcp",
+      "category": "metals",
+      "name": "铼（hcp）",
+      "nameEn": "rhenium",
+      "formula": "Re",
+      "aliases": [
+        "Re",
+        "rhenium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/re-hcp/structure.json",
+      "sourcePath": "metals/re-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008512",
+        "url": "https://www.crystallography.net/cod/9008512.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注hcp；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "rh-fcc",
+      "category": "metals",
+      "name": "铑（fcc）",
+      "nameEn": "rhodium",
+      "formula": "Rh",
+      "aliases": [
+        "Rh",
+        "rhodium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/rh-fcc/structure.json",
+      "sourcePath": "metals/rh-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008482",
+        "url": "https://www.crystallography.net/cod/9008482.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注ccp；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ru-hcp",
+      "category": "metals",
+      "name": "钌（hcp）",
+      "nameEn": "ruthenium",
+      "formula": "Ru",
+      "aliases": [
+        "Ru",
+        "ruthenium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/ru-hcp/structure.json",
+      "sourcePath": "metals/ru-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008513",
+        "url": "https://www.crystallography.net/cod/9008513.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注hcp；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sc-hcp",
+      "category": "metals",
+      "name": "钪（hcp）",
+      "nameEn": "scandium",
+      "formula": "Sc",
+      "aliases": [
+        "Sc",
+        "scandium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/sc-hcp/structure.json",
+      "sourcePath": "metals/sc-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010985",
+        "url": "https://www.crystallography.net/cod/9010985.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.6% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.6% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.6%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sr-fcc",
+      "category": "metals",
+      "name": "锶（fcc）",
+      "nameEn": "strontium",
+      "formula": "Sr",
+      "aliases": [
+        "Sr",
+        "strontium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/sr-fcc/structure.json",
+      "sourcePath": "metals/sr-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9012726",
+        "url": "https://www.crystallography.net/cod/9012726.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291877",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Hirst, R. G.; King, A. J.; Kanda, F. A.. The barium-strontium equilibrium system Sample: at T = 25 C note: known as alpha-strontium. Journal of Physical Chemistry 1956 60, pp. 302-304. DOI: 10.1021/j150537a011",
+        "doi": "10.1021/j150537a011",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=298.15; compoundsource=Synthetic；COD记录标题/样品说明：The barium-strontium equilibrium system Sample: at T = 25 C note: known as alpha-strontium"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报298.15 K，并在标题样品说明中标为alpha-strontium。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "ta-bcc",
+      "category": "metals",
+      "name": "钽（bcc）",
+      "nameEn": "tantalum",
+      "formula": "Ta",
+      "aliases": [
+        "Ta",
+        "tantalum"
+      ],
+      "phase": "bcc，空间群 Im-3m (#229)",
+      "structurePath": "metals/ta-bcc/structure.json",
+      "sourcePath": "metals/ta-bcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008552",
+        "url": "https://www.crystallography.net/cod/9008552.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Body centered cubic, bcc, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Body centered cubic, bcc, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注bcc；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "I m -3 m",
+        "number": 229
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tb-hcp",
+      "category": "metals",
+      "name": "铽（hcp）",
+      "nameEn": "terbium",
+      "formula": "Tb",
+      "aliases": [
+        "Tb",
+        "terbium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/tb-hcp/structure.json",
+      "sourcePath": "metals/tb-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1523620",
+        "url": "https://www.crystallography.net/cod/1523620.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 211196",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Finkel', V.A.; Smirnov, Yu.N.; Vorob'ev, V.V.. Crystal structure of terbium at 120-300 K. Zhurnal Eksperimental'noi i Teoreticheskoi Fiziki 1967 24, pp. 21-24",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Crystal structure of terbium at 120-300 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD来源标题标注120–300 K区间；具体本条测量点需复核。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tc-hcp",
+      "category": "metals",
+      "name": "锝（hcp候选）",
+      "nameEn": "technetium",
+      "formula": "Tc",
+      "aliases": [
+        "Tc",
+        "technetium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/tc-hcp/structure.json",
+      "sourcePath": "metals/tc-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1541062",
+        "url": "https://www.crystallography.net/cod/1541062.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 211196",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Trzebiatowski, W.; Rudzinski, J.. The composition and structure of technetium nitride and technetium borides. Journal of the Less-Common Metals 1964 6, pp. 244-245",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The composition and structure of technetium nitride and technetium borides"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录与锝氮化物/硼化物结构研究关联；测量条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "th-fcc",
+      "category": "metals",
+      "name": "钍（fcc）",
+      "nameEn": "thorium",
+      "formula": "Th",
+      "aliases": [
+        "Th",
+        "thorium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/th-fcc/structure.json",
+      "sourcePath": "metals/th-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008485",
+        "url": "https://www.crystallography.net/cod/9008485.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Cubic closest packed, ccp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注ccp；测量条件未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tl-hcp",
+      "category": "metals",
+      "name": "铊（hcp，297 K）",
+      "nameEn": "thallium",
+      "formula": "Tl",
+      "aliases": [
+        "Tl",
+        "thallium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/tl-hcp/structure.json",
+      "sourcePath": "metals/tl-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008519",
+        "url": "https://www.crystallography.net/cod/9008519.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Sample at T = 297 K Hexagonal closest packed, hcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=297；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Sample at T = 297 K Hexagonal closest packed, hcp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考条目报297 K。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "tm-hcp",
+      "category": "metals",
+      "name": "铥（hcp）",
+      "nameEn": "thulium",
+      "formula": "Tm",
+      "aliases": [
+        "Tm",
+        "thulium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/tm-hcp/structure.json",
+      "sourcePath": "metals/tm-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010996",
+        "url": "https://www.crystallography.net/cod/9010996.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.9%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "y-hcp",
+      "category": "metals",
+      "name": "钇（hcp）",
+      "nameEn": "yttrium",
+      "formula": "Y",
+      "aliases": [
+        "Y",
+        "yttrium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/y-hcp/structure.json",
+      "sourcePath": "metals/y-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010984",
+        "url": "https://www.crystallography.net/cod/9010984.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.4% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.4% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.4%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "yb-fcc",
+      "category": "metals",
+      "name": "镱（fcc）",
+      "nameEn": "ytterbium",
+      "formula": "Yb",
+      "aliases": [
+        "Yb",
+        "ytterbium"
+      ],
+      "phase": "fcc，空间群 Fm-3m (#225)",
+      "structurePath": "metals/yb-fcc/structure.json",
+      "sourcePath": "metals/yb-fcc/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9010997",
+        "url": "https://www.crystallography.net/cod/9010997.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Spedding, F. H.; Daane, A. H.; Herrmann, K. W.. The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure. Acta Crystallographica 1956 9, pp. 559-563. DOI: 10.1107/S0365110X5600156X",
+        "doi": "10.1107/S0365110X5600156X",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structures and lattice parameters of high-purity scandium, yttrium and the rare earth metals Locality: synthetic Note: sample 99.9% pure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD文献记录为99.9%高纯样品；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F m -3 m",
+        "number": 225
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "zr-hcp",
+      "category": "metals",
+      "name": "锆（hcp）",
+      "nameEn": "zirconium",
+      "formula": "Zr",
+      "aliases": [
+        "Zr",
+        "zirconium"
+      ],
+      "phase": "hcp，空间群 P63/mmc (#194)",
+      "structurePath": "metals/zr-hcp/structure.json",
+      "sourcePath": "metals/zr-hcp/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9008523",
+        "url": "https://www.crystallography.net/cod/9008523.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291735",
+        "retrievedAt": "2026-10-23T16:52:52.252997+00:00",
+        "citation": "Wyckoff, R. W. G.. Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure. Crystal Structures 1963 1, pp. 7-83",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：Second edition. Interscience Publishers, New York, New York Hexagonal closest packed, hcp, structure"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD参考结构条目标注hcp；测量温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

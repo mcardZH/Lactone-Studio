@@ -1,0 +1,1304 @@
+{
+  "schema": "sciyue-native-win11-output-recipe-v1",
+  "platform": "win32-x64",
+  "minimumWindowsBuild": 22000,
+  "sourceLockIds": [
+    "native-0169b0478f2d6c01",
+    "native-0169b0478f2d6c01-public-v1"
+  ],
+  "scope": "Output selection only; original locks, sources, scientific versions and all other library DLLs retained.",
+  "evidence": {
+    "baselineVersion": "0.71.0-a03",
+    "sourceCommit": "5b6cc806cb75f169be0fb8574ff8c3608830ab0a",
+    "basis": "311 native PE read-only import/delay-import review; BLAS/LAPACK forwarders to openblas preserved. Runtime and science validation remain separate.",
+    "sourceInventorySha256": "cdfcfe0a94f225b589a588b78787ee78b11cb8a1c50eb055036437990514c09f"
+  },
+  "counts": {
+    "keep": 100,
+    "omit-intel": 9,
+    "system-ucrt": 46
+  },
+  "libraryDlls": [
+    {
+      "path": "python/Library/bin/OpenCL.dll",
+      "bytes": 55296,
+      "sha256": "8e87c7016d8ca7909a6bccfd875edb7c650366b57bf3c97e6b5dbe3efada4c51",
+      "owner": "conda:khronos-opencl-icd-loader@2024.10.24:5c55d01d",
+      "target": "OpenCL.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitAlignment.dll",
+      "bytes": 29696,
+      "sha256": "e1dfa9f26fa2796a87ea29138f04bf08af34e4ad10b14fa21335df5a7ef028ec",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitAlignment.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitCIPLabeler.dll",
+      "bytes": 185856,
+      "sha256": "f9291d2abcbcd4a3fccc07e51a5f38a4133833b33032f86988b8e9ceec58c5b2",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitCIPLabeler.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitCatalogs.dll",
+      "bytes": 15360,
+      "sha256": "54fab772b191dc3a89b175c796ee48cb770aea99d29b5a4129aec679977d0938",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitCatalogs.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitChemDraw.dll",
+      "bytes": 1788928,
+      "sha256": "b8684f7363f8b587e45ba44a95f27e33030e93239ed9ce7f9ab42adabee5f64f",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitChemDraw.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitChemReactions.dll",
+      "bytes": 694784,
+      "sha256": "9df0fee50837c00921a881a1926a1a363959c6e349196011b2ac2e043df234a7",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitChemReactions.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitChemTransforms.dll",
+      "bytes": 313856,
+      "sha256": "88838ad71df7892ce4fc5d0624edbe80873cbe869aaf0542ff45df013348c675",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitChemTransforms.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitChemicalFeatures.dll",
+      "bytes": 30720,
+      "sha256": "1f9331a0b929db713336176ccfa5040fdd601bd0b0808fa01e5333b7f776c6ce",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitChemicalFeatures.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitDataStructs.dll",
+      "bytes": 242688,
+      "sha256": "fbab42d969a8d3f1211b38798ade1b353070aedfb99838c77e584e9ee10b327e",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitDataStructs.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitDepictor.dll",
+      "bytes": 386048,
+      "sha256": "5ab6fdb3ef390a5204d72096ac24207256e07672de857c5f2476ecf436dfdf4c",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitDepictor.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitDescriptors.dll",
+      "bytes": 692736,
+      "sha256": "32fb3c7961efeda0ac6ba12c8a9267bf696101679f5e38d21188696abc99e566",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitDescriptors.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitDetermineBonds.dll",
+      "bytes": 99328,
+      "sha256": "6f76de2897420d5ea9a880e1279ce2c733972985b7f4e622710928f896b29a07",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitDetermineBonds.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitDistGeomHelpers.dll",
+      "bytes": 300032,
+      "sha256": "ca59ddac96eab2dd5fdfcc0d26a1a810dc4a55eb527d183ce6f23539b142655c",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitDistGeomHelpers.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitDistGeometry.dll",
+      "bytes": 113664,
+      "sha256": "df253c13f2d38a566f53ad42c05d64a5c4709be19a534f767ecb017295b1f90f",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitDistGeometry.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitEHTLib.dll",
+      "bytes": 309760,
+      "sha256": "053b63657502bc9c0b5ac60132621a471cc288641735643928aac70e92c6723e",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitEHTLib.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitEigenSolvers.dll",
+      "bytes": 25088,
+      "sha256": "f9770cb765b1b5ef3f6547dc45c01aa2dbe2d063f3cd5b30cb6a758d8c7278ce",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitEigenSolvers.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitFileParsers.dll",
+      "bytes": 1511936,
+      "sha256": "abc29032316af07c912c4ee0443533ded2742a867b0bcaa84804c9118d98f2be",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitFileParsers.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitFilterCatalog.dll",
+      "bytes": 580608,
+      "sha256": "1165d7274253fe4078aefbb7c0298f6af107d12736c30b03431ff5e9054fbe4e",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitFilterCatalog.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitFingerprints.dll",
+      "bytes": 446464,
+      "sha256": "e0d01330f4e27c1c2edeb119b8286764834a0445358c72639bcc2328a52efad2",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitFingerprints.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitForceField.dll",
+      "bytes": 617984,
+      "sha256": "56ffe6f6f7759e511cd8f6d8422b36383d4cc454f89fd1e032e0c78a53f77c6f",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitForceField.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitForceFieldHelpers.dll",
+      "bytes": 424448,
+      "sha256": "36eb23bd8857436550a8c14603d42d25cddb7fa9309639677e307b5de5dd0caf",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitForceFieldHelpers.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitGenericGroups.dll",
+      "bytes": 112128,
+      "sha256": "d5422477028c6567fe85fea4eca1ba2da5c1841eca37f9f736f899cecc5a22b2",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitGenericGroups.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitGraphMol.dll",
+      "bytes": 1656832,
+      "sha256": "e263df5ade9bd20c718e80aeac807fd8f0806da8a925078d35227a5775137d96",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitGraphMol.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitInchi.dll",
+      "bytes": 1225728,
+      "sha256": "532b0a0b154de81d0959720fe9ebe4720ee94762b8178e2bfafa353d74b583cd",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitInchi.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitMarvinParser.dll",
+      "bytes": 559616,
+      "sha256": "11f7381dd1879097e206d3ef651f53182ca479faa07dd225a8ce9fe00adba467",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitMarvinParser.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitMolAlign.dll",
+      "bytes": 64512,
+      "sha256": "db2a2c0cbdf24c34c721603fe8e00dab85eced913fc01af9ab4b623189e0774b",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitMolAlign.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitMolChemicalFeatures.dll",
+      "bytes": 152576,
+      "sha256": "c7cab7f9d44d885c900c7d8c9ae4dc19d5f67b3bf1df18d2dc80542f47f661cf",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitMolChemicalFeatures.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitMolEnumerator.dll",
+      "bytes": 239616,
+      "sha256": "af3361f680e3ba91853feb638138d8907f6d5203561395c335ec77503d5476d6",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitMolEnumerator.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitMolInterchange.dll",
+      "bytes": 311808,
+      "sha256": "818b350772ab0b0896bcdf61be51b949a676ad4268c4d114c7e6bd8e20ed32c7",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitMolInterchange.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitMolTransforms.dll",
+      "bytes": 86528,
+      "sha256": "1db52bc30facbbd49c6e391ab99a62e3bb6444c29c53b5a43983397afc397f44",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitMolTransforms.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitO3AAlign.dll",
+      "bytes": 135680,
+      "sha256": "3564259ee53f1c198272d8d8cb0a4de573b35c76093277c740f7b19fcfea4262",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitO3AAlign.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitPartialCharges.dll",
+      "bytes": 85504,
+      "sha256": "f263e525411ec789b9a3fc8c3f5b6eeaa47210139c90ebd0e3830b179fb46726",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitPartialCharges.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitRDBoost.dll",
+      "bytes": 37376,
+      "sha256": "8e4178c5e31aeb763375bb49115a1b0b7ed4efc3246b0cc4694e231a06b2767b",
+      "owner": "conda:rdkit@2025.03.6:ac9d3b85",
+      "target": "RDKitRDBoost.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitRDChemDrawLib.dll",
+      "bytes": 233984,
+      "sha256": "cb4913d6dd87f620fb70f02d5dfd09c12d1d6d330ee29534291252fb65c2bb2d",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitRDChemDrawLib.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitRDGeneral.dll",
+      "bytes": 221184,
+      "sha256": "fa7ae62fd89f692e28869a41647a41f764e3608a12fe47d4041bbc5568245863",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitRDGeneral.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitRDGeometryLib.dll",
+      "bytes": 122880,
+      "sha256": "8d739a8dfde8316a1ce1b05a8aa652715053a58ae340504cd9ea844ce4219776",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitRDGeometryLib.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitRDInchiLib.dll",
+      "bytes": 88064,
+      "sha256": "7ad4a09516986900393b727d754a1d87062b07472889ec87337b144d8c4c54b8",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitRDInchiLib.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitReducedGraphs.dll",
+      "bytes": 57856,
+      "sha256": "59f6c8de2a999fe9d90bd1276fe56d73637bb0d8be7de337dc9268893e2d4644",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitReducedGraphs.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitRingDecomposerLib.dll",
+      "bytes": 79360,
+      "sha256": "71ea5c5ae4a896d75b0cec93aede9cd9671c6340cca12d26c1eacdeb288e5ad9",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitRingDecomposerLib.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitSLNParse.dll",
+      "bytes": 236032,
+      "sha256": "4359dda2df383c8b91b4403442a60792d1d2a0c6f976fea2a4ea615a4249f58b",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitSLNParse.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitShapeHelpers.dll",
+      "bytes": 33280,
+      "sha256": "6a3d5377d9af102a457858592537950ee4f4d0f3eba9ce3f19c5063a4d3de5f3",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitShapeHelpers.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitSmilesParse.dll",
+      "bytes": 631808,
+      "sha256": "334c3ad93f2964782bd883f0329998a9802e8abf04c0ef481664f9b32cfdb3ff",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitSmilesParse.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitSubgraphs.dll",
+      "bytes": 91648,
+      "sha256": "84ff447b84145bc337c7c63f2e3b14579e35615d54fbb5098d6a3bf652a6d5aa",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitSubgraphs.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitSubstructMatch.dll",
+      "bytes": 278016,
+      "sha256": "9265275584e99615464e26e2f4b00e96199c4d6101fed219d742fc01115d86da",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitSubstructMatch.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitTrajectory.dll",
+      "bytes": 81408,
+      "sha256": "b6da59b82df00bddc0aacd1c77e588e9c0c698ec992373673118232c9eb9f6e4",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitTrajectory.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitcoordgen.dll",
+      "bytes": 613888,
+      "sha256": "e47b8de4ba7357e17dd0a74095b87a6af945d45a718e80b623ae36d970bac7ff",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitcoordgen.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/RDKitmaeparser.dll",
+      "bytes": 172544,
+      "sha256": "a9cd216201dfeeca785033799f2da6dbe141eca4e25ba60167be53c7f6182ca8",
+      "owner": "conda:librdkit@2025.03.6:3f7f1d78",
+      "target": "RDKitmaeparser.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-console-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "6df76986aec08e89ea037bc5271caaa82c69bd7eefba4fc293f92de1b1213e5e",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-console-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-console-l1-2-0.dll",
+      "bytes": 21976,
+      "sha256": "05c7a25f72f40225ccf8af947a8e90580656228636d462a520b503de2c8e0aad",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-console-l1-2-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-datetime-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "c541697c3e9086c6483e88d9cc8fe8a2efc74f663da0b0662babc04d3f79000f",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-datetime-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-debug-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "fed0c40d172de4de52dc2230c5c92fd6bc8e8553619d5bb5240dcc4f025dc8cf",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-debug-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-errorhandling-l1-1-0.dll",
+      "bytes": 21976,
+      "sha256": "cdae6e7d24d4ca4b491d483135740cc60f2dfc74dd2e01779e655b9f8f85a337",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-errorhandling-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-fibers-l1-1-0.dll",
+      "bytes": 21992,
+      "sha256": "cbb6cb7ff25363b07647ea05d01f2881837d50b04bba4debe875a4aa3a307c52",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-fibers-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-fibers-l1-1-1.dll",
+      "bytes": 22872,
+      "sha256": "5ef70308bcca628ce6b0e2856b15b1c7ae340c3f9bbbc4c1071d8c191a34a5c3",
+      "owner": "conda:ucrt@10.0.26100.0:631f722c",
+      "target": "api-ms-win-core-fibers-l1-1-1.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-file-l1-1-0.dll",
+      "bytes": 26088,
+      "sha256": "02c96dde747ea574fecfb93d43dd9829236a1b22f0eb5513c0e0b27b7bdac934",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-file-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-file-l1-2-0.dll",
+      "bytes": 21976,
+      "sha256": "682968c7640a1d55485b7c10dfdaf520b1e1c73a8be267853e80be893be3fb49",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-file-l1-2-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-file-l2-1-0.dll",
+      "bytes": 21976,
+      "sha256": "45a0eb1b83f448054536d3aa628393b7418477897e841c66384ecc7f4f18c2f2",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-file-l2-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-handle-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "9986a39b7f2e067ee7d1f2b3db0b940e2b75900152f099ff41cce8ddd47565e0",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-handle-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-heap-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "54b51444c8b6c9342fd20f5a5b0909a906acd0bdc9cf4d70134d5f8cffbe3209",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-heap-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-interlocked-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "ff341ef2c2c389d44bbb1c919ff42ec360015985c0dae2ac760ac5acad0cb1d1",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-interlocked-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-kernel32-legacy-l1-1-1.dll",
+      "bytes": 22888,
+      "sha256": "5200b16cb2ddc61cfc07373a9a84aa85a3ab50806ca96c879c883275832944c1",
+      "owner": "conda:ucrt@10.0.26100.0:631f722c",
+      "target": "api-ms-win-core-kernel32-legacy-l1-1-1.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-libraryloader-l1-1-0.dll",
+      "bytes": 22008,
+      "sha256": "6cbc929f814d7e931e0f6f510da1696b059c53bf66934a68d218d3342ce4a289",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-libraryloader-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-localization-l1-2-0.dll",
+      "bytes": 21984,
+      "sha256": "3ddbcd067d495845b7134f30bcea031ad558df4acb562b2f3190941913227158",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-localization-l1-2-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-memory-l1-1-0.dll",
+      "bytes": 21976,
+      "sha256": "bfa2145c3d615540193a41c9f9605018062307e9fcf1665c390f0034178ecb4a",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-memory-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-namedpipe-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "4fcb066de08f48a490e7d50417469ab3099b4a7fe318a8845e4ec9b3e3fd52be",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-namedpipe-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-processenvironment-l1-1-0.dll",
+      "bytes": 22008,
+      "sha256": "f3a31997c715dec8a6857d87be217c7acb893839156838ba20b5ef818ad5c9b1",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-processenvironment-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-processthreads-l1-1-0.dll",
+      "bytes": 21976,
+      "sha256": "470e9d04a1aa19c6b84b5b10cb055ff55caabe0f45d63090865c196b66c295f5",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-processthreads-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-processthreads-l1-1-1.dll",
+      "bytes": 21976,
+      "sha256": "4e57ceffbc2ef0e4dbfb92854756f97d2b34d9e29db16f46c476ed360b92b1cc",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-processthreads-l1-1-1.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-profile-l1-1-0.dll",
+      "bytes": 21992,
+      "sha256": "0a3a017ca780353d56157682edda4cc3a19a236625fe0f2356faf635cd4f6ace",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-profile-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-rtlsupport-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "243c00a13c8fd6d764ebf22ec5a93492043949616561697b776fe9f62360665b",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-rtlsupport-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-string-l1-1-0.dll",
+      "bytes": 21976,
+      "sha256": "be439f71ed591f8f65b8894e84569cf3cc3363d88536e49bdd998e49e069d0e8",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-string-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-synch-l1-1-0.dll",
+      "bytes": 21976,
+      "sha256": "83e86bee356668319f4115846ed9a571cdb37cd8a0eb036fc2a960bdeafcb526",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-synch-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-synch-l1-2-0.dll",
+      "bytes": 21976,
+      "sha256": "718bbb66ed24612c40f415ef11f07db287b1bdf0b130667689d1cdce3a1bee29",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-synch-l1-2-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-sysinfo-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "8e28db596d46ca22f16d8825bebc9406cd01d5efe4233a2eaa6b450473741766",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-sysinfo-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-sysinfo-l1-2-0.dll",
+      "bytes": 22912,
+      "sha256": "8a0900788859d0eb51c2f48f50cc6ed376a120b518100fa20e11d7702ccde260",
+      "owner": "conda:ucrt@10.0.26100.0:631f722c",
+      "target": "api-ms-win-core-sysinfo-l1-2-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-timezone-l1-1-0.dll",
+      "bytes": 21976,
+      "sha256": "b29f3f250eed6d05bc000a1020ca65215838c3733b78293dfca459031df575f8",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-timezone-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-core-util-l1-1-0.dll",
+      "bytes": 21992,
+      "sha256": "4f79b6338f8438e63627b174d5b1bee2d2dcfc40a6119221317fe3f0d8b1e1a0",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-core-util-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-conio-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "7320687be8b742cd70ac0e5f1b0a854502063f9b291147785aa7355a38de162d",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-conio-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-convert-l1-1-0.dll",
+      "bytes": 26080,
+      "sha256": "3550d96592baf95f0be865503d98f47c8c8d4d36b01190589bb7bd08585c739d",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-convert-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-environment-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "167a2b52964458b16aaa166de281e52c35dfe920380c9c7783a06678b665b2ba",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-environment-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-filesystem-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "255c9a44ed1106c673821ed4ef165788d6bcc94b2924d0fa1d36af4fc2eb0b9c",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-filesystem-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-heap-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "dd4be34d6de584a82f12803b1be98afd48bf2f82e87b8cb77141b41ea6393cd5",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-heap-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-locale-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "93fe93380fae70f12ebe85b92e5326321400861167ee0ac858a81d2f7fa37d4b",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-locale-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-math-l1-1-0.dll",
+      "bytes": 30184,
+      "sha256": "6ea15153e8948e7fc9e0aee7cfc5cb7b9b8f872f94e6714bc510b9bc7291ad9b",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-math-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-multibyte-l1-1-0.dll",
+      "bytes": 30176,
+      "sha256": "edfb4fcd63eef1adebf52c0fc7e6029883201c97be4d9bed9bf203d0ff595301",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-multibyte-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-private-l1-1-0.dll",
+      "bytes": 75232,
+      "sha256": "558ce3eb8b6fe5752008385e225df7a74eae6e8fef74ff0b23ee4ee7e21f87dd",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-private-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-process-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "d92c5cd5e4e3738ac13e28e55de12e6da1ffda6f8e1c7687e0a0b4092c6b3462",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-process-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-runtime-l1-1-0.dll",
+      "bytes": 26104,
+      "sha256": "1aec90818ef928b5b6ca252e2ac3ffe4ecc1f169251eba720d0035dcb22ba322",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-runtime-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-stdio-l1-1-0.dll",
+      "bytes": 26080,
+      "sha256": "13328be331666a312d58b6a1b537f8b9ac8922de02e22ddcd0ec84a550e59715",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-stdio-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-string-l1-1-0.dll",
+      "bytes": 26072,
+      "sha256": "e45dd01a9f6edcf992f3c74c0eb41178851490db9123a4c738497fbf4f73ec0e",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-string-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-time-l1-1-0.dll",
+      "bytes": 21984,
+      "sha256": "0cf285ef569249aaa3fb95de1793fc01895f6805ada65d801302f430b62a5153",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-time-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/api-ms-win-crt-utility-l1-1-0.dll",
+      "bytes": 22000,
+      "sha256": "d2a27ff370b4f5c87e5475573d23ee261825a9cd1dd55ee0551a361f61414209",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "api-ms-win-crt-utility-l1-1-0.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/boost_iostreams.dll",
+      "bytes": 73216,
+      "sha256": "d3eb7c2d212041c13f5d864f19e23960d1366ec895f8103ef7ae09f2e08bd61c",
+      "owner": "conda:libboost@1.86.0:70471228",
+      "target": "boost_iostreams.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/boost_numpy312.dll",
+      "bytes": 50176,
+      "sha256": "eb5f0b282d10cb264a8efcc7a9459ecfaa26df623e8dd27da38a912433986928",
+      "owner": "conda:libboost-python@1.86.0:010df0fd",
+      "target": "boost_numpy312.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/boost_python312.dll",
+      "bytes": 200704,
+      "sha256": "97ab74314c9f3ed2a337552804ff68587bd84fdf5acdb94ee402a06ac8d3ec8d",
+      "owner": "conda:libboost-python@1.86.0:010df0fd",
+      "target": "boost_python312.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/boost_serialization.dll",
+      "bytes": 218624,
+      "sha256": "3a5bfcdc3cd586d8700fad6bcfc532c75917bb3574779393167e4989d622b1e0",
+      "owner": "conda:libboost@1.86.0:70471228",
+      "target": "boost_serialization.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/bzip2.dll",
+      "bytes": 83224,
+      "sha256": "d08d7b8e97fcf4e4d94b8fdc914d379c928a6949a24083faf0538150d6bb2036",
+      "owner": "conda:bzip2@1.0.8:7dacf977",
+      "target": "bzip2.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/charset.dll",
+      "bytes": 24904,
+      "sha256": "a3ae42aded452a43703db8f00638550efb3a1013cf8267c475cea4c668e3ab8d",
+      "owner": "conda:libiconv@1.18:e293c6cc",
+      "target": "charset.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/concrt140.dll",
+      "bytes": 324720,
+      "sha256": "8bf82e025265d30fb25fda7161f8e8d73b96f83fde10f95b0fc4887bd6b09b5e",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "concrt140.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/expat.dll",
+      "bytes": 280904,
+      "sha256": "76cbfa029e70b8107cefcd51d9898d6feeea389cd100e6a03291caec01833698",
+      "owner": "conda:libexpat@2.8.1:f2a363de",
+      "target": "expat.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/ffi-7.dll",
+      "bytes": 41288,
+      "sha256": "b667673cfbd4f89b1f9d907dc71b0cafe8e2427802cacab68ad2fcdb895a80f7",
+      "owner": "conda:libffi@3.4.8:a958d9ea",
+      "target": "ffi-7.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/ffi-8.dll",
+      "bytes": 41288,
+      "sha256": "70b71b7eb4067b9004624433de5d657ca30a34d541b457f8e2225aea22c93009",
+      "owner": "conda:libffi@3.4.8:a958d9ea",
+      "target": "ffi-8.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/ffi.dll",
+      "bytes": 41288,
+      "sha256": "de64ed1334d84d617cc47a9037b334740e930d75015a768e2825f474782aa839",
+      "owner": "conda:libffi@3.4.8:a958d9ea",
+      "target": "ffi.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/hwloc-15.dll",
+      "bytes": 287048,
+      "sha256": "0c202bc80afe37c67907a41fec57e205fa04117c3713416f49e4fb745ec44b7d",
+      "owner": "conda:libhwloc@2.12.1:61f30bcc",
+      "target": "hwloc-15.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/iconv.dll",
+      "bytes": 1098568,
+      "sha256": "dde13ae784d3b916ccde2e676f7caa8dd96f23d7e20764fe1b0a8de6424dbd0d",
+      "owner": "conda:libiconv@1.18:e293c6cc",
+      "target": "iconv.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libblas.dll",
+      "bytes": 108032,
+      "sha256": "c2567feb14c731f582929f36be6d56b5f93848b9084c9ab234ed3720d8a09ee3",
+      "owner": "conda:libblas@3.11.0:0c0e5af5",
+      "target": "libblas.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libbz2.dll",
+      "bytes": 83216,
+      "sha256": "25a4aae35dd89709620106db311af5bca7c868182b961e106a895ae14d2fc98a",
+      "owner": "conda:bzip2@1.0.8:7dacf977",
+      "target": "libbz2.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libcrypto-3-x64.dll",
+      "bytes": 7425536,
+      "sha256": "23263b220487605daaa64aba45253603f837e5f90a31dde2409d0bb8f22e8582",
+      "owner": "conda:openssl@3.6.2:c59f7363",
+      "target": "libcrypto-3-x64.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libdftd4-4.dll",
+      "bytes": 910606,
+      "sha256": "691f3b2f803ac1e4a8a5050561c5cfe6cb0c9e0137437fac22f1a70f133be1f4",
+      "owner": "conda:dftd4@4.2.0:43e4d840",
+      "target": "libdftd4-4.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libexpat.dll",
+      "bytes": 280904,
+      "sha256": "459e5fcb64a0af1dd28f6aa0077654103a4bae48114bda2081ed6aade77332b2",
+      "owner": "conda:libexpat@2.8.1:f2a363de",
+      "target": "libexpat.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libgcc_s_seh-1.dll",
+      "bytes": 1023033,
+      "sha256": "3c4cc89e1df3ac13be38c6947c7b47b3d46ffa9998f15a57ebb368d24024796e",
+      "owner": "conda:libgcc@16.2.0:8dcb7a87",
+      "target": "libgcc_s_seh-1.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libgfortran-5.dll",
+      "bytes": 14164166,
+      "sha256": "ca362c35ded9d4e3f63d81ef10a9ff2af62cee08e8afd5049bdb9612399cd11e",
+      "owner": "conda:libgfortran5@16.2.0:8f10a936",
+      "target": "libgfortran-5.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libgomp-1.dll",
+      "bytes": 1921803,
+      "sha256": "b967ef7306b8c6017faa862038adb8b65fd4ce423e31e400e5767b0787d1bf07",
+      "owner": "conda:libgomp@16.2.0:f693b6ab",
+      "target": "libgomp-1.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libimalloc.dll",
+      "bytes": 17288,
+      "sha256": "901352c5e3594196e8565095544f5464ae73bc7efb54218172e6f42cf9075a45",
+      "owner": "conda:mkl@2025.0.0:1b202086",
+      "target": "libimalloc.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/libiomp5md.dll",
+      "bytes": 1310600,
+      "sha256": "3e69ef3e52deff22ba0e44c36e1198dcae1657098e63a2d550842b717eb59175",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "libiomp5md.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/libiomp5md_db.dll",
+      "bytes": 125320,
+      "sha256": "2583e2b8ce2d7f49144617df736a90bf49ee390a45b2c303eff0c8f411a75730",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "libiomp5md_db.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/libiompstubs5md.dll",
+      "bytes": 43912,
+      "sha256": "1bf4956f82cd69deb663af4531716a44be73df5c0f9c263096f3687bb7e76d37",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "libiompstubs5md.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/liblapack.dll",
+      "bytes": 180736,
+      "sha256": "91e7e84358229a902aca9efdd6b87e5bdd1528f1f7c9935bd490e2ecf24b0d8a",
+      "owner": "conda:liblapack@3.11.0:b7d7f0bd",
+      "target": "liblapack.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/liblzma.dll",
+      "bytes": 188416,
+      "sha256": "c8bbdf05499afa44fd862484b4f98f2855792ff62ea05e10b7cdf3020f999e3b",
+      "owner": "conda:xz@5.8.2:2bd1be40",
+      "target": "liblzma.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libmctc-lib-0.dll",
+      "bytes": 2186343,
+      "sha256": "02c3b8d645af7c2152bf473128a4f14d812903ec715f251df6033173f551d51d",
+      "owner": "conda:mctc-lib@0.5.2:31633667",
+      "target": "libmctc-lib-0.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libmulticharge-0.dll",
+      "bytes": 522170,
+      "sha256": "5b692fad0b26a41a6008fd4a1fc3b7933a9764144f751cd10dc546660a5e30d2",
+      "owner": "conda:multicharge@0.5.0:9596e7fe",
+      "target": "libmulticharge-0.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libquadmath-0.dll",
+      "bytes": 1271016,
+      "sha256": "f71e8f1ad9146e76983b632ef55b38ca7a8fa42691855f2b2550f5839c6cb4c3",
+      "owner": "conda:libgcc@16.2.0:8dcb7a87",
+      "target": "libquadmath-0.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libs-dftd3-1.dll",
+      "bytes": 3529203,
+      "sha256": "b48b3fd9fbb348087290927522925bb71a213891a91ccf1c74d4d23c601f682f",
+      "owner": "conda:simple-dftd3@1.4.0:b4993bab",
+      "target": "libs-dftd3-1.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libssl-3-x64.dll",
+      "bytes": 1319936,
+      "sha256": "9b9bbb55566202928ad79cf3e2a4e95d49c74dd351edfafe3625bb2b2b284c69",
+      "owner": "conda:openssl@3.6.2:c59f7363",
+      "target": "libssl-3-x64.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libtblite-0.dll",
+      "bytes": 3104045,
+      "sha256": "7d557b6293bf9808e214e71b7cac0874d794b05d2cad296658a002bcda5a6dcf",
+      "owner": "conda:tblite@0.7.0:5a05b2e6",
+      "target": "libtblite-0.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libtoml-f-0.dll",
+      "bytes": 978633,
+      "sha256": "5b8e9fff02da47e635bc630a28de31bded53a6ef4cccc759e2437648a4804236",
+      "owner": "conda:toml-f@0.5.2:31633667",
+      "target": "libtoml-f-0.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libwinpthread-1.dll",
+      "bytes": 63150,
+      "sha256": "9e00ba6d980626b752b698f690709c321a5eab6eb442f352bb8ab90e385f2bf5",
+      "owner": "conda:libwinpthread@12.0.0.r4.gg4f2fc60ca:fce44681",
+      "target": "libwinpthread-1.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/libxml2.dll",
+      "bytes": 1325384,
+      "sha256": "bd1197e7a3ab1e6d13d720b19c7719e97528a0661defbf640bd3d926425d3221",
+      "owner": "conda:libxml2@2.13.9:78376a8d",
+      "target": "libxml2.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/msvcp140.dll",
+      "bytes": 557648,
+      "sha256": "8f141b4454fa78db34bc1f28c571b4da0e00cd2c43f7ad0e282f313036826aae",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "msvcp140.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/msvcp140_1.dll",
+      "bytes": 35952,
+      "sha256": "4d547db5eb3aabfb1bbe25604c37fe1c253fba3bf25fae654d78d7cd44b7dd3d",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "msvcp140_1.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/msvcp140_2.dll",
+      "bytes": 280176,
+      "sha256": "8f481c24983fe695e29df1bff55a44072a1c96927322e70844ef5e6a58ecf8d1",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "msvcp140_2.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/msvcp140_atomic_wait.dll",
+      "bytes": 50288,
+      "sha256": "44843c7541b75e30f8ff191bf5d5785a0885f9d694f6e10e545c3346acd5d0c3",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "msvcp140_atomic_wait.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/msvcp140_codecvt_ids.dll",
+      "bytes": 31880,
+      "sha256": "2a61faa8f81e397e04e8afcd82be7ca95309b144f148b2bd8e6a1e93bef04bda",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "msvcp140_codecvt_ids.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/omptarget.dll",
+      "bytes": 1330056,
+      "sha256": "ac362b364ee549e7df64dc1ecc429438599e12dc4ac32473f32534f1f2e5fee0",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "omptarget.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/omptarget.rtl.level0.dll",
+      "bytes": 1327496,
+      "sha256": "c82c6bfccbdc7a339a4aad92bdc89e4c1dd81834fa7c6fa9ccbe2102f9ed934b",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "omptarget.rtl.level0.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/omptarget.rtl.opencl.dll",
+      "bytes": 1192840,
+      "sha256": "f6a9a9934ceff765c80ed71721d3021a2e2b66fc749eca96da5154e4217f196b",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "omptarget.rtl.opencl.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/omptarget.rtl.unified_runtime.dll",
+      "bytes": 968072,
+      "sha256": "14bdfe0e7ead1a252a1c1dae290b973324a44e0f275abdfcce4c8a256e5d26ef",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "omptarget.rtl.unified_runtime.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/omptarget.sycl.wrap.dll",
+      "bytes": 23432,
+      "sha256": "7ab331ddb55e90d1c4ef93be222f4ca9c5de7203c12dc22160b5d919cf49b265",
+      "owner": "conda:intel-openmp@2025.0.0:739926f5",
+      "target": "omptarget.sycl.wrap.dll",
+      "action": "omit-intel"
+    },
+    {
+      "path": "python/Library/bin/openblas.dll",
+      "bytes": 28410880,
+      "sha256": "d0073463ce449d6bb4a3f720b1ebf8a858b49ca2e376271585a7f75f6a1795d8",
+      "owner": "conda:libopenblas@0.3.34:3d835683",
+      "target": "openblas.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/sqlite3.dll",
+      "bytes": 1655112,
+      "sha256": "735366a15ab36f1efae8e78899aa0996c9ec39526d56ee20f27f26a69d903646",
+      "owner": "conda:sqlite@3.51.2:3e3915a3",
+      "target": "sqlite3.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/tbb12.dll",
+      "bytes": 351048,
+      "sha256": "b961bd3d24cc35c2ee6940ce94f9a1e09aa8a2bfe9c7a6cd972b1badc2c17995",
+      "owner": "conda:tbb@2022.3.0:7f6d5341",
+      "target": "tbb12.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/tbbbind_2_5.dll",
+      "bytes": 36680,
+      "sha256": "b52e1ccc2b2d3ed9cbd6d202e8046618598629da224d2b1d9d081caf80115d74",
+      "owner": "conda:tbb@2022.3.0:7f6d5341",
+      "target": "tbbbind_2_5.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/tbbmalloc.dll",
+      "bytes": 124744,
+      "sha256": "595689cd9be77fff067bd0df1f3d44d1090846be346ea337efd40738637d441e",
+      "owner": "conda:tbb@2022.3.0:7f6d5341",
+      "target": "tbbmalloc.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/tbbmalloc_proxy.dll",
+      "bytes": 43336,
+      "sha256": "9cb62a4442ad383cf8b40cd6dc22f718a6f6d7e996ac1af52b95f1d559b5e8be",
+      "owner": "conda:tbb@2022.3.0:7f6d5341",
+      "target": "tbbmalloc_proxy.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/tcl86t.dll",
+      "bytes": 1842504,
+      "sha256": "d09bfdef21e50ac087cdfca28e77e7932f88dfcc7593b12d3d92c6522e6ddbea",
+      "owner": "conda:tk@8.6.15:4b1d53b3",
+      "target": "tcl86t.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/tk86t.dll",
+      "bytes": 1582408,
+      "sha256": "3757ebc3a3950e78798e966989b5030a312ba7dbe5d52878d41a07eeccd3b92a",
+      "owner": "conda:tk@8.6.15:4b1d53b3",
+      "target": "tk86t.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/ucrtbase.dll",
+      "bytes": 1123808,
+      "sha256": "fbed69a52fdcf571dd37fe4cc63cb86ed3732b5b998807f14968788027c00754",
+      "owner": "conda:ucrt@10.0.22621.0:e6bf8240",
+      "target": "ucrtbase.dll",
+      "action": "system-ucrt"
+    },
+    {
+      "path": "python/Library/bin/vcamp140.dll",
+      "bytes": 418896,
+      "sha256": "009cfafab5d38e0e10f827f8baf09373005ba93c8e89922c5e6937328ff5fc3c",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "vcamp140.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/vccorlib140.dll",
+      "bytes": 352336,
+      "sha256": "6fbc46f26f0ed1d6ea837890e60bb2c5b5cf7e1df7c66d16267b8a9fd3545f9c",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "vccorlib140.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/vcruntime140.dll",
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "vcruntime140.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/vcruntime140_1.dll",
+      "bytes": 49744,
+      "sha256": "963e45edd064545962e216c12d68071ced94dc8e11862a18f07f14eb2690a57c",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "vcruntime140_1.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/vcruntime140_threads.dll",
+      "bytes": 38480,
+      "sha256": "18186dd0af0e8cb6b0111adb585ad70dd555c1c6950eca7ba3a4900558d6eb37",
+      "owner": "conda:vc14_runtime@14.44.35208:7012ceea",
+      "target": "vcruntime140_threads.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/yaml.dll",
+      "bytes": 103936,
+      "sha256": "c629f1a8661e068b362fe57088d32bd70674d78b65efe350161970fc04ee15d3",
+      "owner": "conda:yaml@0.2.5:21abebe3",
+      "target": "yaml.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/zlib.dll",
+      "bytes": 101704,
+      "sha256": "1516c687787a052317a612afe60d522582fd333cb1075bb3e8387ffb60bff0c2",
+      "owner": "conda:libzlib@1.3.1:ff10648b",
+      "target": "zlib.dll",
+      "action": "keep"
+    },
+    {
+      "path": "python/Library/bin/zstd.dll",
+      "bytes": 673608,
+      "sha256": "9c65f8f58e132a83a1da8c018c2d62f774e5a33e9fd511f13941986870662357",
+      "owner": "conda:zstd@1.5.7:46a4d2a0",
+      "target": "zstd.dll",
+      "action": "keep"
+    }
+  ],
+  "requiredPackagedFiles": [
+    {
+      "path": "_internal/numpy.libs/libscipy_openblas64_-63c857e738469261263c764a36be9436.dll",
+      "bytes": 20415488,
+      "sha256": "63c857e738469261263c764a36be9436ebdeaa272e340a828f42047a97131080"
+    },
+    {
+      "path": "_internal/numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+      "bytes": 575056,
+      "sha256": "a4c2229bdc2a2a630acdc095b4d86008e5c3e3bc7773174354f3da4f5beb9cde"
+    },
+    {
+      "path": "_internal/scipy.libs/libscipy_openblas-64eda39e79589aedb16f58e5547eb599.dll",
+      "bytes": 20260864,
+      "sha256": "64eda39e79589aedb16f58e5547eb599f0b5855505d56b9d40022e2eee354a0b"
+    }
+  ],
+  "sourceLockParents": [
+    {
+      "lockId": "native-0169b0478f2d6c01",
+      "lock": {
+        "bytes": 57707,
+        "sha256": "48601822386484339346c1f88294046f9d93ba102892df30aaab2d918c3549a3"
+      },
+      "inventory": {
+        "bytes": 856674,
+        "sha256": "cdfcfe0a94f225b589a588b78787ee78b11cb8a1c50eb055036437990514c09f"
+      }
+    },
+    {
+      "lockId": "native-0169b0478f2d6c01-public-v1",
+      "lock": {
+        "bytes": 59309,
+        "sha256": "00e66f2955df5957d074322ddfa9430ee983a83f53a3fcbdc9b4924995437801"
+      },
+      "inventory": {
+        "bytes": 858208,
+        "sha256": "50c6b76ea110675870bbcf048c1a44b13ead97cc3099f22ea03dfdda879963fc"
+      }
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+.model-viewport{display:grid;position:relative;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(300px,1fr) auto;min-height:340px;height:100%;width:100%;min-width:0;overflow:hidden;background:#f8fafb;border:1px solid #dce7e1;border-radius:9px;box-sizing:border-box}
+.model-viewport-stage{position:relative;grid-column:1;grid-row:1;min-width:0;min-height:300px;width:100%;height:100%}
+.model-viewport-canvas,.model-viewport-interaction{position:absolute;inset:0;overflow:hidden}
+.model-viewport-canvas>canvas{width:100%;height:100%}
+.model-viewport-interaction{z-index:2;touch-action:none;cursor:default;user-select:none}
+.model-viewport[data-active=false] .model-viewport-interaction{pointer-events:none}
+.model-viewport-interaction[data-gesture=camera],.model-viewport-interaction[data-gesture=fragment]{cursor:grabbing}
+.model-viewport-interaction[data-gesture=box]{cursor:crosshair}
+.model-selection-box{position:absolute;z-index:9;pointer-events:none;box-sizing:border-box;border:1px solid #24977b;background:#2f9c7929}
+.model-element-cursor{position:absolute;pointer-events:none;border:1px solid #c5d9ce;border-radius:5px;background:#fffffff2;color:#256d51;font:bold 14px/1.4 system-ui;padding:1px 5px;box-shadow:0 1px 4px #38594822}
+.model-empty-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#526961;font-size:var(--ui-secondary-size,14px);pointer-events:none;padding:30px;text-align:center}
+.model-viewport-error{position:absolute;top:12px;left:12px;right:12px;z-index:10;background:#fff3efeb;color:#9b4c3c;border:1px solid #efd3c8;border-radius:6px;padding:8px;font-size:var(--ui-secondary-size,14px);pointer-events:none}
+.model-viewport-error>.dismissible-notice-close{pointer-events:auto}
+.model-viewport-help{grid-column:1/-1;grid-row:2;min-width:0;min-height:29px;box-sizing:border-box;display:flex;align-items:center;gap:8px;border-top:1px solid #e0e8e3;padding:5px 9px;font-size:calc(11px * var(--ui-font-scale,1));color:#526961;line-height:1.45;background:#fcfefc}.model-viewport-help>.model-viewport-unit{margin-left:auto}
+.model-viewport[data-viewport-narrow=true]>.model-viewport-help{height:43px;min-height:43px;max-height:43px;overflow:hidden;padding:4px 5px;gap:4px}
+.model-viewport[data-viewport-narrow=true] .model-viewport-help-text{min-width:0;line-height:16px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-height:32px;overflow:hidden;overflow-wrap:anywhere}
+.model-viewport[data-viewport-narrow=true]>.model-viewport-help:focus-visible{outline:2px solid #7db29a;outline-offset:-2px}
+.model-measurement{position:absolute;pointer-events:none;background:transparent;color:#226aca;border:0;padding:1px 2px;font-size:var(--ui-small-size,13px);z-index:3;transform:translate(-50%,-50%);white-space:nowrap}
+.model-measurement-record,.model-workspace button.model-measurement-record,.model-workspace button.model-measurement-record[aria-pressed=true]{position:absolute;z-index:4;transform:translate(-50%,-50%);min-height:0;border:1px solid transparent;border-radius:4px;padding:2px 4px;background:transparent;box-shadow:none;line-height:1.35;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;touch-action:none;text-shadow:0 1px 2px #fff,0 -1px 2px #fff}
+.model-measurement-record:is(:hover,:focus-visible),.model-workspace button.model-measurement-record:is(:hover,:focus-visible):not(:disabled){background:#ffffffe8;border-color:currentColor;outline:1px solid currentColor;outline-offset:1px}.model-measurement-record:disabled{opacity:.55;pointer-events:none}
+.model-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.model-bond-rope{position:absolute;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;overflow:visible}.model-bond-rope line{stroke:#168bd2;stroke-width:2;stroke-dasharray:6 4;stroke-linecap:round}.model-viewport-interaction[data-gesture=bond-rope]{cursor:crosshair}
+.model-hover-atom,.model-workspace button.model-hover-atom,.model-workspace button.model-hover-atom:is(:hover,:focus-visible){position:absolute;z-index:6;pointer-events:none;min-height:0;padding:2px 5px;border-radius:4px;background:#fffffff0;color:#153846;font:600 13px/1.4 system-ui;border:1px solid #9fb6c1;box-shadow:none;white-space:nowrap}
+.model-hover-bond{font-variant-numeric:tabular-nums;white-space:pre;text-align:center;width:max-content;max-width:none;transform:translateX(-50%)}
+.model-state-marker,.model-workspace button.model-state-marker{position:absolute;z-index:5;transform:translate(-50%,-50%);display:grid;place-items:center;width:17px;height:17px;min-height:0;padding:0;border:1px solid currentColor;border-radius:50%;background:#fffef9eb;font:bold 12px/1 system-ui;color:#946b00;box-shadow:0 1px 2px #253e4229;touch-action:none;cursor:pointer}
+.model-state-marker[data-state-kind=selection],.model-workspace button.model-state-marker[data-state-kind=selection]{background:#ffe87ad9}.model-state-marker[data-state-kind=freeze],.model-workspace button.model-state-marker[data-state-kind=freeze]{color:#236dcc;background:#ecf5ffeb}.model-state-marker[data-state-kind=scan],.model-workspace button.model-state-marker[data-state-kind=scan]{color:#b85424;background:#fff1e6eb}
+.model-state-marker>svg{display:block;flex:none;width:13px;height:13px;pointer-events:none}.model-state-marker[data-state-kind=freeze]>svg{stroke:#236dcc;fill:none}
+.model-state-marker-detail{display:none;position:absolute;left:21px;top:-2px;width:max-content;max-width:180px;padding:3px 6px;background:#fffffff2;border:1px solid currentColor;border-radius:4px;font:500 12px/1.4 system-ui;pointer-events:none}
+.model-state-marker:is(:hover,:focus-visible) .model-state-marker-detail{display:block}.model-state-marker:is(:hover,:focus-visible){outline:1px solid currentColor;outline-offset:2px}
+.model-state-marker[data-removable=false]{cursor:help}
+.model-viewport .model-coordinate-selected,.model-viewport [data-coordinate-selected=true]{outline:2px solid #dfbb39;outline-offset:2px;border-radius:4px}
+.model-capture-marker{position:absolute;z-index:5;transform:translate(-50%,-50%);width:26px;height:26px;box-sizing:border-box;border:2px solid #b65b28;border-radius:50%;background:#fff8ebe8;color:#923f16;display:grid;place-items:center;font:bold 14px/1 system-ui;pointer-events:none}
+.model-problem-atom-marker{position:absolute;z-index:5;transform:translate(-50%,-50%);width:18px;height:18px;box-sizing:border-box;border:1px solid #d83b3b;border-radius:50%;background:#fff6f4f2;color:#d83b3b;display:grid;place-items:center;font:bold 14px/1 system-ui;pointer-events:none;user-select:none}
+.model-capture-status{position:absolute;right:10px;top:8px;z-index:3;pointer-events:none;background:#fff8edeb;color:#923f16;border:1px solid #d9aa82;border-radius:5px;padding:3px 6px;font-size:var(--ui-small-size,13px)}
+.model-physical-axes{position:absolute;right:8px;bottom:8px;width:96px;height:96px;z-index:3;pointer-events:none;border:1px solid #dce7e1;border-radius:8px;background:#ffffffe0}.model-physical-axes line{stroke-width:2}.model-physical-axes text{font:600 13px system-ui;text-anchor:middle}
+.model-metadata-overlay{position:absolute;left:10px;bottom:9px;right:10px;pointer-events:none;z-index:3;max-width:max-content;background:#f8fafb;border:1px solid #cbdedb;border-radius:7px;padding:7px 10px;font-size:var(--ui-secondary-size,14px)}
+.model-metadata-overlay .structure-summary-nine{margin:0;padding:0;border:0;background:none;box-shadow:none;display:flex;flex-direction:column;gap:2px}
+.model-metadata-overlay .structure-source-name{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:inherit}
+.model-metadata-overlay .structure-facts-nine{display:flex;flex-wrap:wrap;gap:6px 10px;margin:0}
+.model-metadata-overlay .structure-facts-nine>div{display:flex;align-items:baseline;gap:4px;min-width:0;padding:0;background:none;border:0}
+.model-metadata-overlay :is(strong,span,small){font-size:inherit}
+.model-metadata-overlay .structure-facts-nine>div>span{color:#64766c}
+.model-metadata-overlay .structure-facts-nine :is(span,strong,small){display:inline;line-height:1.2;margin:0}
+.model-metadata-overlay .structure-source-name{line-height:1.2;margin:0}
+/* A very narrow canvas must show the molecule, not a vertically wrapped mass
+   card. Keep the complete summary accessible, with only its formula visual. */
+.model-viewport[data-viewport-narrow=true] .model-metadata-overlay{max-width:calc(100% - 20px);padding:2px 4px;overflow:hidden}
+.model-viewport[data-viewport-narrow=true] .model-metadata-overlay .structure-summary-nine{min-height:0;padding:0;margin:0;gap:0}
+.model-viewport[data-viewport-narrow=true] .model-metadata-overlay :is(.structure-source-name,.structure-facts-nine>div:not(.structure-formula-nine),.structure-formula-nine>span){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.model-viewport[data-viewport-narrow=true] .model-metadata-overlay .structure-formula-nine{min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.model-viewport .model-metadata-overlay.model-metadata-inline{right:auto;width:max-content;max-width:calc(100% - 20px);padding:7px 10px;border:1px solid #cbdedb;border-radius:7px;background:#f8fafb;gap:12px;color:#176e69;font-size:var(--ui-secondary-size,14px);font-weight:600;line-height:1.35;white-space:normal;flex-wrap:wrap;box-shadow:none}
+.model-viewport .model-metadata-inline>span:first-child{font-size:calc(var(--ui-secondary-size,14px) + 1px);font-weight:700}
+.model-viewport[data-viewport-narrow=true] .model-metadata-overlay.model-metadata-inline{padding:5px 8px;gap:7px 10px}
+/* Desktop tools share the first screen with the canvas. 334px reserves a
+   genuine 300px drawing area plus its footer/borders; resize stays available. */
+.app-shell.desktop-mode .model-workspace{gap:5px}
+.app-shell.desktop-mode .model-workspace>.model-observation-alignment{margin:0}
+.app-shell.desktop-mode .model-workspace>.model-stage{height:clamp(334px,calc(100dvh - 500px),640px);min-height:334px;flex-shrink:0}
+.app-shell.desktop-mode .model-workspace[data-tool-portal=true]>.model-stage{height:auto;min-height:230px;flex:1}
+@media(max-height:760px){.app-shell.desktop-mode .model-workspace{gap:3px}.app-shell.desktop-mode .model-element-colors>summary{line-height:1.25}}
+@media(max-width:700px){.model-viewport{min-height:300px}}

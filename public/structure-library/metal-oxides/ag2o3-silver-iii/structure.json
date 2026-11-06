@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "entryId": "ag2o3-silver-iii",
+  "structure": {
+    "id": "ag2o3-silver-iii",
+    "name": "氧化银(III)",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "ag2o3-silver-iii:atom:1",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 12.2680177,
+        "y": 1.389925,
+        "z": 1.831900000000001
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:2",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 0.6009823000000014,
+        "y": 9.100075,
+        "z": 1.8319000000000007
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:3",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 3.8182323000000005,
+        "y": 4.012425,
+        "z": 2.7478500000000006
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:4",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 9.050767700000002,
+        "y": 6.477575,
+        "z": 2.747850000000001
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:5",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 12.268017700000001,
+        "y": 6.634925000000001,
+        "z": 1.1574714136010414e-15
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:6",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 0.6009823000000006,
+        "y": 3.855075,
+        "z": 2.728548154631098e-16
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:7",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 3.8182323000000014,
+        "y": 9.257425000000001,
+        "z": 0.9159500000000008
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:8",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 9.0507677,
+        "y": 1.2325749999999993,
+        "z": 0.9159500000000007
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:9",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 5.8335177,
+        "y": 1.389925,
+        "z": 4.4230829906896574e-16
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:10",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 7.035482300000001,
+        "y": 9.100075,
+        "z": 9.880179299951854e-16
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:11",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 10.2527323,
+        "y": 4.012425,
+        "z": 0.9159500000000009
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:12",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 2.616267700000001,
+        "y": 6.477575,
+        "z": 0.9159500000000006
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:13",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 5.833517700000001,
+        "y": 6.634925000000001,
+        "z": 1.8319000000000007
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:14",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 7.0354823,
+        "y": 3.855075,
+        "z": 1.8319000000000007
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:15",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 10.252732300000002,
+        "y": 9.257425000000001,
+        "z": 2.7478500000000015
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:16",
+        "sourceIndex": 2,
+        "element": "Ag",
+        "x": 2.6162677000000003,
+        "y": 1.2325749999999993,
+        "z": 2.7478500000000006
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:17",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 3.07832476
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:18",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 3.2172500000000004,
+        "y": 2.6225,
+        "z": 0.33047475999999976
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:19",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 9.651750000000002,
+        "y": 7.8675,
+        "z": 0.3304747600000005
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:20",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 8.434603297553959e-16,
+        "y": 5.245,
+        "z": 1.2464247599999996
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:21",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 3.2172500000000013,
+        "y": 7.8675,
+        "z": 2.1623747600000005
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:22",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 9.65175,
+        "y": 2.6225,
+        "z": 2.1623747600000005
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:23",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 6.4345,
+        "y": 0.0,
+        "z": 1.2464247599999998
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:24",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 6.434500000000001,
+        "y": 5.245,
+        "z": 3.078324760000001
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:25",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.0681270000000005,
+        "y": 2.447317,
+        "z": 2.25433614
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:26",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 11.800873000000003,
+        "y": 8.042683,
+        "z": 2.2543361400000013
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:27",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.149123000000001,
+        "y": 5.0698170000000005,
+        "z": 3.1702861400000004
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:28",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 10.719876999999999,
+        "y": 5.420183,
+        "z": 3.170286140000001
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:29",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.0681270000000014,
+        "y": 7.692317000000001,
+        "z": 0.4224361400000004
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:30",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 11.800873000000001,
+        "y": 2.797683,
+        "z": 0.42243614000000074
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:31",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.1491230000000017,
+        "y": 10.314817000000001,
+        "z": 1.3383861400000006
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:32",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 10.719876999999999,
+        "y": 0.17518299999999934,
+        "z": 1.3383861400000006
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:33",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.5026269999999995,
+        "y": 2.447317,
+        "z": 0.42243614000000046
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:34",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.366373,
+        "y": 8.042683,
+        "z": 0.4224361400000007
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:35",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.583623000000001,
+        "y": 5.0698170000000005,
+        "z": 1.3383861400000008
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:36",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.285377,
+        "y": 5.420183,
+        "z": 1.3383861400000006
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:37",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 7.502627,
+        "y": 7.692317000000001,
+        "z": 2.254336140000001
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:38",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.366373,
+        "y": 2.797683,
+        "z": 2.2543361400000004
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:39",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.583623000000003,
+        "y": 10.314817000000001,
+        "z": 3.1702861400000013
+      },
+      {
+        "id": "ag2o3-silver-iii:atom:40",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.2853769999999995,
+        "y": 0.17518299999999934,
+        "z": 3.1702861400000004
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1509692; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "ag2o3-silver-iii:atom:1",
+      "ag2o3-silver-iii:atom:2",
+      "ag2o3-silver-iii:atom:3",
+      "ag2o3-silver-iii:atom:4",
+      "ag2o3-silver-iii:atom:5",
+      "ag2o3-silver-iii:atom:6",
+      "ag2o3-silver-iii:atom:7",
+      "ag2o3-silver-iii:atom:8",
+      "ag2o3-silver-iii:atom:9",
+      "ag2o3-silver-iii:atom:10",
+      "ag2o3-silver-iii:atom:11",
+      "ag2o3-silver-iii:atom:12",
+      "ag2o3-silver-iii:atom:13",
+      "ag2o3-silver-iii:atom:14",
+      "ag2o3-silver-iii:atom:15",
+      "ag2o3-silver-iii:atom:16",
+      "ag2o3-silver-iii:atom:17",
+      "ag2o3-silver-iii:atom:18",
+      "ag2o3-silver-iii:atom:19",
+      "ag2o3-silver-iii:atom:20",
+      "ag2o3-silver-iii:atom:21",
+      "ag2o3-silver-iii:atom:22",
+      "ag2o3-silver-iii:atom:23",
+      "ag2o3-silver-iii:atom:24",
+      "ag2o3-silver-iii:atom:25",
+      "ag2o3-silver-iii:atom:26",
+      "ag2o3-silver-iii:atom:27",
+      "ag2o3-silver-iii:atom:28",
+      "ag2o3-silver-iii:atom:29",
+      "ag2o3-silver-iii:atom:30",
+      "ag2o3-silver-iii:atom:31",
+      "ag2o3-silver-iii:atom:32",
+      "ag2o3-silver-iii:atom:33",
+      "ag2o3-silver-iii:atom:34",
+      "ag2o3-silver-iii:atom:35",
+      "ag2o3-silver-iii:atom:36",
+      "ag2o3-silver-iii:atom:37",
+      "ag2o3-silver-iii:atom:38",
+      "ag2o3-silver-iii:atom:39",
+      "ag2o3-silver-iii:atom:40"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          12.869,
+          0.0,
+          7.879989829113644e-16
+        ],
+        [
+          1.6869206595107917e-15,
+          10.49,
+          6.423272461527867e-16
+        ],
+        [
+          0.0,
+          0.0,
+          3.6638
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1509692 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

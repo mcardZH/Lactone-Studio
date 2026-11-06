@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "cao-lime",
+  "structure": {
+    "id": "cao-lime",
+    "name": "石灰型氧化钙",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "cao-lime:atom:1",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "cao-lime:atom:2",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 3.8715552790965027e-16,
+        "y": 2.4075,
+        "z": 2.4075
+      },
+      {
+        "id": "cao-lime:atom:3",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 2.4075,
+        "y": 0.0,
+        "z": 2.4075
+      },
+      {
+        "id": "cao-lime:atom:4",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 2.4075000000000006,
+        "y": 2.4075,
+        "z": 2.948337168947253e-16
+      },
+      {
+        "id": "cao-lime:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.4075000000000006,
+        "y": 2.4075,
+        "z": 2.4075000000000006
+      },
+      {
+        "id": "cao-lime:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.4075,
+        "y": 0.0,
+        "z": 1.4741685844736265e-16
+      },
+      {
+        "id": "cao-lime:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.8715552790965027e-16,
+        "y": 2.4075,
+        "z": 1.4741685844736265e-16
+      },
+      {
+        "id": "cao-lime:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.4075
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9006694; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "cao-lime:atom:1",
+      "cao-lime:atom:2",
+      "cao-lime:atom:3",
+      "cao-lime:atom:4",
+      "cao-lime:atom:5",
+      "cao-lime:atom:6",
+      "cao-lime:atom:7",
+      "cao-lime:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.815,
+          0.0,
+          2.948337168947253e-16
+        ],
+        [
+          7.743110558193005e-16,
+          4.815,
+          2.948337168947253e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.815
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9006694 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

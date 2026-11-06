@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "cof-1-curated-05000n2",
+      "category": "cof",
+      "name": "COF-1",
+      "nameEn": "COF-1",
+      "formula": "C3H2BO",
+      "aliases": [
+        "CURATED-COFs 05000N2"
+      ],
+      "phase": "COF-1：无客体 DFT 宿主模型，档案起始层堆垛为交错型。",
+      "structurePath": "cof/cof-1-curated-05000n2/structure.json",
+      "sourcePath": "cof/cof-1-curated-05000n2/source.cif",
+      "source": {
+        "name": "Materials Cloud CURATED covalent organic frameworks database",
+        "recordId": "05000N2_ddec.cif (cifs_cellopt_Jun21.zip)",
+        "url": "https://doi.org/10.24435/materialscloud:z6-jn",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T04:21:23Z",
+        "citation": "D. Ongari et al., Building a consistent and reproducible database for adsorption evaluation in Covalent-Organic Frameworks, Materials Cloud Archive 2021.100 (2021), DOI: 10.24435/materialscloud:z6-jn.",
+        "doi": "10.24435/materialscloud:z6-jn",
+        "version": "Materials Cloud Archive 2021.100, version v9 (June 2021 snapshot)",
+        "conditions": "The source archive describes DFT-optimized coordinates and unit cell. Its paper identifies record 05000N2 as the COF-1 model initialized with staggered layers. The original 2005 report describes as-synthesized COF-1 with mesitylene guests (DOI: 10.1126/science.1120411); those guest atoms are absent from this archive CIF, which is the DFT-optimized host model. Source CIF charge metadata remains raw-only."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Materials Cloud v9 file 05000N2_ddec.cif selected from the archive in memory; no other database CIF was written.",
+          "CURATED-COFs source modification note retained verbatim: none.",
+          "No additional cell replication or stacking change was applied by this pipeline.",
+          "Raw source CIF bytes preserved unchanged.",
+          "No hydrogen, solvent, guest, symmetry, or cell edits were applied by this retrieval pipeline.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "CIF has no explicit symmetry-operation loop; pymatgen used the stated space-group symbol, as indicated by its CIF parser.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1"
+    },
+    {
+      "id": "cof-5-curated-05001n2",
+      "category": "cof",
+      "name": "COF-5",
+      "nameEn": "COF-5",
+      "formula": "C9H4BO2",
+      "aliases": [
+        "CURATED-COFs 05001N2"
+      ],
+      "phase": "COF-5：层间滑移 DFT 模型，沿 c 轴采用 2 倍重复。",
+      "structurePath": "cof/cof-5-curated-05001n2/structure.json",
+      "sourcePath": "cof/cof-5-curated-05001n2/source.cif",
+      "source": {
+        "name": "Materials Cloud CURATED covalent organic frameworks database",
+        "recordId": "05001N2_ddec.cif (cifs_cellopt_Jun21.zip)",
+        "url": "https://doi.org/10.24435/materialscloud:z6-jn",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T04:21:23Z",
+        "citation": "D. Ongari et al., Building a consistent and reproducible database for adsorption evaluation in Covalent-Organic Frameworks, Materials Cloud Archive 2021.100 (2021), DOI: 10.24435/materialscloud:z6-jn.",
+        "doi": "10.24435/materialscloud:z6-jn",
+        "version": "Materials Cloud Archive 2021.100, version v9 (June 2021 snapshot)",
+        "conditions": "The source archive describes DFT-optimized coordinates and unit cell; its paper states that 05001N2 starts from the reported eclipsed COF-5 model, then relaxes to a lower-energy laterally shifted layer geometry (DOI: 10.1021/acscentsci.9b00619). The source curation note says the cell is replicated 2x in C; this pipeline adds no further repeat. Source CIF charge metadata remains raw-only."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Materials Cloud v9 file 05001N2_ddec.cif selected from the archive in memory; no other database CIF was written.",
+          "CURATED-COFs source modification note retained verbatim: replicated 2x in C direction.",
+          "No additional cell replication or stacking change was applied by this pipeline.",
+          "Raw source CIF bytes preserved unchanged.",
+          "No hydrogen, solvent, guest, symmetry, or cell edits were applied by this retrieval pipeline.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "CIF has no explicit symmetry-operation loop; pymatgen used the stated space-group symbol, as indicated by its CIF parser.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1"
+    },
+    {
+      "id": "cof-300-curated-09000n3",
+      "category": "cof",
+      "name": "COF-300",
+      "nameEn": "COF-300",
+      "formula": "C41H28N4",
+      "aliases": [
+        "CURATED-COFs 09000N3"
+      ],
+      "phase": "COF-300：历史五重互穿金刚石网络的 DFT 档案模型。",
+      "structurePath": "cof/cof-300-curated-09000n3/structure.json",
+      "sourcePath": "cof/cof-300-curated-09000n3/source.cif",
+      "source": {
+        "name": "Materials Cloud CURATED covalent organic frameworks database",
+        "recordId": "09000N3_ddec.cif (cifs_cellopt_Jun21.zip)",
+        "url": "https://doi.org/10.24435/materialscloud:z6-jn",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T04:21:23Z",
+        "citation": "D. Ongari et al., Building a consistent and reproducible database for adsorption evaluation in Covalent-Organic Frameworks, Materials Cloud Archive 2021.100 (2021), DOI: 10.24435/materialscloud:z6-jn.",
+        "doi": "10.24435/materialscloud:z6-jn",
+        "version": "Materials Cloud Archive 2021.100, version v9 (June 2021 snapshot)",
+        "conditions": "The source archive describes DFT-optimized coordinates and unit cell. The original 2009 COF-300 report assigned five interpenetrated diamond frameworks (DOI: 10.1021/ja8096256). This entry identifies only CURATED record 09000N3 and does not represent other interpenetration or pore-form variants. Source CIF charge metadata remains raw-only."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Materials Cloud v9 file 09000N3_ddec.cif selected from the archive in memory; no other database CIF was written.",
+          "CURATED-COFs source modification note retained verbatim: none.",
+          "No additional cell replication or stacking change was applied by this pipeline.",
+          "Raw source CIF bytes preserved unchanged.",
+          "No hydrogen, solvent, guest, symmetry, or cell edits were applied by this retrieval pipeline.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "CIF has no explicit symmetry-operation loop; pymatgen used the stated space-group symbol, as indicated by its CIF parser.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1"
+    },
+    {
+      "id": "tppa-1-curated-12000n2",
+      "category": "cof",
+      "name": "TpPa-1",
+      "nameEn": "TpPa-1",
+      "formula": "C6H4NO",
+      "aliases": [
+        "CURATED-COFs 12000N2"
+      ],
+      "phase": "TpPa-1：β-酮烯胺键合二维 COF（Tp/对苯二胺），c 轴 2 倍重复，堆垛沿档案结构。",
+      "structurePath": "cof/tppa-1-curated-12000n2/structure.json",
+      "sourcePath": "cof/tppa-1-curated-12000n2/source.cif",
+      "source": {
+        "name": "Materials Cloud CURATED covalent organic frameworks database",
+        "recordId": "12000N2_ddec.cif (cifs_cellopt_Jun21.zip)",
+        "url": "https://doi.org/10.24435/materialscloud:z6-jn",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T04:21:23Z",
+        "citation": "D. Ongari et al., Building a consistent and reproducible database for adsorption evaluation in Covalent-Organic Frameworks, Materials Cloud Archive 2021.100 (2021), DOI: 10.24435/materialscloud:z6-jn.",
+        "doi": "10.24435/materialscloud:z6-jn",
+        "version": "Materials Cloud Archive 2021.100, version v9 (June 2021 snapshot)",
+        "conditions": "The source archive describes DFT-optimized coordinates and unit cell. TpPa-1 is the beta-ketoenamine framework from Tp and p-phenylenediamine; the source-record cell repeat is 2x along C. No AA/AB stacking assignment is added here. Source CIF charge metadata remains raw-only; original framework DOI: 10.1021/ja308278w."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Materials Cloud v9 file 12000N2_ddec.cif selected from the archive in memory; no other database CIF was written.",
+          "CURATED-COFs source modification note retained verbatim: replicated 2x in C direction.",
+          "No additional cell replication or stacking change was applied by this pipeline.",
+          "Raw source CIF bytes preserved unchanged.",
+          "No hydrogen, solvent, guest, symmetry, or cell edits were applied by this retrieval pipeline.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "CIF has no explicit symmetry-operation loop; pymatgen used the stated space-group symbol, as indicated by its CIF parser.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1"
+    },
+    {
+      "id": "tppa-2-curated-12001n2",
+      "category": "cof",
+      "name": "TpPa-2",
+      "nameEn": "TpPa-2",
+      "formula": "C7H6NO",
+      "aliases": [
+        "CURATED-COFs 12001N2"
+      ],
+      "phase": "TpPa-2：β-酮烯胺键合二维 COF（Tp/2,5-二甲基对苯二胺），c 轴 2 倍重复，堆垛沿档案结构。",
+      "structurePath": "cof/tppa-2-curated-12001n2/structure.json",
+      "sourcePath": "cof/tppa-2-curated-12001n2/source.cif",
+      "source": {
+        "name": "Materials Cloud CURATED covalent organic frameworks database",
+        "recordId": "12001N2_ddec.cif (cifs_cellopt_Jun21.zip)",
+        "url": "https://doi.org/10.24435/materialscloud:z6-jn",
+        "license": "CC BY 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+        "structureKind": "computed",
+        "retrievedAt": "2026-10-20T04:21:23Z",
+        "citation": "D. Ongari et al., Building a consistent and reproducible database for adsorption evaluation in Covalent-Organic Frameworks, Materials Cloud Archive 2021.100 (2021), DOI: 10.24435/materialscloud:z6-jn.",
+        "doi": "10.24435/materialscloud:z6-jn",
+        "version": "Materials Cloud Archive 2021.100, version v9 (June 2021 snapshot)",
+        "conditions": "The source archive describes DFT-optimized coordinates and unit cell. TpPa-2 is the beta-ketoenamine framework from Tp and 2,5-dimethyl-p-phenylenediamine; the source-record cell repeat is 2x along C. No AA/AB stacking assignment is added here. Source CIF charge metadata remains raw-only; original framework DOI: 10.1021/ja308278w."
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser.from_str(check_cif=False, frac_tolerance=0, site_tolerance=0); parse_structures(primitive=False, check_occu=True, on_error='raise'); SpacegroupAnalyzer(symprec=0.01 Å, angle_tolerance=5.0°)",
+        "details": [
+          "Materials Cloud v9 file 12001N2_ddec.cif selected from the archive in memory; no other database CIF was written.",
+          "CURATED-COFs source modification note retained verbatim: replicated 2x in C direction.",
+          "No additional cell replication or stacking change was applied by this pipeline.",
+          "Raw source CIF bytes preserved unchanged.",
+          "No hydrogen, solvent, guest, symmetry, or cell edits were applied by this retrieval pipeline.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "No hydrogen, solvent, or guest atoms were manually added or removed; no custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "Raw CIF atom-site labels remain verbatim in source.cif. Parsed sites were uniquely matched to raw rows by element and periodic fractional-coordinate distance and reordered to that row order; sourceIndex is one-based and sourceAtomIds contains the corresponding normalized atoms.id values.",
+          "CIF has no explicit symmetry-operation loop; pymatgen used the stated space-group symbol, as indicated by its CIF parser.",
+          "Space group and point group derived from normalized coordinates with pymatgen SpacegroupAnalyzer (spglib), symprec=0.01 Å, angle_tolerance=5.0°; recognition only, coordinates and cell unchanged.",
+          "Source fractional coordinates converted to Cartesian Å; source cell vectors retained. Source atom-row ordering is restored only when a unique periodic-coordinate match is verified.",
+          "During this normalization, no atom was added or removed; upstream curated content is preserved as recorded in source.conditions. No custom symmetry operation, cell reduction, or supercell transform was applied.",
+          "_atom_site_occupancy is omitted; IUCr coreCIF 2.4.5 defines its enumeration default as 1.0.",
+          "Mixed, unknown, or partial occupancy blocks the entry.",
+          "PBC [true,true,true] follows the CIF crystallographic cell format; no lower-dimensional PBC was inferred."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P1",
+        "number": 1
+      },
+      "pointGroup": "1"
+    }
+  ]
+}

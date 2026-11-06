@@ -1,0 +1,30 @@
+.geometry-smart-slide { min-width: 0; padding: .7rem; border: 1px solid #c6dced; border-radius: .8rem; background: linear-gradient(145deg,#f4faff,#fff); color: #23394a; }
+.geometry-smart-slide[data-floating=true] { position: fixed; z-index: 85; width: min(330px,calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow: auto; box-sizing: border-box; box-shadow: 0 8px 28px #183a5630; }
+.geometry-smart-slide[data-floating=true] .geometry-smart-header { cursor: move; touch-action: none; user-select: none; }
+.geometry-smart-slide header { display: flex; gap: .4rem; align-items: center; justify-content: space-between; margin-bottom: .55rem; }
+.geometry-smart-slide header strong { font-size: .95em; white-space: nowrap; }
+.geometry-smart-close { flex: 0 0 auto; font: inherit; min-width: 24px; min-height: 24px; border: 1px solid #bfd5e5; border-radius: .3rem; color: #315f7b; background: #fff; cursor: pointer; }
+.geometry-measurement-order { color: #1769a1; background: #e0f0ff; border-radius: 1rem; padding: .18rem .5rem; font-size: .82em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.geometry-smart-slide fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.geometry-smart-slide fieldset:disabled { opacity: .6; }
+.geometry-smart-value { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; font-size: .88em; }
+.geometry-smart-value input { width: 5.3rem; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.geometry-smart-slide input,.geometry-smart-slide select { font: inherit; box-sizing: border-box; }
+.geometry-smart-slide input:not([type=range]),.geometry-smart-slide select { border: 1px solid #c2d4df; background: #fff; border-radius: .4rem; padding: .3rem .4rem; color: #23394a; }
+.geometry-smart-value output { color: #617785; margin-left: auto; font-size: .87em; font-variant-numeric: tabular-nums; }
+.geometry-smart-range { display: block; width: 100%; margin: .8rem 0; accent-color: #3184ba; cursor: ew-resize; }
+.geometry-smart-roles { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: .5rem; }
+.geometry-smart-roles label { display: flex; flex-direction: column; gap: .2rem; font-size: .82em; color: #516c7c; min-width: 0; }
+.geometry-smart-roles select { width: 100%; min-width: 0; }
+.geometry-smart-bond{margin-top:.5rem;display:flex;align-items:center;gap:.5rem}
+.geometry-smart-bond label{display:flex;align-items:center;gap:.5rem;font-size:.82em;color:#516c7c}
+.geometry-smart-bond select{width:auto;max-width:100%}
+.geometry-smart-balance { display: flex; flex-direction: column; justify-content: center; gap: .25rem; font-size: .82em; color: #385c76; }
+.geometry-smart-balance small { color: #617785; }
+.geometry-smart-actions { display: flex; gap: .4rem; justify-content: flex-end; margin-top: .55rem; }
+.geometry-smart-actions button { font: inherit; font-size: .83em; border: 1px solid #bfd5e5; border-radius: .4rem; padding: .32rem .5rem; background: #fff; color: #245c7b; }
+.geometry-smart-actions button:first-child { background: #dfedfa; }
+.geometry-smart-note { font-size: .76em; line-height: 1.4; color: #617785; margin: .5rem 0 0; }
+.geometry-smart-error { font-size: .82em; line-height: 1.45; color: #ae3434; margin: .4rem 0 0; overflow-wrap: anywhere; }
+.geometry-smart-slide :focus-visible { outline: 2px solid #3184ba; outline-offset: 2px; }
+@media (max-width: 360px) { .geometry-smart-roles { grid-template-columns: minmax(0,1fr); } }

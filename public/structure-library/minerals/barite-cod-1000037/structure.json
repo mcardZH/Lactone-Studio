@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "entryId": "barite-cod-1000037",
+  "structure": {
+    "id": "barite-cod-1000037",
+    "name": "重晶石",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "barite-cod-1000037:atom:1",
+        "sourceIndex": 1,
+        "element": "Ba",
+        "x": 1.6399864000000002,
+        "y": 1.3645,
+        "z": 1.1308893
+      },
+      {
+        "id": "barite-cod-1000037:atom:2",
+        "sourceIndex": 1,
+        "element": "Ba",
+        "x": 6.0819864,
+        "y": 1.3645,
+        "z": 2.4456107
+      },
+      {
+        "id": "barite-cod-1000037:atom:3",
+        "sourceIndex": 1,
+        "element": "Ba",
+        "x": 7.2440136000000015,
+        "y": 4.093500000000001,
+        "z": 6.022110700000001
+      },
+      {
+        "id": "barite-cod-1000037:atom:4",
+        "sourceIndex": 1,
+        "element": "Ba",
+        "x": 2.802013600000001,
+        "y": 4.093500000000001,
+        "z": 4.7073893
+      },
+      {
+        "id": "barite-cod-1000037:atom:5",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 3.8823080000000005,
+        "y": 4.093500000000001,
+        "z": 1.3690842000000003
+      },
+      {
+        "id": "barite-cod-1000037:atom:6",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 8.324308,
+        "y": 4.093500000000001,
+        "z": 2.2074158000000006
+      },
+      {
+        "id": "barite-cod-1000037:atom:7",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 5.001691999999999,
+        "y": 1.3645,
+        "z": 5.7839158
+      },
+      {
+        "id": "barite-cod-1000037:atom:8",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 0.5596920000000003,
+        "y": 1.3645,
+        "z": 4.9455842
+      },
+      {
+        "id": "barite-cod-1000037:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 5.222015200000001,
+        "y": 4.093500000000001,
+        "z": 0.7596486000000006
+      },
+      {
+        "id": "barite-cod-1000037:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.7800152000000016,
+        "y": 4.093500000000001,
+        "z": 2.8168514
+      },
+      {
+        "id": "barite-cod-1000037:atom:11",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.6619848000000004,
+        "y": 1.3645,
+        "z": 6.3933514
+      },
+      {
+        "id": "barite-cod-1000037:atom:12",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 8.103984800000001,
+        "y": 1.3645,
+        "z": 4.3361486000000005
+      },
+      {
+        "id": "barite-cod-1000037:atom:13",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.8357728000000004,
+        "y": 4.093500000000001,
+        "z": 0.3683795000000004
+      },
+      {
+        "id": "barite-cod-1000037:atom:14",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 7.2777728,
+        "y": 4.093500000000001,
+        "z": 3.2081205000000006
+      },
+      {
+        "id": "barite-cod-1000037:atom:15",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 6.048227200000001,
+        "y": 1.3645,
+        "z": 6.784620500000001
+      },
+      {
+        "id": "barite-cod-1000037:atom:16",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.6062272000000004,
+        "y": 1.3645,
+        "z": 3.9448795
+      },
+      {
+        "id": "barite-cod-1000037:atom:17",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.718842400000001,
+        "y": 5.2953516,
+        "z": 2.281807
+      },
+      {
+        "id": "barite-cod-1000037:atom:18",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 8.160842400000002,
+        "y": 2.8916484000000002,
+        "z": 1.2946930000000005
+      },
+      {
+        "id": "barite-cod-1000037:atom:19",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 5.1651576,
+        "y": 2.5663516,
+        "z": 4.871193000000001
+      },
+      {
+        "id": "barite-cod-1000037:atom:20",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.7231575999999997,
+        "y": 0.16264840000000028,
+        "z": 5.858306999999999
+      },
+      {
+        "id": "barite-cod-1000037:atom:21",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 5.1651576,
+        "y": 0.16264840000000028,
+        "z": 4.871193
+      },
+      {
+        "id": "barite-cod-1000037:atom:22",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.7231576000000002,
+        "y": 2.5663516,
+        "z": 5.858306999999999
+      },
+      {
+        "id": "barite-cod-1000037:atom:23",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.7188424000000007,
+        "y": 2.8916484000000002,
+        "z": 2.281807
+      },
+      {
+        "id": "barite-cod-1000037:atom:24",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 8.160842400000002,
+        "y": 5.2953516,
+        "z": 1.2946930000000008
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1000037; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "barite-cod-1000037:atom:1",
+      "barite-cod-1000037:atom:2",
+      "barite-cod-1000037:atom:3",
+      "barite-cod-1000037:atom:4",
+      "barite-cod-1000037:atom:5",
+      "barite-cod-1000037:atom:6",
+      "barite-cod-1000037:atom:7",
+      "barite-cod-1000037:atom:8",
+      "barite-cod-1000037:atom:9",
+      "barite-cod-1000037:atom:10",
+      "barite-cod-1000037:atom:11",
+      "barite-cod-1000037:atom:12",
+      "barite-cod-1000037:atom:13",
+      "barite-cod-1000037:atom:14",
+      "barite-cod-1000037:atom:15",
+      "barite-cod-1000037:atom:16",
+      "barite-cod-1000037:atom:17",
+      "barite-cod-1000037:atom:18",
+      "barite-cod-1000037:atom:19",
+      "barite-cod-1000037:atom:20",
+      "barite-cod-1000037:atom:21",
+      "barite-cod-1000037:atom:22",
+      "barite-cod-1000037:atom:23",
+      "barite-cod-1000037:atom:24"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          8.884,
+          0.0,
+          5.439881081812543e-16
+        ],
+        [
+          8.777133421935083e-16,
+          5.458,
+          3.342061114873127e-16
+        ],
+        [
+          0.0,
+          0.0,
+          7.153
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1000037 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

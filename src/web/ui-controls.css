@@ -1,0 +1,40 @@
+/* Presentation tokens only. Scientific palettes and state remain with callers. */
+:root {
+  --ui-control-font:var(--ui-primary-size,16px);
+  --ui-control-caption-font:var(--ui-secondary-size,14px);
+  --ui-control-small-font:var(--ui-small-size,13px);
+  --ui-control-ink:#294454;
+  --ui-control-muted:#526879;
+  --ui-control-border:#cadfd1;
+  --ui-control-bg:#fff;
+  --ui-control-radius:7px;
+  --ui-control-height:36px;
+  --ui-control-compact-height:30px;
+  --ui-control-padding:5px 9px;
+  --ui-control-compact-padding:3px 6px;
+  --ui-control-accent:#548f74;
+  --ui-control-hover-bg:#edf7f1;
+  --ui-control-selected-bg:#e1f1e7;
+  --ui-control-selected-ink:#174d34;
+  --ui-control-focus:#76ad94;
+  --ui-surface-border:#d4e5db;
+  --ui-surface-bg:#f1f8f3;
+  --ui-surface-radius:11px;
+}
+
+/* Existing compact consumers share metrics without sharing their callbacks. */
+:where(.model-settings-popover,.postprocess-plot,.analysis-method-chips,.analysis-style) {
+  --ui-control-font:var(--ui-secondary-size,14px);
+  --ui-control-height:var(--ui-control-compact-height);
+  --ui-control-padding:var(--ui-control-compact-padding);
+}
+
+:where(.model-settings-popover,.postprocess-plot,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button,select,input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]),textarea) {
+  box-sizing:border-box; min-width:0; min-height:var(--ui-control-height);
+  padding:var(--ui-control-padding); border:1px solid var(--ui-control-border);
+  border-radius:var(--ui-control-radius); background:var(--ui-control-bg);
+  color:var(--ui-control-ink); font:inherit;
+}
+:where(.model-settings-popover,.postprocess-plot,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button:hover:not(:disabled)) { background:var(--ui-control-hover-bg); }
+:where(.model-settings-popover,.postprocess-plot,.input-settings-surface,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button,input,select,textarea):focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
+:where(.dialog-shell,.dialog-surface,.ui-control-surface) :where(input[type=checkbox],input[type=radio],input[type=range]) { accent-color:var(--ui-control-accent); }

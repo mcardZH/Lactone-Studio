@@ -1,0 +1,5 @@
+[wrap-file]
+directory = mctc-lib
+source_url = https://github.com/grimme-lab/mctc-lib/archive/87a46cdf5281ad75909083c4f72354d54abdf95d.tar.gz
+source_filename = mctc-lib-87a46cdf5281ad75909083c4f72354d54abdf95d.tar.gz
+source_hash = 9bab9cc10327cc4f2f12da88ec57bb036a70d97e6c5278afb439edf30c565ca9

@@ -1,0 +1,697 @@
+{
+  "schemaVersion": 1,
+  "entryId": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl",
+  "structure": {
+    "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl",
+    "name": "melon（SSP，72原子）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:1",
+        "sourceIndex": 61,
+        "element": "H",
+        "x": 7.34729757468703,
+        "y": 6.819738457322095,
+        "z": 5.821372201566398
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:2",
+        "sourceIndex": 62,
+        "element": "H",
+        "x": 9.292148456226542,
+        "y": 4.442274774315821,
+        "z": 4.74508693815976
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:3",
+        "sourceIndex": 63,
+        "element": "H",
+        "x": 14.717162328400242,
+        "y": 10.047414013602719,
+        "z": 5.308019361415359
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:4",
+        "sourceIndex": 64,
+        "element": "H",
+        "x": 1.9222893071021383,
+        "y": 1.2146016956831385,
+        "z": 5.258441126651972
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:5",
+        "sourceIndex": 65,
+        "element": "H",
+        "x": 2.815603468013336,
+        "y": 3.667643889330121,
+        "z": -0.05998341184890027
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:6",
+        "sourceIndex": 66,
+        "element": "H",
+        "x": 2.6633080647083918,
+        "y": 5.089007445441991,
+        "z": -1.1481835926171888
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:7",
+        "sourceIndex": 67,
+        "element": "H",
+        "x": 13.823807801634283,
+        "y": 7.5944025653142715,
+        "z": 10.626487467170868
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:8",
+        "sourceIndex": 68,
+        "element": "H",
+        "x": 13.976096734876192,
+        "y": 6.173043401396478,
+        "z": 11.714693984709175
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:9",
+        "sourceIndex": 69,
+        "element": "H",
+        "x": 7.73345917139671,
+        "y": 0.5682835801055723,
+        "z": 10.491566417644902
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:10",
+        "sourceIndex": 70,
+        "element": "H",
+        "x": 8.826564048069589,
+        "y": 1.990490212239407,
+        "z": 10.406129780874167
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:11",
+        "sourceIndex": 71,
+        "element": "H",
+        "x": 8.905935663963154,
+        "y": 10.693778416148628,
+        "z": 0.07495682650945917
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:12",
+        "sourceIndex": 72,
+        "element": "H",
+        "x": 7.812854877185316,
+        "y": 9.271551512349827,
+        "z": 0.16036393333233023
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:13",
+        "sourceIndex": 37,
+        "element": "C",
+        "x": 15.396705750485214,
+        "y": 7.58233529364001,
+        "z": 11.938108352119972
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:14",
+        "sourceIndex": 38,
+        "element": "C",
+        "x": 1.2427192416241672,
+        "y": 3.6797000115886505,
+        "z": -1.371620920210376
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:15",
+        "sourceIndex": 39,
+        "element": "C",
+        "x": 9.380035074807688,
+        "y": 9.323072399348531,
+        "z": 1.4782483738721628
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:16",
+        "sourceIndex": 40,
+        "element": "C",
+        "x": 7.2593719310609774,
+        "y": 1.9389768708048856,
+        "z": 9.088259295490175
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:17",
+        "sourceIndex": 41,
+        "element": "C",
+        "x": 5.822102242401795,
+        "y": 7.065730944760617,
+        "z": 4.469608022499769
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:18",
+        "sourceIndex": 42,
+        "element": "C",
+        "x": 10.817355019946651,
+        "y": 4.196276205377809,
+        "z": 6.0968377594664585
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:19",
+        "sourceIndex": 43,
+        "element": "C",
+        "x": 13.086065305607123,
+        "y": 9.793506229336552,
+        "z": 4.088824053739704
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:20",
+        "sourceIndex": 44,
+        "element": "C",
+        "x": 3.55332361804669,
+        "y": 1.4685586950470328,
+        "z": 6.477708994222865
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:21",
+        "sourceIndex": 45,
+        "element": "C",
+        "x": 4.100804277557682,
+        "y": 7.276126163273856,
+        "z": 2.9984853549856507
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:22",
+        "sourceIndex": 46,
+        "element": "C",
+        "x": 12.538647271509385,
+        "y": 3.985886505262256,
+        "z": 7.567968615712815
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:23",
+        "sourceIndex": 47,
+        "element": "C",
+        "x": 11.260122326450059,
+        "y": 9.606344028182546,
+        "z": 2.751396339878919
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:24",
+        "sourceIndex": 48,
+        "element": "C",
+        "x": 5.379252020396396,
+        "y": 1.6557333970611032,
+        "z": 7.8151529430615785
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:25",
+        "sourceIndex": 49,
+        "element": "C",
+        "x": 6.186300492671294,
+        "y": 5.147149283460105,
+        "z": 6.024706449256328
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:26",
+        "sourceIndex": 50,
+        "element": "C",
+        "x": 10.453127752016036,
+        "y": 6.1148797150283425,
+        "z": 4.541774063976352
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:27",
+        "sourceIndex": 51,
+        "element": "C",
+        "x": 11.008934497152945,
+        "y": 0.44000887637943564,
+        "z": 8.654186382049676
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:28",
+        "sourceIndex": 52,
+        "element": "C",
+        "x": 5.6305088347702466,
+        "y": 10.822011562961581,
+        "z": 1.912280402617606
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:29",
+        "sourceIndex": 53,
+        "element": "C",
+        "x": 5.7710328291838255,
+        "y": 8.997024291440663,
+        "z": 3.2381564852312343
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:30",
+        "sourceIndex": 54,
+        "element": "C",
+        "x": 10.868413713748051,
+        "y": 2.2649920935673595,
+        "z": 7.328304622997837
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:31",
+        "sourceIndex": 55,
+        "element": "C",
+        "x": 11.828776749946712,
+        "y": 7.89901755447138,
+        "z": 4.346147513927055
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:32",
+        "sourceIndex": 56,
+        "element": "C",
+        "x": 4.810619016538055,
+        "y": 3.3630417388941596,
+        "z": 6.2203752762533275
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:33",
+        "sourceIndex": 57,
+        "element": "C",
+        "x": 3.985998616840011,
+        "y": 9.273935798011196,
+        "z": 1.6121775295673912
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:34",
+        "sourceIndex": 58,
+        "element": "C",
+        "x": 12.653450092396488,
+        "y": 1.9880804743764655,
+        "z": 8.954281977181601
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:35",
+        "sourceIndex": 59,
+        "element": "C",
+        "x": 9.824054393753137,
+        "y": 7.656848640906987,
+        "z": 2.989924223163622
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:36",
+        "sourceIndex": 60,
+        "element": "C",
+        "x": 6.815364446656259,
+        "y": 3.605189254589974,
+        "z": 7.576567716757184
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:37",
+        "sourceIndex": 1,
+        "element": "N",
+        "x": 6.367369000113494,
+        "y": 8.267608116343073,
+        "z": 4.186195825393404
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:38",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 10.272069591222483,
+        "y": 2.9944128860997483,
+        "z": 6.380274209078564
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:39",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 12.893011769724216,
+        "y": 8.613394068708534,
+        "z": 4.718027575068317
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:40",
+        "sourceIndex": 4,
+        "element": "N",
+        "x": 3.7463925834927436,
+        "y": 2.648657791713185,
+        "z": 5.848485670784061
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:41",
+        "sourceIndex": 5,
+        "element": "N",
+        "x": 6.497373120204424,
+        "y": 6.368817456310516,
+        "z": 5.452504967972
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:42",
+        "sourceIndex": 6,
+        "element": "N",
+        "x": 10.142072704335455,
+        "y": 4.893197126771732,
+        "z": 5.1139536123059
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:43",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 14.188833100791564,
+        "y": 10.4880639250766,
+        "z": 4.541819403118309
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:44",
+        "sourceIndex": 8,
+        "element": "N",
+        "x": 2.450601829988493,
+        "y": 0.7739637219675161,
+        "z": 6.0246590792590435
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:45",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 2.8951828594647058,
+        "y": 8.795046769185204,
+        "z": 1.0238559665257814
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:46",
+        "sourceIndex": 10,
+        "element": "N",
+        "x": 13.744261696392392,
+        "y": 2.466972656572565,
+        "z": 9.542607944462524
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:47",
+        "sourceIndex": 11,
+        "element": "N",
+        "x": 9.02772611881543,
+        "y": 8.130573913563717,
+        "z": 2.040406135099248
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:48",
+        "sourceIndex": 12,
+        "element": "N",
+        "x": 7.611695057472427,
+        "y": 3.1314624052481914,
+        "z": 8.526082862591153
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:49",
+        "sourceIndex": 13,
+        "element": "N",
+        "x": 4.618131240798418,
+        "y": 8.519638744433161,
+        "z": 2.621930911698175
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:50",
+        "sourceIndex": 14,
+        "element": "N",
+        "x": 12.021319065139913,
+        "y": 2.742375275547281,
+        "z": 7.944525691617516
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:51",
+        "sourceIndex": 15,
+        "element": "N",
+        "x": 10.984460462058477,
+        "y": 8.37541001513615,
+        "z": 3.3483994868979643
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:52",
+        "sourceIndex": 16,
+        "element": "N",
+        "x": 5.654932781368967,
+        "y": 2.8866518684976903,
+        "z": 7.21812662199379
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:53",
+        "sourceIndex": 17,
+        "element": "N",
+        "x": 14.312471169366034,
+        "y": 7.081090447446112,
+        "z": 11.374464758864526
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:54",
+        "sourceIndex": 18,
+        "element": "N",
+        "x": 2.326936577269064,
+        "y": 4.180958710086943,
+        "z": -0.807956554420953
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:55",
+        "sourceIndex": 19,
+        "element": "N",
+        "x": 8.635874093913039,
+        "y": 9.796365322439627,
+        "z": 0.4918101974232761
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:56",
+        "sourceIndex": 20,
+        "element": "N",
+        "x": 8.003531665647282,
+        "y": 1.465686875843172,
+        "z": 10.074699327395592
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:57",
+        "sourceIndex": 21,
+        "element": "N",
+        "x": 3.004347489438488,
+        "y": 6.823506847219365,
+        "z": 2.4390013091441
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:58",
+        "sourceIndex": 22,
+        "element": "N",
+        "x": 13.635075462781042,
+        "y": 4.438530147314708,
+        "z": 8.127488904835538
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:59",
+        "sourceIndex": 23,
+        "element": "N",
+        "x": 10.460432851832595,
+        "y": 10.077591990759773,
+        "z": 1.8199706610976067
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:60",
+        "sourceIndex": 24,
+        "element": "N",
+        "x": 6.178959540428863,
+        "y": 1.184469667633345,
+        "z": 8.746555141652923
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:61",
+        "sourceIndex": 25,
+        "element": "N",
+        "x": 6.274613310365706,
+        "y": 10.167570816471887,
+        "z": 2.8848293053081004
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:62",
+        "sourceIndex": 26,
+        "element": "N",
+        "x": 10.364833325360701,
+        "y": 1.0944454559157744,
+        "z": 7.681633111234496
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:63",
+        "sourceIndex": 27,
+        "element": "N",
+        "x": 11.562182894633803,
+        "y": 6.745981806260245,
+        "z": 4.9420258186874255
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:64",
+        "sourceIndex": 28,
+        "element": "N",
+        "x": 5.077220661822045,
+        "y": 4.516070392022555,
+        "z": 5.6244869743992965
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:65",
+        "sourceIndex": 29,
+        "element": "N",
+        "x": 4.733647702524543,
+        "y": 6.542616238056252,
+        "z": 3.918238717578166
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:66",
+        "sourceIndex": 30,
+        "element": "N",
+        "x": 11.905836668779356,
+        "y": 4.71936996469504,
+        "z": 6.648171995231877
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:67",
+        "sourceIndex": 31,
+        "element": "N",
+        "x": 12.333889912863206,
+        "y": 10.303841453204098,
+        "z": 3.1226224458635436
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:68",
+        "sourceIndex": 32,
+        "element": "N",
+        "x": 4.305447789565677,
+        "y": 0.9582666047777257,
+        "z": 7.44397367341115
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:69",
+        "sourceIndex": 33,
+        "element": "N",
+        "x": 4.517797376265591,
+        "y": 10.444560481572909,
+        "z": 1.2623060496229508
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:70",
+        "sourceIndex": 34,
+        "element": "N",
+        "x": 12.121650795398557,
+        "y": 0.8174561286758348,
+        "z": 9.30415460363679
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:71",
+        "sourceIndex": 35,
+        "element": "N",
+        "x": 9.562307863979456,
+        "y": 6.512260883830724,
+        "z": 3.6211347590539344
+      },
+      {
+        "id": "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:72",
+        "sourceIndex": 36,
+        "element": "N",
+        "x": 7.077131975254673,
+        "y": 4.7497564021401875,
+        "z": 6.945328898145046
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: NOMAD Repository record NOMAD entry 0-L7RRLY7z-efuZn6th6cO9QgRrl; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based source.cif atom row and maps to the same ordered geometry.in atom record; the retained raw FHI-aims file contains no independent atom-site labels.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:1",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:2",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:3",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:4",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:5",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:6",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:7",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:8",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:9",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:10",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:11",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:12",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:13",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:14",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:15",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:16",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:17",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:18",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:19",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:20",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:21",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:22",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:23",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:24",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:25",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:26",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:27",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:28",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:29",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:30",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:31",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:32",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:33",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:34",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:35",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:36",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:37",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:38",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:39",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:40",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:41",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:42",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:43",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:44",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:45",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:46",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:47",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:48",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:49",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:50",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:51",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:52",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:53",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:54",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:55",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:56",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:57",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:58",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:59",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:60",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:61",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:62",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:63",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:64",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:65",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:66",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:67",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:68",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:69",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:70",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:71",
+      "melon-ssp-72-nomad-0-l7rrly7zefuzn6th6co9qgrrl:atom:72"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          12.959438071521706,
+          0.0,
+          10.477073197617141
+        ],
+        [
+          3.6799851046765397,
+          11.262036093571187,
+          -4.5430339592417806
+        ],
+        [
+          0.0,
+          0.0,
+          4.632449812501
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "NOMAD Repository record NOMAD entry 0-L7RRLY7z-efuZn6th6cO9QgRrl defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

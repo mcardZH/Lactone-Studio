@@ -1,0 +1,145 @@
+#------------------------------------------------------------------------------
+#$Date: 2024-10-29 04:55:59 +0200 (Tue, 29 Oct 2024) $
+#$Revision: 295660 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/1/57/29/1572966.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided by IUCr Journals, http://journals.iucr.org/.
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_1572966
+loop_
+_publ_author_name
+'Jundullah Hanafi, Muchammad Izzuddin'
+'Bastonero, Lorenzo'
+'Murshed, Mohammad Mangir'
+'Robben, Lars'
+'Dononelli, Wilke'
+'Kirsch, Andrea'
+'Marzari, Nicola'
+'Gesing, Thorsten M.'
+_publ_section_title
+;
+ Synthesis, structural and spectroscopic characterization of defect-rich
+ forsterite as a representative phase of Martian regolith.
+;
+_journal_issue                   6
+_journal_name_full               IUCrJ
+_journal_paper_doi               10.1107/S2052252524009722
+_journal_volume                  11
+_journal_year                    2024
+_chemical_compound_source        synthetic
+_chemical_formula_analytical     Mg2SiO4
+_chemical_formula_structural     Mg2SiO4
+_chemical_formula_sum            'Mg2 O4 Si'
+_chemical_formula_weight         140.691
+_chemical_melting_point          ?
+_chemical_name_common            'magnesium silicate'
+_chemical_name_mineral           forsterite
+_chemical_name_systematic        'magnesium silicate'
+_space_group_IT_number           62
+_space_group_name_Hall           '-P 2c 2ab'
+_space_group_name_H-M_alt        'P b n m'
+_symmetry_cell_setting           orthorhombic
+_symmetry_Int_Tables_number      62
+_symmetry_space_group_name_Hall  '-P 2c 2ab'
+_symmetry_space_group_name_H-M   'P b n m'
+_atom_type_scat_source           'TOPAS V6.0 (Bruker AXS, Germany)'
+_audit_creation_method           manually
+_cell_angle_alpha                90.000
+_cell_angle_beta                 90.000
+_cell_angle_gamma                90.000
+_cell_formula_units_Z            4
+_cell_length_a                   4.7542(5)
+_cell_length_b                   10.2048(13)
+_cell_length_c                   5.9839(7)
+_cell_measurement_temperature    295(2)
+_cell_volume                     290.31(6)
+_computing_cell_refinement       'TOPAS V6.0 (Bruker AXS, Germany)'
+_computing_data_collection       'Diffrac.Suite (Bruker AXS, Germany)'
+_computing_molecular_graphics
+'Diamond version 4.6.8 (Crystal Impact, Germany)'
+_computing_structure_refinement  'TOPAS V6.0 (Bruker AXS, Germany)'
+_diffrn_ambient_temperature      295(2)
+_diffrn_detector                 LynxEye-XET
+_diffrn_measurement_device       'Bruker D8 Discover'
+_diffrn_measurement_method       'reflection, Bragg-Brentano'
+_diffrn_radiation_monochromator  LynxEye-XET
+_diffrn_radiation_polarisn_ratio 1.0
+_diffrn_radiation_probe          x-ray
+_diffrn_radiation_source         'fine-focus sealed tube'
+_diffrn_radiation_type           'Cu K\a'
+_diffrn_radiation_wavelength     1.540596
+_exptl_crystal_density_diffrn    3.219
+_pd_calc_method                  'Rietveld Refinement'
+_pd_meas_2theta_range_inc        0.0149
+_pd_meas_2theta_range_max        85.006
+_pd_meas_2theta_range_min        5.000
+_pd_meas_number_of_points        586
+_pd_proc_2theta_range_inc        0.0149
+_pd_proc_2theta_range_max        85.006
+_pd_proc_2theta_range_min        5.000
+_pd_proc_ls_prof_wR_factor       0.1570
+_pd_proc_number_of_points        586
+_refine_ls_goodness_of_fit_all   1.24
+_refine_ls_R_factor_all          0.4142
+_refine_ls_shift/su_max          0.0001
+_cod_data_source_file            lt5071.cif
+_cod_data_source_block           Mg2SiO4_CFO_USI_2121821137
+_cod_depositor_comments
+;
+The following automatic conversions were performed:
+
+data item '_chemical_melting_point' value 'not measured' was changed
+to '?' -- the value is undefined or not given.
+
+Automatic conversion script
+Id: cif_fix_values 8170 2020-07-09 18:12:32Z antanas 
+;
+_cod_database_code               1572966
+_cell_measurement_2theta_min     5.000
+_cell_measurement_2theta_max     85.006
+_exptl_powder_colour             white
+_pd_proc_ls_prof_r_expected      0.1266
+_pd_proc_ls_prof_r_factor_on_p   0.1215
+loop_
+_space_group_symop_operation_xyz
+'x, y, z '
+'-x, -y, -z '
+'x+1/2, -y+1/2, -z '
+'-x+1/2, y+1/2, z '
+'-x, -y, z+1/2 '
+'x, y, -z+1/2 '
+'-x+1/2, y+1/2, -z+1/2 '
+'x+1/2, -y+1/2, z+1/2 '
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_symmetry_multiplicity
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_B_iso_or_equiv
+Mg1 Mg+2 4 0 0 0 1 0.90(11)
+Mg2 Mg+2 4 0.0147(13) 0.2768(4) 0.75 1 0.90(11)
+Si1 Si+4 4 0.0701(9) 0.4010(4) 0.25 1 0.80(11)
+O1 O-2 4 0.2461(15) 0.0854(9) 0.75 1 1.00(15)
+O2 O-2 4 0.2809(15) 0.0488(11) 0.25 1 1.00(15)
+O3 O-2 8 0.2222(11) 0.3459(6) 0.4440(10) 1 1.00(15)
+loop_
+_geom_angle_atom_site_label_1
+_geom_angle_atom_site_label_2
+_geom_angle_atom_site_label_3
+_geom_angle
+O3 Si1 O3 103.449(322)
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+Si1 O3 1.4787(64)

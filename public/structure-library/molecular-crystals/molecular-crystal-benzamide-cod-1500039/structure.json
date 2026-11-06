@@ -1,0 +1,625 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-benzamide-cod-1500039",
+  "structure": {
+    "id": "molecular-crystal-benzamide-cod-1500039",
+    "name": "苯甲酰胺",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:1",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.15581516790228178,
+        "y": 1.084968977792,
+        "z": 18.924127485443492
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:2",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.1558151679022819,
+        "y": 1.672051022208,
+        "z": 7.445907485443491
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:3",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 4.801399387400662,
+        "y": 3.8419889777919995,
+        "z": 14.520757057044735
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:4",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 4.801399387400662,
+        "y": 4.429071022208,
+        "z": 3.042537057044733
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:5",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.0768543403359976,
+        "y": 4.4714646159399996,
+        "z": 20.86836537966393
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:6",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.076854340335997,
+        "y": 3.7995953840599994,
+        "z": 9.390145379663931
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:7",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 1.8803602149669463,
+        "y": 1.71444461594,
+        "z": 12.576519162824294
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:8",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 1.8803602149669463,
+        "y": 1.04257538406,
+        "z": 1.0982991628242937
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:9",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 4.39319656340133,
+        "y": 5.0125290741148,
+        "z": 16.283833318912635
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:10",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 4.39319656340133,
+        "y": 3.2585309258851995,
+        "z": 4.805613318912632
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:11",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.5640179919016144,
+        "y": 2.2555090741147996,
+        "z": 17.16105122357559
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:12",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.5640179919016142,
+        "y": 0.5015109258852,
+        "z": 5.682831223575592
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:13",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.3575074832799765,
+        "y": 2.88417927644,
+        "z": 19.218111826295665
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:14",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.357507483279977,
+        "y": 5.38688072356,
+        "z": 7.7398918262956675
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:15",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.599707072022967,
+        "y": 0.12715927643999997,
+        "z": 14.226772716192556
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:16",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.5997070720229676,
+        "y": 2.62986072356,
+        "z": 2.7485527161925565
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:17",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.229634756313475,
+        "y": 1.8564719498359998,
+        "z": -0.5549316988794042
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:18",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.229634756313475,
+        "y": 0.9005480501639999,
+        "z": 10.923288301120596
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:19",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 0.7275797989894686,
+        "y": 4.613491949835999,
+        "z": 11.043376241367628
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:20",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 0.7275797989894683,
+        "y": 3.657568050164,
+        "z": 22.521596241367625
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:21",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.914531836886969,
+        "y": 0.9991594873119999,
+        "z": 21.669878920733115
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:22",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.9145318368869693,
+        "y": 1.7578605126879998,
+        "z": 10.191658920733115
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:23",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.0426827184159744,
+        "y": 3.7561794873119996,
+        "z": 11.775005621755108
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:24",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.042682718415975,
+        "y": 4.514880512687999,
+        "z": 0.29678562175510803
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:25",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 3.0159197633007575,
+        "y": 3.154508947268,
+        "z": 16.92539383956441
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:26",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 3.015919763300758,
+        "y": 5.1165510527319995,
+        "z": 5.447173839564411
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:27",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.9412947920021855,
+        "y": 0.397488947268,
+        "z": 16.519490702923814
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:28",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.941294792002186,
+        "y": 2.3595310527319997,
+        "z": 5.041270702923813
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:29",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 4.155061890593686,
+        "y": 0.15316073205999997,
+        "z": 19.538743758228584
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:30",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 4.155061890593686,
+        "y": 2.60385926794,
+        "z": 8.060523758228582
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:31",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 0.8021526647092574,
+        "y": 2.9101807320599997,
+        "z": 13.906140784259641
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:32",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 0.8021526647092578,
+        "y": 5.36087926794,
+        "z": 2.4279207842596406
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:33",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 4.538906449432626,
+        "y": 0.31105129735119996,
+        "z": 18.20168062169026
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:34",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 4.538906449432626,
+        "y": 2.4459687026487997,
+        "z": 6.7234606216902595
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:35",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.4183081058703172,
+        "y": 3.0680712973512,
+        "z": 15.243203920797965
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:36",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.4183081058703175,
+        "y": 5.2029887026488,
+        "z": 3.764983920797964
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:37",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 3.3512203028854386,
+        "y": 4.583914639276,
+        "z": 19.913347221643317
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:38",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 3.351220302885438,
+        "y": 3.6871453607239997,
+        "z": 8.435127221643317
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:39",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 1.6059942524175053,
+        "y": 1.826894639276,
+        "z": 13.531537320844905
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:40",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 1.6059942524175053,
+        "y": 0.930125360724,
+        "z": 2.0533173208449065
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:41",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.596182602126051,
+        "y": 1.125031786816,
+        "z": 20.549573265102627
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:42",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.596182602126051,
+        "y": 1.6319882131839998,
+        "z": 9.071353265102623
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:43",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 0.3610319531768921,
+        "y": 3.8820517868159996,
+        "z": 12.895311277385602
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:44",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 0.3610319531768922,
+        "y": 4.389008213184,
+        "z": 1.4170912773856006
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:45",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 4.119053675506877,
+        "y": 4.8995046532319995,
+        "z": 17.23886616465286
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:46",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 4.119053675506877,
+        "y": 3.371555346768,
+        "z": 5.760646164652857
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:47",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 0.8381608797960665,
+        "y": 2.1424846532319997,
+        "z": 16.206018377835367
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:48",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 0.8381608797960662,
+        "y": 0.6145353467679999,
+        "z": 4.7277983778353665
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:49",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.931521698332358,
+        "y": 3.658086369924,
+        "z": 18.950697112329188
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:50",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.9315216983323586,
+        "y": 4.612973630076,
+        "z": 7.472477112329186
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:51",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.025692856970585,
+        "y": 0.9010663699239998,
+        "z": 14.494187430159037
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:52",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.0256928569705854,
+        "y": 1.855953630076,
+        "z": 3.015967430159038
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:53",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 3.315571485853888,
+        "y": 3.815793979368,
+        "z": 17.613012201154923
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:54",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 3.3155714858538885,
+        "y": 4.455266020631999,
+        "z": 6.134792201154921
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:55",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.6416430694490554,
+        "y": 1.058773979368,
+        "z": 15.8318723413333
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:56",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 1.6416430694490554,
+        "y": 1.6982460206319998,
+        "z": 4.353652341333302
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:57",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 3.851916818943434,
+        "y": 1.3451704599479999,
+        "z": 21.629623296366983
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:58",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 3.8519168189434345,
+        "y": 1.411849540052,
+        "z": 10.15140329636698
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:59",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 1.1052977363595096,
+        "y": 4.102190459948,
+        "z": 11.815261246121244
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:60",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 1.1052977363595096,
+        "y": 4.1688695400519995,
+        "z": 0.3370412461212432
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:61",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 0.7016491053721338,
+        "y": 1.737394601824,
+        "z": 21.385375787977924
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:62",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 0.7016491053721335,
+        "y": 1.0196253981759997,
+        "z": 9.907155787977926
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:63",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 4.255565449930811,
+        "y": 4.494414601823999,
+        "z": 12.059508754510299
+      },
+      {
+        "id": "molecular-crystal-benzamide-cod-1500039:atom:64",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 4.255565449930811,
+        "y": 3.776645398176,
+        "z": 0.5812887545102977
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1500039; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-benzamide-cod-1500039:atom:1",
+      "molecular-crystal-benzamide-cod-1500039:atom:2",
+      "molecular-crystal-benzamide-cod-1500039:atom:3",
+      "molecular-crystal-benzamide-cod-1500039:atom:4",
+      "molecular-crystal-benzamide-cod-1500039:atom:5",
+      "molecular-crystal-benzamide-cod-1500039:atom:6",
+      "molecular-crystal-benzamide-cod-1500039:atom:7",
+      "molecular-crystal-benzamide-cod-1500039:atom:8",
+      "molecular-crystal-benzamide-cod-1500039:atom:9",
+      "molecular-crystal-benzamide-cod-1500039:atom:10",
+      "molecular-crystal-benzamide-cod-1500039:atom:11",
+      "molecular-crystal-benzamide-cod-1500039:atom:12",
+      "molecular-crystal-benzamide-cod-1500039:atom:13",
+      "molecular-crystal-benzamide-cod-1500039:atom:14",
+      "molecular-crystal-benzamide-cod-1500039:atom:15",
+      "molecular-crystal-benzamide-cod-1500039:atom:16",
+      "molecular-crystal-benzamide-cod-1500039:atom:17",
+      "molecular-crystal-benzamide-cod-1500039:atom:18",
+      "molecular-crystal-benzamide-cod-1500039:atom:19",
+      "molecular-crystal-benzamide-cod-1500039:atom:20",
+      "molecular-crystal-benzamide-cod-1500039:atom:21",
+      "molecular-crystal-benzamide-cod-1500039:atom:22",
+      "molecular-crystal-benzamide-cod-1500039:atom:23",
+      "molecular-crystal-benzamide-cod-1500039:atom:24",
+      "molecular-crystal-benzamide-cod-1500039:atom:25",
+      "molecular-crystal-benzamide-cod-1500039:atom:26",
+      "molecular-crystal-benzamide-cod-1500039:atom:27",
+      "molecular-crystal-benzamide-cod-1500039:atom:28",
+      "molecular-crystal-benzamide-cod-1500039:atom:29",
+      "molecular-crystal-benzamide-cod-1500039:atom:30",
+      "molecular-crystal-benzamide-cod-1500039:atom:31",
+      "molecular-crystal-benzamide-cod-1500039:atom:32",
+      "molecular-crystal-benzamide-cod-1500039:atom:33",
+      "molecular-crystal-benzamide-cod-1500039:atom:34",
+      "molecular-crystal-benzamide-cod-1500039:atom:35",
+      "molecular-crystal-benzamide-cod-1500039:atom:36",
+      "molecular-crystal-benzamide-cod-1500039:atom:37",
+      "molecular-crystal-benzamide-cod-1500039:atom:38",
+      "molecular-crystal-benzamide-cod-1500039:atom:39",
+      "molecular-crystal-benzamide-cod-1500039:atom:40",
+      "molecular-crystal-benzamide-cod-1500039:atom:41",
+      "molecular-crystal-benzamide-cod-1500039:atom:42",
+      "molecular-crystal-benzamide-cod-1500039:atom:43",
+      "molecular-crystal-benzamide-cod-1500039:atom:44",
+      "molecular-crystal-benzamide-cod-1500039:atom:45",
+      "molecular-crystal-benzamide-cod-1500039:atom:46",
+      "molecular-crystal-benzamide-cod-1500039:atom:47",
+      "molecular-crystal-benzamide-cod-1500039:atom:48",
+      "molecular-crystal-benzamide-cod-1500039:atom:49",
+      "molecular-crystal-benzamide-cod-1500039:atom:50",
+      "molecular-crystal-benzamide-cod-1500039:atom:51",
+      "molecular-crystal-benzamide-cod-1500039:atom:52",
+      "molecular-crystal-benzamide-cod-1500039:atom:53",
+      "molecular-crystal-benzamide-cod-1500039:atom:54",
+      "molecular-crystal-benzamide-cod-1500039:atom:55",
+      "molecular-crystal-benzamide-cod-1500039:atom:56",
+      "molecular-crystal-benzamide-cod-1500039:atom:57",
+      "molecular-crystal-benzamide-cod-1500039:atom:58",
+      "molecular-crystal-benzamide-cod-1500039:atom:59",
+      "molecular-crystal-benzamide-cod-1500039:atom:60",
+      "molecular-crystal-benzamide-cod-1500039:atom:61",
+      "molecular-crystal-benzamide-cod-1500039:atom:62",
+      "molecular-crystal-benzamide-cod-1500039:atom:63",
+      "molecular-crystal-benzamide-cod-1500039:atom:64"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.957214555302943,
+          0.0,
+          -0.989775457511777
+        ],
+        [
+          8.86725261522296e-16,
+          5.51404,
+          3.3763757181852357e-16
+        ],
+        [
+          0.0,
+          0.0,
+          22.95644
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1500039 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

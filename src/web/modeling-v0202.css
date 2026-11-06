@@ -1,0 +1,21 @@
+.model-workspace[data-tool-portal=true]>.model-workspace-heading { flex-wrap:wrap; gap:5px; padding:5px; }
+.model-workspace-heading .model-view-toolbar { flex:1 1 375px; justify-content:flex-end; flex-wrap:wrap; overflow:visible; gap:4px; }
+.model-workspace .model-view-toolbar>button { flex:0 0 auto; min-width:31px; min-height:31px; width:auto; padding:4px 6px; aspect-ratio:auto; }
+.workbench-tool-grid:not(.is-editing) [data-action-id^="fragment."] .fragment-library-toggle,
+.workbench-tool-grid:not(.is-editing) [data-action-id="fragment.copied"]>button { min-height:50px; display:flex; align-items:center; justify-content:center; gap:5px; padding:6px 3px; }
+.workbench-tool-grid [data-action-id^="fragment."] button>svg { flex:0 0 auto; }
+.workbench-tool-grid [data-action-id="select.bond"] .bond-selection-controls { display:flex; }
+.workbench-tool-grid [data-action-id="select.bond"] .bond-selection-controls>button { width:100%; min-height:32px; padding:3px 2px; }
+.workbench-tool-grid [data-action-id="selection.numbers"] { padding:5px; }
+.workbench-tool-grid [data-action-id="selection.numbers"] input { max-width:none; }
+.workbench-tool-grid [data-testid="bond-selection-range"]:has(label) { padding-top:6px; }
+.input-settings-surface [data-field="freeze-controls"] { margin:10px 0; }
+.input-settings-surface [data-field="freeze-controls"]>.geometry-controls { border:0; margin:0; padding:0; }
+.input-settings-surface [data-field="freeze-controls"] details { margin:6px 0; }
+.input-settings-surface [data-field="freeze-controls"] summary { cursor:pointer; padding:5px 0; font-size:var(--ui-primary-size,16px); }
+.workspace-input-paused { padding:8px; background:#fff8e7; }
+.model-workspace button.model-state-marker[data-state-kind=freeze][data-freeze-state=inactive] { color:#d59e1f; background:#fff8dfeb; }
+.model-state-marker[data-state-kind=freeze][data-freeze-state=inactive]>svg { stroke:#d59e1f; }
+.workbench-tool-grid:not(.is-editing) [data-action-id^="fragment."] .fragment-library-toggle,
+.workbench-tool-grid:not(.is-editing) [data-action-id="fragment.copied"]>button { flex-direction:column; min-height:54px; gap:3px; }
+.fragment-trigger-label { display:inline-flex; align-items:center; justify-content:center; gap:3px; white-space:nowrap; }

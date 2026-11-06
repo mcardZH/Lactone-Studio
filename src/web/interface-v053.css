@@ -1,0 +1,23 @@
+/* Shared interface type roles. Canvas annotation sizes remain display-owned. */
+:root[data-font-size] { --ui-control-font:var(--ui-secondary-size,14px); }
+.app-shell[data-font-size] { font-size:var(--ui-secondary-size,14px); }
+:root[data-font-size] :is(.app-shell[data-font-size],.dialog-shell,.dialog-surface,.model-settings-popover,.card-dropdown-popup,.analysis-popup)
+  :is(button,select,input,textarea,label,summary,p):not(:where(.model-viewport *,.structure-preview *,.fragment-viewer *,.code-editor *,.route-preview,.full-input-preview)) {
+  font-family:"Segoe UI","Microsoft YaHei",sans-serif;
+  font-size:var(--ui-secondary-size,14px)!important;
+}
+:root[data-font-size] :is(.app-shell[data-font-size],.dialog-shell,.dialog-surface,.model-settings-popover,.analysis-popup)
+  :is(h2,h3,.shared-input-card-title,.analysis-card-title,.advanced-card-title):not(:where(.model-viewport *,.page-heading *)) {
+  font-size:var(--ui-primary-size,16px)!important;
+  font-weight:600;
+}
+:root[data-font-size] :is(.app-shell[data-font-size],.dialog-shell,.dialog-surface,.model-settings-popover,.analysis-popup)
+  :is(h4,.field-caption,.muted-note,.local-status,.field-validation-message,.task-notice,.task-notice p):not(:where(.model-viewport *)) { font-size:var(--ui-small-size,13px)!important; }
+:root[data-font-size] :is(.app-shell[data-font-size],.dialog-shell,.dialog-surface,.analysis-popup)
+  :is(h4,.shared-input-subtitle) { font-size:var(--ui-secondary-size,14px)!important; font-weight:600; }
+:root[data-font-size] :is(.route-preview,.full-input-preview,.code-editor textarea,.input-code-editor) {
+  font-family:Consolas,"Cascadia Mono",monospace;
+  font-size:var(--ui-small-size,13px)!important;
+}
+:root[data-font-size] .input-settings-layout.input-parameter-settings :is(.muted-note,.orca-note,.field-caption,.local-status,.field-validation-message,.task-notice,.task-notice p) { font-size:var(--ui-secondary-size,14px)!important; font-weight:400; line-height:calc(20px * var(--ui-font-scale,1)); }
+:root[data-font-size] .input-settings-layout.input-parameter-settings :is(.shared-input-card-title,.shared-input-section>summary,.orca-group>summary) { font-size:var(--ui-primary-size,16px)!important; font-weight:600; line-height:calc(24px * var(--ui-font-scale,1)); }

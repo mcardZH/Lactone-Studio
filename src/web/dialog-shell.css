@@ -1,0 +1,4 @@
+@import './ui-controls.css';
+:where(.dialog-backdrop){position:fixed;inset:0;z-index:2147483000;isolation:isolate;display:flex;align-items:center;justify-content:center;padding:18px;background:#17333050}
+:where(.dialog-shell){box-sizing:border-box;min-width:0;width:min(480px,100%);max-height:calc(100dvh - 36px);overflow:auto;padding:20px;border:1px solid var(--ui-control-border);box-shadow:0 12px 40px #153a4233;line-height:1.6}
+.dialog-shell :where(button,input,select,textarea):focus-visible{outline:2px solid var(--ui-control-focus);outline-offset:2px}

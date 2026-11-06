@@ -1,0 +1,91 @@
+#------------------------------------------------------------------------------
+#$Date: 2025-08-18 16:30:32 +0300 (Mon, 18 Aug 2025) $
+#$Revision: 301775 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/1/50/00/1500039.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/
+#
+# All data on this site have been placed in the public domain by the
+# contributors.
+#
+data_1500039
+loop_
+_publ_author_name
+'Thun, J\"urgen'
+'Seyfarth, Lena'
+'Senker, J\"urgen'
+'Dinnebier, Robert E.'
+'Breu, Josef'
+_publ_section_title
+;
+ Polymorphism in benzamide: solving a 175-year-old riddle.
+;
+_journal_issue                   35
+_journal_name_full
+'Angewandte Chemie (International ed. in English)'
+_journal_page_first              6729
+_journal_page_last               6731
+_journal_paper_doi               10.1002/anie.200701383
+_journal_volume                  46
+_journal_year                    2007
+_chemical_formula_sum            'C7 H7 N O'
+_chemical_name_common            Benzamide
+_space_group_IT_number           14
+_symmetry_space_group_name_Hall  '-P 2ybc'
+_symmetry_space_group_name_H-M   'P 1 21/c 1'
+_audit_update_record
+;
+2008-06-03 # Formatted by publCIF
+;
+_cell_angle_alpha                90
+_cell_angle_beta                 101.2914(20)
+_cell_angle_gamma                90
+_cell_formula_units_Z            4
+_cell_length_a                   5.05506(12)
+_cell_length_b                   5.51404(14)
+_cell_length_c                   22.95644(91)
+_cell_volume                     627.50(3)
+_exptl_crystal_colour            colorless
+_exptl_crystal_description       needles
+_exptl_crystal_preparation       'coolling crystallisation out of water'
+_cod_data_source_file            Benzamid_Phase3.CIF
+_cod_data_source_block           I
+_cod_original_cell_volume        627.498(33)
+_cod_database_code               1500039
+loop_
+_symmetry_equiv_pos_as_xyz
+'-x, -y, -z'
+'-x, y+1/2, -z+1/2'
+'x, -y+1/2, z+1/2'
+'x, y, z'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_B_iso_or_equiv
+C6 C -0.8381848 -0.0277765 0.1127388 1 12.00(28)
+C1 C -0.9156163 -0.05641078 0.1676438 1 12.00(28)
+C5 C -0.6760289 0.1686831 0.1034122 1 12.00(28)
+C7 C -0.9271704 -0.2040304 0.06486965 1 12.00(28)
+C2 C -0.830921 0.1114492 0.2132364 1 12.00(28)
+H10 H -1.031432 -0.1967648 0.1742954 1 12.00(28)
+C4 C -0.5913647 0.3365869 0.1489963 1 12.00(28)
+H14 H -0.6206821 0.1890765 0.06419718 1 12.00(28)
+N8 N -0.7770325 -0.2439537 0.0242951 1 12.00(28)
+O9 O -1.141541 -0.3150856 0.06233416 1 12.00(28)
+C3 C -0.6688376 0.3079858 0.2039266 1 12.00(28)
+H11 H -0.8862228 0.09095163 0.252454 1 12.00(28)
+H13 H -0.475571 0.476939 0.14234 1 12.00(28)
+H15 H -0.8532281 -0.3366809 -0.012614 1 12.00(28)
+H16 H -0.5879374 -0.1812028 0.03069444 1 12.00(28)
+H12 H -0.60839 0.4279133 0.236486 1 12.00(28)
+loop_
+_cod_related_entry_id
+_cod_related_entry_database
+_cod_related_entry_code
+1 PubChem 2331

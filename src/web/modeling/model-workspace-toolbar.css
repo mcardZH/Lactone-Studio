@@ -1,0 +1,16 @@
+.model-workspace-toolbar[data-testid=model-shared-toolbar]{display:flex;align-items:center;flex-wrap:wrap;gap:5px;width:100%;min-width:0;box-sizing:border-box;font:var(--ui-small-size,13px) system-ui;color:#294443}
+.model-workspace-toolbar[data-testid=model-shared-toolbar]>.model-workspace-heading-left,.model-workspace-toolbar[data-testid=model-shared-toolbar]>.model-workspace-heading-right,.model-workspace-toolbar-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0}
+.model-workspace-toolbar[data-testid=model-shared-toolbar]>.model-workspace-heading-left{flex:0 1 auto}
+.model-workspace-toolbar[data-testid=model-shared-toolbar]>.model-workspace-heading-right{flex:1 1 auto;justify-content:flex-end;margin-left:auto}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] :is(button,select,input){font:inherit;min-height:28px;border:1px solid #ccd9d5;border-radius:5px;background:#fff;padding:3px 7px;color:inherit;box-sizing:border-box}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] button{white-space:nowrap;cursor:pointer}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] button:disabled{opacity:.55;cursor:default}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] button[aria-pressed=true]{background:#d9ede3;border-color:#6a9f88}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] :is(button,select,input):focus-visible{outline:2px solid #569b80;outline-offset:1px}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] .model-view-toolbar{display:flex;align-items:center;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:4px;min-width:0;max-width:100%;overflow:visible}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] .model-view-toolbar>button{flex:0 0 auto;min-width:28px;min-height:28px;width:auto;aspect-ratio:auto;padding:3px 7px;line-height:1.2;font:inherit}
+.model-workspace-toolbar[data-testid=model-shared-toolbar] .model-settings-anchor{margin-right:0}
+.model-workspace-toolbar-actions{flex:1 1 100%;justify-content:flex-end;font:inherit}
+.model-workspace-toolbar-actions label{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.model-workspace-toolbar-actions input[type=checkbox]{min-height:0;width:13px;height:13px;padding:0}
+.model-project-save{position:relative;display:inline-flex}.model-project-save-menu{position:absolute;top:100%;left:0;z-index:1000;min-width:180px;padding:5px;background:var(--panel,#fff);border:1px solid var(--line,#bdcbc6);border-radius:7px;box-shadow:0 4px 14px #0002;display:flex;flex-direction:column;gap:3px}.model-project-save-menu>button{min-height:32px;text-align:left;white-space:nowrap}

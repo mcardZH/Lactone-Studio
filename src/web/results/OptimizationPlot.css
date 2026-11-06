@@ -1,0 +1,59 @@
+.optimization-plot { border: 1px solid #d8e2ea; border-radius: 8px; background: #fff; color: #334155; overflow: hidden; }
+.optimization-plot-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 12px; font-size: 12px; }
+.optimization-plot-header button { border: 0; background: transparent; color: #285f7b; cursor: pointer; font: inherit; padding: 3px; }
+.optimization-plot-options { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 12px 5px; font-size: 12px; }
+.optimization-plot-options label { display: flex; align-items: center; gap: 5px; }
+.optimization-plot-options select { max-width: 125px; font: inherit; border: 1px solid #ccd8e2; border-radius: 4px; background: white; padding: 3px 5px; }
+.optimization-plot-options input { width: 170px; min-width: 90px; font: inherit; border: 1px solid #ccd8e2; border-radius: 4px; padding: 3px 5px; }
+.optimization-plot-options button { font: inherit; border: 1px solid #ccd8e2; border-radius: 4px; background: #f8fafc; color: #285f7b; padding: 3px 7px; cursor: pointer; }
+.optimization-plot-options button:disabled { cursor: default; opacity: .5; }
+.optimization-energy-svg { display: block; width: 100%; height: auto; max-height: 300px; }
+.optimization-plot-responsive .optimization-energy-svg { min-height: 300px; max-height: none; }
+.optimization-energy-svg circle { cursor: pointer; }
+.optimization-energy-svg circle:focus { outline: 2px solid #ca7b29; }
+.scientific-plot { min-width: 0; }
+.scientific-plot-tools { gap: 6px; padding-top: 5px; }
+.scientific-plot-tools { gap:7px 10px; padding:0 0 8px; align-items:center; font-size:inherit; }
+.scientific-plot-tools > label { display:inline-flex; flex:0 1 auto; flex-wrap:nowrap; gap:6px; max-width:100%; }
+.scientific-plot-tools input[type=number] { width:6em; min-width:0; }
+.scientific-plot-tools input[type=range] { width:120px; min-width:90px; flex:0 0 120px; padding:0; }
+.scientific-plot-tools input[type=checkbox] { width:auto; min-width:0; }
+.scientific-plot-tools input[type=text],.scientific-plot-tools input:not([type]) { width:14em; min-width:8em; }
+.scientific-plot-tools select { width:auto; max-width:100%; }
+.scientific-plot-tools .spectroscopy-control-row,.scientific-plot-tools > .optimization-plot-options { display:contents; }
+.scientific-plot-size-controls { display:contents; }
+.scientific-plot-size-controls label { white-space:nowrap; }
+.scientific-plot-size-controls input { width:6em;min-width:0; }
+.scientific-plot-size-controls output { min-width:3.8em; font-variant-numeric:tabular-nums; }
+.scientific-plot-export { position:relative; flex:0 0 auto; }
+.scientific-plot-export > summary { list-style:none; cursor:pointer; border:1px solid #c5d8ce; border-radius:5px; background:#f8fbf9; padding:5px 9px; white-space:nowrap; }
+.scientific-plot-export > summary::after { content:' ▾'; }
+.scientific-plot-export > summary[aria-disabled=true] { opacity:.5; cursor:default; }
+.scientific-plot-export-options { position:absolute; top:calc(100% + 4px); right:0; z-index:30; display:grid; min-width:140px; padding:5px; gap:3px; border:1px solid #c5d8ce; border-radius:6px; background:white; box-shadow:0 4px 14px #18352820; }
+.scientific-plot-export-options button { text-align:left; white-space:nowrap; }
+.scientific-plot-svg { touch-action: none; user-select: none; }
+.scientific-plot-viewport { overflow:auto;padding:5px;min-width:0; }
+.scientific-plot-stage { position:relative;box-sizing:content-box;max-width:none;min-width:220px; }
+.scientific-plot-stage > svg.scientific-plot-svg { display:block;width:100%;height:100%;min-height:0;max-height:none; }
+.scientific-plot-resize { position:absolute;z-index:2;touch-action:none;border-radius:3px;box-sizing:border-box; }
+.scientific-plot-resize::after { content:'';position:absolute;background:#8aa399;border:1px solid #fff;border-radius:3px;box-sizing:border-box; }
+.scientific-plot-resize::after { opacity:.55; transition:opacity .12s; }
+.scientific-plot-stage:hover .scientific-plot-resize::after,.scientific-plot-stage:focus-within .scientific-plot-resize::after,.scientific-plot-resize:active::after { opacity:1; }
+.scientific-plot-resize:hover::after { background:#2e7d57; }
+.scientific-plot-resize[data-plot-resize=n]::after,.scientific-plot-resize[data-plot-resize=s]::after { width:28px;height:5px;left:calc(50% - 14px);top:1px; }
+.scientific-plot-resize[data-plot-resize=e]::after,.scientific-plot-resize[data-plot-resize=w]::after { height:28px;width:5px;top:calc(50% - 14px);left:1px; }
+.scientific-plot-resize[data-plot-resize=ne]::after,.scientific-plot-resize[data-plot-resize=nw]::after,.scientific-plot-resize[data-plot-resize=se]::after,.scientific-plot-resize[data-plot-resize=sw]::after { width:8px;height:8px;top:2px;left:2px; }
+.scientific-plot-resize[data-plot-resize=n],.scientific-plot-resize[data-plot-resize=s] { left:7px;right:7px;height:7px; }
+.scientific-plot-resize[data-plot-resize=n] { top:-3px; }.scientific-plot-resize[data-plot-resize=s] { bottom:-3px; }
+.scientific-plot-resize[data-plot-resize=e],.scientific-plot-resize[data-plot-resize=w] { top:7px;bottom:7px;width:7px; }
+.scientific-plot-resize[data-plot-resize=e] { right:-3px; }.scientific-plot-resize[data-plot-resize=w] { left:-3px; }
+.scientific-plot-resize[data-plot-resize=ne],.scientific-plot-resize[data-plot-resize=nw],.scientific-plot-resize[data-plot-resize=se],.scientific-plot-resize[data-plot-resize=sw] { width:12px;height:12px; }
+.scientific-plot-resize[data-plot-resize=ne],.scientific-plot-resize[data-plot-resize=se] { right:-3px; }
+.scientific-plot-resize[data-plot-resize=nw],.scientific-plot-resize[data-plot-resize=sw] { left:-3px; }
+.scientific-plot-resize[data-plot-resize=ne],.scientific-plot-resize[data-plot-resize=nw] { top:-3px; }
+.scientific-plot-resize[data-plot-resize=se],.scientific-plot-resize[data-plot-resize=sw] { bottom:-3px; }
+.optimization-plot-note, .optimization-plot-empty { margin: 5px 12px 10px; font-size: 12px; color: #64748b; }
+.optimization-convergence { border-top: 1px solid #e2e8f0; padding: 8px 12px; font-size: 12px; }
+.optimization-convergence summary { cursor: pointer; color: #285f7b; }
+.optimization-convergence table { width: 100%; margin-top: 8px; border-collapse: collapse; }
+.optimization-convergence th, .optimization-convergence td { padding: 5px 7px; border-bottom: 1px solid #edf2f7; text-align: left; font-variant-numeric: tabular-nums; }

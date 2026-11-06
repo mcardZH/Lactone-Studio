@@ -1,0 +1,49 @@
+{
+  "name": "sciyue-input-studio",
+  "version": "2.0.2",
+  "displayVersion": "2.0.2",
+  "releaseChannel": "release",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "prepare:chemistry": "node scripts/prepare-chemistry.mjs",
+    "prepare:runtime": "node scripts/prepare-runtime-assets.mjs",
+    "predev": "npm run prepare:runtime",
+    "prebuild": "npm run prepare:runtime",
+    "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "prepare:desktop": "node node_modules/electron/install.js",
+    "desktop:start": "node scripts/desktop-start.mjs",
+    "desktop:dev": "node scripts/desktop-dev.mjs"
+  },
+  "dependencies": {
+    "3dmol": "2.5.5",
+    "events": "3.3.0",
+    "indigo-ketcher": "1.46.0",
+    "kekule": "1.0.4",
+    "ketcher-core": "3.18.0",
+    "ketcher-react": "3.18.0",
+    "ketcher-standalone": "3.18.0",
+    "lucide-react": "1.52.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "ssh2": "1.17.0",
+    "utif": "3.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "electron": "44.7.0",
+    "eslint": "10.13.0",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2",
+    "vite": "8.3.3",
+    "vitest": "5.0.3"
+  },
+  "productName": "Ester Studio"
+}

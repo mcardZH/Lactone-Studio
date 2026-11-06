@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "entryId": "dolomite-cod-1200014",
+  "structure": {
+    "id": "dolomite-cod-1200014",
+    "name": "白云石",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "dolomite-cod-1200014:atom:1",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:2",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.440892098500626e-16,
+        "y": 2.7782094953404792,
+        "z": 10.68
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:3",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 2.4060000000000006,
+        "y": 1.3891047476702396,
+        "z": 5.34
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:4",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 8.01
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:5",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 4.440892098500626e-16,
+        "y": 2.7782094953404792,
+        "z": 2.669999999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:6",
+        "sourceIndex": 2,
+        "element": "Mg",
+        "x": 2.4060000000000006,
+        "y": 1.3891047476702396,
+        "z": 13.349999999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:7",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 3.891258
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:8",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 12.128741999999999
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:9",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.440892098500626e-16,
+        "y": 2.7782094953404792,
+        "z": 14.571257999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:10",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 2.4060000000000006,
+        "y": 1.3891047476702396,
+        "z": 9.231258
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:11",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.440892098500626e-16,
+        "y": 2.7782094953404792,
+        "z": 6.788741999999999
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:12",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 2.4060000000000006,
+        "y": 1.3891047476702396,
+        "z": 1.4487419999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:13",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -1.1276921999999996,
+        "y": 4.024375364475452,
+        "z": 3.9072780000000003
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:14",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -0.5153652,
+        "y": 1.1785164679234315,
+        "z": 3.907278
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:15",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.6430574000000004,
+        "y": 3.1317366536225557,
+        "z": 3.9072780000000003
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:16",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.5336922000000004,
+        "y": 0.14293887853526765,
+        "z": 12.112722
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:17",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.9213652000000003,
+        "y": 2.988797775087288,
+        "z": 12.112722
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:18",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.7629426000000001,
+        "y": 1.0355775893881638,
+        "z": 12.112722
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:19",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.2783078000000003,
+        "y": 2.6352706168052116,
+        "z": 14.587278
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:20",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.684307800000001,
+        "y": 1.246165869134972,
+        "z": 9.247277999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:21",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -0.5153651999999997,
+        "y": 3.956725963263911,
+        "z": 14.587278
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:22",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.8906348000000004,
+        "y": 2.5676212155936713,
+        "z": 9.247277999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:23",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -0.7629425999999997,
+        "y": 1.7426319059523157,
+        "z": 14.587278
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:24",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.6430574,
+        "y": 0.3535271582820759,
+        "z": 9.247277999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:25",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": -1.2783077999999997,
+        "y": 2.921148373875747,
+        "z": 6.772721999999999
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:26",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.1276922,
+        "y": 1.5320436262055073,
+        "z": 1.4327219999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:27",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.5153652000000001,
+        "y": 1.599693027417048,
+        "z": 6.772721999999999
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:28",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.9213652000000003,
+        "y": 0.2105882797468083,
+        "z": 1.4327219999999998
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:29",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.7629426000000001,
+        "y": 3.8137870847286433,
+        "z": 6.772722
+      },
+      {
+        "id": "dolomite-cod-1200014:atom:30",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.1689426000000007,
+        "y": 2.4246823370584036,
+        "z": 1.432722
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1200014; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "dolomite-cod-1200014:atom:1",
+      "dolomite-cod-1200014:atom:2",
+      "dolomite-cod-1200014:atom:3",
+      "dolomite-cod-1200014:atom:4",
+      "dolomite-cod-1200014:atom:5",
+      "dolomite-cod-1200014:atom:6",
+      "dolomite-cod-1200014:atom:7",
+      "dolomite-cod-1200014:atom:8",
+      "dolomite-cod-1200014:atom:9",
+      "dolomite-cod-1200014:atom:10",
+      "dolomite-cod-1200014:atom:11",
+      "dolomite-cod-1200014:atom:12",
+      "dolomite-cod-1200014:atom:13",
+      "dolomite-cod-1200014:atom:14",
+      "dolomite-cod-1200014:atom:15",
+      "dolomite-cod-1200014:atom:16",
+      "dolomite-cod-1200014:atom:17",
+      "dolomite-cod-1200014:atom:18",
+      "dolomite-cod-1200014:atom:19",
+      "dolomite-cod-1200014:atom:20",
+      "dolomite-cod-1200014:atom:21",
+      "dolomite-cod-1200014:atom:22",
+      "dolomite-cod-1200014:atom:23",
+      "dolomite-cod-1200014:atom:24",
+      "dolomite-cod-1200014:atom:25",
+      "dolomite-cod-1200014:atom:26",
+      "dolomite-cod-1200014:atom:27",
+      "dolomite-cod-1200014:atom:28",
+      "dolomite-cod-1200014:atom:29",
+      "dolomite-cod-1200014:atom:30"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.812,
+          0.0,
+          2.946500198748532e-16
+        ],
+        [
+          -2.4059999999999997,
+          4.167314243010719,
+          2.946500198748532e-16
+        ],
+        [
+          0.0,
+          0.0,
+          16.02
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1200014 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

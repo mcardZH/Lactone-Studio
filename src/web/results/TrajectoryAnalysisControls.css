@@ -1,0 +1,12 @@
+.trajectory-analysis-controls { display: grid; gap: 12px; min-width: 0; }
+.trajectory-current-energy { flex: 1 1 100%; margin: 0; text-align: left; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.trajectory-energy-task .optimization-plot-note,
+.trajectory-energy-task .optimization-plot-empty,
+.trajectory-empty { flex: 1 1 100%; margin: 0; color: var(--ui-control-muted, #607a6e); }
+.trajectory-energy-task .optimization-convergence { font: inherit; }
+.trajectory-energy-task .optimization-convergence summary { color: inherit; font-weight: 650; }
+.trajectory-energy-task .optimization-convergence :is(th, td) { text-align: center; }
+.trajectory-read-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.trajectory-coordinate-task .analysis-task-section-body > .interactive-selection-field { flex: 1 1 100%; }
+.trajectory-coordinate-current { display: block; font-variant-numeric: tabular-nums; }
+.trajectory-coordinate-task .analysis-task-configuration:empty { display: none; }

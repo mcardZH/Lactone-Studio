@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-adipic-acid-cod-4116152",
+  "structure": {
+    "id": "molecular-crystal-adipic-acid-cod-4116152",
+    "name": "己二酸",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:1",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 3.796372306161149,
+        "y": 4.2113334,
+        "z": 8.300205272979074
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:2",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 3.020600770084405,
+        "y": 1.6343334,
+        "z": 4.112957230125746
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:3",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 3.0206007700844046,
+        "y": 0.9426666,
+        "z": -0.9594927698742537
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:4",
+        "sourceIndex": 3,
+        "element": "H",
+        "x": 3.7963723061611487,
+        "y": 3.5196666000000003,
+        "z": 3.2277552729790746
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:5",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.9707369660573673,
+        "y": 3.4743113999999995,
+        "z": 6.283129330442126
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:6",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 5.846236110188187,
+        "y": 0.8973113999999999,
+        "z": 6.130033172662694
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:7",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 5.846236110188187,
+        "y": 1.6796886000000002,
+        "z": 1.0575831726626945
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:8",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.9707369660573674,
+        "y": 4.2566886,
+        "z": 1.2106793304421264
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:9",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 1.998736505955197,
+        "y": 4.180409399999999,
+        "z": 5.337795505910333
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:10",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 4.818236570290357,
+        "y": 1.6034093999999999,
+        "z": 7.075366997194488
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:11",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 4.818236570290357,
+        "y": 0.9735906000000001,
+        "z": 2.0029169971944873
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:12",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 1.998736505955197,
+        "y": 3.5505906000000005,
+        "z": 0.265345505910333
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:13",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 0.7839519037682389,
+        "y": 1.0472928,
+        "z": 5.606705242857055
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:14",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 6.033021172477316,
+        "y": 3.6242928,
+        "z": 6.8064572602477655
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:15",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 6.033021172477316,
+        "y": 4.1067072,
+        "z": 1.734007260247766
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:16",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 0.7839519037682389,
+        "y": 1.5297071999999998,
+        "z": 0.5342552428570547
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:17",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 6.53066020704324,
+        "y": 0.2530614,
+        "z": 3.6284842809744173
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:18",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 0.2863128692023137,
+        "y": 2.8300614,
+        "z": 8.784678222130403
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:19",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 0.286312869202314,
+        "y": 4.9009386,
+        "z": 3.712228222130403
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:20",
+        "sourceIndex": 10,
+        "element": "H",
+        "x": 6.53066020704324,
+        "y": 2.3239386,
+        "z": -1.4439657190255821
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:21",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 2.2441475367000367,
+        "y": 4.6885938,
+        "z": 7.280027616022108
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:22",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.5728255395455175,
+        "y": 2.1115938,
+        "z": 5.133134887082714
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:23",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 4.5728255395455175,
+        "y": 0.4654062,
+        "z": 0.06068488708271347
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:24",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 2.2441475367000363,
+        "y": 3.0424062000000003,
+        "z": 2.207577616022107
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:25",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 1.4117951240904547,
+        "y": 4.3185366,
+        "z": 6.097437541393008
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:26",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 5.405177952155099,
+        "y": 1.7415365999999999,
+        "z": 6.315724961711812
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:27",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 5.405177952155099,
+        "y": 0.8354634,
+        "z": 1.2432749617118124
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:28",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 1.4117951240904545,
+        "y": 3.4124634,
+        "z": 1.0249875413930083
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:29",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 0.36129957304101434,
+        "y": 0.18039000000000002,
+        "z": 5.714217221664556
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:30",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 6.4556735032045385,
+        "y": 2.75739,
+        "z": 6.698945281440265
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:31",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 6.455673503204539,
+        "y": 4.97361,
+        "z": 1.6264952814402656
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:32",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 0.3612995730410147,
+        "y": 2.39661,
+        "z": 0.6417672216645559
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:33",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.0103253601848134,
+        "y": 0.5123076,
+        "z": 7.9755719391656115
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:34",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 4.80664771606074,
+        "y": 3.0893076,
+        "z": 4.437590563939208
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:35",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 4.80664771606074,
+        "y": 4.641692399999999,
+        "z": -0.6348594360607911
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:36",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.010325360184814,
+        "y": 2.0646923999999998,
+        "z": 2.9031219391656116
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:37",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.2319269354480173,
+        "y": 3.8840544,
+        "z": 7.513336792721996
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:38",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.5850461407975365,
+        "y": 1.3070544,
+        "z": 4.899825710382824
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:39",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.5850461407975365,
+        "y": 1.2699456,
+        "z": -0.17262428961717546
+      },
+      {
+        "id": "molecular-crystal-adipic-acid-cod-4116152:atom:40",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.2319269354480173,
+        "y": 3.8469455999999997,
+        "z": 2.440886792721996
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 4116152; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-adipic-acid-cod-4116152:atom:1",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:2",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:3",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:4",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:5",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:6",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:7",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:8",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:9",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:10",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:11",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:12",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:13",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:14",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:15",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:16",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:17",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:18",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:19",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:20",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:21",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:22",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:23",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:24",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:25",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:26",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:27",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:28",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:29",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:30",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:31",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:32",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:33",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:34",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:35",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:36",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:37",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:38",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:39",
+      "molecular-crystal-adipic-acid-cod-4116152:atom:40"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          6.816973076245553,
+          0.0,
+          -2.8041874968951794
+        ],
+        [
+          8.288264136433385e-16,
+          5.154,
+          3.1559148014027293e-16
+        ],
+        [
+          0.0,
+          0.0,
+          10.1449
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 4116152 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

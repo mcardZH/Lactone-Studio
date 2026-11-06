@@ -1,0 +1,769 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881",
+  "structure": {
+    "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881",
+    "name": "L-组氨酸（正交候选）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:1",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 0.160239,
+        "y": 2.827055,
+        "z": 5.20131554
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:2",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 2.4242610000000013,
+        "y": 4.515945,
+        "z": 14.617165540000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:3",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 5.008761000000001,
+        "y": 6.498555,
+        "z": 4.214534460000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:4",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 2.744738999999999,
+        "y": 0.8444449999999999,
+        "z": 13.63038446
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:5",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 4.491860999999999,
+        "y": 1.4017787,
+        "z": 5.510155420000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:6",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 3.2616390000000006,
+        "y": 5.9412213000000005,
+        "z": 14.926005420000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:7",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 0.6771390000000007,
+        "y": 5.0732786999999995,
+        "z": 3.90569458
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:8",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 1.9073610000000003,
+        "y": 2.2697213000000005,
+        "z": 13.321544580000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:9",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.029980200000000512,
+        "y": 2.3159822,
+        "z": 6.7662298100000005
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:10",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 2.5545198000000005,
+        "y": 5.0270178,
+        "z": 16.18207981
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:11",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 5.139019800000001,
+        "y": 5.9874822,
+        "z": 2.649620190000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:12",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 2.6144802,
+        "y": 1.3555177999999999,
+        "z": 12.065470190000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:13",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 4.4076063,
+        "y": 3.6670942,
+        "z": 11.46285579
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:14",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 3.3458937,
+        "y": 3.6759057999999993,
+        "z": 2.047005790000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:15",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 0.7613937000000011,
+        "y": 7.3385942,
+        "z": 16.78469421
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:16",
+        "sourceIndex": 8,
+        "element": "H",
+        "x": 1.8231062999999998,
+        "y": 0.0044057999999999225,
+        "z": 7.36884421
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:17",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.7090729000000002,
+        "y": 2.4327359,
+        "z": 6.4875206499999996
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:18",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.0444271,
+        "y": 4.910264100000001,
+        "z": 15.903370650000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:19",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.4599271000000007,
+        "y": 6.104235899999999,
+        "z": 2.928329350000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:20",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 0.12457290000000024,
+        "y": 1.2387641,
+        "z": 12.344179350000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:21",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.7623136000000006,
+        "y": 4.7751529,
+        "z": 9.81884838
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:22",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 4.991186399999999,
+        "y": 2.5678471000000003,
+        "z": 0.4029983799999979
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:23",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 2.4066864,
+        "y": 1.1036529000000008,
+        "z": 18.428701620000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:24",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 0.1778136000000009,
+        "y": 6.2393471,
+        "z": 9.012851620000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:25",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 1.1402814,
+        "y": 2.5193833000000003,
+        "z": 10.19359921
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:26",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 1.444218600000001,
+        "y": 4.8236167000000005,
+        "z": 0.7777492100000025
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:27",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 4.028718600000001,
+        "y": 6.190883299999999,
+        "z": 18.053950790000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:28",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 3.724781399999999,
+        "y": 1.1521166999999999,
+        "z": 8.638100790000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:29",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 4.3378248,
+        "y": 5.0321579000000005,
+        "z": 6.421609700000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:30",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 3.4156752000000004,
+        "y": 2.3108421,
+        "z": 15.8374597
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:31",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 0.8311752000000004,
+        "y": 1.3606579,
+        "z": 2.9942403
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:32",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 1.7533248000000006,
+        "y": 5.982342099999999,
+        "z": 12.410090300000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:33",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 2.7152757000000007,
+        "y": 4.8529887,
+        "z": 7.018574590000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:34",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 5.0382242999999995,
+        "y": 2.4900112999999995,
+        "z": 16.434424590000003
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:35",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 2.4537242999999997,
+        "y": 1.1814887000000003,
+        "z": 2.397275410000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:36",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 0.1307757000000015,
+        "y": 6.1615113,
+        "z": 11.81312541
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:37",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 4.175001300000001,
+        "y": 3.9652200000000004,
+        "z": 8.275025614
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:38",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 3.5784987000000004,
+        "y": 3.3777799999999996,
+        "z": 17.690875614
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:39",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 0.9939987,
+        "y": 0.29372000000000026,
+        "z": 1.1408243860000005
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:40",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 1.5905013000000015,
+        "y": 7.0492799999999995,
+        "z": 10.556674386000003
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:41",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 2.9080794,
+        "y": 3.5400603,
+        "z": 4.634669687000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:42",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 4.845420600000001,
+        "y": 3.8029397,
+        "z": 14.050519687000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:43",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 2.2609206000000013,
+        "y": 7.2115602999999995,
+        "z": 4.781180313000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:44",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 0.3235793999999999,
+        "y": 0.1314397000000002,
+        "z": 14.197030313
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:45",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 3.4368681000000003,
+        "y": 3.113432,
+        "z": 6.019364588
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:46",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 4.3166319,
+        "y": 4.229568,
+        "z": 15.435214588
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:47",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 1.7321319000000008,
+        "y": 6.7849319999999995,
+        "z": 3.396485412000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:48",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 0.8523681000000003,
+        "y": 0.5580680000000001,
+        "z": 12.812335412000003
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:49",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 3.6518985000000006,
+        "y": 4.2339738,
+        "z": 9.516787912000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:50",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 4.1016015,
+        "y": 3.1090262,
+        "z": 0.10093791200000105
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:51",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 1.5171014999999999,
+        "y": 0.5624738,
+        "z": 18.730762088000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:52",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 1.0673985000000017,
+        "y": 6.7805262,
+        "z": 9.314912088
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:53",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 0.33546810000000027,
+        "y": 3.0752484,
+        "z": 9.722241759000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:54",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 2.2490319000000007,
+        "y": 4.2677515999999995,
+        "z": 0.30639175900000054
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:55",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 4.8335319000000005,
+        "y": 6.7467484,
+        "z": 18.525308241
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:56",
+        "sourceIndex": 16,
+        "element": "C",
+        "x": 2.9199680999999997,
+        "y": 0.5962516,
+        "z": 9.109458241
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:57",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 3.6591351000000003,
+        "y": 4.3360415,
+        "z": 6.916130142000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:58",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 4.0943649,
+        "y": 3.0069584999999996,
+        "z": 16.331980142
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:59",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 1.5098649,
+        "y": 0.6645415000000002,
+        "z": 2.4997198580000006
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:60",
+        "sourceIndex": 18,
+        "element": "C",
+        "x": 1.074635100000001,
+        "y": 6.6784585,
+        "z": 11.915569858000003
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:61",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 4.7187801,
+        "y": 2.3593059,
+        "z": 5.848749386000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:62",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 3.0347199000000002,
+        "y": 4.983694100000001,
+        "z": 15.264599386000002
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:63",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 0.4502199000000007,
+        "y": 6.030805899999999,
+        "z": 3.567100614
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:64",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 2.1342801000000002,
+        "y": 1.3121941000000001,
+        "z": 12.982950614
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:65",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 4.521841200000001,
+        "y": 3.6692970999999996,
+        "z": 10.424852486
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:66",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 3.2316588,
+        "y": 3.6737029,
+        "z": 1.0090024859999998
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:67",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 0.647158800000001,
+        "y": 7.3407971000000005,
+        "z": 17.822697514
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:68",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 1.9373411999999999,
+        "y": 0.002202900000000165,
+        "z": 8.406847514
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:69",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 0.1669587000000005,
+        "y": 3.2294514000000003,
+        "z": 8.417581583
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:70",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 2.4175413000000003,
+        "y": 4.1135486000000006,
+        "z": 17.833431583000003
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:71",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 5.0020413,
+        "y": 6.900951399999999,
+        "z": 0.9982684170000009
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:72",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 2.7514586999999997,
+        "y": 0.44204859999999985,
+        "z": 10.414118417000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:73",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.6752729000000006,
+        "y": 3.7397899,
+        "z": 4.556706449
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:74",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 0.9092271000000005,
+        "y": 3.6032101,
+        "z": 13.972556449
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:75",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 3.4937270999999996,
+        "y": 0.06828990000000063,
+        "z": 4.859143551
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:76",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 4.259772900000001,
+        "y": 7.2747101,
+        "z": 14.274993551000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:77",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.7501095,
+        "y": 3.7126208000000003,
+        "z": 3.743741960000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:78",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.0033905,
+        "y": 3.6303791999999997,
+        "z": 13.15959196
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:79",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.4188904999999996,
+        "y": 0.04112080000000036,
+        "z": 5.672108040000001
+      },
+      {
+        "id": "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:80",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.1656095000000013,
+        "y": 7.301879199999999,
+        "z": 15.087958040000002
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2108881; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:1",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:2",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:3",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:4",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:5",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:6",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:7",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:8",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:9",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:10",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:11",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:12",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:13",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:14",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:15",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:16",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:17",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:18",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:19",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:20",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:21",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:22",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:23",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:24",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:25",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:26",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:27",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:28",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:29",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:30",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:31",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:32",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:33",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:34",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:35",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:36",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:37",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:38",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:39",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:40",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:41",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:42",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:43",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:44",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:45",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:46",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:47",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:48",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:49",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:50",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:51",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:52",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:53",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:54",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:55",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:56",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:57",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:58",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:59",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:60",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:61",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:62",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:63",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:64",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:65",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:66",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:67",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:68",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:69",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:70",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:71",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:72",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:73",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:74",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:75",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:76",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:77",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:78",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:79",
+      "molecular-crystal-l-histidine-orthorhombic-polymorph-candidate-cod-2108881:atom:80"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.169,
+          0.0,
+          3.165099652396334e-16
+        ],
+        [
+          1.1808444616575542e-15,
+          7.343,
+          4.496290723069507e-16
+        ],
+        [
+          0.0,
+          0.0,
+          18.8317
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2108881 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

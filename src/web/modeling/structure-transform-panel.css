@@ -1,0 +1,284 @@
+.structure-transform-tool {
+	position: fixed;
+	z-index: 1200;
+	top: 72px;
+	right: 24px;
+	width: min(520px, calc(100vw - 32px));
+	max-height: calc(100dvh - 96px);
+	overflow: auto;
+	box-sizing: border-box;
+	padding: 14px;
+	border: 1px solid var(--ui-control-border);
+	box-shadow: 0 8px 32px #17333030;
+	line-height: 1.5;
+	--ui-control-height: var(--ui-control-compact-height);
+	--ui-control-padding: var(--ui-control-compact-padding);
+}
+.structure-transform-tool.structure-transform-embedded {
+	position: static;
+	width: 100%;
+	max-height: none;
+	overflow: visible;
+	border: 0;
+	box-shadow: none;
+	padding: 12px;
+}
+.advanced-modeling-accordion { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.advanced-modeling-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:0 2px; }
+.advanced-modeling-actions > button.shared-input-action { width:100%; min-height:40px; justify-content:center; padding:8px 12px; }
+.advanced-modeling-function-card { border:1px solid var(--ui-control-border); border-radius:var(--ui-control-radius); background:var(--ui-surface-bg); min-width:0; }
+.advanced-modeling-function-card[data-active] { border-color:var(--ui-control-focus); }
+.advanced-modeling-card-heading { display:flex; align-items:center; gap:4px; }
+.advanced-modeling-card-close { flex:none; margin-right:8px; width:26px; height:26px; padding:0; border:0; border-radius:var(--ui-control-radius); background:transparent; font:inherit; font-size:18px; }
+.advanced-modeling-function-toggle { display:flex; align-items:center; gap:6px; width:100%; padding:10px 12px; border:0; background:transparent; text-align:left; font:inherit; color:inherit; }
+.advanced-modeling-function-body > .structure-transform-embedded { padding:0 12px 12px; }
+.advanced-modeling-function-body > .structure-transform-embedded > header { display:none; }
+.slab-miller-row { flex-wrap:nowrap; }
+.slab-miller-row .structure-transform-vector { flex-wrap:nowrap; gap:4px; }
+.slab-miller-row .structure-transform-vector input[type="number"] { width:3.4rem; }
+.slab-range-row { flex-wrap:nowrap; gap:8px; }
+.slab-range-row input[type="number"] { width:4.8rem; }
+.structure-transform-row.slab-vacuum-row input[type="number"] { width:5rem; }
+.slab-position-row { align-items:center; gap:8px; }
+.slab-position-row.slab-vacuum-row { gap:6px; }
+.slab-position-row input[type="radio"] { width:auto; }
+.slab-position-row > input[type="number"] { width:5rem; }
+.slab-range-row > label { min-width:7.6rem; }
+.slab-range-row .structure-transform-layer-input > label { display:grid; grid-template-columns:8rem 4.2rem; gap:6px; }
+.slab-range-row .structure-transform-layer-input input[type="number"] { width:4.2rem; }
+.slab-range-row .structure-transform-layer-input > button { min-width:26px; padding:3px 5px; }
+.slab-range-row > label > select { min-width:5rem; }
+.structure-transform-row.slab-vacuum-row > label:not(.structure-transform-check) { display:grid; grid-template-columns:8rem 5rem; gap:6px; }
+.structure-transform-row.slab-vacuum-row > label.structure-transform-check { width:8rem; gap:6px; }
+.structure-transform-row .structure-transform-vector[aria-label="面内复制"] { flex-wrap:nowrap; gap:4px; }
+.structure-transform-row .structure-transform-vector[aria-label="面内复制"] input[type="number"] { width:3.8rem; }
+.slab-position-row .structure-transform-check { flex:none; white-space:nowrap; }
+.slab-position-row > input[type="number"] { flex:none; }
+.structure-transform-task-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+	gap: 10px;
+	margin: 10px 0;
+}
+.structure-transform-task-grid .task-card {
+	min-height: 58px;
+	text-align: left;
+	padding: 12px;
+	background: var(--ui-surface-bg);
+	border: 1px solid var(--ui-control-border);
+	border-radius: var(--ui-control-radius);
+	font: inherit;
+}
+.structure-transform-vector {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+}
+.structure-transform-vector > label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.structure-transform-vector input[type="number"] {
+	width: 5rem;
+	min-width: 0;
+}
+.structure-transform-layer-input {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.structure-transform-layer-input > label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.structure-transform-order {
+	border-collapse: collapse;
+	font: inherit;
+	width: 100%;
+	margin: 8px 0;
+}
+.structure-transform-order th,
+.structure-transform-order td {
+	text-align: center;
+	border-bottom: 1px solid var(--ui-control-border);
+	padding: 4px 6px;
+	font-variant-numeric: tabular-nums;
+}
+.structure-transform-order td button {
+	min-width: 28px;
+	margin: 0 2px;
+	padding: 2px 4px;
+}
+.structure-transform-tool h3 {
+	font-size: var(--ui-control-font-size, 14px);
+	margin: 14px 0 8px;
+}
+.structure-transform-tool hr {
+	border: 0;
+	border-top: 1px solid var(--ui-control-border);
+	margin: 14px 0;
+}
+.structure-transform-embedded .structure-transform-cell {
+	grid-template-columns: minmax(0, 1fr);
+}
+.structure-transform-tool header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+.structure-transform-tool header button {
+	width: 30px;
+	padding: 0;
+	font-size: 19px;
+}
+.structure-transform-tool fieldset {
+	border: 0;
+	padding: 0;
+	margin: 0;
+	min-width: 0;
+}
+.structure-transform-row {
+	display: flex;
+	align-items: flex-end;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 10px 0;
+}
+.structure-transform-row > label {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+	gap: 6px;
+	max-width: 100%;
+	min-width: 0;
+}
+.structure-transform-row input {
+	width: 11rem;
+	max-width: 100%;
+	font-variant-numeric: tabular-nums;
+}
+.structure-transform-row input[type="number"] {
+	width: 6rem;
+}
+.structure-transform-row select {
+	width: auto;
+	max-width: 100%;
+}
+.structure-transform-row .structure-transform-wide {
+	width: min(100%, 26rem);
+}
+.structure-transform-row .structure-transform-wide input {
+	width: 100%;
+}
+.structure-transform-check {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.structure-transform-check input[type="checkbox"] {
+	width: auto;
+}
+.structure-transform-tool footer {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	margin-top: 12px;
+}
+.structure-transform-tool footer > label {
+	margin-right: auto;
+}
+.structure-transform-summary:empty {
+	display: none;
+}
+.structure-transform-tool input[type="range"] {
+	width: 8rem;
+}
+.structure-transform-tool .structure-transform-apply {
+	background: var(--teal);
+	border-color: var(--teal);
+	color: #fff;
+}
+.structure-transform-tool .structure-transform-apply:hover:not(:disabled) { background:var(--teal-dark); border-color:var(--teal-dark); }
+.structure-transform-tool button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+.structure-transform-summary {
+	margin-top: 12px;
+	color: var(--ui-control-muted);
+	font-size: var(--ui-control-small-font);
+}
+.structure-transform-error {
+	color: #a83232;
+	margin: 8px 0;
+	overflow-wrap: anywhere;
+}
+.structure-transform-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	border-bottom: 1px solid var(--ui-control-border);
+	padding-bottom: 8px;
+	margin-bottom: 10px;
+}
+.structure-transform-tabs button[aria-selected="true"] {
+	background: var(--ui-control-selected-bg);
+	color: var(--ui-control-selected-ink);
+}
+.structure-transform-result {
+	padding: 8px;
+	background: var(--ui-surface-bg);
+	border-radius: var(--ui-control-radius);
+	margin: 10px 0;
+}
+.structure-transform-result dl {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 4px 12px;
+	margin: 0;
+}
+.structure-transform-result dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+.structure-transform-tool details {
+	margin: 10px 0;
+}
+.structure-transform-cell {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 6px;
+}
+.structure-transform-cell label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.structure-transform-cell input {
+	width: 100%;
+	min-width: 0;
+}
+.structure-transform-muted {
+	color: var(--ui-control-muted);
+	font-size: var(--ui-control-small-font);
+	margin: 8px 0;
+}
+@media (max-width: 560px) {
+	.structure-transform-tool {
+		top: 16px;
+		right: 16px;
+		max-height: calc(100dvh - 32px);
+	}
+	.structure-transform-row {
+		gap: 8px;
+	}
+	.structure-transform-row input {
+		width: 10rem;
+	}
+}

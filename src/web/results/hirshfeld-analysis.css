@@ -1,0 +1,11 @@
+.hirshfeld-analysis-card .analysis-task-section-body > output { display: block; margin-block: 4px; }
+.hirshfeld-analysis-card input[type="number"] { width: 78px; }
+.hirshfeld-analysis-card input[type="range"] { width: 100px; }
+.hirshfeld-analysis-card pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--font-size-sm, 13px); }
+.hirshfeld-contribution-plot svg { display: block; overflow: visible; }
+
+.hirshfeld-resource-record { flex: 1 1 100%; overflow-wrap: anywhere; }
+.hirshfeld-resource-record > output { display: block; margin-top: 5px; }
+.hirshfeld-target-selection { display: grid; flex: 1 1 100%; min-width: 0; gap: 4px; }
+.hirshfeld-target-selection .interactive-selection-actions { padding-inline-start: calc(4em + 6px); }
+.hirshfeld-target-summary { display: block; }

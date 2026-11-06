@@ -1,0 +1,242 @@
+{
+  "schema": "sy-source-native-identity/v1",
+  "sourceFiles": [
+    {
+      "path": "desktop/chemistry/engine.py",
+      "bytes": 51993,
+      "sha256": "af51b9b7c0c5b74fe5d025e5385f5cd1b6eef829372951f3025407304761153f"
+    },
+    {
+      "path": "desktop/chemistry/dynamics.py",
+      "bytes": 24153,
+      "sha256": "5df9b7210cf2ff93c91f19d9331310295a582f717e470f213dabd21e7a68b38d"
+    },
+    {
+      "path": "desktop/chemistry/dynamics_native_md.py",
+      "bytes": 14663,
+      "sha256": "53fd69892b3788f7bde3ea7928d18130fb85bae530a5d46f843d091c79223a7c"
+    },
+    {
+      "path": "desktop/chemistry/dynamics_checkpoint_files.py",
+      "bytes": 6160,
+      "sha256": "00408a2b9f19eb2d19e96ed095766a992093f24542c9c31bf615988297d3598f"
+    },
+    {
+      "path": "desktop/chemistry/geometry_clean.py",
+      "bytes": 42989,
+      "sha256": "6b5e62c66cdc483660061952bb674e2f9bd8028daa843312255c7004ca943627"
+    },
+    {
+      "path": "desktop/chemistry/runtime_launcher.py",
+      "bytes": 9046,
+      "sha256": "d4b9c61b7d19098ccfb2218ef4dd2cbd39efe6a48055d215c8f479dbc63740da"
+    },
+    {
+      "path": "desktop/chemistry/diagnostics.py",
+      "bytes": 2799,
+      "sha256": "c9ccc3b60a97b83e835cc0c8f3fbdb7234f4d0712a643c073ab92455bf838797"
+    },
+    {
+      "path": "desktop/chemistry/hybrid_geometry.py",
+      "bytes": 36931,
+      "sha256": "64951c9a9ceaa1ffbbd48e436ce4713a163a31a98581762b46fc16b09250a1fb"
+    },
+    {
+      "path": "desktop/chemistry/bond_perception.py",
+      "bytes": 39620,
+      "sha256": "efea9e680278e88a818b2a36abe1999de7fd20cd5d81b9d26a8924bfa5dde104"
+    },
+    {
+      "path": "desktop/chemistry/orbitals.py",
+      "bytes": 39881,
+      "sha256": "47cdea2b077f0c86f96167b3f8a71117589fad4d60b52855bf8dfd7cf90482ef"
+    },
+    {
+      "path": "desktop/chemistry/orbitals_worker.py",
+      "bytes": 19094,
+      "sha256": "dd96b882755d15ade27357b5843bca25f49353e6329316a50870415823f4696b"
+    },
+    {
+      "path": "desktop/chemistry/analysis_result_wire.py",
+      "bytes": 2209,
+      "sha256": "f233b87f61cfe92c5d8755fd8b6012a12283ad83c39a651b70cce5815403f21f"
+    },
+    {
+      "path": "desktop/chemistry/wavefunction_analysis.py",
+      "bytes": 32178,
+      "sha256": "ab6ca0c1136bb8a4f376c46eaa7c28fc0248096b55e9831418b1c4d0aaa2db55"
+    },
+    {
+      "path": "desktop/chemistry/wavefunction_prerequisites.py",
+      "bytes": 3180,
+      "sha256": "e1dfc112a07f52e429e09e7b70f916aeb8fc44c0d53c428739b2365855ba595f"
+    },
+    {
+      "path": "desktop/chemistry/multiwfn_resources.py",
+      "bytes": 9274,
+      "sha256": "6eddfbb4309804e1cca6f028da0bbe1d4490743ab37d49c98f1bc0152c380a8a"
+    },
+    {
+      "path": "desktop/chemistry/empirical_worker.py",
+      "bytes": 1719,
+      "sha256": "503ec06b679740aa64a146c5252e59b0f8ce288afdb19c45ac01dc5cde94d263"
+    },
+    {
+      "path": "desktop/chemistry/surface_worker.py",
+      "bytes": 8387,
+      "sha256": "cd8e1444d63be0d1df3f2863ea6f723b6474643939f04f8db85d697b13e28fdd"
+    },
+    {
+      "path": "desktop/chemistry/surface_analysis.py",
+      "bytes": 88042,
+      "sha256": "b82528cdd6704fcb23fe728ac58be4a6476b96b94a9618d49c06faddeeab2009"
+    },
+    {
+      "path": "desktop/chemistry/interaction_analysis.py",
+      "bytes": 44888,
+      "sha256": "7b73592de602493c21e87d733892d1f169eba4fe67d7cbbee39f9361e6569326"
+    },
+    {
+      "path": "desktop/chemistry/interaction_worker.py",
+      "bytes": 8256,
+      "sha256": "eff4941d94fe7d7eb8cf3ab23702df5ce08eff815e9572c7d007d0a0b1c686fa"
+    },
+    {
+      "path": "desktop/chemistry/multiwfn_progress.py",
+      "bytes": 2316,
+      "sha256": "702b7c5da8d3f9476d169a082c987f2b5162daa38b8d0ecc286bab694afa66a1"
+    },
+    {
+      "path": "desktop/chemistry/excitation_analysis.py",
+      "bytes": 58785,
+      "sha256": "70200ec07e566ca7f274650a1b4753c15a29f1b34385eac0529810ce537bb199"
+    },
+    {
+      "path": "desktop/chemistry/reactivity_analysis.py",
+      "bytes": 25991,
+      "sha256": "94e8d7a50537344c0096d4d4a1d3fd733ad3f2a4cc8711ee7c41ced23e9de21a"
+    },
+    {
+      "path": "desktop/chemistry/electronic_analysis_worker.py",
+      "bytes": 13242,
+      "sha256": "623de68b7b6ecba6878dee3c34add4ab08444b7c469ed152bbc6d0689879ddc4"
+    },
+    {
+      "path": "desktop/chemistry/orca_excitation.py",
+      "bytes": 29466,
+      "sha256": "aa41488d039f7e36eb62387a1424b85e177510dfd95119dd8bb5d29f3fa78e4f"
+    },
+    {
+      "path": "desktop/chemistry/xtb_periodic.py",
+      "bytes": 40807,
+      "sha256": "cebbff909a96c3a674eedc9debb467b516e59c2534b5341e9a48f834e87bfef4"
+    },
+    {
+      "path": "desktop/chemistry/crystal_modeling.py",
+      "bytes": 29673,
+      "sha256": "f2c561c81cc74b96bb1701c0fe5567382e83c0390f15fd2575dd68e3ea9053cf"
+    },
+    {
+      "path": "desktop/chemistry/crystal_worker.py",
+      "bytes": 2678,
+      "sha256": "445b9476b58780b6f3d5f79339f8416169fd6404e27aaed8fa35f61cee32bef7"
+    },
+    {
+      "path": "desktop/chemistry/xtb_periodic_bonds.py",
+      "bytes": 7521,
+      "sha256": "5048fc305bf92a225e9e83eae12195d98431cad42f4be81b671df416410e11fb"
+    },
+    {
+      "path": "desktop/chemistry/advanced_path.py",
+      "bytes": 63855,
+      "sha256": "b29fcb447411855771c3b2cbcc4404365449396e11ebcebfa4cd921fa6184bbf"
+    },
+    {
+      "path": "desktop/chemistry/native_stdin.py",
+      "bytes": 1937,
+      "sha256": "19eb55f32e413609611b116a9af1b6f68d1b15af742096cfec51bae6c004eaca"
+    },
+    {
+      "path": "desktop/chemistry/conformer_sampling.py",
+      "bytes": 47610,
+      "sha256": "e0081da16d58e7b2eb658bd03c3fa97b0288328449be2bb766a959dc4bad07fe"
+    },
+    {
+      "path": "desktop/chemistry/conformer_gfnff.py",
+      "bytes": 13453,
+      "sha256": "d955e759b836453df07934208f8614fd651508ddae1f93bd0fbaa3a55772a900"
+    },
+    {
+      "path": "desktop/chemistry/conformer_gfn0.py",
+      "bytes": 3071,
+      "sha256": "10e72858adedef54bf690bf6394010b7e3289b24648c6e6e0649bbc5686a4c9a"
+    },
+    {
+      "path": "desktop/chemistry/conformer_native_md.py",
+      "bytes": 52361,
+      "sha256": "012653ab7e3af3d4c67a42f53b1a5f0d10a35957fe13fa8a0155a21daecff2e8"
+    },
+    {
+      "path": "desktop/chemistry/conformer_native_metadynamics.py",
+      "bytes": 2651,
+      "sha256": "0c11b4ab3cb16c24200817bcd312fb452ba016b5ec6256727a8497d7a069515f"
+    },
+    {
+      "path": "desktop/chemistry/task_files.py",
+      "bytes": 2314,
+      "sha256": "5897b226cb28afe1b02b34faf366fe781cd850a8fba09d82a606e76bc4a01088"
+    },
+    {
+      "path": "desktop/chemistry/gfnff_topology.py",
+      "bytes": 3516,
+      "sha256": "b65b011ee247848086f3c58e05cf7f46e31de0097c8cbeaf1916f89b2b542992"
+    },
+    {
+      "path": "desktop/chemistry/bader_analysis.py",
+      "bytes": 24839,
+      "sha256": "d85c936ab1f63017bc58a3db8af3b231425330be2e67d1dd4af215d72d884bfc"
+    },
+    {
+      "path": "desktop/chemistry/hirshfeld_analysis.py",
+      "bytes": 23016,
+      "sha256": "dddfc11dac44b031b0ce7ea00e65a952f51434bcf5f0c3565a856c7d6d0ee878"
+    },
+    {
+      "path": "desktop/chemistry/hirshfeld_session.py",
+      "bytes": 27242,
+      "sha256": "6532d6e8f6f836926cb4893240608fd255ae64244993be4b88115cff084d6582"
+    }
+  ],
+  "builderSources": [
+    {
+      "path": "scripts/native/build.py",
+      "bytes": 28466,
+      "sha256": "8d9bf0af6d37acf13823039999453ba1f6fabdecfbc40305ed8623122edd8d46"
+    },
+    {
+      "path": "scripts/native/common.py",
+      "bytes": 11908,
+      "sha256": "42373459cf055c66fca3cb6144ef42315435e2ee51aa2b5ab9f60b92b38bcee6"
+    },
+    {
+      "path": "scripts/native/prepare.py",
+      "bytes": 18405,
+      "sha256": "29886b8a093995d17776010240bda9b3940981da55eef5bcc164393c4394cd1f"
+    },
+    {
+      "path": "desktop/packaging/native-engine.spec",
+      "bytes": 3698,
+      "sha256": "e888f270a8862ec8348ac30f13710ae6946547b52d3effa4cb72eb88b826749a"
+    },
+    {
+      "path": "scripts/native/runtime_pruning.py",
+      "bytes": 16907,
+      "sha256": "a9242387aa86165b532659e5085305a019ea5c65564657c8acf4b079076bbd81"
+    },
+    {
+      "path": "desktop/packaging/native-runtime-win11-recipe.json",
+      "bytes": 49600,
+      "sha256": "3550ee8087ab2976b08fc0c9b95a193078d855798c5d5d4a38bc8595d3eaf90d"
+    }
+  ]
+}

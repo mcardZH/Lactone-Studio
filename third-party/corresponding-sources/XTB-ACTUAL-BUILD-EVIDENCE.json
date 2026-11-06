@@ -1,0 +1,74 @@
+{
+  "schema": "sy-xtb-successful-source-build-evidence-v1",
+  "mainCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "scientificSourceFilesUnchanged": 947,
+  "allPreferredSourceFilesMatched": 2539,
+  "overlays": 38,
+  "sourceArchives": 12,
+  "meson": "1.4.1",
+  "ninja": "1.12.0",
+  "compiler": "WinLibs GCC/gfortran13.2.0 UCRT MinGW11.0.1 r7",
+  "setup": {
+    "buildtype": "release",
+    "defaultLibrary": "static",
+    "wrapMode": "nodownload",
+    "forceFallbackFor": "mctc-lib,json-fortran,json-fortran-8.2.5,tblite,multicharge,dftd4,cpx,numsa,s-dftd3,toml-f,test-drive,mstore",
+    "features": [
+      "tblite=enabled",
+      "cpcmx=enabled",
+      "openmp=true",
+      "gpu=false",
+      "lapack=openblas",
+      "mctc-lib:json=enabled"
+    ]
+  },
+  "compile": {
+    "elapsedSeconds": 62.04685068130493,
+    "threads": 4,
+    "jobMemoryLimitBytes": 8589934592,
+    "peakJobMemoryBytes": 538578944,
+    "status": "passed",
+    "exitCode": 0
+  },
+  "exe": {
+    "bytes": 14613972,
+    "sha256": "8ee086b79963b1214a1bec753712cc46e5e430d510f0fad3c88f20b130b6db3b"
+  },
+  "stackReserveBytes": 67108864,
+  "stackCommitBytes": 4096,
+  "fortranStackLinkArgs": [
+    "-Xlinker",
+    "--stack",
+    "-Xlinker",
+    "67108864,4096"
+  ],
+  "originalReceipts": [
+    {
+      "name": "source-materials.json",
+      "bytes": 3705,
+      "sha256": "e962072e19c93ea2e274e01d015c0fa226f93dec8caed12332a306909bdb3047"
+    },
+    {
+      "name": "source-byte-verification.json",
+      "bytes": 12066,
+      "sha256": "058e8782220283c8031a0fa3960d11b6a9b28a4a477260f88f0991de7f956f89"
+    },
+    {
+      "name": "build-overlays.json",
+      "bytes": 29408,
+      "sha256": "9626ee826bf6cd38349c9636a6e194418a1a5e16e43bb6a4a9c2dac9292e41c8"
+    },
+    {
+      "name": "compile-progress.json",
+      "bytes": 478,
+      "sha256": "d86ede84ccb49a12fb605b31e29e510b419ff36d704b32ea131fd3dcfc6253f5"
+    },
+    {
+      "name": "candidate-control.json",
+      "bytes": 27174,
+      "sha256": "462fb035df917f19040e4e6f5d7a1d1a42a757a99362002c7063e6c7d6e26bdc"
+    }
+  ],
+  "newPackagingControlCompiledAgain": false,
+  "newScienceRunForThisMaterialization": false
+}

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mno2-pyrolusite-beta",
+  "structure": {
+    "id": "mno2-pyrolusite-beta",
+    "name": "β-二氧化锰（软锰矿）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mno2-pyrolusite-beta:atom:1",
+        "sourceIndex": 1,
+        "element": "Mn",
+        "x": 2.2020500000000003,
+        "y": 2.20205,
+        "z": 1.4382500000000003
+      },
+      {
+        "id": "mno2-pyrolusite-beta:atom:2",
+        "sourceIndex": 1,
+        "element": "Mn",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "mno2-pyrolusite-beta:atom:3",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.8605611400000006,
+        "y": 3.5435388599999995,
+        "z": 1.4382500000000003
+      },
+      {
+        "id": "mno2-pyrolusite-beta:atom:4",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.5435388599999995,
+        "y": 0.8605611400000001,
+        "z": 1.4382500000000003
+      },
+      {
+        "id": "mno2-pyrolusite-beta:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.3414888600000001,
+        "y": 1.34148886,
+        "z": 1.6428500384908316e-16
+      },
+      {
+        "id": "mno2-pyrolusite-beta:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.0626111400000005,
+        "y": 3.06261114,
+        "z": 3.7506169296340265e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1514117; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mno2-pyrolusite-beta:atom:1",
+      "mno2-pyrolusite-beta:atom:2",
+      "mno2-pyrolusite-beta:atom:3",
+      "mno2-pyrolusite-beta:atom:4",
+      "mno2-pyrolusite-beta:atom:5",
+      "mno2-pyrolusite-beta:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.4041,
+          0.0,
+          2.696733484062429e-16
+        ],
+        [
+          7.082332961440875e-16,
+          4.4041,
+          2.696733484062429e-16
+        ],
+        [
+          0.0,
+          0.0,
+          2.8765
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1514117 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

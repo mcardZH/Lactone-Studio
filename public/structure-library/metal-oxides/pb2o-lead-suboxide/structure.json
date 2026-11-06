@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "pb2o-lead-suboxide",
+  "structure": {
+    "id": "pb2o-lead-suboxide",
+    "name": "一氧化二铅（铅亚氧化物）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "pb2o-lead-suboxide:atom:1",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 1.3450000000000002,
+        "y": 1.345,
+        "z": 1.3450000000000002
+      },
+      {
+        "id": "pb2o-lead-suboxide:atom:2",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 1.3450000000000006,
+        "y": 4.035,
+        "z": 4.035
+      },
+      {
+        "id": "pb2o-lead-suboxide:atom:3",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 4.035,
+        "y": 1.345,
+        "z": 4.035
+      },
+      {
+        "id": "pb2o-lead-suboxide:atom:4",
+        "sourceIndex": 1,
+        "element": "Pb",
+        "x": 4.035000000000001,
+        "y": 4.035,
+        "z": 1.3450000000000004
+      },
+      {
+        "id": "pb2o-lead-suboxide:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "pb2o-lead-suboxide:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.6900000000000004,
+        "y": 2.69,
+        "z": 2.6900000000000004
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1010382; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "pb2o-lead-suboxide:atom:1",
+      "pb2o-lead-suboxide:atom:2",
+      "pb2o-lead-suboxide:atom:3",
+      "pb2o-lead-suboxide:atom:4",
+      "pb2o-lead-suboxide:atom:5",
+      "pb2o-lead-suboxide:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.38,
+          0.0,
+          3.29429988970638e-16
+        ],
+        [
+          8.651699855260305e-16,
+          5.38,
+          3.29429988970638e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.38
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1010382 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

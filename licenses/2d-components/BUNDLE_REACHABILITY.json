@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "documentKind": "public-notice-scope",
+  "privateAnalysisExported": false,
+  "reachabilityEstablished": false,
+  "scientificOrRuntimeAcceptanceClaimed": false,
+  "reason": "The existing runtime preparation copies this legacy filename. This public scope notice is not the private reachability report, provides no measured module list or pass result, and creates no exemption from third-party licence obligations."
+}

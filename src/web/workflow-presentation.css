@@ -1,0 +1,101 @@
+/* One presentation for both input workflows; engine state stays in its caller. */
+.workflow-content-card .engine-output-step,.orca-workbench .orca-step-content:has(>.generated-input-editor){padding:12px 13px}
+.generated-input-editor{min-width:0;width:100%;color:var(--workflow-color,#294454);font-size:var(--ui-primary-size,16px)}
+.generated-input-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:9px 11px;min-width:0;background:#eaf0f3;border:1px solid #dce5e9;border-bottom:0;border-radius:7px 7px 0 0}
+.generated-input-file{display:flex;align-items:center;gap:7px;min-width:0;flex:1;color:#486477;font:var(--ui-small-size,13px)/1.6 Consolas,monospace}
+.generated-input-file>svg{flex:none}.generated-input-file>span{overflow-wrap:anywhere}
+.generated-input-file select{width:100%;min-width:0;max-width:100%;border:1px solid #cadbd3;border-radius:5px;background:white;color:inherit;font:inherit;padding:4px 6px}
+.generated-input-status{margin-left:auto;color:#697b6d;font:var(--ui-small-size,13px)/1.5 "Segoe UI","Microsoft YaHei",sans-serif;overflow-wrap:anywhere}
+.generated-input-editor:is([data-edited=true],[data-stale=true]) .generated-input-status{color:#927338}
+.generated-input-code{display:flex;min-width:0;overflow:hidden;border:1px solid #263e50;border-radius:0 0 7px 7px;background:#192a3c;height:426px;max-height:60vh}
+.generated-input-lines{flex:none;display:flex;flex-direction:column;width:43px;height:100%;padding:14px 8px 14px 6px;overflow:hidden;user-select:none;text-align:right;color:#758c9f;font:var(--ui-small-size,13px)/22px Consolas,monospace}
+.generated-input-lines>span{min-height:22px;line-height:22px}
+.workflow-content-card .generated-input-code textarea{flex:1;width:100%;min-width:0;min-height:0;height:100%;margin:0;padding:14px 12px;border:0;outline:none;resize:none;background:transparent;color:#d2e1e8;caret-color:#81caae;font:var(--ui-small-size,13px)/22px Consolas,"Courier New",monospace;tab-size:4;overflow:auto;border-radius:0;box-shadow:none}
+.generated-input-code textarea::selection{background:#38576b}
+.generated-input-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:14px}
+.workflow-content-card .generated-input-actions>.button{font-size:var(--ui-small-size,13px);line-height:1.5;min-height:34px;padding:6px 10px;white-space:normal}
+.generated-input-dependency{margin:10px 0 0;color:#526879;font-size:var(--ui-secondary-size,14px);line-height:1.65}
+.workflow-content-card>.workflow-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;min-height:52px;box-sizing:border-box;border-top:1px solid #e4ece5;padding:8px 12px;background:white}
+.workflow-content-card>.workflow-navigation>.button{flex:1;min-width:0;min-height:34px;padding:6px 10px;line-height:1.4;font-size:var(--ui-small-size,13px);white-space:normal}
+.workflow-content-card>.workflow-navigation>span{flex:none;color:#8b9c98;font:var(--ui-small-size,13px)/1.4 "Segoe UI","Microsoft YaHei",sans-serif;white-space:nowrap}
+/* Complete shared action states must outrank the legacy ORCA form-button skin. */
+.workflow-content-card :is(.generated-input-actions,.workflow-navigation)>.button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--ui-control-border);border-radius:var(--ui-control-radius);background:var(--ui-control-bg);color:var(--ui-control-ink);font-family:"Segoe UI","Microsoft YaHei",sans-serif;font-weight:500;box-shadow:none;cursor:pointer;outline:none}
+.workflow-content-card :is(.generated-input-actions,.workflow-navigation)>.button:hover:not(:disabled){border-color:var(--ui-control-focus);background:var(--ui-control-hover-bg);color:var(--ui-control-ink);box-shadow:none}
+.workflow-content-card>.workflow-navigation>.button-quiet{border-color:transparent;background:transparent;color:var(--ui-control-muted);font-weight:400}
+.workflow-content-card>.workflow-navigation>.button-primary{border-color:var(--teal);background:var(--teal);color:#fff}
+.workflow-content-card>.workflow-navigation>.button-primary:hover:not(:disabled){border-color:var(--teal-dark);background:var(--teal-dark);color:#fff}
+.workflow-content-card .engine-input-preview.native-input-preview button.input-preview-toggle{gap:5px;border:0;border-radius:var(--ui-control-radius);background:transparent;color:var(--ui-control-ink);font-weight:400;box-shadow:none;outline:none;cursor:pointer}
+.workflow-content-card .engine-input-preview.native-input-preview button.input-preview-toggle:hover:not(:disabled){border-color:transparent;background:var(--ui-control-hover-bg);color:var(--ui-control-ink);box-shadow:none}
+.workflow-content-card :is(.generated-input-actions>.button,.workflow-navigation>.button,.engine-input-preview.native-input-preview button.input-preview-toggle):focus-visible{outline:2px solid var(--ui-control-focus);outline-offset:2px}
+.workflow-content-card :is(.generated-input-actions>.button,.workflow-navigation>.button,.engine-input-preview.native-input-preview button.input-preview-toggle):disabled{opacity:.5;cursor:default}
+.app-shell.desktop-mode .shared-orca-form .workflow-content-card{display:flex;flex-direction:column}
+.input-replacement-dialog{max-width:480px;padding:24px}.input-replacement-dialog h2{font-size:var(--ui-primary-size,16px);margin:0 0 12px}.input-replacement-dialog p{font-size:var(--ui-secondary-size,14px);line-height:1.8}
+.workflow-header,.workflow-steps,.workflow-content-card,.workflow-session-bar{--workflow-font-size:var(--ui-primary-size,16px);--workflow-caption-size:var(--ui-secondary-size,14px);--workflow-small-size:var(--ui-small-size,13px);--workflow-control-height:36px;--workflow-control-radius:7px;--workflow-border:#cadfd1;--workflow-color:#294454;--workflow-muted:#526879}
+.workflow-header,.workflow-steps{font:var(--workflow-small-size)/1.5 "Segoe UI","Microsoft YaHei",sans-serif;color:var(--workflow-color)}
+.workflow-content-card{min-width:0;min-height:0;display:flex;flex-direction:column;color:var(--workflow-color);font:var(--workflow-font-size)/1.6 "Segoe UI","Microsoft YaHei",sans-serif}
+.workflow-content-card>.engine-parameter-scroll{min-width:0;min-height:0;flex:1;overflow:auto}
+.workflow-content-card>.engine-parameter-scroll>.card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-bottom:1px solid #eff2f4}
+.workflow-content-card .heading-with-number{display:flex;align-items:flex-start;min-width:0;gap:12px}
+.workflow-content-card .heading-with-number h2{margin:0;color:#26364b;font-size:var(--workflow-font-size);font-weight:600;line-height:1.5}
+.workflow-content-card .heading-with-number p,.workflow-description{margin:5px 0 0;color:var(--workflow-muted,#526879);font-size:var(--workflow-caption-size,var(--ui-secondary-size,14px));line-height:1.65}
+.workflow-content-card .section-number{flex:none;color:#9cb2ac;font-size:var(--workflow-small-size);font-weight:400;line-height:22px;letter-spacing:1px}
+.workflow-content-card .small-step{flex:none;white-space:nowrap;color:#b6c0c9;font:var(--workflow-small-size)/22px monospace}
+.workflow-card-actions{display:flex;align-items:center;gap:6px}
+.workflow-session-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;padding:5px 9px;border-bottom:1px solid #d8e7df;min-width:0;font-size:var(--workflow-small-size)}
+.workflow-session-bar>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.workflow-session-actions{display:flex;gap:6px;flex:none}
+.workflow-session-actions>button{font:inherit;color:#376556;border:1px solid #c8dcd4;border-radius:4px;background:white;padding:4px 7px;white-space:nowrap}
+.input-workflow-header.topbar{height:39px;min-height:39px;flex-shrink:0;padding:0 14px;gap:14px;background:#fff}
+.input-workflow-header .breadcrumb>span,.input-workflow-header .breadcrumb>svg,.input-workflow-header .avatar{display:none}
+.input-workflow-header .breadcrumb{min-width:0;gap:8px}
+.input-workflow-header .topbar-actions{gap:14px}
+.input-workflow-header .engine-switch button{border:0;border-radius:5px;background:transparent;color:#486477;padding:3px 9px;min-height:0;font-size:var(--ui-small-size,13px)}
+.input-workflow-header .engine-switch button[aria-pressed=true]{background:#e1f0e9;color:#1b6559}
+.input-workflow-steps.stepper{padding:0;max-width:580px;min-height:30px;margin:3px 0 7px}
+.input-workflow-steps .step{display:flex;align-items:center;flex:1;flex-direction:row;gap:5px;border:0;border-radius:0;background:transparent;padding:0;min-height:0;color:#627484;font-size:var(--ui-small-size,13px);white-space:nowrap}
+.input-workflow-steps .step:last-child{flex:0 0 auto}
+.input-workflow-steps .step.current{color:var(--teal);font-weight:600}
+.input-workflow-steps .step-number{height:22px;width:22px}
+.input-workflow-steps .step:hover:not(:disabled){background:transparent}
+.orca-workbench:not(.orca-workbench-embedded){--ui-font-scale:var(--orca-font-scale,1)}
+.orca-workbench{--ui-primary-size:calc(16px * var(--ui-font-scale));--ui-secondary-size:calc(14px * var(--ui-font-scale));--ui-small-size:calc(13px * var(--ui-font-scale));color:#283d4c;background:#f6f8fa}
+.orca-workflow-heading{padding:7px 10px 0;flex-shrink:0}
+.orca-workflow-heading h1{display:flex;gap:12px;align-items:center;margin:0 0 4px;color:#26364b;font-size:calc(29px * var(--ui-font-scale));font-weight:600;line-height:1.5}
+.orca-workbench .orca-layout{padding:0 10px 5px}
+.orca-workbench .orca-form-panel{min-width:270px;border-color:#e5ebef;border-radius:12px}
+.orca-workbench .orca-divider{flex-basis:8px}
+.orca-workbench .orca-divider:after{left:3px;top:0;height:100%;width:2px;background:#d8e5df}
+.orca-workbench .model-workspace{line-height:normal}
+.orca-workbench .orca-step-content{padding:12px 13px}
+.orca-workbench .orca-step-content h1{font-size:17px;color:#26364b;font-weight:600}
+.orca-workbench .orca-step-content h2{font-size:var(--ui-primary-size)}
+.orca-workbench :is(.field,.field input,.field select,.orca-field,.orca-field input,.orca-field select,.orca-field textarea,.orca-check,.check-line,.subheading h3,.orca-group>summary,.card-dropdown-label,.card-dropdown-trigger strong,.dropdown-option-title strong):not(.input-settings-layout *){font-size:var(--ui-primary-size);color:#294454;line-height:1.65}
+.orca-workbench :is(.orca-note,.orca-lead,.state-hint,.orca-model-note,.card-dropdown-summary,.dropdown-option,.dropdown-option small,.card-dropdown-footer,.local-status):not(.input-settings-layout *){font-size:var(--ui-secondary-size);color:#526879;line-height:1.65}
+.orca-workbench :is(.field input,.field select,.orca-field input,.orca-field select,.orca-field textarea):not(.input-settings-layout *){min-height:40px;height:auto;border-color:#e0e7ec;border-radius:6px;padding:7px 11px;color:#294454}
+.orca-workbench .task-step:not(.input-settings-layout *){padding:6px 0 0}
+.orca-workbench .task-category>h3:not(.input-settings-layout *){font-size:var(--ui-primary-size)}
+.orca-workbench .task-card:not(.input-settings-layout *){display:block;text-align:left;padding:15px;min-height:130px;line-height:1.65}
+.orca-workbench .task-card strong:not(.input-settings-layout *){font-size:calc(17px * var(--ui-font-scale));display:block;margin-bottom:7px}
+.orca-workbench .task-card p:not(.input-settings-layout *){font-size:var(--ui-primary-size);color:#526879;line-height:1.8}
+.orca-workbench .task-top:not(.input-settings-layout *){margin-bottom:11px}
+.orca-workbench .electronic-state-panel .field input:not(.input-settings-layout *){min-height:46px;background:#fff}
+.orca-workbench .electronic-state-panel .subheading h3:not(.input-settings-layout *){color:#8d692c}
+.orca-workbench .electronic-state-panel.is-confirmed .subheading h3:not(.input-settings-layout *){color:#4d927b}
+.orca-workbench .orca-wizard-footer{padding:10px 13px;min-height:52px;background:#fff}
+.orca-workbench button.orca-primary{background:var(--teal);border-color:var(--teal);color:#fff;font-size:var(--ui-primary-size)}
+.orca-workbench button.orca-primary:hover:not(:disabled){background:var(--teal-dark);border-color:var(--teal-dark)}
+.orca-workbench .orca-version{font-size:var(--ui-secondary-size)}
+.orca-workbench .font-size-control{font-size:var(--ui-secondary-size)}
+@media(max-width:850px){
+  .input-workflow-header.topbar{height:auto;min-height:39px;flex-wrap:wrap;padding:5px 10px;gap:6px}
+  .input-workflow-header .topbar-actions{gap:8px;flex-wrap:wrap}
+  .input-workflow-header .local-status{display:none}
+  .orca-workbench{height:100dvh;min-height:0;overflow:hidden}
+  .orca-workbench .orca-layout{display:flex;overflow-x:auto;overflow-y:hidden}
+  .orca-workbench .orca-form-panel{width:var(--orca-form-width);min-width:230px;max-height:100%;flex-shrink:0}
+  .orca-workbench .orca-model-panel{min-width:340px;margin-top:0;overflow-y:auto}
+  .orca-workbench .orca-divider{display:block}
+  .orca-workflow-heading h1{font-size:calc(20px * var(--ui-font-scale))}
+  .input-workflow-steps .step{font-size:11px}
+  .input-workflow-steps .step-line{margin:0 5px}
+}

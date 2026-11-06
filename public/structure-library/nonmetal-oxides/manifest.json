@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "sio2-alpha-quartz",
+      "category": "nonmetal-oxides",
+      "name": "α-石英",
+      "nameEn": "Alpha-quartz",
+      "formula": "SiO2",
+      "aliases": [
+        "SiO2",
+        "quartz",
+        "石英",
+        "alpha-quartz",
+        "α-quartz"
+      ],
+      "phase": "low quartz; alpha-SiO2 at 298 K",
+      "structurePath": "nonmetal-oxides/sio2-alpha-quartz/structure.json",
+      "sourcePath": "nonmetal-oxides/sio2-alpha-quartz/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9005017",
+        "url": "https://www.crystallography.net/cod/9005017.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291351",
+        "retrievedAt": "2026-10-20",
+        "citation": "Kihara, K. An X-ray study of the temperature dependence of the quartz structure Sample: at T = 298 K. European Journal of Mineralogy, 2, 63-77 (1990)",
+        "doi": "10.1127/ejm/2/1/0063",
+        "conditions": "T = 298 K in the COD record.; CIF temperature: 298 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies low quartz and is the 298 K point in the experimental temperature-dependent X-ray study.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 32 2 1"
+      }
+    },
+    {
+      "id": "sio2-alpha-cristobalite",
+      "category": "nonmetal-oxides",
+      "name": "低方石英",
+      "nameEn": "Low cristobalite",
+      "formula": "SiO2",
+      "aliases": [
+        "SiO2",
+        "cristobalite",
+        "方石英",
+        "alpha-cristobalite"
+      ],
+      "phase": "low-temperature cristobalite; tetragonal alpha form",
+      "structurePath": "nonmetal-oxides/sio2-alpha-cristobalite/structure.json",
+      "sourcePath": "nonmetal-oxides/sio2-alpha-cristobalite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "9008225",
+        "url": "https://www.crystallography.net/cod/9008225.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 291455",
+        "retrievedAt": "2026-10-20",
+        "citation": "Peacor, D. R. High-temperature single-crystal study of the cristobalite inversion Note: Cell has been corrected Sample: T = 65 C. Zeitschrift fur Kristallographie, 138, 274-298 (1973)",
+        "conditions": "T = 65 C in the COD record.; CIF temperature: 338.15 K"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record identifies cristobalite in the experimental inversion study at 65 C; this is the low-temperature form, not the high-temperature beta form.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 41 21 2",
+        "number": 92
+      }
+    },
+    {
+      "id": "b2o3-trigonal",
+      "category": "nonmetal-oxides",
+      "name": "三方氧化硼",
+      "nameEn": "Trigonal diboron trioxide",
+      "formula": "B2O3",
+      "aliases": [
+        "B2O3",
+        "boron trioxide",
+        "氧化硼",
+        "trigonal B2O3"
+      ],
+      "phase": "trigonal B2O3; reevaluated P3121 model",
+      "structurePath": "nonmetal-oxides/b2o3-trigonal/structure.json",
+      "sourcePath": "nonmetal-oxides/b2o3-trigonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1510796",
+        "url": "https://www.crystallography.net/cod/1510796.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 303120",
+        "retrievedAt": "2026-10-20",
+        "citation": "Effenberger, H. S.; Lengauer, C.; Parthé, E. Trigonal B2O3 with higher space-group symmetry: results of a reevaluation. Monatshefte für Chemie, 132(12), 1515-1517 (2001).",
+        "doi": "10.1007/s007060170008"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD record is the published reevaluation of trigonal B2O3 with higher space-group symmetry; only retained if CIF sites are fully occupied.",
+          "Parsed with pymatgen 2026.5.4 CifParser from the original COD CIF.",
+          "Expanded source CIF symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 31 2 1",
+        "number": 152
+      }
+    },
+    {
+      "id": "sio2-beta-quartz",
+      "category": "nonmetal-oxides",
+      "name": "β-石英",
+      "nameEn": "Beta quartz",
+      "formula": "SiO2",
+      "aliases": [
+        "SiO2",
+        "beta-quartz",
+        "β-quartz"
+      ],
+      "phase": "high-temperature beta-quartz; hexagonal P6222/P6422 family, COD setting P6222 (#180)",
+      "structurePath": "nonmetal-oxides/sio2-beta-quartz/structure.json",
+      "sourcePath": "nonmetal-oxides/sio2-beta-quartz/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1011200",
+        "url": "https://www.crystallography.net/cod/1011200.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 200080",
+        "retrievedAt": "2026-10-23T16:49:01.255201+00:00",
+        "citation": "Wyckoff, Ralph W. G. (1926). XXIX. Kriterien für hexagonale Raumgruppen und die Kristallstruktur von β-quarz. Zeitschrift fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie (-144,1977), 63(1-6), 507-537.",
+        "doi": "10.1524/zkri.1926.63.1.507",
+        "conditions": "high-temperature beta-quartz form; exact measurement temperature is not stated in the COD record"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Wyckoff 1926 COD entry explicitly names beta quartz. A candidate polymorph, not ambient alpha-quartz.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 62 2 2",
+        "number": 180
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sio2-beta-cristobalite",
+      "category": "nonmetal-oxides",
+      "name": "β-方石英",
+      "nameEn": "Beta cristobalite",
+      "formula": "SiO2",
+      "aliases": [
+        "SiO2",
+        "beta-cristobalite",
+        "β-cristobalite",
+        "high cristobalite"
+      ],
+      "phase": "high-temperature beta-cristobalite, cubic Fd-3m (#227)",
+      "structurePath": "nonmetal-oxides/sio2-beta-cristobalite/structure.json",
+      "sourcePath": "nonmetal-oxides/sio2-beta-cristobalite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1010944",
+        "url": "https://www.crystallography.net/cod/1010944.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 200079",
+        "retrievedAt": "2026-10-23T16:49:01.291820+00:00",
+        "citation": "Wyckoff, Ralph W. G. (1925). IX. Die Kristallstruktur von β-Crystobalit SiO~2~ (bei hohen Temperaturen stabile Form). Zeitschrift fuer Kristallographie, Kristallgeometrie, Kristallphysik, Kristallchemie (-144,1977), 62(1-6), 189-200.",
+        "doi": "10.1524/zkri.1925.62.1.189",
+        "conditions": "high-temperature beta-cristobalite form; exact measurement temperature is not stated in the COD record"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD/Wyckoff entry identifies high-temperature beta-cristobalite; existing alpha/low-temperature cristobalite is a separate phase.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d -3 m :1",
+        "number": 227
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "sio2-stishovite",
+      "category": "nonmetal-oxides",
+      "name": "斯石英",
+      "nameEn": "Stishovite",
+      "formula": "SiO2",
+      "aliases": [
+        "SiO2",
+        "stishovite",
+        "斯石英"
+      ],
+      "phase": "rutile-type stishovite, P42/mnm (#136)",
+      "structurePath": "nonmetal-oxides/sio2-stishovite/structure.json",
+      "sourcePath": "nonmetal-oxides/sio2-stishovite/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "1544731",
+        "url": "https://www.crystallography.net/cod/1544731.cif",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "version": "COD revision 190904",
+        "retrievedAt": "2026-10-23T16:49:01.330494+00:00",
+        "citation": "Sugiyama, M.; Endo, S.; Koto, K. (1987). The crystal structure of stishovite under pressure up to 6 GPa :Sample at 1 bar. Mineralogical Journal, 13, 455-466.",
+        "conditions": "source sample reported at 1 bar; measurement temperature unknown in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "Sugiyama, Endo and Koto (1987) COD record identifies the 1-bar stishovite sample.",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 42/m n m",
+        "number": 136
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

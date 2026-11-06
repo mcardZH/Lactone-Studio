@@ -1,0 +1,37 @@
+.interactive-selection-field{display:grid;flex:0 1 auto;gap:4px;min-width:0;max-width:100%;box-sizing:border-box;margin:4px 0;font:var(--input-font,var(--ui-control-font))/1.4286 "Segoe UI","Microsoft YaHei",sans-serif;color:var(--ui-control-ink)}
+.interactive-selection-row,.interactive-selection-header{display:flex;gap:8px;align-items:center;min-width:0}
+.interactive-selection-row{flex-wrap:nowrap;max-width:100%}
+.interactive-selection-row.interactive-selection-row-wrap{flex-wrap:wrap}
+.interactive-selection-row-wrap>.field{flex:0 1 auto!important}
+.interactive-selection-field .interactive-selection-row-wrap input{min-width:8ch!important}
+.interactive-selection-buttons{display:inline-flex;flex:0 1 auto;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;max-width:100%}
+.interactive-selection-buttons>button{padding-inline:5px}
+.interactive-selection-header{width:100%;justify-content:space-between;flex-wrap:wrap}
+.interactive-selection-header-actions{display:inline-flex;gap:8px;align-items:center;margin-left:auto}
+.interactive-selection-header-actions button{min-height:30px;border:1px solid var(--ui-control-border,#cadfd1);border-radius:7px;background:#fff;color:inherit;font:inherit;cursor:pointer}
+.interactive-selection-header-actions .icon-button{width:30px;height:30px;padding:0;display:inline-flex;justify-content:center;align-items:center}
+summary:has(>.interactive-selection-header){display:flex;align-items:center;gap:8px;list-style:none}
+summary:has(>.interactive-selection-header)::-webkit-details-marker{display:none}
+summary:has(>.interactive-selection-header)::before{content:'▸';flex:none;font-size:.9em}
+details[open]>summary:has(>.interactive-selection-header)::before{transform:rotate(90deg)}
+summary>.interactive-selection-header{flex:1 1 auto;width:auto}
+.interactive-selection-row>.field{flex:1 1 auto!important}
+.interactive-selection-row>button{flex:none}
+.interactive-selection-header>strong{margin-right:2px}
+.interactive-selection-row>label,.input-settings-layout.input-settings-surface .interactive-selection-row>label.field{display:inline-flex;flex:0 1 auto;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:6px;min-width:0;margin:0;white-space:nowrap}
+.interactive-selection-field .interactive-selection-row input,.input-settings-layout.input-settings-surface .interactive-selection-row>label.field>input{flex:0 1 10ch;width:10ch;min-width:6ch;max-width:18ch;box-sizing:border-box;height:var(--ui-control-height,36px);min-height:var(--ui-control-height,36px);font:inherit;line-height:1.4}
+.interactive-selection-field :is(button,input,select){min-height:var(--input-control-height,30px);height:var(--input-control-height,30px);padding:4px 8px;border:1px solid var(--ui-control-border,#cadfd1);border-radius:var(--ui-control-radius,7px);background:var(--ui-control-bg,#fff);color:var(--ui-control-ink,#294454);font:inherit;box-sizing:border-box}
+.interactive-selection-field button{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;cursor:pointer}
+.interactive-selection-field button:hover:not(:disabled){background:var(--ui-control-hover-bg)}
+.interactive-selection-field button:disabled{opacity:.5;cursor:default}
+.interactive-selection-field .button-primary{border-color:var(--teal,#548f74);background:var(--teal,#548f74);color:#fff}
+.interactive-selection-field .button-primary:hover:not(:disabled){background:var(--teal-dark,#3d745b)}
+.interactive-selection-button-icon{display:none;flex:none}
+.interactive-selection-actions{display:flex;gap:4px 8px;flex-wrap:wrap;align-items:center}
+.interactive-selection-hint,.interactive-selection-empty{color:#65786d;font-size:var(--ui-control-small-font,13px);margin:0}
+.interactive-selection-error{color:#a23838;margin:0;font-size:var(--ui-control-small-font,13px)}
+.interactive-selection-conflict{padding:8px;border:1px solid #d7bb83;border-radius:6px;background:#fff8e9;color:#735526}
+.interactive-selection-conflict p{margin:0 0 6px}.interactive-selection-conflict button{margin-right:6px}
+.input-settings-layout.input-settings-surface .interactive-selection-field .interactive-selection-row label.field input:not([type=checkbox]):not([type=radio]):not([type=color]){height:var(--ui-control-height,36px);min-height:var(--ui-control-height,36px);line-height:1.4;font-size:inherit}
+.interactive-selection-field .interactive-selection-row input,.input-settings-layout.input-settings-surface .interactive-selection-field .interactive-selection-row label.field input:not([type=checkbox]):not([type=radio]):not([type=color]){height:var(--input-control-height,30px);min-height:var(--input-control-height,30px);flex:1 1 8ch;width:8ch;min-width:4ch;max-width:none}
+@media(max-width:420px){.interactive-selection-row{gap:4px}.interactive-selection-row>button{padding-inline:6px}}

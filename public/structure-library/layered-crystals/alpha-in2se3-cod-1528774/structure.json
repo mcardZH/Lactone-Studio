@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "entryId": "alpha-in2se3-cod-1528774",
+  "structure": {
+    "id": "alpha-in2se3-cod-1528774",
+    "name": "α-硒化铟",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:1",
+        "sourceIndex": 2,
+        "element": "In",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 6.52902
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:2",
+        "sourceIndex": 2,
+        "element": "In",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 22.88098
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:3",
+        "sourceIndex": 2,
+        "element": "In",
+        "x": 2.025,
+        "y": 1.169134295108992,
+        "z": 16.332353333333334
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:4",
+        "sourceIndex": 2,
+        "element": "In",
+        "x": 2.025,
+        "y": 1.169134295108992,
+        "z": 3.274313333333333
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:5",
+        "sourceIndex": 2,
+        "element": "In",
+        "x": 2.220446049250313e-16,
+        "y": 2.338268590217984,
+        "z": 26.135686666666665
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:6",
+        "sourceIndex": 2,
+        "element": "In",
+        "x": 2.220446049250313e-16,
+        "y": 2.338268590217984,
+        "z": 13.077646666666666
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:7",
+        "sourceIndex": 1,
+        "element": "Se",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 11.793410000000002
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:8",
+        "sourceIndex": 1,
+        "element": "Se",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 17.61659
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:9",
+        "sourceIndex": 1,
+        "element": "Se",
+        "x": 2.025,
+        "y": 1.169134295108992,
+        "z": 21.596743333333333
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:10",
+        "sourceIndex": 1,
+        "element": "Se",
+        "x": 2.025,
+        "y": 1.169134295108992,
+        "z": 27.41992333333333
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:11",
+        "sourceIndex": 1,
+        "element": "Se",
+        "x": 2.220446049250313e-16,
+        "y": 2.338268590217984,
+        "z": 1.9900766666666698
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:12",
+        "sourceIndex": 1,
+        "element": "Se",
+        "x": 2.220446049250313e-16,
+        "y": 2.338268590217984,
+        "z": 7.813256666666665
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:13",
+        "sourceIndex": 3,
+        "element": "Se",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:14",
+        "sourceIndex": 3,
+        "element": "Se",
+        "x": 2.025,
+        "y": 1.169134295108992,
+        "z": 9.803333333333333
+      },
+      {
+        "id": "alpha-in2se3-cod-1528774:atom:15",
+        "sourceIndex": 3,
+        "element": "Se",
+        "x": 2.220446049250313e-16,
+        "y": 2.338268590217984,
+        "z": 19.606666666666666
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database record COD 1528774; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "alpha-in2se3-cod-1528774:atom:1",
+      "alpha-in2se3-cod-1528774:atom:2",
+      "alpha-in2se3-cod-1528774:atom:3",
+      "alpha-in2se3-cod-1528774:atom:4",
+      "alpha-in2se3-cod-1528774:atom:5",
+      "alpha-in2se3-cod-1528774:atom:6",
+      "alpha-in2se3-cod-1528774:atom:7",
+      "alpha-in2se3-cod-1528774:atom:8",
+      "alpha-in2se3-cod-1528774:atom:9",
+      "alpha-in2se3-cod-1528774:atom:10",
+      "alpha-in2se3-cod-1528774:atom:11",
+      "alpha-in2se3-cod-1528774:atom:12",
+      "alpha-in2se3-cod-1528774:atom:13",
+      "alpha-in2se3-cod-1528774:atom:14",
+      "alpha-in2se3-cod-1528774:atom:15"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.05,
+          0.0,
+          2.4799097682733903e-16
+        ],
+        [
+          -2.0249999999999995,
+          3.5074028853269765,
+          2.4799097682733903e-16
+        ],
+        [
+          0.0,
+          0.0,
+          29.41
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database record COD 1528774 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

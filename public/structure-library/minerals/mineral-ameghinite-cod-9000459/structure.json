@@ -1,0 +1,1129 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-ameghinite-cod-9000459",
+  "structure": {
+    "id": "mineral-ameghinite-cod-9000459",
+    "name": "Ameghinite",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:1",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 3.0878857353371663,
+        "y": 2.3519159999999997,
+        "z": -0.13999110263659242
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:2",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 12.012410981976377,
+        "y": 7.292916,
+        "z": -2.431419722973565
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:3",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 3.087885735337167,
+        "y": 7.5300839999999996,
+        "z": 3.0230088973634075
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:4",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 12.012410981976375,
+        "y": 2.589084,
+        "z": 0.7315802770264339
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:5",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 14.761164757941248,
+        "y": 2.3519159999999997,
+        "z": -1.2798661380373528
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:6",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 5.836639511302043,
+        "y": 7.292916,
+        "z": 1.01156248229962
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:7",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 14.76116475794125,
+        "y": 7.5300839999999996,
+        "z": 1.8831338619626479
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:8",
+        "sourceIndex": 1,
+        "element": "Na",
+        "x": 5.836639511302042,
+        "y": 2.589084,
+        "z": 4.174562482299621
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:9",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 6.090096028306595,
+        "y": 1.6957512,
+        "z": 1.22862550948205
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:10",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 15.014621274945805,
+        "y": 6.6367512,
+        "z": -1.0628031108549219
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:11",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 6.090096028306596,
+        "y": 8.1862488,
+        "z": 4.391625509482051
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:12",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 15.014621274945803,
+        "y": 3.2452488,
+        "z": 2.1001968891450775
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:13",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 11.75895446497182,
+        "y": 1.6957512,
+        "z": -2.6484827501559955
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:14",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 2.8344292183326134,
+        "y": 6.6367512,
+        "z": -0.3570541298190222
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:15",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 11.758954464971822,
+        "y": 8.1862488,
+        "z": 0.5145172498440043
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:16",
+        "sourceIndex": 2,
+        "element": "B",
+        "x": 2.834429218332613,
+        "y": 3.2452488,
+        "z": 2.8059458701809774
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:17",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 7.189597538692547,
+        "y": 3.9399534,
+        "z": 1.2910885034565347
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:18",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 16.114122785331755,
+        "y": 8.880953400000001,
+        "z": -1.0003401168804373
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:19",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 7.189597538692547,
+        "y": 5.942046599999999,
+        "z": 4.454088503456536
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:20",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 16.114122785331755,
+        "y": 1.0010466,
+        "z": 2.162659883119562
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:21",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 10.659452954585868,
+        "y": 3.9399534,
+        "z": -2.7109457441304796
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:22",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.7349277079466634,
+        "y": 8.880953400000001,
+        "z": -0.419517123793507
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:23",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 10.65945295458587,
+        "y": 5.942046599999999,
+        "z": 0.4520542558695202
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:24",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.7349277079466623,
+        "y": 1.0010466,
+        "z": 2.7434828762064924
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:25",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 8.528276325688427,
+        "y": 1.9704708,
+        "z": 0.8645036104059889
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:26",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 17.452801572327633,
+        "y": 6.9114708,
+        "z": -1.4269250099309838
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:27",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 8.528276325688429,
+        "y": 7.9115291999999995,
+        "z": 4.027503610405988
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:28",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 17.452801572327633,
+        "y": 2.9705291999999996,
+        "z": 1.7360749900690156
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:29",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 9.320774167589988,
+        "y": 1.9704708,
+        "z": -2.2843608510799345
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:30",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 0.3962489209507819,
+        "y": 6.9114708,
+        "z": 0.0070677692570387946
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:31",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 9.32077416758999,
+        "y": 7.9115291999999995,
+        "z": 0.8786391489200658
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:32",
+        "sourceIndex": 4,
+        "element": "B",
+        "x": 0.3962489209507813,
+        "y": 2.9705291999999996,
+        "z": 3.170067769257038
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:33",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 10.013317326729192,
+        "y": 0.583038,
+        "z": 0.623647087981916
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:34",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 1.0887920800899833,
+        "y": 5.524037999999999,
+        "z": 2.9150757083188896
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:35",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 10.013317326729194,
+        "y": 9.298962,
+        "z": -2.5393529120180838
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:36",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 1.088792080089983,
+        "y": 4.357962,
+        "z": -0.2479242916811108
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:37",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 7.835733166549224,
+        "y": 0.583038,
+        "z": 4.282495671344138
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:38",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 16.76025841318843,
+        "y": 5.524037999999999,
+        "z": 1.9910670510071657
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:39",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 7.835733166549225,
+        "y": 9.298962,
+        "z": 1.1194956713441386
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:40",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 16.76025841318843,
+        "y": 4.357962,
+        "z": -1.171932948992834
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:41",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.40826229946336,
+        "y": 0.64233,
+        "z": -0.30685974392420534
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:42",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 14.332787546102569,
+        "y": 5.583329999999999,
+        "z": -2.598288364261177
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:43",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 5.408262299463361,
+        "y": 9.23967,
+        "z": 2.856140256075795
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:44",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 14.332787546102567,
+        "y": 4.2986699999999995,
+        "z": 0.5647116357388229
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:45",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 12.440788193815056,
+        "y": 0.64233,
+        "z": -1.112997496749741
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:46",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 3.516262947175849,
+        "y": 5.583329999999999,
+        "z": 1.1784311235872327
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:47",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 12.440788193815058,
+        "y": 9.23967,
+        "z": 2.05000250325026
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:48",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 3.516262947175849,
+        "y": 4.2986699999999995,
+        "z": 4.341431123587233
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:49",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.497960724306161,
+        "y": 1.28466,
+        "z": 2.3876799753501654
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:50",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 13.42248597094537,
+        "y": 6.2256599999999995,
+        "z": 0.0962513550131936
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:51",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.497960724306163,
+        "y": 8.597339999999999,
+        "z": -0.7753200246498335
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:52",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 13.422485970945369,
+        "y": 3.6563399999999997,
+        "z": -3.0667486449868058
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:53",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 13.351089768972255,
+        "y": 1.28466,
+        "z": 2.5184627839758877
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:54",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.426564522333048,
+        "y": 6.2256599999999995,
+        "z": 4.809891404312861
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:55",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 13.351089768972257,
+        "y": 8.597339999999999,
+        "z": -0.6445372160241112
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:56",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.426564522333048,
+        "y": 3.6563399999999997,
+        "z": 1.6468914043128615
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:57",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 7.978525570495453,
+        "y": 5.741441999999999,
+        "z": 1.2220048134187467
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:58",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 16.90305081713466,
+        "y": 0.8004419999999995,
+        "z": -1.069423806918227
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:59",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 7.978525570495453,
+        "y": 4.140558,
+        "z": -1.9409951865812538
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:60",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 16.90305081713466,
+        "y": 9.081558,
+        "z": -4.232423806918226
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:61",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 9.870524922782964,
+        "y": 5.741441999999999,
+        "z": 3.6841379459073083
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:62",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 0.945999676143756,
+        "y": 0.8004419999999995,
+        "z": 5.9755665662442805
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:63",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 9.870524922782963,
+        "y": 4.140558,
+        "z": 0.5211379459073089
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:64",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 0.9459996761437574,
+        "y": 9.081558,
+        "z": 2.812566566244281
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:65",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 9.806268341007161,
+        "y": 1.5564149999999999,
+        "z": 0.6224046319737342
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:66",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.8817430943679527,
+        "y": 6.497414999999999,
+        "z": 2.9138332523107078
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:67",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 9.806268341007163,
+        "y": 8.325585,
+        "z": 3.7854046319737336
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:68",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.8817430943679523,
+        "y": 3.384585,
+        "z": 6.076833252310706
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:69",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 8.042782152271254,
+        "y": 1.5564149999999999,
+        "z": -2.0422618726476798
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:70",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 16.96730739891046,
+        "y": 6.497414999999999,
+        "z": -4.333690492984653
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:71",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 8.042782152271256,
+        "y": 8.325585,
+        "z": 1.120738127352321
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:72",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 16.96730739891046,
+        "y": 3.384585,
+        "z": -1.1706904929846527
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:73",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 5.37434910352613,
+        "y": 1.5870491999999998,
+        "z": -0.01980831516692505
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:74",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 14.29887435016534,
+        "y": 6.528049199999999,
+        "z": -2.3112369355038966
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:75",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 5.374349103526132,
+        "y": 8.2949508,
+        "z": 3.1431916848330754
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:76",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 14.298874350165338,
+        "y": 3.3539508000000002,
+        "z": 0.8517630644961027
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:77",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 12.474701389752285,
+        "y": 1.5870491999999998,
+        "z": -1.400048925507021
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:78",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.5501761431130783,
+        "y": 6.528049199999999,
+        "z": 0.8913796948299526
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:79",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 12.474701389752287,
+        "y": 8.2949508,
+        "z": 1.7629510744929795
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:80",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.550176143113078,
+        "y": 3.3539508000000002,
+        "z": 4.054379694829953
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:81",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 5.45823964084454,
+        "y": 1.0040111999999999,
+        "z": 2.349247655801907
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:82",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 14.38276488748375,
+        "y": 5.9450112,
+        "z": 0.05781903546493439
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:83",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 5.458239640844542,
+        "y": 8.877988799999999,
+        "z": -0.8137523441980923
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:84",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 14.382764887483749,
+        "y": 3.9369887999999995,
+        "z": -3.1051809645350654
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:85",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 12.390810852433875,
+        "y": 1.0040111999999999,
+        "z": 2.5568951035241474
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:86",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.4662856057946687,
+        "y": 5.9450112,
+        "z": 4.84832372386112
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:87",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 12.390810852433876,
+        "y": 8.877988799999999,
+        "z": -0.606104896475852
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:88",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.4662856057946683,
+        "y": 3.9369887999999995,
+        "z": 1.68532372386112
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:89",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 7.114631526620777,
+        "y": 5.2888464,
+        "z": 1.4400195038673653
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:90",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 16.039156773259986,
+        "y": 0.34784640000000117,
+        "z": -0.8514091164696076
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:91",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 7.114631526620777,
+        "y": 4.5931536,
+        "z": -1.7229804961326345
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:92",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 16.039156773259986,
+        "y": 9.5341536,
+        "z": -4.014409116469607
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:93",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 10.734418966657637,
+        "y": 5.2888464,
+        "z": 3.4661232554586903
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:94",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 1.809893720018431,
+        "y": 0.34784640000000117,
+        "z": 5.757551875795662
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:95",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 10.734418966657637,
+        "y": 4.5931536,
+        "z": 0.30312325545869
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:96",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 1.8098937200184326,
+        "y": 9.5341536,
+        "z": 2.5945518757956627
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:97",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 8.390838636890184,
+        "y": 3.3608682,
+        "z": 0.8896700111591782
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:98",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 17.31536388352939,
+        "y": 8.301868200000001,
+        "z": -1.4017586091777932
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:99",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 8.390838636890185,
+        "y": 6.521131799999999,
+        "z": 4.0526700111591785
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:100",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 17.31536388352939,
+        "y": 1.5801317999999998,
+        "z": 1.7612413908222058
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:101",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 9.458211856388234,
+        "y": 3.3608682,
+        "z": -2.309527251833124
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:102",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.5336866097490256,
+        "y": 8.301868200000001,
+        "z": -0.018098631496150486
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:103",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 9.458211856388235,
+        "y": 6.521131799999999,
+        "z": 0.853472748166876
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:104",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.5336866097490245,
+        "y": 1.5801317999999998,
+        "z": 3.1449013685038487
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:105",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 6.1347186545397925,
+        "y": 3.1582871999999997,
+        "z": 1.5815459663803648
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:106",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 15.059243901179,
+        "y": 8.0992872,
+        "z": -0.7098826539566074
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:107",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 6.1347186545397925,
+        "y": 6.7237127999999995,
+        "z": 4.7445459663803655
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:108",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 15.059243901178998,
+        "y": 1.7827128,
+        "z": 2.4531173460433924
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:109",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 11.714331838738625,
+        "y": 3.1582871999999997,
+        "z": -3.0014032070543104
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:110",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 2.7898065920994175,
+        "y": 8.0992872,
+        "z": -0.7099745867173372
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:111",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 11.714331838738627,
+        "y": 6.7237127999999995,
+        "z": 0.16159679294568985
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:112",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 2.7898065920994166,
+        "y": 1.7827128,
+        "z": 2.4530254132826625
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:113",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 7.485891776880967,
+        "y": 1.1631114,
+        "z": 1.114429673261347
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:114",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 16.410417023520175,
+        "y": 6.1041114,
+        "z": -1.1769989470756257
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:115",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 7.485891776880969,
+        "y": 8.7188886,
+        "z": 4.277429673261347
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:116",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 16.410417023520175,
+        "y": 3.7778886,
+        "z": 1.9860010529243741
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:117",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.363158716397448,
+        "y": 1.1631114,
+        "z": -2.5342869139352926
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:118",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 1.4386334697582412,
+        "y": 6.1041114,
+        "z": -0.24285829359831954
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:119",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.36315871639745,
+        "y": 8.7188886,
+        "z": 0.6287130860647077
+      },
+      {
+        "id": "mineral-ameghinite-cod-9000459:atom:120",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 1.438633469758241,
+        "y": 3.7778886,
+        "z": 2.9201417064016804
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9000459; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-ameghinite-cod-9000459:atom:1",
+      "mineral-ameghinite-cod-9000459:atom:2",
+      "mineral-ameghinite-cod-9000459:atom:3",
+      "mineral-ameghinite-cod-9000459:atom:4",
+      "mineral-ameghinite-cod-9000459:atom:5",
+      "mineral-ameghinite-cod-9000459:atom:6",
+      "mineral-ameghinite-cod-9000459:atom:7",
+      "mineral-ameghinite-cod-9000459:atom:8",
+      "mineral-ameghinite-cod-9000459:atom:9",
+      "mineral-ameghinite-cod-9000459:atom:10",
+      "mineral-ameghinite-cod-9000459:atom:11",
+      "mineral-ameghinite-cod-9000459:atom:12",
+      "mineral-ameghinite-cod-9000459:atom:13",
+      "mineral-ameghinite-cod-9000459:atom:14",
+      "mineral-ameghinite-cod-9000459:atom:15",
+      "mineral-ameghinite-cod-9000459:atom:16",
+      "mineral-ameghinite-cod-9000459:atom:17",
+      "mineral-ameghinite-cod-9000459:atom:18",
+      "mineral-ameghinite-cod-9000459:atom:19",
+      "mineral-ameghinite-cod-9000459:atom:20",
+      "mineral-ameghinite-cod-9000459:atom:21",
+      "mineral-ameghinite-cod-9000459:atom:22",
+      "mineral-ameghinite-cod-9000459:atom:23",
+      "mineral-ameghinite-cod-9000459:atom:24",
+      "mineral-ameghinite-cod-9000459:atom:25",
+      "mineral-ameghinite-cod-9000459:atom:26",
+      "mineral-ameghinite-cod-9000459:atom:27",
+      "mineral-ameghinite-cod-9000459:atom:28",
+      "mineral-ameghinite-cod-9000459:atom:29",
+      "mineral-ameghinite-cod-9000459:atom:30",
+      "mineral-ameghinite-cod-9000459:atom:31",
+      "mineral-ameghinite-cod-9000459:atom:32",
+      "mineral-ameghinite-cod-9000459:atom:33",
+      "mineral-ameghinite-cod-9000459:atom:34",
+      "mineral-ameghinite-cod-9000459:atom:35",
+      "mineral-ameghinite-cod-9000459:atom:36",
+      "mineral-ameghinite-cod-9000459:atom:37",
+      "mineral-ameghinite-cod-9000459:atom:38",
+      "mineral-ameghinite-cod-9000459:atom:39",
+      "mineral-ameghinite-cod-9000459:atom:40",
+      "mineral-ameghinite-cod-9000459:atom:41",
+      "mineral-ameghinite-cod-9000459:atom:42",
+      "mineral-ameghinite-cod-9000459:atom:43",
+      "mineral-ameghinite-cod-9000459:atom:44",
+      "mineral-ameghinite-cod-9000459:atom:45",
+      "mineral-ameghinite-cod-9000459:atom:46",
+      "mineral-ameghinite-cod-9000459:atom:47",
+      "mineral-ameghinite-cod-9000459:atom:48",
+      "mineral-ameghinite-cod-9000459:atom:49",
+      "mineral-ameghinite-cod-9000459:atom:50",
+      "mineral-ameghinite-cod-9000459:atom:51",
+      "mineral-ameghinite-cod-9000459:atom:52",
+      "mineral-ameghinite-cod-9000459:atom:53",
+      "mineral-ameghinite-cod-9000459:atom:54",
+      "mineral-ameghinite-cod-9000459:atom:55",
+      "mineral-ameghinite-cod-9000459:atom:56",
+      "mineral-ameghinite-cod-9000459:atom:57",
+      "mineral-ameghinite-cod-9000459:atom:58",
+      "mineral-ameghinite-cod-9000459:atom:59",
+      "mineral-ameghinite-cod-9000459:atom:60",
+      "mineral-ameghinite-cod-9000459:atom:61",
+      "mineral-ameghinite-cod-9000459:atom:62",
+      "mineral-ameghinite-cod-9000459:atom:63",
+      "mineral-ameghinite-cod-9000459:atom:64",
+      "mineral-ameghinite-cod-9000459:atom:65",
+      "mineral-ameghinite-cod-9000459:atom:66",
+      "mineral-ameghinite-cod-9000459:atom:67",
+      "mineral-ameghinite-cod-9000459:atom:68",
+      "mineral-ameghinite-cod-9000459:atom:69",
+      "mineral-ameghinite-cod-9000459:atom:70",
+      "mineral-ameghinite-cod-9000459:atom:71",
+      "mineral-ameghinite-cod-9000459:atom:72",
+      "mineral-ameghinite-cod-9000459:atom:73",
+      "mineral-ameghinite-cod-9000459:atom:74",
+      "mineral-ameghinite-cod-9000459:atom:75",
+      "mineral-ameghinite-cod-9000459:atom:76",
+      "mineral-ameghinite-cod-9000459:atom:77",
+      "mineral-ameghinite-cod-9000459:atom:78",
+      "mineral-ameghinite-cod-9000459:atom:79",
+      "mineral-ameghinite-cod-9000459:atom:80",
+      "mineral-ameghinite-cod-9000459:atom:81",
+      "mineral-ameghinite-cod-9000459:atom:82",
+      "mineral-ameghinite-cod-9000459:atom:83",
+      "mineral-ameghinite-cod-9000459:atom:84",
+      "mineral-ameghinite-cod-9000459:atom:85",
+      "mineral-ameghinite-cod-9000459:atom:86",
+      "mineral-ameghinite-cod-9000459:atom:87",
+      "mineral-ameghinite-cod-9000459:atom:88",
+      "mineral-ameghinite-cod-9000459:atom:89",
+      "mineral-ameghinite-cod-9000459:atom:90",
+      "mineral-ameghinite-cod-9000459:atom:91",
+      "mineral-ameghinite-cod-9000459:atom:92",
+      "mineral-ameghinite-cod-9000459:atom:93",
+      "mineral-ameghinite-cod-9000459:atom:94",
+      "mineral-ameghinite-cod-9000459:atom:95",
+      "mineral-ameghinite-cod-9000459:atom:96",
+      "mineral-ameghinite-cod-9000459:atom:97",
+      "mineral-ameghinite-cod-9000459:atom:98",
+      "mineral-ameghinite-cod-9000459:atom:99",
+      "mineral-ameghinite-cod-9000459:atom:100",
+      "mineral-ameghinite-cod-9000459:atom:101",
+      "mineral-ameghinite-cod-9000459:atom:102",
+      "mineral-ameghinite-cod-9000459:atom:103",
+      "mineral-ameghinite-cod-9000459:atom:104",
+      "mineral-ameghinite-cod-9000459:atom:105",
+      "mineral-ameghinite-cod-9000459:atom:106",
+      "mineral-ameghinite-cod-9000459:atom:107",
+      "mineral-ameghinite-cod-9000459:atom:108",
+      "mineral-ameghinite-cod-9000459:atom:109",
+      "mineral-ameghinite-cod-9000459:atom:110",
+      "mineral-ameghinite-cod-9000459:atom:111",
+      "mineral-ameghinite-cod-9000459:atom:112",
+      "mineral-ameghinite-cod-9000459:atom:113",
+      "mineral-ameghinite-cod-9000459:atom:114",
+      "mineral-ameghinite-cod-9000459:atom:115",
+      "mineral-ameghinite-cod-9000459:atom:116",
+      "mineral-ameghinite-cod-9000459:atom:117",
+      "mineral-ameghinite-cod-9000459:atom:118",
+      "mineral-ameghinite-cod-9000459:atom:119",
+      "mineral-ameghinite-cod-9000459:atom:120"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          17.849050493278416,
+          0.0,
+          -4.582857240673945
+        ],
+        [
+          1.5891468024104522e-15,
+          9.882,
+          6.050979834587072e-16
+        ],
+        [
+          0.0,
+          0.0,
+          6.326
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9000459 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

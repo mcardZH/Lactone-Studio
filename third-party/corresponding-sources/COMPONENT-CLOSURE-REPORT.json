@@ -1,0 +1,313 @@
+{
+  "schema": "sy-component-source-and-replacement-closure/v1",
+  "scope": "component-source-and-replacement",
+  "publicDistributionApproved": false,
+  "wholeProductRebuild": "deferred-by-user",
+  "components": [
+    {
+      "id": "ase",
+      "sourceStatus": "verified",
+      "reason": "The existing-source Python modification was prepared, imported, frozen and exercised through crystal modeling with its real marker. New modules and ABI changes require separate matching builds.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/ase-3.28.0/ase-3.28.0.tar.gz",
+          "bytes": 2396385,
+          "sha256": "74fe77ca38bf78070e24cd283f5d25be129bad6503fd26619008548518144732"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "0e818c520b6121a1f310c7c05ba66ba26561b63fb4066d85c888e3c9e144e0a3"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "tblite",
+      "sourceStatus": "verified",
+      "reason": "Native0.7.0 library and original CFFI consumer retain matching ABI; a rebuilt marker-bearing complete library set was applied and actually loaded, with the bounded GFN2 energy/WBO comparison.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/tblite-0.7.0-library/tblite-0.7.0.tar.xz",
+          "bytes": 2353188,
+          "sha256": "3a7cb4602101e828caf41c38ca5e30f82de82d0d26d5db40168acdcad3462b92"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/tblite-0.7.0-python/tblite-0.7.0.tar.gz",
+          "bytes": 3477727,
+          "sha256": "c303bc45e0c48e46dad7f032d377432c8717e17b0eb8eedb6c42c5237c3856d2"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "d39338bcd385792814e3ffc0ff7c26c121fe720ac5417d071e73034bddbf4d75",
+        "a0be3e6ce09835082883edd8e4f01f6d6840dbb6bc97d8f184a3b89bdec8f75c",
+        "a3052a9431f55698f7d79453dd971b0ec35e0c3de636144f4acb38d5c5c56744"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "dftd4",
+      "sourceStatus": "verified",
+      "reason": "Native4.2.0 source, recursive dependencies and full original exports are supplied. Actual loaded modified GFN2 path was compared without changing its method.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/dftd4-4.2.0/dftd4-4.2.0.tar.xz",
+          "bytes": 1036728,
+          "sha256": "467e024071510ad82b862c66c383c2ebc164fc1140e15dfc79f48d2f999fd184"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "d39338bcd385792814e3ffc0ff7c26c121fe720ac5417d071e73034bddbf4d75",
+        "a0be3e6ce09835082883edd8e4f01f6d6840dbb6bc97d8f184a3b89bdec8f75c",
+        "a3052a9431f55698f7d79453dd971b0ec35e0c3de636144f4acb38d5c5c56744"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "simple-dftd3",
+      "sourceStatus": "verified",
+      "reason": "Native1.4.0 source and original build patches are supplied. A real D3 C API energy/gradient comparison exercised the modified library in the complete native copy; this is not an external-xTB GFN1 workflow claim.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/simple-dftd3-1.4.0/v1.4.0.tar.gz",
+          "bytes": 675580,
+          "sha256": "c548629115c3d5f180d06a70bc29dcf42e4018fbc9e4ba7c99abc1cdbfda7c1e"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "d39338bcd385792814e3ffc0ff7c26c121fe720ac5417d071e73034bddbf4d75",
+        "a0be3e6ce09835082883edd8e4f01f6d6840dbb6bc97d8f184a3b89bdec8f75c",
+        "a3052a9431f55698f7d79453dd971b0ec35e0c3de636144f4acb38d5c5c56744"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "libiconv",
+      "sourceStatus": "verified",
+      "reason": "Native1.18 iconv/charset pair was rebuilt and used in a real UTF8/UTF16 round trip. Exactly five unconsumed ancillary exports are excepted only for the two bound parents/current host; all other public ABI and consumer constraints remain.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/libiconv-1.18/libiconv-1.18.tar.gz",
+          "bytes": 5822590,
+          "sha256": "3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "d39338bcd385792814e3ffc0ff7c26c121fe720ac5417d071e73034bddbf4d75",
+        "a0be3e6ce09835082883edd8e4f01f6d6840dbb6bc97d8f184a3b89bdec8f75c",
+        "a3052a9431f55698f7d79453dd971b0ec35e0c3de636144f4acb38d5c5c56744"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "ffmpeg",
+      "sourceStatus": "verified",
+      "reason": "The same fork and29 component configuration were rebuilt without developer paths. The53 exports and imports match; real WAV/Opus paired probes pass. Final application smoke is recorded separately; full codec matrix is not claimed.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/ffmpeg-2b68d2babae73714846961fb0ee47e3b3d2e39a9/2b68d2babae73714846961fb0ee47e3b3d2e39a9.tar.gz",
+          "bytes": 18820125,
+          "sha256": "cb4ea74933253f9ee582717690487796bde8e0d4ac9661a2e520615d909e2260"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/chromium-152-generate-stubs.tar.gz",
+          "bytes": 15193,
+          "sha256": "69918e68f77a00b4b8e04905db702f16e2e4e2b72a0f1e770d896acf72c86c21"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/chromium-152-opus.tar.gz",
+          "bytes": 4258581,
+          "sha256": "ddc29ad0e6368cc231b75628e931bd9fe0107144a1377a9014c5400692c6e9d1"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "488dfed5858f969eb909c9f0ed8de10cb4852a9a776123dee03cd2d86d39b1db",
+        "e30b056618739eb40473e34bc32a8d6d2160c2c50d30d1dac965e3f7077302b7"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "gnu-runtime",
+      "sourceStatus": "verified",
+      "reason": "Six GNU13.2 runtime DLLs have actual rebuild, module-path and seven-case engine evidence. The public source derivative excludes only one unused Go core fixture; parameterized full product rebuild remains deferred.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/gnu-runtime/dlfcn-win32-v1.4.1.tar.gz",
+          "bytes": 24997,
+          "sha256": "30a9f72bdf674857899eb7e553df1f0d362c5da2a576ae51f886e1171fbdb399"
+        },
+        {
+          "path": "third-party/corresponding-sources/privacy-source-derivatives/gcc-13.2.0-privacy-sanitized.tar.gz",
+          "bytes": 190090491,
+          "sha256": "eec4f8257562dc72814bace281a9fbdeec0258125fbb34ce4ca3694e3f23e43a"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/gnu-runtime/gmp-6.2.1.tar.bz2",
+          "bytes": 2493916,
+          "sha256": "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/gnu-runtime/isl-0.24.tar.bz2",
+          "bytes": 2261594,
+          "sha256": "fcf78dd9656c10eb8cf9fbd5f59a0b6b01386205fe1934b3b287a0a1898145c0"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/gnu-runtime/mingw-w64-v11.0.1.tar.gz",
+          "bytes": 13916903,
+          "sha256": "9c82a58713786c95b0594443a1c6190cd986401ed2b03677a90acc470140af28"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/gnu-runtime/mpc-1.2.1.tar.gz",
+          "bytes": 838731,
+          "sha256": "17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/gnu-runtime/mpfr-4.1.0.tar.bz2",
+          "bytes": 1747243,
+          "sha256": "feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "6a280d0d9274c45b29ad2a5637064e0cdb487b097bfd118812febbeb1c33efe8",
+        "d3f69a599b7d7a093e63609a27051e985b9dbb33903c2b4e7fc3841c403c4809"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "xtb-gnu",
+      "sourceStatus": "verified",
+      "reason": "Actual same-method GNU xTB source/runtime rebuild and representative energies/gradients/Molden evidence are retained. Compiler/source-version distinctions and build-only overlays remain explicit.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/cpcmx-b41feaf44f09be0e90f5845eb7a8a6d2ade5471d.tar.gz",
+          "bytes": 16885873,
+          "sha256": "133f75b0ae7e769facad787e8a163069d8eb14f9643d2c395819e96c4a89bc90"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/dftd4-f572723f5a5cb8243ea88b0253e182088311c6f3.tar.gz",
+          "bytes": 226543,
+          "sha256": "d753ddf4e5504278a37fdbea33ba2c8945794d1b082043d316855df5df386c77"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/json-fortran-77c9f99d7d5c6a0ec9011f7225db3dbb6894ef6d.tar.gz",
+          "bytes": 1805250,
+          "sha256": "16eec827f64340c226ba9a8463f001901d469bc400a1e88b849f258f9ef0d100"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/mctc-lib-87a46cdf5281ad75909083c4f72354d54abdf95d.tar.gz",
+          "bytes": 130898,
+          "sha256": "9bab9cc10327cc4f2f12da88ec57bb036a70d97e6c5278afb439edf30c565ca9"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/mstore-974fb59092f74c7db86a1a11b1aafb3cbf311aa3.tar.gz",
+          "bytes": 240435,
+          "sha256": "1adae8cd0368465e1b2ba2e8774bd5868b49987d153b4bc9b65555febfbef337"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/multicharge-46ea4e370b1a59e01cc022d1f65c64bae8dbf968.tar.gz",
+          "bytes": 38486,
+          "sha256": "493aacf2c47fa939c84c725f35ec58c927dc027853de64c857236bb94afc0e20"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/numsa-3145b756c05883cec9698142b436c057546e2ac7.tar.gz",
+          "bytes": 85423,
+          "sha256": "ef4699aa3c162cbab7cb95e3774b10e26040f4803301c735d40251a14798d0dd"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/s-dftd3-5ee8c4d71414bf54db0b680ee3c532215847e0f9.tar.gz",
+          "bytes": 449139,
+          "sha256": "b61d7acfd5d3775f7626afc8ef1acf74f5f359e4e80e9d299b01cdd197037c39"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/tblite-d2f08e808afe69aa71a6a12163632569ee6e9a4a.tar.gz",
+          "bytes": 581128,
+          "sha256": "eaccb27616b30be5ddb09cdbe95567e3a81cb9f33e5ef02f2237b4b5de1b05ac"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/test-drive-9c3401e30dbd2da1add77aaa252a4c6928fe39a1.tar.gz",
+          "bytes": 26354,
+          "sha256": "721fbc41d28bfbc42314dd0787a1803e3fd7036829cedfa49e4efc2ba322247b"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/toml-f-6290b0bc5f5ebeff231625a3b6685de85f33fc79.tar.gz",
+          "bytes": 437954,
+          "sha256": "0b4b1320a93ad3dcbffd79cdbe92c3c396fc95290018b3e1bdfe4bc43b2a0916"
+        },
+        {
+          "path": "third-party/corresponding-sources/archives/xtb-gnu/xtb-5071a886-source.tar.gz",
+          "bytes": 1681547,
+          "sha256": "2e4b378c644a053da66137f82aeeb8c796c81714fdfce917f71d94eac65f06fc"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "6a280d0d9274c45b29ad2a5637064e0cdb487b097bfd118812febbeb1c33efe8",
+        "d3f69a599b7d7a093e63609a27051e985b9dbb33903c2b4e7fc3841c403c4809"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "native-shared-support",
+      "sourceStatus": "verified",
+      "reason": "The actual native graph accounts for mctc-lib0.5.2, multicharge0.5.0, dynamic toml-f0.5.2 and static jonquil0.3.0/toml-f0.5.0. The matching support set was rebuilt and loaded with original public exports retained.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/native-shared/archives/jonquil-0.3.0.tar.xz",
+          "bytes": 380688,
+          "sha256": "4bc3f0ae47ac2e009a0dc733ad9d0f16db4dfed13b50f58b9a06bb3a579eec47"
+        },
+        {
+          "path": "third-party/corresponding-sources/native-shared/archives/multicharge-0.5.0-source.tar.xz",
+          "bytes": 714780,
+          "sha256": "fc6dee93fd6957a516137205f5a6754b218904bc38bf60f5a509f2a1b14735be"
+        },
+        {
+          "path": "third-party/corresponding-sources/native-shared/archives/toml-f-0.5.0.tar.xz",
+          "bytes": 385264,
+          "sha256": "9a6c129836d093efd0cab5a2a013330020682a82e8f59a3882e9ae3249c8281f"
+        },
+        {
+          "path": "third-party/corresponding-sources/native-shared/archives/toml-f-0.5.2.tar.xz",
+          "bytes": 421700,
+          "sha256": "e18ccc26ac1e7580ffb22feda0fbafd228473248f71e84eac171a455a7915d59"
+        },
+        {
+          "path": "third-party/corresponding-sources/native-shared/archives/v0.5.2.tar.gz",
+          "bytes": 202932,
+          "sha256": "25b2a3d18343079e92449b9c8d73a23fa8dc0ede2faf5c94ad6cfa4676355133"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "d39338bcd385792814e3ffc0ff7c26c121fe720ac5417d071e73034bddbf4d75",
+        "a0be3e6ce09835082883edd8e4f01f6d6840dbb6bc97d8f184a3b89bdec8f75c",
+        "a3052a9431f55698f7d79453dd971b0ec35e0c3de636144f4acb38d5c5c56744"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "native-gnu-runtime",
+      "sourceStatus": "verified",
+      "reason": "The explicit native runtime uses GCC16.2 source, with libquadmath own LGPL terms separated from the Runtime Library Exception. A standalone modified quadmath target, correct float128 API and marker were actually loaded; original numeric objects remain unchanged by the marker export repair.",
+      "sourceArchives": [
+        {
+          "path": "third-party/corresponding-sources/privacy-source-derivatives/gcc-16.2.0-privacy-sanitized.tar.gz",
+          "bytes": 240230783,
+          "sha256": "3dada6b4c7a9ea8ee9b5e32d9fd0e7c4a37a5b9c6db65bb265092b89c30920f6"
+        }
+      ],
+      "replacementStatus": "verified",
+      "evidenceDigests": [
+        "d39338bcd385792814e3ffc0ff7c26c121fe720ac5417d071e73034bddbf4d75",
+        "a0be3e6ce09835082883edd8e4f01f6d6840dbb6bc97d8f184a3b89bdec8f75c",
+        "a3052a9431f55698f7d79453dd971b0ec35e0c3de636144f4acb38d5c5c56744"
+      ],
+      "remaining": []
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "vectors": [
+    [
+      10.3007,
+      0,
+      0
+    ],
+    [
+      0,
+      10.3007,
+      0
+    ],
+    [
+      0,
+      0,
+      10.3007
+    ]
+  ],
+  "pbc": [
+    true,
+    true,
+    true
+  ],
+  "evidence": "PRB 79, 064202 (2009), Sec. III.A states cubic simulation cells and periodic boundary conditions; the official README gives 10.3007 angstrom for x, y, and z."
+}

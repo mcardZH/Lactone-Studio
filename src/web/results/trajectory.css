@@ -1,0 +1,86 @@
+.trajectory-workspace { display: flex; flex-direction: column; min-width: 0; min-height: 360px; height: 100%; color: var(--text, #243349); background: var(--panel, #fff); }
+.trajectory-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 8px 12px; border-bottom: 1px solid #dae2eb; font-size: 12px; }
+.trajectory-heading > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28vw; }
+.trajectory-heading > span { color: #67768a; margin-right: auto; }
+.trajectory-workspace button, .trajectory-workspace select { font: inherit; }
+.trajectory-workspace button { cursor: pointer; }
+.trajectory-workspace button:disabled { cursor: default; opacity: .5; }
+.trajectory-view-options, .trajectory-range { position: relative; }
+.trajectory-view-options summary, .trajectory-range summary { cursor: pointer; padding: 5px; white-space: nowrap; }
+.trajectory-view-options > div, .trajectory-range > div { position: absolute; z-index: 8; display: flex; flex-direction: column; gap: 8px; padding: 12px; min-width: 175px; border: 1px solid #ced9e5; border-radius: 8px; background: #fff; box-shadow: 0 5px 18px #20324a22; right: 0; }
+.trajectory-view-options label { display: flex; gap: 5px; align-items: center; }
+.trajectory-notices { font-size: 12px; padding: 5px 12px; color: #657183; max-height: 120px; overflow: auto; }
+.trajectory-notices p { margin: 4px 0; }
+.trajectory-error { margin: 0; padding: 6px 12px; background: #fff2ef; color: #a63224; font-size: 12px; }
+.trajectory-viewport { flex: 1 1 auto; min-height: 230px; position: relative; }
+.trajectory-viewport > .model-viewport { height: 100%; min-height: 230px; }
+.trajectory-main { display:flex; flex:1 1 auto; min-height:230px; overflow:hidden; }
+.trajectory-player-row { padding:5px 12px; border-bottom:1px solid #e1e7ef; flex:0 0 auto; max-width:610px; }
+.trajectory-main > .trajectory-viewport { min-width:0; }
+/* The top player now shares a flex column with the canvas. Its remaining
+   height may be below ModelViewport's standalone 300px stage minimum. Let
+   only this embedded view shrink so its native canvas and footer stay inside
+   the measured host; do not change the camera or reset the user's pose. */
+.trajectory-viewport-column > .trajectory-viewport { flex:1 1 0; min-width:0; min-height:0; overflow:hidden; }
+.trajectory-viewport-column > .trajectory-viewport > .model-viewport { min-height:0; grid-template-rows:minmax(0,1fr) auto; }
+.trajectory-viewport-column > .trajectory-viewport > .model-viewport > .model-viewport-stage { min-height:0; }
+.trajectory-vibration-badge { position:absolute; bottom:8px; left:10px; background:#edf7fcdd; color:#28668b; padding:5px 8px; font-size:11px; border-radius:5px; pointer-events:none; }
+.trajectory-playback-options { position:relative; }
+.trajectory-playback-options > summary { padding:5px; white-space:nowrap; cursor:pointer; }
+.trajectory-playback-options > div { position:absolute; z-index:10; top:30px; right:0; width:220px; padding:12px; background:white; border:1px solid #cdd9e5; border-radius:6px; box-shadow:0 6px 20px #26384922; display:flex; flex-direction:column; gap:9px; }
+.trajectory-playback-options .trajectory-range > div { top:30px; bottom:auto; }
+/* Preserve the details/controls tree while the browser top layer escapes canvas
+   clipping. The owner-document portal is only the no-popover capability fallback. */
+.trajectory-playback-options > .trajectory-control-popover,
+.trajectory-range > .trajectory-control-popover,
+.trajectory-control-popover { position:fixed;inset:auto;margin:0;box-sizing:border-box;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);min-width:0;overflow:auto;z-index:220;display:flex;flex-direction:column;gap:9px;padding:12px;border:1px solid #cdd9e5;border-radius:6px;background:white;box-shadow:0 6px 20px #26384922; }
+.trajectory-playback-options-popover { width:220px; }
+.trajectory-range-popover { width:199px; }
+.trajectory-control-popover[popover]:not(:popover-open) { display:none; }
+.trajectory-control-popover::backdrop { background:transparent; }
+.trajectory-control-popover label { display:inline-flex;align-items:center;gap:3px;white-space:nowrap; }
+.trajectory-control-popover input[type=number] { width:49px;border:1px solid #d5dfea;border-radius:4px;padding:4px 2px 4px 5px;font:inherit; }
+.trajectory-control-popover select { max-width:76px;padding:4px 1px;border:1px solid #d5dfea;border-radius:4px;background:#fff; }
+.trajectory-range-popover label { justify-content:space-between; }
+.trajectory-range-popover small { color:#67768a;white-space:normal;line-height:1.5; }
+.trajectory-overlay-options > div { width:min(520px,calc(100vw - 40px)); }
+.trajectory-overlay-options [data-testid=multiframe-display-controls] { display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:14px; }
+.trajectory-overlay-options [data-testid=multiframe-display-controls] > .shared-input-row { display:contents; }
+.trajectory-overlay-options .shared-input-field { flex:0 1 auto!important;flex-wrap:nowrap!important; }
+.trajectory-overlay-options .shared-input-field-control { flex:0 1 auto; }
+.trajectory-overlay-options .shared-input-field-control input { width:5em; }
+.trajectory-trace-controls { display:flex; align-items:center; gap:7px; font-size:11px; }
+[data-testid="postprocess-playback"] .trajectory-stage-choice { display:inline-flex; align-items:center; flex-wrap:wrap; gap:5px 7px; max-width:100%; margin:3px 0 6px; font-size:12px; }
+[data-testid="postprocess-playback"] .trajectory-stage-choice select { flex:0 1 auto; width:auto; max-width:min(100%, 28em); min-width:10em; padding:4px 6px; border:1px solid #d5dfea; border-radius:4px; background:#fff; font:inherit; }
+.trajectory-footer { flex: 0 0 auto; padding: 5px 12px 8px; border-top: 1px solid #e1e7ef; }
+.trajectory-frame-info { display: flex; flex-wrap: wrap; gap: 12px; min-height: 22px; align-items: center; color: #647288; font-size: 11px; font-variant-numeric: tabular-nums; }
+.trajectory-controls { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 12px; }
+.trajectory-controls > button { min-width: 26px; height: 29px; padding: 1px 5px; border: 1px solid #d5dfea; border-radius: 5px; color: #2c4f70; background: #f8fafc; }
+.trajectory-controls > .trajectory-play { background: #e4f0fa; color: #17608d; }
+.trajectory-slider { flex: 1; min-width: 65px; width: 0; height: 22px; margin: 0 3px; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.trajectory-controls > input.trajectory-slider { padding:0; border:0; min-height:22px; border-radius:0; background:linear-gradient(#cad9e4, #cad9e4) center / calc(100% - 14px) 4px no-repeat; }
+.trajectory-slider::-webkit-slider-runnable-track { height: 4px; background: transparent; border: 0; }
+.trajectory-slider::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border: 0; border-radius: 50%; background: #2c86bb; }
+.trajectory-slider::-moz-range-track { height: 4px; background: transparent; border: 0; }
+.trajectory-slider::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #2c86bb; }
+.trajectory-slider:focus-visible { outline: 2px solid #9dc8df; outline-offset: 1px; border-radius: 8px; }
+.trajectory-slider:disabled { cursor: default; opacity: .55; }
+.trajectory-controls > input.trajectory-slider-single:disabled { background:none!important; }
+.trajectory-controls label { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.trajectory-controls input[type=number] { width: 49px; border: 1px solid #d5dfea; border-radius: 4px; padding: 4px 2px 4px 5px; font: inherit; }
+.trajectory-controls .trajectory-frame-field input { width: 61px; }
+.trajectory-controls select { max-width: 76px; padding: 4px 1px; border: 1px solid #d5dfea; border-radius: 4px; background: #fff; }
+.trajectory-range > div { bottom: 32px; }
+.trajectory-range > div label { justify-content: space-between; }
+.trajectory-range small { color: #67768a; white-space: normal; line-height: 1.5; }
+.trajectory-loading { min-width: 36px; color: #647288; font-size: 10px; }
+.playback-overlay-controls{display:flex;flex-direction:column;gap:8px;min-width:0;border-top:1px solid #e1e7ef;padding-top:8px}
+.trajectory-control-popover .playback-overlay-controls label{flex-wrap:wrap;white-space:normal}
+.trajectory-control-popover .playback-overlay-controls select{max-width:100%;flex:1;min-width:0}
+.playback-overlay-controls small{white-space:normal;color:#67768a}
+.playback-overlay-controls [role=status]{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+@media (max-width: 850px) { .trajectory-controls { flex-wrap: wrap; } .trajectory-slider { min-width: 80px; } .trajectory-heading > strong { max-width: 45vw; } }
+.trajectory-load-status{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:8px 0;font-size:14px;line-height:20px}
+.trajectory-load-status strong{width:100%;font-weight:600}
+.trajectory-load-progress,.trajectory-load-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.trajectory-load-status progress{flex:1 1 120px;min-width:80px;accent-color:#278b70}

@@ -1,0 +1,5 @@
+[wrap-file]
+directory = numsa
+source_url = https://github.com/grimme-lab/numsa/archive/3145b756c05883cec9698142b436c057546e2ac7.tar.gz
+source_filename = numsa-3145b756c05883cec9698142b436c057546e2ac7.tar.gz
+source_hash = ef4699aa3c162cbab7cb95e3774b10e26040f4803301c735d40251a14798d0dd

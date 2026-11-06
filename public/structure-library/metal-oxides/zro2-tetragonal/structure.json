@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "entryId": "zro2-tetragonal",
+  "structure": {
+    "id": "zro2-tetragonal",
+    "name": "四方氧化锆",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "zro2-tetragonal:atom:1",
+        "sourceIndex": 2,
+        "element": "Zr",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "zro2-tetragonal:atom:2",
+        "sourceIndex": 2,
+        "element": "Zr",
+        "x": 1.8060000000000003,
+        "y": 1.806,
+        "z": 2.606
+      },
+      {
+        "id": "zro2-tetragonal:atom:3",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.9042695053160057e-16,
+        "y": 1.806,
+        "z": 1.047612
+      },
+      {
+        "id": "zro2-tetragonal:atom:4",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 2.9042695053160057e-16,
+        "y": 1.806,
+        "z": 3.6536120000000003
+      },
+      {
+        "id": "zro2-tetragonal:atom:5",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.806,
+        "y": 0.0,
+        "z": 1.5583879999999999
+      },
+      {
+        "id": "zro2-tetragonal:atom:6",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.806,
+        "y": 0.0,
+        "z": 4.164388
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 1526427; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "zro2-tetragonal:atom:1",
+      "zro2-tetragonal:atom:2",
+      "zro2-tetragonal:atom:3",
+      "zro2-tetragonal:atom:4",
+      "zro2-tetragonal:atom:5",
+      "zro2-tetragonal:atom:6"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.612,
+          0.0,
+          2.21171211926012e-16
+        ],
+        [
+          5.808539010632011e-16,
+          3.612,
+          2.21171211926012e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.212
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 1526427 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

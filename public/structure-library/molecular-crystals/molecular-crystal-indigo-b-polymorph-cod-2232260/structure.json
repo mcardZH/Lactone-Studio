@@ -1,0 +1,589 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-indigo-b-polymorph-cod-2232260",
+  "structure": {
+    "id": "molecular-crystal-indigo-b-polymorph-cod-2232260",
+    "name": "靛蓝 B 型",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:1",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 5.559602792587519,
+        "y": 1.15942632,
+        "z": 5.741191942011361
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:2",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 8.512965869041368,
+        "y": 4.1126263199999995,
+        "z": 6.147640597673153
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:3",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 3.8221096484984067,
+        "y": 4.74697368,
+        "z": 2.1846964177783144
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:4",
+        "sourceIndex": 2,
+        "element": "H",
+        "x": 0.8687465720445572,
+        "y": 1.7937736799999997,
+        "z": 1.7782477621165236
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:5",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 1.1032893830717052,
+        "y": 3.18414024,
+        "z": 4.0886769711112665
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:6",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 3.587566837471258,
+        "y": 0.23094023999999946,
+        "z": -0.12573279121642877
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:7",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 8.278423058014221,
+        "y": 2.7222597599999996,
+        "z": 3.8372113886784094
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:8",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 5.794145603614668,
+        "y": 5.67545976,
+        "z": 8.051621151006104
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:9",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 1.2290043297822573,
+        "y": 4.88400216,
+        "z": 5.675847375132449
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:10",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 3.4618518907607068,
+        "y": 1.9308021599999996,
+        "z": 9.042096804762389
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:11",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 8.152708111303669,
+        "y": 1.0223978400000002,
+        "z": 2.250040984657227
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:12",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 5.91986055032522,
+        "y": 3.97559784,
+        "z": -1.1162084449727148
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:13",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 3.059376427038121,
+        "y": 5.028118319999999,
+        "z": 7.103883194127413
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:14",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 1.6314797935048428,
+        "y": 2.0749183199999996,
+        "z": 7.614060985767424
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:15",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 6.322336014047805,
+        "y": 0.8782816800000003,
+        "z": 0.8220051656622627
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:16",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 7.750232647581084,
+        "y": 3.83148168,
+        "z": 0.31182737402225014
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:17",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 4.792178714906692,
+        "y": 3.4682380800000003,
+        "z": 7.016923774180567
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:18",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 9.280389946722197,
+        "y": 0.515038080000001,
+        "z": 4.871908765503946
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:19",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 4.589533726179234,
+        "y": 2.4381619199999993,
+        "z": 0.9089645856091086
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:20",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 0.10132249436372916,
+        "y": 5.391361919999999,
+        "z": 3.0539795942857295
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:21",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.383323686724166,
+        "y": 0.5457513599999999,
+        "z": 4.225934109460932
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:22",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 0.30753253381879697,
+        "y": 3.49895136,
+        "z": 10.492010070433906
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:23",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 4.998388754361761,
+        "y": 5.360648639999999,
+        "z": 3.6999542503287435
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:24",
+        "sourceIndex": 3,
+        "element": "C",
+        "x": 9.074179907267128,
+        "y": 2.4074486399999997,
+        "z": -2.566121710644231
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:25",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 3.0922124205819213,
+        "y": 1.1340288,
+        "z": 3.756167053386677
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:26",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 1.5986437999610423,
+        "y": 4.087228799999999,
+        "z": 0.20677712650816088
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:27",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 6.289500020504005,
+        "y": 4.7723712,
+        "z": 4.169721306402998
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:28",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 7.783068641124884,
+        "y": 1.8191712000000002,
+        "z": 7.719111233281517
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:29",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 2.8602964890382774,
+        "y": 2.28223296,
+        "z": 4.621112293132677
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:30",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 1.8305597315046869,
+        "y": 5.23543296,
+        "z": 10.096831886762162
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:31",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 6.521415952047649,
+        "y": 3.6241670399999992,
+        "z": 3.3047760666569985
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:32",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 7.55115270958124,
+        "y": 0.6709670399999995,
+        "z": -2.1709435269724864
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:33",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 1.833937147983477,
+        "y": 3.23316336,
+        "z": 4.677229306571687
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:34",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 2.856919072559486,
+        "y": 0.2799633600000006,
+        "z": -0.7142851266768485
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:35",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 7.547775293102449,
+        "y": 2.67323664,
+        "z": 3.248659053217989
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:36",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 6.52479336852644,
+        "y": 5.626436639999999,
+        "z": 8.640173486466523
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:37",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 1.9166838517138554,
+        "y": 4.24552032,
+        "z": 5.615601891905031
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:38",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 2.774172368829108,
+        "y": 1.2923203199999993,
+        "z": 9.102342287989808
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:39",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 7.4650285893720705,
+        "y": 1.6608796799999999,
+        "z": 2.3102864678846453
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:40",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 6.6075400722568185,
+        "y": 4.614079680000001,
+        "z": -1.1764539282001327
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:41",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 3.0198794176611496,
+        "y": 4.326438,
+        "z": 6.4790977541327
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:42",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 1.6709768028818144,
+        "y": 1.3732379999999995,
+        "z": 8.23884642576214
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:43",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 6.361833023424777,
+        "y": 1.5799619999999996,
+        "z": 1.4467906056569761
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:44",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 7.710735638204112,
+        "y": 4.533162,
+        "z": -0.31295806597246356
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:45",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 4.0534626772955855,
+        "y": 3.4014957599999995,
+        "z": 6.439408474730727
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:46",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 0.6373935432473778,
+        "y": 0.4482957599999991,
+        "z": 8.27853570516411
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:47",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 5.328249763790341,
+        "y": 2.50490424,
+        "z": 1.4864798850589487
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:48",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 8.744318897838548,
+        "y": 5.458104240000001,
+        "z": -0.35264734537443587
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:49",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 3.9515772801853926,
+        "y": 2.3678757599999996,
+        "z": 5.505731777143413
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:50",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 0.7392789403575716,
+        "y": 5.32107576,
+        "z": 9.212212402751428
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:51",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 5.430135160900535,
+        "y": 3.5385242399999997,
+        "z": 2.420156582646263
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:52",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 8.642433500728355,
+        "y": 0.5853242399999997,
+        "z": -1.2863240429617508
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:53",
+        "sourceIndex": 1,
+        "element": "N",
+        "x": 4.834959323638043,
+        "y": 1.31240208,
+        "z": 5.283760775101207
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:54",
+        "sourceIndex": 1,
+        "element": "N",
+        "x": 9.237609337990845,
+        "y": 4.26560208,
+        "z": 6.605071764583306
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:55",
+        "sourceIndex": 1,
+        "element": "N",
+        "x": 4.546753117447883,
+        "y": 4.59399792,
+        "z": 2.642127584688468
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:56",
+        "sourceIndex": 1,
+        "element": "N",
+        "x": 0.14410310309508048,
+        "y": 1.6407979200000002,
+        "z": 1.3208165952063697
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:57",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 2.4194498214316495,
+        "y": 0.6880956,
+        "z": 2.8135275991061595
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:58",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 2.2714063991113136,
+        "y": 3.6412956,
+        "z": 1.1494165807886783
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:59",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 6.962262619654277,
+        "y": 5.218304399999999,
+        "z": 5.112360760683517
+      },
+      {
+        "id": "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:60",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 7.110306041974612,
+        "y": 2.2651044,
+        "z": 6.776471779000997
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2232260; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:1",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:2",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:3",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:4",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:5",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:6",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:7",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:8",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:9",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:10",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:11",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:12",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:13",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:14",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:15",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:16",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:17",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:18",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:19",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:20",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:21",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:22",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:23",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:24",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:25",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:26",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:27",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:28",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:29",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:30",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:31",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:32",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:33",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:34",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:35",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:36",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:37",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:38",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:39",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:40",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:41",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:42",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:43",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:44",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:45",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:46",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:47",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:48",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:49",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:50",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:51",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:52",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:53",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:54",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:55",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:56",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:57",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:58",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:59",
+      "molecular-crystal-indigo-b-polymorph-cod-2232260:atom:60"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          9.381712441085925,
+          0.0,
+          -2.8291116402103254
+        ],
+        [
+          9.498215618050086e-16,
+          5.9064,
+          3.6166269272419634e-16
+        ],
+        [
+          0.0,
+          0.0,
+          10.755
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2232260 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

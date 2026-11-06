@@ -1,0 +1,160 @@
+#------------------------------------------------------------------------------
+#$Date: 2024-05-09 11:47:05 +0300 (Thu, 09 May 2024) $
+#$Revision: 291792 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/9/01/10/9011006.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided the American Mineralogist Crystal Structure Database,
+# http://rruff.geo.arizona.edu/AMS/amcsd.php
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_9011006
+loop_
+_publ_author_name
+'Barrett, C. S.'
+_publ_section_title
+;
+ X-ray study of the alkali metals at low temperatures
+ Sample: at T = 66 K
+;
+_journal_name_full               'Acta Crystallographica'
+_journal_page_first              671
+_journal_page_last               677
+_journal_paper_doi               10.1107/S0365110X56001790
+_journal_volume                  9
+_journal_year                    1956
+_chemical_compound_source        Synthetic
+_chemical_formula_sum            K
+_chemical_name_common            Potassium
+_chemical_name_mineral           Potassium
+_space_group_IT_number           229
+_symmetry_space_group_name_Hall  '-I 4 2 3'
+_symmetry_space_group_name_H-M   'I m -3 m'
+_cell_angle_alpha                90
+_cell_angle_beta                 90
+_cell_angle_gamma                90
+_cell_length_a                   5.236
+_cell_length_b                   5.236
+_cell_length_c                   5.236
+_cell_volume                     143.549
+_database_code_amcsd             0009188
+_cell_formula_units_Z            2
+_diffrn_ambient_temperature      66
+_exptl_crystal_density_diffrn    0.905
+_cod_original_sg_symbol_H-M      'I m 3 m'
+_cod_database_code               9011006
+loop_
+_space_group_symop_operation_xyz
+x,y,z
+1/2+x,1/2+y,1/2+z
+z,-x,y
+1/2+z,1/2-x,1/2+y
+-y,z,-x
+1/2-y,1/2+z,1/2-x
+x,-y,z
+1/2+x,1/2-y,1/2+z
+-z,x,-y
+1/2-z,1/2+x,1/2-y
+y,-z,x
+1/2+y,1/2-z,1/2+x
+-x,y,-z
+1/2-x,1/2+y,1/2-z
+x,-z,-y
+1/2+x,1/2-z,1/2-y
+-z,y,x
+1/2-z,1/2+y,1/2+x
+y,-x,-z
+1/2+y,1/2-x,1/2-z
+-x,z,y
+1/2-x,1/2+z,1/2+y
+z,-y,-x
+1/2+z,1/2-y,1/2-x
+-y,x,z
+1/2-y,1/2+x,1/2+z
+x,z,y
+1/2+x,1/2+z,1/2+y
+-z,-y,-x
+1/2-z,1/2-y,1/2-x
+y,x,z
+1/2+y,1/2+x,1/2+z
+-x,-z,-y
+1/2-x,1/2-z,1/2-y
+z,y,x
+1/2+z,1/2+y,1/2+x
+-y,-x,-z
+1/2-y,1/2-x,1/2-z
+z,x,-y
+1/2+z,1/2+x,1/2-y
+-y,-z,x
+1/2-y,1/2-z,1/2+x
+x,y,-z
+1/2+x,1/2+y,1/2-z
+-z,-x,y
+1/2-z,1/2-x,1/2+y
+y,z,-x
+1/2+y,1/2+z,1/2-x
+-x,-y,z
+1/2-x,1/2-y,1/2+z
+-z,x,y
+1/2-z,1/2+x,1/2+y
+y,-z,-x
+1/2+y,1/2-z,1/2-x
+-x,y,z
+1/2-x,1/2+y,1/2+z
+z,-x,-y
+1/2+z,1/2-x,1/2-y
+-y,z,x
+1/2-y,1/2+z,1/2+x
+x,-y,-z
+1/2+x,1/2-y,1/2-z
+-x,z,-y
+1/2-x,1/2+z,1/2-y
+z,-y,x
+1/2+z,1/2-y,1/2+x
+-y,x,-z
+1/2-y,1/2+x,1/2-z
+x,-z,y
+1/2+x,1/2-z,1/2+y
+-z,y,-x
+1/2-z,1/2+y,1/2-x
+y,-x,z
+1/2+y,1/2-x,1/2+z
+-x,-z,y
+1/2-x,1/2-z,1/2+y
+z,y,-x
+1/2+z,1/2+y,1/2-x
+-y,-x,z
+1/2-y,1/2-x,1/2+z
+x,z,-y
+1/2+x,1/2+z,1/2-y
+-z,-y,x
+1/2-z,1/2-y,1/2+x
+y,x,-z
+1/2+y,1/2+x,1/2-z
+-z,-x,-y
+1/2-z,1/2-x,1/2-y
+y,z,x
+1/2+y,1/2+z,1/2+x
+-x,-y,-z
+1/2-x,1/2-y,1/2-z
+z,x,y
+1/2+z,1/2+x,1/2+y
+-y,-z,-x
+1/2-y,1/2-z,1/2-x
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+K 0.00000 0.00000 0.00000
+loop_
+_cod_related_entry_id
+_cod_related_entry_database
+_cod_related_entry_code
+1 ChemSpider 4575326
+2 AMCSD 0009188

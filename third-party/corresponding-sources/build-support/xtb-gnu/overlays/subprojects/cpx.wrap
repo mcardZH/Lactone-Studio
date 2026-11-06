@@ -1,0 +1,5 @@
+[wrap-file]
+directory = cpx
+source_url = https://github.com/grimme-lab/CPCM-X/archive/b41feaf44f09be0e90f5845eb7a8a6d2ade5471d.tar.gz
+source_filename = cpcmx-b41feaf44f09be0e90f5845eb7a8a6d2ade5471d.tar.gz
+source_hash = 133f75b0ae7e769facad787e8a163069d8eb14f9643d2c395819e96c4a89bc90

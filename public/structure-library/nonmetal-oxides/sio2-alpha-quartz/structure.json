@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "entryId": "sio2-alpha-quartz",
+  "structure": {
+    "id": "sio2-alpha-quartz",
+    "name": "α-石英",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "sio2-alpha-quartz:atom:1",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 2.30796489,
+        "y": 0.0,
+        "z": 1.4132209075414867e-16
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:2",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": -1.1539824449999998,
+        "y": 1.998756225782558,
+        "z": 3.603133333333333
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:3",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.3028675550000004,
+        "y": 2.256632800793039,
+        "z": 1.8015666666666668
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:4",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.3743618900000003,
+        "y": 1.1370399479009994,
+        "z": 0.6420783600000003
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.2975245350000002,
+        "y": 1.7587522846836943,
+        "z": 2.961054973333333
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.2418135750000006,
+        "y": 0.6217123367826948,
+        "z": 4.245211693333333
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7849635750000004,
+        "y": 3.6336766897929023,
+        "z": 1.159488306666667
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.7543745350000006,
+        "y": 2.4966367418919027,
+        "z": 2.443645026666667
+      },
+      {
+        "id": "sio2-alpha-quartz:atom:9",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -1.0824881099999997,
+        "y": 3.1183490786745973,
+        "z": 4.76262164
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9005017; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "sio2-alpha-quartz:atom:1",
+      "sio2-alpha-quartz:atom:2",
+      "sio2-alpha-quartz:atom:3",
+      "sio2-alpha-quartz:atom:4",
+      "sio2-alpha-quartz:atom:5",
+      "sio2-alpha-quartz:atom:6",
+      "sio2-alpha-quartz:atom:7",
+      "sio2-alpha-quartz:atom:8",
+      "sio2-alpha-quartz:atom:9"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.9137,
+          0.0,
+          3.008773488485175e-16
+        ],
+        [
+          -2.4568499999999998,
+          4.255389026575597,
+          3.008773488485175e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.4047
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9005017 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "carbon-diamond",
+      "category": "nonmetals",
+      "name": "金刚石",
+      "nameEn": "Diamond",
+      "formula": "C",
+      "aliases": [
+        "C",
+        "diamond"
+      ],
+      "phase": "金刚石型立方结构；298.15 K",
+      "structurePath": "nonmetals/carbon-diamond/structure.json",
+      "sourcePath": "nonmetals/carbon-diamond/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011997",
+        "url": "https://www.crystallography.net/cod/9011997.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Hom, T.; Kiszenick, W.; Post, B. (1975) Accurate lattice constants from multiple reflection measurements. II. Lattice constants of germanium silicon, and diamond. Journal of Applied Crystallography, 8, 457–458. DOI: 10.1107/S0021889875010965.",
+        "version": "COD CIF revision 306922",
+        "conditions": "衍射温度为 298.15 K（25 °C）；原文测量金刚石晶格常数。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1107/S0021889875010965"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d -3 m :1",
+        "number": 227
+      }
+    },
+    {
+      "id": "carbon-graphite-2h",
+      "category": "nonmetals",
+      "name": "石墨",
+      "nameEn": "Graphite",
+      "formula": "C",
+      "aliases": [
+        "C",
+        "graphite",
+        "2H graphite"
+      ],
+      "phase": "六方石墨（2H）；天然晶体，温度未报告",
+      "structurePath": "nonmetals/carbon-graphite-2h/structure.json",
+      "sourcePath": "nonmetals/carbon-graphite-2h/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011577",
+        "url": "https://www.crystallography.net/cod/9011577.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Trucano, P.; Chen, R. (1975) Structure of graphite by neutron diffraction Note: natural crystals. Nature, 258, 136–137. DOI: 10.1038/258136a0.",
+        "version": "COD CIF revision 291877",
+        "conditions": "原文记录天然晶体；COD条目未记录数值衍射温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1038/258136a0"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 63/m m c",
+        "number": 194
+      },
+      "categories": [
+        "layered-crystals"
+      ],
+      "legacyIds": [
+        "graphene-monolayer"
+      ]
+    },
+    {
+      "id": "sulfur-alpha-s8",
+      "category": "nonmetals",
+      "name": "α-硫",
+      "nameEn": "Alpha sulfur",
+      "formula": "S8",
+      "aliases": [
+        "S",
+        "S8",
+        "orthorhombic sulfur"
+      ],
+      "phase": "α-S8，斜方晶系；298 K",
+      "structurePath": "nonmetals/sulfur-alpha-s8/structure.json",
+      "sourcePath": "nonmetals/sulfur-alpha-s8/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011362",
+        "url": "https://www.crystallography.net/cod/9011362.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Rettig, S. J.; Trotter, J. (1987) Refinement of the structure of orthorhombic sulfur, alpha-S8 Locality: synthetic Sample: at T = 298 K Note: alpha phase. Acta Crystallographica, Section C, 43, 2260–2262. DOI: 10.1107/S0108270187088152.",
+        "version": "COD CIF revision 293656",
+        "conditions": "合成样品；α-S8，衍射温度 298 K。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1107/S0108270187088152"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "F d d d :2",
+        "number": 70
+      }
+    },
+    {
+      "id": "phosphorus-black-a17",
+      "category": "nonmetals",
+      "name": "黑磷",
+      "nameEn": "Black phosphorus",
+      "formula": "P",
+      "aliases": [
+        "P",
+        "black phosphorus",
+        "A17 phosphorus"
+      ],
+      "phase": "黑磷 A17 正交相；温度未报告",
+      "structurePath": "nonmetals/phosphorus-black-a17/structure.json",
+      "sourcePath": "nonmetals/phosphorus-black-a17/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1010325",
+        "url": "https://www.crystallography.net/cod/1010325.html",
+        "license": "CC0 1.0 (public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "experimental",
+        "citation": "Hultgren, R; Gingrich, N S; Warren, B E (1935) The Atomic Distribution in Red and Black Phosphorus and the Crystal Structure of Black Phosphorus. Journal of Chemical Physics, 3, 351–355. DOI: 10.1063/1.1749671.",
+        "version": "COD CIF revision 130149",
+        "conditions": "原始晶体学论文确定黑磷结构；COD条目未记录测量温度。",
+        "retrievedAt": "2026-10-20T04:32:28Z",
+        "doi": "10.1063/1.1749671"
+      },
+      "normalization": {
+        "method": "pymatgen.io.cif.CifParser (2026.5.4)",
+        "details": [
+          "解析器：pymatgen.io.cif.CifParser，pymatgen版本 2026.5.4；occupancy_tolerance=1.0，site_tolerance=1e-4，frac_tolerance=1e-5，check_occu=True。",
+          "以primitive=False读取来源晶胞并展开CIF对称位置；不做原胞化、排序优化、超胞复制或几何优化。",
+          "仅接受每个占位点恰有一个明确元素且占位数为1的结构；检测到部分占位或混合元素位点即拒绝，不进行自动有序化。",
+          "保留CIF晶格向量方向；使用pymatgen将解析后的分数坐标转换为笛卡尔Å坐标。",
+          "依据CIF完整三维晶胞和分数坐标声明三个周期轴；未从元素价态、带隙或经验规则推断电荷、多重度及化学键。",
+          "对称展开后的原子以解析顺序生成稳定ID；未假造对称展开原子与原始不对称单元标签之间的一一来源编号映射。"
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "B m a b",
+        "number": 64
+      },
+      "categories": [
+        "layered-crystals"
+      ]
+    },
+    {
+      "id": "as-a7",
+      "category": "nonmetals",
+      "name": "灰砷（A7）",
+      "nameEn": "gray arsenic",
+      "formula": "As",
+      "aliases": [
+        "As",
+        "arsenic",
+        "gray arsenic"
+      ],
+      "phase": "三方A7结构，空间群 R-3m (#166)",
+      "structurePath": "nonmetals/as-a7/structure.json",
+      "sourcePath": "nonmetals/as-a7/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9009652",
+        "url": "https://www.crystallography.net/cod/9009652.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 296112",
+        "retrievedAt": "2026-10-23T16:47:31.893422+00:00",
+        "citation": "Schiferl, D.; Barrett, C. S.. The crystal structure of arsenic at 4.2, 78 and 299 K Sample: T = 299 K. Journal of Applied Crystallography 1969 2, pp. 30-36. DOI: 10.1107/S0021889869006443",
+        "doi": "10.1107/S0021889869006443",
+        "conditions": "COD原始条件字段（不在此处推断/换算单位）：diffrtemp=299；COD记录标题/样品说明：The crystal structure of arsenic at 4.2, 78 and 299 K Sample: T = 299 K Original source-type description: experimental/reference type not explicit in COD metadata"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录报299 K；砷为类金属，最终分类待数据owner确认。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 m :H",
+        "number": 166
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "se-trigonal",
+      "category": "nonmetals",
+      "name": "三方硒",
+      "nameEn": "trigonal selenium",
+      "formula": "Se",
+      "aliases": [
+        "Se",
+        "selenium",
+        "trigonal selenium"
+      ],
+      "phase": "三方螺旋链结构，空间群 P3121 (#152)",
+      "structurePath": "nonmetals/se-trigonal/structure.json",
+      "sourcePath": "nonmetals/se-trigonal/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:1534711",
+        "url": "https://www.crystallography.net/cod/1534711.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 211196",
+        "retrievedAt": "2026-10-23T16:59:21.150184+00:00",
+        "citation": "Avilov, A.S.; Imamov, R.M.. The structure of selenium. Kristallografiya 1969 14, pp. 330-331",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The structure of selenium"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD记录引用1969年硒结构研究；温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "P 31 2 1",
+        "number": 152
+      },
+      "objectKind": "crystal"
+    },
+    {
+      "id": "b-alpha-rhombohedral",
+      "category": "nonmetals",
+      "name": "α-菱方硼",
+      "nameEn": "simple rhombohedral boron",
+      "formula": "B",
+      "aliases": [
+        "B",
+        "alpha-rhombohedral boron",
+        "simple rhombohedral boron"
+      ],
+      "phase": "α-菱方，空间群 R-3m (#166)",
+      "structurePath": "nonmetals/b-alpha-rhombohedral/structure.json",
+      "sourcePath": "nonmetals/b-alpha-rhombohedral/source.cif",
+      "source": {
+        "name": "Crystallography Open Database (COD)",
+        "recordId": "COD:9011036",
+        "url": "https://www.crystallography.net/cod/9011036.html",
+        "license": "CC0 1.0 (COD public-domain dedication)",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "structureKind": "curated",
+        "version": "COD revision 291792",
+        "retrievedAt": "2026-10-23T16:59:21.150184+00:00",
+        "citation": "Decker, B. F.; Kasper, J. S.. The crystal structure of a simple rhombohedral form of boron Locality: synthetic. Acta Crystallographica 1959 12, pp. 503-506. DOI: 10.1107/S0365110X59001529",
+        "doi": "10.1107/S0365110X59001529",
+        "conditions": "COD结构化温度/压力条件未报告；未知温度不作室温假设。；COD记录标题/样品说明：The crystal structure of a simple rhombohedral form of boron Locality: synthetic"
+      },
+      "normalization": {
+        "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
+        "details": [
+          "COD引用1959年简单菱方硼晶体结构研究；来源标注synthetic，温度未报。",
+          "Parsed with pymatgen 2026.5.4 CifParser from source.cif.",
+          "Expanded source crystallographic symmetry to the full stated unit cell with primitive=False; the source cell is preserved for 3D structures.",
+          "Checked formula and every atom site; mixed species or explicit fractional/unknown occupancy are rejected rather than ordered.",
+          "Mapped each expanded atom to its original CIF atom-site label and 1-based source row; normalized atom IDs are generated from the entry ID and row order."
+        ]
+      },
+      "spaceGroup": {
+        "symbol": "R -3 m :H",
+        "number": 166
+      },
+      "objectKind": "crystal"
+    }
+  ]
+}

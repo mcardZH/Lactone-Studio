@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "entryId": "ac-fcc",
+  "structure": {
+    "id": "ac-fcc",
+    "name": "锕（fcc候选）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "ac-fcc:atom:1",
+        "sourceIndex": 1,
+        "element": "Ac",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "ac-fcc:atom:2",
+        "sourceIndex": 1,
+        "element": "Ac",
+        "x": 4.2703696962163084e-16,
+        "y": 2.6555,
+        "z": 2.6555
+      },
+      {
+        "id": "ac-fcc:atom:3",
+        "sourceIndex": 1,
+        "element": "Ac",
+        "x": 2.6555,
+        "y": 0.0,
+        "z": 2.6555
+      },
+      {
+        "id": "ac-fcc:atom:4",
+        "sourceIndex": 1,
+        "element": "Ac",
+        "x": 2.6555000000000004,
+        "y": 2.6555,
+        "z": 3.2520495751357963e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9008458; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "ac-fcc:atom:1",
+      "ac-fcc:atom:2",
+      "ac-fcc:atom:3",
+      "ac-fcc:atom:4"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.311,
+          0.0,
+          3.2520495751357963e-16
+        ],
+        [
+          8.540739392432617e-16,
+          5.311,
+          3.2520495751357963e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.311
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9008458 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

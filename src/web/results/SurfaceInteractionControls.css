@@ -1,0 +1,6 @@
+.surface-source-cubes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-2, 8px);
+}
+.surface-source-cubes .postprocess-file-slot { min-width: 0; }

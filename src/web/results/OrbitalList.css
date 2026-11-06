@@ -1,0 +1,46 @@
+.orbital-selector .orbital-column-heading > span,
+.orbital-selector .orbital-energy { text-align: center; }
+.orbital-selector .orbital-energy { white-space:nowrap; overflow-wrap:normal; }
+.orbital-selector { --orbital-columns: 3em 6.2em minmax(6em, 1fr); }
+.orbital-list-frame{position:relative;max-width:100%;min-width:0;box-sizing:border-box}
+.orbital-shared-frame{min-width:0;--orbital-columns:2.7em 5.6em minmax(5.4em,1fr);border:1px solid #cadfd1;border-radius:5px;overflow:hidden}
+.orbital-selector .orbital-shared-heading{gap:0;position:sticky;top:0;z-index:1;background:#fff}
+.orbital-selector .orbital-shared-heading .orbital-channel{border:0;border-radius:0}
+.orbital-shared-scroll{height:var(--orbital-list-height,310px);overflow:scroll;scrollbar-gutter:stable;min-width:0;outline:none}
+.orbital-shared-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;min-width:0}
+.orbital-shared-heading,.orbital-shared-row{min-width:calc(27.4em + 24px)}
+.orbital-shared-row>.orbital-row-placeholder{min-height:38px;border-bottom:1px solid #e8eeea}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-shared-row>.orbital-select-row{height:auto;align-self:stretch;min-height:38px}
+.orbital-shared-row>:first-child{border-right:1px solid #cadfd1!important}
+.orbital-selector .orbital-list-toolbar { justify-content: flex-start; margin: 0 0 8px; }
+.orbital-selector .orbital-channels.is-spin-split { --orbital-columns: 2.7em 5.6em minmax(5.4em, 1fr); grid-template-columns: repeat(2,minmax(0,1fr)); overflow-x:visible; }
+.orbital-selector .orbital-channel { container-type:inline-size; }
+.orbital-selector[data-column-layout="content"] { --orbital-columns: 3.5em 7em minmax(7em, 1fr); }
+.orbital-selector[data-column-layout="content"] .orbital-channels.is-spin-split { --orbital-columns: 3em 6em minmax(6em, 1fr); }
+.orbital-selector .orbital-channel-scroll { height: var(--orbital-list-height, 310px); max-height: none; overflow: scroll; }
+.orbital-selector .orbital-occupation { display: flex; align-items: center; justify-content: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.orbital-selector .orbital-occupation .orbital-electron-box { width: 30px; min-width: 30px; height: 27px; font-size: 20px; }
+.orbital-selector .orbital-occupation-value { min-width: 2em; text-align: center; }
+.orbital-selector[data-copy-all] .orbital-channels {
+  outline: 2px solid #609c86;
+  outline-offset: -2px;
+}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-selector[data-copy-all] .orbital-select-row {
+  background: var(--ui-control-selected-bg, #e1f1e7);
+}
+/* Keep both spin channels in the frame. Narrow channels stack the occupation
+   glyph/value inside their own cell instead of clipping the second channel. */
+@container (max-width: 180px) {
+  .orbital-selector .orbital-column-heading,
+  .input-settings-layout.input-settings-surface .orbital-controls .orbital-selector .orbital-select-row {
+    grid-template-columns:2em 30px minmax(0,1fr);
+    gap:2px;
+    padding-inline:2px;
+  }
+  .orbital-selector .orbital-occupation { flex-direction:column; gap:2px; }
+  .orbital-selector .orbital-occupation-value { min-width:0; }
+  .input-settings-layout.input-settings-surface .orbital-controls .orbital-selector .orbital-select-row {
+    grid-template-columns:2em 30px minmax(max-content,1fr);
+    min-width:max-content;
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "schema": "sciyue-native-profile-v1",
+  "platform": "win32-x64",
+  "backend": "OpenBLAS",
+  "runtimeLock": "desktop/packaging/native-runtime.lock.json",
+  "toolchainLock": "desktop/packaging/native-toolchain.lock.json",
+  "xtbLock": "desktop/packaging/xtb-runtime.lock.json",
+  "entry": "desktop/chemistry/runtime_launcher.py",
+  "spec": "desktop/packaging/native-engine.spec",
+  "nativeSources": [
+    "desktop/chemistry/engine.py",
+    "desktop/chemistry/dynamics.py",
+    "desktop/chemistry/dynamics_native_md.py",
+    "desktop/chemistry/dynamics_checkpoint_files.py",
+    "desktop/chemistry/geometry_clean.py",
+    "desktop/chemistry/runtime_launcher.py",
+    "desktop/chemistry/diagnostics.py",
+    "desktop/chemistry/hybrid_geometry.py",
+    "desktop/chemistry/bond_perception.py",
+    "desktop/chemistry/orbitals.py",
+    "desktop/chemistry/orbitals_worker.py",
+    "desktop/chemistry/analysis_result_wire.py",
+    "desktop/chemistry/wavefunction_analysis.py",
+    "desktop/chemistry/wavefunction_prerequisites.py",
+    "desktop/chemistry/multiwfn_resources.py",
+    "desktop/chemistry/empirical_worker.py",
+    "desktop/chemistry/surface_worker.py",
+    "desktop/chemistry/surface_analysis.py",
+    "desktop/chemistry/interaction_analysis.py",
+    "desktop/chemistry/interaction_worker.py",
+    "desktop/chemistry/multiwfn_progress.py",
+    "desktop/chemistry/excitation_analysis.py",
+    "desktop/chemistry/reactivity_analysis.py",
+    "desktop/chemistry/electronic_analysis_worker.py",
+    "desktop/chemistry/orca_excitation.py",
+    "desktop/chemistry/xtb_periodic.py",
+    "desktop/chemistry/crystal_modeling.py",
+    "desktop/chemistry/crystal_worker.py",
+    "desktop/chemistry/xtb_periodic_bonds.py",
+    "desktop/chemistry/advanced_path.py",
+    "desktop/chemistry/native_stdin.py",
+    "desktop/chemistry/conformer_sampling.py",
+    "desktop/chemistry/conformer_gfnff.py",
+    "desktop/chemistry/conformer_gfn0.py",
+    "desktop/chemistry/conformer_native_md.py",
+    "desktop/chemistry/conformer_native_metadynamics.py",
+    "desktop/chemistry/task_files.py",
+    "desktop/chemistry/gfnff_topology.py",
+    "desktop/chemistry/bader_analysis.py",
+    "desktop/chemistry/hirshfeld_analysis.py",
+    "desktop/chemistry/hirshfeld_session.py"
+  ],
+  "dataPackages": [
+    "rdkit",
+    "ase",
+    "spglib"
+  ],
+  "metadataPackages": [
+    "numpy",
+    "scipy",
+    "rdkit",
+    "ase",
+    "threadpoolctl",
+    "spglib",
+    "tblite",
+    "cffi"
+  ],
+  "excludedDistributions": [
+    "openbabel-wheel",
+    "intel-openmp",
+    "mkl"
+  ],
+  "hiddenImports": [
+    "scipy.optimize._slsqp_py",
+    "scipy.optimize._lbfgsb_py",
+    "scipy.optimize._lsap",
+    "numpy.linalg",
+    "ase.md.langevin",
+    "ase.md.velocitydistribution",
+    "ase.optimize.lbfgs",
+    "spglib._spglib",
+    "ase.build.general_surface",
+    "ase.build.supercells",
+    "tblite.library",
+    "tblite.interface",
+    "tblite._libtblite",
+    "_cffi_backend"
+  ],
+  "excludes": [
+    "openbabel",
+    "mkl",
+    "mkl_fft",
+    "mkl_random",
+    "matplotlib",
+    "pandas",
+    "IPython",
+    "jupyter",
+    "pytest",
+    "torch",
+    "tkinter",
+    "PyQt5",
+    "PyQt6",
+    "PySide2",
+    "PySide6",
+    "sympy",
+    "rdkit.Chem.Draw",
+    "PIL"
+  ],
+  "inheritedUnresolvedImports": [
+    {
+      "dll": "ze_loader.dll",
+      "dependent": "omptarget.rtl.level0.dll"
+    },
+    {
+      "dll": "ur_loader.dll",
+      "dependent": "omptarget.rtl.unified_runtime.dll"
+    },
+    {
+      "dll": "sycl8.dll",
+      "dependent": "omptarget.sycl.wrap.dll"
+    }
+  ],
+  "requiredFreshGates": [
+    "independent-stage-native-build",
+    "packaged-native-affected-scientific-and-ipc-chains"
+  ],
+  "localExperimentalOnly": true,
+  "publicDistribution": false
+}

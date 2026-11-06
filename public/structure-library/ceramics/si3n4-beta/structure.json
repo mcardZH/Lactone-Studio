@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "entryId": "si3n4-beta",
+  "structure": {
+    "id": "si3n4-beta",
+    "name": "β-氮化硅",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "si3n4-beta:atom:1",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 5.178455793,
+        "y": 1.1492267283971371,
+        "z": 0.7265000000000005
+      },
+      {
+        "id": "si3n4-beta:atom:2",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": -1.3774557929999993,
+        "y": 5.434298391172167,
+        "z": 2.1795000000000004
+      },
+      {
+        "id": "si3n4-beta:atom:3",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 4.017512562,
+        "y": 3.9100609049141224,
+        "z": 0.7265000000000007
+      },
+      {
+        "id": "si3n4-beta:atom:4",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": -0.2165125619999997,
+        "y": 2.6734642146551812,
+        "z": 2.1795000000000004
+      },
+      {
+        "id": "si3n4-beta:atom:5",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 2.207031645,
+        "y": 1.5242374862580441,
+        "z": 0.7265000000000004
+      },
+      {
+        "id": "si3n4-beta:atom:6",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.5939683550000008,
+        "y": 5.05928763331126,
+        "z": 2.1795000000000004
+      },
+      {
+        "id": "si3n4-beta:atom:7",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": -1.0234192499999997,
+        "y": 2.1742091707377624,
+        "z": 0.7265000000000003
+      },
+      {
+        "id": "si3n4-beta:atom:8",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 4.824419250000001,
+        "y": 4.409315948831542,
+        "z": 2.179500000000001
+      },
+      {
+        "id": "si3n4-beta:atom:9",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 2.429789250000001,
+        "y": 4.610113464978405,
+        "z": 0.7265000000000007
+      },
+      {
+        "id": "si3n4-beta:atom:10",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 1.3712107500000004,
+        "y": 1.9734116545908984,
+        "z": 2.1795000000000004
+      },
+      {
+        "id": "si3n4-beta:atom:11",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": -1.40637,
+        "y": 6.38272760342244,
+        "z": 0.7265000000000006
+      },
+      {
+        "id": "si3n4-beta:atom:12",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 5.20737,
+        "y": 0.20079751614686375,
+        "z": 2.1795000000000004
+      },
+      {
+        "id": "si3n4-beta:atom:13",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 3.801,
+        "y": 2.194508373189768,
+        "z": 0.7265000000000005
+      },
+      {
+        "id": "si3n4-beta:atom:14",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 4.440892098500626e-16,
+        "y": 4.389016746379537,
+        "z": 2.1795000000000004
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:2102554; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "si3n4-beta:atom:1",
+      "si3n4-beta:atom:2",
+      "si3n4-beta:atom:3",
+      "si3n4-beta:atom:4",
+      "si3n4-beta:atom:5",
+      "si3n4-beta:atom:6",
+      "si3n4-beta:atom:7",
+      "si3n4-beta:atom:8",
+      "si3n4-beta:atom:9",
+      "si3n4-beta:atom:10",
+      "si3n4-beta:atom:11",
+      "si3n4-beta:atom:12",
+      "si3n4-beta:atom:13",
+      "si3n4-beta:atom:14"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          7.602,
+          0.0,
+          4.65488248355909e-16
+        ],
+        [
+          -3.8009999999999993,
+          6.583525119569304,
+          4.65488248355909e-16
+        ],
+        [
+          0.0,
+          0.0,
+          2.906
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:2102554 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

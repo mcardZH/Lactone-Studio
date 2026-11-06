@@ -1,0 +1,11 @@
+.appearance-preset-picker { min-width: 0; flex: 1 1 100%; }
+.appearance-preset-toolbar { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.appearance-preset-current { color: var(--muted, #607568); font-size: 12px; }
+.appearance-preset-name { width: 12em; max-width: 100%; min-width: 0; }
+.appearance-preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 7px; margin-top: 8px; max-width: 560px; }
+.appearance-preset-grid .appearance-preset-card { display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; min-width: 0; padding: 5px; border: 1px solid var(--border, #d5dfd9); border-radius: 6px; background: var(--surface, #fff); color: inherit; font: inherit; white-space: normal; cursor: pointer; }
+.appearance-preset-grid .appearance-preset-card[aria-pressed="true"] { border-color: var(--accent, #388761); box-shadow: inset 0 0 0 1px var(--accent, #388761); background: var(--accent-soft, #edf7f0); }
+.appearance-preset-preview { width: 100%; height: 74px; object-fit: contain; border-radius: 3px; background: #f8faf9; }
+.appearance-preset-preview-pending { display: block; }
+.appearance-preset-grid .appearance-preset-custom { min-height: 34px; }
+.appearance-preset-card:focus-visible { outline: 2px solid var(--accent, #388761); outline-offset: 2px; }

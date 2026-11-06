@@ -1,0 +1,14 @@
+.comparison-workspace{display:flex;flex-direction:column;gap:8px;min-width:0;color:#294443;font:var(--ui-secondary-size,14px) system-ui,sans-serif}
+.comparison-controls{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:8px 10px;background:#f2f7f4;border:1px solid #dce5df;border-radius:8px}
+.comparison-controls>strong{margin-right:auto;font-size:calc(15px * var(--ui-font-scale,1))}
+.comparison-workspace button{font:inherit;min-height:30px;padding:4px 9px;color:inherit;background:#fff;border:1px solid #ccd9d5;border-radius:5px;cursor:pointer;white-space:normal}
+.comparison-workspace button:hover:not(:disabled){background:#eaf4ee}.comparison-workspace button:disabled{opacity:.5;cursor:default}.comparison-workspace button:focus-visible{outline:2px solid #569b80;outline-offset:2px}
+.comparison-scope,.comparison-panel-hint{margin:0;color:#63756d;font-size:var(--ui-small-size,13px);line-height:1.4;overflow-wrap:anywhere}
+.comparison-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}
+.comparison-panel{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px;background:#fff;border:1px solid #dce5df;border-radius:9px}
+.comparison-panel[data-active=true]{border-color:#65987f;box-shadow:0 0 0 1px #65987f}
+.comparison-panel-heading{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}.comparison-panel-heading>strong{flex:1;min-width:0;overflow-wrap:anywhere}.comparison-side{font-size:var(--ui-small-size,13px);color:#526961}
+.comparison-panel-heading button[aria-pressed=true]{background:#d9ede3;border-color:#6a9f88}
+.comparison-viewport{height:clamp(360px,55vh,620px);min-width:0;min-height:340px}.comparison-viewport>.model-viewport{height:100%}
+.comparison-fit,.comparison-notice,.comparison-error{display:block;margin:0;padding:6px 9px;border-radius:5px;line-height:1.5;overflow-wrap:anywhere}.comparison-fit{color:#28684d;background:#edf7f0;font-variant-numeric:tabular-nums}.comparison-notice{color:#755d2b;background:#fff8e9}.comparison-error{color:#9d332d;background:#fff0ed}
+@media(max-width:880px){.comparison-panels{grid-template-columns:minmax(0,1fr)}.comparison-viewport{height:440px}.comparison-controls>strong{flex-basis:100%}}

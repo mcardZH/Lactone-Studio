@@ -1,0 +1,913 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-alpha-d-glucose-cod-1558408",
+  "structure": {
+    "id": "molecular-crystal-alpha-d-glucose-cod-1558408",
+    "name": "α-D-葡萄糖",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:1",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.3891112000000003,
+        "y": 2.420496,
+        "z": 1.7074280000000004
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:2",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 0.08408880000000135,
+        "y": 7.923503999999999,
+        "z": 9.131028
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:3",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 4.8623112,
+        "y": 2.751504,
+        "z": 13.139772
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:4",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 2.557288800000001,
+        "y": 7.592496,
+        "z": 5.716172000000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:5",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 0.40560480000000043,
+        "y": 2.8446000000000002,
+        "z": 1.1283872000000004
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:6",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 2.0675952000000013,
+        "y": 7.4994,
+        "z": 8.5519872
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:7",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 2.8788048,
+        "y": 2.3273999999999995,
+        "z": 13.718812800000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:8",
+        "sourceIndex": 14,
+        "element": "H",
+        "x": 4.540795200000001,
+        "y": 8.0166,
+        "z": 6.295212800000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:9",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 3.6949608,
+        "y": 4.127256,
+        "z": 2.6279544000000006
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:10",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 3.724639200000001,
+        "y": 6.216743999999999,
+        "z": 10.0515544
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:11",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 1.2217607999999995,
+        "y": 1.0447439999999997,
+        "z": 12.2192456
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:12",
+        "sourceIndex": 15,
+        "element": "H",
+        "x": 1.2514392000000014,
+        "y": 9.299256,
+        "z": 4.795645600000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:13",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.4690808000000004,
+        "y": 4.603079999999999,
+        "z": 4.082980000000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:14",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 1.004119200000001,
+        "y": 5.740919999999999,
+        "z": 11.506580000000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:15",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 3.9422807999999994,
+        "y": 0.5689199999999999,
+        "z": 10.76422
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:16",
+        "sourceIndex": 16,
+        "element": "H",
+        "x": 3.477319200000002,
+        "y": 9.77508,
+        "z": 3.340620000000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:17",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 1.5234912000000007,
+        "y": 6.051239999999999,
+        "z": 2.3161632000000005
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:18",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 0.9497088000000006,
+        "y": 4.29276,
+        "z": 9.7397632
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:19",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 3.996691200000001,
+        "y": 9.46476,
+        "z": 12.5310368
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:20",
+        "sourceIndex": 17,
+        "element": "H",
+        "x": 3.4229087999999996,
+        "y": 0.8792399999999996,
+        "z": 5.107436799999999
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:21",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 3.121178400000001,
+        "y": 7.261487999999999,
+        "z": 3.1327592000000006
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:22",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 4.2984216,
+        "y": 3.0825120000000004,
+        "z": 10.5563592
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:23",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 0.6479784000000013,
+        "y": 8.254512,
+        "z": 11.714440800000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:24",
+        "sourceIndex": 18,
+        "element": "H",
+        "x": 1.8252216000000003,
+        "y": 2.0894879999999993,
+        "z": 4.290840800000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:25",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 4.0016376000000005,
+        "y": 5.8960799999999995,
+        "z": 0.8017488000000006
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:26",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 3.4179624000000004,
+        "y": 4.44792,
+        "z": 8.2253488
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:27",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 1.5284376000000022,
+        "y": 9.61992,
+        "z": 14.0454512
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:28",
+        "sourceIndex": 19,
+        "element": "H",
+        "x": 0.9447623999999998,
+        "y": 0.7240799999999983,
+        "z": 6.6218512
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:29",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 3.3932304000000015,
+        "y": 7.726967999999999,
+        "z": 0.1633192000000007
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:30",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 4.0263696,
+        "y": 2.617032,
+        "z": 7.5869192000000005
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:31",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 0.9200304000000009,
+        "y": 7.789032,
+        "z": 14.6838808
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:32",
+        "sourceIndex": 20,
+        "element": "H",
+        "x": 1.5531696000000002,
+        "y": 2.554967999999999,
+        "z": 7.2602808
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:33",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 1.4196168000000007,
+        "y": 5.285784,
+        "z": 14.6838808
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:34",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 1.053583200000001,
+        "y": 5.058216,
+        "z": 7.2602808
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:35",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 3.892816800000001,
+        "y": 10.230215999999999,
+        "z": 0.16331920000000086
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:36",
+        "sourceIndex": 21,
+        "element": "H",
+        "x": 3.5267832,
+        "y": 0.11378400000000125,
+        "z": 7.5869192000000005
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:37",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 2.715573600000001,
+        "y": 4.3465488,
+        "z": 11.773829600000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:38",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 4.7040264,
+        "y": 5.9974511999999995,
+        "z": 4.350229600000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:39",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 0.2423735999999998,
+        "y": 0.8254511999999997,
+        "z": 3.0733704
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:40",
+        "sourceIndex": 22,
+        "element": "H",
+        "x": 2.230826400000001,
+        "y": 9.5185488,
+        "z": 10.4969704
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:41",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 3.0370896000000007,
+        "y": 6.25812,
+        "z": 13.035841600000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:42",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 4.382510400000001,
+        "y": 4.0858799999999995,
+        "z": 5.612241600000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:43",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 0.5638896000000008,
+        "y": 9.25788,
+        "z": 1.8113584000000007
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:44",
+        "sourceIndex": 23,
+        "element": "H",
+        "x": 1.9093104,
+        "y": 1.0861199999999998,
+        "z": 9.2349584
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:45",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 3.9769056000000007,
+        "y": 4.985808,
+        "z": 13.332785600000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:46",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 3.4426944000000006,
+        "y": 5.358192,
+        "z": 5.909185600000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:47",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 1.5037056000000002,
+        "y": 0.18619200000000016,
+        "z": 1.5144144
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:48",
+        "sourceIndex": 24,
+        "element": "H",
+        "x": 0.9694944000000014,
+        "y": 10.157808,
+        "z": 8.9380144
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:49",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.10518784,
+        "y": 3.434208,
+        "z": 1.4995672000000007
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:50",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 0.3680121600000012,
+        "y": 6.909791999999999,
+        "z": 8.9231672
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:51",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 4.5783878399999995,
+        "y": 1.7377919999999998,
+        "z": 13.347632800000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:52",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.8412121600000013,
+        "y": 8.606208,
+        "z": 5.924032800000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:53",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 2.7091432800000006,
+        "y": 4.323791999999999,
+        "z": 2.595290560000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:54",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 4.710456720000001,
+        "y": 6.020208,
+        "z": 10.018890560000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:55",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 0.2359432799999994,
+        "y": 0.8482080000000002,
+        "z": 12.25190944
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:56",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 2.2372567200000013,
+        "y": 9.495791999999998,
+        "z": 4.828309440000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:57",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 2.5572888000000007,
+        "y": 5.7988463999999995,
+        "z": 2.2552896800000006
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:58",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 4.862311200000001,
+        "y": 4.5451536,
+        "z": 9.678889680000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:59",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 0.08408880000000109,
+        "y": 9.7171536,
+        "z": 12.59191032
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:60",
+        "sourceIndex": 9,
+        "element": "C",
+        "x": 2.3891112,
+        "y": 0.6268463999999998,
+        "z": 5.16831032
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:61",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 3.0781447200000005,
+        "y": 6.0574464,
+        "z": 0.8477751200000005
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:62",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 4.341455280000001,
+        "y": 4.2865535999999995,
+        "z": 8.271375120000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:63",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 0.6049447200000019,
+        "y": 9.4585536,
+        "z": 13.99942488
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:64",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 1.8682552800000003,
+        "y": 0.8854463999999989,
+        "z": 6.575824880000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:65",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 2.4187896000000007,
+        "y": 5.1285552,
+        "z": 14.677941920000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:66",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 0.054410400000000886,
+        "y": 5.215444799999999,
+        "z": 7.25434192
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:67",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 4.8919896,
+        "y": 0.043444799999999804,
+        "z": 0.1692580800000003
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:68",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 2.5276104000000017,
+        "y": 10.3005552,
+        "z": 7.592858080000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:69",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 2.9782274400000004,
+        "y": 5.3240568,
+        "z": 13.289728720000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:70",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 4.4413725600000005,
+        "y": 5.019943199999999,
+        "z": 5.866128720000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:71",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 0.505027440000002,
+        "y": 10.191943199999999,
+        "z": 1.5574712800000006
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:72",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 1.96817256,
+        "y": 0.15205679999999933,
+        "z": 8.98107128
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:73",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 0.7226690400000005,
+        "y": 3.5841959999999995,
+        "z": 1.5025366400000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:74",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.750530960000001,
+        "y": 6.759803999999999,
+        "z": 8.92613664
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:75",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 3.1958690400000003,
+        "y": 1.5878040000000002,
+        "z": 13.344663360000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:76",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 4.223730960000001,
+        "y": 8.756196,
+        "z": 5.921063360000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:77",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.1595982400000002,
+        "y": 3.9989904,
+        "z": 3.869180320000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:78",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.31360176000000106,
+        "y": 6.345009599999999,
+        "z": 11.29278032
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:79",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.63279824,
+        "y": 1.1730095999999999,
+        "z": 10.978019680000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:80",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.7868017600000012,
+        "y": 9.1709904,
+        "z": 3.554419680000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:81",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.2997434400000007,
+        "y": 6.5456832,
+        "z": 3.2084799200000003
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:82",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.119856560000001,
+        "y": 3.7983167999999994,
+        "z": 10.63207992
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:83",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.8265434400000016,
+        "y": 8.970316799999999,
+        "z": 11.63872008
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:84",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.64665656,
+        "y": 1.3736832000000003,
+        "z": 4.215120080000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:85",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.818458720000001,
+        "y": 7.425957599999999,
+        "z": 0.5196520000000008
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:86",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 4.601141280000001,
+        "y": 2.9180424,
+        "z": 7.943252000000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:87",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.3452587200000006,
+        "y": 8.0900424,
+        "z": 14.327548
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:88",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 2.1279412800000004,
+        "y": 2.2539575999999997,
+        "z": 6.903948
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:89",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.6705613600000007,
+        "y": 3.7724568,
+        "z": 0.2241927200000004
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:90",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.74903864,
+        "y": 6.5715432,
+        "z": 7.647792720000002
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:91",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.19736136000000043,
+        "y": 1.3995431999999997,
+        "z": 14.623007280000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:92",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 2.275838640000001,
+        "y": 8.9444568,
+        "z": 7.199407280000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:93",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.193728400000001,
+        "y": 4.615492799999999,
+        "z": 12.33356904
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:94",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 0.2794716000000009,
+        "y": 5.7285072,
+        "z": 4.90996904
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:95",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 4.6669284,
+        "y": 0.5565072000000001,
+        "z": 2.513630960000001
+      },
+      {
+        "id": "molecular-crystal-alpha-d-glucose-cod-1558408:atom:96",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 2.7526716000000016,
+        "y": 9.787492799999999,
+        "z": 9.93723096
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1558408; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:1",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:2",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:3",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:4",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:5",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:6",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:7",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:8",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:9",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:10",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:11",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:12",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:13",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:14",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:15",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:16",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:17",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:18",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:19",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:20",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:21",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:22",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:23",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:24",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:25",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:26",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:27",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:28",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:29",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:30",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:31",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:32",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:33",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:34",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:35",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:36",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:37",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:38",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:39",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:40",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:41",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:42",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:43",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:44",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:45",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:46",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:47",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:48",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:49",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:50",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:51",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:52",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:53",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:54",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:55",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:56",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:57",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:58",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:59",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:60",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:61",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:62",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:63",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:64",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:65",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:66",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:67",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:68",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:69",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:70",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:71",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:72",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:73",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:74",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:75",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:76",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:77",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:78",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:79",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:80",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:81",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:82",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:83",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:84",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:85",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:86",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:87",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:88",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:89",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:90",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:91",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:92",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:93",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:94",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:95",
+      "molecular-crystal-alpha-d-glucose-cod-1558408:atom:96"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.9464,
+          0.0,
+          3.0287964636512337e-16
+        ],
+        [
+          1.6634420688255128e-15,
+          10.344,
+          6.33387324519011e-16
+        ],
+        [
+          0.0,
+          0.0,
+          14.8472
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1558408 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

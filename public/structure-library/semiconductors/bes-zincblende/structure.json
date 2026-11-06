@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "bes-zincblende",
+  "structure": {
+    "id": "bes-zincblende",
+    "name": "硫化铍（参考模型）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "bes-zincblende:atom:1",
+        "sourceIndex": 1,
+        "element": "Be",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "bes-zincblende:atom:2",
+        "sourceIndex": 1,
+        "element": "Be",
+        "x": 3.8996974254658436e-16,
+        "y": 2.425,
+        "z": 2.425
+      },
+      {
+        "id": "bes-zincblende:atom:3",
+        "sourceIndex": 1,
+        "element": "Be",
+        "x": 2.425,
+        "y": 0.0,
+        "z": 2.425
+      },
+      {
+        "id": "bes-zincblende:atom:4",
+        "sourceIndex": 1,
+        "element": "Be",
+        "x": 2.4250000000000003,
+        "y": 2.425,
+        "z": 2.9697684879323315e-16
+      },
+      {
+        "id": "bes-zincblende:atom:5",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.2125000000000001,
+        "y": 1.2125,
+        "z": 1.2125000000000001
+      },
+      {
+        "id": "bes-zincblende:atom:6",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.2125000000000006,
+        "y": 3.6374999999999997,
+        "z": 3.6375
+      },
+      {
+        "id": "bes-zincblende:atom:7",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 3.6374999999999997,
+        "y": 1.2125,
+        "z": 3.6375
+      },
+      {
+        "id": "bes-zincblende:atom:8",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 3.6375,
+        "y": 3.6374999999999997,
+        "z": 1.2125000000000004
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9008836; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "bes-zincblende:atom:1",
+      "bes-zincblende:atom:2",
+      "bes-zincblende:atom:3",
+      "bes-zincblende:atom:4",
+      "bes-zincblende:atom:5",
+      "bes-zincblende:atom:6",
+      "bes-zincblende:atom:7",
+      "bes-zincblende:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.85,
+          0.0,
+          2.9697684879323315e-16
+        ],
+        [
+          7.799394850931687e-16,
+          4.85,
+          2.9697684879323315e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.85
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9008836 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,427 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-talc-cod-9008297",
+  "structure": {
+    "id": "mineral-talc-cod-9008297",
+    "name": "Talc",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-talc-cod-9008297:atom:1",
+        "sourceIndex": 3,
+        "element": "Mg",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:2",
+        "sourceIndex": 3,
+        "element": "Mg",
+        "x": 2.6017964383469003,
+        "y": 4.586334016350504,
+        "z": -0.4359945758238798
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:3",
+        "sourceIndex": 4,
+        "element": "Mg",
+        "x": 2.593818052705176,
+        "y": 7.643767725010403,
+        "z": 8.998794747150553
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:4",
+        "sourceIndex": 4,
+        "element": "Mg",
+        "x": -0.007978385641724872,
+        "y": 3.0574337086599006,
+        "z": 9.434789322974433
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:5",
+        "sourceIndex": 4,
+        "element": "Mg",
+        "x": 2.6097748239886247,
+        "y": 1.5289003076906045,
+        "z": -0.4107838987983128
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:6",
+        "sourceIndex": 4,
+        "element": "Mg",
+        "x": 5.211571262335525,
+        "y": 6.115234324041109,
+        "z": -0.8467784746221925
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:7",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.269641536944683,
+        "y": 4.610091226555199,
+        "z": 2.519374747814974
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:8",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 3.8972567531635147,
+        "y": 0.023757210204696455,
+        "z": 2.1570249448823597
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:9",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 3.9339513397491177,
+        "y": 4.562576806145809,
+        "z": 6.068636100537267
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:10",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.3063361235302857,
+        "y": 9.148910822496312,
+        "z": 6.430985903469882
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:11",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 1.2643311839979021,
+        "y": 7.667158028493792,
+        "z": 2.495746460947156
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:12",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 3.891946400216734,
+        "y": 3.0808240121432866,
+        "z": 2.133396658014542
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:13",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 3.9392616926958985,
+        "y": 1.5055100042072165,
+        "z": 6.092264387405085
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:14",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 1.3116464764770666,
+        "y": 6.09184402055772,
+        "z": 6.454614190337699
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:15",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 3.742674217236439,
+        "y": 6.136514913876975,
+        "z": 1.2971020386098244
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:16",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 1.1408777788895381,
+        "y": 1.5501808975264706,
+        "z": 1.7330966144337043
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:17",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 1.4609186594573615,
+        "y": 3.0361531188240334,
+        "z": 7.290908809742416
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:18",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 4.062715097804262,
+        "y": 7.622487135174537,
+        "z": 6.854914233918537
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:19",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 1.0196326721676976,
+        "y": 7.6536742064857215,
+        "z": 0.8920964356891101
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:20",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.64724788838653,
+        "y": 3.0673401901352175,
+        "z": 0.529746632756496
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:21",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.183960204526103,
+        "y": 1.5189938262152867,
+        "z": 7.695914412663131
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:22",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 1.556344988307271,
+        "y": 6.10532784256579,
+        "z": 8.058264215595745
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:23",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.627668470880588,
+        "y": 6.121838645024653,
+        "z": 0.45959944657909335
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:24",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.0258720325336883,
+        "y": 1.5355046286741487,
+        "z": 0.895594022402973
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:25",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 1.5759244058132127,
+        "y": 3.0508293876763553,
+        "z": 8.128411401773148
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:26",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 4.177720844160112,
+        "y": 7.637163404026859,
+        "z": 7.692416825949268
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:27",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 1.022483136134603,
+        "y": 4.597341217989745,
+        "z": 0.9175130528331119
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:28",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 3.6500983523534343,
+        "y": 0.011007201639239997,
+        "z": 0.555163249900498
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:29",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 4.181109740559198,
+        "y": 4.575326814711263,
+        "z": 7.670497795519129
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:30",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 1.5534945243403657,
+        "y": 9.161660831061766,
+        "z": 8.032847598451744
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:31",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 0.08008739291619524,
+        "y": 8.518656801969426,
+        "z": 3.208745046278628
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:32",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 2.707702609135027,
+        "y": 3.932322785618923,
+        "z": 2.846395243346014
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:33",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 5.123505483777605,
+        "y": 0.6540112307315822,
+        "z": 5.379265802073613
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:34",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 2.4958902675587735,
+        "y": 5.240345247082086,
+        "z": 5.741615605006227
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:35",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 2.696821617941551,
+        "y": 8.355383310987348,
+        "z": 2.8229422305442182
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:36",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 0.0950251795946511,
+        "y": 3.7690492946368446,
+        "z": 3.258936806368098
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:37",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 2.5067712587522495,
+        "y": 0.8172847217136594,
+        "z": 5.765068617808024
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:38",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 5.10856769709915,
+        "y": 5.403618738064163,
+        "z": 5.329074041984144
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:39",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 1.2529280915976093,
+        "y": 6.144770315106405,
+        "z": 3.052611517040189
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:40",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 3.8805433078164415,
+        "y": 1.5584362987559028,
+        "z": 2.6902617141075753
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:41",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 3.950664785096191,
+        "y": 3.0278977175946022,
+        "z": 5.5353993313120515
+      },
+      {
+        "id": "mineral-talc-cod-9008297:atom:42",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 1.3230495688773594,
+        "y": 7.614231733945107,
+        "z": 5.897749134244666
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9008297; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-talc-cod-9008297:atom:1",
+      "mineral-talc-cod-9008297:atom:2",
+      "mineral-talc-cod-9008297:atom:3",
+      "mineral-talc-cod-9008297:atom:4",
+      "mineral-talc-cod-9008297:atom:5",
+      "mineral-talc-cod-9008297:atom:6",
+      "mineral-talc-cod-9008297:atom:7",
+      "mineral-talc-cod-9008297:atom:8",
+      "mineral-talc-cod-9008297:atom:9",
+      "mineral-talc-cod-9008297:atom:10",
+      "mineral-talc-cod-9008297:atom:11",
+      "mineral-talc-cod-9008297:atom:12",
+      "mineral-talc-cod-9008297:atom:13",
+      "mineral-talc-cod-9008297:atom:14",
+      "mineral-talc-cod-9008297:atom:15",
+      "mineral-talc-cod-9008297:atom:16",
+      "mineral-talc-cod-9008297:atom:17",
+      "mineral-talc-cod-9008297:atom:18",
+      "mineral-talc-cod-9008297:atom:19",
+      "mineral-talc-cod-9008297:atom:20",
+      "mineral-talc-cod-9008297:atom:21",
+      "mineral-talc-cod-9008297:atom:22",
+      "mineral-talc-cod-9008297:atom:23",
+      "mineral-talc-cod-9008297:atom:24",
+      "mineral-talc-cod-9008297:atom:25",
+      "mineral-talc-cod-9008297:atom:26",
+      "mineral-talc-cod-9008297:atom:27",
+      "mineral-talc-cod-9008297:atom:28",
+      "mineral-talc-cod-9008297:atom:29",
+      "mineral-talc-cod-9008297:atom:30",
+      "mineral-talc-cod-9008297:atom:31",
+      "mineral-talc-cod-9008297:atom:32",
+      "mineral-talc-cod-9008297:atom:33",
+      "mineral-talc-cod-9008297:atom:34",
+      "mineral-talc-cod-9008297:atom:35",
+      "mineral-talc-cod-9008297:atom:36",
+      "mineral-talc-cod-9008297:atom:37",
+      "mineral-talc-cod-9008297:atom:38",
+      "mineral-talc-cod-9008297:atom:39",
+      "mineral-talc-cod-9008297:atom:40",
+      "mineral-talc-cod-9008297:atom:41",
+      "mineral-talc-cod-9008297:atom:42"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.229411654565732,
+          0.0,
+          -0.7983443787564938
+        ],
+        [
+          -0.025818777871931552,
+          9.172668032701008,
+          -0.07364477289126577
+        ],
+        [
+          0.0,
+          0.0,
+          9.46
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9008297 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

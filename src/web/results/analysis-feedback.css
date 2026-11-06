@@ -1,0 +1,2 @@
+.analysis-feedback-toast{position:relative;display:block;margin:5px 0;padding:8px 12px;background:#eef7f1;border:1px solid #8ab29b;border-radius:5px;color:#234b39;font-size:14px;line-height:1.4;animation:analysis-feedback-fade 2.8s ease forwards;z-index:3}
+@keyframes analysis-feedback-fade{0%,75%{opacity:1}100%{opacity:0}}

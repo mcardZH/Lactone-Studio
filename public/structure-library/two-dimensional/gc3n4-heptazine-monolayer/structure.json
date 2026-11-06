@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "entryId": "gc3n4-heptazine-monolayer",
+  "structure": {
+    "id": "gc3n4-heptazine-monolayer",
+    "name": "heptazine-based g-C3N4单层",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:1",
+        "sourceIndex": 5,
+        "element": "C",
+        "x": 3.6275246985720875,
+        "y": 2.7650973873065574,
+        "z": 9.63725916634078
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:2",
+        "sourceIndex": 6,
+        "element": "C",
+        "x": 5.5276678569781295,
+        "y": 2.5962804142960807,
+        "z": 8.444973100296556
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:3",
+        "sourceIndex": 11,
+        "element": "C",
+        "x": 7.648708496542461,
+        "y": 2.653408451000769,
+        "z": 7.682602448437578
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:4",
+        "sourceIndex": 12,
+        "element": "C",
+        "x": 5.291386464039983,
+        "y": 6.496771095045048,
+        "z": 7.852504212358834
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:5",
+        "sourceIndex": 13,
+        "element": "C",
+        "x": 6.538064832515742,
+        "y": 4.616536559981727,
+        "z": 7.675355002391626
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:6",
+        "sourceIndex": 14,
+        "element": "C",
+        "x": 4.569024509196969,
+        "y": 4.734348051838965,
+        "z": 9.069876141576646
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:7",
+        "sourceIndex": 1,
+        "element": "N",
+        "x": 5.047996351974005,
+        "y": 7.8130351911201865,
+        "z": 7.329791636110281
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:8",
+        "sourceIndex": 2,
+        "element": "N",
+        "x": 0.5092977567617947,
+        "y": 7.787609411286507,
+        "z": 8.527234135831028
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:9",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 2.727929334835178,
+        "y": 7.672887419872257,
+        "z": 7.7715773344577475
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:10",
+        "sourceIndex": 4,
+        "element": "N",
+        "x": 5.567421437307039,
+        "y": 3.9874865302177662,
+        "z": 8.447572478919165
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:11",
+        "sourceIndex": 7,
+        "element": "N",
+        "x": 7.578837393084399,
+        "y": 3.916887961760053,
+        "z": 7.254055742661437
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:12",
+        "sourceIndex": 8,
+        "element": "N",
+        "x": 4.461786417483961,
+        "y": 6.034240858817501,
+        "z": 8.803004580725508
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:13",
+        "sourceIndex": 9,
+        "element": "N",
+        "x": 6.352417268661188,
+        "y": 5.883691912246905,
+        "z": 7.355285141206125
+      },
+      {
+        "id": "gc3n4-heptazine-monolayer:atom:14",
+        "sourceIndex": 10,
+        "element": "N",
+        "x": 3.7506355626551935,
+        "y": 4.069808258428378,
+        "z": 9.90779080217794
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: NOMAD Repository record ibE9rFgMJfrRhwWYQDmtbjBXieZI; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based source.cif atom row and maps to the same ordered geometry.in atom record; the retained raw FHI-aims file contains no independent atom-site labels.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown.",
+      "Derived one layer from a bulk layered crystal; not an experimentally isolated monolayer."
+    ],
+    "sourceAtomIds": [
+      "gc3n4-heptazine-monolayer:atom:1",
+      "gc3n4-heptazine-monolayer:atom:2",
+      "gc3n4-heptazine-monolayer:atom:3",
+      "gc3n4-heptazine-monolayer:atom:4",
+      "gc3n4-heptazine-monolayer:atom:5",
+      "gc3n4-heptazine-monolayer:atom:6",
+      "gc3n4-heptazine-monolayer:atom:7",
+      "gc3n4-heptazine-monolayer:atom:8",
+      "gc3n4-heptazine-monolayer:atom:9",
+      "gc3n4-heptazine-monolayer:atom:10",
+      "gc3n4-heptazine-monolayer:atom:11",
+      "gc3n4-heptazine-monolayer:atom:12",
+      "gc3n4-heptazine-monolayer:atom:13",
+      "gc3n4-heptazine-monolayer:atom:14"
+    ],
+    "dimension": 2,
+    "cell": {
+      "vectors": [
+        [
+          6.3769336218812045,
+          0.0,
+          -2.6625540495157227
+        ],
+        [
+          -3.873781713089111,
+          5.759592250881204,
+          -0.30480247752391226
+        ],
+        [
+          7.84940142221114,
+          6.274237683951103,
+          18.79966036747484
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        false
+      ],
+      "pbcProvenance": {
+        "kind": "user-confirmed",
+        "evidence": "User-approved v0.39 TTF model: NOMAD Repository record ibE9rFgMJfrRhwWYQDmtbjBXieZI is retained at two-dimensional/gc3n4-heptazine-monolayer/source.cif; this single-layer derivative retains the source in-plane vectors, constructs a perpendicular c vector with a 20.0 Å vacuum gap, and sets PBC [true, true, false]. The isolated monolayer is derived, not an experimental isolated-layer measurement."
+      }
+    }
+  }
+}

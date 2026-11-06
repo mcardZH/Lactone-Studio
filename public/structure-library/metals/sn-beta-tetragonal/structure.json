@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "entryId": "sn-beta-tetragonal",
+  "structure": {
+    "id": "sn-beta-tetragonal",
+    "name": "白锡（β-Sn）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "sn-beta-tetragonal:atom:1",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "sn-beta-tetragonal:atom:2",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 4.688851453341659e-16,
+        "y": 2.91573,
+        "z": 0.7953225000000003
+      },
+      {
+        "id": "sn-beta-tetragonal:atom:3",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 2.9157300000000004,
+        "y": 2.91573,
+        "z": 1.5906450000000005
+      },
+      {
+        "id": "sn-beta-tetragonal:atom:4",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 2.91573,
+        "y": 0.0,
+        "z": 2.3859675
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9012005; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "sn-beta-tetragonal:atom:1",
+      "sn-beta-tetragonal:atom:2",
+      "sn-beta-tetragonal:atom:3",
+      "sn-beta-tetragonal:atom:4"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.83146,
+          0.0,
+          3.570739411677912e-16
+        ],
+        [
+          9.377702906683318e-16,
+          5.83146,
+          3.570739411677912e-16
+        ],
+        [
+          0.0,
+          0.0,
+          3.18129
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9012005 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

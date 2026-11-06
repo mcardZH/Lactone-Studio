@@ -1,0 +1,18 @@
+{
+  "arch": "x86_64",
+  "build": "h7c9de5e_7",
+  "build_number": 7,
+  "constrains": [
+    "libgfortran 16.2.0"
+  ],
+  "depends": [
+    "libgcc >=16.2.0",
+    "libwinpthread >=12.0.0.r4.gg4f2fc60ca"
+  ],
+  "license": "GPL-3.0-only WITH GCC-exception-3.1",
+  "name": "libgfortran5",
+  "platform": "win",
+  "subdir": "win-64",
+  "timestamp": 1790304412365,
+  "version": "16.2.0"
+}

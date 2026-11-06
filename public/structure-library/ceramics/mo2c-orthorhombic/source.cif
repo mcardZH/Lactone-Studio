@@ -1,0 +1,69 @@
+#------------------------------------------------------------------------------
+#$Date: 2016-02-13 21:28:24 +0200 (Sat, 13 Feb 2016) $
+#$Revision: 176429 $
+#$URL: file:///home/coder/svn-repositories/_RELOADED_COD/cod-reloaded/cif/1/53/97/1539795.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/
+#
+# All data on this site have been placed in the public domain by the
+# contributors.
+#
+data_1539795
+loop_
+_publ_author_name
+'Epicier, T.'
+'Dubois, J.'
+'Esnouf, C.'
+'Fantozzi, G.'
+'Convert, P.'
+_publ_section_title
+;
+ Neutron powder diffraction studies of transition metal hemicarbides M2
+ C1-x - II. In situ high temperature study on W2 C1-x and Mo2 C1-x
+;
+_journal_name_full               'Acta Metallurgica'
+_journal_page_first              1903
+_journal_page_last               1921
+_journal_volume                  36
+_journal_year                    1988
+_chemical_formula_sum            'C Mo2'
+_chemical_name_systematic        'Mo2 C'
+_space_group_IT_number           60
+_symmetry_space_group_name_Hall  '-P 2n 2ab'
+_symmetry_space_group_name_H-M   'P b c n'
+_cell_angle_alpha                90
+_cell_angle_beta                 90
+_cell_angle_gamma                90
+_cell_formula_units_Z            4
+_cell_length_a                   4.735
+_cell_length_b                   6.025
+_cell_length_c                   5.21
+_cell_volume                     148.633
+_citation_journal_id_ASTM        AMETAR
+_cod_data_source_file            Epicier_AMETAR_1988_778.cif
+_cod_data_source_block           C1Mo2
+_cod_original_cell_volume        148.6328
+_cod_original_formula_sum        'C1 Mo2'
+_cod_database_code               1539795
+loop_
+_symmetry_equiv_pos_as_xyz
+x,y,z
+-x+1/2,-y+1/2,z+1/2
+x+1/2,-y+1/2,-z
+-x,y,-z+1/2
+-x,-y,-z
+x-1/2,y-1/2,-z-1/2
+-x-1/2,y-1/2,z
+x,-y,z-1/2
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_U_iso_or_equiv
+C1 C 0 0.375 0.25 1 0.0
+Mo1 Mo 0.245 0.125 0.083 1 0.0

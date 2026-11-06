@@ -1,0 +1,1165 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-xonotlite-cod-9008437",
+  "structure": {
+    "id": "mineral-xonotlite-cod-9008437",
+    "name": "Xonotlite",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:1",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.649644218192173,
+        "y": 6.4463065,
+        "z": 10.520287939310156
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:2",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 4.649644218192173,
+        "y": 2.7648064999999997,
+        "z": 3.5087879393101575
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:3",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 13.165476119643037,
+        "y": 0.9166935000000005,
+        "z": 10.466780685299456
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:4",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 13.165476119643037,
+        "y": 4.598193500000001,
+        "z": 3.4552806852994578
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:5",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 3.866187683258693,
+        "y": 6.4463065,
+        "z": 3.449204806679143
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:6",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 3.8661876832586928,
+        "y": 2.7648064999999997,
+        "z": 10.460704806679143
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:7",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 12.382019584709557,
+        "y": 0.9166935000000005,
+        "z": 3.3956975526684428
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:8",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 12.382019584709557,
+        "y": 4.598193500000001,
+        "z": 10.407197552668444
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:9",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 1.1377151420338356,
+        "y": 0.9652893,
+        "z": 9.365824630864171
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:10",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 1.137715142033836,
+        "y": 4.6467893,
+        "z": 2.3543246308641725
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:11",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 9.653547043484702,
+        "y": 6.3977107,
+        "z": 9.312317376853471
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:12",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 9.6535470434847,
+        "y": 2.7162107000000004,
+        "z": 2.3008173768534723
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:13",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 7.378116759417029,
+        "y": 0.9652893,
+        "z": 4.60366811512513
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:14",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 7.37811675941703,
+        "y": 4.6467893,
+        "z": 11.61516811512513
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:15",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 15.893948660867895,
+        "y": 6.3977107,
+        "z": 4.55016086111443
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:16",
+        "sourceIndex": 2,
+        "element": "Ca",
+        "x": 15.893948660867894,
+        "y": 2.7162107000000004,
+        "z": 11.56166086111443
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:17",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 1.1802943015410905,
+        "y": 4.5584333,
+        "z": 9.397809994594118
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:18",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 1.18029430154109,
+        "y": 0.8769332999999999,
+        "z": 2.3863099945941184
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:19",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 9.696126202991955,
+        "y": 2.8045667,
+        "z": 9.344302740583418
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:20",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 9.696126202991957,
+        "y": 6.4860667,
+        "z": 2.3328027405834186
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:21",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 7.335537599909775,
+        "y": 4.5584333,
+        "z": 4.571682751395183
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:22",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 7.335537599909774,
+        "y": 0.8769332999999999,
+        "z": 11.583182751395183
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:23",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 15.851369501360638,
+        "y": 2.8045667,
+        "z": 4.518175497384484
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:24",
+        "sourceIndex": 3,
+        "element": "Ca",
+        "x": 15.85136950136064,
+        "y": 6.4860667,
+        "z": 11.529675497384483
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:25",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 1.8036531967272933,
+        "y": 1.2082683,
+        "z": 5.3749014636005334
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:26",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 1.803653196727294,
+        "y": 4.8897683,
+        "z": 12.386401463600533
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:27",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 10.31948509817816,
+        "y": 6.1547317,
+        "z": 5.321394209589834
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:28",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 10.319485098178157,
+        "y": 2.4732317,
+        "z": 12.332894209589833
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:29",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 6.712178704723572,
+        "y": 1.2082683,
+        "z": 8.594591282388766
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:30",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 6.712178704723573,
+        "y": 4.8897683,
+        "z": 1.5830912823887666
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:31",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 15.228010606174438,
+        "y": 6.1547317,
+        "z": 8.541084028378066
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:32",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 15.228010606174436,
+        "y": 2.4732317,
+        "z": 1.5295840283780664
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:33",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 1.8036531967272937,
+        "y": 4.314718,
+        "z": 5.377706063600534
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:34",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 1.803653196727293,
+        "y": 0.633217999999999,
+        "z": 12.389206063600533
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:35",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 10.319485098178157,
+        "y": 3.0482820000000004,
+        "z": 5.324198809589833
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:36",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 10.31948509817816,
+        "y": 6.729782000000001,
+        "z": 12.335698809589834
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:37",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 6.712178704723573,
+        "y": 4.314718,
+        "z": 8.591786682388767
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:38",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 6.712178704723572,
+        "y": 0.633217999999999,
+        "z": 1.5802866823887665
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:39",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 15.228010606174436,
+        "y": 3.0482820000000004,
+        "z": 8.538279428378067
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:40",
+        "sourceIndex": 5,
+        "element": "Si",
+        "x": 15.228010606174438,
+        "y": 6.729782000000001,
+        "z": 1.526779428378067
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:41",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 2.709737711041666,
+        "y": 6.4440976,
+        "z": 7.388520291773796
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:42",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 2.7097377110416656,
+        "y": 2.7625976,
+        "z": 0.37702029177379565
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:43",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 11.22556961249253,
+        "y": 0.9189024000000002,
+        "z": 7.335013037763096
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:44",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 11.22556961249253,
+        "y": 4.6004024,
+        "z": 0.32351303776309576
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:45",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 5.8060941904092,
+        "y": 6.4440976,
+        "z": 6.580972454215504
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:46",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 5.8060941904092,
+        "y": 2.7625976,
+        "z": 13.592472454215505
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:47",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 14.321926091860064,
+        "y": 0.9189024000000002,
+        "z": 6.527465200204804
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:48",
+        "sourceIndex": 6,
+        "element": "Si",
+        "x": 14.321926091860064,
+        "y": 4.6004024,
+        "z": 13.538965200204805
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:49",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 4.257915950725432,
+        "y": 2.7611250000000003,
+        "z": -0.02675362700534981
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:50",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 4.257915950725433,
+        "y": 6.4426250000000005,
+        "z": 6.984746372994651
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:51",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 12.773747852176296,
+        "y": 4.601875000000001,
+        "z": -0.08026088101604967
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:52",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 12.773747852176296,
+        "y": 0.920375,
+        "z": 6.9312391189839495
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:53",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 1.8649671864177397,
+        "y": 2.7655428,
+        "z": 5.893367211371657
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:54",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 1.8649671864177404,
+        "y": 6.4470428,
+        "z": 12.904867211371657
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:55",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 10.380799087868605,
+        "y": 4.597457200000001,
+        "z": 5.839859957360956
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:56",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 10.380799087868605,
+        "y": 0.9159572000000001,
+        "z": 12.851359957360957
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:57",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 6.650864715033126,
+        "y": 2.7655428,
+        "z": 8.076125534617644
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:58",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 6.650864715033126,
+        "y": 6.4470428,
+        "z": 1.064625534617644
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:59",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 15.16669661648399,
+        "y": 4.597457200000001,
+        "z": 8.022618280606943
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:60",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 15.16669661648399,
+        "y": 0.9159572000000001,
+        "z": 1.0111182806069439
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:61",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 2.9907601637895445,
+        "y": 4.6394263,
+        "z": 4.322729052391442
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:62",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 2.9907601637895436,
+        "y": 0.9579263000000008,
+        "z": 11.334229052391441
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:63",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 11.506592065240408,
+        "y": 2.7235737,
+        "z": 4.269221798380742
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:64",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 11.50659206524041,
+        "y": 6.405073700000001,
+        "z": 11.280721798380743
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:65",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 5.525071737661322,
+        "y": 4.6394263,
+        "z": 9.646763693597858
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:66",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 5.525071737661321,
+        "y": 0.9579263000000008,
+        "z": 2.635263693597858
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:67",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 14.040903639112186,
+        "y": 2.7235737,
+        "z": 9.593256439587158
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:68",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 14.040903639112187,
+        "y": 6.405073700000001,
+        "z": 2.5817564395871586
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:69",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 2.924336674958227,
+        "y": 0.8842963,
+        "z": 4.310525708972725
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:70",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 2.924336674958228,
+        "y": 4.565796300000001,
+        "z": 11.322025708972726
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:71",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 11.440168576409093,
+        "y": 6.4787037000000005,
+        "z": 4.257018454962026
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:72",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 11.440168576409091,
+        "y": 2.7972037000000003,
+        "z": 11.268518454962026
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:73",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 5.591495226492638,
+        "y": 0.8842963,
+        "z": 9.658967037016573
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:74",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 5.591495226492639,
+        "y": 4.565796300000001,
+        "z": 2.6474670370165754
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:75",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 14.107327127943504,
+        "y": 6.4787037000000005,
+        "z": 9.605459783005875
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:76",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 14.107327127943503,
+        "y": 2.7972037000000003,
+        "z": 2.593959783005875
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:77",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 1.9569381709534086,
+        "y": 0.3990746,
+        "z": 6.80288203302834
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:78",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 1.9569381709534093,
+        "y": 4.0805746,
+        "z": 13.814382033028341
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:79",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.472770072404275,
+        "y": 6.9639254,
+        "z": 6.749374779017641
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:80",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.472770072404273,
+        "y": 3.2824254,
+        "z": 13.760874779017641
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:81",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 6.558893730497456,
+        "y": 0.3990746,
+        "z": 7.166610712960959
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:82",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 6.558893730497457,
+        "y": 4.0805746,
+        "z": 0.1551107129609593
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:83",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 15.074725631948322,
+        "y": 6.9639254,
+        "z": 7.11310345895026
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:84",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 15.07472563194832,
+        "y": 3.2824254,
+        "z": 0.1016034589502593
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:85",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 1.953531838192829,
+        "y": 5.1283295,
+        "z": 6.800098835929946
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:86",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 1.9535318381928284,
+        "y": 1.4468294999999993,
+        "z": 13.811598835929946
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:87",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 10.469363739643693,
+        "y": 2.2346705,
+        "z": 6.746591581919246
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:88",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 10.469363739643695,
+        "y": 5.916170500000001,
+        "z": 13.758091581919246
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:89",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 6.562300063258037,
+        "y": 5.1283295,
+        "z": 7.1693939100593544
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:90",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 6.562300063258036,
+        "y": 1.4468294999999993,
+        "z": 0.15789391005935455
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:91",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 15.0781319647089,
+        "y": 2.2346705,
+        "z": 7.115886656048654
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:92",
+        "sourceIndex": 12,
+        "element": "O",
+        "x": 15.078131964708902,
+        "y": 5.916170500000001,
+        "z": 0.10438665604865487
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:93",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 0.3610712726215174,
+        "y": 4.621018800000001,
+        "z": 4.661781092429947
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:94",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 0.36107127262151684,
+        "y": 0.9395188000000012,
+        "z": 11.673281092429947
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:95",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 8.876903174072382,
+        "y": 2.7419811999999997,
+        "z": 4.6082738384192465
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:96",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 8.876903174072384,
+        "y": 6.4234812,
+        "z": 11.619773838419247
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:97",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 8.154760628829347,
+        "y": 4.621018800000001,
+        "z": 9.307711653559354
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:98",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 8.154760628829347,
+        "y": 0.9395188000000012,
+        "z": 2.2962116535593537
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:99",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 16.670592530280214,
+        "y": 2.7419811999999997,
+        "z": 9.254204399548653
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:100",
+        "sourceIndex": 13,
+        "element": "O",
+        "x": 16.670592530280214,
+        "y": 6.4234812,
+        "z": 2.242704399548654
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:101",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 0.36618077176238734,
+        "y": 0.9004949000000001,
+        "z": 4.72345018807754
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:102",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 0.3661807717623879,
+        "y": 4.5819949,
+        "z": 11.734950188077539
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:103",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 8.882012673213254,
+        "y": 6.4625051000000004,
+        "z": 4.669942934066841
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:104",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 8.882012673213252,
+        "y": 2.7810051000000002,
+        "z": 11.681442934066839
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:105",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 8.149651129688477,
+        "y": 0.9004949000000001,
+        "z": 9.24604255791176
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:106",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 8.149651129688477,
+        "y": 4.5819949,
+        "z": 2.23454255791176
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:107",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 16.665483031139342,
+        "y": 6.4625051000000004,
+        "z": 9.192535303901062
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:108",
+        "sourceIndex": 14,
+        "element": "O",
+        "x": 16.665483031139342,
+        "y": 2.7810051000000002,
+        "z": 2.18103530390106
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:109",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 2.544530572153519,
+        "y": 6.4492517000000005,
+        "z": 8.944709032501603
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:110",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 2.5445305721535187,
+        "y": 2.767751700000001,
+        "z": 1.9332090325016031
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:111",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 11.060362473604382,
+        "y": 0.9137483,
+        "z": 8.891201778490903
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:112",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 11.060362473604382,
+        "y": 4.595248300000001,
+        "z": 1.8797017784909031
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:113",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 5.971301329297347,
+        "y": 6.4492517000000005,
+        "z": 5.024783713487698
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:114",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 5.971301329297347,
+        "y": 2.767751700000001,
+        "z": 12.036283713487697
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:115",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 14.487133230748212,
+        "y": 0.9137483,
+        "z": 4.971276459476997
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:116",
+        "sourceIndex": 15,
+        "element": "O",
+        "x": 14.487133230748212,
+        "y": 4.595248300000001,
+        "z": 11.982776459476998
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:117",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 2.536014740252068,
+        "y": 2.7515531,
+        "z": 8.884463639755614
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:118",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 2.5360147402520683,
+        "y": 6.4330530999999995,
+        "z": 1.8729636397556144
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:119",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 11.051846641702932,
+        "y": 4.611446900000001,
+        "z": 8.830956385744914
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:120",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 11.051846641702932,
+        "y": 0.9299469000000002,
+        "z": 1.8194563857449142
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:121",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 5.979817161198796,
+        "y": 2.7515531,
+        "z": 5.085029106233686
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:122",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 5.979817161198797,
+        "y": 6.4330530999999995,
+        "z": 12.096529106233685
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:123",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 14.495649062649662,
+        "y": 4.611446900000001,
+        "z": 5.031521852222986
+      },
+      {
+        "id": "mineral-xonotlite-cod-9008437:atom:124",
+        "sourceIndex": 16,
+        "element": "O",
+        "x": 14.495649062649662,
+        "y": 0.9299469000000002,
+        "z": 12.043021852222985
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9008437; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-xonotlite-cod-9008437:atom:1",
+      "mineral-xonotlite-cod-9008437:atom:2",
+      "mineral-xonotlite-cod-9008437:atom:3",
+      "mineral-xonotlite-cod-9008437:atom:4",
+      "mineral-xonotlite-cod-9008437:atom:5",
+      "mineral-xonotlite-cod-9008437:atom:6",
+      "mineral-xonotlite-cod-9008437:atom:7",
+      "mineral-xonotlite-cod-9008437:atom:8",
+      "mineral-xonotlite-cod-9008437:atom:9",
+      "mineral-xonotlite-cod-9008437:atom:10",
+      "mineral-xonotlite-cod-9008437:atom:11",
+      "mineral-xonotlite-cod-9008437:atom:12",
+      "mineral-xonotlite-cod-9008437:atom:13",
+      "mineral-xonotlite-cod-9008437:atom:14",
+      "mineral-xonotlite-cod-9008437:atom:15",
+      "mineral-xonotlite-cod-9008437:atom:16",
+      "mineral-xonotlite-cod-9008437:atom:17",
+      "mineral-xonotlite-cod-9008437:atom:18",
+      "mineral-xonotlite-cod-9008437:atom:19",
+      "mineral-xonotlite-cod-9008437:atom:20",
+      "mineral-xonotlite-cod-9008437:atom:21",
+      "mineral-xonotlite-cod-9008437:atom:22",
+      "mineral-xonotlite-cod-9008437:atom:23",
+      "mineral-xonotlite-cod-9008437:atom:24",
+      "mineral-xonotlite-cod-9008437:atom:25",
+      "mineral-xonotlite-cod-9008437:atom:26",
+      "mineral-xonotlite-cod-9008437:atom:27",
+      "mineral-xonotlite-cod-9008437:atom:28",
+      "mineral-xonotlite-cod-9008437:atom:29",
+      "mineral-xonotlite-cod-9008437:atom:30",
+      "mineral-xonotlite-cod-9008437:atom:31",
+      "mineral-xonotlite-cod-9008437:atom:32",
+      "mineral-xonotlite-cod-9008437:atom:33",
+      "mineral-xonotlite-cod-9008437:atom:34",
+      "mineral-xonotlite-cod-9008437:atom:35",
+      "mineral-xonotlite-cod-9008437:atom:36",
+      "mineral-xonotlite-cod-9008437:atom:37",
+      "mineral-xonotlite-cod-9008437:atom:38",
+      "mineral-xonotlite-cod-9008437:atom:39",
+      "mineral-xonotlite-cod-9008437:atom:40",
+      "mineral-xonotlite-cod-9008437:atom:41",
+      "mineral-xonotlite-cod-9008437:atom:42",
+      "mineral-xonotlite-cod-9008437:atom:43",
+      "mineral-xonotlite-cod-9008437:atom:44",
+      "mineral-xonotlite-cod-9008437:atom:45",
+      "mineral-xonotlite-cod-9008437:atom:46",
+      "mineral-xonotlite-cod-9008437:atom:47",
+      "mineral-xonotlite-cod-9008437:atom:48",
+      "mineral-xonotlite-cod-9008437:atom:49",
+      "mineral-xonotlite-cod-9008437:atom:50",
+      "mineral-xonotlite-cod-9008437:atom:51",
+      "mineral-xonotlite-cod-9008437:atom:52",
+      "mineral-xonotlite-cod-9008437:atom:53",
+      "mineral-xonotlite-cod-9008437:atom:54",
+      "mineral-xonotlite-cod-9008437:atom:55",
+      "mineral-xonotlite-cod-9008437:atom:56",
+      "mineral-xonotlite-cod-9008437:atom:57",
+      "mineral-xonotlite-cod-9008437:atom:58",
+      "mineral-xonotlite-cod-9008437:atom:59",
+      "mineral-xonotlite-cod-9008437:atom:60",
+      "mineral-xonotlite-cod-9008437:atom:61",
+      "mineral-xonotlite-cod-9008437:atom:62",
+      "mineral-xonotlite-cod-9008437:atom:63",
+      "mineral-xonotlite-cod-9008437:atom:64",
+      "mineral-xonotlite-cod-9008437:atom:65",
+      "mineral-xonotlite-cod-9008437:atom:66",
+      "mineral-xonotlite-cod-9008437:atom:67",
+      "mineral-xonotlite-cod-9008437:atom:68",
+      "mineral-xonotlite-cod-9008437:atom:69",
+      "mineral-xonotlite-cod-9008437:atom:70",
+      "mineral-xonotlite-cod-9008437:atom:71",
+      "mineral-xonotlite-cod-9008437:atom:72",
+      "mineral-xonotlite-cod-9008437:atom:73",
+      "mineral-xonotlite-cod-9008437:atom:74",
+      "mineral-xonotlite-cod-9008437:atom:75",
+      "mineral-xonotlite-cod-9008437:atom:76",
+      "mineral-xonotlite-cod-9008437:atom:77",
+      "mineral-xonotlite-cod-9008437:atom:78",
+      "mineral-xonotlite-cod-9008437:atom:79",
+      "mineral-xonotlite-cod-9008437:atom:80",
+      "mineral-xonotlite-cod-9008437:atom:81",
+      "mineral-xonotlite-cod-9008437:atom:82",
+      "mineral-xonotlite-cod-9008437:atom:83",
+      "mineral-xonotlite-cod-9008437:atom:84",
+      "mineral-xonotlite-cod-9008437:atom:85",
+      "mineral-xonotlite-cod-9008437:atom:86",
+      "mineral-xonotlite-cod-9008437:atom:87",
+      "mineral-xonotlite-cod-9008437:atom:88",
+      "mineral-xonotlite-cod-9008437:atom:89",
+      "mineral-xonotlite-cod-9008437:atom:90",
+      "mineral-xonotlite-cod-9008437:atom:91",
+      "mineral-xonotlite-cod-9008437:atom:92",
+      "mineral-xonotlite-cod-9008437:atom:93",
+      "mineral-xonotlite-cod-9008437:atom:94",
+      "mineral-xonotlite-cod-9008437:atom:95",
+      "mineral-xonotlite-cod-9008437:atom:96",
+      "mineral-xonotlite-cod-9008437:atom:97",
+      "mineral-xonotlite-cod-9008437:atom:98",
+      "mineral-xonotlite-cod-9008437:atom:99",
+      "mineral-xonotlite-cod-9008437:atom:100",
+      "mineral-xonotlite-cod-9008437:atom:101",
+      "mineral-xonotlite-cod-9008437:atom:102",
+      "mineral-xonotlite-cod-9008437:atom:103",
+      "mineral-xonotlite-cod-9008437:atom:104",
+      "mineral-xonotlite-cod-9008437:atom:105",
+      "mineral-xonotlite-cod-9008437:atom:106",
+      "mineral-xonotlite-cod-9008437:atom:107",
+      "mineral-xonotlite-cod-9008437:atom:108",
+      "mineral-xonotlite-cod-9008437:atom:109",
+      "mineral-xonotlite-cod-9008437:atom:110",
+      "mineral-xonotlite-cod-9008437:atom:111",
+      "mineral-xonotlite-cod-9008437:atom:112",
+      "mineral-xonotlite-cod-9008437:atom:113",
+      "mineral-xonotlite-cod-9008437:atom:114",
+      "mineral-xonotlite-cod-9008437:atom:115",
+      "mineral-xonotlite-cod-9008437:atom:116",
+      "mineral-xonotlite-cod-9008437:atom:117",
+      "mineral-xonotlite-cod-9008437:atom:118",
+      "mineral-xonotlite-cod-9008437:atom:119",
+      "mineral-xonotlite-cod-9008437:atom:120",
+      "mineral-xonotlite-cod-9008437:atom:121",
+      "mineral-xonotlite-cod-9008437:atom:122",
+      "mineral-xonotlite-cod-9008437:atom:123",
+      "mineral-xonotlite-cod-9008437:atom:124"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          17.03166380290173,
+          0.0,
+          -0.10701450802139992
+        ],
+        [
+          1.1840607069569076e-15,
+          7.363,
+          4.508537191060981e-16
+        ],
+        [
+          0.0,
+          0.0,
+          14.023
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9008437 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

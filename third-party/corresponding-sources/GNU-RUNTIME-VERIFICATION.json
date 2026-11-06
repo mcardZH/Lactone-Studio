@@ -1,0 +1,368 @@
+{
+  "schema": "sy-gnu-runtime-public-supplement-v1",
+  "status": "independent-candidate-seven-fixed-representatives-passed-product-integration-pending",
+  "publicApproved": false,
+  "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "reportedVersion": "6.7.0",
+  "buildId": "5071a886-gnu132-r2-runtime-rebuild-a01",
+  "compiler": {
+    "name": "gfortran",
+    "version": "13.2.0"
+  },
+  "compilerSeedArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+  "sourceReceipt": {
+    "path": "provenance/r2-source-receipt.json",
+    "bytes": 7435,
+    "sha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3"
+  },
+  "inventory": {
+    "path": "inventory.json",
+    "bytes": 2527,
+    "sha256": "5a452a4afa2b9d914930fd40057bc3b3546841c11d91b175bd75972eddf732c9"
+  },
+  "files": [
+    {
+      "path": "bin/VCRUNTIME140.dll",
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60"
+    },
+    {
+      "path": "bin/libdl.dll",
+      "bytes": 60228,
+      "sha256": "09ffe313366349710d7606fad2b192826a0fb55e693f9d8a4eeb4ec1059f3c61"
+    },
+    {
+      "path": "bin/libgcc_s_seh-1.dll",
+      "bytes": 189830,
+      "sha256": "7a315f073b3feda48c63a9bda3951c9d8f53cfeecd545fea75bf67756024f5b0"
+    },
+    {
+      "path": "bin/libgfortran-5.dll",
+      "bytes": 3896233,
+      "sha256": "683271e02ab3524e80ca935997d5326522956b9e5aa582ea750b4e3c6c9d53b6"
+    },
+    {
+      "path": "bin/libgomp-1.dll",
+      "bytes": 383912,
+      "sha256": "b193e98534d98659b83c561103bd7cf5a6a9f320d8b2d04456a70476e26d2da4"
+    },
+    {
+      "path": "bin/libquadmath-0.dll",
+      "bytes": 449972,
+      "sha256": "14c3356da8b677ea9ed73051739ad08807734a1410d570c95b5cb8b20f35e112"
+    },
+    {
+      "path": "bin/libwinpthread-1.dll",
+      "bytes": 111375,
+      "sha256": "02be535e6495e755cf0532589303841c09d125ddca88bc6db294c8d76a1516cf"
+    },
+    {
+      "path": "bin/openblas.dll",
+      "bytes": 28410880,
+      "sha256": "d0073463ce449d6bb4a3f720b1ebf8a858b49ca2e376271585a7f75f6a1795d8"
+    },
+    {
+      "path": "bin/xtb.exe",
+      "bytes": 14613972,
+      "sha256": "8ee086b79963b1214a1bec753712cc46e5e430d510f0fad3c88f20b130b6db3b"
+    },
+    {
+      "path": "share/xtb/.param_gfnff.xtb",
+      "bytes": 10664,
+      "sha256": "5cf2d1259dd3c65aa9594ea32a0c9a21bb819b6e16b81521888c5a3a1ec513e8"
+    },
+    {
+      "path": "share/xtb/param_gfn0-xtb.txt",
+      "bytes": 39220,
+      "sha256": "278461cabbf89b14379aedc78ef3e141c8cef1f911f3a3c72530aec7a52b6d34"
+    },
+    {
+      "path": "share/xtb/param_gfn1-si-xtb.txt",
+      "bytes": 28007,
+      "sha256": "f878fd7f8eea16f326aff283fbc7ca23800045992c0f86536e18ad91816cf7ca"
+    },
+    {
+      "path": "share/xtb/param_gfn1-xtb.txt",
+      "bytes": 27800,
+      "sha256": "81a9d7afdee31f5d8fd67a4d8ec966179317c7b100261c9c82d724bafb460399"
+    },
+    {
+      "path": "share/xtb/param_gfn2-xtb.txt",
+      "bytes": 35849,
+      "sha256": "f6f05c6c5264cb2f75c54f8ac6838044541c1e493b16f1a4d4ee4fa64de5f545"
+    },
+    {
+      "path": "share/xtb/param_ipea-xtb.txt",
+      "bytes": 27805,
+      "sha256": "08a39b7854b915501d8ba87b7d3330f28932f293479a0dc52b502f039c19f122"
+    }
+  ],
+  "engineIdentityInputs": {
+    "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+    "buildId": "5071a886-gnu132-r2-runtime-rebuild-a01",
+    "compiler": {
+      "name": "gfortran",
+      "version": "13.2.0"
+    },
+    "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+    "sourceReceiptSha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3",
+    "scientificPinsSha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b",
+    "version": "6.7.0",
+    "runtimeMemberDigest": "812a7296f44af4fd143a1a3e52f0b371cdbf4ee00661ebbfde6474f3d772f60a",
+    "parameterDigest": "0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2"
+  },
+  "engineIdentity": {
+    "schema": "sciyue-xtb-engine-identity/v1",
+    "engine": "xtb",
+    "version": "6.7.0",
+    "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+    "buildId": "5071a886-gnu132-r2-runtime-rebuild-a01",
+    "runtimeMemberDigest": "812a7296f44af4fd143a1a3e52f0b371cdbf4ee00661ebbfde6474f3d772f60a",
+    "parameterDigest": "0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2",
+    "sha256": "6b2b2be41235f7c1f5b61f52c57b9284ea1d1fce08bdb6c70dae7b292c7ca42a"
+  },
+  "normalization": {
+    "tool": {
+      "file": "strip.exe",
+      "bytes": 1334286,
+      "sha256": "8ae6a7d5fc45824b2fd7f806d912acf76e01b0b8d145eaa82607d028a3b53085"
+    },
+    "arguments": [
+      "--strip-debug",
+      "--preserve-dates"
+    ],
+    "rawInstallOriginalsRetained": true,
+    "files": [
+      {
+        "name": "libgcc_s_seh-1.dll",
+        "raw": {
+          "bytes": 750423,
+          "sha256": "e0c988f81865a66fc031de35d8df4d3ae8586d232b785a174b3410b6e89e41d6"
+        },
+        "stage": {
+          "bytes": 189830,
+          "sha256": "7a315f073b3feda48c63a9bda3951c9d8f53cfeecd545fea75bf67756024f5b0"
+        },
+        "retainedCodeDataExportsRelocationsAndUnwindSectionsIdentical": true,
+        "affectedPrivatePrefixAfter": false
+      },
+      {
+        "name": "libgfortran-5.dll",
+        "raw": {
+          "bytes": 4254142,
+          "sha256": "32f68b881ec7adc9eead68f3e4c60fc0d5837e6dabddd11ba7d23f568c2a5046"
+        },
+        "stage": {
+          "bytes": 3896233,
+          "sha256": "683271e02ab3524e80ca935997d5326522956b9e5aa582ea750b4e3c6c9d53b6"
+        },
+        "retainedCodeDataExportsRelocationsAndUnwindSectionsIdentical": true,
+        "affectedPrivatePrefixAfter": false
+      },
+      {
+        "name": "libgomp-1.dll",
+        "raw": {
+          "bytes": 396486,
+          "sha256": "b225e0a735d32db2f5912a50afc5e86c5b1570ac6e835a3c17ec768e0cdf479e"
+        },
+        "stage": {
+          "bytes": 383912,
+          "sha256": "b193e98534d98659b83c561103bd7cf5a6a9f320d8b2d04456a70476e26d2da4"
+        },
+        "retainedCodeDataExportsRelocationsAndUnwindSectionsIdentical": true,
+        "affectedPrivatePrefixAfter": false
+      },
+      {
+        "name": "libquadmath-0.dll",
+        "raw": {
+          "bytes": 465066,
+          "sha256": "956d71280df5b0f3a75eb32d863884a3f6b67fdac979fedb25822d8af5675d09"
+        },
+        "stage": {
+          "bytes": 449972,
+          "sha256": "14c3356da8b677ea9ed73051739ad08807734a1410d570c95b5cb8b20f35e112"
+        },
+        "retainedCodeDataExportsRelocationsAndUnwindSectionsIdentical": true,
+        "affectedPrivatePrefixAfter": false
+      }
+    ],
+    "allCriticalHeadersAndNonDebugDataDirectoriesUnchanged": true
+  },
+  "staticChecks": {
+    "architecture": "AMD64",
+    "allActualBundledImportsExported": true,
+    "dependencyCheckCount": 13,
+    "noMsysOrIntelImport": true,
+    "ucrtImportsPresent": true,
+    "actualLibdlConsumer": "libgomp-1.dll",
+    "sourceFilesRechecked": 128671,
+    "allSourceBytesUnchanged": true,
+    "manualSourcePatches": 0,
+    "affectedPrivatePrefixesAfter": false
+  },
+  "originalRuntimeSourceArchives": [
+    {
+      "role": "target-runtime-source",
+      "archive": "gcc-13.2.0.tar.xz",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/releases/gcc-13.2.0/gcc-13.2.0.tar.xz",
+      "bytes": 87858592,
+      "sha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da"
+    },
+    {
+      "role": "target-runtime-source",
+      "archive": "mingw-w64-v11.0.1.tar.gz",
+      "officialUrl": "https://github.com/mingw-w64/mingw-w64/archive/refs/tags/v11.0.1.tar.gz",
+      "bytes": 13916903,
+      "sha256": "9c82a58713786c95b0594443a1c6190cd986401ed2b03677a90acc470140af28"
+    },
+    {
+      "role": "target-runtime-source",
+      "archive": "dlfcn-win32-v1.4.1.tar.gz",
+      "officialUrl": "https://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v1.4.1.tar.gz",
+      "bytes": 24997,
+      "sha256": "30a9f72bdf674857899eb7e553df1f0d362c5da2a576ae51f886e1171fbdb399"
+    },
+    {
+      "role": "compiler-build-prerequisite",
+      "archive": "gmp-6.2.1.tar.bz2",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/gmp-6.2.1.tar.bz2",
+      "bytes": 2493916,
+      "sha256": "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c",
+      "officialGccPrerequisitesSha512": "8904334a3bcc5c896ececabc75cda9dec642e401fb5397c4992c4fabea5e962c9ce8bd44e8e4233c34e55c8010cc28db0545f5f750cbdbb5f00af538dc763be9"
+    },
+    {
+      "role": "compiler-build-prerequisite",
+      "archive": "mpfr-4.1.0.tar.bz2",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/mpfr-4.1.0.tar.bz2",
+      "bytes": 1747243,
+      "sha256": "feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926",
+      "officialGccPrerequisitesSha512": "410208ee0d48474c1c10d3d4a59decd2dfa187064183b09358ec4c4666e34d74383128436b404123b831e585d81a9176b24c7ced9d913967c5fce35d4040a0b4"
+    },
+    {
+      "role": "compiler-build-prerequisite",
+      "archive": "mpc-1.2.1.tar.gz",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/mpc-1.2.1.tar.gz",
+      "bytes": 838731,
+      "sha256": "17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459",
+      "officialGccPrerequisitesSha512": "3279f813ab37f47fdcc800e4ac5f306417d07f539593ca715876e43e04896e1d5bceccfb288ef2908a3f24b760747d0dbd0392a24b9b341bc3e12082e5c836ee"
+    },
+    {
+      "role": "compiler-build-prerequisite",
+      "archive": "isl-0.24.tar.bz2",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2",
+      "bytes": 2261594,
+      "sha256": "fcf78dd9656c10eb8cf9fbd5f59a0b6b01386205fe1934b3b287a0a1898145c0",
+      "officialGccPrerequisitesSha512": "aab3bddbda96b801d0f56d2869f943157aad52a6f6e6a61745edd740234c635c38231af20bc3f1a08d416a5e973a90e18249078ed8e4ae2f1d5de57658738e95"
+    }
+  ],
+  "licenseFiles": [
+    {
+      "path": "licenses/dlfcn-win32/COPYING",
+      "bytes": 1040,
+      "sha256": "4cc7ac997b9293db5919baf630100cc09b3508efdfe6a6611c95511fb863b3c7"
+    },
+    {
+      "path": "licenses/dlfcn-win32/source-copyright-and-grant.c",
+      "bytes": 29461,
+      "sha256": "0b7a7e71d4beeef7df6ad9422da7b311bb15edd05ac7016d2d93fa8f90a4944e"
+    },
+    {
+      "path": "licenses/winpthreads/COPYING",
+      "bytes": 2883,
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177"
+    },
+    {
+      "path": "licenses/gcc13.2/COPYING3",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "licenses/gcc13.2/COPYING.RUNTIME",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "licenses/gcc13.2/libquadmath-COPYING.LIB",
+      "bytes": 26440,
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b"
+    }
+  ],
+  "recipe": "GNU-RUNTIME-REBUILD-AND-REPLACEMENT-R2-A01.md",
+  "scientificInvocationsForThisComposition": 7,
+  "localUseReady": false,
+  "productReplacementVerified": false,
+  "sourceBundleAssembled": false,
+  "pending": [
+    "Product v2 description/lock binding and integration acceptance",
+    "Actual local modified-library replacement/relinking route acceptance",
+    "Public corresponding-source/license package assembly and final review"
+  ],
+  "newCubeGenerated": false,
+  "newMultiwfnFieldComputed": false,
+  "fixedRepresentativeValidation": {
+    "calls": 7,
+    "oldBaselineCalls": 0,
+    "versionCalls": 0,
+    "multiwfnCalls": 0,
+    "guiCalls": 0,
+    "phaseWallSeconds": 5.890840291976929,
+    "boundedCallWallSeconds": 5.125,
+    "maximumPeakJobMemoryBytes": 364453888,
+    "allActualLoadedMembersMatchedFinalStage": true,
+    "allJobTreesEnded": true,
+    "sourceInputsAndStageUnchanged": true,
+    "moldenCoeffPhaseAndGtoCompared": true,
+    "newDownstreamGridExecuted": false,
+    "cases": [
+      {
+        "id": "water-gfn0",
+        "energyHartree": -4.366771554386,
+        "absoluteDeltaEnergyHartree": 0.0,
+        "maximumDeltaGradientHartreePerBohr": 0.0,
+        "passed": true
+      },
+      {
+        "id": "water-gfn1",
+        "energyHartree": -5.768642013928,
+        "absoluteDeltaEnergyHartree": 0.0,
+        "maximumDeltaGradientHartreePerBohr": 0.0,
+        "passed": true
+      },
+      {
+        "id": "water-gfn2-molden",
+        "energyHartree": -5.070371679788,
+        "absoluteDeltaEnergyHartree": 0.0,
+        "maximumDeltaGradientHartreePerBohr": 0.0,
+        "passed": true
+      },
+      {
+        "id": "water-gfnff",
+        "energyHartree": -0.327272617302,
+        "absoluteDeltaEnergyHartree": 0.0,
+        "maximumDeltaGradientHartreePerBohr": 0.0,
+        "passed": true
+      },
+      {
+        "id": "water-gfn2-alpb-water-molden",
+        "energyHartree": -5.084838185211,
+        "absoluteDeltaEnergyHartree": 0.0,
+        "maximumDeltaGradientHartreePerBohr": 0.0,
+        "passed": true
+      },
+      {
+        "id": "tio2-gfnff-3d",
+        "energyHartree": -1.363894769426,
+        "absoluteDeltaEnergyHartree": 0.0,
+        "maximumDeltaGradientHartreePerBohr": 0.0,
+        "passed": true
+      },
+      {
+        "id": "tio2-gfn2-tblite-3d",
+        "energyHartree": -39.417946941816,
+        "absoluteDeltaEnergyHartree": 0.0,
+        "maximumDeltaGradientHartreePerBohr": 5.092000000003847e-08,
+        "passed": true
+      }
+    ]
+  }
+}

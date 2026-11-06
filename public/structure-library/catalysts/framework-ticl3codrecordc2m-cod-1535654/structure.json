@@ -1,0 +1,481 @@
+{
+  "schemaVersion": 1,
+  "entryId": "framework-ticl3codrecordc2m-cod-1535654",
+  "structure": {
+    "id": "framework-ticl3codrecordc2m-cod-1535654",
+    "name": "TiCl3（COD C2/m 记录）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:1",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 3.024825353150784,
+        "y": 8.888529,
+        "z": -0.06388922394460687
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:2",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 3.024825353150783,
+        "y": 1.6804710000000003,
+        "z": -0.06388922394460732
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:3",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 5.795720664991439e-16,
+        "y": 3.604029,
+        "z": 2.206831289442118e-16
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:4",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 1.1200527619440935e-15,
+        "y": 6.964971000000001,
+        "z": 4.2648147206520705e-16
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:5",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 4.972812880579888,
+        "y": 8.899098,
+        "z": 5.759672115835067
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:6",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 1.0768378257216802,
+        "y": 8.899098,
+        "z": 11.67154943627572
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:7",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 1.076837825721679,
+        "y": 1.6699020000000002,
+        "z": 11.671549436275718
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:8",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 4.972812880579887,
+        "y": 1.6699020000000002,
+        "z": 5.759672115835066
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:9",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 1.9479875274291052,
+        "y": 3.614598,
+        "z": 5.8235613397796735
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:10",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 4.101663178872463,
+        "y": 3.614598,
+        "z": 11.607660212331112
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:11",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 4.101663178872463,
+        "y": 6.954402000000001,
+        "z": 11.607660212331112
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:12",
+        "sourceIndex": 7,
+        "element": "Ti",
+        "x": 1.9479875274291056,
+        "y": 6.954402000000001,
+        "z": 5.823561339779674
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:13",
+        "sourceIndex": 2,
+        "element": "Cl",
+        "x": 5.831863280874709,
+        "y": 0.0,
+        "z": 4.389484576234798
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:14",
+        "sourceIndex": 2,
+        "element": "Cl",
+        "x": 0.21778742542685656,
+        "y": 0.0,
+        "z": 13.04173697587599
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:15",
+        "sourceIndex": 2,
+        "element": "Cl",
+        "x": 2.8070379277239272,
+        "y": 5.2845,
+        "z": 4.453373800179405
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:16",
+        "sourceIndex": 2,
+        "element": "Cl",
+        "x": 3.24261277857764,
+        "y": 5.2845,
+        "z": 12.977847751931382
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:17",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 0.840901448175919,
+        "y": 8.592597,
+        "z": 7.2867827957434
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:18",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 5.20874925812565,
+        "y": 8.592597,
+        "z": 10.144438756367387
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:19",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 5.208749258125648,
+        "y": 1.9764030000000001,
+        "z": 10.144438756367387
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:20",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 0.840901448175918,
+        "y": 1.9764030000000001,
+        "z": 7.286782795743399
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:21",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 3.865726801326701,
+        "y": 3.308097,
+        "z": 7.222893571798791
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:22",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 2.1839239049748653,
+        "y": 3.308097,
+        "z": 10.208327980311994
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:23",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 2.183923904974866,
+        "y": 7.260903000000001,
+        "z": 10.208327980311996
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:24",
+        "sourceIndex": 3,
+        "element": "Cl",
+        "x": 3.865726801326702,
+        "y": 7.260903000000001,
+        "z": 7.222893571798792
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:25",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 4.972812880579888,
+        "y": 8.793408,
+        "z": 1.159214115835066
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:26",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 1.0768378257216802,
+        "y": 8.793408,
+        "z": 16.27200743627572
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:27",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 1.076837825721679,
+        "y": 1.7755920000000003,
+        "z": 16.27200743627572
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:28",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 4.972812880579887,
+        "y": 1.7755920000000003,
+        "z": 1.1592141158350655
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:29",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 1.9479875274291052,
+        "y": 3.508908,
+        "z": 1.2231033397796731
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:30",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 4.101663178872463,
+        "y": 3.508908,
+        "z": 16.208118212331115
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:31",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 4.101663178872463,
+        "y": 7.060092000000001,
+        "z": 16.208118212331115
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:32",
+        "sourceIndex": 4,
+        "element": "Cl",
+        "x": 1.9479875274291056,
+        "y": 7.060092000000001,
+        "z": 1.2231033397796733
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:33",
+        "sourceIndex": 5,
+        "element": "Cl",
+        "x": 2.183923904974865,
+        "y": 0.0,
+        "z": 1.5692999803119936
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:34",
+        "sourceIndex": 5,
+        "element": "Cl",
+        "x": 3.8657268013267005,
+        "y": 0.0,
+        "z": 15.861921571798794
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:35",
+        "sourceIndex": 5,
+        "element": "Cl",
+        "x": 5.208749258125649,
+        "y": 5.2845,
+        "z": 1.5054107563673864
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:36",
+        "sourceIndex": 5,
+        "element": "Cl",
+        "x": 0.8409014481759186,
+        "y": 5.2845,
+        "z": 15.9258107957434
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:37",
+        "sourceIndex": 6,
+        "element": "Cl",
+        "x": 3.998819116865335,
+        "y": 0.0,
+        "z": 7.149846445945229
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:38",
+        "sourceIndex": 6,
+        "element": "Cl",
+        "x": 2.0508315894362306,
+        "y": 0.0,
+        "z": 10.281375106165559
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:39",
+        "sourceIndex": 6,
+        "element": "Cl",
+        "x": 0.9739937637145532,
+        "y": 5.2845,
+        "z": 7.213735669889837
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:40",
+        "sourceIndex": 6,
+        "element": "Cl",
+        "x": 5.075656942587014,
+        "y": 5.2845,
+        "z": 10.217485882220952
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:41",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 2.9643288460877684,
+        "y": 8.761701,
+        "z": 4.450051560534286
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:42",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 3.0853218602137997,
+        "y": 8.761701,
+        "z": 12.981169991576502
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:43",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 3.085321860213799,
+        "y": 1.8072990000000002,
+        "z": 12.981169991576502
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:44",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 2.9643288460877675,
+        "y": 1.8072990000000002,
+        "z": 4.450051560534286
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:45",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 5.98915419923855,
+        "y": 3.477201,
+        "z": 4.3861623365896785
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:46",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 0.06049650706301627,
+        "y": 3.477201,
+        "z": 13.045059215521109
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:47",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 0.06049650706301685,
+        "y": 7.091799000000001,
+        "z": 13.045059215521109
+      },
+      {
+        "id": "framework-ticl3codrecordc2m-cod-1535654:atom:48",
+        "sourceIndex": 8,
+        "element": "Cl",
+        "x": 5.98915419923855,
+        "y": 7.091799000000001,
+        "z": 4.3861623365896785
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1535654; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "framework-ticl3codrecordc2m-cod-1535654:atom:1",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:2",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:3",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:4",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:5",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:6",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:7",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:8",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:9",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:10",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:11",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:12",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:13",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:14",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:15",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:16",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:17",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:18",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:19",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:20",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:21",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:22",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:23",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:24",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:25",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:26",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:27",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:28",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:29",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:30",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:31",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:32",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:33",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:34",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:35",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:36",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:37",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:38",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:39",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:40",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:41",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:42",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:43",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:44",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:45",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:46",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:47",
+      "framework-ticl3codrecordc2m-cod-1535654:atom:48"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          6.049650706301565,
+          0.0,
+          -0.12777844788921483
+        ],
+        [
+          1.6996248284432373e-15,
+          10.569,
+          6.471646010094188e-16
+        ],
+        [
+          0.0,
+          0.0,
+          17.559
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1535654 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

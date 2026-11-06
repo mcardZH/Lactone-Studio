@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mo2c-orthorhombic",
+  "structure": {
+    "id": "mo2c-orthorhombic",
+    "name": "碳化钼（Mo2C）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mo2c-orthorhombic:atom:1",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 1.1600750000000002,
+        "y": 0.753125,
+        "z": 0.43243000000000015
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:2",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 1.2074250000000006,
+        "y": 2.2593750000000004,
+        "z": 3.0374299999999996
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:3",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 3.5275750000000006,
+        "y": 2.2593750000000004,
+        "z": 4.77757
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:4",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 3.5749250000000004,
+        "y": 0.753125,
+        "z": 2.1725700000000003
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:5",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 3.5749250000000012,
+        "y": 5.2718750000000005,
+        "z": 4.777570000000001
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:6",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 3.5275750000000006,
+        "y": 3.765625,
+        "z": 2.172570000000001
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:7",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 1.2074250000000009,
+        "y": 3.765625,
+        "z": 0.4324300000000003
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:8",
+        "sourceIndex": 2,
+        "element": "Mo",
+        "x": 1.1600750000000009,
+        "y": 5.2718750000000005,
+        "z": 3.03743
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:9",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 3.633352111613151e-16,
+        "y": 2.2593750000000004,
+        "z": 1.3025000000000002
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:10",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 2.3675,
+        "y": 0.753125,
+        "z": 3.9074999999999998
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:11",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 6.055586852688586e-16,
+        "y": 3.765625,
+        "z": 3.9075
+      },
+      {
+        "id": "mo2c-orthorhombic:atom:12",
+        "sourceIndex": 1,
+        "element": "C",
+        "x": 2.367500000000001,
+        "y": 5.2718750000000005,
+        "z": 1.3025000000000004
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:1539795; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mo2c-orthorhombic:atom:1",
+      "mo2c-orthorhombic:atom:2",
+      "mo2c-orthorhombic:atom:3",
+      "mo2c-orthorhombic:atom:4",
+      "mo2c-orthorhombic:atom:5",
+      "mo2c-orthorhombic:atom:6",
+      "mo2c-orthorhombic:atom:7",
+      "mo2c-orthorhombic:atom:8",
+      "mo2c-orthorhombic:atom:9",
+      "mo2c-orthorhombic:atom:10",
+      "mo2c-orthorhombic:atom:11",
+      "mo2c-orthorhombic:atom:12"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.735,
+          0.0,
+          2.899351296981359e-16
+        ],
+        [
+          9.688938964301736e-16,
+          6.025,
+          3.6892484824314016e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.21
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:1539795 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

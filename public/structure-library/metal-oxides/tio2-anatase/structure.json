@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "entryId": "tio2-anatase",
+  "structure": {
+    "id": "tio2-anatase",
+    "name": "锐钛矿型二氧化钛",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "tio2-anatase:atom:1",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "tio2-anatase:atom:2",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 1.8922500000000002,
+        "y": 1.89225,
+        "z": 4.75715
+      },
+      {
+        "id": "tio2-anatase:atom:3",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 3.0429700838506154e-16,
+        "y": 1.89225,
+        "z": 2.378575
+      },
+      {
+        "id": "tio2-anatase:atom:4",
+        "sourceIndex": 1,
+        "element": "Ti",
+        "x": 1.89225,
+        "y": 0.0,
+        "z": 7.135725000000001
+      },
+      {
+        "id": "tio2-anatase:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.9795452580000001
+      },
+      {
+        "id": "tio2-anatase:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.8922500000000002,
+        "y": 1.89225,
+        "z": 6.736695258
+      },
+      {
+        "id": "tio2-anatase:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.0429700838506154e-16,
+        "y": 1.89225,
+        "z": 4.3581202580000005
+      },
+      {
+        "id": "tio2-anatase:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.89225,
+        "y": 0.0,
+        "z": 9.115270258
+      },
+      {
+        "id": "tio2-anatase:atom:9",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.8922500000000002,
+        "y": 1.89225,
+        "z": 2.7776047420000003
+      },
+      {
+        "id": "tio2-anatase:atom:10",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 7.5347547420000005
+      },
+      {
+        "id": "tio2-anatase:atom:11",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.89225,
+        "y": 0.0,
+        "z": 5.156179742
+      },
+      {
+        "id": "tio2-anatase:atom:12",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.0429700838506154e-16,
+        "y": 1.89225,
+        "z": 0.3990297420000002
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9015929; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "tio2-anatase:atom:1",
+      "tio2-anatase:atom:2",
+      "tio2-anatase:atom:3",
+      "tio2-anatase:atom:4",
+      "tio2-anatase:atom:5",
+      "tio2-anatase:atom:6",
+      "tio2-anatase:atom:7",
+      "tio2-anatase:atom:8",
+      "tio2-anatase:atom:9",
+      "tio2-anatase:atom:10",
+      "tio2-anatase:atom:11",
+      "tio2-anatase:atom:12"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.7845,
+          0.0,
+          2.317337905686579e-16
+        ],
+        [
+          6.085940167701231e-16,
+          3.7845,
+          2.317337905686579e-16
+        ],
+        [
+          0.0,
+          0.0,
+          9.5143
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9015929 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

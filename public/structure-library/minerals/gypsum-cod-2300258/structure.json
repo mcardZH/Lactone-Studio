@@ -1,0 +1,481 @@
+{
+  "schemaVersion": 1,
+  "entryId": "gypsum-cod-2300258",
+  "structure": {
+    "id": "gypsum-cod-2300258",
+    "name": "石膏",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "gypsum-cod-2300258:atom:1",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 2.49618530400383,
+        "y": 1.194836874,
+        "z": 2.9868927584051193
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:2",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 2.4961853040038324,
+        "y": 14.018263125999999,
+        "z": -0.2780872415948803
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:3",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 1.4153709580646053e-15,
+        "y": 8.801386874000002,
+        "z": 4.897470000000001
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:4",
+        "sourceIndex": 1,
+        "element": "Ca",
+        "x": 1.0310821101149591e-15,
+        "y": 6.411713126,
+        "z": 1.6324900000000004
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:5",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 3.7502688007353546,
+        "y": 2.4371386200000003,
+        "z": -1.1870275597721498
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:6",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 1.2421018072723065,
+        "y": 2.4371386200000003,
+        "z": 0.6308530765823874
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:7",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 1.242101807272308,
+        "y": 12.77596138,
+        "z": 3.895833076582387
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:8",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 3.7502688007353564,
+        "y": 12.77596138,
+        "z": 2.0779524402278513
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:9",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 1.254083496731525,
+        "y": 10.043688620000001,
+        "z": 0.7235496818227326
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:10",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 3.738287111276138,
+        "y": 10.043688620000001,
+        "z": -1.2797241650124935
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:11",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 3.7382871112761373,
+        "y": 5.1694113800000006,
+        "z": 1.9852558349875058
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:12",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 1.2540834967315244,
+        "y": 5.1694113800000006,
+        "z": 3.9885296818227323
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:13",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 2.9634711929133477,
+        "y": 3.6820265930000002,
+        "z": -1.6988247892214425
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:14",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 2.0288994150943136,
+        "y": 3.6820265930000002,
+        "z": 1.1426503060316808
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:15",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 2.028899415094315,
+        "y": 11.531073407000001,
+        "z": 4.407630306031682
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:16",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 2.963471192913349,
+        "y": 11.531073407000001,
+        "z": 1.5661552107785575
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:17",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 0.4672858889095184,
+        "y": 11.288576593,
+        "z": 0.21175245237343926
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:18",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 4.525084719098145,
+        "y": 11.288576593,
+        "z": -0.7679269355631995
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:19",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 4.525084719098144,
+        "y": 3.9245234070000006,
+        "z": 2.4970530644368005
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:20",
+        "sourceIndex": 7,
+        "element": "H",
+        "x": 0.46728588890951717,
+        "y": 3.9245234070000006,
+        "z": 3.4767324523734384
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:21",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.8935546747709827e-16,
+        "y": 1.17749394,
+        "z": 4.89747
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:22",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 2.257097600702466e-15,
+        "y": 14.035606060000001,
+        "z": 1.6324900000000009
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:23",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 2.4961853040038315,
+        "y": 8.78404394,
+        "z": 2.9868927584051193
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:24",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 2.496185304003831,
+        "y": 6.42905606,
+        "z": -0.27808724159488074
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:25",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.17623068246267073,
+        "y": 2.016800667,
+        "z": 3.6988527627434014
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:26",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.81613992554499,
+        "y": 2.016800667,
+        "z": 2.2749327540668363
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:27",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.8161399255449915,
+        "y": 13.196299333,
+        "z": -0.9900472459331624
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:28",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.1762306824626725,
+        "y": 13.196299333,
+        "z": 0.4338727627434019
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:29",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.672415986466502,
+        "y": 9.623350667,
+        "z": 1.7882755211485204
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:30",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.3199546215411613,
+        "y": 9.623350667,
+        "z": 4.185509995661718
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:31",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.319954621541161,
+        "y": 5.589749333000001,
+        "z": 0.9205299956617183
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:32",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.6724159864665014,
+        "y": 5.589749333000001,
+        "z": -1.4767044788514796
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:33",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.2111491095026585,
+        "y": 0.34670654900000003,
+        "z": 5.015904518378163
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:34",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.7812214985050017,
+        "y": 0.34670654900000003,
+        "z": 0.9578809984320737
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:35",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.781221498505004,
+        "y": 14.866393451,
+        "z": -2.3070990015679254
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:36",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.211149109502661,
+        "y": 14.866393451,
+        "z": 1.7509245183781639
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:37",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.7073344135064903,
+        "y": 7.953256549,
+        "z": 3.1053272767832825
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:38",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.285036194501173,
+        "y": 7.953256549,
+        "z": 2.868458240026955
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:39",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.2850361945011728,
+        "y": 7.259843451000001,
+        "z": -0.3965217599730444
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:40",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.7073344135064903,
+        "y": 7.259843451000001,
+        "z": -0.15965272321671797
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:41",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.0907766434175428,
+        "y": 2.776847143,
+        "z": -1.8674407925427818
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:42",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 1.9015939645901183,
+        "y": 2.776847143,
+        "z": 1.3112663093530197
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:43",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 1.9015939645901199,
+        "y": 12.436252857000001,
+        "z": 4.57624630935302
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:44",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.0907766434175445,
+        "y": 12.436252857000001,
+        "z": 1.397539207457219
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:45",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.5945913394137139,
+        "y": 10.383397143,
+        "z": 0.04313644905210001
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:46",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.39777926859395,
+        "y": 10.383397143,
+        "z": -0.5993109322418615
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:47",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 4.397779268593949,
+        "y": 4.829702857000001,
+        "z": 2.665669067758138
+      },
+      {
+        "id": "gypsum-cod-2300258:atom:48",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 0.594591339413713,
+        "y": 4.829702857000001,
+        "z": 3.3081164490520996
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 2300258; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "gypsum-cod-2300258:atom:1",
+      "gypsum-cod-2300258:atom:2",
+      "gypsum-cod-2300258:atom:3",
+      "gypsum-cod-2300258:atom:4",
+      "gypsum-cod-2300258:atom:5",
+      "gypsum-cod-2300258:atom:6",
+      "gypsum-cod-2300258:atom:7",
+      "gypsum-cod-2300258:atom:8",
+      "gypsum-cod-2300258:atom:9",
+      "gypsum-cod-2300258:atom:10",
+      "gypsum-cod-2300258:atom:11",
+      "gypsum-cod-2300258:atom:12",
+      "gypsum-cod-2300258:atom:13",
+      "gypsum-cod-2300258:atom:14",
+      "gypsum-cod-2300258:atom:15",
+      "gypsum-cod-2300258:atom:16",
+      "gypsum-cod-2300258:atom:17",
+      "gypsum-cod-2300258:atom:18",
+      "gypsum-cod-2300258:atom:19",
+      "gypsum-cod-2300258:atom:20",
+      "gypsum-cod-2300258:atom:21",
+      "gypsum-cod-2300258:atom:22",
+      "gypsum-cod-2300258:atom:23",
+      "gypsum-cod-2300258:atom:24",
+      "gypsum-cod-2300258:atom:25",
+      "gypsum-cod-2300258:atom:26",
+      "gypsum-cod-2300258:atom:27",
+      "gypsum-cod-2300258:atom:28",
+      "gypsum-cod-2300258:atom:29",
+      "gypsum-cod-2300258:atom:30",
+      "gypsum-cod-2300258:atom:31",
+      "gypsum-cod-2300258:atom:32",
+      "gypsum-cod-2300258:atom:33",
+      "gypsum-cod-2300258:atom:34",
+      "gypsum-cod-2300258:atom:35",
+      "gypsum-cod-2300258:atom:36",
+      "gypsum-cod-2300258:atom:37",
+      "gypsum-cod-2300258:atom:38",
+      "gypsum-cod-2300258:atom:39",
+      "gypsum-cod-2300258:atom:40",
+      "gypsum-cod-2300258:atom:41",
+      "gypsum-cod-2300258:atom:42",
+      "gypsum-cod-2300258:atom:43",
+      "gypsum-cod-2300258:atom:44",
+      "gypsum-cod-2300258:atom:45",
+      "gypsum-cod-2300258:atom:46",
+      "gypsum-cod-2300258:atom:47",
+      "gypsum-cod-2300258:atom:48"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.99237060800766,
+          0.0,
+          -3.8211544831897624
+        ],
+        [
+          2.4464530681795642e-15,
+          15.2131,
+          9.3153371100543e-16
+        ],
+        [
+          0.0,
+          0.0,
+          6.52996
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 2300258 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

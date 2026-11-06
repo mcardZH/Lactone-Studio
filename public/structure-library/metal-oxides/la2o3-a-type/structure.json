@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "entryId": "la2o3-a-type",
+  "structure": {
+    "id": "la2o3-a-type",
+    "name": "A型三氧化二镧",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "la2o3-a-type:atom:1",
+        "sourceIndex": 1,
+        "element": "La",
+        "x": 4.440892098500626e-16,
+        "y": 2.2689865579152295,
+        "z": 1.5300000000000002
+      },
+      {
+        "id": "la2o3-a-type:atom:2",
+        "sourceIndex": 1,
+        "element": "La",
+        "x": 1.9650000000000003,
+        "y": 1.1344932789576148,
+        "z": 4.59
+      },
+      {
+        "id": "la2o3-a-type:atom:3",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.49125000000000013,
+        "y": 0.8508699592182111,
+        "z": 1.2032154801622746e-16
+      },
+      {
+        "id": "la2o3-a-type:atom:4",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.9475000000000002,
+        "y": 0.0,
+        "z": 1.8048232202434118e-16
+      },
+      {
+        "id": "la2o3-a-type:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": -1.4737499999999997,
+        "y": 2.5526098776546333,
+        "z": 1.8048232202434118e-16
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1010278; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "la2o3-a-type:atom:1",
+      "la2o3-a-type:atom:2",
+      "la2o3-a-type:atom:3",
+      "la2o3-a-type:atom:4",
+      "la2o3-a-type:atom:5"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          3.93,
+          0.0,
+          2.4064309603245493e-16
+        ],
+        [
+          -1.9649999999999996,
+          3.4034798368728443,
+          2.4064309603245493e-16
+        ],
+        [
+          0.0,
+          0.0,
+          6.12
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1010278 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "tac-rocksalt",
+  "structure": {
+    "id": "tac-rocksalt",
+    "name": "碳化钽",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "tac-rocksalt:atom:1",
+        "sourceIndex": 1,
+        "element": "Ta",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "tac-rocksalt:atom:2",
+        "sourceIndex": 1,
+        "element": "Ta",
+        "x": 3.610235348524049e-16,
+        "y": 2.245,
+        "z": 2.245
+      },
+      {
+        "id": "tac-rocksalt:atom:3",
+        "sourceIndex": 1,
+        "element": "Ta",
+        "x": 2.245,
+        "y": 0.0,
+        "z": 2.245
+      },
+      {
+        "id": "tac-rocksalt:atom:4",
+        "sourceIndex": 1,
+        "element": "Ta",
+        "x": 2.2450000000000006,
+        "y": 2.245,
+        "z": 2.749332064085808e-16
+      },
+      {
+        "id": "tac-rocksalt:atom:5",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.2450000000000006,
+        "y": 2.245,
+        "z": 2.2450000000000006
+      },
+      {
+        "id": "tac-rocksalt:atom:6",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.245,
+        "y": 0.0,
+        "z": 1.374666032042904e-16
+      },
+      {
+        "id": "tac-rocksalt:atom:7",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 3.610235348524049e-16,
+        "y": 2.245,
+        "z": 1.374666032042904e-16
+      },
+      {
+        "id": "tac-rocksalt:atom:8",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 2.245
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:1011324; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "tac-rocksalt:atom:1",
+      "tac-rocksalt:atom:2",
+      "tac-rocksalt:atom:3",
+      "tac-rocksalt:atom:4",
+      "tac-rocksalt:atom:5",
+      "tac-rocksalt:atom:6",
+      "tac-rocksalt:atom:7",
+      "tac-rocksalt:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.49,
+          0.0,
+          2.749332064085808e-16
+        ],
+        [
+          7.220470697048098e-16,
+          4.49,
+          2.749332064085808e-16
+        ],
+        [
+          0.0,
+          0.0,
+          4.49
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:1011324 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

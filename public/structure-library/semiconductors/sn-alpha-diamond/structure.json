@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "sn-alpha-diamond",
+  "structure": {
+    "id": "sn-alpha-diamond",
+    "name": "灰锡（α-Sn）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "sn-alpha-diamond:atom:1",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "sn-alpha-diamond:atom:2",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 5.219322871790491e-16,
+        "y": 3.2456,
+        "z": 3.2456
+      },
+      {
+        "id": "sn-alpha-diamond:atom:3",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 3.2456,
+        "y": 0.0,
+        "z": 3.2456
+      },
+      {
+        "id": "sn-alpha-diamond:atom:4",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 3.2456000000000005,
+        "y": 3.2456,
+        "z": 3.9747136513126495e-16
+      },
+      {
+        "id": "sn-alpha-diamond:atom:5",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 4.868400000000001,
+        "y": 4.8684,
+        "z": 1.6228000000000007
+      },
+      {
+        "id": "sn-alpha-diamond:atom:6",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 4.8684,
+        "y": 1.6228,
+        "z": 4.8684
+      },
+      {
+        "id": "sn-alpha-diamond:atom:7",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 1.622800000000001,
+        "y": 4.8684,
+        "z": 4.8684
+      },
+      {
+        "id": "sn-alpha-diamond:atom:8",
+        "sourceIndex": 1,
+        "element": "Sn",
+        "x": 1.6228000000000002,
+        "y": 1.6228,
+        "z": 1.6228000000000002
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:9008568; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "sn-alpha-diamond:atom:1",
+      "sn-alpha-diamond:atom:2",
+      "sn-alpha-diamond:atom:3",
+      "sn-alpha-diamond:atom:4",
+      "sn-alpha-diamond:atom:5",
+      "sn-alpha-diamond:atom:6",
+      "sn-alpha-diamond:atom:7",
+      "sn-alpha-diamond:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          6.4912,
+          0.0,
+          3.9747136513126495e-16
+        ],
+        [
+          1.0438645743580983e-15,
+          6.4912,
+          3.9747136513126495e-16
+        ],
+        [
+          0.0,
+          0.0,
+          6.4912
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:9008568 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

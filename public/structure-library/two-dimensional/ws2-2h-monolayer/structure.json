@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "entryId": "ws2-2h-monolayer",
+  "structure": {
+    "id": "ws2-2h-monolayer",
+    "name": "2H-WS2单层",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "ws2-2h-monolayer:atom:1",
+        "sourceIndex": 1,
+        "element": "W",
+        "x": -4.864859756237121e-16,
+        "y": 1.820500868808727,
+        "z": 11.571182499999999
+      },
+      {
+        "id": "ws2-2h-monolayer:atom:2",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.5766000000000002,
+        "y": 0.9102504344043632,
+        "z": 10.0
+      },
+      {
+        "id": "ws2-2h-monolayer:atom:3",
+        "sourceIndex": 2,
+        "element": "S",
+        "x": 1.5765999999999996,
+        "y": 0.9102504344043632,
+        "z": 13.142365
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9012191; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown.",
+      "Derived one layer from a bulk layered crystal; not an experimentally isolated monolayer."
+    ],
+    "sourceAtomIds": [
+      "ws2-2h-monolayer:atom:1",
+      "ws2-2h-monolayer:atom:2",
+      "ws2-2h-monolayer:atom:3"
+    ],
+    "dimension": 2,
+    "cell": {
+      "vectors": [
+        [
+          3.1532,
+          0.0,
+          1.930778143535717e-16
+        ],
+        [
+          -1.5765999999999996,
+          2.730751303213092,
+          1.930778143535717e-16
+        ],
+        [
+          -1.4170611610974867e-15,
+          -2.4544219284533922e-15,
+          23.142364999999998
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        false
+      ],
+      "pbcProvenance": {
+        "kind": "user-confirmed",
+        "evidence": "User-approved v0.39 TTF model: COD bulk record 9012191 is retained verbatim at sourcePath; this single-layer derivative retains the source in-plane vectors, constructs a perpendicular c vector with a 20.0 Å vacuum gap, and sets PBC [true, true, false]. The isolated monolayer is derived, not an experimental isolated-layer measurement."
+      }
+    }
+  }
+}

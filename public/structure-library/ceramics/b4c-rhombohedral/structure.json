@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 1,
+  "entryId": "b4c-rhombohedral",
+  "structure": {
+    "id": "b4c-rhombohedral",
+    "name": "碳化硼（菱方）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "b4c-rhombohedral:atom:1",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": -1.9095999999999997,
+        "y": 4.335669581506414,
+        "z": 1.3695600000000003
+      },
+      {
+        "id": "b4c-rhombohedral:atom:2",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 0.0,
+        "y": 1.0281453593728855,
+        "z": 1.3695599999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:3",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 1.9096000000000002,
+        "y": 4.335669581506414,
+        "z": 1.3695600000000006
+      },
+      {
+        "id": "b4c-rhombohedral:atom:4",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 4.7096,
+        "y": 0.5140726796864428,
+        "z": 10.75044
+      },
+      {
+        "id": "b4c-rhombohedral:atom:5",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 2.8000000000000007,
+        "y": 3.821596901819971,
+        "z": 10.75044
+      },
+      {
+        "id": "b4c-rhombohedral:atom:6",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 0.8903999999999999,
+        "y": 0.5140726796864428,
+        "z": 10.75044
+      },
+      {
+        "id": "b4c-rhombohedral:atom:7",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 3.6903999999999995,
+        "y": 1.1025080740445095,
+        "z": 5.409559999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:8",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 2.8,
+        "y": 2.6447261131038378,
+        "z": 5.40956
+      },
+      {
+        "id": "b4c-rhombohedral:atom:9",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 1.9096,
+        "y": 1.1025080740445095,
+        "z": 5.409559999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:10",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 1.9096000000000002,
+        "y": 2.130653433417395,
+        "z": 2.67044
+      },
+      {
+        "id": "b4c-rhombohedral:atom:11",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 2.8,
+        "y": 0.5884353943580666,
+        "z": 2.67044
+      },
+      {
+        "id": "b4c-rhombohedral:atom:12",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 3.6903999999999995,
+        "y": 2.130653433417395,
+        "z": 2.67044
+      },
+      {
+        "id": "b4c-rhombohedral:atom:13",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 0.8903999999999999,
+        "y": 2.7190888277754617,
+        "z": 9.449559999999998
+      },
+      {
+        "id": "b4c-rhombohedral:atom:14",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 4.440892098500626e-16,
+        "y": 4.26130686683479,
+        "z": 9.449559999999998
+      },
+      {
+        "id": "b4c-rhombohedral:atom:15",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": -0.8903999999999997,
+        "y": 2.7190888277754617,
+        "z": 9.449559999999998
+      },
+      {
+        "id": "b4c-rhombohedral:atom:16",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": -0.8903999999999994,
+        "y": 3.7472341871483468,
+        "z": 6.710439999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:17",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 2.220446049250313e-16,
+        "y": 2.205016148089019,
+        "z": 6.710439999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:18",
+        "sourceIndex": 1,
+        "element": "B",
+        "x": 0.8904000000000005,
+        "y": 3.7472341871483468,
+        "z": 6.71044
+      },
+      {
+        "id": "b4c-rhombohedral:atom:19",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": -1.3997199999999996,
+        "y": 4.041290226252007,
+        "z": 4.3632
+      },
+      {
+        "id": "b4c-rhombohedral:atom:20",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 2.220446049250313e-16,
+        "y": 1.6169040698816983,
+        "z": 4.3632
+      },
+      {
+        "id": "b4c-rhombohedral:atom:21",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.3997200000000007,
+        "y": 4.041290226252007,
+        "z": 4.363200000000001
+      },
+      {
+        "id": "b4c-rhombohedral:atom:22",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 4.19972,
+        "y": 0.8084520349408492,
+        "z": 7.756799999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:23",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 2.8,
+        "y": 3.2328381913111586,
+        "z": 7.7568
+      },
+      {
+        "id": "b4c-rhombohedral:atom:24",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.40028,
+        "y": 0.8084520349408492,
+        "z": 7.756799999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:25",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 4.200279999999999,
+        "y": 0.808128718790103,
+        "z": 8.4032
+      },
+      {
+        "id": "b4c-rhombohedral:atom:26",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 2.7999999999999994,
+        "y": 3.2334848236126503,
+        "z": 8.4032
+      },
+      {
+        "id": "b4c-rhombohedral:atom:27",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.3997199999999999,
+        "y": 0.808128718790103,
+        "z": 8.4032
+      },
+      {
+        "id": "b4c-rhombohedral:atom:28",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.3997200000000003,
+        "y": 2.4250327886718015,
+        "z": 11.7968
+      },
+      {
+        "id": "b4c-rhombohedral:atom:29",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 4.440892098500626e-16,
+        "y": 4.84941894504211,
+        "z": 11.7968
+      },
+      {
+        "id": "b4c-rhombohedral:atom:30",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": -1.3997199999999996,
+        "y": 2.4250327886718015,
+        "z": 11.7968
+      },
+      {
+        "id": "b4c-rhombohedral:atom:31",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.40028,
+        "y": 2.424709472521055,
+        "z": 0.3231999999999997
+      },
+      {
+        "id": "b4c-rhombohedral:atom:32",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 2.8,
+        "y": 0.00032331615074615485,
+        "z": 0.32319999999999954
+      },
+      {
+        "id": "b4c-rhombohedral:atom:33",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 4.19972,
+        "y": 2.424709472521055,
+        "z": 0.3231999999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:34",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": -1.4002799999999995,
+        "y": 4.041613542402754,
+        "z": 3.7168
+      },
+      {
+        "id": "b4c-rhombohedral:atom:35",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.1102230246251565e-16,
+        "y": 1.616257437580206,
+        "z": 3.7167999999999997
+      },
+      {
+        "id": "b4c-rhombohedral:atom:36",
+        "sourceIndex": 3,
+        "element": "B",
+        "x": 1.40028,
+        "y": 4.041613542402754,
+        "z": 3.7168
+      },
+      {
+        "id": "b4c-rhombohedral:atom:37",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 4.6662
+      },
+      {
+        "id": "b4c-rhombohedral:atom:38",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 7.453799999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:39",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.8,
+        "y": 1.6165807537309522,
+        "z": 8.706199999999999
+      },
+      {
+        "id": "b4c-rhombohedral:atom:40",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.8,
+        "y": 1.6165807537309522,
+        "z": 11.493799999999998
+      },
+      {
+        "id": "b4c-rhombohedral:atom:41",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.220446049250313e-16,
+        "y": 3.2331615074619044,
+        "z": 0.6262000000000013
+      },
+      {
+        "id": "b4c-rhombohedral:atom:42",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.220446049250313e-16,
+        "y": 3.2331615074619044,
+        "z": 3.4137999999999997
+      },
+      {
+        "id": "b4c-rhombohedral:atom:43",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 6.06
+      },
+      {
+        "id": "b4c-rhombohedral:atom:44",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 2.8,
+        "y": 1.6165807537309522,
+        "z": 10.099999999999998
+      },
+      {
+        "id": "b4c-rhombohedral:atom:45",
+        "sourceIndex": 4,
+        "element": "C",
+        "x": 2.220446049250313e-16,
+        "y": 3.2331615074619044,
+        "z": 2.0199999999999987
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record COD:4124697; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "b4c-rhombohedral:atom:1",
+      "b4c-rhombohedral:atom:2",
+      "b4c-rhombohedral:atom:3",
+      "b4c-rhombohedral:atom:4",
+      "b4c-rhombohedral:atom:5",
+      "b4c-rhombohedral:atom:6",
+      "b4c-rhombohedral:atom:7",
+      "b4c-rhombohedral:atom:8",
+      "b4c-rhombohedral:atom:9",
+      "b4c-rhombohedral:atom:10",
+      "b4c-rhombohedral:atom:11",
+      "b4c-rhombohedral:atom:12",
+      "b4c-rhombohedral:atom:13",
+      "b4c-rhombohedral:atom:14",
+      "b4c-rhombohedral:atom:15",
+      "b4c-rhombohedral:atom:16",
+      "b4c-rhombohedral:atom:17",
+      "b4c-rhombohedral:atom:18",
+      "b4c-rhombohedral:atom:19",
+      "b4c-rhombohedral:atom:20",
+      "b4c-rhombohedral:atom:21",
+      "b4c-rhombohedral:atom:22",
+      "b4c-rhombohedral:atom:23",
+      "b4c-rhombohedral:atom:24",
+      "b4c-rhombohedral:atom:25",
+      "b4c-rhombohedral:atom:26",
+      "b4c-rhombohedral:atom:27",
+      "b4c-rhombohedral:atom:28",
+      "b4c-rhombohedral:atom:29",
+      "b4c-rhombohedral:atom:30",
+      "b4c-rhombohedral:atom:31",
+      "b4c-rhombohedral:atom:32",
+      "b4c-rhombohedral:atom:33",
+      "b4c-rhombohedral:atom:34",
+      "b4c-rhombohedral:atom:35",
+      "b4c-rhombohedral:atom:36",
+      "b4c-rhombohedral:atom:37",
+      "b4c-rhombohedral:atom:38",
+      "b4c-rhombohedral:atom:39",
+      "b4c-rhombohedral:atom:40",
+      "b4c-rhombohedral:atom:41",
+      "b4c-rhombohedral:atom:42",
+      "b4c-rhombohedral:atom:43",
+      "b4c-rhombohedral:atom:44",
+      "b4c-rhombohedral:atom:45"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.6,
+          0.0,
+          3.429011037612589e-16
+        ],
+        [
+          -2.7999999999999994,
+          4.849742261192857,
+          3.429011037612589e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.12
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record COD:4124697 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

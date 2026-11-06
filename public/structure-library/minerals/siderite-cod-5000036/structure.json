@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "entryId": "siderite-cod-5000036",
+  "structure": {
+    "id": "siderite-cod-5000036",
+    "name": "菱铁矿",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "siderite-cod-5000036:atom:1",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "siderite-cod-5000036:atom:2",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 7.6898
+      },
+      {
+        "id": "siderite-cod-5000036:atom:3",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 4.440892098500626e-16,
+        "y": 2.7086965229300484,
+        "z": 10.253066666666665
+      },
+      {
+        "id": "siderite-cod-5000036:atom:4",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.3458000000000006,
+        "y": 1.3543482614650242,
+        "z": 5.126533333333333
+      },
+      {
+        "id": "siderite-cod-5000036:atom:5",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 4.440892098500626e-16,
+        "y": 2.7086965229300484,
+        "z": 2.563266666666667
+      },
+      {
+        "id": "siderite-cod-5000036:atom:6",
+        "sourceIndex": 1,
+        "element": "Fe",
+        "x": 2.3458000000000006,
+        "y": 1.3543482614650242,
+        "z": 12.816333333333334
+      },
+      {
+        "id": "siderite-cod-5000036:atom:7",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 3.8449
+      },
+      {
+        "id": "siderite-cod-5000036:atom:8",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 11.5347
+      },
+      {
+        "id": "siderite-cod-5000036:atom:9",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 4.440892098500626e-16,
+        "y": 2.7086965229300484,
+        "z": 14.097966666666666
+      },
+      {
+        "id": "siderite-cod-5000036:atom:10",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.3458000000000006,
+        "y": 1.3543482614650242,
+        "z": 8.971433333333332
+      },
+      {
+        "id": "siderite-cod-5000036:atom:11",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 4.440892098500626e-16,
+        "y": 2.7086965229300484,
+        "z": 6.408166666666666
+      },
+      {
+        "id": "siderite-cod-5000036:atom:12",
+        "sourceIndex": 2,
+        "element": "C",
+        "x": 2.3458000000000006,
+        "y": 1.3543482614650242,
+        "z": 1.2816333333333358
+      },
+      {
+        "id": "siderite-cod-5000036:atom:13",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.2867651320000002,
+        "y": 0.0,
+        "z": 3.8449
+      },
+      {
+        "id": "siderite-cod-5000036:atom:14",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": -0.643382566,
+        "y": 1.1143712930160368,
+        "z": 3.8449
+      },
+      {
+        "id": "siderite-cod-5000036:atom:15",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.7024174340000002,
+        "y": 2.9486734913790364,
+        "z": 3.8449000000000004
+      },
+      {
+        "id": "siderite-cod-5000036:atom:16",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": -1.7024174339999998,
+        "y": 2.9486734913790364,
+        "z": 11.5347
+      },
+      {
+        "id": "siderite-cod-5000036:atom:17",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.6433825660000002,
+        "y": 1.1143712930160368,
+        "z": 11.5347
+      },
+      {
+        "id": "siderite-cod-5000036:atom:18",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.404834868,
+        "y": 0.0,
+        "z": 11.5347
+      },
+      {
+        "id": "siderite-cod-5000036:atom:19",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.2867651320000002,
+        "y": 2.7086965229300484,
+        "z": 14.097966666666666
+      },
+      {
+        "id": "siderite-cod-5000036:atom:20",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 3.6325651320000008,
+        "y": 1.3543482614650242,
+        "z": 8.971433333333332
+      },
+      {
+        "id": "siderite-cod-5000036:atom:21",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": -0.6433825659999997,
+        "y": 3.8230678159460854,
+        "z": 14.097966666666666
+      },
+      {
+        "id": "siderite-cod-5000036:atom:22",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.7024174340000005,
+        "y": 2.4687195544810607,
+        "z": 8.971433333333332
+      },
+      {
+        "id": "siderite-cod-5000036:atom:23",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": -0.6433825659999999,
+        "y": 1.5943252299140118,
+        "z": 14.097966666666666
+      },
+      {
+        "id": "siderite-cod-5000036:atom:24",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.702417434,
+        "y": 0.23997696844898753,
+        "z": 8.971433333333332
+      },
+      {
+        "id": "siderite-cod-5000036:atom:25",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.6433825660000003,
+        "y": 1.5943252299140118,
+        "z": 6.408166666666666
+      },
+      {
+        "id": "siderite-cod-5000036:atom:26",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.989182566,
+        "y": 0.23997696844898753,
+        "z": 1.2816333333333358
+      },
+      {
+        "id": "siderite-cod-5000036:atom:27",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.6433825660000001,
+        "y": 3.8230678159460854,
+        "z": 6.408166666666667
+      },
+      {
+        "id": "siderite-cod-5000036:atom:28",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.9891825660000007,
+        "y": 2.4687195544810607,
+        "z": 1.281633333333336
+      },
+      {
+        "id": "siderite-cod-5000036:atom:29",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": -1.2867651319999998,
+        "y": 2.7086965229300484,
+        "z": 6.408166666666666
+      },
+      {
+        "id": "siderite-cod-5000036:atom:30",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.0590348680000001,
+        "y": 1.3543482614650242,
+        "z": 1.2816333333333358
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 5000036; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "siderite-cod-5000036:atom:1",
+      "siderite-cod-5000036:atom:2",
+      "siderite-cod-5000036:atom:3",
+      "siderite-cod-5000036:atom:4",
+      "siderite-cod-5000036:atom:5",
+      "siderite-cod-5000036:atom:6",
+      "siderite-cod-5000036:atom:7",
+      "siderite-cod-5000036:atom:8",
+      "siderite-cod-5000036:atom:9",
+      "siderite-cod-5000036:atom:10",
+      "siderite-cod-5000036:atom:11",
+      "siderite-cod-5000036:atom:12",
+      "siderite-cod-5000036:atom:13",
+      "siderite-cod-5000036:atom:14",
+      "siderite-cod-5000036:atom:15",
+      "siderite-cod-5000036:atom:16",
+      "siderite-cod-5000036:atom:17",
+      "siderite-cod-5000036:atom:18",
+      "siderite-cod-5000036:atom:19",
+      "siderite-cod-5000036:atom:20",
+      "siderite-cod-5000036:atom:21",
+      "siderite-cod-5000036:atom:22",
+      "siderite-cod-5000036:atom:23",
+      "siderite-cod-5000036:atom:24",
+      "siderite-cod-5000036:atom:25",
+      "siderite-cod-5000036:atom:26",
+      "siderite-cod-5000036:atom:27",
+      "siderite-cod-5000036:atom:28",
+      "siderite-cod-5000036:atom:29",
+      "siderite-cod-5000036:atom:30"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.6916,
+          0.0,
+          2.8727764614398615e-16
+        ],
+        [
+          -2.3457999999999997,
+          4.063044784395073,
+          2.8727764614398615e-16
+        ],
+        [
+          0.0,
+          0.0,
+          15.3796
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 5000036 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

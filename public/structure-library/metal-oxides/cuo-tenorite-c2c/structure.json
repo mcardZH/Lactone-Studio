@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "entryId": "cuo-tenorite-c2c",
+  "structure": {
+    "id": "cuo-tenorite-c2c",
+    "name": "黑铜矿型氧化铜（C2/c）",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "cuo-tenorite-c2c:atom:1",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 1.154731266763929,
+        "y": 0.85565,
+        "z": -0.19406456962251603
+      },
+      {
+        "id": "cuo-tenorite-c2c:atom:2",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 3.4641938002917865,
+        "y": 2.5669500000000003,
+        "z": -0.5821937088675482
+      },
+      {
+        "id": "cuo-tenorite-c2c:atom:3",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 1.1547312667639291,
+        "y": 2.5669500000000003,
+        "z": 2.370335430377484
+      },
+      {
+        "id": "cuo-tenorite-c2c:atom:4",
+        "sourceIndex": 1,
+        "element": "Cu",
+        "x": 3.464193800291786,
+        "y": 0.85565,
+        "z": 1.9822062911324516
+      },
+      {
+        "id": "cuo-tenorite-c2c:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.3028571069997144e-16,
+        "y": 1.43201584,
+        "z": 1.2822
+      },
+      {
+        "id": "cuo-tenorite-c2c:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.309462533527858,
+        "y": 3.14331584,
+        "z": 0.894070860754968
+      },
+      {
+        "id": "cuo-tenorite-c2c:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.2011034737835417e-16,
+        "y": 1.99058416,
+        "z": 3.8466
+      },
+      {
+        "id": "cuo-tenorite-c2c:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.3094625335278574,
+        "y": 0.27928416,
+        "z": 3.458470860754968
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9014580; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "cuo-tenorite-c2c:atom:1",
+      "cuo-tenorite-c2c:atom:2",
+      "cuo-tenorite-c2c:atom:3",
+      "cuo-tenorite-c2c:atom:4",
+      "cuo-tenorite-c2c:atom:5",
+      "cuo-tenorite-c2c:atom:6",
+      "cuo-tenorite-c2c:atom:7",
+      "cuo-tenorite-c2c:atom:8"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.618925067055715,
+          0.0,
+          -0.7762582784900643
+        ],
+        [
+          5.503960580783256e-16,
+          3.4226,
+          2.0957380673808656e-16
+        ],
+        [
+          0.0,
+          0.0,
+          5.1288
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9014580 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

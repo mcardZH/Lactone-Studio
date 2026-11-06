@@ -1,0 +1,44 @@
+/* Numeric tables own their toolbar and data frame. Legacy orbital/Hirshfeld tables
+   keep their original stylesheet and interaction contract. */
+.scientific-data-table[data-variant=numeric]{--scientific-table-font-size:var(--ui-secondary-size,14px);position:relative;display:flex;flex-direction:column;width:100%;max-width:100%;max-height:none;min-width:0;min-height:0;box-sizing:border-box;outline:none;border:0;border-radius:0;background:transparent;vertical-align:top;margin:0;font:400 var(--scientific-table-font-size)/1.4286 "Segoe UI","Microsoft YaHei",sans-serif;color:var(--ui-control-text,#294454);font-variant-numeric:tabular-nums}
+.scientific-data-table[data-variant=numeric] .scientific-table-frame{position:relative;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid var(--ui-control-border,#cadfd1);border-radius:4px;background:#fff;align-self:flex-start}
+.scientific-data-table[data-variant=numeric] .scientific-table-viewport{overflow:scroll;min-height:0;min-width:0;flex:none}
+.scientific-data-table[data-variant=numeric] .scientific-table.analysis-comparison-table{width:max-content;table-layout:auto;margin:0;border-collapse:collapse;box-sizing:border-box;user-select:none;font:inherit;font-variant-numeric:tabular-nums}
+.scientific-data-table[data-variant=numeric] .scientific-table.analysis-comparison-table :is(th,td){position:relative;box-sizing:border-box;min-width:48px;height:32px;padding:3px 8px;border:1px solid var(--ui-control-border,#cadfd1);text-align:center;vertical-align:middle;white-space:nowrap;overflow:visible;text-overflow:clip;font:inherit}
+.scientific-data-table[data-variant=numeric] .scientific-table.analysis-comparison-table th{font-weight:500}
+.scientific-data-table[data-variant=numeric] .scientific-table.analysis-comparison-table tbody tr[style] td{height:inherit}
+.scientific-data-table[data-variant=numeric][data-layout=metrics] .scientific-table :is(th,td):first-child{white-space:normal;overflow-wrap:normal;max-width:none}
+.scientific-data-table[data-variant=numeric] .scientific-cell-content{display:inline-block;max-width:none}
+.scientific-data-table[data-variant=numeric][data-layout=metrics] td:first-child .scientific-cell-content{white-space:normal}
+.scientific-data-table[data-variant=numeric] td[data-missing=true]{color:var(--ui-control-muted,#607a6e)}
+.scientific-data-table[data-variant=numeric] tbody tr:hover{background:var(--ui-control-hover-bg,#edf7f1)}
+.scientific-data-table[data-variant=numeric] :is(td[data-cell-selected=true],th[data-column-selected=true]){background:var(--ui-control-selected-bg,#e1f1e7)}
+.scientific-data-table[data-variant=numeric] td[data-cell-selected=true]::after{content:'';position:absolute;inset:0;pointer-events:none;border:0 solid var(--ui-control-accent,#548f74)}
+.scientific-data-table[data-variant=numeric] td[data-selection-edge~=top]::after{border-top-width:2px}
+.scientific-data-table[data-variant=numeric] td[data-selection-edge~=bottom]::after{border-bottom-width:2px}
+.scientific-data-table[data-variant=numeric] td[data-selection-edge~=left]::after{border-left-width:2px}
+.scientific-data-table[data-variant=numeric] td[data-selection-edge~=right]::after{border-right-width:2px}
+.scientific-data-table[data-variant=numeric] tbody tr[aria-selected=true]{background:#edf7f1;outline:1px solid var(--ui-control-accent,#548f74);outline-offset:-1px}
+.scientific-data-table[data-variant=numeric] :is(th[data-column],td[data-column]){cursor:cell}
+.scientific-data-table[data-variant=numeric] .scientific-table-title{font:inherit;font-weight:600;margin:0 0 6px;overflow-wrap:anywhere}
+.scientific-data-table[data-variant=numeric] .scientific-table-heading,.scientific-data-table[data-variant=numeric] .scientific-table-unit{display:inline}
+.scientific-data-table[data-variant=numeric] .scientific-table-unit{font:inherit}
+.scientific-data-table[data-variant=numeric] .scientific-row-action{width:32px;min-width:32px!important;padding:3px 3px!important;text-align:center;vertical-align:middle}
+.scientific-data-table[data-variant=numeric] .scientific-row-action-list{display:inline-flex;align-items:center;justify-content:center;gap:3px}
+.scientific-data-table[data-variant=numeric] .scientific-row-action-button{display:inline-flex;align-items:center;justify-content:center;width:24px;min-width:24px;height:24px;min-height:24px;padding:2px;border:1px solid transparent;border-radius:7px;background:transparent;color:#607569;cursor:pointer}
+.scientific-data-table[data-variant=numeric] .scientific-row-action-button[aria-pressed=true]{background:#e1f1e7;border-color:#76ad94;color:#548f74}
+.scientific-data-table[data-variant=numeric] :is(button,input,select):focus-visible,.scientific-data-table[data-variant=numeric]:focus-visible{outline:2px solid #76ad94;outline-offset:1px}
+.scientific-data-table[data-variant=numeric] .scientific-column-resizer{position:absolute;top:0;bottom:0;right:0;width:6px;cursor:col-resize;touch-action:none;z-index:1}
+.scientific-data-table[data-variant=numeric] .scientific-row-resizer{position:absolute;left:0;right:0;bottom:-3px;height:6px;cursor:row-resize;touch-action:none;z-index:1}
+.scientific-data-table[data-variant=numeric] tbody tr:last-child .scientific-row-resizer{bottom:0}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer{position:absolute;display:block;touch-action:none;z-index:2}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-left,.scientific-data-table[data-variant=numeric] .scientific-table-resizer-right{width:6px;top:3px;bottom:3px;cursor:ew-resize}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-left{left:0}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-right{right:0}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-top,.scientific-data-table[data-variant=numeric] .scientific-table-resizer-bottom{height:6px;left:3px;right:3px;cursor:ns-resize}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-top{top:0}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-bottom{bottom:0}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-corner{right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize}
+.scientific-data-table[data-variant=numeric] .scientific-table-resizer-corner::before{inset:3px;border-right:2px solid #61967c;border-bottom:2px solid #61967c;background:transparent;border-radius:0;opacity:.75}
+
+.scientific-data-table[data-variant=numeric] th.scientific-row-action{padding:3px 1px!important}

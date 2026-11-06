@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "entryId": "mineral-mgsio3-cod-9005757",
+  "structure": {
+    "id": "mineral-mgsio3-cod-9005757",
+    "name": "MgSiO3",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:1",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 4.6557200000000005,
+        "y": 0.31077899999999997,
+        "z": 1.7255000000000003
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:2",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 0.12428000000000086,
+        "y": 4.622221,
+        "z": 5.1765
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:3",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 2.2657200000000004,
+        "y": 2.1557209999999998,
+        "z": 5.1765
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:4",
+        "sourceIndex": 1,
+        "element": "Mg",
+        "x": 2.5142800000000007,
+        "y": 2.7772789999999996,
+        "z": 1.7255000000000003
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:5",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 3.9664345154274243e-16,
+        "y": 2.4665,
+        "z": 1.5102956650484732e-16
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:6",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 3.9664345154274243e-16,
+        "y": 2.4665,
+        "z": 3.451
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:7",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 2.39,
+        "y": 0.0,
+        "z": 3.451
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:8",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 2.39,
+        "y": 0.0,
+        "z": 1.4634529249810872e-16
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:9",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 0.4588800000000004,
+        "y": 2.3530409999999997,
+        "z": 1.7255000000000003
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:10",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 4.3211200000000005,
+        "y": 2.579959,
+        "z": 5.1765
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:11",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 2.84888,
+        "y": 0.1134590000000001,
+        "z": 5.1765
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:12",
+        "sourceIndex": 3,
+        "element": "O",
+        "x": 1.9311200000000008,
+        "y": 4.819541,
+        "z": 1.7255000000000005
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:13",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.3268800000000005,
+        "y": 1.4355029999999998,
+        "z": 0.3865120000000003
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:14",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.3268800000000005,
+        "y": 1.4355029999999998,
+        "z": 3.0644880000000003
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:15",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.453120000000001,
+        "y": 3.497497,
+        "z": 3.8375120000000007
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:16",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.9368799999999999,
+        "y": 1.0309970000000002,
+        "z": 3.8375120000000003
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:17",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.8431200000000008,
+        "y": 3.9020029999999997,
+        "z": 3.0644880000000003
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:18",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 3.8431200000000008,
+        "y": 3.9020029999999997,
+        "z": 0.3865120000000005
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:19",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 0.9368799999999999,
+        "y": 1.0309970000000002,
+        "z": 6.5154879999999995
+      },
+      {
+        "id": "mineral-mgsio3-cod-9005757:atom:20",
+        "sourceIndex": 4,
+        "element": "O",
+        "x": 1.453120000000001,
+        "y": 3.497497,
+        "z": 6.5154879999999995
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 9005757; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "mineral-mgsio3-cod-9005757:atom:1",
+      "mineral-mgsio3-cod-9005757:atom:2",
+      "mineral-mgsio3-cod-9005757:atom:3",
+      "mineral-mgsio3-cod-9005757:atom:4",
+      "mineral-mgsio3-cod-9005757:atom:5",
+      "mineral-mgsio3-cod-9005757:atom:6",
+      "mineral-mgsio3-cod-9005757:atom:7",
+      "mineral-mgsio3-cod-9005757:atom:8",
+      "mineral-mgsio3-cod-9005757:atom:9",
+      "mineral-mgsio3-cod-9005757:atom:10",
+      "mineral-mgsio3-cod-9005757:atom:11",
+      "mineral-mgsio3-cod-9005757:atom:12",
+      "mineral-mgsio3-cod-9005757:atom:13",
+      "mineral-mgsio3-cod-9005757:atom:14",
+      "mineral-mgsio3-cod-9005757:atom:15",
+      "mineral-mgsio3-cod-9005757:atom:16",
+      "mineral-mgsio3-cod-9005757:atom:17",
+      "mineral-mgsio3-cod-9005757:atom:18",
+      "mineral-mgsio3-cod-9005757:atom:19",
+      "mineral-mgsio3-cod-9005757:atom:20"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.78,
+          0.0,
+          2.9269058499621743e-16
+        ],
+        [
+          7.932869030854849e-16,
+          4.933,
+          3.0205913300969465e-16
+        ],
+        [
+          0.0,
+          0.0,
+          6.902
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 9005757 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

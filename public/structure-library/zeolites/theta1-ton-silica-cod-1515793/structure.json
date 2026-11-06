@@ -1,0 +1,697 @@
+{
+  "schemaVersion": 1,
+  "entryId": "theta1-ton-silica-cod-1515793",
+  "structure": {
+    "id": "theta1-ton-silica-cod-1515793",
+    "name": "Theta-1（TON）纯硅沸石",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:1",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 2.8435968000000007,
+        "y": 5.016437400000001,
+        "z": 3.8374992000000003
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:2",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 10.980403200000001,
+        "y": 12.4035626,
+        "z": 1.3114992000000014
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:3",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 10.9804032,
+        "y": 5.016437400000001,
+        "z": 3.8374992000000008
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:4",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 2.8435968000000016,
+        "y": 12.4035626,
+        "z": 1.311499200000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:5",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 9.755596800000001,
+        "y": 13.726437400000002,
+        "z": 3.837499200000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:6",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 4.0684032000000006,
+        "y": 3.6935626000000004,
+        "z": 1.3114992000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:7",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 4.068403200000001,
+        "y": 13.726437400000002,
+        "z": 3.8374992000000008
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:8",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 9.7555968,
+        "y": 3.6935626000000004,
+        "z": 1.311499200000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:9",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 6.289029977128894e-16,
+        "y": 3.9107900000000004,
+        "z": 4.3624019999999994
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:10",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 2.1724466580238118e-15,
+        "y": 13.509210000000001,
+        "z": 1.8364020000000016
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:11",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 6.912000000000002,
+        "y": 12.620790000000001,
+        "z": 4.362402
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:12",
+        "sourceIndex": 2,
+        "element": "Si",
+        "x": 6.912000000000001,
+        "y": 4.7992099999999995,
+        "z": 1.8364020000000014
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:13",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 3.412043880687302e-16,
+        "y": 2.1217560000000004,
+        "z": 1.8449904000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:14",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 2.460145267667971e-15,
+        "y": 15.298244,
+        "z": 4.3709904
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:15",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 6.912000000000002,
+        "y": 10.831756000000002,
+        "z": 1.844990400000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:16",
+        "sourceIndex": 3,
+        "element": "Si",
+        "x": 6.912000000000001,
+        "y": 6.588244,
+        "z": 4.3709904
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:17",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 2.8435968,
+        "y": 0.8445216000000001,
+        "z": 1.7025240000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:18",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 10.980403200000003,
+        "y": 16.5754784,
+        "z": 4.228524000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:19",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 10.9804032,
+        "y": 0.8445216000000001,
+        "z": 1.7025240000000006
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:20",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 2.8435968000000025,
+        "y": 16.5754784,
+        "z": 4.228524
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:21",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 9.755596800000001,
+        "y": 9.554521600000001,
+        "z": 1.702524000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:22",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 4.0684032000000006,
+        "y": 7.865478400000001,
+        "z": 4.228524
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:23",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 4.068403200000001,
+        "y": 9.554521600000001,
+        "z": 1.7025240000000008
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:24",
+        "sourceIndex": 4,
+        "element": "Si",
+        "x": 9.755596800000001,
+        "y": 7.865478400000001,
+        "z": 4.228524
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:25",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.157401600000001,
+        "y": 6.6004380000000005,
+        "z": 3.94056
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:26",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 10.666598400000003,
+        "y": 10.819562000000001,
+        "z": 1.4145600000000014
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:27",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 10.666598400000003,
+        "y": 6.6004380000000005,
+        "z": 3.9405600000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:28",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.157401600000002,
+        "y": 10.819562000000001,
+        "z": 1.414560000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:29",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 10.0694016,
+        "y": 15.310438000000001,
+        "z": 3.940560000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:30",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.7545984000000003,
+        "y": 2.109562,
+        "z": 1.4145600000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:31",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 3.7545984000000026,
+        "y": 15.310438000000001,
+        "z": 3.940560000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:32",
+        "sourceIndex": 5,
+        "element": "O",
+        "x": 10.069401599999999,
+        "y": 2.109562,
+        "z": 1.4145600000000007
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:33",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.165696000000001,
+        "y": 4.504812,
+        "z": 2.364336
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:34",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 10.658304000000001,
+        "y": 12.915188000000002,
+        "z": 4.890336000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:35",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 10.658304,
+        "y": 4.504812,
+        "z": 2.3643360000000007
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:36",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.1656960000000023,
+        "y": 12.915188000000002,
+        "z": 4.8903360000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:37",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 10.077696000000001,
+        "y": 13.214812,
+        "z": 2.364336000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:38",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.746304000000001,
+        "y": 4.205188000000001,
+        "z": 4.8903360000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:39",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 3.7463040000000025,
+        "y": 13.214812,
+        "z": 2.3643360000000007
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:40",
+        "sourceIndex": 6,
+        "element": "O",
+        "x": 10.077696,
+        "y": 4.205188000000001,
+        "z": 4.8903360000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:41",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 1.262131200000001,
+        "y": 4.860180000000001,
+        "z": 4.137587999999999
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:42",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 12.561868800000001,
+        "y": 12.55982,
+        "z": 1.6115880000000011
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:43",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 12.5618688,
+        "y": 4.860180000000001,
+        "z": 4.137588
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:44",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 1.262131200000002,
+        "y": 12.55982,
+        "z": 1.6115880000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:45",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 8.174131200000001,
+        "y": 13.570180000000002,
+        "z": 4.137588
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:46",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 5.649868800000001,
+        "y": 3.84982,
+        "z": 1.6115880000000002
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:47",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 5.649868800000002,
+        "y": 13.570180000000002,
+        "z": 4.137588
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:48",
+        "sourceIndex": 7,
+        "element": "O",
+        "x": 8.1741312,
+        "y": 3.84982,
+        "z": 1.6115880000000002
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:49",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 5.434618332129201e-16,
+        "y": 3.3794800000000005,
+        "z": 0.8184239999999997
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:50",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 2.257887822523781e-15,
+        "y": 14.040520000000003,
+        "z": 3.344424
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:51",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 6.912000000000002,
+        "y": 12.08948,
+        "z": 0.8184240000000006
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:52",
+        "sourceIndex": 8,
+        "element": "O",
+        "x": 6.912000000000001,
+        "y": 5.330520000000001,
+        "z": 3.344424
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:53",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 4.2776609243099425e-16,
+        "y": 2.6600340000000005,
+        "z": 3.38484
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:54",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 2.3735835633057066e-15,
+        "y": 14.759966,
+        "z": 0.8588400000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:55",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 6.912000000000002,
+        "y": 11.370034000000002,
+        "z": 3.3848400000000014
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:56",
+        "sourceIndex": 9,
+        "element": "O",
+        "x": 6.912000000000001,
+        "y": 6.049966,
+        "z": 0.8588400000000004
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:57",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 1.2925440000000001,
+        "y": 1.2385620000000002,
+        "z": 1.576224
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:58",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 12.531456,
+        "y": 16.181438000000004,
+        "z": 4.102224000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:59",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 12.531455999999999,
+        "y": 1.2385620000000002,
+        "z": 1.5762240000000007
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:60",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 1.2925440000000026,
+        "y": 16.181438000000004,
+        "z": 4.1022240000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:61",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 8.204544000000002,
+        "y": 9.948562,
+        "z": 1.576224000000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:62",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 5.6194560000000005,
+        "y": 7.471438000000001,
+        "z": 4.1022240000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:63",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 5.619456000000001,
+        "y": 9.948562,
+        "z": 1.5762240000000007
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:64",
+        "sourceIndex": 10,
+        "element": "O",
+        "x": 8.204544000000002,
+        "y": 7.471438000000001,
+        "z": 4.1022240000000005
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:65",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 3.179520000000003,
+        "y": 17.104698000000003,
+        "z": 0.6613068000000011
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:66",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.64448,
+        "y": 0.3153020000000001,
+        "z": 3.187306800000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:67",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.644480000000003,
+        "y": 17.104698000000003,
+        "z": 0.6613068000000015
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:68",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 3.17952,
+        "y": 0.3153020000000001,
+        "z": 3.1873068
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:69",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.091520000000001,
+        "y": 8.394698,
+        "z": 0.661306800000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:70",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 3.7324800000000016,
+        "y": 9.025302000000002,
+        "z": 3.187306800000001
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:71",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 3.7324800000000016,
+        "y": 8.394698,
+        "z": 0.6613068000000006
+      },
+      {
+        "id": "theta1-ton-silica-cod-1515793:atom:72",
+        "sourceIndex": 11,
+        "element": "O",
+        "x": 10.091520000000001,
+        "y": 9.025302000000002,
+        "z": 3.1873068000000013
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1515793; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "theta1-ton-silica-cod-1515793:atom:1",
+      "theta1-ton-silica-cod-1515793:atom:2",
+      "theta1-ton-silica-cod-1515793:atom:3",
+      "theta1-ton-silica-cod-1515793:atom:4",
+      "theta1-ton-silica-cod-1515793:atom:5",
+      "theta1-ton-silica-cod-1515793:atom:6",
+      "theta1-ton-silica-cod-1515793:atom:7",
+      "theta1-ton-silica-cod-1515793:atom:8",
+      "theta1-ton-silica-cod-1515793:atom:9",
+      "theta1-ton-silica-cod-1515793:atom:10",
+      "theta1-ton-silica-cod-1515793:atom:11",
+      "theta1-ton-silica-cod-1515793:atom:12",
+      "theta1-ton-silica-cod-1515793:atom:13",
+      "theta1-ton-silica-cod-1515793:atom:14",
+      "theta1-ton-silica-cod-1515793:atom:15",
+      "theta1-ton-silica-cod-1515793:atom:16",
+      "theta1-ton-silica-cod-1515793:atom:17",
+      "theta1-ton-silica-cod-1515793:atom:18",
+      "theta1-ton-silica-cod-1515793:atom:19",
+      "theta1-ton-silica-cod-1515793:atom:20",
+      "theta1-ton-silica-cod-1515793:atom:21",
+      "theta1-ton-silica-cod-1515793:atom:22",
+      "theta1-ton-silica-cod-1515793:atom:23",
+      "theta1-ton-silica-cod-1515793:atom:24",
+      "theta1-ton-silica-cod-1515793:atom:25",
+      "theta1-ton-silica-cod-1515793:atom:26",
+      "theta1-ton-silica-cod-1515793:atom:27",
+      "theta1-ton-silica-cod-1515793:atom:28",
+      "theta1-ton-silica-cod-1515793:atom:29",
+      "theta1-ton-silica-cod-1515793:atom:30",
+      "theta1-ton-silica-cod-1515793:atom:31",
+      "theta1-ton-silica-cod-1515793:atom:32",
+      "theta1-ton-silica-cod-1515793:atom:33",
+      "theta1-ton-silica-cod-1515793:atom:34",
+      "theta1-ton-silica-cod-1515793:atom:35",
+      "theta1-ton-silica-cod-1515793:atom:36",
+      "theta1-ton-silica-cod-1515793:atom:37",
+      "theta1-ton-silica-cod-1515793:atom:38",
+      "theta1-ton-silica-cod-1515793:atom:39",
+      "theta1-ton-silica-cod-1515793:atom:40",
+      "theta1-ton-silica-cod-1515793:atom:41",
+      "theta1-ton-silica-cod-1515793:atom:42",
+      "theta1-ton-silica-cod-1515793:atom:43",
+      "theta1-ton-silica-cod-1515793:atom:44",
+      "theta1-ton-silica-cod-1515793:atom:45",
+      "theta1-ton-silica-cod-1515793:atom:46",
+      "theta1-ton-silica-cod-1515793:atom:47",
+      "theta1-ton-silica-cod-1515793:atom:48",
+      "theta1-ton-silica-cod-1515793:atom:49",
+      "theta1-ton-silica-cod-1515793:atom:50",
+      "theta1-ton-silica-cod-1515793:atom:51",
+      "theta1-ton-silica-cod-1515793:atom:52",
+      "theta1-ton-silica-cod-1515793:atom:53",
+      "theta1-ton-silica-cod-1515793:atom:54",
+      "theta1-ton-silica-cod-1515793:atom:55",
+      "theta1-ton-silica-cod-1515793:atom:56",
+      "theta1-ton-silica-cod-1515793:atom:57",
+      "theta1-ton-silica-cod-1515793:atom:58",
+      "theta1-ton-silica-cod-1515793:atom:59",
+      "theta1-ton-silica-cod-1515793:atom:60",
+      "theta1-ton-silica-cod-1515793:atom:61",
+      "theta1-ton-silica-cod-1515793:atom:62",
+      "theta1-ton-silica-cod-1515793:atom:63",
+      "theta1-ton-silica-cod-1515793:atom:64",
+      "theta1-ton-silica-cod-1515793:atom:65",
+      "theta1-ton-silica-cod-1515793:atom:66",
+      "theta1-ton-silica-cod-1515793:atom:67",
+      "theta1-ton-silica-cod-1515793:atom:68",
+      "theta1-ton-silica-cod-1515793:atom:69",
+      "theta1-ton-silica-cod-1515793:atom:70",
+      "theta1-ton-silica-cod-1515793:atom:71",
+      "theta1-ton-silica-cod-1515793:atom:72"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          13.824,
+          0.0,
+          8.464758675706505e-16
+        ],
+        [
+          2.801349655736701e-15,
+          17.42,
+          1.0666673620573448e-15
+        ],
+        [
+          0.0,
+          0.0,
+          5.052
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1515793 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

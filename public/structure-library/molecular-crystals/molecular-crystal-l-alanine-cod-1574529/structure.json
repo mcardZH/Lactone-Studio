@@ -1,0 +1,517 @@
+{
+  "schemaVersion": 1,
+  "entryId": "molecular-crystal-l-alanine-cod-1574529",
+  "structure": {
+    "id": "molecular-crystal-l-alanine-cod-1574529",
+    "name": "L-丙氨酸",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:1",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 4.6490444349999995,
+        "y": 1.8308528062000002,
+        "z": 7.019832603
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:2",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 4.055455565000001,
+        "y": 4.1729471938,
+        "z": 0.8533326030000006
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:3",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 1.1539555650000008,
+        "y": 4.8327528062,
+        "z": 11.479667397
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:4",
+        "sourceIndex": 4,
+        "element": "H",
+        "x": 1.7475444350000002,
+        "y": 1.1710471937999998,
+        "z": 5.313167397
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:5",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 4.580447172,
+        "y": 1.3974504918,
+        "z": 8.405371155000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:6",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 4.124052828000001,
+        "y": 4.6063495082,
+        "z": 2.2388711550000004
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:7",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 1.2225528280000004,
+        "y": 4.3993504918,
+        "z": 10.094128845
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:8",
+        "sourceIndex": 5,
+        "element": "H",
+        "x": 1.678947172000001,
+        "y": 1.6044495082,
+        "z": 3.927628845
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:9",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 5.554411086,
+        "y": 2.3989743888,
+        "z": 8.004622653
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:10",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 3.150088914000001,
+        "y": 3.6048256112000003,
+        "z": 1.838122653
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:11",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 0.2485889140000011,
+        "y": 5.400874388799999,
+        "z": 10.494877347000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:12",
+        "sourceIndex": 6,
+        "element": "H",
+        "x": 2.652911085999999,
+        "y": 0.6029256112000001,
+        "z": 4.328377347
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:13",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 3.8233645800000002,
+        "y": 3.4220339163999998,
+        "z": 9.097918437
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:14",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 4.88113542,
+        "y": 2.5817660836000003,
+        "z": 2.931418437000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:15",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 1.97963542,
+        "y": 0.42013391639999925,
+        "z": 9.401581562999999
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:16",
+        "sourceIndex": 9,
+        "element": "H",
+        "x": 0.9218645800000009,
+        "y": 5.5836660836,
+        "z": 3.235081563
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:17",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 4.916289994,
+        "y": 4.727452158,
+        "z": 7.505876133
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:18",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 3.788210006,
+        "y": 1.2763478419999996,
+        "z": 1.3393761329999996
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:19",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 0.8867100060000002,
+        "y": 1.7255521579999997,
+        "z": 10.993623867
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:20",
+        "sourceIndex": 11,
+        "element": "H",
+        "x": 2.0147899940000014,
+        "y": 4.278247842,
+        "z": 4.827123867000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:21",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 3.387553477000001,
+        "y": 5.0718181183999995,
+        "z": 7.461625329000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:22",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 5.3169465229999995,
+        "y": 0.9319818816000002,
+        "z": 1.2951253290000007
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:23",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 2.4154465230000004,
+        "y": 2.0699181184,
+        "z": 11.037874670999999
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:24",
+        "sourceIndex": 12,
+        "element": "H",
+        "x": 0.4860534770000014,
+        "y": 3.9338818816,
+        "z": 4.871374671
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:25",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 4.0140743720000005,
+        "y": 4.1438527789999995,
+        "z": 6.364382985000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:26",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 4.690425628,
+        "y": 1.8599472210000003,
+        "z": 0.19788298500000145
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:27",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.788925628,
+        "y": 1.1419527789999997,
+        "z": 12.135117015
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:28",
+        "sourceIndex": 13,
+        "element": "H",
+        "x": 1.112574372000001,
+        "y": 4.8618472210000006,
+        "z": 5.968617015
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:29",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 2.3149327600000005,
+        "y": 2.653259334,
+        "z": 7.907426279999999
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:30",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 0.5865672400000006,
+        "y": 3.3505406660000006,
+        "z": 1.7409262799999996
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:31",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 3.4880672400000012,
+        "y": 5.6551593339999995,
+        "z": 10.59207372
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:32",
+        "sourceIndex": 7,
+        "element": "C",
+        "x": 5.21643276,
+        "y": 0.34864066600000004,
+        "z": 4.425573720000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:33",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 3.7421806100000006,
+        "y": 3.1670645380000004,
+        "z": 8.15519625
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:34",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 4.96231939,
+        "y": 2.8367354619999996,
+        "z": 1.9886962499999992
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:35",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 2.06081939,
+        "y": 0.16516453799999953,
+        "z": 10.34430375
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:36",
+        "sourceIndex": 8,
+        "element": "C",
+        "x": 0.8406806100000012,
+        "y": 5.838635462,
+        "z": 4.17780375
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:37",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 4.043008130000001,
+        "y": 4.391359434,
+        "z": 7.291516260000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:38",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 4.66149187,
+        "y": 1.6124405659999999,
+        "z": 1.1250162599999987
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:39",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 1.75999187,
+        "y": 1.3894594340000002,
+        "z": 11.207983740000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:40",
+        "sourceIndex": 10,
+        "element": "C",
+        "x": 1.1415081300000003,
+        "y": 4.614340566,
+        "z": 5.04148374
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:41",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 4.73106984,
+        "y": 2.090162932,
+        "z": 7.867220700000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:42",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 3.9734301600000004,
+        "y": 3.913637068,
+        "z": 1.7007207000000022
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:43",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 1.0719301600000009,
+        "y": 5.092062932,
+        "z": 10.6322793
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:44",
+        "sourceIndex": 3,
+        "element": "N",
+        "x": 1.8295698400000002,
+        "y": 0.911737068,
+        "z": 4.4657792999999995
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:45",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.3845377700000003,
+        "y": 3.322562958,
+        "z": 8.44341846
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:46",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 1.5169622300000005,
+        "y": 2.6812370420000002,
+        "z": 2.2769184600000005
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:47",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 4.41846223,
+        "y": 0.3206629579999997,
+        "z": 10.05608154
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:48",
+        "sourceIndex": 1,
+        "element": "O",
+        "x": 4.286037770000001,
+        "y": 5.683137042,
+        "z": 3.8895815400000004
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:49",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 2.1671883800000007,
+        "y": 1.631112384,
+        "z": 7.20358197
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:50",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.7343116200000006,
+        "y": 4.372687616,
+        "z": 1.0370819700000002
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:51",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.6358116200000006,
+        "y": 4.633012384,
+        "z": 11.295918030000001
+      },
+      {
+        "id": "molecular-crystal-l-alanine-cod-1574529:atom:52",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 5.06868838,
+        "y": 1.370787616,
+        "z": 5.12941803
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source structure: Crystallography Open Database (COD) record 1574529; source.cif is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "molecular-crystal-l-alanine-cod-1574529:atom:1",
+      "molecular-crystal-l-alanine-cod-1574529:atom:2",
+      "molecular-crystal-l-alanine-cod-1574529:atom:3",
+      "molecular-crystal-l-alanine-cod-1574529:atom:4",
+      "molecular-crystal-l-alanine-cod-1574529:atom:5",
+      "molecular-crystal-l-alanine-cod-1574529:atom:6",
+      "molecular-crystal-l-alanine-cod-1574529:atom:7",
+      "molecular-crystal-l-alanine-cod-1574529:atom:8",
+      "molecular-crystal-l-alanine-cod-1574529:atom:9",
+      "molecular-crystal-l-alanine-cod-1574529:atom:10",
+      "molecular-crystal-l-alanine-cod-1574529:atom:11",
+      "molecular-crystal-l-alanine-cod-1574529:atom:12",
+      "molecular-crystal-l-alanine-cod-1574529:atom:13",
+      "molecular-crystal-l-alanine-cod-1574529:atom:14",
+      "molecular-crystal-l-alanine-cod-1574529:atom:15",
+      "molecular-crystal-l-alanine-cod-1574529:atom:16",
+      "molecular-crystal-l-alanine-cod-1574529:atom:17",
+      "molecular-crystal-l-alanine-cod-1574529:atom:18",
+      "molecular-crystal-l-alanine-cod-1574529:atom:19",
+      "molecular-crystal-l-alanine-cod-1574529:atom:20",
+      "molecular-crystal-l-alanine-cod-1574529:atom:21",
+      "molecular-crystal-l-alanine-cod-1574529:atom:22",
+      "molecular-crystal-l-alanine-cod-1574529:atom:23",
+      "molecular-crystal-l-alanine-cod-1574529:atom:24",
+      "molecular-crystal-l-alanine-cod-1574529:atom:25",
+      "molecular-crystal-l-alanine-cod-1574529:atom:26",
+      "molecular-crystal-l-alanine-cod-1574529:atom:27",
+      "molecular-crystal-l-alanine-cod-1574529:atom:28",
+      "molecular-crystal-l-alanine-cod-1574529:atom:29",
+      "molecular-crystal-l-alanine-cod-1574529:atom:30",
+      "molecular-crystal-l-alanine-cod-1574529:atom:31",
+      "molecular-crystal-l-alanine-cod-1574529:atom:32",
+      "molecular-crystal-l-alanine-cod-1574529:atom:33",
+      "molecular-crystal-l-alanine-cod-1574529:atom:34",
+      "molecular-crystal-l-alanine-cod-1574529:atom:35",
+      "molecular-crystal-l-alanine-cod-1574529:atom:36",
+      "molecular-crystal-l-alanine-cod-1574529:atom:37",
+      "molecular-crystal-l-alanine-cod-1574529:atom:38",
+      "molecular-crystal-l-alanine-cod-1574529:atom:39",
+      "molecular-crystal-l-alanine-cod-1574529:atom:40",
+      "molecular-crystal-l-alanine-cod-1574529:atom:41",
+      "molecular-crystal-l-alanine-cod-1574529:atom:42",
+      "molecular-crystal-l-alanine-cod-1574529:atom:43",
+      "molecular-crystal-l-alanine-cod-1574529:atom:44",
+      "molecular-crystal-l-alanine-cod-1574529:atom:45",
+      "molecular-crystal-l-alanine-cod-1574529:atom:46",
+      "molecular-crystal-l-alanine-cod-1574529:atom:47",
+      "molecular-crystal-l-alanine-cod-1574529:atom:48",
+      "molecular-crystal-l-alanine-cod-1574529:atom:49",
+      "molecular-crystal-l-alanine-cod-1574529:atom:50",
+      "molecular-crystal-l-alanine-cod-1574529:atom:51",
+      "molecular-crystal-l-alanine-cod-1574529:atom:52"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          5.803,
+          0.0,
+          3.5533126877260453e-16
+        ],
+        [
+          9.654846764128592e-16,
+          6.0038,
+          3.6762672263604396e-16
+        ],
+        [
+          0.0,
+          0.0,
+          12.333
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "Crystallography Open Database (COD) record 1574529 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}

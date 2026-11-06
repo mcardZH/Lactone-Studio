@@ -1,0 +1,233 @@
+{
+  "schema": "sy-gnu-runtime-corresponding-source-index-v1",
+  "sourceArchives": [
+    {
+      "name": "gcc-13.2.0-privacy-sanitized.tar.gz",
+      "component": "gcc",
+      "version": "13.2.0",
+      "role": "target-source",
+      "modifiedSourceDistribution": true,
+      "path": "privacy-source-derivatives/gcc-13.2.0-privacy-sanitized.tar.gz",
+      "bytes": 190090491,
+      "sha256": "eec4f8257562dc72814bace281a9fbdeec0258125fbb34ce4ca3694e3f23e43a",
+      "officialInput": {
+        "filename": "gcc-13.2.0.tar.xz",
+        "url": "https://gcc.gnu.org/pub/gcc/releases/gcc-13.2.0/gcc-13.2.0.tar.xz",
+        "identity": {
+          "bytes": 87858592,
+          "sha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da"
+        },
+        "upstreamSha512": "d99e4826a70db04504467e349e9fbaedaa5870766cda7c5cab50cdebedc4be755ebca5b789e1232a34a20be1a0b60097de9280efe47bdb71c73251e30b0862a2"
+      },
+      "sha256Meaning": "Measured supplied privacy-derived archive identity; not the identity of the official original.",
+      "sourceDerivation": {
+        "path": "privacy-source-derivatives/DERIVATIVES.json",
+        "bytes": 4610,
+        "sha256": "a9fb9b6a99c7210299bc534f61d177b11d3b3635ccf1364d5eb0af262fcf5c38"
+      }
+    },
+    {
+      "name": "mingw-w64-v11.0.1.tar.gz",
+      "role": "target-source",
+      "path": "archives/gnu-runtime/mingw-w64-v11.0.1.tar.gz",
+      "bytes": 13916903,
+      "sha256": "9c82a58713786c95b0594443a1c6190cd986401ed2b03677a90acc470140af28",
+      "officialUrl": "https://github.com/mingw-w64/mingw-w64/archive/refs/tags/v11.0.1.tar.gz",
+      "upstreamSha512": null,
+      "sha256Meaning": "Measured original archive hash; not a claim that GitHub published this SHA256."
+    },
+    {
+      "name": "dlfcn-win32-v1.4.1.tar.gz",
+      "role": "target-source",
+      "path": "archives/gnu-runtime/dlfcn-win32-v1.4.1.tar.gz",
+      "bytes": 24997,
+      "sha256": "30a9f72bdf674857899eb7e553df1f0d362c5da2a576ae51f886e1171fbdb399",
+      "officialUrl": "https://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v1.4.1.tar.gz",
+      "upstreamSha512": null,
+      "sha256Meaning": "Measured original archive hash; not a claim that GitHub published this SHA256."
+    },
+    {
+      "name": "gmp-6.2.1.tar.bz2",
+      "role": "compiler-build-prerequisite-source",
+      "path": "archives/gnu-runtime/gmp-6.2.1.tar.bz2",
+      "bytes": 2493916,
+      "sha256": "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/gmp-6.2.1.tar.bz2",
+      "upstreamSha512": "8904334a3bcc5c896ececabc75cda9dec642e401fb5397c4992c4fabea5e962c9ce8bd44e8e4233c34e55c8010cc28db0545f5f750cbdbb5f00af538dc763be9",
+      "sha256Meaning": "Measured original archive hash; not a claim that GitHub published this SHA256."
+    },
+    {
+      "name": "mpfr-4.1.0.tar.bz2",
+      "role": "compiler-build-prerequisite-source",
+      "path": "archives/gnu-runtime/mpfr-4.1.0.tar.bz2",
+      "bytes": 1747243,
+      "sha256": "feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/mpfr-4.1.0.tar.bz2",
+      "upstreamSha512": "410208ee0d48474c1c10d3d4a59decd2dfa187064183b09358ec4c4666e34d74383128436b404123b831e585d81a9176b24c7ced9d913967c5fce35d4040a0b4",
+      "sha256Meaning": "Measured original archive hash; not a claim that GitHub published this SHA256."
+    },
+    {
+      "name": "mpc-1.2.1.tar.gz",
+      "role": "compiler-build-prerequisite-source",
+      "path": "archives/gnu-runtime/mpc-1.2.1.tar.gz",
+      "bytes": 838731,
+      "sha256": "17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/mpc-1.2.1.tar.gz",
+      "upstreamSha512": "3279f813ab37f47fdcc800e4ac5f306417d07f539593ca715876e43e04896e1d5bceccfb288ef2908a3f24b760747d0dbd0392a24b9b341bc3e12082e5c836ee",
+      "sha256Meaning": "Measured original archive hash; not a claim that GitHub published this SHA256."
+    },
+    {
+      "name": "isl-0.24.tar.bz2",
+      "role": "compiler-build-prerequisite-source",
+      "path": "archives/gnu-runtime/isl-0.24.tar.bz2",
+      "bytes": 2261594,
+      "sha256": "fcf78dd9656c10eb8cf9fbd5f59a0b6b01386205fe1934b3b287a0a1898145c0",
+      "officialUrl": "https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.24.tar.bz2",
+      "upstreamSha512": "aab3bddbda96b801d0f56d2869f943157aad52a6f6e6a61745edd740234c635c38231af20bc3f1a08d416a5e973a90e18249078ed8e4ae2f1d5de57658738e95",
+      "sha256Meaning": "Measured original archive hash; not a claim that GitHub published this SHA256."
+    }
+  ],
+  "sourceTree": {
+    "path": "GNU-RUNTIME-SOURCE-TREE.json",
+    "bytes": 20949164,
+    "sha256": "0f098ce8615363999a220c107e4e74fd29d3c3afd33829ccf524210165b0e2be",
+    "meaning": "Historical unmodified inventory; effective current inputs require the bound derivativeOverlay.",
+    "derivativeOverlay": {
+      "path": "privacy-source-derivatives/SOURCE-TREE-OVERLAY.json",
+      "bytes": 1122,
+      "sha256": "ae52a0040ddba69f8ab991cde65017c2442bdd7fd2c7e3771cf965d875d8f863"
+    }
+  },
+  "sourcePatches": [],
+  "bootstrapToolsNotBundled": [
+    {
+      "name": "winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.1-r7.zip",
+      "role": "external-build-bootstrap-not-bundled-source",
+      "url": "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0posix-18.1.3-11.0.1-ucrt-r7/winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.1-r7.zip",
+      "bytes": 225869222,
+      "sha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a"
+    },
+    {
+      "name": "msys2-base-x86_64-20260927.tar.xz",
+      "role": "external-build-bootstrap-not-bundled-source",
+      "url": "https://github.com/msys2/msys2-installer/releases/download/2026-09-27/msys2-base-x86_64-20260927.tar.xz",
+      "bytes": 42860696,
+      "sha256": "ea2f31a0b6ade63914ce441ffb022f0f6aa96982bfefa2326460a26d5fb01322"
+    },
+    {
+      "name": "make-4.4.1-3-x86_64.pkg.tar.zst",
+      "role": "external-build-bootstrap-not-bundled-source",
+      "url": "https://repo.msys2.org/msys/x86_64/make-4.4.1-3-x86_64.pkg.tar.zst",
+      "bytes": 514683,
+      "sha256": "af0bdba17f06fe037f0194069adaa31a8fe45f1a11381501896aea1fae37bd5d"
+    },
+    {
+      "name": "diffutils-3.12-1-x86_64.pkg.tar.zst",
+      "role": "external-build-bootstrap-not-bundled-source",
+      "url": "https://repo.msys2.org/msys/x86_64/diffutils-3.12-1-x86_64.pkg.tar.zst",
+      "bytes": 394515,
+      "sha256": "7902c8ce3d4dd69a0f5e98dc9d5c83c17b23314ba486169db57ef6e2835ce3b6"
+    }
+  ],
+  "targetVersions": {
+    "gcc": "13.2.0",
+    "mingw-w64": "11.0.1",
+    "dlfcn-win32": "1.4.1"
+  },
+  "target": "x86_64-w64-mingw32 UCRT POSIX SEH",
+  "recipe": "GNU-RUNTIME-REBUILD.md",
+  "controlScript": "build-support/gnu-runtime/rebuild-gnu-runtime.py",
+  "status": "privacy-derived-corresponding-source-and-parameterized-controls-prepared",
+  "publicDistributionApproved": false,
+  "licenseFiles": [
+    {
+      "path": "licenses/gnu-runtime/dlfcn-win32/COPYING",
+      "bytes": 1040,
+      "sha256": "4cc7ac997b9293db5919baf630100cc09b3508efdfe6a6611c95511fb863b3c7"
+    },
+    {
+      "path": "licenses/gnu-runtime/dlfcn-win32/source-copyright-and-grant.c",
+      "bytes": 29461,
+      "sha256": "0b7a7e71d4beeef7df6ad9422da7b311bb15edd05ac7016d2d93fa8f90a4944e"
+    },
+    {
+      "path": "licenses/gnu-runtime/gcc13.2/COPYING.RUNTIME",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "licenses/gnu-runtime/gcc13.2/COPYING3",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "licenses/gnu-runtime/gcc13.2/libquadmath-COPYING.LIB",
+      "bytes": 26440,
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b"
+    },
+    {
+      "path": "licenses/gnu-runtime/winpthreads/COPYING",
+      "bytes": 2883,
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177"
+    }
+  ],
+  "controls": [
+    {
+      "path": "build-support/gnu-runtime/bounded-command.py",
+      "bytes": 12383,
+      "sha256": "bcbde69d27437735cef263c74dd0cbdcb83c8fcc23cee0473cefacd949ed8876"
+    },
+    {
+      "path": "build-support/gnu-runtime/rebuild-gnu-runtime.py",
+      "bytes": 16470,
+      "sha256": "c0849ebc3d6483339fa38e0646d6866eb330bb18b29a4e13f0cf3eaaba50f9a4"
+    }
+  ],
+  "recipeFile": {
+    "path": "GNU-RUNTIME-REBUILD.md",
+    "bytes": 12175,
+    "sha256": "4829976fe4f09c25d07ab170e25db62ed7c9714be6ee540935bbbc60998b2072"
+  },
+  "sourcePrivacyDerivatives": {
+    "path": "privacy-source-derivatives/DERIVATIVES.json",
+    "bytes": 4610,
+    "sha256": "a9fb9b6a99c7210299bc534f61d177b11d3b3635ccf1364d5eb0af262fcf5c38"
+  },
+  "privacyDerivativeMaterials": [
+    {
+      "path": "privacy-source-derivatives/DERIVATIVES.json",
+      "bytes": 4610,
+      "sha256": "a9fb9b6a99c7210299bc534f61d177b11d3b3635ccf1364d5eb0af262fcf5c38"
+    },
+    {
+      "path": "privacy-source-derivatives/gcc-13.2.0-privacy-sanitized.tar.gz",
+      "bytes": 190090491,
+      "sha256": "eec4f8257562dc72814bace281a9fbdeec0258125fbb34ce4ca3694e3f23e43a"
+    },
+    {
+      "path": "privacy-source-derivatives/gcc-16.2.0-privacy-sanitized.tar.gz",
+      "bytes": 240230783,
+      "sha256": "3dada6b4c7a9ea8ee9b5e32d9fd0e7c4a37a5b9c6db65bb265092b89c30920f6"
+    },
+    {
+      "path": "privacy-source-derivatives/README.md",
+      "bytes": 2913,
+      "sha256": "6850219770c81feaf6c821164a628eaf4090407a466490656f92e69d5193ccd1"
+    },
+    {
+      "path": "privacy-source-derivatives/sanitize-gcc-source.py",
+      "bytes": 6071,
+      "sha256": "6b5e44141b8eac75b35d016724962dfa487f3443257515313b5a038e3033b47b"
+    },
+    {
+      "path": "privacy-source-derivatives/SANITIZER-LICENSE.txt",
+      "bytes": 1633,
+      "sha256": "46f56713ce13bd9e1f8d065d24ee57fa9f647d08a9a529dd4955af4376015a94"
+    },
+    {
+      "path": "privacy-source-derivatives/SOURCE-TREE-OVERLAY.json",
+      "bytes": 1122,
+      "sha256": "ae52a0040ddba69f8ab991cde65017c2442bdd7fd2c7e3771cf965d875d8f863"
+    }
+  ]
+}

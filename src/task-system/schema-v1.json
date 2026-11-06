@@ -1,0 +1,4203 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://ester-studio.local/schema/task-system-v1.json",
+	"title": "Ester Studio task-system protocol v1",
+	"$defs": {
+		"fieldStatus": {
+			"type": "object",
+			"required": ["state"],
+			"properties": {
+				"state": {
+					"enum": ["known", "unknown", "unavailable", "unsupported", "conflict"]
+				},
+				"reason": {
+					"type": "string",
+					"minLength": 1
+				},
+				"evidenceRefs": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			},
+			"additionalProperties": true
+		},
+		"workLocation": {
+			"type": "object",
+			"required": ["environmentId", "path"],
+			"properties": {
+				"environmentId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"path": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true
+		},
+		"contentIdentity": {
+			"type": "object",
+			"required": ["algorithm", "hash"],
+			"properties": {
+				"algorithm": {
+					"type": "string",
+					"minLength": 1
+				},
+				"hash": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"additionalProperties": true
+		},
+		"projectRef": {
+			"type": "object",
+			"required": ["projectId"],
+			"properties": {
+				"projectId": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true
+		},
+		"environmentSnapshot": {
+			"type": "object",
+			"required": [
+				"environmentId",
+				"configurationRevision",
+				"connection",
+				"scheduler",
+				"softwareAdapter",
+				"workingRoot",
+				"configuration"
+			],
+			"properties": {
+				"environmentId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"configurationRevision": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"connection": {
+					"$ref": "#/$defs/connection"
+				},
+				"scheduler": {
+					"type": "object",
+					"required": ["kind"],
+					"properties": {
+						"kind": {
+							"enum": ["none", "slurm"]
+						}
+					},
+					"additionalProperties": true
+				},
+				"softwareAdapter": {
+					"type": "object"
+				},
+				"workingRoot": {
+					"type": "string",
+					"minLength": 1
+				},
+				"configuration": {
+					"type": "object"
+				}
+			},
+			"additionalProperties": true
+		},
+		"connection": {
+			"type": "object",
+			"required": ["kind"],
+			"properties": {
+				"kind": {
+					"enum": ["local", "wsl", "ssh"]
+				},
+				"host": {
+					"type": "string",
+					"minLength": 1
+				},
+				"user": {
+					"type": "string",
+					"minLength": 1
+				},
+				"port": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 65535
+				},
+				"distribution": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"properties": {
+							"kind": {
+								"const": "wsl"
+							}
+						}
+					},
+					"then": {
+						"required": ["distribution", "user"]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"kind": {
+								"const": "ssh"
+							}
+						}
+					},
+					"then": {
+						"required": ["host", "user", "port"]
+					}
+				}
+			]
+		},
+		"softwareSnapshot": {
+			"type": "object",
+			"required": [
+				"engineId",
+				"rawVersion",
+				"recognizedVersion",
+				"platform",
+				"entryIdentity",
+				"adapterVersion",
+				"capabilities"
+			],
+			"properties": {
+				"engineId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"rawVersion": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"recognizedVersion": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"platform": {
+					"type": "string",
+					"minLength": 1
+				},
+				"entryIdentity": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"adapterVersion": {
+					"type": "string",
+					"minLength": 1
+				},
+				"capabilities": {
+					"type": "object"
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["rawVersion"],
+						"properties": {
+							"rawVersion": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["rawVersion"],
+								"properties": {
+									"rawVersion": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["recognizedVersion"],
+						"properties": {
+							"recognizedVersion": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["recognizedVersion"],
+								"properties": {
+									"recognizedVersion": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["entryIdentity"],
+						"properties": {
+							"entryIdentity": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["entryIdentity"],
+								"properties": {
+									"entryIdentity": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"executionIdentity": {
+			"type": "object",
+			"required": [
+				"submissionIntentId",
+				"workLocation",
+				"executorIdentity",
+				"launchIdentity",
+				"launchReceipt",
+				"endReceipt"
+			],
+			"properties": {
+				"submissionIntentId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"workLocation": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/workLocation"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"executorIdentity": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"launchIdentity": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"launchReceipt": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"endReceipt": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"schedulerEndReceipt": {
+					"$ref": "#/$defs/event"
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["submissionIntentId"],
+						"properties": {
+							"submissionIntentId": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["submissionIntentId"],
+								"properties": {
+									"submissionIntentId": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["workLocation"],
+						"properties": {
+							"workLocation": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["workLocation"],
+								"properties": {
+									"workLocation": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["executorIdentity"],
+						"properties": {
+							"executorIdentity": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["executorIdentity"],
+								"properties": {
+									"executorIdentity": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["launchIdentity"],
+						"properties": {
+							"launchIdentity": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["launchIdentity"],
+								"properties": {
+									"launchIdentity": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["launchReceipt"],
+						"properties": {
+							"launchReceipt": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["launchReceipt"],
+								"properties": {
+									"launchReceipt": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["endReceipt"],
+						"properties": {
+							"endReceipt": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["endReceipt"],
+								"properties": {
+									"endReceipt": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"scientificFact": {
+			"type": "object",
+			"required": ["state", "evidenceRefs"],
+			"properties": {
+				"state": {
+					"enum": [
+						"unknown",
+						"in-progress",
+						"satisfied",
+						"not-satisfied",
+						"not-applicable",
+						"conflict"
+					]
+				},
+				"evidenceRefs": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"raw": {
+					"type": "string"
+				},
+				"reason": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true
+		},
+		"runState": {
+			"type": "object",
+			"required": [
+				"executionState",
+				"verificationState",
+				"checkedAt",
+				"evidenceRefs",
+				"scientificState"
+			],
+			"properties": {
+				"executionState": {
+					"enum": [
+						"preparing",
+						"submitting",
+						"queued",
+						"running",
+						"stop-requested",
+						"ended",
+						"unknown"
+					]
+				},
+				"verificationState": {
+					"enum": ["verified", "stale", "unreachable", "conflict", "unknown"]
+				},
+				"checkedAt": {
+					"anyOf": [
+						{
+							"type": "string",
+							"format": "date-time"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"evidenceRefs": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"scientificState": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/scientificFact"
+					}
+				},
+				"endReason": {
+					"enum": ["completed", "failed", "stopped", "interrupted", "unknown"]
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"properties": {
+							"executionState": {
+								"const": "ended"
+							}
+						}
+					},
+					"then": {
+						"required": ["endReason"]
+					}
+				}
+			]
+		},
+		"resourceLayer": {
+			"type": "object",
+			"required": ["source"],
+			"properties": {
+				"source": {},
+				"observedAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"cpuCores": {
+					"anyOf": [
+						{
+							"type": "integer",
+							"minimum": 0
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"mpiProcesses": {
+					"anyOf": [
+						{
+							"type": "integer",
+							"minimum": 0
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"threadsPerProcess": {
+					"anyOf": [
+						{
+							"type": "integer",
+							"minimum": 0
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"memory": {
+					"anyOf": [
+						{
+							"type": "object",
+							"required": ["value", "unit", "scope", "raw"],
+							"properties": {
+								"value": {
+									"anyOf": [
+										{
+											"type": "number"
+										},
+										{
+											"type": "string",
+											"minLength": 1
+										}
+									]
+								},
+								"unit": {
+									"type": "string",
+									"minLength": 1
+								},
+								"scope": {
+									"type": "string",
+									"minLength": 1
+								},
+								"raw": {
+									"type": "string"
+								}
+							},
+							"additionalProperties": true
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"gpus": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"limits": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"additionalProperties": true
+		},
+		"resources": {
+			"type": "object",
+			"required": ["inputRequest", "schedulerRequest", "grant", "observation"],
+			"properties": {
+				"inputRequest": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/resourceLayer"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"schedulerRequest": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/resourceLayer"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"grant": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/resourceLayer"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"observation": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/resourceLayer"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["inputRequest"],
+						"properties": {
+							"inputRequest": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["inputRequest"],
+								"properties": {
+									"inputRequest": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["schedulerRequest"],
+						"properties": {
+							"schedulerRequest": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["schedulerRequest"],
+								"properties": {
+									"schedulerRequest": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["grant"],
+						"properties": {
+							"grant": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["grant"],
+								"properties": {
+									"grant": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["observation"],
+						"properties": {
+							"observation": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["observation"],
+								"properties": {
+									"observation": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"dependency": {
+			"type": "object",
+			"required": [
+				"artifactId",
+				"roles",
+				"originalLocation",
+				"preparedLocation",
+				"integrity",
+				"contentIdentity"
+			],
+			"properties": {
+				"artifactId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"roles": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"originalLocation": {
+					"$ref": "#/$defs/workLocation"
+				},
+				"preparedLocation": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/workLocation"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"integrity": {},
+				"contentIdentity": {
+					"$ref": "#/$defs/contentIdentity"
+				}
+			},
+			"additionalProperties": true
+		},
+		"byteRange": {
+			"type": "object",
+			"required": ["start", "end"],
+			"properties": {
+				"start": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"end": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"additionalProperties": true
+		},
+		"sourceBoundary": {
+			"type": "object",
+			"required": ["fileIdentity", "readByteRange", "publishedByteRange"],
+			"properties": {
+				"fileIdentity": {
+					"type": "object"
+				},
+				"readByteRange": {
+					"$ref": "#/$defs/byteRange"
+				},
+				"publishedByteRange": {
+					"$ref": "#/$defs/byteRange"
+				},
+				"observedEnd": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"consumedByteRange": {
+					"$ref": "#/$defs/byteRange"
+				},
+				"sourceGeneration": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"additionalProperties": true
+		},
+		"target": {
+			"type": "object",
+			"required": ["kind", "id"],
+			"properties": {
+				"kind": {
+					"enum": [
+						"task",
+						"run",
+						"inputSnapshot",
+						"environment",
+						"artifact",
+						"operation",
+						"group",
+						"projectAssociation",
+						"snapshot",
+						"archiveManifest",
+						"cleanupManifest",
+						"recycleRecord",
+						"library",
+						"groupMembership",
+						"siteProfile",
+						"sourceSet"
+					]
+				},
+				"id": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true
+		},
+		"task": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"taskId",
+				"displayName",
+				"createdAt",
+				"engineId",
+				"taskKind",
+				"sourceProjectRef",
+				"groupId",
+				"latestRunId"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"displayName": {
+					"type": "string",
+					"minLength": 1
+				},
+				"createdAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"engineId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskKind": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceProjectRef": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/projectRef"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"groupId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"latestRunId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"directoryMode": { "enum": ["single", "dual"] },
+				"lastSubmittedAt": { "type": "string", "format": "date-time" },
+				"workFileState": { "enum": ["present", "cleared", "unknown"] },
+				"formula": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"origin": {
+					"$ref": "#/$defs/taskOrigin"
+				},
+				"sourceSetId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"sourceVersion": {
+					"type": "string",
+					"minLength": 1
+				},
+				"locations": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/taskLocation"
+					}
+				},
+				"thumbnail": {
+					"anyOf": [
+						{
+							"type": "object",
+							"required": ["sourceVersion", "dataUrl"],
+							"properties": {
+								"sourceVersion": {
+									"type": "string",
+									"minLength": 1
+								},
+								"dataUrl": {
+									"type": "string",
+									"minLength": 1
+								},
+								"formula": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"additionalProperties": true
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"postprocessCache": {
+					"anyOf": [
+						{
+							"type": "object",
+							"required": [
+								"cacheId",
+								"sourceSetId",
+								"sourceVersion",
+								"manifestPath",
+								"savedAt",
+								"byteSize"
+							],
+							"properties": {
+								"cacheId": {
+									"type": "string",
+									"minLength": 1
+								},
+								"sourceSetId": {
+									"type": "string",
+									"minLength": 1
+								},
+								"sourceVersion": {
+									"type": "string",
+									"minLength": 1
+								},
+								"manifestPath": {
+									"type": "string",
+									"minLength": 1
+								},
+								"savedAt": {
+									"type": "string",
+									"format": "date-time"
+								},
+								"byteSize": {
+									"type": "integer",
+									"minimum": 0
+								},
+								"requiredCapabilities": {
+									"type": "array",
+									"items": {
+										"type": "string",
+										"minLength": 1
+									}
+								}
+							},
+							"additionalProperties": true
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"sourceSummary": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/managedSourceSummary"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": { "required": ["directoryMode"] },
+					"then": {
+						"properties": {
+							"requiredCapabilities": { "contains": { "const": "es:task-layout-v2" } }
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["origin"],
+						"properties": {
+							"origin": {
+								"required": ["kind"],
+								"properties": {
+									"kind": {
+										"enum": ["external-directory", "postprocess-saved", "marker-recovered"]
+									}
+								}
+							}
+						}
+					},
+					"then": {
+						"required": ["sourceSetId"],
+						"allOf": [
+							{
+								"properties": {
+									"requiredCapabilities": {
+										"contains": {
+											"const": "es:task-source-only-v1"
+										}
+									}
+								}
+							}
+						]
+					}
+				},
+				{
+					"if": {
+						"required": ["postprocessCache"]
+					},
+					"then": {
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-postprocess-cache-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"run": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"runId",
+				"taskId",
+				"attemptOrdinal",
+				"inputSnapshotId",
+				"environmentSnapshot",
+				"softwareSnapshot",
+				"executionIdentity",
+				"state"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"resultAdoptionOperationId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"runId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"attemptOrdinal": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"inputSnapshotId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"environmentSnapshot": {
+					"$ref": "#/$defs/environmentSnapshot"
+				},
+				"softwareSnapshot": {
+					"$ref": "#/$defs/softwareSnapshot"
+				},
+				"executionIdentity": {
+					"$ref": "#/$defs/executionIdentity"
+				},
+				"state": {
+					"$ref": "#/$defs/runState"
+				},
+				"resources": {
+					"$ref": "#/$defs/resources"
+				}
+			},
+			"allOf": [
+				{
+					"if": {
+						"required": [
+							"resultAdoptionOperationId"
+						]
+					},
+					"then": {
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-result-adoption-v1"
+								}
+							}
+						}
+					}
+				}
+			],
+			"additionalProperties": true
+		},
+		"inputSnapshot": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"inputSnapshotId",
+				"primaryInputArtifactId",
+				"dependencies",
+				"contentIdentity",
+				"parsedRequests",
+				"engineExtensions"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"inputSnapshotId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"primaryInputArtifactId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"dependencies": {
+					"anyOf": [
+						{
+							"type": "array",
+							"items": {
+								"$ref": "#/$defs/dependency"
+							}
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"contentIdentity": {
+					"$ref": "#/$defs/contentIdentity"
+				},
+				"parsedRequests": {
+					"type": "object"
+				},
+				"engineExtensions": {
+					"type": "object"
+				},
+				"calculationScript": {
+					"type": "object",
+					"required": ["kind", "text"],
+					"properties": {
+						"kind": {
+							"enum": ["bash", "powershell"]
+						},
+						"text": {
+							"type": "string"
+						}
+					},
+					"additionalProperties": true
+				},
+				"calculationScriptIdentity": {
+					"type": "object",
+					"required": ["algorithm", "hash", "byteSize"],
+					"properties": {
+						"algorithm": {
+							"const": "sha256"
+						},
+						"hash": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{64}$"
+						},
+						"byteSize": {
+							"type": "integer",
+							"minimum": 0
+						}
+					},
+					"additionalProperties": true
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["dependencies"],
+						"properties": {
+							"dependencies": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["dependencies"],
+								"properties": {
+									"dependencies": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"anyOf": [
+							{
+								"required": ["calculationScript"]
+							},
+							{
+								"required": ["calculationScriptIdentity"]
+							}
+						]
+					},
+					"then": {
+						"required": ["calculationScript", "calculationScriptIdentity"],
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-editable-script-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"environment": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"environmentId",
+				"displayName",
+				"configuration"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"environmentId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"displayName": {
+					"type": "string",
+					"minLength": 1
+				},
+				"configuration": {
+					"$ref": "#/$defs/environmentSnapshot"
+				}
+			},
+			"additionalProperties": true
+		},
+		"artifact": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"artifactId",
+				"runId",
+				"roles",
+				"format",
+				"formatVersion",
+				"representation",
+				"locations",
+				"provenance",
+				"producer",
+				"byteSize",
+				"integrity",
+				"contentHash"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"artifactId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"runId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"roles": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"enum": [
+							"input",
+							"primary-output",
+							"structure",
+							"trajectory",
+							"wavefunction",
+							"modes",
+							"restart",
+							"diagnostic",
+							"scratch",
+							"other"
+						]
+					}
+				},
+				"format": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"formatVersion": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"representation": {
+					"enum": ["text", "binary"]
+				},
+				"locations": {
+					"anyOf": [
+						{
+							"type": "array",
+							"items": {
+								"type": "object"
+							}
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"provenance": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"producer": {
+					"anyOf": [
+						{
+							"type": "object"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"byteSize": {
+					"anyOf": [
+						{
+							"type": "integer",
+							"minimum": 0
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"integrity": {},
+				"contentHash": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/contentIdentity"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"sourceBoundary": {
+					"$ref": "#/$defs/sourceBoundary"
+				},
+				"growing": {
+					"type": "boolean"
+				},
+				"rewritten": {
+					"type": "boolean"
+				},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"anyOf": [
+							{
+								"required": ["growing"],
+								"properties": {
+									"growing": {
+										"const": true
+									}
+								}
+							},
+							{
+								"required": ["rewritten"],
+								"properties": {
+									"rewritten": {
+										"const": true
+									}
+								}
+							}
+						]
+					},
+					"then": {
+						"required": ["sourceBoundary"]
+					}
+				},
+				{
+					"if": {
+						"required": ["format"],
+						"properties": {
+							"format": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["format"],
+								"properties": {
+									"format": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["formatVersion"],
+						"properties": {
+							"formatVersion": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["formatVersion"],
+								"properties": {
+									"formatVersion": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["locations"],
+						"properties": {
+							"locations": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["locations"],
+								"properties": {
+									"locations": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["provenance"],
+						"properties": {
+							"provenance": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["provenance"],
+								"properties": {
+									"provenance": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["producer"],
+						"properties": {
+							"producer": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["producer"],
+								"properties": {
+									"producer": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["byteSize"],
+						"properties": {
+							"byteSize": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["byteSize"],
+								"properties": {
+									"byteSize": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["contentHash"],
+						"properties": {
+							"contentHash": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["fieldStatus"],
+						"properties": {
+							"fieldStatus": {
+								"type": "object",
+								"required": ["contentHash"],
+								"properties": {
+									"contentHash": {
+										"allOf": [
+											{
+												"$ref": "#/$defs/fieldStatus"
+											},
+											{
+												"required": ["reason"],
+												"properties": {
+													"state": {
+														"enum": ["unknown", "unavailable", "unsupported", "conflict"]
+													}
+												}
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"required": ["runId"],
+						"properties": {
+							"runId": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "sourceSetId"],
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-source-only-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"operation": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"operationId",
+				"type",
+				"targets",
+				"preconditions",
+				"authorizationScope",
+				"phase",
+				"operationState",
+				"results"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"operationId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"type": {
+					"type": "string",
+					"minLength": 1
+				},
+				"targets": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/target"
+					}
+				},
+				"preconditions": {
+					"type": "object"
+				},
+				"authorizationScope": {
+					"type": "object"
+				},
+				"phase": {
+					"type": "string",
+					"minLength": 1
+				},
+				"operationState": {
+					"enum": [
+						"pending",
+						"running",
+						"waiting-verification",
+						"succeeded",
+						"failed",
+						"cancelled",
+						"partial"
+					]
+				},
+				"results": {
+					"type": "array",
+					"items": {
+						"type": "object"
+					}
+				}
+			},
+			"allOf": [
+				{
+					"if": {
+						"required": [
+							"type"
+						],
+						"properties": {
+							"type": {
+								"const": "result-adoption"
+							}
+						}
+					},
+					"then": {
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-result-adoption-v1"
+								}
+							}
+						}
+					}
+				}
+			],
+			"additionalProperties": true
+		},
+		"group": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"groupId",
+				"displayName",
+				"parentGroupId"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"groupId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"displayName": {
+					"type": "string",
+					"minLength": 1
+				},
+				"parentGroupId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"order": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"deleted": {
+					"type": "boolean"
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["order"]
+					},
+					"then": {
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-multigroup-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"projectAssociation": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"associationId",
+				"taskId",
+				"projectRef"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"associationId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"projectRef": {
+					"$ref": "#/$defs/projectRef"
+				}
+			},
+			"additionalProperties": true
+		},
+		"snapshot": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"snapshotId",
+				"taskId",
+				"runId",
+				"sources",
+				"contentIdentity",
+				"independentSources",
+				"preparationState"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"snapshotId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"runId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"sources": {
+					"type": "array"
+				},
+				"contentIdentity": {
+					"$ref": "#/$defs/contentIdentity"
+				},
+				"independentSources": {
+					"type": "array"
+				},
+				"preparationState": {
+					"type": "object"
+				},
+				"jobRef": {},
+				"stageRef": {},
+				"frameRef": {},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceVersion": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["runId"],
+						"properties": {
+							"runId": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "sourceSetId", "sourceVersion"],
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-source-only-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"archiveManifest": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"manifestId",
+				"taskId",
+				"runId",
+				"operationId",
+				"sourceLocation",
+				"targetLocation",
+				"items"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"manifestId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"runId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"operationId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceLocation": {
+					"$ref": "#/$defs/workLocation"
+				},
+				"targetLocation": {
+					"$ref": "#/$defs/workLocation"
+				},
+				"items": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [
+							"artifactId",
+							"originalRelativePath",
+							"sourceIdentity",
+							"included",
+							"reason",
+							"copyState",
+							"verificationState"
+						],
+						"properties": {
+							"artifactId": {
+								"type": "string",
+								"minLength": 1
+							},
+							"originalRelativePath": {
+								"type": "string",
+								"minLength": 1
+							},
+							"sourceIdentity": {
+								"type": "object"
+							},
+							"included": {
+								"type": "boolean"
+							},
+							"reason": {
+								"type": "string",
+								"minLength": 1
+							},
+							"copyState": {
+								"type": "string",
+								"minLength": 1
+							},
+							"verificationState": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"additionalProperties": true
+					}
+				},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["runId"],
+						"properties": {
+							"runId": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "sourceSetId"],
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-source-only-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"cleanupManifest": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"manifestId",
+				"taskId",
+				"runId",
+				"operationId",
+				"items"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"manifestId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"runId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"operationId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"items": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [
+							"artifactId",
+							"originalLocation",
+							"fileIdentity",
+							"basis",
+							"dependencyCheck",
+							"impact",
+							"result"
+						],
+						"properties": {
+							"artifactId": {
+								"type": "string",
+								"minLength": 1
+							},
+							"originalLocation": {
+								"$ref": "#/$defs/workLocation"
+							},
+							"fileIdentity": {
+								"type": "object"
+							},
+							"basis": {
+								"type": "object"
+							},
+							"dependencyCheck": {
+								"type": "object"
+							},
+							"impact": {
+								"type": "string",
+								"minLength": 1
+							},
+							"result": {
+								"type": "object"
+							}
+						},
+						"additionalProperties": true
+					}
+				},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["runId"],
+						"properties": {
+							"runId": {
+								"type": "null"
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "sourceSetId"],
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-source-only-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"recycleRecord": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"recycleId",
+				"taskId",
+				"artifactIds",
+				"originalGroupId",
+				"originalLocations",
+				"recycleLocations",
+				"cleanupRecordRef"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"recycleId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"artifactIds": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"originalGroupId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"originalLocations": {
+					"type": "array"
+				},
+				"recycleLocations": {
+					"type": "array"
+				},
+				"cleanupRecordRef": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"mode": {
+					"enum": ["logical", "physical"]
+				},
+				"management": {
+					"$ref": "#/$defs/markerManagement"
+				},
+				"originalGroupIds": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"required": ["mode"],
+						"properties": {
+							"mode": {
+								"const": "logical"
+							}
+						}
+					},
+					"then": {
+						"required": ["management"],
+						"properties": {
+							"requiredCapabilities": {
+								"contains": {
+									"const": "es:task-logical-recycle-v1"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"library": {
+			"type": "object",
+			"required": ["schemaVersion", "revision", "requiredCapabilities", "libraryId", "createdAt"],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"libraryId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"createdAt": {
+					"type": "string",
+					"format": "date-time"
+				}
+			},
+			"additionalProperties": true
+		},
+		"executionRequest": {
+			"type": "object",
+			"required": [
+				"protocolVersion",
+				"requestId",
+				"action",
+				"environmentId",
+				"adapterTarget",
+				"preconditions",
+				"payloadVersion",
+				"payload"
+			],
+			"properties": {
+				"protocolVersion": {
+					"const": 1
+				},
+				"requestId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"action": {
+					"enum": [
+						"capabilities",
+						"prepare",
+						"submit",
+						"inspect",
+						"requestStop",
+						"collectArtifacts"
+					]
+				},
+				"environmentId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"adapterTarget": {
+					"type": "string",
+					"minLength": 1
+				},
+				"preconditions": {
+					"type": "object"
+				},
+				"payloadVersion": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"payload": {
+					"type": "object"
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"runId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"submissionIntentId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"operationId": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"properties": {
+							"action": {
+								"enum": ["submit", "requestStop"]
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "runId", "submissionIntentId", "operationId"]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"action": {
+								"enum": ["prepare", "inspect", "collectArtifacts"]
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "runId"]
+					}
+				}
+			]
+		},
+		"executionResponse": {
+			"type": "object",
+			"required": [
+				"protocolVersion",
+				"requestId",
+				"action",
+				"responseState",
+				"actualState",
+				"evidenceRefs",
+				"payloadVersion",
+				"payload"
+			],
+			"properties": {
+				"protocolVersion": {
+					"const": 1
+				},
+				"requestId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"action": {
+					"enum": [
+						"capabilities",
+						"prepare",
+						"submit",
+						"inspect",
+						"requestStop",
+						"collectArtifacts"
+					]
+				},
+				"responseState": {
+					"enum": ["accepted", "completed", "failed", "waiting-verification"]
+				},
+				"actualState": {
+					"type": "object"
+				},
+				"evidenceRefs": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"payloadVersion": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"payload": {
+					"type": "object"
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"properties": {
+							"action": {
+								"enum": ["submit", "requestStop"]
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "runId", "submissionIntentId", "operationId"]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"action": {
+								"enum": ["prepare", "inspect", "collectArtifacts"]
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "runId"]
+					}
+				}
+			]
+		},
+		"event": {
+			"type": "object",
+			"required": [
+				"protocolVersion",
+				"eventId",
+				"eventType",
+				"source",
+				"sequence",
+				"occurredAt",
+				"payloadVersion",
+				"payload"
+			],
+			"properties": {
+				"protocolVersion": {
+					"const": 1
+				},
+				"eventId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"eventType": {
+					"type": "string",
+					"minLength": 1
+				},
+				"source": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sequence": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"occurredAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"payloadVersion": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"payload": {
+					"type": "object"
+				},
+				"sourceRevision": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"managerEpoch": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"if": {
+						"properties": {
+							"eventType": {
+								"pattern": "^(run\\.|artifact\\.|operation\\.)"
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId"]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"eventType": {
+								"pattern": "^operation\\."
+							}
+						}
+					},
+					"then": {
+						"required": ["operationId"]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"eventType": {
+								"const": "monitor.published"
+							}
+						}
+					},
+					"then": {
+						"required": ["sourceRevision", "managerEpoch"]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"eventType": {
+								"pattern": "^run\\."
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "runId"],
+						"properties": {
+							"runId": {
+								"type": "string",
+								"minLength": 1
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"eventType": {
+								"pattern": "^artifact\\."
+							}
+						}
+					},
+					"then": {
+						"required": ["taskId", "runId"],
+						"properties": {
+							"runId": {
+								"anyOf": [
+									{
+										"type": "string",
+										"minLength": 1
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						},
+						"allOf": [
+							{
+								"if": {
+									"required": ["runId"],
+									"properties": {
+										"runId": {
+											"type": "null"
+										}
+									}
+								},
+								"then": {
+									"required": ["sourceSetId", "requiredCapabilities"],
+									"properties": {
+										"sourceSetId": {
+											"type": "string",
+											"minLength": 1
+										}
+									},
+									"allOf": [
+										{
+											"properties": {
+												"requiredCapabilities": {
+													"contains": {
+														"const": "es:task-source-only-v1"
+													}
+												}
+											}
+										}
+									]
+								}
+							}
+						]
+					}
+				}
+			],
+			"anyOf": [
+				{
+					"properties": {
+						"eventType": {
+							"pattern": "^(run\\.|artifact\\.|operation\\.|monitor\\.)"
+						}
+					}
+				},
+				{
+					"required": ["requiredCapabilities"],
+					"properties": {
+						"eventType": {
+							"pattern": ":"
+						},
+						"requiredCapabilities": {
+							"type": "array",
+							"minItems": 1,
+							"items": {
+								"type": "string",
+								"pattern": ":"
+							}
+						}
+					}
+				}
+			]
+		},
+		"sourceAnchor": {
+			"type": "object",
+			"required": ["artifactId", "revision"],
+			"properties": {
+				"artifactId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"byteRange": {
+					"$ref": "#/$defs/byteRange"
+				},
+				"rawBlockRef": {
+					"type": "string",
+					"minLength": 1
+				},
+				"jobRef": {
+					"type": "string",
+					"minLength": 1
+				},
+				"stageRef": {
+					"type": "string",
+					"minLength": 1
+				},
+				"frameRef": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true,
+			"anyOf": [
+				{
+					"required": ["byteRange"]
+				},
+				{
+					"required": ["rawBlockRef"]
+				}
+			]
+		},
+		"scientificValue": {
+			"type": "object",
+			"required": ["rawToken", "unit", "printedPrecision", "status", "source"],
+			"properties": {
+				"rawToken": {
+					"type": "string",
+					"minLength": 1
+				},
+				"unit": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"printedPrecision": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"status": {
+					"$ref": "#/$defs/fieldStatus"
+				},
+				"source": {
+					"$ref": "#/$defs/sourceAnchor"
+				},
+				"value": {
+					"type": "string",
+					"pattern": "^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"
+				},
+				"converted": {
+					"type": "object"
+				},
+				"display": {
+					"type": "object"
+				}
+			},
+			"additionalProperties": true
+		},
+		"markerManagement": {
+			"type": "object",
+			"required": ["revision", "changeId", "parentChangeId", "recycled"],
+			"properties": {
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"changeId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"parentChangeId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"recycled": {
+					"type": "boolean"
+				}
+			},
+			"additionalProperties": true
+		},
+		"managedSourceOrigin": {
+			"type": "object",
+			"required": ["kind"],
+			"properties": {
+				"kind": {
+					"enum": ["postprocess", "xtb-generated", "task-snapshot"]
+				},
+				"linkedTaskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"linkedRunId": {
+					"anyOf": [
+						{
+							"type": "string",
+							"minLength": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"libraryId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"snapshotId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceVersion": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"additionalProperties": true
+		},
+		"taskOrigin": {
+			"type": "object",
+			"required": ["kind"],
+			"properties": {
+				"kind": {
+					"enum": ["submitted", "external-directory", "postprocess-saved", "marker-recovered"]
+				},
+				"sourceKind": {
+					"enum": ["postprocess", "xtb-generated", "task-snapshot"]
+				}
+			},
+			"additionalProperties": true
+		},
+		"taskLocation": {
+			"type": "object",
+			"required": ["locationId", "kind", "scope", "path"],
+			"properties": {
+				"locationId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"kind": {
+					"enum": ["work", "planned-archive", "archive", "external", "legacy-recycle"]
+				},
+				"scope": {
+					"enum": ["library", "external"]
+				},
+				"path": {
+					"type": "string",
+					"minLength": 1
+				},
+				"environmentId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceVersion": {
+					"type": "string",
+					"minLength": 1
+				},
+				"markerPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"management": {
+					"$ref": "#/$defs/markerManagement"
+				}
+			},
+			"additionalProperties": true
+		},
+		"groupMembership": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"membershipId",
+				"taskId",
+				"groupId"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"membershipId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"groupId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"deleted": {
+					"type": "boolean"
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"properties": {
+						"requiredCapabilities": {
+							"contains": {
+								"const": "es:task-multigroup-v1"
+							}
+						}
+					}
+				}
+			]
+		},
+		"siteProfile": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"siteId",
+				"displayName",
+				"connectionKind",
+				"host",
+				"port",
+				"user",
+				"distribution",
+				"workingRoot",
+				"schedulerKind",
+				"partition",
+				"account",
+				"qos",
+				"timeLimit",
+				"authentication",
+				"privateKeyPath"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"siteId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"displayName": {
+					"type": "string",
+					"minLength": 1
+				},
+				"connectionKind": {
+					"enum": ["local", "wsl", "ssh"]
+				},
+				"host": {
+					"type": "string"
+				},
+				"port": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 65535
+				},
+				"user": {
+					"type": "string"
+				},
+				"distribution": {
+					"type": "string"
+				},
+				"workingRoot": {
+					"type": "string"
+				},
+				"schedulerKind": {
+					"enum": ["none", "slurm"]
+				},
+				"partition": {
+					"type": "string"
+				},
+				"account": {
+					"type": "string"
+				},
+				"qos": {
+					"type": "string"
+				},
+				"timeLimit": {
+					"type": "string"
+				},
+				"authentication": {
+					"enum": ["agent", "password", "private-key"]
+				},
+				"privateKeyPath": {
+					"type": "string"
+				},
+				"deleted": {
+					"type": "boolean"
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"properties": {
+						"requiredCapabilities": {
+							"contains": {
+								"const": "es:task-environment-sites-v1"
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"connectionKind": {
+								"const": "ssh"
+							}
+						}
+					},
+					"then": {
+						"properties": {
+							"host": {
+								"type": "string",
+								"minLength": 1
+							},
+							"user": {
+								"type": "string",
+								"minLength": 1
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"connectionKind": {
+								"const": "wsl"
+							}
+						}
+					},
+					"then": {
+						"properties": {
+							"distribution": {
+								"type": "string",
+								"minLength": 1
+							},
+							"user": {
+								"type": "string",
+								"minLength": 1
+							}
+						}
+					}
+				}
+			]
+		},
+		"sourceSet": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"revision",
+				"requiredCapabilities",
+				"sourceSetId",
+				"taskId",
+				"sourceVersion",
+				"origin",
+				"scope",
+				"manifestPath",
+				"directory",
+				"files",
+				"state"
+			],
+			"properties": {
+				"schemaVersion": {
+					"const": 1
+				},
+				"revision": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"requiredCapabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"fieldStatus": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/fieldStatus"
+					}
+				},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceVersion": {
+					"type": "string",
+					"minLength": 1
+				},
+				"origin": {
+					"$ref": "#/$defs/managedSourceOrigin"
+				},
+				"scope": {
+					"enum": ["library", "external"]
+				},
+				"manifestPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"directory": {
+					"type": "string",
+					"minLength": 1
+				},
+				"files": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [
+							"artifactId",
+							"roles",
+							"name",
+							"relativePath",
+							"byteSize",
+							"sha256",
+							"sourceId",
+							"required"
+						],
+						"properties": {
+							"artifactId": {
+								"type": "string",
+								"minLength": 1
+							},
+							"roles": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1
+							},
+							"relativePath": {
+								"type": "string",
+								"minLength": 1
+							},
+							"byteSize": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"sha256": {
+								"anyOf": [
+									{
+										"type": "string",
+										"pattern": "^[a-fA-F0-9]{64}$"
+									},
+									{
+										"type": "null"
+									}
+								]
+							},
+							"sourceId": {
+								"type": "string",
+								"minLength": 1
+							},
+							"required": {
+								"type": "boolean"
+							}
+						},
+						"additionalProperties": true
+					}
+				},
+				"state": {
+					"enum": ["archived", "external", "missing"]
+				},
+				"main": {
+					"type": "string",
+					"minLength": 1
+				},
+				"summary": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/managedSourceSummary"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"additionalProperties": true,
+			"allOf": [
+				{
+					"properties": {
+						"requiredCapabilities": {
+							"contains": {
+								"const": "es:task-source-only-v1"
+							}
+						}
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"state": {
+								"const": "archived"
+							}
+						}
+					},
+					"then": {
+						"properties": {
+							"files": {
+								"items": {
+									"properties": {
+										"sha256": {
+											"type": "string",
+											"pattern": "^[a-fA-F0-9]{64}$"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		"scientificStructure": {
+			"type": "object",
+			"required": ["id", "name", "format", "atoms", "charge", "multiplicity", "notes"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"name": {
+					"type": "string"
+				},
+				"format": {
+					"type": "string"
+				},
+				"atoms": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "object",
+						"required": ["element", "x", "y", "z"],
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1
+							},
+							"sourceIndex": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"element": {
+								"type": "string",
+								"minLength": 1
+							},
+							"x": {
+								"type": "number"
+							},
+							"y": {
+								"type": "number"
+							},
+							"z": {
+								"type": "number"
+							}
+						},
+						"additionalProperties": true
+					}
+				},
+				"charge": {
+					"anyOf": [
+						{
+							"type": "number"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"multiplicity": {
+					"anyOf": [
+						{
+							"type": "integer",
+							"minimum": 1
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"notes": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"bonds": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": ["a", "b", "order"],
+						"properties": {
+							"a": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"b": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"order": {
+								"type": "number"
+							}
+						},
+						"additionalProperties": true
+					}
+				},
+				"cell": {
+					"type": "object",
+					"required": ["vectors", "pbc"],
+					"properties": {
+						"vectors": {
+							"type": "array",
+							"minItems": 3,
+							"maxItems": 3,
+							"items": {
+								"type": "array",
+								"minItems": 3,
+								"maxItems": 3,
+								"items": {
+									"type": "number"
+								}
+							}
+						},
+						"pbc": {
+							"type": "array",
+							"minItems": 3,
+							"maxItems": 3,
+							"items": {
+								"type": "boolean"
+							}
+						},
+						"origin": {
+							"type": "array",
+							"minItems": 3,
+							"maxItems": 3,
+							"items": {
+								"type": "number"
+							}
+						},
+						"source": {
+							"type": "string"
+						}
+					},
+					"additionalProperties": true
+				}
+			},
+			"additionalProperties": true
+		},
+		"managedSourceSummary": {
+			"type": "object",
+			"required": [
+				"schema",
+				"sourceSetId",
+				"sourceVersion",
+				"sourceSha256",
+				"sourceId",
+				"engineId",
+				"taskKind",
+				"frameIndex",
+				"sourceFrameIndex",
+				"structure",
+				"energy"
+			],
+			"properties": {
+				"schema": {
+					"const": 1
+				},
+				"sourceSetId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceVersion": {
+					"type": "string",
+					"minLength": 1
+				},
+				"sourceSha256": {
+					"type": "string",
+					"pattern": "^[a-fA-F0-9]{64}$"
+				},
+				"sourceId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"engineId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"taskKind": {
+					"type": "string",
+					"minLength": 1
+				},
+				"frameIndex": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"sourceFrameIndex": {
+					"anyOf": [
+						{
+							"type": "integer",
+							"minimum": 0
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"structure": {
+					"$ref": "#/$defs/scientificStructure"
+				},
+				"energy": {
+					"anyOf": [
+						{
+							"type": "object",
+							"required": ["value", "unit"],
+							"properties": {
+								"value": {
+									"type": "number"
+								},
+								"unit": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"additionalProperties": true
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"method": {
+					"type": "string",
+					"minLength": 1
+				},
+				"capabilities": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			},
+			"additionalProperties": true
+		}
+	},
+	"anyOf": [
+		{
+			"$ref": "#/$defs/task"
+		},
+		{
+			"$ref": "#/$defs/run"
+		},
+		{
+			"$ref": "#/$defs/inputSnapshot"
+		},
+		{
+			"$ref": "#/$defs/environment"
+		},
+		{
+			"$ref": "#/$defs/artifact"
+		},
+		{
+			"$ref": "#/$defs/operation"
+		},
+		{
+			"$ref": "#/$defs/group"
+		},
+		{
+			"$ref": "#/$defs/projectAssociation"
+		},
+		{
+			"$ref": "#/$defs/snapshot"
+		},
+		{
+			"$ref": "#/$defs/archiveManifest"
+		},
+		{
+			"$ref": "#/$defs/cleanupManifest"
+		},
+		{
+			"$ref": "#/$defs/recycleRecord"
+		},
+		{
+			"$ref": "#/$defs/library"
+		},
+		{
+			"$ref": "#/$defs/executionRequest"
+		},
+		{
+			"$ref": "#/$defs/executionResponse"
+		},
+		{
+			"$ref": "#/$defs/event"
+		},
+		{
+			"$ref": "#/$defs/groupMembership"
+		},
+		{
+			"$ref": "#/$defs/siteProfile"
+		},
+		{
+			"$ref": "#/$defs/sourceSet"
+		}
+	]
+}

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "entryId": "sio2-alpha-cristobalite",
+  "structure": {
+    "id": "sio2-alpha-cristobalite",
+    "name": "低方石英",
+    "format": "CIF",
+    "atoms": [
+      {
+        "id": "sio2-alpha-cristobalite:atom:1",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.4894685400000003,
+        "y": 1.48946854,
+        "z": 1.8240728799416814e-16
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:2",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 1.0015314600000007,
+        "y": 3.98046854,
+        "z": 1.7407500000000002
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:3",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 3.492531460000001,
+        "y": 3.4925314600000004,
+        "z": 3.4815000000000005
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:4",
+        "sourceIndex": 1,
+        "element": "Si",
+        "x": 3.98046854,
+        "y": 1.00153146,
+        "z": 5.22225
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:5",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.19513198,
+        "y": 0.5154875400000001,
+        "z": 1.2403191900000001
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:6",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 0.5154875400000003,
+        "y": 1.19513198,
+        "z": 5.72268081
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:7",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.9755124600000007,
+        "y": 3.68613198,
+        "z": 2.9810691900000004
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:8",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 1.2958680200000006,
+        "y": 3.0064875399999997,
+        "z": 0.5004308100000001
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:9",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.7868680200000013,
+        "y": 4.466512460000001,
+        "z": 4.721819190000001
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:10",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 4.4665124600000015,
+        "y": 3.7868680200000004,
+        "z": 2.2411808100000004
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:11",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.0064875399999997,
+        "y": 1.2958680200000001,
+        "z": 6.46256919
+      },
+      {
+        "id": "sio2-alpha-cristobalite:atom:12",
+        "sourceIndex": 2,
+        "element": "O",
+        "x": 3.6861319800000003,
+        "y": 1.97551246,
+        "z": 3.9819308100000006
+      }
+    ],
+    "charge": null,
+    "multiplicity": null,
+    "notes": [
+      "Source CIF: COD 9008225; original CIF is retained at sourcePath.",
+      "Each atom sourceIndex is its 1-based original CIF atom-site row; symmetry-expanded atoms may map to the same row and retain the source label in that CIF.",
+      "Charge and multiplicity were not reported by the crystal-structure source and remain unknown."
+    ],
+    "sourceAtomIds": [
+      "sio2-alpha-cristobalite:atom:1",
+      "sio2-alpha-cristobalite:atom:2",
+      "sio2-alpha-cristobalite:atom:3",
+      "sio2-alpha-cristobalite:atom:4",
+      "sio2-alpha-cristobalite:atom:5",
+      "sio2-alpha-cristobalite:atom:6",
+      "sio2-alpha-cristobalite:atom:7",
+      "sio2-alpha-cristobalite:atom:8",
+      "sio2-alpha-cristobalite:atom:9",
+      "sio2-alpha-cristobalite:atom:10",
+      "sio2-alpha-cristobalite:atom:11",
+      "sio2-alpha-cristobalite:atom:12"
+    ],
+    "dimension": 3,
+    "cell": {
+      "vectors": [
+        [
+          4.982,
+          0.0,
+          3.050595176676057e-16
+        ],
+        [
+          8.011667040689004e-16,
+          4.982,
+          3.050595176676057e-16
+        ],
+        [
+          0.0,
+          0.0,
+          6.963
+        ]
+      ],
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "pbcProvenance": {
+        "kind": "format-defined",
+        "evidence": "COD CIF record 9008225 defines a complete 3D crystallographic unit cell; source cell is retained."
+      }
+    }
+  }
+}
