@@ -109,6 +109,11 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
 
   const pyExec = findPythonInterpreter();
   assert.ok(pyExec, 'Expected an available Python 3 interpreter to test dev-runtime.py');
+  const pyVerNoDot = execFileSync(
+    pyExec,
+    ['-c', 'import sys; print(f"{sys.version_info.major}{sys.version_info.minor}")'],
+    { encoding: 'utf8' }
+  ).trim();
 
   const tmpDir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-dev-rt-unit-'));
   try {
@@ -126,6 +131,10 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     fs.writeFileSync(path.join(tcDir, 'python/python.exe'), 'exe');
     fs.writeFileSync(path.join(tcDir, 'python/python312._pth'), 'Lib\nDLLs\n.\n');
     fs.writeFileSync(path.join(tcDir, 'python/python312.zip'), 'PK\x05\x06' + '\x00'.repeat(18));
+    fs.writeFileSync(
+      path.join(tcDir, `python/python${pyVerNoDot}.zip`),
+      'PK\x05\x06' + '\x00'.repeat(18)
+    );
     fs.writeFileSync(path.join(tcDir, 'tools/build_only_pkg.py'), 'BUILD_ONLY = True\n');
     fs.writeFileSync(
       path.join(depDir, 'python/Lib/site-packages/win_locked_pkg.py'),
@@ -173,12 +182,20 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       })
     );
 
-    // Prepare a poison external directory with pkgutil.py to verify _bootstrap_scrub_initial_sys_path
+    // Prepare a poison external directory with __future__.py and pkgutil.py, plus a poison toolchain parent directory
     const poisonDir = path.join(tmpDir, 'external-poison-pth');
     fs.mkdirSync(poisonDir, { recursive: true });
     fs.writeFileSync(
+      path.join(poisonDir, '__future__.py'),
+      'raise RuntimeError("POISON_EXTERNAL_FUTURE_IMPORTED")\n'
+    );
+    fs.writeFileSync(
       path.join(poisonDir, 'pkgutil.py'),
       'raise RuntimeError("POISON_EXTERNAL_PKGUTIL_IMPORTED")\n'
+    );
+    fs.writeFileSync(
+      path.join(tcDir, 'pkgutil.py'),
+      'raise RuntimeError("POISON_ANCESTOR_PKGUTIL_IMPORTED")\n'
     );
 
     // Prepare synthetic Mach-O binaries (arm64, x86_64, Universal2, and unknown format)
@@ -353,12 +370,19 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       'else:',
       '    universal_active = "skipped-non-darwin"',
       '    python_process_arch = "skipped-non-darwin"',
-      // Test _bootstrap_scrub_initial_sys_path scrubbing injected external ._pth path before top-level imports
+      // Test _bootstrap_scrub_initial_sys_path with mixed external + ancestor + stdlib paths, and with ONLY external + ancestor paths (0 matching stdlib entries)
       `poison_dir = ${JSON.stringify(poisonDir)}`,
+      `ancestor_tc_dir = ${JSON.stringify(tcDir)}`,
       'orig_sys_path = list(sys.path)',
-      'sys.path.insert(0, poison_dir)',
+      'sys.path[:] = [poison_dir, ancestor_tc_dir, *orig_sys_path]',
       'mod._bootstrap_scrub_initial_sys_path()',
-      'poison_scrubbed = poison_dir not in sys.path',
+      'poison_scrubbed = (poison_dir not in sys.path) and (ancestor_tc_dir not in sys.path) and (len(sys.path) > 0)',
+      'empty_match_rejected = False',
+      'sys.path[:] = [poison_dir, ancestor_tc_dir]',
+      'try:',
+      '    mod._bootstrap_scrub_initial_sys_path()',
+      'except RuntimeError as e:',
+      '    empty_match_rejected = ("DEV_RUNTIME_LOCK_INVALID" in str(e)) and (len(sys.path) == 0)',
       'sys.path[:] = orig_sys_path',
       // Test non-.local/toolchains root rejection on badAppDir
       `bad_app = pathlib.Path(${JSON.stringify(badAppDir)}).resolve()`,
@@ -394,12 +418,12 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       'sys.executable = str(tmp_app / ".local/toolchains/win-x64/tc-1/python/python.exe")',
       'sys.prefix = str(tmp_app / ".local/toolchains/win-x64/tc-1/python")',
       'sys.base_prefix = sys.prefix',
-      'sys.path[:] = [str(tmp_app / ".local/toolchains/win-x64/tc-1/python/python312.zip"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/DLLs"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib/site-packages"), str(tmp_app / ".local/toolchains/win-x64/tc-1/tools")]',
+      `sys.path[:] = [str(tmp_app / ".local/toolchains/win-x64/tc-1/python/python312.zip"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/python${pyVerNoDot}.zip"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/DLLs"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib/site-packages"), str(tmp_app / ".local/toolchains/win-x64/tc-1/tools")]`,
       'os.environ["rdbase"] = "/bad/ambient/rdbase"',
       'added_dlls = []',
       'os.add_dll_directory = lambda p: added_dlls.append(p) or p',
       'chem_dir, dep_root = mod.configure_isolated_paths(tmp_app)',
-      'zip_preserved = str((tmp_app / ".local/toolchains/win-x64/tc-1/python/python312.zip").resolve()) in sys.path',
+      `zip_preserved = (str((tmp_app / ".local/toolchains/win-x64/tc-1/python/python312.zip").resolve()) in sys.path) and (str((tmp_app / ".local/toolchains/win-x64/tc-1/python/python${pyVerNoDot}.zip").resolve()) in sys.path)`,
       'stdlib_preserved = str((tmp_app / ".local/toolchains/win-x64/tc-1/python/DLLs").resolve()) in sys.path',
       'tc_site_dropped = str((tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib/site-packages").resolve()) not in sys.path',
       'tc_tools_dropped = str((tmp_app / ".local/toolchains/win-x64/tc-1/tools").resolve()) not in sys.path',
@@ -426,6 +450,7 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    "universal_active": universal_active,',
       '    "python_process_arch": python_process_arch,',
       '    "poison_scrubbed": poison_scrubbed,',
+      '    "empty_match_rejected": empty_match_rejected,',
       '    "bad_root_rejected": bad_root_rejected,',
       '    "dangling_prof_rejected": dangling_prof_rejected,',
       '    "symlink_parent_rejected": symlink_parent_rejected,',
@@ -461,6 +486,7 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       assert.equal(parsed.universal_active, parsed.python_process_arch);
     }
     assert.equal(parsed.poison_scrubbed, true);
+    assert.equal(parsed.empty_match_rejected, true);
     assert.equal(parsed.bad_root_rejected, true);
     assert.equal(parsed.dangling_prof_rejected, true);
     assert.equal(parsed.symlink_parent_rejected, true);
@@ -475,16 +501,30 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     assert.equal(parsed.rdbase_after, null);
     assert.equal(parsed.omp, '1');
 
-    // Also verify top-level execution of dev-runtime.py scrubs initial sys.path BEFORE importing pkgutil/json/runpy
+    // Verify top-level execution of dev-runtime.py:
+    // (a) when initial sys.path has poisonDir + ancestor tcDir + stdlib: scrubs poisonDir & tcDir before importing __future__/pkgutil
+    // (b) when initial sys.path has ONLY poisonDir + ancestor tcDir (no stdlib): clears sys.path and raises DEV_RUNTIME_LOCK_INVALID without importing __future__/pkgutil
     const topLevelExecCode = [
       'import sys',
-      `sys.path.insert(0, ${JSON.stringify(poisonDir)})`,
+      'orig_std = list(sys.path)',
+      `sys.path[:] = [${JSON.stringify(poisonDir)}, ${JSON.stringify(tcDir)}, *orig_std]`,
+      'sys.modules.pop("__future__", None)',
       'sys.modules.pop("pkgutil", None)',
       `with open(${JSON.stringify(DEV_RUNTIME_PY)}, "rb") as f:`,
       `    code = compile(f.read(), ${JSON.stringify(DEV_RUNTIME_PY)}, "exec")`,
       'ns = {"__name__": "__not_main__", "__file__": ' + JSON.stringify(DEV_RUNTIME_PY) + '}',
       'exec(code, ns)',
       `assert ${JSON.stringify(poisonDir)} not in sys.path`,
+      `assert ${JSON.stringify(tcDir)} not in sys.path`,
+      `sys.path[:] = [${JSON.stringify(poisonDir)}, ${JSON.stringify(tcDir)}]`,
+      'sys.modules.pop("__future__", None)',
+      'sys.modules.pop("pkgutil", None)',
+      'rejected_only_external = False',
+      'try:',
+      '    exec(code, {"__name__": "__not_main__", "__file__": ' + JSON.stringify(DEV_RUNTIME_PY) + '})',
+      'except RuntimeError as e:',
+      '    rejected_only_external = ("DEV_RUNTIME_LOCK_INVALID" in str(e)) and (len(sys.path) == 0)',
+      'assert rejected_only_external',
       'print("TOP_LEVEL_SCRUB_OK")'
     ].join('\n');
     const topOut = execFileSync(pyExec, ['-I', '-S', '-B', '-c', topLevelExecCode], {
@@ -492,6 +532,85 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       encoding: 'utf8'
     });
     assert.equal(topOut.trim(), 'TOP_LEVEL_SCRUB_OK');
+
+    // (c) Real subprocess test with a physical python3._pth file pointing ONLY to an external stdlib containing poisoned __future__.py and pkgutil.py
+    const pyPrefixInfo = JSON.parse(
+      execFileSync(
+        pyExec,
+        [
+          '-I',
+          '-S',
+          '-B',
+          '-c',
+          'import json, sys; print(json.dumps({"prefix": sys.prefix, "ver_dot": f"{sys.version_info.major}.{sys.version_info.minor}"}))'
+        ],
+        { encoding: 'utf8' }
+      ).trim()
+    );
+    const srcStdlibDir = path.join(pyPrefixInfo.prefix, 'lib', `python${pyPrefixInfo.ver_dot}`);
+    if (
+      process.platform !== 'win32' &&
+      fs.existsSync(path.join(srcStdlibDir, 'encodings')) &&
+      fs.existsSync(path.join(srcStdlibDir, 'codecs.py'))
+    ) {
+      const pthSubDir = path.join(tmpDir, 'pth-subproc-tc', 'python', 'bin');
+      fs.mkdirSync(pthSubDir, { recursive: true });
+      const copiedPy = path.join(pthSubDir, 'python3');
+      fs.copyFileSync(pyExec, copiedPy);
+      const extStdlib = path.join(tmpDir, 'ext-stdlib-poison');
+      fs.mkdirSync(extStdlib, { recursive: true });
+      fs.symlinkSync(path.join(srcStdlibDir, 'encodings'), path.join(extStdlib, 'encodings'));
+      fs.symlinkSync(path.join(srcStdlibDir, 'codecs.py'), path.join(extStdlib, 'codecs.py'));
+      if (fs.existsSync(path.join(srcStdlibDir, 'lib-dynload'))) {
+        fs.symlinkSync(path.join(srcStdlibDir, 'lib-dynload'), path.join(extStdlib, 'lib-dynload'));
+      }
+      fs.writeFileSync(
+        path.join(extStdlib, '__future__.py'),
+        'raise RuntimeError("POISON_SUBPROC_FUTURE_EXECUTED")\n'
+      );
+      fs.writeFileSync(
+        path.join(extStdlib, 'pkgutil.py'),
+        'raise RuntimeError("POISON_SUBPROC_PKGUTIL_EXECUTED")\n'
+      );
+      fs.writeFileSync(
+        path.join(pthSubDir, 'python3._pth'),
+        `${extStdlib}\n${path.join(extStdlib, 'lib-dynload')}\n${tcDir}\n`
+      );
+      let pthProbe = '';
+      try {
+        pthProbe = execFileSync(
+          copiedPy,
+          ['-I', '-S', '-B', '-c', 'import sys; print(sys.prefix)'],
+          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+        ).trim();
+      } catch {
+        pthProbe = '';
+      }
+      // Only assert if this CPython build can execute as a standalone copy and honors python3._pth in bin/
+      if (pthProbe && fs.realpathSync(pthProbe) === fs.realpathSync(pthSubDir)) {
+        assert.throws(
+          () =>
+            execFileSync(copiedPy, ['-I', '-S', '-B', DEV_RUNTIME_PY], {
+              cwd: ROOT,
+              encoding: 'utf8',
+              stdio: 'pipe'
+            }),
+          (err) => {
+            const stderr = String(err.stderr || '');
+            assert.equal(stderr.includes('POISON_SUBPROC_FUTURE_EXECUTED'), false);
+            assert.equal(stderr.includes('POISON_SUBPROC_PKGUTIL_EXECUTED'), false);
+            assert.equal(stderr.includes('POISON_ANCESTOR_PKGUTIL_IMPORTED'), false);
+            assert.equal(
+              stderr.includes(
+                'DEV_RUNTIME_LOCK_INVALID: No admitted standard library path in initial sys.path.'
+              ),
+              true
+            );
+            return true;
+          }
+        );
+      }
+    }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

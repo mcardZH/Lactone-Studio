@@ -4,8 +4,6 @@
 Loads packages strictly from the project's locked dependency root (.local/dependencies/...)
 and prevents fallback to ambient system/user/conda site-packages.
 """
-from __future__ import annotations
-
 import sys
 
 sys.dont_write_bytecode = True
@@ -15,44 +13,76 @@ def _bootstrap_scrub_initial_sys_path() -> None:
     """Scrub sys.path using only built-in sys BEFORE importing any disk modules."""
     ver_dot = f"{sys.version_info.major}.{sys.version_info.minor}"
     ver_nodot = f"{sys.version_info.major}{sys.version_info.minor}"
-    allowed_rel_suffixes = {
-        "",
-        ".",
-        "dlls",
-        "lib",
-        f"python{ver_nodot}.zip",
-        f"lib/python{ver_nodot}.zip",
-        f"lib/python{ver_dot}",
-        f"lib/python{ver_dot}/lib-dynload",
-    }
+    is_win = sys.platform == "win32"
 
-    candidate_roots: set[str] = set()
-    for raw_base in (
-        getattr(sys, "executable", ""),
+    py_roots: list[str] = []
+
+    def _add_root(candidate: str) -> None:
+        if candidate and candidate not in py_roots:
+            py_roots.append(candidate)
+
+    for raw_exe in (
         getattr(sys, "_base_executable", ""),
-        getattr(sys, "prefix", ""),
-        getattr(sys, "base_prefix", ""),
+        getattr(sys, "executable", ""),
     ):
-        if not isinstance(raw_base, str) or not raw_base:
+        if not isinstance(raw_exe, str) or not raw_exe:
             continue
-        norm_base = raw_base.replace("\\", "/").rstrip("/")
-        if not norm_base:
+        norm_exe = raw_exe.replace("\\", "/").rstrip("/")
+        if "/" not in norm_exe:
             continue
-        candidate_roots.add(norm_base)
-        if "/" in norm_base:
-            parent = norm_base.rsplit("/", 1)[0]
-            if parent:
-                candidate_roots.add(parent)
-                if parent.lower().endswith("/bin") and "/" in parent:
-                    grandparent = parent.rsplit("/", 1)[0]
-                    if grandparent:
-                        candidate_roots.add(grandparent)
+        exe_dir = norm_exe.rsplit("/", 1)[0]
+        if not exe_dir:
+            continue
+        if is_win:
+            if exe_dir.lower().endswith("/scripts") and "/" in exe_dir:
+                _add_root(exe_dir.rsplit("/", 1)[0])
+            else:
+                _add_root(exe_dir)
+        else:
+            if exe_dir.lower().endswith("/bin") and "/" in exe_dir:
+                _add_root(exe_dir.rsplit("/", 1)[0])
+            else:
+                _add_root(exe_dir)
 
-    if not candidate_roots:
-        return
+    for raw_prefix in (
+        getattr(sys, "base_prefix", ""),
+        getattr(sys, "prefix", ""),
+    ):
+        if not isinstance(raw_prefix, str) or not raw_prefix:
+            continue
+        norm_prefix = raw_prefix.replace("\\", "/").rstrip("/")
+        if not norm_prefix:
+            continue
+        if not is_win and norm_prefix.lower().endswith("/bin") and "/" in norm_prefix:
+            _add_root(norm_prefix.rsplit("/", 1)[0])
+        else:
+            _add_root(norm_prefix)
 
-    roots_lower = {r.lower(): r for r in candidate_roots}
+    ordered_allowed: list[str] = []
+    allowed_lower: set[str] = set()
+    for root in py_roots:
+        if is_win:
+            rels = (
+                f"python{ver_nodot}.zip",
+                "DLLs",
+                "Lib",
+                "",
+            )
+        else:
+            rels = (
+                f"lib/python{ver_nodot}.zip",
+                f"lib/python{ver_dot}",
+                f"lib/python{ver_dot}/lib-dynload",
+            )
+        for rel in rels:
+            full = f"{root}/{rel}" if rel else root
+            low = full.lower()
+            if low not in allowed_lower:
+                allowed_lower.add(low)
+                ordered_allowed.append(full)
+
     scrubbed: list[str] = []
+    seen_lower: set[str] = set()
     for entry in list(sys.path):
         if not isinstance(entry, str) or not entry:
             continue
@@ -60,23 +90,16 @@ def _bootstrap_scrub_initial_sys_path() -> None:
         parts = [p for p in norm_entry.split("/") if p and p != "."]
         if ".." in parts:
             continue
-        norm_lower = norm_entry.lower()
-        matched_stdlib = False
-        for root_lower in roots_lower:
-            if norm_lower == root_lower:
-                matched_stdlib = "" in allowed_rel_suffixes
-                if matched_stdlib:
-                    break
-            elif norm_lower.startswith(root_lower + "/"):
-                rel_lower = norm_lower[len(root_lower) + 1 :]
-                if rel_lower in allowed_rel_suffixes:
-                    matched_stdlib = True
-                    break
-        if matched_stdlib:
+        low = norm_entry.lower()
+        if low in allowed_lower and low not in seen_lower:
+            seen_lower.add(low)
             scrubbed.append(entry)
 
-    if scrubbed:
-        sys.path[:] = scrubbed
+    sys.path[:] = scrubbed
+    if not scrubbed:
+        raise RuntimeError(
+            "DEV_RUNTIME_LOCK_INVALID: No admitted standard library path in initial sys.path."
+        )
 
 
 _bootstrap_scrub_initial_sys_path()
@@ -114,17 +137,23 @@ def _allowed_toolchain_stdlib_rel_paths(host_platform: str) -> tuple[str, ...]:
     ver_dot = f"{sys.version_info.major}.{sys.version_info.minor}"
     ver_nodot = f"{sys.version_info.major}{sys.version_info.minor}"
     if host_platform == "win32-x64":
-        return (
+        win_rels = [
             f"python/python{ver_nodot}.zip",
+            "python/python312.zip",
             "python/DLLs",
             "python/Lib",
             "python",
-        )
-    return (
+        ]
+        return tuple(dict.fromkeys(win_rels))
+    posix_rels = [
         f"python/lib/python{ver_nodot}.zip",
+        "python/lib/python312.zip",
         f"python/lib/python{ver_dot}",
+        "python/lib/python3.12",
         f"python/lib/python{ver_dot}/lib-dynload",
-    )
+        "python/lib/python3.12/lib-dynload",
+    ]
+    return tuple(dict.fromkeys(posix_rels))
 
 
 def _map_macho_cputype(cputype: int) -> str:
@@ -135,7 +164,7 @@ def _map_macho_cputype(cputype: int) -> str:
     raise RuntimeError(f"DEV_RUNTIME_PLATFORM_UNSUPPORTED: Unsupported Mach-O cputype {cputype:#x}.")
 
 
-def _probe_active_darwin_process_arch() -> str | None:
+def _probe_active_darwin_process_arch():
     """Query the in-memory Mach-O header of the active process image via libSystem."""
     try:
         import ctypes
@@ -160,7 +189,7 @@ def _probe_active_darwin_process_arch() -> str | None:
 
 
 def _infer_darwin_arch_without_uname(
-    executable_path: str | Path | None = None, *, allow_process_probe: bool = True
+    executable_path=None, *, allow_process_probe: bool = True
 ) -> str:
     """Read Mach-O cputype of executable without calling os.uname() or sysconfig."""
     target = Path(executable_path) if executable_path is not None else Path(sys.executable)
@@ -307,7 +336,7 @@ def _validate_content_root_rel(root_rel: object, expected_parent: str) -> str:
     return root_rel
 
 
-def _admitted_optional_subdir(base_root: Path, rel_posix: str, *, allow_zip_file: bool = False) -> Path | None:
+def _admitted_optional_subdir(base_root: Path, rel_posix: str, *, allow_zip_file: bool = False):
     if (
         not isinstance(rel_posix, str)
         or not rel_posix
