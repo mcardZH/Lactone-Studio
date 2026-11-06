@@ -50,7 +50,8 @@ function buildMockLockedProject(root, platformId) {
   const pyEntry = writeOwnedFile(root, `${tcRoot}/${pythonRel}`, 'binary-python');
   const tcFiles = [{ path: pythonRel, bytes: pyEntry.bytes, sha256: pyEntry.sha256 }];
   for (const member of layout.pythonRequiredMembers) {
-    const m = writeOwnedFile(root, `${tcRoot}/${member}`, `member:${member}`);
+    const memberContent = member.endsWith('._pth') ? 'Lib\nDLLs\n.\n' : `member:${member}`;
+    const m = writeOwnedFile(root, `${tcRoot}/${member}`, memberContent);
     tcFiles.push({ path: member, bytes: m.bytes, sha256: m.sha256 });
   }
 
@@ -265,6 +266,59 @@ test('chemistryRuntime resolves packaged engine, SCIYUE_PYTHON override, and loc
       assert.equal(rt.cwd, engineDir);
       assert.equal(rt.bundled, false);
       assert.equal(rt.provenance.locked, true);
+    }
+
+    // 5. Rejects locked toolchain containing unsafe ._pth entries (import site, external path, or ../tools)
+    for (const badPthContent of ['/tmp/external\n', '../tools\n', 'Lib\nimport site\n']) {
+      const badPthProj = path.join(
+        tmpDir,
+        `proj-bad-pth-${Buffer.from(badPthContent).toString('hex')}`
+      );
+      buildMockLockedProject(badPthProj, 'win32-x64');
+      const tcLockPath = path.join(
+        badPthProj,
+        'desktop/packaging/native-toolchain.win32-x64.lock.json'
+      );
+      const tcLock = JSON.parse(fs.readFileSync(tcLockPath, 'utf8'));
+      const pthRef = writeOwnedFile(
+        badPthProj,
+        `${tcLock.root}/python/python312._pth`,
+        badPthContent
+      );
+      tcLock.files = tcLock.files.map((item) =>
+        item.path === 'python/python312._pth'
+          ? { path: item.path, bytes: pthRef.bytes, sha256: pthRef.sha256 }
+          : item
+      );
+      const updatedTcLockRef = writeOwnedFile(
+        badPthProj,
+        'desktop/packaging/native-toolchain.win32-x64.lock.json',
+        JSON.stringify(tcLock)
+      );
+      const probePath = '.local/preparation/win-x64/import-probe.json';
+      const probeObj = JSON.parse(fs.readFileSync(path.join(badPthProj, probePath), 'utf8'));
+      probeObj.toolchainLock = updatedTcLockRef;
+      const updatedProbeRef = writeOwnedFile(badPthProj, probePath, JSON.stringify(probeObj));
+      const prepPath = '.local/preparation/win-x64/native-preparation.json';
+      const prepObj = JSON.parse(fs.readFileSync(path.join(badPthProj, prepPath), 'utf8'));
+      prepObj.toolchainLock = updatedTcLockRef;
+      prepObj.importProbe = updatedProbeRef;
+      const updatedPrepRef = writeOwnedFile(badPthProj, prepPath, JSON.stringify(prepObj));
+      const profPath = 'desktop/packaging/native-profile.win32-x64.json';
+      const profObj = JSON.parse(fs.readFileSync(path.join(badPthProj, profPath), 'utf8'));
+      profObj.preparation = updatedPrepRef;
+      writeOwnedFile(badPthProj, profPath, JSON.stringify(profObj));
+
+      assert.throws(
+        () =>
+          chemistryRuntime({
+            packaged: false,
+            appPath: badPthProj,
+            environment: {},
+            platformId: 'win32-x64'
+          }),
+        /DEV_RUNTIME_MISSING:.*_pth/
+      );
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

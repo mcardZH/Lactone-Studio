@@ -8,17 +8,69 @@ import { execFileSync } from 'node:child_process';
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const DEV_RUNTIME_PY = path.join(ROOT, 'scripts/native/dev-runtime.py');
 
+function isRunnablePython(candidate) {
+  if (!candidate || !fs.existsSync(candidate)) return false;
+  try {
+    const out = execFileSync(candidate, ['-c', 'import sys; print(sys.executable)'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+    return Boolean(out);
+  } catch {
+    return false;
+  }
+}
+
+function lockedToolchainCandidates() {
+  const hostId = `${process.platform}-${process.arch}`;
+  const profileRelCandidates = [
+    `desktop/packaging/native-profile.${hostId}.json`,
+    'desktop/packaging/native-profile.json'
+  ];
+  const found = [];
+  for (const rel of profileRelCandidates) {
+    const profPath = path.join(ROOT, rel);
+    if (!fs.existsSync(profPath)) continue;
+    try {
+      const prof = JSON.parse(fs.readFileSync(profPath, 'utf8'));
+      if (typeof prof.toolchainLock === 'string') {
+        const tcLockPath = path.join(ROOT, prof.toolchainLock);
+        if (fs.existsSync(tcLockPath)) {
+          const tcLock = JSON.parse(fs.readFileSync(tcLockPath, 'utf8'));
+          if (typeof tcLock.root === 'string' && typeof tcLock.python === 'string') {
+            found.push(path.join(ROOT, tcLock.root, tcLock.python));
+          }
+        }
+      }
+    } catch {
+      // ignore malformed lock during candidate discovery
+    }
+  }
+  return found;
+}
+
 function findPythonInterpreter() {
+  const darwinArm64 = path.join(
+    ROOT,
+    '.local/toolchains/darwin-arm64/conda-py312-arm64/python/bin/python3'
+  );
+  const darwinX64 = path.join(
+    ROOT,
+    '.local/toolchains/darwin-x64/conda-py312-x64/python/bin/python3'
+  );
+  const darwinCandidates =
+    process.arch === 'x64' ? [darwinX64, darwinArm64] : [darwinArm64, darwinX64];
+
   const candidates = [
     process.env.SCIYUE_PYTHON,
-    path.join(ROOT, '.local/toolchains/darwin-arm64/conda-py312-arm64/python/bin/python3'),
-    path.join(ROOT, '.local/toolchains/darwin-x64/conda-py312-x64/python/bin/python3'),
+    ...lockedToolchainCandidates(),
+    ...darwinCandidates,
     '/opt/anaconda3/envs/ester-studio/bin/python3',
     '/usr/bin/python3'
   ].filter(Boolean);
 
   for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
+    if (isRunnablePython(c)) return c;
   }
 
   for (const cmd of ['python', 'python3']) {
@@ -27,7 +79,7 @@ function findPythonInterpreter() {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore']
       }).trim();
-      if (out && fs.existsSync(out)) return out;
+      if (isRunnablePython(out)) return out;
     } catch {
       // continue
     }
@@ -66,12 +118,15 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     const depDir = path.join(appDir, '.local/dependencies/win-x64/dep-1');
     fs.mkdirSync(path.join(tcDir, 'python/DLLs'), { recursive: true });
     fs.mkdirSync(path.join(tcDir, 'python/Lib/site-packages'), { recursive: true });
+    fs.mkdirSync(path.join(tcDir, 'tools'), { recursive: true });
     fs.mkdirSync(path.join(depDir, 'python/Library/bin'), { recursive: true });
     fs.mkdirSync(path.join(depDir, 'python/Lib/site-packages'), { recursive: true });
     fs.mkdirSync(path.join(appDir, 'desktop/chemistry'), { recursive: true });
     fs.mkdirSync(path.join(appDir, 'desktop/packaging'), { recursive: true });
     fs.writeFileSync(path.join(tcDir, 'python/python.exe'), 'exe');
+    fs.writeFileSync(path.join(tcDir, 'python/python312._pth'), 'Lib\nDLLs\n.\n');
     fs.writeFileSync(path.join(tcDir, 'python/python312.zip'), 'PK\x05\x06' + '\x00'.repeat(18));
+    fs.writeFileSync(path.join(tcDir, 'tools/build_only_pkg.py'), 'BUILD_ONLY = True\n');
     fs.writeFileSync(
       path.join(depDir, 'python/Lib/site-packages/win_locked_pkg.py'),
       'WIN_OK = True\n'
@@ -113,9 +168,17 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
         schema: 'sciyue-native-toolchain-lock-v1',
         platform: 'win32-x64',
         root: '.local/toolchains/win-x64/tc-1',
-        contentDirectories: ['python'],
+        contentDirectories: ['python', 'tools'],
         python: 'python/python.exe'
       })
+    );
+
+    // Prepare a poison external directory with pkgutil.py to verify _bootstrap_scrub_initial_sys_path
+    const poisonDir = path.join(tmpDir, 'external-poison-pth');
+    fs.mkdirSync(poisonDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(poisonDir, 'pkgutil.py'),
+      'raise RuntimeError("POISON_EXTERNAL_PKGUTIL_IMPORTED")\n'
     );
 
     // Prepare synthetic Mach-O binaries (arm64, x86_64, Universal2, and unknown format)
@@ -286,8 +349,17 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    unknown_bin_rejected = "DEV_RUNTIME_PLATFORM_UNSUPPORTED" in str(e)',
       'if orig_plat == "darwin":',
       `    universal_active = mod._infer_darwin_arch_without_uname(${JSON.stringify(universalBin)}, allow_process_probe=True)`,
+      '    python_process_arch = mod._probe_active_darwin_process_arch()',
       'else:',
       '    universal_active = "skipped-non-darwin"',
+      '    python_process_arch = "skipped-non-darwin"',
+      // Test _bootstrap_scrub_initial_sys_path scrubbing injected external ._pth path before top-level imports
+      `poison_dir = ${JSON.stringify(poisonDir)}`,
+      'orig_sys_path = list(sys.path)',
+      'sys.path.insert(0, poison_dir)',
+      'mod._bootstrap_scrub_initial_sys_path()',
+      'poison_scrubbed = poison_dir not in sys.path',
+      'sys.path[:] = orig_sys_path',
       // Test non-.local/toolchains root rejection on badAppDir
       `bad_app = pathlib.Path(${JSON.stringify(badAppDir)}).resolve()`,
       'sys.executable = str(bad_app / "custom-tc/python/bin/python3")',
@@ -316,13 +388,13 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    mod.configure_isolated_paths(swap_app)',
       'except RuntimeError as e:',
       '    symlink_parent_rejected = "DEV_RUNTIME_LOCK_INVALID" in str(e)',
-      // Test Windows configure_isolated_paths + DLL registration + python312.zip preservation + site-packages parent directory + platform profile priority
+      // Test Windows configure_isolated_paths + DLL registration + python312.zip preservation + non-stdlib tools exclusion + ._pth validation + site-packages parent directory + platform profile priority
       'win_host = mod.detect_host_platform()',
       `tmp_app = pathlib.Path(${JSON.stringify(appDir)}).resolve()`,
       'sys.executable = str(tmp_app / ".local/toolchains/win-x64/tc-1/python/python.exe")',
       'sys.prefix = str(tmp_app / ".local/toolchains/win-x64/tc-1/python")',
       'sys.base_prefix = sys.prefix',
-      'sys.path[:] = [str(tmp_app / ".local/toolchains/win-x64/tc-1/python/python312.zip"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/DLLs"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib/site-packages")]',
+      'sys.path[:] = [str(tmp_app / ".local/toolchains/win-x64/tc-1/python/python312.zip"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/DLLs"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib"), str(tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib/site-packages"), str(tmp_app / ".local/toolchains/win-x64/tc-1/tools")]',
       'os.environ["rdbase"] = "/bad/ambient/rdbase"',
       'added_dlls = []',
       'os.add_dll_directory = lambda p: added_dlls.append(p) or p',
@@ -330,9 +402,17 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       'zip_preserved = str((tmp_app / ".local/toolchains/win-x64/tc-1/python/python312.zip").resolve()) in sys.path',
       'stdlib_preserved = str((tmp_app / ".local/toolchains/win-x64/tc-1/python/DLLs").resolve()) in sys.path',
       'tc_site_dropped = str((tmp_app / ".local/toolchains/win-x64/tc-1/python/Lib/site-packages").resolve()) not in sys.path',
+      'tc_tools_dropped = str((tmp_app / ".local/toolchains/win-x64/tc-1/tools").resolve()) not in sys.path',
       'mod.resolve_app_path = lambda: tmp_app',
       'mod.main()',
       'engine_ran_ok = getattr(sys, "_ENGINE_RAN_OK", False)',
+      // Verify invalid ._pth content is rejected by configure_isolated_paths
+      '(tmp_app / ".local/toolchains/win-x64/tc-1/python/python312._pth").write_text("../tools\\n", encoding="utf-8")',
+      'bad_pth_rejected = False',
+      'try:',
+      '    mod.configure_isolated_paths(tmp_app)',
+      'except RuntimeError as e:',
+      '    bad_pth_rejected = "DEV_RUNTIME_LOCK_INVALID" in str(e)',
       'print(json.dumps({',
       '    "uname_not_monkeypatched": uname_not_monkeypatched,',
       '    "uname_fallback_worked": uname_fallback_worked,',
@@ -344,6 +424,8 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    "universal_no_probe_rejected": universal_no_probe_rejected,',
       '    "unknown_bin_rejected": unknown_bin_rejected,',
       '    "universal_active": universal_active,',
+      '    "python_process_arch": python_process_arch,',
+      '    "poison_scrubbed": poison_scrubbed,',
       '    "bad_root_rejected": bad_root_rejected,',
       '    "dangling_prof_rejected": dangling_prof_rejected,',
       '    "symlink_parent_rejected": symlink_parent_rejected,',
@@ -352,6 +434,8 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    "zip_preserved": zip_preserved,',
       '    "stdlib_preserved": stdlib_preserved,',
       '    "tc_site_dropped": tc_site_dropped,',
+      '    "tc_tools_dropped": tc_tools_dropped,',
+      '    "bad_pth_rejected": bad_pth_rejected,',
       '    "engine_ran_ok": engine_ran_ok,',
       '    "rdbase_after": os.environ.get("rdbase") or os.environ.get("RDBASE"),',
       '    "omp": os.environ.get("OMP_NUM_THREADS")',
@@ -373,8 +457,10 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     assert.equal(parsed.universal_no_probe_rejected, true);
     assert.equal(parsed.unknown_bin_rejected, true);
     if (process.platform === 'darwin') {
-      assert.equal(parsed.universal_active, process.arch === 'arm64' ? 'arm64' : 'x86_64');
+      assert.ok(parsed.python_process_arch === 'arm64' || parsed.python_process_arch === 'x86_64');
+      assert.equal(parsed.universal_active, parsed.python_process_arch);
     }
+    assert.equal(parsed.poison_scrubbed, true);
     assert.equal(parsed.bad_root_rejected, true);
     assert.equal(parsed.dangling_prof_rejected, true);
     assert.equal(parsed.symlink_parent_rejected, true);
@@ -383,9 +469,29 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     assert.equal(parsed.zip_preserved, true);
     assert.equal(parsed.stdlib_preserved, true);
     assert.equal(parsed.tc_site_dropped, true);
+    assert.equal(parsed.tc_tools_dropped, true);
+    assert.equal(parsed.bad_pth_rejected, true);
     assert.equal(parsed.engine_ran_ok, true);
     assert.equal(parsed.rdbase_after, null);
     assert.equal(parsed.omp, '1');
+
+    // Also verify top-level execution of dev-runtime.py scrubs initial sys.path BEFORE importing pkgutil/json/runpy
+    const topLevelExecCode = [
+      'import sys',
+      `sys.path.insert(0, ${JSON.stringify(poisonDir)})`,
+      'sys.modules.pop("pkgutil", None)',
+      `with open(${JSON.stringify(DEV_RUNTIME_PY)}, "rb") as f:`,
+      `    code = compile(f.read(), ${JSON.stringify(DEV_RUNTIME_PY)}, "exec")`,
+      'ns = {"__name__": "__not_main__", "__file__": ' + JSON.stringify(DEV_RUNTIME_PY) + '}',
+      'exec(code, ns)',
+      `assert ${JSON.stringify(poisonDir)} not in sys.path`,
+      'print("TOP_LEVEL_SCRUB_OK")'
+    ].join('\n');
+    const topOut = execFileSync(pyExec, ['-I', '-S', '-B', '-c', topLevelExecCode], {
+      cwd: ROOT,
+      encoding: 'utf8'
+    });
+    assert.equal(topOut.trim(), 'TOP_LEVEL_SCRUB_OK');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

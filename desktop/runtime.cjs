@@ -3,6 +3,75 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { developmentNative } = require('./current-runtime.cjs');
 
+const ALLOWED_PTH_STDLIB_BY_PLATFORM = Object.freeze({
+  'win32-x64': new Set(['.', 'Lib', 'DLLs', 'python312.zip']),
+  'darwin-arm64': new Set([
+    'lib/python312.zip',
+    'lib/python3.12',
+    'lib/python3.12/lib-dynload'
+  ]),
+  'darwin-x64': new Set([
+    'lib/python312.zip',
+    'lib/python3.12',
+    'lib/python3.12/lib-dynload'
+  ])
+});
+
+function validateToolchainStartupPaths(selected) {
+  const exeAbs = path.resolve(selected.executable);
+  const exeDir = path.dirname(exeAbs);
+  const pythonRoot =
+    path.basename(exeDir).toLowerCase() === 'bin' ? path.dirname(exeDir) : exeDir;
+  const allowedRelSet = ALLOWED_PTH_STDLIB_BY_PLATFORM[selected.platform];
+  if (!allowedRelSet) {
+    throw new Error(`Unsupported runtime platform for ._pth validation: ${selected.platform}`);
+  }
+
+  const candidateDirs = exeDir === pythonRoot ? [pythonRoot] : [pythonRoot, exeDir];
+  for (const dir of candidateDirs) {
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
+    for (const entry of fs.readdirSync(dir)) {
+      if (!entry.toLowerCase().endsWith('._pth')) continue;
+      const pthPath = path.join(dir, entry);
+      const st = fs.lstatSync(pthPath);
+      if (!st.isFile() || st.isSymbolicLink()) {
+        throw new Error(`Invalid toolchain ._pth file: ${pthPath}`);
+      }
+      const raw = fs.readFileSync(pthPath, 'utf8');
+      if (raw.includes('\0')) {
+        throw new Error(`Invalid null byte in toolchain ._pth file: ${pthPath}`);
+      }
+      const lines = raw
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && !line.startsWith('#'));
+      if (lines.length === 0) {
+        throw new Error(`Empty toolchain ._pth file: ${pthPath}`);
+      }
+      for (const line of lines) {
+        if (
+          /^import(?:\s|$)/i.test(line) ||
+          line.startsWith('/') ||
+          line.startsWith('\\') ||
+          /^[A-Za-z]:/.test(line) ||
+          line.includes(';') ||
+          line.includes(':')
+        ) {
+          throw new Error(`Disallowed directive or path in toolchain ._pth: ${line}`);
+        }
+        const resolved = path.resolve(dir, line.replace(/\\/g, '/'));
+        if (resolved !== pythonRoot && !resolved.startsWith(pythonRoot + path.sep)) {
+          throw new Error(`Toolchain ._pth path escaped python root: ${line}`);
+        }
+        const rel = path.relative(pythonRoot, resolved).split(path.sep).join('/') || '.';
+        if (!allowedRelSet.has(rel)) {
+          throw new Error(`Toolchain ._pth path outside allowed stdlib set: ${rel}`);
+        }
+      }
+    }
+  }
+}
+
 function chemistryRuntime({
   packaged,
   resourcesPath,
@@ -48,6 +117,7 @@ function chemistryRuntime({
   }
   try {
     const selected = developmentNative(appPath, { platform, arch, platformId });
+    validateToolchainStartupPaths(selected);
     const bootstrap = path.join(appPath, 'scripts/native/dev-runtime.py');
     if (!fs.statSync(bootstrap).isFile()) {
       throw new Error('Fixed development bootstrap missing');
@@ -66,4 +136,4 @@ function chemistryRuntime({
   }
 }
 
-module.exports = { chemistryRuntime };
+module.exports = { chemistryRuntime, validateToolchainStartupPaths };

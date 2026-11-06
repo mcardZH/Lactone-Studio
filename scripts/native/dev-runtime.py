@@ -6,14 +6,86 @@ and prevents fallback to ambient system/user/conda site-packages.
 """
 from __future__ import annotations
 
-import json
-import os
-import pkgutil
-import runpy
 import sys
-from pathlib import Path
 
 sys.dont_write_bytecode = True
+
+
+def _bootstrap_scrub_initial_sys_path() -> None:
+    """Scrub sys.path using only built-in sys BEFORE importing any disk modules."""
+    ver_dot = f"{sys.version_info.major}.{sys.version_info.minor}"
+    ver_nodot = f"{sys.version_info.major}{sys.version_info.minor}"
+    allowed_rel_suffixes = {
+        "",
+        ".",
+        "dlls",
+        "lib",
+        f"python{ver_nodot}.zip",
+        f"lib/python{ver_nodot}.zip",
+        f"lib/python{ver_dot}",
+        f"lib/python{ver_dot}/lib-dynload",
+    }
+
+    candidate_roots: set[str] = set()
+    for raw_base in (
+        getattr(sys, "executable", ""),
+        getattr(sys, "_base_executable", ""),
+        getattr(sys, "prefix", ""),
+        getattr(sys, "base_prefix", ""),
+    ):
+        if not isinstance(raw_base, str) or not raw_base:
+            continue
+        norm_base = raw_base.replace("\\", "/").rstrip("/")
+        if not norm_base:
+            continue
+        candidate_roots.add(norm_base)
+        if "/" in norm_base:
+            parent = norm_base.rsplit("/", 1)[0]
+            if parent:
+                candidate_roots.add(parent)
+                if parent.lower().endswith("/bin") and "/" in parent:
+                    grandparent = parent.rsplit("/", 1)[0]
+                    if grandparent:
+                        candidate_roots.add(grandparent)
+
+    if not candidate_roots:
+        return
+
+    roots_lower = {r.lower(): r for r in candidate_roots}
+    scrubbed: list[str] = []
+    for entry in list(sys.path):
+        if not isinstance(entry, str) or not entry:
+            continue
+        norm_entry = entry.replace("\\", "/").rstrip("/")
+        parts = [p for p in norm_entry.split("/") if p and p != "."]
+        if ".." in parts:
+            continue
+        norm_lower = norm_entry.lower()
+        matched_stdlib = False
+        for root_lower in roots_lower:
+            if norm_lower == root_lower:
+                matched_stdlib = "" in allowed_rel_suffixes
+                if matched_stdlib:
+                    break
+            elif norm_lower.startswith(root_lower + "/"):
+                rel_lower = norm_lower[len(root_lower) + 1 :]
+                if rel_lower in allowed_rel_suffixes:
+                    matched_stdlib = True
+                    break
+        if matched_stdlib:
+            scrubbed.append(entry)
+
+    if scrubbed:
+        sys.path[:] = scrubbed
+
+
+_bootstrap_scrub_initial_sys_path()
+
+import json  # noqa: E402
+import os  # noqa: E402
+import pkgutil  # noqa: E402
+import runpy  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 for _env_key in list(os.environ.keys()):
     if _env_key.upper().startswith("_PYTHON_"):
@@ -36,6 +108,23 @@ PLATFORM_LAYOUTS = {
         "python_entries": ("python/bin/python3", "python/bin/python"),
     },
 }
+
+
+def _allowed_toolchain_stdlib_rel_paths(host_platform: str) -> tuple[str, ...]:
+    ver_dot = f"{sys.version_info.major}.{sys.version_info.minor}"
+    ver_nodot = f"{sys.version_info.major}{sys.version_info.minor}"
+    if host_platform == "win32-x64":
+        return (
+            f"python/python{ver_nodot}.zip",
+            "python/DLLs",
+            "python/Lib",
+            "python",
+        )
+    return (
+        f"python/lib/python{ver_nodot}.zip",
+        f"python/lib/python{ver_dot}",
+        f"python/lib/python{ver_dot}/lib-dynload",
+    )
 
 
 def _map_macho_cputype(cputype: int) -> str:
@@ -270,6 +359,53 @@ def _require_content_dirs(lock_doc: dict, label: str) -> list[str]:
     return result
 
 
+def _validate_toolchain_pth_files(tc_root: Path, host_platform: str) -> None:
+    allowed_rel_set = set(_allowed_toolchain_stdlib_rel_paths(host_platform))
+    python_dir = tc_root / "python"
+    bin_dir = python_dir / "bin"
+    for candidate_dir in (python_dir, bin_dir):
+        if not candidate_dir.exists() or not candidate_dir.is_dir():
+            continue
+        for entry in candidate_dir.iterdir():
+            if not entry.name.lower().endswith("._pth"):
+                continue
+            rel_entry = entry.relative_to(tc_root).as_posix()
+            admitted_pth = _admitted_path(tc_root, rel_entry, directory=False)
+            raw_text = admitted_pth.read_text(encoding="utf-8")
+            if "\0" in raw_text:
+                raise RuntimeError(f"DEV_RUNTIME_LOCK_INVALID: Null byte in ._pth file '{admitted_pth}'.")
+            lines = [
+                line.strip()
+                for line in raw_text.splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            ]
+            if not lines:
+                raise RuntimeError(f"DEV_RUNTIME_LOCK_INVALID: Empty ._pth file '{admitted_pth}'.")
+            for line in lines:
+                if (
+                    line.lower() == "import"
+                    or line.lower().startswith("import ")
+                    or line.lower().startswith("import\t")
+                    or line.startswith("/")
+                    or line.startswith("\\")
+                    or ":" in line
+                    or ";" in line
+                ):
+                    raise RuntimeError(
+                        f"DEV_RUNTIME_LOCK_INVALID: Disallowed directive or path in ._pth '{admitted_pth}': {line}"
+                    )
+                resolved_target = (admitted_pth.parent / line.replace("\\", "/")).resolve()
+                if not resolved_target.is_relative_to(tc_root):
+                    raise RuntimeError(
+                        f"DEV_RUNTIME_LOCK_INVALID: ._pth entry escaped toolchain root: {line}"
+                    )
+                rel_target = resolved_target.relative_to(tc_root).as_posix()
+                if rel_target not in allowed_rel_set:
+                    raise RuntimeError(
+                        f"DEV_RUNTIME_LOCK_INVALID: ._pth entry outside allowed stdlib set: {rel_target}"
+                    )
+
+
 def load_active_profile(app_path: Path, host_platform: str) -> dict:
     _admitted_path(app_path, "desktop/packaging", directory=True)
     default_rel = "desktop/packaging/native-profile.json"
@@ -351,6 +487,8 @@ def configure_isolated_paths(app_path: Path) -> tuple[Path, Path]:
             f"base_prefix={base_prefix_resolved}, tc_root={tc_root})."
         )
 
+    _validate_toolchain_pth_files(tc_root, host_platform)
+
     tc_content_dirs = _require_content_dirs(toolchain_lock, "toolchain")
     allowed_tc_roots: list[Path] = []
     for d in tc_content_dirs:
@@ -359,6 +497,7 @@ def configure_isolated_paths(app_path: Path) -> tuple[Path, Path]:
             raise RuntimeError("DEV_RUNTIME_LOCK_INVALID: Toolchain contentDirectory escaped toolchain root.")
         allowed_tc_roots.append(admitted_tc_dir)
 
+    allowed_stdlib_rels = set(_allowed_toolchain_stdlib_rel_paths(host_platform))
     cleaned_sys_path: list[str] = []
     for entry in sys.path:
         if not entry:
@@ -372,19 +511,18 @@ def configure_isolated_paths(app_path: Path) -> tuple[Path, Path]:
         if not any(resolved.is_relative_to(allowed_tc) for allowed_tc in allowed_tc_roots):
             continue
         rel_to_tc = resolved.relative_to(tc_root)
-        lower_rel_parts = [p.lower() for p in rel_to_tc.parts]
-        if "site-packages" in lower_rel_parts or "dist-packages" in lower_rel_parts:
+        rel_posix = rel_to_tc.as_posix()
+        if rel_posix not in allowed_stdlib_rels:
             continue
-        if rel_to_tc.parts:
-            try:
-                verified_tc_entry = _admitted_optional_subdir(
-                    tc_root, rel_to_tc.as_posix(), allow_zip_file=True
-                )
-            except RuntimeError:
-                continue
-            if verified_tc_entry is None:
-                continue
-            cleaned_sys_path.append(str(verified_tc_entry))
+        try:
+            verified_tc_entry = _admitted_optional_subdir(
+                tc_root, rel_posix, allow_zip_file=True
+            )
+        except RuntimeError:
+            continue
+        if verified_tc_entry is None:
+            continue
+        cleaned_sys_path.append(str(verified_tc_entry))
 
     sys.path[:] = cleaned_sys_path
 

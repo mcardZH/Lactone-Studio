@@ -16,14 +16,14 @@
 - **核心功能需求**：
   1. **科学引擎启动器跨平台解析 (`desktop/runtime.cjs`)**：
      - `packaged` 模式下按 `platform` 解析 `chemistry/engine.exe`（Windows）或 `chemistry/engine`（macOS/POSIX）。
-     - 开发模式下校验 `desktop/chemistry/engine.py` 存在性，支持显式 `SCIYUE_PYTHON` 绝对路径覆盖（`['-B', engine]`），默认调用 `developmentNative(appPath, { platform, arch, platformId })` 并返回隔离启动参数 `['-I', '-S', '-B', path.join(appPath, 'scripts/native/dev-runtime.py')]`。
+     - 开发模式下校验 `desktop/chemistry/engine.py` 存在性，支持显式 `SCIYUE_PYTHON` 绝对路径覆盖（`['-B', engine]`），默认调用 `developmentNative(appPath, { platform, arch, platformId })`、校验锁定工具链内 `*._pth` 启动配置仅引用 Python 解释器根目录内的安全相对路径且不含 `import` 指令，并返回隔离启动参数 `['-I', '-S', '-B', path.join(appPath, 'scripts/native/dev-runtime.py')]`。
   2. **Python 隔离运行时引导器 (`scripts/native/dev-runtime.py`)**：
-     - 清理继承自宿主进程的 `_PYTHON_*` 与 `RDBASE`（不区分大小写）环境变量，开启 `sys.dont_write_bytecode = True`。
+     - 在首行仅使用内建 `sys` 模块执行 `_bootstrap_scrub_initial_sys_path()`，在任何顶层标准库导入（`json`/`os`/`pathlib`/`pkgutil`/`runpy`）之前剔除不在当前 Python 解释器标准库前缀下的外部路径（防御异常 `*._pth` 注入）；清理继承自宿主进程的 `_PYTHON_*` 与 `RDBASE`（不区分大小写）环境变量，开启 `sys.dont_write_bytecode = True`。
      - 实现 `detect_host_platform()`：支持 `win32-x64`、`darwin-arm64`、`darwin-x64`；在 Darwin 上若 `os.uname()` 抛出 `PermissionError` 或返回空架构，局部回退至直接解析当前可执行文件的 Mach-O 头部（支持单架构与 Universal 2 胖二进制进程内存头部探测），不全局覆写 `os.uname`。
      - 实现 `_admitted_path` 与 `load_active_profile`：拒绝符号链接、Junction 及硬链接数大于 1 的输入文件；当平台专属 `native-profile.<platform>.json` 存在（含悬空符号链接）时不静默回退至默认 `native-profile.json`。
      - 实现 `configure_isolated_paths(app_path)`：
-       - 校验 `runtime` 与 `toolchain` 锁文件 schema、平台、固定父目录（`.local/dependencies/...` 与 `.local/toolchains/...`）、显式非空 `contentDirectories` 以及当前 Python 解释器（`sys.executable`、`sys.prefix`、`sys.base_prefix`）严格位于锁定工具链目录内。
-       - 过滤 `sys.path`：仅保留锁定工具链 `contentDirectories` 内已验证的标准库目录与 `.zip` 标准库归档（如 Windows 嵌入式 Python 的 `python312.zip`），剔除工具链自带的 `site-packages`/`dist-packages`，并将锁定依赖根下的 `site-packages` 与 `desktop/chemistry` 置于 `sys.path` 首位。
+       - 校验 `runtime` 与 `toolchain` 锁文件 schema、平台、固定父目录（`.local/dependencies/...` 与 `.local/toolchains/...`）、显式非空 `contentDirectories`、`*._pth` 内容合法性以及当前 Python 解释器（`sys.executable`、`sys.prefix`、`sys.base_prefix`）严格位于锁定工具链目录内。
+       - 过滤 `sys.path`：仅保留锁定工具链中明确白名单允许的 Python 标准库路径与 `.zip` 标准库归档（如 Windows 的 `python/python312.zip`、`python/DLLs`、`python/Lib`、`python` 及 Darwin 的 `python/lib/python312.zip`、`python/lib/python3.12`、`python/lib/python3.12/lib-dynload`），剔除工具链自带的 `site-packages`/`dist-packages` 以及 `tools`/`compiler` 等非标准库构建目录，并将锁定依赖根下的 `site-packages` 与 `desktop/chemistry` 置于 `sys.path` 首位。
        - Windows 下通过 `os.add_dll_directory` 注册已验证的 `python/Library/bin`、`python`、`python/DLLs` 目录并将句柄保存在 `sys._sciyue_dll_handles` 中。
 - **边界与非目标 (Out of Scope)**：
   - 本分支**不涉及** `.local` 科学计算环境实际构建脚本与锁文件生成（将在下一分支 `mac/phase1a3-darwin-staging` 实现）。
