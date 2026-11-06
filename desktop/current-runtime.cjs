@@ -78,34 +78,50 @@ function hasUnsafePathDelimiter(filePath, platformId, hostPlatform = process.pla
 }
 
 function detectWindowsKernelSystemRoot(hostPlatform = process.platform, sharedObjects) {
-  let loaded = sharedObjects;
-  if (!Array.isArray(loaded) && hostPlatform === 'win32') {
+  if (sharedObjects === undefined && hostPlatform !== 'win32') {
+    return 'C:\\Windows';
+  }
+  let loaded;
+  if (typeof sharedObjects === 'function') {
+    try {
+      loaded = sharedObjects();
+    } catch {
+      assert.fail('Trusted Windows SystemRoot required');
+    }
+  } else if (sharedObjects !== undefined) {
+    loaded = sharedObjects;
+  } else {
     try {
       const report =
         process.report && typeof process.report.getReport === 'function'
           ? process.report.getReport()
           : null;
-      loaded = report && Array.isArray(report.sharedObjects) ? report.sharedObjects : [];
+      loaded = report && Array.isArray(report.sharedObjects) ? report.sharedObjects : null;
     } catch {
-      loaded = [];
+      assert.fail('Trusted Windows SystemRoot required');
     }
   }
-  if (Array.isArray(loaded)) {
-    for (const entry of loaded) {
-      if (typeof entry !== 'string') continue;
-      const match = entry.match(
-        /^([A-Za-z]:[\\/][^\\/:*?"<>|]+)[\\/]System32[\\/](?:ntdll|kernel32)\.dll$/i
-      );
-      if (match) {
-        const candidate = match[1].replace(/[\\/]+$/, '');
-        const parts = candidate.split(/[\\/]+/);
-        if (parts.length === 2 && /^[A-Za-z]:$/.test(parts[0]) && parts[1] !== '.' && parts[1] !== '..') {
-          return `${parts[0].toUpperCase()}\\${parts[1]}`;
-        }
+  assert(Array.isArray(loaded), 'Trusted Windows SystemRoot required');
+  for (const entry of loaded) {
+    if (typeof entry !== 'string') continue;
+    const match = entry.match(
+      /^([A-Za-z]:[\\/][^\\/:*?"<>|]+)[\\/]System32[\\/](?:ntdll|kernel32)\.dll$/i
+    );
+    if (match) {
+      const candidate = match[1].replace(/[\\/]+$/, '');
+      const parts = candidate.split(/[\\/]+/);
+      if (
+        parts.length === 2 &&
+        /^[A-Za-z]:$/.test(parts[0]) &&
+        parts[1].length > 0 &&
+        !/^[.]+$/.test(parts[1]) &&
+        !/[<>:"/\\|?*\0;]/.test(parts[1])
+      ) {
+        return `${parts[0].toUpperCase()}\\${parts[1]}`;
       }
     }
   }
-  return 'C:\\Windows';
+  assert.fail('Trusted Windows SystemRoot required');
 }
 
 function normalizeWindowsSystemRootCandidate(raw) {
@@ -118,12 +134,14 @@ function normalizeWindowsSystemRootCandidate(raw) {
   assert(
     segments.length === 2 &&
       /^[A-Za-z]:$/.test(segments[0]) &&
-      /^Windows$/i.test(segments[1]),
+      segments[1].length > 0 &&
+      !/^[.]+$/.test(segments[1]) &&
+      !/[<>:"/\\|?*\0;]/.test(segments[1]),
     'Trusted Windows SystemRoot required'
   );
   const normalized = path.win32.normalize(`${segments[0].toUpperCase()}\\${segments[1]}`);
   assert(
-    /^[A-Za-z]:\\Windows$/i.test(normalized) &&
+    /^[A-Za-z]:\\[^\\/:*?"<>|\0;]+$/i.test(normalized) &&
       normalized.toLowerCase() === cleaned.replace(/\//g, '\\').toLowerCase(),
     'Trusted Windows SystemRoot required'
   );
@@ -776,11 +794,13 @@ function currentRuntimeEnvironment({
   const result = {};
   for (const name of Object.keys(environment)) {
     if (
-      /^(?:CONDA_|_CONDA_|VIRTUAL_ENV$|PYTHON|_PYTHON_|_CE_CONDA$|_CE_M$|DYLD_|LD_|RDBASE$|SYSTEMROOT$|WINDIR$)/i.test(
+      /^(?:CONDA_|_CONDA_|VIRTUAL_ENV$|PYTHON|_PYTHON_|_CE_CONDA$|_CE_M$|DYLD_|LD_|RDBASE$)/i.test(
         name
       )
     ) {
       result[name] = undefined;
+    } else if (windowsSystemRoot !== null && /^(?:SYSTEMROOT|WINDIR)$/i.test(name)) {
+      result[name] = windowsSystemRoot;
     }
   }
   if (windowsSystemRoot !== null) {

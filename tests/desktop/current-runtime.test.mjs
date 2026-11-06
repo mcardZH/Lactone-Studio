@@ -318,6 +318,29 @@ test('SUPPORTED_PLATFORMS, defaultPlatformId, hasUnsafePathDelimiter, and resolv
     ),
     'D:\\Windows'
   );
+  assert.equal(
+    resolveTrustedWindowsSystemRoot(
+      { SystemRoot: 'C:\\WINNT\\' },
+      'darwin',
+      ['C:\\WINNT\\System32\\kernel32.dll']
+    ),
+    'C:\\WINNT'
+  );
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({}, 'darwin', []),
+    /Trusted Windows SystemRoot required/
+  );
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({}, 'darwin', ['C:\\App\\custom.dll']),
+    /Trusted Windows SystemRoot required/
+  );
+  assert.throws(
+    () =>
+      resolveTrustedWindowsSystemRoot({}, 'darwin', () => {
+        throw new Error('report unavailable');
+      }),
+    /Trusted Windows SystemRoot required/
+  );
   assert.throws(
     () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'Z:\\Windows' }, 'darwin'),
     /Trusted Windows SystemRoot required/
@@ -418,6 +441,17 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
       }
 
       if (platformId === 'win32-x64') {
+        const winCaseEnv = currentRuntimeEnvironment({
+          packaged: false,
+          appPath: tmpDir,
+          executable: pythonExecutablePath,
+          platformId: 'win32-x64',
+          environment: { SYSTEMROOT: 'c:\\windows\\', windir: 'c:\\windows\\' }
+        });
+        assert.equal(winCaseEnv.SYSTEMROOT, 'C:\\Windows');
+        assert.equal(winCaseEnv.SystemRoot, 'C:\\Windows');
+        assert.equal(winCaseEnv.windir, 'C:\\Windows');
+        assert.equal(winCaseEnv.WINDIR, 'C:\\Windows');
         assert.throws(
           () =>
             currentRuntimeEnvironment({
