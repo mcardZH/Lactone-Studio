@@ -61,7 +61,7 @@ function defaultPlatformId(platform = process.platform, arch = process.arch) {
   return candidate;
 }
 
-function hasUnsafePathDelimiter(filePath, platformId) {
+function hasUnsafePathDelimiter(filePath, platformId, hostPlatform = process.platform) {
   if (
     typeof filePath !== 'string' ||
     filePath.length === 0 ||
@@ -70,14 +70,14 @@ function hasUnsafePathDelimiter(filePath, platformId) {
   ) {
     return true;
   }
-  if (platformId === 'win32-x64') {
+  if (platformId === 'win32-x64' || hostPlatform === 'win32') {
     const withoutDrive = filePath.replace(/^[A-Za-z]:(?=[\\/]|$)/, '');
     return withoutDrive.includes(':');
   }
   return filePath.includes(':');
 }
 
-function resolveTrustedWindowsSystemRoot(environment = {}) {
+function resolveTrustedWindowsSystemRoot(environment = {}, hostPlatform = process.platform) {
   const raw =
     environment.SystemRoot !== undefined
       ? environment.SystemRoot
@@ -85,12 +85,43 @@ function resolveTrustedWindowsSystemRoot(environment = {}) {
         ? environment.WINDIR
         : 'C:\\Windows';
   assert(
-    typeof raw === 'string' &&
-      !hasUnsafePathDelimiter(raw, 'win32-x64') &&
-      /^[A-Za-z]:[\\/](?:[^<>:"/|?*\0;]+[\\/])*Windows[\\/]*$/i.test(raw),
+    typeof raw === 'string' && !hasUnsafePathDelimiter(raw, 'win32-x64', 'win32'),
     'Trusted Windows SystemRoot required'
   );
-  return raw.replace(/[\\/]+$/, '');
+  const cleaned = raw.trim().replace(/[\\/]+$/, '');
+  const segments = cleaned.split(/[\\/]+/);
+  assert(
+    segments.length === 2 &&
+      /^[A-Za-z]:$/.test(segments[0]) &&
+      /^Windows$/i.test(segments[1]),
+    'Trusted Windows SystemRoot required'
+  );
+  const normalized = path.win32.normalize(`${segments[0]}\\${segments[1]}`);
+  assert(
+    /^[A-Za-z]:\\Windows$/i.test(normalized) &&
+      normalized.toLowerCase() === cleaned.replace(/\//g, '\\').toLowerCase(),
+    'Trusted Windows SystemRoot required'
+  );
+  if (hostPlatform === 'win32') {
+    let rootStat, sys32Stat, kernelStat;
+    try {
+      rootStat = fs.lstatSync(normalized);
+      sys32Stat = fs.lstatSync(`${normalized}\\System32`);
+      kernelStat = fs.lstatSync(`${normalized}\\System32\\kernel32.dll`);
+    } catch {
+      assert.fail('Trusted Windows SystemRoot required');
+    }
+    assert(
+      rootStat.isDirectory() &&
+        !rootStat.isSymbolicLink() &&
+        sys32Stat.isDirectory() &&
+        !sys32Stat.isSymbolicLink() &&
+        kernelStat.isFile() &&
+        !kernelStat.isSymbolicLink(),
+      'Trusted Windows SystemRoot required'
+    );
+  }
+  return normalized;
 }
 
 function inside(root, target) {
@@ -555,7 +586,30 @@ function developmentNative(appPath, options = {}) {
 function developmentXtb(appPath, options = {}) {
   const expectedPlatform = options.platformId || defaultPlatformId(options.platform, options.arch);
   const layout = resolvePlatformLayout(expectedPlatform);
-  const { xtb: selected } = verifyPreparedLocks(appPath, expectedPlatform, layout);
+  assert(
+    !hasUnsafePathDelimiter(path.resolve(appPath), expectedPlatform),
+    'Current runtime path contains unsafe delimiter'
+  );
+  const { profile } = resolveProfile(appPath, expectedPlatform);
+  assert(
+    profile &&
+      profile.schema === 'sciyue-native-profile-v1' &&
+      profile.platform === expectedPlatform &&
+      validLockPathFor('native-runtime', expectedPlatform, profile.runtimeLock) &&
+      validLockPathFor('native-toolchain', expectedPlatform, profile.toolchainLock) &&
+      validLockPathFor('xtb-runtime', expectedPlatform, profile.xtbLock),
+    'Fixed current native profile required'
+  );
+  const selected =
+    profile.preparation !== undefined
+      ? verifyPreparedLocks(appPath, expectedPlatform, layout).xtb
+      : lock(
+          appPath,
+          profile.xtbLock,
+          'sciyue-xtb-lock-v1',
+          layout.dependenciesParent,
+          expectedPlatform
+        );
   assert.equal(selected.value.localUseReady, true, 'Current xTB lock must be explicitly ready');
   assert(selected.value.entry === layout.xtbEntry && selected.value.dataDirectory === 'xtb/share/xtb', 'Fixed current xTB entry required');
   const xtbContentDirs = requireContentDirs(selected.value);

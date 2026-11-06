@@ -22,8 +22,10 @@
      - 每次调用（含命中 `inventorySnapshots` 热缓存前）对 `contentDirectories` 中的每个目录执行逐级 `admitted(memberRoot, dir, true)` 校验，确保将父目录移出项目并替换为符号链接/Junction 的篡改在热缓存路径下同样被拒绝。
      - 将 `hashes` 缓存容量提升至 `65536`（FIFO 淘汰），并在 `inventorySnapshots` 中保存已验证文件的 `fileMap`（记录 `dev/ino/size/mtimeNs/ctimeNs/sha256`），确保超过 16,384 个文件的运行时在单文件时间戳更新时仅重算变更文件哈希，热缓存命中时不打开任何成员文件。
   3. **导入探针锁绑定与动态库搜索目录覆盖校验 (`developmentNative` / `developmentXtb`)**：
-     - 校验 `import-probe.json`：`passed === true`、`scienceExecuted === false`、平台字段匹配（Darwin 下强制要求 `probeDoc.platform === expectedPlatform`，Windows 下允许缺省或等于 `win32-x64`），且强制校验 `probeDoc.runtimeLock`、`probeDoc.toolchainLock`、`probeDoc.xtbLock` 与 `runtime.reference`、`toolchain.reference`、`prepared.xtbLock` 严格相等；同时要求探针包含 `rdkit`、`ase`、`spglib`、`scipy`、`tblite`（或 `tblite.library`）。
-     - 强制校验 `runtime` 与 `toolchain` 锁的 `contentDirectories` 完整覆盖所有非系统可执行文件与动态库搜索目录（Darwin 下覆盖 `python/bin`、`python/lib`；Windows 下覆盖 `python/Library/bin`、`python`、`python/DLLs`），防止范围过窄的 `contentDirectories` 放行 `python/lib` 下未清单化的动态库。
+     - 在 `developmentNative` 中强制要求 `scripts/native/dev-runtime.py` 与 `desktop/chemistry/engine.py` 通过 `admitted` 校验（普通文件、无符号链接、硬链接数为 1）。
+     - 校验 `import-probe.json`：`passed === true`、`scienceExecuted === false`、平台字段匹配（Darwin 下强制要求 `probeDoc.platform === expectedPlatform`，Windows 下允许缺省或等于 `win32-x64`），且强制校验 `probeDoc.runtimeLock`、`probeDoc.toolchainLock`、`probeDoc.xtbLock` 与 `runtime.reference`、`toolchain.reference`、`xtb.reference` 严格相等；同时要求探针包含 `rdkit`、`ase`、`spglib`、`scipy`、`tblite`（或 `tblite.library`）。
+     - 在 `developmentXtb` 中校验所选 `profile` 合法性（禁止在 `profile.xtbLock` 非法时静默回退）；当 `profile.preparation` 存在时复用完整三锁与探针绑定校验，当 `profile.preparation` 缺省（如仓库默认 Windows 独立 xTB 配置）时仍严格校验 `profile`、`xtb-runtime.lock.json`、`contentDirectories` 与不安全路径分隔符。
+     - 强制要求锁文件显式声明非空 `contentDirectories` 数组，并校验 `runtime` 与 `toolchain` 锁的 `contentDirectories` 完整覆盖所有非系统可执行文件与动态库搜索目录（Darwin 下覆盖 `python/bin`、`python/lib`；Windows 下覆盖 `python/Library/bin`、`python`、`python/DLLs`），防止范围过窄的 `contentDirectories` 放行 `python/lib` 下未清单化的动态库。
   4. **环境变量净化、路径分隔符注入防御与打包入口校验 (`currentRuntimeEnvironment` / `packagedBackendInfo`)**：
      - 拒绝包含不安全路径列表分隔符（POSIX 下的 `:`、Windows 盘符后的 `:` 以及所有平台下的 `;` 或 `\0`）的项目路径，防止受控路径在拼接 `PATH` 或 `DYLD_FALLBACK_LIBRARY_PATH` 时被拆分为项目外搜索目录。
      - 净化 `CONDA_*`、`_CONDA_*`、`VIRTUAL_ENV`、`PYTHON*`、`_PYTHON_*`、`_CE_CONDA`、`_CE_M`、`DYLD_*`、`LD_*`、`RDBASE` 等外部环境变量，按目标平台分隔符设置受控 `PATH` 与 Darwin `DYLD_FALLBACK_LIBRARY_PATH`。

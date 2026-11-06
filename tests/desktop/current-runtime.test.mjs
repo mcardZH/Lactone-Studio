@@ -26,6 +26,23 @@ function makeRealTempDir(prefix) {
   return fs.mkdtempSync(path.join(base, prefix));
 }
 
+function createPortableLink(targetPath, linkPath, options = {}) {
+  try {
+    fs.symlinkSync(targetPath, linkPath);
+  } catch (err) {
+    if (process.platform === 'win32' && (err.code === 'EPERM' || err.code === 'ENOSYS')) {
+      const junctionTarget = `${linkPath}-junction-target`;
+      fs.mkdirSync(junctionTarget, { recursive: true });
+      fs.symlinkSync(junctionTarget, linkPath, 'junction');
+      if (options.dangling) {
+        fs.rmSync(junctionTarget, { recursive: true, force: true });
+      }
+      return;
+    }
+    throw err;
+  }
+}
+
 function writeOwnedFile(root, relPath, content) {
   const fullPath = path.join(root, relPath);
   fs.mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -73,10 +90,18 @@ function buildMockNativeProject(root, platformId, options = {}) {
     const pkgDir = path.join(root, depRoot, 'python/pkg');
     fs.mkdirSync(pkgDir, { recursive: true });
     const emptySha256 = createHash('sha256').update('').digest('hex');
+    const firstContent = options.firstExtraFileContent ?? '';
+    const firstBytes = Buffer.byteLength(firstContent, 'utf8');
+    const firstSha256 = createHash('sha256').update(firstContent, 'utf8').digest('hex');
     for (let i = 0; i < options.extraFileCount; i += 1) {
       const rel = `python/pkg/mod_${i}.py`;
-      fs.writeFileSync(path.join(root, depRoot, rel), '');
-      depFiles.push({ path: rel, bytes: 0, sha256: emptySha256 });
+      if (i === 0 && firstBytes > 0) {
+        fs.writeFileSync(path.join(root, depRoot, rel), firstContent, 'utf8');
+        depFiles.push({ path: rel, bytes: firstBytes, sha256: firstSha256 });
+      } else {
+        fs.writeFileSync(path.join(root, depRoot, rel), '');
+        depFiles.push({ path: rel, bytes: 0, sha256: emptySha256 });
+      }
     }
   }
 
@@ -276,25 +301,34 @@ test('SUPPORTED_PLATFORMS, defaultPlatformId, hasUnsafePathDelimiter, and resolv
   assert.equal(PLATFORM_LAYOUTS['darwin-arm64'].packagedEngineEntry, 'engine');
   assert.equal(PLATFORM_LAYOUTS['win32-x64'].packagedEngineEntry, 'engine.exe');
 
-  assert.equal(hasUnsafePathDelimiter('/Users/dev/Ester-Studio', 'darwin-arm64'), false);
-  assert.equal(hasUnsafePathDelimiter('/Users/dev/evil:colon/Ester', 'darwin-arm64'), true);
-  assert.equal(hasUnsafePathDelimiter('/Users/dev/evil;semi/Ester', 'darwin-arm64'), true);
-  assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\Ester-Studio', 'win32-x64'), false);
-  assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\evil:colon\\Ester', 'win32-x64'), true);
-  assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\evil;semi\\Ester', 'win32-x64'), true);
+  assert.equal(hasUnsafePathDelimiter('/Users/dev/Ester-Studio', 'darwin-arm64', 'darwin'), false);
+  assert.equal(hasUnsafePathDelimiter('/Users/dev/evil:colon/Ester', 'darwin-arm64', 'darwin'), true);
+  assert.equal(hasUnsafePathDelimiter('/Users/dev/evil;semi/Ester', 'darwin-arm64', 'darwin'), true);
+  assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\Ester-Studio', 'win32-x64', 'darwin'), false);
+  assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\Ester-Studio', 'darwin-arm64', 'win32'), false);
+  assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\evil:colon\\Ester', 'win32-x64', 'win32'), true);
+  assert.equal(hasUnsafePathDelimiter('C:\\Users\\dev\\evil;semi\\Ester', 'win32-x64', 'win32'), true);
 
-  assert.equal(resolveTrustedWindowsSystemRoot({}), 'C:\\Windows');
-  assert.equal(resolveTrustedWindowsSystemRoot({ SystemRoot: 'D:\\Windows\\' }), 'D:\\Windows');
+  assert.equal(resolveTrustedWindowsSystemRoot({}, 'darwin'), 'C:\\Windows');
+  assert.equal(resolveTrustedWindowsSystemRoot({ SystemRoot: 'D:\\Windows\\' }, 'darwin'), 'D:\\Windows');
   assert.throws(
-    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\Windows;C:\\evil' }),
+    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\Windows;C:\\evil' }, 'darwin'),
     /Trusted Windows SystemRoot required/
   );
   assert.throws(
-    () => resolveTrustedWindowsSystemRoot({ WINDIR: 'relative\\Windows' }),
+    () => resolveTrustedWindowsSystemRoot({ WINDIR: 'relative\\Windows' }, 'darwin'),
     /Trusted Windows SystemRoot required/
   );
   assert.throws(
-    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\NotSystemRoot' }),
+    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\NotSystemRoot' }, 'darwin'),
+    /Trusted Windows SystemRoot required/
+  );
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\Users\\attacker\\Windows' }, 'darwin'),
+    /Trusted Windows SystemRoot required/
+  );
+  assert.throws(
+    () => resolveTrustedWindowsSystemRoot({ SystemRoot: 'C:\\Windows\\..\\attacker\\Windows' }, 'darwin'),
     /Trusted Windows SystemRoot required/
   );
 });
@@ -317,11 +351,11 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
       const xtbRes = developmentXtb(tmpDir, { platformId });
       assert.equal(path.basename(xtbRes.root), 'xtb');
 
-      // Mutating a tracked runtime file MUST invalidate warm snapshot and throw identity error
+      // Mutating a tracked runtime file with equal-length content MUST invalidate warm snapshot and throw identity error
       const layout = resolvePlatformLayout(platformId);
       const siteFile = path.join(tmpDir, layout.dependenciesParent, 'dep-lock-1/python/site.txt');
       const originalSite = fs.readFileSync(siteFile);
-      fs.writeFileSync(siteFile, 'tampered-site-packages-content');
+      fs.writeFileSync(siteFile, 'evil-packages');
       assert.throws(
         () => developmentNative(tmpDir, { platformId }),
         /Current runtime identity differs/
@@ -573,7 +607,8 @@ test('verifyNativeInventory warm cache handles >16384 files without cache thrash
   try {
     const { pythonExecutablePath } = buildMockNativeProject(tmpDir, fixturePlatformId, {
       usePlatformSpecificProfile: true,
-      extraFileCount: 16505
+      extraFileCount: 16505,
+      firstExtraFileContent: 'VALUE = "AAAA"\n'
     });
 
     const first = developmentNative(tmpDir, { platformId: fixturePlatformId });
@@ -605,13 +640,22 @@ test('verifyNativeInventory warm cache handles >16384 files without cache thrash
     );
 
     const layout = resolvePlatformLayout(fixturePlatformId);
-    const mod0 = path.join(tmpDir, layout.dependenciesParent, 'dep-lock-1/python/pkg/mod_0.py');
+    const depRootDir = path.resolve(tmpDir, layout.dependenciesParent, 'dep-lock-1');
+    const tcRootDir = path.resolve(tmpDir, layout.toolchainsParent, 'tc-lock-1');
+    const mod0 = path.join(depRootDir, 'python/pkg/mod_0.py');
     const futureTime = new Date(Date.now() + 10000);
     fs.utimesSync(mod0, futureTime, futureTime);
 
-    let openCount = 0;
+    const openedMemberFiles = [];
     fs.openSync = function (...args) {
-      openCount += 1;
+      const openedPath = typeof args[0] === 'string' ? path.resolve(args[0]) : '';
+      if (
+        (openedPath.startsWith(`${depRootDir}${path.sep}`) &&
+          openedPath !== path.join(depRootDir, 'inventory.json')) ||
+        openedPath.startsWith(`${tcRootDir}${path.sep}`)
+      ) {
+        openedMemberFiles.push(openedPath);
+      }
       return origOpenSync.apply(this, args);
     };
     try {
@@ -625,12 +669,10 @@ test('verifyNativeInventory warm cache handles >16384 files without cache thrash
     } finally {
       fs.openSync = origOpenSync;
     }
-    assert.ok(
-      openCount <= 2,
-      `Expected single-file timestamp touch in 16,506-file inventory to re-open at most 2 files, got ${openCount}`
-    );
+    assert.deepEqual(openedMemberFiles, [path.resolve(mod0)]);
 
-    fs.writeFileSync(mod0, 'TAMPERED = 999999\n');
+    // Equal-length content tamper (both 'VALUE = "AAAA"\n' and 'VALUE = "BBBB"\n' are 15 bytes)
+    fs.writeFileSync(mod0, 'VALUE = "BBBB"\n');
     assert.throws(
       () =>
         currentRuntimeEnvironment({
@@ -675,10 +717,12 @@ test('security contracts: dev-runtime.py admission, dangling profile symlink, em
       'desktop/packaging/native-runtime.win32-x64.lock.json'
     );
 
-    // Replace native-profile.win32-x64.json with a dangling symlink: MUST fail with Linked current runtime input, NOT fall back to native-profile.json
+    // Replace native-profile.win32-x64.json with a dangling symlink/junction: MUST fail with Linked current runtime input, NOT fall back to native-profile.json
     const winProfPath = path.join(tmpDir, 'desktop/packaging/native-profile.win32-x64.json');
     fs.unlinkSync(winProfPath);
-    fs.symlinkSync(path.join(extDir, 'nonexistent-target.json'), winProfPath);
+    createPortableLink(path.join(extDir, 'nonexistent-target.json'), winProfPath, {
+      dangling: true
+    });
     assert.throws(
       () => developmentNative(tmpDir, { platformId: 'win32-x64' }),
       /Linked current runtime input/
@@ -700,12 +744,12 @@ test('security contracts: dev-runtime.py admission, dangling profile symlink, em
     // 2b. Symlinked file
     const extScript = path.join(extDir, 'ext-dev-runtime.py');
     fs.writeFileSync(extScript, devPyBackup);
-    fs.symlinkSync(extScript, devPyPath);
+    createPortableLink(extScript, devPyPath);
     assert.throws(
       () => developmentNative(devPyDir, { platformId: 'darwin-arm64' }),
       /Linked current runtime input/
     );
-    fs.unlinkSync(devPyPath);
+    fs.rmSync(devPyPath, { recursive: true, force: true });
     fs.writeFileSync(devPyPath, devPyBackup);
 
     // 2c. Hardlinked file (nlink > 1)
@@ -762,7 +806,8 @@ test('security contracts: dev-runtime.py admission, dangling profile symlink, em
     );
 
     // 5. developmentXtb lock binding & delimiter checks:
-    // 5a. Modifying xtb-runtime.lock.json without updating preparation.json / import-probe.json MUST be rejected by developmentXtb
+    // 5a. When profile.preparation is present, modifying xtb-runtime.lock.json without updating preparation.json / import-probe.json MUST be rejected by developmentXtb;
+    // when profile.preparation is omitted (as in main's native-profile.json), standalone developmentXtb succeeds while developmentNative requires preparation.
     const xtbStaleDir = path.join(tmpDir, 'xtb-stale');
     buildMockNativeProject(xtbStaleDir, 'darwin-arm64', { usePlatformSpecificProfile: true });
     const xtbLockPath = path.join(xtbStaleDir, 'desktop/packaging/xtb-runtime.lock.json');
@@ -778,7 +823,21 @@ test('security contracts: dev-runtime.py admission, dangling profile symlink, em
       /ERR_ASSERTION/
     );
 
-    // 5b. Invalid xtbLock path in profile MUST be rejected by developmentXtb (no fallback to default lock)
+    const staleProfPath = path.join(
+      xtbStaleDir,
+      'desktop/packaging/native-profile.darwin-arm64.json'
+    );
+    const staleProfDoc = JSON.parse(fs.readFileSync(staleProfPath, 'utf8'));
+    delete staleProfDoc.preparation;
+    fs.writeFileSync(staleProfPath, JSON.stringify(staleProfDoc, null, 2));
+    const standaloneXtb = developmentXtb(xtbStaleDir, { platformId: 'darwin-arm64' });
+    assert.equal(standaloneXtb.lock.path, 'desktop/packaging/xtb-runtime.lock.json');
+    assert.throws(
+      () => developmentNative(xtbStaleDir, { platformId: 'darwin-arm64' }),
+      /Exact current runtime reference required/
+    );
+
+    // 5b. Invalid xtbLock path in profile MUST be rejected by developmentXtb even when preparation is omitted (no fallback to default lock)
     const xtbBadProfDir = path.join(tmpDir, 'xtb-bad-prof');
     buildMockNativeProject(xtbBadProfDir, 'darwin-arm64', { usePlatformSpecificProfile: true });
     const badProfFile = path.join(
@@ -786,6 +845,7 @@ test('security contracts: dev-runtime.py admission, dangling profile symlink, em
       'desktop/packaging/native-profile.darwin-arm64.json'
     );
     const badProfDoc = JSON.parse(fs.readFileSync(badProfFile, 'utf8'));
+    delete badProfDoc.preparation;
     badProfDoc.xtbLock = 'desktop/packaging/illegal-xtb.lock.json';
     fs.writeFileSync(badProfFile, JSON.stringify(badProfDoc, null, 2));
     assert.throws(
