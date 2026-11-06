@@ -12,72 +12,59 @@
 npm run hooks:install
 ```
 
-这会将当前 Git 仓库的 `core.hooksPath` 指向 `.githooks/`，启用以下面向常规开发流程的自动检查：
-- **`pre-commit`**：禁止在 `main` 分支直接提交；当变更包含代码文件时检查 `tests/` 下是否包含测试文件变更，并自动运行测试套件。
-- **`pre-merge-commit`**：在常规合并到 `main` 时，校验测试结果、`gpt-6.1-terra` 代码审核通过凭证（`.git/codex-review-receipt.json`）以及用户明确确认标记（`USER_CONFIRMED_MERGE=1`）。
+这会将当前 Git 仓库的 `core.hooksPath` 指向 `.githooks/`，启用以下自动保护检查：
+- **`pre-commit`**：禁止在 `main` 分支直接提交；检查代码变更是否具备自动化测试用例覆盖，并自动执行硬性单元测试套件。
+- **`pre-merge-commit`**：在合并到 `main` 时，硬性要求单元测试全部通过。
 
 ---
 
-## 2. 标准开发流程
+## 2. AI 规范化开发三步走流程
 
-### 第一步：从 `main` 创建功能分支
+### 第一步：记录需求与确认意图 (`ACTIVE_TASK.md`)
 
-**严禁直接在 `main` 分支修改代码或提交**。始终从最新的 `main` 分支切出语义化分支：
+AI 智能体接到任何新任务后，**必须先在根目录 [ACTIVE_TASK.md](ACTIVE_TASK.md) 中填写任务规格说明书**：
+1. 按照模板填写：任务概述、需求细节与范围边界（含 Out of Scope）、技术方案、测试计划；
+2. **与用户深入沟通讨论**：明确需求细节，防止理解偏差或主观推测；将澄清结论记入“用户沟通与意图确认记录”章节并获得确认。
 
-```bash
-git checkout main
-git checkout -b mac/your-feature-name
-```
+### 第二步：从 `main` 切分支，完成开发与单元测试
 
-推荐分支命名前缀：
-- `mac/*`：macOS 平台适配、运行时解锁与 `.app` 打包相关改动
-- `feat/*`：新增业务功能
-- `fix/*`：Bug 修复
-- `chore/*` 或 `docs/*`：工程工具链、脚本或文档维护
+1. **分支规范**：
+   始终从最新的 `main` 分支切出语义化分支：
+   ```bash
+   git checkout main
+   git checkout -b mac/your-feature-name   # macOS 适配
+   # 或 feat/xxx (新特性), fix/xxx (修复), chore/xxx (维护)
+   ```
+2. **编写代码与测试**：
+   凡修改 `src/**`、`desktop/**`、`scripts/**`，必须在 `tests/**` 同步增加或更新测试。
+3. **本地运行硬性单元测试**：
+   ```bash
+   npm test
+   npm run check:branch
+   ```
+   确保所有测试用例 100% 绿色通过。
 
-### 第二步：编写代码与配套测试用例
+### 第三步：基于 `ACTIVE_TASK.md` 触发独立复核与循环修改
 
-1. **新功能/新代码必须有测试覆盖**：
-   - 修改或新增 `src/**`、`desktop/**`、`scripts/**` 中的代码时，必须在 `tests/` 目录下同步新增或更新测试用例（Node 主进程与工作流脚本使用 `*.test.{mjs,cjs,js}` 跑 `node:test`，前端 `src/` TypeScript/TSX 组件使用 `*.test.{ts,tsx}` 跑 `Vitest`）。
-   - 跨平台改造代码应当同时测试 `darwin`（macOS）、`win32`（Windows）与 `linux` 下的行为分支。
-2. **保持小步提交**：
-   - 避免一次性在单个分支中堆叠过多互不相关的模块改动，以便于测试定位和代码审核。
-
-### 第三步：运行本地自动化测试
-
-在提交或发起审核前运行：
-
-```bash
-npm test
-npm run check:branch
-```
-
-确保所有测试用例 100% 通过。
-
-### 第四步：执行 Codex (`gpt-6.1-terra`) 子代理代码审核
-
-在工作区干净（所有更改已提交到当前分支）后，运行：
+在提交 PR 或合并前，运行独立复核命令：
 
 ```bash
 npm run review:codex
 ```
 
-该命令将调用 `codex exec -m gpt-6.1-terra` 对当前分支相对于 `main` 的全部提交、代码逻辑、测试覆盖度和潜在风险进行审查：
+1. 复核子代理 (`gpt-6.1-terra`) 将**读取 `ACTIVE_TASK.md` 的内容作为需求真理基准**，审查当前 Git Diff 是否完整契合需求、是否存在代码缺陷、安全性风险或平台兼容性问题。
+2. **循环修改与 3 次熔断**：
+   - 若出现缺陷 (`FAIL`)，由主 Agent 修复后重新提审；
+   - **最多重复 3 次**：连续 3 次失败后系统熔断，停止自动修复并反馈给人工处理，评估是否需要拆分任务或重构设计。
+3. **用户确认后合并**：
+   复核通过后向用户汇报；收到用户明确确认后，执行合并：
+   ```bash
+   npm run merge:main -- <branch-name> --confirmed
+   ```
 
-- **情况 1（审核未通过 `FAIL`）**：
-  - 提示用户审核发现的问题（如测试失败、逻辑漏洞、关键路径缺少测试、不符合需求等）。
-  - 由 Antigravity 进行修复，修复后重新提交并再次执行 `npm test` 与 `npm run review:codex`。
-  - **最多重复 3 次审核与修复循环**：若连续 3 次审核仍未通过，停止自动修复并提醒用户重新审视项目架构，评估是否单次改动过大。
-- **情况 2（审核通过 `PASS` 且测试通过）**：
-  - 向用户清晰汇报本次新增功能、测试结果与审核结论。
-  - **等待用户明确确认后**，进入第五步合并。
+---
 
-### 第五步：用户确认后合并至 `main`
+## 3. 文档生命周期与自动防膨胀
 
-收到用户明确确认后，执行：
-
-```bash
-npm run merge:main -- <branch-name> --confirmed
-```
-
-该脚本将切换至 `main` 分支，带上 `USER_CONFIRMED_MERGE=1` 标记并以 `--no-ff` 模式完成受保护合并。
+- `ACTIVE_TASK.md` 仅用于记录本次任务内容，不作历史累加；
+- 执行 `npm run merge:main -- <branch> --confirmed` 合并后，脚本会**自动将 `ACTIVE_TASK.md` 清空并重置为初始空模板**并自动提交，供下一次任务切分支时使用。

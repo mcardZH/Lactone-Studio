@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { resetActiveTask, ACTIVE_TASK_FILE_NAME } from './active-task.mjs';
+import { clearReviewState } from './codex-review.mjs';
 import { runTestSuite } from './run-tests.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -50,6 +52,23 @@ export function mergeBranchToMain({ branch, cwd = ROOT, confirmed = false } = {}
       cwd,
       stdio: 'inherit',
     });
+
+    // 4. Reset ACTIVE_TASK.md to initial template to prevent unbounded growth
+    console.log(`[merge] 🧹 正在重置 ${ACTIVE_TASK_FILE_NAME} 为初始空模板，准备下一开发周期...`);
+    resetActiveTask(cwd);
+    clearReviewState(cwd);
+
+    const afterResetDirty = git(['status', '--porcelain', ACTIVE_TASK_FILE_NAME], cwd);
+    if (afterResetDirty) {
+      git(['add', ACTIVE_TASK_FILE_NAME], cwd);
+      execFileSync('git', ['commit', '-m', 'chore: reset ACTIVE_TASK.md for next development cycle'], {
+        cwd,
+        env: { ...process.env, ALLOW_SYSTEM_RESET_COMMIT: '1' },
+        stdio: 'inherit',
+      });
+      console.log(`[merge] ✅ 已自动提交清空后的 ${ACTIVE_TASK_FILE_NAME}。`);
+    }
+
     console.log(`\n🎉 [merge] 分支 ${branch} 已成功安全合并到 main！\n`);
     return { ok: true, message: `分支 ${branch} 已合并到 main。` };
   } catch (err) {

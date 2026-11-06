@@ -325,6 +325,7 @@ export function checkPreCommitPolicy({
   branch,
   isMergeInProgress = false,
   allowInitialMainCommit = false,
+  allowSystemResetCommit = false,
   hasHeadCommit = true,
   changedFiles = [],
   cwd = process.cwd(),
@@ -332,6 +333,9 @@ export function checkPreCommitPolicy({
   if (isProtectedBranch(branch)) {
     if (!hasHeadCommit && allowInitialMainCommit) {
       return { ok: true, code: 'OK', message: '允许首次初始提交到主分支。' };
+    }
+    if (allowSystemResetCommit) {
+      return { ok: true, code: 'OK', message: '允许系统自动重置任务规格说明书。' };
     }
     if (isMergeInProgress) {
       return { ok: true, code: 'OK', requiresMergeGateCheck: true };

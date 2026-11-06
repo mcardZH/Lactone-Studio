@@ -23,6 +23,7 @@
 ```text
 Ester-Studio-v2.0.2-source-code/
 ├── AGENTS.md                        # AI 智能体开发宪章与核心工作流规范（本文件）
+├── ACTIVE_TASK.md                   # 当前开发任务规格说明书（需求、方案与用户意图确认，合并后自动清空）
 ├── CONTRIBUTING.md                  # 开发者与智能体贡献指南
 ├── docs/                            # 架构说明与 macOS 改造路线图文档
 │   ├── PROJECT_STRUCTURE.md         # 详细代码结构与模块说明
@@ -46,10 +47,10 @@ Ester-Studio-v2.0.2-source-code/
 │   ├── chemistry/                   # Python 科学计算引擎 (RDKit, ASE, Spglib, tblite, SciPy)
 │   └── task-system/                 # 本地/WSL/SSH 远程任务执行、Slurm 调度与进程监控
 ├── scripts/                         # 构建准备脚本与开发工作流自动化脚本
-│   └── workflow/                    # 分支策略、测试运行器、Git Hooks 与 Codex 审核脚本
+│   └── workflow/                    # 分支策略、测试运行器、Git Hooks、任务规范与 Codex 审核脚本
 ├── .githooks/                       # 受版本控制的 Git 提交与合并钩子（面向常规开发流程护栏）
 │   ├── pre-commit                   # 禁止在 main 直接提交、校验代码测试覆盖并运行测试
-│   └── pre-merge-commit             # 拦截未通过测试/未通过 Codex 审核/未经用户确认的常规合并
+│   └── pre-merge-commit             # 拦截未通过测试/未经用户确认的常规合并
 ├── tests/                           # 自动化测试用例目录 (node:test + Vitest)
 ├── public/                          # 静态资源、内置分子/晶体结构库与渲染预览图
 ├── third-party/                     # 第三方运行时构建配方与源码索引
@@ -58,59 +59,58 @@ Ester-Studio-v2.0.2-source-code/
 
 ---
 
-## 3. 强制开发工作流与分支保护规范 (Mandatory Development Workflow)
+## 3. 强制 AI 规范化开发三步走流程 (Mandatory 3-Step AI Workflow)
 
-为了保护主分支（`main`）始终处于稳定、可构建、已验证状态，所有开发工作必须严格遵循以下**铁律**，并由 `.githooks/` 钩子在 Git 层面强制执行：
+当 AI 智能体接到任何新的开发任务（包括 macOS 适配、新特性、Bug 修复或重构）后，**必须严格按照以下三步流程推进**：
 
-### 3.1 严禁在主分支 (`main`) 直接开发或提交
-1. **主分支只接受合并（Merge），不接受直接开发提交**。
-2. 任何新功能、macOS 平台适配、Bug 修复、脚本重构或文档更新，**必须先从 `main` 切出独立的新分支**进行开发：
-   - macOS 平台适配分支：`mac/<module-or-feature>`（例如 `mac/process-identity-darwin`、`mac/xtb-runtime`）
-   - 新功能分支：`feat/<feature-name>`
-   - 缺陷修复分支：`fix/<issue-name>`
-   - 工程/文档维护分支：`chore/<task-name>` 或 `docs/<topic>`
-3. `.githooks/pre-commit` 与 `.githooks/pre-merge-commit` 作为**面向常规开发与合并流程的工程护栏**，会在本地自动检查当前分支、测试覆盖与审核凭证（注：本地钩子旨在规范常规 `git commit` 与 `git merge` 操作，无需针对极端或对抗性的 Git 底层命令绕过方式做过度防御）。
+### 步骤 1：记录需求与确认意图 (`ACTIVE_TASK.md`)
+1. **建立任务规格说明书**：
+   AI 必须首先在项目根目录的 [ACTIVE_TASK.md](ACTIVE_TASK.md) 文件中记录本次要开发的内容。
+2. **规范模板要求**：
+   必须严格遵循 `ACTIVE_TASK.md` 规定的标准模板编写，模板包含以下核心内容：
+   - **任务概述**：任务名称、关联分支名、核心目标概要；
+   - **需求细节与范围边界**：核心功能点、非目标边界（Out of Scope，明确本次不做哪些以防过度扩散）；
+   - **技术设计方案**：涉及文件清单、跨平台兼容性考量（macOS/Linux/Windows）、关键实现逻辑；
+   - **自动化测试计划**：测试文件路径、覆盖的核心场景与边界条件；
+   - **用户沟通与意图确认记录**：用户原始诉求要点、澄清的问题与最终共识结论。
+3. **与用户深入讨论并确认**：
+   AI 必须就上述需求与技术方案与用户进行充分沟通，确保对用户意图理解准确、无任何误解或主观推测；将沟通澄清的结论完整记入该文件中，并获得用户明确确认后，方可进入编码阶段。
 
-### 3.2 新代码与新功能必须配备自动化测试用例
-1. **无测试不合并**：凡是涉及新增代码、新增功能、修改现有业务逻辑或跨平台适配（包括 `src/**`、`desktop/**`、`scripts/**`），**必须同步在 `tests/**` 目录下新增或更新对应的自动化测试用例**（命名为 `tests/**/*.test.{mjs,cjs,js,ts,tsx}`，由 `npm test` 自动按文件类型调度 Node.js 内置 `node:test` 与项目内置 `Vitest` 运行器执行）。
-2. 测试用例应覆盖新增代码的核心正常路径（Happy Path）、常规边界条件以及平台分支逻辑（如 `darwin` vs `win32` vs `linux`）。
-3. 每次提交前及合并前必须运行 `npm test`，确保**所有测试用例 100% 通过（无失败、无跳过）**。
+### 步骤 2：完成开发与硬性单元测试
+1. **独立分支开发**：
+   **严禁在 `main` 分支直接提交或开发**。从 `main` 切出对应命名的独立分支（macOS 适配：`mac/*`、新功能：`feat/*`、修复：`fix/*`、工程维护：`chore/*`）。
+2. **编写代码与配套单元测试**：
+   - 遵循“无测试不提交”原则：新增或修改代码（`src/**`, `desktop/**`, `scripts/**`）时，必须同步在 `tests/**` 编写或更新对应的自动化测试用例；
+   - Node 主进程与脚本测试使用原生 `node:test`（`*.test.{mjs,cjs,js}`），前端 TypeScript 组件测试使用 `Vitest`（`*.test.{ts,tsx}`）。
+3. **硬性单元测试检验**：
+   - 提交前及发起复核前必须执行 `npm test`；
+   - 硬性要求：**所有单元测试 100% 绿色通过（0 失败、0 跳过）**。
 
----
-
-## 4. 合并前 Codex (`gpt-6.1-terra`) 子代理代码审核机制
-
-在功能分支开发完成且本地 `npm test` 全部通过后，**严禁直接合并到 `main`**。必须先使用 `codex` 命令行启动 `gpt-6.1-terra` 模型的子代理对当前分支相对于 `main` 的变更进行独立代码审核：
+### 步骤 3：独立复核 (`gpt-6.1-terra`) 与循环修改
+在完成开发且单元测试全部通过后，在提交 PR 或合并到 `main` 之前，必须触发独立代码复核：
 
 ```bash
 npm run review:codex
 ```
-（底层执行 `node scripts/workflow/codex-review.mjs`，内部调用 `codex exec -m gpt-6.1-terra ...` 对分支 Diff、测试覆盖率、代码逻辑与需求符合度进行结构化审查，并生成 `.git/codex-review-receipt.json` 审核凭证）。
 
-### 审核结果的处理分为以下两种情况：
+1. **意图对照复核机制**：
+   复核器（底层调用 `codex exec -m gpt-6.1-terra`）会**首先读取 `ACTIVE_TASK.md` 中记录的需求与意图**，并以此为真实基准（Ground Truth），深入审查当前分支相对于 `main` 的 Git 提交代码与 Diff：
+   - **意图符合度**：代码是否忠实实现了用户在 `ACTIVE_TASK.md` 中确认的需求，是否存在遗漏或越界修改；
+   - **质量与健壮性**：是否存在逻辑缺陷、内存泄漏、安全漏洞或 macOS 跨平台隐患；
+   - **测试有效性**：新增的测试用例是否真实覆盖了关键逻辑与异常分支。
+2. **复核反馈与循环修改**：
+   - **审核未通过 (`FAIL`)**：复核器输出具体的问题与修改建议清单；交由主 Agent（Antigravity）在当前分支上进行针对性修复，修复后重新运行测试并再次提审；
+   - **3 次熔断机制（Circuit Breaker）**：该流程**最多重复 3 次**。若连续 3 次“审核 -> 修复 -> 重审”后依然未通过，系统将触发熔断并停止自动修复，立即反馈给人工处理，提示用户与 Agent 重新审视架构设计并评估是否将任务拆分为更小粒度的分支；
+   - **审核通过 (`PASS`)**：向用户清晰汇报本次新增功能、测试结果与复核结论，**等待用户明确确认**后执行合并。
 
-#### 情况 1：审核出现错误 (`FAIL`)
-触发条件包括但不限于：**测试失败、代码逻辑缺陷、关键测试覆盖不到位、存在安全/跨平台隐患、或功能不符合用户要求**。
-1. **立即提示用户**当前审核发现的具体问题清单。
-2. 由 **Antigravity（主代理）** 在当前开发分支上针对审核意见继续进行代码或测试修复。
-3. 修复完成后，重新提交并**重新运行测试 (`npm test`) 与 Codex 审核 (`npm run review:codex`)**。
-4. **最多重复 3 次审核与修复循环（Circuit Breaker）**：
-   - 若连续经过 **3 次**“审核 -> 修复 -> 重测 -> 重审”后仍然失败，Antigravity **必须立即停止自动修复循环**；
-   - 明确告知用户：**“已连续 3 次审核与修复未通过，请仔细思考当前项目架构设计，评估是否一次性改动过大，建议拆分为更小粒度的分支后再推进。”**
+---
 
-#### 情况 2：审核通过且测试通过 (`PASS`)
-当 `npm test` 全部通过，且 Codex (`gpt-6.1-terra`) 审核结论为 `PASS` 时：
-1. Antigravity 用**清晰、结构化的语言**向用户汇报：
-   - **本次新增/修改的功能与变更范围**；
-   - **新增的测试用例与测试执行结果**；
-   - **Codex (`gpt-6.1-terra`) 子代理的代码审核结论与评价摘要**。
-2. **等待用户明确确认**：
-   - 在收到用户的明确许可前，**绝对不能**执行合并到 `main` 的操作。
-   - 用户确认后，方可执行合并命令将分支合并回 `main`：
-     ```bash
-     npm run merge:main -- <branch-name> --confirmed
-     ```
-     （或在主分支执行 `USER_CONFIRMED_MERGE=1 git merge --no-ff <branch-name>`）。
+## 4. 生命周期管理与文档防膨胀机制
+
+为了防止开发记录文件无限累加膨胀：
+- **`ACTIVE_TASK.md` 仅服务于单次开发任务**；
+- 在分支合并至 `main` 分支（或提交 PR）后，合并自动化脚本（`npm run merge:main`）会**自动将 `ACTIVE_TASK.md` 清空并重置为初始空模板**，并自动创建提交或保持整洁状态；
+- 下一个开发任务切出新分支时，将从全新的空模板开始记录，确保历史记录不冗余、意图聚焦无污染。
 
 ---
 
@@ -119,10 +119,10 @@ npm run review:codex
 | 命令 | 说明 |
 | :--- | :--- |
 | `npm run hooks:install` | 配置 Git 使用仓库内置的 `.githooks` 目录并设置执行权限 |
-| `npm test` | 运行仓库自动化测试套件（强制要求存在测试用例且全部通过） |
+| `npm test` | 运行仓库硬性单元测试套件（强制要求存在测试用例且全部通过） |
 | `npm run check:branch` | 检查当前分支是否符合分支隔离与新增代码测试覆盖策略 |
-| `npm run review:codex` | 启动 Codex CLI (`gpt-6.1-terra`) 子代理执行合并前代码审核（含 3 次熔断计数） |
-| `npm run merge:main -- <branch> --confirmed` | 在测试通过、Codex 审核通过且用户确认后，安全合并指定分支到 `main` |
+| `npm run review:codex` | 启动 Codex (`gpt-6.1-terra`) 基于 `ACTIVE_TASK.md` 执行代码独立复核（含 3 次熔断） |
+| `npm run merge:main -- <branch> --confirmed` | 测试与复核通过且用户确认后，安全合并指定分支到 `main` 并自动清空 `ACTIVE_TASK.md` |
 | `npm run dev` | 启动前端 Vite 开发服务器 |
 | `npm run desktop:dev` | 启动 Electron 桌面端开发环境 |
 | `npm run build` | 执行 TypeScript 类型检查与前端生产构建 |

@@ -55,12 +55,14 @@ export function executePreCommitCheck({ cwd = ROOT, env = process.env } = {}) {
   const isMergeInProgress = existsSync(join(gitDir, 'MERGE_HEAD'));
   const hasHeadCommit = hasExistingHeadCommit(cwd);
   const allowInitialMainCommit = env.ALLOW_INITIAL_MAIN_COMMIT === '1';
+  const allowSystemResetCommit = env.ALLOW_SYSTEM_RESET_COMMIT === '1';
   const changedFiles = getStagedChangedFiles(cwd);
 
   const policy = checkPreCommitPolicy({
     branch,
     isMergeInProgress,
     allowInitialMainCommit,
+    allowSystemResetCommit,
     hasHeadCommit,
     changedFiles,
     cwd,

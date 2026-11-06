@@ -18,6 +18,7 @@ export function createCleanTestChildEnv(baseEnv = process.env) {
   delete childEnv.NODE_TEST_CONTEXT;
   delete childEnv.USER_CONFIRMED_MERGE;
   delete childEnv.ALLOW_INITIAL_MAIN_COMMIT;
+  delete childEnv.ALLOW_SYSTEM_RESET_COMMIT;
 
   for (const key of Object.keys(childEnv)) {
     if (
