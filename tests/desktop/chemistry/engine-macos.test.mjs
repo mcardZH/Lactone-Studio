@@ -6,8 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import {
-  resolveDefaultCondaPrefix,
-  stageDarwinRuntime
+  ensureDarwinRuntimeReady
 } from '../../../scripts/native/stage-darwin-runtime.mjs';
 
 const require = createRequire(import.meta.url);
@@ -30,18 +29,35 @@ function verifyCommittedDarwinArm64Locks() {
   }
 }
 
+function buildIsolatedLockedRuntimeEnv(executable, ambientEnv = process.env) {
+  const cleanAmbientEnv = {
+    ...ambientEnv,
+    DYLD_LIBRARY_PATH: '/opt/anaconda3/envs/ester-studio/lib',
+    PYTHONPATH: '/opt/anaconda3/envs/ester-studio/lib/python3.12/site-packages',
+    RDBASE: '/tmp/fake-ambient-rdbase-must-be-stripped'
+  };
+  delete cleanAmbientEnv.SCIYUE_PYTHON;
+  const env = {
+    ...cleanAmbientEnv,
+    ...currentRuntimeEnvironment({
+      packaged: false,
+      appPath: ROOT,
+      executable,
+      environment: cleanAmbientEnv
+    })
+  };
+  delete env.SCIYUE_PYTHON;
+  for (const [k, v] of Object.entries(env)) {
+    if (v === undefined) delete env[k];
+  }
+  env.OMP_NUM_THREADS = '1';
+  return env;
+}
+
 function resolveActiveRuntime() {
   if (cachedRuntime) return cachedRuntime;
-  if (
-    IS_DARWIN_ARM64_HOST &&
-    !fs.existsSync(
-      path.join(ROOT, '.local/toolchains/darwin-arm64/conda-py312-arm64/python/bin/python3')
-    )
-  ) {
-    const condaPrefix = resolveDefaultCondaPrefix();
-    if (condaPrefix) {
-      stageDarwinRuntime({ appPath: ROOT, platformId: 'darwin-arm64', condaPrefix });
-    }
+  if (IS_DARWIN_ARM64_HOST) {
+    ensureDarwinRuntimeReady({ appPath: ROOT, platformId: 'darwin-arm64' });
   }
   const rt = chemistryRuntime({
     packaged: false,
@@ -50,24 +66,7 @@ function resolveActiveRuntime() {
   });
   assert.equal(rt.provenance?.locked, true, 'Expected locked .local runtime');
   assert.equal(rt.provenance?.source, 'prepared-current-locks');
-  const env = {
-    ...process.env,
-    ...currentRuntimeEnvironment({
-      packaged: false,
-      appPath: ROOT,
-      executable: rt.executable,
-      environment: {
-        ...process.env,
-        DYLD_LIBRARY_PATH: '/opt/anaconda3/envs/ester-studio/lib',
-        PYTHONPATH: '/opt/anaconda3/envs/ester-studio/lib/python3.12/site-packages',
-        RDBASE: '/tmp/fake-ambient-rdbase-must-be-stripped'
-      }
-    })
-  };
-  for (const [k, v] of Object.entries(env)) {
-    if (v === undefined) delete env[k];
-  }
-  env.OMP_NUM_THREADS = '1';
+  const env = buildIsolatedLockedRuntimeEnv(rt.executable, process.env);
   cachedRuntime = { ...rt, env };
   return cachedRuntime;
 }
@@ -92,6 +91,13 @@ test('macOS Python scientific environment has RDKit, ASE, Spglib, tblite, and Sc
   if (fs.existsSync(path.join(ROOT, '.local/toolchains/darwin-arm64'))) {
     assert.equal(runtime.provenance.source, 'prepared-current-locks');
   }
+  const pollutedEnv = buildIsolatedLockedRuntimeEnv(runtime.executable, {
+    ...process.env,
+    SCIYUE_PYTHON: '/opt/anaconda3/envs/ester-studio/bin/python3',
+    DYLD_LIBRARY_PATH: '/opt/anaconda3/envs/ester-studio/lib'
+  });
+  assert.equal(pollutedEnv.SCIYUE_PYTHON, undefined);
+  assert.equal(pollutedEnv.DYLD_LIBRARY_PATH, undefined);
 });
 
 test('desktop/chemistry/engine.py --capabilities reports periodicGfn2BondOrders on macOS', () => {

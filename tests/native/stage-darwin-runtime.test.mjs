@@ -11,6 +11,7 @@ import {
   XTB_REQUIRED_PARAMS,
   acquireStagingLock,
   buildInventoryFiles,
+  ensureDarwinRuntimeReady,
   hasResidualPrefixInBuffer,
   hasResidualPrefixInString,
   isAllowedSitePackagesTopEntry,
@@ -126,14 +127,8 @@ function ensureRepoSourcesAvailable() {
     '.local/toolchains/darwin-arm64/conda-py312-arm64/python'
   );
   const depDir = path.join(REPO_ROOT, '.local/dependencies/darwin-arm64/conda-chem-arm64');
-  if (
-    process.platform === 'darwin' &&
-    (!fs.existsSync(path.join(tcPythonDir, 'bin/python3')) ||
-      !fs.existsSync(path.join(depDir, 'xtb/bin/xtb')))
-  ) {
-    const condaPrefix = resolveDefaultCondaPrefix();
-    assert.ok(condaPrefix, 'Expected either staged .local or dedicated ester-studio Conda environment');
-    stageDarwinRuntime({ appPath: REPO_ROOT, platformId: 'darwin-arm64', condaPrefix });
+  if (process.platform === 'darwin' && process.arch === 'arm64') {
+    ensureDarwinRuntimeReady({ appPath: REPO_ROOT, platformId: 'darwin-arm64' });
   }
   return { tcPythonDir, depDir };
 }
@@ -422,10 +417,10 @@ test('buildInventoryFiles uses locale-independent codepoint sorting and replaceM
       ['python/B.py', 'python/_a.py', 'python/a.py']
     );
 
-    // Slot with ample trailing NULs succeeds
-    const ampleSlot = Buffer.alloc(64, 0);
+    // Conda 256-byte placeholder slot with ample trailing NULs succeeds
+    const ampleSlot = Buffer.alloc(280, 0);
     ampleSlot.write('/short/prefix/lib/libfoo.dylib', 0, 'utf8');
-    ampleSlot.write('NEXT', 60, 'utf8');
+    ampleSlot.write('NEXT', 274, 'utf8');
     const replaced = replaceMachOPrefixSlots(
       ampleSlot,
       ['/short/prefix'],
@@ -443,14 +438,91 @@ test('buildInventoryFiles uses locale-independent codepoint sorting and replaceM
       /STAGE_RELOCATION_FAILED/
     );
 
+    // Adjacent zero-valued integer field after a 16-byte fixed C array must NOT be overwritten into 1869360495 ('o-lo')
+    const fixedArrayPlusZeroInt = Buffer.alloc(64, 0);
+    fixedArrayPlusZeroInt.write('/tmp/conda', 0, 'utf8');
+    fixedArrayPlusZeroInt.writeUInt32LE(0, 16); // int nextField = 0 at offset 16
+    fixedArrayPlusZeroInt.writeUInt32LE(0xdeadbeef, 48); // non-zero sentinel after zero fields
+    assert.throws(
+      () =>
+        replaceMachOPrefixSlots(
+          fixedArrayPlusZeroInt,
+          ['/tmp/conda'],
+          CANONICAL_LOCKED_PREFIX,
+          'fixed-struct.dylib'
+        ),
+      /STAGE_RELOCATION_FAILED/
+    );
+    assert.equal(
+      fixedArrayPlusZeroInt.readUInt32LE(16),
+      0,
+      'Adjacent zero integer at offset 16 must remain 0 and never be overwritten'
+    );
+
+    // Valid 64-bit Mach-O binary with LC_SEGMENT_64 (__TEXT,__const) and LC_SYMTAB where a 16-byte prefix array is followed by a zero integer at +16
+    const machOStructBuf = Buffer.alloc(512, 0);
+    machOStructBuf.writeUInt32LE(0xfeedfacf, 0);
+    machOStructBuf.writeUInt32LE(0x0100000c, 4); // CPU_TYPE_ARM64
+    machOStructBuf.writeUInt32LE(6, 12); // MH_DYLIB
+    machOStructBuf.writeUInt32LE(2, 16); // ncmds = 2 (LC_SEGMENT_64 + LC_SYMTAB)
+    machOStructBuf.writeUInt32LE(152 + 24, 20); // sizeofcmds
+    // LC_SEGMENT_64 at offset 32 (72 + 80 = 152 bytes)
+    machOStructBuf.writeUInt32LE(0x19, 32);
+    machOStructBuf.writeUInt32LE(152, 36);
+    machOStructBuf.write('__TEXT', 40, 'utf8');
+    machOStructBuf.writeBigUInt64LE(0n, 56); // vmaddr
+    machOStructBuf.writeBigUInt64LE(512n, 64); // vmsize
+    machOStructBuf.writeBigUInt64LE(0n, 72); // fileoff
+    machOStructBuf.writeBigUInt64LE(512n, 80); // filesize
+    machOStructBuf.writeUInt32LE(1, 96); // nsects = 1
+    // Section 0 at offset 104 (80 bytes): __const in __TEXT, fileoff=256, size=128
+    machOStructBuf.write('__const', 104, 'utf8');
+    machOStructBuf.write('__TEXT', 120, 'utf8');
+    machOStructBuf.writeBigUInt64LE(256n, 136); // sect addr = 256
+    machOStructBuf.writeBigUInt64LE(128n, 144); // sect size = 128
+    machOStructBuf.writeUInt32LE(256, 152); // sect fileoff = 256
+    // LC_SYMTAB at offset 184 (24 bytes): symoff=400, nsyms=2
+    machOStructBuf.writeUInt32LE(0x02, 184);
+    machOStructBuf.writeUInt32LE(24, 188);
+    machOStructBuf.writeUInt32LE(400, 192); // symoff = 400
+    machOStructBuf.writeUInt32LE(2, 196); // nsyms = 2
+    // Symbol 0 at 400: _prefix at addr 256 (n_type=0x0e, n_sect=1)
+    machOStructBuf.writeUInt8(0x0e, 404);
+    machOStructBuf.writeUInt8(1, 405);
+    machOStructBuf.writeBigUInt64LE(256n, 408);
+    // Symbol 1 at 416: _zero_int at addr 272 (256 + 16) (n_type=0x0e, n_sect=1)
+    machOStructBuf.writeUInt8(0x0e, 420);
+    machOStructBuf.writeUInt8(1, 421);
+    machOStructBuf.writeBigUInt64LE(272n, 424);
+    // Write 16-byte prefix at offset 256 and zero integer at offset 272 (256 + 16)
+    machOStructBuf.write('/tmp/conda', 256, 'utf8');
+    machOStructBuf.writeUInt32LE(0, 272);
+    assert.throws(
+      () =>
+        replaceMachOPrefixSlots(
+          machOStructBuf,
+          ['/tmp/conda'],
+          CANONICAL_LOCKED_PREFIX,
+          'macho-adjacent-zero.dylib'
+        ),
+      /STAGE_RELOCATION_FAILED/
+    );
+    assert.equal(machOStructBuf.readUInt32LE(272), 0, 'Mach-O adjacent zero integer at 272 must remain 0');
+
     // Prefix that is a substring prefix of CANONICAL_LOCKED_PREFIX ('/opt/ester-studio' vs '/opt/ester-studio-locked-runtime')
-    const subPrefixSlot = Buffer.alloc(96, 0);
+    // and '=' compiler flag boundary (-fdebug-prefix-map=/opt/ester-studio=/usr/local/src/conda-prefix)
+    const subPrefixSlot = Buffer.alloc(280, 0);
     subPrefixSlot.write('/opt/ester-studio/lib/libfoo.dylib', 0, 'utf8');
     assert.equal(hasResidualPrefixInString('/opt/ester-studio/lib/libfoo.dylib', '/opt/ester-studio', CANONICAL_LOCKED_PREFIX), true);
+    assert.equal(hasResidualPrefixInString('-fdebug-prefix-map=/opt/ester-studio=/usr/local/src/conda-prefix', '/opt/ester-studio', CANONICAL_LOCKED_PREFIX), true);
     assert.equal(hasResidualPrefixInString(`${CANONICAL_LOCKED_PREFIX}/lib/libfoo.dylib`, '/opt/ester-studio', CANONICAL_LOCKED_PREFIX), false);
     assert.equal(
-      replacePrefixInString('/opt/ester-studio/lib/libfoo.dylib', '/opt/ester-studio', CANONICAL_LOCKED_PREFIX),
-      `${CANONICAL_LOCKED_PREFIX}/lib/libfoo.dylib`
+      replacePrefixInString(
+        '-fdebug-prefix-map=/opt/ester-studio=/usr/local/src/conda-prefix',
+        '/opt/ester-studio',
+        CANONICAL_LOCKED_PREFIX
+      ),
+      `-fdebug-prefix-map=${CANONICAL_LOCKED_PREFIX}=/usr/local/src/conda-prefix`
     );
     assert.equal(
       replaceMachOPrefixSlots(subPrefixSlot, ['/opt/ester-studio'], CANONICAL_LOCKED_PREFIX, 'subprefix.dylib'),
@@ -758,8 +830,42 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
       fs.writeFileSync(staged.profilePath, savedProfileText, 'utf8');
     }
 
-    // 3f. Post-swap verification failure (corrupted dev-runtime.py) rolls back swapped .local and lock files!
+    // 3f. Pre-swap verification failure (corrupted dev-runtime.py, missing engine.py, or missing dev-runtime.py) rejects BEFORE touching .local!
+    const engineFile = path.join(engineDir, 'engine.py');
+    const savedEngineText = fs.readFileSync(engineFile, 'utf8');
+    fs.unlinkSync(engineFile);
+    try {
+      assert.throws(
+        () =>
+          stageDarwinRuntime({
+            appPath: checkoutDir,
+            platformId: 'darwin-arm64',
+            condaPrefix: condaShortDir,
+            updateLocks: true
+          }),
+        /STAGE_ENGINE_MISSING/
+      );
+    } finally {
+      fs.writeFileSync(engineFile, savedEngineText, 'utf8');
+    }
+
     const devRuntimeFile = path.join(scriptsNativeDir, 'dev-runtime.py');
+    fs.unlinkSync(devRuntimeFile);
+    try {
+      assert.throws(
+        () =>
+          stageDarwinRuntime({
+            appPath: checkoutDir,
+            platformId: 'darwin-arm64',
+            condaPrefix: condaShortDir,
+            updateLocks: true
+          }),
+        /STAGE_DEV_RUNTIME_MISSING/
+      );
+    } finally {
+      fs.writeFileSync(devRuntimeFile, REAL_DEV_BOOTSTRAP, 'utf8');
+    }
+
     fs.writeFileSync(devRuntimeFile, 'import sys\nsys.exit("SIMULATED_DEV_RUNTIME_FAILURE")\n', 'utf8');
     try {
       assert.throws(
@@ -778,33 +884,69 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
     }
 
     // 3g. Fault injection on 1st rename (target -> backup fails before backup exists), 2nd rename (next -> target fails),
-    // and 7th rename (first lock file target -> backup fails after 3 directories swapped)
-    for (const failAtStep of [1, 2, 7]) {
-      let renameStep = 0;
+    // and 7th rename (first lock file target -> backup fails after 3 directories swapped),
+    // WITH read-only parent directory (0555) to verify parent permissions are restored after rollback!
+    const tcParentDir = path.dirname(staged.toolchainRoot);
+    fs.chmodSync(tcParentDir, 0o555);
+    try {
+      for (const failAtStep of [1, 2, 7]) {
+        let renameStep = 0;
+        assert.throws(
+          () =>
+            stageDarwinRuntime({
+              appPath: checkoutDir,
+              platformId: 'darwin-arm64',
+              condaPrefix: badCondaDir,
+              updateLocks: true,
+              lockReadOnly: true,
+              renameImpl: (oldP, newP) => {
+                renameStep += 1;
+                if (renameStep === failAtStep) {
+                  throw new Error(`INJECTED_RENAME_FAILURE_STEP_${failAtStep}`);
+                }
+                fs.renameSync(oldP, newP);
+              }
+            }),
+          new RegExp(`INJECTED_RENAME_FAILURE_STEP_${failAtStep}`)
+        );
+        assert.equal(fs.existsSync(path.join(staged.toolchainRoot, 'python/bin/python3')), true);
+        assert.equal(fs.readFileSync(staged.profilePath, 'utf8'), savedProfileText);
+        assert.equal(
+          fs.lstatSync(tcParentDir).mode & 0o777,
+          0o555,
+          'Read-only parent directory mode 0555 must be restored after rollback'
+        );
+        verifyTreeReadOnly(staged.toolchainRoot);
+        verifyTreeReadOnly(staged.dependencyRoot);
+        verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
+      }
+    } finally {
+      fs.chmodSync(tcParentDir, 0o755);
+    }
+
+    // 3g-1b. Invalid TMPDIR causing mkdtempSync failure still releases staging lock so immediate retry does not fail with STAGE_CONCURRENT_BUSY
+    const prevTmpDir = process.env.TMPDIR;
+    process.env.TMPDIR = path.join(tmpRoot, 'nonexistent-tmpdir-for-lock-test');
+    try {
       assert.throws(
         () =>
           stageDarwinRuntime({
             appPath: checkoutDir,
             platformId: 'darwin-arm64',
-            condaPrefix: badCondaDir,
-            updateLocks: true,
-            lockReadOnly: true,
-            renameImpl: (oldP, newP) => {
-              renameStep += 1;
-              if (renameStep === failAtStep) {
-                throw new Error(`INJECTED_RENAME_FAILURE_STEP_${failAtStep}`);
-              }
-              fs.renameSync(oldP, newP);
-            }
+            condaPrefix: condaShortDir,
+            updateLocks: true
           }),
-        new RegExp(`INJECTED_RENAME_FAILURE_STEP_${failAtStep}`)
+        /ENOENT/
       );
-      assert.equal(fs.existsSync(path.join(staged.toolchainRoot, 'python/bin/python3')), true);
-      assert.equal(fs.readFileSync(staged.profilePath, 'utf8'), savedProfileText);
-      verifyTreeReadOnly(staged.toolchainRoot);
-      verifyTreeReadOnly(staged.dependencyRoot);
-      verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
+    } finally {
+      if (prevTmpDir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = prevTmpDir;
     }
+    assert.equal(
+      fs.existsSync(path.join(checkoutDir, '.local', '.staging.lock')),
+      false,
+      'Staging lock must be released even when mkdtempSync fails'
+    );
 
     // 3g-2. relocateMachOBinary handles source prefix '/opt/ester-studio' (substring prefix of CANONICAL_LOCKED_PREFIX)
     const machOSubPrefixCopy = path.join(tmpRoot, 'python3-subprefix-copy');

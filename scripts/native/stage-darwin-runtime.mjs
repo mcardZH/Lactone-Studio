@@ -330,10 +330,16 @@ function isPrefixBoundaryChar(ch) {
     ch === undefined ||
     ch === "/" ||
     ch === "\0" ||
+    ch === "=" ||
     ch === ":" ||
     ch === ";" ||
     ch === "'" ||
     ch === '"' ||
+    ch === "," ||
+    ch === ")" ||
+    ch === "]" ||
+    ch === "}" ||
+    ch === ">" ||
     ch === " " ||
     ch === "\t" ||
     ch === "\n" ||
@@ -411,8 +417,138 @@ export function hasResidualPrefixInBuffer(buf, oldPrefix, newPrefix = CANONICAL_
   return false;
 }
 
+const DYLIB_AND_RPATH_LC_CMDS = new Set([
+  0x0c, // LC_LOAD_DYLIB
+  0x0d, // LC_ID_DYLIB
+  0x18,
+  0x80000018, // LC_LOAD_WEAK_DYLIB
+  0x1c,
+  0x8000001c, // LC_RPATH
+  0x1f,
+  0x8000001f, // LC_REEXPORT_DYLIB
+  0x20, // LC_LAZY_LOAD_DYLIB
+  0x23,
+  0x80000023, // LC_LOAD_UPWARD_DYLIB
+]);
+
+function parseMachOSliceBounds(buf, sliceOff, sliceEnd, lcSlots, sections, symbolOffsets) {
+  if (sliceOff + 32 > sliceEnd || buf.readUInt32LE(sliceOff) !== 0xfeedfacf) {
+    return false;
+  }
+  const ncmds = buf.readUInt32LE(sliceOff + 16);
+  const sizeofcmds = buf.readUInt32LE(sliceOff + 20);
+  const cmdsEnd = Math.min(sliceEnd, sliceOff + 32 + sizeofcmds);
+  const sliceSections = [];
+  const symtabs = [];
+
+  let cmdOff = sliceOff + 32;
+  for (let i = 0; i < ncmds && cmdOff + 8 <= cmdsEnd; i += 1) {
+    const cmd = buf.readUInt32LE(cmdOff);
+    const cmdsize = buf.readUInt32LE(cmdOff + 4);
+    if (cmdsize < 8 || cmdOff + cmdsize > cmdsEnd) break;
+
+    if (DYLIB_AND_RPATH_LC_CMDS.has(cmd) && cmdsize >= 16) {
+      const strOff = buf.readUInt32LE(cmdOff + 8);
+      if (strOff >= 12 && strOff < cmdsize) {
+        lcSlots.push({ start: cmdOff + strOff, end: cmdOff + cmdsize });
+      }
+    } else if (cmd === 0x19 && cmdsize >= 72) {
+      // LC_SEGMENT_64
+      const nsects = buf.readUInt32LE(cmdOff + 64);
+      let sectOff = cmdOff + 72;
+      for (let s = 0; s < nsects && sectOff + 80 <= cmdOff + cmdsize; s += 1) {
+        const sectname = buf
+          .subarray(sectOff, sectOff + 16)
+          .toString("utf8")
+          .replace(/\0.*$/, "");
+        const segname = buf
+          .subarray(sectOff + 16, sectOff + 32)
+          .toString("utf8")
+          .replace(/\0.*$/, "");
+        const addr = buf.readBigUInt64LE(sectOff + 32);
+        const size = Number(buf.readBigUInt64LE(sectOff + 40));
+        const fileoff = sliceOff + buf.readUInt32LE(sectOff + 48);
+        const flags = buf.readUInt32LE(sectOff + 64);
+        const sectRecord = {
+          segname,
+          sectname,
+          addr,
+          start: fileoff,
+          end: Math.min(sliceEnd, fileoff + size),
+          flags,
+        };
+        sliceSections.push(sectRecord);
+        sections.push(sectRecord);
+        sectOff += 80;
+      }
+    } else if (cmd === 0x02 && cmdsize >= 24) {
+      // LC_SYMTAB
+      const symoff = sliceOff + buf.readUInt32LE(cmdOff + 8);
+      const nsyms = buf.readUInt32LE(cmdOff + 12);
+      symtabs.push({ symoff, nsyms });
+    }
+    cmdOff += cmdsize;
+  }
+
+  for (const { symoff, nsyms } of symtabs) {
+    for (let s = 0; s < nsyms; s += 1) {
+      const entryOff = symoff + s * 16;
+      if (entryOff + 16 > sliceEnd) break;
+      const nType = buf.readUInt8(entryOff + 4);
+      const nSect = buf.readUInt8(entryOff + 5);
+      const nValue = buf.readBigUInt64LE(entryOff + 8);
+      if ((nType & 0x0e) === 0x0e && nSect >= 1 && nSect <= sliceSections.length) {
+        const sect = sliceSections[nSect - 1];
+        if (nValue >= sect.addr) {
+          const rel = Number(nValue - sect.addr);
+          if (rel >= 0 && sect.start + rel <= sect.end) {
+            symbolOffsets.push(sect.start + rel);
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
+function parseMachOStructuralBounds(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 32) return null;
+  const magicLE = buf.readUInt32LE(0);
+  const magicBE = buf.readUInt32BE(0);
+  const lcSlots = [];
+  const sections = [];
+  const symbolOffsets = [];
+
+  if (magicLE === 0xfeedfacf) {
+    parseMachOSliceBounds(buf, 0, buf.length, lcSlots, sections, symbolOffsets);
+    symbolOffsets.sort((a, b) => a - b);
+    return { lcSlots, sections, symbolOffsets };
+  }
+  if (magicBE === 0xcafebabe) {
+    const nfat = buf.readUInt32BE(4);
+    let anySlice = false;
+    for (let i = 0; i < Math.min(nfat, 8); i += 1) {
+      const archOff = 8 + i * 20;
+      if (archOff + 20 > buf.length) break;
+      const sliceOff = buf.readUInt32BE(archOff + 8);
+      const sliceSize = buf.readUInt32BE(archOff + 12);
+      const sliceEnd = Math.min(buf.length, sliceOff + sliceSize);
+      if (parseMachOSliceBounds(buf, sliceOff, sliceEnd, lcSlots, sections, symbolOffsets)) {
+        anySlice = true;
+      }
+    }
+    if (anySlice) {
+      symbolOffsets.sort((a, b) => a - b);
+      return { lcSlots, sections, symbolOffsets };
+    }
+  }
+  return null;
+}
+
 export function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix, filePath = "<buffer>") {
   let modified = false;
+  const machOBounds = parseMachOStructuralBounds(buf);
+
   for (const oldPrefix of oldPrefixes) {
     if (!oldPrefix || oldPrefix === newPrefix) continue;
     const oldBuf = Buffer.from(oldPrefix, "utf8");
@@ -424,7 +560,37 @@ export function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix, filePath = 
       while (strEnd < buf.length && buf[strEnd] !== 0) strEnd += 1;
       let nulEnd = strEnd;
       while (nulEnd < buf.length && buf[nulEnd] === 0) nulEnd += 1;
-      const slotLen = nulEnd - strStart;
+
+      let maxSlotEnd = nulEnd;
+      let inLoadCommand = false;
+      if (machOBounds) {
+        const lc = machOBounds.lcSlots.find((s) => pos >= s.start && strEnd <= s.end);
+        if (lc) {
+          inLoadCommand = true;
+          strStart = Math.max(strStart, lc.start);
+          maxSlotEnd = Math.min(nulEnd, lc.end);
+        } else {
+          const sect = machOBounds.sections.find((s) => pos >= s.start && strEnd <= s.end);
+          const isExecutableSection =
+            sect && ((sect.flags & 0x80000000) !== 0 || sect.sectname === "__text");
+          if (!sect || isExecutableSection) {
+            throw new Error(
+              `STAGE_RELOCATION_FAILED: Refusing to relocate prefix '${oldPrefix}' outside Mach-O load commands or data/const sections in ${filePath} (offset ${pos})`
+            );
+          }
+          strStart = Math.max(strStart, sect.start);
+          maxSlotEnd = Math.min(nulEnd, sect.end);
+          for (const symOff of machOBounds.symbolOffsets) {
+            if (symOff > strStart && symOff <= pos) {
+              strStart = symOff;
+            } else if (symOff >= strEnd && symOff < maxSlotEnd) {
+              maxSlotEnd = symOff;
+              break;
+            }
+          }
+        }
+      }
+
       const origStr = buf.subarray(strStart, strEnd).toString("utf8");
       if (!hasResidualPrefixInString(origStr, oldPrefix, newPrefix)) {
         pos = Math.max(strEnd, pos + oldBuf.length);
@@ -432,15 +598,27 @@ export function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix, filePath = 
       }
       const newStr = replacePrefixInString(origStr, oldPrefix, newPrefix);
       const newStrBuf = Buffer.from(newStr, "utf8");
-      if (newStrBuf.length >= slotLen) {
+      const origLen = strEnd - strStart;
+      const isExpanding = newStrBuf.length > origLen;
+
+      const boundedSlotLen = maxSlotEnd - strStart;
+      const boundedNulCount = maxSlotEnd - strEnd;
+      if (isExpanding && !inLoadCommand && (boundedSlotLen < 256 || boundedNulCount < 64)) {
         throw new Error(
-          `STAGE_RELOCATION_FAILED: Mach-O string slot (${slotLen} bytes) in ${filePath} is too short to relocate prefix '${oldPrefix}' to '${newPrefix}' (${newStrBuf.length + 1} bytes required)`
+          `STAGE_RELOCATION_FAILED: Refusing to expand prefix '${oldPrefix}' to '${newPrefix}' in non-placeholder slot (${boundedSlotLen} bytes, ${boundedNulCount} trailing NULs) in ${filePath}`
         );
       }
-      buf.fill(0, strStart, nulEnd);
+      if (newStrBuf.length >= boundedSlotLen) {
+        throw new Error(
+          `STAGE_RELOCATION_FAILED: Mach-O string slot (${boundedSlotLen} bytes) in ${filePath} is too short to relocate prefix '${oldPrefix}' to '${newPrefix}' (${newStrBuf.length + 1} bytes required)`
+        );
+      }
+
+      const clearEnd = Math.min(maxSlotEnd, Math.max(strEnd, strStart + newStrBuf.length + 1));
+      buf.fill(0, strStart, clearEnd);
       newStrBuf.copy(buf, strStart);
       modified = true;
-      pos = nulEnd;
+      pos = maxSlotEnd;
     }
   }
   return modified;
@@ -1123,6 +1301,80 @@ export function acquireStagingLock(appPath) {
   };
 }
 
+function verifyDevRuntimeCapabilities(appRootPath, platformId) {
+  const enginePyPath = path.join(appRootPath, "desktop", "chemistry", "engine.py");
+  const devRuntimePyPath = path.join(appRootPath, "scripts", "native", "dev-runtime.py");
+  if (!fs.existsSync(enginePyPath) || !fs.statSync(enginePyPath).isFile()) {
+    throw new Error(
+      `STAGE_ENGINE_MISSING: Required chemistry engine ${enginePyPath} does not exist`
+    );
+  }
+  if (!fs.existsSync(devRuntimePyPath) || !fs.statSync(devRuntimePyPath).isFile()) {
+    throw new Error(
+      `STAGE_DEV_RUNTIME_MISSING: Required bootstrap ${devRuntimePyPath} does not exist`
+    );
+  }
+
+  const selectedNative = developmentNative(appRootPath, { platformId });
+  developmentXtb(appRootPath, { platformId });
+
+  if (process.platform === "darwin" && `darwin-${process.arch}` === platformId) {
+    const cleanAmbientEnv = { ...process.env };
+    delete cleanAmbientEnv.SCIYUE_PYTHON;
+    const rtEnv = {
+      ...cleanAmbientEnv,
+      ...currentRuntimeEnvironment({
+        packaged: false,
+        appPath: appRootPath,
+        executable: selectedNative.executable,
+        platformId,
+        environment: cleanAmbientEnv,
+      }),
+    };
+    delete rtEnv.SCIYUE_PYTHON;
+    for (const [k, v] of Object.entries(rtEnv)) {
+      if (v === undefined) delete rtEnv[k];
+    }
+    let capStdout;
+    try {
+      capStdout = execFileSync(
+        selectedNative.executable,
+        ["-I", "-S", "-B", devRuntimePyPath, "--capabilities"],
+        {
+          cwd: path.dirname(enginePyPath),
+          env: rtEnv,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        }
+      );
+    } catch (err) {
+      const stderr = err.stderr ? String(err.stderr).trim() : err.message;
+      throw new Error(`STAGE_DEV_RUNTIME_FAILED: dev-runtime.py verification failed: ${stderr}`);
+    }
+    let capJson;
+    try {
+      capJson = JSON.parse(String(capStdout).trim());
+    } catch {
+      throw new Error(
+        `STAGE_DEV_RUNTIME_FAILED: Invalid JSON from dev-runtime.py --capabilities: ${capStdout}`
+      );
+    }
+    if (
+      !capJson ||
+      capJson.schema !== "sciyue-native-capabilities/v1" ||
+      capJson.periodicGfn2BondOrders !== true ||
+      typeof capJson.tbliteVersion !== "string" ||
+      !capJson.tbliteVersion.trim()
+    ) {
+      throw new Error(
+        `STAGE_DEV_RUNTIME_FAILED: dev-runtime.py --capabilities did not report periodicGfn2BondOrders=true and tbliteVersion: ${JSON.stringify(
+          capJson
+        )}`
+      );
+    }
+  }
+}
+
 export function stageDarwinRuntime({
   appPath = DEFAULT_APP_PATH,
   platformId = `darwin-${process.arch}`,
@@ -1143,26 +1395,43 @@ export function stageDarwinRuntime({
 
   const resolvedAppPath = path.resolve(appPath);
   const releaseLock = acquireStagingLock(resolvedAppPath);
-  const tcRelRoot = `.local/toolchains/${platformId}/${toolchainLockId}`;
-  const depRelRoot = `.local/dependencies/${platformId}/${runtimeLockId}`;
-  const prepRelDir = `.local/preparation/${platformId}`;
-
-  const tcAbsRoot = path.join(resolvedAppPath, tcRelRoot);
-  const depAbsRoot = path.join(resolvedAppPath, depRelRoot);
-  const prepAbsDir = path.join(resolvedAppPath, prepRelDir);
-  const packagingAbsDir = path.join(resolvedAppPath, "desktop", "packaging");
-
-  // Stage in an isolated transaction directory so existing .local state is never corrupted on error
-  const txRoot = fs.mkdtempSync(path.join(os.tmpdir(), "es-darwin-stage-tx-"));
-  const txTcAbsRoot = path.join(txRoot, "tc");
-  const txDepAbsRoot = path.join(txRoot, "dep");
-  const txPrepAbsDir = path.join(txRoot, "prep");
+  let txRoot = null;
 
   try {
+    const enginePyPath = path.join(resolvedAppPath, "desktop", "chemistry", "engine.py");
+    const devRuntimePyPath = path.join(resolvedAppPath, "scripts", "native", "dev-runtime.py");
+    if (!fs.existsSync(enginePyPath) || !fs.statSync(enginePyPath).isFile()) {
+      throw new Error(
+        `STAGE_ENGINE_MISSING: Required chemistry engine ${enginePyPath} does not exist`
+      );
+    }
+    if (!fs.existsSync(devRuntimePyPath) || !fs.statSync(devRuntimePyPath).isFile()) {
+      throw new Error(
+        `STAGE_DEV_RUNTIME_MISSING: Required bootstrap ${devRuntimePyPath} does not exist`
+      );
+    }
+
+    const tcRelRoot = `.local/toolchains/${platformId}/${toolchainLockId}`;
+    const depRelRoot = `.local/dependencies/${platformId}/${runtimeLockId}`;
+    const prepRelDir = `.local/preparation/${platformId}`;
+
+    const tcAbsRoot = path.join(resolvedAppPath, tcRelRoot);
+    const depAbsRoot = path.join(resolvedAppPath, depRelRoot);
+    const prepAbsDir = path.join(resolvedAppPath, prepRelDir);
+    const packagingAbsDir = path.join(resolvedAppPath, "desktop", "packaging");
+
+    // Stage in an isolated transaction directory mirroring appPath layout so dev-runtime.py --capabilities runs BEFORE swapping appPath
+    txRoot = fs.mkdtempSync(path.join(os.tmpdir(), "es-darwin-stage-tx-"));
+    const txTcAbsRoot = path.join(txRoot, tcRelRoot);
+    const txDepAbsRoot = path.join(txRoot, depRelRoot);
+    const txPrepAbsDir = path.join(txRoot, prepRelDir);
+    const txPackagingDir = path.join(txRoot, "desktop", "packaging");
+
     fs.mkdirSync(path.join(txTcAbsRoot, "python"), { recursive: true });
     fs.mkdirSync(path.join(txDepAbsRoot, "python"), { recursive: true });
     fs.mkdirSync(path.join(txDepAbsRoot, "xtb"), { recursive: true });
     fs.mkdirSync(txPrepAbsDir, { recursive: true });
+    fs.mkdirSync(txPackagingDir, { recursive: true });
 
     if (condaPrefix) {
       stageFromCondaPrefix(
@@ -1426,13 +1695,35 @@ export function stageDarwinRuntime({
       }
     }
 
+    // Complete txRoot layout and run full pre-swap verification (developmentNative, developmentXtb, dev-runtime.py --capabilities) BEFORE touching appPath
+    fs.writeFileSync(path.join(txTcAbsRoot, "inventory.json"), tcInvText, "utf8");
+    fs.writeFileSync(path.join(txDepAbsRoot, "inventory.json"), depInvText, "utf8");
+    fs.writeFileSync(path.join(txPrepAbsDir, "import-probe.json"), probeText, "utf8");
+    fs.writeFileSync(path.join(txPrepAbsDir, "native-preparation.json"), prepText, "utf8");
+    fs.writeFileSync(path.join(txRoot, tcLockRel), tcLockText, "utf8");
+    fs.writeFileSync(path.join(txRoot, depLockRel), depLockText, "utf8");
+    fs.writeFileSync(path.join(txRoot, xtbLockRel), xtbLockText, "utf8");
+    fs.writeFileSync(path.join(txRoot, profileRel), profileText, "utf8");
+    copyDirectoryTree(
+      path.join(resolvedAppPath, "desktop", "chemistry"),
+      path.join(txRoot, "desktop", "chemistry")
+    );
+    fs.mkdirSync(path.join(txRoot, "scripts", "native"), { recursive: true });
+    fs.copyFileSync(devRuntimePyPath, path.join(txRoot, "scripts", "native", "dev-runtime.py"));
+    verifyDevRuntimeCapabilities(txRoot, platformId);
+
     const shouldWriteLocks = updateLocks || !verifyCommittedLocks;
 
-    // Prepare transactional staging siblings in the same parent directories so 0555 directory renames never cross parent inodes
+    // Prepare transactional staging siblings in the same parent directories so 0555 directory renames never cross parent inodes,
+    // recording original modes of existing parent directories so they are restored on rollback or completion.
+    const modifiedParentModes = new Map();
     const ensureDirSelfWritable = (dirPath) => {
       if (!fs.existsSync(dirPath)) return;
       const st = fs.lstatSync(dirPath);
       if ((st.mode & 0o200) === 0) {
+        if (!modifiedParentModes.has(dirPath)) {
+          modifiedParentModes.set(dirPath, st.mode & 0o777);
+        }
         fs.chmodSync(dirPath, st.mode | 0o200);
       }
     };
@@ -1516,10 +1807,7 @@ export function stageDarwinRuntime({
         for (const item of swapPlan) {
           const parentDir = path.dirname(item.targetPath);
           fs.mkdirSync(parentDir, { recursive: true });
-          const parentSt = fs.lstatSync(parentDir);
-          if ((parentSt.mode & 0o200) === 0) {
-            fs.chmodSync(parentDir, parentSt.mode | 0o200);
-          }
+          ensureDirSelfWritable(parentDir);
           const existed = fs.existsSync(item.targetPath);
           const swapRecord = { ...item, existed, backedUp: false, installed: false };
           appliedSwaps.push(swapRecord);
@@ -1531,7 +1819,7 @@ export function stageDarwinRuntime({
           swapRecord.installed = true;
         }
 
-        // Warm up final committed Mach-O inodes so macOS kernel caches ad-hoc signatures immediately
+        // Warm up final committed Mach-O inodes and verify committed checkout admission
         runImportProbe({
           pythonExecutable: path.join(tcAbsRoot, "python", "bin", "python3"),
           tcAbsRoot,
@@ -1539,73 +1827,7 @@ export function stageDarwinRuntime({
           platformId,
           probeModules: REQUIRED_SCIENTIFIC_MODULES,
         });
-
-        // End-to-end admission & dev-runtime bootstrap verification when engine.py is present in appPath
-        const enginePyPath = path.join(resolvedAppPath, "desktop", "chemistry", "engine.py");
-        if (fs.existsSync(enginePyPath)) {
-          const selectedNative = developmentNative(resolvedAppPath, { platformId });
-          developmentXtb(resolvedAppPath, { platformId });
-          const devRuntimePyPath = path.join(resolvedAppPath, "scripts", "native", "dev-runtime.py");
-          if (
-            fs.existsSync(devRuntimePyPath) &&
-            process.platform === "darwin" &&
-            `darwin-${process.arch}` === platformId
-          ) {
-            const cleanAmbientEnv = { ...process.env };
-            delete cleanAmbientEnv.SCIYUE_PYTHON;
-            const rtEnv = {
-              ...cleanAmbientEnv,
-              ...currentRuntimeEnvironment({
-                packaged: false,
-                appPath: resolvedAppPath,
-                executable: selectedNative.executable,
-                platformId,
-                environment: cleanAmbientEnv,
-              }),
-            };
-            delete rtEnv.SCIYUE_PYTHON;
-            for (const [k, v] of Object.entries(rtEnv)) {
-              if (v === undefined) delete rtEnv[k];
-            }
-            let capStdout;
-            try {
-              capStdout = execFileSync(
-                selectedNative.executable,
-                ["-I", "-S", "-B", devRuntimePyPath, "--capabilities"],
-                {
-                  cwd: path.dirname(enginePyPath),
-                  env: rtEnv,
-                  encoding: "utf8",
-                  stdio: ["ignore", "pipe", "pipe"],
-                }
-              );
-            } catch (err) {
-              const stderr = err.stderr ? String(err.stderr).trim() : err.message;
-              throw new Error(`STAGE_DEV_RUNTIME_FAILED: dev-runtime.py verification failed: ${stderr}`);
-            }
-            let capJson;
-            try {
-              capJson = JSON.parse(String(capStdout).trim());
-            } catch {
-              throw new Error(
-                `STAGE_DEV_RUNTIME_FAILED: Invalid JSON from dev-runtime.py --capabilities: ${capStdout}`
-              );
-            }
-            if (
-              !capJson ||
-              capJson.schema !== "sciyue-native-capabilities/v1" ||
-              capJson.periodicGfn2BondOrders !== true ||
-              typeof capJson.tbliteVersion !== "string" ||
-              !capJson.tbliteVersion.trim()
-            ) {
-              throw new Error(
-                `STAGE_DEV_RUNTIME_FAILED: dev-runtime.py --capabilities did not report periodicGfn2BondOrders=true and tbliteVersion: ${JSON.stringify(
-                  capJson
-                )}`
-              );
-            }
-          }
-        }
+        verifyDevRuntimeCapabilities(resolvedAppPath, platformId);
       } catch (commitErr) {
         const rollbackErrors = [];
         for (let i = appliedSwaps.length - 1; i >= 0; i -= 1) {
@@ -1613,8 +1835,7 @@ export function stageDarwinRuntime({
           try {
             const parentDir = path.dirname(item.targetPath);
             if (fs.existsSync(parentDir)) {
-              const pst = fs.lstatSync(parentDir);
-              if ((pst.mode & 0o200) === 0) fs.chmodSync(parentDir, pst.mode | 0o200);
+              ensureDirSelfWritable(parentDir);
             }
             if (item.installed || item.backedUp) {
               if (fs.existsSync(item.targetPath)) {
@@ -1650,6 +1871,15 @@ export function stageDarwinRuntime({
           }
         }
       }
+      for (const [dirPath, origMode] of modifiedParentModes.entries()) {
+        try {
+          if (fs.existsSync(dirPath)) {
+            fs.chmodSync(dirPath, origMode);
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
 
     return {
@@ -1663,8 +1893,64 @@ export function stageDarwinRuntime({
       xtbFileCount: xtbFiles.length,
     };
   } finally {
-    fs.rmSync(txRoot, { recursive: true, force: true });
+    if (txRoot) {
+      try {
+        makeDirectoryTreeWritable(txRoot);
+        fs.rmSync(txRoot, { recursive: true, force: true });
+      } catch {
+        // ignore cleanup error so lock is always released
+      }
+    }
     releaseLock();
+  }
+}
+
+export function ensureDarwinRuntimeReady({
+  appPath = DEFAULT_APP_PATH,
+  platformId = `darwin-${process.arch}`,
+  condaPrefix = null,
+  waitTimeoutMs = 180000,
+} = {}) {
+  const resolvedAppPath = path.resolve(appPath);
+  const lockDir = path.join(resolvedAppPath, ".local", ".staging.lock");
+  const isReady = () => {
+    if (fs.existsSync(lockDir)) return false;
+    try {
+      developmentNative(resolvedAppPath, { platformId });
+      developmentXtb(resolvedAppPath, { platformId });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (isReady()) return;
+
+  const sleepSync = (ms) => {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  };
+  const deadline = Date.now() + waitTimeoutMs;
+  while (true) {
+    if (isReady()) return;
+    try {
+      const resolvedPrefix = condaPrefix || resolveDefaultCondaPrefix();
+      if (!resolvedPrefix) {
+        throw new Error(
+          `STAGE_SOURCE_MISSING: Cannot stage ${resolvedAppPath} because no Conda environment was found`
+        );
+      }
+      stageDarwinRuntime({
+        appPath: resolvedAppPath,
+        platformId,
+        condaPrefix: resolvedPrefix,
+      });
+      return;
+    } catch (err) {
+      if (err && String(err.message).includes("STAGE_CONCURRENT_BUSY") && Date.now() < deadline) {
+        sleepSync(200);
+        continue;
+      }
+      throw err;
+    }
   }
 }
 
