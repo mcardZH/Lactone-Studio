@@ -56,23 +56,15 @@ def _bootstrap_scrub_initial_sys_path() -> None:
             "DEV_RUNTIME_PREFIX_ESCAPED: Virtual environment or mismatched base executable/prefix is not admitted."
         )
 
-    is_xcode_framework_stub = (
-        not is_win
-        and ".local/toolchains/" not in norm_exe.lower()
-        and "/library/frameworks/python3.framework/versions/" in norm_prefix.lower()
-    )
-    if is_xcode_framework_stub:
-        active_root = norm_prefix
-    else:
-        allowed_prefix_lowers = {exe_root.lower()}
-        if not is_win:
-            allowed_prefix_lowers.add(f"{exe_root.lower()}/bin")
-        if not norm_prefix or norm_prefix.lower() not in allowed_prefix_lowers:
-            sys.path[:] = []
-            raise RuntimeError(
-                "DEV_RUNTIME_PREFIX_ESCAPED: Interpreter prefix escaped executable root."
-            )
-        active_root = exe_root
+    allowed_prefix_lowers = {exe_root.lower()}
+    if not is_win:
+        allowed_prefix_lowers.add(f"{exe_root.lower()}/bin")
+    if not norm_prefix or norm_prefix.lower() not in allowed_prefix_lowers:
+        sys.path[:] = []
+        raise RuntimeError(
+            "DEV_RUNTIME_PREFIX_ESCAPED: Interpreter prefix escaped executable root."
+        )
+    active_root = exe_root
 
     allowed_lower: set[str] = set()
     if is_win:

@@ -11,10 +11,31 @@ const DEV_RUNTIME_PY = path.join(ROOT, 'scripts/native/dev-runtime.py');
 function isRunnablePython(candidate) {
   if (!candidate || !fs.existsSync(candidate)) return false;
   try {
-    const out = execFileSync(candidate, ['-c', 'import sys; print(sys.executable)'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
-    }).trim();
+    const out = execFileSync(
+      candidate,
+      [
+        '-I',
+        '-S',
+        '-B',
+        '-c',
+        [
+          'import sys',
+          'exe = sys.executable.replace("\\\\", "/").rstrip("/")',
+          'exe_dir = exe.rsplit("/", 1)[0]',
+          'is_win = sys.platform == "win32"',
+          'exe_root = exe_dir.rsplit("/", 1)[0] if (exe_dir.lower().endswith("/scripts" if is_win else "/bin") and "/" in exe_dir) else exe_dir',
+          'pref = sys.prefix.replace("\\\\", "/").rstrip("/")',
+          'base_pref = sys.base_prefix.replace("\\\\", "/").rstrip("/")',
+          'base_exe = getattr(sys, "_base_executable", "").replace("\\\\", "/").rstrip("/")',
+          'ok = (pref.lower() == exe_root.lower()) and (base_pref.lower() == pref.lower()) and (not base_exe or base_exe.lower() == exe.lower())',
+          'print(exe if ok else "")'
+        ].join('; ')
+      ],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }
+    ).trim();
     return Boolean(out);
   } catch {
     return false;
@@ -66,7 +87,9 @@ function findPythonInterpreter() {
     ...lockedToolchainCandidates(),
     ...darwinCandidates,
     '/opt/anaconda3/envs/ester-studio/bin/python3',
-    '/usr/bin/python3'
+    '/opt/anaconda3/bin/python3',
+    '/opt/homebrew/bin/python3',
+    '/usr/local/bin/python3'
   ].filter(Boolean);
 
   for (const c of candidates) {
@@ -406,7 +429,8 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    venv_escape_rejected = ("DEV_RUNTIME_PREFIX_ESCAPED" in str(e)) and (len(sys.path) == 0)',
       'sys._base_executable = orig_base_exe',
       'sys.path[:] = orig_sys_path',
-      // Test non-.local/toolchains root rejection on badAppDir
+      // Test non-.local/toolchains root rejection on badAppDir (explicitly set sys.platform = "darwin" to match badAppDir's darwin-arm64 profile on any host)
+      'sys.platform = "darwin"',
       `bad_app = pathlib.Path(${JSON.stringify(badAppDir)}).resolve()`,
       'sys.executable = str(bad_app / "custom-tc/python/bin/python3")',
       'sys.prefix = str(bad_app / "custom-tc/python")',
@@ -568,128 +592,200 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       encoding: 'utf8'
     });
     assert.equal(topOut.trim(), 'TOP_LEVEL_SCRUB_OK');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
 
-    // (c) Real subprocess test with a physical python3._pth file pointing ONLY to an external stdlib containing poisoned __future__.py and pkgutil.py
-    const pyPrefixInfo = JSON.parse(
-      execFileSync(
-        pyExec,
-        [
-          '-I',
-          '-S',
-          '-B',
-          '-c',
-          'import json, sys; print(json.dumps({"prefix": sys.prefix, "ver_dot": f"{sys.version_info.major}.{sys.version_info.minor}"}))'
-        ],
-        { encoding: 'utf8' }
-      ).trim()
-    );
-    const srcStdlibDir = path.join(pyPrefixInfo.prefix, 'lib', `python${pyPrefixInfo.ver_dot}`);
-    if (
-      process.platform !== 'win32' &&
-      fs.existsSync(path.join(srcStdlibDir, 'encodings')) &&
-      fs.existsSync(path.join(srcStdlibDir, 'codecs.py'))
-    ) {
-      const pthSubDir = path.join(tmpDir, 'pth-subproc-tc', 'python', 'bin');
-      fs.mkdirSync(pthSubDir, { recursive: true });
-      const copiedPy = path.join(pthSubDir, 'python3');
-      fs.copyFileSync(pyExec, copiedPy);
-      const extStdlib = path.join(tmpDir, 'ext-stdlib-poison');
-      fs.mkdirSync(extStdlib, { recursive: true });
-      fs.symlinkSync(path.join(srcStdlibDir, 'encodings'), path.join(extStdlib, 'encodings'));
-      fs.symlinkSync(path.join(srcStdlibDir, 'codecs.py'), path.join(extStdlib, 'codecs.py'));
-      if (fs.existsSync(path.join(srcStdlibDir, 'lib-dynload'))) {
-        fs.symlinkSync(path.join(srcStdlibDir, 'lib-dynload'), path.join(extStdlib, 'lib-dynload'));
-      }
-      fs.writeFileSync(
-        path.join(extStdlib, '__future__.py'),
-        'raise RuntimeError("POISON_SUBPROC_FUTURE_EXECUTED")\n'
-      );
-      fs.writeFileSync(
-        path.join(extStdlib, 'pkgutil.py'),
-        'raise RuntimeError("POISON_SUBPROC_PKGUTIL_EXECUTED")\n'
-      );
-      fs.writeFileSync(
-        path.join(pthSubDir, 'python3._pth'),
-        `${extStdlib}\n${path.join(extStdlib, 'lib-dynload')}\n${tcDir}\n`
-      );
-      let pthProbe = '';
-      try {
-        pthProbe = execFileSync(
-          copiedPy,
-          ['-I', '-S', '-B', '-c', 'import sys; print(sys.prefix)'],
-          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
-        ).trim();
-      } catch {
-        pthProbe = '';
-      }
-      // Only assert if this CPython build can execute as a standalone copy and honors python3._pth in bin/
-      if (pthProbe && fs.realpathSync(pthProbe) === fs.realpathSync(pthSubDir)) {
-        assert.throws(
-          () =>
-            execFileSync(copiedPy, ['-I', '-S', '-B', DEV_RUNTIME_PY], {
-              cwd: ROOT,
-              encoding: 'utf8',
-              stdio: 'pipe'
-            }),
-          (err) => {
-            const stderr = String(err.stderr || '');
-            assert.equal(stderr.includes('POISON_SUBPROC_FUTURE_EXECUTED'), false);
-            assert.equal(stderr.includes('POISON_SUBPROC_PKGUTIL_EXECUTED'), false);
-            assert.equal(stderr.includes('POISON_ANCESTOR_PKGUTIL_IMPORTED'), false);
-            assert.equal(
-              stderr.includes(
-                'DEV_RUNTIME_LOCK_INVALID: No admitted standard library path in initial sys.path.'
-              ),
-              true
-            );
-            return true;
-          }
-        );
+function prepareStandalonePythonCopy(pyExec, targetPyDir) {
+  const pyInfo = JSON.parse(
+    execFileSync(
+      pyExec,
+      [
+        '-I',
+        '-S',
+        '-B',
+        '-c',
+        'import json, sys; print(json.dumps({"prefix": sys.prefix, "ver_dot": f"{sys.version_info.major}.{sys.version_info.minor}", "ver_nodot": f"{sys.version_info.major}{sys.version_info.minor}"}))'
+      ],
+      { encoding: 'utf8' }
+    ).trim()
+  );
+  const isWin = process.platform === 'win32';
+  const binDir = isWin ? targetPyDir : path.join(targetPyDir, 'bin');
+  fs.mkdirSync(binDir, { recursive: true });
+  const copiedPy = path.join(binDir, isWin ? 'python.exe' : 'python3');
+  fs.copyFileSync(pyExec, copiedPy);
 
-        // (d) Real subprocess test with a physical pyvenv.cfg pointing to an external environment containing poisoned json.py/pkgutil.py
-        fs.rmSync(path.join(pthSubDir, 'python3._pth'), { force: true });
-        const extVenvHome = path.join(tmpDir, 'ext-venv-home');
-        const extVenvBin = path.join(extVenvHome, 'bin');
-        const extVenvLib = path.join(extVenvHome, 'lib', `python${pyPrefixInfo.ver_dot}`);
-        fs.mkdirSync(extVenvBin, { recursive: true });
-        fs.mkdirSync(extVenvLib, { recursive: true });
-        fs.symlinkSync(path.join(srcStdlibDir, 'encodings'), path.join(extVenvLib, 'encodings'));
-        fs.symlinkSync(path.join(srcStdlibDir, 'codecs.py'), path.join(extVenvLib, 'codecs.py'));
-        if (fs.existsSync(path.join(srcStdlibDir, 'lib-dynload'))) {
-          fs.symlinkSync(
-            path.join(srcStdlibDir, 'lib-dynload'),
-            path.join(extVenvLib, 'lib-dynload')
-          );
-        }
-        fs.writeFileSync(
-          path.join(extVenvLib, 'json.py'),
-          'raise RuntimeError("POISON_VENV_JSON_EXECUTED")\n'
-        );
-        fs.writeFileSync(
-          path.join(extVenvLib, 'pkgutil.py'),
-          'raise RuntimeError("POISON_VENV_PKGUTIL_EXECUTED")\n'
-        );
-        fs.writeFileSync(
-          path.join(path.dirname(pthSubDir), 'pyvenv.cfg'),
-          `home = ${extVenvBin}\ninclude-system-site-packages = false\n`
-        );
-        assert.throws(
-          () =>
-            execFileSync(copiedPy, ['-I', '-S', '-B', DEV_RUNTIME_PY], {
-              cwd: ROOT,
-              encoding: 'utf8',
-              stdio: 'pipe'
-            }),
-          (err) => {
-            const stderr = String(err.stderr || '');
-            assert.equal(stderr.includes('POISON_VENV_JSON_EXECUTED'), false);
-            assert.equal(stderr.includes('POISON_VENV_PKGUTIL_EXECUTED'), false);
-            assert.equal(stderr.includes('DEV_RUNTIME_PREFIX_ESCAPED'), true);
-            return true;
-          }
-        );
+  if (isWin) {
+    const srcExeDir = path.dirname(pyExec);
+    for (const entry of fs.readdirSync(srcExeDir)) {
+      if (entry.toLowerCase().endsWith('.dll')) {
+        fs.copyFileSync(path.join(srcExeDir, entry), path.join(binDir, entry));
       }
     }
+  }
+
+  const srcStdlibDir = isWin
+    ? path.join(pyInfo.prefix, 'Lib')
+    : path.join(pyInfo.prefix, 'lib', `python${pyInfo.ver_dot}`);
+  const pthFilePath = isWin
+    ? path.join(binDir, `python${pyInfo.ver_nodot}._pth`)
+    : path.join(binDir, 'python3._pth');
+  const pyvenvCfgPath = path.join(targetPyDir, 'pyvenv.cfg');
+
+  return { pyInfo, isWin, binDir, copiedPy, srcStdlibDir, pthFilePath, pyvenvCfgPath };
+}
+
+function populateMinimalBootStdlib(srcStdlibDir, pyPrefix, isWin, verNoDot, destStdlibDir) {
+  fs.mkdirSync(destStdlibDir, { recursive: true });
+  const encPath = path.join(srcStdlibDir, 'encodings');
+  const codecsPath = path.join(srcStdlibDir, 'codecs.py');
+  if (fs.existsSync(encPath) && fs.existsSync(codecsPath)) {
+    fs.symlinkSync(
+      encPath,
+      path.join(destStdlibDir, 'encodings'),
+      isWin ? 'junction' : 'dir'
+    );
+    fs.copyFileSync(codecsPath, path.join(destStdlibDir, 'codecs.py'));
+  } else {
+    const zipCandidate = path.join(pyPrefix, `python${verNoDot}.zip`);
+    assert.equal(
+      fs.existsSync(zipCandidate),
+      true,
+      `Expected either filesystem encodings or ${zipCandidate} in Python installation`
+    );
+    execFileSync(
+      process.platform === 'win32' ? 'tar.exe' : 'unzip',
+      process.platform === 'win32'
+        ? ['-xf', zipCandidate, '-C', destStdlibDir, 'encodings', 'codecs.py', 'codecs.pyc']
+        : ['-q', zipCandidate, 'encodings/*', 'codecs.*', '-d', destStdlibDir],
+      { stdio: 'ignore' }
+    );
+  }
+  const dynloadSrc = path.join(srcStdlibDir, 'lib-dynload');
+  if (fs.existsSync(dynloadSrc)) {
+    fs.symlinkSync(
+      dynloadSrc,
+      path.join(destStdlibDir, 'lib-dynload'),
+      isWin ? 'junction' : 'dir'
+    );
+  }
+}
+
+test('scripts/native/dev-runtime.py subprocess rejects external ._pth before importing __future__ or pkgutil', () => {
+  const pyExec = findPythonInterpreter();
+  assert.ok(pyExec, 'Expected a self-contained Python 3 interpreter to test ._pth subprocess');
+
+  const tmpDir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-dev-rt-pth-sub-'));
+  try {
+    const tcDir = path.join(tmpDir, 'pth-subproc-tc');
+    const targetPyDir = path.join(tcDir, 'python');
+    const { pyInfo, isWin, copiedPy, srcStdlibDir, pthFilePath } = prepareStandalonePythonCopy(
+      pyExec,
+      targetPyDir
+    );
+
+    const extStdlib = path.join(tmpDir, 'ext-stdlib-poison');
+    populateMinimalBootStdlib(srcStdlibDir, pyInfo.prefix, isWin, pyInfo.ver_nodot, extStdlib);
+    fs.writeFileSync(
+      path.join(extStdlib, '__future__.py'),
+      'raise RuntimeError("POISON_SUBPROC_FUTURE_EXECUTED")\n'
+    );
+    fs.writeFileSync(
+      path.join(extStdlib, 'pkgutil.py'),
+      'raise RuntimeError("POISON_SUBPROC_PKGUTIL_EXECUTED")\n'
+    );
+    fs.writeFileSync(
+      path.join(tcDir, 'pkgutil.py'),
+      'raise RuntimeError("POISON_ANCESTOR_PKGUTIL_IMPORTED")\n'
+    );
+    const pthLines = [extStdlib];
+    if (fs.existsSync(path.join(extStdlib, 'lib-dynload'))) {
+      pthLines.push(path.join(extStdlib, 'lib-dynload'));
+    }
+    pthLines.push(tcDir);
+    fs.writeFileSync(pthFilePath, pthLines.join('\n') + '\n');
+
+    assert.throws(
+      () =>
+        execFileSync(copiedPy, ['-I', '-S', '-B', DEV_RUNTIME_PY], {
+          cwd: ROOT,
+          encoding: 'utf8',
+          stdio: 'pipe'
+        }),
+      (err) => {
+        const stderr = String(err.stderr || '');
+        assert.equal(stderr.includes('POISON_SUBPROC_FUTURE_EXECUTED'), false);
+        assert.equal(stderr.includes('POISON_SUBPROC_PKGUTIL_EXECUTED'), false);
+        assert.equal(stderr.includes('POISON_ANCESTOR_PKGUTIL_IMPORTED'), false);
+        assert.equal(
+          stderr.includes(
+            'DEV_RUNTIME_LOCK_INVALID: No admitted standard library path in initial sys.path.'
+          ),
+          true,
+          `Unexpected stderr: ${stderr}`
+        );
+        return true;
+      }
+    );
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('scripts/native/dev-runtime.py subprocess rejects pyvenv.cfg before importing external stdlib json or pkgutil', () => {
+  const pyExec = findPythonInterpreter();
+  assert.ok(pyExec, 'Expected a self-contained Python 3 interpreter to test pyvenv.cfg subprocess');
+
+  const tmpDir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-dev-rt-venv-sub-'));
+  try {
+    const tcDir = path.join(tmpDir, 'venv-subproc-tc');
+    const targetPyDir = path.join(tcDir, 'python');
+    const { pyInfo, isWin, copiedPy, srcStdlibDir, pyvenvCfgPath } = prepareStandalonePythonCopy(
+      pyExec,
+      targetPyDir
+    );
+
+    const extVenvHome = path.join(tmpDir, 'ext-venv-home');
+    const extVenvBin = isWin ? extVenvHome : path.join(extVenvHome, 'bin');
+    const extVenvLib = isWin
+      ? path.join(extVenvHome, 'Lib')
+      : path.join(extVenvHome, 'lib', `python${pyInfo.ver_dot}`);
+    fs.mkdirSync(extVenvBin, { recursive: true });
+    populateMinimalBootStdlib(srcStdlibDir, pyInfo.prefix, isWin, pyInfo.ver_nodot, extVenvLib);
+    fs.writeFileSync(
+      path.join(extVenvLib, 'json.py'),
+      'raise RuntimeError("POISON_VENV_JSON_EXECUTED")\n'
+    );
+    fs.writeFileSync(
+      path.join(extVenvLib, 'pkgutil.py'),
+      'raise RuntimeError("POISON_VENV_PKGUTIL_EXECUTED")\n'
+    );
+    fs.writeFileSync(
+      pyvenvCfgPath,
+      `home = ${extVenvBin}\ninclude-system-site-packages = false\n`
+    );
+
+    assert.throws(
+      () =>
+        execFileSync(copiedPy, ['-I', '-S', '-B', DEV_RUNTIME_PY], {
+          cwd: ROOT,
+          encoding: 'utf8',
+          stdio: 'pipe'
+        }),
+      (err) => {
+        const stderr = String(err.stderr || '');
+        assert.equal(stderr.includes('POISON_VENV_JSON_EXECUTED'), false);
+        assert.equal(stderr.includes('POISON_VENV_PKGUTIL_EXECUTED'), false);
+        assert.equal(
+          stderr.includes('DEV_RUNTIME_PREFIX_ESCAPED'),
+          true,
+          `Unexpected stderr: ${stderr}`
+        );
+        return true;
+      }
+    );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
