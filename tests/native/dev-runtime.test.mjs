@@ -343,6 +343,16 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       'sys.platform = "darwin"',
       `sys.executable = ${JSON.stringify(arm64Bin)}`,
       'uname_fallback_worked = (mod.detect_host_platform() == "darwin-arm64")',
+      // Test Universal 2 Mach-O fallback WHILE os.uname is raising PermissionError AND ctypes is not yet in sys.modules
+      'if orig_plat == "darwin":',
+      '    sys.modules.pop("ctypes", None)',
+      `    universal_active = mod._infer_darwin_arch_without_uname(${JSON.stringify(universalBin)}, allow_process_probe=True)`,
+      '    python_process_arch = mod._probe_active_darwin_process_arch()',
+      '    uname_restored_after_probe = (getattr(os, "uname", None) is raising_uname)',
+      'else:',
+      '    universal_active = "skipped-non-darwin"',
+      '    python_process_arch = "skipped-non-darwin"',
+      '    uname_restored_after_probe = True',
       'if hasattr(os, "uname") and hasattr(os, "uname_result"):',
       '    os.uname = lambda: os.uname_result(("Darwin", "mac", "24.0.0", "Darwin", "x86_64"))',
       'else:',
@@ -368,12 +378,6 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       `    mod._infer_darwin_arch_without_uname(${JSON.stringify(unknownBin)}, allow_process_probe=False)`,
       'except RuntimeError as e:',
       '    unknown_bin_rejected = "DEV_RUNTIME_PLATFORM_UNSUPPORTED" in str(e)',
-      'if orig_plat == "darwin":',
-      `    universal_active = mod._infer_darwin_arch_without_uname(${JSON.stringify(universalBin)}, allow_process_probe=True)`,
-      '    python_process_arch = mod._probe_active_darwin_process_arch()',
-      'else:',
-      '    universal_active = "skipped-non-darwin"',
-      '    python_process_arch = "skipped-non-darwin"',
       // Restore real interpreter platform and executable before testing _bootstrap_scrub_initial_sys_path
       'sys.platform = orig_plat',
       'sys.executable = orig_exe',
@@ -448,15 +452,24 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       'mod.resolve_app_path = lambda: tmp_app',
       'mod.main()',
       'engine_ran_ok = getattr(sys, "_ENGINE_RAN_OK", False)',
-      // Verify invalid ._pth content is rejected by configure_isolated_paths
+      // Verify invalid ._pth content and nested tools/venv/pyvenv.cfg are rejected by configure_isolated_paths
       '(tmp_app / ".local/toolchains/win-x64/tc-1/python/python312._pth").write_text("../tools\\n", encoding="utf-8")',
       'bad_pth_rejected = False',
       'try:',
       '    mod.configure_isolated_paths(tmp_app)',
       'except RuntimeError as e:',
       '    bad_pth_rejected = "DEV_RUNTIME_LOCK_INVALID" in str(e)',
+      '(tmp_app / ".local/toolchains/win-x64/tc-1/python/python312._pth").write_text("Lib\\nDLLs\\n.\\n", encoding="utf-8")',
+      '(tmp_app / ".local/toolchains/win-x64/tc-1/tools/venv").mkdir(parents=True, exist_ok=True)',
+      '(tmp_app / ".local/toolchains/win-x64/tc-1/tools/venv/pyvenv.cfg").write_text("home = C:/Python312\\n", encoding="utf-8")',
+      'nested_pyvenv_rejected = False',
+      'try:',
+      '    mod.configure_isolated_paths(tmp_app)',
+      'except RuntimeError as e:',
+      '    nested_pyvenv_rejected = ("DEV_RUNTIME_LOCK_INVALID" in str(e)) and ("pyvenv.cfg" in str(e))',
       'print(json.dumps({',
       '    "uname_not_monkeypatched": uname_not_monkeypatched,',
+      '    "uname_restored_after_probe": uname_restored_after_probe,',
       '    "uname_fallback_worked": uname_fallback_worked,',
       '    "env_host_plat_cleared": env_host_plat_cleared,',
       '    "x64_detected": x64_detected,',
@@ -480,6 +493,7 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    "tc_site_dropped": tc_site_dropped,',
       '    "tc_tools_dropped": tc_tools_dropped,',
       '    "bad_pth_rejected": bad_pth_rejected,',
+      '    "nested_pyvenv_rejected": nested_pyvenv_rejected,',
       '    "engine_ran_ok": engine_ran_ok,',
       '    "rdbase_after": os.environ.get("rdbase") or os.environ.get("RDBASE"),',
       '    "omp": os.environ.get("OMP_NUM_THREADS")',
@@ -492,6 +506,7 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     });
     const parsed = JSON.parse(out.trim());
     assert.equal(parsed.uname_not_monkeypatched, true);
+    assert.equal(parsed.uname_restored_after_probe, true);
     assert.equal(parsed.uname_fallback_worked, true);
     assert.equal(parsed.env_host_plat_cleared, true);
     assert.equal(parsed.x64_detected, 'darwin-x64');
@@ -517,6 +532,7 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     assert.equal(parsed.tc_site_dropped, true);
     assert.equal(parsed.tc_tools_dropped, true);
     assert.equal(parsed.bad_pth_rejected, true);
+    assert.equal(parsed.nested_pyvenv_rejected, true);
     assert.equal(parsed.engine_ran_ok, true);
     assert.equal(parsed.rdbase_after, null);
     assert.equal(parsed.omp, '1');

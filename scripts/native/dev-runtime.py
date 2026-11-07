@@ -178,7 +178,30 @@ def _map_macho_cputype(cputype: int) -> str:
 def _probe_active_darwin_process_arch():
     """Query the in-memory Mach-O header of the active process image via libSystem."""
     try:
-        import ctypes
+        if "ctypes" not in sys.modules:
+            orig_uname = getattr(os, "uname", None)
+            need_restore = False
+            if orig_uname is not None:
+                try:
+                    orig_uname()
+                except Exception:
+                    need_restore = True
+
+                    class _FallbackUname:
+                        sysname = "Darwin"
+                        nodename = "localhost"
+                        release = "24.0.0"
+                        version = "Darwin"
+                        machine = ""
+
+                    os.uname = lambda: _FallbackUname()  # type: ignore[assignment]
+            try:
+                import ctypes
+            finally:
+                if need_restore and orig_uname is not None:
+                    os.uname = orig_uname  # type: ignore[assignment]
+        else:
+            import ctypes
 
         libc = ctypes.CDLL("/usr/lib/libSystem.B.dylib")
         libc._dyld_get_image_header.restype = ctypes.c_void_p
@@ -403,13 +426,11 @@ def _validate_toolchain_pth_files(tc_root: Path, host_platform: str) -> None:
     allowed_rel_set = set(_allowed_toolchain_stdlib_rel_paths(host_platform))
     python_dir = tc_root / "python"
     bin_dir = python_dir / "bin"
-    for venv_dir in (tc_root, python_dir, bin_dir):
-        if not venv_dir.exists() or not venv_dir.is_dir():
-            continue
-        for entry in venv_dir.iterdir():
-            if entry.name.lower() == "pyvenv.cfg":
+    for walk_root, dirnames, filenames in os.walk(tc_root, followlinks=False):
+        for name in (*dirnames, *filenames):
+            if name.lower() == "pyvenv.cfg":
                 raise RuntimeError(
-                    f"DEV_RUNTIME_LOCK_INVALID: Disallowed pyvenv.cfg in toolchain '{entry}'."
+                    f"DEV_RUNTIME_LOCK_INVALID: Disallowed pyvenv.cfg in toolchain '{Path(walk_root) / name}'."
                 )
     for candidate_dir in (python_dir, bin_dir):
         if not candidate_dir.exists() or not candidate_dir.is_dir():

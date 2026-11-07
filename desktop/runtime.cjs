@@ -28,12 +28,17 @@ function validateToolchainStartupPaths(selected) {
   }
 
   const tcRoot = path.dirname(pythonRoot);
-  const venvCheckDirs = Array.from(new Set([tcRoot, pythonRoot, exeDir]));
-  for (const dir of venvCheckDirs) {
-    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
-    for (const entry of fs.readdirSync(dir)) {
-      if (entry.toLowerCase() === 'pyvenv.cfg') {
-        throw new Error(`Disallowed pyvenv.cfg in locked toolchain: ${path.join(dir, entry)}`);
+  const stack = [tcRoot];
+  while (stack.length > 0) {
+    const currentDir = stack.pop();
+    if (!fs.existsSync(currentDir) || !fs.statSync(currentDir).isDirectory()) continue;
+    for (const dirent of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      const fullPath = path.join(currentDir, dirent.name);
+      if (dirent.name.toLowerCase() === 'pyvenv.cfg') {
+        throw new Error(`Disallowed pyvenv.cfg in locked toolchain: ${fullPath}`);
+      }
+      if (dirent.isDirectory() && !dirent.isSymbolicLink()) {
+        stack.push(fullPath);
       }
     }
   }
