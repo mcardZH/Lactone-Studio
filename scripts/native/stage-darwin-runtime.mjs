@@ -325,6 +325,92 @@ export function verifyTreeReadOnly(rootDir) {
   }
 }
 
+function isPrefixBoundaryChar(ch) {
+  return (
+    ch === undefined ||
+    ch === "/" ||
+    ch === "\0" ||
+    ch === ":" ||
+    ch === ";" ||
+    ch === "'" ||
+    ch === '"' ||
+    ch === " " ||
+    ch === "\t" ||
+    ch === "\n" ||
+    ch === "\r"
+  );
+}
+
+export function hasResidualPrefixInString(str, oldPrefix, newPrefix = CANONICAL_LOCKED_PREFIX) {
+  if (!oldPrefix || oldPrefix === newPrefix) return false;
+  let idx = 0;
+  while ((idx = str.indexOf(oldPrefix, idx)) !== -1) {
+    if (
+      newPrefix &&
+      str.startsWith(newPrefix, idx) &&
+      isPrefixBoundaryChar(str[idx + newPrefix.length])
+    ) {
+      idx += newPrefix.length;
+      continue;
+    }
+    const nextCh = str[idx + oldPrefix.length];
+    if (isPrefixBoundaryChar(nextCh)) {
+      return true;
+    }
+    idx += oldPrefix.length;
+  }
+  return false;
+}
+
+export function replacePrefixInString(str, oldPrefix, newPrefix = CANONICAL_LOCKED_PREFIX) {
+  if (!oldPrefix || oldPrefix === newPrefix) return str;
+  let out = "";
+  let cursor = 0;
+  while (cursor < str.length) {
+    const idx = str.indexOf(oldPrefix, cursor);
+    if (idx === -1) {
+      out += str.slice(cursor);
+      break;
+    }
+    if (
+      newPrefix &&
+      str.startsWith(newPrefix, idx) &&
+      isPrefixBoundaryChar(str[idx + newPrefix.length])
+    ) {
+      out += str.slice(cursor, idx + newPrefix.length);
+      cursor = idx + newPrefix.length;
+      continue;
+    }
+    const nextCh = str[idx + oldPrefix.length];
+    if (isPrefixBoundaryChar(nextCh)) {
+      out += str.slice(cursor, idx) + newPrefix;
+      cursor = idx + oldPrefix.length;
+    } else {
+      out += str.slice(cursor, idx + oldPrefix.length);
+      cursor = idx + oldPrefix.length;
+    }
+  }
+  return out;
+}
+
+export function hasResidualPrefixInBuffer(buf, oldPrefix, newPrefix = CANONICAL_LOCKED_PREFIX) {
+  if (!oldPrefix || oldPrefix === newPrefix) return false;
+  const oldBuf = Buffer.from(oldPrefix, "utf8");
+  let pos = 0;
+  while ((pos = buf.indexOf(oldBuf, pos)) !== -1) {
+    let strStart = pos;
+    while (strStart > 0 && buf[strStart - 1] !== 0) strStart -= 1;
+    let strEnd = pos;
+    while (strEnd < buf.length && buf[strEnd] !== 0) strEnd += 1;
+    const origStr = buf.subarray(strStart, strEnd).toString("utf8");
+    if (hasResidualPrefixInString(origStr, oldPrefix, newPrefix)) {
+      return true;
+    }
+    pos = Math.max(strEnd, pos + oldBuf.length);
+  }
+  return false;
+}
+
 export function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix, filePath = "<buffer>") {
   let modified = false;
   for (const oldPrefix of oldPrefixes) {
@@ -340,7 +426,11 @@ export function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix, filePath = 
       while (nulEnd < buf.length && buf[nulEnd] === 0) nulEnd += 1;
       const slotLen = nulEnd - strStart;
       const origStr = buf.subarray(strStart, strEnd).toString("utf8");
-      const newStr = origStr.split(oldPrefix).join(newPrefix);
+      if (!hasResidualPrefixInString(origStr, oldPrefix, newPrefix)) {
+        pos = Math.max(strEnd, pos + oldBuf.length);
+        continue;
+      }
+      const newStr = replacePrefixInString(origStr, oldPrefix, newPrefix);
       const newStrBuf = Buffer.from(newStr, "utf8");
       if (newStrBuf.length >= slotLen) {
         throw new Error(
@@ -363,7 +453,7 @@ export function relocateMachOBinary(filePath, oldPrefixes, newPrefix = CANONICAL
   if (validPrefixes.length === 0) return;
 
   const initialBuf = fs.readFileSync(filePath);
-  const hasMatch = validPrefixes.some((p) => initialBuf.indexOf(Buffer.from(p, "utf8")) !== -1);
+  const hasMatch = validPrefixes.some((p) => hasResidualPrefixInBuffer(initialBuf, p, newPrefix));
   if (!hasMatch) return;
 
   const st = fs.lstatSync(filePath);
@@ -378,7 +468,7 @@ export function relocateMachOBinary(filePath, oldPrefixes, newPrefix = CANONICAL
   const unsignedBuf = fs.readFileSync(filePath);
   replaceMachOPrefixSlots(unsignedBuf, validPrefixes, newPrefix, filePath);
   for (const p of validPrefixes) {
-    if (unsignedBuf.indexOf(Buffer.from(p, "utf8")) !== -1) {
+    if (hasResidualPrefixInBuffer(unsignedBuf, p, newPrefix)) {
       throw new Error(
         `STAGE_RELOCATION_FAILED: Residual prefix '${p}' remained in Mach-O binary ${filePath}`
       );
@@ -421,11 +511,11 @@ export function relocateTreePrefixes(rootDir, oldPrefixes, newPrefix = CANONICAL
           relocateMachOBinary(fullPath, validPrefixes, newPrefix);
         } else {
           const buf = fs.readFileSync(fullPath);
-          const hasMatch = validPrefixes.some((p) => buf.indexOf(Buffer.from(p, "utf8")) !== -1);
+          const hasMatch = validPrefixes.some((p) => hasResidualPrefixInBuffer(buf, p, newPrefix));
           if (hasMatch && !buf.includes(0)) {
             let text = buf.toString("utf8");
             for (const p of validPrefixes) {
-              text = text.split(p).join(newPrefix);
+              text = replacePrefixInString(text, p, newPrefix);
             }
             fs.chmodSync(fullPath, lstat.mode | 0o200);
             fs.writeFileSync(fullPath, text, "utf8");
@@ -849,6 +939,22 @@ export function runImportProbe({
     "expected_rd_data = (dep_site / 'rdkit' / 'share' / 'RDKit' / 'Data').resolve()",
     "if rd_data != expected_rd_data or not (rd_data / 'Salts.txt').is_file():",
     "    raise RuntimeError(f'RDKit RDDataDir escaped locked runtime: {rd_data} (expected {expected_rd_data})')",
+    "if sys.platform == 'darwin' and (tc_root / 'python/lib/python3.12/ctypes/__init__.py').is_file():",
+    "    import ctypes",
+    "    libc = ctypes.CDLL(None)",
+    "    libc._dyld_image_count.restype = ctypes.c_uint32",
+    "    libc._dyld_get_image_name.argtypes = [ctypes.c_uint32]",
+    "    libc._dyld_get_image_name.restype = ctypes.c_char_p",
+    `    dep_root = pathlib.Path(${JSON.stringify(depAbsRoot)}).resolve()`,
+    "    for i in range(libc._dyld_image_count()):",
+    "        raw = libc._dyld_get_image_name(i)",
+    "        if raw:",
+    "            p = raw.decode('utf-8', errors='replace')",
+    "            base = os.path.basename(p)",
+    "            if base.startswith(('libpython', 'libRDKit', 'libtblite', 'libsymspg')):",
+    "                rp = pathlib.Path(p).resolve()",
+    "                if not rp.is_relative_to(tc_root) and not rp.is_relative_to(dep_root):",
+    "                    raise RuntimeError(f'Native library {base} escaped locked runtime: {rp}')",
     "print(json.dumps({'schema': 'sciyue-import-probe-v1', 'passed': True, 'platform': " +
       JSON.stringify(platformId) +
       ", 'modules': sorted(list(loaded.keys())), 'versions': versions}))",
@@ -922,35 +1028,83 @@ export function acquireStagingLock(appPath) {
   fs.mkdirSync(localDir, { recursive: true });
   const lockDir = path.join(localDir, ".staging.lock");
   const ownerFile = path.join(lockDir, "owner.json");
+  const recoverLockDir = path.join(localDir, ".staging.recover.lock");
+  const token = `${process.pid}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
+  const ownerPayload = JSON.stringify({ pid: process.pid, token, startedAt: Date.now() });
 
-  const tryCreate = () => {
-    fs.mkdirSync(lockDir);
-    fs.writeFileSync(
-      ownerFile,
-      JSON.stringify({ pid: process.pid, startedAt: Date.now() }),
-      "utf8"
-    );
+  const createPreparedLockViaRename = () => {
+    const tmpDir = path.join(localDir, `.staging-lock-init-${token}`);
+    fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "owner.json"), ownerPayload, "utf8");
+    try {
+      // On POSIX/APFS, renaming a non-empty directory over an existing non-empty directory atomically fails with ENOTEMPTY/EEXIST,
+      // and when lockDir does not exist, lockDir becomes visible with owner.json already inside it in a single atomic rename!
+      fs.renameSync(tmpDir, lockDir);
+    } catch (err) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      throw err;
+    }
+  };
+
+  const readExistingOwner = () => {
+    try {
+      const raw = fs.readFileSync(ownerFile, "utf8");
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
   };
 
   try {
-    tryCreate();
+    createPreparedLockViaRename();
   } catch (err) {
-    if (err && err.code === "EEXIST") {
-      let existingPid = null;
-      try {
-        const owner = JSON.parse(fs.readFileSync(ownerFile, "utf8"));
-        existingPid = owner && typeof owner.pid === "number" ? owner.pid : null;
-      } catch {
-        existingPid = null;
-      }
+    if (err && (err.code === "EEXIST" || err.code === "ENOTEMPTY" || err.code === "EACCES")) {
+      const existingOwner = readExistingOwner();
+      const existingPid = existingOwner && typeof existingOwner.pid === "number" ? existingOwner.pid : null;
       if (existingPid && isProcessAlive(existingPid)) {
         throw new Error(
           `STAGE_CONCURRENT_BUSY: Another staging operation (pid=${existingPid}) is active in ${lockDir}`
         );
       }
-      makeDirectoryTreeWritable(lockDir);
-      fs.rmSync(lockDir, { recursive: true, force: true });
-      tryCreate();
+      // If ownerFile could not be parsed (e.g. external manual directory without owner.json), treat recent (<5s) dir as busy
+      if (!existingOwner) {
+        try {
+          const st = fs.lstatSync(lockDir);
+          if (Date.now() - st.mtimeMs < 5000) {
+            throw new Error(
+              `STAGE_CONCURRENT_BUSY: Another staging operation is initializing ${lockDir}`
+            );
+          }
+        } catch (statErr) {
+          if (statErr && String(statErr.message).includes("STAGE_CONCURRENT_BUSY")) {
+            throw statErr;
+          }
+        }
+      }
+      // Serialize stale lock cleanup via recoverLockDir so two processes never race to delete a newly acquired lock
+      try {
+        fs.mkdirSync(recoverLockDir);
+      } catch {
+        throw new Error(
+          `STAGE_CONCURRENT_BUSY: Concurrent stale-lock recovery in progress for ${lockDir}`
+        );
+      }
+      try {
+        const recheckedOwner = readExistingOwner();
+        const recheckedPid =
+          recheckedOwner && typeof recheckedOwner.pid === "number" ? recheckedOwner.pid : null;
+        if (recheckedPid && isProcessAlive(recheckedPid)) {
+          throw new Error(
+            `STAGE_CONCURRENT_BUSY: Another staging operation (pid=${recheckedPid}) acquired ${lockDir}`
+          );
+        }
+        makeDirectoryTreeWritable(lockDir);
+        fs.rmSync(lockDir, { recursive: true, force: true });
+        createPreparedLockViaRename();
+      } finally {
+        fs.rmSync(recoverLockDir, { recursive: true, force: true });
+      }
     } else {
       throw err;
     }
@@ -958,8 +1112,11 @@ export function acquireStagingLock(appPath) {
 
   return () => {
     try {
-      makeDirectoryTreeWritable(lockDir);
-      fs.rmSync(lockDir, { recursive: true, force: true });
+      const currentOwner = readExistingOwner();
+      if (currentOwner && currentOwner.token === token) {
+        makeDirectoryTreeWritable(lockDir);
+        fs.rmSync(lockDir, { recursive: true, force: true });
+      }
     } catch {
       // ignore
     }
@@ -1394,16 +1551,19 @@ export function stageDarwinRuntime({
             process.platform === "darwin" &&
             `darwin-${process.arch}` === platformId
           ) {
+            const cleanAmbientEnv = { ...process.env };
+            delete cleanAmbientEnv.SCIYUE_PYTHON;
             const rtEnv = {
-              ...process.env,
+              ...cleanAmbientEnv,
               ...currentRuntimeEnvironment({
                 packaged: false,
                 appPath: resolvedAppPath,
                 executable: selectedNative.executable,
                 platformId,
-                environment: process.env,
+                environment: cleanAmbientEnv,
               }),
             };
+            delete rtEnv.SCIYUE_PYTHON;
             for (const [k, v] of Object.entries(rtEnv)) {
               if (v === undefined) delete rtEnv[k];
             }
@@ -1456,12 +1616,14 @@ export function stageDarwinRuntime({
               const pst = fs.lstatSync(parentDir);
               if ((pst.mode & 0o200) === 0) fs.chmodSync(parentDir, pst.mode | 0o200);
             }
-            if (fs.existsSync(item.targetPath)) {
-              makeDirectoryTreeWritable(item.targetPath);
-              fs.rmSync(item.targetPath, { recursive: true, force: true });
-            }
-            if (item.existed && item.backedUp && fs.existsSync(item.backupPath)) {
-              rollbackRenameImpl(item.backupPath, item.targetPath);
+            if (item.installed || item.backedUp) {
+              if (fs.existsSync(item.targetPath)) {
+                makeDirectoryTreeWritable(item.targetPath);
+                fs.rmSync(item.targetPath, { recursive: true, force: true });
+              }
+              if (item.existed && item.backedUp && fs.existsSync(item.backupPath)) {
+                rollbackRenameImpl(item.backupPath, item.targetPath);
+              }
             }
           } catch (rbErr) {
             preserveBackups = true;

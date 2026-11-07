@@ -11,8 +11,12 @@ import {
   XTB_REQUIRED_PARAMS,
   acquireStagingLock,
   buildInventoryFiles,
+  hasResidualPrefixInBuffer,
+  hasResidualPrefixInString,
   isAllowedSitePackagesTopEntry,
+  relocateMachOBinary,
   replaceMachOPrefixSlots,
+  replacePrefixInString,
   stageDarwinRuntime,
   resolveDefaultCondaPrefix,
   verifyMachOArchitecture,
@@ -107,6 +111,10 @@ const MINIMAL_STDLIB_REL_PATHS = [
   'lib/python3.12/encodings/utf_8.py',
   'lib/python3.12/encodings/ascii.py',
   'lib/python3.12/encodings/latin_1.py',
+  'lib/python3.12/struct.py',
+  'lib/python3.12/ctypes/__init__.py',
+  'lib/python3.12/ctypes/_endian.py',
+  'lib/python3.12/lib-dynload/_ctypes.cpython-312-darwin.so',
   'lib/python3.12/lib-dynload/_json.cpython-312-darwin.so',
   'lib/python3.12/lib-dynload/_struct.cpython-312-darwin.so',
   'lib/python3.12/lib-dynload/math.cpython-312-darwin.so'
@@ -162,7 +170,12 @@ function embedPrefixIntoMachO(filePath, newPrefix) {
 function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
   const copyFlag = fs.constants.COPYFILE_FICLONE || 0;
   const binFiles = ['bin/python3'];
-  const libDylibs = ['lib/libpython3.12.dylib', 'lib/libintl.8.dylib', 'lib/libiconv.2.dylib'];
+  const libDylibs = [
+    'lib/libpython3.12.dylib',
+    'lib/libintl.8.dylib',
+    'lib/libiconv.2.dylib',
+    'lib/libffi.8.dylib'
+  ];
   for (const rel of [...binFiles, ...libDylibs, ...MINIMAL_STDLIB_REL_PATHS]) {
     const src = path.join(tcPythonDir, rel);
     if (!fs.existsSync(src)) continue;
@@ -430,12 +443,78 @@ test('buildInventoryFiles uses locale-independent codepoint sorting and replaceM
       /STAGE_RELOCATION_FAILED/
     );
 
+    // Prefix that is a substring prefix of CANONICAL_LOCKED_PREFIX ('/opt/ester-studio' vs '/opt/ester-studio-locked-runtime')
+    const subPrefixSlot = Buffer.alloc(96, 0);
+    subPrefixSlot.write('/opt/ester-studio/lib/libfoo.dylib', 0, 'utf8');
+    assert.equal(hasResidualPrefixInString('/opt/ester-studio/lib/libfoo.dylib', '/opt/ester-studio', CANONICAL_LOCKED_PREFIX), true);
+    assert.equal(hasResidualPrefixInString(`${CANONICAL_LOCKED_PREFIX}/lib/libfoo.dylib`, '/opt/ester-studio', CANONICAL_LOCKED_PREFIX), false);
+    assert.equal(
+      replacePrefixInString('/opt/ester-studio/lib/libfoo.dylib', '/opt/ester-studio', CANONICAL_LOCKED_PREFIX),
+      `${CANONICAL_LOCKED_PREFIX}/lib/libfoo.dylib`
+    );
+    assert.equal(
+      replaceMachOPrefixSlots(subPrefixSlot, ['/opt/ester-studio'], CANONICAL_LOCKED_PREFIX, 'subprefix.dylib'),
+      true
+    );
+    assert.equal(hasResidualPrefixInBuffer(subPrefixSlot, '/opt/ester-studio', CANONICAL_LOCKED_PREFIX), false);
+    assert.ok(subPrefixSlot.toString('utf8').startsWith(`${CANONICAL_LOCKED_PREFIX}/lib/libfoo.dylib\0`));
+
     // Version-agnostic .dist-info matching for allowed packages
     assert.equal(isAllowedSitePackagesTopEntry('tblite-0.9.5.dist-info'), true);
     assert.equal(isAllowedSitePackagesTopEntry('rdkit-2027.3.1.dist-info'), true);
     assert.equal(isAllowedSitePackagesTopEntry('unlisted_pkg-1.0.0.dist-info'), false);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('acquireStagingLock atomically writes owner token, recovers stale dead-PID locks, prevents old holder from deleting new lock, and blocks multi-process contention', () => {
+  const tmpApp = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-lock-race-'));
+  try {
+    const lockDir = path.join(tmpApp, '.local', '.staging.lock');
+    const ownerFile = path.join(lockDir, 'owner.json');
+
+    // 1. Seed a stale lock with a dead PID (999999) and old token
+    fs.mkdirSync(lockDir, { recursive: true });
+    fs.writeFileSync(
+      ownerFile,
+      JSON.stringify({ pid: 999999, token: 'dead-token-1', startedAt: Date.now() - 60000 }),
+      'utf8'
+    );
+
+    // 2. acquireStagingLock recovers the stale dead-PID lock and installs current process token
+    const releaseActive = acquireStagingLock(tmpApp);
+    const activeOwner = JSON.parse(fs.readFileSync(ownerFile, 'utf8'));
+    assert.equal(activeOwner.pid, process.pid);
+    assert.notEqual(activeOwner.token, 'dead-token-1');
+
+    // 3. Multi-process contention: a separate Node child process attempting acquireStagingLock fails with STAGE_CONCURRENT_BUSY
+    const scriptUrl = new URL('../../scripts/native/stage-darwin-runtime.mjs', import.meta.url).href;
+    assert.throws(
+      () =>
+        execFileSync(
+          process.execPath,
+          [
+            '--input-type=module',
+            '-e',
+            `import { acquireStagingLock } from ${JSON.stringify(scriptUrl)}; acquireStagingLock(${JSON.stringify(tmpApp)});`
+          ],
+          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+        ),
+      /STAGE_CONCURRENT_BUSY/
+    );
+
+    // 4. Simulate a stale lock holder whose token was replaced: calling old release must NOT delete the new holder's lock
+    fs.writeFileSync(
+      ownerFile,
+      JSON.stringify({ pid: process.pid, token: 'newer-holder-token', startedAt: Date.now() }),
+      'utf8'
+    );
+    releaseActive();
+    assert.equal(fs.existsSync(lockDir), true, 'Old release callback must not delete lock owned by newer token');
+    assert.equal(JSON.parse(fs.readFileSync(ownerFile, 'utf8')).token, 'newer-holder-token');
+  } finally {
+    fs.rmSync(tmpApp, { recursive: true, force: true });
   }
 });
 
@@ -466,7 +545,9 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
     fs.mkdirSync(engineDir, { recursive: true });
     fs.mkdirSync(scriptsNativeDir, { recursive: true });
     const mockEngineCode = [
-      'import json, pathlib, re, sys',
+      'import json, os, pathlib, re, sys',
+      'if "SCIYUE_PYTHON" in os.environ or "DYLD_LIBRARY_PATH" in os.environ:',
+      '    raise RuntimeError(f"Ambient SCIYUE_PYTHON or DYLD_LIBRARY_PATH leaked into capabilities probe: {dict(os.environ)}")',
       'tblite_ver = None',
       'for p in sys.path:',
       '    sp = pathlib.Path(p)',
@@ -696,26 +777,44 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
       fs.writeFileSync(devRuntimeFile, REAL_DEV_BOOTSTRAP, 'utf8');
     }
 
-    // 3g. Fault injection on the 2nd renameSync call (after existing target is moved to backup, when moving next -> target fails!)
-    // MUST restore the backed-up target directory so zero files are lost!
-    let renameStep = 0;
-    assert.throws(
-      () =>
-        stageDarwinRuntime({
-          appPath: checkoutDir,
-          platformId: 'darwin-arm64',
-          condaPrefix: badCondaDir,
-          updateLocks: true,
-          lockReadOnly: true,
-          renameImpl: (oldP, newP) => {
-            renameStep += 1;
-            if (renameStep === 2) {
-              throw new Error('INJECTED_SECOND_RENAME_FAILURE');
+    // 3g. Fault injection on 1st rename (target -> backup fails before backup exists), 2nd rename (next -> target fails),
+    // and 7th rename (first lock file target -> backup fails after 3 directories swapped)
+    for (const failAtStep of [1, 2, 7]) {
+      let renameStep = 0;
+      assert.throws(
+        () =>
+          stageDarwinRuntime({
+            appPath: checkoutDir,
+            platformId: 'darwin-arm64',
+            condaPrefix: badCondaDir,
+            updateLocks: true,
+            lockReadOnly: true,
+            renameImpl: (oldP, newP) => {
+              renameStep += 1;
+              if (renameStep === failAtStep) {
+                throw new Error(`INJECTED_RENAME_FAILURE_STEP_${failAtStep}`);
+              }
+              fs.renameSync(oldP, newP);
             }
-            fs.renameSync(oldP, newP);
-          }
-        }),
-      /INJECTED_SECOND_RENAME_FAILURE/
+          }),
+        new RegExp(`INJECTED_RENAME_FAILURE_STEP_${failAtStep}`)
+      );
+      assert.equal(fs.existsSync(path.join(staged.toolchainRoot, 'python/bin/python3')), true);
+      assert.equal(fs.readFileSync(staged.profilePath, 'utf8'), savedProfileText);
+      verifyTreeReadOnly(staged.toolchainRoot);
+      verifyTreeReadOnly(staged.dependencyRoot);
+      verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
+    }
+
+    // 3g-2. relocateMachOBinary handles source prefix '/opt/ester-studio' (substring prefix of CANONICAL_LOCKED_PREFIX)
+    const machOSubPrefixCopy = path.join(tmpRoot, 'python3-subprefix-copy');
+    fs.copyFileSync(path.join(tcPythonDir, 'bin/python3'), machOSubPrefixCopy);
+    fs.chmodSync(machOSubPrefixCopy, 0o755);
+    embedPrefixIntoMachO(machOSubPrefixCopy, '/opt/ester-studio');
+    relocateMachOBinary(machOSubPrefixCopy, ['/opt/ester-studio'], CANONICAL_LOCKED_PREFIX);
+    assert.equal(
+      hasResidualPrefixInBuffer(fs.readFileSync(machOSubPrefixCopy), '/opt/ester-studio', CANONICAL_LOCKED_PREFIX),
+      false
     );
 
     // 3h. Concurrent staging lock rejects simultaneous stageDarwinRuntime calls
@@ -735,25 +834,38 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
       releaseManualLock();
     }
 
-    // Confirm that after all failed staging attempts above (including 2nd-rename fault injection 3g),
+    // Confirm that after all failed staging attempts above (including 1st, 2nd, and 7th rename fault injections),
     // checkoutDir's existing runtime, preparation, and locks are untouched, completely read-only, and pass developmentNative and developmentXtb!
     assert.equal(fs.readFileSync(staged.profilePath, 'utf8'), savedProfileText);
     verifyTreeReadOnly(staged.toolchainRoot);
     verifyTreeReadOnly(staged.dependencyRoot);
     verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
 
-    // 4. Version-agnostic .dist-info staging: upgrading tblite to 0.9.5 stages tblite-0.9.5.dist-info and passes --capabilities probe
+    // 4. Version-agnostic .dist-info staging AND ambient SCIYUE_PYTHON / DYLD_LIBRARY_PATH sanitization:
+    // upgrading tblite to 0.9.5 while process.env.SCIYUE_PYTHON and DYLD_LIBRARY_PATH are set still strips both and passes --capabilities probe
     const condaUpgradedTbliteDir = path.join(tmpRoot, 'conda-tblite-095');
     buildMockCondaPrefix(condaUpgradedTbliteDir, tcPythonDir, depDir, {
       tbliteDistVersion: '0.9.5'
     });
-    const upgradedStage = stageDarwinRuntime({
-      appPath: checkoutDir,
-      platformId: 'darwin-arm64',
-      condaPrefix: condaUpgradedTbliteDir,
-      updateLocks: true,
-      lockReadOnly: true
-    });
+    const prevSciyuePython = process.env.SCIYUE_PYTHON;
+    const prevDyldLibPath = process.env.DYLD_LIBRARY_PATH;
+    process.env.SCIYUE_PYTHON = '/usr/bin/python3';
+    process.env.DYLD_LIBRARY_PATH = '/bad/ambient/dyld/path';
+    let upgradedStage;
+    try {
+      upgradedStage = stageDarwinRuntime({
+        appPath: checkoutDir,
+        platformId: 'darwin-arm64',
+        condaPrefix: condaUpgradedTbliteDir,
+        updateLocks: true,
+        lockReadOnly: true
+      });
+    } finally {
+      if (prevSciyuePython === undefined) delete process.env.SCIYUE_PYTHON;
+      else process.env.SCIYUE_PYTHON = prevSciyuePython;
+      if (prevDyldLibPath === undefined) delete process.env.DYLD_LIBRARY_PATH;
+      else process.env.DYLD_LIBRARY_PATH = prevDyldLibPath;
+    }
     assert.ok(
       fs.existsSync(
         path.join(
