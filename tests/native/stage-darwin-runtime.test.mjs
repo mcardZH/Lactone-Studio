@@ -969,10 +969,11 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
         verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
       }
 
-      // 3g-1a. Subprocess terminated mid-swap (right after moving tcAbsRoot -> backupPath) via SIGTERM or SIGKILL
-      // recovers transaction journal and restores original .local runtime and 0555 parent modes even if the next staging attempt fails!
+      // 3g-1a. Subprocess terminated via real OS SIGTERM (in-process process.kill and external kill -TERM),
+      // SIGKILL right after parent chmod (before swap), or SIGKILL mid-swap recovers transaction journal
+      // and restores original .local runtime, lock files, and 0555 parent modes!
       const scriptUrl = new URL('../../scripts/native/stage-darwin-runtime.mjs', import.meta.url).href;
-      for (const crashMode of ['SIGTERM', 'SIGKILL']) {
+      for (const crashMode of ['SIGTERM_SELF', 'SIGTERM_EXTERNAL', 'SIGKILL_CHMOD', 'SIGKILL_SWAP']) {
         assert.throws(() =>
           execFileSync(
             process.execPath,
@@ -981,21 +982,32 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
               '-e',
               `
               import fs from 'node:fs';
+              import { spawnSync } from 'node:child_process';
               import { stageDarwinRuntime } from ${JSON.stringify(scriptUrl)};
               let step = 0;
+              let chmodStep = 0;
               stageDarwinRuntime({
                 appPath: ${JSON.stringify(checkoutDir)},
                 platformId: 'darwin-arm64',
                 condaPrefix: ${JSON.stringify(condaShortDir)},
                 updateLocks: true,
                 lockReadOnly: true,
+                chmodImpl: (targetP, mode) => {
+                  chmodStep += 1;
+                  fs.chmodSync(targetP, mode);
+                  if (${JSON.stringify(crashMode)} === 'SIGKILL_CHMOD' && chmodStep === 1) {
+                    process.kill(process.pid, 'SIGKILL');
+                  }
+                },
                 renameImpl: (oldP, newP) => {
                   step += 1;
                   fs.renameSync(oldP, newP);
                   if (step === 1) {
-                    if (${JSON.stringify(crashMode)} === 'SIGTERM') {
-                      process.emit('SIGTERM', 'SIGTERM');
-                    } else {
+                    if (${JSON.stringify(crashMode)} === 'SIGTERM_SELF') {
+                      process.kill(process.pid, 'SIGTERM');
+                    } else if (${JSON.stringify(crashMode)} === 'SIGTERM_EXTERNAL') {
+                      spawnSync('kill', ['-TERM', String(process.pid)]);
+                    } else if (${JSON.stringify(crashMode)} === 'SIGKILL_SWAP') {
                       process.kill(process.pid, 'SIGKILL');
                     }
                   }
@@ -1006,7 +1018,7 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
             { stdio: ['ignore', 'pipe', 'pipe'] }
           )
         );
-        if (crashMode === 'SIGKILL') {
+        if (crashMode.startsWith('SIGKILL_')) {
           // Even when the next stageDarwinRuntime call cannot restage (missing condaPrefix), acquiring the lock recovers the journal first!
           assert.throws(
             () =>
@@ -1022,8 +1034,9 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
         assert.equal(
           fs.existsSync(path.join(staged.toolchainRoot, 'python/bin/python3')),
           true,
-          `Toolchain root must be restored after ${crashMode} mid-swap`
+          `Toolchain root must be restored after ${crashMode}`
         );
+        assert.equal(fs.readFileSync(staged.profilePath, 'utf8'), savedProfileText);
         assert.equal(fs.lstatSync(tcParentDir).mode & 0o777, 0o555);
         assert.equal(fs.lstatSync(depParentDir).mode & 0o777, 0o555);
         verifyTreeReadOnly(staged.toolchainRoot);
