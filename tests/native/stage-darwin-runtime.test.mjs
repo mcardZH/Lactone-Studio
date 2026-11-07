@@ -9,7 +9,9 @@ import {
   CANONICAL_LOCKED_PREFIX,
   XTB_REQUIRED_DYLIBS,
   XTB_REQUIRED_PARAMS,
+  acquireStagingLock,
   buildInventoryFiles,
+  isAllowedSitePackagesTopEntry,
   replaceMachOPrefixSlots,
   stageDarwinRuntime,
   resolveDefaultCondaPrefix,
@@ -221,7 +223,7 @@ function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
   fs.writeFileSync(path.join(condaDir, 'share/RDKit/README.md'), '# RDKit\n', 'utf8');
   fs.writeFileSync(path.join(condaDir, 'share/RDKit/license.txt'), 'BSD-3-Clause\n', 'utf8');
 
-  // Create required scientific packages and submodules: rdkit.Chem.AllChem, ase.build, spglib, tblite.interface, scipy.{linalg,optimize,spatial}
+  // Create required scientific packages and submodules: rdkit.Chem.AllChem, ase.build, spglib, tblite.{interface,library}, scipy.{linalg,optimize,spatial}
   fs.mkdirSync(path.join(siteDir, 'rdkit/Chem'), { recursive: true });
   fs.writeFileSync(path.join(siteDir, 'rdkit/Chem/__init__.py'), '__all__ = ["AllChem"]\n', 'utf8');
   fs.writeFileSync(path.join(siteDir, 'rdkit/Chem/AllChem.py'), 'ETKDG = True\n', 'utf8');
@@ -235,11 +237,32 @@ function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
       'utf8'
     );
   }
+  const distMods = ['rdkit', ...otherModules];
+  for (const modName of distMods) {
+    if (options.omitTbliteDistInfo && modName === 'tblite') continue;
+    const ver = modName === 'tblite' ? options.tbliteDistVersion || '0.8.0' : '1.0.0';
+    const distInfoDir = path.join(siteDir, `${modName}-${ver}.dist-info`);
+    fs.mkdirSync(distInfoDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(distInfoDir, 'METADATA'),
+      `Metadata-Version: 2.1\nName: ${modName}\nVersion: ${ver}\n`,
+      'utf8'
+    );
+  }
   if (otherModules.includes('ase')) {
     fs.writeFileSync(path.join(siteDir, 'ase/build.py'), 'make_supercell = True\n', 'utf8');
   }
   if (otherModules.includes('tblite')) {
-    fs.writeFileSync(path.join(siteDir, 'tblite/interface.py'), 'Calculator = True\n', 'utf8');
+    fs.writeFileSync(
+      path.join(siteDir, 'tblite/interface.py'),
+      'def Calculator(*args, **kwargs):\n    return True\n',
+      'utf8'
+    );
+    fs.writeFileSync(
+      path.join(siteDir, 'tblite/library.py'),
+      'def get_version():\n    return (0, 8, 0)\n',
+      'utf8'
+    );
   }
   if (otherModules.includes('scipy')) {
     if (!options.omitScipyLinalg) {
@@ -311,11 +334,12 @@ test('resolveDefaultCondaPrefix prioritizes SCIYUE_CONDA_ENV and ignores base CO
 test('verifyMachOArchitecture validates thin and fat Mach-O headers and rejects architecture mismatch', () => {
   const tmpDir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-macho-'));
   try {
+    // 1. Thin arm64 binary
     const arm64Bin = path.join(tmpDir, 'arm64-bin');
-    const buf = Buffer.alloc(64);
-    buf.writeUInt32LE(0xfeedfacf, 0);
-    buf.writeUInt32LE(0x0100000c, 4);
-    fs.writeFileSync(arm64Bin, buf);
+    const arm64Buf = Buffer.alloc(64);
+    arm64Buf.writeUInt32LE(0xfeedfacf, 0);
+    arm64Buf.writeUInt32LE(0x0100000c, 4);
+    fs.writeFileSync(arm64Bin, arm64Buf);
 
     verifyMachOArchitecture(arm64Bin, 'darwin-arm64');
     assert.throws(
@@ -325,6 +349,45 @@ test('verifyMachOArchitecture validates thin and fat Mach-O headers and rejects 
     assert.throws(
       () => verifyMachOArchitecture(arm64Bin, 'linux-x64'),
       /STAGE_PLATFORM_UNSUPPORTED/
+    );
+
+    // 2. Thin x86_64 binary
+    const x64Bin = path.join(tmpDir, 'x64-bin');
+    const x64Buf = Buffer.alloc(64);
+    x64Buf.writeUInt32LE(0xfeedfacf, 0);
+    x64Buf.writeUInt32LE(0x01000007, 4);
+    fs.writeFileSync(x64Bin, x64Buf);
+
+    verifyMachOArchitecture(x64Bin, 'darwin-x64');
+    assert.throws(
+      () => verifyMachOArchitecture(x64Bin, 'darwin-arm64'),
+      /STAGE_ARCH_MISMATCH/
+    );
+
+    // 3. Universal 2 fat binary (0xcafebabe BE, 2 slices: x86_64 + arm64)
+    const universalBin = path.join(tmpDir, 'universal2-bin');
+    const fatBuf = Buffer.alloc(64);
+    fatBuf.writeUInt32BE(0xcafebabe, 0);
+    fatBuf.writeUInt32BE(2, 4); // nfat_arch = 2
+    fatBuf.writeUInt32BE(0x01000007, 8); // slice 0 cputype = CPU_TYPE_X86_64
+    fatBuf.writeUInt32BE(0x0100000c, 28); // slice 1 cputype = CPU_TYPE_ARM64
+    fs.writeFileSync(universalBin, fatBuf);
+
+    verifyMachOArchitecture(universalBin, 'darwin-arm64');
+    verifyMachOArchitecture(universalBin, 'darwin-x64');
+
+    // 4. Single-slice fat binary (x86_64 only)
+    const x64OnlyFatBin = path.join(tmpDir, 'x64-only-fat-bin');
+    const x64FatBuf = Buffer.alloc(64);
+    x64FatBuf.writeUInt32BE(0xcafebabe, 0);
+    x64FatBuf.writeUInt32BE(1, 4); // nfat_arch = 1
+    x64FatBuf.writeUInt32BE(0x01000007, 8);
+    fs.writeFileSync(x64OnlyFatBin, x64FatBuf);
+
+    verifyMachOArchitecture(x64OnlyFatBin, 'darwin-x64');
+    assert.throws(
+      () => verifyMachOArchitecture(x64OnlyFatBin, 'darwin-arm64'),
+      /STAGE_ARCH_MISMATCH/
     );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -366,13 +429,18 @@ test('buildInventoryFiles uses locale-independent codepoint sorting and replaceM
         replaceMachOPrefixSlots(tightSlot, ['/a/b'], CANONICAL_LOCKED_PREFIX, 'tight.dylib'),
       /STAGE_RELOCATION_FAILED/
     );
+
+    // Version-agnostic .dist-info matching for allowed packages
+    assert.equal(isAllowedSitePackagesTopEntry('tblite-0.9.5.dist-info'), true);
+    assert.equal(isAllowedSitePackagesTopEntry('rdkit-2027.3.1.dist-info'), true);
+    assert.equal(isAllowedSitePackagesTopEntry('unlisted_pkg-1.0.0.dist-info'), false);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
 test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destructive transactional rollback, xTB verification, and RDKit data relocation', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' || process.arch !== 'arm64') {
     assert.throws(
       () => stageDarwinRuntime({ platformId: 'linux-x64' }),
       /STAGE_PLATFORM_UNSUPPORTED/
@@ -397,7 +465,24 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
     const scriptsNativeDir = path.join(checkoutDir, 'scripts', 'native');
     fs.mkdirSync(engineDir, { recursive: true });
     fs.mkdirSync(scriptsNativeDir, { recursive: true });
-    fs.writeFileSync(path.join(engineDir, 'engine.py'), '# mock engine\n', 'utf8');
+    const mockEngineCode = [
+      'import json, pathlib, re, sys',
+      'tblite_ver = None',
+      'for p in sys.path:',
+      '    sp = pathlib.Path(p)',
+      '    if sp.is_dir():',
+      '        for d in sorted(sp.glob("tblite-*.dist-info")):',
+      '            m = re.search(r"^Version:\\s*(\\S+)", (d / "METADATA").read_text(encoding="utf-8"), re.M)',
+      '            if m:',
+      '                tblite_ver = m.group(1)',
+      'print(json.dumps({',
+      '    "schema": "sciyue-native-capabilities/v1",',
+      '    "periodicGfn2BondOrders": bool(tblite_ver),',
+      '    "module": "xtb_periodic_bonds",',
+      '    "tbliteVersion": tblite_ver',
+      '}))'
+    ].join('\n');
+    fs.writeFileSync(path.join(engineDir, 'engine.py'), `${mockEngineCode}\n`, 'utf8');
     fs.writeFileSync(path.join(scriptsNativeDir, 'dev-runtime.py'), REAL_DEV_BOOTSTRAP, 'utf8');
 
     // Seed a stale file in target .local to verify successful commit cleans old members
@@ -480,7 +565,7 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
       /STAGE_ARCH_MISMATCH/
     );
 
-    // 3b. Fake xTB binary (copied python3)
+    // 3b. Fake xTB binary (copied python3) or mismatched xTB version
     buildMockCondaPrefix(badCondaDir, tcPythonDir, depDir, { fakeXtbAsPython: true });
     assert.throws(
       () =>
@@ -492,8 +577,19 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
         }),
       /STAGE_XTB_INVALID/
     );
+    assert.throws(
+      () =>
+        stageDarwinRuntime({
+          appPath: checkoutDir,
+          platformId: 'darwin-arm64',
+          condaPrefix: condaShortDir,
+          expectedXtbVersion: '6.4.2',
+          updateLocks: true
+        }),
+      /STAGE_XTB_VERSION_MISMATCH/
+    );
 
-    // 3c. Missing required scientific module (scipy omitted) or missing submodule (scipy.linalg omitted)
+    // 3c. Missing required scientific module (scipy omitted), missing submodule (scipy.linalg), or missing .dist-info metadata
     fs.rmSync(badCondaDir, { recursive: true, force: true });
     buildMockCondaPrefix(badCondaDir, tcPythonDir, depDir, { omitScipy: true });
     assert.throws(
@@ -509,6 +605,19 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
 
     fs.rmSync(badCondaDir, { recursive: true, force: true });
     buildMockCondaPrefix(badCondaDir, tcPythonDir, depDir, { omitScipyLinalg: true });
+    assert.throws(
+      () =>
+        stageDarwinRuntime({
+          appPath: checkoutDir,
+          platformId: 'darwin-arm64',
+          condaPrefix: badCondaDir,
+          updateLocks: true
+        }),
+      /STAGE_IMPORT_PROBE_FAILED/
+    );
+
+    fs.rmSync(badCondaDir, { recursive: true, force: true });
+    buildMockCondaPrefix(badCondaDir, tcPythonDir, depDir, { omitTbliteDistInfo: true });
     assert.throws(
       () =>
         stageDarwinRuntime({
@@ -587,12 +696,106 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
       fs.writeFileSync(devRuntimeFile, REAL_DEV_BOOTSTRAP, 'utf8');
     }
 
-    // Confirm that after all failed staging attempts above (including post-swap rollback 3f),
-    // checkoutDir's existing runtime and locks are untouched, still read-only, and still pass developmentNative and developmentXtb!
+    // 3g. Fault injection on the 2nd renameSync call (after existing target is moved to backup, when moving next -> target fails!)
+    // MUST restore the backed-up target directory so zero files are lost!
+    let renameStep = 0;
+    assert.throws(
+      () =>
+        stageDarwinRuntime({
+          appPath: checkoutDir,
+          platformId: 'darwin-arm64',
+          condaPrefix: badCondaDir,
+          updateLocks: true,
+          lockReadOnly: true,
+          renameImpl: (oldP, newP) => {
+            renameStep += 1;
+            if (renameStep === 2) {
+              throw new Error('INJECTED_SECOND_RENAME_FAILURE');
+            }
+            fs.renameSync(oldP, newP);
+          }
+        }),
+      /INJECTED_SECOND_RENAME_FAILURE/
+    );
+
+    // 3h. Concurrent staging lock rejects simultaneous stageDarwinRuntime calls
+    const releaseManualLock = acquireStagingLock(checkoutDir);
+    try {
+      assert.throws(
+        () =>
+          stageDarwinRuntime({
+            appPath: checkoutDir,
+            platformId: 'darwin-arm64',
+            condaPrefix: condaShortDir,
+            updateLocks: true
+          }),
+        /STAGE_CONCURRENT_BUSY/
+      );
+    } finally {
+      releaseManualLock();
+    }
+
+    // Confirm that after all failed staging attempts above (including 2nd-rename fault injection 3g),
+    // checkoutDir's existing runtime, preparation, and locks are untouched, completely read-only, and pass developmentNative and developmentXtb!
     assert.equal(fs.readFileSync(staged.profilePath, 'utf8'), savedProfileText);
-    verifyTreeReadOnly(path.join(staged.toolchainRoot, 'python'));
-    verifyTreeReadOnly(path.join(staged.dependencyRoot, 'python'));
-    verifyTreeReadOnly(path.join(staged.dependencyRoot, 'xtb'));
+    verifyTreeReadOnly(staged.toolchainRoot);
+    verifyTreeReadOnly(staged.dependencyRoot);
+    verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
+
+    // 4. Version-agnostic .dist-info staging: upgrading tblite to 0.9.5 stages tblite-0.9.5.dist-info and passes --capabilities probe
+    const condaUpgradedTbliteDir = path.join(tmpRoot, 'conda-tblite-095');
+    buildMockCondaPrefix(condaUpgradedTbliteDir, tcPythonDir, depDir, {
+      tbliteDistVersion: '0.9.5'
+    });
+    const upgradedStage = stageDarwinRuntime({
+      appPath: checkoutDir,
+      platformId: 'darwin-arm64',
+      condaPrefix: condaUpgradedTbliteDir,
+      updateLocks: true,
+      lockReadOnly: true
+    });
+    assert.ok(
+      fs.existsSync(
+        path.join(
+          upgradedStage.dependencyRoot,
+          'python/lib/python3.12/site-packages/tblite-0.9.5.dist-info/METADATA'
+        )
+      )
+    );
+    verifyTreeReadOnly(upgradedStage.toolchainRoot);
+    verifyTreeReadOnly(upgradedStage.dependencyRoot);
+    verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
+
+    // 5. If rollback itself fails on an extreme filesystem fault, the backup directory is preserved and its path is reported
+    let stepForRollbackFail = 0;
+    assert.throws(
+      () =>
+        stageDarwinRuntime({
+          appPath: checkoutDir,
+          platformId: 'darwin-arm64',
+          condaPrefix: condaShortDir,
+          updateLocks: true,
+          renameImpl: (oldP, newP) => {
+            stepForRollbackFail += 1;
+            if (stepForRollbackFail === 2) {
+              throw new Error('PRIMARY_SWAP_FAILURE');
+            }
+            fs.renameSync(oldP, newP);
+          },
+          rollbackRenameImpl: () => {
+            throw new Error('SIMULATED_ROLLBACK_FS_FAULT');
+          }
+        }),
+      /STAGE_ROLLBACK_INCOMPLETE: Backups preserved/
+    );
+    const preservedBaks = fs
+      .readdirSync(path.dirname(upgradedStage.toolchainRoot))
+      .filter((n) => n.startsWith('.stage-bak-'));
+    assert.equal(preservedBaks.length, 1);
+    fs.renameSync(
+      path.join(path.dirname(upgradedStage.toolchainRoot), preservedBaks[0]),
+      upgradedStage.toolchainRoot
+    );
 
     const selectedNative = developmentNative(checkoutDir, { platformId: 'darwin-arm64' });
     assert.equal(selectedNative.platform, 'darwin-arm64');

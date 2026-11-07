@@ -15,20 +15,32 @@ const { chemistryRuntime } = require('../../../desktop/runtime.cjs');
 const { currentRuntimeEnvironment } = require('../../../desktop/current-runtime.cjs');
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
+const IS_DARWIN_ARM64_HOST = process.platform === 'darwin' && process.arch === 'arm64';
 
 let cachedRuntime = null;
+
+function verifyCommittedDarwinArm64Locks() {
+  for (const rel of [
+    'desktop/packaging/native-profile.darwin-arm64.json',
+    'desktop/packaging/native-runtime.darwin-arm64.lock.json',
+    'desktop/packaging/native-toolchain.darwin-arm64.lock.json',
+    'desktop/packaging/xtb-runtime.darwin-arm64.lock.json'
+  ]) {
+    assert.ok(fs.existsSync(path.join(ROOT, rel)), `Expected committed lock/profile ${rel}`);
+  }
+}
 
 function resolveActiveRuntime() {
   if (cachedRuntime) return cachedRuntime;
   if (
-    process.platform === 'darwin' &&
+    IS_DARWIN_ARM64_HOST &&
     !fs.existsSync(
-      path.join(ROOT, `.local/toolchains/darwin-${process.arch}/conda-py312-arm64/python/bin/python3`)
+      path.join(ROOT, '.local/toolchains/darwin-arm64/conda-py312-arm64/python/bin/python3')
     )
   ) {
     const condaPrefix = resolveDefaultCondaPrefix();
     if (condaPrefix) {
-      stageDarwinRuntime({ appPath: ROOT, platformId: `darwin-${process.arch}`, condaPrefix });
+      stageDarwinRuntime({ appPath: ROOT, platformId: 'darwin-arm64', condaPrefix });
     }
   }
   const rt = chemistryRuntime({
@@ -72,19 +84,19 @@ function runEngineRequest(runtime, payload, extraArgs = []) {
 }
 
 test('macOS Python scientific environment has RDKit, ASE, Spglib, tblite, and SciPy ready', () => {
+  verifyCommittedDarwinArm64Locks();
+  if (!IS_DARWIN_ARM64_HOST) return;
   const runtime = resolveActiveRuntime();
   assert.ok(runtime.executable);
   assert.ok(Array.isArray(runtime.args) && runtime.args.length >= 2);
-  if (
-    process.platform === 'darwin' &&
-    process.arch === 'arm64' &&
-    fs.existsSync(path.join(ROOT, '.local/toolchains/darwin-arm64'))
-  ) {
+  if (fs.existsSync(path.join(ROOT, '.local/toolchains/darwin-arm64'))) {
     assert.equal(runtime.provenance.source, 'prepared-current-locks');
   }
 });
 
 test('desktop/chemistry/engine.py --capabilities reports periodicGfn2BondOrders on macOS', () => {
+  verifyCommittedDarwinArm64Locks();
+  if (!IS_DARWIN_ARM64_HOST) return;
   const runtime = resolveActiveRuntime();
   const stdout = execFileSync(runtime.executable, [...runtime.args, '--capabilities'], {
     cwd: runtime.cwd,
@@ -100,6 +112,8 @@ test('desktop/chemistry/engine.py --capabilities reports periodicGfn2BondOrders 
 });
 
 test('desktop/chemistry/engine.py executes generate3d, optimize, perceive-bonds, and convert on macOS', () => {
+  verifyCommittedDarwinArm64Locks();
+  if (!IS_DARWIN_ARM64_HOST) return;
   const runtime = resolveActiveRuntime();
 
   const waterStructure = {
@@ -181,6 +195,8 @@ test('desktop/chemistry/engine.py executes generate3d, optimize, perceive-bonds,
 });
 
 test('desktop/chemistry/engine.py --crystal-modeling executes spglib symmetry and ASE supercell on macOS', () => {
+  verifyCommittedDarwinArm64Locks();
+  if (!IS_DARWIN_ARM64_HOST) return;
   const runtime = resolveActiveRuntime();
   const cubicCrystal = {
     id: 'crystal-1',
@@ -234,6 +250,8 @@ test('desktop/chemistry/engine.py --crystal-modeling executes spglib symmetry an
 });
 
 test('all core desktop/chemistry scientific submodules import cleanly and RDKit RDDataDir resolves inside locked runtime', () => {
+  verifyCommittedDarwinArm64Locks();
+  if (!IS_DARWIN_ARM64_HOST) return;
   const runtime = resolveActiveRuntime();
   const sitePackagesDirs = runtime.runtimeRoot
     ? [
@@ -334,6 +352,8 @@ print(json.dumps({"loaded": loaded, "dylib_images": dylib_images, "rd_data_dir":
 });
 
 test('xtb_periodic_bonds.PeriodicBondEvaluator computes periodic GFN2-xTB Mayer-Wiberg bond orders on macOS', () => {
+  verifyCommittedDarwinArm64Locks();
+  if (!IS_DARWIN_ARM64_HOST) return;
   const runtime = resolveActiveRuntime();
   const sitePackagesDirs = runtime.runtimeRoot
     ? [

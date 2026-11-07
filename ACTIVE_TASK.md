@@ -17,7 +17,7 @@
   1. **macOS `.local` 运行时制备脚本 (`scripts/native/stage-darwin-runtime.mjs` & `npm run native:stage:darwin`)**：
      - `resolveDefaultCondaPrefix`：优先读取 `SCIYUE_CONDA_ENV`，忽略 `base` 环境，回退至专用 `ester-studio` Conda 环境路径。
      - `verifyMachOArchitecture`：校验薄二进制与胖二进制（Universal 2）Mach-O 头部架构是否匹配目标 `darwin-arm64` / `darwin-x64`。
-     - 事务性制备与回滚：在临时目录完成 Python 工具链、科学依赖（`rdkit`, `ase`, `spglib`, `tblite`, `scipy`）与 `xtb`（含必需动态库与参数文件）的解引用复制、Mach-O/文本前缀归一化重定位（`CANONICAL_LOCKED_PREFIX`）、RDKit `share/RDKit/Data` 数据目录内聚重定位、`__pycache__`/`*.pyc`/`*.orig`/`CTestTestfile.cmake` 清理、Mach-O 架构校验、`xtb --version` 可执行性校验及真实 `dev-runtime.py` 隔离导入探测后，再原子替换至 `.local/` 并设为只读权限；任何中途失败均无损保留既有 `.local/` 状态。
+     - 事务性制备与回滚：在临时目录完成 Python 工具链、科学依赖（`rdkit`, `ase`, `spglib`, `tblite`, `scipy`）与 `xtb`（含必需动态库与参数文件）的解引用复制、Mach-O/文本前缀归一化重定位（`CANONICAL_LOCKED_PREFIX`）、RDKit `share/RDKit/Data` 数据目录内聚重定位、`__pycache__`/`*.pyc`/`*.orig`/`CTestTestfile.cmake` 清理、全树 Mach-O 架构校验、`xtb --version` 实际版本解析校验及真实 `dev-runtime.py --capabilities` 隔离导入与能力探测后，在跨进程互斥锁保护下通过同文件系统事务备份与重命名切换至 `.local/`，并将生成的运行时目录、清单及准备记录全部锁定为只读权限；任何中途或切换步骤失败均无损恢复既有 `.local/` 与锁文件状态（若极端系统故障导致回滚异常则保留备份目录并报告路径）。
      - 锁文件校验与更新：支持 `--update-locks` 生成/更新 `desktop/packaging/native-profile.darwin-arm64.json`、`native-runtime.darwin-arm64.lock.json`、`native-toolchain.darwin-arm64.lock.json`、`xtb-runtime.darwin-arm64.lock.json`，并在默认模式下校验生成产物与已提交锁文件零漂移（`STAGE_LOCK_DRIFT`）。
   2. **macOS 科学引擎端到端验证 (`tests/desktop/chemistry/engine-macos.test.mjs`)**：
      - 验证通过 `chemistryRuntime` 与 `currentRuntimeEnvironment` 启动锁定开发态 Python 科学引擎；
