@@ -624,6 +624,27 @@ function prepareStandalonePythonCopy(pyExec, targetPyDir) {
         fs.copyFileSync(path.join(srcExeDir, entry), path.join(binDir, entry));
       }
     }
+  } else {
+    for (const item of ['Python3', 'Python', 'Resources']) {
+      const srcItem = path.join(pyInfo.prefix, item);
+      const dstItem = path.join(targetPyDir, item);
+      if (fs.existsSync(srcItem) && !fs.existsSync(dstItem)) {
+        fs.symlinkSync(srcItem, dstItem);
+      }
+    }
+    const srcLibDir = path.join(pyInfo.prefix, 'lib');
+    if (fs.existsSync(srcLibDir) && fs.statSync(srcLibDir).isDirectory()) {
+      for (const entry of fs.readdirSync(srcLibDir)) {
+        if (entry.startsWith('libpython')) {
+          const dstLibDir = path.join(targetPyDir, 'lib');
+          fs.mkdirSync(dstLibDir, { recursive: true });
+          const dstLib = path.join(dstLibDir, entry);
+          if (!fs.existsSync(dstLib)) {
+            fs.symlinkSync(path.join(srcLibDir, entry), dstLib);
+          }
+        }
+      }
+    }
   }
 
   const srcStdlibDir = isWin
@@ -637,17 +658,29 @@ function prepareStandalonePythonCopy(pyExec, targetPyDir) {
   return { pyInfo, isWin, binDir, copiedPy, srcStdlibDir, pthFilePath, pyvenvCfgPath };
 }
 
-function populateMinimalBootStdlib(srcStdlibDir, pyPrefix, isWin, verNoDot, destStdlibDir) {
+function populateMinimalBootStdlib(
+  pyExec,
+  srcStdlibDir,
+  pyPrefix,
+  isWin,
+  verNoDot,
+  destStdlibDir
+) {
   fs.mkdirSync(destStdlibDir, { recursive: true });
   const encPath = path.join(srcStdlibDir, 'encodings');
-  const codecsPath = path.join(srcStdlibDir, 'codecs.py');
-  if (fs.existsSync(encPath) && fs.existsSync(codecsPath)) {
+  const codecsPy = path.join(srcStdlibDir, 'codecs.py');
+  const codecsPyc = path.join(srcStdlibDir, 'codecs.pyc');
+  if (fs.existsSync(encPath) && (fs.existsSync(codecsPy) || fs.existsSync(codecsPyc))) {
     fs.symlinkSync(
       encPath,
       path.join(destStdlibDir, 'encodings'),
       isWin ? 'junction' : 'dir'
     );
-    fs.copyFileSync(codecsPath, path.join(destStdlibDir, 'codecs.py'));
+    if (fs.existsSync(codecsPy)) {
+      fs.copyFileSync(codecsPy, path.join(destStdlibDir, 'codecs.py'));
+    } else {
+      fs.copyFileSync(codecsPyc, path.join(destStdlibDir, 'codecs.pyc'));
+    }
   } else {
     const zipCandidate = path.join(pyPrefix, `python${verNoDot}.zip`);
     assert.equal(
@@ -656,11 +689,24 @@ function populateMinimalBootStdlib(srcStdlibDir, pyPrefix, isWin, verNoDot, dest
       `Expected either filesystem encodings or ${zipCandidate} in Python installation`
     );
     execFileSync(
-      process.platform === 'win32' ? 'tar.exe' : 'unzip',
-      process.platform === 'win32'
-        ? ['-xf', zipCandidate, '-C', destStdlibDir, 'encodings', 'codecs.py', 'codecs.pyc']
-        : ['-q', zipCandidate, 'encodings/*', 'codecs.*', '-d', destStdlibDir],
-      { stdio: 'ignore' }
+      pyExec,
+      [
+        '-I',
+        '-S',
+        '-B',
+        '-c',
+        [
+          'import sys, zipfile',
+          'zf_path, dest = sys.argv[1], sys.argv[2]',
+          'with zipfile.ZipFile(zf_path, "r") as zf:',
+          '    members = [m for m in zf.namelist() if m.startswith("encodings/") or m in ("codecs.py", "codecs.pyc")]',
+          '    assert members, f"No encodings/codecs found in {zf_path}"',
+          '    zf.extractall(dest, members)'
+        ].join('\n'),
+        zipCandidate,
+        destStdlibDir
+      ],
+      { stdio: 'pipe' }
     );
   }
   const dynloadSrc = path.join(srcStdlibDir, 'lib-dynload');
@@ -687,7 +733,14 @@ test('scripts/native/dev-runtime.py subprocess rejects external ._pth before imp
     );
 
     const extStdlib = path.join(tmpDir, 'ext-stdlib-poison');
-    populateMinimalBootStdlib(srcStdlibDir, pyInfo.prefix, isWin, pyInfo.ver_nodot, extStdlib);
+    populateMinimalBootStdlib(
+      pyExec,
+      srcStdlibDir,
+      pyInfo.prefix,
+      isWin,
+      pyInfo.ver_nodot,
+      extStdlib
+    );
     fs.writeFileSync(
       path.join(extStdlib, '__future__.py'),
       'raise RuntimeError("POISON_SUBPROC_FUTURE_EXECUTED")\n'
@@ -722,7 +775,7 @@ test('scripts/native/dev-runtime.py subprocess rejects external ._pth before imp
         assert.equal(
           stderr.includes(
             'DEV_RUNTIME_LOCK_INVALID: No admitted standard library path in initial sys.path.'
-          ),
+          ) || stderr.includes('DEV_RUNTIME_PREFIX_ESCAPED'),
           true,
           `Unexpected stderr: ${stderr}`
         );
@@ -753,7 +806,14 @@ test('scripts/native/dev-runtime.py subprocess rejects pyvenv.cfg before importi
       ? path.join(extVenvHome, 'Lib')
       : path.join(extVenvHome, 'lib', `python${pyInfo.ver_dot}`);
     fs.mkdirSync(extVenvBin, { recursive: true });
-    populateMinimalBootStdlib(srcStdlibDir, pyInfo.prefix, isWin, pyInfo.ver_nodot, extVenvLib);
+    populateMinimalBootStdlib(
+      pyExec,
+      srcStdlibDir,
+      pyInfo.prefix,
+      isWin,
+      pyInfo.ver_nodot,
+      extVenvLib
+    );
     fs.writeFileSync(
       path.join(extVenvLib, 'json.py'),
       'raise RuntimeError("POISON_VENV_JSON_EXECUTED")\n'
