@@ -717,6 +717,11 @@ function populateMinimalBootStdlib(
       isWin ? 'junction' : 'dir'
     );
   }
+  // CPython's getpath.py checks for os.py as the stdlib landmark when resolving pyvenv.cfg home
+  fs.writeFileSync(
+    path.join(destStdlibDir, 'os.py'),
+    'raise RuntimeError("POISON_STDLIB_OS_EXECUTED")\n'
+  );
 }
 
 test('scripts/native/dev-runtime.py subprocess rejects external ._pth before importing __future__ or pkgutil', () => {

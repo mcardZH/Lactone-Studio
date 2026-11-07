@@ -1,0 +1,15 @@
+{
+  "schema": "sciyue-native-toolchain-lock-v1",
+  "platform": "darwin-arm64",
+  "lockId": "conda-py312-arm64",
+  "root": ".local/toolchains/darwin-arm64/conda-py312-arm64",
+  "contentDirectories": [
+    "python"
+  ],
+  "python": "python/bin/python3",
+  "inventory": {
+    "bytes": 113396,
+    "path": ".local/toolchains/darwin-arm64/conda-py312-arm64/inventory.json",
+    "sha256": "474678bbfa61bcbf7769a364f8f2d171d64c6f1b4ee793c5329debca40ae1927"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "schema": "sciyue-xtb-lock-v1",
+  "platform": "darwin-arm64",
+  "lockId": "darwin-arm64-xtb-v1",
+  "root": ".local/dependencies/darwin-arm64/conda-chem-arm64",
+  "contentDirectories": [
+    "xtb"
+  ],
+  "localUseReady": true,
+  "entry": "xtb/bin/xtb",
+  "dataDirectory": "xtb/share/xtb",
+  "files": [
+    {
+      "path": "xtb/bin/xtb",
+      "bytes": 5118576,
+      "sha256": "003a10fada8da20d51297f611b1b8f1a6a71f6073814dc80491be39356831cd1"
+    },
+    {
+      "path": "xtb/lib/libblas.3.dylib",
+      "bytes": 13233040,
+      "sha256": "7a89772da7fb86aea4c91eefdbc4e6980fb1f668d77bbc34537503a5d1f29c07"
+    },
+    {
+      "path": "xtb/lib/libgcc_s.1.1.dylib",
+      "bytes": 181344,
+      "sha256": "570abb2fa6a9d3bb60a4de8a0c7155b4840c21200ea8428eca23c056c8ba6d3e"
+    },
+    {
+      "path": "xtb/lib/libgfortran.5.dylib",
+      "bytes": 2168880,
+      "sha256": "280f2e05129cfb708cc4041c25f4da59ff1581ede37341fad113b38cf5dc54db"
+    },
+    {
+      "path": "xtb/lib/liblapack.3.dylib",
+      "bytes": 13233040,
+      "sha256": "7a89772da7fb86aea4c91eefdbc4e6980fb1f668d77bbc34537503a5d1f29c07"
+    },
+    {
+      "path": "xtb/lib/libomp.dylib",
+      "bytes": 844896,
+      "sha256": "4395efb4ce9ee38b4ef0ff029150e654ba7b9b0942676584b48071757680dfb2"
+    },
+    {
+      "path": "xtb/lib/libopenblas.0.dylib",
+      "bytes": 13233040,
+      "sha256": "7a89772da7fb86aea4c91eefdbc4e6980fb1f668d77bbc34537503a5d1f29c07"
+    },
+    {
+      "path": "xtb/lib/libquadmath.0.dylib",
+      "bytes": 353680,
+      "sha256": "546c4aa60f8b1d367d4140d2f869ccf9c125fbd6760e464583f15b552f973183"
+    },
+    {
+      "path": "xtb/runtime.json",
+      "bytes": 358,
+      "sha256": "fe5699eb38672b5ba10af32951614b5e58e2209c87019d7e8c7f736baab620c9"
+    },
+    {
+      "path": "xtb/share/xtb/.param_gfnff.xtb",
+      "bytes": 10664,
+      "sha256": "5cf2d1259dd3c65aa9594ea32a0c9a21bb819b6e16b81521888c5a3a1ec513e8"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn0-xtb.txt",
+      "bytes": 39220,
+      "sha256": "278461cabbf89b14379aedc78ef3e141c8cef1f911f3a3c72530aec7a52b6d34"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn1-xtb.txt",
+      "bytes": 27800,
+      "sha256": "81a9d7afdee31f5d8fd67a4d8ec966179317c7b100261c9c82d724bafb460399"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn2-xtb.txt",
+      "bytes": 35849,
+      "sha256": "f6f05c6c5264cb2f75c54f8ac6838044541c1e493b16f1a4d4ee4fa64de5f545"
+    }
+  ]
+}

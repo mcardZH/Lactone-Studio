@@ -1,0 +1,12 @@
+{
+  "schema": "sciyue-native-profile-v1",
+  "platform": "darwin-arm64",
+  "runtimeLock": "desktop/packaging/native-runtime.darwin-arm64.lock.json",
+  "toolchainLock": "desktop/packaging/native-toolchain.darwin-arm64.lock.json",
+  "xtbLock": "desktop/packaging/xtb-runtime.darwin-arm64.lock.json",
+  "preparation": {
+    "bytes": 861,
+    "path": ".local/preparation/darwin-arm64/native-preparation.json",
+    "sha256": "59942e5b8fa351bd164ae3a8c0b82d0f1f1ccba888028e6e0c2f828bce7f30bc"
+  }
+}

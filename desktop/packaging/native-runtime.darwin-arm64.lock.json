@@ -1,0 +1,14 @@
+{
+  "schema": "sciyue-native-runtime-lock-v1",
+  "platform": "darwin-arm64",
+  "lockId": "conda-chem-arm64",
+  "root": ".local/dependencies/darwin-arm64/conda-chem-arm64",
+  "contentDirectories": [
+    "python"
+  ],
+  "inventory": {
+    "bytes": 651838,
+    "path": ".local/dependencies/darwin-arm64/conda-chem-arm64/inventory.json",
+    "sha256": "850343ac97b999b21b98c080b482b7616fc3f557b36748ef4b5fbbf00415d786"
+  }
+}
