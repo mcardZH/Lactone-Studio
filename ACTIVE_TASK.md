@@ -6,57 +6,42 @@
 ---
 
 ## 1. 任务概述 (Task Overview)
-- **任务名称**：阶段 1A-1b：科学引擎启动器与 Python 隔离引导器（`mac/phase1a2-python-dev-bootstrap`）
-- **关联分支**：`mac/phase1a2-python-dev-bootstrap`
-- **目标概要**：更新 `desktop/runtime.cjs` 支持跨平台（`win32-x64`、`darwin-arm64`、`darwin-x64`）打包与开发态科学引擎启动参数解析，并实现 `scripts/native/dev-runtime.py` 开发态 Python 隔离引导器，确保仅从项目锁定的 `.local/dependencies` 与 `.local/toolchains` 加载标准库与科学依赖，禁止回退至系统/用户/Conda 环境。
+- **任务名称**：[简明扼要的任务标题]
+- **关联分支**：[如 feat/xxx, fix/xxx, mac/xxx]
+- **目标概要**：[一到两句话描述本次任务核心目标]
 
 ---
 
 ## 2. 需求细节与范围边界 (Scope & Requirements)
 - **核心功能需求**：
-  1. **科学引擎启动器跨平台解析 (`desktop/runtime.cjs`)**：
-     - `packaged` 模式下按 `platform` 解析 `chemistry/engine.exe`（Windows）或 `chemistry/engine`（macOS/POSIX）。
-     - 开发模式下校验 `desktop/chemistry/engine.py` 存在性，支持显式 `SCIYUE_PYTHON` 绝对路径覆盖（`['-B', engine]`），默认调用 `developmentNative(appPath, { platform, arch, platformId })`、拒绝锁定工具链内存在任何 `pyvenv.cfg`、校验 `*._pth` 启动配置仅引用 Python 解释器根目录内的安全相对路径且不含 `import` 指令，并返回隔离启动参数 `['-I', '-S', '-B', path.join(appPath, 'scripts/native/dev-runtime.py')]`。
-  2. **Python 隔离运行时引导器 (`scripts/native/dev-runtime.py`)**：
-     - 在首行仅使用内建 `sys` 模块执行 `_bootstrap_scrub_initial_sys_path()`，在任何顶层标准库导入（`json`/`os`/`pathlib`/`pkgutil`/`runpy`）之前仅基于 `sys.executable` 推导解释器根目录，校验 `sys._base_executable`、`sys.prefix`、`sys.base_prefix` 未逃逸出该解释器根（拦截 `pyvenv.cfg` 虚拟环境重定向），并剔除不在该解释器标准库白名单下的外部路径（若无匹配标准库路径则立即清空 `sys.path` 并报错退出）；清理继承自宿主进程的 `_PYTHON_*` 与 `RDBASE`（不区分大小写）环境变量，开启 `sys.dont_write_bytecode = True`。
-     - 实现 `detect_host_platform()`：支持 `win32-x64`、`darwin-arm64`、`darwin-x64`；在 Darwin 上若 `os.uname()` 抛出 `PermissionError` 或返回空架构，局部回退至直接解析当前可执行文件的 Mach-O 头部（支持单架构与 Universal 2 胖二进制进程内存头部探测），不全局覆写 `os.uname`。
-     - 实现 `_admitted_path` 与 `load_active_profile`：拒绝符号链接、Junction 及硬链接数大于 1 的输入文件；当平台专属 `native-profile.<platform>.json` 存在（含悬空符号链接）时不静默回退至默认 `native-profile.json`。
-     - 实现 `configure_isolated_paths(app_path)`：
-       - 校验 `runtime` 与 `toolchain` 锁文件 schema、平台、固定父目录（`.local/dependencies/...` 与 `.local/toolchains/...`）、显式非空 `contentDirectories`、`*._pth` 内容合法性以及当前 Python 解释器（`sys.executable`、`sys.prefix`、`sys.base_prefix`）严格位于锁定工具链目录内。
-       - 过滤 `sys.path`：仅保留锁定工具链中明确白名单允许的 Python 标准库路径与 `.zip` 标准库归档（如 Windows 的 `python/python312.zip`、`python/DLLs`、`python/Lib`、`python` 及 Darwin 的 `python/lib/python312.zip`、`python/lib/python3.12`、`python/lib/python3.12/lib-dynload`），剔除工具链自带的 `site-packages`/`dist-packages` 以及 `tools`/`compiler` 等非标准库构建目录，并将锁定依赖根下的 `site-packages` 与 `desktop/chemistry` 置于 `sys.path` 首位。
-       - Windows 下通过 `os.add_dll_directory` 注册已验证的 `python/Library/bin`、`python`、`python/DLLs` 目录并将句柄保存在 `sys._sciyue_dll_handles` 中。
+  1. [需求点 1]
+  2. [需求点 2]
 - **边界与非目标 (Out of Scope)**：
-  - 本分支**不涉及** `.local` 科学计算环境实际构建脚本与锁文件生成（将在下一分支 `mac/phase1a3-darwin-staging` 实现）。
-  - 本分支**不涉及** xTB 宿主执行器（`desktop/xtb-runtime.cjs`）或任务系统进程树管理（将在 `mac/phase1b-process-identity` 实现）。
+  - [明确本次任务不做哪些改动，防止范围蔓延]
 
 ---
 
 ## 3. 技术设计方案 (Technical Design)
 - **涉及模块与文件清单**：
-  - `desktop/runtime.cjs`
-  - `scripts/native/dev-runtime.py`
-  - `tests/desktop/runtime.test.mjs`
-  - `tests/native/dev-runtime.test.mjs`
+  - [例如：desktop/task-system/...、src/web/...]
 - **跨平台适配考量（macOS / Windows / Linux）**：
-  - 兼容 macOS (`darwin-arm64`, `darwin-x64`) 与 Windows (`win32-x64`) 的目录结构差异及 Windows 嵌入式 Python `.zip` 标准库归档。
+  - [涉及路径、系统 API、外部工具的跨平台处理]
 - **关键实现逻辑与架构影响**：
-  - `desktop/runtime.cjs` 与 `desktop/current-runtime.cjs`、`scripts/native/dev-runtime.py` 共享一致的锁路径与目录准入规则。
+  - [关键数据结构、IPC Channel 或算法逻辑]
 
 ---
 
 ## 4. 自动化测试计划 (Testing Plan)
 - **单元测试覆盖文件**：
-  - `tests/desktop/runtime.test.mjs`
-  - `tests/native/dev-runtime.test.mjs`
+  - [tests/ 下对应的测试文件路径]
 - **核心验证场景与边界条件**：
-  - `chemistryRuntime` 在 `packaged`（Windows `engine.exe` vs Darwin `engine`）、`SCIYUE_PYTHON` 覆盖、锁定开发态及缺失文件异常下的行为测试；
-  - `dev-runtime.py` 对 `_PYTHON_HOST_PLATFORM` 伪造清理、`os.uname()` `PermissionError` 局部 Mach-O 头部回退（含 Universal 2）、非 `.local` 锁根拒绝、符号链接父目录拦截、悬空平台专属 profile 拦截、Windows `python312.zip` 标准库保留与 `os.add_dll_directory` 句柄注册测试。
+  - [正常路径、异常路径、平台分支]
 
 ---
 
 ## 5. 用户沟通与意图确认记录 (User Alignment)
 - **用户原始诉求**：
-  - 将阶段 1 拆分为独立微分支推进，在合并 `mac/phase1a1-node-runtime-contract` 后继续推进 `mac/phase1a2-python-dev-bootstrap`。
+  - [用户提问或指令原文要点]
 - **澄清细节与确认结论**：
-  - 用户已明确确认微分支拆分方案及合并第一分支后继续推进本分支，并在第 3 次复核熔断后明确指示修复 `pyvenv.cfg` / `sys.executable` 根校验与测试平台恢复问题、重置复核计数器继续完成本分支复核与合并。
-- **是否已获得用户开发确认**：是
+  - [与用户讨论中明确的细节规则与共识]
+- **是否已获得用户开发确认**：是 / 否
