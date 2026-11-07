@@ -16,9 +16,9 @@
 - **核心功能需求**：
   1. **科学引擎启动器跨平台解析 (`desktop/runtime.cjs`)**：
      - `packaged` 模式下按 `platform` 解析 `chemistry/engine.exe`（Windows）或 `chemistry/engine`（macOS/POSIX）。
-     - 开发模式下校验 `desktop/chemistry/engine.py` 存在性，支持显式 `SCIYUE_PYTHON` 绝对路径覆盖（`['-B', engine]`），默认调用 `developmentNative(appPath, { platform, arch, platformId })`、校验锁定工具链内 `*._pth` 启动配置仅引用 Python 解释器根目录内的安全相对路径且不含 `import` 指令，并返回隔离启动参数 `['-I', '-S', '-B', path.join(appPath, 'scripts/native/dev-runtime.py')]`。
+     - 开发模式下校验 `desktop/chemistry/engine.py` 存在性，支持显式 `SCIYUE_PYTHON` 绝对路径覆盖（`['-B', engine]`），默认调用 `developmentNative(appPath, { platform, arch, platformId })`、拒绝锁定工具链内存在任何 `pyvenv.cfg`、校验 `*._pth` 启动配置仅引用 Python 解释器根目录内的安全相对路径且不含 `import` 指令，并返回隔离启动参数 `['-I', '-S', '-B', path.join(appPath, 'scripts/native/dev-runtime.py')]`。
   2. **Python 隔离运行时引导器 (`scripts/native/dev-runtime.py`)**：
-     - 在首行仅使用内建 `sys` 模块执行 `_bootstrap_scrub_initial_sys_path()`，在任何顶层标准库导入（`json`/`os`/`pathlib`/`pkgutil`/`runpy`）之前剔除不在当前 Python 解释器标准库前缀下的外部路径（防御异常 `*._pth` 注入）；清理继承自宿主进程的 `_PYTHON_*` 与 `RDBASE`（不区分大小写）环境变量，开启 `sys.dont_write_bytecode = True`。
+     - 在首行仅使用内建 `sys` 模块执行 `_bootstrap_scrub_initial_sys_path()`，在任何顶层标准库导入（`json`/`os`/`pathlib`/`pkgutil`/`runpy`）之前仅基于 `sys.executable` 推导解释器根目录，校验 `sys._base_executable`、`sys.prefix`、`sys.base_prefix` 未逃逸出该解释器根（拦截 `pyvenv.cfg` 虚拟环境重定向），并剔除不在该解释器标准库白名单下的外部路径（若无匹配标准库路径则立即清空 `sys.path` 并报错退出）；清理继承自宿主进程的 `_PYTHON_*` 与 `RDBASE`（不区分大小写）环境变量，开启 `sys.dont_write_bytecode = True`。
      - 实现 `detect_host_platform()`：支持 `win32-x64`、`darwin-arm64`、`darwin-x64`；在 Darwin 上若 `os.uname()` 抛出 `PermissionError` 或返回空架构，局部回退至直接解析当前可执行文件的 Mach-O 头部（支持单架构与 Universal 2 胖二进制进程内存头部探测），不全局覆写 `os.uname`。
      - 实现 `_admitted_path` 与 `load_active_profile`：拒绝符号链接、Junction 及硬链接数大于 1 的输入文件；当平台专属 `native-profile.<platform>.json` 存在（含悬空符号链接）时不静默回退至默认 `native-profile.json`。
      - 实现 `configure_isolated_paths(app_path)`：
@@ -58,5 +58,5 @@
 - **用户原始诉求**：
   - 将阶段 1 拆分为独立微分支推进，在合并 `mac/phase1a1-node-runtime-contract` 后继续推进 `mac/phase1a2-python-dev-bootstrap`。
 - **澄清细节与确认结论**：
-  - 用户已明确确认微分支拆分方案及合并第一分支后继续推进本分支，并在复核提示词中严格聚焦本分支修改范围。
+  - 用户已明确确认微分支拆分方案及合并第一分支后继续推进本分支，并在第 3 次复核熔断后明确指示修复 `pyvenv.cfg` / `sys.executable` 根校验与测试平台恢复问题、重置复核计数器继续完成本分支复核与合并。
 - **是否已获得用户开发确认**：是

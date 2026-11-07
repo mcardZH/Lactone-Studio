@@ -336,6 +336,10 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       'uname_not_monkeypatched = (getattr(os, "uname", None) is raising_uname) if orig_uname is not None else True',
       'env_host_plat_cleared = "_PYTHON_HOST_PLATFORM" not in os.environ',
       'orig_plat = sys.platform',
+      'orig_exe = sys.executable',
+      'orig_base_exe = getattr(sys, "_base_executable", "")',
+      'orig_prefix = sys.prefix',
+      'orig_base_prefix = sys.base_prefix',
       'sys.platform = "darwin"',
       `sys.executable = ${JSON.stringify(arm64Bin)}`,
       'uname_fallback_worked = (mod.detect_host_platform() == "darwin-arm64")',
@@ -370,7 +374,13 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       'else:',
       '    universal_active = "skipped-non-darwin"',
       '    python_process_arch = "skipped-non-darwin"',
-      // Test _bootstrap_scrub_initial_sys_path with mixed external + ancestor + stdlib paths, and with ONLY external + ancestor paths (0 matching stdlib entries)
+      // Restore real interpreter platform and executable before testing _bootstrap_scrub_initial_sys_path
+      'sys.platform = orig_plat',
+      'sys.executable = orig_exe',
+      'sys._base_executable = orig_base_exe',
+      'sys.prefix = orig_prefix',
+      'sys.base_prefix = orig_base_prefix',
+      // Test _bootstrap_scrub_initial_sys_path with mixed external + ancestor + stdlib paths, with ONLY external + ancestor paths (0 matching stdlib entries), and with pyvenv.cfg-style escaped base_prefix/_base_executable
       `poison_dir = ${JSON.stringify(poisonDir)}`,
       `ancestor_tc_dir = ${JSON.stringify(tcDir)}`,
       'orig_sys_path = list(sys.path)',
@@ -383,6 +393,14 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    mod._bootstrap_scrub_initial_sys_path()',
       'except RuntimeError as e:',
       '    empty_match_rejected = ("DEV_RUNTIME_LOCK_INVALID" in str(e)) and (len(sys.path) == 0)',
+      'venv_escape_rejected = False',
+      'sys.path[:] = list(orig_sys_path)',
+      'sys._base_executable = "/external/venv/bin/python3"',
+      'try:',
+      '    mod._bootstrap_scrub_initial_sys_path()',
+      'except RuntimeError as e:',
+      '    venv_escape_rejected = ("DEV_RUNTIME_PREFIX_ESCAPED" in str(e)) and (len(sys.path) == 0)',
+      'sys._base_executable = orig_base_exe',
       'sys.path[:] = orig_sys_path',
       // Test non-.local/toolchains root rejection on badAppDir
       `bad_app = pathlib.Path(${JSON.stringify(badAppDir)}).resolve()`,
@@ -451,6 +469,7 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
       '    "python_process_arch": python_process_arch,',
       '    "poison_scrubbed": poison_scrubbed,',
       '    "empty_match_rejected": empty_match_rejected,',
+      '    "venv_escape_rejected": venv_escape_rejected,',
       '    "bad_root_rejected": bad_root_rejected,',
       '    "dangling_prof_rejected": dangling_prof_rejected,',
       '    "symlink_parent_rejected": symlink_parent_rejected,',
@@ -487,6 +506,7 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
     }
     assert.equal(parsed.poison_scrubbed, true);
     assert.equal(parsed.empty_match_rejected, true);
+    assert.equal(parsed.venv_escape_rejected, true);
     assert.equal(parsed.bad_root_rejected, true);
     assert.equal(parsed.dangling_prof_rejected, true);
     assert.equal(parsed.symlink_parent_rejected, true);
@@ -606,6 +626,49 @@ test('scripts/native/dev-runtime.py enforces fixed parent roots, resists _PYTHON
               ),
               true
             );
+            return true;
+          }
+        );
+
+        // (d) Real subprocess test with a physical pyvenv.cfg pointing to an external environment containing poisoned json.py/pkgutil.py
+        fs.rmSync(path.join(pthSubDir, 'python3._pth'), { force: true });
+        const extVenvHome = path.join(tmpDir, 'ext-venv-home');
+        const extVenvBin = path.join(extVenvHome, 'bin');
+        const extVenvLib = path.join(extVenvHome, 'lib', `python${pyPrefixInfo.ver_dot}`);
+        fs.mkdirSync(extVenvBin, { recursive: true });
+        fs.mkdirSync(extVenvLib, { recursive: true });
+        fs.symlinkSync(path.join(srcStdlibDir, 'encodings'), path.join(extVenvLib, 'encodings'));
+        fs.symlinkSync(path.join(srcStdlibDir, 'codecs.py'), path.join(extVenvLib, 'codecs.py'));
+        if (fs.existsSync(path.join(srcStdlibDir, 'lib-dynload'))) {
+          fs.symlinkSync(
+            path.join(srcStdlibDir, 'lib-dynload'),
+            path.join(extVenvLib, 'lib-dynload')
+          );
+        }
+        fs.writeFileSync(
+          path.join(extVenvLib, 'json.py'),
+          'raise RuntimeError("POISON_VENV_JSON_EXECUTED")\n'
+        );
+        fs.writeFileSync(
+          path.join(extVenvLib, 'pkgutil.py'),
+          'raise RuntimeError("POISON_VENV_PKGUTIL_EXECUTED")\n'
+        );
+        fs.writeFileSync(
+          path.join(path.dirname(pthSubDir), 'pyvenv.cfg'),
+          `home = ${extVenvBin}\ninclude-system-site-packages = false\n`
+        );
+        assert.throws(
+          () =>
+            execFileSync(copiedPy, ['-I', '-S', '-B', DEV_RUNTIME_PY], {
+              cwd: ROOT,
+              encoding: 'utf8',
+              stdio: 'pipe'
+            }),
+          (err) => {
+            const stderr = String(err.stderr || '');
+            assert.equal(stderr.includes('POISON_VENV_JSON_EXECUTED'), false);
+            assert.equal(stderr.includes('POISON_VENV_PKGUTIL_EXECUTED'), false);
+            assert.equal(stderr.includes('DEV_RUNTIME_PREFIX_ESCAPED'), true);
             return true;
           }
         );

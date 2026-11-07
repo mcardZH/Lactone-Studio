@@ -27,6 +27,17 @@ function validateToolchainStartupPaths(selected) {
     throw new Error(`Unsupported runtime platform for ._pth validation: ${selected.platform}`);
   }
 
+  const tcRoot = path.dirname(pythonRoot);
+  const venvCheckDirs = Array.from(new Set([tcRoot, pythonRoot, exeDir]));
+  for (const dir of venvCheckDirs) {
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
+    for (const entry of fs.readdirSync(dir)) {
+      if (entry.toLowerCase() === 'pyvenv.cfg') {
+        throw new Error(`Disallowed pyvenv.cfg in locked toolchain: ${path.join(dir, entry)}`);
+      }
+    }
+  }
+
   const candidateDirs = exeDir === pythonRoot ? [pythonRoot] : [pythonRoot, exeDir];
   for (const dir of candidateDirs) {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;

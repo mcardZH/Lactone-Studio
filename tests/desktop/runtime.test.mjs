@@ -320,6 +320,54 @@ test('chemistryRuntime resolves packaged engine, SCIYUE_PYTHON override, and loc
         /DEV_RUNTIME_MISSING:.*_pth/
       );
     }
+
+    // 6. Rejects locked toolchain containing pyvenv.cfg
+    const venvProj = path.join(tmpDir, 'proj-bad-pyvenv');
+    buildMockLockedProject(venvProj, 'darwin-arm64');
+    const venvTcLockPath = path.join(
+      venvProj,
+      'desktop/packaging/native-toolchain.darwin-arm64.lock.json'
+    );
+    const venvTcLock = JSON.parse(fs.readFileSync(venvTcLockPath, 'utf8'));
+    const venvCfgRef = writeOwnedFile(
+      venvProj,
+      `${venvTcLock.root}/python/pyvenv.cfg`,
+      'home = /opt/anaconda3/bin\n'
+    );
+    venvTcLock.files.push(venvCfgRef);
+    const updatedVenvTcRef = writeOwnedFile(
+      venvProj,
+      'desktop/packaging/native-toolchain.darwin-arm64.lock.json',
+      JSON.stringify(venvTcLock)
+    );
+    const venvProbeRel = '.local/preparation/darwin-arm64/import-probe.json';
+    const venvProbeObj = JSON.parse(fs.readFileSync(path.join(venvProj, venvProbeRel), 'utf8'));
+    venvProbeObj.toolchainLock = updatedVenvTcRef;
+    const updatedVenvProbeRef = writeOwnedFile(
+      venvProj,
+      venvProbeRel,
+      JSON.stringify(venvProbeObj)
+    );
+    const venvPrepRel = '.local/preparation/darwin-arm64/native-preparation.json';
+    const venvPrepObj = JSON.parse(fs.readFileSync(path.join(venvProj, venvPrepRel), 'utf8'));
+    venvPrepObj.toolchainLock = updatedVenvTcRef;
+    venvPrepObj.importProbe = updatedVenvProbeRef;
+    const updatedVenvPrepRef = writeOwnedFile(venvProj, venvPrepRel, JSON.stringify(venvPrepObj));
+    const venvProfRel = 'desktop/packaging/native-profile.darwin-arm64.json';
+    const venvProfObj = JSON.parse(fs.readFileSync(path.join(venvProj, venvProfRel), 'utf8'));
+    venvProfObj.preparation = updatedVenvPrepRef;
+    writeOwnedFile(venvProj, venvProfRel, JSON.stringify(venvProfObj));
+
+    assert.throws(
+      () =>
+        chemistryRuntime({
+          packaged: false,
+          appPath: venvProj,
+          environment: {},
+          platformId: 'darwin-arm64'
+        }),
+      /DEV_RUNTIME_MISSING:.*pyvenv\.cfg/
+    );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

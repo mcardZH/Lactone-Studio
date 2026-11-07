@@ -15,71 +15,82 @@ def _bootstrap_scrub_initial_sys_path() -> None:
     ver_nodot = f"{sys.version_info.major}{sys.version_info.minor}"
     is_win = sys.platform == "win32"
 
-    py_roots: list[str] = []
+    raw_exe = getattr(sys, "executable", "")
+    norm_exe = raw_exe.replace("\\", "/").rstrip("/") if isinstance(raw_exe, str) else ""
+    if not norm_exe or "/" not in norm_exe:
+        sys.path[:] = []
+        raise RuntimeError(
+            "DEV_RUNTIME_PREFIX_ESCAPED: Missing or invalid sys.executable during bootstrap."
+        )
 
-    def _add_root(candidate: str) -> None:
-        if candidate and candidate not in py_roots:
-            py_roots.append(candidate)
+    exe_dir = norm_exe.rsplit("/", 1)[0]
+    if is_win:
+        exe_root = (
+            exe_dir.rsplit("/", 1)[0]
+            if (exe_dir.lower().endswith("/scripts") and "/" in exe_dir)
+            else exe_dir
+        )
+    else:
+        exe_root = (
+            exe_dir.rsplit("/", 1)[0]
+            if (exe_dir.lower().endswith("/bin") and "/" in exe_dir)
+            else exe_dir
+        )
 
-    for raw_exe in (
-        getattr(sys, "_base_executable", ""),
-        getattr(sys, "executable", ""),
+    raw_base_exe = getattr(sys, "_base_executable", "")
+    norm_base_exe = (
+        raw_base_exe.replace("\\", "/").rstrip("/") if isinstance(raw_base_exe, str) else ""
+    )
+    raw_prefix = getattr(sys, "prefix", "")
+    norm_prefix = raw_prefix.replace("\\", "/").rstrip("/") if isinstance(raw_prefix, str) else ""
+    raw_base_prefix = getattr(sys, "base_prefix", "")
+    norm_base_prefix = (
+        raw_base_prefix.replace("\\", "/").rstrip("/") if isinstance(raw_base_prefix, str) else ""
+    )
+
+    if (norm_base_exe and norm_base_exe.lower() != norm_exe.lower()) or (
+        norm_base_prefix.lower() != norm_prefix.lower()
     ):
-        if not isinstance(raw_exe, str) or not raw_exe:
-            continue
-        norm_exe = raw_exe.replace("\\", "/").rstrip("/")
-        if "/" not in norm_exe:
-            continue
-        exe_dir = norm_exe.rsplit("/", 1)[0]
-        if not exe_dir:
-            continue
-        if is_win:
-            if exe_dir.lower().endswith("/scripts") and "/" in exe_dir:
-                _add_root(exe_dir.rsplit("/", 1)[0])
-            else:
-                _add_root(exe_dir)
-        else:
-            if exe_dir.lower().endswith("/bin") and "/" in exe_dir:
-                _add_root(exe_dir.rsplit("/", 1)[0])
-            else:
-                _add_root(exe_dir)
+        sys.path[:] = []
+        raise RuntimeError(
+            "DEV_RUNTIME_PREFIX_ESCAPED: Virtual environment or mismatched base executable/prefix is not admitted."
+        )
 
-    for raw_prefix in (
-        getattr(sys, "base_prefix", ""),
-        getattr(sys, "prefix", ""),
-    ):
-        if not isinstance(raw_prefix, str) or not raw_prefix:
-            continue
-        norm_prefix = raw_prefix.replace("\\", "/").rstrip("/")
-        if not norm_prefix:
-            continue
-        if not is_win and norm_prefix.lower().endswith("/bin") and "/" in norm_prefix:
-            _add_root(norm_prefix.rsplit("/", 1)[0])
-        else:
-            _add_root(norm_prefix)
+    is_xcode_framework_stub = (
+        not is_win
+        and ".local/toolchains/" not in norm_exe.lower()
+        and "/library/frameworks/python3.framework/versions/" in norm_prefix.lower()
+    )
+    if is_xcode_framework_stub:
+        active_root = norm_prefix
+    else:
+        allowed_prefix_lowers = {exe_root.lower()}
+        if not is_win:
+            allowed_prefix_lowers.add(f"{exe_root.lower()}/bin")
+        if not norm_prefix or norm_prefix.lower() not in allowed_prefix_lowers:
+            sys.path[:] = []
+            raise RuntimeError(
+                "DEV_RUNTIME_PREFIX_ESCAPED: Interpreter prefix escaped executable root."
+            )
+        active_root = exe_root
 
-    ordered_allowed: list[str] = []
     allowed_lower: set[str] = set()
-    for root in py_roots:
-        if is_win:
-            rels = (
-                f"python{ver_nodot}.zip",
-                "DLLs",
-                "Lib",
-                "",
-            )
-        else:
-            rels = (
-                f"lib/python{ver_nodot}.zip",
-                f"lib/python{ver_dot}",
-                f"lib/python{ver_dot}/lib-dynload",
-            )
-        for rel in rels:
-            full = f"{root}/{rel}" if rel else root
-            low = full.lower()
-            if low not in allowed_lower:
-                allowed_lower.add(low)
-                ordered_allowed.append(full)
+    if is_win:
+        rels = (
+            f"python{ver_nodot}.zip",
+            "DLLs",
+            "Lib",
+            "",
+        )
+    else:
+        rels = (
+            f"lib/python{ver_nodot}.zip",
+            f"lib/python{ver_dot}",
+            f"lib/python{ver_dot}/lib-dynload",
+        )
+    for rel in rels:
+        full = f"{active_root}/{rel}" if rel else active_root
+        allowed_lower.add(full.lower())
 
     scrubbed: list[str] = []
     seen_lower: set[str] = set()
@@ -392,6 +403,14 @@ def _validate_toolchain_pth_files(tc_root: Path, host_platform: str) -> None:
     allowed_rel_set = set(_allowed_toolchain_stdlib_rel_paths(host_platform))
     python_dir = tc_root / "python"
     bin_dir = python_dir / "bin"
+    for venv_dir in (tc_root, python_dir, bin_dir):
+        if not venv_dir.exists() or not venv_dir.is_dir():
+            continue
+        for entry in venv_dir.iterdir():
+            if entry.name.lower() == "pyvenv.cfg":
+                raise RuntimeError(
+                    f"DEV_RUNTIME_LOCK_INVALID: Disallowed pyvenv.cfg in toolchain '{entry}'."
+                )
     for candidate_dir in (python_dir, bin_dir):
         if not candidate_dir.exists() or not candidate_dir.is_dir():
             continue
