@@ -315,8 +315,15 @@ function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
   }
 }
 
-test('resolveDefaultCondaPrefix prioritizes SCIYUE_CONDA_ENV and ignores base CONDA_PREFIX', () => {
-  const tmpEnvDir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-conda-env-'));
+test('resolveDefaultCondaPrefix prioritizes SCIYUE_CONDA_ENV and ignores Conda base roots and symlink aliases', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-conda-env-'));
+  const tmpEnvDir = path.join(tmpRoot, 'custom-env');
+  const fakeBaseDir = path.join(tmpRoot, 'miniconda3');
+  const symlinkToBase = path.join(tmpRoot, 'base-alias');
+  fs.mkdirSync(tmpEnvDir, { recursive: true });
+  fs.mkdirSync(path.join(fakeBaseDir, 'condabin'), { recursive: true });
+  fs.mkdirSync(path.join(fakeBaseDir, 'envs'), { recursive: true });
+  fs.symlinkSync(fakeBaseDir, symlinkToBase);
   try {
     assert.equal(
       resolveDefaultCondaPrefix({
@@ -325,17 +332,25 @@ test('resolveDefaultCondaPrefix prioritizes SCIYUE_CONDA_ENV and ignores base CO
       }),
       tmpEnvDir
     );
-    const fallback = resolveDefaultCondaPrefix({
-      SCIYUE_CONDA_ENV: '/nonexistent/path/12345',
-      CONDA_PREFIX: '/opt/anaconda3'
-    });
-    if (fs.existsSync('/opt/anaconda3/envs/ester-studio')) {
-      assert.equal(fallback, '/opt/anaconda3/envs/ester-studio');
-    } else {
-      assert.equal(fallback, null);
+    const expectedFallback = fs.existsSync('/opt/anaconda3/envs/ester-studio')
+      ? '/opt/anaconda3/envs/ester-studio'
+      : null;
+    for (const invalidCandidate of [
+      '/nonexistent/path/12345',
+      '/opt/anaconda3',
+      fakeBaseDir,
+      symlinkToBase
+    ]) {
+      assert.equal(
+        resolveDefaultCondaPrefix({
+          SCIYUE_CONDA_ENV: invalidCandidate,
+          CONDA_PREFIX: '/opt/anaconda3'
+        }),
+        expectedFallback
+      );
     }
   } finally {
-    fs.rmSync(tmpEnvDir, { recursive: true, force: true });
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
 
@@ -887,8 +902,36 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
     // and 7th rename (first lock file target -> backup fails after 3 directories swapped),
     // WITH read-only parent directory (0555) to verify parent permissions are restored after rollback!
     const tcParentDir = path.dirname(staged.toolchainRoot);
+    const depParentDir = path.dirname(staged.dependencyRoot);
     fs.chmodSync(tcParentDir, 0o555);
+    fs.chmodSync(depParentDir, 0o555);
     try {
+      // First: inject chmodImpl failure on the 2nd read-only parent directory (depParentDir) and verify 1st parent directory (tcParentDir) is restored to 0555!
+      let parentChmodStep = 0;
+      assert.throws(
+        () =>
+          stageDarwinRuntime({
+            appPath: checkoutDir,
+            platformId: 'darwin-arm64',
+            condaPrefix: badCondaDir,
+            updateLocks: true,
+            lockReadOnly: true,
+            chmodImpl: (targetP, mode) => {
+              parentChmodStep += 1;
+              if (parentChmodStep === 2) {
+                throw new Error('INJECTED_SECOND_PARENT_CHMOD_FAILURE');
+              }
+              fs.chmodSync(targetP, mode);
+            }
+          }),
+        /INJECTED_SECOND_PARENT_CHMOD_FAILURE/
+      );
+      assert.equal(
+        fs.lstatSync(tcParentDir).mode & 0o777,
+        0o555,
+        'First parent directory mode 0555 must be restored when second parent chmod fails'
+      );
+
       for (const failAtStep of [1, 2, 7]) {
         let renameStep = 0;
         assert.throws(
@@ -916,12 +959,78 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
           0o555,
           'Read-only parent directory mode 0555 must be restored after rollback'
         );
+        assert.equal(
+          fs.lstatSync(depParentDir).mode & 0o777,
+          0o555,
+          'Read-only dependency parent directory mode 0555 must be restored after rollback'
+        );
         verifyTreeReadOnly(staged.toolchainRoot);
         verifyTreeReadOnly(staged.dependencyRoot);
         verifyTreeReadOnly(path.join(checkoutDir, '.local/preparation/darwin-arm64'));
       }
+
+      // 3g-1a. Subprocess terminated mid-swap (right after moving tcAbsRoot -> backupPath) via SIGTERM or SIGKILL
+      // recovers transaction journal and restores original .local runtime and 0555 parent modes even if the next staging attempt fails!
+      const scriptUrl = new URL('../../scripts/native/stage-darwin-runtime.mjs', import.meta.url).href;
+      for (const crashMode of ['SIGTERM', 'SIGKILL']) {
+        assert.throws(() =>
+          execFileSync(
+            process.execPath,
+            [
+              '--input-type=module',
+              '-e',
+              `
+              import fs from 'node:fs';
+              import { stageDarwinRuntime } from ${JSON.stringify(scriptUrl)};
+              let step = 0;
+              stageDarwinRuntime({
+                appPath: ${JSON.stringify(checkoutDir)},
+                platformId: 'darwin-arm64',
+                condaPrefix: ${JSON.stringify(condaShortDir)},
+                updateLocks: true,
+                lockReadOnly: true,
+                renameImpl: (oldP, newP) => {
+                  step += 1;
+                  fs.renameSync(oldP, newP);
+                  if (step === 1) {
+                    if (${JSON.stringify(crashMode)} === 'SIGTERM') {
+                      process.emit('SIGTERM', 'SIGTERM');
+                    } else {
+                      process.kill(process.pid, 'SIGKILL');
+                    }
+                  }
+                }
+              });
+              `
+            ],
+            { stdio: ['ignore', 'pipe', 'pipe'] }
+          )
+        );
+        if (crashMode === 'SIGKILL') {
+          // Even when the next stageDarwinRuntime call cannot restage (missing condaPrefix), acquiring the lock recovers the journal first!
+          assert.throws(
+            () =>
+              stageDarwinRuntime({
+                appPath: checkoutDir,
+                platformId: 'darwin-arm64',
+                condaPrefix: '/nonexistent/conda/prefix/after/crash',
+                updateLocks: true
+              }),
+            /STAGE_SOURCE_MISSING/
+          );
+        }
+        assert.equal(
+          fs.existsSync(path.join(staged.toolchainRoot, 'python/bin/python3')),
+          true,
+          `Toolchain root must be restored after ${crashMode} mid-swap`
+        );
+        assert.equal(fs.lstatSync(tcParentDir).mode & 0o777, 0o555);
+        assert.equal(fs.lstatSync(depParentDir).mode & 0o777, 0o555);
+        verifyTreeReadOnly(staged.toolchainRoot);
+      }
     } finally {
       fs.chmodSync(tcParentDir, 0o755);
+      fs.chmodSync(depParentDir, 0o755);
     }
 
     // 3g-1b. Invalid TMPDIR causing mkdtempSync failure still releases staging lock so immediate retry does not fail with STAGE_CONCURRENT_BUSY

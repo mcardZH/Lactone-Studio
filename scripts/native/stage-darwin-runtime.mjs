@@ -1201,8 +1201,102 @@ function isProcessAlive(pid) {
   }
 }
 
-export function acquireStagingLock(appPath) {
+export function recoverInterruptedStagingTransaction(
+  appPath,
+  { rollbackRenameImpl = fs.renameSync } = {}
+) {
   const localDir = path.join(path.resolve(appPath), ".local");
+  const journalFile = path.join(localDir, ".staging-journal.json");
+  if (!fs.existsSync(journalFile)) return false;
+
+  let journal;
+  try {
+    journal = JSON.parse(fs.readFileSync(journalFile, "utf8"));
+  } catch {
+    try {
+      fs.unlinkSync(journalFile);
+    } catch {
+      // ignore
+    }
+    return false;
+  }
+
+  const items = Array.isArray(journal?.items) ? journal.items : [];
+  const parentModes = Array.isArray(journal?.modifiedParentModes)
+    ? journal.modifiedParentModes
+    : [];
+  const rollbackErrors = [];
+
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    const item = items[i];
+    if (!item || typeof item.targetPath !== "string") continue;
+    try {
+      const parentDir = path.dirname(item.targetPath);
+      if (fs.existsSync(parentDir)) {
+        const pst = fs.lstatSync(parentDir);
+        if ((pst.mode & 0o200) === 0) {
+          fs.chmodSync(parentDir, pst.mode | 0o200);
+        }
+      }
+      if (item.existed) {
+        if (item.backupPath && fs.existsSync(item.backupPath)) {
+          if (fs.existsSync(item.targetPath)) {
+            makeDirectoryTreeWritable(item.targetPath);
+            fs.rmSync(item.targetPath, { recursive: true, force: true });
+          }
+          rollbackRenameImpl(item.backupPath, item.targetPath);
+        }
+      } else if (
+        fs.existsSync(item.targetPath) &&
+        (!item.nextPath || !fs.existsSync(item.nextPath))
+      ) {
+        makeDirectoryTreeWritable(item.targetPath);
+        fs.rmSync(item.targetPath, { recursive: true, force: true });
+      }
+      for (const tempPath of [item.nextPath, item.backupPath]) {
+        if (tempPath && fs.existsSync(tempPath)) {
+          makeDirectoryTreeWritable(tempPath);
+          fs.rmSync(tempPath, { recursive: true, force: true });
+        }
+      }
+    } catch (rbErr) {
+      rollbackErrors.push(
+        `${item.targetPath} (backup at ${item.backupPath}): ${rbErr.message}`
+      );
+    }
+  }
+
+  for (const entry of parentModes) {
+    if (Array.isArray(entry) && typeof entry[0] === "string" && typeof entry[1] === "number") {
+      try {
+        if (fs.existsSync(entry[0])) {
+          fs.chmodSync(entry[0], entry[1]);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  if (rollbackErrors.length > 0) {
+    throw new Error(
+      `STAGE_ROLLBACK_INCOMPLETE: Backups preserved during journal recovery: ${rollbackErrors.join(
+        "; "
+      )}`
+    );
+  }
+
+  try {
+    fs.unlinkSync(journalFile);
+  } catch {
+    // ignore
+  }
+  return true;
+}
+
+export function acquireStagingLock(appPath) {
+  const resolvedAppPath = path.resolve(appPath);
+  const localDir = path.join(resolvedAppPath, ".local");
   fs.mkdirSync(localDir, { recursive: true });
   const lockDir = path.join(localDir, ".staging.lock");
   const ownerFile = path.join(lockDir, "owner.json");
@@ -1288,7 +1382,7 @@ export function acquireStagingLock(appPath) {
     }
   }
 
-  return () => {
+  const releaseFn = () => {
     try {
       const currentOwner = readExistingOwner();
       if (currentOwner && currentOwner.token === token) {
@@ -1299,6 +1393,15 @@ export function acquireStagingLock(appPath) {
       // ignore
     }
   };
+
+  try {
+    recoverInterruptedStagingTransaction(resolvedAppPath);
+  } catch (recoverErr) {
+    releaseFn();
+    throw recoverErr;
+  }
+
+  return releaseFn;
 }
 
 function verifyDevRuntimeCapabilities(appRootPath, platformId) {
@@ -1388,6 +1491,7 @@ export function stageDarwinRuntime({
   lockReadOnly = true,
   renameImpl = fs.renameSync,
   rollbackRenameImpl = fs.renameSync,
+  chmodImpl = fs.chmodSync,
 } = {}) {
   if (platformId !== "darwin-arm64" && platformId !== "darwin-x64") {
     throw new Error(`STAGE_PLATFORM_UNSUPPORTED: Unsupported platformId: ${platformId}`);
@@ -1715,26 +1819,19 @@ export function stageDarwinRuntime({
     const shouldWriteLocks = updateLocks || !verifyCommittedLocks;
 
     // Prepare transactional staging siblings in the same parent directories so 0555 directory renames never cross parent inodes,
-    // recording original modes of existing parent directories so they are restored on rollback or completion.
+    // recording original modes of existing parent directories inside the try/finally so they are ALWAYS restored on any failure or completion.
     const modifiedParentModes = new Map();
     const ensureDirSelfWritable = (dirPath) => {
       if (!fs.existsSync(dirPath)) return;
       const st = fs.lstatSync(dirPath);
       if ((st.mode & 0o200) === 0) {
+        chmodImpl(dirPath, st.mode | 0o200);
         if (!modifiedParentModes.has(dirPath)) {
           modifiedParentModes.set(dirPath, st.mode & 0o777);
         }
-        fs.chmodSync(dirPath, st.mode | 0o200);
       }
     };
     const swapId = `${process.pid}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-    fs.mkdirSync(path.dirname(tcAbsRoot), { recursive: true });
-    fs.mkdirSync(path.dirname(depAbsRoot), { recursive: true });
-    fs.mkdirSync(path.dirname(prepAbsDir), { recursive: true });
-    ensureDirSelfWritable(path.dirname(tcAbsRoot));
-    ensureDirSelfWritable(path.dirname(depAbsRoot));
-    ensureDirSelfWritable(path.dirname(prepAbsDir));
-
     const nextTcRoot = path.join(path.dirname(tcAbsRoot), `.stage-next-${swapId}-tc`);
     const nextDepRoot = path.join(path.dirname(depAbsRoot), `.stage-next-${swapId}-dep`);
     const nextPrepDir = path.join(path.dirname(prepAbsDir), `.stage-next-${swapId}-prep`);
@@ -1757,8 +1854,16 @@ export function stageDarwinRuntime({
       },
     ];
 
+    const journalFile = path.join(resolvedAppPath, ".local", ".staging-journal.json");
     let preserveBackups = false;
     try {
+      fs.mkdirSync(path.dirname(tcAbsRoot), { recursive: true });
+      fs.mkdirSync(path.dirname(depAbsRoot), { recursive: true });
+      fs.mkdirSync(path.dirname(prepAbsDir), { recursive: true });
+      ensureDirSelfWritable(path.dirname(tcAbsRoot));
+      ensureDirSelfWritable(path.dirname(depAbsRoot));
+      ensureDirSelfWritable(path.dirname(prepAbsDir));
+
       fs.mkdirSync(nextTcRoot, { recursive: true });
       fs.mkdirSync(nextDepRoot, { recursive: true });
       fs.mkdirSync(nextPrepDir, { recursive: true });
@@ -1803,6 +1908,36 @@ export function stageDarwinRuntime({
       }
 
       const appliedSwaps = [];
+      const journalPayload = {
+        swapId,
+        items: swapPlan.map((item) => ({
+          ...item,
+          existed: fs.existsSync(item.targetPath),
+        })),
+        modifiedParentModes: [...modifiedParentModes.entries()],
+      };
+      fs.writeFileSync(journalFile, `${JSON.stringify(journalPayload, null, 2)}\n`, "utf8");
+
+      const handleTerminationSignal = (sig) => {
+        try {
+          recoverInterruptedStagingTransaction(resolvedAppPath, { rollbackRenameImpl });
+        } catch {
+          // ignore
+        }
+        try {
+          if (txRoot) {
+            makeDirectoryTreeWritable(txRoot);
+            fs.rmSync(txRoot, { recursive: true, force: true });
+          }
+        } catch {
+          // ignore
+        }
+        releaseLock();
+        process.exit(sig === "SIGINT" ? 130 : 143);
+      };
+      process.once("SIGTERM", handleTerminationSignal);
+      process.once("SIGINT", handleTerminationSignal);
+
       try {
         for (const item of swapPlan) {
           const parentDir = path.dirname(item.targetPath);
@@ -1828,6 +1963,9 @@ export function stageDarwinRuntime({
           probeModules: REQUIRED_SCIENTIFIC_MODULES,
         });
         verifyDevRuntimeCapabilities(resolvedAppPath, platformId);
+        if (fs.existsSync(journalFile)) {
+          fs.unlinkSync(journalFile);
+        }
       } catch (commitErr) {
         const rollbackErrors = [];
         for (let i = appliedSwaps.length - 1; i >= 0; i -= 1) {
@@ -1835,7 +1973,10 @@ export function stageDarwinRuntime({
           try {
             const parentDir = path.dirname(item.targetPath);
             if (fs.existsSync(parentDir)) {
-              ensureDirSelfWritable(parentDir);
+              const pst = fs.lstatSync(parentDir);
+              if ((pst.mode & 0o200) === 0) {
+                fs.chmodSync(parentDir, pst.mode | 0o200);
+              }
             }
             if (item.installed || item.backedUp) {
               if (fs.existsSync(item.targetPath)) {
@@ -1851,6 +1992,13 @@ export function stageDarwinRuntime({
             rollbackErrors.push(`${item.targetPath} (backup at ${item.backupPath}): ${rbErr.message}`);
           }
         }
+        if (!preserveBackups && fs.existsSync(journalFile)) {
+          try {
+            fs.unlinkSync(journalFile);
+          } catch {
+            // ignore
+          }
+        }
         if (preserveBackups) {
           throw new Error(
             `${commitErr.message} (STAGE_ROLLBACK_INCOMPLETE: Backups preserved: ${rollbackErrors.join(
@@ -1859,6 +2007,9 @@ export function stageDarwinRuntime({
           );
         }
         throw commitErr;
+      } finally {
+        process.removeListener("SIGTERM", handleTerminationSignal);
+        process.removeListener("SIGINT", handleTerminationSignal);
       }
     } finally {
       if (!preserveBackups) {
@@ -1954,12 +2105,38 @@ export function ensureDarwinRuntimeReady({
   }
 }
 
+export function isCondaBaseRoot(candidatePath) {
+  try {
+    const real = fs.realpathSync(candidatePath);
+    const baseName = path.basename(real).toLowerCase();
+    if (
+      fs.existsSync(path.join(real, "condabin")) ||
+      fs.existsSync(path.join(real, "envs")) ||
+      real === "/opt/anaconda3" ||
+      real === "/opt/miniconda3" ||
+      real === "/opt/miniforge3" ||
+      baseName === "anaconda3" ||
+      baseName === "miniconda3" ||
+      baseName === "miniforge3"
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export function resolveDefaultCondaPrefix(env = process.env) {
-  if (env.SCIYUE_CONDA_ENV && fs.existsSync(env.SCIYUE_CONDA_ENV)) {
+  if (
+    env.SCIYUE_CONDA_ENV &&
+    fs.existsSync(env.SCIYUE_CONDA_ENV) &&
+    !isCondaBaseRoot(env.SCIYUE_CONDA_ENV)
+  ) {
     return path.resolve(env.SCIYUE_CONDA_ENV);
   }
   const dedicatedEnv = "/opt/anaconda3/envs/ester-studio";
-  if (fs.existsSync(dedicatedEnv)) {
+  if (fs.existsSync(dedicatedEnv) && !isCondaBaseRoot(dedicatedEnv)) {
     return dedicatedEnv;
   }
   return null;
