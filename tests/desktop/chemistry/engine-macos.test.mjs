@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -15,7 +16,10 @@ const { currentRuntimeEnvironment } = require('../../../desktop/current-runtime.
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 
-function resolveLockedRuntime() {
+let cachedRuntime = null;
+
+function resolveActiveRuntime() {
+  if (cachedRuntime) return cachedRuntime;
   if (
     process.platform === 'darwin' &&
     !fs.existsSync(
@@ -52,13 +56,8 @@ function resolveLockedRuntime() {
     if (v === undefined) delete env[k];
   }
   env.OMP_NUM_THREADS = '1';
-  return { ...rt, env };
-}
-
-const ACTIVE_RUNTIME = resolveLockedRuntime();
-
-function resolveActiveRuntime() {
-  return ACTIVE_RUNTIME;
+  cachedRuntime = { ...rt, env };
+  return cachedRuntime;
 }
 
 function runEngineRequest(runtime, payload, extraArgs = []) {
@@ -249,6 +248,7 @@ test('all core desktop/chemistry scientific submodules import cleanly and RDKit 
     'dynamics',
     'advanced_path',
     'xtb_periodic',
+    'xtb_periodic_bonds',
     'bader_analysis'
   ];
   const probeScript = `
@@ -262,8 +262,13 @@ for name in ${JSON.stringify(modulesToVerify)}:
     mod = importlib.import_module(name)
     loaded[name] = bool(mod)
 
+import spglib
+import tblite.interface
 from rdkit import RDConfig
 from rdkit.Chem import SaltRemover
+spglib_ver = spglib.spg_get_version()
+assert spglib_ver is not None
+assert callable(tblite.interface.Calculator)
 remover = SaltRemover.SaltRemover()
 rd_data_dir = str(pathlib.Path(RDConfig.RDDataDir).resolve())
 
@@ -306,7 +311,18 @@ print(json.dumps({"loaded": loaded, "dylib_images": dylib_images, "rd_data_dir":
       )
     );
     assert.equal(rdDataDir, expectedRdDataDir);
-    assert.ok(dylibImages.length > 0, 'Expected RDKit/tblite/spglib dylibs to be loaded');
+    assert.ok(
+      dylibImages.some((p) => path.basename(p).startsWith('libRDKit')),
+      'Expected libRDKit*.dylib to be loaded'
+    );
+    assert.ok(
+      dylibImages.some((p) => path.basename(p).startsWith('libtblite')),
+      'Expected libtblite*.dylib to be loaded'
+    );
+    assert.ok(
+      dylibImages.some((p) => path.basename(p).startsWith('libsymspg')),
+      'Expected libsymspg*.dylib to be loaded'
+    );
     const expectedLibRoot = fs.realpathSync(path.join(runtime.runtimeRoot, 'python/lib'));
     for (const imgPath of dylibImages) {
       assert.ok(
@@ -314,5 +330,66 @@ print(json.dumps({"loaded": loaded, "dylib_images": dylib_images, "rd_data_dir":
         `Expected loaded dylib ${imgPath} to be inside locked runtime lib ${expectedLibRoot}`
       );
     }
+  }
+});
+
+test('xtb_periodic_bonds.PeriodicBondEvaluator computes periodic GFN2-xTB Mayer-Wiberg bond orders on macOS', () => {
+  const runtime = resolveActiveRuntime();
+  const sitePackagesDirs = runtime.runtimeRoot
+    ? [
+        path.join(runtime.runtimeRoot, 'python/lib/python3.12/site-packages'),
+        path.join(runtime.runtimeRoot, 'python/Lib/site-packages')
+      ].filter((p) => fs.existsSync(p))
+    : [];
+  const tmpWorkspace = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-xtb-pbc-bonds-'));
+  try {
+    const pbcScript = `
+import json, pathlib, sys
+for sp in ${JSON.stringify(sitePackagesDirs)}:
+    if sp not in sys.path:
+        sys.path.insert(0, sp)
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from xtb_periodic_bonds import PeriodicBondEvaluator
+request = {
+    "method": "gfn2",
+    "calculation": "singlepoint",
+    "charge": 0,
+    "uhf": 0,
+    "threads": 1,
+    "maxSteps": 1,
+    "maxSccIterations": 100,
+    "structure": {
+        "atoms": [
+            {"id": "h1", "element": "H", "x": 0.0, "y": 0.0, "z": 0.0},
+            {"id": "h2", "element": "H", "x": 0.74, "y": 0.0, "z": 0.0}
+        ],
+        "cell": {
+            "vectors": [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
+            "pbc": [True, True, True]
+        }
+    }
+}
+evaluator = PeriodicBondEvaluator(request, runtime={}, workspace=${JSON.stringify(tmpWorkspace)})
+res = evaluator.optimize(lambda _: None)
+print(json.dumps(res))
+`;
+    const stdout = execFileSync(runtime.executable, ['-I', '-S', '-B', '-c', pbcScript], {
+      cwd: path.join(ROOT, 'desktop/chemistry'),
+      env: runtime.env || process.env,
+      encoding: 'utf8',
+      timeout: 60000
+    });
+    const res = JSON.parse(stdout.trim());
+    assert.equal(res.kind, 'completed');
+    assert.equal(res.nativeClosed, true);
+    assert.ok(Number.isFinite(res.energyHartree));
+    assert.equal(res.bondOrders.definition, 'mayer-wiberg');
+    assert.equal(res.bondOrders.sourceField, 'tblite:bond-orders');
+    assert.equal(res.bondOrders.entries.length, 1);
+    assert.ok(res.bondOrders.entries[0].value > 0.8);
+    assert.ok(fs.existsSync(path.join(tmpWorkspace, 'bond-orders.npy')));
+    assert.ok(fs.existsSync(path.join(tmpWorkspace, 'bond-orders.json')));
+  } finally {
+    fs.rmSync(tmpWorkspace, { recursive: true, force: true });
   }
 });

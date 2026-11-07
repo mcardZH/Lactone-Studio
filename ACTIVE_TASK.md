@@ -45,7 +45,7 @@
 - **跨平台适配考量（macOS / Windows / Linux）**：
   - 保留原有 `win32-x64` 默认锁文件不变，新增 `.darwin-arm64.json` 平台专属锁文件与 profile。
 - **关键实现逻辑与架构影响**：
-  - 通过将 Conda 构建期前缀重定位为固定长度的 `CANONICAL_LOCKED_PREFIX` 并改写动态库加载路径为 `@loader_path` 相对路径，确保不同机器或不同 Conda 路径下制备出的二进制哈希 100% 一致。
+  - 通过将 Conda 构建期前缀在 Mach-O 字符串槽位与文本配置中重定位为固定长度的 `CANONICAL_LOCKED_PREFIX`（若槽位长度不足或存在残留前缀则显式抛出 `STAGE_RELOCATION_FAILED`），并对重定位后的 Mach-O 二进制重新执行 ad-hoc `codesign` 签名、保持 `@rpath`/`@loader_path` 与受控 `DYLD_FALLBACK_LIBRARY_PATH` 解析，确保不同机器或不同 Conda 路径下制备出的二进制哈希 100% 一致。
 
 ---
 

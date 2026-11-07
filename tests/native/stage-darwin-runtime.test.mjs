@@ -9,6 +9,8 @@ import {
   CANONICAL_LOCKED_PREFIX,
   XTB_REQUIRED_DYLIBS,
   XTB_REQUIRED_PARAMS,
+  buildInventoryFiles,
+  replaceMachOPrefixSlots,
   stageDarwinRuntime,
   resolveDefaultCondaPrefix,
   verifyMachOArchitecture,
@@ -219,7 +221,11 @@ function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
   fs.writeFileSync(path.join(condaDir, 'share/RDKit/README.md'), '# RDKit\n', 'utf8');
   fs.writeFileSync(path.join(condaDir, 'share/RDKit/license.txt'), 'BSD-3-Clause\n', 'utf8');
 
-  // Create required scientific packages: ase, spglib, tblite, scipy
+  // Create required scientific packages and submodules: rdkit.Chem.AllChem, ase.build, spglib, tblite.interface, scipy.{linalg,optimize,spatial}
+  fs.mkdirSync(path.join(siteDir, 'rdkit/Chem'), { recursive: true });
+  fs.writeFileSync(path.join(siteDir, 'rdkit/Chem/__init__.py'), '__all__ = ["AllChem"]\n', 'utf8');
+  fs.writeFileSync(path.join(siteDir, 'rdkit/Chem/AllChem.py'), 'ETKDG = True\n', 'utf8');
+
   const otherModules = options.omitScipy ? ['ase', 'spglib', 'tblite'] : ['ase', 'spglib', 'tblite', 'scipy'];
   for (const modName of otherModules) {
     fs.mkdirSync(path.join(siteDir, modName), { recursive: true });
@@ -228,6 +234,27 @@ function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
       `__version__ = "1.0.0"\nBUILD_PREFIX = "${condaDir}"\n`,
       'utf8'
     );
+  }
+  if (otherModules.includes('ase')) {
+    fs.writeFileSync(path.join(siteDir, 'ase/build.py'), 'make_supercell = True\n', 'utf8');
+  }
+  if (otherModules.includes('tblite')) {
+    fs.writeFileSync(path.join(siteDir, 'tblite/interface.py'), 'Calculator = True\n', 'utf8');
+  }
+  if (otherModules.includes('scipy')) {
+    if (!options.omitScipyLinalg) {
+      fs.writeFileSync(path.join(siteDir, 'scipy/linalg.py'), 'norm = True\n', 'utf8');
+    }
+    fs.writeFileSync(path.join(siteDir, 'scipy/optimize.py'), 'minimize = True\n', 'utf8');
+    fs.writeFileSync(path.join(siteDir, 'scipy/spatial.py'), 'cKDTree = True\n', 'utf8');
+  }
+  if (options.badDylibArch) {
+    const x64So = path.join(siteDir, 'scipy/_x86_64_ext.cpython-312-darwin.so');
+    fs.mkdirSync(path.dirname(x64So), { recursive: true });
+    const x64Buf = Buffer.alloc(64);
+    x64Buf.writeUInt32LE(0xfeedfacf, 0);
+    x64Buf.writeUInt32LE(0x01000007, 4);
+    fs.writeFileSync(x64So, x64Buf);
   }
   fs.writeFileSync(path.join(siteDir, 'distutils-precedence.pth'), 'import sys\n', 'utf8');
 
@@ -304,7 +331,54 @@ test('verifyMachOArchitecture validates thin and fat Mach-O headers and rejects 
   }
 });
 
+test('buildInventoryFiles uses locale-independent codepoint sorting and replaceMachOPrefixSlots rejects short slots', () => {
+  const tmpDir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-inv-slot-'));
+  try {
+    const pyDir = path.join(tmpDir, 'python');
+    fs.mkdirSync(pyDir, { recursive: true });
+    // Under localeCompare('en'), 'a.py' < 'B.py' < '_a.py', whereas ASCII codepoint order is 'B.py' (0x42) < '_a.py' (0x5f) < 'a.py' (0x61)
+    for (const name of ['a.py', 'B.py', '_a.py']) {
+      fs.writeFileSync(path.join(pyDir, name), name, 'utf8');
+    }
+    const inv = buildInventoryFiles(tmpDir, ['python']);
+    assert.deepEqual(
+      inv.map((f) => f.path),
+      ['python/B.py', 'python/_a.py', 'python/a.py']
+    );
+
+    // Slot with ample trailing NULs succeeds
+    const ampleSlot = Buffer.alloc(64, 0);
+    ampleSlot.write('/short/prefix/lib/libfoo.dylib', 0, 'utf8');
+    ampleSlot.write('NEXT', 60, 'utf8');
+    const replaced = replaceMachOPrefixSlots(
+      ampleSlot,
+      ['/short/prefix'],
+      CANONICAL_LOCKED_PREFIX,
+      'libfoo.dylib'
+    );
+    assert.equal(replaced, true);
+    assert.ok(ampleSlot.toString('utf8').startsWith(`${CANONICAL_LOCKED_PREFIX}/lib/libfoo.dylib\0`));
+
+    // Slot too short to fit CANONICAL_LOCKED_PREFIX throws STAGE_RELOCATION_FAILED
+    const tightSlot = Buffer.from('/a/b\0NEXT', 'utf8');
+    assert.throws(
+      () =>
+        replaceMachOPrefixSlots(tightSlot, ['/a/b'], CANONICAL_LOCKED_PREFIX, 'tight.dylib'),
+      /STAGE_RELOCATION_FAILED/
+    );
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destructive transactional rollback, xTB verification, and RDKit data relocation', () => {
+  if (process.platform !== 'darwin') {
+    assert.throws(
+      () => stageDarwinRuntime({ platformId: 'linux-x64' }),
+      /STAGE_PLATFORM_UNSUPPORTED/
+    );
+    return;
+  }
   const { tcPythonDir, depDir } = ensureRepoSourcesAvailable();
 
   const tmpRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'es-stage-darwin-'));
@@ -419,7 +493,7 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
       /STAGE_XTB_INVALID/
     );
 
-    // 3c. Missing required scientific module (scipy omitted)
+    // 3c. Missing required scientific module (scipy omitted) or missing submodule (scipy.linalg omitted)
     fs.rmSync(badCondaDir, { recursive: true, force: true });
     buildMockCondaPrefix(badCondaDir, tcPythonDir, depDir, { omitScipy: true });
     assert.throws(
@@ -431,6 +505,33 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
           updateLocks: true
         }),
       /STAGE_IMPORT_PROBE_FAILED/
+    );
+
+    fs.rmSync(badCondaDir, { recursive: true, force: true });
+    buildMockCondaPrefix(badCondaDir, tcPythonDir, depDir, { omitScipyLinalg: true });
+    assert.throws(
+      () =>
+        stageDarwinRuntime({
+          appPath: checkoutDir,
+          platformId: 'darwin-arm64',
+          condaPrefix: badCondaDir,
+          updateLocks: true
+        }),
+      /STAGE_IMPORT_PROBE_FAILED/
+    );
+
+    // 3c-2. Wrong Mach-O architecture inside site-packages (.so extension is x86_64 on darwin-arm64)
+    fs.rmSync(badCondaDir, { recursive: true, force: true });
+    buildMockCondaPrefix(badCondaDir, tcPythonDir, depDir, { badDylibArch: true });
+    assert.throws(
+      () =>
+        stageDarwinRuntime({
+          appPath: checkoutDir,
+          platformId: 'darwin-arm64',
+          condaPrefix: badCondaDir,
+          updateLocks: true
+        }),
+      /STAGE_ARCH_MISMATCH/
     );
 
     // 3d. Lock drift when a file in Conda prefix is modified and updateLocks: false
@@ -448,8 +549,47 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
       /STAGE_LOCK_DRIFT/
     );
 
-    // Confirm that after all 4 failed staging attempts above, checkoutDir's existing runtime is untouched,
-    // still read-only, and still passes developmentNative and developmentXtb!
+    // 3e. Missing one of the 4 lock/profile files when updateLocks: false & verifyCommittedLocks: true
+    const savedProfileText = fs.readFileSync(staged.profilePath, 'utf8');
+    fs.unlinkSync(staged.profilePath);
+    try {
+      assert.throws(
+        () =>
+          stageDarwinRuntime({
+            appPath: checkoutDir,
+            platformId: 'darwin-arm64',
+            condaPrefix: condaShortDir,
+            updateLocks: false,
+            verifyCommittedLocks: true
+          }),
+        /STAGE_LOCK_DRIFT/
+      );
+    } finally {
+      fs.writeFileSync(staged.profilePath, savedProfileText, 'utf8');
+    }
+
+    // 3f. Post-swap verification failure (corrupted dev-runtime.py) rolls back swapped .local and lock files!
+    const devRuntimeFile = path.join(scriptsNativeDir, 'dev-runtime.py');
+    fs.writeFileSync(devRuntimeFile, 'import sys\nsys.exit("SIMULATED_DEV_RUNTIME_FAILURE")\n', 'utf8');
+    try {
+      assert.throws(
+        () =>
+          stageDarwinRuntime({
+            appPath: checkoutDir,
+            platformId: 'darwin-arm64',
+            condaPrefix: badCondaDir,
+            updateLocks: true,
+            lockReadOnly: true
+          }),
+        /STAGE_DEV_RUNTIME_FAILED/
+      );
+    } finally {
+      fs.writeFileSync(devRuntimeFile, REAL_DEV_BOOTSTRAP, 'utf8');
+    }
+
+    // Confirm that after all failed staging attempts above (including post-swap rollback 3f),
+    // checkoutDir's existing runtime and locks are untouched, still read-only, and still pass developmentNative and developmentXtb!
+    assert.equal(fs.readFileSync(staged.profilePath, 'utf8'), savedProfileText);
     verifyTreeReadOnly(path.join(staged.toolchainRoot, 'python'));
     verifyTreeReadOnly(path.join(staged.dependencyRoot, 'python'));
     verifyTreeReadOnly(path.join(staged.dependencyRoot, 'xtb'));

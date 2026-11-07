@@ -8,7 +8,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const { developmentNative, developmentXtb } = require("../../desktop/current-runtime.cjs");
+const {
+  developmentNative,
+  developmentXtb,
+  currentRuntimeEnvironment,
+} = require("../../desktop/current-runtime.cjs");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -198,6 +202,28 @@ export function verifyMachOArchitecture(filePath, platformId) {
   }
 }
 
+export function verifyTreeMachOArchitectures(rootDir, platformId) {
+  if (!fs.existsSync(rootDir)) return;
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const fullPath = path.join(current, entry.name);
+      const lstat = fs.lstatSync(fullPath);
+      if (lstat.isDirectory()) {
+        stack.push(fullPath);
+      } else if (
+        lstat.isFile() &&
+        (readMachOCpuTypes(fullPath).length > 0 ||
+          entry.name.endsWith(".dylib") ||
+          entry.name.endsWith(".so"))
+      ) {
+        verifyMachOArchitecture(fullPath, platformId);
+      }
+    }
+  }
+}
+
 export function makeDirectoryTreeWritable(rootDir) {
   if (!fs.existsSync(rootDir)) return;
   const stack = [rootDir];
@@ -265,7 +291,7 @@ export function verifyTreeReadOnly(rootDir) {
   }
 }
 
-function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix) {
+export function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix, filePath = "<buffer>") {
   let modified = false;
   for (const oldPrefix of oldPrefixes) {
     if (!oldPrefix || oldPrefix === newPrefix) continue;
@@ -282,11 +308,14 @@ function replaceMachOPrefixSlots(buf, oldPrefixes, newPrefix) {
       const origStr = buf.subarray(strStart, strEnd).toString("utf8");
       const newStr = origStr.split(oldPrefix).join(newPrefix);
       const newStrBuf = Buffer.from(newStr, "utf8");
-      if (newStrBuf.length < slotLen) {
-        buf.fill(0, strStart, nulEnd);
-        newStrBuf.copy(buf, strStart);
-        modified = true;
+      if (newStrBuf.length >= slotLen) {
+        throw new Error(
+          `STAGE_RELOCATION_FAILED: Mach-O string slot (${slotLen} bytes) in ${filePath} is too short to relocate prefix '${oldPrefix}' to '${newPrefix}' (${newStrBuf.length + 1} bytes required)`
+        );
       }
+      buf.fill(0, strStart, nulEnd);
+      newStrBuf.copy(buf, strStart);
+      modified = true;
       pos = nulEnd;
     }
   }
@@ -313,7 +342,14 @@ export function relocateMachOBinary(filePath, oldPrefixes, newPrefix = CANONICAL
   }
 
   const unsignedBuf = fs.readFileSync(filePath);
-  replaceMachOPrefixSlots(unsignedBuf, validPrefixes, newPrefix);
+  replaceMachOPrefixSlots(unsignedBuf, validPrefixes, newPrefix, filePath);
+  for (const p of validPrefixes) {
+    if (unsignedBuf.indexOf(Buffer.from(p, "utf8")) !== -1) {
+      throw new Error(
+        `STAGE_RELOCATION_FAILED: Residual prefix '${p}' remained in Mach-O binary ${filePath}`
+      );
+    }
+  }
   const unsignedHash = crypto.createHash("sha256").update(unsignedBuf).digest("hex");
 
   const cachedSigned = machORelocationCache.get(unsignedHash);
@@ -407,6 +443,10 @@ export function cleanBytecodeAndSymlinks(rootDir) {
   walk(rootDir);
 }
 
+function compareCodepointStrings(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 export function buildInventoryFiles(rootDir, contentDirectories = ["python"]) {
   const files = [];
   for (const contentDir of contentDirectories) {
@@ -415,9 +455,9 @@ export function buildInventoryFiles(rootDir, contentDirectories = ["python"]) {
     const stack = [absDir];
     while (stack.length > 0) {
       const current = stack.pop();
-      const entries = fs.readdirSync(current, { withFileTypes: true }).sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
+      const entries = fs
+        .readdirSync(current, { withFileTypes: true })
+        .sort((a, b) => compareCodepointStrings(a.name, b.name));
       for (const entry of entries) {
         const fullPath = path.join(current, entry.name);
         const lstat = fs.lstatSync(fullPath);
@@ -434,7 +474,7 @@ export function buildInventoryFiles(rootDir, contentDirectories = ["python"]) {
       }
     }
   }
-  files.sort((a, b) => a.path.localeCompare(b.path));
+  files.sort((a, b) => compareCodepointStrings(a.path, b.path));
   return files;
 }
 
@@ -735,10 +775,7 @@ export function runImportProbe({
     "        raise RuntimeError(f'Module {mod_name} loaded from outside locked site-packages: {mod_file}')",
     "    loaded[mod_name] = str(mod_file)",
     "from rdkit import RDConfig",
-    "try:",
-    "    import tblite.interface, rdkit.Chem.AllChem, scipy.linalg, scipy.optimize, scipy.spatial, ase.build",
-    "except Exception:",
-    "    pass",
+    "import tblite.interface, rdkit.Chem.AllChem, scipy.linalg, scipy.optimize, scipy.spatial, ase.build",
     "rd_data = pathlib.Path(RDConfig.RDDataDir).resolve()",
     "expected_rd_data = (dep_site / 'rdkit' / 'share' / 'RDKit' / 'Data').resolve()",
     "if rd_data != expected_rd_data or not (rd_data / 'Salts.txt').is_file():",
@@ -884,7 +921,10 @@ export function stageDarwinRuntime({
     }
 
     verifyMachOArchitecture(txPythonBinPath, platformId);
+    verifyTreeMachOArchitectures(path.join(txTcAbsRoot, "python"), platformId);
+    verifyTreeMachOArchitectures(path.join(txDepAbsRoot, "python"), platformId);
     verifyStagedXtbRuntime(path.join(txDepAbsRoot, "xtb"), txPythonBinPath, platformId);
+    verifyTreeMachOArchitectures(path.join(txDepAbsRoot, "xtb"), platformId);
 
     const xtbRuntimeDescriptorPath = path.join(txDepAbsRoot, "xtb", "runtime.json");
     const xtbDescriptorPayload = {
@@ -1066,21 +1106,25 @@ export function stageDarwinRuntime({
     const profileText = `${JSON.stringify(profilePayload, null, 2)}\n`;
 
     // Verify against existing committed locks & profile BEFORE touching appPath
-    const hasExistingLocks =
-      fs.existsSync(tcLockAbs) && fs.existsSync(depLockAbs) && fs.existsSync(xtbLockAbs);
-    if (hasExistingLocks && !updateLocks && verifyCommittedLocks) {
+    const lockAndProfilePaths = [tcLockAbs, depLockAbs, xtbLockAbs, profileAbs];
+    const existingLockAndProfileCount = lockAndProfilePaths.filter((p) => fs.existsSync(p)).length;
+    const nextProfileMeta = sha256Buffer(Buffer.from(profileText, "utf8"));
+    if (verifyCommittedLocks && !updateLocks) {
+      if (existingLockAndProfileCount < lockAndProfilePaths.length) {
+        throw new Error(
+          `STAGE_LOCK_DRIFT: Missing committed lock or profile files in ${packagingAbsDir} (found ${existingLockAndProfileCount}/${lockAndProfilePaths.length}; pass updateLocks: true or --update-locks to initialize or update)`
+        );
+      }
       const committedTcMeta = sha256File(tcLockAbs);
       const committedDepMeta = sha256File(depLockAbs);
       const committedXtbMeta = sha256File(xtbLockAbs);
-      const profileDrift =
-        fs.existsSync(profileAbs) &&
-        sha256File(profileAbs).sha256 !== sha256Buffer(Buffer.from(profileText, "utf8")).sha256;
+      const committedProfileMeta = sha256File(profileAbs);
 
       if (
         committedTcMeta.sha256 !== tcLockMeta.sha256 ||
         committedDepMeta.sha256 !== depLockMeta.sha256 ||
         committedXtbMeta.sha256 !== xtbLockMeta.sha256 ||
-        profileDrift
+        committedProfileMeta.sha256 !== nextProfileMeta.sha256
       ) {
         throw new Error(
           `STAGE_LOCK_DRIFT: Staged inventory or preparation differs from committed locks/profile in ${packagingAbsDir} (pass updateLocks: true or --update-locks to update)`
@@ -1088,58 +1132,143 @@ export function stageDarwinRuntime({
       }
     }
 
-    // All validations passed! Commit staged trees and metadata into appPath
-    makeDirectoryTreeWritable(tcAbsRoot);
-    makeDirectoryTreeWritable(depAbsRoot);
-    fs.rmSync(path.join(tcAbsRoot, "python"), { recursive: true, force: true });
-    fs.rmSync(path.join(depAbsRoot, "python"), { recursive: true, force: true });
-    fs.rmSync(path.join(depAbsRoot, "xtb"), { recursive: true, force: true });
+    const shouldWriteLocks = updateLocks || !verifyCommittedLocks;
 
-    fs.mkdirSync(tcAbsRoot, { recursive: true });
-    fs.mkdirSync(depAbsRoot, { recursive: true });
-    fs.mkdirSync(prepAbsDir, { recursive: true });
-    fs.mkdirSync(packagingAbsDir, { recursive: true });
+    // Prepare transactional swap directory on the same filesystem as resolvedAppPath
+    fs.mkdirSync(path.join(resolvedAppPath, ".local"), { recursive: true });
+    const swapRoot = fs.mkdtempSync(path.join(resolvedAppPath, ".local", ".stage-swap-"));
+    try {
+      const nextTcRoot = path.join(swapRoot, "next-tc");
+      const nextDepRoot = path.join(swapRoot, "next-dep");
+      const nextPrepDir = path.join(swapRoot, "next-prep");
+      fs.mkdirSync(nextTcRoot, { recursive: true });
+      fs.mkdirSync(nextDepRoot, { recursive: true });
+      fs.mkdirSync(nextPrepDir, { recursive: true });
 
-    copyDirectoryTree(path.join(txTcAbsRoot, "python"), path.join(tcAbsRoot, "python"));
-    copyDirectoryTree(path.join(txDepAbsRoot, "python"), path.join(depAbsRoot, "python"));
-    copyDirectoryTree(path.join(txDepAbsRoot, "xtb"), path.join(depAbsRoot, "xtb"));
+      copyDirectoryTree(path.join(txTcAbsRoot, "python"), path.join(nextTcRoot, "python"));
+      copyDirectoryTree(path.join(txDepAbsRoot, "python"), path.join(nextDepRoot, "python"));
+      copyDirectoryTree(path.join(txDepAbsRoot, "xtb"), path.join(nextDepRoot, "xtb"));
 
-    fs.writeFileSync(path.join(resolvedAppPath, tcInvRel), tcInvText, "utf8");
-    fs.writeFileSync(path.join(resolvedAppPath, depInvRel), depInvText, "utf8");
-    fs.writeFileSync(path.join(resolvedAppPath, probeRel), probeText, "utf8");
-    fs.writeFileSync(path.join(resolvedAppPath, prepRel), prepText, "utf8");
+      fs.writeFileSync(path.join(nextTcRoot, "inventory.json"), tcInvText, "utf8");
+      fs.writeFileSync(path.join(nextDepRoot, "inventory.json"), depInvText, "utf8");
+      fs.writeFileSync(path.join(nextPrepDir, "import-probe.json"), probeText, "utf8");
+      fs.writeFileSync(path.join(nextPrepDir, "native-preparation.json"), prepText, "utf8");
 
-    if (!hasExistingLocks || updateLocks || !verifyCommittedLocks) {
-      fs.writeFileSync(tcLockAbs, tcLockText, "utf8");
-      fs.writeFileSync(depLockAbs, depLockText, "utf8");
-      fs.writeFileSync(xtbLockAbs, xtbLockText, "utf8");
-    }
-    if (!fs.existsSync(profileAbs) || updateLocks || !verifyCommittedLocks) {
-      fs.writeFileSync(profileAbs, profileText, "utf8");
-    }
+      if (lockReadOnly) {
+        lockDirectoryTreeReadOnly(path.join(nextTcRoot, "python"));
+        lockDirectoryTreeReadOnly(path.join(nextDepRoot, "python"));
+        lockDirectoryTreeReadOnly(path.join(nextDepRoot, "xtb"));
+        verifyTreeReadOnly(path.join(nextTcRoot, "python"));
+        verifyTreeReadOnly(path.join(nextDepRoot, "python"));
+        verifyTreeReadOnly(path.join(nextDepRoot, "xtb"));
+      }
 
-    if (lockReadOnly) {
-      lockDirectoryTreeReadOnly(path.join(tcAbsRoot, "python"));
-      lockDirectoryTreeReadOnly(path.join(depAbsRoot, "python"));
-      lockDirectoryTreeReadOnly(path.join(depAbsRoot, "xtb"));
-      verifyTreeReadOnly(path.join(tcAbsRoot, "python"));
-      verifyTreeReadOnly(path.join(depAbsRoot, "python"));
-      verifyTreeReadOnly(path.join(depAbsRoot, "xtb"));
-    }
+      const swapPlan = [
+        { targetPath: tcAbsRoot, nextPath: nextTcRoot, backupPath: path.join(swapRoot, "bak-tc") },
+        { targetPath: depAbsRoot, nextPath: nextDepRoot, backupPath: path.join(swapRoot, "bak-dep") },
+        { targetPath: prepAbsDir, nextPath: nextPrepDir, backupPath: path.join(swapRoot, "bak-prep") },
+      ];
 
-    // Warm up final committed Mach-O inodes so macOS kernel caches ad-hoc signatures immediately
-    runImportProbe({
-      pythonExecutable: path.join(tcAbsRoot, "python", "bin", "python3"),
-      tcAbsRoot,
-      depAbsRoot,
-      platformId,
-      probeModules: REQUIRED_SCIENTIFIC_MODULES,
-    });
+      if (shouldWriteLocks) {
+        const nextLocksDir = path.join(swapRoot, "next-locks");
+        fs.mkdirSync(nextLocksDir, { recursive: true });
+        const nextTcLock = path.join(nextLocksDir, path.basename(tcLockAbs));
+        const nextDepLock = path.join(nextLocksDir, path.basename(depLockAbs));
+        const nextXtbLock = path.join(nextLocksDir, path.basename(xtbLockAbs));
+        const nextProfile = path.join(nextLocksDir, path.basename(profileAbs));
+        fs.writeFileSync(nextTcLock, tcLockText, "utf8");
+        fs.writeFileSync(nextDepLock, depLockText, "utf8");
+        fs.writeFileSync(nextXtbLock, xtbLockText, "utf8");
+        fs.writeFileSync(nextProfile, profileText, "utf8");
+        swapPlan.push(
+          { targetPath: tcLockAbs, nextPath: nextTcLock, backupPath: path.join(swapRoot, "bak-tc-lock") },
+          { targetPath: depLockAbs, nextPath: nextDepLock, backupPath: path.join(swapRoot, "bak-dep-lock") },
+          { targetPath: xtbLockAbs, nextPath: nextXtbLock, backupPath: path.join(swapRoot, "bak-xtb-lock") },
+          { targetPath: profileAbs, nextPath: nextProfile, backupPath: path.join(swapRoot, "bak-profile") }
+        );
+      }
 
-    // End-to-end admission verification when engine.py is present in appPath
-    if (fs.existsSync(path.join(resolvedAppPath, "desktop", "chemistry", "engine.py"))) {
-      developmentNative(resolvedAppPath, { platformId });
-      developmentXtb(resolvedAppPath, { platformId });
+      const appliedSwaps = [];
+      try {
+        for (const item of swapPlan) {
+          fs.mkdirSync(path.dirname(item.targetPath), { recursive: true });
+          const existed = fs.existsSync(item.targetPath);
+          if (existed) {
+            fs.renameSync(item.targetPath, item.backupPath);
+          }
+          fs.renameSync(item.nextPath, item.targetPath);
+          appliedSwaps.push({ ...item, existed });
+        }
+
+        // Warm up final committed Mach-O inodes so macOS kernel caches ad-hoc signatures immediately
+        runImportProbe({
+          pythonExecutable: path.join(tcAbsRoot, "python", "bin", "python3"),
+          tcAbsRoot,
+          depAbsRoot,
+          platformId,
+          probeModules: REQUIRED_SCIENTIFIC_MODULES,
+        });
+
+        // End-to-end admission & dev-runtime bootstrap verification when engine.py is present in appPath
+        const enginePyPath = path.join(resolvedAppPath, "desktop", "chemistry", "engine.py");
+        if (fs.existsSync(enginePyPath)) {
+          const selectedNative = developmentNative(resolvedAppPath, { platformId });
+          developmentXtb(resolvedAppPath, { platformId });
+          const devRuntimePyPath = path.join(resolvedAppPath, "scripts", "native", "dev-runtime.py");
+          if (
+            fs.existsSync(devRuntimePyPath) &&
+            process.platform === "darwin" &&
+            `darwin-${process.arch}` === platformId
+          ) {
+            const rtEnv = {
+              ...process.env,
+              ...currentRuntimeEnvironment({
+                packaged: false,
+                appPath: resolvedAppPath,
+                executable: selectedNative.executable,
+                platformId,
+                environment: process.env,
+              }),
+            };
+            for (const [k, v] of Object.entries(rtEnv)) {
+              if (v === undefined) delete rtEnv[k];
+            }
+            try {
+              execFileSync(
+                selectedNative.executable,
+                ["-I", "-S", "-B", devRuntimePyPath, "--capabilities"],
+                {
+                  cwd: path.dirname(enginePyPath),
+                  env: rtEnv,
+                  stdio: ["ignore", "pipe", "pipe"],
+                }
+              );
+            } catch (err) {
+              const stderr = err.stderr ? String(err.stderr).trim() : err.message;
+              throw new Error(`STAGE_DEV_RUNTIME_FAILED: dev-runtime.py verification failed: ${stderr}`);
+            }
+          }
+        }
+      } catch (commitErr) {
+        for (let i = appliedSwaps.length - 1; i >= 0; i -= 1) {
+          const item = appliedSwaps[i];
+          try {
+            if (fs.existsSync(item.targetPath)) {
+              makeDirectoryTreeWritable(item.targetPath);
+              fs.rmSync(item.targetPath, { recursive: true, force: true });
+            }
+            if (item.existed && fs.existsSync(item.backupPath)) {
+              fs.renameSync(item.backupPath, item.targetPath);
+            }
+          } catch {
+            // best-effort restore
+          }
+        }
+        throw commitErr;
+      }
+    } finally {
+      makeDirectoryTreeWritable(swapRoot);
+      fs.rmSync(swapRoot, { recursive: true, force: true });
     }
 
     return {
