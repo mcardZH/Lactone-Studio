@@ -7,6 +7,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { ensureDarwinRuntimeReady } from '../../scripts/native/stage-darwin-runtime.mjs';
 
 const require = createRequire(import.meta.url);
 const contract = require('../../desktop/xtb-runtime-contract.cjs');
@@ -542,6 +543,7 @@ test('xtbRuntime rejects platform mismatch, every missing Windows DLL or macOS d
 
 if (process.platform === 'darwin' && process.arch === 'arm64') {
   test('xtbRuntime resolves staged development darwin-arm64 runtime in workspace', async () => {
+    ensureDarwinRuntimeReady({ appPath: ROOT, platformId: 'darwin-arm64' });
     const stagedXtbManifest = path.join(
       ROOT,
       '.local/dependencies/darwin-arm64/conda-chem-arm64/xtb/runtime.json'
