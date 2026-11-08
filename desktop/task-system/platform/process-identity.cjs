@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { isDeepStrictEqual } = require("node:util");
-const { spawn } = require("node:child_process");
+const { spawn, execFile } = require("node:child_process");
 const POWERSHELL = path.join(
 	process.env.SystemRoot || "C:\\Windows",
 	"System32",
@@ -128,17 +128,183 @@ function identityMatches(expected, actual) {
 			(key) =>
 				expected[key] !== undefined &&
 				(key === "executableIdentity"
-					? String(expected[key]).toLowerCase() === String(actual[key]).toLowerCase()
+					? String(expected[key]).startsWith("/") || String(actual[key]).startsWith("/")
+						? path.posix.normalize(String(expected[key])) ===
+							path.posix.normalize(String(actual[key]))
+						: String(expected[key]).toLowerCase() === String(actual[key]).toLowerCase()
 					: expected[key] === actual[key])
 		) &&
 		(expected.argv === undefined || isDeepStrictEqual(expected.argv, actual.argv))
 	);
 }
+function parsePsLine(raw, expectedPid) {
+	const lines = String(raw || "")
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (lines.length !== 1) return null;
+	const match = lines[0].match(
+		/^(\d+)\s+(\d+)\s+([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d+\s+\d{2}:\d{2}:\d{2}\s+\d{4})\s+(.+)$/
+	);
+	if (!match) return null;
+	const pid = Number(match[1]),
+		userId = match[2],
+		lstart = match[3],
+		value = match[4].trim();
+	if (pid !== expectedPid || !value) return null;
+	const startedMs = Date.parse(`${lstart} UTC`);
+	if (!Number.isFinite(startedMs)) return null;
+	return {
+		pid,
+		userId,
+		lstart,
+		startedAt: new Date(startedMs).toISOString(),
+		creationFileTime: String(startedMs),
+		value
+	};
+}
 function createProcessIdentityProvider(options = {}) {
 	const platform = options.platform || process.platform;
 	const helper = options.helperPath || HELPER;
 	const spawnProcess = options.spawn || spawn;
+	const execFileProcess = options.execFile || execFile;
+	const readFileText = options.readFile || ((file) => fs.readFile(file, "utf8"));
+	function runPosixCommand(file, args) {
+		return new Promise((resolve) => {
+			execFileProcess(
+				file,
+				args,
+				{
+					timeout: options.controlTimeoutMs || 10000,
+					maxBuffer: 2 * 1024 * 1024,
+					windowsHide: true,
+					env: { ...process.env, LC_ALL: "C", TZ: "UTC" }
+				},
+				(err, stdout = "", stderr = "") => {
+					resolve({
+						ok: !err,
+						code: err ? err.code : 0,
+						killed: Boolean(err?.killed),
+						signal: err?.signal || null,
+						stdout: String(stdout),
+						stderr: String(stderr)
+					});
+				}
+			);
+		});
+	}
+	async function posixHost() {
+		if (platform === "darwin") {
+			let bootId = "";
+			const bootUuid = await runPosixCommand("/usr/sbin/sysctl", ["-n", "kern.bootsessionuuid"]);
+			if (bootUuid.ok) bootId = bootUuid.stdout.trim();
+			if (!bootId) {
+				const bootTime = await runPosixCommand("/usr/sbin/sysctl", ["-n", "kern.boottime"]);
+				if (bootTime.ok) {
+					const match = bootTime.stdout.match(/sec\s*=\s*(\d+)\s*,\s*usec\s*=\s*(\d+)/);
+					bootId = match ? `${match[1]}.${match[2]}` : bootTime.stdout.trim();
+				}
+			}
+			let hostId = "";
+			const ioreg = await runPosixCommand("/usr/sbin/ioreg", [
+				"-rd1",
+				"-c",
+				"IOPlatformExpertDevice"
+			]);
+			if (ioreg.ok) {
+				const match = ioreg.stdout.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/);
+				if (match) hostId = match[1].trim();
+			}
+			if (!hostId) {
+				const kernUuid = await runPosixCommand("/usr/sbin/sysctl", ["-n", "kern.uuid"]);
+				if (kernUuid.ok) hostId = kernUuid.stdout.trim();
+			}
+			if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
+				return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
+			return { hostId, bootId };
+		}
+		if (platform === "linux") {
+			try {
+				const bootId = String(await readFileText("/proc/sys/kernel/random/boot_id")).trim();
+				let hostId = "";
+				try {
+					hostId = String(await readFileText("/etc/machine-id")).trim();
+				} catch {
+					hostId = String(await readFileText("/var/lib/dbus/machine-id")).trim();
+				}
+				if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
+					return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
+				return { hostId, bootId };
+			} catch {
+				return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
+			}
+		}
+		return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
+	}
+	async function posixInspect(pid) {
+		const host = await posixHost();
+		if (!host.hostId || !host.bootId)
+			return { status: "unknown", reason: host.reason || "HOST_IDENTITY_UNAVAILABLE" };
+		const commRes = await runPosixCommand("/bin/ps", [
+			"-ww",
+			"-p",
+			String(pid),
+			"-o",
+			"pid=,uid=,lstart=,comm="
+		]);
+		if (!commRes.ok) {
+			return commRes.code === 1 &&
+				!commRes.killed &&
+				!commRes.signal &&
+				!commRes.stdout.trim() &&
+				!commRes.stderr.trim()
+				? { status: "dead" }
+				: { status: "unknown", reason: "IDENTITY_HELPER_UNAVAILABLE" };
+		}
+		const commParsed = parsePsLine(commRes.stdout, pid);
+		if (!commParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
+		const argsRes = await runPosixCommand("/bin/ps", [
+			"-ww",
+			"-p",
+			String(pid),
+			"-o",
+			"pid=,uid=,lstart=,args="
+		]);
+		if (!argsRes.ok) {
+			return argsRes.code === 1 &&
+				!argsRes.killed &&
+				!argsRes.signal &&
+				!argsRes.stdout.trim() &&
+				!argsRes.stderr.trim()
+				? { status: "dead" }
+				: { status: "unknown", reason: "IDENTITY_HELPER_UNAVAILABLE" };
+		}
+		const argsParsed = parsePsLine(argsRes.stdout, pid);
+		if (!argsParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
+		if (
+			commParsed.pid !== argsParsed.pid ||
+			commParsed.userId !== argsParsed.userId ||
+			commParsed.lstart !== argsParsed.lstart
+		)
+			return { status: "unknown", reason: "PROCESS_IDENTITY_CHANGED" };
+		return {
+			status: "alive",
+			pid: commParsed.pid,
+			startedAt: commParsed.startedAt,
+			creationFileTime: commParsed.creationFileTime,
+			userId: commParsed.userId,
+			executableIdentity: commParsed.value,
+			commandLine: argsParsed.value,
+			hostId: host.hostId,
+			bootId: host.bootId
+		};
+	}
 	async function control(request) {
+		if (platform === "darwin" || platform === "linux") {
+			if (request.action === "host") return posixHost();
+			if (request.action === "inspect") return posixInspect(request.pid);
+			return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
+		}
 		if (platform !== "win32") return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
 		return new Promise((resolve) => {
 			const child = spawnProcess(
@@ -182,13 +348,20 @@ function createProcessIdentityProvider(options = {}) {
 		if (!Number.isSafeInteger(pid) || pid <= 0) return null;
 		const actual = await control({ action: "inspect", pid });
 		if (actual.status !== "alive") return null;
+		if (context.executable) {
+			const matched =
+				platform === "win32"
+					? path.win32.normalize(actual.executableIdentity).toLowerCase() ===
+						path.win32.normalize(context.executable).toLowerCase()
+					: path.posix.normalize(actual.executableIdentity) ===
+						path.posix.normalize(context.executable);
+			if (!matched) return null;
+		}
 		if (
-			context.executable &&
-			path.win32.normalize(actual.executableIdentity).toLowerCase() !==
-				path.win32.normalize(context.executable).toLowerCase()
+			context.args &&
+			(!Array.isArray(actual.argv) ||
+				JSON.stringify(context.args) !== JSON.stringify(actual.argv.slice(1)))
 		)
-			return null;
-		if (context.args && JSON.stringify(context.args) !== JSON.stringify(actual.argv?.slice(1)))
 			return null;
 		// Windows has no supported runtime cwd field. Supplied cwd is never reported as observed.
 		return {

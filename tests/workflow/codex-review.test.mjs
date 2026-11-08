@@ -82,6 +82,7 @@ describe('ACTIVE_TASK and codex-review workflow tests', () => {
     assert.match(prompt, /M src\/index\.ts/);
     assert.match(prompt, /\+ const x = 1;/);
     assert.match(prompt, /严格范围边界（核心铁律，严禁无限扩大范围）/);
+    assert.match(prompt, /直接通过静态代码审查与运行仓库现有/);
     assert.match(prompt, /需求与意图符合度/);
     assert.match(prompt, /gpt-6\.1-terra/);
   });
@@ -165,10 +166,45 @@ describe('ACTIVE_TASK and codex-review workflow tests', () => {
       const stateFile = join(tempRepo, '.git/codex-review-state.json');
       writeFileSync(stateFile, JSON.stringify({ attempts: 0, branch: 'feat/login-module' }), 'utf8');
 
-      const passAfterFix = runCodexReview({ cwd: tempRepo, env: passEnv });
+      // Now reset state for successful branch review and commit a > 400 KB diff to verify stdin prompt delivery
+      const largeDocPath = join(tempRepo, 'docs-large-spec.md');
+      writeFileSync(largeDocPath, `# Large Spec\n${'x'.repeat(400_000)}\n`, 'utf8');
+      git(['add', 'docs-large-spec.md'], tempRepo);
+      git(['commit', '-m', 'docs: add large spec payload'], tempRepo);
+      writeFileSync(stateFile, JSON.stringify({ attempts: 0, branch: 'feat/login-module' }), 'utf8');
+
+      const mockBinScript = join(tempRepo, 'mock-codex.mjs');
+      writeFileSync(
+        mockBinScript,
+        [
+          "import { readFileSync, writeFileSync } from 'node:fs';",
+          'if (process.argv.at(-1) !== "-") { process.exit(2); }',
+          'const stdinPrompt = readFileSync(0, "utf8");',
+          'if (stdinPrompt.length < 400000) { process.exit(3); }',
+          'const outIdx = process.argv.indexOf("-o");',
+          'console.log("intermediate tool log: { \\"debug\\": 1 }");',
+          'if (outIdx !== -1 && process.argv[outIdx + 1]) {',
+          '  writeFileSync(process.argv[outIdx + 1], JSON.stringify({',
+          '    verdict: "PASS",',
+          '    summary: "代码实现完整契合 ACTIVE_TASK.md，测试覆盖充分。",',
+          '    intent_alignment: "功能符合预期需求",',
+          '    features_verified: ["已核对需求规格"],',
+          '    test_coverage_assessment: "单元测试覆盖充分",',
+          '    issues: []',
+          '  }), "utf8");',
+          '}'
+        ].join('\n'),
+        'utf8'
+      );
+
+      const passAfterFix = runCodexReview({
+        cwd: tempRepo,
+        env: { ...cleanEnv, MOCK_CODEX_BIN: mockBinScript }
+      });
       assert.equal(passAfterFix.ok, true);
       assert.equal(passAfterFix.verdict, 'PASS');
       assert.ok(passAfterFix.receipt);
+      rmSync(mockBinScript, { force: true });
 
       // 7. Verify merge to main and automatic ACTIVE_TASK.md reset
       const mergeRes = mergeBranchToMain({
