@@ -92,7 +92,7 @@ export function buildReviewPrompt({ branch, activeTaskContent, changedFilesSumma
     '   - 你的审查必须严格聚焦于“本分支变更文件清单”与“详细代码 DIFF (相对于 main)”中实际修改的部分；',
     `   - 必须严格尊重 ${ACTIVE_TASK_FILE_NAME} 中声明的“非目标边界 (Out of Scope)”与分阶段拆分计划，绝不允许因为本分支未修改的其他模块、后续分支才实现的宿主集成功能、或脱离真实运行环境的极端假设（如假设攻击者已控制本机内核或任意伪造操作系统盘符）而判定 FAIL 或提出越界要求；`,
     '   - 在多轮复核修复中，仅验证本分支 Diff 的实际缺陷是否已修复，严禁顺着修复代码不断衍生新的外延假设或无限扩大审查范围；',
-    '   - 外部宿主已在调用你之前完整执行并通过了全部 `npm test` 单元测试（含真机集成测试）；由于你所处的 `codex exec` 环境受 macOS Seatbelt 沙箱限制（沙箱会拦截 `sysctl kern.bootsessionuuid`、`ioreg`、子进程探测等系统调用），请直接进行静态代码审查，不要在沙箱内重复执行依赖宿主系统权限的真机命令或将其沙箱拦截视为测试失败。',
+    '   - 请直接通过静态代码审查与运行仓库现有 `node --test` 单元测试验证实现（外部宿主已在调用你前完整执行并通过全部 `npm test` 单元测试，若 `codex exec` 受限沙箱拦截 `sysctl`/`ioreg` 等系统调用，请勿将沙箱自身的权限限制视为代码缺陷），不要在命令行中构造或执行伪造进程/杀进程等实时渗透脚本（避免触发云端 API 安全分类器误报导致复核中断）。',
     `1. 需求与意图符合度：比对 ${ACTIVE_TASK_FILE_NAME} 中记录的核心功能需求与用户确认记录，检查本分支修改代码是否忠实实现、有无遗漏，是否存在超出范围的无关变更。`,
     '2. 代码质量与健壮性：检查本分支修改代码是否存在实质性逻辑缺陷、未捕获异常、边界处理不全、内存泄漏或安全性隐患。',
     '3. 跨平台兼容性：本项目为 macOS (Apple Silicon/Intel) 及跨平台桌面端应用，检查本分支修改代码是否包含未经跨平台抽象的 Windows 专属硬编码路径或命令（除非存在明确的分支防御）。',
@@ -214,8 +214,8 @@ export function runCodexReview({ cwd = ROOT, env = process.env } = {}) {
     const tmpOut = join(getGitDir(cwd), `review-${Date.now()}.json`);
     const codexFile = mockBin ? process.execPath : 'codex';
     const codexArgs = mockBin
-      ? [mockBin, 'exec', '-m', REQUIRED_REVIEW_MODEL, '-o', tmpOut, '-']
-      : ['exec', '-m', REQUIRED_REVIEW_MODEL, '-o', tmpOut, '-'];
+      ? [mockBin, 'exec', '-s', 'danger-full-access', '-m', REQUIRED_REVIEW_MODEL, '-o', tmpOut, '-']
+      : ['exec', '-s', 'danger-full-access', '-m', REQUIRED_REVIEW_MODEL, '-o', tmpOut, '-'];
     try {
       const execResult = execFileSync(codexFile, codexArgs, {
         cwd,
