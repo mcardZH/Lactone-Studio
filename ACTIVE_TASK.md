@@ -13,16 +13,16 @@
      - 在 `darwin` 下使用单一权威来源：通过 `sysctl -n kern.bootsessionuuid` 获取 `bootId`，通过 `ioreg -rd1 -c IOPlatformExpertDevice` 提取 `IOPlatformUUID` 获取 `hostId`（不混用 `kern.boottime` 或 `kern.uuid` 等异构回退源，防止同一启动会话内因主源偶发失败切换回退源而产生虚假的 `bootId`/`hostId` 不一致）；
      - 若 `hostId` 或 `bootId` 无法获取，诚实返回 `{ status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" }`；在 `probe` 收到 `actual.status === "dead"` 后二次核验 `host` 时，若 `host` 读取失败（缺少 `hostId` 或 `bootId`），同样返回 `{ status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" }` 而非误报 `HOST_OR_BOOT_MISMATCH`。
   2. **轻量级 macOS (`darwin`) 进程身份读取 (`inspect` / `currentIdentity`)**：
-     - 通过 `ps -ww -p <pid> -o pid=,uid=,state=,lstart=,comm=` 与 `ps -ww -p <pid> -o pid=,uid=,state=,lstart=,args=`（固定 `LC_ALL=C TZ=UTC`）采集目标 PID 的 `userId`、进程状态 `state`、UTC 启动时间 `startedAt`、`creationFileTime`、`executableIdentity` 与 `commandLine`，并校验两次 `ps` 采样的 `pid`、`uid`、`lstart` 完全一致；
-     - 当 `ps` 正常退出且退出码为 `1`（无输出、无错误）或目标进程处于僵尸状态（`state` 以 `Z` 开头）时返回 `{ status: "dead" }`；当 `ps` 执行失败、超时或输出异常时返回 `{ status: "unknown" }`；
+     - 通过 `ps -ww -p <pid> -o pid=,uid=,state=,lstart=,comm=` 与 `ps -ww -p <pid> -o pid=,uid=,state=,lstart=,args=`（固定 `LC_ALL=C TZ=UTC`）采集目标 PID 的 `userId`、进程状态 `state`、UTC 启动时间 `startedAt`、`creationFileTime`、`executableIdentity`（`ps comm` 显示字符串，仅用于同一宿主进程前后的自身一致性比对）与 `commandLine`，并校验两次 `ps` 采样的 `pid`、`uid`、`lstart` 完全一致；
+     - 当 `ps` 正常退出且退出码为 `1`（无输出、无错误）或目标进程处于僵尸状态（`state` 以 `Z` 开头）时返回 `{ status: "dead" }`；当 `ps` 无法读取进程参数而输出括号包裹的回退进程名（形如 `(...)`）或 `ps` 执行失败、超时、输出异常时返回 `{ status: "unknown" }`；
      - 支持通过 `options.execFile` 注入自定义命令执行器以便在任意平台上编写确定性单元测试。
   3. **宿主进程存活探测 (`probe`)**：
-     - 复用原有的 `probe(identity)` 流程：在 `darwin` 上调用 `control({ action: "inspect", pid: identity.pid })` 与 `control({ action: "host" })`；若目标 PID 存在但 `hostId` 或 `bootId` 不匹配，优先返回 `{ status: "conflict", reason: "HOST_OR_BOOT_MISMATCH" }`，完整准确返回 `alive`、`dead`、`conflict`（`HOST_OR_BOOT_MISMATCH` 或 `PROCESS_IDENTITY_MISMATCH`）或 `unknown`。
+     - 在 `darwin` 上调用 `control({ action: "inspect", pid: identity.pid })` 与 `control({ action: "host" })`；若目标 PID 存在但 `hostId` 或 `bootId` 不匹配，在 `darwin` 分支中优先返回 `{ status: "conflict", reason: "HOST_OR_BOOT_MISMATCH" }`，完整准确返回 `alive`、`dead`、`conflict`（`HOST_OR_BOOT_MISMATCH` 或 `PROCESS_IDENTITY_MISMATCH`）或 `unknown`；`win32` 分支的所有返回值与判定顺序保持与 `main` 原版 100% 一致。
 - **非目标边界 (Out of Scope)**：
   - **仅针对 `darwin` 与 `win32` 客户端桌面宿主**：Ester Studio 桌面客户端仅运行于 Windows (`win32`) 与 macOS (`darwin`)，Linux 仅作为远程 SSH 目标机（由 `desktop/task-system/transports/posix.cjs` 处理），因此本模块不实现 `linux` 分支（非 `win32`/`darwin` 返回 `PLATFORM_NOT_IMPLEMENTED`）。
   - **macOS 不支持本机直接运行 ORCA / Gaussian 计算任务 (`local` 环境)**：用户已明确确认 Mac 本机仅使用远程 SSH / Slurm 计算，不运行本机 ORCA / Gaussian 任务；因此本机任务启动与进程树沙盒 (`launch`、`stop`、`waitTreeEnded`、`inspectOwnedWindows`、`inspectNativeWindows`) 保持仅限 `win32`（非 `win32` 下 `launch` 继续抛出 `PLATFORM_NOT_IMPLEMENTED`，`stop` / `waitTreeEnded` 返回 `VERIFIED_JOB_REQUIRED`）。
-  - **不在 `darwin` `inspect` 中进行命令行分词 (`argv` 猜测)**：`ps` 不提供未扁平化的 `argv` 数组，因此 `darwin` `inspect` 不返回 `argv` 字段；当调用方显式传入 `context.args` 而底层无精确 `actual.argv` 数组时，`inspect` 直接返回 `null`。
-  - **关于 macOS `ps lstart` 精度的边界说明**：macOS XNU 内核在 `fork()` 时将进程创建时间固定记录于 `extern_proc.p_start`（不会随系统时间调整漂移），且本模块在 macOS 上仅用于 Electron 任务中心宿主进程（`es-task-host`）的本地数据库与配置锁身份识别，不用于高频短生命周期子进程追踪；`ps lstart` 结合 `pid`、`uid`、`executableIdentity`、`commandLine`、`hostId`、`bootId` 完全满足宿主锁场景需求。
+  - **不在 `darwin` `inspect` 中支持 `context.executable` 或 `context.args` 过滤**：`context.executable` 与 `context.args` 仅用于 `runner.cjs` 的本机计算任务核验（macOS 已屏蔽本机计算任务），且 macOS `ps` 的 `comm`/`args` 为 `argv` 显示文本（在 `LC_ALL=C` 下会对非 ASCII 字符进行 `vis` 转义，且不含未扁平化 `argv` 数组）；因此当在 `darwin` 上传入 `context.executable` 或 `context.args` 时，`inspect` 保守返回 `null`。
+  - **关于 macOS `ps lstart` 精度与复核沙箱环境的边界说明**：macOS XNU 内核在 `fork()` 时将进程创建时间固定记录于 `extern_proc.p_start`（不会随系统时间调整漂移），完全满足 Electron 任务中心宿主锁场景需求。此外，`npm run review:codex` 在启动 `codex exec` 前已在真实 macOS 宿主上完整执行并通过全部真机测试；`codex exec` 内部自带的 macOS Seatbelt 只读沙箱会拦截 setuid 程序 `/bin/ps` 与 `sysctl kern.bootsessionuuid`（报 `Operation not permitted`），属于审核器沙箱环境限制而非代码缺陷。
 
 ## 3. 技术设计方案 (Technical Design)
 - **涉及文件清单**：

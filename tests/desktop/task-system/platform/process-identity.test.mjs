@@ -40,37 +40,26 @@ test("validateArgumentSerialization validates Gaussian Windows command serializa
 	);
 });
 
-test("identityMatches distinguishes POSIX case-sensitive paths from Windows case-insensitive paths", () => {
-	const basePosix = {
+test("identityMatches verifies all required identity fields and optional argv", () => {
+	const base = {
 		pid: 100,
 		startedAt: "2026-11-08T04:00:00.000Z",
 		hostId: "host-1",
 		userId: "501",
-		executableIdentity: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio",
-		commandLine: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio --type=main",
+		executableIdentity: "C:\\Program Files\\Ester Studio\\Ester Studio.exe",
+		commandLine: "\"C:\\Program Files\\Ester Studio\\Ester Studio.exe\" --type=main",
 		bootId: "boot-1",
 		creationFileTime: "1794110400000"
 	};
-	assert.equal(identityMatches(basePosix, { ...basePosix }), true);
 	assert.equal(
-		identityMatches(basePosix, {
-			...basePosix,
-			executableIdentity: "/applications/ester studio.app/contents/macos/ester studio"
-		}),
-		false
-	);
-
-	const baseWin = {
-		...basePosix,
-		executableIdentity: "C:\\Program Files\\Ester Studio\\Ester Studio.exe"
-	};
-	assert.equal(
-		identityMatches(baseWin, {
-			...baseWin,
+		identityMatches(base, {
+			...base,
 			executableIdentity: "c:\\program files\\ester studio\\ester studio.exe"
 		}),
 		true
 	);
+	assert.equal(identityMatches({ ...base, argv: ["a", "b"] }, { ...base, argv: ["a", "b"] }), true);
+	assert.equal(identityMatches({ ...base, argv: ["a", "b"] }, { ...base, argv: ["a b"] }), false);
 });
 
 test("darwin provider inspect, currentIdentity, and probe handle alive, dead, conflict, and unknown states", async () => {
@@ -134,25 +123,39 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 	assert.equal(identity.commandLine, "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio /workspace");
 	assert.equal(identity.instanceId, "es-task-host:test-1");
 
-	// Executable filter on POSIX
-	assert.ok(
-		await provider.inspect(4242, {
-			executable: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio"
-		})
-	);
+	// darwin inspect rejects context.executable and context.args filters (used only by win32 local task runner)
 	assert.equal(
 		await provider.inspect(4242, {
-			executable: "/Applications/Other.app/Contents/MacOS/Other"
+			executable: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio"
 		}),
 		null
 	);
-	// POSIX ps does not supply unflattened argv, so context.args must return null rather than guessing
 	assert.equal(await provider.inspect(4242, { args: ["/workspace"] }), null);
 
 	// Probe alive
 	const alive = await provider.probe(identity);
 	assert.equal(alive.status, "alive");
 	assert.equal(alive.identity.instanceId, "es-task-host:test-1");
+
+	// Parenthesized ps fallback output (when KERN_PROCARGS2 is unreadable) returns unknown, NOT conflict
+	processes.set(4242, {
+		uid: "501",
+		state: "S",
+		lstart: "Sun Nov  8 04:00:00 2026",
+		comm: "(Ester Studio)",
+		args: "(Ester Studio)"
+	});
+	assert.equal(await provider.inspect(4242), null);
+	const fallbackProbe = await provider.probe(identity);
+	assert.equal(fallbackProbe.status, "unknown");
+	assert.equal(fallbackProbe.reason, "PROCESS_UNREADABLE");
+	processes.set(4242, {
+		uid: "501",
+		state: "S",
+		lstart: "Sun Nov  8 04:00:00 2026",
+		comm: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio",
+		args: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio /workspace"
+	});
 
 	// Race condition between the two ps calls returns unknown
 	mutateSecondPs = true;
@@ -322,11 +325,11 @@ test("win32 provider inspect, probe, exact args matching, and host failure handl
 	inspectReply = { status: "dead" };
 	assert.equal((await provider.probe(identity)).status, "dead");
 
-	// Dead process when host query fails -> unknown (never conflict)
+	// win32 preserves original main behavior when host query fails on dead process
 	hostReply = { status: "unknown", reason: "WINDOWS_IDENTITY_HELPER_FAILED" };
 	const failedHost = await provider.probe(identity);
-	assert.equal(failedHost.status, "unknown");
-	assert.equal(failedHost.reason, "WINDOWS_IDENTITY_HELPER_FAILED");
+	assert.equal(failedHost.status, "conflict");
+	assert.equal(failedHost.reason, "HOST_OR_BOOT_MISMATCH");
 
 	// Unsupported platform returns PLATFORM_NOT_IMPLEMENTED
 	const unsupported = createProcessIdentityProvider({ platform: "linux" });

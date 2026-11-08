@@ -128,10 +128,7 @@ function identityMatches(expected, actual) {
 			(key) =>
 				expected[key] !== undefined &&
 				(key === "executableIdentity"
-					? String(expected[key]).startsWith("/") || String(actual[key]).startsWith("/")
-						? path.posix.normalize(String(expected[key])) ===
-							path.posix.normalize(String(actual[key]))
-						: String(expected[key]).toLowerCase() === String(actual[key]).toLowerCase()
+					? String(expected[key]).toLowerCase() === String(actual[key]).toLowerCase()
 					: expected[key] === actual[key])
 		) &&
 		(expected.argv === undefined || isDeepStrictEqual(expected.argv, actual.argv))
@@ -155,6 +152,7 @@ function parsePsLine(raw, expectedPid) {
 	if (pid !== expectedPid) return null;
 	if (state.startsWith("Z")) return { pid, userId, state, zombie: true };
 	if (!value) return null;
+	if (/^\(.*\)$/.test(value)) return { pid, userId, state, zombie: false, unreadableArgs: true };
 	const startedMs = Date.parse(`${lstart} UTC`);
 	if (!Number.isFinite(startedMs)) return null;
 	return {
@@ -162,6 +160,7 @@ function parsePsLine(raw, expectedPid) {
 		userId,
 		state,
 		zombie: false,
+		unreadableArgs: false,
 		lstart,
 		startedAt: new Date(startedMs).toISOString(),
 		creationFileTime: String(startedMs),
@@ -237,6 +236,7 @@ function createProcessIdentityProvider(options = {}) {
 		const commParsed = parsePsLine(commRes.stdout, pid);
 		if (!commParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
 		if (commParsed.zombie) return { status: "dead" };
+		if (commParsed.unreadableArgs) return { status: "unknown", reason: "PROCESS_UNREADABLE" };
 		const argsRes = await runDarwinCommand("/bin/ps", [
 			"-ww",
 			"-p",
@@ -256,6 +256,7 @@ function createProcessIdentityProvider(options = {}) {
 		const argsParsed = parsePsLine(argsRes.stdout, pid);
 		if (!argsParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
 		if (argsParsed.zombie) return { status: "dead" };
+		if (argsParsed.unreadableArgs) return { status: "unknown", reason: "PROCESS_UNREADABLE" };
 		if (
 			commParsed.pid !== argsParsed.pid ||
 			commParsed.userId !== argsParsed.userId ||
@@ -321,22 +322,17 @@ function createProcessIdentityProvider(options = {}) {
 	}
 	async function inspect(pid, context = {}) {
 		if (!Number.isSafeInteger(pid) || pid <= 0) return null;
+		if (platform !== "win32" && (context.executable !== undefined || context.args !== undefined))
+			return null;
 		const actual = await control({ action: "inspect", pid });
 		if (actual.status !== "alive") return null;
-		if (context.executable) {
-			const matched =
-				platform === "win32"
-					? path.win32.normalize(actual.executableIdentity).toLowerCase() ===
-						path.win32.normalize(context.executable).toLowerCase()
-					: path.posix.normalize(actual.executableIdentity) ===
-						path.posix.normalize(context.executable);
-			if (!matched) return null;
-		}
 		if (
-			context.args &&
-			(!Array.isArray(actual.argv) ||
-				JSON.stringify(context.args) !== JSON.stringify(actual.argv.slice(1)))
+			context.executable &&
+			path.win32.normalize(actual.executableIdentity).toLowerCase() !==
+				path.win32.normalize(context.executable).toLowerCase()
 		)
+			return null;
+		if (context.args && JSON.stringify(context.args) !== JSON.stringify(actual.argv?.slice(1)))
 			return null;
 		// Windows has no supported runtime cwd field. Supplied cwd is never reported as observed.
 		return {
@@ -489,7 +485,7 @@ function createProcessIdentityProvider(options = {}) {
 		const actual = await control({ action: "inspect", pid: identity.pid });
 		if (actual.status === "dead") {
 			const host = await control({ action: "host" });
-			if (!host?.hostId || !host?.bootId)
+			if (platform === "darwin" && (!host?.hostId || !host?.bootId))
 				return { status: "unknown", reason: host?.reason || "HOST_IDENTITY_UNAVAILABLE" };
 			return host.hostId === identity.hostId && host.bootId === identity.bootId
 				? { status: "dead", identity }
@@ -497,7 +493,10 @@ function createProcessIdentityProvider(options = {}) {
 		}
 		if (actual.status !== "alive")
 			return { status: "unknown", reason: actual.reason || "PROCESS_UNREADABLE" };
-		if (actual.hostId !== identity.hostId || actual.bootId !== identity.bootId)
+		if (
+			platform === "darwin" &&
+			(actual.hostId !== identity.hostId || actual.bootId !== identity.bootId)
+		)
 			return { status: "conflict", reason: "HOST_OR_BOOT_MISMATCH", identity: actual };
 		return identityMatches(identity, actual)
 			? { status: "alive", identity: { ...actual, instanceId: identity.instanceId } }
