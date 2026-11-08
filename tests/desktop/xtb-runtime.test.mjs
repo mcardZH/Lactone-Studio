@@ -15,6 +15,28 @@ const { xtbRuntime } = require('../../desktop/xtb-runtime.cjs');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 
+const EXPECTED_PARAMETERS = Object.freeze([
+  'share/xtb/param_gfn0-xtb.txt',
+  'share/xtb/param_gfn1-xtb.txt',
+  'share/xtb/param_gfn2-xtb.txt',
+  'share/xtb/.param_gfnff.xtb'
+]);
+
+const EXPECTED_WIN32_LIBS = Object.freeze([
+  'bin/libiomp5md.dll',
+  'bin/vcruntime140.dll'
+]);
+
+const EXPECTED_DARWIN_LIBS = Object.freeze([
+  'lib/libblas.3.dylib',
+  'lib/libgcc_s.1.1.dylib',
+  'lib/libgfortran.5.dylib',
+  'lib/liblapack.3.dylib',
+  'lib/libomp.dylib',
+  'lib/libopenblas.0.dylib',
+  'lib/libquadmath.0.dylib'
+]);
+
 function sha256Text(content) {
   const bytes = Buffer.from(content, 'utf8');
   return {
@@ -34,14 +56,9 @@ async function writeOrdinaryFile(root, relativePath, content = 'stub-content\n',
   };
 }
 
-async function createPackagedXtbSandbox(platformId = 'darwin-arm64', options = {}) {
-  const baseTmp = await fs.realpath(os.tmpdir());
-  const sandbox = await fs.mkdtemp(path.join(baseTmp, `es-xtb-test-${platformId}-`));
-  const resourcesPath = path.join(sandbox, 'resources');
-  const xtbRoot = path.join(resourcesPath, 'xtb');
+async function populateXtbRoot(xtbRoot, platformId, options = {}) {
   await fs.mkdir(xtbRoot, { recursive: true });
-
-  const entryRel = contract.entryForPlatform(platformId);
+  const entryRel = platformId === 'win32-x64' ? 'bin/xtb.exe' : 'bin/xtb';
   const execMode = options.execMode ?? (platformId === 'win32-x64' ? 0o644 : 0o755);
   const files = [];
 
@@ -49,14 +66,13 @@ async function createPackagedXtbSandbox(platformId = 'darwin-arm64', options = {
     files.push(await writeOrdinaryFile(xtbRoot, entryRel, '#!/bin/sh\necho xtb\n', execMode));
   }
 
-  for (const paramRel of contract.REQUIRED_PARAMETERS) {
+  for (const paramRel of EXPECTED_PARAMETERS) {
     if (options.omitParameter === paramRel) continue;
     files.push(await writeOrdinaryFile(xtbRoot, paramRel, `param:${paramRel}\n`, 0o644));
   }
 
   const libraries =
-    options.libraries ??
-    (platformId === 'win32-x64' ? contract.WIN32_V1_LIBRARIES : contract.DARWIN_V1_LIBRARIES);
+    options.libraries ?? (platformId === 'win32-x64' ? EXPECTED_WIN32_LIBS : EXPECTED_DARWIN_LIBS);
   for (const libRel of libraries) {
     if (options.omitLibrary === libRel) continue;
     files.push(await writeOrdinaryFile(xtbRoot, libRel, `lib:${libRel}\n`, 0o644));
@@ -88,7 +104,7 @@ async function createPackagedXtbSandbox(platformId = 'darwin-arm64', options = {
     descriptor.source = {
       commit: '5071a8869720fb0ecd788af977159869b64a277c',
       scientificPinsManifest: {
-        sha256: 'c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b'
+        sha256: 'c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c866055c875c04aad63255f6b'.slice(0, 64)
       }
     };
     descriptor.build = {
@@ -107,7 +123,17 @@ async function createPackagedXtbSandbox(platformId = 'darwin-arm64', options = {
 
   const runtimeJson = JSON.stringify(descriptor, null, 2);
   const manifestRef = await writeOrdinaryFile(xtbRoot, 'runtime.json', runtimeJson, 0o644);
+  return { entryRel, files, manifestRef };
+}
 
+async function createPackagedXtbSandbox(platformId = 'darwin-arm64', options = {}) {
+  const baseTmp = await fs.realpath(os.tmpdir());
+  const sandbox = await fs.mkdtemp(path.join(baseTmp, `es-xtb-test-${platformId}-`));
+  const resourcesPath = path.join(sandbox, 'resources');
+  const xtbRoot = path.join(resourcesPath, 'xtb');
+  const { manifestRef } = await populateXtbRoot(xtbRoot, platformId, options);
+
+  const schema = options.schema ?? 'sciyue-xtb-bundled-runtime/v1';
   if (schema === 'sciyue-xtb-bundled-runtime/v2' || options.withProvenance) {
     const provenanceDir = path.join(sandbox, 'provenance');
     const summaryJson = JSON.stringify(
@@ -126,7 +152,103 @@ async function createPackagedXtbSandbox(platformId = 'darwin-arm64', options = {
   return { sandbox, resourcesPath, xtbRoot, manifestRef };
 }
 
+async function createDevelopmentXtbAppSandbox(platforms = ['win32-x64', 'darwin-arm64', 'darwin-x64'], overrides = {}) {
+  const baseTmp = await fs.realpath(os.tmpdir());
+  const appPath = await fs.mkdtemp(path.join(baseTmp, 'es-xtb-dev-app-'));
+
+  for (const platformId of platforms) {
+    const depParent =
+      platformId === 'win32-x64'
+        ? '.local/dependencies/win-x64'
+        : `.local/dependencies/${platformId}`;
+    const depRootRel = `${depParent}/bundle-${platformId}`;
+    const xtbRoot = path.join(appPath, ...depRootRel.split('/'), 'xtb');
+    const platformOverrides = overrides[platformId] ?? {};
+    const { entryRel, files, manifestRef } = await populateXtbRoot(xtbRoot, platformId, platformOverrides);
+
+    const lockFiles = [...files, manifestRef]
+      .map(row => ({
+        path: `xtb/${row.path}`,
+        bytes: row.bytes,
+        sha256: row.sha256
+      }))
+      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+
+    const xtbLockRel = `desktop/packaging/xtb-runtime.${platformId}.lock.json`;
+    await writeOrdinaryFile(
+      appPath,
+      xtbLockRel,
+      JSON.stringify(
+        {
+          schema: 'sciyue-xtb-lock-v1',
+          platform: platformId,
+          lockId: `lock-${platformId}`,
+          root: depRootRel,
+          contentDirectories: ['xtb'],
+          localUseReady: true,
+          entry: `xtb/${entryRel}`,
+          dataDirectory: 'xtb/share/xtb',
+          files: lockFiles
+        },
+        null,
+        2
+      ),
+      0o644
+    );
+
+    const profileRel = `desktop/packaging/native-profile.${platformId}.json`;
+    await writeOrdinaryFile(
+      appPath,
+      profileRel,
+      JSON.stringify(
+        {
+          schema: 'sciyue-native-profile-v1',
+          platform: platformId,
+          runtimeLock: `desktop/packaging/native-runtime.${platformId}.lock.json`,
+          toolchainLock: `desktop/packaging/native-toolchain.${platformId}.lock.json`,
+          xtbLock: xtbLockRel
+        },
+        null,
+        2
+      ),
+      0o644
+    );
+  }
+
+  return appPath;
+}
+
+async function replaceBinWithLinkOrJunction(xtbRoot, sandbox, forceJunctionFallback = false) {
+  const binDir = path.join(xtbRoot, 'bin');
+  const binXtb = path.join(binDir, 'xtb');
+  const realCopy = path.join(sandbox, 'real-xtb');
+  await fs.copyFile(binXtb, realCopy);
+  await fs.unlink(binXtb);
+  try {
+    if (forceJunctionFallback) {
+      const err = new Error('Simulated Windows symlink privilege failure');
+      err.code = 'EPERM';
+      throw err;
+    }
+    await fs.symlink(realCopy, binXtb);
+  } catch (error) {
+    if (error && (error.code === 'EPERM' || error.code === 'ENOSYS')) {
+      const realBinDir = path.join(sandbox, 'real-bin-dir');
+      await fs.mkdir(realBinDir, { recursive: true });
+      await fs.copyFile(realCopy, path.join(realBinDir, 'xtb'));
+      await fs.rm(binDir, { recursive: true, force: true });
+      await fs.symlink(realBinDir, binDir, process.platform === 'win32' ? 'junction' : 'dir');
+      return;
+    }
+    throw error;
+  }
+}
+
 test('xtb-runtime-contract platform helpers and validateDescriptor support win32-x64, darwin-arm64, and darwin-x64', () => {
+  assert.deepEqual(contract.REQUIRED_PARAMETERS, EXPECTED_PARAMETERS);
+  assert.deepEqual(contract.WIN32_V1_LIBRARIES, EXPECTED_WIN32_LIBS);
+  assert.deepEqual(contract.DARWIN_V1_LIBRARIES, EXPECTED_DARWIN_LIBS);
+
   assert.equal(contract.entryForPlatform('win32-x64'), 'bin/xtb.exe');
   assert.equal(contract.entryForPlatform('darwin-arm64'), 'bin/xtb');
   assert.equal(contract.entryForPlatform('darwin-x64'), 'bin/xtb');
@@ -140,7 +262,7 @@ test('xtb-runtime-contract platform helpers and validateDescriptor support win32
   assert.deepEqual(contract.requiredMembersForPlatform('win32-x64'), contract.REQUIRED);
   assert.deepEqual(contract.requiredMembersForPlatform('darwin-arm64'), [
     'bin/xtb',
-    ...contract.REQUIRED_PARAMETERS
+    ...EXPECTED_PARAMETERS
   ]);
 
   for (const [platform, entry] of [
@@ -235,7 +357,60 @@ test('xtbRuntime resolves packaged v1 and v2 runtimes for win32-x64, darwin-arm6
   }
 });
 
-test('xtbRuntime rejects platform mismatch, missing dylib/dll, missing parameter, symlink, and non-executable binary on macOS', async () => {
+test('xtbRuntime development mode forwards platform, arch, and platformId to developmentXtb and rejects descriptor platform mismatch', async () => {
+  const appPath = await createDevelopmentXtbAppSandbox(['win32-x64', 'darwin-arm64', 'darwin-x64']);
+  try {
+    const winResolved = await xtbRuntime({
+      packaged: false,
+      appPath,
+      platform: 'win32',
+      arch: 'x64'
+    });
+    assert.equal(winResolved.executable, path.join(winResolved.root, 'bin', 'xtb.exe'));
+
+    const armResolved = await xtbRuntime({
+      packaged: false,
+      appPath,
+      platform: 'darwin',
+      arch: 'arm64'
+    });
+    assert.equal(armResolved.executable, path.join(armResolved.root, 'bin', 'xtb'));
+    assert.ok(armResolved.root.includes('bundle-darwin-arm64'));
+
+    const x64Resolved = await xtbRuntime({
+      packaged: false,
+      appPath,
+      platformId: 'darwin-x64'
+    });
+    assert.equal(x64Resolved.executable, path.join(x64Resolved.root, 'bin', 'xtb'));
+    assert.ok(x64Resolved.root.includes('bundle-darwin-x64'));
+  } finally {
+    await fs.rm(appPath, { recursive: true, force: true });
+  }
+
+  // Verify development-mode rejection when runtime.json platform mismatches expectedPlatform
+  const mismatchedApp = await createDevelopmentXtbAppSandbox(['darwin-arm64'], {
+    'darwin-arm64': {
+      descriptorPlatform: 'darwin-x64'
+    }
+  });
+  try {
+    await assert.rejects(
+      () =>
+        xtbRuntime({
+          packaged: false,
+          appPath: mismatchedApp,
+          platform: 'darwin',
+          arch: 'arm64'
+        }),
+      /XTB_RUNTIME_INVALID: descriptor platform mismatch/
+    );
+  } finally {
+    await fs.rm(mismatchedApp, { recursive: true, force: true });
+  }
+});
+
+test('xtbRuntime rejects platform mismatch, every missing Windows DLL or macOS dylib, every missing parameter, symlinks/junctions, and non-executable binary', async () => {
   // 1. Descriptor platform mismatch
   const mismatch = await createPackagedXtbSandbox('darwin-arm64');
   try {
@@ -252,40 +427,64 @@ test('xtbRuntime rejects platform mismatch, missing dylib/dll, missing parameter
     await fs.rm(mismatch.sandbox, { recursive: true, force: true });
   }
 
-  // 2. Missing required dylib on darwin-arm64
-  const missingDylib = await createPackagedXtbSandbox('darwin-arm64', {
-    omitLibrary: 'lib/libgfortran.5.dylib'
-  });
-  try {
-    await assert.rejects(
-      () =>
-        xtbRuntime({
-          packaged: true,
-          resourcesPath: missingDylib.resourcesPath,
-          platformId: 'darwin-arm64'
-        }),
-      /ENOENT|XTB_RUNTIME_INVALID/
-    );
-  } finally {
-    await fs.rm(missingDylib.sandbox, { recursive: true, force: true });
+  // 2a. Missing each required Windows DLL on win32-x64
+  for (const dllRel of EXPECTED_WIN32_LIBS) {
+    const missingDll = await createPackagedXtbSandbox('win32-x64', {
+      omitLibrary: dllRel
+    });
+    try {
+      await assert.rejects(
+        () =>
+          xtbRuntime({
+            packaged: true,
+            resourcesPath: missingDll.resourcesPath,
+            platformId: 'win32-x64'
+          }),
+        /ENOENT|XTB_RUNTIME_INVALID/
+      );
+    } finally {
+      await fs.rm(missingDll.sandbox, { recursive: true, force: true });
+    }
   }
 
-  // 3. Missing required parameter file
-  const missingParam = await createPackagedXtbSandbox('darwin-arm64', {
-    omitParameter: 'share/xtb/param_gfn2-xtb.txt'
-  });
-  try {
-    await assert.rejects(
-      () =>
-        xtbRuntime({
-          packaged: true,
-          resourcesPath: missingParam.resourcesPath,
-          platformId: 'darwin-arm64'
-        }),
-      /ENOENT|XTB_RUNTIME_INCOMPLETE/
-    );
-  } finally {
-    await fs.rm(missingParam.sandbox, { recursive: true, force: true });
+  // 2b. Missing each required macOS dylib on darwin-arm64
+  for (const dylibRel of EXPECTED_DARWIN_LIBS) {
+    const missingDylib = await createPackagedXtbSandbox('darwin-arm64', {
+      omitLibrary: dylibRel
+    });
+    try {
+      await assert.rejects(
+        () =>
+          xtbRuntime({
+            packaged: true,
+            resourcesPath: missingDylib.resourcesPath,
+            platformId: 'darwin-arm64'
+          }),
+        /ENOENT|XTB_RUNTIME_INVALID/
+      );
+    } finally {
+      await fs.rm(missingDylib.sandbox, { recursive: true, force: true });
+    }
+  }
+
+  // 3. Missing each required parameter file
+  for (const paramRel of EXPECTED_PARAMETERS) {
+    const missingParam = await createPackagedXtbSandbox('darwin-arm64', {
+      omitParameter: paramRel
+    });
+    try {
+      await assert.rejects(
+        () =>
+          xtbRuntime({
+            packaged: true,
+            resourcesPath: missingParam.resourcesPath,
+            platformId: 'darwin-arm64'
+          }),
+        /ENOENT|XTB_RUNTIME_INCOMPLETE/
+      );
+    } finally {
+      await fs.rm(missingParam.sandbox, { recursive: true, force: true });
+    }
   }
 
   // 4. Non-executable bin/xtb on macOS
@@ -306,14 +505,10 @@ test('xtbRuntime rejects platform mismatch, missing dylib/dll, missing parameter
     }
   }
 
-  // 5. Symlinked bin/xtb rejected
+  // 5a. Symlinked bin/xtb (with automatic junction fallback on unprivileged Windows) rejected
   const linked = await createPackagedXtbSandbox('darwin-arm64');
   try {
-    const binXtb = path.join(linked.xtbRoot, 'bin/xtb');
-    const realCopy = path.join(linked.sandbox, 'real-xtb');
-    await fs.copyFile(binXtb, realCopy);
-    await fs.unlink(binXtb);
-    await fs.symlink(realCopy, binXtb);
+    await replaceBinWithLinkOrJunction(linked.xtbRoot, linked.sandbox, false);
     await assert.rejects(
       () =>
         xtbRuntime({
@@ -326,14 +521,36 @@ test('xtbRuntime rejects platform mismatch, missing dylib/dll, missing parameter
   } finally {
     await fs.rm(linked.sandbox, { recursive: true, force: true });
   }
+
+  // 5b. Simulated Windows EPERM fallback to directory junction/link rejected
+  const junctionLinked = await createPackagedXtbSandbox('darwin-arm64');
+  try {
+    await replaceBinWithLinkOrJunction(junctionLinked.xtbRoot, junctionLinked.sandbox, true);
+    await assert.rejects(
+      () =>
+        xtbRuntime({
+          packaged: true,
+          resourcesPath: junctionLinked.resourcesPath,
+          platformId: 'darwin-arm64'
+        }),
+      /XTB_RUNTIME_INVALID: linked/
+    );
+  } finally {
+    await fs.rm(junctionLinked.sandbox, { recursive: true, force: true });
+  }
 });
 
-test('xtbRuntime resolves staged development darwin-arm64 runtime when present in workspace', async () => {
-  const stagedXtbManifest = path.join(
-    ROOT,
-    '.local/dependencies/darwin-arm64/conda-chem-arm64/xtb/runtime.json'
-  );
-  if (process.platform === 'darwin' && process.arch === 'arm64' && fssync.existsSync(stagedXtbManifest)) {
+if (process.platform === 'darwin' && process.arch === 'arm64') {
+  test('xtbRuntime resolves staged development darwin-arm64 runtime in workspace', async () => {
+    const stagedXtbManifest = path.join(
+      ROOT,
+      '.local/dependencies/darwin-arm64/conda-chem-arm64/xtb/runtime.json'
+    );
+    assert.equal(
+      fssync.existsSync(stagedXtbManifest),
+      true,
+      `Expected staged darwin-arm64 xTB runtime manifest at ${stagedXtbManifest}`
+    );
     const resolved = await xtbRuntime({
       packaged: false,
       appPath: ROOT
@@ -347,5 +564,5 @@ test('xtbRuntime resolves staged development darwin-arm64 runtime when present i
     assert.equal(resolved.dataDirectory, path.join(resolved.root, 'share/xtb'));
     assert.match(resolved.version, /^\d+\.\d+\.\d+/);
     contract.assertEngineIdentity(resolved.engineIdentity);
-  }
-});
+  });
+}
