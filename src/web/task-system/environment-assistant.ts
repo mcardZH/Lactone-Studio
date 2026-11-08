@@ -72,10 +72,12 @@ export function environmentPathPlaceholder(
 	field: "executable" | "workingRoot" | "privateKeyPath",
 	platform?: string
 ) {
-	if (field === "privateKeyPath")
-		return isMacClientPlatform(platform)
-			? "例如 /Users/your-user/.ssh/id_ed25519"
-			: "例如 C:\\Users\\your-user\\.ssh\\id_ed25519";
+	if (field === "privateKeyPath") {
+		const clientPlatform = detectClientPlatform(platform);
+		if (clientPlatform === "darwin") return "例如 /Users/your-user/.ssh/id_ed25519";
+		if (clientPlatform === "linux") return "例如 /home/your-user/.ssh/id_ed25519";
+		return "例如 C:\\Users\\your-user\\.ssh\\id_ed25519";
+	}
 	if (environment.connectionKind === "local") {
 		if (field === "workingRoot") return "例如 D:\\ES-Tasks";
 		return environment.engineId === "gaussian"

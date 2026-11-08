@@ -10,6 +10,7 @@ import type {
 } from "../../task-system/application-contracts";
 import {
 	calculationTemplateVariables,
+	detectClientPlatform,
 	submitTemplateVariables,
 	environmentConfigurationMarkdown,
 	initializationSnippets,
@@ -127,7 +128,9 @@ export function isValidEnvironmentPath(
 	platform?: string
 ): boolean {
 	const isPosixTarget =
-		key === "privateKeyPath" ? isMacClientPlatform(platform) : connectionKind !== "local";
+		key === "privateKeyPath"
+			? detectClientPlatform(platform) !== "win32"
+			: connectionKind !== "local";
 	return isPosixTarget
 		? value.startsWith("/") && !value.includes("\0")
 		: /^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/.test(value);
@@ -973,26 +976,17 @@ export default function EnvironmentSettings({
 							<select
 								aria-label="环境类型"
 								disabled={!canManage || pending}
-								value={environmentMode(draft)}
+								value={
+									isMacClientPlatform() && draft.connectionKind !== "ssh"
+										? ""
+										: environmentMode(draft)
+								}
 								onChange={(event) => switchMode(event.target.value as EnvironmentMode)}
 							>
-								{!isMacClientPlatform() ? (
+								{!isMacClientPlatform() && (
 									<>
 										<option value="local">Windows 本机</option>
 										<option value="wsl">WSL2</option>
-									</>
-								) : (
-									<>
-										{draft.connectionKind === "local" && (
-											<option value="local" disabled>
-												Windows 本机
-											</option>
-										)}
-										{draft.connectionKind === "wsl" && (
-											<option value="wsl" disabled>
-												WSL2
-											</option>
-										)}
 									</>
 								)}
 								<option value="ssh">SSH服务器</option>
@@ -1000,6 +994,11 @@ export default function EnvironmentSettings({
 							</select>
 						</label>
 					</div>
+					{isMacClientPlatform() && draft.connectionKind !== "ssh" && (
+						<p role="status">
+							当前已加载的环境类型（{draft.connectionKind === "local" ? "Windows 本机" : "WSL2"}）在 macOS 上不受支持，请切换为 SSH服务器 或 SSH + Slurm。
+						</p>
+					)}
 				</section>
 				{draft.connectionKind !== "local" && (
 					<section className="task-env-section">
