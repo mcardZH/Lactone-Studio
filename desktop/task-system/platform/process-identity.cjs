@@ -168,8 +168,7 @@ function createProcessIdentityProvider(options = {}) {
 	const helper = options.helperPath || HELPER;
 	const spawnProcess = options.spawn || spawn;
 	const execFileProcess = options.execFile || execFile;
-	const readFileText = options.readFile || ((file) => fs.readFile(file, "utf8"));
-	function runPosixCommand(file, args) {
+	function runDarwinCommand(file, args) {
 		return new Promise((resolve) => {
 			execFileProcess(
 				file,
@@ -193,42 +192,28 @@ function createProcessIdentityProvider(options = {}) {
 			);
 		});
 	}
-	async function posixHost() {
-		if (platform === "darwin") {
-			const bootUuid = await runPosixCommand("/usr/sbin/sysctl", ["-n", "kern.bootsessionuuid"]);
-			const bootId = bootUuid.ok ? bootUuid.stdout.trim() : "";
-			let hostId = "";
-			const ioreg = await runPosixCommand("/usr/sbin/ioreg", [
-				"-rd1",
-				"-c",
-				"IOPlatformExpertDevice"
-			]);
-			if (ioreg.ok) {
-				const match = ioreg.stdout.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/);
-				if (match) hostId = match[1].trim();
-			}
-			if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
-				return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
-			return { hostId, bootId };
+	async function darwinHost() {
+		const bootUuid = await runDarwinCommand("/usr/sbin/sysctl", ["-n", "kern.bootsessionuuid"]);
+		const bootId = bootUuid.ok ? bootUuid.stdout.trim() : "";
+		let hostId = "";
+		const ioreg = await runDarwinCommand("/usr/sbin/ioreg", [
+			"-rd1",
+			"-c",
+			"IOPlatformExpertDevice"
+		]);
+		if (ioreg.ok) {
+			const match = ioreg.stdout.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/);
+			if (match) hostId = match[1].trim();
 		}
-		if (platform === "linux") {
-			try {
-				const bootId = String(await readFileText("/proc/sys/kernel/random/boot_id")).trim();
-				const hostId = String(await readFileText("/etc/machine-id")).trim();
-				if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
-					return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
-				return { hostId, bootId };
-			} catch {
-				return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
-			}
-		}
-		return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
+		if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
+			return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
+		return { hostId, bootId };
 	}
-	async function posixInspect(pid) {
-		const host = await posixHost();
+	async function darwinInspect(pid) {
+		const host = await darwinHost();
 		if (!host.hostId || !host.bootId)
 			return { status: "unknown", reason: host.reason || "HOST_IDENTITY_UNAVAILABLE" };
-		const commRes = await runPosixCommand("/bin/ps", [
+		const commRes = await runDarwinCommand("/bin/ps", [
 			"-ww",
 			"-p",
 			String(pid),
@@ -246,7 +231,7 @@ function createProcessIdentityProvider(options = {}) {
 		}
 		const commParsed = parsePsLine(commRes.stdout, pid);
 		if (!commParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
-		const argsRes = await runPosixCommand("/bin/ps", [
+		const argsRes = await runDarwinCommand("/bin/ps", [
 			"-ww",
 			"-p",
 			String(pid),
@@ -283,9 +268,9 @@ function createProcessIdentityProvider(options = {}) {
 		};
 	}
 	async function control(request) {
-		if (platform === "darwin" || platform === "linux") {
-			if (request.action === "host") return posixHost();
-			if (request.action === "inspect") return posixInspect(request.pid);
+		if (platform === "darwin") {
+			if (request.action === "host") return darwinHost();
+			if (request.action === "inspect") return darwinInspect(request.pid);
 			return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
 		}
 		if (platform !== "win32") return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };

@@ -233,51 +233,76 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 	assert.equal(waited.reason, "VERIFIED_JOB_REQUIRED");
 });
 
-test("linux provider reads boot_id and machine-id and probes process state", async () => {
+test("win32 provider inspect, probe, exact args matching, and host failure handling", async () => {
+	const EventEmitter = require("node:events");
+	let inspectReply = {
+		status: "alive",
+		pid: 888,
+		startedAt: "2026-11-08T04:00:00.000Z",
+		hostId: "WIN-HOST-1",
+		userId: "S-1-5-21-1000",
+		executableIdentity: "C:\\Program Files\\Ester Studio\\Ester Studio.exe",
+		commandLine: "\"C:\\Program Files\\Ester Studio\\Ester Studio.exe\" two words",
+		bootId: "WIN-BOOT-1",
+		creationFileTime: "134000000000000000",
+		argv: ["C:\\Program Files\\Ester Studio\\Ester Studio.exe", "two", "words"]
+	};
+	let hostReply = { hostId: "WIN-HOST-1", bootId: "WIN-BOOT-1" };
+
 	const provider = createProcessIdentityProvider({
-		platform: "linux",
-		async readFile(file) {
-			if (file === "/proc/sys/kernel/random/boot_id") return "linux-boot-123\n";
-			if (file === "/etc/machine-id") return "linux-host-456\n";
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
-		},
-		execFile(file, args, _opts, cb) {
-			if (file === "/bin/ps" && args[2] === "99") {
-				if (args[4] === "pid=,uid=,lstart=,comm=") {
-					return cb(null, " 99 1000 Sun Nov  8 04:00:00 2026 /usr/bin/node\n", "");
+		platform: "win32",
+		spawn() {
+			const child = new EventEmitter();
+			child.stdout = new EventEmitter();
+			child.stderr = { resume() {} };
+			child.kill = () => {};
+			child.stdin = {
+				on() {},
+				end(payload) {
+					const req = JSON.parse(payload);
+					const reply = req.action === "host" ? hostReply : inspectReply;
+					queueMicrotask(() => {
+						child.stdout.emit("data", Buffer.from(JSON.stringify(reply)));
+						child.emit("close", 0);
+					});
 				}
-				return cb(null, " 99 1000 Sun Nov  8 04:00:00 2026 /usr/bin/node app.js\n", "");
-			}
-			cb(Object.assign(new Error("exit 1"), { code: 1 }), "", "");
+			};
+			return child;
 		}
 	});
-	const identity = await provider.inspect(99);
+
+	const identity = await provider.inspect(888, {
+		executable: "c:\\program files\\ester studio\\ester studio.exe",
+		args: ["two", "words"],
+		instanceId: "win-host:1"
+	});
 	assert.ok(identity);
-	assert.equal(identity.hostId, "linux-host-456");
-	assert.equal(identity.bootId, "linux-boot-123");
+	assert.equal(identity.instanceId, "win-host:1");
+	// Exact argv boundary check: ["two words"] must not match ["two", "words"]
+	assert.equal(await provider.inspect(888, { args: ["two words"] }), null);
 	assert.equal((await provider.probe(identity)).status, "alive");
+
+	// Dead process with valid host reply -> dead
+	inspectReply = { status: "dead" };
+	assert.equal((await provider.probe(identity)).status, "dead");
+
+	// Dead process when host query fails -> unknown (never conflict)
+	hostReply = { status: "unknown", reason: "WINDOWS_IDENTITY_HELPER_FAILED" };
+	const failedHost = await provider.probe(identity);
+	assert.equal(failedHost.status, "unknown");
+	assert.equal(failedHost.reason, "WINDOWS_IDENTITY_HELPER_FAILED");
+
+	// Unsupported platform returns PLATFORM_NOT_IMPLEMENTED
+	const unsupported = createProcessIdentityProvider({ platform: "linux" });
+	assert.equal(await unsupported.inspect(100), null);
+	assert.equal((await unsupported.probe(identity)).reason, "PLATFORM_NOT_IMPLEMENTED");
 });
 
 if (process.platform === "darwin") {
 	test("macOS real process identity, child lifecycle probe, and task host composition smoke test", async () => {
 		const provider = createProcessIdentityProvider();
 		const selfIdentity = await provider.currentIdentity("es-task-host:darwin-smoke");
-		if (!selfIdentity) {
-			// Inside restricted sandboxes (such as Codex review sandbox) where /bin/ps or ioreg is blocked,
-			// currentIdentity returns null rather than fabricating an unverified identity.
-			const restrictedProbe = await provider.probe({
-				pid: process.pid,
-				startedAt: "2026-11-08T04:00:00.000Z",
-				hostId: "sandbox-host",
-				userId: String(process.getuid?.() ?? 501),
-				executableIdentity: process.execPath,
-				commandLine: process.execPath,
-				bootId: "sandbox-boot",
-				creationFileTime: "1794110400000"
-			});
-			assert.equal(restrictedProbe.status, "unknown");
-			return;
-		}
+		assert.ok(selfIdentity);
 		assert.equal(selfIdentity.pid, process.pid);
 		assert.equal(selfIdentity.instanceId, "es-task-host:darwin-smoke");
 		const selfProbe = await provider.probe(selfIdentity);
