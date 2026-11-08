@@ -10,6 +10,32 @@ export const environmentPresets = [
 	{ id: "ssh", name: "SSH 普通后台", fields: { connectionKind: "ssh", schedulerKind: "none" } },
 	{ id: "slurm", name: "SSH + Slurm", fields: { connectionKind: "ssh", schedulerKind: "slurm" } }
 ] as const;
+
+export function detectClientPlatform(explicitPlatform?: string): "darwin" | "win32" | "linux" {
+	const raw =
+		explicitPlatform ??
+		(typeof navigator !== "undefined" && (navigator.platform || navigator.userAgent)
+			? `${navigator.platform || ""} ${navigator.userAgent || ""}`
+			: typeof process !== "undefined" && typeof process.platform === "string"
+				? process.platform
+				: "");
+	const lower = raw.toLowerCase();
+	if (lower.includes("darwin") || lower.includes("mac")) return "darwin";
+	if (lower.includes("win")) return "win32";
+	if (lower.includes("linux")) return "linux";
+	return "win32";
+}
+
+export function isMacClientPlatform(explicitPlatform?: string): boolean {
+	return detectClientPlatform(explicitPlatform) === "darwin";
+}
+
+export function availableEnvironmentPresets(platform?: string) {
+	if (isMacClientPlatform(platform)) {
+		return environmentPresets.filter((preset) => preset.fields.connectionKind === "ssh");
+	}
+	return [...environmentPresets];
+}
 export const environmentHelp: Record<string, string> = {
 	user: "WSL 执行用户是发行版内的账户；请明确填写实际用户。",
 	authentication: "SSH Agent 不需要密码框。私钥文件始终从本机选择，密码与口令只交给凭据入口。",
@@ -43,9 +69,13 @@ export const submitTemplateVariables = [
 /** Examples are display-only; callers never copy them into configuration values. */
 export function environmentPathPlaceholder(
 	environment: Pick<EnvironmentView, "engineId" | "connectionKind">,
-	field: "executable" | "workingRoot" | "privateKeyPath"
+	field: "executable" | "workingRoot" | "privateKeyPath",
+	platform?: string
 ) {
-	if (field === "privateKeyPath") return "例如 C:\\Users\\your-user\\.ssh\\id_ed25519";
+	if (field === "privateKeyPath")
+		return isMacClientPlatform(platform)
+			? "例如 /Users/your-user/.ssh/id_ed25519"
+			: "例如 C:\\Users\\your-user\\.ssh\\id_ed25519";
 	if (environment.connectionKind === "local") {
 		if (field === "workingRoot") return "例如 D:\\ES-Tasks";
 		return environment.engineId === "gaussian"

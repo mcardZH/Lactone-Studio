@@ -13,7 +13,8 @@ import {
 	submitTemplateVariables,
 	environmentConfigurationMarkdown,
 	initializationSnippets,
-	environmentPathPlaceholder
+	environmentPathPlaceholder,
+	isMacClientPlatform
 } from "./environment-assistant";
 import TaskFieldHelp from "./TaskFieldHelp";
 import DialogShell from "../DialogShell";
@@ -49,13 +50,14 @@ export function environmentDraftForMode(
 	mode: EnvironmentMode,
 	engine: EnvironmentView["engineId"],
 	remembered: EnvironmentView | undefined,
-	customName: boolean
+	customName: boolean,
+	platform?: string
 ): EnvironmentView {
 	const connectionKind = mode === "slurm" ? "ssh" : mode;
 	const next = remembered ?? {
 		...(connectionKind === current.connectionKind && engine === current.engineId
 			? current
-			: newEnvironment()),
+			: newEnvironment(platform)),
 		engineId: engine,
 		connectionKind,
 		schedulerKind: mode === "slurm" ? "slurm" : "none"
@@ -89,13 +91,14 @@ export interface EnvironmentSettingsProps {
 	onChanged(): void | Promise<void>;
 	onClose(): void;
 }
-export function newEnvironment(): EnvironmentView {
+export function newEnvironment(platform?: string): EnvironmentView {
+	const mac = isMacClientPlatform(platform);
 	return {
 		environmentId: "",
 		revision: 0,
-		displayName: "Gaussian · Windows 本机",
+		displayName: mac ? "Gaussian · SSH服务器" : "Gaussian · Windows 本机",
 		engineId: "gaussian",
-		connectionKind: "local",
+		connectionKind: mac ? "ssh" : "local",
 		schedulerKind: "none",
 		host: "",
 		port: 22,
@@ -117,6 +120,18 @@ export function newEnvironment(): EnvironmentView {
 	};
 }
 /** Compatibility projection for historical callers; new forms have no external scratch control. */
+export function isValidEnvironmentPath(
+	key: PathField,
+	value: string,
+	connectionKind: EnvironmentView["connectionKind"],
+	platform?: string
+): boolean {
+	const isPosixTarget =
+		key === "privateKeyPath" ? isMacClientPlatform(platform) : connectionKind !== "local";
+	return isPosixTarget
+		? value.startsWith("/") && !value.includes("\0")
+		: /^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/.test(value);
+}
 export function environmentScratchState(
 	draft: Pick<EnvironmentView, "engineId" | "connectionKind" | "scratchRoot">
 ) {
@@ -248,9 +263,7 @@ export default function EnvironmentSettings({
 		siteDraftDirty;
 	const validPort = /^\d+$/.test(port) && Number(port) >= 1 && Number(port) <= 65535;
 	function validPath(key: PathField, value: string) {
-		return key !== "privateKeyPath" && draft.connectionKind !== "local"
-			? value.startsWith("/")
-			: /^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/.test(value);
+		return isValidEnvironmentPath(key, value, draft.connectionKind);
 	}
 	function invalid(key: TextField | "port") {
 		if (key === "port") return !validPort;
@@ -273,6 +286,7 @@ export default function EnvironmentSettings({
 		);
 	}
 	const valid =
+		(!isMacClientPlatform() || draft.connectionKind === "ssh") &&
 		!invalid("displayName") &&
 		!invalid("executable") &&
 		!invalid("workingRoot") &&
@@ -766,6 +780,7 @@ export default function EnvironmentSettings({
 											disabled={
 												!canManage ||
 												pending ||
+												(isMacClientPlatform() && draft.connectionKind !== "ssh") ||
 												!siteName.trim() ||
 												!draft.workingRoot ||
 												(draft.connectionKind !== "local" && !draft.user) ||
@@ -961,8 +976,25 @@ export default function EnvironmentSettings({
 								value={environmentMode(draft)}
 								onChange={(event) => switchMode(event.target.value as EnvironmentMode)}
 							>
-								<option value="local">Windows 本机</option>
-								<option value="wsl">WSL2</option>
+								{!isMacClientPlatform() ? (
+									<>
+										<option value="local">Windows 本机</option>
+										<option value="wsl">WSL2</option>
+									</>
+								) : (
+									<>
+										{draft.connectionKind === "local" && (
+											<option value="local" disabled>
+												Windows 本机
+											</option>
+										)}
+										{draft.connectionKind === "wsl" && (
+											<option value="wsl" disabled>
+												WSL2
+											</option>
+										)}
+									</>
+								)}
 								<option value="ssh">SSH服务器</option>
 								<option value="slurm">SSH + Slurm</option>
 							</select>

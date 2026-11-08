@@ -39,17 +39,18 @@ const FIELDS = [
 	"siteRevision",
 	"check"
 ];
-function sanitizeEnvironment(input, { allowDraft = false } = {}) {
+function sanitizeEnvironment(input, { allowDraft = false, platform = process.platform } = {}) {
 	const value = Object.fromEntries(
 		FIELDS.filter((key) => Object.hasOwn(input || {}, key)).map((key) => [key, input[key]])
 	);
+	const allowedConnections = platform === "darwin" ? ["ssh"] : ["local", "wsl", "ssh"];
 	if (
 		typeof value.environmentId !== "string" ||
 		(!value.environmentId && !(allowDraft && value.revision === 0)) ||
 		!Number.isSafeInteger(value.revision) ||
 		value.revision < 0 ||
 		!["gaussian", "orca"].includes(value.engineId) ||
-		!["local", "wsl", "ssh"].includes(value.connectionKind) ||
+		!allowedConnections.includes(value.connectionKind) ||
 		!["none", "slurm"].includes(value.schedulerKind) ||
 		!value.displayName?.trim() ||
 		!value.executable ||
@@ -75,10 +76,11 @@ function sanitizeEnvironment(input, { allowDraft = false } = {}) {
 		(value.scratchRoot && !targetPath.isAbsolute(value.scratchRoot))
 	)
 		throw fail("ENVIRONMENT_PATH_DOMAIN_INVALID");
+	const localPath = platform === "win32" ? path.win32 : path.posix;
 	if (
 		value.connectionKind === "ssh" &&
 		value.authentication === "private-key" &&
-		!path.win32.isAbsolute(value.privateKeyPath || "")
+		!localPath.isAbsolute(value.privateKeyPath || "")
 	)
 		throw fail("PRIVATE_KEY_LOCAL_PATH_REQUIRED");
 	if (

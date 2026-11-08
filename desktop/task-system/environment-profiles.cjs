@@ -17,17 +17,18 @@ const SITE_FIELDS = Object.freeze([
 	"authentication",
 	"privateKeyPath"
 ]);
-function sanitizeSiteProfile(input, { allowDraft = false } = {}) {
+function sanitizeSiteProfile(input, { allowDraft = false, platform = process.platform } = {}) {
 	const site = Object.fromEntries(
 		["siteId", "revision", "displayName", ...SITE_FIELDS].map((key) => [key, input?.[key]])
 	);
+	const allowedConnections = platform === "darwin" ? ["ssh"] : ["local", "wsl", "ssh"];
 	if (
 		typeof site.siteId !== "string" ||
 		(!site.siteId && !(allowDraft && site.revision === 0)) ||
 		!Number.isSafeInteger(site.revision) ||
 		site.revision < 0 ||
 		!site.displayName?.trim() ||
-		!["local", "wsl", "ssh"].includes(site.connectionKind) ||
+		!allowedConnections.includes(site.connectionKind) ||
 		!["none", "slurm"].includes(site.schedulerKind) ||
 		!["agent", "password", "private-key"].includes(site.authentication) ||
 		!site.workingRoot?.trim()
@@ -53,8 +54,8 @@ function sanitizeSiteProfile(input, { allowDraft = false } = {}) {
 		throw fail("ENVIRONMENT_PATH_DOMAIN_INVALID");
 	return site;
 }
-function flattenEnvironmentSite(environment, profile) {
-	const site = sanitizeSiteProfile(profile);
+function flattenEnvironmentSite(environment, profile, options) {
+	const site = sanitizeSiteProfile(profile, options);
 	return {
 		...environment,
 		...Object.fromEntries(SITE_FIELDS.map((key) => [key, site[key]])),
