@@ -81,6 +81,7 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 			4242,
 			{
 				uid: "501",
+				state: "S",
 				lstart: "Sun Nov  8 04:00:00 2026",
 				comm: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio",
 				args: "/Applications/Ester Studio.app/Contents/MacOS/Ester Studio /workspace"
@@ -89,6 +90,7 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 	]);
 	let psFailure = null;
 	let mutateSecondPs = false;
+	let zombieOnSecondPs = false;
 
 	const provider = createProcessIdentityProvider({
 		platform: "darwin",
@@ -108,12 +110,14 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 					return cb(err, "", "");
 				}
 				const format = args[4];
-				if (format === "pid=,uid=,lstart=,comm=") {
-					return cb(null, ` ${pid} ${proc.uid} ${proc.lstart} ${proc.comm}\n`, "");
+				if (format === "pid=,uid=,state=,lstart=,comm=") {
+					return cb(null, ` ${pid} ${proc.uid} ${proc.state} ${proc.lstart} ${proc.comm}\n`, "");
 				}
-				if (format === "pid=,uid=,lstart=,args=") {
+				if (format === "pid=,uid=,state=,lstart=,args=") {
 					const lstart = mutateSecondPs ? "Sun Nov  8 04:00:01 2026" : proc.lstart;
-					return cb(null, ` ${pid} ${proc.uid} ${lstart} ${proc.args}\n`, "");
+					const state = zombieOnSecondPs ? "Z+" : proc.state;
+					const cmdArgs = zombieOnSecondPs ? "<defunct>" : proc.args;
+					return cb(null, ` ${pid} ${proc.uid} ${state} ${lstart} ${cmdArgs}\n`, "");
 				}
 			}
 			cb(Object.assign(new Error("unexpected command"), { code: "ENOENT" }), "", "");
@@ -157,9 +161,10 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 	assert.equal(raced.reason, "PROCESS_IDENTITY_CHANGED");
 	mutateSecondPs = false;
 
-	// PID reused by another process -> conflict
+	// PID reused by another process on the same host/boot -> PROCESS_IDENTITY_MISMATCH
 	processes.set(4242, {
 		uid: "501",
+		state: "R",
 		lstart: "Sun Nov  8 04:05:00 2026",
 		comm: "/usr/bin/python3",
 		args: "/usr/bin/python3 script.py"
@@ -167,6 +172,37 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 	const reused = await provider.probe(identity);
 	assert.equal(reused.status, "conflict");
 	assert.equal(reused.reason, "PROCESS_IDENTITY_MISMATCH");
+
+	// PID occupied by a live process after reboot or on another host -> HOST_OR_BOOT_MISMATCH
+	bootUuid = "BOOT-UUID-AFTER-REBOOT";
+	const reusedAfterReboot = await provider.probe(identity);
+	assert.equal(reusedAfterReboot.status, "conflict");
+	assert.equal(reusedAfterReboot.reason, "HOST_OR_BOOT_MISMATCH");
+	bootUuid = "BOOT-UUID-1111";
+
+	hostUuid = "HOST-UUID-OTHER";
+	const reusedOnOtherHost = await provider.probe(identity);
+	assert.equal(reusedOnOtherHost.status, "conflict");
+	assert.equal(reusedOnOtherHost.reason, "HOST_OR_BOOT_MISMATCH");
+	hostUuid = "HOST-UUID-2222";
+
+	// Process transitions to zombie (Z) between first and second ps query -> treated as dead
+	zombieOnSecondPs = true;
+	const zombieTransition = await provider.probe(identity);
+	assert.equal(zombieTransition.status, "dead");
+	zombieOnSecondPs = false;
+
+	// Process is a zombie (Z / <defunct>) on first ps query -> inspect returns null, probe returns dead
+	processes.set(4242, {
+		uid: "501",
+		state: "Z",
+		lstart: "Sun Nov  8 04:00:00 2026",
+		comm: "<defunct>",
+		args: "<defunct>"
+	});
+	assert.equal(await provider.inspect(4242), null);
+	const zombieProbe = await provider.probe(identity);
+	assert.equal(zombieProbe.status, "dead");
 
 	// Process exited on same host and boot -> dead
 	processes.delete(4242);

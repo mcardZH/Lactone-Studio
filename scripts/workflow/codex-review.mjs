@@ -11,12 +11,7 @@ export const REQUIRED_REVIEW_MODEL = 'gpt-6.1-terra';
 export const MAX_REVIEW_ATTEMPTS = 3;
 
 function git(args, cwd = ROOT) {
-  return execFileSync('git', args, {
-    cwd,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }).trim();
+  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
 function getGitDir(cwd = ROOT) {
@@ -91,8 +86,7 @@ export function buildReviewPrompt({ branch, activeTaskContent, changedFilesSumma
     '0. 严格范围边界（核心铁律，严禁无限扩大范围）：',
     '   - 你的审查必须严格聚焦于“本分支变更文件清单”与“详细代码 DIFF (相对于 main)”中实际修改的部分；',
     `   - 必须严格尊重 ${ACTIVE_TASK_FILE_NAME} 中声明的“非目标边界 (Out of Scope)”与分阶段拆分计划，绝不允许因为本分支未修改的其他模块、后续分支才实现的宿主集成功能、或脱离真实运行环境的极端假设（如假设攻击者已控制本机内核或任意伪造操作系统盘符）而判定 FAIL 或提出越界要求；`,
-    '   - 在多轮复核修复中，仅验证本分支 Diff 的实际缺陷是否已修复，严禁顺着修复代码不断衍生新的外延假设或无限扩大审查范围；',
-    '   - 请直接通过静态代码审查与运行仓库现有 `node --test` 单元测试验证实现（外部宿主已在调用你前完整执行并通过全部 `npm test` 单元测试，若 `codex exec` 受限沙箱拦截 `sysctl`/`ioreg` 等系统调用，请勿将沙箱自身的权限限制视为代码缺陷），不要在命令行中构造或执行伪造进程/杀进程等实时渗透脚本（避免触发云端 API 安全分类器误报导致复核中断）。',
+    '   - 在多轮复核修复中，仅验证本分支 Diff 的实际缺陷是否已修复，严禁顺着修复代码不断衍生新的外延假设或无限扩大审查范围。',
     `1. 需求与意图符合度：比对 ${ACTIVE_TASK_FILE_NAME} 中记录的核心功能需求与用户确认记录，检查本分支修改代码是否忠实实现、有无遗漏，是否存在超出范围的无关变更。`,
     '2. 代码质量与健壮性：检查本分支修改代码是否存在实质性逻辑缺陷、未捕获异常、边界处理不全、内存泄漏或安全性隐患。',
     '3. 跨平台兼容性：本项目为 macOS (Apple Silicon/Intel) 及跨平台桌面端应用，检查本分支修改代码是否包含未经跨平台抽象的 Windows 专属硬编码路径或命令（除非存在明确的分支防御）。',
@@ -198,7 +192,20 @@ export function runCodexReview({ cwd = ROOT, env = process.env } = {}) {
   const mockVerdict = env.MOCK_CODEX_VERDICT;
   const mockBin = env.MOCK_CODEX_BIN;
 
-  if (mockVerdict && !mockBin) {
+  if (mockBin) {
+    const tmpOut = join(getGitDir(cwd), `review-${Date.now()}.json`);
+    const proc = spawnSync('node', [mockBin, '-o', tmpOut, prompt], {
+      cwd,
+      env,
+      encoding: 'utf8',
+    });
+    if (existsSync(tmpOut)) {
+      try {
+        reviewPayload = JSON.parse(readFileSync(tmpOut, 'utf8'));
+      } catch {}
+      try { unlinkSync(tmpOut); } catch {}
+    }
+  } else if (mockVerdict) {
     reviewPayload = {
       verdict: mockVerdict,
       summary: mockVerdict === 'PASS' ? '代码实现完整契合 ACTIVE_TASK.md，测试覆盖充分。' : '发现代码逻辑缺陷。',
@@ -210,23 +217,15 @@ export function runCodexReview({ cwd = ROOT, env = process.env } = {}) {
       ],
     };
   } else {
-    // Real codex invocation (or mockBin sharing the exact same execFileSync + stdin code path)
-    const tmpOut = join(getGitDir(cwd), `review-${Date.now()}.json`);
-    const codexFile = mockBin ? process.execPath : 'codex';
-    const codexArgs = mockBin
-      ? [mockBin, 'exec', '-s', 'danger-full-access', '-m', REQUIRED_REVIEW_MODEL, '-o', tmpOut, '-']
-      : ['exec', '-s', 'danger-full-access', '-m', REQUIRED_REVIEW_MODEL, '-o', tmpOut, '-'];
+    // Real codex invocation
     try {
-      const execResult = execFileSync(codexFile, codexArgs, {
-        cwd,
-        env,
-        input: prompt,
-        encoding: 'utf8',
-        maxBuffer: 64 * 1024 * 1024,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-      const rawOutput = existsSync(tmpOut) ? readFileSync(tmpOut, 'utf8') : execResult;
-      const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
+      const execResult = execFileSync(
+        'codex',
+        ['exec', '-m', REQUIRED_REVIEW_MODEL, prompt],
+        { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      // Extract json block from output
+      const jsonMatch = execResult.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         reviewPayload = JSON.parse(jsonMatch[0]);
       }
@@ -236,10 +235,6 @@ export function runCodexReview({ cwd = ROOT, env = process.env } = {}) {
         error: 'CODEX_EXEC_FAILED',
         message: `Codex 复核执行失败: ${err.message}`,
       };
-    } finally {
-      if (existsSync(tmpOut)) {
-        try { unlinkSync(tmpOut); } catch {}
-      }
     }
   }
 
@@ -318,9 +313,6 @@ export function runCodexReview({ cwd = ROOT, env = process.env } = {}) {
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const result = runCodexReview();
   if (!result.ok) {
-    if (result.message) {
-      console.error(`[codex-review] ❌ ${result.message}`);
-    }
     process.exit(1);
   }
 }

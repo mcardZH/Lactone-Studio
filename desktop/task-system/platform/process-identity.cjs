@@ -144,19 +144,24 @@ function parsePsLine(raw, expectedPid) {
 		.filter(Boolean);
 	if (lines.length !== 1) return null;
 	const match = lines[0].match(
-		/^(\d+)\s+(\d+)\s+([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d+\s+\d{2}:\d{2}:\d{2}\s+\d{4})\s+(.+)$/
+		/^(\d+)\s+(\d+)\s+(\S+)\s+([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d+\s+\d{2}:\d{2}:\d{2}\s+\d{4})\s*(.*)$/
 	);
 	if (!match) return null;
 	const pid = Number(match[1]),
 		userId = match[2],
-		lstart = match[3],
-		value = match[4].trim();
-	if (pid !== expectedPid || !value) return null;
+		state = match[3],
+		lstart = match[4],
+		value = match[5].trim();
+	if (pid !== expectedPid) return null;
+	if (state.startsWith("Z")) return { pid, userId, state, zombie: true };
+	if (!value) return null;
 	const startedMs = Date.parse(`${lstart} UTC`);
 	if (!Number.isFinite(startedMs)) return null;
 	return {
 		pid,
 		userId,
+		state,
+		zombie: false,
 		lstart,
 		startedAt: new Date(startedMs).toISOString(),
 		creationFileTime: String(startedMs),
@@ -218,7 +223,7 @@ function createProcessIdentityProvider(options = {}) {
 			"-p",
 			String(pid),
 			"-o",
-			"pid=,uid=,lstart=,comm="
+			"pid=,uid=,state=,lstart=,comm="
 		]);
 		if (!commRes.ok) {
 			return commRes.code === 1 &&
@@ -231,12 +236,13 @@ function createProcessIdentityProvider(options = {}) {
 		}
 		const commParsed = parsePsLine(commRes.stdout, pid);
 		if (!commParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
+		if (commParsed.zombie) return { status: "dead" };
 		const argsRes = await runDarwinCommand("/bin/ps", [
 			"-ww",
 			"-p",
 			String(pid),
 			"-o",
-			"pid=,uid=,lstart=,args="
+			"pid=,uid=,state=,lstart=,args="
 		]);
 		if (!argsRes.ok) {
 			return argsRes.code === 1 &&
@@ -249,6 +255,7 @@ function createProcessIdentityProvider(options = {}) {
 		}
 		const argsParsed = parsePsLine(argsRes.stdout, pid);
 		if (!argsParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
+		if (argsParsed.zombie) return { status: "dead" };
 		if (
 			commParsed.pid !== argsParsed.pid ||
 			commParsed.userId !== argsParsed.userId ||
@@ -490,6 +497,8 @@ function createProcessIdentityProvider(options = {}) {
 		}
 		if (actual.status !== "alive")
 			return { status: "unknown", reason: actual.reason || "PROCESS_UNREADABLE" };
+		if (actual.hostId !== identity.hostId || actual.bootId !== identity.bootId)
+			return { status: "conflict", reason: "HOST_OR_BOOT_MISMATCH", identity: actual };
 		return identityMatches(identity, actual)
 			? { status: "alive", identity: { ...actual, instanceId: identity.instanceId } }
 			: { status: "conflict", reason: "PROCESS_IDENTITY_MISMATCH", identity: actual };
