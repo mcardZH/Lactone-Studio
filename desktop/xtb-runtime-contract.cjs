@@ -4,7 +4,36 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const assert = require('node:assert/strict');
 const SHA = /^[a-f0-9]{64}$/;
-const REQUIRED = Object.freeze(['bin/xtb.exe', 'share/xtb/param_gfn0-xtb.txt', 'share/xtb/param_gfn1-xtb.txt', 'share/xtb/param_gfn2-xtb.txt', 'share/xtb/.param_gfnff.xtb']);
+const REQUIRED_PARAMETERS = Object.freeze([
+  'share/xtb/param_gfn0-xtb.txt',
+  'share/xtb/param_gfn1-xtb.txt',
+  'share/xtb/param_gfn2-xtb.txt',
+  'share/xtb/.param_gfnff.xtb'
+]);
+const REQUIRED = Object.freeze(['bin/xtb.exe', ...REQUIRED_PARAMETERS]);
+const WIN32_V1_LIBRARIES = Object.freeze(['bin/libiomp5md.dll', 'bin/vcruntime140.dll']);
+const DARWIN_V1_LIBRARIES = Object.freeze([
+  'lib/libblas.3.dylib',
+  'lib/libgcc_s.1.1.dylib',
+  'lib/libgfortran.5.dylib',
+  'lib/liblapack.3.dylib',
+  'lib/libomp.dylib',
+  'lib/libopenblas.0.dylib',
+  'lib/libquadmath.0.dylib'
+]);
+function entryForPlatform(platform = 'win32-x64') {
+  if (platform === 'win32-x64') return 'bin/xtb.exe';
+  if (platform === 'darwin-arm64' || platform === 'darwin-x64') return 'bin/xtb';
+  assert.fail('XTB_RUNTIME_INVALID: descriptor identity');
+}
+function requiredMembersForPlatform(platform = 'win32-x64') {
+  return Object.freeze([entryForPlatform(platform), ...REQUIRED_PARAMETERS]);
+}
+function contentRootsForPlatform(platform = 'win32-x64') {
+  if (platform === 'win32-x64') return Object.freeze(['bin', 'share/xtb']);
+  if (platform === 'darwin-arm64' || platform === 'darwin-x64') return Object.freeze(['bin', 'lib', 'share/xtb']);
+  assert.fail('XTB_RUNTIME_INVALID: descriptor identity');
+}
 const hashes = new Map();
 function canonical(value) {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -91,8 +120,15 @@ function engineIdentity(record, rows, manifestSha256) {
   return { schema: 'sciyue-xtb-engine-identity/v1', engine: 'xtb', kind: record.schema.endsWith('/v1') ? 'legacy-binary-observation' : 'bundled-independent-rebuild', ...payload, sha256: digest(payload) };
 }
 function validateDescriptor(record) {
-  assert(['sciyue-xtb-bundled-runtime/v1', 'sciyue-xtb-bundled-runtime/v2'].includes(record.schema) && /^\d+\.\d+\.\d+(?:pre)?$/.test(record.version)
-    && record.platform === 'win32-x64' && record.entry === 'bin/xtb.exe' && record.dataDirectory === 'share/xtb', 'XTB_RUNTIME_INVALID: descriptor identity');
+  assert(
+    Boolean(record) &&
+      ['sciyue-xtb-bundled-runtime/v1', 'sciyue-xtb-bundled-runtime/v2'].includes(record.schema) &&
+      /^\d+\.\d+\.\d+(?:pre)?$/.test(record.version) &&
+      ['win32-x64', 'darwin-arm64', 'darwin-x64'].includes(record.platform) &&
+      record.entry === entryForPlatform(record.platform) &&
+      record.dataDirectory === 'share/xtb',
+    'XTB_RUNTIME_INVALID: descriptor identity'
+  );
   assert(record.scope === 'local-experimental' && record.localUseReady === true && canonical(record.methods) === canonical(['gfn0', 'gfn1', 'gfn2', 'gfnff']), 'XTB_RUNTIME_INCOMPLETE: current methods/readiness required');
   if (record.schema.endsWith('/v2')) {
     assert(/^[a-f0-9]{40}$/.test(record.source?.commit) && SHA.test(record.source?.scientificPinsManifest?.sha256), 'XTB_RUNTIME_INVALID: pinned scientific source required');
@@ -103,4 +139,23 @@ function validateDescriptor(record) {
   }
   return record;
 }
-module.exports = { REQUIRED, canonical, digest, ordinary, fileIdentity, reference, readJson, walk, verifyMemberInventory, validateDescriptor, engineIdentity, assertEngineIdentity };
+module.exports = {
+  REQUIRED,
+  REQUIRED_PARAMETERS,
+  WIN32_V1_LIBRARIES,
+  DARWIN_V1_LIBRARIES,
+  entryForPlatform,
+  requiredMembersForPlatform,
+  contentRootsForPlatform,
+  canonical,
+  digest,
+  ordinary,
+  fileIdentity,
+  reference,
+  readJson,
+  walk,
+  verifyMemberInventory,
+  validateDescriptor,
+  engineIdentity,
+  assertEngineIdentity
+};
