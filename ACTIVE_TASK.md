@@ -10,9 +10,9 @@
 ## 2. 需求细节与范围边界 (Requirements & Scope)
 - **核心功能点**：
   1. **轻量级 macOS / POSIX 宿主身份采集 (`action: "host"`)**：
-     - 在 `darwin` 下通过 `sysctl -n kern.bootsessionuuid`（回退 `sysctl -n kern.boottime`）获取 `bootId`，通过 `ioreg -rd1 -c IOPlatformExpertDevice` 提取 `IOPlatformUUID`（回退 `sysctl -n kern.uuid`）获取 `hostId`；
-     - 在 `linux` 下读取 `/proc/sys/kernel/random/boot_id` 与 `/etc/machine-id`（或 `/var/lib/dbus/machine-id`）；
-     - 若 `hostId` 或 `bootId` 无法获取，诚实返回 `{ status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" }`，绝不伪造回退值。
+     - 在 `darwin` 下使用单一权威来源：通过 `sysctl -n kern.bootsessionuuid` 获取 `bootId`，通过 `ioreg -rd1 -c IOPlatformExpertDevice` 提取 `IOPlatformUUID` 获取 `hostId`（不混用 `kern.boottime` 或 `kern.uuid` 等异构回退源，防止同一启动会话内因主源偶发失败切换回退源而产生虚假的 `bootId`/`hostId` 不一致）；
+     - 在 `linux` 下使用单一权威来源：读取 `/proc/sys/kernel/random/boot_id` 与 `/etc/machine-id`；
+     - 若 `hostId` 或 `bootId` 无法获取，诚实返回 `{ status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" }`；在 `probe` 收到 `actual.status === "dead"` 后二次核验 `host` 时，若 `host` 读取失败（缺少 `hostId` 或 `bootId`），同样返回 `{ status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" }` 而非误报 `HOST_OR_BOOT_MISMATCH`。
   2. **轻量级 macOS / POSIX 进程身份读取 (`inspect` / `currentIdentity`)**：
      - 通过 `ps -ww -p <pid> -o pid=,uid=,lstart=,comm=` 与 `ps -ww -p <pid> -o pid=,uid=,lstart=,args=`（固定 `LC_ALL=C TZ=UTC`）采集目标 PID 的 `userId`、UTC 启动时间 `startedAt`、`creationFileTime`、`executableIdentity` 与 `commandLine`，并校验两次 `ps` 采样的 `pid`、`uid`、`lstart` 完全一致；
      - 当 `ps` 正常退出且退出码为 `1`（无输出、无错误）时返回 `{ status: "dead" }`；当 `ps` 执行失败、超时或输出异常时返回 `{ status: "unknown" }`；

@@ -173,6 +173,39 @@ test("darwin provider inspect, currentIdentity, and probe handle alive, dead, co
 	const dead = await provider.probe(identity);
 	assert.equal(dead.status, "dead");
 
+	// Process exited (ps returns 1) AND subsequent host query fails -> must return unknown, NOT conflict
+	let failSecondHostRead = false;
+	const providerWithTransientHostFailure = createProcessIdentityProvider({
+		platform: "darwin",
+		execFile(file, args, _opts, cb) {
+			if (file === "/usr/sbin/sysctl" && args[1] === "kern.bootsessionuuid") {
+				if (failSecondHostRead) {
+					failSecondHostRead = false;
+					return cb(Object.assign(new Error("sysctl failed"), { code: 1 }), "", "error");
+				}
+				failSecondHostRead = true;
+				return cb(null, `${bootUuid}\n`, "");
+			}
+			if (file === "/usr/sbin/ioreg") {
+				return cb(null, `    "IOPlatformUUID" = "${hostUuid}"\n`, "");
+			}
+			if (file === "/bin/ps") {
+				return cb(Object.assign(new Error("exit 1"), { code: 1 }), "", "");
+			}
+			cb(Object.assign(new Error("unexpected"), { code: "ENOENT" }), "", "");
+		}
+	});
+	const deadWithHostFailure = await providerWithTransientHostFailure.probe(identity);
+	assert.equal(deadWithHostFailure.status, "unknown");
+	assert.equal(deadWithHostFailure.reason, "HOST_IDENTITY_UNAVAILABLE");
+
+	// Missing primary bootUuid never switches to an incompatible fallback source
+	bootUuid = "";
+	const missingBoot = await provider.probe(identity);
+	assert.equal(missingBoot.status, "unknown");
+	assert.equal(missingBoot.reason, "HOST_IDENTITY_UNAVAILABLE");
+	bootUuid = "BOOT-UUID-1111";
+
 	// Process absent but bootId changed -> conflict (HOST_OR_BOOT_MISMATCH)
 	bootUuid = "BOOT-UUID-NEW";
 	const rebooted = await provider.probe(identity);
@@ -229,7 +262,22 @@ if (process.platform === "darwin") {
 	test("macOS real process identity, child lifecycle probe, and task host composition smoke test", async () => {
 		const provider = createProcessIdentityProvider();
 		const selfIdentity = await provider.currentIdentity("es-task-host:darwin-smoke");
-		assert.ok(selfIdentity);
+		if (!selfIdentity) {
+			// Inside restricted sandboxes (such as Codex review sandbox) where /bin/ps or ioreg is blocked,
+			// currentIdentity returns null rather than fabricating an unverified identity.
+			const restrictedProbe = await provider.probe({
+				pid: process.pid,
+				startedAt: "2026-11-08T04:00:00.000Z",
+				hostId: "sandbox-host",
+				userId: String(process.getuid?.() ?? 501),
+				executableIdentity: process.execPath,
+				commandLine: process.execPath,
+				bootId: "sandbox-boot",
+				creationFileTime: "1794110400000"
+			});
+			assert.equal(restrictedProbe.status, "unknown");
+			return;
+		}
 		assert.equal(selfIdentity.pid, process.pid);
 		assert.equal(selfIdentity.instanceId, "es-task-host:darwin-smoke");
 		const selfProbe = await provider.probe(selfIdentity);

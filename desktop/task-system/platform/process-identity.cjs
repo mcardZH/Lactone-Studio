@@ -195,16 +195,8 @@ function createProcessIdentityProvider(options = {}) {
 	}
 	async function posixHost() {
 		if (platform === "darwin") {
-			let bootId = "";
 			const bootUuid = await runPosixCommand("/usr/sbin/sysctl", ["-n", "kern.bootsessionuuid"]);
-			if (bootUuid.ok) bootId = bootUuid.stdout.trim();
-			if (!bootId) {
-				const bootTime = await runPosixCommand("/usr/sbin/sysctl", ["-n", "kern.boottime"]);
-				if (bootTime.ok) {
-					const match = bootTime.stdout.match(/sec\s*=\s*(\d+)\s*,\s*usec\s*=\s*(\d+)/);
-					bootId = match ? `${match[1]}.${match[2]}` : bootTime.stdout.trim();
-				}
-			}
+			const bootId = bootUuid.ok ? bootUuid.stdout.trim() : "";
 			let hostId = "";
 			const ioreg = await runPosixCommand("/usr/sbin/ioreg", [
 				"-rd1",
@@ -215,10 +207,6 @@ function createProcessIdentityProvider(options = {}) {
 				const match = ioreg.stdout.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/);
 				if (match) hostId = match[1].trim();
 			}
-			if (!hostId) {
-				const kernUuid = await runPosixCommand("/usr/sbin/sysctl", ["-n", "kern.uuid"]);
-				if (kernUuid.ok) hostId = kernUuid.stdout.trim();
-			}
 			if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
 				return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
 			return { hostId, bootId };
@@ -226,12 +214,7 @@ function createProcessIdentityProvider(options = {}) {
 		if (platform === "linux") {
 			try {
 				const bootId = String(await readFileText("/proc/sys/kernel/random/boot_id")).trim();
-				let hostId = "";
-				try {
-					hostId = String(await readFileText("/etc/machine-id")).trim();
-				} catch {
-					hostId = String(await readFileText("/var/lib/dbus/machine-id")).trim();
-				}
+				const hostId = String(await readFileText("/etc/machine-id")).trim();
 				if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
 					return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
 				return { hostId, bootId };
@@ -514,6 +497,8 @@ function createProcessIdentityProvider(options = {}) {
 		const actual = await control({ action: "inspect", pid: identity.pid });
 		if (actual.status === "dead") {
 			const host = await control({ action: "host" });
+			if (!host?.hostId || !host?.bootId)
+				return { status: "unknown", reason: host?.reason || "HOST_IDENTITY_UNAVAILABLE" };
 			return host.hostId === identity.hostId && host.bootId === identity.bootId
 				? { status: "dead", identity }
 				: { status: "conflict", reason: "HOST_OR_BOOT_MISMATCH" };
