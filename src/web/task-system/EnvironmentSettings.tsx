@@ -383,7 +383,7 @@ export default function EnvironmentSettings({
 		};
 		submitDraft.current = value.submitCommandTemplate || "";
 		nameEdited.current =
-			Boolean(value.environmentId) || !isDefaultEnvironmentDisplayName(value.displayName);
+			!saved || Boolean(value.environmentId) || !isDefaultEnvironmentDisplayName(value.displayName);
 		errors.clear();
 	}
 	function guard(action: () => void) {

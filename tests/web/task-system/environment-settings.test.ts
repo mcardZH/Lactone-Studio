@@ -209,7 +209,7 @@ describe("task-system macOS and Windows environment settings helpers", () => {
 		expect(isValidEnvironmentPath("workingRoot", "D:\\ES-Tasks", "ssh", "darwin")).toBe(false);
 	});
 
-	it("EnvironmentSettings on macOS renders only ssh/slurm visible options and supports switching legacy local/wsl drafts directly to ssh", () => {
+	it("EnvironmentSettings on macOS renders only ssh/slurm visible options and supports switching legacy local/wsl drafts directly to ssh", async () => {
 		vi.stubGlobal("navigator", { platform: "MacIntel", userAgent: "Macintosh" });
 		try {
 			// 1. New draft on macOS
@@ -304,7 +304,7 @@ describe("task-system macOS and Windows environment settings helpers", () => {
 				expect(hostInputAfter).not.toBeNull();
 			}
 
-			// 3. Windows client renders all 4 options
+			// 3. Windows client renders all 4 options and preserves imported draft displayName across mode switches
 			vi.stubGlobal("navigator", { platform: "Win32", userAgent: "Windows NT 10.0" });
 			const winHtml = renderToStaticMarkup(
 				createElement(EnvironmentSettings, {
@@ -321,6 +321,68 @@ describe("task-system macOS and Windows environment settings helpers", () => {
 				"ssh",
 				"slurm"
 			]);
+
+			const importedPreview = {
+				environment: {
+					...newEnvironment("win32"),
+					displayName: "Gaussian · SSH服务器",
+					connectionKind: "ssh" as const,
+					schedulerKind: "none" as const,
+					host: "cluster.example.org",
+					user: "alice",
+					executable: "/opt/gaussian/g16/g16",
+					workingRoot: "/home/alice/es-tasks"
+				},
+				changes: [{ field: "displayName" as const, value: "Gaussian · SSH服务器" }],
+				preserved: { envelopeExtensions: {}, environmentExtensions: {} },
+				requiredCapabilities: []
+			};
+			const importBridge: TaskSystemBridge = {
+				request: vi.fn(async (cmd: string) =>
+					cmd === "environment.import-preview" ? importedPreview : { siteProfiles: [] }
+				) as unknown as TaskSystemBridge["request"],
+				subscribe: vi.fn(() => () => {})
+			};
+			const winHarness = createInteractiveEnvironmentHarness({
+				bridge: importBridge,
+				environments: [],
+				canManage: true,
+				onChanged: () => {},
+				onClose: () => {}
+			});
+			const initialWinTree = winHarness.render();
+			const openImportBtn = findElement(
+				initialWinTree,
+				(el) => el.type === "button" && el.props.children === "导入"
+			);
+			(openImportBtn?.props.onClick as () => void)();
+			const importOpenTree = winHarness.render();
+			const chooseFileBtn = findElement(
+				importOpenTree,
+				(el) => el.type === "button" && el.props.children === "选择文件"
+			);
+			(chooseFileBtn?.props.onClick as () => void)();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const previewReadyTree = winHarness.render();
+			const applyImportBtn = findElement(
+				previewReadyTree,
+				(el) => el.type === "button" && el.props.children === "应用到新草稿"
+			);
+			(applyImportBtn?.props.onClick as () => void)();
+			const appliedTree = winHarness.render();
+			const modeSelect = findElement(
+				appliedTree,
+				(el) => el.type === "select" && el.props["aria-label"] === "环境类型"
+			);
+			(modeSelect?.props.onChange as (event: { target: { value: string } }) => void)({
+				target: { value: "slurm" }
+			});
+			const afterSlurmSwitch = winHarness.render();
+			const nameInputAfterSlurm = findElement(
+				afterSlurmSwitch,
+				(el) => el.type === "input" && el.props["aria-label"] === "环境名称"
+			);
+			expect(nameInputAfterSlurm?.props.value).toBe("Gaussian · SSH服务器");
 		} finally {
 			vi.unstubAllGlobals();
 		}
