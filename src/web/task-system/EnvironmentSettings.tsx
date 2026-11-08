@@ -39,6 +39,19 @@ const siteKeys = [
 ] as const;
 type PathField = "executable" | "workingRoot" | "privateKeyPath";
 export type EnvironmentMode = "local" | "wsl" | "ssh" | "slurm";
+const DEFAULT_MODE_LABELS: Record<EnvironmentMode, string> = {
+	local: "Windows 本机",
+	wsl: "WSL2",
+	ssh: "SSH服务器",
+	slurm: "SSH + Slurm"
+};
+export function isDefaultEnvironmentDisplayName(displayName: string): boolean {
+	return ["Gaussian", "ORCA"].some((engineLabel) =>
+		Object.values(DEFAULT_MODE_LABELS).some(
+			(modeLabel) => displayName === `${engineLabel} · ${modeLabel}`
+		)
+	);
+}
 export function environmentMode(
 	value: Pick<EnvironmentView, "connectionKind" | "schedulerKind">
 ): EnvironmentMode {
@@ -237,7 +250,7 @@ export default function EnvironmentSettings({
 		mounted = useRef(true),
 		busy = useRef(false),
 		nameEdited = useRef(
-			Boolean(initial.environmentId) || initial.displayName !== newEnvironment().displayName
+			Boolean(initial.environmentId) || !isDefaultEnvironmentDisplayName(initial.displayName)
 		);
 	const errors = useTaskErrorScope(`environment:${draft.environmentId || "new"}`);
 	useEffect(() => {
@@ -370,7 +383,7 @@ export default function EnvironmentSettings({
 		};
 		submitDraft.current = value.submitCommandTemplate || "";
 		nameEdited.current =
-			!saved || Boolean(value.environmentId) || value.displayName !== newEnvironment().displayName;
+			Boolean(value.environmentId) || !isDefaultEnvironmentDisplayName(value.displayName);
 		errors.clear();
 	}
 	function guard(action: () => void) {
@@ -983,6 +996,11 @@ export default function EnvironmentSettings({
 								}
 								onChange={(event) => switchMode(event.target.value as EnvironmentMode)}
 							>
+								{isMacClientPlatform() && draft.connectionKind !== "ssh" && (
+									<option value="" disabled hidden>
+										请选择远程环境
+									</option>
+								)}
 								{!isMacClientPlatform() && (
 									<>
 										<option value="local">Windows 本机</option>
@@ -1000,7 +1018,8 @@ export default function EnvironmentSettings({
 						</p>
 					)}
 				</section>
-				{draft.connectionKind !== "local" && (
+				{draft.connectionKind !== "local" &&
+					(!isMacClientPlatform() || draft.connectionKind === "ssh") && (
 					<section className="task-env-section">
 						<h3>连接设置</h3>
 						{draft.connectionKind === "wsl" ? (
