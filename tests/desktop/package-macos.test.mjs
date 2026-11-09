@@ -369,12 +369,33 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     const xtbPrefix = '.local/dependencies/darwin-x64/conda-chem-arm64/xtb';
     writeText(repoRoot, `${tcPrefix}/bin/python3`, '#!/bin/sh\necho "{}"\n', 0o755);
     writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/rdkit/__init__.py`, '');
+    writeText(
+      repoRoot,
+      `${xtbPrefix}/runtime.json`,
+      JSON.stringify({
+        schema: 'sciyue-xtb-bundled-runtime/v1',
+        version: '6.7.1',
+        platform: 'darwin-x64',
+        scope: 'local-experimental',
+        localUseReady: true,
+        publicRedistributionReviewed: false,
+        distributionLicenseReady: false,
+        entry: 'bin/xtb',
+        dataDirectory: 'share/xtb',
+        methods: ['gfn0', 'gfn1', 'gfn2', 'gfnff'],
+      }),
+    );
     writeText(repoRoot, `${xtbPrefix}/bin/xtb`, '#!/bin/sh\necho "xtb version 6.7.1"\n', 0o755);
     for (const dylib of DARWIN_V1_LIBRARIES) {
-      writeText(repoRoot, `${xtbPrefix}/lib/${dylib}`, 'fake-dylib');
+      writeText(repoRoot, `${xtbPrefix}/${dylib}`, 'fake-dylib');
     }
-    for (const param of ['param_gfn0-xtb.txt', 'param_gfn2-xtb.txt', 'param_ipea-xtb.txt']) {
-      writeText(repoRoot, `${xtbPrefix}/share/xtb/${param}`, 'param');
+    for (const param of [
+      'share/xtb/param_gfn0-xtb.txt',
+      'share/xtb/param_gfn1-xtb.txt',
+      'share/xtb/param_gfn2-xtb.txt',
+      'share/xtb/.param_gfnff.xtb',
+    ]) {
+      writeText(repoRoot, `${xtbPrefix}/${param}`, 'param');
     }
 
     const sources = resolveDefaultMacRuntimeSources(repoRoot, 'x64');
@@ -391,6 +412,67 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     });
     assert.equal(fs.existsSync(result.executablePath), true);
     assert.equal(fs.existsSync(result.chemistryEnginePath), true);
+
+    // Empty directories via explicit overrides must fail before deleting existing output
+    const emptyDir = path.join(root, 'empty-dir');
+    fs.mkdirSync(emptyDir, { recursive: true });
+    assert.throws(
+      () =>
+        assembleMacAppBundle({
+          repoRoot,
+          arch: 'x64',
+          outputDir,
+          pythonToolchainRoot: emptyDir,
+          pythonDepsRoot: emptyDir,
+          xtbSourceRoot: emptyDir,
+        }),
+      /Missing required packaging input/,
+    );
+    assert.equal(fs.existsSync(result.executablePath), true);
+
+    // Lock file pointing to missing directory must NOT silently fall back to conda-py312-arm64
+    writeText(
+      repoRoot,
+      'desktop/packaging/native-toolchain.darwin-x64.lock.json',
+      JSON.stringify({
+        schema: 'sciyue-native-toolchain-lock-v1',
+        platform: 'darwin-x64',
+        root: '.local/toolchains/darwin-x64/missing-toolchain',
+      }),
+    );
+    assert.throws(
+      () =>
+        assembleMacAppBundle({
+          repoRoot,
+          arch: 'x64',
+          outputDir,
+        }),
+      /Missing required packaging input \(Python toolchain directory\)/,
+    );
+
+    // Corrupt lock JSON must throw immediately
+    writeText(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json', '{corrupt-json');
+    assert.throws(
+      () => resolveDefaultMacRuntimeSources(repoRoot, 'x64'),
+      /Invalid JSON in toolchain lock/,
+    );
+    fs.rmSync(path.join(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json'));
+
+    // Mach-O binary architecture mismatch (arm64 binary when packaging for x64) must throw
+    const arm64MachO = Buffer.alloc(32);
+    arm64MachO.writeUInt32BE(0xcffaedfe, 0); // MH_MAGIC_64 (LE)
+    arm64MachO.writeInt32LE(0x0100000c, 4); // CPU_TYPE_ARM64
+    fs.writeFileSync(path.join(electronAppPath, 'Contents/MacOS/Electron'), arm64MachO);
+    fs.chmodSync(path.join(electronAppPath, 'Contents/MacOS/Electron'), 0o755);
+    assert.throws(
+      () =>
+        assembleMacAppBundle({
+          repoRoot,
+          arch: 'x64',
+          outputDir,
+        }),
+      /Binary architecture mismatch for Electron executable.*expected darwin-x64, found \[arm64\]/,
+    );
 
     const parsedCli = parseCliArgs([
       '--skip-build',

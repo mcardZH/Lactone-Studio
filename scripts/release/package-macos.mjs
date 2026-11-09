@@ -158,27 +158,123 @@ export function buildChemistryEngineLauncherScript() {
   ].join('\n');
 }
 
-function readJsonIfExists(filePath) {
+const DARWIN_XTB_LIBRARIES = [
+  'lib/libblas.3.dylib',
+  'lib/libgcc_s.1.1.dylib',
+  'lib/libgfortran.5.dylib',
+  'lib/liblapack.3.dylib',
+  'lib/libomp.dylib',
+  'lib/libopenblas.0.dylib',
+  'lib/libquadmath.0.dylib',
+];
+
+const DARWIN_XTB_PARAMETERS = [
+  'share/xtb/param_gfn0-xtb.txt',
+  'share/xtb/param_gfn1-xtb.txt',
+  'share/xtb/param_gfn2-xtb.txt',
+  'share/xtb/.param_gfnff.xtb',
+];
+
+function cputypeToArch(cputype) {
+  if (cputype === 0x0100000c) return 'arm64';
+  if (cputype === 0x01000007) return 'x64';
+  return `unknown(0x${(cputype >>> 0).toString(16)})`;
+}
+
+export function detectMachOArchitectures(filePath) {
+  const resolved = fs.realpathSync(filePath);
+  const fd = fs.openSync(resolved, 'r');
   try {
-    if (!fs.existsSync(filePath)) return null;
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
+    const buf = Buffer.alloc(512);
+    const bytesRead = fs.readSync(fd, buf, 0, buf.length, 0);
+    if (bytesRead < 8) return null;
+    const magic = buf.readUInt32BE(0);
+    if (magic === 0xcffaedfe || magic === 0xcefaedfe) {
+      return [cputypeToArch(buf.readInt32LE(4))];
+    }
+    if (magic === 0xfeedfacf || magic === 0xfeedface) {
+      return [cputypeToArch(buf.readInt32BE(4))];
+    }
+    if (magic === 0xcafebabe) {
+      const nfat = buf.readUInt32BE(4);
+      if (nfat > 0 && nfat <= 16 && bytesRead >= 8 + nfat * 20) {
+        const archs = [];
+        for (let i = 0; i < nfat; i += 1) {
+          archs.push(cputypeToArch(buf.readInt32BE(8 + i * 20)));
+        }
+        return archs;
+      }
+    }
+    if (magic === 0xbebafeca) {
+      const nfat = buf.readUInt32LE(4);
+      if (nfat > 0 && nfat <= 16 && bytesRead >= 8 + nfat * 20) {
+        const archs = [];
+        for (let i = 0; i < nfat; i += 1) {
+          archs.push(cputypeToArch(buf.readInt32LE(8 + i * 20)));
+        }
+        return archs;
+      }
+    }
     return null;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function validateExecutableFile(filePath, expectedArch, label) {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Missing required packaging input (${label}): ${filePath}`);
+  }
+  const stat = fs.statSync(filePath);
+  if (!stat.isFile()) {
+    throw new Error(`Invalid packaging input (${label} is not a file): ${filePath}`);
+  }
+  if (process.platform !== 'win32' && (stat.mode & 0o111) === 0) {
+    throw new Error(`Invalid packaging input (${label} is not executable): ${filePath}`);
+  }
+  const archs = detectMachOArchitectures(filePath);
+  if (archs !== null && !archs.includes(expectedArch)) {
+    throw new Error(
+      `Binary architecture mismatch for ${label} (${filePath}): expected darwin-${expectedArch}, found [${archs.join(', ')}]`,
+    );
+  }
+}
+
+function readJsonStrictIfExists(filePath, label) {
+  if (!fs.existsSync(filePath)) return null;
+  let raw;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    throw new Error(`Failed to read ${label} (${filePath}): ${error.message}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Invalid JSON in ${label} (${filePath}): ${error.message}`);
   }
 }
 
 export function resolveDefaultMacRuntimeSources(repoRoot = DEFAULT_REPO_ROOT, arch = process.arch) {
+  if (arch !== 'arm64' && arch !== 'x64') {
+    throw new Error(`Unsupported macOS architecture: ${arch}`);
+  }
   const platformId = `darwin-${arch}`;
-  const profileCandidates = [
-    path.join(repoRoot, `desktop/packaging/native-profile.${platformId}.json`),
-    path.join(repoRoot, 'desktop/packaging/native-profile.json'),
-  ];
+  const explicitProfilePath = path.join(repoRoot, `desktop/packaging/native-profile.${platformId}.json`);
+  const fallbackProfilePath = path.join(repoRoot, 'desktop/packaging/native-profile.json');
+
   let profile = null;
-  for (const candidate of profileCandidates) {
-    const parsed = readJsonIfExists(candidate);
-    if (parsed && parsed.platform === platformId) {
-      profile = parsed;
-      break;
+  if (fs.existsSync(explicitProfilePath)) {
+    profile = readJsonStrictIfExists(explicitProfilePath, `native profile (${platformId})`);
+    if (!profile || profile.platform !== platformId) {
+      throw new Error(
+        `Invalid native profile platform in ${explicitProfilePath}: expected ${platformId}, got ${profile?.platform}`,
+      );
+    }
+  } else if (fs.existsSync(fallbackProfilePath)) {
+    const candidate = readJsonStrictIfExists(fallbackProfilePath, 'native profile');
+    if (candidate?.platform === platformId) {
+      profile = candidate;
     }
   }
 
@@ -189,38 +285,69 @@ export function resolveDefaultMacRuntimeSources(repoRoot = DEFAULT_REPO_ROOT, ar
   const xtbLockRel =
     profile?.xtbLock || `desktop/packaging/xtb-runtime.${platformId}.lock.json`;
 
-  const tcLock = readJsonIfExists(path.join(repoRoot, tcLockRel));
-  const rtLock = readJsonIfExists(path.join(repoRoot, rtLockRel));
-  const xtbLock = readJsonIfExists(path.join(repoRoot, xtbLockRel));
+  const tcLockPath = path.join(repoRoot, tcLockRel);
+  const rtLockPath = path.join(repoRoot, rtLockRel);
+  const xtbLockPath = path.join(repoRoot, xtbLockRel);
 
-  const pickExisting = (candidates) => {
+  if (profile) {
+    for (const [label, lockPath] of [
+      ['toolchain lock', tcLockPath],
+      ['runtime lock', rtLockPath],
+      ['xTB lock', xtbLockPath],
+    ]) {
+      if (!fs.existsSync(lockPath)) {
+        throw new Error(`Missing ${label} declared by native profile: ${lockPath}`);
+      }
+    }
+  }
+
+  const tcLock = readJsonStrictIfExists(tcLockPath, 'toolchain lock');
+  const rtLock = readJsonStrictIfExists(rtLockPath, 'runtime lock');
+  const xtbLock = readJsonStrictIfExists(xtbLockPath, 'xTB lock');
+
+  for (const [label, lockObj, lockPath] of [
+    ['toolchain lock', tcLock, tcLockPath],
+    ['runtime lock', rtLock, rtLockPath],
+    ['xTB lock', xtbLock, xtbLockPath],
+  ]) {
+    if (lockObj) {
+      if (lockObj.platform !== platformId || typeof lockObj.root !== 'string' || !lockObj.root) {
+        throw new Error(`Invalid ${label} metadata for ${platformId}: ${lockPath}`);
+      }
+    }
+  }
+
+  const pickFallback = (candidates) => {
     for (const candidate of candidates) {
       if (candidate && fs.existsSync(candidate)) return candidate;
     }
-    return candidates.find(Boolean);
+    return candidates[0];
   };
 
-  const pythonToolchainRoot = pickExisting([
-    tcLock?.root ? path.join(repoRoot, tcLock.root, 'python') : null,
-    path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-${arch}/python`),
-    path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-arm64/python`),
-  ]);
+  const pythonToolchainRoot = tcLock
+    ? path.join(repoRoot, tcLock.root, 'python')
+    : pickFallback([
+        path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-${arch}/python`),
+        path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-arm64/python`),
+      ]);
 
-  const pythonDepsRoot = pickExisting([
-    rtLock?.root ? path.join(repoRoot, rtLock.root, 'python') : null,
-    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/python`),
-    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/python`),
-  ]);
+  const pythonDepsRoot = rtLock
+    ? path.join(repoRoot, rtLock.root, 'python')
+    : pickFallback([
+        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/python`),
+        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/python`),
+      ]);
 
   const xtbSubdir =
     Array.isArray(xtbLock?.contentDirectories) && xtbLock.contentDirectories[0]
       ? xtbLock.contentDirectories[0]
       : 'xtb';
-  const xtbSourceRoot = pickExisting([
-    xtbLock?.root ? path.join(repoRoot, xtbLock.root, xtbSubdir) : null,
-    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/xtb`),
-    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/xtb`),
-  ]);
+  const xtbSourceRoot = xtbLock
+    ? path.join(repoRoot, xtbLock.root, xtbSubdir)
+    : pickFallback([
+        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/xtb`),
+        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/xtb`),
+      ]);
 
   return {
     pythonToolchainRoot,
@@ -270,7 +397,14 @@ export function parseCliArgs(argv = process.argv.slice(2)) {
 export function assembleMacAppBundle(options = {}) {
   const repoRoot = options.repoRoot ?? DEFAULT_REPO_ROOT;
   const arch = options.arch ?? process.arch;
-  const defaults = resolveDefaultMacRuntimeSources(repoRoot, arch);
+  if (arch !== 'arm64' && arch !== 'x64') {
+    throw new Error(`Unsupported macOS architecture: ${arch}`);
+  }
+  const needsDefaultSources =
+    !options.pythonToolchainRoot || !options.pythonDepsRoot || !options.xtbSourceRoot;
+  const defaults = needsDefaultSources
+    ? resolveDefaultMacRuntimeSources(repoRoot, arch)
+    : {};
   const {
     outputDir = path.join(repoRoot, 'release', `darwin-${arch}`),
     electronAppPath = path.join(repoRoot, 'node_modules/electron/dist/Electron.app'),
@@ -291,15 +425,63 @@ export function assembleMacAppBundle(options = {}) {
 
   for (const [label, targetPath] of [
     ['Electron.app template', electronAppPath],
+    ['Electron Info.plist', path.join(electronAppPath, 'Contents', 'Info.plist')],
     ['frontend dist directory', distDir],
+    ['frontend dist index.html', path.join(distDir, 'index.html')],
     ['desktop directory', desktopDir],
+    ['desktop main.cjs', path.join(desktopDir, 'main.cjs')],
     ['chemistry source directory', chemistrySrcDir],
+    ['chemistry engine.py', path.join(chemistrySrcDir, 'engine.py')],
     ['Python toolchain directory', pythonToolchainRoot],
     ['Python dependencies directory', pythonDepsRoot],
+    [
+      'Python RDKit dependency package',
+      path.join(pythonDepsRoot, 'lib', 'python3.12', 'site-packages', 'rdkit'),
+    ],
     ['xTB runtime directory', xtbSourceRoot],
+    ['xTB runtime.json manifest', path.join(xtbSourceRoot, 'runtime.json')],
   ]) {
     if (!fs.existsSync(targetPath)) {
       throw new Error(`Missing required packaging input (${label}): ${targetPath}`);
+    }
+  }
+
+  validateExecutableFile(
+    path.join(electronAppPath, 'Contents', 'MacOS', 'Electron'),
+    arch,
+    'Electron executable',
+  );
+  validateExecutableFile(
+    path.join(pythonToolchainRoot, 'bin', 'python3'),
+    arch,
+    'Python executable (bin/python3)',
+  );
+
+  const xtbManifestPath = path.join(xtbSourceRoot, 'runtime.json');
+  const xtbManifest = readJsonStrictIfExists(xtbManifestPath, 'xTB runtime.json');
+  const expectedPlatformId = `darwin-${arch}`;
+  if (
+    !xtbManifest ||
+    (xtbManifest.schema !== 'sciyue-xtb-bundled-runtime/v1' &&
+      xtbManifest.schema !== 'sciyue-xtb-bundled-runtime/v2') ||
+    xtbManifest.platform !== expectedPlatformId ||
+    xtbManifest.entry !== 'bin/xtb'
+  ) {
+    throw new Error(
+      `Invalid xTB runtime.json manifest (${xtbManifestPath}): expected platform ${expectedPlatformId} and entry bin/xtb`,
+    );
+  }
+  validateExecutableFile(path.join(xtbSourceRoot, 'bin', 'xtb'), arch, 'xTB executable (bin/xtb)');
+  for (const relLib of DARWIN_XTB_LIBRARIES) {
+    const libPath = path.join(xtbSourceRoot, relLib);
+    if (!fs.existsSync(libPath)) {
+      throw new Error(`Missing required packaging input (xTB library ${relLib}): ${libPath}`);
+    }
+  }
+  for (const relParam of DARWIN_XTB_PARAMETERS) {
+    const paramPath = path.join(xtbSourceRoot, relParam);
+    if (!fs.existsSync(paramPath)) {
+      throw new Error(`Missing required packaging input (xTB parameter ${relParam}): ${paramPath}`);
     }
   }
 
