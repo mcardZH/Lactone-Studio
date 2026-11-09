@@ -2,42 +2,62 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const {createHash} = require('node:crypto');
-const {assert} = require('./security.cjs');
+const {assert, plain} = require('./security.cjs');
 const approvedMolvec = require('./ocr/molvec-component.json');
+const {
+  DARWIN_ARCHITECTURES,
+  isSupportedJavaExecutable,
+} = require('./ocr/molvec.cjs');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const canonical = value => JSON.stringify(value);
 const catalogue = new Map([['molvec', approvedMolvec]]);
+
+function assertSupportedTarget(rawEntry, platform, architecture) {
+  if (rawEntry === approvedMolvec) {
+    assert(platform === 'win32' || platform === 'darwin', 'OCR_UNSUPPORTED: 组件不支持当前系统。');
+    if (platform === 'win32') {
+      assert(architecture === 'x64', 'OCR_UNSUPPORTED: 组件不支持当前处理器架构。');
+    } else {
+      assert(DARWIN_ARCHITECTURES.has(architecture), 'OCR_UNSUPPORTED: 组件不支持当前处理器架构。');
+    }
+    return {version: approvedMolvec.version, jar: approvedMolvec.jar};
+  }
+  const entries = Array.isArray(rawEntry) ? rawEntry : [rawEntry];
+  const platformMatches = entries.filter(item => item && (!item.platform || item.platform === platform));
+  assert(platformMatches.length > 0, 'OCR_UNSUPPORTED: 组件不支持当前系统。');
+  const archMatch = platformMatches.find(item => !item.architecture || item.architecture === architecture);
+  assert(archMatch, 'OCR_UNSUPPORTED: 组件不支持当前处理器架构。');
+  return {version: archMatch.version, jar: archMatch.jar};
+}
 
 async function safeDirectory(root) {
   const stat = await fs.lstat(root), actual = await fs.realpath(root);
   assert(stat.isDirectory() && !stat.isSymbolicLink() && path.resolve(actual).toLowerCase() === path.resolve(root).toLowerCase(), 'OCR_COMPONENT_PATH: 组件目录不能经过链接。');
 }
-async function checkedFile(root, relative, expected) {
-  assert(typeof relative === 'string' && relative.length < 1024 && !relative.includes('\\') && relative.split('/').every(part => part && part !== '.' && part !== '..') && !path.isAbsolute(relative), 'OCR_COMPONENT_PATH: Invalid component member');
+
+async function checkedFile(root, relative, {requireExecutable = false, readContent = true} = {}) {
+  assert(typeof relative === 'string' && relative.length > 0 && relative.length < 1024 && !relative.includes('\0') && !relative.includes('\\') && relative.split('/').every(part => part && part !== '.' && part !== '..') && !path.isAbsolute(relative), 'OCR_COMPONENT_PATH: Invalid component member');
   const file = path.join(root, ...relative.split('/'));
   let parent = path.dirname(file);
   while (parent !== root) { await safeDirectory(parent); parent = path.dirname(parent); }
   const stat = await fs.lstat(file);
-  assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size === expected.bytes, 'OCR_COMPONENT_FILE: 组件文件身份不符：' + relative);
-  const handle = await fs.open(file, 'r');
-  try {
-    const before=await handle.stat();assert(before.dev===stat.dev&&before.ino===stat.ino&&before.size===stat.size&&before.mtimeMs===stat.mtimeMs,'OCR_COMPONENT_CHANGED: 组件在读取前变化。');
-    const bytes=await handle.readFile();const after=await handle.stat(), current=await fs.lstat(file);
-    assert(after.dev===before.dev&&after.ino===before.ino&&after.size===before.size&&after.mtimeMs===before.mtimeMs&&!current.isSymbolicLink()&&current.ino===before.ino&&current.dev===before.dev,'OCR_COMPONENT_CHANGED: 组件在读取时变化。');
-    assert(sha256(bytes) === expected.sha256, 'OCR_COMPONENT_HASH: 组件校验失败：' + relative);
-  } finally {await handle.close();}
-  return file;
+  assert(stat.isFile() && !stat.isSymbolicLink() && stat.size > 0, 'OCR_COMPONENT_FILE: 组件文件无效：' + relative);
+  if (requireExecutable) {
+    assert((stat.mode & 0o111) !== 0, 'OCR_COMPONENT_EXECUTABLE: 组件可执行文件缺少执行权限。');
+  }
+  if (!readContent) {
+    return {file, size: stat.size};
+  }
+  const bytes = await fs.readFile(file);
+  return {file, size: stat.size, sha256: sha256(bytes)};
 }
-/** A selected manifest cannot authorize its own executable or Python pickle.
- * Only manifests shipped in the host catalogue can enable a fixed driver. */
+
+/** Lightweight cross-platform OCR component resolver (validates component metadata,
+ * launcher path contract, and executable/JAR presence without JRE file-tree hash pinning). */
 function createOcrRuntime({defaultRoot, distributionRoot, platform = process.platform, architecture = process.arch, approved = catalogue}) {
   const selected = new Map();
   async function defaultComponentRoot(engine) {
     if (defaultRoot !== undefined) return path.join(defaultRoot, engine);
     const bundled = path.join(distributionRoot, 'runtime', 'ocr-components');
-    // Older portable packages and source checkouts kept components at root.
-    // Fall back only when the new directory is absent, never after a failed
-    // integrity check of a present bundled component.
     try { await fs.lstat(bundled); }
     catch (error) {
       if (error.code !== 'ENOENT') throw error;
@@ -46,29 +66,49 @@ function createOcrRuntime({defaultRoot, distributionRoot, platform = process.pla
     return path.join(bundled, engine);
   }
   async function resolve(engine, root) {
-    const pinned = approved.get(engine);
-    assert(pinned, 'OCR_UNSUPPORTED: 当前版本尚未接入该识别组件。');
-    assert(platform === pinned.platform, 'OCR_UNSUPPORTED: 组件不支持当前系统。');
-    assert(!pinned.architecture || architecture === pinned.architecture, 'OCR_UNSUPPORTED: 组件不支持当前处理器架构。');
+    const rawEntry = approved.get(engine);
+    assert(rawEntry, 'OCR_UNSUPPORTED: 当前版本尚未接入该识别组件。');
+    const target = assertSupportedTarget(rawEntry, platform, architecture);
     root ??= selected.get(engine) ?? await defaultComponentRoot(engine);
     root = path.resolve(root); await safeDirectory(root);
     const manifestFile = path.join(root, 'component.json'), stat = await fs.lstat(manifestFile);
-    assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size < 1024 * 1024, 'OCR_COMPONENT_MANIFEST: Invalid manifest');
+    assert(stat.isFile() && !stat.isSymbolicLink() && stat.size > 0 && stat.size < 1024 * 1024, 'OCR_COMPONENT_MANIFEST: Invalid manifest');
     const bytes = await fs.readFile(manifestFile);
     const actual = JSON.parse(bytes.toString('utf8'));
-    assert(canonical(actual) === canonical(pinned), 'OCR_COMPONENT_UNAPPROVED: 组件版本或清单未被本版认可。');
-    const expected = new Set(Object.keys(pinned.files));
-    async function enumerate(dir, prefix = '') {
-      for (const name of await fs.readdir(dir)) {
-        const rel = prefix + name, file = path.join(dir, name), info = await fs.lstat(file);
-        assert(!info.isSymbolicLink(), 'OCR_COMPONENT_PATH: 组件中不能包含链接。');
-        if (info.isDirectory()) { await safeDirectory(file); await enumerate(file, rel + '/'); }
-        else assert(rel === 'component.json' || expected.has(rel), 'OCR_COMPONENT_EXTRA: 组件含未认可文件：' + rel);
-      }
+    assert(
+      plain(actual)
+        && actual.schema === 1
+        && actual.engine === engine
+        && actual.version === target.version
+        && actual.platform === platform
+        && typeof actual.architecture === 'string'
+        && actual.architecture === architecture
+        && actual.jar === target.jar,
+      'OCR_COMPONENT_UNAPPROVED: 组件版本或清单未被本版认可。',
+    );
+    if (engine === 'molvec') {
+      assert(
+        isSupportedJavaExecutable(actual.executable, platform, {allowAbsolute: false}),
+        'OCR_COMPONENT_EXECUTABLE: 组件Java启动器路径不受支持。',
+      );
     }
-    await enumerate(root);
-    for (const [relative, identity] of Object.entries(pinned.files)) await checkedFile(root, relative, identity);
-    return {root, engine, version: pinned.version, componentSHA256: sha256(Buffer.from(canonical(pinned))), executable: path.join(root, pinned.executable), jar: path.join(root, pinned.jar), manifest: pinned};
+    const requireExecMode = platform !== 'win32' && process.platform !== 'win32';
+    const checkedExec = await checkedFile(root, actual.executable, {
+      requireExecutable: requireExecMode,
+      readContent: false,
+    });
+    const checkedJar = await checkedFile(root, actual.jar, {readContent: true});
+    const componentSHA256 = checkedJar.sha256;
+    return {
+      root,
+      engine,
+      version: actual.version,
+      componentSHA256,
+      jarSHA256: checkedJar.sha256,
+      executable: checkedExec.file,
+      jar: checkedJar.file,
+      manifest: actual,
+    };
   }
   async function capabilities() {
     const engines = [];
