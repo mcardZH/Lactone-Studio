@@ -42,6 +42,88 @@ function writeText(root, relPath, content, mode) {
   return fullPath;
 }
 
+function writeMockElectronTemplate(electronAppPath) {
+  writeText(
+    electronAppPath,
+    'Contents/Info.plist',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>Electron</string>
+  <key>CFBundleName</key>
+  <string>Electron</string>
+  <key>CFBundleDisplayName</key>
+  <string>Electron</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.github.Electron</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>44.7.0</string>
+  <key>CFBundleVersion</key>
+  <string>44.7.0</string>
+</dict>
+</plist>`,
+  );
+  writeText(electronAppPath, 'Contents/MacOS/Electron', '#!/bin/sh\n', 0o755);
+  writeText(electronAppPath, 'Contents/Resources/default_app.asar', 'default-asar');
+  const fwDir = path.join(electronAppPath, 'Contents/Frameworks/Electron Framework.framework');
+  writeText(fwDir, 'Versions/A/Electron Framework', '#!/bin/sh\n', 0o755);
+  writeText(
+    fwDir,
+    'Versions/A/Resources/Info.plist',
+    `<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>Electron Framework</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.github.Electron.framework</string>
+  <key>CFBundleName</key>
+  <string>Electron Framework</string>
+  <key>CFBundlePackageType</key>
+  <string>FMWK</string>
+  <key>CFBundleVersion</key>
+  <string>44.7.0</string>
+</dict>
+</plist>`,
+  );
+  if (process.platform !== 'win32') {
+    fs.symlinkSync('A', path.join(fwDir, 'Versions/Current'));
+    fs.symlinkSync('Versions/Current/Electron Framework', path.join(fwDir, 'Electron Framework'));
+    fs.symlinkSync('Versions/Current/Resources', path.join(fwDir, 'Resources'));
+  } else {
+    writeText(fwDir, 'Electron Framework', '#!/bin/sh\n', 0o755);
+  }
+  for (const suffix of ['', ' (GPU)', ' (Plugin)', ' (Renderer)']) {
+    const helperName = `Electron Helper${suffix}`;
+    writeText(
+      electronAppPath,
+      `Contents/Frameworks/${helperName}.app/Contents/Info.plist`,
+      `<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>${helperName}</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.github.Electron.helper</string>
+  <key>CFBundleName</key>
+  <string>${helperName}</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+</dict>
+</plist>`,
+    );
+    writeText(
+      electronAppPath,
+      `Contents/Frameworks/${helperName}.app/Contents/MacOS/${helperName}`,
+      '#!/bin/sh\n',
+      0o755,
+    );
+  }
+}
+
 test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG root directory, and runs isolated chemistry/engine with PYTHONPLATLIBDIR/PYTHONVERBOSE hostility', async () => {
   await withTempDir(async (root) => {
     const repoRoot = path.join(root, 'repo');
@@ -59,54 +141,8 @@ test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG 
       '.local/dependencies/darwin-arm64/conda-chem-arm64/xtb',
     );
 
-    // 1. Minimal Electron.app template with default_app.asar and Helper apps
-    writeText(
-      electronAppPath,
-      'Contents/Info.plist',
-      `<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>
-  <string>Electron</string>
-  <key>CFBundleName</key>
-  <string>Electron</string>
-  <key>CFBundleDisplayName</key>
-  <string>Electron</string>
-  <key>CFBundleIdentifier</key>
-  <string>com.github.Electron</string>
-  <key>CFBundleShortVersionString</key>
-  <string>44.7.0</string>
-  <key>CFBundleVersion</key>
-  <string>44.7.0</string>
-</dict>
-</plist>`,
-    );
-    writeText(electronAppPath, 'Contents/MacOS/Electron', '#!/bin/sh\n', 0o755);
-    writeText(electronAppPath, 'Contents/Resources/default_app.asar', 'default-asar');
-    for (const suffix of ['', ' (GPU)', ' (Plugin)', ' (Renderer)']) {
-      const helperName = `Electron Helper${suffix}`;
-      writeText(
-        electronAppPath,
-        `Contents/Frameworks/${helperName}.app/Contents/Info.plist`,
-        `<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>
-  <string>${helperName}</string>
-  <key>CFBundleIdentifier</key>
-  <string>com.github.Electron.helper</string>
-  <key>CFBundleName</key>
-  <string>${helperName}</string>
-</dict>
-</plist>`,
-      );
-      writeText(
-        electronAppPath,
-        `Contents/Frameworks/${helperName}.app/Contents/MacOS/${helperName}`,
-        '#!/bin/sh\n',
-        0o755,
-      );
-    }
+    // 1. Minimal Electron.app template with default_app.asar, Electron Framework, and Helper apps
+    writeMockElectronTemplate(electronAppPath);
 
     // 2. Repo inputs (dist, desktop, package.json, LICENSE.txt, ssh2 dependency)
     writeText(
@@ -341,28 +377,7 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     const repoRoot = path.join(root, 'repo-x64');
     const outputDir = path.join(root, 'release-x64');
     const electronAppPath = path.join(repoRoot, 'node_modules/electron/dist/Electron.app');
-    writeText(
-      electronAppPath,
-      'Contents/Info.plist',
-      `<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>
-  <string>Electron</string>
-  <key>CFBundleName</key>
-  <string>Electron</string>
-  <key>CFBundleDisplayName</key>
-  <string>Electron</string>
-  <key>CFBundleIdentifier</key>
-  <string>com.github.Electron</string>
-  <key>CFBundleShortVersionString</key>
-  <string>44.7.0</string>
-  <key>CFBundleVersion</key>
-  <string>44.7.0</string>
-</dict>
-</plist>`,
-    );
-    writeText(electronAppPath, 'Contents/MacOS/Electron', '#!/bin/sh\n', 0o755);
+    writeMockElectronTemplate(electronAppPath);
     writeText(repoRoot, 'package.json', JSON.stringify({ name: 'sciyue', version: '2.0.2' }, null, 2));
     writeText(repoRoot, 'LICENSE.txt', 'MIT');
     writeText(repoRoot, 'dist/index.html', '<html></html>');
@@ -427,6 +442,79 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     });
     assert.equal(fs.existsSync(result.executablePath), true);
     assert.equal(fs.existsSync(result.chemistryEnginePath), true);
+
+    // Binary plist template (bplist00) + real codesign --verify --deep --strict on macOS
+    if (process.platform === 'darwin') {
+      execFileSync('/usr/bin/plutil', [
+        '-convert',
+        'binary1',
+        path.join(electronAppPath, 'Contents/Info.plist'),
+      ]);
+      for (const suffix of ['', ' (GPU)', ' (Plugin)', ' (Renderer)']) {
+        execFileSync('/usr/bin/plutil', [
+          '-convert',
+          'binary1',
+          path.join(
+            electronAppPath,
+            `Contents/Frameworks/Electron Helper${suffix}.app/Contents/Info.plist`,
+          ),
+        ]);
+      }
+      const binPlistOutDir = path.join(root, 'release-bplist');
+      const binPlistResult = assembleMacAppBundle({
+        repoRoot,
+        arch: 'x64',
+        outputDir: binPlistOutDir,
+        sign: true,
+        createDmg: false,
+      });
+      execFileSync('/usr/bin/plutil', [
+        '-lint',
+        '-s',
+        path.join(binPlistResult.appBundlePath, 'Contents/Info.plist'),
+      ]);
+      const outPlist = fs.readFileSync(
+        path.join(binPlistResult.appBundlePath, 'Contents/Info.plist'),
+        'utf8',
+      );
+      assert.match(outPlist, /<key>CFBundleExecutable<\/key>\s*<string>Ester Studio<\/string>/);
+      assert.match(outPlist, /<string>com\.sciyue\.esterstudio<\/string>/);
+      execFileSync('codesign', ['--verify', '--deep', '--strict', binPlistResult.appBundlePath]);
+    }
+
+    // Incomplete Electron.app template (missing Helper app or Electron Framework.framework) must fail
+    const missingHelperDir = path.join(
+      electronAppPath,
+      'Contents/Frameworks/Electron Helper (GPU).app',
+    );
+    const savedHelperDir = path.join(root, 'saved-gpu-helper.app');
+    fs.renameSync(missingHelperDir, savedHelperDir);
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Missing required packaging input \(Electron Helper \(GPU\)\.app\)/,
+    );
+    fs.renameSync(savedHelperDir, missingHelperDir);
+
+    const fwPath = path.join(
+      electronAppPath,
+      'Contents/Frameworks/Electron Framework.framework',
+    );
+    const savedFwPath = path.join(root, 'saved-electron-fw.framework');
+    fs.renameSync(fwPath, savedFwPath);
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Missing required packaging input \(Electron Framework\.framework\)/,
+    );
+    fs.renameSync(savedFwPath, fwPath);
+
+    // Corrupt Info.plist in Electron.app template must fail before assembly
+    const origPlist = fs.readFileSync(path.join(electronAppPath, 'Contents/Info.plist'));
+    writeText(electronAppPath, 'Contents/Info.plist', 'not-a-valid-plist<<<');
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Invalid( or corrupt| XML) Electron Info\.plist/,
+    );
+    fs.writeFileSync(path.join(electronAppPath, 'Contents/Info.plist'), origPlist);
 
     // Single-component override should not fail when that component's lock file is corrupt/missing
     writeText(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json', '{corrupt-tc');

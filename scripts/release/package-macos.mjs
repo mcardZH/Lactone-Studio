@@ -63,11 +63,73 @@ function copyTreePreservingSymlinks(src, dest) {
 }
 
 function updatePlistStringKey(plistContent, key, value) {
+  const escapedValue = String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
   const pattern = new RegExp(`(<key>${key}</key>\\s*<string>)([^<]*)(</string>)`);
   if (pattern.test(plistContent)) {
-    return plistContent.replace(pattern, `$1${value}$3`);
+    return plistContent.replace(pattern, `$1${escapedValue}$3`);
+  }
+  const dictClose = plistContent.lastIndexOf('</dict>');
+  if (dictClose !== -1) {
+    return (
+      plistContent.slice(0, dictClose) +
+      `  <key>${key}</key>\n  <string>${escapedValue}</string>\n` +
+      plistContent.slice(dictClose)
+    );
   }
   return plistContent;
+}
+
+function validatePlistFile(plistPath, label = 'Info.plist') {
+  if (!fs.existsSync(plistPath)) {
+    throw new Error(`Missing required packaging input (${label}): ${plistPath}`);
+  }
+  if (process.platform === 'darwin') {
+    try {
+      execFileSync('/usr/bin/plutil', ['-lint', '-s', plistPath], { stdio: 'pipe' });
+    } catch (error) {
+      throw new Error(
+        `Invalid or corrupt ${label} (${plistPath}): ${error.stderr?.toString('utf8')?.trim() || error.message}`,
+      );
+    }
+    return;
+  }
+  const rawBuf = fs.readFileSync(plistPath);
+  if (rawBuf.subarray(0, 6).toString('ascii') === 'bplist') {
+    throw new Error(`Binary plist (${label}) requires macOS /usr/bin/plutil: ${plistPath}`);
+  }
+  const plist = rawBuf.toString('utf8');
+  if (!plist.includes('<plist') || !plist.includes('</dict>')) {
+    throw new Error(`Invalid XML ${label} (${plistPath})`);
+  }
+}
+
+function updatePlistFile(plistPath, entries, label = 'Info.plist') {
+  validatePlistFile(plistPath, label);
+  if (process.platform === 'darwin') {
+    try {
+      execFileSync('/usr/bin/plutil', ['-convert', 'xml1', plistPath], { stdio: 'pipe' });
+      for (const [key, value] of Object.entries(entries)) {
+        execFileSync('/usr/bin/plutil', ['-replace', key, '-string', String(value), plistPath], {
+          stdio: 'pipe',
+        });
+      }
+      execFileSync('/usr/bin/plutil', ['-lint', '-s', plistPath], { stdio: 'pipe' });
+    } catch (error) {
+      throw new Error(
+        `Invalid or corrupt ${label} (${plistPath}): ${error.stderr?.toString('utf8')?.trim() || error.message}`,
+      );
+    }
+    return;
+  }
+
+  let plist = fs.readFileSync(plistPath, 'utf8');
+  for (const [key, value] of Object.entries(entries)) {
+    plist = updatePlistStringKey(plist, key, value);
+  }
+  fs.writeFileSync(plistPath, plist, 'utf8');
 }
 
 function rebrandElectronBundle(appBundlePath, productName, bundleId, version) {
@@ -75,51 +137,52 @@ function rebrandElectronBundle(appBundlePath, productName, bundleId, version) {
   const macosDir = path.join(contentsDir, 'MacOS');
   const oldMainBin = path.join(macosDir, 'Electron');
   const newMainBin = path.join(macosDir, productName);
-  if (fs.existsSync(oldMainBin) && oldMainBin !== newMainBin) {
+  if (oldMainBin !== newMainBin) {
     fs.renameSync(oldMainBin, newMainBin);
   }
 
   const infoPlistPath = path.join(contentsDir, 'Info.plist');
-  if (fs.existsSync(infoPlistPath)) {
-    let plist = fs.readFileSync(infoPlistPath, 'utf8');
-    plist = updatePlistStringKey(plist, 'CFBundleExecutable', productName);
-    plist = updatePlistStringKey(plist, 'CFBundleName', productName);
-    plist = updatePlistStringKey(plist, 'CFBundleDisplayName', productName);
-    plist = updatePlistStringKey(plist, 'CFBundleIdentifier', bundleId);
-    plist = updatePlistStringKey(plist, 'CFBundleShortVersionString', version);
-    plist = updatePlistStringKey(plist, 'CFBundleVersion', version);
-    fs.writeFileSync(infoPlistPath, plist, 'utf8');
-  }
+  updatePlistFile(
+    infoPlistPath,
+    {
+      CFBundleExecutable: productName,
+      CFBundleName: productName,
+      CFBundleDisplayName: productName,
+      CFBundleIdentifier: bundleId,
+      CFBundleShortVersionString: version,
+      CFBundleVersion: version,
+    },
+    'Electron Info.plist',
+  );
 
   const frameworksDir = path.join(contentsDir, 'Frameworks');
-  if (fs.existsSync(frameworksDir)) {
-    for (const suffix of HELPER_SUFFIXES) {
-      const oldHelperName = `Electron Helper${suffix}`;
-      const newHelperName = `${productName} Helper${suffix}`;
-      const oldHelperApp = path.join(frameworksDir, `${oldHelperName}.app`);
-      if (!fs.existsSync(oldHelperApp)) continue;
+  for (const suffix of HELPER_SUFFIXES) {
+    const oldHelperName = `Electron Helper${suffix}`;
+    const newHelperName = `${productName} Helper${suffix}`;
+    const oldHelperApp = path.join(frameworksDir, `${oldHelperName}.app`);
 
-      const helperMacosDir = path.join(oldHelperApp, 'Contents', 'MacOS');
-      const oldHelperBin = path.join(helperMacosDir, oldHelperName);
-      const newHelperBin = path.join(helperMacosDir, newHelperName);
-      if (fs.existsSync(oldHelperBin) && oldHelperBin !== newHelperBin) {
-        fs.renameSync(oldHelperBin, newHelperBin);
-      }
+    const helperMacosDir = path.join(oldHelperApp, 'Contents', 'MacOS');
+    const oldHelperBin = path.join(helperMacosDir, oldHelperName);
+    const newHelperBin = path.join(helperMacosDir, newHelperName);
+    if (oldHelperBin !== newHelperBin) {
+      fs.renameSync(oldHelperBin, newHelperBin);
+    }
 
-      const helperPlistPath = path.join(oldHelperApp, 'Contents', 'Info.plist');
-      if (fs.existsSync(helperPlistPath)) {
-        let helperPlist = fs.readFileSync(helperPlistPath, 'utf8');
-        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleExecutable', newHelperName);
-        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleName', newHelperName);
-        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleDisplayName', newHelperName);
-        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleIdentifier', `${bundleId}.helper`);
-        fs.writeFileSync(helperPlistPath, helperPlist, 'utf8');
-      }
+    const helperPlistPath = path.join(oldHelperApp, 'Contents', 'Info.plist');
+    updatePlistFile(
+      helperPlistPath,
+      {
+        CFBundleExecutable: newHelperName,
+        CFBundleName: newHelperName,
+        CFBundleDisplayName: newHelperName,
+        CFBundleIdentifier: `${bundleId}.helper`,
+      },
+      `${oldHelperName} Info.plist`,
+    );
 
-      const newHelperApp = path.join(frameworksDir, `${newHelperName}.app`);
-      if (oldHelperApp !== newHelperApp) {
-        fs.renameSync(oldHelperApp, newHelperApp);
-      }
+    const newHelperApp = path.join(frameworksDir, `${newHelperName}.app`);
+    if (oldHelperApp !== newHelperApp) {
+      fs.renameSync(oldHelperApp, newHelperApp);
     }
   }
 }
@@ -225,20 +288,26 @@ export function detectMachOArchitectures(filePath) {
   }
 }
 
-function validateExecutableFile(filePath, expectedArch, label) {
+function validateExecutableFile(filePath, expectedArch, label, { allowSymlink = false } = {}) {
   let lstat;
   try {
     lstat = fs.lstatSync(filePath);
   } catch {
     throw new Error(`Missing required packaging input (${label}): ${filePath}`);
   }
-  if (lstat.isSymbolicLink()) {
+  if (lstat.isSymbolicLink() && !allowSymlink) {
     throw new Error(`Invalid packaging input (${label} must not be a symlink): ${filePath}`);
   }
-  if (!lstat.isFile()) {
+  let stat;
+  try {
+    stat = fs.statSync(filePath);
+  } catch {
+    throw new Error(`Missing required packaging input (${label}): ${filePath}`);
+  }
+  if (!stat.isFile()) {
     throw new Error(`Invalid packaging input (${label} is not a file): ${filePath}`);
   }
-  if (process.platform !== 'win32' && (lstat.mode & 0o111) === 0) {
+  if (process.platform !== 'win32' && (stat.mode & 0o111) === 0) {
     throw new Error(`Invalid packaging input (${label} is not executable): ${filePath}`);
   }
   const archs = detectMachOArchitectures(filePath);
@@ -596,6 +665,10 @@ export function assembleMacAppBundle(options = {}) {
     ['ssh2 runtime dependency', path.join(nodeModulesDir, 'ssh2', 'package.json')],
     ['Electron.app template', electronAppPath],
     ['Electron Info.plist', path.join(electronAppPath, 'Contents', 'Info.plist')],
+    [
+      'Electron Framework.framework',
+      path.join(electronAppPath, 'Contents', 'Frameworks', 'Electron Framework.framework'),
+    ],
     ['frontend dist directory', distDir],
     ['frontend dist index.html', path.join(distDir, 'index.html')],
     ['desktop directory', desktopDir],
@@ -623,11 +696,40 @@ export function assembleMacAppBundle(options = {}) {
     }
   }
 
+  validatePlistFile(path.join(electronAppPath, 'Contents', 'Info.plist'), 'Electron Info.plist');
   validateExecutableFile(
     path.join(electronAppPath, 'Contents', 'MacOS', 'Electron'),
     arch,
     'Electron executable',
   );
+  validateExecutableFile(
+    path.join(
+      electronAppPath,
+      'Contents',
+      'Frameworks',
+      'Electron Framework.framework',
+      'Electron Framework',
+    ),
+    arch,
+    'Electron Framework binary',
+    { allowSymlink: true },
+  );
+  for (const suffix of HELPER_SUFFIXES) {
+    const helperName = `Electron Helper${suffix}`;
+    const helperAppPath = path.join(electronAppPath, 'Contents', 'Frameworks', `${helperName}.app`);
+    if (!fs.existsSync(helperAppPath)) {
+      throw new Error(`Missing required packaging input (${helperName}.app): ${helperAppPath}`);
+    }
+    validatePlistFile(
+      path.join(helperAppPath, 'Contents', 'Info.plist'),
+      `${helperName} Info.plist`,
+    );
+    validateExecutableFile(
+      path.join(helperAppPath, 'Contents', 'MacOS', helperName),
+      arch,
+      `${helperName} executable`,
+    );
+  }
   validateExecutableFile(
     path.join(pythonToolchainRoot, 'bin', 'python3'),
     arch,
