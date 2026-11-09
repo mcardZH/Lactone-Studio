@@ -1,5 +1,5 @@
 'use strict';
-const fs = require('node:fs/promises');
+const fsDefault = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { assert, plain, string } = require('./security.cjs');
@@ -18,19 +18,40 @@ const POSIX_DIRECTORY_CANDIDATES = Object.freeze([
   path.posix.join('bin', 'multiwfn'),
 ]);
 
+function isValidPosixExecutable(candidatePath, stat) {
+  return Boolean(
+    stat?.isFile() &&
+      !stat.isSymbolicLink() &&
+      /^Multiwfn(?:\.exe)?$/i.test(path.basename(candidatePath)) &&
+      (stat.mode & 0o111) !== 0,
+  );
+}
+
 /** A user-selected or host-installed local executable is the only external capability. */
 function createOrbitalBackendStore(root, options = {}) {
-  const { platform = process.platform, env = process.env, defaultCandidates } = options;
+  const {
+    platform = process.platform,
+    env = process.env,
+    defaultCandidates,
+    fs = fsDefault,
+  } = options;
+  const pathImpl = platform === 'win32' ? path.win32 : path;
   const location = path.join(root, 'orbital-backend.json');
 
   async function checked(executable) {
-    assert(string(executable, 4096) && path.isAbsolute(executable), 'Select a local Multiwfn executable');
+    assert(
+      string(executable, 4096) && (pathImpl.isAbsolute(executable) || path.isAbsolute(executable)),
+      'Select a local Multiwfn executable',
+    );
     if (platform === 'win32') {
       const selected = await fs.lstat(executable).catch(() => null);
       if (selected?.isDirectory() && !selected.isSymbolicLink()) {
         executable = path.join(executable, 'Multiwfn.exe');
       }
-      assert(/^Multiwfn(?:\.exe)?$/i.test(path.basename(executable)), 'Select a local Multiwfn executable');
+      assert(
+        /^Multiwfn(?:\.exe)?$/i.test(pathImpl.basename(executable)),
+        'Select a local Multiwfn executable',
+      );
       const stat = await fs.lstat(executable);
       assert(stat.isFile() && !stat.isSymbolicLink(), 'Multiwfn executable must be a regular file');
       return fs.realpath(executable);
@@ -44,7 +65,7 @@ function createOrbitalBackendStore(root, options = {}) {
         const candidate = await fs.realpath(path.join(resolved, relative)).catch(() => null);
         if (!candidate) continue;
         const candidateStat = await fs.lstat(candidate).catch(() => null);
-        if (candidateStat?.isFile() && !candidateStat.isSymbolicLink()) {
+        if (isValidPosixExecutable(candidate, candidateStat)) {
           resolved = candidate;
           stat = candidateStat;
           break;
@@ -62,7 +83,10 @@ function createOrbitalBackendStore(root, options = {}) {
   async function info() {
     try {
       const stat = await fs.lstat(location);
-      assert(stat.isFile() && !stat.isSymbolicLink() && stat.size <= 16384, 'Invalid orbital backend configuration');
+      assert(
+        stat.isFile() && !stat.isSymbolicLink() && stat.size <= 16384,
+        'Invalid orbital backend configuration',
+      );
       const value = JSON.parse(await fs.readFile(location, 'utf8'));
       assert(plain(value) && value.schema === 1, 'Invalid orbital backend configuration');
       return { configured: true, path: await checked(value.path) };
@@ -83,7 +107,10 @@ function createOrbitalBackendStore(root, options = {}) {
         return { configured: true, path: await checked(candidate) };
       } catch {}
     }
-    return { configured: false, message: '请选择本机 Multiwfn 程序或所在文件夹，用于轨道与数值分析。' };
+    return {
+      configured: false,
+      message: '请选择本机 Multiwfn 程序或所在文件夹，用于轨道与数值分析。',
+    };
   }
 
   async function select(executable) {
