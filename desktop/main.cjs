@@ -488,6 +488,20 @@ const mcpLiveHost = createMcpLiveHost({
     : path.join(app.getPath('userData'), 'mcp-session.json'),
   serverVersion: appVersion,
   getTargetWindow: resolveMcpTargetWindow,
+  focusTargetWindow: targetWindow => {
+    if (!targetWindow || targetWindow.isDestroyed()) return;
+    hiddenWorkspaceOwners.delete(targetWindow.webContents.id);
+    if (!headless) {
+      if (targetWindow.isMinimized()) targetWindow.restore();
+      targetWindow.show();
+      targetWindow.focus();
+    }
+  },
+  openLaunchSource: async (ownerId, filePath) => {
+    const descriptors = await launchSources.open(ownerId, [filePath]);
+    return descriptors?.[0] ?? null;
+  },
+  closeLaunchSource: (ownerId, token) => launchSources.close(ownerId, token),
   getHostStatus: () => ({
     windowCount: windows.size,
     primaryWorkbenchWindowId,
