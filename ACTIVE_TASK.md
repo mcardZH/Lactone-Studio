@@ -15,14 +15,13 @@
 ## 2. 需求细节与范围边界 (Scope & Requirements)
 - **核心功能需求**：
   1. **macOS 打包态用户数据目录隔离 (`desktop/main.cjs`)**：
-     - 将 `desktop/main.cjs` 第 89 行的 `} else if (app.isPackaged) {` 限定为 `} else if (app.isPackaged && process.platform === 'win32') {`。
-     - 在 Windows 打包态下完全保留原有 `resolvePortableLayout` + `createPortableProfile` 便携目录逻辑；在 macOS (`darwin`) 打包态下走标准 `prepareVersionProfile(fsSync, app.getPath('appData'), ...)`，避免向只读 `.dmg` 或 `.app/Contents/MacOS` 写入状态目录。
+     - 在 `desktop/main.cjs` 的 `app.isPackaged` 分支中，仅在 `process.platform === 'win32'` 时调用 Windows 专属的 `resolvePortableLayout`；在非 Windows（如 macOS `darwin`）下将 `stateRoot` 指向可写的 `path.join(fsSync.realpathSync(app.getPath('appData')), 'EsterStudio-Portable')` 并初始化 `createPortableProfile`，既保持 `.app` 包与 `.dmg` 挂载卷完全只读，又使 `portableServices`（“运行数据”面板、偏好导入导出、诊断导出与运行时自检）在 macOS 打包态下完整可用。
   2. **macOS `.app` 与 `.dmg` 组装脚本 (`scripts/release/package-macos.mjs` & `package.json`)**：
      - 导出可测试的 `assembleMacAppBundle(options)` 与 CLI 入口，并在 `package.json` 中注册 `"package:mac": "node scripts/release/package-macos.mjs"`：
      - 基于 `node_modules/electron/dist/Electron.app` 模板复制生成 `Ester Studio.app`：
-       - 更新 `Contents/Info.plist` 中的 `CFBundleName`、`CFBundleDisplayName` (`Ester Studio`)、`CFBundleIdentifier` (`com.sciyue.esterstudio`)、`CFBundleShortVersionString` 与 `CFBundleVersion`；
+       - 重命名主可执行文件 `Contents/MacOS/Ester Studio` 及全部 4 个 `Ester Studio Helper*.app`，移除 `default_app.asar`，并更新 `Info.plist` 中的 `CFBundleExecutable`、`CFBundleName`、`CFBundleDisplayName`、`CFBundleIdentifier`、`CFBundleShortVersionString` 与 `CFBundleVersion`；
        - 将应用代码与前端静态构建产物写入 `Contents/Resources/app/`（含 `package.json`、`LICENSE.txt`、`desktop/`、`dist/` 及运行所需的 `node_modules` 生产依赖，可选包含 `runtime/ocr`）；
-       - 在 `Contents/Resources/chemistry/` 中组装 `desktop/chemistry/*.py`、Python 运行时与可执行启动器 `Contents/Resources/chemistry/engine`（设置隔离的 `PYTHONNOUSERSITE=1`、`PYTHONPATH`、`DYLD_FALLBACK_LIBRARY_PATH`、`RDKIT_DATA_DIR` 后调用打包的 `python3 -s -B engine.py "$@"`），与 `desktop/runtime.cjs` 的 `packaged: true` 契约无缝对接；
+       - 在 `Contents/Resources/chemistry/` 中组装 `desktop/chemistry/*.py`、Python 运行时、`bootstrap.py` 与可执行启动器 `Contents/Resources/chemistry/engine`（使用 `python3 -I -S -B "$DIR/bootstrap.py" "$@"` 在 C 层彻底隔离 `PYTHONPLATLIBDIR`/`PYTHONVERBOSE` 等外部环境变量并显式挂载内置 `deps/lib/python3.12/site-packages`），与 `desktop/runtime.cjs` 的 `packaged: true` 契约无缝对接；
        - 将 `.local/dependencies/darwin-<arch>/conda-chem-<arch>/xtb` 复制到 `Contents/Resources/xtb/`，与 `desktop/xtb-runtime.cjs` 的 `packaged: true` 契约无缝对接；
        - 支持通过 `codesign --force --deep --sign -` 执行 ad-hoc 签名，以及通过 `hdiutil create` 生成 `.dmg` 安装镜像（可通过参数控制跳过耗时的完整构建以便快速单元测试）。
 - **边界与非目标 (Out of Scope)**：

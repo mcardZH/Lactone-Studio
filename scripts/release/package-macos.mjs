@@ -117,23 +117,43 @@ function rebrandElectronBundle(appBundlePath, productName, bundleId, version) {
   }
 }
 
+export function buildChemistryBootstrapScript() {
+  return [
+    'import os',
+    'import runpy',
+    'import site',
+    'import sys',
+    '',
+    'root = os.path.dirname(os.path.abspath(__file__))',
+    "site_packages = os.path.join(root, 'deps', 'lib', 'python3.12', 'site-packages')",
+    "rdkit_share = os.path.join(site_packages, 'rdkit', 'share', 'RDKit')",
+    'if not os.path.isdir(rdkit_share):',
+    "    rdkit_share = os.path.join(root, 'deps', 'share', 'RDKit')",
+    "os.environ['RDBASE'] = rdkit_share",
+    "os.environ['RDKIT_DATA_DIR'] = os.path.join(rdkit_share, 'Data')",
+    "os.environ['PYTHONNOUSERSITE'] = '1'",
+    "os.environ['PYTHONDONTWRITEBYTECODE'] = '1'",
+    '',
+    'sys.path = [p for p in sys.path if p]',
+    'sys.path.insert(0, site_packages)',
+    'sys.path.insert(0, root)',
+    'site.ENABLE_USER_SITE = False',
+    'site.main()',
+    '',
+    "entry = os.path.join(root, 'engine.py')",
+    'sys.argv = [entry, *sys.argv[1:]]',
+    "runpy.run_path(entry, run_name='__main__')",
+    '',
+  ].join('\n');
+}
+
 export function buildChemistryEngineLauncherScript() {
   return [
     '#!/bin/sh',
     'set -e',
     'DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"',
-    'unset PYTHONHOME PYTHONSTARTUP PYTHONINSPECT',
-    'export PYTHONNOUSERSITE=1',
-    'export PYTHONDONTWRITEBYTECODE=1',
-    'export PYTHONPATH="$DIR/deps/lib/python3.12/site-packages:$DIR"',
     'export DYLD_FALLBACK_LIBRARY_PATH="$DIR/deps/lib:$DIR/python/lib:/usr/lib"',
-    'if [ -d "$DIR/deps/lib/python3.12/site-packages/rdkit/share/RDKit" ]; then',
-    '  export RDBASE="$DIR/deps/lib/python3.12/site-packages/rdkit/share/RDKit"',
-    'else',
-    '  export RDBASE="$DIR/deps/share/RDKit"',
-    'fi',
-    'export RDKIT_DATA_DIR="$RDBASE/Data"',
-    'exec "$DIR/python/bin/python3" -s -B "$DIR/engine.py" "$@"',
+    'exec "$DIR/python/bin/python3" -I -S -B "$DIR/bootstrap.py" "$@"',
     '',
   ].join('\n');
 }
@@ -234,6 +254,12 @@ export function assembleMacAppBundle(options = {}) {
   copyTreePreservingSymlinks(chemistrySrcDir, chemistryDestDir);
   copyTreePreservingSymlinks(pythonToolchainRoot, path.join(chemistryDestDir, 'python'));
   copyTreePreservingSymlinks(pythonDepsRoot, path.join(chemistryDestDir, 'deps'));
+
+  const chemistryBootstrapPath = path.join(chemistryDestDir, 'bootstrap.py');
+  fs.writeFileSync(chemistryBootstrapPath, buildChemistryBootstrapScript(), {
+    encoding: 'utf8',
+    mode: 0o644,
+  });
 
   const chemistryEnginePath = path.join(chemistryDestDir, 'engine');
   fs.writeFileSync(chemistryEnginePath, buildChemistryEngineLauncherScript(), {

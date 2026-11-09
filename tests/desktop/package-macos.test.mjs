@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import {
   assembleMacAppBundle,
+  buildChemistryBootstrapScript,
   buildChemistryEngineLauncherScript,
   removeTreeForce,
 } from '../../scripts/release/package-macos.mjs';
@@ -16,9 +17,13 @@ const require = createRequire(import.meta.url);
 const { chemistryRuntime } = require('../../desktop/runtime.cjs');
 const { xtbRuntime } = require('../../desktop/xtb-runtime.cjs');
 const { DARWIN_V1_LIBRARIES } = require('../../desktop/xtb-runtime-contract.cjs');
+const { createPortableProfile } = require('../../desktop/portable-profile.cjs');
+const { createPortableServices, finishPortableRun } = require('../../desktop/portable-services.cjs');
+const { createWorkbenchPreferencesStore } = require('../../desktop/preferences.cjs');
+const { createModelDisplayPreferencesStore } = require('../../desktop/model-display-preferences.cjs');
 
 async function withTempDir(fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ester-pkg-mac-test-'));
+  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'ester-pkg-mac-test-'));
   try {
     return await fn(dir);
   } finally {
@@ -36,7 +41,7 @@ function writeText(root, relPath, content, mode) {
   return fullPath;
 }
 
-test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG root directory, and runs chemistry/engine with RDKit Salts.txt', async () => {
+test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG root directory, and runs isolated chemistry/engine with PYTHONPLATLIBDIR/PYTHONVERBOSE hostility', async () => {
   await withTempDir(async (root) => {
     const repoRoot = path.join(root, 'repo');
     const electronAppPath = path.join(repoRoot, 'node_modules/electron/dist/Electron.app');
@@ -118,7 +123,7 @@ test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG 
 from rdkit import RDConfig
 from rdkit.Chem.SaltRemover import SaltRemover
 remover = SaltRemover()
-print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.salts)}))
+print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.salts), "args": sys.argv[1:]}))
 `,
     );
     writeText(
@@ -245,10 +250,11 @@ print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.sal
       fs.existsSync(path.join(result.appResourcesPath, 'node_modules', 'asn1', 'index.js')),
     );
 
-    // Verify launcher script sets RDBASE to site-packages/rdkit/share/RDKit and uses -s -B
+    // Verify launcher and bootstrap scripts use -I -S -B and RDBASE
     const launcher = buildChemistryEngineLauncherScript();
-    assert.match(launcher, /deps\/lib\/python3\.12\/site-packages\/rdkit\/share\/RDKit/);
-    assert.match(launcher, /exec "\$DIR\/python\/bin\/python3" -s -B "\$DIR\/engine\.py" "\$@"/);
+    const bootstrap = buildChemistryBootstrapScript();
+    assert.match(launcher, /exec "\$DIR\/python\/bin\/python3" -I -S -B "\$DIR\/bootstrap\.py" "\$@"/);
+    assert.match(bootstrap, /rdkit_share = os\.path\.join\(site_packages, 'rdkit', 'share', 'RDKit'\)/);
 
     // Verify chemistryRuntime({ packaged: true }) and xtbRuntime({ packaged: true }) accept the assembled bundle
     const chemRt = chemistryRuntime({
@@ -273,7 +279,8 @@ print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.sal
       assert.equal(xtbRt.version, '6.7.1');
     }
 
-    // Live execution of packaged chemistry/engine against staged darwin-arm64 runtime ( verifies RDConfig.RDDataDir + SaltRemover )
+    // Live execution of packaged chemistry/engine against staged darwin-arm64 runtime
+    // with hostile PYTHONPLATLIBDIR=lib64 and PYTHONVERBOSE=1
     if (process.platform === 'darwin' && process.arch === 'arm64') {
       ensureDarwinRuntimeReady({ appPath: process.cwd(), platformId: 'darwin-arm64' });
       const realTc = path.resolve(
@@ -290,14 +297,22 @@ print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.sal
       fs.symlinkSync(realTc, path.join(chemDir, 'python'));
       fs.symlinkSync(realDeps, path.join(chemDir, 'deps'));
 
-      const engineOut = execFileSync(result.chemistryEnginePath, [], {
+      const engineOut = execFileSync(result.chemistryEnginePath, ['--capabilities'], {
         cwd: chemDir,
+        env: {
+          ...process.env,
+          PYTHONPLATLIBDIR: 'lib64',
+          PYTHONVERBOSE: '1',
+          PYTHONHOME: '/nonexistent-python-home',
+          PYTHONPATH: '/nonexistent-python-path',
+        },
         encoding: 'utf8',
         timeout: 30000,
       });
       const parsed = JSON.parse(engineOut.trim());
       assert.ok(fs.existsSync(path.join(parsed.rdDataDir, 'Salts.txt')));
       assert.ok(parsed.saltsCount > 0);
+      assert.deepEqual(parsed.args, ['--capabilities']);
     }
 
     assert.equal(calls.length, 2);
@@ -316,13 +331,70 @@ print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.sal
   });
 });
 
-test('desktop/main.cjs restricts Windows portable layout resolution to win32 when packaged', () => {
+test('desktop/main.cjs packaged macOS portableProfile uses writable appData EsterStudio-Portable and supports portableServices', async () => {
   const mainSource = fs.readFileSync(
     path.resolve(import.meta.dirname, '../../desktop/main.cjs'),
     'utf8',
   );
   assert.match(
     mainSource,
-    /\} else if \(app\.isPackaged && process\.platform === 'win32'\) \{/,
+    /const layout = process\.platform === 'win32' \? resolvePortableLayout\(\{ executable: process\.execPath, version: appVersion \}\) : null;/,
   );
+  assert.match(
+    mainSource,
+    /const stateRoot = layout \? layout\.stateRoot : path\.join\(fsSync\.realpathSync\(app\.getPath\('appData'\)\), 'EsterStudio-Portable'\);/,
+  );
+
+  await withTempDir(async (root) => {
+    const appDataDir = path.join(root, 'Library', 'Application Support');
+    const stateRoot = path.join(appDataDir, 'EsterStudio-Portable');
+    fs.mkdirSync(stateRoot, { recursive: true });
+
+    const configuredPaths = {};
+    const mockApp = {
+      setPath(name, value) {
+        configuredPaths[name] = value;
+      },
+    };
+    const fakeMacExec = path.join(
+      root,
+      'Applications',
+      'Ester Studio.app',
+      'Contents',
+      'MacOS',
+      'Ester Studio',
+    );
+    const profile = createPortableProfile({
+      app: mockApp,
+      executable: fakeMacExec,
+      version: '2.0.2',
+      revision: '',
+      root: stateRoot,
+    });
+    assert.equal(profile.mode, 'portable');
+    assert.equal(profile.root, stateRoot);
+    assert.equal(configuredPaths.userData, profile.paths.profile);
+
+    const services = createPortableServices({
+      profile,
+      workbenchStore: createWorkbenchPreferencesStore(configuredPaths.userData),
+      displayStore: createModelDisplayPreferencesStore(configuredPaths.userData),
+      dialog: {
+        selectImport: async () => null,
+        selectExport: async () => null,
+        selectDiagnosticsExport: async () => null,
+      },
+      openPath: async () => '',
+      clearCache: async () => {},
+      isBusy: () => false,
+      backendInfo: async () => ({ name: 'openblas', verified: false, source: 'macos-bundle' }),
+      runtimeCheck: async () => ({ ok: true }),
+    });
+    const reply = await services.handle({ action: 'info' }, { ownerId: 1 });
+    assert.equal(reply.ok, true);
+    assert.equal(reply.info.mode, 'portable');
+    assert.equal(reply.info.version, '2.0.2');
+    assert.equal(reply.info.paths.root, stateRoot);
+    await finishPortableRun(profile);
+  });
 });

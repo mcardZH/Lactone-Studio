@@ -86,8 +86,13 @@ if (isolatedIO) {
   fsSync.mkdirSync(isolatedRoot, { recursive: true });
   assert(within(fsSync.realpathSync(appPath), fsSync.realpathSync(isolatedRoot)), 'Isolated I/O directory cannot escape via a link');
   portableProfile = createPortableProfile({ app, executable: process.execPath, root: isolatedRoot, version: appVersion, revision: appBuildRevision });
-} else if (app.isPackaged && process.platform === 'win32') {
-  try { const layout = resolvePortableLayout({ executable: process.execPath, version: appVersion }); portableProfile = createPortableProfile({ app, executable: process.execPath, version: appVersion, revision: appBuildRevision, root: layout.stateRoot, layout }); }
+} else if (app.isPackaged) {
+  try {
+    const layout = process.platform === 'win32' ? resolvePortableLayout({ executable: process.execPath, version: appVersion }) : null;
+    const stateRoot = layout ? layout.stateRoot : path.join(fsSync.realpathSync(app.getPath('appData')), 'EsterStudio-Portable');
+    if (!layout) fsSync.mkdirSync(stateRoot, { recursive: true });
+    portableProfile = createPortableProfile({ app, executable: process.execPath, version: appVersion, revision: appBuildRevision, root: stateRoot, ...(layout ? { layout } : {}) });
+  }
   catch (error) { dialog.showErrorBox?.('Ester Studio 便携目录不可用', classifyStorageError(error).message + '\n请将完整程序解压到支持安全保存的可写目录。'); throw error; }
 } else {
   const profile = prepareVersionProfile(fsSync, app.getPath('appData'), appVersion + (appBuildRevision ? '-' + appBuildRevision : ''));
