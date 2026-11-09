@@ -9,7 +9,9 @@ import {
   assembleMacAppBundle,
   buildChemistryBootstrapScript,
   buildChemistryEngineLauncherScript,
+  parseCliArgs,
   removeTreeForce,
+  resolveDefaultMacRuntimeSources,
 } from '../../scripts/release/package-macos.mjs';
 import { ensureDarwinRuntimeReady } from '../../scripts/native/stage-darwin-runtime.mjs';
 
@@ -17,10 +19,7 @@ const require = createRequire(import.meta.url);
 const { chemistryRuntime } = require('../../desktop/runtime.cjs');
 const { xtbRuntime } = require('../../desktop/xtb-runtime.cjs');
 const { DARWIN_V1_LIBRARIES } = require('../../desktop/xtb-runtime-contract.cjs');
-const { createPortableProfile } = require('../../desktop/portable-profile.cjs');
-const { createPortableServices, finishPortableRun } = require('../../desktop/portable-services.cjs');
-const { createWorkbenchPreferencesStore } = require('../../desktop/preferences.cjs');
-const { createModelDisplayPreferencesStore } = require('../../desktop/model-display-preferences.cjs');
+const { prepareVersionProfile } = require('../../desktop/version-profile.cjs');
 
 async function withTempDir(fn) {
   const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'ester-pkg-mac-test-'));
@@ -331,70 +330,106 @@ print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.sal
   });
 });
 
-test('desktop/main.cjs packaged macOS portableProfile uses writable appData EsterStudio-Portable and supports portableServices', async () => {
+test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x64 with stageDarwinRuntime default layout and lock overrides', async () => {
+  await withTempDir(async (root) => {
+    const repoRoot = path.join(root, 'repo-x64');
+    const outputDir = path.join(root, 'release-x64');
+    const electronAppPath = path.join(repoRoot, 'node_modules/electron/dist/Electron.app');
+    writeText(
+      electronAppPath,
+      'Contents/Info.plist',
+      `<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>Electron</string>
+  <key>CFBundleName</key>
+  <string>Electron</string>
+  <key>CFBundleDisplayName</key>
+  <string>Electron</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.github.Electron</string>
+  <key>CFBundleShortVersionString</key>
+  <string>44.7.0</string>
+  <key>CFBundleVersion</key>
+  <string>44.7.0</string>
+</dict>
+</plist>`,
+    );
+    writeText(electronAppPath, 'Contents/MacOS/Electron', '#!/bin/sh\n', 0o755);
+    writeText(repoRoot, 'package.json', JSON.stringify({ name: 'sciyue', version: '2.0.2' }, null, 2));
+    writeText(repoRoot, 'LICENSE.txt', 'MIT');
+    writeText(repoRoot, 'dist/index.html', '<html></html>');
+    writeText(repoRoot, 'desktop/main.cjs', '// main');
+    writeText(repoRoot, 'desktop/chemistry/engine.py', 'print("{}")\n');
+
+    // Simulate stageDarwinRuntime default directory naming on darwin-x64 (conda-py312-arm64 / conda-chem-arm64)
+    const tcPrefix = '.local/toolchains/darwin-x64/conda-py312-arm64/python';
+    const depPrefix = '.local/dependencies/darwin-x64/conda-chem-arm64/python';
+    const xtbPrefix = '.local/dependencies/darwin-x64/conda-chem-arm64/xtb';
+    writeText(repoRoot, `${tcPrefix}/bin/python3`, '#!/bin/sh\necho "{}"\n', 0o755);
+    writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/rdkit/__init__.py`, '');
+    writeText(repoRoot, `${xtbPrefix}/bin/xtb`, '#!/bin/sh\necho "xtb version 6.7.1"\n', 0o755);
+    for (const dylib of DARWIN_V1_LIBRARIES) {
+      writeText(repoRoot, `${xtbPrefix}/lib/${dylib}`, 'fake-dylib');
+    }
+    for (const param of ['param_gfn0-xtb.txt', 'param_gfn2-xtb.txt', 'param_ipea-xtb.txt']) {
+      writeText(repoRoot, `${xtbPrefix}/share/xtb/${param}`, 'param');
+    }
+
+    const sources = resolveDefaultMacRuntimeSources(repoRoot, 'x64');
+    assert.equal(sources.pythonToolchainRoot, path.join(repoRoot, tcPrefix));
+    assert.equal(sources.pythonDepsRoot, path.join(repoRoot, depPrefix));
+    assert.equal(sources.xtbSourceRoot, path.join(repoRoot, xtbPrefix));
+
+    const result = assembleMacAppBundle({
+      repoRoot,
+      arch: 'x64',
+      outputDir,
+      sign: false,
+      createDmg: false,
+    });
+    assert.equal(fs.existsSync(result.executablePath), true);
+    assert.equal(fs.existsSync(result.chemistryEnginePath), true);
+
+    const parsedCli = parseCliArgs([
+      '--skip-build',
+      '--skip-dmg',
+      '--arch=x64',
+      '--python-toolchain-root',
+      '/tmp/custom-tc',
+    ]);
+    assert.equal(parsedCli.skipBuild, true);
+    assert.equal(parsedCli.skipDmg, true);
+    assert.equal(parsedCli.options.arch, 'x64');
+    assert.equal(parsedCli.options.pythonToolchainRoot, path.resolve('/tmp/custom-tc'));
+  });
+});
+
+test('desktop/main.cjs and desktop/preload.cjs use standard prepareVersionProfile on macOS without Windows portableProfile', async () => {
   const mainSource = fs.readFileSync(
     path.resolve(import.meta.dirname, '../../desktop/main.cjs'),
     'utf8',
   );
   assert.match(
     mainSource,
-    /const layout = process\.platform === 'win32' \? resolvePortableLayout\(\{ executable: process\.execPath, version: appVersion \}\) : null;/,
+    /\} else if \(app\.isPackaged && process\.platform === 'win32'\) \{/,
+  );
+
+  const preloadSource = fs.readFileSync(
+    path.resolve(import.meta.dirname, '../../desktop/preload.cjs'),
+    'utf8',
   );
   assert.match(
-    mainSource,
-    /const stateRoot = layout \? layout\.stateRoot : path\.join\(fsSync\.realpathSync\(app\.getPath\('appData'\)\), 'EsterStudio-Portable'\);/,
+    preloadSource,
+    /\(\(process\.platform === 'win32' \|\| process\.env\?\.SCIYUE_TEST_ISOLATED_IO === '1'\) \? \{ portableTools:/,
   );
 
   await withTempDir(async (root) => {
     const appDataDir = path.join(root, 'Library', 'Application Support');
-    const stateRoot = path.join(appDataDir, 'EsterStudio-Portable');
-    fs.mkdirSync(stateRoot, { recursive: true });
-
-    const configuredPaths = {};
-    const mockApp = {
-      setPath(name, value) {
-        configuredPaths[name] = value;
-      },
-    };
-    const fakeMacExec = path.join(
-      root,
-      'Applications',
-      'Ester Studio.app',
-      'Contents',
-      'MacOS',
-      'Ester Studio',
-    );
-    const profile = createPortableProfile({
-      app: mockApp,
-      executable: fakeMacExec,
-      version: '2.0.2',
-      revision: '',
-      root: stateRoot,
-    });
-    assert.equal(profile.mode, 'portable');
-    assert.equal(profile.root, stateRoot);
-    assert.equal(configuredPaths.userData, profile.paths.profile);
-
-    const services = createPortableServices({
-      profile,
-      workbenchStore: createWorkbenchPreferencesStore(configuredPaths.userData),
-      displayStore: createModelDisplayPreferencesStore(configuredPaths.userData),
-      dialog: {
-        selectImport: async () => null,
-        selectExport: async () => null,
-        selectDiagnosticsExport: async () => null,
-      },
-      openPath: async () => '',
-      clearCache: async () => {},
-      isBusy: () => false,
-      backendInfo: async () => ({ name: 'openblas', verified: false, source: 'macos-bundle' }),
-      runtimeCheck: async () => ({ ok: true }),
-    });
-    const reply = await services.handle({ action: 'info' }, { ownerId: 1 });
-    assert.equal(reply.ok, true);
-    assert.equal(reply.info.mode, 'portable');
-    assert.equal(reply.info.version, '2.0.2');
-    assert.equal(reply.info.paths.root, stateRoot);
-    await finishPortableRun(profile);
+    fs.mkdirSync(appDataDir, { recursive: true });
+    const profileDir = prepareVersionProfile(fs, appDataDir, '2.0.2');
+    assert.equal(profileDir, path.join(appDataDir, 'SciYue', 'profiles', 'v2.0.2'));
+    assert.equal(fs.existsSync(profileDir), true);
   });
 });

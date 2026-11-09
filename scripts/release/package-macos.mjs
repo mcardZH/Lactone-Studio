@@ -158,24 +158,125 @@ export function buildChemistryEngineLauncherScript() {
   ].join('\n');
 }
 
+function readJsonIfExists(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+export function resolveDefaultMacRuntimeSources(repoRoot = DEFAULT_REPO_ROOT, arch = process.arch) {
+  const platformId = `darwin-${arch}`;
+  const profileCandidates = [
+    path.join(repoRoot, `desktop/packaging/native-profile.${platformId}.json`),
+    path.join(repoRoot, 'desktop/packaging/native-profile.json'),
+  ];
+  let profile = null;
+  for (const candidate of profileCandidates) {
+    const parsed = readJsonIfExists(candidate);
+    if (parsed && parsed.platform === platformId) {
+      profile = parsed;
+      break;
+    }
+  }
+
+  const tcLockRel =
+    profile?.toolchainLock || `desktop/packaging/native-toolchain.${platformId}.lock.json`;
+  const rtLockRel =
+    profile?.runtimeLock || `desktop/packaging/native-runtime.${platformId}.lock.json`;
+  const xtbLockRel =
+    profile?.xtbLock || `desktop/packaging/xtb-runtime.${platformId}.lock.json`;
+
+  const tcLock = readJsonIfExists(path.join(repoRoot, tcLockRel));
+  const rtLock = readJsonIfExists(path.join(repoRoot, rtLockRel));
+  const xtbLock = readJsonIfExists(path.join(repoRoot, xtbLockRel));
+
+  const pickExisting = (candidates) => {
+    for (const candidate of candidates) {
+      if (candidate && fs.existsSync(candidate)) return candidate;
+    }
+    return candidates.find(Boolean);
+  };
+
+  const pythonToolchainRoot = pickExisting([
+    tcLock?.root ? path.join(repoRoot, tcLock.root, 'python') : null,
+    path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-${arch}/python`),
+    path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-arm64/python`),
+  ]);
+
+  const pythonDepsRoot = pickExisting([
+    rtLock?.root ? path.join(repoRoot, rtLock.root, 'python') : null,
+    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/python`),
+    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/python`),
+  ]);
+
+  const xtbSubdir =
+    Array.isArray(xtbLock?.contentDirectories) && xtbLock.contentDirectories[0]
+      ? xtbLock.contentDirectories[0]
+      : 'xtb';
+  const xtbSourceRoot = pickExisting([
+    xtbLock?.root ? path.join(repoRoot, xtbLock.root, xtbSubdir) : null,
+    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/xtb`),
+    path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/xtb`),
+  ]);
+
+  return {
+    pythonToolchainRoot,
+    pythonDepsRoot,
+    xtbSourceRoot,
+  };
+}
+
+export function parseCliArgs(argv = process.argv.slice(2)) {
+  const result = {
+    skipBuild: false,
+    skipDmg: false,
+    skipSign: false,
+    options: {},
+  };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--skip-build') {
+      result.skipBuild = true;
+      continue;
+    }
+    if (arg === '--skip-dmg') {
+      result.skipDmg = true;
+      continue;
+    }
+    if (arg === '--skip-sign') {
+      result.skipSign = true;
+      continue;
+    }
+    const [key, inlineVal] = arg.includes('=') ? arg.split(/=(.*)/s, 2) : [arg, null];
+    const nextVal = inlineVal !== null ? inlineVal : argv[i + 1];
+    const consumeValue = () => {
+      if (inlineVal === null) i += 1;
+      return nextVal;
+    };
+    if (key === '--repo-root' && nextVal) result.options.repoRoot = path.resolve(consumeValue());
+    else if (key === '--arch' && nextVal) result.options.arch = consumeValue();
+    else if (key === '--output-dir' && nextVal) result.options.outputDir = path.resolve(consumeValue());
+    else if (key === '--electron-app' && nextVal) result.options.electronAppPath = path.resolve(consumeValue());
+    else if (key === '--python-toolchain-root' && nextVal) result.options.pythonToolchainRoot = path.resolve(consumeValue());
+    else if (key === '--python-deps-root' && nextVal) result.options.pythonDepsRoot = path.resolve(consumeValue());
+    else if (key === '--xtb-source-root' && nextVal) result.options.xtbSourceRoot = path.resolve(consumeValue());
+  }
+  return result;
+}
+
 export function assembleMacAppBundle(options = {}) {
+  const repoRoot = options.repoRoot ?? DEFAULT_REPO_ROOT;
+  const arch = options.arch ?? process.arch;
+  const defaults = resolveDefaultMacRuntimeSources(repoRoot, arch);
   const {
-    repoRoot = DEFAULT_REPO_ROOT,
-    arch = process.arch,
     outputDir = path.join(repoRoot, 'release', `darwin-${arch}`),
     electronAppPath = path.join(repoRoot, 'node_modules/electron/dist/Electron.app'),
-    pythonToolchainRoot = path.join(
-      repoRoot,
-      `.local/toolchains/darwin-${arch}/conda-py312-${arch}/python`,
-    ),
-    pythonDepsRoot = path.join(
-      repoRoot,
-      `.local/dependencies/darwin-${arch}/conda-chem-${arch}/python`,
-    ),
-    xtbSourceRoot = path.join(
-      repoRoot,
-      `.local/dependencies/darwin-${arch}/conda-chem-${arch}/xtb`,
-    ),
+    pythonToolchainRoot = defaults.pythonToolchainRoot,
+    pythonDepsRoot = defaults.pythonDepsRoot,
+    xtbSourceRoot = defaults.xtbSourceRoot,
     productName = 'Ester Studio',
     version = '2.0.2',
     bundleId = 'com.sciyue.esterstudio',
@@ -323,21 +424,20 @@ export function assembleMacAppBundle(options = {}) {
 }
 
 async function runCli() {
-  const args = new Set(process.argv.slice(2));
-  const skipBuild = args.has('--skip-build');
-  const skipDmg = args.has('--skip-dmg');
-  const skipSign = args.has('--skip-sign');
+  const parsed = parseCliArgs(process.argv.slice(2));
+  const repoRoot = parsed.options.repoRoot ?? DEFAULT_REPO_ROOT;
 
-  if (!skipBuild) {
+  if (!parsed.skipBuild) {
     console.log('[package-macos] 🔨 Building frontend production bundle (npm run build)...');
-    execFileSync('npm', ['run', 'build'], { cwd: DEFAULT_REPO_ROOT, stdio: 'inherit' });
+    execFileSync('npm', ['run', 'build'], { cwd: repoRoot, stdio: 'inherit' });
   }
 
   console.log('[package-macos] 📦 Assembling Ester Studio.app bundle...');
   const result = assembleMacAppBundle({
-    repoRoot: DEFAULT_REPO_ROOT,
-    sign: !skipSign && process.platform === 'darwin',
-    createDmg: !skipDmg && process.platform === 'darwin',
+    ...parsed.options,
+    repoRoot,
+    sign: !parsed.skipSign && process.platform === 'darwin',
+    createDmg: !parsed.skipDmg && process.platform === 'darwin',
   });
   console.log(`[package-macos] ✅ App bundle ready: ${result.appBundlePath}`);
   if (result.dmgPath) {

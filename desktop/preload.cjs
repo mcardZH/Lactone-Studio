@@ -124,7 +124,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   ocrChooseComponent: () => invoke('sciyue:ocr-choose-component'),
   ocrRecognize: request => invoke('sciyue:ocr-recognize',request),
   ocrCancel: requestId => invoke('sciyue:ocr-cancel',requestId),
-  portableTools: request => invoke('sciyue:portable-tools', request),
+  ...((process.platform === 'win32' || process.env?.SCIYUE_TEST_ISOLATED_IO === '1') ? { portableTools: request => invoke('sciyue:portable-tools', request) } : {}),
   readPersonalFragments: () => invoke('sciyue:read-personal-fragments'),
   updatePersonalFragments: request => invoke('sciyue:update-personal-fragments', request),
   importPersonalFragments: () => invoke('sciyue:import-personal-fragments'),
