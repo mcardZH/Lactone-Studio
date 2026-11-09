@@ -21,6 +21,78 @@ async function withTempDir(fn) {
   }
 }
 
+/**
+ * Wraps fs/promises so POSIX mode bits (0o755 vs 0o644) and symlinks are
+ * faithfully represented even if the test suite runs on a Windows filesystem.
+ */
+function createPortablePosixFs() {
+  const modes = new Map();
+  const links = new Map();
+
+  async function resolveVirtualRealpath(target) {
+    let current = path.resolve(target);
+    for (let depth = 0; depth < 16; depth++) {
+      let replaced = false;
+      for (const [linkPath, destPath] of links.entries()) {
+        if (current === linkPath) {
+          current = path.resolve(path.dirname(linkPath), destPath);
+          replaced = true;
+          break;
+        }
+        if (current.startsWith(linkPath + path.sep)) {
+          const rest = current.slice(linkPath.length + 1);
+          current = path.join(path.resolve(path.dirname(linkPath), destPath), rest);
+          replaced = true;
+          break;
+        }
+      }
+      if (!replaced) break;
+    }
+    return fs.realpath(current);
+  }
+
+  return {
+    ...fs,
+    async writeExecutable(filePath, content = '#!/bin/sh\necho Multiwfn\n', mode = 0o755) {
+      await fs.writeFile(filePath, content, { mode });
+      const real = await fs.realpath(filePath);
+      modes.set(path.resolve(filePath), mode);
+      modes.set(real, mode);
+    },
+    async createSymlink(target, linkPath) {
+      const resolvedLink = path.resolve(linkPath);
+      links.set(resolvedLink, path.resolve(target));
+      if (process.platform !== 'win32') {
+        await fs.unlink(resolvedLink).catch(() => {});
+        await fs.symlink(target, resolvedLink);
+      }
+    },
+    async realpath(target) {
+      return resolveVirtualRealpath(target);
+    },
+    async lstat(target) {
+      const resolved = path.resolve(target);
+      if (process.platform === 'win32' && links.has(resolved)) {
+        return {
+          isDirectory: () => false,
+          isFile: () => false,
+          isSymbolicLink: () => true,
+          mode: 0o120777,
+          size: 16,
+        };
+      }
+      const stat = await fs.lstat(target);
+      const overrideMode = modes.get(resolved);
+      if (overrideMode !== undefined) {
+        return Object.create(stat, {
+          mode: { value: (stat.mode & ~0o777) | overrideMode, enumerable: true },
+        });
+      }
+      return stat;
+    },
+  };
+}
+
 function resolveChemistryRuntimeForTest() {
   const appPath = process.cwd();
   const runtime = chemistryRuntime({
@@ -45,6 +117,7 @@ function resolveChemistryRuntimeForTest() {
 }
 
 function runOrbitalWorkerCommands(runtime, requests) {
+  const timeoutMs = requests.timeoutMs ?? 30000;
   return new Promise((resolve, reject) => {
     const child = spawn(runtime.executable, [...runtime.args, '--orbitals'], {
       cwd: runtime.cwd,
@@ -54,27 +127,67 @@ function runOrbitalWorkerCommands(runtime, requests) {
     const messages = [];
     let buffer = '';
     let stderr = '';
+    let settled = false;
+
+    const finish = (err, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) {
+        try {
+          child.kill('SIGKILL');
+        } catch {}
+        reject(err);
+      } else {
+        resolve(result);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      finish(new Error(`orbitals worker timed out after ${timeoutMs}ms; stderr=${stderr}`));
+    }, timeoutMs);
+
     child.stdout.on('data', (chunk) => {
       buffer += chunk.toString('utf8');
       let newlineIndex;
       while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
         const line = buffer.slice(0, newlineIndex).trim();
         buffer = buffer.slice(newlineIndex + 1);
-        if (line) messages.push(JSON.parse(line));
+        if (!line) continue;
+        let parsed;
+        try {
+          parsed = JSON.parse(line);
+        } catch (parseErr) {
+          finish(parseErr);
+          return;
+        }
+        messages.push(parsed);
+        if (parsed.ok === false || parsed.event === 'error') {
+          finish(
+            new Error(
+              `orbitals worker reported error: ${JSON.stringify(parsed.error || parsed)}`,
+            ),
+          );
+          return;
+        }
       }
-      if (requests.onMessage) {
-        requests.onMessage(messages, child);
+      if (!settled && requests.onMessage) {
+        try {
+          requests.onMessage(messages, child);
+        } catch (cbErr) {
+          finish(cbErr);
+        }
       }
     });
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString('utf8');
     });
-    child.on('error', reject);
+    child.on('error', (err) => finish(err));
     child.on('close', (code) => {
       if (code !== 0 && code !== null && !requests.allowNonZeroExit) {
-        reject(new Error(`orbitals worker exited with ${code}: ${stderr}`));
+        finish(new Error(`orbitals worker exited with ${code}: ${stderr}`));
       } else {
-        resolve(messages);
+        finish(null, messages);
       }
     });
     for (const req of requests.initial || []) {
@@ -86,68 +199,83 @@ function runOrbitalWorkerCommands(runtime, requests) {
   });
 }
 
-test('createOrbitalBackendStore resolves lowercase multiwfn, skips non-executable earlier directory candidates, and resolves POSIX symlinks', async () => {
+test('createOrbitalBackendStore resolves lowercase multiwfn, skips non-executable earlier directory candidates, and tracks retargeted POSIX symlinks across upgrades', async () => {
   await withTempDir(async (root) => {
+    const posixFs = createPortablePosixFs();
     const storeRoot = path.join(root, 'userData');
     await fs.mkdir(storeRoot, { recursive: true });
 
-    const pkgRoot = path.join(root, 'Cellar', 'multiwfn', '2026.7.15');
-    const cellarBinDir = path.join(pkgRoot, 'bin');
-    await fs.mkdir(cellarBinDir, { recursive: true });
+    const pkgRootV1 = path.join(root, 'Cellar', 'multiwfn', '2026.7.15');
+    const cellarBinDirV1 = path.join(pkgRootV1, 'bin');
+    await fs.mkdir(cellarBinDirV1, { recursive: true });
 
-    // Place a non-executable Multiwfn file in pkgRoot to verify directory candidate loop continues to bin/multiwfn
-    const nonExecRootCandidate = path.join(pkgRoot, 'Multiwfn');
-    await fs.writeFile(nonExecRootCandidate, 'not executable document', { mode: 0o644 });
+    // Place a non-executable Multiwfn file in pkgRootV1 to verify directory candidate loop continues to bin/multiwfn
+    const nonExecRootCandidate = path.join(pkgRootV1, 'Multiwfn');
+    await posixFs.writeExecutable(nonExecRootCandidate, 'not executable document', 0o644);
 
-    const realBinary = path.join(cellarBinDir, 'multiwfn');
-    await fs.writeFile(realBinary, '#!/bin/sh\necho Multiwfn\n', { mode: 0o755 });
-    const canonicalBinary = await fs.realpath(realBinary);
+    const realBinaryV1 = path.join(cellarBinDirV1, 'multiwfn');
+    await posixFs.writeExecutable(realBinaryV1, '#!/bin/sh\necho Multiwfn v1\n', 0o755);
+    const canonicalBinaryV1 = await posixFs.realpath(realBinaryV1);
+
+    // Prepare a second version directory to verify symlink retargeting while v1 still exists
+    const pkgRootV2 = path.join(root, 'Cellar', 'multiwfn', '2026.8.1');
+    const cellarBinDirV2 = path.join(pkgRootV2, 'bin');
+    await fs.mkdir(cellarBinDirV2, { recursive: true });
+    const realBinaryV2 = path.join(cellarBinDirV2, 'multiwfn');
+    await posixFs.writeExecutable(realBinaryV2, '#!/bin/sh\necho Multiwfn v2\n', 0o755);
+    const canonicalBinaryV2 = await posixFs.realpath(realBinaryV2);
 
     const store = createOrbitalBackendStore(storeRoot, {
       platform: 'darwin',
       env: {},
       defaultCandidates: [],
+      fs: posixFs,
     });
 
     const unconfigured = await store.info();
     assert.equal(unconfigured.configured, false);
 
-    if (process.platform !== 'win32') {
-      // Directory contains non-executable Multiwfn AND executable bin/multiwfn -> must resolve bin/multiwfn
-      const fromDirWithNonExecFirst = await store.select(pkgRoot);
-      assert.equal(fromDirWithNonExecFirst.configured, true);
-      assert.equal(fromDirWithNonExecFirst.path, canonicalBinary);
+    // 1. Directory contains non-executable Multiwfn AND executable bin/multiwfn -> must resolve bin/multiwfn
+    const fromDirWithNonExecFirst = await store.select(pkgRootV1);
+    assert.equal(fromDirWithNonExecFirst.configured, true);
+    assert.equal(fromDirWithNonExecFirst.path, canonicalBinaryV1);
 
-      const optDir = path.join(root, 'opt');
-      await fs.mkdir(optDir, { recursive: true });
-      const optPrefixLink = path.join(optDir, 'multiwfn');
-      await fs.symlink(pkgRoot, optPrefixLink);
+    // 2. Selecting symlinked binary (/opt/homebrew/bin/multiwfn) and upgrading symlink target
+    const brewBinDir = path.join(root, 'bin');
+    await fs.mkdir(brewBinDir, { recursive: true });
+    const brewBinLink = path.join(brewBinDir, 'multiwfn');
+    await posixFs.createSymlink(realBinaryV1, brewBinLink);
 
-      const brewBinDir = path.join(root, 'bin');
-      await fs.mkdir(brewBinDir, { recursive: true });
-      const brewBinLink = path.join(brewBinDir, 'multiwfn');
-      await fs.symlink(realBinary, brewBinLink);
+    const fromSymlinkBinary = await store.select(brewBinLink);
+    assert.equal(fromSymlinkBinary.configured, true);
+    assert.equal(fromSymlinkBinary.path, canonicalBinaryV1);
 
-      const fromSymlinkBinary = await store.select(brewBinLink);
-      assert.equal(fromSymlinkBinary.configured, true);
-      assert.equal(fromSymlinkBinary.path, canonicalBinary);
+    // Retarget symlink to v2 while v1 still exists -> info() must return v2
+    await posixFs.createSymlink(realBinaryV2, brewBinLink);
+    const afterBinaryUpgrade = await store.info();
+    assert.equal(afterBinaryUpgrade.configured, true);
+    assert.equal(afterBinaryUpgrade.path, canonicalBinaryV2);
 
-      const fromOptPrefix = await store.select(optPrefixLink);
-      assert.equal(fromOptPrefix.configured, true);
-      assert.equal(fromOptPrefix.path, canonicalBinary);
-    }
+    // 3. Selecting symlinked prefix directory (/opt/homebrew/opt/multiwfn) and upgrading symlink target
+    const optDir = path.join(root, 'opt');
+    await fs.mkdir(optDir, { recursive: true });
+    const optPrefixLink = path.join(optDir, 'multiwfn');
+    await posixFs.createSymlink(pkgRootV1, optPrefixLink);
 
-    const fromBinDir = await store.select(cellarBinDir);
-    assert.equal(fromBinDir.configured, true);
-    assert.equal(fromBinDir.path, canonicalBinary);
+    const fromOptPrefix = await store.select(optPrefixLink);
+    assert.equal(fromOptPrefix.configured, true);
+    assert.equal(fromOptPrefix.path, canonicalBinaryV1);
 
-    const persisted = await store.info();
-    assert.deepEqual(persisted, { configured: true, path: canonicalBinary });
+    await posixFs.createSymlink(pkgRootV2, optPrefixLink);
+    const afterOptUpgrade = await store.info();
+    assert.equal(afterOptUpgrade.configured, true);
+    assert.equal(afterOptUpgrade.path, canonicalBinaryV2);
   });
 });
 
 test('createOrbitalBackendStore supports SCIYUE_MULTIWFN / Multiwfnpath env discovery, falls back on invalid orbital-backend.json, and respects user select()', async () => {
   await withTempDir(async (root) => {
+    const posixFs = createPortablePosixFs();
     const storeRoot = path.join(root, 'userData');
     await fs.mkdir(storeRoot, { recursive: true });
 
@@ -161,19 +289,20 @@ test('createOrbitalBackendStore supports SCIYUE_MULTIWFN / Multiwfnpath env disc
     const envBin = path.join(envDir, 'multiwfn');
     const autoBin = path.join(autoDir, 'multiwfn');
     const customBin = path.join(customDir, 'Multiwfn');
-    await fs.writeFile(envBin, '#!/bin/sh\n', { mode: 0o755 });
-    await fs.writeFile(autoBin, '#!/bin/sh\n', { mode: 0o755 });
-    await fs.writeFile(customBin, '#!/bin/sh\n', { mode: 0o755 });
+    await posixFs.writeExecutable(envBin, '#!/bin/sh\n', 0o755);
+    await posixFs.writeExecutable(autoBin, '#!/bin/sh\n', 0o755);
+    await posixFs.writeExecutable(customBin, '#!/bin/sh\n', 0o755);
 
-    // 1. Env discovery via SCIYUE_MULTIWFN and Multiwfnpath directory
+    // 1. Env discovery via Multiwfnpath directory
     const envStore = createOrbitalBackendStore(storeRoot, {
       platform: 'darwin',
       env: { Multiwfnpath: envDir },
       defaultCandidates: [autoBin],
+      fs: posixFs,
     });
     const fromEnv = await envStore.info();
     assert.equal(fromEnv.configured, true);
-    assert.equal(fromEnv.path, await fs.realpath(envBin));
+    assert.equal(fromEnv.path, await posixFs.realpath(envBin));
 
     // 2. Corrupted or stale orbital-backend.json falls back cleanly to defaultCandidates
     await fs.writeFile(
@@ -185,49 +314,50 @@ test('createOrbitalBackendStore supports SCIYUE_MULTIWFN / Multiwfnpath env disc
       platform: 'darwin',
       env: {},
       defaultCandidates: [path.join(root, 'missing', 'multiwfn'), autoBin],
+      fs: posixFs,
     });
 
     const discovered = await store.info();
     assert.equal(discovered.configured, true);
-    assert.equal(discovered.path, await fs.realpath(autoBin));
+    assert.equal(discovered.path, await posixFs.realpath(autoBin));
 
     // 3. Explicit user selection overrides auto-discovered candidate
     const selected = await store.select(customDir);
     assert.equal(selected.configured, true);
-    assert.equal(selected.path, await fs.realpath(customBin));
+    assert.equal(selected.path, await posixFs.realpath(customBin));
 
     const afterSelect = await store.info();
     assert.equal(afterSelect.configured, true);
-    assert.equal(afterSelect.path, await fs.realpath(customBin));
+    assert.equal(afterSelect.path, await posixFs.realpath(customBin));
   });
 });
 
 test('createOrbitalBackendStore rejects non-Multiwfn binaries, non-executable POSIX files, and win32 symlinks', async () => {
   await withTempDir(async (root) => {
+    const posixFs = createPortablePosixFs();
     const storeRoot = path.join(root, 'userData');
     await fs.mkdir(storeRoot, { recursive: true });
 
     const wrongName = path.join(root, 'other-tool');
-    await fs.writeFile(wrongName, '#!/bin/sh\n', { mode: 0o755 });
+    await posixFs.writeExecutable(wrongName, '#!/bin/sh\n', 0o755);
 
     const nonExecDir = path.join(root, 'noexec');
     await fs.mkdir(nonExecDir, { recursive: true });
     const nonExecBin = path.join(nonExecDir, 'multiwfn');
-    await fs.writeFile(nonExecBin, 'not-executable', { mode: 0o644 });
+    await posixFs.writeExecutable(nonExecBin, 'not-executable', 0o644);
 
     const posixStore = createOrbitalBackendStore(storeRoot, {
       platform: 'darwin',
       env: {},
       defaultCandidates: [],
+      fs: posixFs,
     });
 
     await assert.rejects(() => posixStore.select(wrongName), /Select a local Multiwfn executable/);
-    if (process.platform !== 'win32') {
-      await assert.rejects(
-        () => posixStore.select(nonExecBin),
-        /Multiwfn executable must be executable/,
-      );
-    }
+    await assert.rejects(
+      () => posixStore.select(nonExecBin),
+      /Multiwfn executable must be executable/,
+    );
 
     const winDir = path.join(root, 'win');
     await fs.mkdir(winDir, { recursive: true });
@@ -387,7 +517,9 @@ Alpha MO coefficients                      R   N=           4
         },
       });
 
-      const progressMsg = messages.find((m) => m.event === 'progress' && m.orbital?.id === 'restricted:1');
+      const progressMsg = messages.find(
+        (m) => m.event === 'progress' && m.orbital?.id === 'restricted:1',
+      );
       assert.ok(progressMsg, 'Expected orbital progress event from Multiwfn CLI');
       assert.equal(progressMsg.backend.name, 'Multiwfn');
       assert.equal(progressMsg.backend.threads, 2);

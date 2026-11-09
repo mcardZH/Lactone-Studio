@@ -115,8 +115,12 @@ function createOrbitalBackendStore(root, options = {}) {
 
   async function select(executable) {
     const selected = await checked(executable);
+    // On POSIX, persist the user-selected absolute path (e.g. /opt/homebrew/bin/multiwfn
+    // or /opt/homebrew/opt/multiwfn) so version upgrades that retarget symlinks are
+    // automatically tracked on subsequent info() calls, while returning the resolved binary.
+    const persistedPath = platform === 'win32' ? selected : path.resolve(executable);
     const temporary = location + '.' + randomUUID() + '.tmp';
-    await fs.writeFile(temporary, JSON.stringify({ schema: 1, path: selected }) + '\n', {
+    await fs.writeFile(temporary, JSON.stringify({ schema: 1, path: persistedPath }) + '\n', {
       encoding: 'utf8',
       flag: 'wx',
     });
