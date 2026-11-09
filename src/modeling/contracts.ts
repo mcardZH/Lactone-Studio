@@ -425,6 +425,8 @@ export interface DesktopBridge extends Partial<WorkspaceDesktopBridge>, Partial<
   updatePersonalFragments?(request: { baseVersion: string; library: PersonalFragmentLibraryData }): Promise<PersonalFragmentSnapshot>;
   importPersonalFragments?(): Promise<{ cancelled: true } | { cancelled: false; library: PersonalFragmentLibraryData }>;
   exportPersonalFragments?(library: PersonalFragmentLibraryData): Promise<{ cancelled: boolean; path?: string }>;
+  onMcpFrontendRequest?(listener: (request: { requestId: string; action: string; payload?: Record<string, unknown> }) => void): () => void;
+  replyMcpFrontendRequest?(response: { requestId: string; ok: boolean; result?: unknown; error?: { code: string; message: string } }): Promise<{ accepted: boolean }>;
 }
 export interface SaveContext { jobRequest?: JobRequest; orcaJobRequest?: OrcaJobRequest; withCell?: boolean; purpose?:'structure'|'task' }
 declare global { interface Window { sciyueDesktop?: DesktopBridge } }

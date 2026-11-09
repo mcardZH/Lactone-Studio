@@ -68,6 +68,7 @@ const { checkNativeRuntime } = require('./native-runtime-diagnostics.cjs');
 const { createNativeCapabilities } = require('./native-capabilities.cjs');
 const { createWorkspaceDocuments } = require('./workspace-documents.cjs');
 const { createAnalysisWindowHost } = require('./analysis-window-host.cjs');
+const { createMcpLiveHost } = require('./mcp/live-bridge.cjs');
 const { assert, plain, string, boundedJSON, within, validateClipboard, validateChemistry, validateSaveRequest, formatForPath, allowedURL, createNavigationGuard } = security;
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true } }]);
@@ -464,6 +465,35 @@ const closeDiagnostics = createCloseDiagnostics({ directory: portableProfile?.pa
 const logEvent = (level, code) => { void portableLog?.append({ level, code }).catch(() => {}); };
 const hostBusy = () => nativeProcesses.count() > orbitals.workerCount() + empiricalChemistry.workerCount() + (surfaceService?.workerCount() ?? 0) + (interactionService?.workerCount() ?? 0) + (electronicService?.workerCount() ?? 0) + crystalModeling.workerCount() || crystalModeling.activeCount() > 0 || orbitals.sessionCount() > 0 || orbitals.activeCount() > 0 || (surfaceService?.activeCount() ?? 0) > 0 || (interactionService?.activeCount() ?? 0) > 0 || (electronicService?.activeCount() ?? 0) > 0 || surfaceCloseTasks.size > 0 || xtbSourceCloseTasks.size > 0 || jobs.size > 0 || dynamics.workerCount() > 0 || xtb.activeCount() > 0 || conformerBatch.activeCount() > 0 || advancedPath.activeCount() > 0 || conformerSampling.activeCount() > 0 || ocr.activeCount() > 0 || aiss.activeCount() > 0 || fileOperations > 0 || fileReader.activeCount() > 0;
 function ownerWindow(owner) { const window = windows.get(owner); assert(window && !window.isDestroyed() && !window.webContents.isDestroyed(), 'Owned window closed'); return window; }
+function resolveMcpTargetWindow(requestedWindowId) {
+  if (Number.isInteger(requestedWindowId)) {
+    const requested = windows.get(requestedWindowId);
+    if (requested && !requested.isDestroyed() && !requested.webContents.isDestroyed()) return requested;
+  }
+  if (primaryWorkbenchWindowId !== null) {
+    const primary = windows.get(primaryWorkbenchWindowId);
+    if (primary && !primary.isDestroyed() && !primary.webContents.isDestroyed()) return primary;
+  }
+  for (const [id, win] of windows.entries()) {
+    if (!detachedWorkspaceWindows.has(id) && !win.isDestroyed() && !win.webContents.isDestroyed()) return win;
+  }
+  for (const win of windows.values()) {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) return win;
+  }
+  return null;
+}
+const mcpLiveHost = createMcpLiveHost({
+  sessionFilePath: process.env.ESTER_MCP_SESSION_FILE
+    ? path.resolve(process.env.ESTER_MCP_SESSION_FILE)
+    : path.join(app.getPath('userData'), 'mcp-session.json'),
+  serverVersion: appVersion,
+  getTargetWindow: resolveMcpTargetWindow,
+  getHostStatus: () => ({
+    windowCount: windows.size,
+    primaryWorkbenchWindowId,
+    detachedWindowCount: detachedWorkspaceWindows.size,
+  }),
+});
 const analysisWindows = createAnalysisWindowHost({headless,icon:path.join(appPath,'dist','brand-icon.png'),sendToOwner(owner,event){ownerWindow(owner).webContents.send('sciyue:analysis-window-event',event);}});
 async function portableSaveSelection(owner, kind) {
   const window = ownerWindow(owner);
@@ -590,6 +620,7 @@ const managedResultChannels = new Set(['read-xtb-electronic-artifacts','analyze-
 managedResultChannels.add('task-system-request');
 handle('task-system-request',(window,request)=>taskSystem.request(window.webContents.id,request));
 handle('task-system-cancel',(window,requestId)=>taskSystem.cancel(window.webContents.id,requestId));
+handle('mcp-frontend-reply',(window,response)=>mcpLiveHost.handleFrontendReply(window.webContents.id,response));
 for(const channel of ['begin-binary-export','append-binary-export','commit-binary-export','abort-binary-export','describe-launch-source'])fileChannels.add(channel);
 handle('managed-result-transfer',(window,request)=>{assert(plain(request)&&['read','release'].includes(request.action),'Invalid managed result action');return request.action==='read'?managedResults.read(window.webContents.id,request.token,request.start):managedResults.release(window.webContents.id,request.token);});
 handle('acquire-worker-resources',(window,request)=>frontendWorkAdmission.acquire(window.webContents.id,request));
@@ -653,6 +684,7 @@ handle('close-project-companion-bundle',(window,id)=>projectCompanionSources.clo
 function cancelWindowJobs(webContentsId) {
   // Forced exit preserves incomplete transactions and source directories.
   if (forcingExit) return;
+  mcpLiveHost.disposeOwner(webContentsId);
   void taskSystem.releaseOwner(webContentsId).catch(error=>logEvent('warning','EXTERNAL_TASK_OWNER_CLOSE_FAILED',error.message));
   managedResults.disposeOwner(webContentsId);
   preparedMemoryEstimates.delete(webContentsId);
@@ -1409,6 +1441,7 @@ if (ownsProfile) app.whenReady().then(async () => {
   });
   const initialWindow = createModelWindow();
   hostWindowsReady = true;
+  await mcpLiveHost.start().catch(error => console.warn('MCP_LIVE_HOST_START_FAILED', error.message));
   const initialLaunch = readLaunchRequest(process.argv, process.cwd?.() || appPath);
   if (initialLaunch.paths.length || initialLaunch.error) enqueueLaunch(initialWindow, initialLaunch);
   logEvent('info', 'PORTABLE_HOST_READY');
@@ -1424,7 +1457,7 @@ app.on('before-quit', event => {
   if (quitFinalized) return;
   if (!windowClosePolicy.isQuitApproved()) { event?.preventDefault?.(); windowClosePolicy.requestQuit(); return; }
   event?.preventDefault?.(); if (closingTask) return;
-  quitting = true; nativeProcesses.closeAdmission?.(); analysisWindows.dispose(); workspaceDocuments.dispose(); clearInterval(expireFileStreams);
+  quitting = true; void mcpLiveHost.dispose(); nativeProcesses.closeAdmission?.(); analysisWindows.dispose(); workspaceDocuments.dispose(); clearInterval(expireFileStreams);
   refreshNativeMenu(); windowClosePolicy.beginShutdown();
   for (const controller of runtimeChecks.values()) controller.abort();
   conformerBatchDisposal=conformerBatch.dispose();void conformerBatchDisposal.catch(()=>{});

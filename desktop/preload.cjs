@@ -379,4 +379,11 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
     ipcRenderer.on('sciyue:dynamics-event', listener);
     return () => ipcRenderer.removeListener('sciyue:dynamics-event', listener);
   },
+  onMcpFrontendRequest: callback => {
+    if (typeof callback !== 'function') throw new TypeError('MCP frontend request listener must be a function');
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on('sciyue:mcp-frontend-request', listener);
+    return () => ipcRenderer.removeListener('sciyue:mcp-frontend-request', listener);
+  },
+  replyMcpFrontendRequest: response => invoke('sciyue:mcp-frontend-reply', response),
 }));

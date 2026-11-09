@@ -18,6 +18,7 @@
     "prepare:desktop": "node node_modules/electron/install.js",
     "desktop:start": "node scripts/desktop-start.mjs",
     "desktop:dev": "node scripts/desktop-dev.mjs",
+    "mcp:server": "node desktop/mcp/stdio-server.cjs",
     "package:mac": "node scripts/release/package-macos.mjs",
     "test": "node scripts/workflow/run-tests.mjs",
     "hooks:install": "node scripts/workflow/install-hooks.mjs",

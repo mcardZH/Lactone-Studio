@@ -141,6 +141,7 @@ import {subscribeGlobalSettings} from '../global-settings-events';
 import StructureLibrary from './StructureLibrary';
 import type { StructureLibraryEntry } from '../../modeling/structure-library';
 import {applicationVersion} from '../../application-version';
+import {useMcpCollaborationBridge} from '../mcp/useMcpCollaborationBridge';
 import './workspace-shell.css';
 const TwoDImportWorkspace=lazy(()=>import('./TwoDImportWorkspace'));
 
@@ -347,6 +348,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const [taskSnapshotPages,setTaskSnapshotPages]=useState<Record<string,{documentId:string;sourceId:string;taskId:string;runId:string|null;libraryId:string;sourceSetId?:string;sourceVersion?:string}>>({});
  const taskSnapshotPagesRef=useRef(taskSnapshotPages);taskSnapshotPagesRef.current=taskSnapshotPages;
  const taskWorkspace=useTaskWorkspace({identity:()=>JSON.stringify([projectIdentityEpoch.current,registry.getSnapshot().activeViewId,registry.getSnapshot().module]),projectId:()=>projectInfo.current.project?.projectId??null,openSnapshot:openExternalSnapshot,extractStructure:extractFrame,onError:setError});
+ useMcpCollaborationBridge({desktop,registry,taskCenterOpen:taskWorkspace.opened});
  // Subscribe before child passive effects can start scientific/file work.
  // No elapsed-time or quiet-period heuristic is used for ownership.
  useLayoutEffect(()=>{

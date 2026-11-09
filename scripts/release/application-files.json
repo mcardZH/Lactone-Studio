@@ -237,5 +237,8 @@
   "desktop/task-system/postprocess-storage.cjs",
   "desktop/task-system/source-only-monitor.cjs",
   "desktop/task-system/stop-verification.cjs",
-  "desktop/task-system/runtime-timing.cjs"
+  "desktop/task-system/runtime-timing.cjs",
+  "desktop/mcp/protocol.cjs",
+  "desktop/mcp/live-bridge.cjs",
+  "desktop/mcp/stdio-server.cjs"
 ]
