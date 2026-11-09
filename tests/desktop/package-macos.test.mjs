@@ -19,6 +19,7 @@ const require = createRequire(import.meta.url);
 const { chemistryRuntime } = require('../../desktop/runtime.cjs');
 const { xtbRuntime } = require('../../desktop/xtb-runtime.cjs');
 const { DARWIN_V1_LIBRARIES } = require('../../desktop/xtb-runtime-contract.cjs');
+const { createOcrRuntime } = require('../../desktop/ocr-runtime.cjs');
 const { prepareVersionProfile } = require('../../desktop/version-profile.cjs');
 
 async function withTempDir(fn) {
@@ -510,7 +511,76 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     );
     fs.rmSync(path.join(repoRoot, 'desktop/packaging/xtb-runtime.darwin-x64.lock.json'));
 
-    // Missing ssh2 runtime dependency must fail
+    // Undeclared file (e.g. sitecustomize.py) in locked runtime directory must fail
+    const pyBinContent = '#!/bin/sh\necho "{}"\n';
+    const osPyContent = '# stdlib os\n';
+    const { createHash } = await import('node:crypto');
+    const sha256 = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
+    const invJson = JSON.stringify({
+      schema: 'sciyue-native-inventory-v1',
+      files: [
+        { path: 'python/bin/python3', bytes: Buffer.byteLength(pyBinContent), sha256: sha256(pyBinContent) },
+        { path: 'python/lib/python3.12/os.py', bytes: Buffer.byteLength(osPyContent), sha256: sha256(osPyContent) },
+      ],
+    });
+    writeText(repoRoot, '.local/toolchains/darwin-x64/conda-py312-arm64/inventory.json', invJson);
+    writeText(
+      repoRoot,
+      'desktop/packaging/native-toolchain.darwin-x64.lock.json',
+      JSON.stringify({
+        schema: 'sciyue-native-toolchain-lock-v1',
+        platform: 'darwin-x64',
+        root: '.local/toolchains/darwin-x64/conda-py312-arm64',
+        contentDirectories: ['python'],
+        inventory: {
+          path: '.local/toolchains/darwin-x64/conda-py312-arm64/inventory.json',
+          bytes: Buffer.byteLength(invJson),
+          sha256: sha256(invJson),
+        },
+      }),
+    );
+    writeText(repoRoot, `${tcPrefix}/lib/python3.12/sitecustomize.py`, 'print("HIJACK")');
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Undeclared file in locked runtime toolchain lock \(python\/lib\/python3\.12\/sitecustomize\.py\)/,
+    );
+    fs.rmSync(path.join(repoRoot, `${tcPrefix}/lib/python3.12/sitecustomize.py`));
+    fs.rmSync(path.join(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json'));
+
+    // Optional OCR component in runtime/ocr is mapped so createOcrRuntime discovers it as ready
+    const jarContent = 'fake-molvec-jar';
+    writeText(repoRoot, 'runtime/ocr/molvec-0.9.8-jar-with-dependencies.jar', jarContent);
+    writeText(repoRoot, 'runtime/ocr/runtime/jdk-17.0.20.1+1-jre/bin/java', '#!/bin/sh\n', 0o755);
+    writeText(
+      repoRoot,
+      'runtime/ocr/component.json',
+      JSON.stringify({
+        schema: 1,
+        engine: 'molvec',
+        version: '0.9.8',
+        platform: 'darwin',
+        architecture: 'x64',
+        executable: 'runtime/jdk-17.0.20.1+1-jre/bin/java',
+        jar: 'molvec-0.9.8-jar-with-dependencies.jar',
+      }),
+    );
+    const ocrBundle = assembleMacAppBundle({
+      repoRoot,
+      arch: 'x64',
+      outputDir,
+      sign: false,
+      createDmg: false,
+    });
+    const ocrRt = createOcrRuntime({
+      distributionRoot: ocrBundle.appResourcesPath,
+      platform: 'darwin',
+      architecture: 'x64',
+    });
+    const ocrCaps = await ocrRt.capabilities();
+    const molvecStatus = ocrCaps.engines.find((entry) => entry.engine === 'molvec');
+    assert.equal(molvecStatus?.status, 'ready');
+
+    //Missing ssh2 runtime dependency must fail
     fs.rmSync(path.join(repoRoot, 'node_modules/ssh2'), { recursive: true, force: true });
     assert.throws(
       () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),

@@ -128,7 +128,6 @@ export function buildChemistryBootstrapScript() {
   return [
     'import os',
     'import runpy',
-    'import site',
     'import sys',
     '',
     'root = os.path.dirname(os.path.abspath(__file__))',
@@ -144,8 +143,6 @@ export function buildChemistryBootstrapScript() {
     'sys.path = [p for p in sys.path if p]',
     'sys.path.insert(0, site_packages)',
     'sys.path.insert(0, root)',
-    'site.ENABLE_USER_SITE = False',
-    'site.main()',
     '',
     "entry = os.path.join(root, 'engine.py')",
     'sys.argv = [entry, *sys.argv[1:]]',
@@ -300,10 +297,36 @@ function sha256File(filePath) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-function verifyLockedMemberRows(repoRoot, rootRel, files, label) {
+function walkRelativeFiles(baseDir, relDir) {
+  const results = [];
+  const startDir = path.join(baseDir, relDir);
+  if (!fs.existsSync(startDir)) return results;
+  const stack = [relDir];
+  while (stack.length > 0) {
+    const currentRel = stack.pop();
+    const currentAbs = path.join(baseDir, currentRel);
+    for (const entry of fs.readdirSync(currentAbs, { withFileTypes: true })) {
+      const childRel = `${currentRel}/${entry.name}`;
+      const childAbs = path.join(currentAbs, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Unexpected symlink in locked runtime directory: ${childAbs}`);
+      }
+      if (entry.isDirectory()) {
+        stack.push(childRel);
+      } else if (entry.isFile()) {
+        results.push(childRel);
+      }
+    }
+  }
+  return results;
+}
+
+function verifyLockedMemberRows(repoRoot, rootRel, files, label, contentDirectories) {
   if (!Array.isArray(files)) return;
+  const declaredSet = new Set();
   for (const row of files) {
     if (!row || typeof row.path !== 'string') continue;
+    declaredSet.add(row.path);
     const memberPath = path.join(repoRoot, rootRel, row.path);
     if (!fs.existsSync(memberPath)) {
       throw new Error(`Missing locked runtime member in ${label} (${row.path}): ${memberPath}`);
@@ -321,10 +344,25 @@ function verifyLockedMemberRows(repoRoot, rootRel, files, label) {
       throw new Error(`Locked runtime member sha256 mismatch in ${label} (${row.path}): ${memberPath}`);
     }
   }
+  if (declaredSet.size > 0 && Array.isArray(contentDirectories) && contentDirectories.length > 0) {
+    const baseDir = path.join(repoRoot, rootRel);
+    for (const contentDir of contentDirectories) {
+      for (const actualRel of walkRelativeFiles(baseDir, contentDir)) {
+        if (!declaredSet.has(actualRel)) {
+          throw new Error(
+            `Undeclared file in locked runtime ${label} (${actualRel}): ${path.join(baseDir, actualRel)}`,
+          );
+        }
+      }
+    }
+  }
 }
 
 function verifyLockInventoryIfPresent(repoRoot, lockObj, label) {
   if (!lockObj) return;
+  const contentDirs = Array.isArray(lockObj.contentDirectories)
+    ? lockObj.contentDirectories
+    : ['python'];
   if (lockObj.inventory && typeof lockObj.inventory.path === 'string') {
     const invPath = path.join(repoRoot, lockObj.inventory.path);
     if (!fs.existsSync(invPath)) {
@@ -344,9 +382,9 @@ function verifyLockInventoryIfPresent(repoRoot, lockObj, label) {
       throw new Error(`Inventory sha256 mismatch for ${label}: ${invPath}`);
     }
     const invDoc = readJsonStrictIfExists(invPath, `${label} inventory`);
-    verifyLockedMemberRows(repoRoot, lockObj.root, invDoc?.files, label);
+    verifyLockedMemberRows(repoRoot, lockObj.root, invDoc?.files, label, contentDirs);
   }
-  verifyLockedMemberRows(repoRoot, lockObj.root, lockObj.files, label);
+  verifyLockedMemberRows(repoRoot, lockObj.root, lockObj.files, label, contentDirs);
 }
 
 export function resolveDefaultMacRuntimeSources(
@@ -645,9 +683,23 @@ export function assembleMacAppBundle(options = {}) {
     copyTreePreservingSymlinks(licensesDir, path.join(appResourcesPath, 'licenses'));
   }
 
+  for (const relOcrDir of ['runtime/ocr-components', 'ocr-components']) {
+    const srcOcrDir = path.join(repoRoot, relOcrDir);
+    if (fs.existsSync(srcOcrDir)) {
+      copyTreePreservingSymlinks(srcOcrDir, path.join(appResourcesPath, relOcrDir));
+    }
+  }
   const ocrRuntimeDir = path.join(repoRoot, 'runtime', 'ocr');
   if (fs.existsSync(ocrRuntimeDir)) {
     copyTreePreservingSymlinks(ocrRuntimeDir, path.join(appResourcesPath, 'runtime', 'ocr'));
+    const destMolvecDir = path.join(appResourcesPath, 'runtime', 'ocr-components', 'molvec');
+    if (!fs.existsSync(destMolvecDir)) {
+      if (fs.existsSync(path.join(ocrRuntimeDir, 'component.json'))) {
+        copyTreePreservingSymlinks(ocrRuntimeDir, destMolvecDir);
+      } else if (fs.existsSync(path.join(ocrRuntimeDir, 'molvec', 'component.json'))) {
+        copyTreePreservingSymlinks(path.join(ocrRuntimeDir, 'molvec'), destMolvecDir);
+      }
+    }
   }
 
   for (const pkgName of runtimePackages) {
