@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
+const HELPER_SUFFIXES = Object.freeze(['', ' (GPU)', ' (Plugin)', ' (Renderer)']);
 
 function collectTransitiveDependencies(nodeModulesDir, rootPackageNames) {
   const seen = new Set();
@@ -62,6 +63,60 @@ function updatePlistStringKey(plistContent, key, value) {
   return plistContent;
 }
 
+function rebrandElectronBundle(appBundlePath, productName, bundleId, version) {
+  const contentsDir = path.join(appBundlePath, 'Contents');
+  const macosDir = path.join(contentsDir, 'MacOS');
+  const oldMainBin = path.join(macosDir, 'Electron');
+  const newMainBin = path.join(macosDir, productName);
+  if (fs.existsSync(oldMainBin) && oldMainBin !== newMainBin) {
+    fs.renameSync(oldMainBin, newMainBin);
+  }
+
+  const infoPlistPath = path.join(contentsDir, 'Info.plist');
+  if (fs.existsSync(infoPlistPath)) {
+    let plist = fs.readFileSync(infoPlistPath, 'utf8');
+    plist = updatePlistStringKey(plist, 'CFBundleExecutable', productName);
+    plist = updatePlistStringKey(plist, 'CFBundleName', productName);
+    plist = updatePlistStringKey(plist, 'CFBundleDisplayName', productName);
+    plist = updatePlistStringKey(plist, 'CFBundleIdentifier', bundleId);
+    plist = updatePlistStringKey(plist, 'CFBundleShortVersionString', version);
+    plist = updatePlistStringKey(plist, 'CFBundleVersion', version);
+    fs.writeFileSync(infoPlistPath, plist, 'utf8');
+  }
+
+  const frameworksDir = path.join(contentsDir, 'Frameworks');
+  if (fs.existsSync(frameworksDir)) {
+    for (const suffix of HELPER_SUFFIXES) {
+      const oldHelperName = `Electron Helper${suffix}`;
+      const newHelperName = `${productName} Helper${suffix}`;
+      const oldHelperApp = path.join(frameworksDir, `${oldHelperName}.app`);
+      if (!fs.existsSync(oldHelperApp)) continue;
+
+      const helperMacosDir = path.join(oldHelperApp, 'Contents', 'MacOS');
+      const oldHelperBin = path.join(helperMacosDir, oldHelperName);
+      const newHelperBin = path.join(helperMacosDir, newHelperName);
+      if (fs.existsSync(oldHelperBin) && oldHelperBin !== newHelperBin) {
+        fs.renameSync(oldHelperBin, newHelperBin);
+      }
+
+      const helperPlistPath = path.join(oldHelperApp, 'Contents', 'Info.plist');
+      if (fs.existsSync(helperPlistPath)) {
+        let helperPlist = fs.readFileSync(helperPlistPath, 'utf8');
+        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleExecutable', newHelperName);
+        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleName', newHelperName);
+        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleDisplayName', newHelperName);
+        helperPlist = updatePlistStringKey(helperPlist, 'CFBundleIdentifier', `${bundleId}.helper`);
+        fs.writeFileSync(helperPlistPath, helperPlist, 'utf8');
+      }
+
+      const newHelperApp = path.join(frameworksDir, `${newHelperName}.app`);
+      if (oldHelperApp !== newHelperApp) {
+        fs.renameSync(oldHelperApp, newHelperApp);
+      }
+    }
+  }
+}
+
 export function buildChemistryEngineLauncherScript() {
   return [
     '#!/bin/sh',
@@ -72,8 +127,12 @@ export function buildChemistryEngineLauncherScript() {
     'export PYTHONDONTWRITEBYTECODE=1',
     'export PYTHONPATH="$DIR/deps/lib/python3.12/site-packages:$DIR"',
     'export DYLD_FALLBACK_LIBRARY_PATH="$DIR/deps/lib:$DIR/python/lib:/usr/lib"',
-    'export RDKIT_DATA_DIR="$DIR/deps/share/RDKit/Data"',
-    'export RDBASE="$DIR/deps/share/RDKit"',
+    'if [ -d "$DIR/deps/lib/python3.12/site-packages/rdkit/share/RDKit" ]; then',
+    '  export RDBASE="$DIR/deps/lib/python3.12/site-packages/rdkit/share/RDKit"',
+    'else',
+    '  export RDBASE="$DIR/deps/share/RDKit"',
+    'fi',
+    'export RDKIT_DATA_DIR="$RDBASE/Data"',
     'exec "$DIR/python/bin/python3" -s -B "$DIR/engine.py" "$@"',
     '',
   ].join('\n');
@@ -128,19 +187,11 @@ export function assembleMacAppBundle(options = {}) {
   removeTreeForce(appBundlePath);
 
   copyTreePreservingSymlinks(electronAppPath, appBundlePath);
-
-  const infoPlistPath = path.join(appBundlePath, 'Contents', 'Info.plist');
-  if (fs.existsSync(infoPlistPath)) {
-    let plist = fs.readFileSync(infoPlistPath, 'utf8');
-    plist = updatePlistStringKey(plist, 'CFBundleName', productName);
-    plist = updatePlistStringKey(plist, 'CFBundleDisplayName', productName);
-    plist = updatePlistStringKey(plist, 'CFBundleIdentifier', bundleId);
-    plist = updatePlistStringKey(plist, 'CFBundleShortVersionString', version);
-    plist = updatePlistStringKey(plist, 'CFBundleVersion', version);
-    fs.writeFileSync(infoPlistPath, plist, 'utf8');
-  }
+  rebrandElectronBundle(appBundlePath, productName, bundleId, version);
 
   const resourcesPath = path.join(appBundlePath, 'Contents', 'Resources');
+  fs.rmSync(path.join(resourcesPath, 'default_app.asar'), { force: true });
+
   const appResourcesPath = path.join(resourcesPath, 'app');
   removeTreeForce(appResourcesPath);
   fs.mkdirSync(appResourcesPath, { recursive: true });
@@ -206,25 +257,37 @@ export function assembleMacAppBundle(options = {}) {
     const safeProductSlug = productName.replace(/\s+/g, '-');
     dmgPath = path.join(outputDir, `${safeProductSlug}-${version}-darwin-${arch}.dmg`);
     fs.rmSync(dmgPath, { force: true });
-    execFile(
-      'hdiutil',
-      [
-        'create',
-        '-volname',
-        productName,
-        '-srcfolder',
-        appBundlePath,
-        '-ov',
-        '-format',
-        'UDZO',
-        dmgPath,
-      ],
-      { stdio: 'inherit' },
-    );
+    const dmgStageDir = path.join(outputDir, '.dmg-staging');
+    removeTreeForce(dmgStageDir);
+    fs.mkdirSync(dmgStageDir, { recursive: true });
+    try {
+      copyTreePreservingSymlinks(appBundlePath, path.join(dmgStageDir, `${productName}.app`));
+      if (process.platform !== 'win32') {
+        fs.symlinkSync('/Applications', path.join(dmgStageDir, 'Applications'));
+      }
+      execFile(
+        'hdiutil',
+        [
+          'create',
+          '-volname',
+          productName,
+          '-srcfolder',
+          dmgStageDir,
+          '-ov',
+          '-format',
+          'UDZO',
+          dmgPath,
+        ],
+        { stdio: 'inherit' },
+      );
+    } finally {
+      removeTreeForce(dmgStageDir);
+    }
   }
 
   return {
     appBundlePath,
+    executablePath: path.join(appBundlePath, 'Contents', 'MacOS', productName),
     resourcesPath,
     appResourcesPath,
     chemistryEnginePath,

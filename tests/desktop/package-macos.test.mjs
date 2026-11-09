@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import {
   assembleMacAppBundle,
   buildChemistryEngineLauncherScript,
   removeTreeForce,
 } from '../../scripts/release/package-macos.mjs';
+import { ensureDarwinRuntimeReady } from '../../scripts/native/stage-darwin-runtime.mjs';
 
 const require = createRequire(import.meta.url);
 const { chemistryRuntime } = require('../../desktop/runtime.cjs');
@@ -34,7 +36,7 @@ function writeText(root, relPath, content, mode) {
   return fullPath;
 }
 
-test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chemistryRuntime and xtbRuntime in packaged mode', async () => {
+test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG root directory, and runs chemistry/engine with RDKit Salts.txt', async () => {
   await withTempDir(async (root) => {
     const repoRoot = path.join(root, 'repo');
     const electronAppPath = path.join(repoRoot, 'node_modules/electron/dist/Electron.app');
@@ -51,13 +53,15 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
       '.local/dependencies/darwin-arm64/conda-chem-arm64/xtb',
     );
 
-    // 1. Minimal Electron.app template
+    // 1. Minimal Electron.app template with default_app.asar and Helper apps
     writeText(
       electronAppPath,
       'Contents/Info.plist',
       `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
+  <key>CFBundleExecutable</key>
+  <string>Electron</string>
   <key>CFBundleName</key>
   <string>Electron</string>
   <key>CFBundleDisplayName</key>
@@ -72,6 +76,31 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
 </plist>`,
     );
     writeText(electronAppPath, 'Contents/MacOS/Electron', '#!/bin/sh\n', 0o755);
+    writeText(electronAppPath, 'Contents/Resources/default_app.asar', 'default-asar');
+    for (const suffix of ['', ' (GPU)', ' (Plugin)', ' (Renderer)']) {
+      const helperName = `Electron Helper${suffix}`;
+      writeText(
+        electronAppPath,
+        `Contents/Frameworks/${helperName}.app/Contents/Info.plist`,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>${helperName}</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.github.Electron.helper</string>
+  <key>CFBundleName</key>
+  <string>${helperName}</string>
+</dict>
+</plist>`,
+      );
+      writeText(
+        electronAppPath,
+        `Contents/Frameworks/${helperName}.app/Contents/MacOS/${helperName}`,
+        '#!/bin/sh\n',
+        0o755,
+      );
+    }
 
     // 2. Repo inputs (dist, desktop, package.json, LICENSE.txt, ssh2 dependency)
     writeText(
@@ -82,7 +111,16 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
     writeText(repoRoot, 'LICENSE.txt', 'Ester Studio License\n');
     writeText(repoRoot, 'dist/index.html', '<!doctype html><html></html>\n');
     writeText(repoRoot, 'desktop/main.cjs', '// main\n');
-    writeText(repoRoot, 'desktop/chemistry/engine.py', 'print("ok")\n');
+    writeText(
+      repoRoot,
+      'desktop/chemistry/engine.py',
+      `import json, sys
+from rdkit import RDConfig
+from rdkit.Chem.SaltRemover import SaltRemover
+remover = SaltRemover()
+print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.salts)}))
+`,
+    );
     writeText(
       repoRoot,
       'node_modules/ssh2/package.json',
@@ -100,8 +138,8 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
     writeText(pythonToolchainRoot, 'bin/python3', '#!/bin/sh\n', 0o755);
     writeText(
       pythonDepsRoot,
-      'lib/python3.12/site-packages/dummy.py',
-      '# read-only dep\n',
+      'lib/python3.12/site-packages/rdkit/share/RDKit/Data/Salts.txt',
+      '// simulated salts\n',
       0o444,
     );
 
@@ -136,6 +174,7 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
     }
 
     const calls = [];
+    let observedDmgStageEntries = [];
     const outputDir = path.join(root, 'release');
     const result = assembleMacAppBundle({
       repoRoot,
@@ -152,22 +191,51 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
       execFile(cmd, args) {
         calls.push({ cmd, args });
         if (cmd === 'hdiutil') {
+          const srcFolderIdx = args.indexOf('-srcfolder');
+          const srcFolder = args[srcFolderIdx + 1];
+          observedDmgStageEntries = fs.readdirSync(srcFolder).sort();
           fs.writeFileSync(args[args.length - 1], 'fake-dmg');
         }
       },
     });
 
     assert.ok(fs.existsSync(result.appBundlePath));
-    assert.ok(fs.existsSync(result.chemistryEnginePath));
-    assert.ok(fs.existsSync(result.dmgPath));
+    assert.ok(fs.existsSync(result.executablePath));
+    assert.equal(path.basename(result.executablePath), 'Ester Studio');
+    assert.equal(
+      fs.existsSync(path.join(result.appBundlePath, 'Contents', 'MacOS', 'Electron')),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(path.join(result.resourcesPath, 'default_app.asar')),
+      false,
+    );
 
     const plist = fs.readFileSync(
       path.join(result.appBundlePath, 'Contents', 'Info.plist'),
       'utf8',
     );
-    assert.match(plist, /<string>Ester Studio<\/string>/);
+    assert.match(plist, /<key>CFBundleExecutable<\/key>\s*<string>Ester Studio<\/string>/);
     assert.match(plist, /<string>com\.sciyue\.esterstudio<\/string>/);
     assert.match(plist, /<string>2\.0\.2<\/string>/);
+
+    // Verify all 4 Helper apps and executables are rebranded
+    for (const suffix of ['', ' (GPU)', ' (Plugin)', ' (Renderer)']) {
+      const helperName = `Ester Studio Helper${suffix}`;
+      const helperBin = path.join(
+        result.appBundlePath,
+        'Contents',
+        'Frameworks',
+        `${helperName}.app`,
+        'Contents',
+        'MacOS',
+        helperName,
+      );
+      assert.ok(fs.existsSync(helperBin), `Expected rebranded helper executable ${helperBin}`);
+    }
+
+    // Verify DMG staging folder contains Ester Studio.app at root (not Contents/)
+    assert.ok(observedDmgStageEntries.includes('Ester Studio.app'));
 
     // Verify transitive runtime node_modules were bundled into Resources/app/node_modules
     assert.ok(
@@ -177,8 +245,9 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
       fs.existsSync(path.join(result.appResourcesPath, 'node_modules', 'asn1', 'index.js')),
     );
 
-    // Verify launcher script uses -s -B so PYTHONPATH is honored while isolating user site
+    // Verify launcher script sets RDBASE to site-packages/rdkit/share/RDKit and uses -s -B
     const launcher = buildChemistryEngineLauncherScript();
+    assert.match(launcher, /deps\/lib\/python3\.12\/site-packages\/rdkit\/share\/RDKit/);
     assert.match(launcher, /exec "\$DIR\/python\/bin\/python3" -s -B "\$DIR\/engine\.py" "\$@"/);
 
     // Verify chemistryRuntime({ packaged: true }) and xtbRuntime({ packaged: true }) accept the assembled bundle
@@ -202,6 +271,33 @@ test('assembleMacAppBundle builds a valid macOS .app bundle compatible with chem
       });
       assert.equal(xtbRt.executable, path.join(result.xtbPath, 'bin/xtb'));
       assert.equal(xtbRt.version, '6.7.1');
+    }
+
+    // Live execution of packaged chemistry/engine against staged darwin-arm64 runtime ( verifies RDConfig.RDDataDir + SaltRemover )
+    if (process.platform === 'darwin' && process.arch === 'arm64') {
+      ensureDarwinRuntimeReady({ appPath: process.cwd(), platformId: 'darwin-arm64' });
+      const realTc = path.resolve(
+        process.cwd(),
+        '.local/toolchains/darwin-arm64/conda-py312-arm64/python',
+      );
+      const realDeps = path.resolve(
+        process.cwd(),
+        '.local/dependencies/darwin-arm64/conda-chem-arm64/python',
+      );
+      const chemDir = path.join(result.resourcesPath, 'chemistry');
+      removeTreeForce(path.join(chemDir, 'python'));
+      removeTreeForce(path.join(chemDir, 'deps'));
+      fs.symlinkSync(realTc, path.join(chemDir, 'python'));
+      fs.symlinkSync(realDeps, path.join(chemDir, 'deps'));
+
+      const engineOut = execFileSync(result.chemistryEnginePath, [], {
+        cwd: chemDir,
+        encoding: 'utf8',
+        timeout: 30000,
+      });
+      const parsed = JSON.parse(engineOut.trim());
+      assert.ok(fs.existsSync(path.join(parsed.rdDataDir, 'Salts.txt')));
+      assert.ok(parsed.saltsCount > 0);
     }
 
     assert.equal(calls.length, 2);
