@@ -142,7 +142,7 @@ print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.sal
     // 3. Python toolchain & read-only dependencies (simulating 0o444/0o555 staged files)
     writeText(pythonToolchainRoot, 'bin/python3', '#!/bin/sh\n', 0o755);
     writeText(pythonToolchainRoot, 'lib/python3.12/os.py', '# stdlib os\n', 0o444);
-    for (const pkg of ['rdkit', 'scipy', 'ase', 'spglib', 'tblite']) {
+    for (const pkg of ['numpy', 'rdkit', 'scipy', 'ase', 'spglib', 'tblite']) {
       writeText(pythonDepsRoot, `lib/python3.12/site-packages/${pkg}/__init__.py`, '', 0o444);
     }
     writeText(
@@ -380,7 +380,7 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     const xtbPrefix = '.local/dependencies/darwin-x64/conda-chem-arm64/xtb';
     writeText(repoRoot, `${tcPrefix}/bin/python3`, '#!/bin/sh\necho "{}"\n', 0o755);
     writeText(repoRoot, `${tcPrefix}/lib/python3.12/os.py`, '# stdlib os\n');
-    for (const pkg of ['rdkit', 'scipy', 'ase', 'spglib', 'tblite']) {
+    for (const pkg of ['numpy', 'rdkit', 'scipy', 'ase', 'spglib', 'tblite']) {
       writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/${pkg}/__init__.py`, '');
     }
     writeText(
@@ -438,16 +438,28 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     assert.equal(fs.existsSync(singleOverrideResult.executablePath), true);
     fs.rmSync(path.join(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json'));
 
-    // Missing required scientific package (e.g. scipy) must fail
-    fs.rmSync(path.join(repoRoot, depPrefix, 'lib/python3.12/site-packages/scipy'), {
+    // Missing required scientific package (e.g. numpy or scipy) must fail
+    fs.rmSync(path.join(repoRoot, depPrefix, 'lib/python3.12/site-packages/numpy'), {
       recursive: true,
       force: true,
     });
     assert.throws(
       () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
-      /Missing required packaging input \(Python scientific package scipy\)/,
+      /Missing required packaging input \(Python scientific package numpy\)/,
     );
-    writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/scipy/__init__.py`, '');
+    writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/numpy/__init__.py`, '');
+
+    // Symlink in Python toolchain (e.g. bin/python3 pointing outside) must fail
+    const realPyBin = path.join(repoRoot, `${tcPrefix}/bin/python3`);
+    const extTarget = writeText(root, 'external-python3', '#!/bin/sh\necho "{}"\n', 0o755);
+    fs.rmSync(realPyBin);
+    fs.symlinkSync(extTarget, realPyBin);
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /must not be a symlink/,
+    );
+    fs.rmSync(realPyBin);
+    writeText(repoRoot, `${tcPrefix}/bin/python3`, '#!/bin/sh\necho "{}"\n', 0o755);
 
     // Rejects unsupported xtb v2 schema without provenance anchor or localUseReady: false
     writeText(

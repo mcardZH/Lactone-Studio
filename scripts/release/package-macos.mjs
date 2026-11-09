@@ -226,14 +226,19 @@ export function detectMachOArchitectures(filePath) {
 }
 
 function validateExecutableFile(filePath, expectedArch, label) {
-  if (!fs.existsSync(filePath)) {
+  let lstat;
+  try {
+    lstat = fs.lstatSync(filePath);
+  } catch {
     throw new Error(`Missing required packaging input (${label}): ${filePath}`);
   }
-  const stat = fs.statSync(filePath);
-  if (!stat.isFile()) {
+  if (lstat.isSymbolicLink()) {
+    throw new Error(`Invalid packaging input (${label} must not be a symlink): ${filePath}`);
+  }
+  if (!lstat.isFile()) {
     throw new Error(`Invalid packaging input (${label} is not a file): ${filePath}`);
   }
-  if (process.platform !== 'win32' && (stat.mode & 0o111) === 0) {
+  if (process.platform !== 'win32' && (lstat.mode & 0o111) === 0) {
     throw new Error(`Invalid packaging input (${label} is not executable): ${filePath}`);
   }
   const archs = detectMachOArchitectures(filePath);
@@ -244,9 +249,12 @@ function validateExecutableFile(filePath, expectedArch, label) {
   }
 }
 
-const REQUIRED_PYTHON_PACKAGES = ['rdkit', 'scipy', 'ase', 'spglib', 'tblite'];
+const REQUIRED_PYTHON_PACKAGES = ['numpy', 'rdkit', 'scipy', 'ase', 'spglib', 'tblite'];
 
 function validateMachOTreeArch(rootDir, expectedArch, label) {
+  if (fs.lstatSync(rootDir).isSymbolicLink()) {
+    throw new Error(`Invalid packaging input (${label} root must not be a symlink): ${rootDir}`);
+  }
   const stack = [rootDir];
   while (stack.length > 0) {
     const current = stack.pop();
@@ -254,7 +262,9 @@ function validateMachOTreeArch(rootDir, expectedArch, label) {
     const isBinDir = path.basename(current) === 'bin';
     for (const entry of entries) {
       const fullPath = path.join(current, entry.name);
-      if (entry.isSymbolicLink()) continue;
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Unexpected symlink in ${label}: ${fullPath}`);
+      }
       if (entry.isDirectory()) {
         stack.push(fullPath);
         continue;
@@ -625,6 +635,36 @@ export function assembleMacAppBundle(options = {}) {
   );
   validateMachOTreeArch(pythonToolchainRoot, arch, 'Python toolchain');
   validateMachOTreeArch(pythonDepsRoot, arch, 'Python scientific dependencies');
+  if (
+    process.platform === 'darwin' &&
+    arch === process.arch &&
+    detectMachOArchitectures(path.join(pythonToolchainRoot, 'bin', 'python3')) !== null
+  ) {
+    try {
+      execFileSync(
+        path.join(pythonToolchainRoot, 'bin', 'python3'),
+        [
+          '-I',
+          '-S',
+          '-B',
+          '-c',
+          `import sys; sp = ${JSON.stringify(path.join(pythonDepsRoot, 'lib', 'python3.12', 'site-packages'))}; sys.path = [sp] + [p for p in sys.path if p]; import numpy, rdkit, scipy, ase, spglib, tblite`,
+        ],
+        {
+          env: {
+            PATH: '/usr/bin:/bin',
+            DYLD_FALLBACK_LIBRARY_PATH: `${path.join(pythonDepsRoot, 'lib')}:${path.join(pythonToolchainRoot, 'lib')}:/usr/lib`,
+          },
+          stdio: 'pipe',
+          timeout: 30000,
+        },
+      );
+    } catch (error) {
+      throw new Error(
+        `Python scientific runtime import probe failed: ${error.stderr?.toString('utf8') || error.message}`,
+      );
+    }
+  }
 
   const xtbManifestPath = path.join(xtbSourceRoot, 'runtime.json');
   const xtbManifest = xtbContract.validateDescriptor(
