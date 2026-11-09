@@ -81,4 +81,32 @@ describe('Lactone Studio rebranding & LICENSE.txt Article 7/8 compliance', () =>
     expect(licenseTxt).toContain('Ester Studio（ES）免费源码公开许可协议');
     expect(licenseTxt).toContain('Copyright (c) 2026 Zixuan Zhang');
   });
+
+  it('provides Lactone Studio custom icons, asset hashes, and automated macOS GitHub Actions workflow', () => {
+    const svgPath = path.join(repoRoot, 'public/favicon.svg');
+    const pngPath = path.join(repoRoot, 'public/brand-icon.png');
+    const icnsPath = path.join(repoRoot, 'scripts/portable/assets/lactone.icns');
+    const icoPath = path.join(repoRoot, 'scripts/portable/assets/sciyue.ico');
+    const sourceJsonPath = path.join(repoRoot, 'scripts/portable/assets/source.json');
+    const workflowPath = path.join(repoRoot, '.github/workflows/release-macos.yml');
+
+    expect(fs.existsSync(svgPath)).toBe(true);
+    expect(fs.readFileSync(svgPath, 'utf8')).toContain('<title>Lactone Studio</title>');
+    expect(fs.existsSync(pngPath)).toBe(true);
+    expect(fs.statSync(pngPath).size).toBeGreaterThan(1024);
+    expect(fs.existsSync(icnsPath)).toBe(true);
+    expect(fs.readFileSync(icnsPath).subarray(0, 4).toString('ascii')).toBe('icns');
+    expect(fs.existsSync(icoPath)).toBe(true);
+
+    const sourceJson = JSON.parse(fs.readFileSync(sourceJsonPath, 'utf8'));
+    expect(sourceJson.icns?.path).toBe('scripts/portable/assets/lactone.icns');
+    expect(sourceJson.png?.path).toBe('public/brand-icon.png');
+
+    expect(fs.existsSync(workflowPath)).toBe(true);
+    const workflowYaml = fs.readFileSync(workflowPath, 'utf8');
+    expect(workflowYaml).toContain('runs-on: macos-15');
+    expect(workflowYaml).toContain('npm run package:mac');
+    expect(workflowYaml).toContain('softprops/action-gh-release@v2');
+    expect(workflowYaml).toContain('安装说明 (INSTALL).txt');
+  });
 });

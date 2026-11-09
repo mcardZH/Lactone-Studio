@@ -206,6 +206,72 @@ export function buildChemistryEngineLauncherScript() {
   ].join('\n');
 }
 
+export function buildMacInstallGuideText({
+  productName = 'Lactone Studio',
+  version = '2.0.3',
+  arch = 'arm64',
+} = {}) {
+  const archLabel = arch === 'arm64' ? 'Apple Silicon (M1/M2/M3/M4, darwin-arm64)' : 'Intel (darwin-x64)';
+  return [
+    `================================================================================`,
+    `${productName} v${version} — macOS 安装与使用说明 (Installation Guide)`,
+    `适用架构 (Target Architecture): ${archLabel}`,
+    `================================================================================`,
+    ``,
+    `【一、非官方修改版重要声明（遵循 LICENSE.txt 第七条）】`,
+    `- 本软件（${productName}）是基于 Ester Studio (ES) v${version} 源码改造的「非官方修改版」`,
+    `  (Unofficial Modified Version)。`,
+    `- 修改者与维护仓库：mcardZH (https://github.com/mcardZH/Lactone-Studio)`,
+    `- 上游官方项目与原作者：Ester Studio (ES)，原始作者 Zixuan Zhang (ddwz@sciyue.cn)，`,
+    `  官方仓库 https://github.com/Ahey1/Ester-Studio`,
+    `- 免责声明：本修改版由社区维护，未获得原始作者审核、科学验证、支持或商业认可。`,
+    ``,
+    `--------------------------------------------------------------------------------`,
+    `【二、macOS 安装步骤（三步完成）】`,
+    ``,
+    `1. 拖拽安装：`,
+    `   将本窗口中的「${productName}.app」图标直接拖拽到「Applications（应用程序）」文件夹中。`,
+    ``,
+    `2. 首次启动与解除 macOS 安全拦截（重要必读）：`,
+    `   由于开源社区构建采用本地自签名（Ad-hoc Signature）而非商业付费 Apple 公证证书，`,
+    `   首次双击打开时，macOS 可能会弹出“已损坏，无法打开”或“未验证开发者”的提示。`,
+    `   请打开系统自带的「终端 (Terminal)」，复制并运行以下一行命令即可永久解除限制：`,
+    ``,
+    `   sudo xattr -rd com.apple.quarantine "/Applications/${productName}.app"`,
+    ``,
+    `   （执行后按提示输入您的 Mac 开机密码并回车，随后即可在启动台或访达中正常打开。）`,
+    ``,
+    `3. 内置科学计算环境（开箱即用）：`,
+    `   本应用包内部已完整打包自包含的 Python 3.12 科学计算引擎（含 RDKit、ASE、Spglib、`,
+    `   tblite、SciPy、NumPy）以及 macOS 原生 GNU xTB 半经验计算程序，无需在您本机额外`,
+    `   安装 Python、Conda 或 xTB。`,
+    ``,
+    `--------------------------------------------------------------------------------`,
+    `【三、外部可选工具与远程超算配置】`,
+    ``,
+    `- Multiwfn（波函数与等值面分析，可选）：`,
+    `  如需使用分子轨道（HOMO/LUMO/NTO）、静电势（ESP）、IGM/mIGM 等波函数分析功能，`,
+    `  请自行准备 macOS 版 Multiwfn 可执行文件，并在软件左上角「LS（全局设置）」->`,
+    `  「工具与文件」中选择 Multiwfn 路径。`,
+    `- 远程 Linux 服务器计算（Gaussian / ORCA）：`,
+    `  点击软件左侧导航栏「任务中心」->「运行环境」，即可添加远程 Linux 服务器的`,
+    `  SSH 直连或 SSH + Slurm 调度队列环境，一键提交与监控量化计算任务。`,
+    `- 工程文件兼容性：`,
+    `  完美兼容原版 .es 与 .sy 工程文件及 Gaussian/ORCA/CIF/POSCAR/XYZ 等化学格式。`,
+    ``,
+    `--------------------------------------------------------------------------------`,
+    `【四、科研引用与许可协议提示（遵循 LICENSE.txt）】`,
+    ``,
+    `- 科研引用（第八条）：使用本软件开展研究并发表论文时，须在论文正文中明确引用`,
+    `  原作者 Zixuan Zhang 的 Ester Studio（详见软件内「关于与版本」或仓库 README.md），`,
+    `  并可附加说明使用了本 macOS 修改版。`,
+    `- 禁止商业售卖（第四条）：未经原始作者本人事先书面同意，严禁以任何名义销售本软件`,
+    `  或修改版的源码、可执行程序及安装包副本。`,
+    `================================================================================`,
+    ``,
+  ].join('\n');
+}
+
 function cputypeToArch(cputype) {
   if (cputype === 0x0100000c) return 'arm64';
   if (cputype === 0x01000007) return 'x64';
@@ -710,6 +776,13 @@ export function assembleMacAppBundle(options = {}) {
   const resourcesPath = path.join(appBundlePath, 'Contents', 'Resources');
   fs.rmSync(path.join(resourcesPath, 'default_app.asar'), { force: true });
 
+  const candidateIconPath = options.iconPath ?? path.join(repoRoot, 'scripts', 'portable', 'assets', 'lactone.icns');
+  let bundledIconPath = null;
+  if (candidateIconPath && fs.existsSync(candidateIconPath)) {
+    bundledIconPath = path.join(resourcesPath, 'electron.icns');
+    fs.copyFileSync(candidateIconPath, bundledIconPath);
+  }
+
   const appResourcesPath = path.join(resourcesPath, 'app');
   removeTreeForce(appResourcesPath);
   fs.mkdirSync(appResourcesPath, { recursive: true });
@@ -772,6 +845,11 @@ export function assembleMacAppBundle(options = {}) {
     execFile('codesign', ['--force', '--deep', '--sign', '-', appBundlePath], { stdio: 'inherit' });
   }
 
+  const installGuideFileName = '安装说明 (INSTALL).txt';
+  const installGuidePath = path.join(outputDir, installGuideFileName);
+  const installGuideText = buildMacInstallGuideText({ productName, version, arch });
+  fs.writeFileSync(installGuidePath, installGuideText, { encoding: 'utf8', mode: 0o644 });
+
   let dmgPath = null;
   if (createDmg) {
     const safeProductSlug = productName.replace(/\s+/g, '-');
@@ -782,6 +860,7 @@ export function assembleMacAppBundle(options = {}) {
     fs.mkdirSync(dmgStageDir, { recursive: true });
     try {
       copyTreePreservingSymlinks(appBundlePath, path.join(dmgStageDir, `${productName}.app`));
+      fs.writeFileSync(path.join(dmgStageDir, installGuideFileName), installGuideText, { encoding: 'utf8', mode: 0o644 });
       if (process.platform !== 'win32') fs.symlinkSync('/Applications', path.join(dmgStageDir, 'Applications'));
       execFile('hdiutil', ['create', '-volname', productName, '-srcfolder', dmgStageDir, '-ov', '-format', 'UDZO', dmgPath], { stdio: 'inherit' });
     } finally {
@@ -796,6 +875,8 @@ export function assembleMacAppBundle(options = {}) {
     appResourcesPath,
     chemistryEnginePath,
     xtbPath: xtbDestDir,
+    iconPath: bundledIconPath,
+    installGuidePath,
     dmgPath,
   };
 }

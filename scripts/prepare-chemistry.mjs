@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 
 export const desktopPublicEntries = Object.freeze([
-  'appearance-previews', 'structure-library', 'favicon.svg',
+  'appearance-previews', 'structure-library', 'favicon.svg', 'brand-icon.png',
 ]);
 // Ship only the current thirteen choices. Retired previews and their source
 // history remain in the development checkout, outside both delivery objects.

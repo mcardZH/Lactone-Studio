@@ -9,10 +9,12 @@ import {
   assembleMacAppBundle,
   buildChemistryBootstrapScript,
   buildChemistryEngineLauncherScript,
+  buildMacInstallGuideText,
   parseCliArgs,
   removeTreeForce,
   resolveDefaultMacRuntimeSources,
 } from '../../scripts/release/package-macos.mjs';
+import { desktopPublicEntries } from '../../scripts/prepare-chemistry.mjs';
 import { ensureDarwinRuntimeReady } from '../../scripts/native/stage-darwin-runtime.mjs';
 
 const require = createRequire(import.meta.url);
@@ -126,6 +128,7 @@ test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG 
     writeMockElectronTemplate(electronAppPath);
     writeText(repoRoot, 'package.json', JSON.stringify({ name: 'sciyue-input-studio', version: '2.0.2' }));
     writeText(repoRoot, 'LICENSE.txt', 'Ester Studio License\n');
+    writeText(repoRoot, 'scripts/portable/assets/lactone.icns', 'icns-mock\n');
     writeText(repoRoot, 'dist/index.html', '<!doctype html><html></html>\n');
     writeText(repoRoot, 'desktop/main.cjs', '// main\n');
     writeText(
@@ -180,6 +183,8 @@ test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG 
     assert.equal(path.basename(result.executablePath), 'Ester Studio');
     assert.equal(fs.existsSync(path.join(result.appBundlePath, 'Contents', 'MacOS', 'Electron')), false);
     assert.equal(fs.existsSync(path.join(result.resourcesPath, 'default_app.asar')), false);
+    assert.equal(result.iconPath, path.join(result.resourcesPath, 'electron.icns'));
+    assert.equal(fs.readFileSync(result.iconPath, 'utf8'), 'icns-mock\n');
 
     const plist = fs.readFileSync(path.join(result.appBundlePath, 'Contents', 'Info.plist'), 'utf8');
     assert.match(plist, /<key>CFBundleExecutable<\/key>\s*<string>Ester Studio<\/string>/);
@@ -193,6 +198,9 @@ test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG 
     }
 
     assert.ok(observedDmgStageEntries.includes('Ester Studio.app'));
+    assert.ok(observedDmgStageEntries.includes('安装说明 (INSTALL).txt'));
+    assert.ok(result.installGuidePath && fs.existsSync(result.installGuidePath));
+    assert.match(fs.readFileSync(result.installGuidePath, 'utf8'), /xattr -rd com\.apple\.quarantine/);
     assert.ok(fs.existsSync(path.join(result.appResourcesPath, 'node_modules', 'ssh2', 'index.js')));
     assert.ok(fs.existsSync(path.join(result.appResourcesPath, 'node_modules', 'asn1', 'index.js')));
 
@@ -569,6 +577,11 @@ test('desktop/main.cjs and desktop/preload.cjs use standard prepareVersionProfil
 
   const repoPkg = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../package.json'), 'utf8'));
   assert.equal(repoPkg.productName, 'Lactone Studio');
+  assert.ok(desktopPublicEntries.includes('brand-icon.png'));
+  const guideSample = buildMacInstallGuideText({ productName: 'Lactone Studio', version: '2.0.3', arch: 'arm64' });
+  assert.match(guideSample, /Lactone Studio v2\.0\.3 — macOS 安装与使用说明/);
+  assert.match(guideSample, /sudo xattr -rd com\.apple\.quarantine "\/Applications\/Lactone Studio\.app"/);
+  assert.match(guideSample, /非官方修改版/);
 
   const preloadSource = fs.readFileSync(path.resolve(import.meta.dirname, '../../desktop/preload.cjs'), 'utf8');
   assert.match(preloadSource, /\(\(process\.platform === 'win32' \|\| process\.env\?\.SCIYUE_TEST_ISOLATED_IO === '1'\) \? \{ portableTools:/);

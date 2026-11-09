@@ -78,11 +78,30 @@ npm test
 # 执行 TypeScript 类型检查与前端生产构建
 npm run build
 
-# 在 macOS 上打包生成 Lactone Studio.app 与 .dmg 安装镜像
+# 在 macOS 上打包生成 Lactone Studio.app、.dmg 安装镜像与 安装说明 (INSTALL).txt
 npm run package:mac
 ```
 
-打包产物默认输出至 `release/darwin-arm64/Lactone Studio.app`（或 `release/darwin-x64/`）及同名 `.dmg` 镜像。关于原版源码快照的完整离线重构建流程，请同时参阅 [BUILDING.md](BUILDING.md)。
+打包产物默认输出至 `release/darwin-arm64/`（或 `release/darwin-x64/`），包含：
+- `Lactone Studio.app`（已自动嵌入 `scripts/portable/assets/lactone.icns` 专属内酯环应用图标及自包含 Python 3.12 + GNU xTB 运行时）；
+- `Lactone-Studio-2.0.3-darwin-<arch>.dmg`（内置 `Lactone Studio.app`、`Applications` 拖拽快捷方式及 `安装说明 (INSTALL).txt`）；
+- `安装说明 (INSTALL).txt`（独立输出的 macOS 安装与使用指南）。
+
+> **macOS 首次安装与解除安全隔离提示**：
+> 将 `Lactone Studio.app` 拖入 `/Applications`（应用程序）后，由于社区开源构建使用本地自签名（Ad-hoc Signature），若首次打开提示“已损坏”或“未验证开发者”，请在终端运行以下命令解除隔离属性：
+> ```bash
+> sudo xattr -rd com.apple.quarantine "/Applications/Lactone Studio.app"
+> ```
+
+### 3.4 GitHub Actions 自动编译与分发 (`.github/workflows/release-macos.yml`)
+
+仓库内置了自动化 macOS 构建与发布流水线 [.github/workflows/release-macos.yml](.github/workflows/release-macos.yml)：
+- **触发方式**：
+  1. 推送 `v*` 版本标签（如 `git tag v2.0.3-lactone.1 && git push origin v2.0.3-lactone.1`）；
+  2. 在 GitHub 仓库 **Actions -> Build & Release macOS App -> Run workflow** 手动触发（可选填写 `release_tag` 自动创建或更新 GitHub Release）。
+- **自动化流程**：在 `macos-15`（Apple Silicon `darwin-arm64`）环境自动拉取 `conda-forge` 科学计算栈（Python 3.12、RDKit、ASE、Spglib、tblite、SciPy、NumPy、GNU xTB 6.4.1），完成原生运行时重定位锁文件生成、前端编译、`Lactone Studio.app` 与 `.dmg` 打包及 SHA-256 校验值计算，并自动将 `.dmg`、`.app.zip`、`安装说明 (INSTALL).txt` 与 `SHA256SUMS.txt` 分发至 GitHub Releases 与 Actions Artifacts。
+
+关于原版源码快照的完整离线重构建流程，请同时参阅 [BUILDING.md](BUILDING.md)。
 
 ---
 
