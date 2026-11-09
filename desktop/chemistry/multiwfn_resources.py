@@ -109,7 +109,12 @@ def _override(raw,key,value):
 def resolve_resources(executable=None,threads=None,memory_budget_bytes=None,*,cpu_count=None,physical_bytes=None):
     cpus=logical_cpu_count() if cpu_count is None else _positive_integer(cpu_count,MAX_NATIVE_INTEGER,'Logical CPU count')
     physical=total_physical_memory() if physical_bytes is None else _positive_integer(physical_bytes,MAX_SAFE_INTEGER,'Physical RAM')
-    settings_path=Path(executable).resolve().parent/'settings.ini' if executable else None
+    settings_path=None
+    if executable:
+        resolved_exe=Path(executable).resolve()
+        primary_settings=resolved_exe.parent/'settings.ini'
+        etc_settings=resolved_exe.parent.parent/'etc'/'multiwfn'/'settings.ini'
+        settings_path=primary_settings if primary_settings.is_file() or not etc_settings.is_file() else etc_settings.resolve()
     present=False;raw=b''
     if settings_path is not None:
         try:
