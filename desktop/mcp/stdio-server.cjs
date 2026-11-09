@@ -6,6 +6,7 @@ const packageMeta = require('../../package.json');
 const {
   createMcpToolRegistry,
   registerFoundationTools,
+  registerWindowAndFileTools,
   createMcpProtocolProcessor,
   jsonRpcError
 } = require('./protocol.cjs');
@@ -31,6 +32,10 @@ function createMcpStdioServer({
 
   const registry = createMcpToolRegistry();
   registerFoundationTools(registry, {
+    dispatchToHost: dispatch,
+    serverVersion
+  });
+  registerWindowAndFileTools(registry, {
     dispatchToHost: dispatch,
     serverVersion
   });

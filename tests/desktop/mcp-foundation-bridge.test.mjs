@@ -12,6 +12,7 @@ const require = createRequire(import.meta.url);
 const {
   createMcpToolRegistry,
   registerFoundationTools,
+  registerWindowAndFileTools,
   createMcpProtocolProcessor,
   formatToolResult
 } = require('../../desktop/mcp/protocol.cjs');
@@ -416,5 +417,218 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
     assert.equal(childResponse.result.structuredContent.ok, true);
     assert.equal(childResponse.result.structuredContent.echo, 'subagent-check');
     assert.equal(childResponse.result.structuredContent.host.desktopConnected, true);
+  });
+
+  it('validates and dispatches Phase 2 tools (ester_window_manage & ester_open_file) end-to-end', async () => {
+    const dir = makeTempDir();
+    const sessionFilePath = path.join(dir, 'mcp-session.json');
+
+    const xyzPath = path.join(dir, 'water.xyz');
+    fs.writeFileSync(
+      xyzPath,
+      '3\nwater molecule\nO 0.000000 0.000000 0.117300\nH 0.000000 0.757200 -0.469200\nH 0.000000 -0.757200 -0.469200\n',
+      'utf8'
+    );
+    const emptyFilePath = path.join(dir, 'empty.xyz');
+    fs.writeFileSync(emptyFilePath, '', 'utf8');
+    const symlinkPath = path.join(dir, 'water-link.xyz');
+    fs.symlinkSync(xyzPath, symlinkPath);
+
+    let hostRef = null;
+    let focusedCount = 0;
+    const openedTokens = [];
+    const closedTokens = [];
+
+    const mockWindow = {
+      isDestroyed: () => false,
+      webContents: {
+        id: 404,
+        isDestroyed: () => false,
+        send(_channel, message) {
+          setImmediate(() => {
+            if (message.action === 'frontend.status') {
+              hostRef.handleFrontendReply(404, {
+                requestId: message.requestId,
+                ok: true,
+                result: {
+                  workbenchOnline: true,
+                  module: 'modeling',
+                  taskCenterOpen: false,
+                  activeViewId: 'view-1',
+                  activeDocumentId: 'doc-1',
+                  documentCount: 1,
+                  documents: []
+                }
+              });
+            } else if (message.action === 'frontend.windowManage') {
+              hostRef.handleFrontendReply(404, {
+                requestId: message.requestId,
+                ok: true,
+                result: {
+                  action: message.payload.action,
+                  module: message.payload.module ?? 'modeling',
+                  workbench: {
+                    workbenchOnline: true,
+                    module: message.payload.module ?? 'modeling',
+                    taskCenterOpen: message.payload.action === 'open-task-center',
+                    activeViewId: 'view-1',
+                    activeDocumentId: 'doc-1',
+                    documentCount: 1
+                  }
+                }
+              });
+            } else if (message.action === 'frontend.openFile') {
+              if (message.payload.label === 'FORCE_FRONTEND_ERROR') {
+                hostRef.handleFrontendReply(404, {
+                  requestId: message.requestId,
+                  ok: false,
+                  error: {
+                    code: 'MCP_FILE_IMPORT_FAILED',
+                    message: 'Simulated frontend import failure'
+                  }
+                });
+                return;
+              }
+              hostRef.handleFrontendReply(404, {
+                requestId: message.requestId,
+                ok: true,
+                result: {
+                  openedDocumentId: 'doc-water',
+                  openedDocumentIds: ['doc-water'],
+                  targetChoice: message.payload.target === 'analysis' ? 'analysis' : 'structure',
+                  sourceTokenReceived: message.payload.sourceDescriptor?.token ?? null,
+                  hasInlineText: typeof message.payload.text === 'string' && message.payload.text.includes('water molecule'),
+                  document: {
+                    id: 'doc-water',
+                    label: message.payload.label ?? 'water.xyz',
+                    active: true,
+                    formula: 'H2O',
+                    atomCount: 3,
+                    bondCount: 2
+                  }
+                }
+              });
+            }
+          });
+        }
+      }
+    };
+
+    const host = createMcpLiveHost({
+      sessionFilePath,
+      getTargetWindow: () => mockWindow,
+      focusTargetWindow: () => {
+        focusedCount += 1;
+      },
+      openLaunchSource: async (_ownerId, filePath) => {
+        const token = `tok-${openedTokens.length + 1}`;
+        openedTokens.push({ token, filePath });
+        return {
+          token,
+          name: path.basename(filePath),
+          size: fs.statSync(filePath).size
+        };
+      },
+      closeLaunchSource: async (_ownerId, token) => {
+        closedTokens.push(token);
+      },
+      getHostStatus: () => ({ windowCount: 1, primaryWorkbenchWindowId: 404 })
+    });
+    hostRef = host;
+    activeHosts.push(host);
+    await host.start();
+
+    const stdioServer = createMcpStdioServer({ sessionFilePath });
+    const tools = stdioServer.registry.listTools().map(t => t.name).sort();
+    assert.deepEqual(tools, [
+      'ester_open_file',
+      'ester_ping',
+      'ester_status',
+      'ester_window_manage'
+    ]);
+
+    // 1. Test ester_window_manage focus-window
+    const focusRes = await stdioServer.registry.callTool('ester_window_manage', {
+      action: 'focus-window'
+    });
+    assert.equal(focusRes.isError, undefined);
+    assert.equal(focusRes.structuredContent.ok, true);
+    assert.equal(focusRes.structuredContent.focused, true);
+    assert.equal(focusedCount, 1);
+
+    // 2. Test ester_window_manage switch-module
+    const switchRes = await stdioServer.registry.callTool('ester_window_manage', {
+      action: 'switch-module',
+      module: 'input'
+    });
+    assert.equal(switchRes.isError, undefined);
+    assert.equal(switchRes.structuredContent.module, 'input');
+
+    // 3. Test ester_window_manage validation errors
+    const missingModuleRes = await stdioServer.registry.callTool('ester_window_manage', {
+      action: 'switch-module'
+    });
+    assert.equal(missingModuleRes.isError, true);
+    assert.equal(missingModuleRes.structuredContent.error.code, 'MISSING_MODULE');
+
+    const missingDocIdRes = await stdioServer.registry.callTool('ester_window_manage', {
+      action: 'activate-document'
+    });
+    assert.equal(missingDocIdRes.isError, true);
+    assert.equal(missingDocIdRes.structuredContent.error.code, 'MISSING_DOCUMENT_ID');
+
+    const badLayoutRes = await stdioServer.registry.callTool('ester_window_manage', {
+      action: 'set-layout'
+    });
+    assert.equal(badLayoutRes.isError, true);
+    assert.equal(badLayoutRes.structuredContent.error.code, 'INVALID_LAYOUT_OPTIONS');
+
+    // 4. Test ester_open_file success with launch source descriptor + inline text
+    const openRes = await stdioServer.registry.callTool('ester_open_file', {
+      path: xyzPath,
+      target: 'auto',
+      label: 'Water-Test'
+    });
+    assert.equal(openRes.isError, undefined);
+    assert.equal(openRes.structuredContent.ok, true);
+    assert.equal(openRes.structuredContent.fileName, 'water.xyz');
+    assert.equal(openRes.structuredContent.openedDocumentId, 'doc-water');
+    assert.equal(openRes.structuredContent.sourceTokenReceived, 'tok-1');
+    assert.equal(openRes.structuredContent.hasInlineText, true);
+    assert.equal(openRes.structuredContent.document.formula, 'H2O');
+
+    // 5. Test ester_open_file cleanup of launch source token when frontend rejects
+    const failOpenRes = await stdioServer.registry.callTool('ester_open_file', {
+      path: xyzPath,
+      label: 'FORCE_FRONTEND_ERROR'
+    });
+    assert.equal(failOpenRes.isError, true);
+    assert.equal(failOpenRes.structuredContent.error.code, 'MCP_FILE_IMPORT_FAILED');
+    assert.deepEqual(closedTokens, ['tok-2']);
+
+    // 6. Test ester_open_file security & filesystem guards (missing, symlink, directory, empty)
+    const missingFileRes = await stdioServer.registry.callTool('ester_open_file', {
+      path: path.join(dir, 'nonexistent.xyz')
+    });
+    assert.equal(missingFileRes.isError, true);
+    assert.equal(missingFileRes.structuredContent.error.code, 'MCP_FILE_NOT_FOUND');
+
+    const symlinkRes = await stdioServer.registry.callTool('ester_open_file', {
+      path: symlinkPath
+    });
+    assert.equal(symlinkRes.isError, true);
+    assert.equal(symlinkRes.structuredContent.error.code, 'MCP_SYMLINK_NOT_ALLOWED');
+
+    const dirRes = await stdioServer.registry.callTool('ester_open_file', {
+      path: dir
+    });
+    assert.equal(dirRes.isError, true);
+    assert.equal(dirRes.structuredContent.error.code, 'MCP_NOT_REGULAR_FILE');
+
+    const emptyRes = await stdioServer.registry.callTool('ester_open_file', {
+      path: emptyFilePath
+    });
+    assert.equal(emptyRes.isError, true);
+    assert.equal(emptyRes.structuredContent.error.code, 'MCP_EMPTY_FILE');
   });
 });

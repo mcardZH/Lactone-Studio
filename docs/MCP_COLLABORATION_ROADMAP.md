@@ -143,8 +143,8 @@ flowchart LR
 
 | 阶段 | 分支名称 | 核心交付模块与工具 | 阶段完成标志 |
 | :--- | :--- | :--- | :--- |
-| **阶段 1** | `feat/mcp-foundation-bridge` | `desktop/mcp/protocol.cjs`、`desktop/mcp/live-bridge.cjs`、`desktop/mcp/stdio-server.cjs`、`src/web/mcp/useMcpCollaborationBridge.ts`；工具：`ester_ping`、`ester_status` | **进行中** |
-| **阶段 2** | `feat/mcp-window-and-file-tools` | 第一类工具：`ester_window_manage`、`ester_open_file` | 待启动 |
+| **阶段 1** | `feat/mcp-foundation-bridge` | `desktop/mcp/protocol.cjs`、`desktop/mcp/live-bridge.cjs`、`desktop/mcp/stdio-server.cjs`、`src/web/mcp/useMcpCollaborationBridge.ts`；工具：`ester_ping`、`ester_status` | **已完成 (已合并至 main)** |
+| **阶段 2** | `feat/mcp-window-and-file-tools` | 第一类工具：`ester_window_manage`、`ester_open_file` | **已完成** |
 | **阶段 3** | `feat/mcp-viewport-and-vision-tools` | 第二类工具：`ester_viewport_camera`、`ester_viewport_screenshot` | 待启动 |
 | **阶段 4** | `feat/mcp-structure-and-geometry-tools` | 第三类工具：`ester_get_structure_info`、`ester_measure_geometry`、`ester_edit_structure`、`ester_set_constraints` | 待启动 |
 | **阶段 5** | `feat/mcp-input-config-tools` | 第四类工具：`ester_recommend_method`、`ester_configure_calculation` | 待启动 |

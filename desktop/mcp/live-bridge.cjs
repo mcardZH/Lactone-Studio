@@ -12,6 +12,7 @@ const { isPlainObject } = require('./protocol.cjs');
 const SESSION_SCHEMA = 'ester-mcp-session/v1';
 const MAX_HTTP_BODY_BYTES = 4 * 1024 * 1024;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_MAX_INLINE_TEXT_BYTES = 8 * 1024 * 1024;
 
 function resolveHostAppDataRoot(platform = process.platform, env = process.env, homedir = os.homedir()) {
   if (platform === 'darwin') {
@@ -104,6 +105,10 @@ function sendJsonResponse(res, statusCode, payload) {
 function createMcpLiveHost({
   getTargetWindow,
   getHostStatus,
+  focusTargetWindow,
+  openLaunchSource,
+  closeLaunchSource,
+  maxInlineTextBytes = DEFAULT_MAX_INLINE_TEXT_BYTES,
   sessionFilePath,
   host = '127.0.0.1',
   port = 0,
@@ -278,6 +283,141 @@ function createMcpLiveHost({
         ...hostStatus,
         workbench
       };
+    }
+
+    if (action === 'window-manage') {
+      const manageAction = typeof payload.action === 'string' ? payload.action : '';
+      if (!manageAction) {
+        throw Object.assign(new Error('Missing window-manage action'), {
+          statusCode: 400,
+          code: 'INVALID_WINDOW_ACTION'
+        });
+      }
+      if (manageAction === 'focus-window') {
+        const targetWindow = getTargetWindow(payload.windowId);
+        if (!targetWindow || targetWindow.isDestroyed?.() || targetWindow.webContents?.isDestroyed?.()) {
+          throw Object.assign(new Error('No active Ester Studio workbench window is available'), {
+            statusCode: 404,
+            code: 'MCP_NO_WORKBENCH_WINDOW'
+          });
+        }
+        if (typeof focusTargetWindow === 'function') {
+          await focusTargetWindow(targetWindow, payload.windowId);
+        } else {
+          if (targetWindow.isMinimized?.()) targetWindow.restore?.();
+          targetWindow.show?.();
+          targetWindow.focus?.();
+        }
+        const workbench = await requestFrontend(
+          'frontend.status',
+          { includeDocuments: true },
+          { windowId: payload.windowId }
+        );
+        return {
+          action: 'focus-window',
+          focused: true,
+          windowId: targetWindow.webContents.id,
+          workbench
+        };
+      }
+      return await requestFrontend('frontend.windowManage', payload, {
+        windowId: payload.windowId
+      });
+    }
+
+    if (action === 'open-file') {
+      if (typeof payload.path !== 'string' || !payload.path.trim()) {
+        throw Object.assign(new Error('open-file requires a non-empty file path'), {
+          statusCode: 400,
+          code: 'INVALID_FILE_PATH'
+        });
+      }
+      const resolvedPath = path.resolve(payload.path.trim());
+      let stat;
+      try {
+        stat = await fsPromises.lstat(resolvedPath);
+      } catch (error) {
+        if (error?.code === 'ENOENT') {
+          throw Object.assign(new Error(`File not found: ${resolvedPath}`), {
+            statusCode: 404,
+            code: 'MCP_FILE_NOT_FOUND'
+          });
+        }
+        throw Object.assign(new Error(`Cannot access file "${resolvedPath}": ${error.message}`), {
+          statusCode: 400,
+          code: 'MCP_FILE_ACCESS_ERROR'
+        });
+      }
+      if (stat.isSymbolicLink()) {
+        throw Object.assign(new Error(`Symbolic links are not permitted for MCP file import: ${resolvedPath}`), {
+          statusCode: 400,
+          code: 'MCP_SYMLINK_NOT_ALLOWED'
+        });
+      }
+      if (!stat.isFile()) {
+        throw Object.assign(new Error(`Path is not a regular file: ${resolvedPath}`), {
+          statusCode: 400,
+          code: 'MCP_NOT_REGULAR_FILE'
+        });
+      }
+      if (stat.size <= 0) {
+        throw Object.assign(new Error(`File is empty: ${resolvedPath}`), {
+          statusCode: 400,
+          code: 'MCP_EMPTY_FILE'
+        });
+      }
+
+      const targetWindow = getTargetWindow(payload.windowId);
+      if (!targetWindow || targetWindow.isDestroyed?.() || targetWindow.webContents?.isDestroyed?.()) {
+        throw Object.assign(new Error('No active Ester Studio workbench window is available'), {
+          statusCode: 404,
+          code: 'MCP_NO_WORKBENCH_WINDOW'
+        });
+      }
+      const ownerId = targetWindow.webContents.id;
+
+      let sourceDescriptor = null;
+      if (typeof openLaunchSource === 'function') {
+        sourceDescriptor = await openLaunchSource(ownerId, resolvedPath);
+      }
+
+      let text;
+      if (stat.size <= maxInlineTextBytes) {
+        try {
+          text = await fsPromises.readFile(resolvedPath, 'utf8');
+        } catch {
+          text = undefined;
+        }
+      }
+
+      try {
+        const frontendResult = await requestFrontend(
+          'frontend.openFile',
+          {
+            path: resolvedPath,
+            name: path.basename(resolvedPath),
+            size: stat.size,
+            ...(text !== undefined ? { text } : {}),
+            ...(sourceDescriptor ? { sourceDescriptor } : {}),
+            target: payload.target ?? 'auto',
+            ...(typeof payload.label === 'string' && payload.label.trim()
+              ? { label: payload.label.trim() }
+              : {})
+          },
+          { windowId: payload.windowId }
+        );
+        return {
+          path: resolvedPath,
+          fileName: path.basename(resolvedPath),
+          byteSize: stat.size,
+          ...frontendResult
+        };
+      } catch (error) {
+        if (sourceDescriptor?.token && typeof closeLaunchSource === 'function') {
+          await Promise.resolve(closeLaunchSource(ownerId, sourceDescriptor.token)).catch(() => {});
+        }
+        throw error;
+      }
     }
 
     if (customActionHandlers.has(action)) {

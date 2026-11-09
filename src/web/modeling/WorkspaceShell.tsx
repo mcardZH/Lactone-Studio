@@ -1,5 +1,5 @@
 import {WorkspaceColumns,WorkspaceColumnDivider,useWorkspaceColumns} from "./WorkspaceColumns";
-import {Fragment,Suspense,lazy,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type ReactNode,type CSSProperties} from 'react';
+import {Fragment,Suspense,lazy,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type ReactNode,type CSSProperties,type SetStateAction} from 'react';
 import {createImportResourceClosures} from './workspace-import-resources';
 import {ProjectUiStore,ProjectUiScope,ProjectNativeDetailsBoundary,ProjectUiRestoreBoundary} from '../../projects/ui-state';
 import {registerImportedModelSources,forgetImportedModelSources,commitImportedModelSourceBundle} from '../../projects/import-sources';
@@ -141,7 +141,7 @@ import {subscribeGlobalSettings} from '../global-settings-events';
 import StructureLibrary from './StructureLibrary';
 import type { StructureLibraryEntry } from '../../modeling/structure-library';
 import {applicationVersion} from '../../application-version';
-import {useMcpCollaborationBridge} from '../mcp/useMcpCollaborationBridge';
+import {computeHillFormula,useMcpCollaborationBridge} from '../mcp/useMcpCollaborationBridge';
 import './workspace-shell.css';
 const TwoDImportWorkspace=lazy(()=>import('./TwoDImportWorkspace'));
 
@@ -320,7 +320,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const state=useSyncExternalStore(registry.subscribe,registry.getSnapshot,registry.getSnapshot);
  const activePageId=state.views.find(view=>view.id===state.activeViewId)?.documentId;
  const activeConformerGroup=state.documents.find(entry=>entry.id===activePageId)?.conformerGroup;
- const [error,setError]=useState(''),[reading,setReading]=useState(false),[readProgress,setReadProgress]=useState<number|null>(null),[readCancelPending,setReadCancelPending]=useState(false),[importCloseFailed,setImportCloseFailed]=useState(false);
+ const [error,setErrorState]=useState(''),latestErrorRef=useRef(''),setError=useCallback((value:SetStateAction<string>)=>{setErrorState(prev=>{const next=typeof value==='function'?value(prev):value;latestErrorRef.current=next;return next;});},[]),[reading,setReading]=useState(false),[readProgress,setReadProgress]=useState<number|null>(null),[readCancelPending,setReadCancelPending]=useState(false),[importCloseFailed,setImportCloseFailed]=useState(false);
  const importResourceClosures=useRef(createImportResourceClosures()),importReadScope=useRef<{epoch:number;settled:boolean}|null>(null);
  const [twoDFile,setTwoDFile]=useState<TwoDImportFile|null>(null),[twoDVisible,setTwoDVisible]=useState(false),[twoDBusy,setTwoDBusy]=useState(false);
  const twoDFileRef=useRef(twoDFile);twoDFileRef.current=twoDFile;
@@ -348,7 +348,6 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const [taskSnapshotPages,setTaskSnapshotPages]=useState<Record<string,{documentId:string;sourceId:string;taskId:string;runId:string|null;libraryId:string;sourceSetId?:string;sourceVersion?:string}>>({});
  const taskSnapshotPagesRef=useRef(taskSnapshotPages);taskSnapshotPagesRef.current=taskSnapshotPages;
  const taskWorkspace=useTaskWorkspace({identity:()=>JSON.stringify([projectIdentityEpoch.current,registry.getSnapshot().activeViewId,registry.getSnapshot().module]),projectId:()=>projectInfo.current.project?.projectId??null,openSnapshot:openExternalSnapshot,extractStructure:extractFrame,onError:setError});
- useMcpCollaborationBridge({desktop,registry,taskCenterOpen:taskWorkspace.opened});
  // Subscribe before child passive effects can start scientific/file work.
  // No elapsed-time or quiet-period heuristic is used for ownership.
  useLayoutEffect(()=>{
@@ -1625,7 +1624,101 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    for(const file of fileOnlyImports)await postprocess.read([file],null,undefined,'smart',{guard:()=>{if(epoch!==importEpoch.current||controller.signal.aborted||projectIdentityEpoch.current!==fileImportProjectEpoch)throw Error('来源导入上下文已变化，未接入旧文件。');},signal:controller.signal,throwOnFailure:true});
   }catch(cause){if(epoch===importEpoch.current&&(!controller.signal.aborted||importResourceClosures.current.failedCount))setError(cause instanceof Error?cause.message:String(cause));}
   finally{if(!committed)await Promise.all(parsed.flatMap(item=>item.kind==='result'?[Promise.resolve(item.result.dispose())]:item.kind==='diagnostic'?[Promise.resolve(item.diagnostic.dispose())]:[]));readScope.settled=true;if(epoch===importEpoch.current){setReadProgress(null);if(!importResourceClosures.current.pendingCount){setReading(false);setImportCloseFailed(false);importController.current=null;}else{setReading(true);setImportCloseFailed(true);}}}
- },[registry,desktop,postprocess.read,addSourceDiagnostics]);
+  },[registry,desktop,postprocess.read,addSourceDiagnostics]);
+ useMcpCollaborationBridge({
+  desktop,
+  registry,
+  taskCenterOpen:taskWorkspace.opened,
+  callbacks:{
+   navigateModule,
+   activateDocument:id=>activateDocument(id),
+   createDocument:options=>{
+    createDocument();
+    const created=registry.getSnapshot().documents.at(-1)!;
+    if(options?.label)registry.rename(created.id,options.label);
+    if(options?.module)navigateModule(options.module);
+    return created.id;
+   },
+   closeDocument:async(id,discard)=>{
+    const before=registry.getSnapshot().documents.find(entry=>entry.id===id);
+    if(!before)throw Object.assign(new Error(`Document not found: ${id}`),{code:'MCP_DOCUMENT_NOT_FOUND'});
+    guardClose(id,discard);
+    await close(id,discard);
+    if(registry.getSnapshot().documents.some(entry=>entry.id===id&&entry.epoch===before.epoch)){
+     throw Object.assign(new Error(latestErrorRef.current||`Failed to close document "${before.label}" (${id})`),{code:'MCP_DOCUMENT_CLOSE_FAILED'});
+    }
+   },
+   setTaskCenterOpen:open=>{if(open){closeTwoD();taskWorkspace.open();}else taskWorkspace.leave();},
+   getLayoutState:()=>({deckMode,multiMode}),
+   setLayoutState:({layout,arrange})=>{
+    const nextDeck=layout??deckMode,nextMulti=layout&&layout!=='single'?layout:multiMode;
+    if(layout){setDeckMode(layout);if(layout!=='single')setMultiMode(layout);}
+    if(arrange)setArrangeRequest(value=>value+1);
+    return {deckMode:nextDeck,multiMode:nextMulti};
+   },
+   importScientificFile:async(file,{choice,label})=>{
+    const beforeIds=new Set(registry.getSnapshot().documents.map(entry=>entry.id));
+    latestErrorRef.current='';
+    if(choice==='analysis'){
+     let createdId:string|null=null;
+     await postprocess.read([file],null,undefined,'smart',{throwOnFailure:true,onCreated:id=>{createdId=id;}});
+     const addedIds=registry.getSnapshot().documents.filter(entry=>!beforeIds.has(entry.id)).map(entry=>entry.id);
+     const targetId=createdId??addedIds.at(-1)??null;
+     if(targetId&&registry.getSnapshot().documents.some(entry=>entry.id===targetId)){
+      if(label)registry.rename(targetId,label);
+      activateDocument(targetId);
+      registry.setModule('analysis');
+      return {openedDocumentId:targetId,openedDocumentIds:addedIds.length?addedIds:[targetId],targetChoice:'analysis'};
+     }
+     const fileDoc=targetId?postprocess.captureFileDocuments()[targetId]:undefined;
+     if(fileDoc&&targetId){
+      postprocess.selectFile(targetId);
+      registry.setModule('analysis');
+      const initialStructure=fileDoc.displayResult?.initialStructure;
+      return {
+       openedDocumentId:targetId,
+       openedDocumentIds:[targetId],
+       targetChoice:'analysis',
+       document:{
+        id:targetId,
+        label:label??fileDoc.output.source.identity.name,
+        active:true,
+        revision:0,
+        dirty:false,
+        formula:initialStructure?computeHillFormula(initialStructure.atoms):'',
+        atomCount:initialStructure?.atoms.length??0,
+        bondCount:initialStructure?.bonds?.length??0,
+        charge:initialStructure?.charge??null,
+        multiplicity:initialStructure?.multiplicity??null,
+        electronicStateConfirmed:false,
+        isPeriodic:Boolean(initialStructure?.cell&&initialStructure.cell.pbc?.some(Boolean)),
+        selectedAtomCount:0,
+        frozenAtomCount:0,
+        coordinateConstraintCount:0,
+        hasResult:true,
+        runtimePhase:'idle'
+       }
+      };
+     }
+     throw Object.assign(new Error(latestErrorRef.current||`Failed to import analysis file "${file.name}"`),{code:'MCP_FILE_IMPORT_FAILED'});
+    }
+    await importFiles([file],'structure');
+    const addedIds=registry.getSnapshot().documents.filter(entry=>!beforeIds.has(entry.id)).map(entry=>entry.id);
+    if(!addedIds.length){
+     throw Object.assign(new Error(latestErrorRef.current||`Failed to import structure file "${file.name}"`),{code:'MCP_FILE_IMPORT_FAILED'});
+    }
+    const openedId=addedIds.at(-1)!;
+    if(label)registry.rename(openedId,label);
+    activateDocument(openedId);
+    return {
+     openedDocumentId:openedId,
+     openedDocumentIds:addedIds,
+     targetChoice:'structure',
+     ...(latestErrorRef.current?{warnings:[latestErrorRef.current]}:{})
+    };
+   }
+  }
+ });
  const launchImportState=useRef({importFiles,canConsume:!reading&&!importCloseFailed&&!postprocess.busy&&!resultImportRequest});
  launchImportState.current={importFiles,canConsume:!reading&&!importCloseFailed&&!postprocess.busy&&!resultImportRequest};
  const launchConsumer=useRef<ReturnType<typeof consumeLaunchImports>|null>(null);
