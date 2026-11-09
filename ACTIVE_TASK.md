@@ -27,7 +27,7 @@
        - 将 xTB 运行时复制到 `Contents/Resources/xtb/`，与 `desktop/xtb-runtime.cjs` 的 `packaged: true` 契约无缝对接；
        - 支持通过 `codesign --force --deep --sign -` 执行 ad-hoc 签名，以及通过 `hdiutil create` 生成包含 `Ester Studio.app` 与 `Applications` 软链接的 `.dmg` 安装镜像。
 - **边界与非目标 (Out of Scope)**：
-  - **不在 macOS 上启用 Windows 便携目录模式 (`portableProfile` / `portableServices`)**：经与用户明确确认（方案 A），macOS 采用系统标准 `Application Support` 版本目录（`prepareVersionProfile`），不启用 Windows 专属的便携版目录模式与导出路径防覆盖检查。
+  - **不在 macOS 上启用 Windows 便携目录模式 (`portableProfile` / `portableServices`)**：经与用户明确确认（方案 A），macOS 采用系统标准 `Application Support` 版本目录（`prepareVersionProfile`），不启用 Windows 专属的便携版目录模式；同时在 `desktop/portable-export.cjs` 中仅在 `win32` 平台执行 Windows 设备保留名（`con`/`nul` 等）限制。
   - 不在 `.app` 内部打包 Multiwfn（Multiwfn 已在微分支 3A 中作为本机外部 CLI 程序由 `orbital-runtime.cjs` 自动发现与调用）。
   - 不引入第三方重量级打包框架（如 `electron-builder`），直接使用仓库现有 Electron 模板与 macOS 系统工具（`plutil`/`codesign`/`hdiutil`）完成组装。
   - 不涉及 Apple Developer ID 付费公证（Notarization），采用本机可运行的 ad-hoc 签名（`-`）。

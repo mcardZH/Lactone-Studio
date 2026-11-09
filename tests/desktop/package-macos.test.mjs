@@ -20,6 +20,7 @@ const { chemistryRuntime } = require('../../desktop/runtime.cjs');
 const { xtbRuntime } = require('../../desktop/xtb-runtime.cjs');
 const { DARWIN_V1_LIBRARIES } = require('../../desktop/xtb-runtime-contract.cjs');
 const { createOcrRuntime } = require('../../desktop/ocr-runtime.cjs');
+const { assertExportDestination } = require('../../desktop/portable-export.cjs');
 const { prepareVersionProfile } = require('../../desktop/version-profile.cjs');
 
 async function withTempDir(fn) {
@@ -714,5 +715,86 @@ test('desktop/main.cjs and desktop/preload.cjs use standard prepareVersionProfil
     const profileDir = prepareVersionProfile(fs, appDataDir, '2.0.2');
     assert.equal(profileDir, path.join(appDataDir, 'SciYue', 'profiles', 'v2.0.2'));
     assert.equal(fs.existsSync(profileDir), true);
+
+    // Verify assertExportDestination allows POSIX filenames like con.json on darwin while rejecting on win32
+    const conPath = path.join(root, 'Documents', 'con.json');
+    assert.equal(
+      assertExportDestination(conPath, {
+        root: path.join(root, 'app'),
+        managedRoots: [profileDir],
+        applicationRoots: [path.join(root, 'app', 'desktop'), path.join(root, 'app', 'dist')],
+        platform: 'darwin',
+      }),
+      conPath,
+    );
+    assert.throws(
+      () =>
+        assertExportDestination(conPath, {
+          root: path.join(root, 'app'),
+          managedRoots: [profileDir],
+          applicationRoots: [path.join(root, 'app', 'desktop')],
+          platform: 'win32',
+        }),
+      /设备名/,
+    );
   });
+
+  // Execute preload.cjs in a controlled VM sandbox for darwin vs win32
+  const vm = await import('node:vm');
+  function runPreloadFor(platform, env = {}) {
+    let exposedBridge = null;
+    const sandbox = {
+      require(modName) {
+        assert.equal(modName, 'electron');
+        return {
+          contextBridge: {
+            exposeInMainWorld(name, api) {
+              if (name === 'sciyueDesktop') exposedBridge = api;
+            },
+          },
+          ipcRenderer: {
+            invoke: async (channel, payload) => ({ channel, payload }),
+            on: () => {},
+            removeListener: () => {},
+          },
+          webUtils: { getPathForFile: () => '' },
+        };
+      },
+      process: { platform, env },
+      Int8Array,
+      Uint8Array,
+      Uint8ClampedArray,
+      Int16Array,
+      Uint16Array,
+      Int32Array,
+      Uint32Array,
+      Float32Array,
+      Float64Array,
+      BigInt64Array,
+      BigUint64Array,
+      DataView,
+      ArrayBuffer,
+      WeakSet,
+      Set,
+      Object,
+      Array,
+      Number,
+      Error,
+      TypeError,
+    };
+    vm.runInNewContext(preloadSource, sandbox, { filename: 'preload.cjs' });
+    return exposedBridge;
+  }
+
+  const darwinBridge = runPreloadFor('darwin', {});
+  assert.ok(darwinBridge);
+  assert.equal('portableTools' in darwinBridge, false);
+
+  const win32Bridge = runPreloadFor('win32', {});
+  assert.ok(win32Bridge);
+  assert.equal(typeof win32Bridge.portableTools, 'function');
+
+  const isolatedDarwinBridge = runPreloadFor('darwin', { SCIYUE_TEST_ISOLATED_IO: '1' });
+  assert.ok(isolatedDarwinBridge);
+  assert.equal(typeof isolatedDarwinBridge.portableTools, 'function');
 });

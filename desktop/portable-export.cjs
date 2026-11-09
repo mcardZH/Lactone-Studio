@@ -4,11 +4,11 @@ const error = message => Object.assign(new Error(message), { code: 'PORTABLE_SEL
 /** Host-only policy gate. The caller still verifies real parent/target identities
  * and performs its guarded write; this does not grant renderer filesystem access.
  */
-function assertUnmanagedDestination(file, { root, managedRoots = [], applicationRoots = [], layout } = {}) {
+function assertUnmanagedDestination(file, { root, managedRoots = [], applicationRoots = [], layout, platform = process.platform } = {}) {
   if (typeof file !== 'string' || !path.isAbsolute(file) || file.includes('\0') || typeof root !== 'string' || !path.isAbsolute(root) || !Array.isArray(managedRoots) || !Array.isArray(applicationRoots)) throw error('请选择明确的独立文件保存位置。');
   const absolute = path.resolve(file), basename = path.basename(absolute);
   const components = absolute.slice(path.parse(absolute).root.length).split(/[\\/]/);
-  if (components.some(component => /[:\x00-\x1f]|[. ]$/.test(component) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(component))) throw error('导出路径不能使用设备名、数据流或含糊的Windows路径。');
+  if (components.some(component => /[\x00-\x1f]/.test(component) || (platform === 'win32' && (/[:]|[. ]$/.test(component) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(component))))) throw error('导出路径不能使用设备名、数据流或含糊的Windows路径。');
   if (/^(?:workbench-layout-v\d+|model-display-preferences-v\d+|personal-fragments-v\d+|import-receipt|\.portable-run|portable-native-binding|portable-profile|portable-events)\.json$/i.test(basename)) throw error('不能覆盖运行偏好、个人库或内部身份回执。');
   const protectedRoots = ['resources', 'provenance', 'data', 'cache', 'temp', 'logs'].map(name => path.join(root, name));
   const layoutRoots = layout?.layoutVersion === 2 ? [layout.runtimeRoot] : [];
