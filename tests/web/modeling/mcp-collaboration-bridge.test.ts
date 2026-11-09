@@ -370,4 +370,220 @@ describe('Frontend MCP Collaboration Bridge (Phase 1 & Phase 2)', () => {
       multiplicity: 1
     });
   });
+
+  it('controls 3D camera presets, rotations, zoom, display toggles, and captures valid PNG screenshots (Phase 3)', async () => {
+    const registry = createWorkspaceRegistry();
+    const nonPeriodicDoc = registry.addDocument(
+      {
+        id: 'struct-water',
+        name: 'water.xyz',
+        format: 'xyz',
+        charge: 0,
+        multiplicity: 1,
+        dimension: 3,
+        notes: [],
+        atoms: [
+          { id: 'o1', element: 'O', x: 0, y: 0, z: 0.12 },
+          { id: 'h1', element: 'H', x: 0, y: 0.76, z: -0.47 },
+          { id: 'h2', element: 'H', x: 0, y: -0.76, z: -0.47 }
+        ],
+        bonds: [
+          { a: 0, b: 1, order: 1 },
+          { a: 0, b: 2, order: 1 }
+        ]
+      },
+      'Water-Model'
+    );
+
+    const periodicDoc = registry.addDocument(
+      {
+        id: 'struct-nacl',
+        name: 'NaCl.cif',
+        format: 'cif',
+        charge: 0,
+        multiplicity: 1,
+        dimension: 3,
+        notes: [],
+        cell: {
+          vectors: [
+            [5.64, 0, 0],
+            [0, 5.64, 0],
+            [0, 0, 5.64]
+          ],
+          pbc: [true, true, true]
+        },
+        atoms: [
+          { id: 'na1', element: 'Na', x: 0, y: 0, z: 0 },
+          { id: 'cl1', element: 'Cl', x: 2.82, y: 2.82, z: 2.82 }
+        ],
+        bonds: []
+      },
+      'NaCl-Crystal'
+    );
+
+    const appliedStates: Array<{
+      documentId: string;
+      cameraView?: number[];
+      displaySettings?: unknown;
+      showAxes?: boolean;
+    }> = [];
+
+    const dispatcher = createMcpFrontendDispatcher({
+      getRegistry: () => registry,
+      isTaskCenterOpen: () => false,
+      getCallbacks: () => ({
+        applyViewportState: (documentId, next) => {
+          appliedStates.push({ documentId, ...next });
+        }
+      })
+    });
+
+    // 1. Orient non-periodic Water-Model to principal-inertia, step rotate, zoom, and toggle atom indices
+    const camWaterReply = await dispatcher.handleRequest({
+      requestId: 'cam-1',
+      action: 'frontend.viewportCamera',
+      payload: {
+        documentId: nonPeriodicDoc.id,
+        preset: 'principal-inertia',
+        rotateStep: 'right',
+        zoom: 1.5,
+        display: {
+          style: 'stick',
+          showAtomIndices: true,
+          showElementLabels: true,
+          showAxes: false
+        }
+      }
+    });
+    expect(camWaterReply.ok).toBe(true);
+    const camWaterResult = camWaterReply.result as {
+      documentId: string;
+      cameraView: number[];
+      pivot: number[];
+      display: {
+        style: string;
+        showAtomIndices: boolean;
+        showElementLabels: boolean;
+        showAxes: boolean;
+      };
+    };
+    expect(camWaterResult.documentId).toBe(nonPeriodicDoc.id);
+    expect(camWaterResult.cameraView).toHaveLength(8);
+    expect(camWaterResult.cameraView[3]).toBeCloseTo(187.5, 4);
+    expect(camWaterResult.display).toMatchObject({
+      style: 'stick',
+      showAtomIndices: true,
+      showElementLabels: true,
+      showAxes: false
+    });
+    expect(appliedStates.length).toBe(1);
+    expect(appliedStates[0].documentId).toBe(nonPeriodicDoc.id);
+
+    // 2. Requesting crystal cell preset ('a') on non-periodic Water-Model returns MCP_STRUCTURE_NOT_PERIODIC
+    const badCellReply = await dispatcher.handleRequest({
+      requestId: 'cam-2',
+      action: 'frontend.viewportCamera',
+      payload: {
+        documentId: nonPeriodicDoc.id,
+        preset: 'a'
+      }
+    });
+    expect(badCellReply.ok).toBe(false);
+    expect(badCellReply.error?.code).toBe('MCP_STRUCTURE_NOT_PERIODIC');
+
+    // 3. Orient periodic NaCl-Crystal to crystal cell preset 'c*' and rotateDelta
+    const camCrystalReply = await dispatcher.handleRequest({
+      requestId: 'cam-3',
+      action: 'frontend.viewportCamera',
+      payload: {
+        documentId: periodicDoc.id,
+        preset: 'c*',
+        rotateDelta: { dx: 25, dy: -15 }
+      }
+    });
+    expect(camCrystalReply.ok).toBe(true);
+    const camCrystalResult = camCrystalReply.result as {
+      documentId: string;
+      cameraView: number[];
+      pivot: number[];
+    };
+    expect(camCrystalResult.documentId).toBe(periodicDoc.id);
+    expect(camCrystalResult.pivot).toEqual([1.41, 1.41, 1.41]);
+
+    // 4. Reset camera view on Water-Model
+    const resetCamReply = await dispatcher.handleRequest({
+      requestId: 'cam-4',
+      action: 'frontend.viewportCamera',
+      payload: {
+        documentId: nonPeriodicDoc.id,
+        resetView: true
+      }
+    });
+    expect(resetCamReply.ok).toBe(true);
+    const resetCamResult = resetCamReply.result as { cameraView: number[] };
+    expect(resetCamResult.cameraView[3]).toBe(125);
+    expect(resetCamResult.cameraView.slice(4, 8)).toEqual([0, 0, 0, 1]);
+
+    // 5. Capture PNG screenshot of Water-Model (headless 2D projection fallback)
+    const shotReply = await dispatcher.handleRequest({
+      requestId: 'shot-1',
+      action: 'frontend.viewportScreenshot',
+      payload: {
+        documentId: nonPeriodicDoc.id,
+        width: 320,
+        height: 240,
+        transparent: false,
+        includeAnnotations: true
+      }
+    });
+    expect(shotReply.ok).toBe(true);
+    const shotResult = shotReply.result as {
+      documentId: string;
+      formula: string;
+      atomCount: number;
+      width: number;
+      height: number;
+      renderer: string;
+      base64Png: string;
+    };
+    expect(shotResult).toMatchObject({
+      documentId: nonPeriodicDoc.id,
+      formula: 'H2O',
+      atomCount: 3,
+      width: 320,
+      height: 240,
+      renderer: 'fallback-2d'
+    });
+
+    const pngBytes = Buffer.from(shotResult.base64Png, 'base64');
+    // Verify PNG signature (89 50 4E 47 0D 0A 1A 0A) and IHDR dimensions (320x240)
+    expect([...pngBytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(pngBytes.readUInt32BE(16)).toBe(320);
+    expect(pngBytes.readUInt32BE(20)).toBe(240);
+
+    // 6. Verify sequential relative zoom on non-active document tab accumulates against latest committed cameraView
+    const zoom1Reply = await dispatcher.handleRequest({
+      requestId: 'cam-5a',
+      action: 'frontend.viewportCamera',
+      payload: {
+        documentId: nonPeriodicDoc.id,
+        zoom: 2.0
+      }
+    });
+    expect(zoom1Reply.ok).toBe(true);
+    expect((zoom1Reply.result as { cameraView: number[] }).cameraView[3]).toBeCloseTo(250, 4);
+
+    const zoom2Reply = await dispatcher.handleRequest({
+      requestId: 'cam-5b',
+      action: 'frontend.viewportCamera',
+      payload: {
+        documentId: nonPeriodicDoc.id,
+        zoom: 1.5
+      }
+    });
+    expect(zoom2Reply.ok).toBe(true);
+    expect((zoom2Reply.result as { cameraView: number[] }).cameraView[3]).toBeCloseTo(375, 4);
+    expect(appliedStates.at(-1)?.documentId).toBe(nonPeriodicDoc.id);
+    expect(appliedStates.at(-1)?.cameraView?.[3]).toBeCloseTo(375, 4);
+  });
 });

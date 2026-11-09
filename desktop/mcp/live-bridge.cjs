@@ -13,6 +13,7 @@ const SESSION_SCHEMA = 'ester-mcp-session/v1';
 const MAX_HTTP_BODY_BYTES = 4 * 1024 * 1024;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
 const DEFAULT_MAX_INLINE_TEXT_BYTES = 8 * 1024 * 1024;
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function resolveHostAppDataRoot(platform = process.platform, env = process.env, homedir = os.homedir()) {
   if (platform === 'darwin') {
@@ -418,6 +419,115 @@ function createMcpLiveHost({
         }
         throw error;
       }
+    }
+
+    if (action === 'viewport-camera') {
+      const { windowId, ...cameraPayload } = payload;
+      return await requestFrontend('frontend.viewportCamera', cameraPayload, {
+        windowId
+      });
+    }
+
+    if (action === 'viewport-screenshot') {
+      let resolvedSavePath = null;
+      if (payload.savePath !== undefined) {
+        if (typeof payload.savePath !== 'string' || !payload.savePath.trim()) {
+          throw Object.assign(new Error('savePath must be a non-empty string'), {
+            statusCode: 400,
+            code: 'INVALID_SAVE_PATH'
+          });
+        }
+        resolvedSavePath = path.resolve(payload.savePath.trim());
+        const parentDir = path.dirname(resolvedSavePath);
+        let parentStat;
+        try {
+          parentStat = await fsPromises.lstat(parentDir);
+        } catch (error) {
+          if (error?.code === 'ENOENT') {
+            throw Object.assign(new Error(`Save directory does not exist: ${parentDir}`), {
+              statusCode: 400,
+              code: 'MCP_SAVE_DIR_NOT_FOUND'
+            });
+          }
+          throw Object.assign(new Error(`Cannot access save directory "${parentDir}": ${error.message}`), {
+            statusCode: 400,
+            code: 'MCP_FILE_ACCESS_ERROR'
+          });
+        }
+        if (parentStat.isSymbolicLink()) {
+          throw Object.assign(new Error(`Symbolic link directory is not permitted for screenshot output: ${parentDir}`), {
+            statusCode: 400,
+            code: 'MCP_SYMLINK_NOT_ALLOWED'
+          });
+        }
+        if (!parentStat.isDirectory()) {
+          throw Object.assign(new Error(`Save parent path is not a directory: ${parentDir}`), {
+            statusCode: 400,
+            code: 'MCP_INVALID_SAVE_DIR'
+          });
+        }
+
+        try {
+          const targetStat = await fsPromises.lstat(resolvedSavePath);
+          if (targetStat.isSymbolicLink()) {
+            throw Object.assign(new Error(`Symbolic links are not permitted for screenshot output: ${resolvedSavePath}`), {
+              statusCode: 400,
+              code: 'MCP_SYMLINK_NOT_ALLOWED'
+            });
+          }
+          if (!targetStat.isFile()) {
+            throw Object.assign(new Error(`Screenshot savePath is not a regular file: ${resolvedSavePath}`), {
+              statusCode: 400,
+              code: 'MCP_NOT_REGULAR_FILE'
+            });
+          }
+        } catch (error) {
+          if (error?.code !== 'ENOENT') {
+            throw error;
+          }
+        }
+      }
+
+      const { windowId, savePath: _ignoredSavePath, ...screenshotPayload } = payload;
+      const frontendResult = await requestFrontend('frontend.viewportScreenshot', screenshotPayload, {
+        windowId
+      });
+
+      if (!isPlainObject(frontendResult) || typeof frontendResult.base64Png !== 'string' || !frontendResult.base64Png) {
+        throw Object.assign(new Error('Frontend did not return screenshot PNG data'), {
+          statusCode: 500,
+          code: 'MCP_INVALID_SCREENSHOT_DATA'
+        });
+      }
+
+      const pngBuffer = Buffer.from(frontendResult.base64Png, 'base64');
+      if (pngBuffer.length < 8 || !pngBuffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+        throw Object.assign(new Error('Frontend returned invalid PNG binary payload'), {
+          statusCode: 500,
+          code: 'MCP_INVALID_SCREENSHOT_DATA'
+        });
+      }
+
+      if (resolvedSavePath) {
+        const tempSavePath = `${resolvedSavePath}.${process.pid}.${Date.now()}.tmp`;
+        try {
+          await fsPromises.writeFile(tempSavePath, pngBuffer);
+          await fsPromises.rename(tempSavePath, resolvedSavePath);
+        } catch (error) {
+          await fsPromises.unlink(tempSavePath).catch(() => {});
+          throw Object.assign(new Error(`Failed to write screenshot to "${resolvedSavePath}": ${error.message}`), {
+            statusCode: 500,
+            code: 'MCP_SCREENSHOT_WRITE_FAILED'
+          });
+        }
+      }
+
+      return {
+        ...frontendResult,
+        mimeType: 'image/png',
+        byteLength: pngBuffer.byteLength,
+        ...(resolvedSavePath ? { savedPath: resolvedSavePath } : {})
+      };
     }
 
     if (customActionHandlers.has(action)) {

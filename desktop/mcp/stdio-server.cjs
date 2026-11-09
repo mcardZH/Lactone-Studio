@@ -7,6 +7,7 @@ const {
   createMcpToolRegistry,
   registerFoundationTools,
   registerWindowAndFileTools,
+  registerViewportAndVisionTools,
   createMcpProtocolProcessor,
   jsonRpcError
 } = require('./protocol.cjs');
@@ -36,6 +37,10 @@ function createMcpStdioServer({
     serverVersion
   });
   registerWindowAndFileTools(registry, {
+    dispatchToHost: dispatch,
+    serverVersion
+  });
+  registerViewportAndVisionTools(registry, {
     dispatchToHost: dispatch,
     serverVersion
   });

@@ -226,6 +226,42 @@ const VALID_OPEN_FILE_TARGETS = Object.freeze([
   'analysis'
 ]);
 
+const VALID_CAMERA_PRESETS = Object.freeze([
+  'principal-inertia',
+  'X',
+  'Y',
+  'Z',
+  'a',
+  'a*',
+  'b',
+  'b*',
+  'c',
+  'c*'
+]);
+
+const VALID_ROTATE_STEPS = Object.freeze([
+  'left',
+  'right',
+  'up',
+  'down'
+]);
+
+const VALID_DISPLAY_STYLES = Object.freeze([
+  'ball-stick',
+  'stick',
+  'vdw'
+]);
+
+const ALLOWED_DISPLAY_KEYS = Object.freeze([
+  'style',
+  'showAtomIndices',
+  'showElementLabels',
+  'showBondLengths',
+  'showFrozenMarks',
+  'showCell',
+  'showAxes'
+]);
+
 function registerWindowAndFileTools(registry, { dispatchToHost }) {
   if (typeof dispatchToHost !== 'function') {
     throw new Error('registerWindowAndFileTools requires a dispatchToHost function');
@@ -417,6 +453,325 @@ function registerWindowAndFileTools(registry, { dispatchToHost }) {
   });
 }
 
+function registerViewportAndVisionTools(registry, { dispatchToHost }) {
+  if (typeof dispatchToHost !== 'function') {
+    throw new Error('registerViewportAndVisionTools requires a dispatchToHost function');
+  }
+
+  registry.registerTool({
+    name: 'ester_viewport_camera',
+    description: 'Control the 3D molecular/crystal viewport camera orientation, rotation, zoom, and display overlays (atom indices, element labels, measurement marks, frozen marks, unit cell box, coordinate axes, representation style) in real time.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        documentId: {
+          type: 'string',
+          description: 'Optional target document ID (or label fallback). Defaults to the active document.'
+        },
+        windowId: {
+          type: 'integer',
+          description: 'Optional target Electron window ID.'
+        },
+        preset: {
+          type: 'string',
+          enum: [...VALID_CAMERA_PRESETS],
+          description: 'Orient camera to a standard Cartesian axis (X, Y, Z), principal inertia axes (principal-inertia), or crystal cell axis (a, a*, b, b*, c, c*).'
+        },
+        rotateStep: {
+          type: 'string',
+          enum: [...VALID_ROTATE_STEPS],
+          description: 'Rotate camera by a 45-degree step around the structure pivot (left, right, up, or down).'
+        },
+        rotateDelta: {
+          type: 'object',
+          properties: {
+            dx: {
+              type: 'number',
+              description: 'Horizontal rotation delta around the structure pivot.'
+            },
+            dy: {
+              type: 'number',
+              description: 'Vertical rotation delta around the structure pivot.'
+            }
+          },
+          required: ['dx', 'dy'],
+          additionalProperties: false,
+          description: 'Continuous camera rotation delta (dx, dy) around the structure pivot.'
+        },
+        zoom: {
+          type: 'number',
+          description: 'Positive zoom multiplier (e.g. 1.25 to zoom in, 0.8 to zoom out).'
+        },
+        resetView: {
+          type: 'boolean',
+          description: 'When true, reset camera view to the default initial orientation centered on the structure pivot before applying other camera transforms.'
+        },
+        display: {
+          type: 'object',
+          properties: {
+            style: {
+              type: 'string',
+              enum: [...VALID_DISPLAY_STYLES],
+              description: 'Molecular representation style (ball-stick, stick, or vdw).'
+            },
+            showAtomIndices: {
+              type: 'boolean',
+              description: 'Show or hide 1-based atom serial index labels in the 3D viewport.'
+            },
+            showElementLabels: {
+              type: 'boolean',
+              description: 'Show or hide element symbol labels in the 3D viewport.'
+            },
+            showBondLengths: {
+              type: 'boolean',
+              description: 'Show or hide distance/angle/dihedral measurement marks in the 3D viewport.'
+            },
+            showFrozenMarks: {
+              type: 'boolean',
+              description: 'Show or hide snowflake indicators on frozen atoms.'
+            },
+            showCell: {
+              type: 'boolean',
+              description: 'Show or hide the periodic unit cell bounding box.'
+            },
+            showAxes: {
+              type: 'boolean',
+              description: 'Show or hide the 3D coordinate/cell axes indicator.'
+            }
+          },
+          additionalProperties: false,
+          description: 'Optional display toggles for the 3D viewport.'
+        }
+      },
+      additionalProperties: false
+    },
+    async handler(args) {
+      if (args.documentId !== undefined && (typeof args.documentId !== 'string' || !args.documentId.trim())) {
+        throw Object.assign(
+          new Error('documentId must be a non-empty string'),
+          { code: 'INVALID_DOCUMENT_ID' }
+        );
+      }
+      if (args.windowId !== undefined && (!Number.isInteger(args.windowId) || args.windowId <= 0)) {
+        throw Object.assign(
+          new Error('windowId must be a positive integer'),
+          { code: 'INVALID_WINDOW_ID' }
+        );
+      }
+      if (args.preset !== undefined && (typeof args.preset !== 'string' || !VALID_CAMERA_PRESETS.includes(args.preset))) {
+        throw Object.assign(
+          new Error(`preset must be one of: ${VALID_CAMERA_PRESETS.join(', ')}`),
+          { code: 'INVALID_CAMERA_PRESET' }
+        );
+      }
+      if (args.rotateStep !== undefined && (typeof args.rotateStep !== 'string' || !VALID_ROTATE_STEPS.includes(args.rotateStep))) {
+        throw Object.assign(
+          new Error(`rotateStep must be one of: ${VALID_ROTATE_STEPS.join(', ')}`),
+          { code: 'INVALID_ROTATE_STEP' }
+        );
+      }
+      if (args.rotateDelta !== undefined) {
+        if (
+          !isPlainObject(args.rotateDelta) ||
+          typeof args.rotateDelta.dx !== 'number' ||
+          !Number.isFinite(args.rotateDelta.dx) ||
+          typeof args.rotateDelta.dy !== 'number' ||
+          !Number.isFinite(args.rotateDelta.dy) ||
+          Object.keys(args.rotateDelta).some(key => key !== 'dx' && key !== 'dy')
+        ) {
+          throw Object.assign(
+            new Error('rotateDelta must be an object with finite numeric dx and dy fields'),
+            { code: 'INVALID_ROTATE_DELTA' }
+          );
+        }
+      }
+      if (args.zoom !== undefined && (typeof args.zoom !== 'number' || !Number.isFinite(args.zoom) || args.zoom <= 0 || args.zoom > 100)) {
+        throw Object.assign(
+          new Error('zoom must be a finite positive number (0 < zoom <= 100)'),
+          { code: 'INVALID_CAMERA_ZOOM' }
+        );
+      }
+      if (args.resetView !== undefined && typeof args.resetView !== 'boolean') {
+        throw Object.assign(
+          new Error('resetView must be a boolean'),
+          { code: 'INVALID_RESET_VIEW_FLAG' }
+        );
+      }
+
+      let normalizedDisplay;
+      if (args.display !== undefined) {
+        if (!isPlainObject(args.display)) {
+          throw Object.assign(
+            new Error('display must be an object'),
+            { code: 'INVALID_DISPLAY_OPTIONS' }
+          );
+        }
+        const displayKeys = Object.keys(args.display);
+        for (const key of displayKeys) {
+          if (!ALLOWED_DISPLAY_KEYS.includes(key)) {
+            throw Object.assign(
+              new Error(`Unsupported display option "${key}". Allowed: ${ALLOWED_DISPLAY_KEYS.join(', ')}`),
+              { code: 'INVALID_DISPLAY_OPTIONS' }
+            );
+          }
+          if (key === 'style') {
+            if (typeof args.display.style !== 'string' || !VALID_DISPLAY_STYLES.includes(args.display.style)) {
+              throw Object.assign(
+                new Error(`display.style must be one of: ${VALID_DISPLAY_STYLES.join(', ')}`),
+                { code: 'INVALID_DISPLAY_OPTIONS' }
+              );
+            }
+          } else if (typeof args.display[key] !== 'boolean') {
+            throw Object.assign(
+              new Error(`display.${key} must be a boolean`),
+              { code: 'INVALID_DISPLAY_OPTIONS' }
+            );
+          }
+        }
+        if (displayKeys.length > 0) {
+          normalizedDisplay = { ...args.display };
+        }
+      }
+
+      const hasCameraOp =
+        args.preset !== undefined ||
+        args.rotateStep !== undefined ||
+        args.rotateDelta !== undefined ||
+        args.zoom !== undefined ||
+        args.resetView === true ||
+        normalizedDisplay !== undefined;
+
+      if (!hasCameraOp) {
+        throw Object.assign(
+          new Error('ester_viewport_camera requires at least one camera or display operation (preset, rotateStep, rotateDelta, zoom, resetView: true, or display)'),
+          { code: 'EMPTY_CAMERA_OPERATION' }
+        );
+      }
+
+      const result = await dispatchToHost('viewport-camera', {
+        ...(args.documentId !== undefined ? { documentId: args.documentId.trim() } : {}),
+        ...(args.windowId !== undefined ? { windowId: args.windowId } : {}),
+        ...(args.preset !== undefined ? { preset: args.preset } : {}),
+        ...(args.rotateStep !== undefined ? { rotateStep: args.rotateStep } : {}),
+        ...(args.rotateDelta !== undefined ? { rotateDelta: { dx: args.rotateDelta.dx, dy: args.rotateDelta.dy } } : {}),
+        ...(args.zoom !== undefined ? { zoom: args.zoom } : {}),
+        ...(args.resetView !== undefined ? { resetView: args.resetView } : {}),
+        ...(normalizedDisplay !== undefined ? { display: normalizedDisplay } : {})
+      });
+      return {
+        ok: true,
+        ...result
+      };
+    }
+  });
+
+  registry.registerTool({
+    name: 'ester_viewport_screenshot',
+    description: 'Capture a PNG screenshot of the 3D molecular/crystal viewport (with optional atom index/element/measurement annotations and optional local file output) and return a multimodal MCP image block for AI visual inspection.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        documentId: {
+          type: 'string',
+          description: 'Optional target document ID (or label fallback). Defaults to the active document.'
+        },
+        windowId: {
+          type: 'integer',
+          description: 'Optional target Electron window ID.'
+        },
+        width: {
+          type: 'integer',
+          description: 'Output image width in pixels (160..4096, default: 1200).'
+        },
+        height: {
+          type: 'integer',
+          description: 'Output image height in pixels (120..4096, default: 900).'
+        },
+        transparent: {
+          type: 'boolean',
+          description: 'Render with transparent background instead of studio background (default: false).'
+        },
+        includeAnnotations: {
+          type: 'boolean',
+          description: 'Overlay atom indices, element symbols, frozen atom marks, measurements, legend, and coordinate axes (default: true).'
+        },
+        savePath: {
+          type: 'string',
+          description: 'Optional local file path to save the rendered PNG screenshot.'
+        }
+      },
+      additionalProperties: false
+    },
+    async handler(args) {
+      if (args.documentId !== undefined && (typeof args.documentId !== 'string' || !args.documentId.trim())) {
+        throw Object.assign(
+          new Error('documentId must be a non-empty string'),
+          { code: 'INVALID_DOCUMENT_ID' }
+        );
+      }
+      if (args.windowId !== undefined && (!Number.isInteger(args.windowId) || args.windowId <= 0)) {
+        throw Object.assign(
+          new Error('windowId must be a positive integer'),
+          { code: 'INVALID_WINDOW_ID' }
+        );
+      }
+      if (args.width !== undefined && (!Number.isInteger(args.width) || args.width < 160 || args.width > 4096)) {
+        throw Object.assign(
+          new Error('width must be an integer between 160 and 4096'),
+          { code: 'INVALID_SCREENSHOT_DIMENSIONS' }
+        );
+      }
+      if (args.height !== undefined && (!Number.isInteger(args.height) || args.height < 120 || args.height > 4096)) {
+        throw Object.assign(
+          new Error('height must be an integer between 120 and 4096'),
+          { code: 'INVALID_SCREENSHOT_DIMENSIONS' }
+        );
+      }
+      if (args.transparent !== undefined && typeof args.transparent !== 'boolean') {
+        throw Object.assign(
+          new Error('transparent must be a boolean'),
+          { code: 'INVALID_TRANSPARENT_FLAG' }
+        );
+      }
+      if (args.includeAnnotations !== undefined && typeof args.includeAnnotations !== 'boolean') {
+        throw Object.assign(
+          new Error('includeAnnotations must be a boolean'),
+          { code: 'INVALID_ANNOTATIONS_FLAG' }
+        );
+      }
+      if (args.savePath !== undefined && (typeof args.savePath !== 'string' || !args.savePath.trim())) {
+        throw Object.assign(
+          new Error('savePath must be a non-empty string'),
+          { code: 'INVALID_SAVE_PATH' }
+        );
+      }
+
+      const result = await dispatchToHost('viewport-screenshot', {
+        ...(args.documentId !== undefined ? { documentId: args.documentId.trim() } : {}),
+        ...(args.windowId !== undefined ? { windowId: args.windowId } : {}),
+        width: args.width ?? 1200,
+        height: args.height ?? 900,
+        transparent: args.transparent === true,
+        includeAnnotations: args.includeAnnotations !== false,
+        ...(args.savePath !== undefined ? { savePath: args.savePath.trim() } : {})
+      });
+
+      const { base64Png, ...metadata } = isPlainObject(result) ? result : {};
+      const mimeType = typeof metadata.mimeType === 'string' ? metadata.mimeType : 'image/png';
+      const summaryPayload = {
+        ok: true,
+        ...metadata,
+        mimeType
+      };
+      const imageBlocks = typeof base64Png === 'string' && base64Png.length > 0
+        ? [{ data: base64Png, mimeType }]
+        : [];
+
+      return formatToolResult(summaryPayload, { imageBlocks });
+    }
+  });
+}
+
 function createMcpProtocolProcessor({ registry, serverName = 'ester-studio-mcp', serverVersion = '2.0.2' }) {
   if (!registry || typeof registry.listTools !== 'function' || typeof registry.callTool !== 'function') {
     throw new Error('createMcpProtocolProcessor requires a valid tool registry');
@@ -500,6 +855,9 @@ module.exports = {
   VALID_WINDOW_MANAGE_ACTIONS,
   VALID_LAYOUT_MODES,
   VALID_OPEN_FILE_TARGETS,
+  VALID_CAMERA_PRESETS,
+  VALID_ROTATE_STEPS,
+  VALID_DISPLAY_STYLES,
   isPlainObject,
   formatToolResult,
   jsonRpcSuccess,
@@ -507,5 +865,6 @@ module.exports = {
   createMcpToolRegistry,
   registerFoundationTools,
   registerWindowAndFileTools,
+  registerViewportAndVisionTools,
   createMcpProtocolProcessor
 };

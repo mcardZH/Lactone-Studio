@@ -141,7 +141,8 @@ import {subscribeGlobalSettings} from '../global-settings-events';
 import StructureLibrary from './StructureLibrary';
 import type { StructureLibraryEntry } from '../../modeling/structure-library';
 import {applicationVersion} from '../../application-version';
-import {computeHillFormula,useMcpCollaborationBridge} from '../mcp/useMcpCollaborationBridge';
+import {blobToBase64,computeHillFormula,useMcpCollaborationBridge} from '../mcp/useMcpCollaborationBridge';
+import {exportViewportImage} from '../results/export-image';
 import './workspace-shell.css';
 const TwoDImportWorkspace=lazy(()=>import('./TwoDImportWorkspace'));
 
@@ -502,7 +503,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const runtimeOwners=useRef(new Map<string,{controller:DynamicsController;unsubscribe:()=>void}>());
  const ownerAdapters=useRef(new Map<string,ReturnType<typeof createWorkspaceOwnerAdapter>>());
  const viewportStates=useRef(new Map<string,WorkspaceViewportState>()),viewportControllers=useRef(new Map<string,WorkspaceViewportController>());
- const pendingCameraRestores=useRef(new Map<string,{stamp:WorkspaceActivationStamp;view:number[]}>());
+ const pendingCameraRestores=useRef(new Map<string,{stamp:WorkspaceActivationStamp;view:number[];deferUntilActive?:boolean}>());
  const displaySources=useRef(new Map<string,{projection:ViewportDisplayProjection;descriptor:ViewportDisplayDescriptor;signature:string;observer:ModelViewportProps['onSurfaceMeshState']}>()),displaySerials=useRef(new Map<string,number>()),displayOwners=useRef(new Map<string,ViewportDisplayOwner>());
  const callbacks=useRef(new Map<string,DocumentWorkspaceSurface>());
  const pagePresentations=useRef(new Map<string,Pick<DocumentWorkspaceSurface,'analysisCanvas'|'advancedModelingRoute'|'samplingSphereDraft'>>());
@@ -1716,6 +1717,98 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      targetChoice:'structure',
      ...(latestErrorRef.current?{warnings:[latestErrorRef.current]}:{})
     };
+   },
+   getViewportState:id=>{
+    const vp=viewportStates.current.get(id);
+    const camera=vp?.cameraView??viewportControllers.current.get(id)?.getCameraView?.()??inheritedViews.current.get(id)?.camera;
+    return {
+     ...(Array.isArray(camera)&&camera.length===8?{cameraView:[...camera]}:{}),
+     displaySettings:{...(vp?.display??displaySettings)},
+     showAxes:vp?.showAxes??sharedShowAxes
+    };
+   },
+   applyViewportState:async(id,next)=>{
+    if(next.displaySettings)changeDisplaySettings(next.displaySettings);
+    if(typeof next.showAxes==='boolean')setSharedShowAxes(next.showAxes);
+    if(next.cameraView&&next.cameraView.length===8){
+     inheritedViews.current.set(id,{...inheritedViews.current.get(id),camera:[...next.cameraView]});
+     const existingVp=viewportStates.current.get(id);
+     if(existingVp)viewportStates.current.set(id,{...existingVp,cameraView:[...next.cameraView]});
+     const queuePendingCamera=()=>{
+      const current=registry.getSnapshot(),entry=current.documents.find(value=>value.id===id);
+      if(entry){
+       const view=current.views.find(value=>value.documentId===id);
+       if(view)pendingCameraRestores.current.set(id,{stamp:{documentId:id,documentEpoch:entry.epoch,revision:entry.store.getSnapshot().revision,viewId:view.id,activationEpoch:current.activationEpoch},view:[...next.cameraView!],deferUntilActive:true});
+      }
+     };
+     const controller=viewportControllers.current.get(id);
+     if(controller&&existingVp?.interactionOwnerActive){
+      pendingCameraRestores.current.delete(id);
+      try{await Promise.resolve(controller.dispatch({type:'camera',view:[...next.cameraView]}));}
+      catch{queuePendingCamera();}
+     }else{
+      queuePendingCamera();
+     }
+    }
+   },
+   captureViewportScreenshot:async(id,screenshotOptions)=>{
+    const entry=registry.getSnapshot().documents.find(doc=>doc.id===id);
+    if(!entry)throw Object.assign(new Error(`Document not found: ${id}`),{code:'MCP_DOCUMENT_NOT_FOUND'});
+    const vp=viewportStates.current.get(id);
+    const displayProjection=displaySources.current.get(id)?.projection;
+    const analysisCanvas=pagePresentations.current.get(id)?.analysisCanvas;
+    let docSnapshot=displayProjection?.displayDocument?.document
+     ??analysisCanvas?.document
+     ??vp?.editingDocument
+     ??entry.store.getSnapshot();
+    if(docSnapshot.draft.structure.atoms.length===0&&entry.result?.initialStructure){
+     docSnapshot={
+      ...docSnapshot,
+      draft:{
+       ...docSnapshot.draft,
+       structure:entry.result.initialStructure
+      }
+     };
+    }
+    const ownerDoc=rootElement.current?.ownerDocument??(typeof document!=='undefined'?document:null);
+    if(!ownerDoc)throw new Error('DOM document unavailable for WebGL capture');
+    const stageEl=rootElement.current?.querySelector(`#doc-${id} .model-viewport-stage`);
+    const box=stageEl?.getBoundingClientRect();
+    const projectedViewport=displayProjection?.viewport??analysisCanvas?.viewport;
+    const snapshot={
+     document:structuredClone(docSnapshot),
+     displayFrozenAtomIds:vp?.displayFrozenAtomIds?[...vp.displayFrozenAtomIds]:undefined,
+     cameraView:[...screenshotOptions.cameraView],
+     display:structuredClone(screenshotOptions.displaySettings),
+     showAxes:screenshotOptions.showAxes,
+     width:screenshotOptions.width,
+     height:screenshotOptions.height,
+     viewportWidth:box&&box.width>0?box.width:screenshotOptions.width,
+     viewportHeight:box&&box.height>0?box.height:screenshotOptions.height,
+     measurement:vp?.measurement?structuredClone(vp.measurement):undefined,
+     cellGuides:vp?.cellGuides,
+     previewGuides:vp?.previewGuides,
+     previewCell:vp?.previewCell,
+     ...projectedViewport,
+     viewTransform:projectedViewport?.viewTransform??vp?.viewTransform
+    };
+    const blob=await exportViewportImage(
+     snapshot,
+     {
+      format:'png',
+      includeAnnotations:screenshotOptions.includeAnnotations,
+      width:screenshotOptions.width,
+      height:screenshotOptions.height,
+      transparent:screenshotOptions.transparent
+     },
+     ownerDoc
+    );
+    return {
+     base64Png:await blobToBase64(blob),
+     width:screenshotOptions.width,
+     height:screenshotOptions.height,
+     renderer:'webgl' as const
+    };
    }
   }
  });
@@ -1770,14 +1863,15 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    });
   }
  }
- function restoreCommittedCamera(id:string,viewport:WorkspaceViewportState){
-  const pending=pendingCameraRestores.current.get(id);if(!pending)return;
+ function restoreCommittedCamera(id:string,viewport:WorkspaceViewportState):number[]|undefined{
+  const pending=pendingCameraRestores.current.get(id);if(!pending)return undefined;
   const current=registry.getSnapshot(),entry=current.documents.find(value=>value.id===id),view=current.views.find(value=>value.id===current.activeViewId);
-  if(!entry||entry.epoch!==pending.stamp.documentEpoch||entry.store.getSnapshot().revision!==pending.stamp.revision||view?.id!==pending.stamp.viewId||current.activationEpoch!==pending.stamp.activationEpoch){pendingCameraRestores.current.delete(id);return;}
-  if(viewport.documentId!==id||viewport.revision!==pending.stamp.revision||!viewport.interactionOwnerActive||viewport.interactionActivationEpoch!==pending.stamp.activationEpoch)return;
-  const controller=viewportControllers.current.get(id);if(!controller)return;
+  if(!entry||entry.epoch!==pending.stamp.documentEpoch||entry.store.getSnapshot().revision!==pending.stamp.revision||(!pending.deferUntilActive&&(view?.id!==pending.stamp.viewId||current.activationEpoch!==pending.stamp.activationEpoch))){pendingCameraRestores.current.delete(id);return undefined;}
+  if(viewport.documentId!==id||viewport.revision!==pending.stamp.revision||!viewport.interactionOwnerActive||(!pending.deferUntilActive&&viewport.interactionActivationEpoch!==pending.stamp.activationEpoch))return undefined;
+  const controller=viewportControllers.current.get(id);if(!controller)return undefined;
   pendingCameraRestores.current.delete(id);
   void Promise.resolve(controller.dispatch({type:'camera',view:pending.view})).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));
+  return pending.view;
  }
  function prepareAdvancedInput(source:AdvancedFrameSource,confirmed=false){
   try{const previous=registry.getSnapshot().inputTask,old=previous?registry.document(previous.documentId):null;
@@ -1822,7 +1916,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    displaySettings,onDisplaySettingsChange:changeDisplaySettings,onOpenSettings:openDisplaySettings,sharedShowAxes,onSharedShowAxesChange:setSharedShowAxes,toolIntent,onToolIntentChange:setToolIntent,viewportActive:false,legendVisible:false,layoutActions:null,legendExpanded,onLegendExpandedChange:setLegendExpanded,
     onActivate:()=>activateDocument(entry.id),
     onSavedName:name=>{registry.rename(entry.id,name);publishMetadata(entry.id);},
-    onViewportState:value=>{restoreCommittedCamera(entry.id,value);if(JSON.stringify(viewportStates.current.get(entry.id))===JSON.stringify(value))return;viewportStates.current.set(entry.id,value);publishMetadata(entry.id);},
+    onViewportState:value=>{const restoredView=restoreCommittedCamera(entry.id,value);const pendingCam=pendingCameraRestores.current.get(entry.id);const overrideView=restoredView??(pendingCam?.deferUntilActive?pendingCam.view:undefined);const nextValue=overrideView?{...value,cameraView:[...overrideView]}:value;if(JSON.stringify(viewportStates.current.get(entry.id))===JSON.stringify(nextValue))return;viewportStates.current.set(entry.id,nextValue);publishMetadata(entry.id);},
     onDisplayProjection:(projection,observer)=>{const previous=displaySources.current.get(entry.id),signature=projection?viewportDisplaySignature(projection):'';if(previous?.signature===signature){previous.observer=observer;if(projection){previous.projection=projection;displayOwners.current.get(entry.id)?.publish(projection,previous.descriptor.projectionSerial);}return;}if(!previous&&!projection)return;const serial=(displaySerials.current.get(entry.id)??0)+1;displaySerials.current.set(entry.id,serial);if(projection){const {viewport:_viewport,...identity}=projection;displaySources.current.set(entry.id,{projection,descriptor:{...identity,projectionSerial:serial},signature,observer});}else displaySources.current.delete(entry.id);displayOwners.current.get(entry.id)?.publish(projection,serial);publishMetadata(entry.id);},
     onViewportController:controller=>{if(controller)viewportControllers.current.set(entry.id,controller);else viewportControllers.current.delete(entry.id);},
     onElectronicConfirmation:confirmed=>{registry.confirmElectronicState(entry.id,confirmed);publishMetadata(entry.id);},

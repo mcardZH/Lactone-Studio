@@ -13,6 +13,7 @@ const {
   createMcpToolRegistry,
   registerFoundationTools,
   registerWindowAndFileTools,
+  registerViewportAndVisionTools,
   createMcpProtocolProcessor,
   formatToolResult
 } = require('../../desktop/mcp/protocol.cjs');
@@ -544,6 +545,8 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
       'ester_open_file',
       'ester_ping',
       'ester_status',
+      'ester_viewport_camera',
+      'ester_viewport_screenshot',
       'ester_window_manage'
     ]);
 
@@ -630,5 +633,218 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
     });
     assert.equal(emptyRes.isError, true);
     assert.equal(emptyRes.structuredContent.error.code, 'MCP_EMPTY_FILE');
+  });
+
+  it('validates and dispatches Phase 3 tools (ester_viewport_camera & ester_viewport_screenshot) with multimodal PNG blocks and savePath guards', async () => {
+    const dir = makeTempDir();
+    const sessionFilePath = path.join(dir, 'mcp-session.json');
+
+    // Minimal valid 1x1 PNG buffer
+    const valid1x1PngBase64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    let hostRef = null;
+    const mockWindow = {
+      isDestroyed: () => false,
+      webContents: {
+        id: 505,
+        isDestroyed: () => false,
+        send(_channel, message) {
+          setImmediate(() => {
+            if (message.action === 'frontend.viewportCamera') {
+              hostRef.handleFrontendReply(505, {
+                requestId: message.requestId,
+                ok: true,
+                result: {
+                  documentId: message.payload.documentId ?? 'doc-active',
+                  label: 'Aspirin-3D',
+                  cameraView: [0, 0, 0, message.payload.zoom ? 125 * message.payload.zoom : 125, 0, 0, 0, 1],
+                  pivot: [0, 0, 0],
+                  appliedPreset: message.payload.preset ?? null,
+                  appliedRotateStep: message.payload.rotateStep ?? null,
+                  display: {
+                    style: message.payload.display?.style ?? 'ball-stick',
+                    showAtomIndices: message.payload.display?.showAtomIndices ?? false,
+                    showElementLabels: message.payload.display?.showElementLabels ?? false,
+                    showBondLengths: message.payload.display?.showBondLengths ?? true,
+                    showFrozenMarks: message.payload.display?.showFrozenMarks ?? true,
+                    showCell: message.payload.display?.showCell ?? true,
+                    showAxes: message.payload.display?.showAxes ?? true
+                  }
+                }
+              });
+            } else if (message.action === 'frontend.viewportScreenshot') {
+              if (message.payload.documentId === 'doc-corrupt-png') {
+                hostRef.handleFrontendReply(505, {
+                  requestId: message.requestId,
+                  ok: true,
+                  result: {
+                    documentId: 'doc-corrupt-png',
+                    width: message.payload.width,
+                    height: message.payload.height,
+                    base64Png: Buffer.from('not-a-png').toString('base64')
+                  }
+                });
+                return;
+              }
+              hostRef.handleFrontendReply(505, {
+                requestId: message.requestId,
+                ok: true,
+                result: {
+                  documentId: message.payload.documentId ?? 'doc-active',
+                  label: 'Aspirin-3D',
+                  formula: 'C9H8O4',
+                  atomCount: 21,
+                  width: message.payload.width,
+                  height: message.payload.height,
+                  transparent: message.payload.transparent,
+                  includeAnnotations: message.payload.includeAnnotations,
+                  renderer: 'webgl',
+                  cameraView: [0, 0, 0, 125, 0, 0, 0, 1],
+                  base64Png: valid1x1PngBase64
+                }
+              });
+            }
+          });
+        }
+      }
+    };
+
+    const host = createMcpLiveHost({
+      sessionFilePath,
+      getTargetWindow: () => mockWindow,
+      getHostStatus: () => ({ windowCount: 1, primaryWorkbenchWindowId: 505 })
+    });
+    hostRef = host;
+    activeHosts.push(host);
+    await host.start();
+
+    const registry = createMcpToolRegistry();
+    const client = createMcpLiveClient({ sessionFilePath });
+    registerViewportAndVisionTools(registry, {
+      dispatchToHost: (action, payload) => client.dispatch(action, payload)
+    });
+
+    // 1. Test ester_viewport_camera validation errors
+    const emptyCamRes = await registry.callTool('ester_viewport_camera', {});
+    assert.equal(emptyCamRes.isError, true);
+    assert.equal(emptyCamRes.structuredContent.error.code, 'EMPTY_CAMERA_OPERATION');
+
+    const badPresetRes = await registry.callTool('ester_viewport_camera', {
+      preset: 'invalid-axis'
+    });
+    assert.equal(badPresetRes.isError, true);
+    assert.equal(badPresetRes.structuredContent.error.code, 'INVALID_CAMERA_PRESET');
+
+    const badStepRes = await registry.callTool('ester_viewport_camera', {
+      rotateStep: 'diagonal'
+    });
+    assert.equal(badStepRes.isError, true);
+    assert.equal(badStepRes.structuredContent.error.code, 'INVALID_ROTATE_STEP');
+
+    const badDeltaRes = await registry.callTool('ester_viewport_camera', {
+      rotateDelta: { dx: 10 }
+    });
+    assert.equal(badDeltaRes.isError, true);
+    assert.equal(badDeltaRes.structuredContent.error.code, 'INVALID_ROTATE_DELTA');
+
+    const badZoomRes = await registry.callTool('ester_viewport_camera', {
+      zoom: -1
+    });
+    assert.equal(badZoomRes.isError, true);
+    assert.equal(badZoomRes.structuredContent.error.code, 'INVALID_CAMERA_ZOOM');
+
+    const badDisplayRes = await registry.callTool('ester_viewport_camera', {
+      display: { unknownToggle: true }
+    });
+    assert.equal(badDisplayRes.isError, true);
+    assert.equal(badDisplayRes.structuredContent.error.code, 'INVALID_DISPLAY_OPTIONS');
+
+    // 2. Test ester_viewport_camera success
+    const camRes = await registry.callTool('ester_viewport_camera', {
+      preset: 'principal-inertia',
+      rotateStep: 'right',
+      zoom: 1.2,
+      display: {
+        style: 'stick',
+        showAtomIndices: true,
+        showElementLabels: true
+      }
+    });
+    assert.equal(camRes.isError, undefined);
+    assert.equal(camRes.structuredContent.ok, true);
+    assert.equal(camRes.structuredContent.appliedPreset, 'principal-inertia');
+    assert.equal(camRes.structuredContent.appliedRotateStep, 'right');
+    assert.equal(camRes.structuredContent.cameraView[3], 150);
+    assert.equal(camRes.structuredContent.display.style, 'stick');
+    assert.equal(camRes.structuredContent.display.showAtomIndices, true);
+
+    // 3. Test ester_viewport_screenshot validation errors
+    const badWidthRes = await registry.callTool('ester_viewport_screenshot', {
+      width: 50
+    });
+    assert.equal(badWidthRes.isError, true);
+    assert.equal(badWidthRes.structuredContent.error.code, 'INVALID_SCREENSHOT_DIMENSIONS');
+
+    // 4. Test ester_viewport_screenshot multimodal image response + savePath file write
+    const saveFilePath = path.join(dir, 'aspirin-view.png');
+    const shotRes = await registry.callTool('ester_viewport_screenshot', {
+      width: 800,
+      height: 600,
+      transparent: true,
+      includeAnnotations: true,
+      savePath: saveFilePath
+    });
+    assert.equal(shotRes.isError, undefined);
+    assert.equal(shotRes.structuredContent.ok, true);
+    assert.equal(shotRes.structuredContent.width, 800);
+    assert.equal(shotRes.structuredContent.height, 600);
+    assert.equal(shotRes.structuredContent.savedPath, saveFilePath);
+    assert.equal(shotRes.structuredContent.base64Png, undefined);
+    assert.equal(shotRes.content.length, 2);
+    assert.equal(shotRes.content[0].type, 'text');
+    assert.equal(shotRes.content[1].type, 'image');
+    assert.equal(shotRes.content[1].mimeType, 'image/png');
+    assert.equal(shotRes.content[1].data, valid1x1PngBase64);
+
+    // Verify saved PNG file on disk
+    assert.equal(fs.existsSync(saveFilePath), true);
+    const savedBytes = fs.readFileSync(saveFilePath);
+    assert.deepEqual(savedBytes.subarray(0, 8), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+
+    // 5. Test ester_viewport_screenshot security guards (symlink target, symlink parent dir, missing parent dir, directory target, corrupt PNG)
+    const symlinkTarget = path.join(dir, 'symlink-out.png');
+    fs.symlinkSync(saveFilePath, symlinkTarget);
+    const symlinkShotRes = await registry.callTool('ester_viewport_screenshot', {
+      savePath: symlinkTarget
+    });
+    assert.equal(symlinkShotRes.isError, true);
+    assert.equal(symlinkShotRes.structuredContent.error.code, 'MCP_SYMLINK_NOT_ALLOWED');
+
+    const symlinkDir = path.join(dir, 'symlink-dir');
+    fs.symlinkSync(dir, symlinkDir);
+    const symlinkDirShotRes = await registry.callTool('ester_viewport_screenshot', {
+      savePath: path.join(symlinkDir, 'out.png')
+    });
+    assert.equal(symlinkDirShotRes.isError, true);
+    assert.equal(symlinkDirShotRes.structuredContent.error.code, 'MCP_SYMLINK_NOT_ALLOWED');
+
+    const missingParentShotRes = await registry.callTool('ester_viewport_screenshot', {
+      savePath: path.join(dir, 'no-such-folder', 'out.png')
+    });
+    assert.equal(missingParentShotRes.isError, true);
+    assert.equal(missingParentShotRes.structuredContent.error.code, 'MCP_SAVE_DIR_NOT_FOUND');
+
+    const dirTargetShotRes = await registry.callTool('ester_viewport_screenshot', {
+      savePath: dir
+    });
+    assert.equal(dirTargetShotRes.isError, true);
+    assert.equal(dirTargetShotRes.structuredContent.error.code, 'MCP_NOT_REGULAR_FILE');
+
+    const corruptPngRes = await registry.callTool('ester_viewport_screenshot', {
+      documentId: 'doc-corrupt-png'
+    });
+    assert.equal(corruptPngRes.isError, true);
+    assert.equal(corruptPngRes.structuredContent.error.code, 'MCP_INVALID_SCREENSHOT_DATA');
   });
 });
