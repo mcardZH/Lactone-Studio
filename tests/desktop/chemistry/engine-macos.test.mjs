@@ -469,17 +469,97 @@ print(json.dumps(res))
       );
       try {
         const mdScript = `
-import json, pathlib, sys, threading
+import copy, hashlib, importlib.util, json, pathlib, shutil, sys, tempfile, threading
 for sp in ${JSON.stringify(sitePackagesDirs)}:
     if sp not in sys.path:
         sys.path.insert(0, sp)
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from conformer_native_md import NativeMDSession, admitted_md_engine_identity
+import conformer_native_md
+from conformer_native_md import NativeMDError, NativeMDSession, admitted_md_engine_identity
+import conformer_solvation
 from conformer_solvation import native_alpb_supported
 assert native_alpb_supported("gfn2", "md", "water") is True
 rt = json.loads(${JSON.stringify(JSON.stringify(xtb))})
 admitted = admitted_md_engine_identity(rt)
 assert admitted["version"] == rt["version"]
+
+# Verify Darwin codesign-modified runtimeMemberDigest admission with recomputed canonical sha256
+signed_rt = copy.deepcopy(rt)
+signed_rt["engineIdentity"]["runtimeMemberDigest"] = "a" * 64
+payload = {k: v for k, v in signed_rt["engineIdentity"].items() if k not in ("schema", "engine", "kind", "sha256")}
+signed_rt["engineIdentity"]["sha256"] = hashlib.sha256(
+    json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+).hexdigest()
+admitted_signed = admitted_md_engine_identity(signed_rt)
+assert admitted_signed["runtimeMemberDigest"] == "a" * 64
+
+def expect_rejected(bad_rt):
+    try:
+        admitted_md_engine_identity(bad_rt)
+    except NativeMDError:
+        return
+    raise AssertionError("Expected NativeMDError for invalid engineIdentity")
+
+# Reject stale sha256 when runtimeMemberDigest changes
+stale_sha_rt = copy.deepcopy(rt)
+stale_sha_rt["engineIdentity"]["runtimeMemberDigest"] = "b" * 64
+expect_rejected(stale_sha_rt)
+
+# Reject forged sha256
+forged_sha_rt = copy.deepcopy(signed_rt)
+forged_sha_rt["engineIdentity"]["sha256"] = "c" * 64
+expect_rejected(forged_sha_rt)
+
+# Reject unanchored buildId even with valid canonical sha256
+unanchored_build_rt = copy.deepcopy(rt)
+unanchored_build_rt["engineIdentity"]["buildId"] = "forged-build-id"
+payload_b = {k: v for k, v in unanchored_build_rt["engineIdentity"].items() if k not in ("schema", "engine", "kind", "sha256")}
+unanchored_build_rt["engineIdentity"]["sha256"] = hashlib.sha256(
+    json.dumps(payload_b, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+).hexdigest()
+expect_rejected(unanchored_build_rt)
+
+# Reject extra keys in engineIdentity
+extra_key_rt = copy.deepcopy(signed_rt)
+extra_key_rt["engineIdentity"]["extraKey"] = "unexpected"
+expect_rejected(extra_key_rt)
+
+# Reject codesign-modified runtimeMemberDigest on non-darwin platforms
+orig_platform = conformer_native_md.sys.platform
+try:
+    conformer_native_md.sys.platform = "win32"
+    expect_rejected(signed_rt)
+finally:
+    conformer_native_md.sys.platform = orig_platform
+
+# Verify conformer_solvation._resolve_capability_path() in packaged .app directory layouts
+src_solv_py = pathlib.Path.cwd() / "conformer_solvation.py"
+src_solv_json = pathlib.Path(${JSON.stringify(path.join(ROOT, 'src/data/conformer-solvation.json'))})
+with tempfile.TemporaryDirectory() as pkg_tmp:
+    resources_dir = pathlib.Path(pkg_tmp) / "Ester Studio.app/Contents/Resources"
+    chem_dir = resources_dir / "chemistry"
+    app_data_dir = resources_dir / "app/src/data"
+    chem_dir.mkdir(parents=True, exist_ok=True)
+    app_data_dir.mkdir(parents=True, exist_ok=True)
+    pkg_py = chem_dir / "conformer_solvation.py"
+    shutil.copy2(src_solv_py, pkg_py)
+
+    # Layout 1: Contents/Resources/app/src/data/conformer-solvation.json
+    app_json = app_data_dir / "conformer-solvation.json"
+    shutil.copy2(src_solv_json, app_json)
+    spec1 = importlib.util.spec_from_file_location("pkg_conformer_solvation_1", pkg_py)
+    mod1 = importlib.util.module_from_spec(spec1)
+    spec1.loader.exec_module(mod1)
+    assert mod1._resolve_capability_path() == app_json.resolve()
+
+    # Layout 2: Contents/Resources/chemistry/conformer-solvation.json takes precedence over app/src/data
+    chem_json = chem_dir / "conformer-solvation.json"
+    shutil.copy2(src_solv_json, chem_json)
+    spec2 = importlib.util.spec_from_file_location("pkg_conformer_solvation_2", pkg_py)
+    mod2 = importlib.util.module_from_spec(spec2)
+    spec2.loader.exec_module(mod2)
+    assert mod2._resolve_capability_path() == chem_json.resolve()
+
 request = {
     "operation": "md",
     "method": "gfn2",

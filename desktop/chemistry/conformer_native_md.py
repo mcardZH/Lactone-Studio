@@ -71,7 +71,6 @@ MD_ENGINE_IDENTITIES = (
          parameterDigest='0393b0ab523fd1e193396d480c0b44f659e5350af421400e3b631335d870c0d2',
          sha256='322fa3d05953049bdd2ce481381dd17766f4f2ff1ed1990376fa1bcfc63b5af3'),
 )
-DARWIN_PARAMETER_DIGESTS = frozenset(expected['parameterDigest'] for expected in MD_ENGINE_IDENTITIES)
 ATOMIC_TIME_FS = .024188843265857
 MAX_RAW_BYTES = 128 * 1024 * 1024
 SHAKE_BOND_TOLERANCE_ANGSTROM = 1e-6
@@ -98,19 +97,24 @@ def require(condition, message, code='SAMPLING_NATIVE_MD_INVALID'):
 def _admitted_darwin_md_engine_identity(runtime, identity):
     if sys.platform != 'darwin' or not isinstance(identity, dict):
         return False
-    return (
-        identity.get('schema') == 'sciyue-xtb-engine-identity/v1'
-        and identity.get('engine') == 'xtb'
-        and identity.get('kind') in ('legacy-binary-observation', 'bundled-independent-rebuild')
-        and isinstance(runtime.get('version'), str)
-        and identity.get('version') == runtime.get('version')
-        and isinstance(identity.get('buildId'), str)
-        and bool(identity['buildId'])
-        and identity.get('parameterDigest') in DARWIN_PARAMETER_DIGESTS
-        and isinstance(identity.get('runtimeMemberDigest'), str)
-        and bool(re.fullmatch(r'[0-9a-f]{64}', identity['runtimeMemberDigest']))
-        and isinstance(identity.get('sha256'), str)
-        and bool(re.fullmatch(r'[0-9a-f]{64}', identity['sha256']))
+    if set(identity) != set(MD_ENGINE_IDENTITIES[0]):
+        return False
+    if not (isinstance(identity.get('runtimeMemberDigest'), str)
+            and re.fullmatch(r'[0-9a-f]{64}', identity['runtimeMemberDigest'])
+            and isinstance(identity.get('sha256'), str)
+            and re.fullmatch(r'[0-9a-f]{64}', identity['sha256'])):
+        return False
+    payload = {k: v for k, v in identity.items() if k not in ('schema', 'engine', 'kind', 'sha256')}
+    expected_sha = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    ).hexdigest()
+    if identity['sha256'] != expected_sha:
+        return False
+    fixed_fields = {k: v for k, v in identity.items() if k not in ('runtimeMemberDigest', 'sha256')}
+    return any(
+        runtime.get('version') == expected['version']
+        and fixed_fields == {k: v for k, v in expected.items() if k not in ('runtimeMemberDigest', 'sha256')}
+        for expected in MD_ENGINE_IDENTITIES
     )
 
 
