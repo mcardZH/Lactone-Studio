@@ -86,23 +86,31 @@ Ester-Studio-v2.0.2-source-code/
    - 提交前及发起复核前必须执行 `npm test`；
    - 硬性要求：**所有单元测试 100% 绿色通过（0 失败、0 跳过）**。
 
-### 步骤 3：独立复核 (`gpt-6.1-terra`) 与循环修改
-在完成开发且单元测试全部通过后，在提交 PR 或合并到 `main` 之前，必须触发独立代码复核：
+### 步骤 3：独立上下文多子代理复核 (`code-review` / `pr-review-toolkit`) 与循环修改
+在完成开发且单元测试全部通过后，在提交 PR 或合并到 `main` 之前，必须使用 `.agents/skills/code-review`（及按需使用 `.agents/skills/pr-review-toolkit`）执行独立上下文多子代理代码复核：
 
 ```bash
-npm run review:codex
+npm run review:prepare
 ```
 
-1. **意图对照复核机制与严格范围边界**：
-   复核器（底层调用 `codex exec -m gpt-6.1-terra`）会**首先读取 `ACTIVE_TASK.md` 中记录的需求与意图**，并以此为真实基准（Ground Truth），**严格限定在当前分支相对于 `main` 实际修改的文件与代码 Diff 范围内**执行审查：
-   - **严格聚焦修改部分（严禁无限扩大范围）**：复核仅针对本分支实际修改的代码逻辑与 `ACTIVE_TASK.md` 声明的本阶段目标；严格尊重 `ACTIVE_TASK.md` 中定义的“非目标边界（Out of Scope）”，不得因未修改的其他文件、后续拆分分支待办项或脱离实际运行场景的极端理论假设而判定 `FAIL`；
-   - **意图符合度**：代码是否忠实实现了用户在 `ACTIVE_TASK.md` 中确认的需求，是否存在遗漏或越界修改；
-   - **质量与健壮性**：修改部分是否存在逻辑缺陷、内存泄漏、安全漏洞或 macOS 跨平台隐患；
-   - **测试有效性**：新增的测试用例是否真实覆盖了本次改动的关键逻辑与异常分支。
-2. **复核反馈与循环修改**：
-   - **审核未通过 (`FAIL`)**：复核器输出具体的问题与修改建议清单；交由主 Agent（Antigravity）在当前分支上进行针对性修复，修复后重新运行测试并再次提审；
-   - **3 次熔断机制（Circuit Breaker）**：该流程**最多重复 3 次**。若连续 3 次“审核 -> 修复 -> 重审”后依然未通过，系统将触发熔断并停止自动修复，立即反馈给人工处理，提示用户与 Agent 重新审视架构设计并评估是否将任务拆分为更小粒度的分支；
-   - **审核通过 (`PASS`)**：向用户清晰汇报本次新增功能、测试结果与复核结论，**等待用户明确确认**后执行合并。
+1. **自包含审查包与严格范围边界**：
+   - `npm run review:prepare` 会验证 `ACTIVE_TASK.md` 与单元测试，并读取 `ACTIVE_TASK.md`、`REVIEW.md` 及当前分支相对于 `main` 的代码 Diff，生成 `.git/ester-review-packet.md`；
+   - 启动 4 个并行 `research` 子代理（详见 `.agents/skills/code-review/SKILL.md`）对代码进行独立盲审，按 `0..100` 置信度评分过滤（仅报告 `>= 80` 的 `[Blocker]` 与 `[Important]`）；
+   - **严格聚焦修改部分（严禁无限扩大范围）**：复核仅针对本分支实际修改的代码逻辑与 `ACTIVE_TASK.md` 声明的本阶段目标；严格尊重 `ACTIVE_TASK.md` 中定义的“非目标边界（Out of Scope）”。
+2. **复核收据签发与 3 次熔断机制**：
+   - **审核未通过 (`FAIL`)**：运行 `npm run review:receipt -- --fail` 记录失败轮次，由主 Agent 修复问题后重新运行测试与复核；
+   - **3 次熔断机制（Circuit Breaker）**：若连续 3 次“审核 -> 修复 -> 重审”后依然未通过，系统触发熔断并停止自动修复，立即反馈给人工处理；
+   - **审核通过 (`PASS`)**：运行 `npm run review:receipt -- --record --summary "Summary: Blockers: 0 | Important: 0 | Nits: 0 | Risk Tier: <Tier>"` 签发基于当前分支文件内容 SHA-256 指纹的收据，向用户清晰汇报本次新增功能、测试结果与复核结论，**等待用户明确确认**后执行 `npm run merge:main -- <branch> --confirmed`。
+
+---
+
+## 3.5 上游无 Git 历史源码快照跟踪与三方合并工作流 (`upstream-sync`)
+
+针对上游官方仓库（`https://github.com/Ahey1/Ester-Studio/releases`）仅发布 `source-code.zip` 源码压缩包而不包含日常 Git 历史的特点，仓库维护了一条以初始 `v2.0.2` 快照（`ab563fb`）为起点的合成上游分支 `upstream/release`（详见 `.agents/skills/upstream-sync/SKILL.md`）：
+1. `npm run upstream:check`：检查上游 GitHub Releases 是否有未同步的新版本；
+2. `npm run upstream:import -- --version vX.Y.Z --source <path>`：将新版本源码包无损导入 `upstream/release` 分支并打标签 `upstream/vX.Y.Z`；
+3. `npm run upstream:analyze -- --version vX.Y.Z`：以共同祖先执行三方差异分析，自动列出 **分类 A（仅上游修改）**、**分类 B（与我方 macOS 适配共改重叠文件）** 与 **分类 C（上游新增的平台敏感代码行）**；
+4. `npm run upstream:prepare-merge -- --version vX.Y.Z`：切出 `mac/upstream-vX.Y.Z` 分支执行三方合并，确保既保留我方全部 macOS 适配，又对上游新增代码完成 macOS 适配与测试。
 
 ---
 
@@ -122,8 +130,13 @@ npm run review:codex
 | `npm run hooks:install` | 配置 Git 使用仓库内置的 `.githooks` 目录并设置执行权限 |
 | `npm test` | 运行仓库硬性单元测试套件（强制要求存在测试用例且全部通过） |
 | `npm run check:branch` | 检查当前分支是否符合分支隔离与新增代码测试覆盖策略 |
-| `npm run review:codex` | 启动 Codex (`gpt-6.1-terra`) 基于 `ACTIVE_TASK.md` 执行代码独立复核（含 3 次熔断） |
-| `npm run merge:main -- <branch> --confirmed` | 测试与复核通过且用户确认后，安全合并指定分支到 `main` 并自动清空 `ACTIVE_TASK.md` |
+| `npm run review:prepare` | 校验 `ACTIVE_TASK.md` 与单测，生成供多子代理 (`code-review` / `pr-review-toolkit`) 使用的 `.git/ester-review-packet.md` |
+| `npm run review:receipt -- --record` | 多子代理复核清零后，签发基于当前分支内容 SHA-256 指纹的复核收据 |
+| `npm run upstream:check` | 检查上游 `Ahey1/Ester-Studio` GitHub Releases 是否有未同步的新版源码包 |
+| `npm run upstream:import -- --version <v> --source <p>` | 将上游新版源码包导入 `upstream/release` 分支并打标签 `upstream/<v>` |
+| `npm run upstream:analyze -- --version <v>` | 生成上游新版与本仓 `main` 的三方差异及新增平台敏感代码评估报告 |
+| `npm run upstream:prepare-merge -- --version <v>` | 切出 `mac/upstream-<v>` 分支并启动 Git 三方合并与 `ACTIVE_TASK.md` 初始化 |
+| `npm run merge:main -- <branch> --confirmed` | 校验单测与子代理复核收据通过且用户确认后，安全合并指定分支到 `main` 并自动清空 `ACTIVE_TASK.md` |
 | `npm run dev` | 启动前端 Vite 开发服务器 |
 | `npm run desktop:dev` | 启动 Electron 桌面端开发环境 |
 | `npm run build` | 执行 TypeScript 类型检查与前端生产构建 |

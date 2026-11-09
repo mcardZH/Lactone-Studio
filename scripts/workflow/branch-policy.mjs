@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const PROTECTED_BRANCHES = Object.freeze(['main', 'master']);
+export const PROTECTED_BRANCHES = Object.freeze(['main', 'master', 'upstream/release']);
 
 const CODE_PATH_PATTERNS = [
   /^src\//,
@@ -93,6 +93,7 @@ const REPO_SUBSYSTEM_DIRS = new Set([
   'ocr',
   'packaging',
   'workflow',
+  'upstream',
   'release',
   'solvents',
   'two-d',

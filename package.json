@@ -22,7 +22,13 @@
     "test": "node scripts/workflow/run-tests.mjs",
     "hooks:install": "node scripts/workflow/install-hooks.mjs",
     "check:branch": "node scripts/workflow/pre-commit-check.mjs",
-    "review:codex": "node scripts/workflow/codex-review.mjs",
+    "review:prepare": "node scripts/workflow/subagent-review.mjs --prepare",
+    "review:receipt": "node scripts/workflow/subagent-review.mjs",
+    "upstream:init": "node scripts/upstream/upstream-sync.mjs init",
+    "upstream:check": "node scripts/upstream/upstream-sync.mjs check",
+    "upstream:import": "node scripts/upstream/upstream-sync.mjs import",
+    "upstream:analyze": "node scripts/upstream/upstream-sync.mjs analyze",
+    "upstream:prepare-merge": "node scripts/upstream/upstream-sync.mjs prepare-merge",
     "merge:main": "node scripts/workflow/merge-to-main.mjs"
   },
   "dependencies": {

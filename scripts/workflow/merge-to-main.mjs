@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resetActiveTask, ACTIVE_TASK_FILE_NAME } from './active-task.mjs';
-import { clearReviewState } from './codex-review.mjs';
+import { clearReviewState, verifyReviewReceipt } from './subagent-review.mjs';
 import { runTestSuite } from './run-tests.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -11,7 +12,12 @@ function git(args, cwd = ROOT) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
-export function mergeBranchToMain({ branch, cwd = ROOT, confirmed = false } = {}) {
+export function mergeBranchToMain({
+  branch,
+  cwd = ROOT,
+  confirmed = false,
+  requireReceipt = existsSync(join(cwd, ACTIVE_TASK_FILE_NAME)),
+} = {}) {
   if (!branch) {
     return { ok: false, error: 'NO_BRANCH_SPECIFIED', message: '请指定要合并到 main 的分支名。' };
   }
@@ -26,7 +32,19 @@ export function mergeBranchToMain({ branch, cwd = ROOT, confirmed = false } = {}
     };
   }
 
-  // 2. Run unit tests on current branch
+  // 2. Verify Fresh-Context Subagent review receipt
+  if (requireReceipt) {
+    const receiptCheck = verifyReviewReceipt(cwd);
+    if (!receiptCheck.valid) {
+      return {
+        ok: false,
+        error: 'MISSING_OR_STALE_REVIEW_RECEIPT',
+        message: receiptCheck.reason,
+      };
+    }
+  }
+
+  // 3. Run unit tests on current branch
   console.log(`[merge] 🧪 正在验证分支 ${branch} 的单元测试...`);
   const testResult = runTestSuite({ cwd });
   if (!testResult.ok) {
@@ -45,7 +63,7 @@ export function mergeBranchToMain({ branch, cwd = ROOT, confirmed = false } = {}
     };
   }
 
-  // 3. Switch to main and merge
+  // 4. Switch to main and merge
   try {
     git(['checkout', 'main'], cwd);
     execFileSync('git', ['merge', '--no-ff', branch, '-m', `merge: merge branch '${branch}' into main`], {
@@ -53,7 +71,7 @@ export function mergeBranchToMain({ branch, cwd = ROOT, confirmed = false } = {}
       stdio: 'inherit',
     });
 
-    // 4. Reset ACTIVE_TASK.md to initial template to prevent unbounded growth
+    // 5. Reset ACTIVE_TASK.md to initial template to prevent unbounded growth
     console.log(`[merge] 🧹 正在重置 ${ACTIVE_TASK_FILE_NAME} 为初始空模板，准备下一开发周期...`);
     resetActiveTask(cwd);
     clearReviewState(cwd);

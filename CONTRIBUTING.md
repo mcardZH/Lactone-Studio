@@ -44,18 +44,21 @@ AI 智能体接到任何新任务后，**必须先在根目录 [ACTIVE_TASK.md](
    ```
    确保所有测试用例 100% 绿色通过。
 
-### 第三步：基于 `ACTIVE_TASK.md` 触发独立复核与循环修改
+### 第三步：基于 `ACTIVE_TASK.md` 与 `REVIEW.md` 触发多子代理复核
 
-在提交 PR 或合并前，运行独立复核命令：
+在提交 PR 或合并前，生成自包含审查包并运行 `.agents/skills/code-review`（或 `pr-review-toolkit`）多子代理复核：
 
 ```bash
-npm run review:codex
+npm run review:prepare
 ```
 
-1. 复核子代理 (`gpt-6.1-terra`) 将**读取 `ACTIVE_TASK.md` 的内容作为需求真理基准**，审查当前 Git Diff 是否完整契合需求、是否存在代码缺陷、安全性风险或平台兼容性问题。
-2. **循环修改与 3 次熔断**：
-   - 若出现缺陷 (`FAIL`)，由主 Agent 修复后重新提审；
-   - **最多重复 3 次**：连续 3 次失败后系统熔断，停止自动修复并反馈给人工处理，评估是否需要拆分任务或重构设计。
+1. 4 个并行 Fresh-Context `research` 子代理将**读取 `.git/ester-review-packet.md` 中的 `ACTIVE_TASK.md` 与 `REVIEW.md`**，审查当前 Git Diff 是否完整契合需求、是否存在代码缺陷、安全性风险或 macOS 跨平台兼容性问题。
+2. **循环修改、3 次熔断与收据签发**：
+   - 若发现置信度 `>= 80` 的 `[Blocker]` / `[Important]` 问题，运行 `npm run review:receipt -- --fail` 记录失败轮次并由主 Agent 修复（连续 3 次未通过触发熔断）；
+   - 若复核清零通过，签发基于当前分支内容 SHA-256 指纹的收据：
+     ```bash
+     npm run review:receipt -- --record --summary "Summary: Blockers: 0 | Important: 0 | Nits: 0 | Risk Tier: <Tier>"
+     ```
 3. **用户确认后合并**：
    复核通过后向用户汇报；收到用户明确确认后，执行合并：
    ```bash
