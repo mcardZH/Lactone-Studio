@@ -14,7 +14,7 @@ import runtime_pruning
 from pathlib import Path
 
 BUILDERS = ('scripts/native/build.py', 'scripts/native/common.py', 'scripts/native/prepare.py', 'desktop/packaging/native-engine.spec',
-            'scripts/native/runtime_pruning.py', runtime_pruning.RECIPE)
+            'scripts/native/runtime_pruning.py', runtime_pruning.RECIPE, 'src/data/conformer-solvation.json')
 
 # These package-owned locations are part of the locked wheels' DLL loaders.
 # Keep both BLAS ABIs and differently named CRT files; only omit root copies.
@@ -129,6 +129,12 @@ def validate_native_source_presence(profile, source_files, rows):
         else:
             c.require(len(matches) == 1 and matches[0]['kind'] == 'PYMODULE', 'Required native module must have exactly one module entry: ' + source['path'])
         c.require(all(row.get('source') == source['path'] and row.get('bytes') == source['bytes'] and row.get('sha256') == source['sha256'] for row in matches), 'Native entry source/type identity differs: ' + source['path'])
+    for name in profile.get('nativeDataSources', []):
+        c.require(name in BUILDERS and name == 'src/data/conformer-solvation.json', 'Native data is not an explicitly bound build input')
+        source = c.identity(c.ROOT / name)
+        matches = [row for row in rows if row['target'] == Path(name).name]
+        c.require(len(matches) == 1 and matches[0]['kind'] == 'DATA', 'Required native data is missing or ambiguous: ' + name)
+        c.require(all(matches[0].get(key) == value for key, value in {'source': name, 'bytes': source['bytes'], 'sha256': source['sha256']}.items()), 'Native data identity differs: ' + name)
 
 
 def review_kind(review):
@@ -185,6 +191,11 @@ def analysis_rows(config, rows, namespaces, run, contract):
                 continue
             allowed[os.path.normcase(str(root / row['path']))] = {**row, 'root': root}
     sources = {str((c.ROOT / row['path']).resolve()).casefold(): row for row in contract['sourceFiles']}
+    # Non-executable application data is bound to the same exact build contract.
+    # Only the declared canonical solvation table is admitted by this route.
+    data_sources = {str((c.ROOT / row['path']).resolve()).casefold(): row
+                    for row in contract.get('builderSources', [])
+                    if row['path'] == 'src/data/conformer-solvation.json'}
     result = []
     for target, source, kind in rows:
         c.require(not str(target).casefold().startswith(('mkl', '_internal/mkl')), 'MKL compute target in Analysis')
@@ -203,6 +214,9 @@ def analysis_rows(config, rows, namespaces, run, contract):
             c.require(path.stat().st_size == row['bytes'] and c.digest(path) == row['sha256'], 'Analysis dependency source changed')
         elif key in sources:
             c.require(c.identity(c.safe(c.ROOT, path)) == sources[key], 'Reviewed native source changed')
+        elif key in data_sources:
+            c.require(kind == 'DATA' and target == 'conformer-solvation.json', 'Native application data target/type differs')
+            c.require(c.identity(c.safe(c.ROOT, path)) == data_sources[key], 'Reviewed native application data changed')
         elif target == 'base_library.zip' and kind == 'DATA' and path == run / 'work/native-engine/base_library.zip':
             c.safe(run, path)
             c.require(path.is_file(), 'Generated base library is missing')

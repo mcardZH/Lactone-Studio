@@ -2,6 +2,38 @@
   "schemaVersion": 1,
   "records": [
     {
+      "id": "horn-quaternion-1987",
+      "kind": "article",
+      "title": "Closed-form solution of absolute orientation using unit quaternions",
+      "authors": [{ "family": "Horn", "given": "Berthold K. P." }],
+      "year": 1987,
+      "journal": "Journal of the Optical Society of America A",
+      "volume": "4",
+      "issue": "4",
+      "pages": "629–642",
+      "doi": "10.1364/JOSAA.4.000629",
+      "url": "https://opg.optica.org/josaa/abstract.cfm?uri=josaa-4-4-629",
+      "status": "verified",
+      "evidence": [{ "kind": "publisher", "url": "https://opg.optica.org/josaa/abstract.cfm?uri=josaa-4-4-629", "checkedAt": "2026-11-05", "note": "Terra verified the original Optica record: single author, title, 1987, volume 4 issue 4, pages 629-642 and DOI. Scientific applicability is mapped separately by retained execution evidence." }],
+      "methodSummaryZh": "以单位四元数求解绝对定向；用于实际构象比较中的正旋转最小二乘刚体拟合。"
+    },
+    {
+      "id": "kuhn-hungarian-1955",
+      "kind": "article",
+      "title": "The Hungarian method for the assignment problem",
+      "authors": [{ "family": "Kuhn", "given": "H. W." }],
+      "year": 1955,
+      "journal": "Naval Research Logistics Quarterly",
+      "volume": "2",
+      "issue": "1–2",
+      "pages": "83–97",
+      "doi": "10.1002/nav.3800020109",
+      "url": "https://onlinelibrary.wiley.com/doi/10.1002/nav.3800020109",
+      "status": "verified",
+      "evidence": [{ "kind": "publisher", "url": "https://onlinelibrary.wiley.com/doi/10.1002/nav.3800020109", "checkedAt": "2026-11-05", "note": "Terra verified the original Wiley record: single author, title, year, volume, issue, pages and DOI; the publisher's current citation branding differs from the original journal title." }, { "kind": "doi", "url": "https://api.crossref.org/works/10.1002/nav.3800020109", "checkedAt": "2026-11-05", "note": "Terra directly verified Crossref original container-title Naval Research Logistics Quarterly, H. W. Kuhn, published 1955-03, volume 2 issue 1-2, pages 83-97." }],
+      "methodSummaryZh": "求解最小费用一一指派；仅用于实际执行的同元素原子配对步骤，不证明构象匹配达到全局最优。"
+    },
+    {
       "id": "etkdg-riniker-2015",
       "kind": "article",
       "title": "Better Informed Distance Geometry: Using What We Know To Improve Conformation Generation",
@@ -5628,6 +5660,24 @@
     }
   ],
   "mappings": [
+    {
+      "id": "conformer-horn-quaternion-fit",
+      "feature": "analysis",
+      "method": "horn-quaternion-fit",
+      "software": "Ester Studio",
+      "citationIds": ["horn-quaternion-1987"],
+      "role": "scientific",
+      "reasonZh": "已完成构象归簇的持久化调用计数证明实际执行了正旋转刚体拟合；普通显示叠合不产生此引用。"
+    },
+    {
+      "id": "conformer-hungarian-assignment",
+      "feature": "analysis",
+      "method": "hungarian-assignment",
+      "software": "Ester Studio",
+      "citationIds": ["kuhn-hungarian-1955"],
+      "role": "scientific",
+      "reasonZh": "已完成的元素几何等价消除保留assignmentPairCount大于零，证明实际执行最小费用指派；勾选、零入选配对和仅固定对应均不产生此引用。"
+    },
     {
       "id": "two-d-etkdgv3",
       "feature": "method",

@@ -1,6 +1,6 @@
 export type ProjectAssetCategory = 'models' | 'sources' | 'trajectories' | 'results';
 export type ProjectOpaqueState = unknown;
-export type ProjectFormatVersion = 1 | 2 | 3 | 4;
+export type ProjectFormatVersion = 1 | 2 | 3 | 4 | 5 | 6;
 export interface ProjectAsset { assetId: string; sha256: string; bytes: number; relativePath: string; category: ProjectAssetCategory; originalName?: string }
 export interface ProjectManifest {
   schema: 'sciyue-project/v1'; formatVersion: ProjectFormatVersion; projectId: string; generation: number;
@@ -62,7 +62,7 @@ export const PROJECT_ASSET_BATCH_COUNT=32;
 /** A new destination must retain the compatibility floor of its source project. */
 export function projectFormatFloor(...versions:readonly unknown[]):ProjectFormatVersion {
   const present=versions.filter(version=>version!==undefined);
-  if(present.some(version=>![1,2,3,4].includes(version as number)))throw Object.assign(new Error('项目保存格式要求不受支持，未覆盖原项目。'),{code:'SY_SCHEMA_UNSUPPORTED'});
+  if(present.some(version=>![1,2,3,4,5,6].includes(version as number)))throw Object.assign(new Error('项目保存格式要求不受支持，未覆盖原项目。'),{code:'SY_SCHEMA_UNSUPPORTED'});
   return Math.max(1,...present as number[]) as ProjectFormatVersion;
 }
 export function projectSaveFormatVersion(state:unknown, prior:ProjectFormatVersion=1):ProjectFormatVersion {

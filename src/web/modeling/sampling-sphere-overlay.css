@@ -1,4 +1,5 @@
 .sampling-sphere-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 6; }
-.sampling-sphere-outline { fill: none; stroke: #236dcc; stroke-width: 1.8; pointer-events: none; }
+.sampling-sphere-outline { fill: none; stroke: none; pointer-events: none; }
 .sampling-sphere-handle { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: ew-resize; touch-action: none; }
+.sampling-sphere-handle:hover { stroke: #168bd2; stroke-opacity: .32; }
 .sampling-sphere-handle:focus-visible { outline: none; stroke: #438bd2; stroke-opacity: 0.35; }

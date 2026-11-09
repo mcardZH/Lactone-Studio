@@ -1,5 +1,6 @@
 [
   "dist",
+  "src/data/conformer-solvation.json",
   "desktop/main.cjs",
   "desktop/citation-export.cjs",
   "desktop/preload.cjs",
@@ -71,6 +72,7 @@
   "desktop/chemistry-job.cjs",
   "desktop/conformer-sampling-host.cjs",
   "desktop/conformer-sampling-security.cjs",
+  "desktop/conformer-solvation.cjs",
   "desktop/conformer-sampling-store.cjs",
   "desktop/conformer-batch-adapter.cjs",
   "desktop/conformer-batch-science-runtime.cjs",

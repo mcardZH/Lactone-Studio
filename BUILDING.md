@@ -89,6 +89,99 @@ build/relink the scientific executable, preserve its parameters and integrate
 the complete runtime and actual product source receipt. The public recipe is
 not called verified merely because its files have been supplied.
 
+### 3a. The 2.0.3 H-only initialization modification
+
+The preceding GNU guides retain the original parent-build route. This release
+also supplies the actual ES modification at
+[es-initial-velocity](third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/README.md).
+Its exact patch and unchanged upstream archive reproduce the actual modified
+`src/dynamic.f90`. The scientific version remains 6.7.0; the published composite
+build ID is `5071a886-gnu132-r2-es-hcap-openblas033-v1`. The modification is under
+the upstream LGPL-3.0-or-later terms, separate from the application license.
+
+The four `scripts/native/` files are supplied together at their original paths.
+`rebuild-xtb-initial-velocity.py` uses the pinned source archives and a caller's
+existing GCC 13.2/meson 1.4.1 tools. It does not install a compiler or choose a
+private developer directory. Supply an explicit fresh work directory, the
+toolchain root containing `mingw64/` and `meson-1.4.1/`, and the complete matched
+2.0.2 runtime root containing `bin/` and `provenance/r2-source-receipt.json`.
+The original published 2.0.2 runtime is a public parent dependency, not an
+internal test package. Select your resource/time limits explicitly:
+
+```powershell
+$EsWork = Read-Host 'Fresh absolute H-initialization build directory'
+$EsTools = Read-Host 'Absolute pinned GCC13.2 and meson1.4.1 tools directory'
+$EsParentRuntime = Read-Host 'Absolute matched 2.0.2 runtime/resources/xtb directory'
+$EsJobs = Read-Host 'Build jobs'
+$EsMemoryGiB = Read-Host 'Build memory limit in GiB'
+$EsMaxSeconds = Read-Host 'Build command time limit in seconds'
+$EsArgs = @('--work-root', $EsWork, '--tools-root', $EsTools,
+  '--runtime-root', $EsParentRuntime, '--jobs', $EsJobs,
+  '--memory-gib', $EsMemoryGiB, '--max-seconds', $EsMaxSeconds,
+  '--build-name', '5071a886-gnu132-r2-es-hcap-v1')
+& $Python scripts/native/rebuild-xtb-initial-velocity.py @EsArgs
+```
+
+This produces a **raw executable build**, its preferred source tree and actual
+build receipts. It does not by itself create or activate a complete portable
+runtime. The published composition selects only the newly built executable;
+all DLLs and parameters retain the exact published 2.0.2 OpenBLAS 0.3.33
+identities. The raw build's OpenBLAS import-library baseline is recorded
+separately and must not be mistaken for the final distributed DLL. Do not use
+the old generic GNU normalization example below as though it automatically
+creates this ES composition: it expects a different GNU user-build receipt.
+
+`source-linkage.json` and its unchanged `provenance/es-initial-velocity-build.json`
+bind the actual published executable, source patch and parent composition.
+These are evidence for the published bytes, not a receipt for a new user's
+binary. A new build needs its own source/build and full runtime inventory;
+The parameterized user composition helper validates the actual raw build and
+the exact public parent before copying its DLLs, licenses and parameters:
+
+```powershell
+$EsUserRuntime = Join-Path $SourceRoot '.local/user-xtb-runtime'
+$EsCompose = @('--source-root', $SourceRoot, '--build-root', $EsWork,
+  '--parent-runtime', $EsParentRuntime, '--output', $EsUserRuntime)
+& $Python scripts/native/compose-xtb-initial-velocity.py @EsCompose
+# After reviewing that plan, explicitly create the new user runtime.
+& $Python scripts/native/compose-xtb-initial-velocity.py @EsCompose --apply
+```
+
+This helper prints a new user build/engine identity; it does not register,
+activate or execute that runtime, and it does not call it the official build.
+Its runtime output must be inside the customer's extracted source copy for
+the following direct admission step. The original build directory may be
+outside that source copy:
+
+```powershell
+$EsMembers = $EsUserRuntime + '-members.json'
+$EsReceipt = Join-Path $EsUserRuntime 'provenance/user-initial-velocity-composition.json'
+$EsAdmission = @('--source-root', $SourceRoot, '--runtime', $EsUserRuntime,
+  '--members', $EsMembers, '--source-receipt', $EsReceipt,
+  '--default-pins', (Join-Path $SourceRoot 'third-party/build-inputs/gnu-xtb/default-scientific-pins.json'),
+  '--id', 'user-hcap', '--local-modified')
+& $Python scripts/release/admit-built-xtb.py @EsAdmission
+# After reviewing the plan, write the new source-copy runtime and lock.
+& $Python scripts/release/admit-built-xtb.py @EsAdmission --apply
+```
+
+This direct-v2 route explicitly understands the user-composition receipt.
+The optional `--activate` also changes only that customer's source-copy lock;
+it does not update an official release or any other installation.
+The stock application admits specific scientific engine identities. To use a
+self-built identity for MD/MTD, the customer's source copy must explicitly add
+the verified returned identity to `MD_ENGINE_IDENTITIES` in
+`desktop/chemistry/conformer_native_md.py` and rebuild its chemistry host.
+Any runtime-lock registration must refer to that actual new descriptor,
+inventory and user-composition receipt. Do not relabel that receipt as the
+official `es-xtb-initial-velocity-source-build/v1`, copy the official identity,
+or send the user-composition schema through the old raw-build normalizer.
+`admit-built-xtb.py --es-initial-velocity` is the separate verifier for its
+explicit official build-receipt contract and never silently accepts arbitrary
+new scientific identities.
+Source provision does not require a customer to recreate a byte-identical
+official package, or claim a clean-room/scientific validation they have not run.
+
 ## 4. Normalize, admit and explicitly activate the raw user build
 
 The scientific recipe emits output/xtb-build-receipt.json with schema
@@ -138,6 +231,17 @@ recipe route. No fixed Intel DLL list/15-member count applies to GNU output.
 Generated binaries stay in local output roots, not corresponding-source trees.
 
 ## 5. Fresh preparation and native engine build
+
+The shared solvent table is `src/data/conformer-solvation.json`. Keep this one
+source file: its 298 K display values and native method-specific reference
+values have different meanings. The frontend and
+`desktop/chemistry/conformer_solvation.py` consume that same table; the native
+engine spec bundles it as `conformer-solvation.json` in its extraction root.
+Do not create a second numeric table or substitute display values for the
+native parameters. The public source manifest binds the canonical file once,
+and `source-native-identity.json` also records it as the seventh engine build
+input, alongside the six existing builder/control files. The profile lists it
+under `nativeDataSources`, separately from Python `nativeSources`.
 
 Read the exact Python executable from desktop/packaging/native-toolchain.lock.json
 and invoke it with -I -B, rather than a global Python/Conda executable:

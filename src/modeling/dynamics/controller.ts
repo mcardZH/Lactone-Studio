@@ -7,6 +7,7 @@ import type { DynamicsCapabilities, DynamicsPort } from './port';
 import { validateDynamicsAdmission, validateDynamicsConfig, validateDynamicsStructure, validateDynamicsError } from './validation';
 import { validateHybridMetadata } from './hybrid-metadata';
 import { createRuntimeModelStore } from '../../core/modeling/model-store';
+import {runtimePreviewSourceCurrent} from '../../core/modeling/runtime-source-lineage';
 import { BoundedDisplayQueue, createDisplayScheduler, DISPLAY_BYTE_LIMIT, DISPLAY_FRAME_LIMIT, DISPLAY_INTERVAL_MS, DISPLAY_MAX_WAIT_MS, serializedFrameBytes, type DisplayScheduler } from './display-queue';
 
 export type DynamicsStatus = 'idle' | 'starting' | 'running' | 'pausing' | 'paused' | 'stopping' | 'stopped' | 'completed' | 'error';
@@ -90,6 +91,8 @@ function validateTargetStatus(value: GeometryTargetStatus, request: DynamicsRequ
 
 /** Headless controller: bounded latest-frame storage, independent runtime revision, grouped undo. */
 export class DynamicsController {
+  private workingSourceDocument?:ModelDocument;
+  getWorkingSourceDocument=()=>this.workingSourceDocument;
   private state: DynamicsControllerState = { status: 'idle', capabilities: { available: false, reason: '正在检查原生动态引擎。' } };
   private listeners = new Set<() => void>();
   private unsubscribe: (() => void) | undefined;
@@ -260,6 +263,7 @@ export class DynamicsController {
     this.expectedStamp = clone(stamp); this.nextSeq = -1; this.coordinatesAccepted = false; this.terminationTask = undefined; this.begin();
     const generation = ++this.generation;
     this.clearDisplayQueue();
+    this.workingSourceDocument=document;
     this.update({ status: 'starting', mode, sessionId, referenceStructure: clone(structure), workingSource:{documentId:document.id,revision:document.revision}, lastFrame: undefined,displayFrame:undefined, error: undefined, terminalFailure: undefined, termination: undefined, seed });
     try { await this.port.start(this.request, sessionId); }
     catch (cause) { if (generation === this.generation) this.fail(cause, { origin: 'transport', code: 'transport-start-failed' }); throw cause; }
@@ -446,9 +450,9 @@ export function createStoreDynamicsDependencies(store: ModelStore, options?: { i
         // Exact monotonically increasing revision prevents edit -> Undo from
         // allowing an old run to overwrite the working document again.
         const current = store.getSnapshot();
-        if (lastFrame && source && current.id === source.id && current.revision === source.revision && current.analysisBindingId === source.analysisBindingId) {
+        if (lastFrame && source && runtimePreviewSourceCurrent(source,current)) {
           store.beginTransaction('dynamics');
-          try { store.acceptRuntimeFrame(lastFrame); store.endTransaction(); }
+          try { store.acceptRuntimeFrame(lastFrame,source); store.endTransaction(); }
           catch (error) { store.cancelTransaction(); throw error; }
         }
       } finally { store.finishRuntimeSession(); runStore = undefined; source = undefined; lastFrame = undefined; begun = false; }

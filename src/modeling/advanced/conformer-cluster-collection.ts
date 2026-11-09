@@ -15,6 +15,12 @@ export function conformerTaskRequiresExtendedSemantics(task:AdvancedTaskRecord):
     ||stage.clustering?.policy.rmsdMatching!==undefined&&stage.clustering.policy.rmsdMatching!=='fixed'
     ||stage.clustering?.groups.some(group=>group.rmsdMatching!==undefined&&group.rmsdMatching!=='fixed')));
 }
+/** New writer floor, including explicitly disabled new settings. */
+export function conformerTaskRequiresElementGeometrySemantics(task:AdvancedTaskRecord):boolean{
+ const extended=(config:Pick<AdvancedOptimizationStageConfig,'clustering'>)=>config.clustering?.eliminateEquivalent!==undefined;
+ return conformerStageConfigs(task).some(extended)||task.runs.some(run=>run.stages.some(stage=>
+  stage.configuration&&extended(stage.configuration)||stage.clustering?.algorithmVersion==='fixed-then-element-v1'||!!stage.clustering?.equivalence));
+}
 /** Pure, one-time current-draft migration. Executed runs retain the original
  * configuration, inputs and promotion list as historical scientific evidence. */
 export function migrateConformerInputSemantics(task:AdvancedTaskRecord):void {
@@ -29,7 +35,7 @@ export function migrateConformerInputSemantics(task:AdvancedTaskRecord):void {
   else if(task.spec.kind==='sampling')task.spec.optimizationStages=historical;
   if(workflow.inputSemantics===2)return;
   const configs=conformerStageConfigs(task),legacy=configs.map(config=>config.advanceCount);
-  const migrated=normalizeConformerStageConfigs(configs,'fixed');
+  const migrated=normalizeConformerStageConfigs(configs,'fixed').map((config,index)=>({...config,clustering:structuredClone(historical[index].clustering)}));
   if(task.spec.kind==='conformer-search')task.spec.search.stages=migrated;
   else if(task.spec.kind==='sampling')task.spec.optimizationStages=migrated;
   if(legacy.at(-1)!==undefined)workflow.legacyLastAdvanceCount=legacy.at(-1);
@@ -37,11 +43,9 @@ export function migrateConformerInputSemantics(task:AdvancedTaskRecord):void {
 }
 /** New requests use receiving-stage semantics even when called with an old
  * producer-side DTO. No scientific history exists at task creation yet. */
-export function normalizeConformerStageConfigs(configs:readonly AdvancedOptimizationStageConfig[],defaultMatching:'fixed'|'symmetry'='symmetry'):AdvancedOptimizationStageConfig[]{
-  let matching=defaultMatching;
+export function normalizeConformerStageConfigs(configs:readonly AdvancedOptimizationStageConfig[],_defaultMatching:'fixed'|'symmetry'='fixed'):AdvancedOptimizationStageConfig[]{
   return configs.map((config,index)=>{const {advanceCount:_,inputClusterCount:count,...rest}=structuredClone(config);
-    matching=config.clustering?.rmsdMatching??matching;
-    return {...rest,inputStride:config.inputStride??1,clustering:{...config.clustering,rmsdMatching:matching},...(index?{inputClusterCount:count??configs[index-1].advanceCount??10}:{})};});
+    return {...rest,inputStride:config.inputStride??1,clustering:{...config.clustering,rmsdMatching:'fixed',eliminateEquivalent:config.clustering?.eliminateEquivalent??false},...(index?{inputClusterCount:count??configs[index-1].advanceCount??10}:{})};});
 }
 export function selectConformerInputsByStride<T>(inputs:readonly T[],inputStride=1):T[]{
   if(!Number.isSafeInteger(inputStride)||inputStride<1)throw Error('抽帧间隔须为正整数。');

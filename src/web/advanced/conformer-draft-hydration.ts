@@ -10,7 +10,7 @@ export function restoreConformerStages(stages:readonly AdvancedOptimizationStage
   return stages.map((stage,index)=>{
     const method=stage.method,options=method.backend==='xtb'?method.options:null;
     const draft:AdvancedMethodDraft={...initialAdvancedMethod,method:options?.method??(method.backend==='forcefield'&&method.forcefield!=='auto'?method.forcefield:'gfn2'),threads:options?.threads??(method.backend==='forcefield'?method.threads:1),maxSteps:options?.maxSteps??(method.backend==='forcefield'?method.maxSteps:500),internalConstraintsConfirmed:options?.internalConstraintsConfirmed??false,solvationModel:options?.solvation?.model??'none',solvent:options?.solvation?.solvent??'water'};
-    return{id:stage.id,method:draft,energyThresholdKcalMol:stage.clustering?.maxDeltaEnergyHartree===undefined?.25:convertEnergy({value:stage.clustering.maxDeltaEnergyHartree,unit:'hartree'},'kcal/mol')!,rmsdThresholdAngstrom:stage.clustering?.rmsdThresholdAngstrom??.1,rmsdMatching:stage.clustering?.rmsdMatching??'fixed',inputStride:stage.inputStride??1,...(index?{inputClusterCount:stage.inputClusterCount??stages[index-1].advanceCount??10}:{}),checkpointAfter:stage.checkpointAfter};
+    return{id:stage.id,method:draft,energyThresholdKcalMol:stage.clustering?.maxDeltaEnergyHartree===undefined?.25:convertEnergy({value:stage.clustering.maxDeltaEnergyHartree,unit:'hartree'},'kcal/mol')!,rmsdThresholdAngstrom:stage.clustering?.rmsdThresholdAngstrom??.1,rmsdMatching:stage.clustering?.rmsdMatching??'fixed',eliminateEquivalent:stage.clustering?.eliminateEquivalent===true,inputStride:stage.inputStride??1,...(index?{inputClusterCount:stage.inputClusterCount??stages[index-1].advanceCount??10}:{}),checkpointAfter:stage.checkpointAfter};
   });
 }
 

@@ -8,7 +8,35 @@ import {ROOT,createPortableContract} from './contract.mjs';
 import {desktopAppearancePreviewFiles} from '../prepare-chemistry.mjs';
 export const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 export const encoded=value=>Buffer.from(JSON.stringify(value,null,2)+'\n');
-export const NATIVE_BUILDERS=Object.freeze(['scripts/native/build.py','scripts/native/common.py','scripts/native/prepare.py','desktop/packaging/native-engine.spec','scripts/native/runtime_pruning.py','desktop/packaging/native-runtime-win11-recipe.json']);
+export const NATIVE_BUILDERS=Object.freeze(['scripts/native/build.py','scripts/native/common.py','scripts/native/prepare.py','desktop/packaging/native-engine.spec','scripts/native/runtime_pruning.py','desktop/packaging/native-runtime-win11-recipe.json','src/data/conformer-solvation.json']);
+// xTB patch sources belong to the separately built xTB runtime. Do not add
+// them to engine builderSources: reused engine receipts bind that exact list.
+export const XTB_PATCH_BUILDERS=Object.freeze(['scripts/native/xtb-initial-velocity.f90','scripts/native/patch-xtb-initial-velocity.py','scripts/native/rebuild-xtb-initial-velocity.py','scripts/native/compose-xtb-initial-velocity.py']);
+export const XTB_PUBLIC_SOURCE_RECEIPT='third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json';
+export function publicXtbSourceLock(declaration,activeLock,receiptBytes){
+  assert.equal(declaration.sourceBuildRequired,true,'Public source lock must still require an actual local build');
+  assert.equal(declaration.localUseReady,false,'Source export cannot install an executable');
+  const modification=activeLock.localModification;
+  assert.equal(modification?.algorithm,'xtb-h-only-initial-cap-v1','Exact local xTB modification required');
+  assert.equal(activeLock.version,'6.7.0');
+  const ref=modification.sourceReceipt;
+  assert.equal(receiptBytes.length,ref.bytes,'Published xTB source receipt size differs');
+  assert.equal(sha(receiptBytes),ref.sha256,'Published xTB source receipt identity differs');
+  assert.equal(activeLock.build.sourceReceiptSha256,ref.sha256);
+  assert.equal(activeLock.engineIdentity.sourceReceiptSha256,ref.sha256);
+  const receipt=JSON.parse(receiptBytes);
+  assert.equal(receipt.schema,'es-xtb-initial-velocity-source-build/v1');
+  assert.equal(receipt.algorithm,modification.algorithm);
+  assert.equal(receipt.runtimeComposition.buildId,activeLock.build.id);
+  const result={...structuredClone(declaration),localModification:{
+    kind:modification.kind,algorithm:modification.algorithm,
+    sourceReceipt:{path:XTB_PUBLIC_SOURCE_RECEIPT,bytes:ref.bytes,sha256:ref.sha256},
+    originalEngineIdentity:structuredClone(modification.originalEngineIdentity),
+    scientificAccepted:modification.scientificAccepted,
+  },publishedRuntime:{version:activeLock.version,build:structuredClone(activeLock.build),engineIdentity:structuredClone(activeLock.engineIdentity)}};
+  assert(!/\.private|(?:^|[^A-Za-z])[A-Za-z]:[\\/]|\/(?:home|Users)\//i.test(JSON.stringify(result)),'Private path in public source lock');
+  return result;
+}
 export function publicArtifactPathHelpers(bytes){
   const source=bytes.toString('utf8'),start='export function packageRelativePath(value) {',end='\nconst leaf =';
   assert.equal(source.split(start).length,2,'Relative-path helper definition changed');
@@ -122,12 +150,12 @@ export async function sourcePlan({root=ROOT,sourceCommit,licenseDirectory}){
   for(const file of desktopAppearancePreviewFiles){const name='public/appearance-previews/'+file;await add(name,await checked(join(root,name)),join(root,name));}
   await tree('public/structure-library');
   for(const name of ['public/favicon.svg','public/brand-icon.png','public/molecule-editor.html'])await add(name,await checked(join(root,name)),join(root,name));
-  for(const name of [...c.applicationFiles.filter(n=>n!=='dist'&&!n.startsWith('node_modules/')),'desktop/personal-fragments-schema.d.mts','desktop/workspace-snapshot-codec.d.mts'])await add(name,await checked(join(root,name)),join(root,name));
+  for(const name of [...c.applicationFiles.filter(n=>n!=='dist'&&n!=='src/data/conformer-solvation.json'&&!n.startsWith('node_modules/')),'desktop/personal-fragments-schema.d.mts','desktop/workspace-snapshot-codec.d.mts'])await add(name,await checked(join(root,name)),join(root,name));
   const profile=JSON.parse(await checked(join(root,'desktop/packaging/native-profile.json')));delete profile.preparation;
   await add('desktop/packaging/native-profile.json',encoded(profile),join(root,'desktop/packaging/native-profile.json'),'Remove machine-bound preparation reference; public local builder requires a fresh actual preparation');
   for(const name of profile.nativeSources)await add(name,await checked(join(root,name)),join(root,name));
   for(const name of ['scripts/prepare-preload.mjs','scripts/prepare-conformer-batch-runtime.mjs','scripts/prepare-task-system.mjs','desktop/preload-managed-results.cjs'])await add(name,await checked(join(root,name)),join(root,name));
-  for(const name of [...NATIVE_BUILDERS,'desktop/launcher/sciyue-launcher.c','desktop/launcher/version.rc','scripts/portable/launcher.mjs','scripts/portable/io.mjs','scripts/portable-package-layout.mjs','scripts/3dmol-bond-primitives.cjs','scripts/prepare-chemistry.mjs','scripts/prepare-runtime-assets.mjs','scripts/prepare-workbench-preferences.mjs','scripts/prepare-structure-provenance.mjs','scripts/desktop-start.mjs','scripts/desktop-dev.mjs','scripts/portable/assets/sciyue.ico','index.html','vite.config.ts','package-lock.json','LICENSE.txt'])await add(name,await checked(join(root,name)),join(root,name));
+  for(const name of [...NATIVE_BUILDERS.filter(name=>name!=='src/data/conformer-solvation.json'),...XTB_PATCH_BUILDERS,'desktop/launcher/sciyue-launcher.c','desktop/launcher/version.rc','scripts/portable/launcher.mjs','scripts/portable/io.mjs','scripts/portable-package-layout.mjs','scripts/3dmol-bond-primitives.cjs','scripts/prepare-chemistry.mjs','scripts/prepare-runtime-assets.mjs','scripts/prepare-workbench-preferences.mjs','scripts/prepare-structure-provenance.mjs','scripts/desktop-start.mjs','scripts/desktop-dev.mjs','scripts/portable/assets/sciyue.ico','index.html','vite.config.ts','package-lock.json','LICENSE.txt'])await add(name,await checked(join(root,name)),join(root,name));
   const artifactHelpers=join(root,'scripts/portable-artifact-identity.mjs');
   await add('scripts/portable-artifact-identity.mjs',publicArtifactPathHelpers(await checked(artifactHelpers)),artifactHelpers,'Public IO uses the unchanged packageRelativePath guard only; omit developer desktop target and internal delivery/acceptance functions');
   const icon=JSON.parse(await checked(join(root,'scripts/portable/assets/source.json')));delete icon.historicalProvenance;
@@ -136,15 +164,28 @@ export async function sourcePlan({root=ROOT,sourceCommit,licenseDirectory}){
   await tree('scripts/release',name=>!name.endsWith('.test.mjs')&&!name.endsWith('.test.py')&&!name.includes('__pycache__/'));
   await tree('third-party/build-inputs');
   for(const row of await correspondingSourceMaterials(root))await add(row.name,row.bytes,row.source);
-  for(const name of ['native-runtime','native-toolchain','xtb-runtime'])await add('desktop/packaging/'+name+'.lock.json',await checked(join(root,'third-party/build-inputs/declarations',name+'.lock.json')),join(root,'desktop/packaging/'+name+'.lock.json'),'Use public per-member acquisition contract; original private inventory remains unchanged');
+  for(const name of ['native-runtime','native-toolchain','xtb-runtime']){
+    const activePath=join(root,'desktop/packaging/'+name+'.lock.json');
+    let bytes=await checked(join(root,'third-party/build-inputs/declarations',name+'.lock.json'));
+    if(name==='xtb-runtime'){
+      const active=JSON.parse(await checked(activePath));
+      if(active.localModification?.algorithm==='xtb-h-only-initial-cap-v1'){
+        const receipt=planned.get(XTB_PUBLIC_SOURCE_RECEIPT.toLowerCase());
+        assert(receipt,'Modified xTB source receipt must be an indexed public source member');
+        bytes=encoded(publicXtbSourceLock(JSON.parse(bytes),active,receipt.bytes));
+      }
+    }
+    await add('desktop/packaging/'+name+'.lock.json',bytes,activePath,'Use public build/acquisition contract; bind a modified xTB receipt to its exact included relative member and retain source-build-required state');
+  }
   const ts=JSON.parse(await checked(join(root,'tsconfig.json')));ts.include=['src','vite.config.ts'];delete ts.exclude;await add('tsconfig.json',encoded(ts),join(root,'tsconfig.json'),'Product-only TypeScript build; private test corpus is not exported');
   const commands=['prepare:chemistry','prepare:runtime','predev','prebuild','dev','build','preview','prepare:desktop','desktop:start','desktop:dev'];pkg.scripts=Object.fromEntries(commands.map(k=>[k,pkg.scripts[k]]));await add('package.json',encoded(pkg),join(root,'package.json'),'Expose supported standalone source commands; locked dependencies/version unchanged');
   for(const row of await filesBelow(licenseDirectory))await add('licenses/'+row.path,row.bytes,join(licenseDirectory,row.path));
   for(const name of ['README.md','BUILDING.md'])await add(name,await checked(join(root,'scripts/release/templates',name)),null,'Public build documentation template');
-  const native={schema:'sy-source-native-identity/v1',sourceFiles:[],builderSources:[]};
+  const native={schema:'sy-source-native-identity/v1',sourceFiles:[],builderSources:[],xtbPatchSources:[]};
   for(const name of profile.nativeSources){const bytes=await checked(join(root,name));native.sourceFiles.push({path:name,bytes:bytes.length,sha256:sha(bytes)});}
   for(const name of NATIVE_BUILDERS){const bytes=await checked(join(root,name));native.builderSources.push({path:name,bytes:bytes.length,sha256:sha(bytes)});}
-  await add('source-native-identity.json',encoded(native),null,'Exact original native sources/builders, no original receipt copied');
+  for(const name of XTB_PATCH_BUILDERS){const bytes=await checked(join(root,name));native.xtbPatchSources.push({path:name,bytes:bytes.length,sha256:sha(bytes)});}
+  await add('source-native-identity.json',encoded(native),null,'Exact engine sources/builders and separately identified xTB patch sources; no private receipt copied');
   return{version:pkg.version,sourceCommit,planned:[...planned.values()],guards,transforms};
 }
 export async function exportSource(options){

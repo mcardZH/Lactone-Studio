@@ -1,10 +1,10 @@
 @import '../ui-controls.css';
 .shared-model-window { display:flex; flex-direction:column; width:100%; height:100dvh; min-height:240px; background:var(--ui-control-bg); color:var(--ui-control-ink); outline:none; }
 .shared-model-heading { display:flex; flex:0 0 38px; min-width:0; align-items:stretch; gap:0; padding:0 8px; border-bottom:1px solid var(--ui-control-border); background:var(--ui-surface-bg); -webkit-app-region:drag; user-select:none; }
-.shared-model-tab { display:flex; gap:12px; min-width:100px; max-width:min(65vw,460px); align-items:center; padding:0 8px 0 14px; margin-top:4px; border:1px solid var(--ui-control-border); border-bottom:0; border-radius:7px 7px 0 0; background:#fff; -webkit-app-region:no-drag; touch-action:none; cursor:grab; }
+.shared-model-tab { display:flex; flex:0 0 auto; gap:0; min-width:0; max-width:min(18em,45vw); align-items:center; padding:0 0 0 9px; margin-top:4px; border:1px solid var(--ui-control-border); border-bottom:0; border-radius:7px 7px 0 0; background:#fff; -webkit-app-region:no-drag; touch-action:none; cursor:grab; }
 .shared-model-tab[data-dragging=true] { cursor:grabbing; box-shadow:inset 0 0 0 1px #608dca; }
 .shared-model-tab-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--ui-control-small-font); }
-.shared-model-tab button { flex:0 0 auto; border:0; border-radius:4px; padding:0 5px; background:transparent; color:var(--ui-control-muted); font-size:calc(20px * var(--ui-font-scale,1)); cursor:pointer; -webkit-app-region:no-drag; }
+.shared-model-tab button { flex:0 0 auto; border:0; border-radius:4px; padding:0 5px; background:transparent; color:var(--ui-control-muted); font:inherit; cursor:pointer; -webkit-app-region:no-drag; }
 .shared-model-tab button:hover { background:var(--ui-control-hover-bg); }
 .shared-model-tab button:disabled { opacity:.4; cursor:default; }
 .shared-model-window-drag { flex:1; min-width:34px; }

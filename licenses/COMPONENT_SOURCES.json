@@ -1,10 +1,9 @@
 {
   "schema": "ester-v201-public-component-sources/v1",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "publicDistributionApproved": false,
   "scope": "Exact component source and notice provision; whole-product native clean rebuild and final release identity are separate",
   "native": {
-    "actualBuiltForVersion": "1.0.3-dev.10",
     "versions": {
       "numpy": "2.4.6",
       "scipy": "1.17.1",
@@ -17,11 +16,31 @@
     },
     "sourceIndex": "../third-party/corresponding-source-index.json",
     "fortranSharedLibraryBuildControls": "../scripts/release/fortran-relative-source/README.md",
-    "fortranBuildControlScope": "Six shared-library source build controls; engine retains its original build identity. Actual new library identities and validation belong to final runtime provenance."
+    "fortranBuildControlScope": "Six shared-library source build controls and their historical provenance are retained. The actual engine and data identities are bound separately by this release runtime provenance.",
+    "parentRuntimeBuiltForVersion": "1.0.3-dev.10",
+    "currentRuntimeIdentityLocation": "Companion portable runtime/provenance/dependencies.json and source-native-identity.json; final build is separately bound",
+    "conformerSolvation": {
+      "canonicalSource": "../src/data/conformer-solvation.json",
+      "helperSource": "../desktop/chemistry/conformer_solvation.py",
+      "identity": "Source-export manifest and source-native-identity.json bind the canonical data and helper bytes",
+      "semantics": "298 K display references and native method-specific references are separate fields; native xTB selects its actual calculation parameters"
+    }
   },
   "xtb": {
     "version": "6.7.0",
-    "sourceIndex": "../third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json"
+    "sourceIndex": "../third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json",
+    "modification": {
+      "algorithm": "xtb-h-only-initial-cap-v1",
+      "buildId": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
+      "sourceLinkage": "../third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/source-linkage.json",
+      "sourceReceipt": {
+        "path": "../third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json",
+        "bytes": 13500,
+        "sha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a"
+      },
+      "notice": "xtb/ES-H-INITIAL-VELOCITY.md",
+      "runtimeLibraries": "Unchanged published 2.0.2 OpenBLAS 0.3.33 composition"
+    }
   },
   "electron": {
     "version": "44.7.0",
@@ -101,8 +120,8 @@
   },
   "correspondingSourceIndex": {
     "path": "../third-party/corresponding-source-index.json",
-    "bytes": 382417,
-    "sha256": "4989f6b9ab0f201005ad0ef4e584dbaed8ff0c40c1f3ff8a3a041784dc190d10",
+    "bytes": 388183,
+    "sha256": "bfceddd404b141208a3b565838343b792803d63483894460a54c1ebad6175c7a",
     "schema": "sy-corresponding-sources/v2",
     "componentScope": {
       "sourceAcquiredAndIncluded": "completed",

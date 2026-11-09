@@ -84,14 +84,17 @@ import {usePostprocessWorkspace} from '../results/usePostprocessWorkspace';
 import {assertOrbitalSourcesIdle} from '../results/useOrbitalField';
 import DialogShell from '../DialogShell';
 import {workspaceTabDragMoved,workspaceTabTargetContains,resolveWorkspaceTabDropIntent} from './workspace-tab-drag';
-import WorkspaceTab from './WorkspaceTab';
+import WorkspaceTab,{WorkspaceTabCloseIcon} from './WorkspaceTab';
 import {useWorkspacePageValue} from './workspace-page-context';
 import {workspaceSourceGeometryKey,workspaceRetainedSourceGeometryMatches} from './workspace-source-validity';
+import {workspaceCurrentSharedFrozenAtomIds} from './workspace-live-preview';
 import {conformerInitialDocument,assertConformerInitialElectronicOwner} from './workspace-conformer-initial-owner';
 import {workspaceOwnerCallbackCurrent} from './workspace-owner-lifetime';
 import {createConformerPlaybackResolver,projectConformerPlaybackCollection} from '../advanced/conformer-playback';
 import {captureConformerFrameOrder,conformerPlaybackOrder,type ConformerFrameOrder} from './workspace-conformer-order';
-import {createConformerCollectionPublisher,conformerCollectionSourcesCurrent,conformerCollectionMatchesCurrent,createAdvancedHydrationProjectionBaseline,conformerPlaybackFrameIndex,conformerTrajectoryObservedSource,prepareConformerPublication,restoredConformerPublicationResult} from './workspace-conformer-publication';
+import {workspaceFreezeEditingAllowed,isConformerWorkspaceResult,commitConformerInitialFreezes} from './workspace-freeze-policy';
+import {createConformerDisplayRestoration} from '../../modeling/conformers/playback-display';
+import {createConformerCollectionPublisher,conformerCollectionSourcesCurrent,conformerCollectionMatchesCurrent,createAdvancedHydrationProjectionBaseline,conformerPlaybackFrameIndex,conformerTrajectoryObservedSource,prepareConformerPublication,restoredConformerPublicationResult,retirePreparedConformerPublication} from './workspace-conformer-publication';
 import {previewImportDescription,postprocessDocumentEngine,postprocessDocumentTask} from '../results/postprocess-import-policy';
 import {postprocessDifferences,disposePostprocessFileDocument} from '../../results/postprocess-document';
 import type {PostprocessPlotSnapshot} from '../results/PostprocessPresentation';
@@ -206,6 +209,7 @@ export interface DocumentWorkspaceSurface extends MultiStructureSourceActions {
  samplingSphereDraft?:SamplingSphereViewportDraft|null;
  onSamplingSphereRadiusChange?(change:SamplingSphereRadiusChange):void;
  structureAnalysisActive?:boolean;
+ freezeEditingAllowed?:boolean;
  advancedModelingRoute?:AdvancedModelingRoute;
  onAdvancedModelingRouteChange?(route:AdvancedModelingRoute):void;
  onAdvancedModelingBack?():void;
@@ -549,7 +553,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   return workspaceRetainedSourceGeometryMatches(original,source)&&(!capturedSourceGeometry.current.has(JSON.stringify(source.ref))||advancedSourceGeometryCurrent(source));
  }
  const guardedStores=useRef(new WeakSet<WorkspaceDocumentEntry['store']>());
- function protectedConformerSource(id:string,source=advancedObservationsRef.current[id]){const entry=registry.getSnapshot().documents.find(row=>row.id===id);if(entry?.conformerGroup)return entry.conformerGroup.role!=='initial';const task=source?.ref.taskId?advancedController?.getSnapshot().tasks.find(row=>row.id===source.ref.taskId):undefined;return !!task&&(task.spec.kind==='conformer-search'||!!task.mixedSampling);}
+ function protectedConformerSource(id:string,source=advancedObservationsRef.current[id]){const entry=registry.getSnapshot().documents.find(row=>row.id===id);if(entry?.conformerGroup)return entry.conformerGroup.role!=='initial';if(entry&&isConformerWorkspaceResult(entry))return true;const task=source?.ref.taskId?advancedController?.getSnapshot().tasks.find(row=>row.id===source.ref.taskId):undefined;return !!task&&(task.spec.kind==='conformer-search'||!!task.mixedSampling);}
  function scientificFrameKey(id:string){const canvas=analysisCanvasesRef.current[id]??lastScientificCanvases.current.get(id);return JSON.stringify([canvas?.result?.id??null,canvas?.frameIndex??null,advancedObservationsRef.current[id]?.ref??null]);}
  const installAnalysisGuard=(entry:WorkspaceDocumentEntry)=>{if(!guardedStores.current.has(entry.store)){entry.store.setScientificEditGuard?.(createWorkspaceScientificEditGuard(entry,{
   currentEntry:()=>registry.getSnapshot().documents.find(row=>row.id===entry.id),
@@ -670,7 +674,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    const id=await advancedPorts.current.postprocess.attachGeneratedToExisting(bundle,context,targetId,guard);if(!id)throw Error('GFN2受管结果暂未接入后处理，原生产物仍保留。');
    const key=`${context.taskId}:${context.deliveryRunId??context.runId}`;advancedAnalysisDocuments.current.set(key,id);setAdvancedAnalysisBindings(previous=>({...previous,[key]:id}));
   },
- });advancedIntegration.current.controller=controller;setAdvancedController(controller);return()=>{for(const value of conformerPrepared.current.values())value.abort.abort();conformerPrepared.current.clear();void controller.dispose();};},[registry]);
+ });advancedIntegration.current.controller=controller;setAdvancedController(controller);return()=>{for(const value of conformerPrepared.current.values())retirePreparationRecord(value);conformerPrepared.current.clear();void controller.dispose();};},[registry]);
  const fileCurrent=state.module==='analysis'?postprocess.currentFile:null;
  const [fileSidebarCollapsed,setFileSidebarCollapsed]=useState<Record<string,boolean>>({});
  const currentFileSidebarCollapsed=Boolean(fileCurrent&&fileSidebarCollapsed[fileCurrent.id]);
@@ -711,7 +715,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   for(const entry of state.documents){if(entry.trajectory)continue;
    if(entry.conformerGroup?.role==='initial'&&!xtbAnalysisLayout){const task=advancedController?.getSnapshot().tasks.find(row=>row.id===entry.conformerGroup!.taskId),document=entry.store.getSnapshot(),candidate=advancedLayers[entry.id],layers=candidate?.targetId===entry.id&&advancedSourceGeometryCurrent(candidate.source)?candidate:undefined;
     if(!document.draft.structure.atoms.length)continue;
-    canvases[entry.id]={document:layers?.previewStructure?{...document,draft:{...document.draft,structure:layers.previewStructure}}:document,staticDocument:document,modelEditingBlocked:Boolean(layers?.previewStructure),viewport:{displayFrozenAtomIds:task?.mixedSampling?.draft.protectedAtomIds??document.sharedConstraints?.frozenAtomIds??[],multiframeDisplay:layers?.multiframeDisplay,samplingSphere:layers?.samplingSphere,analysisAtomCapture:entry.id===activeId?advancedCapture:undefined},onViewReady:()=>{},onExport:()=>{},useWorkspaceImageExport:true,exportAvailable:true,exporting:false};continue;}
+    canvases[entry.id]={document:layers?.previewStructure?{...document,draft:{...document.draft,structure:layers.previewStructure}}:document,staticDocument:document,modelEditingBlocked:Boolean(layers?.previewStructure),viewport:{displayFrozenAtomIds:workspaceCurrentSharedFrozenAtomIds(document),multiframeDisplay:layers?.multiframeDisplay,samplingSphere:layers?.samplingSphere,analysisAtomCapture:entry.id===activeId?advancedCapture:undefined},onViewReady:()=>{},onExport:()=>{},useWorkspaceImageExport:true,exportAvailable:true,exporting:false};continue;}
    const source=advancedObservations[entry.id];if(!source)continue;
    const retained=retainedAdvancedSource(advancedController?.getSnapshot()??{tasks:[],activeNative:null,queue:[],ignoredEvents:0,disposed:false},source);
    if(!source.ref.taskId&&!advancedSourceGeometryCurrent(source)||source.ref.taskId&&!retained)continue;
@@ -815,22 +819,27 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   conformerCollectionCache.current.set(task,collections);return collections;
  }
  function conformerFrameProtection(task:AdvancedTaskRecord,frame:AdvancedResultFrame):readonly string[]{
+  if(frame.kind==='optimized'||frame.kind==='singlepoint')return frame.source.constraints.frozenAtomIds;
   let current=frame;const frames=conformerPlaybackFrameIndex(task),seen=new Set<string>();
   while(!current.samplingOrigin&&!seen.has(current.id)){seen.add(current.id);const parent=current.parentRef.frameId?frames.get(current.parentRef.frameId):undefined;if(!parent)break;current=parent;}
-  return current.samplingOrigin?.protectedAtomIds??frame.source.constraints.frozenAtomIds;
+  return current.samplingOrigin?.protection?.restorationAtomIds??current.source.protection?.restorationAtomIds??current.samplingOrigin?.protectedAtomIds??frame.source.constraints.frozenAtomIds;
+ }
+ function retirePreparationRecord(record:{result:TrajectoryResult;abort:AbortController},reserved:readonly (TrajectoryResult|undefined)[]=[]){
+  const retained=[...reserved,...registry.getSnapshot().documents.flatMap(entry=>[entry.result,entry.legacyResult,entry.analysisBinding?.result])];
+  void Promise.resolve(retirePreparedConformerPublication(record,retained)).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));
  }
  function preparedConformerCollection(collection:ConformerResultCollection,task:AdvancedTaskRecord){
   collection=projectConformerPlaybackCollection(collection,task);
   if(collection.playbackAvailable===false)throw Error('当前归簇包含不可用代表，不能发布为完整播放集合。');
   const key=workspaceTrajectoryKey(collection.identity),signature=JSON.stringify([collection.identity,collection.includeEnergies,collection.frames.map(frame=>[frame.id,frame.source.stamp.coordinatesFingerprint,frame.energyHartree])]);
   const old=conformerPrepared.current.get(key);if(old?.signature===signature)return old;
-  old?.abort.abort();
-  const reference=createConformerPlaybackResolver(task)(collection.frames[0]).referenceSource;
-  const candidate=createConformerTrajectory({...collection,referenceStructure:reference?.structure??collection.frames[0].source.structure,protectedAtomIds:reference?.constraints.frozenAtomIds??[]});
+  if(old)retirePreparationRecord(old);
+  const resolver=createConformerPlaybackResolver(task),reference=resolver(collection.frames[0]).referenceSource;
+  const candidate=createConformerTrajectory({...collection,referenceStructure:reference?.structure??collection.frames[0].source.structure,protectedAtomIds:reference?.constraints.frozenAtomIds??[],displayRestoration:createConformerDisplayRestoration(collection.frames,collection.frames.map(frame=>resolver(frame).displayPolicy??null))});
   const existing=registry.getSnapshot().documents.find(entry=>entry.trajectory&&workspaceTrajectoryKey(entry.trajectory.identity)===key);
   const result=restoredConformerPublicationResult(candidate,existing),abort=new AbortController();
   const record={signature,result,abort,ready:Promise.resolve()};
-  record.ready=prepareConformerPublication(result,{signal:abort.signal}).then(()=>{}).catch(cause=>{if(conformerPrepared.current.get(key)===record)conformerPrepared.current.delete(key);throw cause;});
+  record.ready=prepareConformerPublication(result,{signal:abort.signal}).then(()=>{}).catch(cause=>{if(conformerPrepared.current.get(key)===record){conformerPrepared.current.delete(key);retirePreparationRecord(record);}throw cause;});
   conformerPrepared.current.set(key,record);return record;
  }
  async function prepareConformerTask(task:AdvancedTaskRecord){
@@ -864,7 +873,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   const activate=inContext&&options?.activate!==false;
   if(!inContext&&!existing||!collection.frames.length&&!existing)return;
   if(!collection.frames.length){
-   conformerPrepared.current.get(key)?.abort.abort();conformerPrepared.current.delete(key);
+   const record=conformerPrepared.current.get(key);if(record)retirePreparationRecord(record);conformerPrepared.current.delete(key);
    if(existing&&!closingTransactions.current.has(existing.id))void close(existing.id,true);
    return;
   }
@@ -894,6 +903,10 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  async function commitConformerCoreChange(taskId:string,atomIds:readonly string[]):Promise<boolean>{
   const controller=advancedIntegration.current.controller;if(!controller)throw Error('构象任务尚未连接。');
   const plan=controller.prepareProtectionChange(taskId,[...atomIds]);plan.assertCurrent();plan.commit();await plan.release();return true;
+ }
+ function changeConformerInitialFreeze(taskId:string,source:AdvancedFrameSource,atomIds:readonly string[]):boolean{
+  const task=advancedIntegration.current.controller?.getSnapshot().tasks.find(task=>task.id===taskId),current=registry.getSnapshot(),activeDocumentId=current.views.find(view=>view.id===current.activeViewId)?.documentId??null;
+  return commitConformerInitialFreezes({task,documents:current.documents,activeDocumentId,source,atomIds,blocked:taskWorkspace.isOpen()||current.module!=='advanced'||advancedSectionRef.current!=='conformer'||closingTransactions.current.has(source.ref.documentId)});
  }
  function bindConformerTask(taskId:string,source:AdvancedFrameSource){
   const task=advancedController?.getSnapshot().tasks.find(value=>value.id===taskId);
@@ -1256,8 +1269,17 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    .then(answer=>{if(pendingEditRef.current===pendingEdit)void resolveScientificEdit(answer.decision);})
    .catch(cause=>{setError(cause instanceof Error?cause.message:String(cause));if(pendingEditRef.current===pendingEdit)void resolveScientificEdit('cancel');});
  },[pendingEdit,hostBridge]);
+ function retireConformerPreparation(entry:WorkspaceDocumentEntry,discardCollection=false){
+  if(!entry.trajectory)return;
+  const key=workspaceTrajectoryKey(entry.trajectory.identity),record=conformerPrepared.current.get(key);
+  if(!record||!discardCollection&&record.result!==entry.legacyResult&&record.result!==entry.result)return;
+  // A replacement may already own a new reader for this collection. Ordinary
+  // retirement only removes this exact reader; explicit discard retires both.
+  retirePreparationRecord(record,[entry.legacyResult,entry.result]);conformerPrepared.current.delete(key);
+ }
  function retireDocumentPresentation(entry:WorkspaceDocumentEntry){
   const id=entry.id;
+  retireConformerPreparation(entry);
   if(linkedControls.linked?.documentIds.includes(id))linkedControls.clear();
   setAdvancedObservations(previous=>{const next={...previous};delete next[id];return next;});lastScientificCanvases.current.delete(id);trajectoryFrames.current.delete(id);
   setAdvancedLayers(previous=>{const next={...previous};delete next[id];return next;});
@@ -1349,9 +1371,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      },{ownerId:'workspace-presentations',
       assertCurrent:()=>{for(const row of native)if(closeRequests.current.get(row.id)?.requestId!==row.requestId)throw Error('文档关闭请求已变化，请重新确认。');},
       commit:()=>{
-       for(const entry of entries){if(entry.trajectory)conformerCollectionPublisher.current.discard(entry.trajectory.identity,conformerPublicationPorts());retireDocumentPresentation(entry);closeRequests.current.delete(entry.id);}
+       for(const entry of entries){if(entry.trajectory){conformerCollectionPublisher.current.discard(entry.trajectory.identity,conformerPublicationPorts());retireConformerPreparation(entry,true);}retireDocumentPresentation(entry);closeRequests.current.delete(entry.id);}
        const taskId=value.conformerPlan?.taskId;
-       if(taskId&&!advancedController!.getSnapshot().tasks.some(task=>task.id===taskId)){releaseMixedConformerPageCache(advancedController!,taskId);for(const [key,value]of conformerPrepared.current)if((value.result as ReturnType<typeof createConformerTrajectory>).identity.taskId===taskId){value.abort.abort();conformerPrepared.current.delete(key);}setConformerGroups(previous=>{const next={...previous};delete next[taskId];return next;});}
+       if(taskId&&!advancedController!.getSnapshot().tasks.some(task=>task.id===taskId)){releaseMixedConformerPageCache(advancedController!,taskId);for(const [key,value]of conformerPrepared.current)if((value.result as ReturnType<typeof createConformerTrajectory>).identity.taskId===taskId){retirePreparationRecord(value);conformerPrepared.current.delete(key);}setConformerGroups(previous=>{const next={...previous};delete next[taskId];return next;});}
       },
       release:async()=>{
        const liveSources=[...new Set(registry.getSnapshot().documents.flatMap(entry=>[...discardSourceIds(entry.id)]))];
@@ -1726,7 +1748,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    batchInputSession:borrowedBatch?.documentId===entry.id?borrowedBatch.session:undefined,onFinishBatchInput:id=>{void finishBatchInput(id).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));},initialCameraView:inheritedViews.current.get(entry.id)?.camera,initialViewTransform:inheritedViews.current.get(entry.id)?.transform,
    workspaceCanUndo:(state.module==='input'&&Boolean(inputControllers.current.get(entry.id)?.canUndo?.()))||registry.canUndo(entry.id),workspaceCanRedo:(state.module==='input'&&Boolean(inputControllers.current.get(entry.id)?.canRedo?.()))||registry.canRedo(entry.id),
    displaySettings,onDisplaySettingsChange:changeDisplaySettings,onOpenSettings:openDisplaySettings,sharedShowAxes,onSharedShowAxesChange:setSharedShowAxes,toolIntent,onToolIntentChange:setToolIntent,viewportActive,presentationActive:entry.id===displayedDocumentId,legendVisible:entry.id===displayedDocumentId,layoutActions,legendExpanded,onLegendExpandedChange:setLegendExpanded,
-   ...pagePresentations.current.get(entry.id),onSamplingSphereRadiusChange:setSamplingSphereRadiusChange,
+   ...pagePresentations.current.get(entry.id),onSamplingSphereRadiusChange:setSamplingSphereRadiusChange,freezeEditingAllowed:workspaceFreezeEditingAllowed(entry)&&!protectedConformerSource(entry.id),
    onAdvancedModelingRouteChange:setAdvancedModelingRoute,onAdvancedModelingBack:()=>setAdvancedModelingRoute(route=>route?{...route,task:null}:null),
    structureAnalysisActive:currentStructureAnalysisActive({documentId:entry.id,activeDocumentId:activeId,displayedDocumentId,module:state.module,selected:structureAnalysisSelected[entry.id]===true,hasResult:Boolean(entry.result||entry.legacyResult),hasPostprocessDocument:Boolean(postprocess.documents[entry.id]),blocked:taskWorkspace.opened||ownerHidden||closingPending||closeConfirmIds.includes(entry.id)||Boolean(detached[entry.id])}),
    linkedAtomActions:linkedControls.actions,linkedAtomsActive:linkedControls.linked?.documentIds.includes(entry.id),onAtomNumberPick:linkedControls.swapping&&linkedControls.linked?.documentIds.includes(entry.id)?atomId=>linkedControls.pickAtom(entry.id,atomId):undefined,
@@ -1817,7 +1839,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    restoringProject.current=true;
    projectIdentityEpoch.current++;advancedHydrationProjection.current.reset();conformerPlayerCollections.current.clear();conformerCollectionCache.current=new WeakMap();
    taskWorkspace.leave();
-   conformerCollectionPublisher.current.reset();for(const value of conformerPrepared.current.values())value.abort.abort();conformerPrepared.current.clear();discardConfirmSerial.current++;discardImpactRef.current=null;setDiscardImpact(null);setClosing(null);setCloseConfirmIds([]);
+   conformerCollectionPublisher.current.reset();for(const value of conformerPrepared.current.values())retirePreparationRecord(value);conformerPrepared.current.clear();discardConfirmSerial.current++;discardImpactRef.current=null;setDiscardImpact(null);setClosing(null);setCloseConfirmIds([]);
    // Claim can enter here from a React effect. Leave that lifecycle before
    // requesting a synchronous unmount, which React otherwise cannot perform.
    await Promise.resolve();
@@ -1925,9 +1947,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      const last=Boolean(groupId&&tabDocuments[index+1]?.conformerGroup?.taskId!==groupId);
      return <Fragment key={entry.id}>{first&&groupId&&group&&<span className="workspace-tab-group" data-task-id={groupId} data-collapsed={group.collapsed} data-active={tabDocuments.some(value=>value.conformerGroup?.taskId===groupId&&value.id===displayedDocumentId)} style={groupStyle}>
       {renamingGroup===groupId?<input autoFocus aria-label="任务组名称" defaultValue={group.label} onBlur={event=>{const label=event.currentTarget.value.trim();if(label)setConformerGroups(previous=>({...previous,[groupId]:{...group,label}}));setRenamingGroup(null);}} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur();if(event.key==='Escape')setRenamingGroup(null);}}/>:<button type="button" aria-expanded={!group.collapsed} aria-label={`${group.collapsed?'展开':'收起'} ${group.label}`} title={`${group.label} · ${count} 个页面${groupStatus?' · '+groupStatus:''}；双击重命名任务组`} onDoubleClick={()=>setRenamingGroup(groupId)} onClick={()=>setConformerGroups(previous=>({...previous,[groupId]:{...group,collapsed:!group.collapsed}}))}>{group.collapsed?'▸':'▾'} {group.label}</button>}
-      <button type="button" aria-label={'删除构象搜索组 '+group.label} title={groupStatus?'请先停止任务后删除组':'删除整个组'} disabled={Boolean(groupStatus&&['运行中','排队中','正在停止'].includes(groupStatus))} onClick={event=>{event.stopPropagation();setDeleteGroup(groupId);}}>×</button>
+      <button type="button" className="workspace-tab-close" aria-label={'删除构象搜索组 '+group.label} title={groupStatus?'请先停止任务后删除组':'删除整个组'} disabled={Boolean(groupStatus&&['运行中','排队中','正在停止'].includes(groupStatus))} onClick={event=>{event.stopPropagation();setDeleteGroup(groupId);}}><WorkspaceTabCloseIcon/></button>
      </span>}<WorkspaceTab className={groupId?'workspace-tab-group-member':''} containerProps={{'data-tab-document-id':entry.id,...groupId?{'data-task-id':groupId,'data-group-last':last}:{},style:{...groupStyle,...(group?.collapsed?{display:'none'}:{})}}} active={entry.id===displayedDocumentId} label={entry.conformerGroup?.role==='initial'?'初始结构':entry.label} dirty={snapshot.draft.dirty} onActivate={()=>sourcePick?selectTaskSource(entry.id):linkedControls.selecting?linkedControls.toggleMember(entry.id):activateDocument(entry.id)}
-     actions={<button aria-label={'关闭文档 '+entry.label} title="关闭当前文档" onClick={()=>requestClose(entry.id)}><X size={12}/></button>}
+     actions={<button className="workspace-tab-close" aria-label={'关闭文档 '+entry.label} title="关闭当前文档" onClick={()=>requestClose(entry.id)}><WorkspaceTabCloseIcon/></button>}
      buttonProps={{'aria-controls':'doc-'+entry.id,...{'data-link-selected':linkedControls.selected.includes(entry.id)},
       onPointerDown:event=>{if(event.button!==0||sourcePick||linkedControls.selecting)return;tabDrag.current={id:entry.id,pointerId:event.pointerId,x:event.clientX,y:event.clientY,moved:false};event.currentTarget.setPointerCapture(event.pointerId);},
       onPointerMove:event=>{const drag=tabDrag.current;if(drag?.pointerId===event.pointerId&&workspaceTabDragMoved(drag.x,drag.y,event.clientX,event.clientY))drag.moved=true;},
@@ -2011,7 +2033,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
 
   {legendTarget&&sharedLayout&&createPortal(<SharedSurface channel={legendSurface}/>,legendTarget)}
   {linkedControls.dialog}
-  {advancedController&&!pendingAdvancedProject.current&&<AdvancedWorkspace controller={advancedController} contextKey={activeConformerGroup?.taskId??activeId} contextTaskId={activeConformerGroup?.taskId} onTaskCreated={bindConformerTask} onPrepareNewTaskSource={writableConformerSource} onElectronicStateChange={changeSourceElectronicState} onConformerElectronicStateChange={changeConformerElectronicState} sourceElectronicState={active?{documentId:active.id,charge:active.store.getSnapshot().draft.structure.charge??0,multiplicity:active.store.getSnapshot().draft.structure.multiplicity??1}:undefined} onProtectionChange={changeSourceProtection} onCommitConformerCoreChange={commitConformerCoreChange} onReadConformerInitialSource={captureConformerInitial} sourceProtectionAtomIds={activeConformerGroup?advancedController.getSnapshot().tasks.find(task=>task.id===activeConformerGroup.taskId)?.mixedSampling?.draft.protectedAtomIds:active?.store.getSnapshot().sharedConstraints?.frozenAtomIds??[]} active={advancedLayout&&!!advancedSection&&advancedSection!=='xtb2'&&!ownerHidden&&!taskWorkspace.opened&&!closingPending} activeSection={advancedSection} onSectionChange={setAdvancedSection} navigationInShell samplingOperation={conformerSamplingChoice} onSamplingOperationChange={setConformerSamplingChoice} onOpenConformerCollection={openConformerCollection} onConformerFrameOrder={conformerFrameOrder} onConformerViewControls={publishConformerViewControls} activeConformerFrame={active?.trajectory?{taskId:active.trajectory.identity.taskId,collectionId:active.trajectory.identity.collectionId,frameId:active.trajectory.currentFrameId}:undefined} onSphereDraft={setSamplingSphereDraft} sphereRadiusChange={samplingSphereRadiusChange} computeResources={computeResources} displayTargetId={activeId} displayedSource={advancedDisplayedSource} onTaskHighlights={publishTaskHighlights} onCaptureProjection={setAdvancedCapture} onDisplayLayers={publishAdvancedLayers} sourceCollectionInfo={source=>{const current=advancedSourceResult(source);return current?{id:current.result.id,count:current.result.frames.length,label:current.result.label}:undefined;}} onReadSourceCollection={readAdvancedSourceCollection} onCaptureInputTemplate={()=>{const task=registry.getSnapshot().inputTask;return task?inputControllers.current.get(task.documentId)?.getAdvancedInputTemplate?.():undefined;}} outputBridge={advancedOutputBridge} configurationHost={advancedLayout&&advancedSection&&advancedSection!=='xtb2'?advancedConfigurationHost:null} resultHost={advancedLayout&&advancedSection&&advancedSection!=='xtb2'?advancedResultHost:null} onCaptureSource={captureCurrentAdvancedSource} onCaptureInitialSource={()=>captureCurrentAdvancedSource(false)}
+  {advancedController&&!pendingAdvancedProject.current&&<AdvancedWorkspace controller={advancedController} contextKey={activeConformerGroup?.taskId??activeId} contextTaskId={activeConformerGroup?.taskId} onTaskCreated={bindConformerTask} onPrepareNewTaskSource={writableConformerSource} onElectronicStateChange={changeSourceElectronicState} onConformerElectronicStateChange={changeConformerElectronicState} sourceElectronicState={active?{documentId:active.id,charge:active.store.getSnapshot().draft.structure.charge??0,multiplicity:active.store.getSnapshot().draft.structure.multiplicity??1}:undefined} onProtectionChange={changeSourceProtection} onCommitConformerCoreChange={commitConformerCoreChange} onConformerFreezeChange={changeConformerInitialFreeze} conformerFreezeEditable={Boolean(active&&activeConformerGroup?.role==='initial'&&!active.trajectory&&!closingTransactions.current.has(active.id)&&!ownerHidden&&!taskWorkspace.opened&&!closingPending)} onReadConformerInitialSource={captureConformerInitial} currentSourceFreezeAtomIds={workspaceCurrentSharedFrozenAtomIds(activeConformerGroup?conformerInitialDocument(advancedController.getSnapshot().tasks.find(task=>task.id===activeConformerGroup.taskId),state.documents)?.store.getSnapshot():active?.store.getSnapshot())} sourceProtectionAtomIds={activeConformerGroup?advancedController.getSnapshot().tasks.find(task=>task.id===activeConformerGroup.taskId)?.mixedSampling?.draft.protectedAtomIds:active?.store.getSnapshot().sharedConstraints?.frozenAtomIds??[]} active={advancedLayout&&!!advancedSection&&advancedSection!=='xtb2'&&!ownerHidden&&!taskWorkspace.opened&&!closingPending} activeSection={advancedSection} onSectionChange={setAdvancedSection} navigationInShell samplingOperation={conformerSamplingChoice} onSamplingOperationChange={setConformerSamplingChoice} onOpenConformerCollection={openConformerCollection} onConformerFrameOrder={conformerFrameOrder} onConformerViewControls={publishConformerViewControls} activeConformerFrame={active?.trajectory?{taskId:active.trajectory.identity.taskId,collectionId:active.trajectory.identity.collectionId,frameId:active.trajectory.currentFrameId}:undefined} onSphereDraft={setSamplingSphereDraft} sphereRadiusChange={samplingSphereRadiusChange} computeResources={computeResources} displayTargetId={activeId} displayedSource={advancedDisplayedSource} onTaskHighlights={publishTaskHighlights} onCaptureProjection={setAdvancedCapture} onDisplayLayers={publishAdvancedLayers} sourceCollectionInfo={source=>{const current=advancedSourceResult(source);return current?{id:current.result.id,count:current.result.frames.length,label:current.result.label}:undefined;}} onReadSourceCollection={readAdvancedSourceCollection} onCaptureInputTemplate={()=>{const task=registry.getSnapshot().inputTask;return task?inputControllers.current.get(task.documentId)?.getAdvancedInputTemplate?.():undefined;}} outputBridge={advancedOutputBridge} configurationHost={advancedLayout&&advancedSection&&advancedSection!=='xtb2'?advancedConfigurationHost:null} resultHost={advancedLayout&&advancedSection&&advancedSection!=='xtb2'?advancedResultHost:null} onCaptureSource={captureCurrentAdvancedSource} onCaptureInitialSource={()=>captureCurrentAdvancedSource(false)}
    onConformerInitialFrame={openConformerInitialFrame} activeConformerInitial={activeConformerGroup?.role==='initial'&&activeConformerGroup.initialId?{taskId:activeConformerGroup.taskId,initialId:activeConformerGroup.initialId}:undefined}
    onObserve={source=>observeAdvancedSource(registry.stamp().documentId,source)}
    onExtract={extractAdvancedFrame} onPrepareInput={prepareAdvancedInput} onPrepareBatchInput={prepareBatchInput}

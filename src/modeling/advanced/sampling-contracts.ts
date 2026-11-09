@@ -1,6 +1,7 @@
 import type { Structure, Atom, Vector3 } from '../../core/types';
 import type { DocumentStamp } from '../../core/modeling/contracts';
 import {minimumEnclosingSphere} from './sampling-sphere';
+import {conformerAlpbPresets,type ConformerNativeSolvationEvidence} from './conformer-solvation';
 
 export type ConformerSamplingOperation = 'md' | 'anneal' | 'metadynamics' | 'spherical-md';
 export type ConformerSamplingMethod = 'MMFF94' | 'MMFF94s' | 'UFF' | 'gfn0' | 'gfn1' | 'gfn2' | 'gfnff';
@@ -107,7 +108,17 @@ export interface ConformerCoreDiagnostics {
   rmsdAngstrom: number; maxResidualAngstrom: number; rank: 0 | 1 | 2 | 3;
   orientationUnique: boolean; degeneracy: 'none' | 'single-atom' | 'collinear-or-coincident';
 }
+export interface ConformerInitialVelocityCorrection {
+  algorithm: 'xtb-h-only-initial-cap-v1'; initialization: 'automatic'; triggered: boolean;
+  degreesOfFreedom: number; hydrogenCount: number;
+  beforeKineticEnergyHartree: number; afterKineticEnergyHartree: number;
+  beforeTemperatureK: number; afterTemperatureK: number; hydrogenScale: number;
+  hydrogenKineticEnergyHartree: number; nonHydrogenKineticEnergyHartree: number;
+  ceilingTemperatureK: 8000; sourceArtifact: 'stdout.txt';
+}
 export interface ConformerNativeMDFrameEvidence {
+  nativeSolvation?:ConformerNativeSolvationEvidence;
+  initialVelocityCorrection?: ConformerInitialVelocityCorrection | null;
   method: 'gfnff' | 'gfn0' | 'gfn1' | 'gfn2'; version: string; inputSha256: string;
   shakeHydrogenBonds: boolean;
   /** Legacy natural-mass evidence; never emitted for fixed-mass runs. */
@@ -164,10 +175,12 @@ export interface ConformerBiasHistoryEntry {
   heightEV: number; sigmaAngstrom: number;
 }
 interface ConformerSamplingEventBase extends ConformerSamplingSegmentProgress {
+  nativeSolvation?:ConformerNativeSolvationEvidence;
   schema: 1; sessionId: string; stamp: DocumentStamp & { activationEpoch?: number };
   runIdentity: ConformerSamplingRunIdentity; operation: ConformerSamplingOperation;
   method: ConformerSamplingMethod; seq: number;
   effectiveResources?: ConformerSamplingEffectiveResources;
+  initialVelocityCorrection?: ConformerInitialVelocityCorrection | null;
 }
 export interface ConformerSamplingFrameEvent extends ConformerSamplingEventBase, ConformerSamplingFramePayload { event: 'frame' }
 export interface ConformerSamplingStageEvent extends ConformerSamplingEventBase {
@@ -214,7 +227,7 @@ export interface ConformerSamplingStopEvent extends ConformerSamplingEventBase {
 export interface ConformerSamplingErrorEvent extends ConformerSamplingEventBase {
   biasHistory?:ConformerBiasHistoryEntry[];
   resultHandle?:{id:string;frameCount:number};
-  event: 'error'; workerSettled: true; error: { code: string; message: string }; lastFrame?: ConformerSamplingFramePayload | null;
+  event: 'error'; workerSettled: true; error: { code: string; message: string; details?: Record<string, unknown> }; lastFrame?: ConformerSamplingFramePayload | null;
   exit?: { code: number | null; signal: string | null };
   diagnosticDirectory?: string; nativeClosed?: boolean;
   nativeTemperatureObservations?: ConformerNativeTemperatureObservation[];
@@ -244,8 +257,9 @@ export function suggestConformerSamplingSphere(structure: Pick<Structure, 'atoms
 export const CONFORMER_SAMPLING_CAPABILITIES = Object.freeze({
   implementedMethods: ['MMFF94', 'MMFF94s', 'UFF', 'gfn0', 'gfn1', 'gfn2', 'gfnff'] as readonly ConformerSamplingMethod[],
   nativeRouteValidation: 'not-run' as const,
-  gfnff: { status: 'implemented-unverified' as const, solvation: 'not-enabled' as const,
-    reason: 'Isolated native gradient adapter retains its fixed initial topology. Native validation is pending; implicit solvation is not enabled.' },
+  gfnff: { status: 'implemented-unverified' as const, solvation: 'native-md-alpb' as const,aseSolvation:'not-enabled' as const,
+    nativeMDSolvation:{model:'alpb' as const,solvents:conformerAlpbPresets('gfnff').map(row=>row.id)},
+    reason: 'Native MD/MTD supports the declared ALPB presets; the separate ASE gradient adapter remains gas-only.' },
   gfn0: { status: 'implemented-unverified' as const, solvation: 'not-enabled' as const,
     reason: 'Isolated native GFN0 gradient adapter; no dedicated implicit-solvent parameterization is exposed.' },
 });

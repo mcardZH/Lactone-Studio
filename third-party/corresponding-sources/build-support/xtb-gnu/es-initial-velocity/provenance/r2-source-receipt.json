@@ -1,0 +1,201 @@
+{
+  "schema": "sy-xtb-r2-source-receipt-v1",
+  "scientificSourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "scientificProgramBuild": "5071a886-new-gnu132-ucrt-r7-a01",
+  "scienceExecutableUnchanged": true,
+  "scientificSourceFilesChanged": false,
+  "parameterFilesChanged": false,
+  "originalScientificSourceReceiptSha256": "058e8782220283c8031a0fa3960d11b6a9b28a4a477260f88f0991de7f956f89",
+  "runtimeRebuilds": [
+    {
+      "name": "dlfcn-win32",
+      "version": "1.4.1",
+      "commit": "057dcdd6899b5a9c5abf6c47607cb95816e053a2",
+      "sourceArchiveSha256": "30a9f72bdf674857899eb7e553df1f0d362c5da2a576ae51f886e1171fbdb399",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libdl.dll",
+        "bytes": 60228,
+        "sha256": "09ffe313366349710d7606fad2b192826a0fb55e693f9d8a4eeb4ec1059f3c61"
+      }
+    },
+    {
+      "name": "winpthreads",
+      "version": "11.0.1",
+      "commit": "c3e587c067a00a561899d49d3e63a659e38802ec",
+      "sourceArchiveSha256": "9c82a58713786c95b0594443a1c6190cd986401ed2b03677a90acc470140af28",
+      "sourceSubdirectory": "mingw-w64-libraries/winpthreads",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libwinpthread-1.dll",
+        "bytes": 111375,
+        "sha256": "02be535e6495e755cf0532589303841c09d125ddca88bc6db294c8d76a1516cf"
+      }
+    },
+    {
+      "name": "libgcc_s_seh-1.dll",
+      "version": "13.2.0",
+      "sourceArchive": "gcc-13.2.0.tar.xz",
+      "sourceArchiveSha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libgcc_s_seh-1.dll",
+        "bytes": 189830,
+        "sha256": "7a315f073b3feda48c63a9bda3951c9d8f53cfeecd545fea75bf67756024f5b0"
+      }
+    },
+    {
+      "name": "libgfortran-5.dll",
+      "version": "13.2.0",
+      "sourceArchive": "gcc-13.2.0.tar.xz",
+      "sourceArchiveSha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libgfortran-5.dll",
+        "bytes": 3896233,
+        "sha256": "683271e02ab3524e80ca935997d5326522956b9e5aa582ea750b4e3c6c9d53b6"
+      }
+    },
+    {
+      "name": "libgomp-1.dll",
+      "version": "13.2.0",
+      "sourceArchive": "gcc-13.2.0.tar.xz",
+      "sourceArchiveSha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libgomp-1.dll",
+        "bytes": 383912,
+        "sha256": "b193e98534d98659b83c561103bd7cf5a6a9f320d8b2d04456a70476e26d2da4"
+      }
+    },
+    {
+      "name": "libquadmath-0.dll",
+      "version": "13.2.0",
+      "sourceArchive": "gcc-13.2.0.tar.xz",
+      "sourceArchiveSha256": "e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libquadmath-0.dll",
+        "bytes": 449972,
+        "sha256": "14c3356da8b677ea9ed73051739ad08807734a1410d570c95b5cb8b20f35e112"
+      }
+    }
+  ],
+  "sourceAndBuildEvidence": [
+    {
+      "path": "r2-source-identity-a01.json",
+      "bytes": 246,
+      "sha256": "f5bfa625bd6537133a446776b33d154add3332cf8b24805ab136f24a3415aea8"
+    },
+    {
+      "path": "r2-source-identity-post-build-a01.json",
+      "bytes": 248,
+      "sha256": "320ead5c42b737db4f67d26039283a5059b05adfb56d94ef4b7c6061cbb026c7"
+    },
+    {
+      "path": "r2-config-profile-a01.json",
+      "bytes": 4052,
+      "sha256": "da75b312245e474332cc12c68a3695fe4f158934a7a8dec91690849705fc764b"
+    },
+    {
+      "path": "r2-config-profile-a02.json",
+      "bytes": 4865,
+      "sha256": "0765af3b46940dcabdaf4dfca15891ae2034b9a391bda214d66b868a360fe298"
+    },
+    {
+      "path": "r2-sysroot-layout-a01.json",
+      "bytes": 450048,
+      "sha256": "23c78fe3b2adcfa47a65c2bffdc9b47737acc4f125e8566cdcdadf5765fdea07"
+    },
+    {
+      "path": "r2-tool-acquisition-a01.json",
+      "bytes": 1200,
+      "sha256": "c9563255fd9e865e530e38df0a34150984027557efd467cb68611a5f687ddcec"
+    },
+    {
+      "path": "r2-diffutils-acquisition-a01.json",
+      "bytes": 9982,
+      "sha256": "cd162dcdfd8fcd6e12ef8360d21f99e287ba5a3bac7a9e25c09b923aa6d3561d"
+    },
+    {
+      "path": "r2-debug-normalization-a02.json",
+      "bytes": 56207,
+      "sha256": "fcfd7fcf76d2da548ac856f3f522b7ff654631fbe2f694a99e39225d982afa54"
+    },
+    {
+      "path": "r2-normalization-header-review-a02.json",
+      "bytes": 17805,
+      "sha256": "a7d22f3a6d9717828764173f600960216e19e100ddef5f36bf2afce61f71dfad"
+    },
+    {
+      "path": "r2-static-runtime-review-a02.json",
+      "bytes": 915685,
+      "sha256": "c398c8c75e05aca28b7d2d5c5fda265866450171ae0d65e3bbffcb9257ef2fdf"
+    },
+    {
+      "path": "r0-result-a01.json",
+      "bytes": 12640,
+      "sha256": "783f0ed36415e70cb25c1b61f559bd968c0bbf10dd6ac83d2ce90da778b73e3e"
+    },
+    {
+      "path": "source-preparation-r0-a01.json",
+      "bytes": 48167,
+      "sha256": "0b33332494b112f83408177f70a23fbe725f835fdc34ba56db9918e60933ea4c"
+    },
+    {
+      "path": "logs/r2/02-host-preflight.receipt.json",
+      "bytes": 2591,
+      "sha256": "1a13214406561cc1ebc4c9ed1c1c22242e75578ead6021f4b50388eb0b38130b"
+    },
+    {
+      "path": "logs/r2/03-gcc-configure.receipt.json",
+      "bytes": 2578,
+      "sha256": "32a52077544c531858fcfe74d7c2aae006cb73de61dddf0f67b55e5c56f5052e"
+    },
+    {
+      "path": "logs/r2/03b-source-identity.receipt.json",
+      "bytes": 2525,
+      "sha256": "b468cf69351bed70e2f4714c1e4b3777e5ee9afcfce484dc7bee1a24acfdfcc4"
+    },
+    {
+      "path": "logs/r2/04-gcc-runtime-build.receipt.json",
+      "bytes": 2615,
+      "sha256": "1987bd54144e269f439aa6803ea91902d8297b8e6381bc90cfe1cb3334fadd83"
+    },
+    {
+      "path": "logs/r2/06d-header-probe-layout.receipt.json",
+      "bytes": 2760,
+      "sha256": "2809b63980f78d004ef182b3fb7a34e75765c1e9fd9202b907b6fb17ff966ba1"
+    },
+    {
+      "path": "logs/r2/07-runtime-build-a02.receipt.json",
+      "bytes": 2583,
+      "sha256": "9e0ce8b65cf398f9d04260e7717c6bb4dfb94ccbc2d03bc3486a524f6b05e3c5"
+    },
+    {
+      "path": "logs/r2/08-runtime-install-a02.receipt.json",
+      "bytes": 2581,
+      "sha256": "638c697ec9140e52bf4a03b8919ef17e746cddfad68040eb6d4657434cb22df4"
+    },
+    {
+      "path": "logs/r2/09b-debug-normalization-preserve-dates.receipt.json",
+      "bytes": 2550,
+      "sha256": "be173aa266bae72331c980a7e48218f9f2918fb7f1140739a39715174dd005c0"
+    },
+    {
+      "path": "logs/r2/09c-post-build-source-identity.receipt.json",
+      "bytes": 2560,
+      "sha256": "301871e4ff78903e93015d0e4c8aa896a68a2f501cba725151be5d29d2533d4d"
+    }
+  ],
+  "runtimeSourcePatches": [],
+  "seedCompilerArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+  "target": "x86_64-w64-mingw32 UCRT POSIX SEH",
+  "unresolved": [
+    "Numerical regression for this six-runtime composition",
+    "Actual product/custom-runtime integration and modified-library replacement/relinking acceptance",
+    "Final corresponding-source/license package assembly review"
+  ],
+  "runtimeReplacementScientificallyVerified": false,
+  "publicApproved": false
+}

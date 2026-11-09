@@ -1,4 +1,4 @@
-# Ester Studio 2.0.2 third-party materials
+# Ester Studio 2.0.3 third-party materials
 
 Ester Studio's own content is covered by the root `LICENSE.txt`. Third-party
 components retain their original licences, notices, exceptions and rights. The
@@ -13,8 +13,8 @@ These generated indexes do not replace any original legal text.
 | Component | Bundled identity | Materials and corresponding source |
 |---|---|---|
 | Frontend, Electron and Chromium | Electron 44.7.0; Chromium 152.0.7977.130; other versions in the lock/index | `frontend/`, `electron/`, `chromium/` and `SOURCE_INDEX.json`; Electron's MIT licence does not replace Chromium's component notices |
-| Native chemistry engine | Runtime originally built for 1.0.3-dev.10; 41 chemistry source files and six builder files | Original runtime notices under `runtime/resources/chemistry/licenses/`; paired source `source-native-identity.json` and `third-party/corresponding-source-index.json` |
-| GNU xTB | 6.7.0 | `runtime/resources/xtb/licenses/`; paired source `third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json` |
+| Native chemistry engine | Actual build/source identity in this release provenance; historical parent materials retained | Original runtime notices under `runtime/resources/chemistry/licenses/`; paired source `source-native-identity.json` and `third-party/corresponding-source-index.json` |
+| GNU xTB | 6.7.0 with ES H-only initialization modification | `runtime/resources/xtb/licenses/`; paired upstream source `third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json`; [ES modification notice](xtb/ES-H-INITIAL-VELOCITY.md) |
 | FFmpeg and native shared libraries | Exact versions in the component/source indexes | Paired source `third-party/corresponding-source-index.json`, including its FFmpeg/GNU/library guides and original licences |
 | OpenBLAS | 0.3.33 | `openblas-0.3.33/`; earlier notices are retained separately |
 | Ketcher / Indigo | 3.18.0 / 1.46.0 | [2D notices](2d-components/README.md), original notices under `2d-components/`, and [supplemental corresponding sources](supplemental-sources/README.md) |
@@ -23,7 +23,7 @@ These generated indexes do not replace any original legal text.
 | MolVec / Eclipse Temurin | 0.9.8 / 17.0.20.1+1 Windows x64 JRE | Runtime under `runtime/ocr-components/molvec/`; [OCR notices](ocr/molvec/README.md), complete vendor `legal/` tree, and the paired exact-source archives described below |
 
 The complete source ZIP and portable ZIP are offered together at the
-[Ester Studio 2.0.2 release](https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.2).
+[Ester Studio 2.0.3 release](https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.3).
 In the source ZIP, `licenses/supplemental-sources/` contains the exact Indigo
 vendor source (including Cairo and InChI), Emscripten/emsdk sources and original
 notices, the official Temurin/OpenJDK source archive, and the corresponding

@@ -1,0 +1,21 @@
+{
+  "schema": "ester-conformer-solvation/v1",
+  "nativeMethods": ["gfnff", "gfn1", "gfn2"],
+  "nativeOperations": ["md", "metadynamics"],
+  "displayReference": {"temperatureK": 298, "source": "Minnesota Solvent Descriptor Database", "updated": "2026-01-06"},
+  "nativeReference": {"sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c", "temperatureSource": "native-md-target", "kernel": "p16", "referenceState": "gsolv"},
+  "presets": [
+    {"id":"water","label":"水","dielectric":78.355,"nativeDielectric":{"gfnff":80.2,"gfn1":80.2,"gfn2":80.2}},
+    {"id":"methanol","label":"甲醇","dielectric":32.613,"nativeDielectric":{"gfnff":32.7,"gfn1":32.7,"gfn2":32.7}},
+    {"id":"ethanol","label":"乙醇","dielectric":24.852,"nativeDielectric":{"gfnff":25.3,"gfn1":25.3,"gfn2":25.3}},
+    {"id":"acetonitrile","label":"乙腈","dielectric":35.688,"nativeDielectric":{"gfnff":37.5,"gfn1":37.5,"gfn2":37.5}},
+    {"id":"acetone","label":"丙酮","dielectric":20.493,"nativeDielectric":{"gfnff":20.7,"gfn1":20.7,"gfn2":20.7}},
+    {"id":"thf","label":"四氢呋喃","dielectric":7.4257,"nativeDielectric":{"gfnff":7.6,"gfn1":7.6,"gfn2":7.6}},
+    {"id":"ethylacetate","label":"乙酸乙酯","dielectric":5.9867,"nativeDielectric":{"gfnff":6.02,"gfn1":6.02,"gfn2":6.02}},
+    {"id":"dmso","label":"DMSO","dielectric":46.826,"nativeDielectric":{"gfnff":46.68,"gfn1":46.68,"gfn2":46.68}},
+    {"id":"ch2cl2","label":"二氯甲烷","dielectric":8.93,"nativeDielectric":{"gfnff":8.93,"gfn1":8.93,"gfn2":8.93}},
+    {"id":"chcl3","label":"氯仿","dielectric":4.7113,"nativeDielectric":{"gfnff":4.81,"gfn1":4.81,"gfn2":4.81}},
+    {"id":"toluene","label":"甲苯","dielectric":2.3741,"nativeDielectric":{"gfnff":2.3741,"gfn1":2.3741,"gfn2":7}},
+    {"id":"hexane","label":"正己烷","dielectric":1.8819,"nativeDielectric":{"gfnff":1.88,"gfn1":1.88,"gfn2":1.88}}
+  ]
+}

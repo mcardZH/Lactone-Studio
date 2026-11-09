@@ -5,6 +5,9 @@ import { assertBuilderStereoPreserved } from '../../core/builder-stereo';
 import { superposeViewAtoms, VIEW_SUPERPOSITION_ATOM_LIMIT } from '../view-superposition';
 import { convertEnergy, type EnergyUnit } from '../../results/energy';
 import type { ConformerSourceIdentity } from './geometry';
+import {eliminateEquivalentClusters} from './equivalence-clustering';
+import type {ConformerEquivalenceSummary} from './equivalence-clustering';
+import {elementCompositionKey,elementConstraintProfile} from './element-constraints';
 
 /** Adapter-owned canonical scientific keys, never translated display labels.
  * method includes the full level/basis/parameterization; settingsKey distinguishes
@@ -24,6 +27,8 @@ export interface ConformerOptimizationResult {
   failureReason?: string;
 }
 export interface ConformerClusteringPolicy {
+  /** Optional second stage after fixed-correspondence ordinary clustering. */
+  eliminateEquivalent?: boolean;
   /** Missing in historical results means fixed stable-ID correspondence. */
   rmsdMatching?: 'fixed' | 'symmetry';
   rmsdThresholdAngstrom: number;
@@ -33,7 +38,7 @@ export interface ConformerClusteringPolicy {
 }
 /** Product clustering default, not an alignment error/convergence tolerance. */
 export const DEFAULT_CONFORMER_CLUSTERING_POLICY: Readonly<ConformerClusteringPolicy> = Object.freeze({
-  rmsdThresholdAngstrom: .10, maxDeltaEnergyHartree: convertEnergy({ value: .25, unit: 'kcal/mol' }, 'hartree')!, maxRecords: 1024,
+  eliminateEquivalent:false,rmsdThresholdAngstrom: .10, maxDeltaEnergyHartree: convertEnergy({ value: .25, unit: 'kcal/mol' }, 'hartree')!, maxRecords: 1024,
 });
 /** Numerical equality slack only; not a scientific cluster threshold. */
 export const CONFORMER_RMSD_ROUNDOFF_ANGSTROM = 1e-10;
@@ -45,19 +50,26 @@ export interface RejectedConformerResult {
 }
 export interface ConformerClusterMember {
   candidateId: string; source: ConformerSourceIdentity; energyHartree: number;
-  rmsdToRepresentativeAngstrom: number;
+  rmsdToRepresentativeAngstrom: number | null;
 }
 export interface ConformerCluster {
   id: string; representative: ConformerOptimizationResult & { energyHartree: number; converged: true };
   members: ConformerClusterMember[];
 }
 export interface ConformerClusterGroup {
+  /** New element-only postprocessing pool; ordinary groups retain old identity. */
+  comparisonSemantics?:'element-geometry';
   id: string; comparisonKey: string; identity: ConformerCalculationIdentity;
   atomIds: string[]; fitAtomIds: string[]; fitScope: 'heavy-atoms' | 'all-atoms';
   clusters: ConformerCluster[];
   rmsdMatching?: 'fixed' | 'symmetry';
 }
 export interface ConformerClusterSet {
+  algorithmVersion?: 'fixed-then-element-v1';
+  /** Actual inter-record fixed Horn calls, including fits that do not merge.
+   * Absent in historical results. Excludes input self-checks and energy skips. */
+  ordinaryAlignmentPairCount?: number;
+  equivalence?: ConformerEquivalenceSummary;
   groups: ConformerClusterGroup[]; rejected: RejectedConformerResult[];
   memberToCluster: { candidateId: string; groupId: string; clusterId: string; representativeCandidateId: string }[];
   acceptedCount: number; policy: ConformerClusteringPolicy;
@@ -144,13 +156,13 @@ export function compareConformerGeometry(moving:Structure,reference:Structure,rm
 }
 /** One immutable batch only. Cache the graph/ID/fit selection once per frame;
  * coordinate-dependent stereo and proper rigid fits are still checked per pair. */
-export function createConformerGeometryComparer(rmsdMatching:'fixed'|'symmetry'='fixed') {
+export function createConformerGeometryComparer(rmsdMatching:'fixed'|'symmetry'='fixed',onFixedAlignment?:()=>void) {
   if(rmsdMatching==='symmetry')return createSymmetryConformerGeometryComparer();
   const cache=new WeakMap<Structure,ComparisonIdentity>();
   const prepare=(structure:Structure)=>{let value=cache.get(structure);if(!value){value=comparisonIdentity(structure);cache.set(structure,value);}return value;};
-  return (moving:Structure,reference:Structure,_movingConstraints?:SharedModelConstraints,_referenceConstraints?:SharedModelConstraints)=>comparePreparedGeometry(moving,reference,prepare);
+  return (moving:Structure,reference:Structure,_movingConstraints?:SharedModelConstraints,_referenceConstraints?:SharedModelConstraints)=>comparePreparedGeometry(moving,reference,prepare,onFixedAlignment);
 }
-function comparePreparedGeometry(moving: Structure, reference: Structure,prepare:(structure:Structure)=>ComparisonIdentity):GeometryComparison {
+function comparePreparedGeometry(moving: Structure, reference: Structure,prepare:(structure:Structure)=>ComparisonIdentity,onFixedAlignment?:()=>void):GeometryComparison {
   let referenceIdentity:ComparisonIdentity;
   try {
     const movingIdentity=prepare(moving);referenceIdentity=prepare(reference);
@@ -162,6 +174,7 @@ function comparePreparedGeometry(moving: Structure, reference: Structure,prepare
     assertBuilderStereoPreserved(reference, moving);
   } catch { return { comparable: false, reason: 'stereochemistry' }; }
   const ids = referenceIdentity.fitAtomIds, selected = new Set(ids);
+  onFixedAlignment?.();
   const fit = superposeViewAtoms({ movingAtoms: moving.atoms.filter(a => selected.has(a.id!)),
     referenceAtoms: reference.atoms.filter(a => selected.has(a.id!)),
     pairs: ids.map(id => ({ movingAtomId: id, referenceAtomId: id })), mappingConfirmed: true });
@@ -170,15 +183,20 @@ function comparePreparedGeometry(moving: Structure, reference: Structure,prepare
     : { comparable: false, reason: 'alignment', detail: fit.issues.map(i => i.code).join(',') };
 }
 
+export interface ConformerClusteringProgress {phase:'cluster'|'eliminate-equivalent';completed:number;total:number|null}
 export function clusterConformerResults(records: readonly ConformerOptimizationResult[],
-  options: Partial<ConformerClusteringPolicy> = {}): ConformerClusterSet {
+  options: Partial<ConformerClusteringPolicy> = {},onProgress?:(progress:ConformerClusteringProgress)=>void): ConformerClusterSet {
   const policy = { ...DEFAULT_CONFORMER_CLUSTERING_POLICY, ...options };
-  const compareGeometry=createConformerGeometryComparer(policy.rmsdMatching);
+  if(policy.eliminateEquivalent)policy.rmsdMatching='fixed';
+  let ordinaryAlignmentPairCount=0;
+  const compareGeometry=createConformerGeometryComparer(policy.rmsdMatching,()=>ordinaryAlignmentPairCount++);
   if (!Number.isFinite(policy.rmsdThresholdAngstrom) || policy.rmsdThresholdAngstrom < 0
+    || policy.eliminateEquivalent!==undefined&&typeof policy.eliminateEquivalent!=='boolean'
     || policy.rmsdMatching!==undefined&&!['fixed','symmetry'].includes(policy.rmsdMatching)
     || !Number.isSafeInteger(policy.maxRecords) || policy.maxRecords < 1
     || (policy.maxDeltaEnergyHartree !== undefined && (!Number.isFinite(policy.maxDeltaEnergyHartree) || policy.maxDeltaEnergyHartree < 0))) throw new Error('构象归簇策略无效。');
   if (records.length > policy.maxRecords) throw new Error('构象归簇结果数超出本次有界预算。');
+  onProgress?.({phase:'cluster',completed:0,total:records.length});
   const counts = new Map<string, number>();
   for (const record of records) counts.set(record.candidateId, (counts.get(record.candidateId) ?? 0) + 1);
   const accepted = new Map<string, (ConformerOptimizationResult & { energyHartree: number; converged: true })[]>();
@@ -222,10 +240,13 @@ export function clusterConformerResults(records: readonly ConformerOptimizationR
         rmsdToRepresentativeAngstrom: matchedRmsd });
       result.memberToCluster.push({ candidateId: record.candidateId, groupId: group.id, clusterId: found.id,
         representativeCandidateId: found.representative.candidateId });
+      onProgress?.({phase:'cluster',completed:result.memberToCluster.length+result.rejected.length,total:records.length});
     }
     result.groups.push(group);
   }
   result.rejected.sort((a, b) => compareText(a.record.candidateId, b.record.candidateId));
+  if(policy.rmsdMatching!=='symmetry'){result.algorithmVersion='fixed-then-element-v1';result.ordinaryAlignmentPairCount=ordinaryAlignmentPairCount;}
+  if(policy.eliminateEquivalent)eliminateEquivalentClusters(result,records,onProgress);
   return result;
 }
 
@@ -246,17 +267,20 @@ function validateClusterGroup(group: ConformerClusterGroup): void {
   if (!identityValid(group.identity)) throw new Error('构象可比组科学身份无效。');
   const key = conformerCalculationIdentityKey(group.identity), clusters = new Set<string>(), members = new Set<string>();
   const first = group.clusters[0]?.representative.structure;
+  const firstConstraints=first?elementConstraintProfile(first,group.clusters[0].representative.constraints):undefined;
   for (const cluster of group.clusters) {
     const rep = cluster.representative;
     if (clusters.has(cluster.id) || rejection(rep,group.rmsdMatching) || conformerCalculationIdentityKey(rep.identity) !== key
-      || (group.rmsdMatching==='symmetry'?!symmetryGraphsEquivalent(rep.structure,first!,rep.constraints,group.clusters[0].representative.constraints):atomKey(rep.structure) !== atomKey(first!) || graphKey(rep.structure) !== graphKey(first!))
-      || group.rmsdMatching!=='symmetry'&&JSON.stringify(rep.constraints??null)!==JSON.stringify(group.clusters[0].representative.constraints??null)
+      || (group.comparisonSemantics==='element-geometry'
+        ?elementCompositionKey(rep.structure)!==elementCompositionKey(first!)||elementConstraintProfile(rep.structure,rep.constraints).key!==firstConstraints!.key
+        :(group.rmsdMatching==='symmetry'?!symmetryGraphsEquivalent(rep.structure,first!,rep.constraints,group.clusters[0].representative.constraints):atomKey(rep.structure) !== atomKey(first!) || graphKey(rep.structure) !== graphKey(first!))
+          ||group.rmsdMatching!=='symmetry'&&JSON.stringify(rep.constraints??null)!==JSON.stringify(group.clusters[0].representative.constraints??null))
       || !cluster.members.some(member => member.candidateId === rep.candidateId && member.energyHartree === rep.energyHartree)) throw new Error('构象可比组包含重复、无效或不可比的代表结构。');
     clusters.add(cluster.id);
     for (const member of cluster.members) {
       if (members.has(member.candidateId) || !sourceValid(member.source) || !Number.isFinite(member.energyHartree)
-        || member.energyHartree < rep.energyHartree || !Number.isFinite(member.rmsdToRepresentativeAngstrom)
-        || member.rmsdToRepresentativeAngstrom < 0) throw new Error('构象簇成员或最低能代表映射无效。');
+        || member.energyHartree < rep.energyHartree || member.rmsdToRepresentativeAngstrom!==null&&(!Number.isFinite(member.rmsdToRepresentativeAngstrom)
+        || member.rmsdToRepresentativeAngstrom < 0)) throw new Error('构象簇成员或最低能代表映射无效。');
       members.add(member.candidateId);
     }
   }

@@ -16,6 +16,7 @@ import stat
 import subprocess
 import sys
 import time
+from conformer_solvation import native_alpb_supported, native_solvation
 
 from ase import units
 from conformer_gfnff import ordinary_directory, isolated_coordinate_input
@@ -53,6 +54,15 @@ MD_ENGINE_IDENTITIES = (
          runtimeMemberDigest='503ec84fc190195e442570e517a5034468c28e63257433624be51b5ef1fbb279',
          parameterDigest='0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2',
          sha256='b40033dc620944f87e520d54d0a3cf69f7df73a9f82955d34dfa1a3464924a1c'),
+    dict(schema='sciyue-xtb-engine-identity/v1', engine='xtb', kind='bundled-independent-rebuild',
+         version='6.7.0', sourceCommit=SOURCE_COMMIT, buildId='5071a886-gnu132-r2-es-hcap-openblas033-v1',
+         compiler=dict(name='gfortran', version='13.2.0'),
+         toolchainArchiveSha256='87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a',
+         sourceReceiptSha256='cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a',
+         scientificPinsSha256='c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b',
+         runtimeMemberDigest='8a92bb2fd39c569f46a83512b797f85fba211fd1b64ee3a60bc3449636a3b32b',
+         parameterDigest='0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2',
+         sha256='585693866b1d9619d312237f82cf1e3684566b5886c7dd7849cdb2b1195656fb'),
 )
 ATOMIC_TIME_FS = .024188843265857
 MAX_RAW_BYTES = 128 * 1024 * 1024
@@ -66,9 +76,10 @@ BAD_NATIVE = re.compile(r'MD is unstable|taking it as converged|ABNORMAL TERMINA
 
 
 class NativeMDError(ValueError):
-    def __init__(self, message, code='SAMPLING_NATIVE_MD_FAILED'):
+    def __init__(self, message, code='SAMPLING_NATIVE_MD_FAILED', details=None):
         super().__init__(message)
         self.code = code
+        self.details = details
 
 
 def require(condition, message, code='SAMPLING_NATIVE_MD_INVALID'):
@@ -205,11 +216,22 @@ def settings(request):
                 j = min((j for j in range(len(atoms)) if j != i),
                         key=lambda j: sum((atom[k]-atoms[j][k])**2 for k in ('x', 'y', 'z')))
                 nearest.add(tuple(sorted((i, j))))
-        require(nearest == {(p['a'], p['b']) for p in pairs},
-                'Native nearest-H constraints differ from the source X-H bond graph', 'SAMPLING_NATIVE_MD_UNSUPPORTED')
+        expected_pairs = {(p['a'], p['b']) for p in pairs}
+        if nearest != expected_pairs:
+            def pair_detail(pair):
+                a, b = pair
+                return dict(atomIndices=[a+1, b+1], elements=[atoms[a]['element'], atoms[b]['element']],
+                            distanceAngstrom=math.dist([atoms[a][k] for k in ('x','y','z')],
+                                                       [atoms[b][k] for k in ('x','y','z')]))
+            raise NativeMDError('含氢键约束与原生配对不一致。', 'SAMPLING_NATIVE_MD_SHAKE_PAIRING',
+                dict(nativePairs=[pair_detail(p) for p in sorted(nearest-expected_pairs)],
+                     sourcePairs=[pair_detail(p) for p in sorted(expected_pairs-nearest)],
+                     reason='Native nearest-H constraints differ from the source X-H bond graph'))
     require(type(md['temperatureK']) in (int, float) and math.isfinite(md['temperatureK']) and 0 < md['temperatureK'] <= 5000,
             'Ordinary native MD requires a positive finite target temperature')
-    require(request.get('solvation') is None or request['method'] in ('gfn1', 'gfn2'),
+    solvation = request.get('solvation')
+    require(solvation is None or (solvation.get('model') == 'alpb' and native_alpb_supported(request['method'], request['operation'], solvation.get('solvent')))
+            or (solvation.get('model') == 'gbsa' and request['method'] in ('gfn1', 'gfn2')),
             'This native method has no supported implicit-solvent route', 'SAMPLING_NATIVE_MD_UNSUPPORTED')
     protection = native_protection_settings(request)
     # Actual resolved pair metadata is repeated per retained frame and terminal.
@@ -283,6 +305,8 @@ def native_arguments(request, runtime):
         sol = request['solvation']
         require(sol.get('model') in ('alpb', 'gbsa') and isinstance(sol.get('solvent'), str)
                 and re.fullmatch(r'[a-z0-9-]{1,40}', sol['solvent']), 'Invalid native MD solvent identity')
+        require(native_alpb_supported(method, request['operation'], sol['solvent']) if sol['model'] == 'alpb'
+                else method in ('gfn1', 'gfn2'), 'Unsupported native MD solvent route')
         args += ['--' + sol['model'], sol['solvent']]
     return args
 
@@ -432,6 +456,10 @@ def temperature_observations(output, request, configuration):
 
 
 def validate_header(output, request, configuration, version):
+    try:
+        native_solvation(output, request)
+    except (ValueError, KeyError, TypeError) as exc:
+        raise NativeMDError(str(exc), 'SAMPLING_NATIVE_SOLVATION_MISMATCH') from exc
     match = re.search(r'\bxtb version\s+(\d+\.\d+\.\d+(?:pre)?)', output, re.I)
     require(match is not None and match.group(1) == version, 'Native MD version does not match its host runtime')
     headings = [re.sub(r'\s+', '', title).upper() for title in re.findall(r'^\s*\|\s*([^|\r\n]+?)\s*\|\s*$', output, re.M)]
@@ -491,6 +519,34 @@ def validate_header(output, request, configuration, version):
                 reference='input-geometry', maxBondResidualAngstrom=0.)
 
 
+def initial_velocity_correction(output):
+    """Read one complete native record; no marker means unknown/legacy/restart."""
+    lines = [line.split() for line in output.splitlines() if line.startswith('ES_MD_INIT_V1')]
+    if not lines:
+        return None
+    require(len(lines) == 1 and len(lines[0]) == 12, 'Invalid native initial velocity record')
+    row = lines[0]
+    require(row[1] in ('0', '1') and row[2].isdigit(), 'Invalid native initial velocity flags')
+    dof, before, after, tbefore, tafter, scale, kh, knh, kb = [number(v) for v in row[3:]]
+    require(dof > 0 and before > 0 and after > 0 and kh >= 0 and knh >= 0 and kb > 0
+            and tbefore > 0 and tafter > 0 and 0 < scale <= 1, 'Invalid native initial velocity values')
+    close = lambda a, b: math.isclose(a, b, rel_tol=2e-12, abs_tol=1e-14)
+    triggered = row[1] == '1'
+    require(close(before, kh+knh) and close(tbefore, 2*before/dof/kb)
+            and close(tafter, 2*after/dof/kb), 'Inconsistent native initial kinetic energy')
+    if triggered:
+        require(tbefore > 8000 and int(row[2]) > 0 and kh > 0 and close(tafter, 8000)
+                and close(after, knh+kh*scale*scale), 'Inconsistent native H-only initial correction')
+    else:
+        require(tbefore <= 8000 and scale == 1 and close(before, after),
+                'Untriggered native initialization changed velocities')
+    return dict(algorithm='xtb-h-only-initial-cap-v1', initialization='automatic', triggered=triggered,
+                degreesOfFreedom=dof, hydrogenCount=int(row[2]), beforeKineticEnergyHartree=before,
+                afterKineticEnergyHartree=after, beforeTemperatureK=tbefore, afterTemperatureK=tafter,
+                hydrogenScale=scale, hydrogenKineticEnergyHartree=kh, nonHydrogenKineticEnergyHartree=knh,
+                ceilingTemperatureK=8000, sourceArtifact='stdout.txt')
+
+
 def validate_completion_output(output, errors, request, configuration, version):
     """Keep fatal/early-exit rejection separate from xTB's final mean-T warning.
 
@@ -498,6 +554,15 @@ def validate_completion_output(output, errors, request, configuration, version):
     then still writes the final restart and success marker. Full raw/restart
     inventory and frame validation remain mandatory in NativeMDSession.run.
     """
+    unstable = re.search(r'^\s*([-+\d.eEdD]+)\s+([-+\d.eEdD]+)\s*\n\s*MD is unstable, emergency exit', output, re.M)
+    if unstable:
+        potential, temperature = (number(v) for v in unstable.groups())
+        if math.isfinite(potential) and -1e5 <= potential <= 1e5 and temperature > 10000:
+            raise NativeMDError(f'原生 MD 提前结束：瞬时温度达到 {temperature:.0f} K。',
+                'SAMPLING_NATIVE_MD_OVERTEMPERATURE', dict(temperatureK=temperature,
+                targetTemperatureK=dynamics_settings(request)['temperatureK'], potentialEnergyHartree=potential,
+                sourceArtifact='stdout.txt', nativeReason=unstable.group(0).strip(),
+                stdout=output, stderr=errors))
     require('normal termination of xtb' in errors.lower() and 'normal exit of md()' in output
             and not BAD_NATIVE.search(output+'\n'+errors), 'Native MD failed or terminated before its requested trajectory')
     validate_header(output, request, configuration, version)
@@ -538,6 +603,8 @@ class NativeMDSession:
         self.effective_shake = None
         self.bias_history = []
         self.native_temperature_observations = []
+        self.initial_velocity_correction = None
+        self.native_solvation = None
 
     def check(self):
         self.external_check()
@@ -606,6 +673,8 @@ class NativeMDSession:
                 'maxBondResidualAngstrom': residual, 'observedBondLengthsAngstrom': observed}),
             requiresUnbiasedOptimization=candidate, optimizationPerformed=False,
             nativeMD=dict(method=self.request['method'], version=self.runtime['version'], inputSha256=self.input_sha,
+                **({'nativeSolvation': copy.deepcopy(self.native_solvation)} if self.native_solvation is not None else {}),
+                initialVelocityCorrection=copy.deepcopy(self.initial_velocity_correction),
                 shakeHydrogenBonds=self.configuration['shakeHydrogenBonds'],
                 hydrogenMassAmu=self.configuration['hydrogenMassAmu'], hydrogenMassMode=self.configuration['hydrogenMassMode'],
                 **({'hydrogenMassScaling': 1} if self.configuration['hydrogenMassAmu'] is None else {}),
@@ -624,6 +693,11 @@ class NativeMDSession:
                 require(not final, 'Native MD effective header was not received')
                 return
             self.effective_shake = validate_header(output, self.request, self.configuration, self.runtime['version']); self.header_confirmed = True
+            self.native_solvation = native_solvation(output, self.request)
+            self.initial_velocity_correction = initial_velocity_correction(output)
+            if self.runtime_identity['buildId'] == '5071a886-gnu132-r2-es-hcap-openblas033-v1':
+                require(self.initial_velocity_correction is not None,
+                        'Native initial velocity provenance is missing from the patched runtime')
         for raw in reader.iter_drain(directory/'xtb.trj', final=final):
             if raw['rawIndex'] == 0:
                 offset = self.configuration['nativeProtection']['coordinateTransform']['offsetAngstrom']
@@ -714,10 +788,13 @@ class NativeMDSession:
                 bounded_file(directory/'stdout.txt', allow_empty=True)
                 output = (directory/'stdout.txt').read_text(encoding='utf-8', errors='replace')
                 self.native_temperature_observations = temperature_observations(output, self.request, self.configuration)
+                self.initial_velocity_correction = initial_velocity_correction(output)
             except (NativeMDError, OSError) as exc:
                 observation_error = exc
             record.update(elapsedSeconds=self.clock()-self.started, frameCount=self.frame_count,
+                          **({'nativeSolvation': copy.deepcopy(self.native_solvation)} if self.native_solvation is not None else {}),
                           nativeTemperatureObservations=copy.deepcopy(self.native_temperature_observations),
+                          initialVelocityCorrection=copy.deepcopy(self.initial_velocity_correction),
                           **({'temperatureObservationError': str(observation_error)} if observation_error else {}),
                           **({'terminalPrefixError': str(prefix_error)} if prefix_error else {}),
                           verifiedHydrogenMass=dict(amu=self.configuration['hydrogenMassAmu'],
@@ -753,10 +830,12 @@ class NativeMDSession:
                        frameCount=self.frame_count, candidateCount=self.candidate_count))
         self.emit(dict(kind='stage', stageId='sampling', status='completed', step=self.configuration['steps'], candidates=self.candidate_count))
         return dict(kind='completed', driver='native-xtb-md', workerSettled=True, samplingCompleted=True,
+            **({'nativeSolvation': copy.deepcopy(self.native_solvation)} if self.native_solvation is not None else {}),
             optimizationPerformed=False, requiresUnbiasedOptimization=True, candidateCount=self.candidate_count, frameCount=self.frame_count,
             step=self.configuration['steps'], evaluations=None, evaluationCountSource='not-reported-native-md',
             budgetEvaluationUpperBound=self.configuration['evaluationUpperBound'],
             seed=self.request['seed'], lastFrame=self.last_frame, biasHistory=copy.deepcopy(self.bias_history),
             nativeTemperatureObservations=copy.deepcopy(self.native_temperature_observations),
+            initialVelocityCorrection=copy.deepcopy(self.initial_velocity_correction),
             **({'thermostatWarning': thermostat_warning} if thermostat_warning is not None else {}),
             postSamplingPotentials=dict(core=False, metadynamics=False, sphere=False), nativeClosed=self.native_closed())

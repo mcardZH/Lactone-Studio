@@ -5,7 +5,11 @@ import {encodeResult,decodeResult,encodePostprocessDocument,decodePostprocessDoc
 import {captureAnalysisProjectState,restoreAnalysisProjectState,type AnalysisProjectState} from './analysis-state';
 import type {ProjectUiSnapshot} from './ui-state';
 import type {AdvancedProjectSnapshot} from './advanced-snapshot';
-import {conformerTaskRequiresExtendedSemantics} from '../modeling/advanced/conformer-cluster-collection';
+import {conformerTaskRequiresExtendedSemantics,conformerTaskRequiresElementGeometrySemantics} from '../modeling/advanced/conformer-cluster-collection';
+import {conformerTaskHasInitialVelocityProvenance,conformerTaskHasNativeSolvationProvenance} from '../modeling/advanced/initial-velocity-provenance';
+import {conformerTaskRequiresAlpbSemantics} from '../modeling/advanced/conformer-solvation';
+import {conformerTaskProtectionRequiresFormat5,conformerTaskSharedFreezeRequiresFormat6} from '../modeling/advanced/conformer-protection';
+import {conformerDisplayRestorationRequiresFormat5,conformerDisplayRestorationRequiresFormat6,type ConformerDisplayRestoration} from '../modeling/conformers/playback-display';
 import {captureImportedModelSources,restoreImportedModelSources,type ImportedModelSourcesSnapshot} from './import-sources';
 import {projectCompanionVersion,postprocessFileDocumentVersion} from './companion-sources';
 import {encodeAdvancedAsset,decodeAdvancedAsset} from './advanced-asset-codec';
@@ -64,7 +68,7 @@ export function markCapturedWorkspaceModelsApplied(registry:WorkspaceRegistry,re
 type Generated=Record<string,{document:PostprocessDocument;ownerId:string;bindingId:string}>;
 export interface SyWorkspaceSnapshot {
  schema:'sciyue-workspace-project/v1';registryAsset:string;
- requiredProjectFormatVersion?:2|3|4;
+ requiredProjectFormatVersion?:2|3|4|5|6;
  results:Record<string,{result?:string;legacyResult?:string;analysisBinding?:{id:string;result:string}}>;
  sources:Record<string,string>;generated:Record<string,{assetId:string;ownerId:string;bindingId:string}>;
  /** File/job sources without a model registry entry retain their own raw assets. */
@@ -90,6 +94,10 @@ let lastAdvancedAsset:string|undefined;
 let lastAdvancedReferences:string[]=[];
 let lastAdvancedRequiresFormat2=false;
 let lastAdvancedRequiresFormat4=false;
+let lastAdvancedRequiresFormat5=false;
+let unreadableRequiresFormat5=false;
+let lastAdvancedRequiresFormat6=false;
+let unreadableRequiresFormat6=false;
 const text=new TextDecoder('utf-8',{fatal:true});
 function refs(value:unknown,output:Set<string>,key=''){
  if(key==='assetId'&&typeof value==='string')output.add(value);
@@ -116,7 +124,8 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const encodedResults=new Map<TrajectoryResult,Promise<TrajectoryResultSnapshot>>();
  const retain=(id:string)=>{dependencies.add(id);(writer as ProjectAssetWriter&{retainAsset?(assetId:string):void}).retainAsset?.(id);};
  const asset=async(name:string,value:unknown,category='results')=>{assertSnapshotsCurrent();const id=(await writer.write(category,name,JSON.stringify(value))).assetId;assertSnapshotsCurrent();retain(id);return id;};
- const saveResult=async(value:TrajectoryResult)=>{let pending=encodedResults.get(value);if(!pending){const cached=input.reuse?resultCache.get(value):undefined;pending=cached?Promise.resolve(cached):encodeResult(value,writer);encodedResults.set(value,pending);}const dto=await pending;resultCache.set(value,dto);refs(dto,dependencies);return asset('trajectory-index.json',dto);};
+ let requiresFormat5=false,resultRequiresFormat6=false;
+ const saveResult=async(value:TrajectoryResult)=>{if(conformerDisplayRestorationRequiresFormat5(value))requiresFormat5=true;if(conformerDisplayRestorationRequiresFormat6((value as TrajectoryResult&{displayRestoration?:ConformerDisplayRestoration}).displayRestoration))resultRequiresFormat6=true;let pending=encodedResults.get(value);if(!pending){const cached=input.reuse?resultCache.get(value):undefined;pending=cached?Promise.resolve(cached):encodeResult(value,writer);encodedResults.set(value,pending);}const dto=await pending;resultCache.set(value,dto);refs(dto,dependencies);return asset('trajectory-index.json',dto);};
  let requiresFormat3=false;
  const saveSource=async(value:PostprocessDocument)=>{const version=projectCompanionVersion(value.output),associationVersion=getPostprocessTaskAssociationVersion(value),fileVersion=postprocessFileDocumentVersion(value);let dto=input.reuse&&sourceCompanionVersions.get(value)===version&&sourceAssociationVersions.get(value)===associationVersion&&sourceFileVersions.get(value)===fileVersion?sourceCache.get(value):undefined;if(!dto){dto=await encodePostprocessDocument(value,writer);sourceCache.set(value,dto);sourceCompanionVersions.set(value,version);sourceAssociationVersions.set(value,associationVersion);sourceFileVersions.set(value,fileVersion);}if(dto.schema===4)requiresFormat3=true;refs(dto,dependencies);return asset('source-index.json',dto);};
  const saveFileSource=async(value:PostprocessScientificFileDocument)=>{const version=postprocessFileDocumentVersion(value);let dto=input.reuse&&fileSourceVersions.get(value)===version?fileSourceCache.get(value):undefined;if(!dto){dto=await encodePostprocessFileDocument(value,writer);fileSourceCache.set(value,dto);fileSourceVersions.set(value,version);}if(dto.schema!==4||!('kind'in dto)||dto.kind!=='scientific-file')throw Error('文件级科学来源未取得对应的完整保存格式。');requiresFormat3=true;refs(dto,dependencies);return asset('scientific-file-index.json',dto);};
@@ -132,6 +141,7 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  for(const [id,value]of unreadableGenerated)if(!generated[id]&&currentDocuments.some(entry=>entry.id===value.ownerId)){if(!input.reuse)throw new Error('项目有缺损的派生结果索引，无法完整另存。');generated[id]=value;retain(value.assetId);}
  const preservingUnreadable=Object.keys(results).some(id=>currentDocuments.some(entry=>entry.id===id&&unreadableResults.has(JSON.stringify([entry.id,entry.epoch]))))||Object.values(sources).some(id=>[...unreadableSources.values()].includes(id))||Object.keys(generated).some(id=>unreadableGenerated.has(id))||Object.keys(fileSources).some(id=>Object.hasOwn(input.preservedFileSources??{},id));
  if(preservingUnreadable&&unreadableRequiresFormat3)requiresFormat3=true;
+ if(preservingUnreadable&&unreadableRequiresFormat5)requiresFormat5=true;
  if(preservingUnreadable)for(const id of unreadableDependencies)retain(id);
  const analysis=await captureAnalysisProjectState(writer,{reuse:input.reuse});refs(analysis,dependencies);
  // File-level diagnostics have no model attachment. Their original source
@@ -142,34 +152,41 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const advancedAsset=advancedData?await asset('advanced-tasks.json',advancedData):input.reuse?lastAdvancedAsset:undefined;if(advancedAsset)retain(advancedAsset);lastAdvancedAsset=advancedAsset;
  if(input.advanced)lastAdvancedRequiresFormat2=input.advanced.schema===2;else if(!input.reuse)lastAdvancedRequiresFormat2=false;
  if(input.advanced)lastAdvancedRequiresFormat4=input.advanced.tasks.some(conformerTaskRequiresExtendedSemantics);else if(!input.reuse)lastAdvancedRequiresFormat4=false;
- const data:SyWorkspaceSnapshot={schema:'sciyue-workspace-project/v1',...(advancedAsset&&lastAdvancedRequiresFormat4?{requiredProjectFormatVersion:4 as const}:requiresFormat3?{requiredProjectFormatVersion:3 as const}:advancedAsset&&lastAdvancedRequiresFormat2?{requiredProjectFormatVersion:2 as const}:{}),registryAsset:await asset('workspace-models.json',registry,'models'),results,sources,...(Object.keys(fileSources).length?{fileSources}:{}),generated,...(advancedAsset?{advancedAsset}:{}),ui:input.ui,shell,analysis,importedSources,assetReferences:[],...(preservingUnreadable&&!unreadableDependencies.length?{preserveUnlistedAssets:true as const}:{})};
+ if(input.advanced)lastAdvancedRequiresFormat5=input.advanced.tasks.some(conformerTaskProtectionRequiresFormat5);else if(!input.reuse)lastAdvancedRequiresFormat5=false;
+ if(input.advanced)lastAdvancedRequiresFormat6=input.advanced.tasks.some(task=>conformerTaskRequiresElementGeometrySemantics(task)||conformerTaskHasInitialVelocityProvenance(task)||conformerTaskHasNativeSolvationProvenance(task)||conformerTaskRequiresAlpbSemantics(task)||conformerTaskSharedFreezeRequiresFormat6(task));else if(!input.reuse)lastAdvancedRequiresFormat6=false;
+ const requiresFormat6=Boolean(resultRequiresFormat6||preservingUnreadable&&unreadableRequiresFormat6||advancedAsset&&lastAdvancedRequiresFormat6);
+ const data:SyWorkspaceSnapshot={schema:'sciyue-workspace-project/v1',...(requiresFormat6?{requiredProjectFormatVersion:6 as const}:requiresFormat5||advancedAsset&&lastAdvancedRequiresFormat5?{requiredProjectFormatVersion:5 as const}:advancedAsset&&lastAdvancedRequiresFormat4?{requiredProjectFormatVersion:4 as const}:requiresFormat3?{requiredProjectFormatVersion:3 as const}:advancedAsset&&lastAdvancedRequiresFormat2?{requiredProjectFormatVersion:2 as const}:{}),registryAsset:await asset('workspace-models.json',registry,'models'),results,sources,...(Object.keys(fileSources).length?{fileSources}:{}),generated,...(advancedAsset?{advancedAsset}:{}),ui:input.ui,shell,analysis,importedSources,assetReferences:[],...(preservingUnreadable&&!unreadableDependencies.length?{preserveUnlistedAssets:true as const}:{})};
  // DTO cache reuse can skip every writer call; register its nested dependencies
  // independently of whether a frame/source/grid has ever been read.
  for(const id of dependencies)retain(id);data.assetReferences=[...dependencies];assertSnapshotsCurrent();return data;
 }
 export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetReader){
  const data=value as SyWorkspaceSnapshot;if(!data||data.schema!=='sciyue-workspace-project/v1'||!data.registryAsset||!data.ui||!data.shell)throw new Error('项目工作区格式不受支持。');
- if(data.requiredProjectFormatVersion!==undefined&&![2,3,4].includes(data.requiredProjectFormatVersion))throw new Error('项目工作区需要较新的保存格式，原项目未改变。');
+ if(data.requiredProjectFormatVersion!==undefined&&![2,3,4,5,6].includes(data.requiredProjectFormatVersion))throw new Error('项目工作区需要较新的保存格式，原项目未改变。');
  if(data.fileSources&&Object.keys(data.fileSources).length&&(data.requiredProjectFormatVersion??0)<3)throw Error('文件级科学来源缺少项目写入保护声明，原项目未改变。');
  const read=<T,>(id:string)=>reader.read(id).then(bytes=>JSON.parse(text.decode(bytes)) as T);
  const registry=await read<WorkspaceProjectState>(data.registryAsset);
  unreadableResults.clear();unreadableSources.clear();unreadableGenerated.clear();unreadableFileSources.clear();unreadableDependencies=data.assetReferences??[];unreadableRequiresFormat3=(data.requiredProjectFormatVersion??0)>=3;
+ unreadableRequiresFormat5=(data.requiredProjectFormatVersion??0)>=5;
+ unreadableRequiresFormat6=data.requiredProjectFormatVersion===6;
  const issues:{assetId:string;message:string}[]=[];
  const keyFor=(id:string)=>JSON.stringify([id,registry.documents.find(entry=>entry.id===id)?.epoch]);
  const results=new Map<string,{result?:TrajectoryResult;legacyResult?:TrajectoryResult;analysisBinding?:{id:string;result:TrajectoryResult}}>();
  const sources:Record<string,PostprocessDocument>={},fileSources:Record<string,PostprocessScientificFileDocument>={},generated:Generated={};
  const decodedResults=new Map<string,TrajectoryResult>();
- const loadResult=async(id:string)=>{const cached=decodedResults.get(id);if(cached)return cached;const dto=await read<TrajectoryResultSnapshot>(id),result=decodeResult(dto,reader);resultCache.set(result,dto);decodedResults.set(id,result);return result;};
+ const loadResult=async(id:string)=>{const cached=decodedResults.get(id);if(cached)return cached;const dto=await read<TrajectoryResultSnapshot>(id),result=decodeResult(dto,reader);if(conformerDisplayRestorationRequiresFormat6((result as TrajectoryResult&{displayRestoration?:ConformerDisplayRestoration}).displayRestoration)&&(data.requiredProjectFormatVersion??0)<6)throw Error("分类型构象显示缺少项目写入保护声明。");if(conformerDisplayRestorationRequiresFormat5(result)&&(data.requiredProjectFormatVersion??0)<5)throw Error('构象显示恢复缺少项目写入保护声明。');resultCache.set(result,dto);decodedResults.set(id,result);return result;};
  const loadSource=async(id:string)=>{const dto=await read<PostprocessDocumentSnapshot>(id);if(dto.schema===4&&(data.requiredProjectFormatVersion??0)<3)throw Error('科学来源角色缺少项目写入保护声明。');const result=decodePostprocessDocument(dto,reader);sourceCache.set(result,dto);sourceCompanionVersions.set(result,projectCompanionVersion(result.output));sourceAssociationVersions.set(result,getPostprocessTaskAssociationVersion(result));sourceFileVersions.set(result,postprocessFileDocumentVersion(result));return result;};
  for(const [id,row]of Object.entries(data.results)){const target:{result?:TrajectoryResult;legacyResult?:TrajectoryResult;analysisBinding?:{id:string;result:TrajectoryResult}}={};for(const kind of ['result','legacyResult','analysisBinding']as const){const asset=kind==='analysisBinding'?row.analysisBinding?.result:row[kind];if(!asset)continue;try{const value=await loadResult(asset);if(kind==='analysisBinding')target.analysisBinding={id:row.analysisBinding!.id,result:value};else target[kind]=value;}catch(error){unreadableResults.set(keyFor(id),row);issues.push({assetId:asset,message:error instanceof Error?error.message:String(error)});}}results.set(id,target);}
  for(const [id,asset]of Object.entries(data.sources))try{sources[id]=await loadSource(asset);}catch(error){unreadableSources.set(keyFor(id),asset);issues.push({assetId:asset,message:error instanceof Error?error.message:String(error)});}
  for(const [id,asset]of Object.entries(data.fileSources??{}))try{const dto=await read<PostprocessFileDocumentSnapshot>(asset);if(dto.schema!==4||!('kind'in dto)||dto.kind!=='scientific-file')throw Error('文件级来源索引格式不一致。');const source=decodePostprocessFileDocument(dto,reader);if(!isScientificFileDocument(source)||source.id!==id)throw Error('文件级来源索引身份不一致。');fileSourceCache.set(source,dto);fileSourceVersions.set(source,postprocessFileDocumentVersion(source));fileSources[id]=source;}catch(error){unreadableFileSources.set(id,asset);issues.push({assetId:asset,message:error instanceof Error?error.message:String(error)});}
  for(const [id,row]of Object.entries(data.generated))try{generated[id]={document:await loadSource(row.assetId),ownerId:row.ownerId,bindingId:row.bindingId};}catch(error){unreadableGenerated.set(id,row);issues.push({assetId:row.assetId,message:error instanceof Error?error.message:String(error)});}
  await restoreAnalysisProjectState(data.analysis,reader);
- lastAdvancedAsset=data.advancedAsset;lastAdvancedRequiresFormat2=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=2);lastAdvancedRequiresFormat4=Boolean(data.advancedAsset&&data.requiredProjectFormatVersion===4);lastAdvancedReferences=data.advancedAsset?[...data.assetReferences??[]]:[];lastImportedSources=data.importedSources;await restoreImportedModelSources(data.importedSources??{schema:1,sources:[],bundles:[]},reader);
+ lastAdvancedAsset=data.advancedAsset;lastAdvancedRequiresFormat2=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=2);lastAdvancedRequiresFormat4=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=4);lastAdvancedRequiresFormat5=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=5);lastAdvancedRequiresFormat6=Boolean(data.advancedAsset&&data.requiredProjectFormatVersion===6);lastAdvancedReferences=data.advancedAsset?[...data.assetReferences??[]]:[];lastImportedSources=data.importedSources;await restoreImportedModelSources(data.importedSources??{schema:1,sources:[],bundles:[]},reader);
  return{data,registry,results,sources,fileSources,fileSourceIssues:Object.fromEntries(unreadableFileSources),generated,issues,readAdvanced:async()=>{
    if(!data.advancedAsset)return;
    const advanced=await decodeAdvancedAsset(await read<unknown>(data.advancedAsset),reader);
+   if(advanced.tasks.some(task=>conformerTaskRequiresElementGeometrySemantics(task)||conformerTaskHasInitialVelocityProvenance(task)||conformerTaskHasNativeSolvationProvenance(task)||conformerTaskRequiresAlpbSemantics(task)||conformerTaskSharedFreezeRequiresFormat6(task))&&(data.requiredProjectFormatVersion??0)<6)throw Error('等价消除或原生初速度来源缺少项目写入保护声明。');
+   if(advanced.tasks.some(conformerTaskProtectionRequiresFormat5)&&(data.requiredProjectFormatVersion??0)<5)throw Error('构象保护启用或运行冻结快照缺少项目写入保护声明。');
    if(advanced.tasks.some(conformerTaskRequiresExtendedSemantics)&&(data.requiredProjectFormatVersion??0)<4)throw Error('构象匹配或抽帧语义缺少项目写入保护声明。');
    return advanced;
  }};

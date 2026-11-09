@@ -150,6 +150,8 @@ export class OptPlaybackSession {
     this.state = { ...this.state, busy: false, ...(this.prepared ? { loading: false, playing: false, previewing: false } : {}) };
     this.listeners.clear();
   }
+  /** Explicit React effect replay; ordinary visibility callbacks cannot revive a lease. */
+  reacquire() { this.prepared?.reacquire(); }
   setEnvironment(active: boolean, ready: boolean) {
     this.active = active; this.ready = ready;
     if (!this.unsubscribePreparation && this.prepared) this.unsubscribePreparation = this.prepared.subscribe(() => this.updatePreparation());

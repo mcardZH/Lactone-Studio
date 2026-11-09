@@ -1,6 +1,6 @@
 {
   "schema": "ester-v201-public-license-materials/v1",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "publicDistributionApproved": false,
   "indexSelfExcluded": true,
   "files": [
@@ -8,6 +8,16 @@
       "path": "2d-components/BUNDLE_REACHABILITY.json",
       "bytes": 434,
       "sha256": "17e95ea69b0f7d4e900d8b111adc1f7c514186e39d6fd660b0276659db9877aa"
+    },
+    {
+      "path": "2d-components/README.md",
+      "bytes": 2187,
+      "sha256": "21e75adbdbe56bb1db896025e5ad3dd1b179b5db7e5ba077b401ba90f44f7fac"
+    },
+    {
+      "path": "2d-components/RECEIPT.json",
+      "bytes": 259049,
+      "sha256": "fb97e4cf5bf07b7fe6dfa3b372d4f54e445bfe5984022e691b88dbc71a2a7b14"
     },
     {
       "path": "2d-components/npm/@babel__code-frame@7.29.7/LICENSE",
@@ -415,12 +425,12 @@
       "sha256": "63cb98b3f6abfb3c3592c16f88253c1bdc834087bf52671e8ce5609e4eb693cf"
     },
     {
-      "path": "2d-components/npm/cfb@1.2.2/dist/LICENSE",
+      "path": "2d-components/npm/cfb@1.2.2/LICENSE",
       "bytes": 11355,
       "sha256": "279ce5f639ecd1767f96948f9fbe6f0aa8145cb280cf98473fb366eab5e6de26"
     },
     {
-      "path": "2d-components/npm/cfb@1.2.2/LICENSE",
+      "path": "2d-components/npm/cfb@1.2.2/dist/LICENSE",
       "bytes": 11355,
       "sha256": "279ce5f639ecd1767f96948f9fbe6f0aa8145cb280cf98473fb366eab5e6de26"
     },
@@ -1415,9 +1425,9 @@
       "sha256": "8e714750725e75c8b31172ef84c0805f94873f86e3b5cfca8a948553f0778fa1"
     },
     {
-      "path": "2d-components/npm/three@0.153.0/examples/fonts/droid/NOTICE",
-      "bytes": 10695,
-      "sha256": "38751245389e1e23f73e6f5384b5cbe7fa972cc4410c5adc9c04b082a0b9561a"
+      "path": "2d-components/npm/three@0.153.0/LICENSE",
+      "bytes": 1081,
+      "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
     },
     {
       "path": "2d-components/npm/three@0.153.0/examples/fonts/LICENSE",
@@ -1425,9 +1435,9 @@
       "sha256": "35e8279356d7890871c4fce804d157e3f21456a7311ef2caab5cb4705c71b6bd"
     },
     {
-      "path": "2d-components/npm/three@0.153.0/LICENSE",
-      "bytes": 1081,
-      "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
+      "path": "2d-components/npm/three@0.153.0/examples/fonts/droid/NOTICE",
+      "bytes": 10695,
+      "sha256": "38751245389e1e23f73e6f5384b5cbe7fa972cc4410c5adc9c04b082a0b9561a"
     },
     {
       "path": "2d-components/npm/tslib@2.9.1/LICENSE.txt",
@@ -1535,16 +1545,6 @@
       "sha256": "ca4662cb5d1b738fbe5350c0d5485ba11773b4b7208974082ae6e129a52d631d"
     },
     {
-      "path": "2d-components/README.md",
-      "bytes": 2187,
-      "sha256": "682a73d3f56e39b2e72b15487f5a217ee2f9015aa9404bd777bc8a2ea150e694"
-    },
-    {
-      "path": "2d-components/RECEIPT.json",
-      "bytes": 259049,
-      "sha256": "fb97e4cf5bf07b7fe6dfa3b372d4f54e445bfe5984022e691b88dbc71a2a7b14"
-    },
-    {
       "path": "2d-components/upstream/cairo-license-options/LGPL-2.1.txt",
       "bytes": 26001,
       "sha256": "5749785c8bdefafcb5d798270ed0a967036fe2ca63dcedade1627565dfef81d2"
@@ -1555,6 +1555,11 @@
       "sha256": "f849fc26a7a99981611a3a370e83078deb617d12a45776d6c4cada4d338be469"
     },
     {
+      "path": "2d-components/upstream/indigo-1.46.0/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
       "path": "2d-components/upstream/indigo-1.46.0/api/wasm/indigo-ketcher/CMakeLists.txt",
       "bytes": 5890,
       "sha256": "f06d1a02dfd766a3cea8b5ad8091ee4aab4ccdf469de30cbf8f1dd31e7afe3d9"
@@ -1563,11 +1568,6 @@
       "path": "2d-components/upstream/indigo-1.46.0/core-CDXConstants.h",
       "bytes": 55823,
       "sha256": "f4328f10e1f4e7799624ab8b20e52e6bd5ab346e9a5e36a028da34a208e78cbc"
-    },
-    {
-      "path": "2d-components/upstream/indigo-1.46.0/LICENSE",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
     },
     {
       "path": "2d-components/upstream/indigo-1.46.0/third_party/cairo/CMakeLists.txt",
@@ -1590,14 +1590,14 @@
       "sha256": "c076970c8139ffd5b28d788ef62421d1f019581e24bc5e1e754103631e9fc192"
     },
     {
-      "path": "2d-components/upstream/indigo-1.46.0/third_party/freetype/docs/FTL.TXT",
-      "bytes": 6743,
-      "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1"
-    },
-    {
       "path": "2d-components/upstream/indigo-1.46.0/third_party/freetype/LICENSE.TXT",
       "bytes": 6717,
       "sha256": "45205572546ec68acb9ddf32c8cdfc33b9c89c260003d29252c08a72190cb27c"
+    },
+    {
+      "path": "2d-components/upstream/indigo-1.46.0/third_party/freetype/docs/FTL.TXT",
+      "bytes": 6743,
+      "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1"
     },
     {
       "path": "2d-components/upstream/indigo-1.46.0/third_party/inchi/CMakeLists.txt",
@@ -1670,6 +1670,26 @@
       "sha256": "e008ab9f8b36ec517cc47be20e776e68d69f5ba75f8f774d506ae4696d0e50c4"
     },
     {
+      "path": "COMPONENT_SOURCES.json",
+      "bytes": 6457,
+      "sha256": "b5408a5fbd74b0441cd3a1be8eaf3d18fb9af2df9e02f70fdcab82377d83264c"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4431,
+      "sha256": "5b6c432cdb7277d66eb6bdb543aa54e0368852b25edc628bdfc5c31f8edcc7cc"
+    },
+    {
+      "path": "SAME_BODY_INDEX.json",
+      "bytes": 155344,
+      "sha256": "379430d978e4b4c80e42faa86e67b7285862f2a528e963e292af5f452467ad4a"
+    },
+    {
+      "path": "THIRD_PARTY_RUNTIME_TERMS.md",
+      "bytes": 5872,
+      "sha256": "879bd9d10f2be5721571ac0cd000c30e91d70180d70bdb3d6932eb3727e21299"
+    },
+    {
       "path": "chromium/LICENSES.chromium.html",
       "bytes": 20477229,
       "sha256": "e6e6b1f9cb0f32235412be113de7716333e88121f9159a0ea0ff3be652021af7"
@@ -1688,11 +1708,6 @@
       "path": "common/LGPL-3.0.txt",
       "bytes": 7652,
       "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "COMPONENT_SOURCES.json",
-      "bytes": 5152,
-      "sha256": "ab9566a79eb1f3091653d2366b6df5f1688219fa74eebde155072416ca976f71"
     },
     {
       "path": "electron/LICENSE",
@@ -1740,14 +1755,39 @@
       "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
     },
     {
+      "path": "frontend/react-dom/LICENSE",
+      "bytes": 1088,
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    },
+    {
       "path": "frontend/react/LICENSE",
       "bytes": 1088,
       "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
     },
     {
-      "path": "frontend/react-dom/LICENSE",
-      "bytes": 1088,
-      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+      "path": "image-decode/README.md",
+      "bytes": 362,
+      "sha256": "482089a5d594faf85a10c123ad6ab2713b906843a43a90df3ae2617cb11b2b46"
+    },
+    {
+      "path": "image-decode/RECEIPT.json",
+      "bytes": 3896,
+      "sha256": "04abf868b43f68a51057dfd608a62fcd3647df92769f76e0a1acf9c40a04099c"
+    },
+    {
+      "path": "image-decode/npm/pako@1.0.11/LICENSE",
+      "bytes": 1104,
+      "sha256": "a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539"
+    },
+    {
+      "path": "image-decode/npm/pako@1.0.11/README.md",
+      "bytes": 6066,
+      "sha256": "8174ca473d9df9da15064d199064e8e3ff88d46beb66b545e048756e6f0fb469"
+    },
+    {
+      "path": "image-decode/npm/pako@1.0.11/lib/zlib/README",
+      "bytes": 2180,
+      "sha256": "d8b499598e43d755ea8918448128259ff01820c50d94d5a48c8883d0a594ddb1"
     },
     {
       "path": "image-decode/npm/pako@1.0.11/lib/zlib/adler32.js",
@@ -1795,11 +1835,6 @@
       "sha256": "eec5f5d6b8120ada9cd48a3ca0a253c64777906e835477b090e053434d38cf6c"
     },
     {
-      "path": "image-decode/npm/pako@1.0.11/lib/zlib/README",
-      "bytes": 2180,
-      "sha256": "d8b499598e43d755ea8918448128259ff01820c50d94d5a48c8883d0a594ddb1"
-    },
-    {
       "path": "image-decode/npm/pako@1.0.11/lib/zlib/trees.js",
       "bytes": 39879,
       "sha256": "718adbbf68f4343bf17d61edffd9d0788a96a93e4e191d857459d95257e614cf"
@@ -1810,29 +1845,164 @@
       "sha256": "5fa10c7a59ca99113cf92d1260e56cbd6282e15afa85dc8a0eb8e8d6d2321298"
     },
     {
-      "path": "image-decode/npm/pako@1.0.11/LICENSE",
-      "bytes": 1104,
-      "sha256": "a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539"
-    },
-    {
-      "path": "image-decode/npm/pako@1.0.11/README.md",
-      "bytes": 6066,
-      "sha256": "8174ca473d9df9da15064d199064e8e3ff88d46beb66b545e048756e6f0fb469"
-    },
-    {
       "path": "image-decode/npm/utif@3.1.0/LICENSE",
       "bytes": 1065,
       "sha256": "c1fb8861eca211bf5aea574358aba7039396c0c1824c2a1477cc126d398efd89"
     },
     {
-      "path": "image-decode/README.md",
-      "bytes": 362,
-      "sha256": "482089a5d594faf85a10c123ad6ab2713b906843a43a90df3ae2617cb11b2b46"
+      "path": "native/conda-v039/dftd4/Library/share/licenses/dftd4/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
     },
     {
-      "path": "image-decode/RECEIPT.json",
-      "bytes": 3896,
-      "sha256": "04abf868b43f68a51057dfd608a62fcd3647df92769f76e0a1acf9c40a04099c"
+      "path": "native/conda-v039/dftd4/Library/share/licenses/dftd4/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "native/conda-v039/dftd4/info/licenses/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "native/conda-v039/dftd4/info/licenses/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "native/conda-v039/libblas/info/licenses/LICENSE.txt",
+      "bytes": 1521,
+      "sha256": "c52691f010a91c8ef71062f01d62dcef465fd14bd5ff8b47155cee2480c1d844"
+    },
+    {
+      "path": "native/conda-v039/libgcc/Library/share/licenses/gcc-libs/RUNTIME.LIBRARY.EXCEPTION",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "native/conda-v039/libgfortran5/Library/share/licenses/libgfortran/RUNTIME.LIBRARY.EXCEPTION",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "native/conda-v039/libgomp/Library/share/licenses/gcc-libs/RUNTIME.LIBRARY.EXCEPTION.gomp_copy",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "native/conda-v039/liblapack/info/licenses/LICENSE.txt",
+      "bytes": 1521,
+      "sha256": "c52691f010a91c8ef71062f01d62dcef465fd14bd5ff8b47155cee2480c1d844"
+    },
+    {
+      "path": "native/conda-v039/libopenblas/info/licenses/LICENSE",
+      "bytes": 1548,
+      "sha256": "190b5a9c8d9723fe958ad33916bd7346d96fab3c5ea90832bb02d854f620fcff"
+    },
+    {
+      "path": "native/conda-v039/libopenblas/info/licenses/lapack-netlib/LICENSE",
+      "bytes": 2266,
+      "sha256": "978539245c405775bf347b1256c36df4daf8b69a64b099e94b1d53742201621e"
+    },
+    {
+      "path": "native/conda-v039/libwinpthread/info/licenses/COPYING.MinGW-w64/COPYING.MinGW-w64.txt",
+      "bytes": 5905,
+      "sha256": "f38e6194bd3bfa1b654f118e5acefe0aead437bbe669eee43957ccc65a7127f1"
+    },
+    {
+      "path": "native/conda-v039/libwinpthread/info/licenses/mingw-w64-libraries/winpthreads/COPYING",
+      "bytes": 2883,
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177"
+    },
+    {
+      "path": "native/conda-v039/mctc-lib/Library/share/licenses/mctc-lib/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "native/conda-v039/mctc-lib/info/licenses/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "native/conda-v039/multicharge/Library/share/licenses/multicharge/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "native/conda-v039/multicharge/info/licenses/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "native/conda-v039/simple-dftd3/Library/share/licenses/s-dftd3/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "native/conda-v039/simple-dftd3/Library/share/licenses/s-dftd3/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "native/conda-v039/simple-dftd3/info/licenses/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "native/conda-v039/simple-dftd3/info/licenses/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "native/conda-v039/tblite-python/info/licenses/subprojects/tblite/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "native/conda-v039/tblite-python/info/licenses/subprojects/tblite/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "native/conda-v039/tblite/Library/share/licenses/tblite/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "native/conda-v039/tblite/Library/share/licenses/tblite/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "native/conda-v039/tblite/info/licenses/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "native/conda-v039/tblite/info/licenses/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "native/conda-v039/toml-f/Library/share/licenses/toml-f/LICENSE-Apache",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "native/conda-v039/toml-f/Library/share/licenses/toml-f/LICENSE-MIT",
+      "bytes": 1061,
+      "sha256": "aae148780b8012a964c33894d1414ff183b0b67a76fcc63f8893d3f816909e39"
+    },
+    {
+      "path": "native/conda-v039/toml-f/info/licenses/LICENSE-Apache",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "native/conda-v039/toml-f/info/licenses/LICENSE-MIT",
+      "bytes": 1061,
+      "sha256": "aae148780b8012a964c33894d1414ff183b0b67a76fcc63f8893d3f816909e39"
     },
     {
       "path": "native/conda/bzip2/LICENSE",
@@ -1860,12 +2030,12 @@
       "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
     },
     {
-      "path": "native/conda/libboost/LICENSE_1_0.txt",
+      "path": "native/conda/libboost-python/LICENSE_1_0.txt",
       "bytes": 1338,
       "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
     },
     {
-      "path": "native/conda/libboost-python/LICENSE_1_0.txt",
+      "path": "native/conda/libboost/LICENSE_1_0.txt",
       "bytes": 1338,
       "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
     },
@@ -1930,6 +2100,16 @@
       "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
     },
     {
+      "path": "native/conda/pywin32/Pythonwin/License.txt",
+      "bytes": 1510,
+      "sha256": "fa810629bba5fecc9ffc3acb3e9961dfd86bdc6f9aff4a7c3bbecadc94584a28"
+    },
+    {
+      "path": "native/conda/pywin32/Pythonwin/Scintilla/License.txt",
+      "bytes": 854,
+      "sha256": "195e757720836a7d57f0f13dc93bf5140ecb186466845cf42c53fa9cbaf6c280"
+    },
+    {
       "path": "native/conda/pywin32/adodbapi/license.txt",
       "bytes": 26420,
       "sha256": "bfadf1e499859cd237ce2fd5c1f5390412bd75d83a16edc46a5837e83b703ec6"
@@ -1943,16 +2123,6 @@
       "path": "native/conda/pywin32/com/win32comext/mapi/src/MAPIStubLibrary/LICENSE",
       "bytes": 1066,
       "sha256": "a46919cc8f01eb73f6e4b84af0d41b46b2a33b87c74e864279ef585079f82da4"
-    },
-    {
-      "path": "native/conda/pywin32/Pythonwin/License.txt",
-      "bytes": 1510,
-      "sha256": "fa810629bba5fecc9ffc3acb3e9961dfd86bdc6f9aff4a7c3bbecadc94584a28"
-    },
-    {
-      "path": "native/conda/pywin32/Pythonwin/Scintilla/License.txt",
-      "bytes": 854,
-      "sha256": "195e757720836a7d57f0f13dc93bf5140ecb186466845cf42c53fa9cbaf6c280"
     },
     {
       "path": "native/conda/pywin32/win32/License.txt",
@@ -2030,161 +2200,6 @@
       "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
     },
     {
-      "path": "native/conda-v039/dftd4/info/licenses/COPYING",
-      "bytes": 35149,
-      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    },
-    {
-      "path": "native/conda-v039/dftd4/info/licenses/COPYING.LESSER",
-      "bytes": 7652,
-      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "native/conda-v039/dftd4/Library/share/licenses/dftd4/COPYING",
-      "bytes": 35149,
-      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    },
-    {
-      "path": "native/conda-v039/dftd4/Library/share/licenses/dftd4/COPYING.LESSER",
-      "bytes": 7652,
-      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "native/conda-v039/libblas/info/licenses/LICENSE.txt",
-      "bytes": 1521,
-      "sha256": "c52691f010a91c8ef71062f01d62dcef465fd14bd5ff8b47155cee2480c1d844"
-    },
-    {
-      "path": "native/conda-v039/libgcc/Library/share/licenses/gcc-libs/RUNTIME.LIBRARY.EXCEPTION",
-      "bytes": 3324,
-      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
-    },
-    {
-      "path": "native/conda-v039/libgfortran5/Library/share/licenses/libgfortran/RUNTIME.LIBRARY.EXCEPTION",
-      "bytes": 3324,
-      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
-    },
-    {
-      "path": "native/conda-v039/libgomp/Library/share/licenses/gcc-libs/RUNTIME.LIBRARY.EXCEPTION.gomp_copy",
-      "bytes": 3324,
-      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
-    },
-    {
-      "path": "native/conda-v039/liblapack/info/licenses/LICENSE.txt",
-      "bytes": 1521,
-      "sha256": "c52691f010a91c8ef71062f01d62dcef465fd14bd5ff8b47155cee2480c1d844"
-    },
-    {
-      "path": "native/conda-v039/libopenblas/info/licenses/lapack-netlib/LICENSE",
-      "bytes": 2266,
-      "sha256": "978539245c405775bf347b1256c36df4daf8b69a64b099e94b1d53742201621e"
-    },
-    {
-      "path": "native/conda-v039/libopenblas/info/licenses/LICENSE",
-      "bytes": 1548,
-      "sha256": "190b5a9c8d9723fe958ad33916bd7346d96fab3c5ea90832bb02d854f620fcff"
-    },
-    {
-      "path": "native/conda-v039/libwinpthread/info/licenses/COPYING.MinGW-w64/COPYING.MinGW-w64.txt",
-      "bytes": 5905,
-      "sha256": "f38e6194bd3bfa1b654f118e5acefe0aead437bbe669eee43957ccc65a7127f1"
-    },
-    {
-      "path": "native/conda-v039/libwinpthread/info/licenses/mingw-w64-libraries/winpthreads/COPYING",
-      "bytes": 2883,
-      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177"
-    },
-    {
-      "path": "native/conda-v039/mctc-lib/info/licenses/LICENSE",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "native/conda-v039/mctc-lib/Library/share/licenses/mctc-lib/LICENSE",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "native/conda-v039/multicharge/info/licenses/LICENSE",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "native/conda-v039/multicharge/Library/share/licenses/multicharge/LICENSE",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "native/conda-v039/simple-dftd3/info/licenses/COPYING",
-      "bytes": 35149,
-      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    },
-    {
-      "path": "native/conda-v039/simple-dftd3/info/licenses/COPYING.LESSER",
-      "bytes": 7652,
-      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "native/conda-v039/simple-dftd3/Library/share/licenses/s-dftd3/COPYING",
-      "bytes": 35149,
-      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    },
-    {
-      "path": "native/conda-v039/simple-dftd3/Library/share/licenses/s-dftd3/COPYING.LESSER",
-      "bytes": 7652,
-      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "native/conda-v039/tblite/info/licenses/COPYING",
-      "bytes": 35149,
-      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    },
-    {
-      "path": "native/conda-v039/tblite/info/licenses/COPYING.LESSER",
-      "bytes": 7652,
-      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "native/conda-v039/tblite/Library/share/licenses/tblite/COPYING",
-      "bytes": 35149,
-      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    },
-    {
-      "path": "native/conda-v039/tblite/Library/share/licenses/tblite/COPYING.LESSER",
-      "bytes": 7652,
-      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "native/conda-v039/tblite-python/info/licenses/subprojects/tblite/COPYING",
-      "bytes": 35149,
-      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    },
-    {
-      "path": "native/conda-v039/tblite-python/info/licenses/subprojects/tblite/COPYING.LESSER",
-      "bytes": 7652,
-      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
-    },
-    {
-      "path": "native/conda-v039/toml-f/info/licenses/LICENSE-Apache",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "native/conda-v039/toml-f/info/licenses/LICENSE-MIT",
-      "bytes": 1061,
-      "sha256": "aae148780b8012a964c33894d1414ff183b0b67a76fcc63f8893d3f816909e39"
-    },
-    {
-      "path": "native/conda-v039/toml-f/Library/share/licenses/toml-f/LICENSE-Apache",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "native/conda-v039/toml-f/Library/share/licenses/toml-f/LICENSE-MIT",
-      "bytes": 1061,
-      "sha256": "aae148780b8012a964c33894d1414ff183b0b67a76fcc63f8893d3f816909e39"
-    },
-    {
       "path": "native/python-dist/ase/ase-3.28.0.dist-info/licenses/LICENSE",
       "bytes": 609,
       "sha256": "8ca76f9c8c2293e7563ac648d94770c2319d56be588eb190c5f0f9564c92d663"
@@ -2208,6 +2223,16 @@
       "path": "native/python-dist/threadpoolctl/threadpoolctl-3.6.0.dist-info/licenses/LICENSE",
       "bytes": 1507,
       "sha256": "81ac619075248b06e53660b652d10e485f4675f5d0ae0f97ea22370da1f7e23b"
+    },
+    {
+      "path": "native/wheels/numpy-2.4.6.dist-info/METADATA",
+      "bytes": 6608,
+      "sha256": "b082c52ccbe3b880bae177c35171b52ed6c947f3ad71e3762f2723f60a411de0"
+    },
+    {
+      "path": "native/wheels/numpy-2.4.6.dist-info/WHEEL",
+      "bytes": 85,
+      "sha256": "e743de01ba6503a3e4234858398a1e69c07d512d51e8482ec9f3a7b1c707d165"
     },
     {
       "path": "native/wheels/numpy-2.4.6.dist-info/licenses/LICENSE.txt",
@@ -2295,16 +2320,6 @@
       "sha256": "454ec7350e478e037061850b67395753b425b1cb0a34bbc26290b020bf89d763"
     },
     {
-      "path": "native/wheels/numpy-2.4.6.dist-info/METADATA",
-      "bytes": 6608,
-      "sha256": "b082c52ccbe3b880bae177c35171b52ed6c947f3ad71e3762f2723f60a411de0"
-    },
-    {
-      "path": "native/wheels/numpy-2.4.6.dist-info/WHEEL",
-      "bytes": 85,
-      "sha256": "e743de01ba6503a3e4234858398a1e69c07d512d51e8482ec9f3a7b1c707d165"
-    },
-    {
       "path": "native/wheels/scipy-1.17.1.dist-info/LICENSE.txt",
       "bytes": 46756,
       "sha256": "564d63dbef2ef3eb1dec94908966d3edf5f11c487ee2cf2baf8bf3faef01bdd9"
@@ -2320,6 +2335,16 @@
       "sha256": "e743de01ba6503a3e4234858398a1e69c07d512d51e8482ec9f3a7b1c707d165"
     },
     {
+      "path": "ocr/molvec/README.md",
+      "bytes": 1194,
+      "sha256": "3d4647f75c7d522bcbdefc8a9948b38bb89e7559ebbad23ed73909ad9b35c5cf"
+    },
+    {
+      "path": "ocr/molvec/molvec-LICENSE-upstream.txt",
+      "bytes": 11360,
+      "sha256": "b8676920a9b5dd9fce829f11f07e3c08201cdcfc874e7a9ab2e163d1f64d5253"
+    },
+    {
       "path": "ocr/molvec/molvec-jar-LICENSE.txt",
       "bytes": 11358,
       "sha256": "c95bae1d1ce0235ecccd3560b772ec1efb97f348a79f0fbe0a634f0c2ccefe2c"
@@ -2330,19 +2355,24 @@
       "sha256": "50cd32044ea2b50bbca3b71113d7c699ed6ea98e117eac3ad5eb353d85bafe37"
     },
     {
-      "path": "ocr/molvec/molvec-LICENSE-upstream.txt",
-      "bytes": 11360,
-      "sha256": "b8676920a9b5dd9fce829f11f07e3c08201cdcfc874e7a9ab2e163d1f64d5253"
-    },
-    {
-      "path": "ocr/molvec/README.md",
-      "bytes": 1194,
-      "sha256": "3d4647f75c7d522bcbdefc8a9948b38bb89e7559ebbad23ed73909ad9b35c5cf"
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/NOTICE",
+      "bytes": 2400,
+      "sha256": "c02756bcd9fa8191bf0fda4451bc018414dd44ee35bf09922c24377a475e4b5a"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/ADDITIONAL_LICENSE_INFO",
       "bytes": 2114,
       "sha256": "a69bce275ba7a3570af6579cb0f55682cd75fedfcd49e0e8e9022270c447c916"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/ASSEMBLY_EXCEPTION",
+      "bytes": 1522,
+      "sha256": "a44eb7b5caf5534c6ef536b21edb40b4d6babf91bf97d9d45596868618b2c6fb"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/LICENSE",
+      "bytes": 19274,
+      "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/aes.md",
@@ -2353,11 +2383,6 @@
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/asm.md",
       "bytes": 1584,
       "sha256": "1ff912740e84e024711def5fa482ffbb46eff64559760c467352dfa7c39a3307"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/ASSEMBLY_EXCEPTION",
-      "bytes": 1522,
-      "sha256": "a44eb7b5caf5534c6ef536b21edb40b4d6babf91bf97d9d45596868618b2c6fb"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/c-libutl.md",
@@ -2373,11 +2398,6 @@
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/icu.md",
       "bytes": 11086,
       "sha256": "af0057e8553906083f69c2fb9fe9ed4ae8bc2340a0b1e376a424702f00300b29"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/LICENSE",
-      "bytes": 19274,
-      "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.base/public_suffix.md",
@@ -2445,6 +2465,11 @@
       "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
     },
     {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.desktop/LICENSE",
+      "bytes": 33,
+      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
+    },
+    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.desktop/colorimaging.md",
       "bytes": 167,
       "sha256": "04d61e3e8e71dd452ebe52008af5378d9f6640d14578aeb515dc5375973b0189"
@@ -2478,11 +2503,6 @@
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.desktop/libpng.md",
       "bytes": 7519,
       "sha256": "f73afb394792f3aeecd959e89487603677a430e56b44eba596d8b572accfd540"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.desktop/LICENSE",
-      "bytes": 33,
-      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.desktop/mesa3d.md",
@@ -2520,21 +2540,6 @@
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
     {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management/ADDITIONAL_LICENSE_INFO",
-      "bytes": 49,
-      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management/ASSEMBLY_EXCEPTION",
-      "bytes": 44,
-      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management/LICENSE",
-      "bytes": 33,
-      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
-    },
-    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management.rmi/ADDITIONAL_LICENSE_INFO",
       "bytes": 49,
       "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
@@ -2546,6 +2551,21 @@
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management.rmi/LICENSE",
+      "bytes": 33,
+      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management/ADDITIONAL_LICENSE_INFO",
+      "bytes": 49,
+      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management/ASSEMBLY_EXCEPTION",
+      "bytes": 44,
+      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.management/LICENSE",
       "bytes": 33,
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
@@ -2685,21 +2705,6 @@
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
     {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql/ADDITIONAL_LICENSE_INFO",
-      "bytes": 49,
-      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql/ASSEMBLY_EXCEPTION",
-      "bytes": 44,
-      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql/LICENSE",
-      "bytes": 33,
-      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
-    },
-    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql.rowset/ADDITIONAL_LICENSE_INFO",
       "bytes": 49,
       "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
@@ -2711,6 +2716,21 @@
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql.rowset/LICENSE",
+      "bytes": 33,
+      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql/ADDITIONAL_LICENSE_INFO",
+      "bytes": 49,
+      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql/ASSEMBLY_EXCEPTION",
+      "bytes": 44,
+      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.sql/LICENSE",
       "bytes": 33,
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
@@ -2728,46 +2748,6 @@
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.transaction.xa/LICENSE",
       "bytes": 33,
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/ADDITIONAL_LICENSE_INFO",
-      "bytes": 49,
-      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/ASSEMBLY_EXCEPTION",
-      "bytes": 44,
-      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/bcel.md",
-      "bytes": 11196,
-      "sha256": "cd578186ad93de46cca29ec8ace2b11f9da751987f3f140e6095c528596cc8c1"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/dom.md",
-      "bytes": 3761,
-      "sha256": "6686e8877667584a3a7c07344baadca1a03e29f677162d87c3c0811e990d1148"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/jcup.md",
-      "bytes": 1448,
-      "sha256": "8d5dcfdf50455a3c34c753a98f21e953248af200415a9084e3f102cb6c43b8bf"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/LICENSE",
-      "bytes": 33,
-      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/xalan.md",
-      "bytes": 13494,
-      "sha256": "ea67226be5cfe19c7e79725c2c24a16676323264d69f9747c528de0b44541b03"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/xerces.md",
-      "bytes": 11852,
-      "sha256": "472224f99de833f4f4c19f2f8a0317f22114e1c641f5d77ffa3a4280a1b80176"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml.crypto/ADDITIONAL_LICENSE_INFO",
@@ -2788,6 +2768,46 @@
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml.crypto/santuario.md",
       "bytes": 11505,
       "sha256": "d08690d25f660f145c73365d260ed522cd0aace8a0e1396706551b7a1ae8c9a3"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/ADDITIONAL_LICENSE_INFO",
+      "bytes": 49,
+      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/ASSEMBLY_EXCEPTION",
+      "bytes": 44,
+      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/LICENSE",
+      "bytes": 33,
+      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/bcel.md",
+      "bytes": 11196,
+      "sha256": "cd578186ad93de46cca29ec8ace2b11f9da751987f3f140e6095c528596cc8c1"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/dom.md",
+      "bytes": 3761,
+      "sha256": "6686e8877667584a3a7c07344baadca1a03e29f677162d87c3c0811e990d1148"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/jcup.md",
+      "bytes": 1448,
+      "sha256": "8d5dcfdf50455a3c34c753a98f21e953248af200415a9084e3f102cb6c43b8bf"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/xalan.md",
+      "bytes": 13494,
+      "sha256": "ea67226be5cfe19c7e79725c2c24a16676323264d69f9747c528de0b44541b03"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/java.xml/xerces.md",
+      "bytes": 11852,
+      "sha256": "472224f99de833f4f4c19f2f8a0317f22114e1c641f5d77ffa3a4280a1b80176"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.accessibility/ADDITIONAL_LICENSE_INFO",
@@ -2885,14 +2905,14 @@
       "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
     },
     {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.dynalink/dynalink.md",
-      "bytes": 1502,
-      "sha256": "17312591cabee3ef6c34ed8897d92e4e361ba9cea41ec00dcd61a322a8fc2cdb"
-    },
-    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.dynalink/LICENSE",
       "bytes": 33,
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.dynalink/dynalink.md",
+      "bytes": 1502,
+      "sha256": "17312591cabee3ef6c34ed8897d92e4e361ba9cea41ec00dcd61a322a8fc2cdb"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.httpserver/ADDITIONAL_LICENSE_INFO",
@@ -2955,21 +2975,6 @@
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
     {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler/ADDITIONAL_LICENSE_INFO",
-      "bytes": 49,
-      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler/ASSEMBLY_EXCEPTION",
-      "bytes": 44,
-      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler/LICENSE",
-      "bytes": 33,
-      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
-    },
-    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler.management/ADDITIONAL_LICENSE_INFO",
       "bytes": 49,
       "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
@@ -2981,6 +2986,21 @@
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler.management/LICENSE",
+      "bytes": 33,
+      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler/ADDITIONAL_LICENSE_INFO",
+      "bytes": 49,
+      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler/ASSEMBLY_EXCEPTION",
+      "bytes": 44,
+      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.internal.vm.compiler/LICENSE",
       "bytes": 33,
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
@@ -3040,34 +3060,19 @@
       "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
     },
     {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.localedata/cldr.md",
-      "bytes": 33,
-      "sha256": "09972449731a1d1a0863af0384aeb7839f84cac74983c96856e6c305e31ed8b2"
-    },
-    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.localedata/LICENSE",
       "bytes": 33,
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
     {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.localedata/cldr.md",
+      "bytes": 33,
+      "sha256": "09972449731a1d1a0863af0384aeb7839f84cac74983c96856e6c305e31ed8b2"
+    },
+    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.localedata/thaidict.md",
       "bytes": 1346,
       "sha256": "c326144a2351c9608fa708b5d7d3c5a3da03e82b66479b128e9db4969539824a"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management/ADDITIONAL_LICENSE_INFO",
-      "bytes": 49,
-      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management/ASSEMBLY_EXCEPTION",
-      "bytes": 44,
-      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
-    },
-    {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management/LICENSE",
-      "bytes": 33,
-      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management.agent/ADDITIONAL_LICENSE_INFO",
@@ -3096,6 +3101,21 @@
     },
     {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management.jfr/LICENSE",
+      "bytes": 33,
+      "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management/ADDITIONAL_LICENSE_INFO",
+      "bytes": 49,
+      "sha256": "ebf9777bd307ed789ceabf282a9aca168c391c7f48e15a60939352efb3ea33f9"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management/ASSEMBLY_EXCEPTION",
+      "bytes": 44,
+      "sha256": "b998cda101e5a1ebcfb5ff9cddd76ed43a2f2169676592d428b7c0d780665f2a"
+    },
+    {
+      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/legal/jdk.management/LICENSE",
       "bytes": 33,
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
@@ -3250,19 +3270,9 @@
       "sha256": "86e0516b888276a492b19f9a84f5a866ed36925fae1510b3a94a0b6213e69192"
     },
     {
-      "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/NOTICE",
-      "bytes": 2400,
-      "sha256": "c02756bcd9fa8191bf0fda4451bc018414dd44ee35bf09922c24377a475e4b5a"
-    },
-    {
       "path": "ocr/molvec/runtime/jdk-17.0.20.1+1-jre/release",
       "bytes": 1674,
       "sha256": "9c921ee9192c9abd72d5f398481e1ed6c7204928eb29a9f42f69a0e4a2ea93d0"
-    },
-    {
-      "path": "openblas-0.3.33/lapack-netlib/LICENSE",
-      "bytes": 2266,
-      "sha256": "978539245c405775bf347b1256c36df4daf8b69a64b099e94b1d53742201621e"
     },
     {
       "path": "openblas-0.3.33/LICENSE",
@@ -3270,9 +3280,9 @@
       "sha256": "190b5a9c8d9723fe958ad33916bd7346d96fab3c5ea90832bb02d854f620fcff"
     },
     {
-      "path": "README.md",
-      "bytes": 4320,
-      "sha256": "eba429738d6108e411cc790331c590d660d7463775bb66e66c29d0baf888e881"
+      "path": "openblas-0.3.33/lapack-netlib/LICENSE",
+      "bytes": 2266,
+      "sha256": "978539245c405775bf347b1256c36df4daf8b69a64b099e94b1d53742201621e"
     },
     {
       "path": "runtime-distribution/microsoft-vc/MICROSOFT_VC_RUNTIME_LICENSE.rtf",
@@ -3295,24 +3305,19 @@
       "sha256": "ce711de4dfdf73372bcac53e33475c7204f876845275d47bb085c894f73d114e"
     },
     {
-      "path": "SAME_BODY_INDEX.json",
-      "bytes": 155344,
-      "sha256": "379430d978e4b4c80e42faa86e67b7285862f2a528e963e292af5f452467ad4a"
-    },
-    {
       "path": "structure-sources.json",
       "bytes": 579977,
       "sha256": "91259c1b10169e327cb60e5bdb312fbf005957625d7a1e04a5e63ec7932d3c3b"
     },
     {
-      "path": "supplemental-sources/archives/emscripten-5.0.7.tar.gz",
-      "bytes": 34555228,
-      "sha256": "66a6537a8dede6b0e5945839f0d0641e73e64f728729d26900e9d918040f0210"
+      "path": "supplemental-sources/INDEX.json",
+      "bytes": 4344,
+      "sha256": "7b599e902bf8a5dd9d5259d44f7ca1dfaeeee920f890ac82aa6df25d1cbd604d"
     },
     {
-      "path": "supplemental-sources/archives/emsdk-5.0.7.tar.gz",
-      "bytes": 171769,
-      "sha256": "266df4b9644dde18303af05dce7d04854273b0bb527246cb7fb6a09591774ccf"
+      "path": "supplemental-sources/README.md",
+      "bytes": 4192,
+      "sha256": "a02c924efa594fd342e369f3b4d59aa1f932d2fd5d9c800c82d1fc1363c12cd7"
     },
     {
       "path": "supplemental-sources/archives/Indigo-b36d38f5293470721fe02ee570d9f0e6488a5b8d.tar.gz",
@@ -3325,14 +3330,19 @@
       "sha256": "21e2a065d244ab048e737f21af5d1fc74daaeb6707de36477ead8db1dca71214"
     },
     {
+      "path": "supplemental-sources/archives/emscripten-5.0.7.tar.gz",
+      "bytes": 34555228,
+      "sha256": "66a6537a8dede6b0e5945839f0d0641e73e64f728729d26900e9d918040f0210"
+    },
+    {
+      "path": "supplemental-sources/archives/emsdk-5.0.7.tar.gz",
+      "bytes": 171769,
+      "sha256": "266df4b9644dde18303af05dce7d04854273b0bb527246cb7fb6a09591774ccf"
+    },
+    {
       "path": "supplemental-sources/archives/temurin-build-e6ba7dec3d07654074559310376a3ae89da5f4ac.tar.gz",
       "bytes": 584568,
       "sha256": "b1340378b9ed62b32acfacd012dd069ec2b9d940fc39d3c73f32142d64e89713"
-    },
-    {
-      "path": "supplemental-sources/INDEX.json",
-      "bytes": 4344,
-      "sha256": "3a3472bb4f16412dd4947cc88f725e4a8ca99169506ac4f529c653535051bcd4"
     },
     {
       "path": "supplemental-sources/notices/emscripten-5.0.7/AUTHORS",
@@ -3405,9 +3415,14 @@
       "sha256": "99d9a9616fbde3f5ee22a71d8645799a8522d48526130c5ba6dc27ad15ce01f1"
     },
     {
-      "path": "supplemental-sources/README.md",
-      "bytes": 4192,
-      "sha256": "639738f749abdf18a02061a5d0268987e101185125bcb8635a76ecc25bcd2158"
+      "path": "task-system/README.md",
+      "bytes": 1206,
+      "sha256": "631fffe97a3ec694a1751a7ad36daf3215d6b6454c5c781e3437a02abb1929b3"
+    },
+    {
+      "path": "task-system/RECEIPT.json",
+      "bytes": 3076,
+      "sha256": "3eec89f9d1590b1c701f04c9379ad1db69c392c5427c451831bae29746b07d1c"
     },
     {
       "path": "task-system/npm/asn1@0.2.6/LICENSE",
@@ -3435,19 +3450,14 @@
       "sha256": "88d9b4eb60579c191ec391ca04c16130572d7eedc4a86daa58bf28c6e14c9bcd"
     },
     {
-      "path": "task-system/README.md",
-      "bytes": 1206,
-      "sha256": "631fffe97a3ec694a1751a7ad36daf3215d6b6454c5c781e3437a02abb1929b3"
+      "path": "xtb/ES-H-INITIAL-VELOCITY.md",
+      "bytes": 1309,
+      "sha256": "e5a2c2e57963af4afb777155e75b3dea031a48dcc96ac59ba73d88cc4906e77e"
     },
     {
-      "path": "task-system/RECEIPT.json",
-      "bytes": 3076,
-      "sha256": "3eec89f9d1590b1c701f04c9379ad1db69c392c5427c451831bae29746b07d1c"
-    },
-    {
-      "path": "THIRD_PARTY_RUNTIME_TERMS.md",
-      "bytes": 5872,
-      "sha256": "879bd9d10f2be5721571ac0cd000c30e91d70180d70bdb3d6932eb3727e21299"
+      "path": "xtb/Microsoft-VC-runtime-license.rtf",
+      "bytes": 9235,
+      "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b"
     },
     {
       "path": "xtb/ddcosmo-LICENSE.txt",
@@ -3483,11 +3493,6 @@
       "path": "xtb/jsonfortran-LICENSE.txt",
       "bytes": 2849,
       "sha256": "93ea4d9f66cf7f4598292a8f4e3f9797f10465bd37fc4d49d07c6c03c2f63d88"
-    },
-    {
-      "path": "xtb/Microsoft-VC-runtime-license.rtf",
-      "bytes": 9235,
-      "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b"
     },
     {
       "path": "xtb/winpthreads/COPYING",

@@ -134,8 +134,8 @@ export interface ModelStore {
   /** Register an MD-only snapshot permission without changing editor freezes. */
   stampNativeMD(policy: NativeMDPolicy): DocumentStamp;
   acceptCoordinates(result: ChemistryResult): ModelDocument;
-  acceptXtbCoordinates(result:XtbCoordinateResult):ModelDocument;
-  acceptXtbStoppedCoordinates(result:XtbStoppedCoordinateResult):ModelDocument;
+  acceptXtbCoordinates(result:XtbCoordinateResult,sourceDocument?:ModelDocument):ModelDocument;
+  acceptXtbStoppedCoordinates(result:XtbStoppedCoordinateResult,sourceDocument?:ModelDocument):ModelDocument;
   publishBondOrders(result:XtbCoordinateResult,stamp:DocumentStamp,runId:string):ModelDocument;
   clearBondOrders():void;
   beginTransaction(label?: string): void;
@@ -147,7 +147,7 @@ export interface ModelStore {
   /** Mirrors complete object-bound task rows without enabling them or adding a form-edit Undo step. */
   synchronizeGaussianBoundCoordinates?(definitions:GaussianBoundCoordinateDefinition[]):void;
   setElectronicState(charge: number, multiplicity: number, confirmed?: boolean): void;
-  acceptRuntimeFrame(frame: DynamicsFrame): ModelDocument;
+  acceptRuntimeFrame(frame: DynamicsFrame,sourceDocument?:ModelDocument): ModelDocument;
   /** Lock structural edits before the first native frame and across Pause. */
   beginRuntimeSession(options?: { isolated: true }): void;
   isRuntimeSessionActive?(): boolean;

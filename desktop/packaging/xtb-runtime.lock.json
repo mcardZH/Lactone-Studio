@@ -29,5 +29,63 @@
     "scientificGuide": "third-party/corresponding-sources/XTB-GNU-REBUILD.md",
     "admission": "scripts/release/admit-built-xtb.py --raw-output ... --local-modified --apply --activate"
   },
-  "notice": "Blueprint only. No files or inventory are declared. Build and explicitly admit a complete GNU runtime before prepare; no legacy binary fallback."
+  "notice": "Blueprint only. No files or inventory are declared. Build and explicitly admit a complete GNU runtime before prepare; no legacy binary fallback.",
+  "localModification": {
+    "kind": "es-h-only-initial-velocity-cap",
+    "algorithm": "xtb-h-only-initial-cap-v1",
+    "sourceReceipt": {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json",
+      "bytes": 13500,
+      "sha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a"
+    },
+    "originalEngineIdentity": {
+      "schema": "sciyue-xtb-engine-identity/v1",
+      "engine": "xtb",
+      "kind": "bundled-independent-rebuild",
+      "version": "6.7.0",
+      "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+      "buildId": "5071a886-gnu132-r2-openblas033-a01",
+      "compiler": {
+        "name": "gfortran",
+        "version": "13.2.0"
+      },
+      "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+      "sourceReceiptSha256": "b8ce3a40717eb518ed78f16a7a0481e5af1b602e06cfe9ca4910e10c30fe6bc6",
+      "scientificPinsSha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b",
+      "runtimeMemberDigest": "503ec84fc190195e442570e517a5034468c28e63257433624be51b5ef1fbb279",
+      "parameterDigest": "0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2",
+      "sha256": "b40033dc620944f87e520d54d0a3cf69f7df73a9f82955d34dfa1a3464924a1c"
+    },
+    "scientificAccepted": false
+  },
+  "publishedRuntime": {
+    "version": "6.7.0",
+    "build": {
+      "id": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
+      "compiler": {
+        "name": "gfortran",
+        "version": "13.2.0"
+      },
+      "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+      "sourceReceiptSha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a"
+    },
+    "engineIdentity": {
+      "schema": "sciyue-xtb-engine-identity/v1",
+      "engine": "xtb",
+      "kind": "bundled-independent-rebuild",
+      "version": "6.7.0",
+      "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+      "buildId": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
+      "compiler": {
+        "name": "gfortran",
+        "version": "13.2.0"
+      },
+      "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+      "sourceReceiptSha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a",
+      "scientificPinsSha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b",
+      "runtimeMemberDigest": "8a92bb2fd39c569f46a83512b797f85fba211fd1b64ee3a60bc3449636a3b32b",
+      "parameterDigest": "0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2",
+      "sha256": "585693866b1d9619d312237f82cf1e3684566b5886c7dd7849cdb2b1195656fb"
+    }
+  }
 }

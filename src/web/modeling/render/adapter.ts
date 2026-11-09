@@ -15,6 +15,7 @@ import { elementColor } from './element-colors';
 import { DEFAULT_BACKGROUND_COLOR, effectiveBackgroundColor, cellEdgeStrokesWork } from './display-settings';
 import {finishRenderWork,runRenderWork,type RenderWork} from './render-work';
 import {prepareCarbonCipLabels,preparedCarbonCipLabels,preparedCarbonCipWarning,type CipLabelWarning} from './stereochemistry';
+import {createSamplingSphereLayer} from './sampling-sphere-layer';
 import { attachLocalMeshFinish, attachStructureModelFinish } from './mesh-finish';
 import { applyResolvedAtomStyles } from './atom-style-batch';
 import { createSceneSequence, type SceneShapeMethod } from './scene-sequence';
@@ -164,6 +165,10 @@ export interface RenderAdapter {
   /** Spatial result target, deliberately outside the model's PickResult. */
   surfaceExtremumAt(screen: ScreenPoint): string | null;
   project(position: Vector3): ScreenPoint;
+  /** Analytic circle only for an actual orthographic camera; null uses the projection fallback. */
+  projectSphere?(sphere:SamplingSphereDisplay):{center:ScreenPoint;radius:number}|null;
+  /** Current-source overlay only, without rebuilding molecular or CIP content. */
+  updateSamplingSphere?(sphere:SamplingSphereDisplay|undefined,owner?:Pick<ModelDocument,'id'|'revision'>):boolean;
   /** Exact display envelope from this renderer's radius table and style. */
   atomRadius(element: string, display: DisplaySettings): number;
   plane(origin: Vector3): DragPlane;
@@ -226,7 +231,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   let labels=createLabelLayer(viewer);
   const periodicBondGlyphs=createPeriodicBondGlyphExporter(mol);
   const trajectoryLayer = createTrajectoryLayer(viewer, shapeResources, periodicBondGlyphs, atomRadius);
-  const samplingSphereShapes = createShapeLayer(viewer);
+  const samplingSphereShapes = createSamplingSphereLayer(viewer);
   const calculationRangeShapes = createShapeLayer(viewer);
   const renderCompletion=createRenderCompletionObserver(()=>viewer.getCanvas?.(),realm,()=>viewer.getRenderer?.()?.getContext?.());
   const renderSubmissions=createRendererSubmissionObserver(viewer,renderCompletion,()=>{
@@ -782,7 +787,6 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     else surfaces.sync(surfaceLayer, currentDocument, displayTransform);
     surfaces.syncExtrema(surfaceExtrema, currentDocument, displayTransform);
     yield* trajectoryLayer.syncWork(feedback.multiframeDisplay, settings, transform,feedback.hiddenAtomIds,cooperative);
-    samplingSphereShapes.clear();
     calculationRangeShapes.clear();
     for (const range of feedback.calculationRanges ?? []) {
       for (const [start, end] of calculationRangeLines(range)) calculationRangeShapes.keep(viewer.addLine({
@@ -790,11 +794,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         ...CALCULATION_RANGE_STYLE, clickable: false, hoverable: false,
       }));
     }
-    if (feedback.samplingSphere) {
-      validateSamplingSphereDisplay(feedback.samplingSphere);
-      samplingSphereShapes.keep(viewer.addSphere({ center: point(transformPoint(displayTransform, feedback.samplingSphere.centerAngstrom)), radius: feedback.samplingSphere.radiusAngstrom,
-        color: '#7797b0', wireframe: true, linewidth: 1.3, opacity: .55, clickable: false, hoverable: false }));
-    }
+    samplingSphereShapes.sync(feedback.samplingSphere,displayTransform,JSON.stringify([document.id,feedback.sceneOwnerEpoch??null]));
     initialized = true;
     // No asynchronous yield remains after this boundary. Published geometry,
     // labels and native models transfer together before the first submission.
@@ -959,6 +959,24 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   }
   return {
     draw,drawAsync,cancelDraw:()=>drawController?.abort(),cooperativeDisplay:()=>lastDrawCooperative,presentationReady:()=>!atomicDraw, project, atomRadius, plane, hitTest, worldPoint, projectionReady,previewFragment,
+    projectSphere(sphere){
+      const orthographic=typeof viewer.camera?.ortho==='boolean'?viewer.camera.ortho:(options.orthographic??true);
+      if(!orthographic)return null;
+      validateSamplingSphereDisplay(sphere);
+      const center=transformPoint(displayTransform,sphere.centerAngstrom),view=viewer.getView(),q=view.slice(4,8),norm=Math.hypot(...q);
+      if(!Number.isFinite(norm)||norm<1e-12)return null;
+      const inverse=q.map((v:number,index:number)=>(index<3?-v:v)/norm),right=rotateVector([1,0,0],inverse),up=rotateVector([0,1,0],inverse),a=screenProject(center),b=screenProject(add(center,scale(right,sphere.radiusAngstrom))),c=screenProject(add(center,scale(up,sphere.radiusAngstrom))),rx=Math.hypot(b.x-a.x,b.y-a.y),ry=Math.hypot(c.x-a.x,c.y-a.y);
+      if(!Number.isFinite(rx)||!Number.isFinite(ry)||Math.abs(rx-ry)>1e-6*Math.max(1,rx,ry))return null;
+      return {center:a,radius:(rx+ry)/2};
+    },
+    updateSamplingSphere(sphere,owner){
+      assertLive();if(!lastDraw||!currentDocument||drawController||atomicDraw||owner&&(owner.id!==currentDocument.id||owner.revision!==currentDocument.revision))return false;
+      const feedback={...lastDraw.feedback,samplingSphere:sphere};
+      const changed=samplingSphereShapes.sync(sphere,displayTransform,JSON.stringify([currentDocument.id,feedback.sceneOwnerEpoch??null]));
+      lastDraw={...lastDraw,feedback};
+      if(changed)renderSubmissions.run('set-view',()=>{if(samplingSphereShapes.prepare()&&typeof viewer.setView==='function')viewer.setView(viewer.getView());else viewer.render();});
+      return true;
+    },
     setOrbitalLayer(layer) { assertLive(); return renderSubmissions.run('orbital-layer',()=>{orbitalLayer = layer; ntoLayer = null; try { if (orbitals.sync(layer, currentDocument, displayTransform)) viewer.render(); orbitals.markSubmitted(); } catch(error) { orbitals.failSubmission(error); throw error; }}); },
     setNtoLayer(layer) { assertLive(); return renderSubmissions.run('nto-layer',()=>{ntoLayer = layer; orbitalLayer = null; try {
       let changed = false;
@@ -1037,7 +1055,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       const sequence=sceneSequence.state(),owned=shapeResources.stats(),memory=disposed?undefined:viewer.getRenderer?.()?.info?.memory;
       const count=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?value:null;
       const glyph=periodicBondGlyphs.diagnostics();
-      return {fragmentSamples,fragmentRetirementBatches,fragmentPartialPresents,fragmentFullPresents,fragmentFallbackCode,scenePreparations,sceneAborts,glyphRegistrations:glyph.registrations,glyphBatches:glyph.batches,glyphBonds:glyph.bonds,glyphWorkerStarts:glyph.workerStarts,glyphWorkerStops:glyph.workerStops,glyphCancellations:glyph.cancellations,glyphAdjacencyBuilds:glyph.adjacencyBuilds,glyphPending:glyph.pending,
+      return {...samplingSphereShapes.diagnostics(),fragmentSamples,fragmentRetirementBatches,fragmentPartialPresents,fragmentFullPresents,fragmentFallbackCode,scenePreparations,sceneAborts,glyphRegistrations:glyph.registrations,glyphBatches:glyph.batches,glyphBonds:glyph.bonds,glyphWorkerStarts:glyph.workerStarts,glyphWorkerStops:glyph.workerStops,glyphCancellations:glyph.cancellations,glyphAdjacencyBuilds:glyph.adjacencyBuilds,glyphPending:glyph.pending,
         sceneCreated:sequence.created,sceneReused:sequence.reused,sceneRetired:sequence.retired,sceneCommands:sequence.retainedCommands,sceneMetadataBytes:sequence.metadataBytes,
         ownedShapes:owned.shapes,ownedModels:owned.models,ownedResources:owned.resources,shapeSlots:Array.isArray(viewer.shapes)?viewer.shapes.length:null,modelSlots:Array.isArray(viewer.models)?viewer.models.length:null,
         gpuGeometries:count(memory?.geometries),gpuTextures:count(memory?.textures),gpuPrograms:count(memory?.programs)};

@@ -56,6 +56,8 @@ export interface ScientificDataTableProps {
   layoutState?: ScientificTableLayoutState;
   /** Display-only starting minima; saved/user-sized columns keep their widths. */
   initialColumnMinWidths?: readonly number[];
+  /** Opt in to each column's natural content width. Retained manual widths win. */
+  numericColumnWidths?: 'uniform' | 'content';
   onLayoutChange?(value: ScientificTableLayoutState): void;
 }
 /** Numeric tables render every expanded row; the explicit legacy variant keeps
@@ -67,7 +69,7 @@ export function ScientificDataTable(props: ScientificDataTableProps) {
     {props.variant === 'legacy' ? <LegacyScientificDataTable {...props}/> : <NumericScientificDataTable {...props}/>}
   </ProjectUiScope>;
 }
-export function NumericScientificDataTable({ title, hideTitle, onExport, exportFileName, expansion, onRowPreview, onClearActive, projection, selectionScope, layout = 'comparison', rowBindings, rowAction, rowActions, renderHeader, onRowActivate, activeRowKey, revealRow, format, sorting, layoutState, initialColumnMinWidths, onLayoutChange }: ScientificDataTableProps) {
+export function NumericScientificDataTable({ title, hideTitle, onExport, exportFileName, expansion, onRowPreview, onClearActive, projection, selectionScope, layout = 'comparison', rowBindings, rowAction, rowActions, renderHeader, onRowActivate, activeRowKey, revealRow, format, sorting, layoutState, initialColumnMinWidths, numericColumnWidths='uniform', onLayoutChange }: ScientificDataTableProps) {
   const suppliedActions = rowActions ?? (rowAction ? [rowAction] : []);
   const selectAction = suppliedActions.find(action=>action.kind==='select');
   const visibilityAction = suppliedActions.find(action=>action.kind==='visibility');
@@ -106,7 +108,7 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
   const releasePreview = useRef<(() => void) | null>(null);
   const measurement = useRef<(() => void) | null>(null);
   const columnMeasurement = useRef<{ document: Document; signature: string; columns: number[] } | null>(null);
-  const contentSignature=useTableValue(()=>JSON.stringify([projection.columns,projection.rows.map(row=>row.cells),layout,actionWidth,initialColumnMinWidths]),[projection.columns,projection.rows,layout,actionWidth,initialColumnMinWidths]);
+  const contentSignature=useTableValue(()=>JSON.stringify([projection.columns,projection.rows.map(row=>row.cells),layout,actionWidth,initialColumnMinWidths,numericColumnWidths]),[projection.columns,projection.rows,layout,actionWidth,initialColumnMinWidths,numericColumnWidths]);
   const cancelDrag = (gesture = drag.current) => {
     if (!gesture || drag.current !== gesture) return;
     drag.current = null; releasePointerListeners.current?.(); releasePointerListeners.current = null;
@@ -246,7 +248,7 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
       // permanently visible viewport rail, rather than feeding its overflow
       // width back into the next default-width calculation.
       const available=Math.floor(host.clientWidth??host.getBoundingClientRect().width);
-      const filled=scientificTableDefaultWidths(minima,numeric.map(Boolean),Math.max(0,available-12),actionWidth,initialColumnMinWidths);
+      const filled=scientificTableDefaultWidths(minima,numeric.map(Boolean),Math.max(0,available-12),actionWidth,initialColumnMinWidths,numericColumnWidths);
       setDefaultWidths(previous=>filled.length!==previous.length||filled.some((value,index)=>Math.abs(value-previous[index])>.5)?filled:previous);
   };
   useEffect(()=>{measurement.current?.();},[contentSignature]);

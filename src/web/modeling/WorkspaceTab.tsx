@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import {X} from 'lucide-react';
 import './workspace-tab.css';
 
 type TabDataAttributes = { [key: `data-${string}`]: string | number | boolean | undefined };
@@ -7,9 +8,11 @@ export interface WorkspaceTabProps {
   containerProps?:HTMLAttributes<HTMLDivElement>&TabDataAttributes;
   buttonProps?:Omit<ButtonHTMLAttributes<HTMLButtonElement>,'type'|'role'|'aria-selected'|'children'|'onClick'>&TabDataAttributes;
 }
+/** Identical artwork and dimensions for document, group and detached tab closes. */
+export function WorkspaceTabCloseIcon(){return <X size={12} className="workspace-tab-close-icon" aria-hidden="true"/>;}
 /** Same title/dirty layout also fits the independent window's existing drag root. */
 export function WorkspaceTabTitle({children,dirty=false,className=''}:{children:ReactNode;dirty?:boolean;className?:string}){
-  return <span className={`workspace-tab-title ${className}`}><span className="workspace-tab-title-text">{children}</span>{dirty&&<span className="workspace-tab-dirty">{' *'}</span>}</span>;
+  return <span className={`workspace-tab-title ${className}`}><span className="workspace-tab-title-text" title={typeof children==='string'||typeof children==='number'?String(children):undefined}>{children}</span>{dirty&&<span className="workspace-tab-dirty">{' *'}</span>}</span>;
 }
 /** Action events never become a title activation or a tab/window drag. */
 export function WorkspaceTabActions({children}:{children:ReactNode}){

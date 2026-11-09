@@ -1,0 +1,53 @@
+{
+  "schema": "sy-xtb-runtime-library-revision/v1",
+  "id": "ester-dev2-openblas033-a01",
+  "parentRuntime": {
+    "path": "provenance/parent-runtime-openblas034.json",
+    "bytes": 1259,
+    "sha256": "8e2b8ed7db6e40a8ed37a7e58389609b0e6308a0a71e76141ed1f3ac0522e90e"
+  },
+  "parentBuildId": "5071a886-gnu132-r2-runtime-rebuild-a01",
+  "parentSourceReceiptSha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3",
+  "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "scientificPinsSha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b",
+  "scientificProgramUnchanged": true,
+  "parametersUnchanged": true,
+  "componentIdentitySha256": "ec392e5033c79a17a6f101823cefd36f76c6a5b777e33227f26521d134da02bd",
+  "replacements": [
+    {
+      "target": "bin/openblas.dll",
+      "before": {
+        "path": "bin/openblas.dll",
+        "bytes": 28410880,
+        "sha256": "d0073463ce449d6bb4a3f720b1ebf8a858b49ca2e376271585a7f75f6a1795d8"
+      },
+      "after": {
+        "path": "bin/openblas.dll",
+        "bytes": 28357632,
+        "sha256": "ea5706aaa7e88ea76f350faf4181c5e3393817a1ce1cd800501bf3ee21f205e8"
+      }
+    }
+  ],
+  "upstreamArtifact": {
+    "packageURL": "https://conda.anaconda.org/conda-forge/win-64/libopenblas-0.3.33-pthreads_h877e47f_0.conda",
+    "archiveSha256": "104bba89eaed090ab7dd6de17376ba7c14be7f4d44807346012e50a493f18ec9",
+    "memberSha256": "ea5706aaa7e88ea76f350faf4181c5e3393817a1ce1cd800501bf3ee21f205e8",
+    "artifactEvidenceSha256": "d766702cc36c81c226546f98e597524e96e2dd710f5696c990d5dc47a5485426",
+    "compatibilityEvidenceSha256": "8319749f9d1f09ce70de3caac9823d83d5c652dd1fa28455ee4e4f5623438de2",
+    "matrixReceiptSha256": "cf8c571f17ca16f6b3e13f9bdba8d3645ed80eec2716a5c9c8c2e5d3c362fcb0",
+    "localBuildExecuted": false
+  },
+  "fullParentExportEquivalence": false,
+  "approvedExportExceptionNames": [
+    "blas_level3_thread_enter",
+    "blas_level3_thread_leave",
+    "clarft_lvl2_",
+    "dlarft_lvl2_",
+    "openblas_set_xerbla",
+    "slarft_lvl2_",
+    "zlarft_lvl2_"
+  ],
+  "scientificAccepted": false,
+  "actualXtbExecutionPerformed": false,
+  "publicDistributionApproved": false
+}

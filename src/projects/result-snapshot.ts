@@ -20,7 +20,7 @@ export interface ProjectAssetWriter { write(category: string, name: string, byte
 export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]> }
 type ResultData = Omit<TrajectoryResult, 'getFrame' | 'dispose'>;
 export interface TrajectoryResultSnapshot { schema: 1; data: ResultData; frameAssets: string[];
-  conformer?: Pick<ConformerTrajectoryResult, 'identity' | 'frameIds' | 'protectedAtomIds'> }
+  conformer?: Pick<ConformerTrajectoryResult, 'identity' | 'frameIds' | 'protectedAtomIds' | 'displayRestoration'> }
 export interface PostprocessAttachmentSnapshot {
   role?: import('../results/postprocess-document').PostprocessAttachmentRole;
   data: Omit<PostprocessSource, 'result' | 'results'>;
@@ -65,7 +65,7 @@ const clone = <T>(value: T): T => JSON.parse(json(value)) as T;
 /** Freeze metadata before awaiting IO; each geometry is a bounded independent
  * asset. Opening reads metadata/first geometry only, subsequent frames lazily. */
 export async function encodeTrajectoryResult(result: TrajectoryResult, writer: ProjectAssetWriter): Promise<TrajectoryResultSnapshot> {
-  const { getFrame: _get, dispose: _dispose, ...metadata } = result;
+  const { getFrame: _get, dispose: _dispose, displayRestoration:_displayRestoration, ...metadata } = result as TrajectoryResult & Partial<ConformerTrajectoryResult>;
   const data = clone(metadata), frameAssets: string[] = [];
   let batch:ProjectAssetWrite[]=[],batchBytes=0;
   const flush=async()=>{if(!batch.length)return;const values=batch;batch=[];batchBytes=0;
@@ -83,7 +83,7 @@ export async function encodeTrajectoryResult(result: TrajectoryResult, writer: P
   }
   await flush();
   const collection = result as Partial<ConformerTrajectoryResult>;
-  return { schema: 1, data, frameAssets, ...(collection.identity && collection.frameIds ? { conformer: clone({ identity: collection.identity, frameIds: collection.frameIds, protectedAtomIds: collection.protectedAtomIds ?? [] }) } : {}) };
+  return { schema: 1, data, frameAssets, ...(collection.identity && collection.frameIds ? { conformer: clone({ identity: collection.identity, frameIds: collection.frameIds, protectedAtomIds: collection.protectedAtomIds ?? [],...(collection.displayRestoration?{displayRestoration:collection.displayRestoration}:{}) }) } : {}) };
 }
 export function decodeTrajectoryResult(snapshot: TrajectoryResultSnapshot, reader: ProjectAssetReader): TrajectoryResult {
   if (snapshot.schema !== 1 || snapshot.frameAssets.length !== snapshot.data.frames.length) throw new Error('项目轨迹索引无效。');

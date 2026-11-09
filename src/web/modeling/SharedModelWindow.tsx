@@ -22,7 +22,7 @@ import { bindInterfaceFontDocument } from '../interface-font-preferences';
 import TrajectoryControls from '../results/TrajectoryControls';
 import {trajectoryControlCallbacks,trajectoryOverlayControlCallbacks,type TrajectoryPlaybackCommand} from '../results/trajectory-playback-bridge';
 import {PlaybackOverlayControls} from '../MultiframeDisplayControls';
-import {WorkspaceTabTitle,WorkspaceTabActions} from './WorkspaceTab';
+import {WorkspaceTabTitle,WorkspaceTabActions,WorkspaceTabCloseIcon} from './WorkspaceTab';
 import {useTransientLayerScope} from '../TransientLayer';
 import EnvironmentSettings from '../EnvironmentSettings';
 import {subscribeGlobalSettings} from '../global-settings-events';
@@ -461,7 +461,7 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
         onPointerMove={event => { if (drag.current.move(event.pointerId, event.screenX, event.screenY)) setDragging(true); }}
         onPointerUp={event => finishDrag(event)} onPointerCancel={event => finishDrag(event, true)} onLostPointerCapture={() => { drag.current.cancel(); setDragging(false); }}>
         <WorkspaceTabTitle className="shared-model-tab-name" dirty={model.draft.dirty}>{snapshot.metadata?.label || model.draft.structure.name || '模型'}</WorkspaceTabTitle>
-        <WorkspaceTabActions><button type="button" aria-label="关闭模型" disabled={closing || unavailable || !bridge.requestWorkspaceDocumentClose} onClick={() => { void bridge.requestWorkspaceDocumentClose?.({ documentId: membership.documentId, membershipNonce: membership.membershipNonce }).catch(cause => { if (!isWorkspaceClosePendingError(cause)) setError(message(cause)); }); }}>×</button></WorkspaceTabActions>
+        <WorkspaceTabActions><button type="button" className="workspace-tab-close" aria-label="关闭模型" disabled={closing || unavailable || !bridge.requestWorkspaceDocumentClose} onClick={() => { void bridge.requestWorkspaceDocumentClose?.({ documentId: membership.documentId, membershipNonce: membership.membershipNonce }).catch(cause => { if (!isWorkspaceClosePendingError(cause)) setError(message(cause)); }); }}><WorkspaceTabCloseIcon/></button></WorkspaceTabActions>
       </div>
       <span className="shared-model-window-drag" aria-hidden="true" />
       <div className="shared-model-image-export"><button type="button" onClick={()=>setSettingsOpen(true)}>显示设置</button><ViewportImageExportMenu openRequest={imageExportOpenRequest} getViewportSize={viewportSize} disabled={!viewReady||readOnly||!observedModel.draft.structure.atoms.length||Boolean(displayDescription&&!mirrorDisplay)} exporting={imageExporting} onExport={exportCurrentViewport}/></div>

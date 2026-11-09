@@ -17,7 +17,7 @@ import {
 	planConformerTorsionHierarchy,
 	type TorsionAtoms
 } from "../../modeling/conformers";
-import { NATIVE_CONFORMER_CORE_PROTECTION } from "../../modeling/advanced/sampling-contracts";
+import {effectiveSharedFreezes} from '../../modeling/constraints';
 import {
 	applySamplingSphereRadiusChange,
 	createSamplingSphereDraft,
@@ -31,6 +31,7 @@ import { InputSettingsCard, InputSettingsField, InputSettingsRow } from "../Inpu
 import {
 	InputSettingsAction,
 	InputSettingsCheckbox,
+	InputSettingsEnableCard,
 	InputSettingsLayout,
 	InputSettingsSection
 } from "../InputSettingsLayout";
@@ -46,6 +47,7 @@ import {
 import { AdvancedRegionField, AdvancedSamplingControls } from "./AdvancedProcessControls";
 import ConformerTorsionControls from "./ConformerTorsionControls";
 import ConformerOptimizationStages from "./ConformerOptimizationStages";
+import ConformerRunError from './ConformerRunError';
 import {conformerUpstreamSummary} from '../../modeling/advanced/conformer-cluster-collection';
 import ConformerStageResults from "./ConformerStageResults";
 import SamplingSphereEditor from "./SamplingSphereEditor";
@@ -71,7 +73,6 @@ import {
 	type MixedSamplingChoice
 } from "./mixed-conformer-draft";
 import { compileSampling } from "./process-config";
-import {protectionStrengthToDisplay} from './protection-units';
 import {samplingRemainingLabel} from './sampling-time-estimate';
 import {optimizationActionView,conformerPlaybackReference} from './conformer-incremental-presentation';
 import {submitConformerSampling,commitConformerElectronicDraft} from './conformer-sampling-action';
@@ -157,11 +158,10 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			initial.current?.draft ??
 			(task ? restoreMixedConformerDraft(task) : createMixedConformerDraft())
 	);
-	// Controller protection is the already-confirmed transaction receipt. A
-	// cached editor draft must never overwrite it on a later render/effect.
-	const confirmedCoreIds=task?.mixedSampling?.draft.protectedAtomIds??draft.shared.coreIds;
-	const confirmedCoreKey=JSON.stringify(confirmedCoreIds);
-	const effectiveDraft=useMemo(()=>JSON.stringify(draft.shared.coreIds)===confirmedCoreKey?draft:{...draft,shared:{...draft.shared,coreIds:[...confirmedCoreIds]}},[draft,confirmedCoreKey]);
+	// Retained soft fields are historical only. This card and new requests use
+	// the same public hard-freeze owner as F and the modeling workspace.
+	const effectiveDraft=draft;
+	const [emptyProtectionOpen,setEmptyProtectionOpen]=useState(false);
 	const [fallbackSource, setFallbackSource] = useState<AdvancedFrameSource | null>(
 		initial.current?.source ?? null
 	);
@@ -259,12 +259,9 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const atomConfigurationIssues=useMemo(()=>source?mixedConformerAtomConfigurationIssues(effectiveDraft,source):{cards:{}},[effectiveDraft,source]);
 	const protectedSource = useMemo(
 		() => {
-			if(!source)return null;
-			const ids=effectiveDraft.shared.coreIds.filter(id=>source.structure.atoms.some(atom=>atom.id===id));
-			if(baseElectronicStateError(source.structure,{charge:source.structure.charge!,multiplicity:source.structure.multiplicity!}))return {...source,constraints:{...source.constraints,frozenAtomIds:ids}};
-			return overrideAdvancedTaskSource(source,{protectionAtomIds:ids});
+			return source;
 		},
-		[source, effectiveDraft.shared.coreIds]
+		[source]
 	);
 	const selectionEnabled = !!(
 		p.active &&
@@ -312,7 +309,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 				const baseDraft=owned?createMixedConformerDraft():latest.current.draft;
 				const nextDraft = {
 					...baseDraft,
-					shared: { ...baseDraft.shared, coreIds: [...next.constraints.frozenAtomIds] }
+					shared: { ...baseDraft.shared, coreIds: [...baseDraft.shared.coreIds] }
 				};
 				const currentResources=usableComputeResources(latest.current.p.computeResources);
 				if(!currentResources){setFallbackSource(next);setDraft(nextDraft);autoCapture.current=false;return;}
@@ -511,7 +508,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			if(!initial)throw Error("请明确选择本次采样使用的初猜。");
 			const canonical=initial.source;
 			if(canonical.structure.charge!==electronic.charge||canonical.structure.multiplicity!==electronic.multiplicity||baseElectronicStateError(canonical.structure,electronic))throw Error("初始结构的电子态已改变，请确认当前电荷与自旋多重度后再开始。");
-			const submittedDraft={...effectiveDraft,shared:{...effectiveDraft.shared,coreIds:[...(current.mixedSampling?.draft.protectedAtomIds??effectiveDraft.shared.coreIds)]}};
+			const submittedDraft=effectiveDraft;
 			const configuration=compileMixedDefinition(submittedDraft,canonical,resources),stages=compileMixedStages(submittedDraft.stages,resources.threads);
 			const submitted=submitConformerSampling({controller:p.controller,task:current,definition:configuration,stages,electronic,mode,confirm});
 			if(submitted){setFallbackSource(submitted.source);setOverlay(null);setPreview(null);setDraft(value=>({...value,cards:value.cards.map(card=>({...card,expanded:false}))}));}
@@ -547,12 +544,21 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		if(impact.requiresConfirmation&&!confirm(`更改本级设置将使本级及更高级的 ${impact.affectedFrameCount} 个已有结果失效，上游采样和较低级结果保留。继续？`))return;
 		p.controller.configureStages(task.id,configurations);setDraft(value=>({...value,stages}));
 	}
+	function organizeCollection(id:string){
+		const collection=collections.find(row=>row.id===id),configurationId=collection?.clusterCollection?.configurationId;
+		if(!task||!configurationId)return;
+		if(!resources)throw Error(RESOURCES_WAITING);
+		const configurations=compileMixedStages(draft.stages,resources.threads),impact=p.controller.previewStageConfiguration(task.id,configurations);
+		if(impact.requiresConfirmation&&!confirm(`按当前设置重新整理归簇将更新本级及更高级的 ${impact.affectedFrameCount} 个已有结果。原始优化结构保留，不会重新优化。继续？`))return;
+		p.controller.configureStages(task.id,configurations);
+		p.controller.organizeStage(task.id,configurationId);
+	}
 	function changeDeduplication(patch:Partial<Pick<MixedConformerDraft,'deduplicationEnabled'|'dedupRmsdAngstrom'>>){
 		const next={...draft,...patch},previous=task?.mixedSampling?.draft;
 		if(!task||!source||!resources||!previous){setDraft(next);return;}
 		const changed=(previous.deduplicationEnabled!==false)!==(next.deduplicationEnabled!==false)||(previous.dedupRmsdAngstrom??.01)!==next.dedupRmsdAngstrom;
 		if(!changed)return;
-		const configuration=compileMixedDefinition({...next,shared:{...next.shared,coreIds:[...confirmedCoreIds]}},source,resources);
+		const configuration=compileMixedDefinition(next,source,resources);
 		const downstream=task.conformerWorkflow?.stages.some(stage=>(stage.resultFrameIds?.length??0)+stage.representativeFrameIds.length+stage.promotedFrameIds.length>0);
 		if(downstream&&!confirm("修改去重设置将重新整理已有采样，并使下游优化结果失效。继续？")){setDraft(value=>({...value,deduplicationEnabled:previous.deduplicationEnabled!==false,dedupRmsdAngstrom:previous.dedupRmsdAngstrom??.01}));return;}
 		p.controller.configureMixedSampling(task.id,configuration);
@@ -607,23 +613,19 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			return { ...value, cards };
 		});
 	}
-	async function changeCore(ids: string[]) {
-		const before=new Set(confirmedCoreIds),next=new Set(ids);
-		if(before.size===next.size&&[...before].every(id=>next.has(id)))return;
-		if(!confirm("更改保护原子将清空本任务全部采样及各级优化结果，并应用新的保护集合。继续？"))return;
-		if(task){if(!p.onCommitConformerCoreChange)throw Error("保护集合更新入口暂不可用。");if(!await p.onCommitConformerCoreChange(task.id,[...next]))return;}
-		else if(source)p.onProtectionChange?.(source,[...next]);
-		setDraft((value) => ({ ...value, shared: { ...value.shared, coreIds: [...next] } }));
-		setOverlay(null);setCollectionId('');
+	async function changeFrozenAtoms(ids:readonly string[]):Promise<boolean>{
+		if(!task||!editingInitial||!p.conformerFreezeEditable||!p.displayedSource||!p.onConformerFreezeChange)return false;
+		const accepted=await p.onConformerFreezeChange(task.id,p.displayedSource,[...ids]);
+		if(accepted)setEmptyProtectionOpen(false);
+		return accepted;
 	}
-	const sharedFreezeKey = JSON.stringify(task?.mixedSampling?.draft.protectedAtomIds??p.sourceProtectionAtomIds);
-	useEffect(() => {
-		const ids=task?.mixedSampling?.draft.protectedAtomIds??p.sourceProtectionAtomIds;
-		if (!source || busy || ids === undefined) return;
-		if (ids.some(id => !source.structure.atoms.some(atom => atom.id === id))) return;
-		setDraft(value => JSON.stringify(value.shared.coreIds) === JSON.stringify(ids) ? value :
-			{...value, shared: {...value.shared, coreIds: [...ids]}});
-	}, [sharedFreezeKey, p.activeConformerInitial?.taskId, p.activeConformerInitial?.initialId, selectedInitial?.id, task?.id, busy]);
+	async function changeProtectionCardEnabled(enabled:boolean){
+		if(!p.conformerFreezeEditable)return;
+		if(enabled){if(!(p.currentSourceFreezeAtomIds?.length))setEmptyProtectionOpen(true);return;}
+		regionCapture.cancel();
+		if(!(p.currentSourceFreezeAtomIds?.length)){setEmptyProtectionOpen(false);return;}
+		await changeFrozenAtoms([]);
+	}
 	const previewOwner = hover ?? preview;
 	const torsionPreview = useMemo(() => {
 		if (
@@ -651,7 +653,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 						torsion: planConformerTorsionHierarchy(
 							snapshot,
 							[checked.torsion],
-							draft.shared.coreIds.length ? draft.shared.coreIds : undefined
+							effectiveSharedFreezes(protectedSource.constraints).frozenAtomIds
 						).torsions[0].torsion
 					}
 				: null;
@@ -666,7 +668,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		busy,
 		previewOwner,
 		draft.cards,
-		draft.shared.coreIds
+		protectedSource?.constraints
 	]);
 	useEffect(() => {
 		if (!p.active || !p.displayedSource) {
@@ -730,13 +732,16 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		fit,
 		range,
 		displayStride,
-		draft.shared.coreIds,displayCoreIds,displayCoreAutomatic,playbackReferenceMode,effectivePlaybackReference,playbackResolution
+		displayCoreIds,displayCoreAutomatic,playbackReferenceMode,effectivePlaybackReference,playbackResolution
 	]);
 	const samplingRun = task?.runs
 			.slice()
 			.reverse()
 			.find((value) => value.intent === "sampling"),
 		mix = samplingRun?.mixedSampling;
+	const cardFrozenIds=p.currentSourceFreezeAtomIds??[];
+	const freezeEditable=Boolean(editingInitial&&p.conformerFreezeEditable&&p.onConformerFreezeChange&&p.displayedSource);
+	const protectionCardEnabled=cardFrozenIds.length>0||(freezeEditable&&emptyProtectionOpen);
 	const batches=task?.mixedSampling?.batches??[],currentBatch=batches.find(batch=>batch.id===task?.mixedSampling?.currentBatchId);
 	const hasSamplingHistory=batches.length>0||Boolean(task?.runs.some(run=>run.intent==='sampling'))||Boolean(collections[0]?.frames.length);
 	const atomConfigurationError=atomConfigurationIssues.core??Object.values(atomConfigurationIssues.cards)[0]??'';
@@ -809,9 +814,11 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
                 </BaseElectronicStateFields>
 				<InputSettingsCard title="混合采样" testId="mixed-sampling-settings">
 					<div className="mixed-sampling-definition">
-						<details className="conformer-advanced-sampling"><summary>高级采样设置{draft.shared.coreIds.length||draft.shared.sphereEnabled?' · 已启用':''}</summary><fieldset disabled={busy||!source} className="conformer-advanced-groups">
-							<section><strong>保护核心</strong><AdvancedRegionField source={source} port={regionCapture.selectionPort} enabled={selectionEnabled} ids={draft.shared.coreIds} label="保护原子" onRequest={()=>coordinateCapture.cancel()} onConfirm={ids=>act(()=>changeCore(ids))}/>{atomConfigurationIssues.core&&<output role="status">{atomConfigurationIssues.core}</output>}{draft.shared.coreIds.length>0&&<output>原生 MD／MTD：{Number(protectionStrengthToDisplay(draft.shared.coreForce).toPrecision(10)).toLocaleString('en-US')} kJ·mol⁻¹·nm⁻² · RMSD &lt; {NATIVE_CONFORMER_CORE_PROTECTION.maxRmsdAngstrom} Å</output>}</section>
-							<section><InputSettingsCheckbox label="限制在球内" ariaLabel="将体系限制在一个球内" checked={draft.shared.sphereEnabled} onChange={sphereEnabled=>setDraft(value=>({...value,shared:{...value.shared,sphereEnabled}}))}/>{draft.shared.sphereEnabled&&<SamplingSphereEditor draft={sphere} disabled={busy} onChange={acceptSphere} onRefit={()=>source&&acceptSphere(createSamplingSphereDraft(source.ref.documentId,source.ref.revision,source.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),draft.shared.spherePaddingAngstrom))}/>}</section>
+						<details className="conformer-advanced-sampling"><summary>高级采样设置{protectionCardEnabled||draft.shared.sphereEnabled?' · 已启用':''}</summary><fieldset disabled={!source} className="conformer-advanced-groups">
+							<InputSettingsEnableCard className="conformer-advanced-card" level="subcard" title="保护原子" switchLabel="启用保护原子" testId="conformer-core-protection-card" enabled={protectionCardEnabled} disabled={!freezeEditable} onEnabledChange={enabled=>act(()=>changeProtectionCardEnabled(enabled))}>
+								<div className="conformer-freeze-field"><AdvancedRegionField source={editingInitial?p.displayedSource??source:source} port={regionCapture.selectionPort} enabled={freezeEditable} ids={[...cardFrozenIds]} label="保护原子" onRequest={()=>coordinateCapture.cancel()} onConfirm={ids=>act(()=>changeFrozenAtoms(ids))}/></div>
+							</InputSettingsEnableCard>
+							<InputSettingsEnableCard className="conformer-advanced-card" level="subcard" title="限制在球内" switchLabel="将体系限制在一个球内" testId="conformer-sphere-protection-card" enabled={draft.shared.sphereEnabled} disabled={busy||!source} onEnabledChange={sphereEnabled=>setDraft(value=>({...value,shared:{...value.shared,sphereEnabled}}))}><SamplingSphereEditor draft={sphere} disabled={busy} onChange={acceptSphere} onRefit={()=>source&&acceptSphere(createSamplingSphereDraft(source.ref.documentId,source.ref.revision,source.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),draft.shared.spherePaddingAngstrom))}/></InputSettingsEnableCard>
 						</fieldset></details>
 						{draft.cards.map((card, index) => (
 							<div key={card.id} className="conformer-sampling-card">
@@ -974,6 +981,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 						<InputSettingsRow>
 							<InputSettingsAction
 								ariaLabel="添加采样方式"
+								variant="primary"
 								disabled={busy||!source}
 								onClick={() => setAdding((value) => !value)}
 							>
@@ -992,10 +1000,10 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 								))}
 						</InputSettingsRow>
 						<fieldset disabled={busy||!source||!resources} className="conformer-deduplication"><InputSettingsCheckbox label="去重" ariaLabel="采样末尾去重" checked={draft.deduplicationEnabled!==false} onChange={deduplicationEnabled=>act(()=>changeDeduplication({deduplicationEnabled}))}/>
-						{draft.deduplicationEnabled!==false&&<InputSettingsField label="RMSD / Å">
+						<InputSettingsField label="RMSD / Å">
 							<NumericInput
 								aria-label="采样去重 RMSD"
-
+								disabled={draft.deduplicationEnabled===false}
 								min={0.000001}
 								step={0.001}
 								value={draft.dedupRmsdAngstrom}
@@ -1007,7 +1015,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 									}))
 								}
 							/>
-						</InputSettingsField>}
+						</InputSettingsField>
 						{draft.deduplicationEnabled!==false&&samplingRun?.backgroundProgress?.phase==='deduplicate'&&(()=>{const progress=samplingRun.backgroundProgress;return <><output>总共收到 {progress.total??'—'}帧，已处理 {progress.completed} / {progress.total??'—'}</output><div className="conformer-progress-row"><progress aria-label="采样末尾去重进度" max={progress.total??undefined} value={progress.total===null?undefined:progress.completed}/><output>{progress.total?Number((progress.completed/progress.total*100).toFixed(1)):0}%　预计剩余 {progress.etaMs==null?'估算中':samplingRemainingLabel(progress.etaMs)}</output></div></>;})()}
 						{samplingRun?.backgroundProgress?.phase==='prepare-results'&&<div className="conformer-progress-row"><output role="status">{samplingRun.status==='stopping'?'采样计算已停止 · 正在准备保留结果':'正在准备采样结果'}</output><progress aria-label="准备采样结果"/><output>预计剩余 估算中</output></div>}
 						{mix?.deduplicationCompleted&&<output>保留 {collections[0]?.frames.length??0} 帧</output>}
@@ -1054,7 +1062,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 							清空采样
 						</InputSettingsAction>
 					</div>
-					{samplingRun?.error&&error!==samplingRun.error&&<DismissibleNotice identity={samplingRun.id}>{samplingRun.error}</DismissibleNotice>}
+					{samplingRun?.error&&error!==samplingRun.error&&<ConformerRunError run={samplingRun}/>}
 					{clearing&&<p role="status">正在清空并释放本任务资源…</p>}
 					{samplingConfigurationError&&<DismissibleNotice>{samplingConfigurationError}</DismissibleNotice>}
 					{error&&<DismissibleNotice>{error}</DismissibleNotice>}
@@ -1068,7 +1076,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 					upstreamForStage={index=>conformerUpstreamSummary(task,index,draft.stages[index].inputClusterCount??10,draft.stages[index].inputStride??1)}
 					onStart={(index) => act(() => startOptimization(index))}
 					onRunAll={() => act(() => startOptimization())}
-					actionForStage={(id)=>optimizationActionView(task,id)}
+					actionForStage={(id)=>{const action=optimizationActionView(task,id);return {...action,error:action.hasRunError&&action.run?<ConformerRunError run={action.run}/>:undefined};}}
 					onContinue={(index)=>act(()=>startOptimization(index))}
 					onRestart={(index)=>act(()=>startOptimization(index,'restart'))}
 					onRestartAll={()=>act(()=>startOptimization(undefined,'restart'))}
@@ -1083,7 +1091,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		<div className="advanced-results" hidden={!p.active} data-testid="conformer-results">
 			<WorkflowSessionBar label="采样与优化结果" />
 			<InputSettingsLayout>
-				<ConformerStageResults busy={busy} onOrganize={id=>act(()=>{const collection=collections.find(row=>row.id===id);if(task&&collection?.clusterCollection)p.controller.organizeStage(task.id,collection.clusterCollection.configurationId);})}
+				<ConformerStageResults busy={busy} onOrganize={id=>act(()=>organizeCollection(id))}
 					collections={collections}
 					collectionId={currentCollection?.id}
 					collectionStates={collectionStates}
@@ -1107,7 +1115,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 							openCollection(collection, frame.id,true);
 						}
 					}}
-                    onPrepareBatchInput={p.onPrepareBatchInput ? frames=>act(()=>p.onPrepareBatchInput!(frames.map(frame=>frame.source),draft.shared.coreIds,selectedFrame?.source.ref.frameId)) : undefined}
+                    onPrepareBatchInput={p.onPrepareBatchInput ? frames=>act(()=>p.onPrepareBatchInput!(frames.map(frame=>frame.source),[],selectedFrame?.source.ref.frameId)) : undefined}
 				/>
 			</InputSettingsLayout>
 		</div>

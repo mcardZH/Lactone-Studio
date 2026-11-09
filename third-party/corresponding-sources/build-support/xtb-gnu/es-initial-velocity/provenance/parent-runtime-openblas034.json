@@ -1,0 +1,45 @@
+{
+  "entry": "bin/xtb.exe",
+  "dataDirectory": "share/xtb",
+  "methods": [
+    "gfn0",
+    "gfn1",
+    "gfn2",
+    "gfnff"
+  ],
+  "source": {
+    "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+    "scientificPinsManifest": {
+      "path": "provenance/scientific-pins.json",
+      "bytes": 5616,
+      "sha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b"
+    }
+  },
+  "build": {
+    "id": "5071a886-gnu132-r2-runtime-rebuild-a01",
+    "compiler": {
+      "name": "gfortran",
+      "version": "13.2.0"
+    },
+    "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+    "sourceReceiptSha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3"
+  },
+  "modified": {
+    "local": true,
+    "kind": "independent-rebuild",
+    "upstreamBinaryIdentity": false
+  },
+  "inventory": {
+    "path": "inventory.json",
+    "bytes": 2453,
+    "sha256": "87ca1cee74edfdaec7d2d10c100ff1896c76fbd80ba4485f6012e50300cd7cd9"
+  },
+  "schema": "sciyue-xtb-bundled-runtime/v2",
+  "platform": "win32-x64",
+  "version": "6.7.0",
+  "reportedVersion": "6.7.0",
+  "scope": "local-experimental",
+  "localUseReady": true,
+  "publicDistributionApproved": false,
+  "productReplacementVerified": false
+}

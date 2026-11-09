@@ -8,6 +8,7 @@ import {inputSelectionIndices} from '../../core/input-selection';
 import {advancedMethodSolvents} from './solvation';
 import {protectionStrengthToNative} from './protection-units';
 import {conformerSamplingSchedule} from '../../modeling/advanced/sampling-progress';
+import {conformerSolvationIssue} from '../../modeling/advanced/conformer-solvation';
 
 export interface ProcessResources {threads:number;maxSteps:number;maxEvaluations:number;maxWallTimeSeconds?:number}
 export interface PathDraft extends ProcessResources {
@@ -60,6 +61,7 @@ export function compilePath(draft:PathDraft,source:AdvancedFrameSource,product:A
 }
 
 export interface SamplingDraft extends ProcessResources {
+ coreProtectionEnabled?:boolean;
  operation:ConformerSamplingOperation;method:ConformerSamplingMethod;solvationModel:'none'|'alpb'|'gbsa';solvent:string;
  seed:number;dtFs:number;frictionPerFs:number;reportEvery:number;maxFrames:number;
  lowTemperatureK:number;highTemperatureK:number;heatingFs:number;highHoldFs:number;coolingFs:number;lowHoldFs:number;cycles:number;
@@ -70,10 +72,10 @@ export interface SamplingDraft extends ProcessResources {
  coreIds:string[];coreForce:number;metaIds:string[];sphere:ConformerSamplingSphere;
  operationDrafts?:Partial<Record<ConformerSamplingOperation,SamplingOperationDraft>>;
 }
-type SamplingOperationDraft=Omit<SamplingDraft,'operation'|'operationDrafts'|'coreIds'|'metaIds'|'sphere'>;
+type SamplingOperationDraft=Omit<SamplingDraft,'operation'|'operationDrafts'|'coreIds'|'coreProtectionEnabled'|'metaIds'|'sphere'>;
 export const initialSamplingDraft:SamplingDraft={operation:'md',method:'gfnff',threads:2,maxSteps:100000,maxEvaluations:200001,solvationModel:'none',solvent:'water',seed:731,dtFs:2,frictionPerFs:.01,reportEvery:20,maxFrames:2000,lowTemperatureK:0,highTemperatureK:600,heatingFs:1000,highHoldFs:7000,coolingFs:2000,lowHoldFs:0,cycleDurationFs:10000,cycles:5,temperatureK:300,durationFs:50000,sampleEveryFs:100,depositEveryFs:100,heightEV:.01,sigmaAngstrom:.5,maxHistory:1000,molecularTemperatureK:600,molecularDurationFs:50000,molecularSampleEveryFs:100,shakeHydrogenBonds:false,hydrogenMassAmu:4,metaScope:'all',sphereEnabled:false,spherePaddingAngstrom:3,coreIds:[],coreForce:protectionStrengthToNative(NATIVE_CONFORMER_CORE_PROTECTION.forceConstantKJMolNm2),metaIds:[],sphere:{centerAngstrom:[0,0,0],radiusAngstrom:5,forceConstantEVPerAngstrom2:1}};
 function samplingOperationDraft(draft:SamplingDraft):SamplingOperationDraft{
- const{operation,operationDrafts,coreIds,metaIds,sphere,...settings}=draft;return structuredClone(settings);
+ const{operation,operationDrafts,coreIds,coreProtectionEnabled,metaIds,sphere,...settings}=draft;return structuredClone(settings);
 }
 /** UI-only drafts never cache source-bound atom IDs or cross into task snapshots. */
 export function changeSamplingOperation(draft:SamplingDraft,operation:ConformerSamplingOperation):SamplingDraft{
@@ -94,27 +96,28 @@ export const NATIVE_MD_CORE_UNAVAILABLE='此原生MD／MTD核心保护组合尚�
 export function compileSampling(d:SamplingDraft,source:AdvancedFrameSource):AdvancedSamplingTaskOptions{
  if(d.operation==='anneal')throw Error('退火已停用，历史结果仍可查看；请选择其他采样任务。');
  if(effectiveSharedFreezes(source.constraints).coordinates.length)throw Error('MD采样尚不接受内坐标动量约束，请保留原定义并选择其他来源。');
- if(d.solvationModel!=='none'&&(!['gfn1','gfn2'].includes(d.method)||!advancedMethodSolvents(d.method,d.solvationModel).includes(d.solvent)))throw Error('所选采样级别仅支持气相或不支持该隐式溶剂。');
- inputSelectionIndices(source.structure,d.coreIds);if(d.metaScope==='selected'||d.metaScope===undefined)inputSelectionIndices(source.structure,d.metaIds);
  const capability=getConformerSamplingCapability(d),native=capability.driver==='native-xtb-md';
+ if(native){const issue=conformerSolvationIssue(d.method,d.solvationModel,d.solvent);if(issue)throw Error(issue);}
+ else if(d.solvationModel!=='none'&&(!['gfn1','gfn2'].includes(d.method)||!advancedMethodSolvents(d.method,d.solvationModel).includes(d.solvent)))throw Error('所选采样级别仅支持气相或不支持该隐式溶剂。');
+ const activeCoreIds=d.coreProtectionEnabled===false?[]:d.coreIds;
+ inputSelectionIndices(source.structure,activeCoreIds);if(d.metaScope==='selected'||d.metaScope===undefined)inputSelectionIndices(source.structure,d.metaIds);
  if(native&&d.operation==='metadynamics'&&d.depositEveryFs<2*d.dtFs)throw Error('原生MTD加偏置间隔至少为两个积分步。');
- const protectedIds=[...new Set([...effectiveSharedFreezes(source.constraints).frozenAtomIds,...d.coreIds])];
+ const protectedIds=[...new Set([...effectiveSharedFreezes(source.constraints).frozenAtomIds,...activeCoreIds])];
  const nativeProtection:ConformerNativeProtection={};
- if(native&&protectedIds.length){
+ if(native&&protectedIds.length>=2){
   if(!capability.coreProtectionSupported)throw Error(NATIVE_MD_CORE_UNAVAILABLE);
-  if(protectedIds.length<2)throw Error('原生相对距离核心保护至少需要2个不同原子。');
   const profiles=NATIVE_CONFORMER_CORE_PROTECTION;
   const supportedStrength=[profiles.forceConstantKJMolNm2,profiles.legacyForceConstantKJMolNm2].some(value=>Math.abs(d.coreForce-protectionStrengthToNative(value))<=1e-9);
   if(d.dtFs!==profiles.dtFs||!Number.isFinite(d.coreForce)||!supportedStrength)throw Error('原生核心保护仅支持2 fs与500,000 kJ·mol⁻¹·nm⁻²，或已保存的5,000,000历史配置。');
   nativeProtection.core={kind:'pairwise-distance',atomIds:protectedIds,forceConstantEVPerAngstrom2:d.coreForce};
  }
- if(!native&&d.coreIds.length&&(!Number.isFinite(d.coreForce)||d.coreForce<1e-6||d.coreForce>1000))throw Error('保护力常数超出当前执行范围。');
+ if(!native&&activeCoreIds.length&&(!Number.isFinite(d.coreForce)||d.coreForce<1e-6||d.coreForce>1000))throw Error('保护力常数超出当前执行范围。');
  if(native&&d.sphereEnabled){
   if(!capability.sphereSupported)throw Error('此原生MD级别尚未提供多项式球形约束。');
   if(d.sphere.centerAngstrom.length!==3||!d.sphere.centerAngstrom.every(Number.isFinite)||!Number.isFinite(d.sphere.radiusAngstrom)||d.sphere.radiusAngstrom<.01||d.sphere.radiusAngstrom>10000)throw Error('多项式球壁需要有限球心和0.01–10000 Å半径。');
   nativeProtection.sphere={kind:'polynomial',centerAngstrom:[...d.sphere.centerAngstrom],radiusAngstrom:d.sphere.radiusAngstrom,exponent:30};
  }
- const protection=native?(nativeProtection.core||nativeProtection.sphere?{nativeProtection}:{}):{...(d.sphereEnabled?{sphere:structuredClone(d.sphere)}:{}),...(d.coreIds.length?{coreProtection:{atomIds:[...d.coreIds],forceConstantEVPerAngstrom2:d.coreForce}}:{})};
+ const protection=native?(nativeProtection.core||nativeProtection.sphere?{nativeProtection}:{}):{...(d.sphereEnabled?{sphere:structuredClone(d.sphere)}:{}),...(activeCoreIds.length?{coreProtection:{atomIds:[...activeCoreIds],forceConstantEVPerAngstrom2:d.coreForce}}:{})};
  const mass=d.method==='gfnff'?d.hydrogenMassAmu:undefined;
  const schedule=conformerSamplingSchedule({operation:d.operation,dtFs:d.dtFs,reportEvery:d.reportEvery,
   molecularMD:{durationFs:d.molecularDurationFs,sampleEveryFs:d.molecularSampleEveryFs},metadynamics:{durationFs:d.durationFs,sampleEveryFs:d.sampleEveryFs},sphericalMD:{durationFs:d.durationFs,sampleEveryFs:d.sampleEveryFs}});

@@ -12,8 +12,7 @@ export interface OptPlaybackOptions extends OptPlaybackSessionOptions { active: 
 
 /** One frame snapshot drives canvas, metadata, analyses and detached trajectory tabs. */
 export function useOptPlayback(result: TrajectoryResult, { active, ready = true, autoPreview = true, previewFrameDelayMs, tsFrameIndex, prepareFrame, prepared, onError,continuation,restored,liveContinuation,collection }: OptPlaybackOptions) {
-  const fallback=useMemo(()=>createPlaybackCollection(result,{ownerId:crypto.randomUUID()}),[result]);
-  const currentCollection=collection??fallback;
+  const currentCollection=useMemo(()=>collection??createPlaybackCollection(result,{ownerId:crypto.randomUUID()}),[collection,result]);
   const committed=useRef<{owner:OptPlaybackSession;result:TrajectoryResult;identity?:PlaybackContinuationIdentity;active:boolean}|null>(null);
   const session=useMemo(()=>{const previous=committed.current,retained=active&&previous?.active&&previous.result!==result&&previous.result.id===result.id&&previous.result.source.id===result.source.id&&playbackFramesExtend(previous.result,result)&&canContinuePlayback(previous.identity,continuation)?previous.owner.captureViewState():null;
     const lease=playbackOwners.acquire(currentCollection,result,{autoPreview,previewFrameDelayMs,tsFrameIndex,prepareFrame,prepared,restored,liveContinuation,...(retained?{restored:retained,liveContinuation:{playing:retained.playing,silentLoading:retained.silentLoading}}:{})});
@@ -23,11 +22,10 @@ export function useOptPlayback(result: TrajectoryResult, { active, ready = true,
   useLayoutEffect(()=>{committed.current={...session,active};},[session,active]);
   owner.onError = onError;
   const state = useSyncExternalStore(owner.subscribe, owner.getSnapshot, owner.getSnapshot);
-  // setEnvironment also reattaches a cleaned-up owner during StrictMode effect replay.
-  // Its preview/manual intent survives; only live reads/timers are renewed.
+  // React effect replay explicitly reacquires; stale environment callbacks do not.
+  useEffect(() => { session.lease.reacquire(); return () => session.lease.release(); }, [session]);
   const restriction=playbackCollectionRestriction(currentCollection);
   useEffect(() => { session.lease.setEnvironment(active&&!restriction, ready); }, [session, active, ready,restriction]);
-  useEffect(() => () => session.lease.release(), [session]);
   const targets=currentCollection.targets,seekTarget=(kind:'ts'|'ci')=>{const id=targets[kind]?.frameId,frame=currentCollection.frames.find(frame=>frame.frameId===id);if(frame?.sourceFrameIndex!==undefined)owner.seek(frame.sourceFrameIndex);};
   const controls: TrajectoryControlsProps = { count: currentCollection.frames.length, index: Math.max(0,currentCollection.frames.findIndex(frame=>frame.sourceFrameIndex===state.frame.index)), playing: state.playing, busy: state.busy,
     preparation: state.preparation, loading: state.loading, loadCancelled: state.loadCancelled, silentLoading: state.silentLoading||state.holdingFrameDuringPreparation,

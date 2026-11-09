@@ -1,0 +1,393 @@
+{
+  "schema": "es-xtb-initial-velocity-source-build/v1",
+  "algorithm": "xtb-h-only-initial-cap-v1",
+  "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "sourcePatch": {
+    "algorithm": "xtb-h-only-initial-cap-v1",
+    "path": "src/dynamic.f90",
+    "beforeSha256": "32b604dfc82eb647b753cd8ff1b650547fcb686e5f1b668a70dfb472aedbfd91",
+    "afterSha256": "1b23863afc82582386e4a3a4c1711e09439e79417a65b133219810214c65ca4f"
+  },
+  "rawBuild": {
+    "schema": "sy-xtb-gnu-user-source-build-v1",
+    "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+    "sourceIndexSha256": "c74349563d055d99873ef320703d3bbb4ef75d226d89f5f39f17aa251cee673b",
+    "preferredSourceTree": {
+      "path": "preferred-source-tree.json",
+      "bytes": 356305,
+      "sha256": "7b949d2438a576e7d9ff818dc6a2cca03ba703c2af0183f94df0d49e8f307810"
+    },
+    "scientificPins": [
+      {
+        "name": "xtb",
+        "commit": "5071a8869720fb0ecd788af977159869b64a277c",
+        "sha256": "2e4b378c644a053da66137f82aeeb8c796c81714fdfce917f71d94eac65f06fc"
+      },
+      {
+        "name": "dftd4",
+        "commit": "f572723f5a5cb8243ea88b0253e182088311c6f3",
+        "sha256": "d753ddf4e5504278a37fdbea33ba2c8945794d1b082043d316855df5df386c77"
+      },
+      {
+        "name": "mctc-lib",
+        "commit": "87a46cdf5281ad75909083c4f72354d54abdf95d",
+        "sha256": "9bab9cc10327cc4f2f12da88ec57bb036a70d97e6c5278afb439edf30c565ca9"
+      },
+      {
+        "name": "tblite",
+        "commit": "d2f08e808afe69aa71a6a12163632569ee6e9a4a",
+        "sha256": "eaccb27616b30be5ddb09cdbe95567e3a81cb9f33e5ef02f2237b4b5de1b05ac"
+      },
+      {
+        "name": "cpcmx",
+        "commit": "b41feaf44f09be0e90f5845eb7a8a6d2ade5471d",
+        "sha256": "133f75b0ae7e769facad787e8a163069d8eb14f9643d2c395819e96c4a89bc90"
+      },
+      {
+        "name": "multicharge",
+        "commit": "46ea4e370b1a59e01cc022d1f65c64bae8dbf968",
+        "sha256": "493aacf2c47fa939c84c725f35ec58c927dc027853de64c857236bb94afc0e20"
+      },
+      {
+        "name": "toml-f",
+        "commit": "6290b0bc5f5ebeff231625a3b6685de85f33fc79",
+        "sha256": "0b4b1320a93ad3dcbffd79cdbe92c3c396fc95290018b3e1bdfe4bc43b2a0916"
+      },
+      {
+        "name": "s-dftd3",
+        "commit": "5ee8c4d71414bf54db0b680ee3c532215847e0f9",
+        "sha256": "b61d7acfd5d3775f7626afc8ef1acf74f5f359e4e80e9d299b01cdd197037c39"
+      },
+      {
+        "name": "numsa",
+        "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+        "sha256": "ef4699aa3c162cbab7cb95e3774b10e26040f4803301c735d40251a14798d0dd"
+      },
+      {
+        "name": "json-fortran",
+        "commit": "77c9f99d7d5c6a0ec9011f7225db3dbb6894ef6d",
+        "sha256": "16eec827f64340c226ba9a8463f001901d469bc400a1e88b849f258f9ef0d100"
+      },
+      {
+        "name": "mstore",
+        "commit": "974fb59092f74c7db86a1a11b1aafb3cbf311aa3",
+        "sha256": "1adae8cd0368465e1b2ba2e8774bd5868b49987d153b4bc9b65555febfbef337"
+      },
+      {
+        "name": "test-drive",
+        "commit": "9c3401e30dbd2da1add77aaa252a4c6928fe39a1",
+        "sha256": "721fbc41d28bfbc42314dd0787a1803e3fd7036829cedfa49e4efc2ba322247b"
+      }
+    ],
+    "runtimeSourceReceipt": {
+      "path": "gnu-runtime-source-receipt.json",
+      "bytes": 7435,
+      "sha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3"
+    },
+    "localModified": true,
+    "sourceModified": true,
+    "modifiedSourcePaths": [
+      "src/dynamic.f90"
+    ],
+    "addedSourcePaths": [],
+    "buildName": "5071a886-gnu132-r2-es-hcap-v1",
+    "compilerSeedArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+    "meson": "1.4.1",
+    "ninja": "1.12.0",
+    "openblasAbi": "LP64",
+    "peStackReserve": 67108864,
+    "peStackCommit": 4096,
+    "inventoryFiles": [
+      {
+        "path": "bin/VCRUNTIME140.dll",
+        "bytes": 124496,
+        "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60"
+      },
+      {
+        "path": "bin/libdl.dll",
+        "bytes": 60228,
+        "sha256": "09ffe313366349710d7606fad2b192826a0fb55e693f9d8a4eeb4ec1059f3c61"
+      },
+      {
+        "path": "bin/libgcc_s_seh-1.dll",
+        "bytes": 189830,
+        "sha256": "7a315f073b3feda48c63a9bda3951c9d8f53cfeecd545fea75bf67756024f5b0"
+      },
+      {
+        "path": "bin/libgfortran-5.dll",
+        "bytes": 3896233,
+        "sha256": "683271e02ab3524e80ca935997d5326522956b9e5aa582ea750b4e3c6c9d53b6"
+      },
+      {
+        "path": "bin/libgomp-1.dll",
+        "bytes": 383912,
+        "sha256": "b193e98534d98659b83c561103bd7cf5a6a9f320d8b2d04456a70476e26d2da4"
+      },
+      {
+        "path": "bin/libquadmath-0.dll",
+        "bytes": 449972,
+        "sha256": "14c3356da8b677ea9ed73051739ad08807734a1410d570c95b5cb8b20f35e112"
+      },
+      {
+        "path": "bin/libwinpthread-1.dll",
+        "bytes": 111375,
+        "sha256": "02be535e6495e755cf0532589303841c09d125ddca88bc6db294c8d76a1516cf"
+      },
+      {
+        "path": "bin/openblas.dll",
+        "bytes": 28410880,
+        "sha256": "d0073463ce449d6bb4a3f720b1ebf8a858b49ca2e376271585a7f75f6a1795d8"
+      },
+      {
+        "path": "bin/xtb.exe",
+        "bytes": 14614545,
+        "sha256": "5e8a0d6a738922b084bea7bdfa1086d674232916257df73886e5d6557ba06124"
+      },
+      {
+        "path": "share/xtb/.param_gfnff.xtb",
+        "bytes": 10664,
+        "sha256": "5cf2d1259dd3c65aa9594ea32a0c9a21bb819b6e16b81521888c5a3a1ec513e8"
+      },
+      {
+        "path": "share/xtb/param_gfn0-xtb.txt",
+        "bytes": 39220,
+        "sha256": "278461cabbf89b14379aedc78ef3e141c8cef1f911f3a3c72530aec7a52b6d34"
+      },
+      {
+        "path": "share/xtb/param_gfn1-si-xtb.txt",
+        "bytes": 28007,
+        "sha256": "f878fd7f8eea16f326aff283fbc7ca23800045992c0f86536e18ad91816cf7ca"
+      },
+      {
+        "path": "share/xtb/param_gfn1-xtb.txt",
+        "bytes": 27800,
+        "sha256": "81a9d7afdee31f5d8fd67a4d8ec966179317c7b100261c9c82d724bafb460399"
+      },
+      {
+        "path": "share/xtb/param_gfn2-xtb.txt",
+        "bytes": 35849,
+        "sha256": "f6f05c6c5264cb2f75c54f8ac6838044541c1e493b16f1a4d4ee4fa64de5f545"
+      },
+      {
+        "path": "share/xtb/param_ipea-xtb.txt",
+        "bytes": 27805,
+        "sha256": "08a39b7854b915501d8ba87b7d3330f28932f293479a0dc52b502f039c19f122"
+      }
+    ],
+    "officialBinaryIdentity": false,
+    "numericallyValidated": false,
+    "productReady": false
+  },
+  "runtimeComposition": {
+    "kind": "new-executable-with-unchanged-published-runtime",
+    "sourceBuildName": "5071a886-gnu132-r2-es-hcap-v1",
+    "buildId": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
+    "parentBuildId": "5071a886-gnu132-r2-openblas033-a01",
+    "parentManifestSha256": "bfc1291371d1faaf5683672f5d2520201e162bfe5a7acff1e91fd7f75f8ffd41",
+    "parentSourceReceipt": {
+      "path": "provenance/openblas-runtime-revision.json",
+      "bytes": 2185,
+      "sha256": "b8ce3a40717eb518ed78f16a7a0481e5af1b602e06cfe9ca4910e10c30fe6bc6"
+    }
+  },
+  "originalRuntimeSourceReceipt": {
+    "path": "provenance/r2-source-receipt.json",
+    "bytes": 7435,
+    "sha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3"
+  },
+  "unchangedRuntimeAndParameters": [
+    {
+      "path": "bin/libdl.dll",
+      "bytes": 60228,
+      "sha256": "09ffe313366349710d7606fad2b192826a0fb55e693f9d8a4eeb4ec1059f3c61"
+    },
+    {
+      "path": "bin/libgcc_s_seh-1.dll",
+      "bytes": 189830,
+      "sha256": "7a315f073b3feda48c63a9bda3951c9d8f53cfeecd545fea75bf67756024f5b0"
+    },
+    {
+      "path": "bin/libgfortran-5.dll",
+      "bytes": 3896233,
+      "sha256": "683271e02ab3524e80ca935997d5326522956b9e5aa582ea750b4e3c6c9d53b6"
+    },
+    {
+      "path": "bin/libgomp-1.dll",
+      "bytes": 383912,
+      "sha256": "b193e98534d98659b83c561103bd7cf5a6a9f320d8b2d04456a70476e26d2da4"
+    },
+    {
+      "path": "bin/libquadmath-0.dll",
+      "bytes": 449972,
+      "sha256": "14c3356da8b677ea9ed73051739ad08807734a1410d570c95b5cb8b20f35e112"
+    },
+    {
+      "path": "bin/libwinpthread-1.dll",
+      "bytes": 111375,
+      "sha256": "02be535e6495e755cf0532589303841c09d125ddca88bc6db294c8d76a1516cf"
+    },
+    {
+      "path": "bin/openblas.dll",
+      "bytes": 28357632,
+      "sha256": "ea5706aaa7e88ea76f350faf4181c5e3393817a1ce1cd800501bf3ee21f205e8"
+    },
+    {
+      "path": "bin/VCRUNTIME140.dll",
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60"
+    },
+    {
+      "path": "share/xtb/.param_gfnff.xtb",
+      "bytes": 10664,
+      "sha256": "5cf2d1259dd3c65aa9594ea32a0c9a21bb819b6e16b81521888c5a3a1ec513e8"
+    },
+    {
+      "path": "share/xtb/param_gfn0-xtb.txt",
+      "bytes": 39220,
+      "sha256": "278461cabbf89b14379aedc78ef3e141c8cef1f911f3a3c72530aec7a52b6d34"
+    },
+    {
+      "path": "share/xtb/param_gfn1-si-xtb.txt",
+      "bytes": 28007,
+      "sha256": "f878fd7f8eea16f326aff283fbc7ca23800045992c0f86536e18ad91816cf7ca"
+    },
+    {
+      "path": "share/xtb/param_gfn1-xtb.txt",
+      "bytes": 27800,
+      "sha256": "81a9d7afdee31f5d8fd67a4d8ec966179317c7b100261c9c82d724bafb460399"
+    },
+    {
+      "path": "share/xtb/param_gfn2-xtb.txt",
+      "bytes": 35849,
+      "sha256": "f6f05c6c5264cb2f75c54f8ac6838044541c1e493b16f1a4d4ee4fa64de5f545"
+    },
+    {
+      "path": "share/xtb/param_ipea-xtb.txt",
+      "bytes": 27805,
+      "sha256": "08a39b7854b915501d8ba87b7d3330f28932f293479a0dc52b502f039c19f122"
+    }
+  ],
+  "compiledKernelEvidence": {
+    "path": "kernel-test/boundary-records.json",
+    "bytes": 2500,
+    "sha256": "c848c9f30c3167dbfbcf86352be4c14169bb221bf3b4ff436254ebcb8f43b387"
+  },
+  "recipe": {
+    "upstreamPath": "third-party/corresponding-sources/build-support/xtb-gnu/rebuild-xtb.py",
+    "upstreamSha256": "6aca132b59aac6acd5429a383f3406870843e8db0f6ba7a5cbd8b5fdf7189553",
+    "actualAdaptedRecipeSha256": "68d932db183557ae22e78cdf47a7002adf60f68759d02ef781c2284cc54c3617",
+    "compiler": "gfortran-13.2.0",
+    "meson": "1.4.1",
+    "ninja": "1.12.0",
+    "flagsSource": "unchanged pinned release recipe; relative ../source compilation",
+    "buildType": "release",
+    "defaultLibrary": "static",
+    "openmp": true,
+    "gpu": false,
+    "lapack": "openblas",
+    "localModifications": [
+      "H-only initial velocity cap",
+      "reuse existing pinned toolchain",
+      "actual Python Meson child entry",
+      "transient Windows receipt replace retry"
+    ]
+  },
+  "buildEvidence": [
+    {
+      "name": "build-01.receipt.json",
+      "bytes": 2296,
+      "sha256": "564af4795a0daa20c6548d529ee5a1de0727148f1c5efbc832824d9ca8236a87"
+    },
+    {
+      "name": "build-01.request.json",
+      "bytes": 2083,
+      "sha256": "81d3ff2c0a59c7ef1edb6764d42921fd635cd6979882f56d1a3286eba72672b0"
+    },
+    {
+      "name": "build-02.receipt.json",
+      "bytes": 2448,
+      "sha256": "0ab94a3caa27d5434c8167079c9e4102225bfdc9fdfae5f6600f9d8833bd1e2f"
+    },
+    {
+      "name": "build-02.request.json",
+      "bytes": 2250,
+      "sha256": "217018588cce44f6a84e06ba5fa8e042e055bdc6bb78977e7ac77934abd92fea"
+    },
+    {
+      "name": "build-03.receipt.json",
+      "bytes": 3434,
+      "sha256": "2d1573c8271e838f25bc323563a51c3596e3f4b160d38d357c2e3113cfcc2859"
+    },
+    {
+      "name": "build-03.request.json",
+      "bytes": 3251,
+      "sha256": "c4864c616f057d64329a6b493454a468dc98ca2aad70237abbfe6bc8ba213f39"
+    },
+    {
+      "name": "build-04.receipt.json",
+      "bytes": 2302,
+      "sha256": "3e744eac81405925745ae322c2cc9acdb234d1cca3a5b534815f6ad4dce5b9f2"
+    },
+    {
+      "name": "build-04.request.json",
+      "bytes": 2103,
+      "sha256": "a980e14c47c15dec7dfd2f83841fe6c2b25c29d452d4b7d0f99ca30c4700a428"
+    }
+  ],
+  "buildTerminals": [
+    {
+      "status": "passed",
+      "threads": 4,
+      "jobMemoryLimitBytes": 8589934592,
+      "timedOut": false,
+      "error": null,
+      "jobTreeEnded": true,
+      "peakJobMemoryBytes": 31272960,
+      "mainProcessEnded": true,
+      "exitCode": 0,
+      "wallSeconds": 0.46899999998277053,
+      "passed": true
+    },
+    {
+      "status": "passed",
+      "threads": 4,
+      "jobMemoryLimitBytes": 8589934592,
+      "timedOut": false,
+      "error": null,
+      "jobTreeEnded": true,
+      "peakJobMemoryBytes": 136060928,
+      "mainProcessEnded": true,
+      "exitCode": 0,
+      "wallSeconds": 27.375,
+      "passed": true
+    },
+    {
+      "status": "passed",
+      "threads": 4,
+      "jobMemoryLimitBytes": 8589934592,
+      "timedOut": false,
+      "error": null,
+      "jobTreeEnded": true,
+      "peakJobMemoryBytes": 76787712,
+      "mainProcessEnded": true,
+      "exitCode": 0,
+      "wallSeconds": 9.48399999999674,
+      "passed": true
+    },
+    {
+      "status": "passed",
+      "threads": 4,
+      "jobMemoryLimitBytes": 8589934592,
+      "timedOut": false,
+      "error": null,
+      "jobTreeEnded": true,
+      "peakJobMemoryBytes": 538271744,
+      "mainProcessEnded": true,
+      "exitCode": 0,
+      "wallSeconds": 128.5,
+      "passed": true
+    }
+  ],
+  "numericallyValidated": false,
+  "scienceRunsPerformed": 0
+}
