@@ -1,6 +1,6 @@
-# Ester Studio 项目架构与目录结构详解 (`PROJECT_STRUCTURE.md`)
+# Lactone Studio 项目架构与目录结构详解 (`PROJECT_STRUCTURE.md`)
 
-本文档详细介绍 **Ester Studio (v2.0.2)** 的代码组织结构、各子系统职责以及渲染进程与主进程/科学计算引擎之间的协作方式，便于后续进行功能开发和 macOS 平台移植。
+本文档详细介绍 **Lactone Studio (LS)**（基于 **Ester Studio v2.0.3** 改造的非官方修改版）的代码组织结构、各子系统职责以及渲染进程与主进程/科学计算引擎之间的协作方式，便于后续进行功能开发和 macOS 平台移植。
 
 ---
 

@@ -1,6 +1,6 @@
 # 贡献指南 (Contributing Guide)
 
-欢迎参与 **Ester Studio (ES)** 的开发与 macOS 跨平台适配！为了保证代码质量、科学计算准确性以及主分支（`main`）的稳定性，所有人类开发者与 AI 智能体（Antigravity / Codex）均须遵循本指南。
+欢迎参与 **Lactone Studio (LS)**（基于 **Ester Studio (ES)** 改造的非官方修改版，仓库地址：https://github.com/mcardZH/Lactone-Studio）的开发与 macOS 跨平台适配！为了保证代码质量、科学计算准确性以及主分支（`main`）的稳定性，所有人类开发者与 AI 智能体（Antigravity / Codex）均须遵循本指南。
 
 ---
 

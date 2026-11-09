@@ -1,4 +1,6 @@
-# Build Ester Studio (ES) and replace runtimes from the exported source
+# Build Lactone Studio (LS) / Ester Studio (ES) and replace runtimes from the exported source
+
+> **Unofficial Modified Version Notice (`LICENSE.txt` Article 7)**: **Lactone Studio (LS)** (`v2.0.3-lactone.1`, maintained by `mcardZH` at https://github.com/mcardZH/Lactone-Studio) is an unofficial modified version based on **Ester Studio (ES) v2.0.3** (by Zixuan Zhang, https://github.com/Ahey1/Ester-Studio). For macOS native development and `.app`/`.dmg` packaging (`npm run native:stage:darwin` and `npm run package:mac`), see [README.md](README.md). The sections below preserve the upstream Windows source-snapshot build documentation.
 
 Ester Studio is the current name of SY-Studio/SciYue. The current naming contract
 sets `.es` for new project saves with legacy `.sy` read compatibility; runtime

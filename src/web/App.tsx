@@ -1088,7 +1088,7 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
   return <div ref={applicationRoot} className={'app-shell builder-version'+(desktopMode?' desktop-mode':'')} data-font-size={fontSize} style={{'--form-width':formWidth+'%'} as CSSProperties} onChangeCapture={()=>{inputDraftTouched.current=true;}} onClickCapture={event=>{if(event.target instanceof Element&&event.target.closest('.form-card,.stepper,.software-tabs'))inputDraftTouched.current=true;}}>
     <input ref={fileInput} id="structure-upload" aria-label="导入结构文件" hidden type="file" multiple onChange={event=>{const list=Array.from(event.target.files??[]);if(list.length)void importFiles(list);event.target.value='';}}/>
     {!desktopMode&&<aside className="sidebar">
-      <a className="brand" href="#" onClick={event => event.preventDefault()} aria-label="Ester Studio 本地工具"><span className="brand-mark"><span className="brand-initials" aria-hidden="true">ES</span></span><span><strong>Ester Studio<span className="brand-dot">.</span></strong><small>科学计算工具</small></span></a>
+      <a className="brand" href="#" onClick={event => event.preventDefault()} aria-label="Lactone Studio 本地工具"><span className="brand-mark"><span className="brand-initials" aria-hidden="true">LS</span></span><span><strong>Lactone Studio<span className="brand-dot">.</span></strong><small>科学计算工具 · 非官方修改版</small></span></a>
       <div className="sidebar-group-label">WORKSPACE</div>
       <nav className="side-navigation"><div className="nav-item selected"><FileCode2 size={18} /><span>输入文件生成器</span><ChevronRight size={14} /></div><div className="nav-item unavailable"><AtomIcon size={18} /><span>结构工具</span><span className="soon-tag">规划中</span></div><div className="nav-item unavailable"><BookOpen size={18} /><span>知识库</span><span className="soon-tag">规划中</span></div></nav>
       <div className="sidebar-divider" /><div className="sidebar-group-label">LOCAL WORKSPACE</div>
@@ -1187,7 +1187,7 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
             <div className="completion-note"><div className="completion-track"><span style={{ width: `${progress}%` }} /></div><span>准备进度</span><strong>{progress}%</strong></div>
           </aside>
         </WorkbenchShell>
-        <footer className="page-footer"><span>Ester Studio · 科学计算，从清晰的输入开始。</span><span><Monitor size={12} />本地输入准备 · 不运行量化计算 · 未部署云端</span></footer>
+        <footer className="page-footer"><span>Lactone Studio（基于 Ester Studio 的非官方修改版 · mcardZH） · 科学计算，从清晰的输入开始。</span><span><Monitor size={12} />本地输入准备 · 不运行量化计算 · 未部署云端</span></footer>
       </main>
     </div>
     {overlaySurface(<>{notice&&<NoticeToast key={notice.id} notice={notice} onClose={()=>setNotice(null)}/>}{validation.hint}

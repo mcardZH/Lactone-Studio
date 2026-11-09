@@ -807,7 +807,8 @@ async function runCli() {
     console.log('[package-macos] 🔨 Building frontend production bundle (npm run build)...');
     execFileSync('npm', ['run', 'build'], { cwd: repoRoot, stdio: 'inherit' });
   }
-  console.log('[package-macos] 📦 Assembling Ester Studio.app bundle...');
+  const cliPkg = readJsonStrictIfExists(path.join(repoRoot, 'package.json'), 'package.json');
+  console.log(`[package-macos] 📦 Assembling ${cliPkg?.productName || 'Lactone Studio'}.app bundle...`);
   const result = assembleMacAppBundle({
     ...parsed.options,
     repoRoot,

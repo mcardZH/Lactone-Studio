@@ -1,4 +1,4 @@
-# AGENTS.md — Ester Studio (macOS Adaptation & Cross-Platform Repository)
+# AGENTS.md — Lactone Studio (Unofficial Modified Version of Ester Studio · macOS & Cross-Platform Repository)
 
 本文件为所有在此仓库工作的 AI 智能体（如 **Antigravity**、**Codex** 等）及开发者提供项目架构导航、开发规范、分支隔离约束、自动化测试要求以及合并前的代码审核宪章。所有参与开发的 Agent 必须严格遵守本文件规定的工作流。
 
@@ -6,9 +6,9 @@
 
 ## 1. 项目概览 (Project Overview)
 
-**Ester Studio (ES)**（原名 SY-Studio / SciYue Input Studio，当前基线版本 `v2.0.2`）是一款面向计算化学与分子模拟工作流的一体化桌面软件，采用 **Electron 44.7.0 + React 19 + TypeScript + Python 科学计算引擎** 架构。
+**Lactone Studio (LS)** 是基于 **Ester Studio (ES)**（原名 SY-Studio / SciYue Input Studio，当前上游基线版本 `v2.0.3`，原作者 Zixuan Zhang）改造的**非官方修改版（Unofficial Modified Version）**，是一款面向计算化学与分子模拟工作流的一体化桌面软件，采用 **Electron 44.7.0 + React 19 + TypeScript + Python 科学计算引擎** 架构。
 
-当前仓库的核心目标是在保留完整科学计算能力与跨平台兼容性的前提下，将原 `win32-x64` 锁定的发布源码改造并打包为**可在 macOS（Apple Silicon `darwin-arm64` 及 Intel `darwin-x64`）上原生运行的软件**。
+当前仓库（`https://github.com/mcardZH/Lactone-Studio`）的核心目标是在保留完整科学计算能力、遵守 `LICENSE.txt` 开源协议（第七条非官方修改版标识与第八条科研引用规范）与跨平台兼容性的前提下，将原 `win32-x64` 锁定的发布源码改造并打包为**可在 macOS（Apple Silicon `darwin-arm64` 及 Intel `darwin-x64`）上原生运行的软件**，并提供人机同屏协作 MCP 服务。
 
 更多详细文档请参阅：
 - [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)：完整的目录与模块职责拆解、进程间通信（IPC）与数据流说明。

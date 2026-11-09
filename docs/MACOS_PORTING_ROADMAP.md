@@ -1,6 +1,6 @@
-# Ester Studio macOS 平台适配与打包路线图 (`MACOS_PORTING_ROADMAP.md`)
+# Lactone Studio macOS 平台适配与打包路线图 (`MACOS_PORTING_ROADMAP.md`)
 
-本文档记录 **Ester Studio v2.0.2** 向 macOS（`darwin-arm64` Apple Silicon 与 `darwin-x64` Intel）移植的平台兼容性评估结论、系统边界划分及分阶段实施路线。
+本文档记录 **Lactone Studio (LS)**（基于 **Ester Studio v2.0.2 / v2.0.3** 改造的非官方修改版）向 macOS（`darwin-arm64` Apple Silicon 与 `darwin-x64` Intel）移植的平台兼容性评估结论、系统边界划分及分阶段实施路线。
 
 ---
 

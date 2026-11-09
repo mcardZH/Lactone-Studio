@@ -564,6 +564,11 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
 test('desktop/main.cjs and desktop/preload.cjs use standard prepareVersionProfile on macOS without Windows portableProfile', async () => {
   const mainSource = fs.readFileSync(path.resolve(import.meta.dirname, '../../desktop/main.cjs'), 'utf8');
   assert.match(mainSource, /\} else if \(app\.isPackaged && process\.platform === 'win32'\) \{/);
+  assert.match(mainSource, /appMetadata\.productName \|\| 'Lactone Studio'/);
+  assert.match(mainSource, /（非官方修改版） · 分子建模/);
+
+  const repoPkg = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../package.json'), 'utf8'));
+  assert.equal(repoPkg.productName, 'Lactone Studio');
 
   const preloadSource = fs.readFileSync(path.resolve(import.meta.dirname, '../../desktop/preload.cjs'), 'utf8');
   assert.match(preloadSource, /\(\(process\.platform === 'win32' \|\| process\.env\?\.SCIYUE_TEST_ISOLATED_IO === '1'\) \? \{ portableTools:/);

@@ -775,7 +775,7 @@ const windowClosePolicy = createWindowClosePolicy({
 });
 function createModelWindow(workspaceOpen) {
   const detached = workspaceOpen?.detached === true;
-  const window = new BrowserWindow({ icon:path.join(appPath,'dist','brand-icon.png'), width: detached ? 1000 : 1500, height: detached ? 760 : 940, minWidth: detached ? 640 : 800, minHeight: detached ? 480 : 600, ...workspaceOpen?.placement, show: !headless, title: `Ester Studio v${appVersionLabel}${appBuildRevision ? ' (' + appBuildRevision + ')' : ''} · 分子建模`,
+  const window = new BrowserWindow({ icon:path.join(appPath,'dist','brand-icon.png'), width: detached ? 1000 : 1500, height: detached ? 760 : 940, minWidth: detached ? 640 : 800, minHeight: detached ? 480 : 600, ...workspaceOpen?.placement, show: !headless, title: `${appMetadata.productName || 'Lactone Studio'} v${appVersionLabel}${appBuildRevision ? ' (' + appBuildRevision + ')' : ''}（非官方修改版） · 分子建模`,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, allowRunningInsecureContent: false, spellcheck: false, devTools: !app.isPackaged },
   });
   const id = window.webContents.id;

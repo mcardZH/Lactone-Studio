@@ -59,5 +59,18 @@
     "vite": "8.3.3",
     "vitest": "5.0.3"
   },
-  "productName": "Ester Studio"
+  "productName": "Lactone Studio",
+  "modificationNotice": {
+    "unofficialModification": true,
+    "unofficialLabel": "非官方修改版",
+    "productName": "Lactone Studio",
+    "shortName": "LS",
+    "modifiedVersion": "2.0.3-lactone.1",
+    "modifier": "mcardZH",
+    "sourceRepository": "https://github.com/mcardZH/Lactone-Studio",
+    "upstreamName": "Ester Studio (ES)",
+    "upstreamVersion": "2.0.3",
+    "upstreamAuthor": "Zixuan Zhang",
+    "upstreamRepository": "https://github.com/Ahey1/Ester-Studio"
+  }
 }

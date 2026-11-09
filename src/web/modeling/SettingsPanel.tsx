@@ -7,18 +7,31 @@ import ComputeResourceSettings from '../ComputeResourceSettings';
 import MultiwfnPathControl from '../results/MultiwfnPathControl';
 import FontSizeControl from '../FontSizeControl';
 import {useInterfaceFontSize} from '../interface-font-preferences';
+import {applicationVersion} from '../../application-version';
 import WorkspaceDisplay from './WorkspaceDisplay';
 import DisplayPresetControls from './DisplayPresetControls';
 import WindowsAssociationCard from './WindowsAssociationCard';
 import './settings-panel.css';
 
-export type SettingsPage='display'|'labels'|'interface'|'resources'|'tools';
+export type SettingsPage='display'|'labels'|'interface'|'resources'|'tools'|'about';
 export interface SettingsPanelProps{
   onClose():void;display?:DisplaySettings;onDisplayChange?(display:DisplaySettings):void;
   atoms?:readonly Atom[];targetLabel?:string;hasCell?:boolean;showAxes?:boolean;onShowAxesChange?(value:boolean):void;
   initialPage?:SettingsPage;ownerDocument?:Document;extra?:ReactNode;
 }
-const pages=[['display','显示设置'],['labels','标注与观察'],['interface','界面'],['resources','计算资源'],['tools','工具与文件']] as const;
+export const SETTINGS_PAGES=[['display','显示设置'],['labels','标注与观察'],['interface','界面'],['resources','计算资源'],['tools','工具与文件'],['about','关于与版本']] as const;
+const pages=SETTINGS_PAGES;
+
+export function SettingsAboutCard(){
+  return <div className="sy-settings-card" data-testid="lactone-about-card">
+    <h3>{applicationVersion.productName} ({applicationVersion.shortName}) · {applicationVersion.modificationNotice.unofficialLabel}</h3>
+    <p><strong>修改版标识（遵循 LICENSE.txt 第七条）</strong>：本软件为基于 {applicationVersion.modificationNotice.upstreamName} v{applicationVersion.modificationNotice.upstreamVersion} 改造的<strong>{applicationVersion.modificationNotice.unofficialLabel}</strong>（Unofficial Modified Version）。本版本未获原作者审核、科学验证、支持或商业认可。</p>
+    <p><strong>修改版本与修改者</strong>：v{applicationVersion.modificationNotice.modifiedVersion}（基线版本 v{applicationVersion.displayVersion}） · 修改者：{applicationVersion.modificationNotice.modifier}</p>
+    <p><strong>对应源码获取地址</strong>：{applicationVersion.modificationNotice.sourceRepository}</p>
+    <p><strong>上游来源声明</strong>：源自 {applicationVersion.modificationNotice.upstreamAuthor} 开发的 {applicationVersion.modificationNotice.upstreamName}（官方仓库：{applicationVersion.modificationNotice.upstreamRepository}），完整许可条款见根目录 LICENSE.txt 及 licenses/。</p>
+    <p><strong>科研引用（遵循 LICENSE.txt 第八条）</strong>：使用本软件开展研究并发表相关论文时，须按协议在正文中引用原作者的 Ester Studio，并可另外说明使用了本修改版。</p>
+  </div>;
+}
 const memory:{page:SettingsPage;x?:number;y?:number;width?:number;height?:number}={page:'display'};
 export default function SettingsPanel(p:SettingsPanelProps){
   const owner=p.ownerDocument??document,view=owner.defaultView??window;
@@ -47,6 +60,7 @@ export default function SettingsPanel(p:SettingsPanelProps){
         {id==='interface'&&<div className="sy-settings-card"><h3>界面字号</h3><FontSizeControl value={font} onChange={setFont}/></div>}
         {id==='resources'&&<ComputeResourceSettings/>}
         {id==='tools'&&<><div className="sy-settings-card"><h3>Multiwfn</h3><MultiwfnPathControl showPath/></div>{view.sciyueDesktop?.syProject&&<WindowsAssociationCard invoke={view.sciyueDesktop.syProject} active={page==='tools'}/>}</>}
+        {id==='about'&&<SettingsAboutCard/>}
       </section>)}
       {p.extra&&page==='tools'&&p.extra}
     </div></div><footer className="sy-settings-footer"><span>显示修改即时应用；资源与工具沿各自确认操作。</span><button type="button" onClick={p.onClose}>关闭</button></footer>
