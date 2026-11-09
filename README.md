@@ -99,7 +99,7 @@ npm run package:mac
 - **触发方式**：
   1. 推送 `v*` 版本标签（如 `git tag v2.0.3-lactone.1 && git push origin v2.0.3-lactone.1`）；
   2. 在 GitHub 仓库 **Actions -> Build & Release macOS App -> Run workflow** 手动触发（可选填写 `release_tag` 自动创建或更新 GitHub Release）。
-- **自动化流程**：在 `macos-15`（Apple Silicon `darwin-arm64`）环境自动拉取 `conda-forge` 科学计算栈（Python 3.12、RDKit、ASE、Spglib、tblite、SciPy、NumPy、GNU xTB 6.4.1），完成原生运行时重定位锁文件生成、前端编译、`Lactone Studio.app` 与 `.dmg` 打包及 SHA-256 校验值计算，并自动将 `.dmg`、`.app.zip`、`安装说明 (INSTALL).txt` 与 `SHA256SUMS.txt` 分发至 GitHub Releases 与 Actions Artifacts。
+- **自动化流程**：默认使用免排队秒级启动的 `macos-15-intel` 运行器（支持通过 `micromamba --platform osx-arm64` 跨架构拉取 Apple Silicon `darwin-arm64` 科学计算栈与 Electron 模板并完成原生 `codesign` 与 `hdiutil` DMG 打包，亦可在手动触发时选择 `target_arch: arm64/x64` 或 `runner: macos-latest/macos-26`），自动将 `.dmg`、`.app.zip`、`安装说明 (INSTALL).txt` 与 `SHA256SUMS.txt` 分发至 GitHub Releases 与 Actions Artifacts。
 
 关于原版源码快照的完整离线重构建流程，请同时参阅 [BUILDING.md](BUILDING.md)。
 

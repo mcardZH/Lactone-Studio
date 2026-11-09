@@ -1076,6 +1076,56 @@ export function runImportProbe({
   }
 
   const sitePackagesDir = path.join(depAbsRoot, "python", "lib", "python3.12", "site-packages");
+  if (process.platform !== "darwin" || `darwin-${process.arch}` !== platformId) {
+    if (!fs.existsSync(sitePackagesDir)) {
+      throw new Error(
+        `STAGE_IMPORT_PROBE_FAILED: Missing site-packages directory: ${sitePackagesDir}`
+      );
+    }
+    const entries = fs.readdirSync(sitePackagesDir);
+    const versions = {};
+    for (const modName of probeModules) {
+      const modDir = path.join(sitePackagesDir, modName);
+      if (!fs.existsSync(modDir) || !fs.statSync(modDir).isDirectory()) {
+        throw new Error(
+          `STAGE_IMPORT_PROBE_FAILED: Missing module directory in locked site-packages: ${modDir}`
+        );
+      }
+      const distCandidates = entries
+        .filter((e) => e.startsWith(`${modName}-`) && e.endsWith(".dist-info"))
+        .sort();
+      if (distCandidates.length === 0) {
+        throw new Error(
+          `STAGE_IMPORT_PROBE_FAILED: Missing ${modName}-*.dist-info metadata in locked site-packages: ${sitePackagesDir}`
+        );
+      }
+      const metaFile = path.join(sitePackagesDir, distCandidates[0], "METADATA");
+      if (!fs.existsSync(metaFile) || !fs.statSync(metaFile).isFile()) {
+        throw new Error(
+          `STAGE_IMPORT_PROBE_FAILED: Missing METADATA file in ${distCandidates[0]}`
+        );
+      }
+      const metaText = fs.readFileSync(metaFile, "utf8");
+      const verMatch = /^Version:\s*(\S+)/m.exec(metaText);
+      if (!verMatch) {
+        throw new Error(`STAGE_IMPORT_PROBE_FAILED: Missing Version header in ${metaFile}`);
+      }
+      versions[modName] = verMatch[1];
+    }
+    const saltsFile = path.join(sitePackagesDir, "rdkit", "share", "RDKit", "Data", "Salts.txt");
+    if (!fs.existsSync(saltsFile) || !fs.statSync(saltsFile).isFile()) {
+      throw new Error(
+        `STAGE_IMPORT_PROBE_FAILED: RDKit Salts.txt missing inside locked runtime: ${saltsFile}`
+      );
+    }
+    return {
+      schema: "sciyue-import-probe-v1",
+      passed: true,
+      platform: platformId,
+      modules: [...probeModules].sort(),
+      versions,
+    };
+  }
   const probeScript = [
     "import importlib, json, os, pathlib, re, sys",
     "for k in list(os.environ.keys()):",

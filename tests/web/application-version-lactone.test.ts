@@ -104,8 +104,8 @@ describe('Lactone Studio rebranding & LICENSE.txt Article 7/8 compliance', () =>
 
     expect(fs.existsSync(workflowPath)).toBe(true);
     const workflowYaml = fs.readFileSync(workflowPath, 'utf8');
-    expect(workflowYaml).toContain('runs-on: macos-15');
-    expect(workflowYaml).toContain('npm run package:mac');
+    expect(workflowYaml).toContain('macos-15-intel');
+    expect(workflowYaml).toContain('scripts/release/package-macos.mjs');
     expect(workflowYaml).toContain('softprops/action-gh-release@v2');
     expect(workflowYaml).toContain('安装说明 (INSTALL).txt');
   });

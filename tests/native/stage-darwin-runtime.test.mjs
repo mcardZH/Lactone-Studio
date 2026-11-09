@@ -18,6 +18,7 @@ import {
   relocateMachOBinary,
   replaceMachOPrefixSlots,
   replacePrefixInString,
+  runImportProbe,
   stageDarwinRuntime,
   resolveDefaultCondaPrefix,
   verifyMachOArchitecture,
@@ -1189,6 +1190,28 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
     });
     assert.equal(envVars.PYTHONDONTWRITEBYTECODE, '1');
     assert.ok(envVars.DYLD_FALLBACK_LIBRARY_PATH.includes('/python/lib'));
+
+    // Cross-architecture runImportProbe static disk verification (e.g., staging darwin-x64 on darwin-arm64 or vice versa)
+    const crossPlatformId = process.arch === 'arm64' ? 'darwin-x64' : 'darwin-arm64';
+    const crossProbe = runImportProbe({
+      pythonExecutable: selectedNative.executable,
+      tcAbsRoot: upgradedStage.toolchainRoot,
+      depAbsRoot: upgradedStage.dependencyRoot,
+      platformId: crossPlatformId,
+    });
+    assert.equal(crossProbe.passed, true);
+    assert.equal(crossProbe.platform, crossPlatformId);
+    assert.deepEqual(crossProbe.modules, ['ase', 'rdkit', 'scipy', 'spglib', 'tblite']);
+    assert.throws(
+      () =>
+        runImportProbe({
+          pythonExecutable: selectedNative.executable,
+          tcAbsRoot: upgradedStage.toolchainRoot,
+          depAbsRoot: path.join(tmpRoot, 'nonexistent-dep-root'),
+          platformId: crossPlatformId,
+        }),
+      /STAGE_IMPORT_PROBE_FAILED/
+    );
   } finally {
     makeDirectoryTreeWritable(tmpRoot);
     fs.rmSync(tmpRoot, { recursive: true, force: true });

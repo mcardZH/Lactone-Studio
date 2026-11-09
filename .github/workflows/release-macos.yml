@@ -11,6 +11,24 @@ on:
         required: false
         default: ''
         type: string
+      target_arch:
+        description: '目标 Mac 芯片架构（arm64 = Apple Silicon M1/M2/M3/M4；x64 = Intel）'
+        required: false
+        default: 'arm64'
+        type: choice
+        options:
+          - arm64
+          - x64
+      runner:
+        description: 'GitHub Actions 运行器（默认 macos-15-intel 免排队秒级启动并支持交叉打包 arm64/x64）'
+        required: false
+        default: 'macos-15-intel'
+        type: choice
+        options:
+          - macos-15-intel
+          - macos-26-intel
+          - macos-latest
+          - macos-26
       prerelease:
         description: '是否标记为 Pre-release（预发布版）'
         required: false
@@ -21,12 +39,11 @@ permissions:
   contents: write
 
 jobs:
-  build-macos-arm64:
-    name: Build & Package macOS (Apple Silicon arm64)
-    runs-on: macos-15
-    defaults:
-      run:
-        shell: bash -el {0}
+  build-macos:
+    name: Build & Package macOS (${{ inputs.target_arch || 'arm64' }})
+    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
+    env:
+      TARGET_ARCH: ${{ inputs.target_arch || 'arm64' }}
 
     steps:
       - name: Checkout repository
@@ -38,19 +55,35 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
-      - name: Setup Miniforge (Conda-Forge Scientific Environment)
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          miniforge-version: 'latest'
-          activate-environment: lactone-studio
-          python-version: '3.12'
-          channels: conda-forge
-          channel-priority: strict
-          auto-activate-base: false
-
-      - name: Install Python 3.12 Scientific Stack & GNU xTB
+      - name: Install npm dependencies & target-arch Electron.app
         run: |
-          conda install -y -n lactone-studio -c conda-forge \
+          npm ci --ignore-scripts
+          rm -rf node_modules/electron/dist node_modules/electron/path.txt
+          ELECTRON_INSTALL_PLATFORM=darwin \
+          ELECTRON_INSTALL_ARCH="${TARGET_ARCH}" \
+          force_no_cache=true \
+          node node_modules/electron/install.js
+
+      - name: Install Python 3.12 Scientific Stack & GNU xTB via Micromamba
+        run: |
+          HOST_MACHINE="$(uname -m)"
+          if [ "${HOST_MACHINE}" = "arm64" ]; then
+            MAMBA_HOST_PLATFORM="osx-arm64"
+          else
+            MAMBA_HOST_PLATFORM="osx-64"
+          fi
+          if [ "${TARGET_ARCH}" = "arm64" ]; then
+            CONDA_TARGET_PLATFORM="osx-arm64"
+          else
+            CONDA_TARGET_PLATFORM="osx-64"
+          fi
+          mkdir -p "${RUNNER_TEMP}/mamba"
+          curl -Ls "https://micro.mamba.pm/api/micromamba/${MAMBA_HOST_PLATFORM}/latest" | tar -xvj -C "${RUNNER_TEMP}/mamba" bin/micromamba
+          CONDA_ENV_PATH="${HOME}/lactone-studio-conda-runtime-env"
+          rm -rf "${CONDA_ENV_PATH}"
+          "${RUNNER_TEMP}/mamba/bin/micromamba" create -y -p "${CONDA_ENV_PATH}" \
+            --platform "${CONDA_TARGET_PLATFORM}" \
+            -c conda-forge --channel-priority strict \
             python=3.12 \
             numpy \
             scipy \
@@ -62,31 +95,31 @@ jobs:
             threadpoolctl \
             xtb=6.4.1
 
-      - name: Install npm dependencies
-        run: npm ci --ignore-scripts
-
       - name: Stage macOS native Python & xTB runtime into .local
         run: |
-          CONDA_ENV_PATH="$(conda info --base)/envs/lactone-studio"
-          echo "Staging macOS native runtime from: ${CONDA_ENV_PATH}"
+          CONDA_ENV_PATH="${HOME}/lactone-studio-conda-runtime-env"
+          echo "Staging darwin-${TARGET_ARCH} native runtime from: ${CONDA_ENV_PATH}"
           node scripts/native/stage-darwin-runtime.mjs \
             --conda-prefix "${CONDA_ENV_PATH}" \
-            --platform darwin-arm64 \
+            --platform "darwin-${TARGET_ARCH}" \
             --update-locks
 
-      - name: Prepare desktop assets & 3Dmol patches
-        run: npm run prepare:runtime
+      - name: Prepare desktop assets & build frontend bundle
+        run: |
+          npm run prepare:runtime
+          npm run build
 
-      - name: Build & Package Lactone Studio (.app + .dmg + 安装说明)
-        run: npm run package:mac
+      - name: Package Lactone Studio (.app + .dmg + 安装说明)
+        run: |
+          node scripts/release/package-macos.mjs --skip-build --arch "${TARGET_ARCH}"
 
       - name: Archive .app bundle & compute SHA-256 checksums
         id: artifacts
         run: |
           VERSION="$(node -p "require('./package.json').version")"
-          OUT_DIR="release/darwin-arm64"
-          APP_ZIP="${OUT_DIR}/Lactone-Studio-${VERSION}-darwin-arm64.app.zip"
-          DMG_FILE="${OUT_DIR}/Lactone-Studio-${VERSION}-darwin-arm64.dmg"
+          OUT_DIR="release/darwin-${TARGET_ARCH}"
+          APP_ZIP="${OUT_DIR}/Lactone-Studio-${VERSION}-darwin-${TARGET_ARCH}.app.zip"
+          DMG_FILE="${OUT_DIR}/Lactone-Studio-${VERSION}-darwin-${TARGET_ARCH}.dmg"
           INSTALL_GUIDE="${OUT_DIR}/安装说明 (INSTALL).txt"
           CHECKSUM_FILE="${OUT_DIR}/SHA256SUMS.txt"
 
@@ -112,7 +145,7 @@ jobs:
       - name: Upload macOS Release Artifacts to GitHub Actions
         uses: actions/upload-artifact@v4
         with:
-          name: Lactone-Studio-${{ steps.artifacts.outputs.version }}-macos-arm64
+          name: Lactone-Studio-${{ steps.artifacts.outputs.version }}-macos-${{ env.TARGET_ARCH }}
           if-no-files-found: error
           retention-days: 30
           path: |
