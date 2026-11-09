@@ -240,6 +240,39 @@ function validateExecutableFile(filePath, expectedArch, label) {
   }
 }
 
+const REQUIRED_PYTHON_PACKAGES = ['rdkit', 'scipy', 'ase', 'spglib', 'tblite'];
+
+function validateMachOTreeArch(rootDir, expectedArch, label) {
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    const isBinDir = path.basename(current) === 'bin';
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (
+        isBinDir ||
+        entry.name.endsWith('.dylib') ||
+        entry.name.endsWith('.so') ||
+        entry.name.includes('.dylib.')
+      ) {
+        const archs = detectMachOArchitectures(fullPath);
+        if (archs !== null && !archs.includes(expectedArch)) {
+          throw new Error(
+            `Binary architecture mismatch in ${label} (${fullPath}): expected darwin-${expectedArch}, found [${archs.join(', ')}]`,
+          );
+        }
+      }
+    }
+  }
+}
+
 function readJsonStrictIfExists(filePath, label) {
   if (!fs.existsSync(filePath)) return null;
   let raw;
@@ -255,7 +288,47 @@ function readJsonStrictIfExists(filePath, label) {
   }
 }
 
-export function resolveDefaultMacRuntimeSources(repoRoot = DEFAULT_REPO_ROOT, arch = process.arch) {
+function verifyLockInventoryIfPresent(repoRoot, lockObj, label) {
+  if (!lockObj) return;
+  if (lockObj.inventory && typeof lockObj.inventory.path === 'string') {
+    const invPath = path.join(repoRoot, lockObj.inventory.path);
+    if (!fs.existsSync(invPath)) {
+      throw new Error(`Missing inventory file for ${label}: ${invPath}`);
+    }
+    const invStat = fs.statSync(invPath);
+    if (
+      typeof lockObj.inventory.bytes === 'number' &&
+      invStat.size !== lockObj.inventory.bytes
+    ) {
+      throw new Error(`Inventory size mismatch for ${label}: ${invPath}`);
+    }
+    const invDoc = readJsonStrictIfExists(invPath, `${label} inventory`);
+    if (Array.isArray(invDoc?.files)) {
+      for (const row of invDoc.files) {
+        if (!row || typeof row.path !== 'string') continue;
+        const memberPath = path.join(repoRoot, lockObj.root, row.path);
+        if (!fs.existsSync(memberPath)) {
+          throw new Error(`Missing locked runtime member in ${label} (${row.path}): ${memberPath}`);
+        }
+      }
+    }
+  }
+  if (Array.isArray(lockObj.files)) {
+    for (const row of lockObj.files) {
+      if (!row || typeof row.path !== 'string') continue;
+      const memberPath = path.join(repoRoot, lockObj.root, row.path);
+      if (!fs.existsSync(memberPath)) {
+        throw new Error(`Missing locked runtime member in ${label} (${row.path}): ${memberPath}`);
+      }
+    }
+  }
+}
+
+export function resolveDefaultMacRuntimeSources(
+  repoRoot = DEFAULT_REPO_ROOT,
+  arch = process.arch,
+  needed = { toolchain: true, deps: true, xtb: true },
+) {
   if (arch !== 'arm64' && arch !== 'x64') {
     throw new Error(`Unsupported macOS architecture: ${arch}`);
   }
@@ -290,20 +363,23 @@ export function resolveDefaultMacRuntimeSources(repoRoot = DEFAULT_REPO_ROOT, ar
   const xtbLockPath = path.join(repoRoot, xtbLockRel);
 
   if (profile) {
-    for (const [label, lockPath] of [
-      ['toolchain lock', tcLockPath],
-      ['runtime lock', rtLockPath],
-      ['xTB lock', xtbLockPath],
+    for (const [isNeeded, label, lockPath] of [
+      [needed.toolchain !== false, 'toolchain lock', tcLockPath],
+      [needed.deps !== false, 'runtime lock', rtLockPath],
+      [needed.xtb !== false, 'xTB lock', xtbLockPath],
     ]) {
-      if (!fs.existsSync(lockPath)) {
+      if (isNeeded && !fs.existsSync(lockPath)) {
         throw new Error(`Missing ${label} declared by native profile: ${lockPath}`);
       }
     }
   }
 
-  const tcLock = readJsonStrictIfExists(tcLockPath, 'toolchain lock');
-  const rtLock = readJsonStrictIfExists(rtLockPath, 'runtime lock');
-  const xtbLock = readJsonStrictIfExists(xtbLockPath, 'xTB lock');
+  const tcLock =
+    needed.toolchain !== false ? readJsonStrictIfExists(tcLockPath, 'toolchain lock') : null;
+  const rtLock =
+    needed.deps !== false ? readJsonStrictIfExists(rtLockPath, 'runtime lock') : null;
+  const xtbLock =
+    needed.xtb !== false ? readJsonStrictIfExists(xtbLockPath, 'xTB lock') : null;
 
   for (const [label, lockObj, lockPath] of [
     ['toolchain lock', tcLock, tcLockPath],
@@ -314,6 +390,7 @@ export function resolveDefaultMacRuntimeSources(repoRoot = DEFAULT_REPO_ROOT, ar
       if (lockObj.platform !== platformId || typeof lockObj.root !== 'string' || !lockObj.root) {
         throw new Error(`Invalid ${label} metadata for ${platformId}: ${lockPath}`);
       }
+      verifyLockInventoryIfPresent(repoRoot, lockObj, label);
     }
   }
 
@@ -324,30 +401,39 @@ export function resolveDefaultMacRuntimeSources(repoRoot = DEFAULT_REPO_ROOT, ar
     return candidates[0];
   };
 
-  const pythonToolchainRoot = tcLock
-    ? path.join(repoRoot, tcLock.root, 'python')
-    : pickFallback([
-        path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-${arch}/python`),
-        path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-arm64/python`),
-      ]);
+  const pythonToolchainRoot =
+    needed.toolchain === false
+      ? null
+      : tcLock
+        ? path.join(repoRoot, tcLock.root, 'python')
+        : pickFallback([
+            path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-${arch}/python`),
+            path.join(repoRoot, `.local/toolchains/${platformId}/conda-py312-arm64/python`),
+          ]);
 
-  const pythonDepsRoot = rtLock
-    ? path.join(repoRoot, rtLock.root, 'python')
-    : pickFallback([
-        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/python`),
-        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/python`),
-      ]);
+  const pythonDepsRoot =
+    needed.deps === false
+      ? null
+      : rtLock
+        ? path.join(repoRoot, rtLock.root, 'python')
+        : pickFallback([
+            path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/python`),
+            path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/python`),
+          ]);
 
   const xtbSubdir =
     Array.isArray(xtbLock?.contentDirectories) && xtbLock.contentDirectories[0]
       ? xtbLock.contentDirectories[0]
       : 'xtb';
-  const xtbSourceRoot = xtbLock
-    ? path.join(repoRoot, xtbLock.root, xtbSubdir)
-    : pickFallback([
-        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/xtb`),
-        path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/xtb`),
-      ]);
+  const xtbSourceRoot =
+    needed.xtb === false
+      ? null
+      : xtbLock
+        ? path.join(repoRoot, xtbLock.root, xtbSubdir)
+        : pickFallback([
+            path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-${arch}/xtb`),
+            path.join(repoRoot, `.local/dependencies/${platformId}/conda-chem-arm64/xtb`),
+          ]);
 
   return {
     pythonToolchainRoot,
@@ -403,7 +489,11 @@ export function assembleMacAppBundle(options = {}) {
   const needsDefaultSources =
     !options.pythonToolchainRoot || !options.pythonDepsRoot || !options.xtbSourceRoot;
   const defaults = needsDefaultSources
-    ? resolveDefaultMacRuntimeSources(repoRoot, arch)
+    ? resolveDefaultMacRuntimeSources(repoRoot, arch, {
+        toolchain: !options.pythonToolchainRoot,
+        deps: !options.pythonDepsRoot,
+        xtb: !options.xtbSourceRoot,
+      })
     : {};
   const {
     outputDir = path.join(repoRoot, 'release', `darwin-${arch}`),
@@ -433,16 +523,22 @@ export function assembleMacAppBundle(options = {}) {
     ['chemistry source directory', chemistrySrcDir],
     ['chemistry engine.py', path.join(chemistrySrcDir, 'engine.py')],
     ['Python toolchain directory', pythonToolchainRoot],
+    ['Python stdlib (lib/python3.12)', path.join(pythonToolchainRoot, 'lib', 'python3.12')],
     ['Python dependencies directory', pythonDepsRoot],
-    [
-      'Python RDKit dependency package',
-      path.join(pythonDepsRoot, 'lib', 'python3.12', 'site-packages', 'rdkit'),
-    ],
     ['xTB runtime directory', xtbSourceRoot],
     ['xTB runtime.json manifest', path.join(xtbSourceRoot, 'runtime.json')],
   ]) {
     if (!fs.existsSync(targetPath)) {
       throw new Error(`Missing required packaging input (${label}): ${targetPath}`);
+    }
+  }
+
+  for (const pkgName of REQUIRED_PYTHON_PACKAGES) {
+    const pkgPath = path.join(pythonDepsRoot, 'lib', 'python3.12', 'site-packages', pkgName);
+    if (!fs.existsSync(pkgPath)) {
+      throw new Error(
+        `Missing required packaging input (Python scientific package ${pkgName}): ${pkgPath}`,
+      );
     }
   }
 
@@ -456,22 +552,24 @@ export function assembleMacAppBundle(options = {}) {
     arch,
     'Python executable (bin/python3)',
   );
+  validateMachOTreeArch(pythonToolchainRoot, arch, 'Python toolchain');
+  validateMachOTreeArch(pythonDepsRoot, arch, 'Python scientific dependencies');
 
   const xtbManifestPath = path.join(xtbSourceRoot, 'runtime.json');
   const xtbManifest = readJsonStrictIfExists(xtbManifestPath, 'xTB runtime.json');
   const expectedPlatformId = `darwin-${arch}`;
   if (
     !xtbManifest ||
-    (xtbManifest.schema !== 'sciyue-xtb-bundled-runtime/v1' &&
-      xtbManifest.schema !== 'sciyue-xtb-bundled-runtime/v2') ||
+    xtbManifest.schema !== 'sciyue-xtb-bundled-runtime/v1' ||
     xtbManifest.platform !== expectedPlatformId ||
     xtbManifest.entry !== 'bin/xtb'
   ) {
     throw new Error(
-      `Invalid xTB runtime.json manifest (${xtbManifestPath}): expected platform ${expectedPlatformId} and entry bin/xtb`,
+      `Invalid xTB runtime.json manifest (${xtbManifestPath}): expected schema sciyue-xtb-bundled-runtime/v1, platform ${expectedPlatformId}, and entry bin/xtb`,
     );
   }
   validateExecutableFile(path.join(xtbSourceRoot, 'bin', 'xtb'), arch, 'xTB executable (bin/xtb)');
+  validateMachOTreeArch(xtbSourceRoot, arch, 'xTB runtime');
   for (const relLib of DARWIN_XTB_LIBRARIES) {
     const libPath = path.join(xtbSourceRoot, relLib);
     if (!fs.existsSync(libPath)) {

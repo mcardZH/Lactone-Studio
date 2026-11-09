@@ -140,6 +140,10 @@ print(json.dumps({"rdDataDir": RDConfig.RDDataDir, "saltsCount": len(remover.sal
 
     // 3. Python toolchain & read-only dependencies (simulating 0o444/0o555 staged files)
     writeText(pythonToolchainRoot, 'bin/python3', '#!/bin/sh\n', 0o755);
+    writeText(pythonToolchainRoot, 'lib/python3.12/os.py', '# stdlib os\n', 0o444);
+    for (const pkg of ['rdkit', 'scipy', 'ase', 'spglib', 'tblite']) {
+      writeText(pythonDepsRoot, `lib/python3.12/site-packages/${pkg}/__init__.py`, '', 0o444);
+    }
     writeText(
       pythonDepsRoot,
       'lib/python3.12/site-packages/rdkit/share/RDKit/Data/Salts.txt',
@@ -368,7 +372,10 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     const depPrefix = '.local/dependencies/darwin-x64/conda-chem-arm64/python';
     const xtbPrefix = '.local/dependencies/darwin-x64/conda-chem-arm64/xtb';
     writeText(repoRoot, `${tcPrefix}/bin/python3`, '#!/bin/sh\necho "{}"\n', 0o755);
-    writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/rdkit/__init__.py`, '');
+    writeText(repoRoot, `${tcPrefix}/lib/python3.12/os.py`, '# stdlib os\n');
+    for (const pkg of ['rdkit', 'scipy', 'ase', 'spglib', 'tblite']) {
+      writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/${pkg}/__init__.py`, '');
+    }
     writeText(
       repoRoot,
       `${xtbPrefix}/runtime.json`,
@@ -412,6 +419,72 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     });
     assert.equal(fs.existsSync(result.executablePath), true);
     assert.equal(fs.existsSync(result.chemistryEnginePath), true);
+
+    // Single-component override should not fail when that component's lock file is corrupt/missing
+    writeText(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json', '{corrupt-tc');
+    const singleOverrideResult = assembleMacAppBundle({
+      repoRoot,
+      arch: 'x64',
+      outputDir,
+      pythonToolchainRoot: path.join(repoRoot, tcPrefix),
+    });
+    assert.equal(fs.existsSync(singleOverrideResult.executablePath), true);
+    fs.rmSync(path.join(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json'));
+
+    // Missing required scientific package (e.g. scipy) must fail
+    fs.rmSync(path.join(repoRoot, depPrefix, 'lib/python3.12/site-packages/scipy'), {
+      recursive: true,
+      force: true,
+    });
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Missing required packaging input \(Python scientific package scipy\)/,
+    );
+    writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/scipy/__init__.py`, '');
+
+    // Rejects unsupported xtb v2 schema without provenance anchor
+    writeText(
+      repoRoot,
+      `${xtbPrefix}/runtime.json`,
+      JSON.stringify({
+        schema: 'sciyue-xtb-bundled-runtime/v2',
+        version: '6.7.1',
+        platform: 'darwin-x64',
+        entry: 'bin/xtb',
+      }),
+    );
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /expected schema sciyue-xtb-bundled-runtime\/v1/,
+    );
+    writeText(
+      repoRoot,
+      `${xtbPrefix}/runtime.json`,
+      JSON.stringify({
+        schema: 'sciyue-xtb-bundled-runtime/v1',
+        version: '6.7.1',
+        platform: 'darwin-x64',
+        scope: 'local-experimental',
+        localUseReady: true,
+        publicRedistributionReviewed: false,
+        distributionLicenseReady: false,
+        entry: 'bin/xtb',
+        dataDirectory: 'share/xtb',
+        methods: ['gfn0', 'gfn1', 'gfn2', 'gfnff'],
+      }),
+    );
+
+    // Mach-O extension (.so) architecture mismatch inside pythonDepsRoot must throw
+    const arm64MachO = Buffer.alloc(32);
+    arm64MachO.writeUInt32BE(0xcffaedfe, 0); // MH_MAGIC_64 (LE)
+    arm64MachO.writeInt32LE(0x0100000c, 4); // CPU_TYPE_ARM64
+    const rdBaseSo = path.join(repoRoot, depPrefix, 'lib/python3.12/site-packages/rdkit/rdBase.so');
+    fs.writeFileSync(rdBaseSo, arm64MachO);
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Binary architecture mismatch in Python scientific dependencies.*rdBase\.so.*expected darwin-x64, found \[arm64\]/,
+    );
+    fs.rmSync(rdBaseSo);
 
     // Empty directories via explicit overrides must fail before deleting existing output
     const emptyDir = path.join(root, 'empty-dir');
@@ -459,9 +532,6 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     fs.rmSync(path.join(repoRoot, 'desktop/packaging/native-toolchain.darwin-x64.lock.json'));
 
     // Mach-O binary architecture mismatch (arm64 binary when packaging for x64) must throw
-    const arm64MachO = Buffer.alloc(32);
-    arm64MachO.writeUInt32BE(0xcffaedfe, 0); // MH_MAGIC_64 (LE)
-    arm64MachO.writeInt32LE(0x0100000c, 4); // CPU_TYPE_ARM64
     fs.writeFileSync(path.join(electronAppPath, 'Contents/MacOS/Electron'), arm64MachO);
     fs.chmodSync(path.join(electronAppPath, 'Contents/MacOS/Electron'), 0o755);
     assert.throws(
