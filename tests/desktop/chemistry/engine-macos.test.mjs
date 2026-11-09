@@ -12,6 +12,7 @@ import {
 const require = createRequire(import.meta.url);
 const { chemistryRuntime } = require('../../../desktop/runtime.cjs');
 const { currentRuntimeEnvironment } = require('../../../desktop/current-runtime.cjs');
+const { xtbRuntime } = require('../../../desktop/xtb-runtime.cjs');
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const IS_DARWIN_ARM64_HOST = process.platform === 'darwin' && process.arch === 'arm64';
@@ -112,8 +113,8 @@ test.describe(
       if (IS_DARWIN_ARM64_HOST) {
         assert.equal(
           executedScenarios,
-          6,
-          'Expected all 6 live darwin-arm64 scientific engine scenarios to execute'
+          7,
+          'Expected all 7 live darwin-arm64 scientific engine scenarios to execute'
         );
       }
     });
@@ -299,6 +300,8 @@ test.describe(
         'geometry_clean',
         'crystal_modeling',
         'conformer_sampling',
+        'conformer_solvation',
+        'conformer_native_md',
         'dynamics',
         'advanced_path',
         'xtb_periodic',
@@ -446,6 +449,85 @@ print(json.dumps(res))
         assert.ok(res.bondOrders.entries[0].value > 0.8);
         assert.ok(fs.existsSync(path.join(tmpWorkspace, 'bond-orders.npy')));
         assert.ok(fs.existsSync(path.join(tmpWorkspace, 'bond-orders.json')));
+        executedScenarios += 1;
+      } finally {
+        fs.rmSync(tmpWorkspace, { recursive: true, force: true });
+      }
+    });
+
+    test('conformer_native_md.NativeMDSession admits darwin xtbRuntime and executes GFN2 MD with ALPB water solvation on macOS', async () => {
+      const runtime = resolveActiveRuntime();
+      const xtb = await xtbRuntime({ packaged: false, appPath: ROOT });
+      const sitePackagesDirs = runtime.runtimeRoot
+        ? [
+            path.join(runtime.runtimeRoot, 'python/lib/python3.12/site-packages'),
+            path.join(runtime.runtimeRoot, 'python/Lib/site-packages')
+          ].filter((p) => fs.existsSync(p))
+        : [];
+      const tmpWorkspace = fs.mkdtempSync(
+        path.join(fs.realpathSync(os.tmpdir()), 'es-native-md-alpb-')
+      );
+      try {
+        const mdScript = `
+import json, pathlib, sys, threading
+for sp in ${JSON.stringify(sitePackagesDirs)}:
+    if sp not in sys.path:
+        sys.path.insert(0, sp)
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from conformer_native_md import NativeMDSession, admitted_md_engine_identity
+from conformer_solvation import native_alpb_supported
+assert native_alpb_supported("gfn2", "md", "water") is True
+rt = json.loads(${JSON.stringify(JSON.stringify(xtb))})
+admitted = admitted_md_engine_identity(rt)
+assert admitted["version"] == rt["version"]
+request = {
+    "operation": "md",
+    "method": "gfn2",
+    "charge": 0,
+    "uhf": 0,
+    "threads": 1,
+    "dtFs": 1.0,
+    "reportEvery": 2,
+    "maxSteps": 10,
+    "maxEvaluations": 20,
+    "maxFrames": 10,
+    "shakeHydrogenBonds": True,
+    "seed": 42,
+    "calculator": {"accuracy": 2.0, "maxIterations": 250, "electronicTemperatureK": 300.0},
+    "molecularMD": {"temperatureK": 298.15, "durationFs": 4.0, "sampleEveryFs": 2.0},
+    "solvation": {"model": "alpb", "solvent": "water"},
+    "structure": {
+        "atoms": [
+            {"id": "a1", "element": "O", "x": 0.0, "y": 0.0, "z": 0.0},
+            {"id": "a2", "element": "H", "x": 0.96, "y": 0.0, "z": 0.0},
+            {"id": "a3", "element": "H", "x": -0.24, "y": 0.93, "z": 0.0}
+        ],
+        "bonds": [{"id": "b1", "a": 0, "b": 1, "order": 1}, {"id": "b2", "a": 0, "b": 2, "order": 1}]
+    }
+}
+events = []
+ctx = {
+    "runtime": rt,
+    "workspacePath": ${JSON.stringify(tmpWorkspace)},
+    "emit": events.append,
+    "check": lambda: None,
+    "cancelled": threading.Event()
+}
+res = NativeMDSession(request, ctx).run()
+print(json.dumps({"kind": res["kind"], "frameCount": res["frameCount"], "nativeSolvation": res.get("nativeSolvation")}))
+`;
+        const stdout = execFileSync(runtime.executable, ['-I', '-S', '-B', '-c', mdScript], {
+          cwd: path.join(ROOT, 'desktop/chemistry'),
+          env: runtime.env || process.env,
+          encoding: 'utf8',
+          timeout: 60000
+        });
+        const res = JSON.parse(stdout.trim());
+        assert.equal(res.kind, 'completed');
+        assert.equal(res.frameCount, 2);
+        assert.equal(res.nativeSolvation?.model, 'alpb');
+        assert.equal(res.nativeSolvation?.solvent, 'water');
+        assert.equal(res.nativeSolvation?.dielectricConstant, 80.2);
         executedScenarios += 1;
       } finally {
         fs.rmSync(tmpWorkspace, { recursive: true, force: true });

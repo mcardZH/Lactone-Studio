@@ -3,6 +3,7 @@ import type { Vector3 } from '../../core/types';
 import { sameSamplingSphereSource, samplingSphereRadiusFromDrag,
   type SamplingSphereRadiusChange, type SamplingSphereViewportDraft } from '../../modeling/advanced/sampling-sphere';
 import './sampling-sphere-overlay.css';
+import {createLatestMoveScheduler} from './viewport-move-scheduler';
 
 export type { SamplingSphereViewportDraft, SamplingSphereRadiusChange } from '../../modeling/advanced/sampling-sphere';
 type Point = { x: number; y: number };
@@ -10,6 +11,7 @@ export interface SamplingSphereOverlayProps {
   draft: SamplingSphereViewportDraft;
   /** Same client-coordinate projection as the existing viewport overlays. */
   project(position: Vector3): Point;
+  projectSphere?(sphere:{centerAngstrom:Vector3;radiusAngstrom:number}):{center:Point;radius:number}|null;
   viewport: HTMLElement | null;
   projectionVersion?: unknown;
   onRadiusChange(change: SamplingSphereRadiusChange): void;
@@ -41,26 +43,34 @@ export function samplingSphereProjectedOutline(draft: SamplingSphereViewportDraf
 export default function SamplingSphereOverlay(props: SamplingSphereOverlayProps) {
   const { draft, project, viewport } = props;
   const latest = useRef(props); latest.current = props;
-  const gesture = useRef<{ pointerId: number; initial: SamplingSphereViewportDraft; pointer: Point; center: Point; pixelScale: number } | null>(null);
+  const gesture = useRef<{ pointerId: number; initial: SamplingSphereViewportDraft; pointer: Point; center: Point; pixelScale: number;target:SVGPathElement } | null>(null);
+  const pendingRadius=useRef<ReturnType<typeof createLatestMoveScheduler<SamplingSphereRadiusChange>>|null>(null);
+  const frameHost=viewport?.ownerDocument?.defaultView;
+  const emit=(change:SamplingSphereRadiusChange)=>{const p=latest.current;if(p.draft.previewEnabled&&!p.draft.disabled&&sameSamplingSphereSource(change,p.draft))p.onRadiusChange(change);};
+  if(!pendingRadius.current&&frameHost?.requestAnimationFrame)pendingRadius.current=createLatestMoveScheduler(callback=>frameHost.requestAnimationFrame(callback),id=>frameHost.cancelAnimationFrame(id),emit);
   const finish = (cancel: boolean) => {
     const current = gesture.current;
+    pendingRadius.current?.cancel();
     if (!current) return;
     gesture.current = null;
+    if(current.target.hasPointerCapture?.(current.pointerId))current.target.releasePointerCapture(current.pointerId);
     if (cancel && sameSamplingSphereSource(current.initial, latest.current.draft)) latest.current.onRadiusChange({
       sourceDocumentId: current.initial.sourceDocumentId, sourceRevision: current.initial.sourceRevision, radiusAngstrom: current.initial.radiusAngstrom });
     latest.current.onDragEnd?.(cancel);
   };
-  useEffect(() => () => finish(true), []);
+  useEffect(()=>{const blur=()=>finish(true);frameHost?.addEventListener('blur',blur);return()=>{frameHost?.removeEventListener('blur',blur);finish(true);};},[frameHost]);
   useEffect(() => { finish(true); }, [draft.sourceDocumentId, draft.sourceRevision, draft.previewEnabled, draft.disabled]);
   if (!viewport || !draft.previewEnabled || draft.disabled) return null;
   const bounds = viewport.getBoundingClientRect();
   let center: Point;
-  try { center = project(draft.centerAngstrom); } catch { return null; }
-  const outline = samplingSphereProjectedOutline(draft, project);
-  if (!Number.isFinite(center.x) || !Number.isFinite(center.y) || outline.length < 1) return null;
+  let circle:{center:Point;radius:number}|null=null;
+  try {circle=draft.radiusAngstrom>0?props.projectSphere?.(draft)??null:null;center=circle?.center??project(draft.centerAngstrom);} catch { return null; }
+  const outline=circle?[]:samplingSphereProjectedOutline(draft, project);
+  if (!Number.isFinite(center.x) || !Number.isFinite(center.y) || !circle&&outline.length < 1) return null;
   const cx = center.x - bounds.left, cy = center.y - bounds.top;
   const path = draft.radiusAngstrom === 0
     ? `M${cx - 3},${cy}a3,3 0 1,0 6,0a3,3 0 1,0 -6,0`
+    : circle?`M${cx-circle.radius},${cy}a${circle.radius},${circle.radius} 0 1,0 ${circle.radius*2},0a${circle.radius},${circle.radius} 0 1,0 ${-circle.radius*2},0`
     : outline.map((point, index) => `${index ? 'L' : 'M'}${point.x - bounds.left},${point.y - bounds.top}`).join(' ') + ' Z';
   return <svg className="sampling-sphere-overlay" data-testid="sampling-sphere-overlay" aria-label="球形约束半径编辑"
     viewBox={`0 0 ${Math.max(1, bounds.width)} ${Math.max(1, bounds.height)}`}>
@@ -70,11 +80,12 @@ export default function SamplingSphereOverlay(props: SamplingSphereOverlayProps)
       onPointerDown={event => {
         if (event.button !== 0) return;
         event.preventDefault(); event.stopPropagation();
-        const reference = samplingSphereProjectedOutline({ ...draft, radiusAngstrom: Math.max(1, draft.radiusAngstrom) }, project);
-        const pixelScale = Math.max(...reference.map(point => Math.hypot(point.x - center.x, point.y - center.y))) / Math.max(1, draft.radiusAngstrom);
+        const referenceRadius=Math.max(1,draft.radiusAngstrom),projected=props.projectSphere?.({...draft,radiusAngstrom:referenceRadius});
+        const reference=projected?[]:samplingSphereProjectedOutline({...draft,radiusAngstrom:referenceRadius},project);
+        const pixelScale=(projected?.radius??Math.max(...reference.map(point=>Math.hypot(point.x-center.x,point.y-center.y))))/referenceRadius;
         if (!Number.isFinite(pixelScale) || pixelScale < 1e-6) return;
         event.currentTarget.setPointerCapture(event.pointerId);
-        gesture.current = { pointerId: event.pointerId, initial: draft, center, pixelScale, pointer: { x: event.clientX, y: event.clientY } };
+        gesture.current = { pointerId: event.pointerId, initial: draft, center, pixelScale, pointer: { x: event.clientX, y: event.clientY },target:event.currentTarget };
         props.onDragStart?.();
       }}
       onPointerMove={event => {
@@ -84,9 +95,10 @@ export default function SamplingSphereOverlay(props: SamplingSphereOverlayProps)
         if (!sameSamplingSphereSource(current.initial, latest.current.draft)) { finish(true); return; }
         const radiusAngstrom = samplingSphereRadiusFromDrag(current.initial.radiusAngstrom, current.initial.minimumRadiusAngstrom,
           current.center, current.pointer, { x: event.clientX, y: event.clientY }, current.pixelScale);
-        latest.current.onRadiusChange({ sourceDocumentId: current.initial.sourceDocumentId, sourceRevision: current.initial.sourceRevision, radiusAngstrom });
+        const change={sourceDocumentId:current.initial.sourceDocumentId,sourceRevision:current.initial.sourceRevision,radiusAngstrom};
+        if(pendingRadius.current)pendingRadius.current.schedule(change);else emit(change);
       }}
-      onPointerUp={event => { if (gesture.current?.pointerId === event.pointerId) { event.preventDefault(); event.stopPropagation(); finish(false); } }}
+      onPointerUp={event => { const current=gesture.current;if(current?.pointerId===event.pointerId){event.preventDefault();event.stopPropagation();const radiusAngstrom=samplingSphereRadiusFromDrag(current.initial.radiusAngstrom,current.initial.minimumRadiusAngstrom,current.center,current.pointer,{x:event.clientX,y:event.clientY},current.pixelScale);const change={sourceDocumentId:current.initial.sourceDocumentId,sourceRevision:current.initial.sourceRevision,radiusAngstrom};if(pendingRadius.current)pendingRadius.current.flush(change);else emit(change);finish(false);} }}
       onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish(true)}
       onKeyDown={event => {
         if (event.key === 'Escape' && gesture.current) { event.preventDefault(); event.stopPropagation(); finish(true); }

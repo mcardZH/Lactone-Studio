@@ -14,10 +14,14 @@ export class PlaybackOwnerRegistry {
    // reader until release and cannot publish into the new owner.
    this.entries.delete(key);entry=undefined;
   }
-  if(!entry){entry={result,revision,session:new OptPlaybackSession(result,options),consumers:new Map()};this.entries.set(key,entry);}
+  if(!entry){entry={result,revision,session:new OptPlaybackSession(result,{...options,...(options.prepared?{prepared:options.prepared.fork()}:{})}),consumers:new Map()};this.entries.set(key,entry);}
   const own=entry,token={},refresh=()=>{const values=[...own.consumers.values()];own.session.setEnvironment(values.some(value=>value.active),values.some(value=>value.active&&value.ready));};
   own.consumers.set(token,{active:false,ready:false});let released=false;
-  return{session:own.session,setEnvironment:(active:boolean,ready:boolean)=>{if(released){released=false;if(!this.entries.has(key))this.entries.set(key,own);}own.consumers.set(token,{active,ready});refresh();},release:()=>{if(released)return;released=true;own.consumers.delete(token);if(!own.consumers.size){own.session.dispose();if(this.entries.get(key)===own)this.entries.delete(key);}else refresh();}};
+  return{session:own.session,
+   // Only an explicit effect setup may reacquire a StrictMode-cleaned lease.
+   // Late visibility/readiness callbacks must never resurrect a deleted view.
+   reacquire:()=>{if(!released)return;const current=this.entries.get(key);if(current&&current!==own)return;released=false;this.entries.set(key,own);own.session.reacquire();own.consumers.set(token,{active:false,ready:false});},
+   setEnvironment:(active:boolean,ready:boolean)=>{if(released)return;own.consumers.set(token,{active,ready});refresh();},release:()=>{if(released)return;released=true;own.consumers.delete(token);if(!own.consumers.size){own.session.dispose();if(this.entries.get(key)===own)this.entries.delete(key);}else refresh();}};
  }
  get size(){return this.entries.size;}
 }

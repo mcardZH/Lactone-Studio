@@ -51,7 +51,9 @@ self.onmessage = async (event: MessageEvent<SamplingWorkRequest | { kind: 'stop'
         }
       }
       result = {acceptedIndices:accepted,processed,completed:processed===request.candidates.length};
-    } else result = clusterConformerResults(request.records, request.policy);
+    } else {let phase='';result = clusterConformerResults(request.records, request.policy,value=>{
+      const now=performance.now();if(value.phase!==phase||value.completed===value.total||now-last>=100){phase=value.phase;last=now;self.postMessage({kind:'progress',...value});}
+    });}
     self.postMessage({ kind: 'result', result });
   } catch (error) { self.postMessage({ kind: 'error', error: error instanceof Error ? error.message : String(error) }); }
 };

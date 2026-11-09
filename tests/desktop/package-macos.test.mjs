@@ -501,6 +501,16 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     const ocrCaps = await ocrRt.capabilities();
     assert.equal(ocrCaps.engines.find((entry) => entry.engine === 'molvec')?.status, 'ready');
 
+    writeText(repoRoot, 'desktop/conformer-solvation.cjs', 'module.exports = require("../src/data/conformer-solvation.json");\n');
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Missing required packaging input \(conformer solvation data \(src\/data\/conformer-solvation\.json\)\)/,
+    );
+    writeText(repoRoot, 'src/data/conformer-solvation.json', '{"schema":"ester-conformer-solvation/v1","presets":[]}\n');
+    const solvationBundle = assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir: path.join(root, 'release-solvation'), sign: false, createDmg: false });
+    assert.equal(fs.existsSync(path.join(solvationBundle.appResourcesPath, 'src', 'data', 'conformer-solvation.json')), true);
+    assert.equal(fs.existsSync(path.join(solvationBundle.resourcesPath, 'chemistry', 'conformer-solvation.json')), true);
+
     fs.rmSync(path.join(repoRoot, 'node_modules/ssh2'), { recursive: true, force: true });
     assert.throws(() => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }), /Missing required packaging input \(ssh2 runtime dependency\)/);
     writeText(repoRoot, 'node_modules/ssh2/package.json', JSON.stringify({ name: 'ssh2', version: '1.17.0' }));

@@ -20,6 +20,7 @@ context = builder.inputs(config, Path(os.environ['SCIYUE_NATIVE_CONTRACT']), Pat
 datas = collect_data_files('rdkit', excludes=['**/test*', '**/Test*', '**/UnitTest*'])
 datas += collect_data_files('ase', excludes=['test/**', 'gui/**'])
 datas += collect_data_files('spglib')
+datas += [(str(root / 'src/data/conformer-solvation.json'), '.')]
 for package in profile['metadataPackages']:
     datas += copy_metadata(package)
 binaries = sum((collect_dynamic_libs(package) for package in ('rdkit', 'numpy', 'scipy', 'spglib', 'tblite')), [])

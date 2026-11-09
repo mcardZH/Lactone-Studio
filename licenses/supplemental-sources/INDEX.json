@@ -1,7 +1,7 @@
 {
   "schema": "ester-v201-supplemental-corresponding-sources/v1",
-  "version": "2.0.2",
-  "release": "https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.2",
+  "version": "2.0.3",
+  "release": "https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.3",
   "sourceLocation": "Companion source ZIP, licenses/supplemental-sources/archives/",
   "archives": [
     {

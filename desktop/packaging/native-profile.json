@@ -44,11 +44,15 @@
     "desktop/chemistry/conformer_gfn0.py",
     "desktop/chemistry/conformer_native_md.py",
     "desktop/chemistry/conformer_native_metadynamics.py",
+    "desktop/chemistry/conformer_solvation.py",
     "desktop/chemistry/task_files.py",
     "desktop/chemistry/gfnff_topology.py",
     "desktop/chemistry/bader_analysis.py",
     "desktop/chemistry/hirshfeld_analysis.py",
     "desktop/chemistry/hirshfeld_session.py"
+  ],
+  "nativeDataSources": [
+    "src/data/conformer-solvation.json"
   ],
   "dataPackages": [
     "rdkit",

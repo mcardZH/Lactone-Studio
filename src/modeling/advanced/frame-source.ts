@@ -15,6 +15,7 @@ export interface AdvancedFrameRef {
   sourceFrameIndex?: number;
 }
 export interface AdvancedFrameSource {
+  protection?:import('./conformer-protection').ConformerProtectionSnapshot;
   ref: Readonly<AdvancedFrameRef>;
   label: string;
   structure: Structure;
@@ -22,6 +23,7 @@ export interface AdvancedFrameSource {
   constraints: SharedModelConstraints;
   coordinateUnit: 'angstrom';
   samplingPreparation?: { kind:'rigid-fit-then-exact-core-restore'; rawFrame:Readonly<AdvancedFrameRef>;
+    protection?:import('./conformer-protection').ConformerProtectionSnapshot;
     referenceFrame:Readonly<AdvancedFrameRef>; protectedAtomIds:string[]; fitRmsdAngstrom:number;
     maxResidualAngstrom:number; rotationAmbiguous:boolean };
 }

@@ -115,6 +115,23 @@ describe('branch-policy unit tests', () => {
       changedFiles: ['README.md'],
     });
     assert.equal(initialCommit.ok, true);
+
+    // Upstream 3-way merge on mac/upstream-* allows upstream code files when accompanied by tests/
+    const upstreamMergeNoTests = checkPreCommitPolicy({
+      branch: 'mac/upstream-v2.0.3',
+      isMergeInProgress: true,
+      changedFiles: ['src/web/App.tsx', 'desktop/chemistry/conformer_solvation.py'],
+    });
+    assert.equal(upstreamMergeNoTests.ok, false);
+    assert.equal(upstreamMergeNoTests.code, 'MISSING_TEST_FILES');
+
+    const upstreamMergeWithTests = checkPreCommitPolicy({
+      branch: 'mac/upstream-v2.0.3',
+      isMergeInProgress: true,
+      changedFiles: ['src/web/App.tsx', 'desktop/chemistry/conformer_solvation.py', 'tests/desktop/chemistry/engine-macos.test.mjs'],
+    });
+    assert.equal(upstreamMergeWithTests.ok, true);
+    assert.equal(upstreamMergeWithTests.code, 'OK');
   });
 
   it('enforces pre-merge check policy for protected branches', () => {

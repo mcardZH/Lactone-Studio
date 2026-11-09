@@ -46,9 +46,11 @@ export interface ScientificTableSorting {
 export function scientificTableHeader(column: ScientificTableColumn): string {
   return column.label.replace(/\s*\/\s*(?:无量纲|无单位|dimensionless)\s*$/i,'');
 }
-/** Compact content proportions, with at least half of the available card width. */
-export function scientificTableDefaultWidths(minima: readonly number[], numeric: readonly boolean[], availableWidth: number, actionWidth = 0, initialMinima?: readonly number[]): number[] {
+/** Default numeric columns share a width and fill half the card. The content
+ * opt-in retains individual readable minima without stretching identifiers. */
+export function scientificTableDefaultWidths(minima: readonly number[], numeric: readonly boolean[], availableWidth: number, actionWidth = 0, initialMinima?: readonly number[], numericColumnWidths:'uniform'|'content'='uniform'): number[] {
   const suggested = minima.map((value,index)=>Number.isFinite(initialMinima?.[index]) ? Math.max(value,initialMinima![index]) : value);
+  if(numericColumnWidths==='content')return suggested;
   const shared = Math.max(0, ...suggested.filter((_, index) => numeric[index]));
   const widths = suggested.map((value, index) => numeric[index] ? shared : value);
   const natural = widths.reduce((sum, value) => sum + value, 0);

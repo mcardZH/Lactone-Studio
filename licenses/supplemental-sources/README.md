@@ -1,6 +1,6 @@
-# Exact supplemental corresponding sources for Ester Studio 2.0.2
+# Exact supplemental corresponding sources for Ester Studio 2.0.3
 
-The [same 2.0.2 release](https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.2)
+The [same 2.0.3 release](https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.3)
 provides the complete source ZIP alongside the portable ZIP. In that source
 ZIP, this directory contains `INDEX.json` and `archives/`. The index records
 exact archive identities and original upstream acquisition URLs. The portable

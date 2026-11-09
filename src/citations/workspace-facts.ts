@@ -377,6 +377,43 @@ function collectAnalysisFacts(root: unknown, documents: Set<string>, sourceOwner
   visit(root);
 }
 
+function collectNativeSamplingSolvation(run:Bag,taskId:string|undefined,owners:readonly WorkspaceDocumentEntry[],output:CitationFact[]){
+  const rows:{native:Bag;scope:string;frameId?:string;locator:string}[]=[];
+  for(const value of items(run.frames)){
+    const frame=bag(value),process=bag(frame?.process),native=bag(bag(process?.data)?.nativeMD);
+    if(process?.kind==='sampling'&&native?.nativeSolvation)rows.push({native,scope:str(bag(frame?.samplingOrigin)?.cardId)??'sampling',frameId:str(frame?.id),locator:`frames:${str(frame?.id)}:process:data:nativeMD`});
+  }
+  const cards=items(bag(run.mixedSampling)?.cards);
+  for(const value of cards){const card=bag(value),terminal=bag(bag(card?.sampling)?.terminal),native=bag(bag(terminal?.lastFrame)?.nativeMD);
+    if(native?.nativeSolvation&&['completed','stopped','error'].includes(str(terminal?.event)??''))rows.push({native,scope:str(card?.id)??'sampling',locator:`mixedSampling:cards:${str(card?.id)}:sampling:terminal:lastFrame:nativeMD`});}
+  if(!cards.length&&!rows.length){const terminal=bag(bag(run.sampling)?.terminal),native=bag(bag(terminal?.lastFrame)?.nativeMD);
+    if(native?.nativeSolvation&&['completed','stopped','error'].includes(str(terminal?.event)??''))rows.push({native,scope:'sampling',locator:'sampling:terminal:lastFrame:nativeMD'});}
+  const seen=new Set<string>();
+  for(const row of rows){
+    const solvation=bag(row.native.nativeSolvation),method=str(row.native.method),parameterMethod=({gfnff:'GFN-FF',gfn1:'GFN1-xTB',gfn2:'GFN2-xTB'} as Record<string,string>)[method??''];
+    // Read only the validated stdout block, never a request, selection, UI
+    // dielectric reference or xTB's unconditional bibliography paragraph.
+    if(!parameterMethod||!solvation||!['alpb','gbsa'].includes(str(solvation.model)??'')||!str(solvation.solvent)
+      ||solvation.kernel!==(solvation.model==='alpb'?'p16':'still')||solvation.referenceState!=='gsolv'
+      ||typeof solvation.temperatureKelvin!=='number'||!Number.isFinite(solvation.temperatureKelvin)||solvation.temperatureKelvin<=0
+      ||solvation.sourceField!=='stdout:solvation-model'||solvation.parameterSet!==`internal ${parameterMethod}/${String(solvation.model).toUpperCase()}`
+      ||typeof solvation.dielectricConstant!=='number'||!Number.isFinite(solvation.dielectricConstant)||solvation.dielectricConstant<=0)continue;
+    const parameters={solvent:String(solvation.solvent),parameterSet:String(solvation.parameterSet),kernel:String(solvation.kernel),referenceState:'gsolv',
+      temperatureKelvin:solvation.temperatureKelvin,dielectricConstant:solvation.dielectricConstant,dielectricRole:'native-execution-parameter'};
+    // One accurate witness per card/method/medium; thousands of matching frames
+    // do not replicate the citation tree. Different media remain distinct.
+    const key=JSON.stringify([row.scope,method,str(row.native.version),parameters]);if(seen.has(key))continue;seen.add(key);
+    for(const owner of owners){
+      const base={documentId:owner.id,taskId,stage:`${str(run.id)}:${row.scope}`,frameId:row.frameId,kind:'retained-result' as const,software:'xTB',version:str(row.native.version),parameters,
+        evidence:[{kind:'metadata' as const,locator:`advanced:${taskId}:${str(run.id)}:${row.locator}:nativeSolvation`,detail:JSON.stringify(solvation)}],
+        purpose:'保留采样帧的实际原生溶剂模型回执；温度及介电常数为执行参数，不是界面物性参考'};
+      addFact(output,base,'solvation',String(solvation.model),key);
+      addFact(output,base,'method',normalizeCitationMethod(method!,'xTB'),key);
+      addFact(output,{...base,kind:'runtime-dependency'},'runtime-dependency','xTB',key);
+    }
+  }
+}
+
 function collectAdvancedFacts(root: unknown, documents: readonly WorkspaceDocumentEntry[], output: CitationFact[]) {
   for (const taskValue of items(bag(root)?.tasks)) {
     const task = bag(taskValue); if (!task) continue;
@@ -385,6 +422,35 @@ function collectAdvancedFacts(root: unknown, documents: readonly WorkspaceDocume
     if (!owners.length) continue;
     for (const runValue of items(task.runs)) {
       const run = bag(runValue); if (!run) continue;
+      collectNativeSamplingSolvation(run,taskId,owners,output);
+      for (const stageValue of items(run.stages)) {
+        const stage=bag(stageValue),clustering=bag(stage?.clustering),equivalence=bag(clustering?.equivalence);
+        // Configuration, an unfinished stage and legacy results without actual
+        // call counters cannot establish which alignment algorithms ran.
+        if(stage?.status!=='completed'||stage.adoptionError||clustering?.algorithmVersion!=='fixed-then-element-v1')continue;
+        const positiveCount=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>0;
+        const fixed=positiveCount(clustering.ordinaryAlignmentPairCount);
+        const comparable=equivalence?.algorithmVersion==='element-geometry-v1';
+        const fixedEvidence=comparable&&positiveCount(equivalence.fixedEvidencePairCount);
+        const assigned=comparable&&positiveCount(equivalence.assignmentPairCount);
+        if(!fixed&&!fixedEvidence&&!assigned)continue;
+        for(const owner of owners){
+          const base={documentId:owner.id,sourceId:str(sourceRef?.sourceId),taskId,stage:`${str(run.id)??''}:${str(stage.id)??''}`,kind:'retained-result' as const,
+            software:'Ester Studio',parameters:{algorithmVersion:'fixed-then-element-v1',
+              ...(positiveCount(clustering.ordinaryAlignmentPairCount)?{ordinaryAlignmentPairCount:Number(clustering.ordinaryAlignmentPairCount)}:{}),
+              ...(comparable?{equivalenceAlgorithmVersion:'element-geometry-v1'}:{}),
+              ...(fixedEvidence?{fixedEvidencePairCount:Number(equivalence!.fixedEvidencePairCount)}:{}),
+              ...(assigned?{assignmentPairCount:Number(equivalence!.assignmentPairCount)}:{})},
+            evidence:[{kind:'metadata' as const,locator:`advanced:${taskId}:${str(run.id)}:${str(stage.id)}:clustering`,
+              detail:JSON.stringify({algorithmVersion:clustering.algorithmVersion,ordinaryAlignmentPairCount:clustering.ordinaryAlignmentPairCount,
+                equivalence:comparable?{algorithmVersion:equivalence!.algorithmVersion,eligiblePairCount:equivalence!.eligiblePairCount,
+                  fixedEvidencePairCount:equivalence!.fixedEvidencePairCount,assignmentPairCount:equivalence!.assignmentPairCount,
+                  unresolvedPairCount:equivalence!.unresolvedPairCount}:undefined})}],
+            purpose:'保留的已完成构象归簇实际方法；由调用计数确认，不从显示叠合或等价消除开关推定'};
+          addFact(output,base,'analysis','horn-quaternion-fit');
+          if(assigned)addFact(output,base,'analysis','hungarian-assignment');
+        }
+      }
       const calculations = [...items(run.results), ...items(run.stages).flatMap(s => items(bag(s)?.results))];
       for (const calculationValue of calculations) {
         const calculation = bag(calculationValue), metadata = bag(calculation?.metadata);

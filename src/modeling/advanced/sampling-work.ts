@@ -10,7 +10,7 @@ export type SamplingWorkRequest =
   | { kind: 'generate'; snapshot: GenerationArguments[0]; entries: GenerationArguments[1]; quantity: GenerationArguments[2]; options: Omit<NonNullable<GenerationArguments[3]>, 'onProgress'> }
   | { kind: 'deduplicate'; candidates: Structure[]; retained: Structure[]; threshold: number }
   | { kind: 'cluster'; records: Parameters<typeof clusterConformerResults>[0]; policy: Parameters<typeof clusterConformerResults>[1] };
-export interface SamplingWorkProgress { completed: number; total: number | null; valid?: number;generation?:SamplingGenerationCounters }
+export interface SamplingWorkProgress { completed: number; total: number | null; phase?:'cluster'|'eliminate-equivalent';valid?: number;generation?:SamplingGenerationCounters }
 export interface SamplingDeduplicationResult { acceptedIndices: number[]; processed: number; completed: boolean }
 export function startSamplingWork<T>(request: SamplingWorkRequest, onProgress: (value: SamplingWorkProgress) => void,
   resources?:{threads:number;memoryBudgetBytes:number;retainedMemoryEstimateBytes?:number}): { promise: Promise<T>; stop(): void } {
@@ -36,7 +36,7 @@ export function startSamplingWork<T>(request: SamplingWorkRequest, onProgress: (
         if(request.kind==='deduplicate')return {acceptedIndices:request.candidates.map((_,index)=>index),processed:0,completed:false} as T;
         throw new Error('后台采样已停止。');
       }
-      if (request.kind === 'cluster') return clusterConformerResults(request.records, request.policy) as T;
+      if (request.kind === 'cluster') return clusterConformerResults(request.records, request.policy,onProgress) as T;
       const retained = [...request.retained], accepted: number[] = [];
       request.candidates.forEach((candidate, index) => { if (!isMixedSamplingDuplicate(candidate, retained, request.threshold)) { retained.push(candidate); accepted.push(index); } });
       return {acceptedIndices:accepted,processed:request.candidates.length,completed:true} as T;
@@ -51,7 +51,7 @@ export function startSamplingWork<T>(request: SamplingWorkRequest, onProgress: (
     if (value.kind === 'result') finish(() => resolve(value.result));
     else if (value.kind === 'error') finish(() => reject(new Error(value.error)));
     else if (value.kind === 'progress') {
-      onProgress({ completed: value.completed, total: value.total, valid: value.valid,...(value.generation?{generation:value.generation}:{}) });
+      onProgress({ completed: value.completed, total: value.total, valid: value.valid,...(value.phase?{phase:value.phase}:{}),...(value.generation?{generation:value.generation}:{}) });
     }
   };
   worker.onerror = event => finish(() => reject(new Error(event.message || '后台采样worker失败。')));

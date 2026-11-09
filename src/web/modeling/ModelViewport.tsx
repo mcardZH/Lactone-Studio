@@ -13,6 +13,7 @@ import {ScientificEditCancelledError} from '../../core/modeling/analysis-binding
 import type { ViewerHighlights } from '../../core/display-highlights';
 import { createRenderAdapter,requiresCooperativeDisplay, type RenderAdapter, type RenderFeedbackOptions, type ViewportVibrationVector, type ViewportAtomScalarValue, type ViewportDipoleVector } from './render/adapter';
 import {cameraRotationDrag} from './render/display-settings';
+import {viewportSamplingSphere} from './render/sampling-sphere-preview';
 import {preparedCarbonCipUsage,type CipDisplayUsage,type CipLabelWarning} from './render/stereochemistry';
 import './stereochemistry-warning.css';
 import { modelHighlights } from './render/display';
@@ -61,7 +62,7 @@ import type {SamplingSphereViewportDraft,SamplingSphereRadiusChange} from '../..
 export function viewportBondRopeBounds(drawing: boolean, surface: Pick<Element, 'getBoundingClientRect'> | null | undefined): DOMRect | undefined {
   return drawing ? surface?.getBoundingClientRect() : undefined;
 }
-const RENDER_DIAGNOSTIC_KEYS=['sceneCreated','sceneReused','sceneRetired','sceneCommands','sceneMetadataBytes','ownedShapes','ownedModels','ownedResources','shapeSlots','modelSlots','gpuGeometries','gpuTextures','gpuPrograms','fragmentSamples','fragmentRetirementBatches','fragmentPartialPresents','fragmentFullPresents','fragmentFallbackCode','scenePreparations','sceneAborts','glyphRegistrations','glyphBatches','glyphBonds','glyphWorkerStarts','glyphWorkerStops','glyphCancellations','glyphAdjacencyBuilds','glyphPending'] as const;
+const RENDER_DIAGNOSTIC_KEYS=['sceneCreated','sceneReused','sceneRetired','sceneCommands','sceneMetadataBytes','ownedShapes','ownedModels','ownedResources','shapeSlots','modelSlots','gpuGeometries','gpuTextures','gpuPrograms','fragmentSamples','fragmentRetirementBatches','fragmentPartialPresents','fragmentFullPresents','fragmentFallbackCode','scenePreparations','sceneAborts','sphereGeometryBuilds','sphereNativeCompilations','sphereTransformUpdates','sphereFallbacks','sphereOwnedHandles','glyphRegistrations','glyphBatches','glyphBonds','glyphWorkerStarts','glyphWorkerStops','glyphCancellations','glyphAdjacencyBuilds','glyphPending'] as const;
 
 /** Independent, display-only analysis draft; never an input or model selection. */
 export interface AnalysisAtomCapture {
@@ -224,6 +225,7 @@ export interface ModelViewportProps extends CalculationRangeFeedback {
   readOnly?: boolean;
   /** Result annotations remain visible while the shared editor owns commands. */
   allowModelEditing?: boolean;
+  freezeEditingAllowed?:boolean;
   /** Scientific frame used by gestures; animation geometry is display only. */
   editingDocument?: ModelDocument;
   /** Local verified document lifetime; absent shared/standalone callers rebuild. */
@@ -407,7 +409,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   const { document: model, display, interaction, highlights = EMPTY } = props;
   const resultPresentation=useMemo(()=>resultSelectionPresentation(model.draft.structure,props.resultHighlights),[model.draft.structure,props.resultHighlights]);
   const captureDisplay = captureViewportDisplay(display, props.captureRequest);
-  const pointerMode = (p: ModelViewportProps) => p.getPointerMode ? p.getPointerMode() : p.temporaryPointerMode ?? null;
+  const pointerMode = (p: ModelViewportProps) => {const mode=p.getPointerMode ? p.getPointerMode() : p.temporaryPointerMode ?? null;return mode==='freeze'&&p.freezeEditingAllowed===false?null:mode;};
   const assignmentActivation = useRef({ documentId: model.id, active: props.active !== false, epoch: 0 });
   if (assignmentActivation.current.documentId !== model.id || assignmentActivation.current.active !== (props.active !== false)) assignmentActivation.current = { documentId: model.id, active: props.active !== false, epoch: assignmentActivation.current.epoch + 1 };
   const assignmentRegions = useMemo(() => projectAssignmentDisplay(model.draft.assignments, model.draft.structure.atoms), [model.draft.assignments, model.draft.structure.atoms]);
@@ -570,6 +572,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   }
   function applyAtomState(atomIds: string[], action: AtomStateAction) {
     const p = latest.current;
+    if(p.freezeEditingAllowed===false&&(action==='freeze'||action==='unfreeze'))return;
     if (p.onAtomStateChange) p.onAtomStateChange(atomIds, action);
     else if (action === 'select-add' || action === 'select-remove') p.onSelection(selectionWithAtomState(p.document.selection, atomIds, action));
   }
@@ -582,6 +585,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   }
   function applyObjectState(objects:ViewportObjectState,action:AtomStateAction){
     const p=latest.current;
+    if(p.freezeEditingAllowed===false&&(action==='freeze'||action==='unfreeze'))return;
     if(!objects.atomIds.length&&!objects.coordinateIds.length)return;
     if(action==='select-add'||action==='select-remove'){
       p.onSelection(selectionWithCoordinateState(selectionWithAtomState(p.document.selection,objects.atomIds,action),objects.coordinateIds,action));return;
@@ -599,6 +603,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   }
   function removeStateMarker(marker:ViewportStateMarker){
     const p=latest.current;if(p.captureRequest||p.analysisAtomCapture||marker.removable===false)return;
+    if(p.freezeEditingAllowed===false&&marker.kind!=='selection')return;
     if(marker.kind==='selection'&&marker.coordinateId!==undefined)applyObjectState(stateMarkerObjects(marker),'select-remove');
     else if(p.onStateMarkerDelete)p.onStateMarkerDelete(marker);
     else if(marker.kind==='selection')applyAtomState([...marker.atomIds],'select-remove');
@@ -651,6 +656,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   function redraw(atoms?: Atom[], documentOverride?: ModelDocument) {
     const p = latest.current;
     const document = documentOverride ?? p.document;
+    const samplingSphere=viewportSamplingSphere(document,p.samplingSphereDraft,p.samplingSphere);
     atoms ??= p.displayAtoms;
     if (p.active === false) return;
     const viewportBounds = container.current?.getBoundingClientRect();
@@ -672,13 +678,13 @@ export default function ModelViewport(props: ModelViewportProps) {
     const connectivityStamp=viewportConnectivityStamp(document.draft.structure,previewStamps.current,()=>++previewSerial.current);
     const analysis=resultSelectionPresentation(document.draft.structure,p.resultHighlights);
     const capture=captureSelectionPresentation(document,p.analysisAtomCapture?analysisCaptureCurrent(p.analysisAtomCapture,p.analysisAtomCapture)?p.analysisAtomCapture.atomIds:[]:p.captureRequest?p.captureRequest.documentId===document.id&&p.captureRequest.revision===document.revision?p.captureAtomIds??[]:[]:undefined);
-    const signature=JSON.stringify([capture.active,analysis.atomIds,analysis.records,document.id,document.revision,document.selection,document.draft.assignments,document.sharedConstraints,document.coordinateObjects,document.gaussianBoundCoordinates,captureViewportDisplay(p.display,p.captureRequest),p.highlights,p.measurement,drawTransform,multiframeStamp,p.samplingSphere,p.calculationRanges,p.hiddenAtomIds,
+    const signature=JSON.stringify([capture.active,analysis.atomIds,analysis.records,document.id,document.revision,document.selection,document.draft.assignments,document.sharedConstraints,document.coordinateObjects,document.gaussianBoundCoordinates,captureViewportDisplay(p.display,p.captureRequest),p.highlights,p.measurement,drawTransform,multiframeStamp,p.calculationRanges,p.hiddenAtomIds,
        p.captureRequest&&[p.captureRequest.requestId,p.captureRequest.purpose],capture.atomIds,p.previewGuides,p.previewCell,p.cellGuides,p.linkedAtomsActive,p.stateMarkers,p.effectiveFrozenAtomIds,p.displayFrozenAtomIds,p.problemAtomIds,p.vibrationVectors,p.atomScalarValues,p.atomScalarColor,p.atomScalarLabels,p.dipoleVector,p.observationFrame,p.observationEpoch,previewStamp,geometryStamp,connectivityStamp,p.renderIdentity,Boolean(p.onRenderComplete),p.sceneOwnerEpoch]);
     const view=viewportProjectionSignature(adapter.current?.getView(),p);
     const resultInputs={bondValues:p.resultBondValues,atomLabels:p.resultAtomLabels,highlights:p.resultHighlights};
     if(lastDraw.current===signature&&lastProjectionView.current===view&&sameResultProjectionInputs(lastResultProjectionInputs.current,resultInputs))return;
     if(lastDraw.current!==signature){
-      const feedback:RenderFeedbackOptions={...viewportCaptureFeedback(document,p.captureRequest,p.problemAtomIds,p),sceneOwnerEpoch:p.sceneOwnerEpoch?JSON.stringify([p.sceneOwnerEpoch,p.observationEpoch??null,p.renderIdentity?.sourceId??null,p.renderIdentity?.sourceRevision??null,p.renderIdentity?.generation??null]):undefined,displayFrozenAtomIds:p.displayFrozenAtomIds,hiddenAtomIds:p.hiddenAtomIds,multiframeDisplay:p.multiframeDisplay,samplingSphere:p.samplingSphere,calculationRanges:p.calculationRanges,displayCaptureAtomIds:capture.active?capture.atomIds:undefined,previewGuides:p.previewGuides,previewCell:p.previewCell,cellGuides:p.cellGuides,displayHighlightAtomIds:analysis.atomIds,displayMeasurementRecords:analysis.records,renderIdentity:p.renderIdentity,onRenderComplete:p.onRenderComplete};
+      const feedback:RenderFeedbackOptions={...viewportCaptureFeedback(document,p.captureRequest,p.problemAtomIds,p),sceneOwnerEpoch:p.sceneOwnerEpoch?JSON.stringify([p.sceneOwnerEpoch,p.observationEpoch??null,p.renderIdentity?.sourceId??null,p.renderIdentity?.sourceRevision??null,p.renderIdentity?.generation??null]):undefined,displayFrozenAtomIds:p.displayFrozenAtomIds,hiddenAtomIds:p.hiddenAtomIds,multiframeDisplay:p.multiframeDisplay,samplingSphere,calculationRanges:p.calculationRanges,displayCaptureAtomIds:capture.active?capture.atomIds:undefined,previewGuides:p.previewGuides,previewCell:p.previewCell,cellGuides:p.cellGuides,displayHighlightAtomIds:analysis.atomIds,displayMeasurementRecords:analysis.records,renderIdentity:p.renderIdentity,onRenderComplete:p.onRenderComplete};
       feedback.onCipWarning=warning=>{
         if(latest.current.active===false||latest.current.document.id!==p.document.id||latest.current.document.draft.structure.atoms!==p.document.draft.structure.atoms)return;
         const identity=warning?JSON.stringify([p.document.id,warning.identity]):'';
@@ -692,6 +698,7 @@ export default function ModelViewport(props: ModelViewportProps) {
         feedback.isCurrent=()=>!own.controller.signal.aborted&&asynchronousDraw.current===own&&adapter.current===instance&&assignmentActivation.current.epoch===activation&&latest.current.active!==false&&latest.current.document.id===p.document.id&&latest.current.document.revision===p.document.revision&&latest.current.document.draft.structure.atoms===p.document.draft.structure.atoms&&latest.current.displayAtoms===p.displayAtoms&&latest.current.sceneOwnerEpoch===p.sceneOwnerEpoch&&latest.current.observationEpoch===p.observationEpoch;
         void instance.drawAsync(renderDocument,renderDisplay,p.highlights,atoms,drawTransform,p.measurement,feedback,own.controller.signal).then(()=>{
           if(!feedback.isCurrent?.())return;
+          instance.updateSamplingSphere?.(viewportSamplingSphere(latest.current.document,latest.current.samplingSphereDraft,latest.current.samplingSphere),latest.current.document);
           if(renderDisplay.stereochemistry){const usage=preparedCarbonCipUsage(renderDocument.draft.structure,p.hiddenAtomIds);if(usage)p.onCipLabelsUsed?.({...usage,documentId:p.document.id,sourceRevision:String(p.document.revision)});}
           lastDraw.current=signature;observeSurfaceMesh(true);refreshProjection(atoms,atoms?{...document,draft:{...document.draft,structure:{...document.draft.structure,atoms}}}:document);
           lastResultProjectionInputs.current=resultInputs;lastProjectionView.current=viewportProjectionSignature(instance.getView(),latest.current);
@@ -848,7 +855,8 @@ export default function ModelViewport(props: ModelViewportProps) {
     };
   }, [initializationRequested]);
     useEffect(() => { if (!ready) return; const rope = bondRope.current; if (rope && (rope.documentId !== model.id || rope.revision !== model.revision || props.structureLocked || viewportEditingBlocked(props))) finishRope(false); const own = gesture.current; if (own && (own.documentId !== model.id || ((own.kind !== 'camera' || own.analysisCapture) && own.revision !== model.revision) || (own.analysisCapture ? !analysisCaptureCurrent(own.analysisCapture,props.analysisAtomCapture) : (viewportEditingBlocked(props) && own.kind !== 'camera')))) finish(false); hoverScreen.current = null; redraw(preview.current); updateHover(null); }, [ready, model.id, model.revision, model.draft.structure, props.structureLocked, props.captureRequest, props.readOnly, props.allowModelEditing, props.viewTransform, props.multiframeDisplay, props.analysisAtomCapture?.requestId, props.analysisAtomCapture?.contextKey]);
-  useEffect(() => { if (ready) redraw(preview.current); }, [ready, display, highlights, model.selection, model.draft.assignments, props.observationReference, props.observationEpoch, props.observationFrame, props.observationFixedFrame, props.observationAnchorAtomIds, props.observationTransform, props.measurement, props.captureRequest, props.captureAtomIds, props.analysisAtomCapture, props.showAxes, props.viewTransform, props.stateMarkers, props.effectiveFrozenAtomIds, props.displayFrozenAtomIds, props.linkedAtomsActive, props.problemAtomIds, props.vibrationVectors, props.atomScalarValues, props.atomScalarColor, props.atomScalarLabels, props.dipoleVector,props.multiframeDisplay,props.samplingSphere,props.calculationRanges,props.hiddenAtomIds]);
+  useEffect(() => { if (ready) redraw(preview.current); }, [ready, display, highlights, model.selection, model.draft.assignments, props.observationReference, props.observationEpoch, props.observationFrame, props.observationFixedFrame, props.observationAnchorAtomIds, props.observationTransform, props.measurement, props.captureRequest, props.captureAtomIds, props.analysisAtomCapture, props.showAxes, props.viewTransform, props.stateMarkers, props.effectiveFrozenAtomIds, props.displayFrozenAtomIds, props.linkedAtomsActive, props.problemAtomIds, props.vibrationVectors, props.atomScalarValues, props.atomScalarColor, props.atomScalarLabels, props.dipoleVector,props.multiframeDisplay,props.calculationRanges,props.hiddenAtomIds]);
+  useEffect(()=>{if(!ready||props.active===false)return;try{const p=latest.current,instance=adapter.current;if(!instance?.updateSamplingSphere){lastDraw.current=null;redraw(preview.current);}else if(!instance.updateSamplingSphere(viewportSamplingSphere(p.document,p.samplingSphereDraft,p.samplingSphere),p.document))redraw(preview.current);observeRenderCounters();}catch(error){report(error);}},[ready,props.active,props.samplingSphere,props.samplingSphereDraft]);
   useEffect(() => { if (ready) redraw(preview.current); }, [ready, props.renderIdentity, props.onRenderComplete, props.sceneOwnerEpoch, props.displayAtoms]);
   useEffect(() => { if (ready) redraw(preview.current); }, [ready, props.previewGuides, props.previewCell, props.cellGuides, props.resultHighlights]);
   useEffect(() => { if (gesture.current?.kind === 'fragment') finish(false); }, [props.fragmentCancelEpoch]);
@@ -1111,7 +1119,7 @@ export default function ModelViewport(props: ModelViewportProps) {
       <div className="model-viewport-canvas" ref={container} data-testid="model-render-canvas" />
       {ready&&props.active!==false&&props.cellEditorDraft&&adapter.current&&<CellEditorOverlay draft={props.cellEditorDraft} cellGuides={props.cellGuides} fontSize={display.fontSize} project={adapter.current.project} viewport={container.current} projectionVersion={overlayTick}/>}
       {ready&&props.active!==false&&!props.cellEditorDraft&&(props.cellGuides||display.cell)&&model.draft.structure.cell&&adapter.current&&<ReadOnlyCellOverlay cell={model.draft.structure.cell} cellGuides={props.cellGuides} documentId={model.id} fontSize={display.fontSize} project={adapter.current.project} viewport={container.current} projectionVersion={overlayTick}/>}
-      {ready&&props.active!==false&&props.samplingSphereDraft&&props.onSamplingSphereRadiusChange&&adapter.current&&<SamplingSphereOverlay draft={props.samplingSphereDraft} project={adapter.current.project} viewport={container.current} projectionVersion={overlayTick} onRadiusChange={props.onSamplingSphereRadiusChange}/>}
+      {ready&&props.active!==false&&props.samplingSphereDraft&&props.onSamplingSphereRadiusChange&&adapter.current&&<SamplingSphereOverlay draft={props.samplingSphereDraft} project={adapter.current.project} projectSphere={adapter.current.projectSphere} viewport={container.current} projectionVersion={overlayTick} onRadiusChange={props.onSamplingSphereRadiusChange}/>}
       <div ref={hitSurface} className="model-viewport-interaction" data-testid="model-interaction-surface" data-gesture={bondRope.current ? 'bond-rope' : moving ?? 'none'} data-element={interaction.element ?? ''} onPointerDown={down} onPointerMove={move} onPointerUp={event => { if (bondRope.current?.pointerId === event.pointerId) finishRope(true, event); else if (gesture.current?.pointerId === event.pointerId) { flushMove(event); finish(true, event); } }} onPointerCancel={() => { finishRope(false); finish(false); }} onLostPointerCapture={() => { finishRope(false); finish(false); }} onPointerLeave={() => { if (!gesture.current && !bondRope.current) { setCursor(null); updateHover(null); } }} onContextMenu={event => event.preventDefault()}>
         {ropeDrawing && bounds && <svg className="model-bond-rope" data-testid="model-bond-rope" data-source-atom-id={ropeDrawing.atomId} data-target-atom-id={ropeDrawing.targetAtomId ?? ''}><line x1={ropeDrawing.start.x - bounds.left} y1={ropeDrawing.start.y - bounds.top} x2={ropeDrawing.end.x - bounds.left} y2={ropeDrawing.end.y - bounds.top}/></svg>}
         {box && bounds && <div className="model-selection-box" data-testid="model-selection-box" style={{ left: Math.min(box.start.x, box.end.x) - bounds.left, top: Math.min(box.start.y, box.end.y) - bounds.top, width: Math.abs(box.end.x - box.start.x), height: Math.abs(box.end.y - box.start.y) }} />}

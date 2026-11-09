@@ -23,9 +23,9 @@ import {
 } from "./process-config";
 import { initialAdvancedMethod, compileAdvancedMethod } from "./AdvancedMethodControls";
 import { restoreConformerStages, restoreConformerTaskDraft } from "./conformer-draft-hydration";
-import { overrideAdvancedTaskSource } from "./capture-source";
 import type { ConformerOptimizationDraft } from "./ConformerOptimizationStages";
 import type { ConformerTorsionDraft } from "./ConformerTorsionControls";
+import {conformerSolvationDraftIssue} from './conformer-solvation-draft';
 
 export type MixedSamplingChoice = "md" | "metadynamics" | "conformer-search";
 export const MIXED_SAMPLING_CHOICES = [
@@ -55,14 +55,15 @@ export const defaultMixedStages = (): ConformerOptimizationDraft[] => [
 		method: { ...initialAdvancedMethod, maxSteps: 500 },
 		energyThresholdKcalMol: 0.25,
 		rmsdThresholdAngstrom: 0.1,
-		rmsdMatching: 'symmetry',
+		rmsdMatching: 'fixed',
+		eliminateEquivalent: false,
 		inputStride: 1,
 		checkpointAfter: true
 	}
 ];
 export const createMixedConformerDraft = (): MixedConformerDraft => ({
 	cards: [],
-	shared: structuredClone(initialSamplingDraft),
+	shared: {...structuredClone(initialSamplingDraft),coreProtectionEnabled:false},
 	stages: defaultMixedStages(),
 	dedupRmsdAngstrom: 0.01,
 	deduplicationEnabled: true
@@ -99,6 +100,7 @@ export function compileMixedStages(
 	threads: number
 ): AdvancedOptimizationStageConfig[] {
 	return stages.map((stage,index) => {
+		const solventIssue=conformerSolvationDraftIssue(stage.method.method,stage.method);if(solventIssue)throw Error(solventIssue);
 		if(index&&(!Number.isSafeInteger(stage.inputClusterCount??10)||(stage.inputClusterCount??10)<1))throw Error('选取上一级簇数须为正整数。');
 		if(!Number.isSafeInteger(stage.inputStride??1)||(stage.inputStride??1)<1)throw Error('抽帧间隔须为正整数。');
 		if (!Number.isFinite(stage.rmsdThresholdAngstrom) || stage.rmsdThresholdAngstrom <= 0)
@@ -109,7 +111,8 @@ export function compileMixedStages(
 			...(index?{inputClusterCount:stage.inputClusterCount??10}:{}),
 			checkpointAfter: true,
 			clustering: {
-				rmsdMatching: stage.rmsdMatching??'symmetry',
+				rmsdMatching: 'fixed',
+				eliminateEquivalent: stage.eliminateEquivalent===true,
 				rmsdThresholdAngstrom: stage.rmsdThresholdAngstrom,
 				maxDeltaEnergyHartree: convertEnergy(
 					{ value: stage.energyThresholdKcalMol, unit: "kcal/mol" },
@@ -134,12 +137,14 @@ export function compileMixedDefinition(
 	if (!Number.isFinite(draft.dedupRmsdAngstrom) || draft.dedupRmsdAngstrom <= 0)
 		throw Error("采样去重 RMSD 须为正数。");
 	const shared = draft.shared,
-		protectedSource = overrideAdvancedTaskSource(source, { protectionAtomIds: shared.coreIds });
+		protectedSource = source;
 	const definition: AdvancedMixedSamplingDefinition = {
+		protectionMode:'shared-freeze',
 		cards: [],
 		dedupRmsdAngstrom: draft.dedupRmsdAngstrom,
 		deduplicationEnabled: draft.deduplicationEnabled !== false,
-		protectedAtomIds: [...shared.coreIds]
+		protectedAtomIds: [],
+		coreProtectionEnabled:false,
 	};
 	for (const card of draft.cards) {
 		if (card.kind === "conformer-search") {
@@ -189,7 +194,8 @@ export function compileMixedDefinition(
 				{
 					...card.sampling,
 					...resources,
-					coreIds: [...shared.coreIds],
+					coreIds: [],
+					coreProtectionEnabled:false,
 					coreForce: shared.coreForce,
 					sphereEnabled: shared.sphereEnabled,
 					sphere: structuredClone(shared.sphere),
@@ -197,8 +203,6 @@ export function compileMixedDefinition(
 				},
 				protectedSource
 			);
-			if (sampling.coreProtection)
-				definition.coreProtection = structuredClone(sampling.coreProtection);
 			if (sampling.sphere) definition.sphere = structuredClone(sampling.sphere);
 			if (sampling.nativeProtection)
 				definition.nativeProtection = {
@@ -208,6 +212,12 @@ export function compileMixedDefinition(
 			definition.cards.push({ id: card.id, kind: "sampling", sampling });
 		}
 	}
+	// Shared-freeze requests derive protection from their captured source only.
+	// Old soft definitions remain in historical snapshots, never in new inputs.
+	if(definition.nativeProtection){
+		delete definition.nativeProtection.core;
+		if(!definition.nativeProtection.core&&!definition.nativeProtection.sphere)delete definition.nativeProtection;
+	}
 	return definition;
 }
 
@@ -215,7 +225,6 @@ export function compileMixedDefinition(
  * user explicitly reassigns them, never positional mappings to different atoms. */
 export function mixedConformerAtomConfigurationIssues(draft:MixedConformerDraft,source:AdvancedFrameSource):{core?:string;cards:Record<string,string>}{
 	const ids=new Set(source.structure.atoms.map(atom=>atom.id)),cards:Record<string,string>={};
-	const core=draft.shared.coreIds.some(id=>!ids.has(id))?'保护核心包含已失效原子，需重新指定；原草稿已保留。':undefined;
 	for(const card of draft.cards){
 		if(card.kind==='metadynamics'&&(card.sampling.metaScope==='selected'||card.sampling.metaScope===undefined&&card.sampling.metaIds.length>0)&&card.sampling.metaIds.some(id=>!ids.has(id)))cards[card.id]='RMSD 偏置包含已失效原子，需重新指定；原草稿已保留。';
 		if(card.kind!=='conformer-search')continue;
@@ -227,7 +236,7 @@ export function mixedConformerAtomConfigurationIssues(draft:MixedConformerDraft,
 			catch{cards[card.id]='柔性键已不适用于当前结构，需重新指定；原草稿已保留。';break;}
 		}
 	}
-	return {core,cards};
+	return {cards};
 }
 
 /** A placeholder permits defining cards before any computation is requested. */
@@ -236,13 +245,12 @@ export function createMixedTaskSpec(
 	draft: MixedConformerDraft,
 	resources: { threads: number; memoryBudgetBytes: number }
 ): AdvancedTaskSpec {
-	const unprotected = overrideAdvancedTaskSource(source, { protectionAtomIds: [] });
 	return {
 		kind: "sampling",
 		source,
 		sampling: compileSampling(
 			{ ...structuredClone(initialSamplingDraft), ...resources, coreIds: [], sphereEnabled: false },
-			unprotected
+			source
 		),
 		mixedSampling: compileMixedDefinition(draft, source, resources),
 		optimizationStages: compileMixedStages(draft.stages, resources.threads),
@@ -293,6 +301,7 @@ export function restoreMixedConformerDraft(task: AdvancedTaskRecord): MixedConfo
 	draft.deduplicationEnabled = definition.deduplicationEnabled !== false;
 	draft.shared = {
 		...draft.shared,
+		coreProtectionEnabled:definition.coreProtectionEnabled??Boolean((definition.protectedAtomIds??definition.nativeProtection?.core?.atomIds??definition.coreProtection?.atomIds??[]).length),
 		coreIds: [
 			...(definition.protectedAtomIds ??
 				definition.nativeProtection?.core?.atomIds ??

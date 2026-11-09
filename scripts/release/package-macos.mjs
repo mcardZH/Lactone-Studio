@@ -583,14 +583,16 @@ export function assembleMacAppBundle(options = {}) {
         xtb: !options.xtbSourceRoot,
       })
     : {};
+  const pkgJsonPath = path.join(repoRoot, 'package.json');
+  const repoPkg = readJsonStrictIfExists(pkgJsonPath, 'package.json');
   const {
     outputDir = path.join(repoRoot, 'release', `darwin-${arch}`),
     electronAppPath = path.join(repoRoot, 'node_modules/electron/dist/Electron.app'),
     pythonToolchainRoot = defaults.pythonToolchainRoot,
     pythonDepsRoot = defaults.pythonDepsRoot,
     xtbSourceRoot = defaults.xtbSourceRoot,
-    productName = 'Ester Studio',
-    version = '2.0.2',
+    productName = repoPkg?.productName || 'Ester Studio',
+    version = repoPkg?.version || '2.0.3',
     bundleId = 'com.sciyue.esterstudio',
     sign = false,
     createDmg = false,
@@ -600,7 +602,10 @@ export function assembleMacAppBundle(options = {}) {
   const distDir = path.join(repoRoot, 'dist');
   const desktopDir = path.join(repoRoot, 'desktop');
   const chemistrySrcDir = path.join(desktopDir, 'chemistry');
-  const pkgJsonPath = path.join(repoRoot, 'package.json');
+  const conformerSolvationJsonPath = path.join(repoRoot, 'src', 'data', 'conformer-solvation.json');
+  const requiresConformerSolvationData =
+    fs.existsSync(path.join(desktopDir, 'conformer-solvation.cjs')) ||
+    fs.existsSync(path.join(chemistrySrcDir, 'conformer_solvation.py'));
   const licensePath = path.join(repoRoot, 'LICENSE.txt');
   const nodeModulesDir = path.join(repoRoot, 'node_modules');
 
@@ -618,6 +623,7 @@ export function assembleMacAppBundle(options = {}) {
     ['desktop main.cjs', path.join(desktopDir, 'main.cjs')],
     ['chemistry source directory', chemistrySrcDir],
     ['chemistry engine.py', path.join(chemistrySrcDir, 'engine.py')],
+    ...(requiresConformerSolvationData ? [['conformer solvation data (src/data/conformer-solvation.json)', conformerSolvationJsonPath]] : []),
     ['Python toolchain directory', pythonToolchainRoot],
     ['Python stdlib (lib/python3.12)', path.join(pythonToolchainRoot, 'lib', 'python3.12')],
     ['Python dependencies directory', pythonDepsRoot],
@@ -712,6 +718,11 @@ export function assembleMacAppBundle(options = {}) {
   fs.copyFileSync(licensePath, path.join(appResourcesPath, 'LICENSE.txt'));
   copyTreePreservingSymlinks(distDir, path.join(appResourcesPath, 'dist'));
   copyTreePreservingSymlinks(desktopDir, path.join(appResourcesPath, 'desktop'));
+  if (fs.existsSync(conformerSolvationJsonPath)) {
+    const appDataDir = path.join(appResourcesPath, 'src', 'data');
+    fs.mkdirSync(appDataDir, { recursive: true });
+    fs.copyFileSync(conformerSolvationJsonPath, path.join(appDataDir, 'conformer-solvation.json'));
+  }
 
   const licensesDir = path.join(repoRoot, 'licenses');
   if (fs.existsSync(licensesDir)) copyTreePreservingSymlinks(licensesDir, path.join(appResourcesPath, 'licenses'));
@@ -740,6 +751,9 @@ export function assembleMacAppBundle(options = {}) {
   const chemistryDestDir = path.join(resourcesPath, 'chemistry');
   removeTreeForce(chemistryDestDir);
   copyTreePreservingSymlinks(chemistrySrcDir, chemistryDestDir);
+  if (fs.existsSync(conformerSolvationJsonPath)) {
+    fs.copyFileSync(conformerSolvationJsonPath, path.join(chemistryDestDir, 'conformer-solvation.json'));
+  }
   copyTreePreservingSymlinks(pythonToolchainRoot, path.join(chemistryDestDir, 'python'));
   copyTreePreservingSymlinks(pythonDepsRoot, path.join(chemistryDestDir, 'deps'));
 

@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import materialize as m
 
@@ -72,6 +73,27 @@ def main_commit(pins):
     return rows[0]['commit']
 
 def validate_source_receipt(receipt,record,rows,local_modified):
+    if receipt.get('schema')=='es-xtb-user-initial-velocity-composition/v1':
+        m.require(local_modified,'User H-cap composition requires --local-modified')
+        m.require(receipt.get('algorithm')=='xtb-h-only-initial-cap-v1' and receipt.get('buildId')==record['build']['id']
+            and record['build']['id'].startswith('es-hcap-user-'),'User composition identity differs')
+        raw=receipt.get('rawBuild',{});parent=receipt.get('parentEngineIdentity',{});payload=receipt.get('parentPayload',[])
+        m.require(parent.get('sha256')=='b40033dc620944f87e520d54d0a3cf69f7df73a9f82955d34dfa1a3464924a1c'
+            and m.digest(canonical({k:v for k,v in parent.items()if k not in ('schema','engine','kind','sha256')}))==parent['sha256']
+            and m.digest(canonical(payload))==parent.get('runtimeMemberDigest'),'User composition public parent differs')
+        actual=[r for r in rows if r['path'].startswith(('bin/','share/xtb/'))]
+        m.require([r for r in actual if r['path']!='bin/xtb.exe']==[r for r in payload if r['path']!='bin/xtb.exe']
+            and [r for r in actual if r['path']=='bin/xtb.exe']==[r for r in raw.get('inventoryFiles',[])if r['path']=='bin/xtb.exe'],
+            'User composition executable, inherited DLLs or parameters differ')
+        m.require(raw.get('schema')=='sy-xtb-gnu-user-source-build-v1' and raw.get('sourceCommit')==record['source']['commit']
+            and raw.get('compilerSeedArchiveSha256')==record['build']['toolchainArchiveSha256']
+            and raw.get('sourceModified') is True and raw.get('modifiedSourcePaths')==['src/dynamic.f90']
+            and raw.get('addedSourcePaths')==[],'User composition scientific source/build differs')
+        m.require(all(receipt.get(k)is False and raw.get(k)is False for k in ('officialBinaryIdentity','numericallyValidated','productReady')),
+            'User composition cannot claim acceptance')
+        for key in ('rawBuildReceipt','preferredSourceTree'):
+            m.require(receipt.get(key) in rows,'User composition source proof member missing')
+        return
     if receipt.get('schema')=='sy-xtb-normalized-user-build/v1':
         m.require(local_modified,'Normalized user builds require --local-modified')
         m.require(receipt.get('sourceCommit')==record['source']['commit'] and receipt.get('compilerSeedArchiveSha256')==record['build']['toolchainArchiveSha256'],'Normalized source/toolchain differs')
@@ -121,6 +143,131 @@ def source_diff(expected,actual,receipt):
     old=rows_map(expected);new=rows_map(actual)
     modified=[r['path']for key,r in old.items()if new.get(key)!=r];added=[r['path']for key,r in new.items()if key not in old]
     m.require(sorted(receipt.get('modifiedSourcePaths',[]))==sorted(modified) and sorted(receipt.get('addedSourcePaths',[]))==sorted(added) and receipt.get('sourceModified')==bool(modified or added),'Actual source changes differ from build receipt')
+
+def validate_es_initial_receipt(receipt):
+    """The ES patch reuses the identified GNU DLL build; it is not a GNU rebuild."""
+    m.require(receipt.get('schema')=='es-xtb-initial-velocity-source-build/v1'
+        and receipt.get('algorithm')=='xtb-h-only-initial-cap-v1','Exact ES initial velocity receipt required')
+    raw=receipt.get('rawBuild',{});patch=receipt.get('sourcePatch',{})
+    m.require(raw.get('schema')=='sy-xtb-gnu-user-source-build-v1'
+        and raw.get('sourceCommit')=='5071a8869720fb0ecd788af977159869b64a277c'
+        and raw.get('buildName')=='5071a886-gnu132-r2-es-hcap-v1','ES scientific source/build differs')
+    m.require(raw.get('modifiedSourcePaths')==['src/dynamic.f90']
+        and raw.get('addedSourcePaths')==[] and raw.get('sourceModified') is True,'ES source change scope differs')
+    m.require(patch.get('algorithm')==receipt['algorithm'] and patch.get('path')=='src/dynamic.f90'
+        and patch.get('beforeSha256')=='32b604dfc82eb647b753cd8ff1b650547fcb686e5f1b668a70dfb472aedbfd91'
+        and re.fullmatch('[a-f0-9]{64}',patch.get('afterSha256','')),'Exact ES source patch binding required')
+    m.require(all(raw.get(k)is False for k in ('officialBinaryIdentity','numericallyValidated','productReady'))
+        and receipt.get('numericallyValidated') is False and receipt.get('scienceRunsPerformed')==0,
+        'Build receipt cannot claim numerical/product acceptance')
+    composition=receipt.get('runtimeComposition',{})
+    m.require(composition.get('kind')=='new-executable-with-unchanged-published-runtime'
+        and composition.get('sourceBuildName')==raw['buildName']
+        and composition.get('buildId')=='5071a886-gnu132-r2-es-hcap-openblas033-v1'
+        and composition.get('parentBuildId')=='5071a886-gnu132-r2-openblas033-a01',
+        'Explicit published-runtime composition required')
+    terminals=receipt.get('buildTerminals',[])
+    m.require(len(terminals)==4 and all(t.get('passed') is True and t.get('exitCode')==0
+        and t.get('jobTreeEnded') is True and t.get('mainProcessEnded') is True
+        and t.get('timedOut') is False and t.get('error') is None and not t.get('cleanupError')
+        for t in terminals),'Four successful owned native build commands required')
+    return raw
+
+def admit_es_initial_velocity(source_root,runtime,original_runtime,build_root,default_pins,run_id,*,apply=False,activate=False,node='node'):
+    """Verify the local ES patch and emit a fresh content-addressed lock, never activate it."""
+    m.require(not activate,'ES patch activation remains a separate Main operation')
+    m.require(re.fullmatch('[a-z][a-z0-9-]{0,40}',run_id),'Fresh ASCII admission ID required')
+    root=m.ordinary(source_root);runtime=m.ordinary(runtime);original=m.ordinary(original_runtime);build=m.ordinary(build_root)
+    for path in (runtime,original,build):m.require(path.is_relative_to(root) and path!=root,'ES inputs must belong to the explicit source root')
+    receipt,receipt_ref=load(root,runtime/'provenance/es-initial-velocity-build.json')
+    raw=validate_es_initial_receipt(receipt)
+    raw_actual,_=load(root,build/'output/xtb-build-receipt.json');m.require(raw_actual==raw,'Actual raw build receipt differs')
+    members,_=inventory(runtime)
+    checked=json.loads(subprocess.run([node,'-e',NODE_CHECK,str(root/'desktop/xtb-runtime-contract.cjs'),str(runtime)],
+        check=True,capture_output=True,text=True,encoding='utf-8',timeout=30).stdout)
+    record=checked['record'];identity_value=checked['engineIdentity']
+    m.require(record['build']['sourceReceiptSha256']==receipt_ref['sha256']
+        and record['build']['id']==receipt['runtimeComposition']['buildId'],'ES descriptor/build receipt differs')
+    pins,pin_ref=load(root,default_pins);index,index_ref=load(root,root/'third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json')
+    m.require(main_commit(pins)==raw['sourceCommit'] and record['source']['scientificPinsManifest']['sha256']==pin_ref['sha256']
+        and raw['sourceIndexSha256']==index_ref['sha256'] and raw['compilerSeedArchiveSha256']==index['bootstrapToolsNotBundled'][0]['sha256']
+        and raw['scientificPins']==[{k:r[k]for k in ('name','commit','sha256')}for r in index['sourceArchives']],
+        'ES source index, compiler or scientific pins differ')
+    tree=referenced(build/'output',raw['preferredSourceTree'])
+    m.require(inventory(build/'source')[0]==tree['files'],'Actual ES preferred source tree differs')
+    expected=referenced(root/'third-party/corresponding-sources',index['preferredSourceTree'])
+    source_diff(expected['files'],tree['files'],raw)
+    m.require(next(r['sha256']for r in tree['files']if r['path']=='src/dynamic.f90')==receipt['sourcePatch']['afterSha256'],
+        'ES patch does not bind actual dynamic.f90')
+    source_archive=next(r for r in index['sourceArchives']if r['name']=='xtb')
+    archive=root/'third-party/corresponding-sources'/source_archive['path']
+    m.require(identity(root,archive)['sha256']==source_archive['sha256'],'Pinned xTB archive differs')
+    with tarfile.open(archive,'r:gz')as bundle:
+        entries=[r for r in bundle if r.isfile()and r.name.endswith('/src/dynamic.f90')]
+        m.require(len(entries)==1,'Pinned dynamic source member is ambiguous')
+        before=bundle.extractfile(entries[0]).read().decode('utf-8')
+    helper=(root/'scripts/native/xtb-initial-velocity.f90').read_text(encoding='utf-8')
+    call='      call mdinitu(mol%n,mol%at,velo,mass,edum)'
+    m.require(before.count(call)==1 and before.count('end subroutine mdinitu')==1,'Pinned source patch anchors differ')
+    expected_source=before.replace(call,call+'\n      call es_initial_velocity_cap(mol%n,mol%at,velo,mass,nfreedom,kB)').replace('end subroutine mdinitu','end subroutine mdinitu\n\n'+helper)
+    m.require((build/'source/src/dynamic.f90').read_text(encoding='utf-8')==expected_source,
+        'Actual compiled source differs from the explicit H-only patch')
+    payload=[r for r in members if r['path'].startswith(('bin/','share/xtb/'))]
+    raw_payload=[r for r in inventory(build/'output')[0]if r['path'].startswith(('bin/','share/xtb/'))]
+    m.require(raw_payload==raw['inventoryFiles'],'Actual raw ES payload differs from build')
+    m.require([r for r in payload if r['path']=='bin/xtb.exe' or r['path'].startswith('share/xtb/')]
+        ==[r for r in raw_payload if r['path']=='bin/xtb.exe' or r['path'].startswith('share/xtb/')],
+        'ES executable or parameters differ from actual build')
+    original_record=json.loads(subprocess.run([node,'-e',NODE_CHECK,str(root/'desktop/xtb-runtime-contract.cjs'),str(original)],
+        check=True,capture_output=True,text=True,encoding='utf-8',timeout=30).stdout)
+    original_rows=inventory(original)[0]
+    composition=receipt['runtimeComposition']
+    m.require(original_record['record']['build']['id']==composition['parentBuildId']
+        and original_record['engineIdentity']['sha256']=='b40033dc620944f87e520d54d0a3cf69f7df73a9f82955d34dfa1a3464924a1c'
+        and original_record['manifest']['sha256']==composition['parentManifestSha256']
+        and identity(original,original/composition['parentSourceReceipt']['path'])==composition['parentSourceReceipt'],
+        'Published parent runtime provenance differs')
+    unchanged=[r for r in payload if r['path']!='bin/xtb.exe']
+    original_unchanged=[r for r in original_rows if r['path'].startswith(('bin/','share/xtb/')) and r['path']!='bin/xtb.exe']
+    m.require(unchanged==sorted(original_unchanged,key=lambda r:r['path'])
+        and unchanged==sorted(receipt['unchangedRuntimeAndParameters'],key=lambda r:r['path']),
+        'Reused GNU DLLs or parameter files differ')
+    m.require(identity(original,original/'provenance/r2-source-receipt.json')==receipt['originalRuntimeSourceReceipt'],
+        'Original GNU runtime source receipt differs')
+    m.require(identity(build,build/'build/xtb.exe')['sha256']==next(r['sha256']for r in payload if r['path']=='bin/xtb.exe'),
+        'Admitted executable differs from actual compiler output')
+    evidence=[]
+    for ref in receipt['buildEvidence']:
+        m.require(Path(ref['name']).name==ref['name'],'Unsafe build evidence name')
+        p=build/'logs'/ref['name'];observed=identity(build/'logs',p)
+        m.require(observed=={'path':ref['name'],'bytes':ref['bytes'],'sha256':ref['sha256']},'Native build evidence changed')
+        if ref['name'].endswith('.request.json'):evidence.append(json.loads(p.read_text(encoding='utf-8')))
+    m.require(len(evidence)==4 and 'ninja.exe' in Path(evidence[-1]['command'][0]).name.lower()
+        and evidence[-1]['command'][-1]=='xtb.exe'
+        and [Path(item['cwd']) for item in evidence]==[build/'openblas',build/'openblas',build,build]
+        and Path(evidence[0]['command'][0]).name.lower()=='gendef.exe'
+        and Path(evidence[1]['command'][0]).name.lower()=='dlltool.exe'
+        and 'setup' in evidence[2]['command'],'Actual owned build command scope differs')
+    active=root/'desktop/packaging/xtb-runtime.lock.json';parent,parent_ref=load(root,active);parent_bytes=m.checked(active,parent_ref)
+    lock_id='xtb-es-hcap-'+identity_value['sha256'][:16];relative='.local/dependencies/win-x64/'+lock_id;target=root/relative
+    m.require(not target.exists(),'Existing ES admission root protected')
+    result=dict(schema='es-xtb-initial-velocity-admission/v1',planned=not apply,activated=False,root=relative,
+        lockId=lock_id,engineIdentity=identity_value,files=len(members),parentLock=parent_ref,
+        officialAcceptance=False,scientificAccepted=False,buildExecuted=False)
+    if not apply:return result
+    target.mkdir(parents=True)
+    for row in members:
+        write_new(target/'xtb'/row['path'],m.checked(runtime/row['path'],row))
+    outer={**parent,'lockId':lock_id,'root':relative,'build':record['build'],'source':record['source'],
+        'engineIdentity':identity_value,'files':[{**r,'path':'xtb/'+r['path']}for r in members],
+        'publicRedistributionReviewed':False,'distributionLicenseReady':False,'publicDistribution':False,
+        'localModification':dict(kind='es-h-only-initial-velocity-cap',algorithm=receipt['algorithm'],
+            sourceReceipt=receipt_ref,originalEngineIdentity=original_record['engineIdentity'],scientificAccepted=False)}
+    outer.pop('inventory',None);outer_bytes=encode(outer);write_new(target/'inventory.json',outer_bytes)
+    lock={k:v for k,v in outer.items()if k!='files'};lock['inventory']={'path':relative+'/inventory.json','bytes':len(outer_bytes),'sha256':m.digest(outer_bytes)}
+    write_new(target/'lock.json',encode(lock));write_new(target/'previous-xtb-lock.json',parent_bytes)
+    m.require(inventory(runtime)[0]==members,'ES runtime changed during copy');m.checked(active,parent_ref)
+    result['lock']=identity(root,target/'lock.json');write_new(target/'admission.json',encode(result));return result
 
 def normalize_raw(source_root,raw_output,preferred_source_root,gnu_runtime_output,default_pins,run_id,*,local_modified=False,apply=False,activate=False,node='node'):
     """Validate the public recipe's raw output, then create an independently named v2 tree."""
@@ -232,6 +379,18 @@ def admit(source_root,runtime,members,default_pins,source_receipt,run_id,*,pins=
     m.require(record['source']['scientificPinsManifest']['sha256']==pin_ref['sha256']and record['source']['commit']==actual_commit,'Runtime source/pins do not match the actual build inputs')
     m.require(record['build']['sourceReceiptSha256']==receipt_ref['sha256'],'Actual source receipt identity differs from runtime descriptor')
     validate_source_receipt(receipt,record,actual,local_modified)
+    if receipt.get('schema')=='es-xtb-user-initial-velocity-composition/v1':
+        raw=referenced(runtime,receipt['rawBuildReceipt']);tree=referenced(runtime,receipt['preferredSourceTree'])
+        m.require(raw==receipt['rawBuild'] and raw['preferredSourceTree']['sha256']==receipt['preferredSourceTree']['sha256'],
+            'User composition copied proof differs')
+        index_path=root/'third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json'
+        exported_reference(root,snapshot,index_path);index,index_ref=load(root,index_path)
+        m.require(raw['sourceIndexSha256']==index_ref['sha256'],'User composition source index differs from exported source')
+        expected=referenced(root/'third-party/corresponding-sources',index['preferredSourceTree'])
+        source_diff(expected['files'],tree['files'],raw)
+        m.require(next((r['sha256']for r in tree['files']if r['path']=='src/dynamic.f90'),None)
+            =='1b23863afc82582386e4a3a4c1711e09439e79417a65b133219810214c65ca4f',
+            'User composition H-only patch differs from this source release')
     if receipt.get('schema')=='sy-xtb-normalized-user-build/v1':
         raw=referenced(runtime,receipt['rawBuildReceipt']);gnu=referenced(runtime,receipt['gnuRuntimeReceipt'])
         m.require(raw.get('schema')=='sy-xtb-gnu-user-source-build-v1' and gnu.get('schema')=='sy-gnu-runtime-user-rebuild-v1','Normalized proofs must be actual user build receipts')
@@ -276,8 +435,14 @@ if __name__=='__main__':
     route=parser.add_mutually_exclusive_group(required=True);route.add_argument('--runtime',type=Path);route.add_argument('--raw-output',type=Path)
     for name in('members','source-receipt','preferred-source-root','gnu-runtime-output'):parser.add_argument('--'+name,type=Path)
     parser.add_argument('--pins',type=Path);parser.add_argument('--id',required=True);parser.add_argument('--local-modified',action='store_true');parser.add_argument('--apply',action='store_true');parser.add_argument('--activate',action='store_true');parser.add_argument('--node',default='node')
+    parser.add_argument('--es-initial-velocity',action='store_true')
+    parser.add_argument('--original-runtime',type=Path);parser.add_argument('--build-root',type=Path)
     a=parser.parse_args()
-    if a.raw_output:
+    if a.es_initial_velocity:
+        if not(a.runtime and a.original_runtime and a.build_root and a.local_modified) or a.activate:
+            parser.error('ES initial velocity admission requires runtime, original-runtime, build-root and local-modified; activation is separate')
+        result=admit_es_initial_velocity(a.source_root,a.runtime,a.original_runtime,a.build_root,a.default_pins,a.id,apply=a.apply,node=a.node)
+    elif a.raw_output:
         if not(a.preferred_source_root and a.gnu_runtime_output)or a.members or a.source_receipt or a.pins:parser.error('raw output requires --preferred-source-root/--gnu-runtime-output; direct-v2 members/receipt/pins options do not apply')
         result=normalize_raw(a.source_root,a.raw_output,a.preferred_source_root,a.gnu_runtime_output,a.default_pins,a.id,local_modified=a.local_modified,apply=a.apply,activate=a.activate,node=a.node)
     else:

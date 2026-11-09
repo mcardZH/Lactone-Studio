@@ -20,6 +20,13 @@ export async function prepareConformerPublication<T extends TrajectoryResult>(re
 }
 export const isConformerPublicationReady=isPreparedTrajectoryReady;
 
+/** Preparation records own only unadopted readers. A published document's
+ * reader is released by the registry after its final real consumer closes. */
+export async function retirePreparedConformerPublication(record:{result:TrajectoryResult;abort:AbortController},retainedResults:readonly (TrajectoryResult|undefined)[]):Promise<void>{
+ record.abort.abort();
+ if(!retainedResults.includes(record.result))await record.result.dispose();
+}
+
 /** A project first restores its lazy result attachment; its task graph can mount
  * later. Reuse that exact reader when the complete collection revision agrees,
  * so a late task publication joins the player's already running preparation.

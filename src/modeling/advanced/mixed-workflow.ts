@@ -26,7 +26,7 @@ export function mixedCardScienceKey(card:AdvancedMixedSamplingCard,definition:Ad
   configuration={kind:card.kind,sampling};
  }
  return JSON.stringify({configuration,source:{ref:source.ref,graph:graphFingerprint(source.structure),coordinates:coordinatesFingerprint(source.structure),constraints:source.constraints},
-  protection:{protectedAtomIds:definition.protectedAtomIds,core:definition.coreProtection,native:definition.nativeProtection,sphere:definition.sphere}});
+  protection:{...(definition.coreProtectionEnabled!==undefined?{enabled:definition.coreProtectionEnabled}:{}),protectedAtomIds:definition.protectedAtomIds,core:definition.coreProtection,native:definition.nativeProtection,sphere:definition.sphere}});
 }
 export function makeSamplingCardState(card:AdvancedMixedSamplingCard,definition:AdvancedMixedSamplingDefinition,source:AdvancedFrameSource,revision=1):AdvancedSamplingCardState {
  return{id:card.id,configurationRevision:revision,configuration:structuredClone(card),scienceKey:mixedCardScienceKey(card,definition,source),status:'pending',frameIds:[],mergedFrameIds:[],completedTimeFs:0,segments:[],generated:0,duplicates:0,coreRejected:0,accepted:0};

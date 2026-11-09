@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect,useMemo } from 'react';
 import type { Structure } from '../../core/types';
 import { createChemistryPort } from '../../modeling/chemistry';
 import type { TrajectoryResult } from '../../results/contracts';
@@ -73,7 +73,7 @@ export async function readPreparedTrajectoryFrame(result: TrajectoryResult, inde
 
 /** The error branch must not mount a legacy player. retryKey changes only on an explicit retry. */
 export function usePreparedTrajectory(result: TrajectoryResult, retryKey: number | string = 0, mode: TrajectoryGeometryPreparation = 'empirical'): PreparedTrajectoryAdmission {
-  return useMemo(() => {
+  const admission:PreparedTrajectoryAdmission=useMemo(() => {
     try {
       return { prepared: prepareTrajectoryView(result, mode), error: null };
     } catch (error) {
@@ -81,6 +81,9 @@ export function usePreparedTrajectory(result: TrajectoryResult, retryKey: number
       throw error;
     }
   }, [result, retryKey, mode]);
+  const prepared=admission.prepared;
+  useEffect(()=>{prepared?.reacquire();return()=>prepared?.release();},[prepared]);
+  return admission;
 }
 
 /** A read-only capture on explicit diagnostics/preparation updates, not a per-render measurement hook.

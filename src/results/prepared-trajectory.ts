@@ -155,6 +155,7 @@ export class PreparedTrajectorySource {
   }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private notify(immediate = false) {
+    if (this.closed) return;
     const elapsed = Date.now() - this.lastNotification;
     if (!immediate && elapsed < 250) {
       this.notificationTimer ??= setTimeout(() => { this.notificationTimer = undefined; this.notify(true); }, 250 - elapsed);
@@ -271,6 +272,7 @@ export class PreparedTrajectorySource {
           const { raw, projection } = await this.budget.schedule(async () => {
             assertResultNotAborted(job.controller.signal);
             const raw = this.entries.get(job.index)?.raw ?? await this.source.getFrame(job.index, job.controller.signal);
+            assertResultNotAborted(job.controller.signal);
             trajectoryViewDocument(this.source, raw, job.index); freeze(raw);
             const projection = await this.preparer.prepareFrame(raw, job.index, job.controller.signal);
             return { raw, projection };
@@ -307,9 +309,10 @@ export class PreparedTrajectorySource {
   }
   dispose() {
     if (this.closed) return; this.closed = true;
+    if(this.notificationTimer!==undefined)clearTimeout(this.notificationTimer);this.notificationTimer=undefined;
     for (const job of this.pending.values()) { job.controller.abort(); job.reject(abortError()); }
     this.queue = []; this.pending.clear(); this.preparer.dispose?.();for(const index of this.entries.keys())this.removeEntry(index);this.shares.clear();this.sharedBytes=0;this.pins.clear();this.measuredFrames.clear();
-    this.budget.resize(this.source.source.id, -this.retained); if(this.budget===appBudget)retainedMemoryChanged(-this.retained);this.retained = 0; this.notify(true); this.listeners.clear();
+    this.budget.resize(this.source.source.id, -this.retained); if(this.budget===appBudget)retainedMemoryChanged(-this.retained);this.retained = 0; this.listeners.clear();
     // In-flight reservations are released by pump's finally, not twice here.
   }
 }
@@ -320,14 +323,22 @@ export class PreparedTrajectoryView {
   private focus = 0;
   private prefetchController?: AbortController;
   private adapted?:{input:PreparedFrame;index:number;frame:PreparedFrame};
+  private lifetime=new AbortController();
+  private subscriptions=new Set<()=>void>();
   constructor(readonly owner: PreparedTrajectorySource, readonly indices: readonly number[],private header?:PreparedFrameHeaderAdapter) {}
+  /** Independent view lifetime over the same immutable source and header policy. */
+  fork(){return new PreparedTrajectoryView(this.owner,this.indices,this.header);}
   private present(frame:PreparedFrame|undefined,index:number){if(!frame||!this.header)return frame;if(this.adapted?.input===frame&&this.adapted.index===index)return this.adapted.frame;const value=withPreparedHeader(frame,index,this.header);this.adapted={input:frame,index,frame:value};return value;}
-  subscribe = (listener: () => void) => this.owner.subscribe(listener);
+  subscribe = (listener: () => void) => {const stop=this.owner.subscribe(()=>{if(!this.lifetime.signal.aborted)listener();});this.subscriptions.add(stop);return()=>{stop();this.subscriptions.delete(stop);};};
+  /** Only an explicit view/effect setup renews a released view lifetime. */
+  reacquire(){if(this.lifetime.signal.aborted)this.lifetime=new AbortController();}
+  private signal(signal?:AbortSignal){return signal?AbortSignal.any([this.lifetime.signal,signal]):this.lifetime.signal;}
   snapshot = () => this.owner.snapshot(this.indices, this.focus);
   get(index: number) { const original = this.indices[index]; return original === undefined ? undefined : this.present(this.owner.get(original),index); }
   canReuse(index: number) { const original = this.indices[index]; return original !== undefined && this.owner.canReuse(original); }
-  async prepare(signal?: AbortSignal) { await this.owner.fill(this.indices, signal); }
+  async prepare(signal?: AbortSignal) { const current=this.signal(signal);await this.owner.fill(this.indices, current);assertResultNotAborted(current); }
   async ensure(index: number, signal?: AbortSignal) {
+    signal=this.signal(signal);assertResultNotAborted(signal);
     if (!Number.isSafeInteger(index) || this.indices[index] === undefined) throw new Error('阶段预备帧越界。');
     const original = this.indices[index], frame = await this.owner.ensure(original, signal, true);
     assertResultNotAborted(signal);
@@ -339,17 +350,19 @@ export class PreparedTrajectoryView {
   prefetch(start = 0) {
     this.cancelPrefetch();
     const controller = new AbortController(); this.prefetchController = controller;
-    void this.owner.fill(this.indices, controller.signal, start).catch(() => { /* Foreground prepare reports real errors. */ })
+    void this.owner.fill(this.indices, this.signal(controller.signal), start).catch(() => { /* Foreground prepare reports real errors. */ })
       .finally(() => { if (this.prefetchController === controller) this.prefetchController = undefined; });
   }
   cancelPrefetch() { this.prefetchController?.abort(); this.prefetchController = undefined; }
   pin(index: number) {
+    assertResultNotAborted(this.lifetime.signal);
     this.focus = index;
     const original = this.indices[index]; if (original === this.pinned) return;
     if (!this.pendingPins.delete(original)) this.owner.pin(original);
     if (this.pinned !== undefined) this.owner.unpin(this.pinned); this.pinned = original;
   }
   release() {
+    this.lifetime.abort();for(const stop of this.subscriptions)stop();this.subscriptions.clear();
     this.cancelPrefetch();
     if (this.pinned !== undefined) this.owner.unpin(this.pinned); this.pinned = undefined;
     for (const index of this.pendingPins) this.owner.unpin(index); this.pendingPins.clear();

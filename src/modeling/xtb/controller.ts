@@ -8,6 +8,7 @@ import { XTB_METHOD_LABELS } from './contracts';
 import { applyXtbCoordinates, applyXtbStoppedCoordinates, validateXtbPeriodicity } from './accept-result';
 import {coordinatesFingerprint} from '../../core/modeling/graph';
 import { empiricalBondAdmission } from '../empirical-bond-admission';
+import {runtimePreviewSourceCurrent} from '../../core/modeling/runtime-source-lineage';
 
 export interface XtbOptions { method: XtbMethod; charge: number; multiplicity: number; rebuildBonds: boolean; threads?: number; maxSteps?: number; maxSccIterations?: number; scope?: XtbOptimizationScope; empiricalBondParameters?:EmpiricalBondPerceptionParameters }
 /** Capture a variable set only; the native calculation retains the complete
@@ -79,6 +80,9 @@ export class XtbController {
   private stopTask?:Promise<unknown>;
   private sourceDocument?: ModelDocument;
   private perceptionDetached = false;
+  getWorkingSourceDocument=()=>this.sourceDocument;
+  private previewSourceStillCurrent(){return runtimePreviewSourceCurrent(this.sourceDocument,this.deps.store.getSnapshot())&&this.runtimeOwnerCurrent();}
+  private runtimeOwnerCurrent(){try{this.deps.assertCurrent();return true;}catch{return false;}}
   private sourceStillCurrent() { const now=this.deps.store.getSnapshot(),source=this.sourceDocument;if(!source||now.id!==source.id||now.revision!==source.revision||now.analysisBindingId!==source.analysisBindingId)return false;try{this.deps.assertCurrent();return true;}catch{return false;} }
   private stopAcknowledgement():Promise<unknown>|undefined{return this.stopTask;}
   constructor(private readonly deps: XtbControllerDependencies) {}
@@ -107,12 +111,12 @@ export class XtbController {
     if(this.gone)throw new Error('xTB运行视图已关闭，停止帧未应用。');
     const {store}=this.deps,frame=this.lastReliableFrame;
     if(!frame){this.update({status:'已停止xTB，尚无可靠结构帧，保留原结构。',error:''});return false;}
-    if(!this.sourceStillCurrent()){this.update({status:'已停止xTB，最后可靠结构保留为原任务候选。',error:'',retainedStoppedFrame:structuredClone(frame)});return false;}
+    if(!this.previewSourceStillCurrent()){this.update({status:'已停止xTB，最后可靠结构保留为原任务候选。',error:'',retainedStoppedFrame:structuredClone(frame)});return false;}
     const result={request,frame},current=store.getSnapshot();
     const movable=request.structure.atoms.map(atom=>atom.id!).filter(id=>!request.frozenAtomIds.includes(id));
-    const next=applyXtbStoppedCoordinates(current,result,movable);
+    const next=applyXtbStoppedCoordinates(this.sourceDocument??current,result,movable);
     if(coordinatesFingerprint(next.draft.structure)===coordinatesFingerprint(current.draft.structure)){this.update({status:'已停止xTB，最后可靠结构未变化。',error:''});return false;}
-    store.acceptXtbStoppedCoordinates(result);this.update({status:'已停止xTB，保留最后可靠结构。',error:'',metadata:undefined});return true;
+    store.acceptXtbStoppedCoordinates(result,this.sourceDocument);this.update({status:'已停止xTB，保留最后可靠结构。',error:'',metadata:undefined});return true;
   }
   private clearPlayback(error?: Error, retainPreview = false) {
     const playback=this.playback;this.playback=undefined;
@@ -128,7 +132,7 @@ export class XtbController {
   private assertPlaybackCurrent(playback: Playback) {
     const current=this.deps.store.getSnapshot();
     if(this.cancelRequested||this.gone)throw new Error('xTB预览已取消。');
-    return current.id===playback.request.stamp.documentId&&current.revision===playback.request.stamp.revision&&this.sourceStillCurrent();
+    return current.id===playback.request.stamp.documentId&&this.previewSourceStillCurrent();
   }
   private schedulePlayback(playback: Playback) {
     if(this.playback!==playback||playback.timer!==undefined)return;
@@ -144,7 +148,7 @@ export class XtbController {
     },XTB_PLAYBACK_INTERVAL_MS);
   }
   private enqueuePreview(frame: XtbPreviewFrame, request: XtbRequest) {
-    if(!this.sourceStillCurrent()){this.clearPlayback();return;}
+    if(!this.previewSourceStillCurrent()){this.clearPlayback();return;}
     const playback=this.playback??{sessionId:frame.sessionId,request,queue:[],lastStep:-1,completed:false};
     if(playback.sessionId!==frame.sessionId)throw new Error('xTB播放会话已改变。');
     this.playback=playback;playback.lastStep=frame.step;playback.queue.push(frame);
@@ -285,18 +289,18 @@ export class XtbController {
       else if(this.playback)await this.finishPlayback();
       if (this.cancelRequested || this.gone) throw new Error('xTB结果已取消，未应用坐标。');
       store.finishRuntimeSession();
-      if(!this.sourceStillCurrent()){this.update({metadata:result.metadata,retainedResult:structuredClone(result),status:'xTB任务完成；工作结构已修改，结果保留在原任务。'});return;}
+      if(!(singlepoint?this.sourceStillCurrent():this.previewSourceStillCurrent())){this.update({metadata:result.metadata,retainedResult:structuredClone(result),status:'xTB任务完成；工作结构已修改，结果保留在原任务。'});return;}
       let optimizedBonds:ChemistryResult|undefined,bondFailure:string|undefined;
       if(!singlepoint&&!periodic&&options.rebuildBonds&&options.method!=='gfnff'){
         this.update({phase:'bonding',status:options.method==='gfn2'?'正在按本次MBO更新成键…':'正在按本次优化坐标进行经验判键…'});
         try{
           const evidence=options.method==='gfn2'?result.metadata.bondOrders:undefined;
           if(options.method==='gfn2'&&!evidence)throw new Error(result.metadata.bondOrdersWarning?.message??'本次GFN2结果没有可用MBO。');
-          const candidate=applyXtbCoordinates(store.getSnapshot(),result,movable);
+          const candidate=applyXtbCoordinates(this.sourceDocument??store.getSnapshot(),result,movable);
           optimizedBonds=await this.perceiveCurrent('rebuild',{charge:options.charge,multiplicity:options.multiplicity},evidence,options.empiricalBondParameters,candidate);
         }catch(error){bondFailure=error instanceof Error?error.message:String(error);}
         if(this.cancelRequested||this.gone)throw new Error('成键判断已停止，未提交本次结果。');
-        if(this.perceptionDetached||!this.sourceStillCurrent()){this.update({metadata:result.metadata,retainedResult:structuredClone(result),status:'xTB及成键任务完成；工作结构已修改，结果保留在原任务。'});return;}
+        if(this.perceptionDetached||!this.previewSourceStillCurrent()){this.update({metadata:result.metadata,retainedResult:structuredClone(result),status:'xTB及成键任务完成；工作结构已修改，结果保留在原任务。'});return;}
       }
       if(!transaction){store.beginTransaction(singlepoint?'GFN2辅助判断成键':'xTB预优化');transaction=true;}
       if(singlepoint){
@@ -307,7 +311,7 @@ export class XtbController {
           store.execute({type:'infer-bonds',mode:perceptionMode,aggression:'standard',perceivedBonds:perceived.bonds,perceivedIssues:perceived.issues});
         }
       }else {
-        store.acceptXtbCoordinates(result);
+        store.acceptXtbCoordinates(result,this.sourceDocument);
         if(optimizedBonds)store.execute({type:'infer-bonds',mode:'rebuild',aggression:'standard',perceivedBonds:optimizedBonds.structure.bonds,perceivedIssues:optimizedBonds.structure.bondPerceptionIssues});
       }
       accepted = true;

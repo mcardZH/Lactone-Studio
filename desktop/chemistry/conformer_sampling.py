@@ -23,6 +23,7 @@ from ase.data import atomic_numbers
 from ase.md.langevin import Langevin
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from native_stdin import control_blocks
+from conformer_solvation import native_alpb_supported
 
 METHODS = ('MMFF94', 'MMFF94s', 'UFF', 'gfn0', 'gfn1', 'gfn2', 'gfnff')
 OPERATIONS = ('md', 'metadynamics', 'spherical-md')
@@ -216,11 +217,14 @@ def validate_request(raw):
     request['calculator'] = calc
     if 'solvation' in request:
         keys(request['solvation'], ['model', 'solvent']); sol = request['solvation']
-        require(request['method'] in ('gfn1', 'gfn2') and set(sol) == {'model', 'solvent'}
+        require(set(sol) == {'model', 'solvent'}
                 and sol['model'] in ('alpb', 'gbsa') and isinstance(sol['solvent'], str)
                 and re.fullmatch(r'[a-z0-9]{1,40}', sol['solvent']), 'Invalid or unsupported sampling solvation')
-        supported = ALPB_SOLVENTS if sol['model'] == 'alpb' else GBSA_SOLVENTS + (('dmf', 'hexane') if request['method'] == 'gfn2' else ())
-        require(sol['solvent'] in supported, 'Solvent is not parametrized for the selected method/model')
+        if sampling_driver(request)[0] == 'native-xtb-md' and sol['model'] == 'alpb':
+            require(native_alpb_supported(request['method'], request['operation'], sol['solvent']), 'Solvent is not supported for this native MD/MTD method')
+        else:
+            supported = ALPB_SOLVENTS if sol['model'] == 'alpb' else GBSA_SOLVENTS + (('dmf', 'hexane') if request['method'] == 'gfn2' else ())
+            require(request['method'] in ('gfn1', 'gfn2') and sol['solvent'] in supported, 'Solvent is not parametrized for the selected method/model')
     if request['method'] in ('MMFF94', 'MMFF94s', 'UFF'):
         require(sum(a.get('formalCharge', 0) for a in atoms) == request['charge'],
                 'Force-field graph formal charges differ from requested total charge')
@@ -650,8 +654,17 @@ def main():
         if isinstance(payload, dict) and isinstance(payload.get('request'), dict) and all(k in payload['request'] for k in ('stamp', 'runIdentity', 'operation', 'method')):
             observations = ({'nativeTemperatureObservations': copy.deepcopy(session.native_temperature_observations)}
                             if session is not None and hasattr(session, 'native_temperature_observations') else {})
+            if session is not None and hasattr(session, 'initial_velocity_correction'):
+                observations['initialVelocityCorrection'] = copy.deepcopy(session.initial_velocity_correction)
+            if session is not None and getattr(session, 'native_solvation', None) is not None:
+                observations['nativeSolvation'] = copy.deepcopy(session.native_solvation)
             if isinstance(exc, Cancelled) or getattr(exc,'code',None)=='SAMPLING_CANCELLED': emit(dict(kind='stopped', workerSettled=True, reason='cancelled', lastFrame=session.last_frame if session else None, nativeClosed=session.native_closed() if session else True, **observations))
-            else: emit(dict(kind='error', workerSettled=True, error=dict(code=getattr(exc, 'code', 'SAMPLING_FAILED'), message=str(exc)[:8192]), lastFrame=session.last_frame if session else None, nativeClosed=session.native_closed() if session else True, **observations))
+            else:
+                details = getattr(exc, 'details', None)
+                error = dict(code=getattr(exc, 'code', 'SAMPLING_FAILED'), message=str(exc)[:8192])
+                if details is not None:
+                    error['details'] = copy.deepcopy(details)
+                emit(dict(kind='error', workerSettled=True, error=error, lastFrame=session.last_frame if session else None, nativeClosed=session.native_closed() if session else True, **observations))
         return 0 if isinstance(exc, Cancelled) or getattr(exc,'code',None)=='SAMPLING_CANCELLED' else 1
     finally:
         reader_done.set()

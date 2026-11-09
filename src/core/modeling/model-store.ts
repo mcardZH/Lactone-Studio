@@ -32,6 +32,7 @@ import { mapStructureTransformDocument, mapStructureTransformContext } from './s
 import { resolveFinitePeriodicFragment } from './periodic-modeling';
 import { captureCellCheckpoint, removeDocumentCell } from './cell-editor';
 import { preparePeriodicAppendFragment, periodicAppendNote, periodicSelectionNote, type PeriodicAppendExtraction } from './periodic-append-fragment';
+import {inheritRuntimePreviewLineage,runtimePreviewSourceCurrent} from './runtime-source-lineage';
 
 export { getConnectedComponent, getFrozenAtomIds, getMovableAtomIds } from './graph';
 export { MODEL_CONSTRAINT_TOLERANCE } from './model-document-validation';
@@ -483,7 +484,18 @@ export function createModelStore(initial: Structure | null = null, assignments: 
   let baseline = { structure: clone(first.structure), assignments: clone(first.assignments), content: dirtyContentKey(current) };
   const listeners = new Set<() => void>();
   const stamps = new Map<string, { movable:string[]; nativeMDPolicy?:NativeMDPolicy }>();
+  const sourceStamps=new WeakMap<ModelDocument,Map<string,{movable:string[];nativeMDPolicy?:NativeMDPolicy}>>();
+  function rememberSourceStamp(result:DocumentStamp,entry:{movable:string[];nativeMDPolicy?:NativeMDPolicy}){
+    let issued=sourceStamps.get(current);if(!issued){issued=new Map();sourceStamps.set(current,issued);}issued.set(json(result),clone(entry));
+    if(issued.size>64)issued.delete(issued.keys().next().value!);
+  }
+  function requireRuntimeSourceStamp(source:ModelDocument,submitted:DocumentStamp){
+    const issued=sourceStamps.get(source)?.get(json(submitted));
+    if(!issued||!runtimePreviewSourceCurrent(source,current))throw new Error('旧运行来源、冻结编辑链或已签发范围无效，结果未应用。');
+    return issued;
+  }
   function emit(next: ModelDocument): ModelDocument {
+    if(next.id===current.id&&next.revision===current.revision)inheritRuntimePreviewLineage(current,next);
     if (activeBondOrders && bondOrderStructureKey(next.draft.structure) !== bondOrderStructureKey(current.draft.structure)) activeBondOrders = undefined;
     if (activeBondOrders) next.bondOrderObservation = activeBondOrders;
     else delete next.bondOrderObservation;
@@ -569,18 +581,20 @@ export function createModelStore(initial: Structure | null = null, assignments: 
   function stamp(movableAtomIds = getMovableAtomIds(current, 'all')): DocumentStamp {
     const result = makeDocumentStamp(current, movableAtomIds);
     stamps.set(json(result), {movable:[...movableAtomIds]});
+    rememberSourceStamp(result,{movable:[...movableAtomIds]});
     if (stamps.size > 64) stamps.delete(stamps.keys().next().value!);
     return result;
   }
   function stampNativeMD(policy: NativeMDPolicy): DocumentStamp {
     const result = makeNativeMDStamp(current, policy);
     stamps.set(json(result), {movable:current.draft.structure.atoms.map(atom=>atom.id!), nativeMDPolicy:clone(result.nativeMDPolicy!)});
+    rememberSourceStamp(result,{movable:current.draft.structure.atoms.map(atom=>atom.id!),nativeMDPolicy:clone(result.nativeMDPolicy!)});
     if (stamps.size > 64) stamps.delete(stamps.keys().next().value!);
     return result;
   }
   /** Constraint/object edits own history, but never run structural inheritance,
    * stereo normalization or preparation invalidation through the builder. */
-  function commitMetadata(next:ModelDocument,contextChanges?:Record<string,Context>):ModelDocument {
+  function commitMetadata(next:ModelDocument,contextChanges?:Record<string,Context>,atomFreezeOnly=false):ModelDocument {
     finishSelectionTransaction();
     if(json(next.draft.structure)!==json(current.draft.structure))throw new Error('元数据事务不能修改物理结构。');
     if(contentKey(next)===contentKey(current)&&(!contextChanges||json(contextChanges)===json(contexts)))return current;
@@ -591,6 +605,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     recordStructureHistory();
     if(contextChanges)contexts=clone(contextChanges);
     next.revision=current.revision+1;next.draft.revision=next.revision;next.draft.structure.revision=next.revision;
+    if(atomFreezeOnly)inheritRuntimePreviewLineage(current,next);
     runtime=null;stamps.clear();return emit(next);
   }
   /** Numbering/electronic metadata has its own history while retaining physical
@@ -1252,16 +1267,16 @@ export function createModelStore(initial: Structure | null = null, assignments: 
         case 'set-shared-freezes-enabled': {
           if(typeof command.enabled!=='boolean')throw new Error('共有冻结启用状态须为布尔值。');
           if((next.sharedConstraints?.enabled!==false)===command.enabled)return current;
-          next.sharedConstraints={...(next.sharedConstraints??emptySharedConstraints()),enabled:command.enabled};return commitMetadata(next);
+          next.sharedConstraints={...(next.sharedConstraints??emptySharedConstraints()),enabled:command.enabled};return commitMetadata(next,undefined,!(current.sharedConstraints?.coordinates.length));
         }
         case 'set-shared-atom-freeze': {
           const ids=new Set(structure.atoms.map(atom=>atom.id));if(new Set(command.atomIds).size!==command.atomIds.length||command.atomIds.some(id=>!ids.has(id)))throw new Error('共有冻结选择含缺失或重复原子。');
           const shared=next.sharedConstraints??emptySharedConstraints();
-          next.sharedConstraints={...shared,...(command.frozen&&command.atomIds.length?{enabled:true}:{}),frozenAtomIds:command.frozen?unique([...shared.frozenAtomIds,...command.atomIds]):shared.frozenAtomIds.filter(id=>!command.atomIds.includes(id))};return commitMetadata(next);
+          next.sharedConstraints={...shared,...(command.frozen&&command.atomIds.length?{enabled:true}:{}),frozenAtomIds:command.frozen?unique([...shared.frozenAtomIds,...command.atomIds]):shared.frozenAtomIds.filter(id=>!command.atomIds.includes(id))};return commitMetadata(next,undefined,true);
         }
         case 'replace-shared-atom-freezes': {
           const ids=new Set(structure.atoms.map(atom=>atom.id));if(new Set(command.atomIds).size!==command.atomIds.length||command.atomIds.some(id=>!ids.has(id)))throw new Error('冻结原子选择含缺失或重复身份。');
-          next.sharedConstraints={...(next.sharedConstraints??emptySharedConstraints()),canonical:true,frozenAtomIds:[...command.atomIds]};return commitMetadata(next);
+          next.sharedConstraints={...(next.sharedConstraints??emptySharedConstraints()),canonical:true,frozenAtomIds:[...command.atomIds]};return commitMetadata(next,undefined,true);
         }
         case 'replace-shared-coordinate-freezes': {
           if(command.coordinates.some(row=>row.action!=='freeze'))throw new Error('模型冻结事务不能提交扫描定义。');
@@ -1276,11 +1291,11 @@ export function createModelStore(initial: Structure | null = null, assignments: 
           if(command.frozen)rows.push({id:`shared-freeze:${command.object.id}`,objectId:command.object.id,type:command.object.type,atomIds:[...command.object.atomIds],...(command.object.images?{images:clone(command.object.images)}:{}),action:'freeze',steps:1,increment:null});
           next.sharedConstraints={...shared,...(command.frozen?{enabled:true}:{}),coordinates:rows};return commitMetadata(next);
         }
-        case 'clear-shared-freezes': next.sharedConstraints={...next.sharedConstraints,...emptySharedConstraints(),canonical:true};return commitMetadata(next);
+        case 'clear-shared-freezes': next.sharedConstraints={...next.sharedConstraints,...emptySharedConstraints(),canonical:true};return commitMetadata(next,undefined,!(current.sharedConstraints?.coordinates.length));
         case 'delete-source-constraint': {
           if(command.scope==='gaussian'&&command.kind==='coordinate'&&next.gaussianBoundCoordinates)next.gaussianBoundCoordinates=next.gaussianBoundCoordinates.filter(row=>row.rowId!==command.id);
           if(command.scope==='shared'){
-            const shared=next.sharedConstraints??emptySharedConstraints();next.sharedConstraints=command.kind==='atom'?{...shared,frozenAtomIds:shared.frozenAtomIds.filter(id=>id!==command.id)}:{...shared,coordinates:shared.coordinates.filter(row=>row.id!==command.id)};return commitMetadata(next);
+            const shared=next.sharedConstraints??emptySharedConstraints();next.sharedConstraints=command.kind==='atom'?{...shared,frozenAtomIds:shared.frozenAtomIds.filter(id=>id!==command.id)}:{...shared,coordinates:shared.coordinates.filter(row=>row.id!==command.id)};return commitMetadata(next,undefined,command.kind==='atom');
           }
           const changed=clone(contexts),context=command.scope===contextScope?{assignments:next.draft.assignments,coordinates:next.internalCoordinates??[]}:changed[command.scope];if(!context)return commitMetadata(next);
           if(command.kind==='atom')context.assignments.frozenAtomIds=context.assignments.frozenAtomIds.filter(id=>id!==command.id);else context.coordinates=context.coordinates.filter(row=>row.id!==command.id);
@@ -1390,8 +1405,22 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     isRuntimeSessionActive() { return runtimeActive || runtimeEditLock; },
     isRuntimeEditingAllowed() { return runtimeActive && runtimeIsolated; },
     finishRuntimeSession() { finishSelectionTransaction(true); runtime = null; runtimeEditLock = false; runtimeActive = false; runtimeIsolated = false; scientificEditApproval = null; },
-    acceptRuntimeFrame(frame: DynamicsFrame) {
+    acceptRuntimeFrame(frame: DynamicsFrame,sourceDocument?:ModelDocument) {
       try {
+
+      if(sourceDocument&&sourceDocument.revision!==current.revision){
+        if(!runtimePreviewSourceCurrent(sourceDocument,current)||sourceDocument.revision!==frame.stamp.revision)throw new Error('运行来源除原子冻结外已变化，旧动态结果未应用。');
+        // Revalidate against the immutable run source, including its original
+        // frozen coordinates. The new F metadata belongs only to the next run.
+        const verified=createRuntimeModelStore(sourceDocument);
+        const {movable}=requireRuntimeSourceStamp(sourceDocument,frame.stamp);
+        const expected=frame.stamp.nativeMDPolicy?verified.stampNativeMD(frame.stamp.nativeMDPolicy):verified.stamp(movable);
+        if(json(expected)!==json(frame.stamp))throw new Error('动态结果的启动来源或可动范围不匹配。');
+        verified.beginRuntimeSession();verified.beginTransaction('runtime-source-validation');
+        const accepted=verified.acceptRuntimeFrame(frame);verified.endTransaction();verified.finishRuntimeSession();
+        const next=clone(current);next.draft.structure=clone(accepted.draft.structure);next.attachmentPorts=clone(accepted.attachmentPorts??[]);
+        return commit(next,movable,{},undefined,true,false,true);
+      }
 
       if(frame.schema!==1 || !frame.sessionId || !Number.isSafeInteger(frame.seq) || frame.seq<0 || !Number.isSafeInteger(frame.step) || frame.step<0 || !Number.isFinite(frame.timeFs) || frame.timeFs<0 || !['md','optimize','geometry'].includes(frame.operation))throw new Error('动态帧协议或数值身份无效。');
       if(frame.operation==='geometry'){
@@ -1445,18 +1474,32 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       finally { acceptingRuntime=false; }
       } catch (error) { scientificEditApproval = null; throw error; }
     },
-    acceptXtbCoordinates(result){
+    acceptXtbCoordinates(result,sourceDocument){
       try {
 
       if(runtimeEditLock)throw new Error('动态会话未停止，不能提交xTB坐标结果。');
+      if(sourceDocument&&sourceDocument.revision!==current.revision){
+        if(!runtimePreviewSourceCurrent(sourceDocument,current)||sourceDocument.revision!==result.request.stamp.revision)throw new Error('运行来源除原子冻结外已变化，旧xTB结果未应用。');
+        const {movable}=requireRuntimeSourceStamp(sourceDocument,result.request.stamp);
+        if(json(makeDocumentStamp(sourceDocument,movable))!==json(result.request.stamp))throw new Error('xTB结果的启动来源或可动范围不匹配。');
+        const accepted=applyXtbCoordinates(sourceDocument,result,movable),next=clone(current);next.draft.structure=clone(accepted.draft.structure);next.attachmentPorts=clone(accepted.attachmentPorts??[]);
+        return commit(next,movable,{},undefined,true,false,true);
+      }
       const movable=requireStamp(result.request.stamp),next=applyXtbCoordinates(current,result,movable);
       return commit(next,movable,{},undefined,true,false,true);
       } catch (error) { scientificEditApproval = null; throw error; }
     },
-    acceptXtbStoppedCoordinates(result){
+    acceptXtbStoppedCoordinates(result,sourceDocument){
       try {
 
       if(runtimeEditLock)throw new Error('动态会话未停止，不能提交xTB停止帧。');
+      if(sourceDocument&&sourceDocument.revision!==current.revision){
+        if(!runtimePreviewSourceCurrent(sourceDocument,current)||sourceDocument.revision!==result.request.stamp.revision)throw new Error('运行来源除原子冻结外已变化，旧xTB停止帧未应用。');
+        const {movable}=requireRuntimeSourceStamp(sourceDocument,result.request.stamp);
+        if(json(makeDocumentStamp(sourceDocument,movable))!==json(result.request.stamp))throw new Error('xTB停止帧的启动来源或可动范围不匹配。');
+        const accepted=applyXtbStoppedCoordinates(sourceDocument,result,movable),next=clone(current);next.draft.structure=clone(accepted.draft.structure);next.attachmentPorts=clone(accepted.attachmentPorts??[]);
+        return commit(next,movable,{},undefined,true,false,true);
+      }
       const movable=requireStamp(result.request.stamp),next=applyXtbStoppedCoordinates(current,result,movable);
       return commit(next,movable,{},undefined,true,false,true);
       } catch (error) { scientificEditApproval = null; throw error; }

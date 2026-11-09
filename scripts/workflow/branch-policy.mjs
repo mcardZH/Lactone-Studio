@@ -348,6 +348,27 @@ export function checkPreCommitPolicy({
     };
   }
 
+  if (isMergeInProgress && /^mac\/upstream-/.test(String(branch || '').trim())) {
+    const { codeFiles, testFiles, misplacedTestFiles } = classifyChangedFiles(changedFiles);
+    if (misplacedTestFiles.length > 0) {
+      return {
+        ok: false,
+        code: 'MISPLACED_TEST_FILES',
+        message: `发现放置在 tests/ 目录之外的测试文件：${misplacedTestFiles.join(', ')}。根据规范，所有自动化测试必须位于 tests/ 目录下。`,
+        misplacedTestFiles,
+      };
+    }
+    if (codeFiles.length > 0 && testFiles.length === 0) {
+      return {
+        ok: false,
+        code: 'MISSING_TEST_FILES',
+        message: '上游版本三方合并提交必须包含 tests/ 下的 macOS 适配验证测试用例。',
+        uncoveredCodeFiles: codeFiles,
+      };
+    }
+    return { ok: true, code: 'OK', message: '上游三方合并提交已包含自动化测试覆盖。' };
+  }
+
   return checkTestCoveragePolicy({ changedFiles, cwd });
 }
 

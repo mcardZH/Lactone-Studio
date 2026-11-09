@@ -16,7 +16,7 @@ const fail = (code, message) => { throw safe.failure(code, message); };
 const clone = value => JSON.parse(JSON.stringify(value));
 const exists = async file => { try { return await fs.lstat(file); } catch (error) { if (error.code === 'ENOENT') return null; throw error; } };
 function validateManifest(value) {
-  if (!value || value.schema !== SCHEMA || ![1, 2, 3, 4].includes(value.formatVersion)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported Ester Studio project version; write-back is disabled.');
+  if (!value || value.schema !== SCHEMA || ![1, 2, 3, 4, 5, 6].includes(value.formatVersion)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported Ester Studio project version; write-back is disabled.');
   if (typeof value.projectId !== 'string' || !value.projectId || !Number.isSafeInteger(value.generation) || value.generation < 1 || !value.assets || typeof value.assets !== 'object' || !Array.isArray(value.assetIds) || !Object.hasOwn(value, 'state')) fail('SY_INVALID_INDEX', 'Invalid Ester Studio project index.');
   for (const [id, asset] of Object.entries(value.assets)) {
     if (!asset || id !== asset.assetId || !/^[a-f0-9]{64}$/.test(id) || asset.sha256 !== id || !Number.isSafeInteger(asset.bytes) || asset.bytes < 0 || !CATEGORIES.has(asset.category) || asset.relativePath !== `${asset.category}/asset-${id}.bin`) fail('SY_INVALID_INDEX', 'Invalid project asset reference.');
@@ -381,7 +381,7 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
       const state = options.state === undefined ? t.state : clone(options.state);
       const requested = options.requiredFormatVersion ?? 1;
       const declared = state && typeof state === 'object' ? state.requiredProjectFormatVersion : undefined;
-      if (![1, 2, 3, 4].includes(requested) || declared !== undefined && ![1, 2, 3, 4].includes(declared)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported project save format requirement.');
+      if (![1, 2, 3, 4, 5, 6].includes(requested) || declared !== undefined && ![1, 2, 3, 4, 5, 6].includes(declared)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported project save format requirement.');
       const formatVersion = Math.max(s.formatVersion, requested, declared || 1);
       // Protect the existing manual entry before publishing any newer auto
       // semantics. This is only a compatibility gate, never a manual save.

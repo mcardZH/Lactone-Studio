@@ -416,12 +416,25 @@
         "third-party/corresponding-sources/licenses/xtb-gnu/subprojects/json-fortran-8.2.5/pages/development-resources/LICENSE.md",
         "third-party/corresponding-sources/licenses/xtb-gnu/subprojects/s-dftd3/python/COPYING",
         "third-party/corresponding-sources/licenses/xtb-gnu/subprojects/s-dftd3/python/COPYING.LESSER",
-        "third-party/corresponding-sources/build-support/xtb-gnu/BUILD-CONTROLS-LICENSE.txt"
+        "third-party/corresponding-sources/build-support/xtb-gnu/BUILD-CONTROLS-LICENSE.txt",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/xtb-initial-velocity-a04.patch",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/preferred-source-tree.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/raw-xtb-build-receipt.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/r2-source-receipt.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/r0-source-receipt.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/openblas-runtime-revision.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/parent-runtime-openblas034.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/gnu-runtime-source-receipt.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/source-linkage.json",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/README.md",
+        "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/component-closure-report.json"
       ],
       "buildRelations": [
         "Twelve complete original source archives include the main scientific program and eleven actual static subprojects. The clean preferred-source tree contains 2539 checked files including 947 unchanged scientific source files.",
         "Thirty-eight complete build-only overlays, twenty-four original licenses and exact Meson/Ninja/GCC/OpenBLAS/VC inputs accompany the actual successful build evidence and 64 MiB stack flags.",
-        "The parameterized local source controller provides plan, prepare, build and explicit local-modified modes. The per-directory MIT additional grant covers only the stated corresponding-source controls and local overlay changes."
+        "The parameterized local source controller provides plan, prepare, build and explicit local-modified modes. The per-directory MIT additional grant covers only the stated corresponding-source controls and local overlay changes.",
+        "ES-authored H-only initial-velocity modification: exact patch, unchanged upstream archive and actual build/source receipt are supplied under build-support/xtb-gnu/es-initial-velocity/. The new executable uses the unchanged published OpenBLAS 0.3.33 runtime/parameters; scientific acceptance is separate."
       ],
       "remaining": []
     },
@@ -6115,11 +6128,96 @@
       "role": "upstream-build-recipe",
       "url": "https://conda.anaconda.org/conda-forge/win-64/tblite-python-0.7.0-py312h53b0f66_2.conda",
       "component": "tblite"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/xtb-initial-velocity-a04.patch",
+      "bytes": 2563,
+      "sha256": "0f9fed4d654dc17ae64a37a469ad2d206e0d2f7deebd0c831b01fbb7c8a607dd",
+      "role": "build-patch",
+      "component": "xtb-gnu",
+      "url": "https://github.com/Ahey1/Ester-Studio/releases/download/v2.0.3/Ester-Studio-v2.0.3-source-code.zip"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json",
+      "bytes": 13500,
+      "sha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/preferred-source-tree.json",
+      "bytes": 356305,
+      "sha256": "7b949d2438a576e7d9ff818dc6a2cca03ba703c2af0183f94df0d49e8f307810",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/raw-xtb-build-receipt.json",
+      "bytes": 5831,
+      "sha256": "0c0406f1a56d1c9967074d82bda6ac2d1ebc8d7eae49806f7a835c705c5ee6bf",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/r2-source-receipt.json",
+      "bytes": 7435,
+      "sha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/r0-source-receipt.json",
+      "bytes": 1553,
+      "sha256": "a94471cf183fa34c1a7eefe371c3607091022dcfe833955437139084d34b6dfd",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/openblas-runtime-revision.json",
+      "bytes": 2185,
+      "sha256": "b8ce3a40717eb518ed78f16a7a0481e5af1b602e06cfe9ca4910e10c30fe6bc6",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/parent-runtime-openblas034.json",
+      "bytes": 1259,
+      "sha256": "8e2b8ed7db6e40a8ed37a7e58389609b0e6308a0a71e76141ed1f3ac0522e90e",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/gnu-runtime-source-receipt.json",
+      "bytes": 7435,
+      "sha256": "d3afbb68638253d2a5ab8fbc9f86191d48120560269fd7ece37d887f686c3ef3",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/source-linkage.json",
+      "bytes": 5929,
+      "sha256": "00f0514f08e78f48c274e0d41b3b246d1ec2041a3dc4e39ce9aaa8d154800508",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/README.md",
+      "bytes": 3156,
+      "sha256": "308a357aa447e344e6f2ccf19abc1011cf4ebeaacd894455baa7a7d725a13956",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
+    },
+    {
+      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/component-closure-report.json",
+      "bytes": 15308,
+      "sha256": "87c4257bbdd283acfec7533d6226f84ffd0032e6106c2cfb49c893259e41d706",
+      "role": "source-material-guide",
+      "component": "xtb-gnu"
     }
   ],
   "componentClosureReport": {
-    "path": "third-party/corresponding-sources/COMPONENT-CLOSURE-REPORT.json",
-    "bytes": 15159,
-    "sha256": "ffe5ba552ac86faa38a941c037e8fe0578a300bd07dbffe92ec211ea2752c564"
+    "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/component-closure-report.json",
+    "bytes": 15308,
+    "sha256": "87c4257bbdd283acfec7533d6226f84ffd0032e6106c2cfb49c893259e41d706"
   }
 }

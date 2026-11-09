@@ -2,6 +2,7 @@ import type { Structure } from '../../core/types';
 import type { AdvancedPathFrameData, AdvancedPathRequest, AdvancedPathEvent, AdvancedPathScanSettings } from './path-contracts';
 import type { ConformerSamplingFramePayload, ConformerSamplingRequest, ConformerSamplingEvent } from './sampling-contracts';
 import { getConformerSamplingCapability, selectConformerSamplingDriver } from './sampling-contracts';
+import {validateConformerNativeSolvation} from './conformer-solvation';
 import type { AissRequest, AissCompletionEvent, AissSearchCheckpointEvent, AissAtomMapping } from './docking-contracts';
 
 /** Preserve every scientific payload field, stripping only transport envelope. */
@@ -138,6 +139,7 @@ export function validateSamplingFrame(request: ConformerSamplingRequest, data: C
       || ![0, 1, 2, 3].includes(core.rank) || core.orientationUnique !== (core.rank >= 2)) throw new Error('核心软保护缺少相对几何和旋转退化诊断。');
   }
   if(native){const evidence=data.nativeMD;
+    validateConformerNativeSolvation(request,evidence?.nativeSolvation);
     if(!evidence||evidence.method!==request.method||!evidence.version||!/^[a-f0-9]{64}$/.test(evidence.inputSha256)||evidence.shakeHydrogenBonds!==(request.shakeHydrogenBonds??capability.shakeDefaultEnabled)||!ordinal(evidence.rawIndex)
       ||!['xtb.trj','mdrestart'].includes(evidence.sourceArtifact)||!['pre-step','restart-final'].includes(evidence.frameTiming)||!['half-step','restart','unavailable'].includes(evidence.velocityPhase)||typeof evidence.nativeClosed!=='boolean')throw new Error('原生MD帧缺少真实SHAKE/质量/时间相位及产物来源。');
     if(request.hydrogenMassAmu===4?evidence.hydrogenMassAmu!==4||evidence.hydrogenMassMode!=='fixed-amu'||evidence.hydrogenMassScaling!==undefined:evidence.hydrogenMassScaling!==1||evidence.hydrogenMassAmu!=null||(evidence.hydrogenMassMode!==undefined&&evidence.hydrogenMassMode!=='natural'))throw new Error('原生MD实际氢质量与请求不一致。');
@@ -172,6 +174,7 @@ export function validateSamplingCompletion(request: ConformerSamplingRequest, ev
     || JSON.stringify(event.postSamplingPotentials) !== JSON.stringify({ core: false, metadynamics: false, sphere: false })
     || event.exit?.code !== 0 || event.exit.signal !== null) throw new Error('采样完成数量或后续撤势合同不匹配；候选没有被冒充优化结果。');
   validateSamplingFrame(request, event.lastFrame);
+  if(event.nativeSolvation!==undefined){validateConformerNativeSolvation(request,event.nativeSolvation);if(JSON.stringify(event.nativeSolvation)!==JSON.stringify(event.lastFrame.nativeMD?.nativeSolvation))throw Error('采样终态与末帧原生溶剂回执不一致。');}
   const w=event.thermostatWarning;
   if(w){const target=request.operation==='metadynamics'?request.metadynamics?.temperatureK??300:request.molecularMD?.temperatureK??600;
     if(!native||event.nativeClosed!==true||event.step<500||w.kind!=='average-temperature-deviation'||w.message!=='thermostating problem'||w.targetTemperatureK!==target||!finite(w.averageTemperatureK)||w.averageTemperatureK<=0||w.averageTemperatureK>10000||!finite(w.relativeDeviation)||Math.abs(w.relativeDeviation)<=.02||Math.abs(w.relativeDeviation-(w.averageTemperatureK-target)/target)>1e-12)throw new Error('原生MD平均温度警告与实际目标或完成回执不一致。');

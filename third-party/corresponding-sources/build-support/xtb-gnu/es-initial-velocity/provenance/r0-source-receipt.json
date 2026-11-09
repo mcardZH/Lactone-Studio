@@ -1,0 +1,38 @@
+{
+  "schema": "sy-xtb-r0-source-receipt-v1",
+  "scientificSourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "scientificProgramBuild": "5071a886-new-gnu132-ucrt-r7-a01",
+  "scienceFilesChanged": false,
+  "originalScientificSourceReceiptSha256": "058e8782220283c8031a0fa3960d11b6a9b28a4a477260f88f0991de7f956f89",
+  "runtimeRebuilds": [
+    {
+      "name": "dlfcn-win32",
+      "version": "1.4.1",
+      "commit": "057dcdd6899b5a9c5abf6c47607cb95816e053a2",
+      "sourceArchiveSha256": "30a9f72bdf674857899eb7e553df1f0d362c5da2a576ae51f886e1171fbdb399",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libdl.dll",
+        "bytes": 60228,
+        "sha256": "09ffe313366349710d7606fad2b192826a0fb55e693f9d8a4eeb4ec1059f3c61"
+      }
+    },
+    {
+      "name": "winpthreads",
+      "version": "11.0.1",
+      "commit": "c3e587c067a00a561899d49d3e63a659e38802ec",
+      "sourceArchiveSha256": "9c82a58713786c95b0594443a1c6190cd986401ed2b03677a90acc470140af28",
+      "sourceSubdirectory": "mingw-w64-libraries/winpthreads",
+      "intentionalSourcePatchCount": 0,
+      "binary": {
+        "path": "bin/libwinpthread-1.dll",
+        "bytes": 111375,
+        "sha256": "02be535e6495e755cf0532589303841c09d125ddca88bc6db294c8d76a1516cf"
+      }
+    }
+  ],
+  "unresolved": [
+    "Actual WinLibs libgcc/libgfortran/libgomp/libquadmath source-patch-config binding; R1 stopped on recurring shell/native make quoting failure"
+  ],
+  "runtimeReplacementScientificallyVerified": false
+}

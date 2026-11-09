@@ -158,8 +158,8 @@
     },
     {
       "path": "desktop/chemistry/conformer_sampling.py",
-      "bytes": 47610,
-      "sha256": "e0081da16d58e7b2eb658bd03c3fa97b0288328449be2bb766a959dc4bad07fe"
+      "bytes": 48518,
+      "sha256": "0e22dd31c5a8d6748cefc26aa0774fab85aaa2a02ef1968ff10373d0c6ebf460"
     },
     {
       "path": "desktop/chemistry/conformer_gfnff.py",
@@ -173,13 +173,18 @@
     },
     {
       "path": "desktop/chemistry/conformer_native_md.py",
-      "bytes": 52361,
-      "sha256": "012653ab7e3af3d4c67a42f53b1a5f0d10a35957fe13fa8a0155a21daecff2e8"
+      "bytes": 58417,
+      "sha256": "f97fb45cd67883172597ea76342e94f1fb765a0bbcb3abfb744b4f586e3ef13f"
     },
     {
       "path": "desktop/chemistry/conformer_native_metadynamics.py",
       "bytes": 2651,
       "sha256": "0c11b4ab3cb16c24200817bcd312fb452ba016b5ec6256727a8497d7a069515f"
+    },
+    {
+      "path": "desktop/chemistry/conformer_solvation.py",
+      "bytes": 3847,
+      "sha256": "16f5879b4e6e9c78803d216631c59c291d5fe456419ff7f341061034b9a16523"
     },
     {
       "path": "desktop/chemistry/task_files.py",
@@ -210,8 +215,8 @@
   "builderSources": [
     {
       "path": "scripts/native/build.py",
-      "bytes": 28466,
-      "sha256": "8d9bf0af6d37acf13823039999453ba1f6fabdecfbc40305ed8623122edd8d46"
+      "bytes": 29786,
+      "sha256": "437f12e050b5fb33643842f0901671f0318cf6027b3bdd28eb306e397f4adf68"
     },
     {
       "path": "scripts/native/common.py",
@@ -225,8 +230,8 @@
     },
     {
       "path": "desktop/packaging/native-engine.spec",
-      "bytes": 3698,
-      "sha256": "e888f270a8862ec8348ac30f13710ae6946547b52d3effa4cb72eb88b826749a"
+      "bytes": 3764,
+      "sha256": "6d91c3030801c61bb6f26e064d5f06c167ef2306a348d76018126ff71a83fd85"
     },
     {
       "path": "scripts/native/runtime_pruning.py",
@@ -237,6 +242,33 @@
       "path": "desktop/packaging/native-runtime-win11-recipe.json",
       "bytes": 49600,
       "sha256": "3550ee8087ab2976b08fc0c9b95a193078d855798c5d5d4a38bc8595d3eaf90d"
+    },
+    {
+      "path": "src/data/conformer-solvation.json",
+      "bytes": 1864,
+      "sha256": "85dfff8a05793b7caa8bd064779f4b29e23455d87f3ce1a62a901c412b5e5b65"
+    }
+  ],
+  "xtbPatchSources": [
+    {
+      "path": "scripts/native/xtb-initial-velocity.f90",
+      "bytes": 1962,
+      "sha256": "28ce89bf96ab2443773a2926402a0545ab17ea82218ee7e2c1d68d9b5779caf8"
+    },
+    {
+      "path": "scripts/native/patch-xtb-initial-velocity.py",
+      "bytes": 1480,
+      "sha256": "32dd61cde3ec46bbfe7f74e3c12504bf23dca9e5ea8c2ac473bff7dbcc25d4e2"
+    },
+    {
+      "path": "scripts/native/rebuild-xtb-initial-velocity.py",
+      "bytes": 5967,
+      "sha256": "f2844b3680b43597008d6199224347b55a2925169d7808da65146d1f6271d082"
+    },
+    {
+      "path": "scripts/native/compose-xtb-initial-velocity.py",
+      "bytes": 9198,
+      "sha256": "ee8099557163f1f6dbad16962b643ed5d851e7d8a400d678a48d6911aed757f8"
     }
   ]
 }

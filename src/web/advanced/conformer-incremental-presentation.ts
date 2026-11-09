@@ -32,9 +32,17 @@ export function optimizationActionView(task:AdvancedTaskRecord|undefined,stageId
   const stage=task?.conformerWorkflow?.stages.find(stage=>stage.stageId===stageId);
   const latest=task?.runs.slice().reverse().find(run=>run.stages.some(stage=>stage.configurationId===stageId||stage.id===stageId));
   const latestStage=latest?.stages.find(stage=>stage.configurationId===stageId||stage.id===stageId);
+  const activeRun=Boolean(latest&&['queued','running','stopping'].includes(latest.status));
+  const background=latest?.backgroundProgress;
+  const ownsBackground=Boolean(activeRun&&background&&latestStage&&(background.stageId===latestStage.id||background.stageId===stageId||!background.stageId&&latestStage.status==='running'));
+  const phase=ownsBackground&&(background!.phase==='cluster'||background!.phase==='eliminate-equivalent'||background!.phase==='prepare-results')?background!.phase:'optimization' as const;
   const hasWork=Boolean(stage?.progress?.total||latestStage?.results.length||latestStage&&latestStage.status!=='pending');
+  const errorStage=latest?.stages.find(row=>row.status==='failed')??latest?.stages.at(-1);
   return {kind:hasWork?'continue' as const:'start' as const,
-    hasHistory:Boolean(stage||latest),progress:stage?.progress,
+    hasHistory:Boolean(stage||latest),progress:stage?.progress??latestStage?.progress,
+    phase,backgroundProgress:ownsBackground?background:undefined,status:latest?.status,hasRunError:Boolean(latest?.error&&errorStage===latestStage),
+    finalClusterCount:latestStage?.status==='completed'&&!ownsBackground?latestStage.clustering?.groups.reduce((count,group)=>count+group.clusters.length,0):undefined,
+    equivalence:latestStage?.status==='completed'&&!ownsBackground?latestStage.clustering?.equivalence:undefined,
     partialFrames:stage?.resultFrameIds?.length??0,
-    running:Boolean(latest&&['queued','running','stopping'].includes(latest.status)&&(latestStage?.status==='running'||latest.status==='queued'&&latestStage===latest.stages[0])),stopping:latest?.status==='stopping',run:latest};
+    running:Boolean(activeRun&&(ownsBackground||latestStage?.status==='running'||latest?.status==='queued'&&latestStage===latest.stages[0])),stopping:latest?.status==='stopping',run:latest};
 }

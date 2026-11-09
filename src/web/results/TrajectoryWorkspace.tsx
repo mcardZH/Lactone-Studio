@@ -33,6 +33,8 @@ import {trajectoryControlCallbacks,trajectoryFrameOrder,trajectoryPlaybackExport
 import {usePreparedTrajectory} from './usePreparedTrajectory';
 import type {PreparedTrajectoryView} from '../../results/prepared-trajectory';
 import {DismissibleNotice} from '../DismissibleNotice';
+import {conformerPlaybackDisplay,conformerVisualTrajectory,conformerDisplayRestorationRequiresFormat5} from '../../modeling/conformers/playback-display';
+import type {ConformerTrajectoryResult} from '../../modeling/conformers/trajectory';
 
 export type TrajectoryExportFormat = 'xyz' | 'extxyz' | 'txt' | 'txt-json' | 'png' | 'gif' | 'png-sequence';
 export interface TrajectoryExportRequest {
@@ -71,6 +73,7 @@ export interface TrajectoryWorkspaceProps {
 }
 const interaction: InteractionState = { element: null, box: false, alt: false, gesture: 'none' };
 const noEdit = () => undefined;
+const DISPLAY_IDENTITY:import('../../modeling/view-superposition').ViewRigidTransform={rotation:[[1,0,0],[0,1,0],[0,0,1]],translation:[0,0,0],anchorIds:[]};
 const statusLabel = { completed: '已完成', incomplete: '未完成', failed: '异常结束', unknown: '状态未知' };
 interface TrajectoryUiSnapshot {
   resultId:string;
@@ -97,7 +100,7 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const orderKey=props.frameOrder?.join(',')??'';
   const frameOrder=useMemo(()=>trajectoryFrameOrder(result.frames.length,props.frameOrder),[result.frames.length,orderKey]);
   const uiScope=useProjectUiScope();
-  const collection=useMemo(()=>props.playbackCollection??createPlaybackCollection(result,{ownerId:playbackScopeIdentity(uiScope?.store??result,props.modelDocument?.id??result.id),revision:JSON.stringify([result.id,result.source.sha256??result.source.size,orderKey]),frames:frameOrder.map(index=>({frameId:JSON.stringify([result.source.id,result.jobIndex,result.frames[index].sourceFrameIndex??index]),sourceFrameIndex:index,sourceResultId:result.id}))}),[props.playbackCollection,result,uiScope?.store,props.modelDocument?.id,orderKey]);
+  const collection=useMemo(()=>props.playbackCollection??createPlaybackCollection(result,{ownerId:playbackScopeIdentity(uiScope?.store??result,props.modelDocument?.id??result.id),revision:JSON.stringify([result.id,result.source.sha256??result.source.size,orderKey]),frames:frameOrder.map(index=>({frameId:(result as Partial<ConformerTrajectoryResult>).frameIds?.[index]??JSON.stringify([result.source.id,result.jobIndex,result.frames[index].sourceFrameIndex??index]),sourceFrameIndex:index,sourceResultId:result.id}))}),[props.playbackCollection,result,uiScope?.store,props.modelDocument?.id,orderKey]);
   const lease=useMemo(()=>playbackOwners.acquire(collection,result,{prepared:props.prepared,autoPreview:false,notifyPreparation:false,initialFrameIndex:props.selectedFrameIndex??initialScientificFrame(result)??0,frameOrder,restored:restored?.playback}),[result,props.prepared,collection]);
   const session=lease.session;
   const snapshot=useSyncExternalStore(session.subscribe,session.getSnapshot,session.getSnapshot);
@@ -140,26 +143,30 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const mounted = useRef(true), activeRef = useRef(active);
   const viewport = useRef<HTMLDivElement>(null), getView = useRef<(() => number[]) | null>(null), exportController = useRef<AbortController | null>(null),rebuildController=useRef<AbortController|null>(null);
   const onError = useRef(props.onError); onError.current = props.onError; activeRef.current = active;
+  const playbackDisplay=useMemo(()=>conformerPlaybackDisplay(result,frame.index,frame.structure),[result,frame.index,frame.structure]);
+  const finalDisplayFrame=useCallback((index:number,structure:Structure)=>conformerPlaybackDisplay(result,index,structure).structure,[result]);
+  const fixedCoreDisplay=conformerDisplayRestorationRequiresFormat5(result);
   const displacement = useMemo(() => {
     if (vibrationProjection?.sourceId === result.source.id && vibrationProjection.frameIndex === frame.index) return {
       structure: vibrationProjection.structure, vectors: vibrationProjection.arrows ? vibrationProjection.vectors.map((vector, atomIndex) => ({ atomIndex, vector: vector.map(value => value * vibrationProjection.arrowAmplitude) as [number, number, number], appearance:vibrationProjection.arrowAppearance })) : undefined, error: '',
     };
-    if (!vibration || vibration.frameIndex !== frame.index) return { structure: frame.structure, vectors: undefined, error: '' };
+    if (!vibration || vibration.frameIndex !== frame.index) return { structure: playbackDisplay.structure, vectors: undefined, error: '' };
     try {
       const structure = displacedVibrationStructure(frame.structure, vibration.mode, vibration.amplitude, vibration.phase);
       const positive = displacedVibrationStructure(frame.structure, vibration.mode, vibration.amplitude, 1);
       const vectors = vibration.arrows ? positive.atoms.map((atom, atomIndex) => ({ atomIndex, vector: [atom.x - frame.structure.atoms[atomIndex].x, atom.y - frame.structure.atoms[atomIndex].y, atom.z - frame.structure.atoms[atomIndex].z] as [number, number, number] })) : undefined;
       return { structure, vectors, error: '' };
     } catch (cause) { return { structure: frame.structure, vectors: undefined, error: cause instanceof Error ? cause.message : String(cause) }; }
-  }, [frame, vibration, vibrationProjection, result]);
+  }, [frame, vibration, vibrationProjection, result,playbackDisplay]);
   const view = useMemo(() => frame.structure.bonds!==undefined||bondCache.has(frame.structure,frame.index)?bondCache.resolve(frame.structure, frame.index):{structure:{...frame.structure,bonds:[]},source:'unavailable' as const,message:'显示连接尚未准备；当前仅显示原子。'}, [bondCache, frame.structure, frame.index, bondEpoch]);
-  const viewDocument = useMemo(() => {const document=trajectoryViewDocument(result, view.structure, frame.index);return props.modelDocument?{...document,id:props.modelDocument.id}:document;}, [result, view, frame.index,props.modelDocument?.id]);
+  const viewDocument = useMemo(() => {const document=trajectoryViewDocument(result, {...view.structure,atoms:playbackDisplay.structure.atoms}, frame.index);return props.modelDocument?{...document,id:props.modelDocument.id}:document;}, [result, view, frame.index,props.modelDocument?.id,playbackDisplay.structure]);
   const staticDocument=useMemo(()=>{const document=trajectoryViewDocument(result,{...frame.structure,bonds:frame.structure.bonds??[]},frame.index);return props.modelDocument?{...document,id:props.modelDocument.id}:document;},[result,frame,props.modelDocument?.id]);
   const frameListener=useRef(props.onScientificFrame);frameListener.current=props.onScientificFrame;
   const notifiedFrame=useRef<number|undefined>(undefined);
   useEffect(()=>{if(active&&initialFrameResolved&&notifiedFrame.current!==frame.index){notifiedFrame.current=frame.index;frameListener.current?.({resultId:result.id,frameIndex:frame.index});}},[active,initialFrameResolved,result.id,frame.index]);
   const atomScalarValues = useMemo(() => atomProperty ? atomicScalars(atomProperty, frame.structure, frame.index) : undefined, [atomProperty, frame]);
   const onViewReady = useCallback((getter: (() => number[]) | null) => { getView.current = getter; setViewReady(Boolean(getter)); }, []);
+  useEffect(()=>{lease.reacquire();return()=>lease.release();},[lease]);
   useEffect(()=>{session.onError=message=>onError.current?.(message);lease.setEnvironment(active&&!playbackCollectionRestriction(collection),true);},[session,lease,active,collection]);
   useEffect(()=>session.setFrameOrder(frameOrder),[session,frameOrder]);
   const firstMeasurementFrame=useRef(true);
@@ -210,13 +217,13 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
       if (visual && !getView.current) throw new Error('三维视口尚未就绪。');
       const bounds = viewport.current?.querySelector('.model-viewport-canvas')?.getBoundingClientRect();
       const limits = playbackRange(range, result.frames.length);
-      await props.onExport({ result:await trajectoryPlaybackExport(result,frameOrder,controller.signal), range: direction === 1 ? { ...range } : { start: limits.last, end: limits.first, stride: range.stride }, fps, currentIndex: playbackIndex, direction, mode, format,
+      await props.onExport({ result:await trajectoryPlaybackExport(visual?conformerVisualTrajectory(result):result,frameOrder,controller.signal), range: direction === 1 ? { ...range } : { start: limits.last, end: limits.first, stride: range.stride }, fps, currentIndex: playbackIndex, direction, mode, format,
         width: exportSize.width, height: exportSize.height,
         viewportWidth: Math.max(1, Math.round(bounds?.width ?? 800)), viewportHeight: Math.max(1, Math.round(bounds?.height ?? 600)), document: structuredClone(viewDocument),
         viewBonds: structuredClone(bondCache.snapshot(view.structure, frame.index)), resultKind: result.kind,
         cameraView: getView.current ? [...getView.current()] : [], display: structuredClone(display), showAxes,
         measurement: structuredClone(measurement), energySeries, signal: controller.signal,
-        displayedStructure: vibration ? structuredClone(displacement.structure) : undefined,
+        displayedStructure: vibration || visual&&playbackDisplay.aligned ? structuredClone(displacement.structure) : undefined,
         vibration: vibrationRequest ? { mode: vibrationRequest.mode, displayIndex: vibrationRequest.displayIndex, frameIndex: vibrationRequest.frameIndex, amplitude: vibrationRequest.amplitude, phase: 0, playing: false, arrows: vibration?.arrows ?? true, baseStructure: structuredClone(vibrationRequest.baseStructure) }
           : vibration ? { ...structuredClone(vibration), amplitude: format === 'gif' && vibrationProjection ? vibrationProjection.amplitude : vibration.amplitude, playing: false, frameIndex: frame.index, baseStructure: structuredClone(frame.structure) } : undefined,
         vibrationGif: vibrationRequest ? { periodMs: vibrationRequest.periodMs, durationSeconds: vibrationRequest.durationSeconds }
@@ -229,9 +236,9 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   }
   const collectionRestriction=playbackCollectionRestriction(collection);
   const summary = result.frames[frame.index], disabled = !!collectionRestriction||!active || exporting || snapshot.loading || snapshot.loadCancelled;
-  const multiframe=usePostprocessMultiframe({result,prepared:props.prepared,documentId:props.modelDocument?.id??result.id,sourceRevision:collection.identity.revision,stageId:collection.identity.stageId,currentIndex:frame.index,active:active&&!vibration&&!vibrationProjection,collection,centerResources:props.centerResources});
+  const multiframe=usePostprocessMultiframe({result,prepared:props.prepared,documentId:props.modelDocument?.id??result.id,sourceRevision:collection.identity.revision,stageId:collection.identity.stageId,currentIndex:frame.index,active:active&&!vibration&&!vibrationProjection,collection,centerResources:props.centerResources,...(fixedCoreDisplay?{projectDisplayFrame:finalDisplayFrame}: {})});
   const overlayKey=JSON.stringify(playbackOverlayPresentation(multiframe));
-  const overlayControls=useMemo(()=><PlaybackOverlayControls {...multiframe} disabled={disabled||!!vibration||!!vibrationProjection}/>,[overlayKey,disabled,!!vibration,!!vibrationProjection,multiframe.onToggle,multiframe.onFitAtoms,multiframe.onReference,multiframe.onReferenceIndex,multiframe.onCurrentReference,multiframe.onCancelCenter]);
+  const overlayControls=useMemo(()=><>{fixedCoreDisplay&&<small>运行快照核心固定；参考选择不改变显示坐标。</small>}<PlaybackOverlayControls {...multiframe} disabled={disabled||!!vibration||!!vibrationProjection}/></>,[overlayKey,fixedCoreDisplay,disabled,!!vibration,!!vibrationProjection,multiframe.onToggle,multiframe.onFitAtoms,multiframe.onReference,multiframe.onReferenceIndex,multiframe.onCurrentReference,multiframe.onCancelCenter]);
   const editObservation=useRef({frame:staticDocument.draft.structure,vibration:vibrationProjection,pause});editObservation.current={frame:staticDocument.draft.structure,vibration:vibrationProjection,pause};
   const prepareModelEdit=useCallback(()=>{const own=editObservation.current;own.pause();pauseVibrationProjection(own.vibration);setVibration(value=>value?{...value,playing:false,phase:0,amplitude:0}:null);return structuredClone(own.frame);},[]);
   const playbackCommand=useRef<(command:TrajectoryPlaybackCommand)=>void>(()=>undefined);
@@ -250,19 +257,19 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   };
   const dispatchPlayback=useCallback((command:TrajectoryPlaybackCommand)=>playbackCommand.current(command),[]);
   const trajectoryPlayback=useMemo<TrajectoryPlaybackBridge>(()=>({state:{resultId:result.id,projectionKey:frameOrder.join(','),collectionIdentity:collection.identity,frameId:collection.frames.find(entry=>entry.sourceFrameIndex===frame.index)?.frameId,targets:collection.targets,overlay:playbackOverlayPresentation({...multiframe,disabled}),count:collection.frames.length,index:collection.frames.findIndex(entry=>entry.sourceFrameIndex===frame.index),playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,preparation:snapshot.preparation,loading:snapshot.loading,loadCancelled:snapshot.loadCancelled,silentLoading:snapshot.silentLoading},dispatch:dispatchPlayback}),[result.id,collection,frame.index,overlayKey,frameOrder,playbackIndex,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,snapshot.preparation,snapshot.loading,snapshot.loadCancelled,snapshot.silentLoading,dispatchPlayback]);
-  const playbackControls=useMemo(()=><div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...trajectoryPlayback.state} {...trajectoryControlCallbacks(dispatchPlayback)} detailsContent={overlayControls}/></div>,[trajectoryPlayback,dispatchPlayback,overlayControls]);
+  const playbackControls=useMemo(()=><div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...trajectoryPlayback.state} {...trajectoryControlCallbacks(dispatchPlayback)} detailsContent={overlayControls}/>{playbackDisplay.restored&&<small role="status">显示已恢复运行快照核心；能量来自原始MD。</small>}{playbackDisplay.restriction&&<small role="status">{playbackDisplay.restriction}</small>}</div>,[trajectoryPlayback,dispatchPlayback,overlayControls,playbackDisplay.restored,playbackDisplay.restriction]);
   const exportOwner=useRef(exportResult);exportOwner.current=exportResult;
   const exportCanvas=useCallback(()=>void exportOwner.current(),[]);
   const modelEditingBlocked=playing||Boolean(vibration?.playing)||Boolean(vibrationProjection?.playing);
   const onCipLabelsUsed=useCurrentCipUsage(viewDocument,active&&initialFrameResolved,props.onCipLabelsUsed);
-  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,prepareModelEdit,modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{displayAtoms:displacement.structure.atoms,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&!busy,exporting}),[viewDocument,staticDocument,prepareModelEdit,modelEditingBlocked,result,frame.index,playbackControls,props.canvasOnly,trajectoryPlayback,displacement.structure.atoms,displacement.vectors,atomScalarValues,multiframe.plan,onViewReady,exportCanvas,active,busy,exporting]);
+  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,prepareModelEdit,modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{...(playbackDisplay.aligned?{viewTransform:DISPLAY_IDENTITY}:{}),displayAtoms:displacement.structure.atoms,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&!busy,exporting}),[viewDocument,staticDocument,prepareModelEdit,modelEditingBlocked,result,frame.index,playbackControls,props.canvasOnly,trajectoryPlayback,displacement.structure.atoms,displacement.vectors,atomScalarValues,multiframe.plan,playbackDisplay.aligned,onViewReady,exportCanvas,active,busy,exporting]);
   useLayoutEffect(()=>{props.onCanvas?.(active&&initialFrameResolved?canvas:null);},[props.onCanvas,active,initialFrameResolved,canvas]);
   const canvasOwner=useRef(props.onCanvas);canvasOwner.current=props.onCanvas;
   useEffect(()=>()=>canvasOwner.current?.(null),[]);
   const content=<section className="trajectory-workspace" data-testid="trajectory-workspace" data-result-id={result.id} data-frame-index={frame.index} data-playing={playing} aria-label={result.kind === 'collection' ? '结构集合浏览' : '只读轨迹结果'}>
     {props.available===false&&<p role="status">结构已修改，此结果暂不可用；撤销相关修改可恢复</p>}
     <header className="trajectory-heading"><strong title={result.label}>{result.label}</strong><span>{result.kind === 'collection' ? '结构集合 · 无时间对应' : result.scientific ? '计算结果' : result.kind === 'optimization' ? 'OPT结果' : '轨迹'} · {statusLabel[result.status]}</span>
-      <button disabled={disabled || busy} onClick={() => { pause(); setVibration(value => value ? { ...value, playing: false } : null); props.onExtract(vibrationProjection ? signedVibrationStructure(frame.structure, vibrationProjection.mode, vibrationProjection.manualDisplacementAngstrom) : structuredClone(displacement.structure)); }}>{vibration ? '提取手动位移为新模型' : '提取当前帧为新模型'}</button>
+      <button disabled={disabled || busy} onClick={() => { pause(); setVibration(value => value ? { ...value, playing: false } : null); props.onExtract(vibrationProjection ? signedVibrationStructure(frame.structure, vibrationProjection.mode, vibrationProjection.manualDisplacementAngstrom) : structuredClone(vibration ? displacement.structure : frame.structure)); }}>{vibration ? '提取手动位移为新模型' : '提取当前帧为新模型'}</button>
       {!props.onCanvas&&<details className="trajectory-view-options"><summary>显示</summary><div>
         <label><input type="checkbox" checked={display.atomNumbers} onChange={e => changeDisplay('atomNumbers', e.target.checked)}/>编号</label>
         <label><input type="checkbox" checked={showAxes} onChange={e => setShowAxes(e.target.checked)}/>坐标轴</label>
@@ -284,14 +291,14 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
       {playbackControls}
       <div className="trajectory-viewport" ref={viewport}><ModelViewport onCipLabelsUsed={onCipLabelsUsed} document={viewDocument} display={display} interaction={interaction}
       readOnly structureLocked active={active&&initialFrameResolved} observationFixedFrame observationTool="rotate" showAxes={showAxes} resetViewRequest={resetView}
-      displayAtoms={displacement.structure.atoms} vibrationVectors={displacement.vectors} atomScalarValues={atomScalarValues} multiframeDisplay={multiframe.plan}
+      viewTransform={playbackDisplay.aligned?DISPLAY_IDENTITY:undefined} displayAtoms={displacement.structure.atoms} vibrationVectors={displacement.vectors} atomScalarValues={atomScalarValues} multiframeDisplay={multiframe.plan}
       measurement={measurement} onMeasurementPick={id => setMeasurement(value => id ? pickMeasurement(value, id) : emptyMeasurement(value.mode))}
       onViewReady={onViewReady} onHover={noEdit} onGestureStart={noEdit} onGestureEnd={noEdit} onSelection={noEdit} onCommand={noEdit} onError={props.onError}/>{vibration && <div className="trajectory-vibration-badge">模式 {vibration.mode.index} · {vibration.mode.frequency} cm⁻¹ · 只读位移</div>}</div></div>}
       {result.scientific && <ScientificResultPanels result={result} structure={frame.structure} currentIndex={frame.index} disabled={disabled || busy} onSelectFrame={seek}
         vibration={vibration} onVibration={value => { pause(); setVibration(value); }} onAtomProperty={setAtomProperty} onVibrationProjection={publishVibration} onExtractStructure={props.onExtract} onExportVibrationGif={props.onExport ? request => exportResult(request) : undefined} onError={props.onError}
         onDisplacedModel={sign => { if (!vibration || disabled) return; pause(); setVibration(value => value ? { ...value, playing: false } : null); try { props.onExtract(displacedVibrationStructure(frame.structure, vibration.mode, vibration.amplitude, sign)); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } }}
         onPrepareIrc={props.onPrepareIrc ? () => { pause(); setVibration(null); props.onPrepareIrc?.(structuredClone(frame.structure)); } : undefined}/>}</div>
-    <footer className="trajectory-footer"><div className="trajectory-frame-info"><span>{summary?.label ?? `帧 ${frame.index + 1}`}</span>{summary?.sourceStep != null && <span>步骤 {summary.sourceStep}</span>}{summary?.time && <span>时间 {summary.time.value} {summary.time.unit}</span>}{summary?.energy && <span>{vibration ? '母几何能量' : '能量'} {summary.energy.value} {summary.energy.unit}</span>}<span>{frame.structure.atoms.length} 原子</span><span title="显示键不写入源结构、取帧结果或原始XYZ导出">{view.message}</span></div>
+    <footer className="trajectory-footer"><div className="trajectory-frame-info"><span>{summary?.label ?? `帧 ${frame.index + 1}`}</span>{summary?.sourceStep != null && <span>步骤 {summary.sourceStep}</span>}{summary?.time && <span>时间 {summary.time.value} {summary.time.unit}</span>}{summary?.energy && <span>{vibration ? '母几何能量' : playbackDisplay.restored ? '原始MD能量' : '能量'} {summary.energy.value} {summary.energy.unit}</span>}<span>{frame.structure.atoms.length} 原子</span><span title="显示键不写入源结构、取帧结果或原始XYZ导出">{view.message}</span></div>
       {result.kind !== 'collection' && <div className="trajectory-trace-controls"><button disabled={disabled || tracing || vibration != null || measurement.atomIds.length < 2 || measurement.atomIds.length > 4} onClick={() => void traceMeasurement()}>追踪所选 B/A/D 内坐标</button>{tracing && <><span>读取来源帧…</span><button onClick={() => traceController.current?.abort()}>取消追踪</button></>}{coordinateTrace && <button onClick={() => setCoordinateTrace(null)}>关闭内坐标曲线</button>}</div>}
     </footer>
     {coordinateTrace && <CoordinatePlot trace={coordinateTrace} currentIndex={frame.index} onSelectFrame={index => { if (!disabled) seek(index); }}/>}

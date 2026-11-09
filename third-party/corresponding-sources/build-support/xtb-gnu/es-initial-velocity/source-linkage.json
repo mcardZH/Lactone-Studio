@@ -1,0 +1,152 @@
+{
+  "schema": "ester-xtb-h-init-source-linkage/v1",
+  "version": "6.7.0",
+  "algorithm": "xtb-h-only-initial-cap-v1",
+  "buildId": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
+  "engineIdentity": "585693866b1d9619d312237f82cf1e3684566b5886c7dd7849cdb2b1195656fb",
+  "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
+  "upstreamArchive": {
+    "path": "third-party/corresponding-sources/archives/xtb-gnu/xtb-5071a886-source.tar.gz",
+    "bytes": 1681547,
+    "sha256": "2e4b378c644a053da66137f82aeeb8c796c81714fdfce917f71d94eac65f06fc"
+  },
+  "exactPatch": {
+    "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/xtb-initial-velocity-a04.patch",
+    "bytes": 2563,
+    "sha256": "0f9fed4d654dc17ae64a37a469ad2d206e0d2f7deebd0c831b01fbb7c8a607dd"
+  },
+  "patchedFile": {
+    "path": "src/dynamic.f90",
+    "beforeSha256": "32b604dfc82eb647b753cd8ff1b650547fcb686e5f1b668a70dfb472aedbfd91",
+    "afterSha256": "1b23863afc82582386e4a3a4c1711e09439e79417a65b133219810214c65ca4f"
+  },
+  "sourceReceipt": {
+    "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json",
+    "bytes": 13500,
+    "sha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a"
+  },
+  "sourceControls": [
+    {
+      "path": "scripts/native/xtb-initial-velocity.f90",
+      "bytes": 1962,
+      "sha256": "28ce89bf96ab2443773a2926402a0545ab17ea82218ee7e2c1d68d9b5779caf8"
+    },
+    {
+      "path": "scripts/native/patch-xtb-initial-velocity.py",
+      "bytes": 1480,
+      "sha256": "32dd61cde3ec46bbfe7f74e3c12504bf23dca9e5ea8c2ac473bff7dbcc25d4e2"
+    },
+    {
+      "path": "scripts/native/rebuild-xtb-initial-velocity.py",
+      "bytes": 5967,
+      "sha256": "f2844b3680b43597008d6199224347b55a2925169d7808da65146d1f6271d082"
+    },
+    {
+      "path": "scripts/native/compose-xtb-initial-velocity.py",
+      "bytes": 9198,
+      "sha256": "ee8099557163f1f6dbad16962b643ed5d851e7d8a400d678a48d6911aed757f8"
+    }
+  ],
+  "executable": {
+    "path": "runtime/resources/xtb/bin/xtb.exe",
+    "bytes": 14614545,
+    "sha256": "5e8a0d6a738922b084bea7bdfa1086d674232916257df73886e5d6557ba06124"
+  },
+  "runtimeComposition": {
+    "kind": "new-executable-with-unchanged-published-runtime",
+    "sourceBuildName": "5071a886-gnu132-r2-es-hcap-v1",
+    "buildId": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
+    "parentBuildId": "5071a886-gnu132-r2-openblas033-a01",
+    "parentManifestSha256": "bfc1291371d1faaf5683672f5d2520201e162bfe5a7acff1e91fd7f75f8ffd41",
+    "parentSourceReceipt": {
+      "path": "provenance/openblas-runtime-revision.json",
+      "bytes": 2185,
+      "sha256": "b8ce3a40717eb518ed78f16a7a0481e5af1b602e06cfe9ca4910e10c30fe6bc6"
+    }
+  },
+  "unchangedRuntimeAndParameters": [
+    {
+      "path": "bin/libdl.dll",
+      "bytes": 60228,
+      "sha256": "09ffe313366349710d7606fad2b192826a0fb55e693f9d8a4eeb4ec1059f3c61"
+    },
+    {
+      "path": "bin/libgcc_s_seh-1.dll",
+      "bytes": 189830,
+      "sha256": "7a315f073b3feda48c63a9bda3951c9d8f53cfeecd545fea75bf67756024f5b0"
+    },
+    {
+      "path": "bin/libgfortran-5.dll",
+      "bytes": 3896233,
+      "sha256": "683271e02ab3524e80ca935997d5326522956b9e5aa582ea750b4e3c6c9d53b6"
+    },
+    {
+      "path": "bin/libgomp-1.dll",
+      "bytes": 383912,
+      "sha256": "b193e98534d98659b83c561103bd7cf5a6a9f320d8b2d04456a70476e26d2da4"
+    },
+    {
+      "path": "bin/libquadmath-0.dll",
+      "bytes": 449972,
+      "sha256": "14c3356da8b677ea9ed73051739ad08807734a1410d570c95b5cb8b20f35e112"
+    },
+    {
+      "path": "bin/libwinpthread-1.dll",
+      "bytes": 111375,
+      "sha256": "02be535e6495e755cf0532589303841c09d125ddca88bc6db294c8d76a1516cf"
+    },
+    {
+      "path": "bin/openblas.dll",
+      "bytes": 28357632,
+      "sha256": "ea5706aaa7e88ea76f350faf4181c5e3393817a1ce1cd800501bf3ee21f205e8"
+    },
+    {
+      "path": "bin/VCRUNTIME140.dll",
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60"
+    },
+    {
+      "path": "share/xtb/.param_gfnff.xtb",
+      "bytes": 10664,
+      "sha256": "5cf2d1259dd3c65aa9594ea32a0c9a21bb819b6e16b81521888c5a3a1ec513e8"
+    },
+    {
+      "path": "share/xtb/param_gfn0-xtb.txt",
+      "bytes": 39220,
+      "sha256": "278461cabbf89b14379aedc78ef3e141c8cef1f911f3a3c72530aec7a52b6d34"
+    },
+    {
+      "path": "share/xtb/param_gfn1-si-xtb.txt",
+      "bytes": 28007,
+      "sha256": "f878fd7f8eea16f326aff283fbc7ca23800045992c0f86536e18ad91816cf7ca"
+    },
+    {
+      "path": "share/xtb/param_gfn1-xtb.txt",
+      "bytes": 27800,
+      "sha256": "81a9d7afdee31f5d8fd67a4d8ec966179317c7b100261c9c82d724bafb460399"
+    },
+    {
+      "path": "share/xtb/param_gfn2-xtb.txt",
+      "bytes": 35849,
+      "sha256": "f6f05c6c5264cb2f75c54f8ac6838044541c1e493b16f1a4d4ee4fa64de5f545"
+    },
+    {
+      "path": "share/xtb/param_ipea-xtb.txt",
+      "bytes": 27805,
+      "sha256": "08a39b7854b915501d8ba87b7d3330f28932f293479a0dc52b502f039c19f122"
+    }
+  ],
+  "sourcePatchApplicationVerified": true,
+  "buildReceiptSupplied": true,
+  "wholeProductCleanRebuildPerformed": false,
+  "scientificAcceptanceClaimed": false,
+  "privateEvidencePolicy": "Build request/terminal records and compiled-kernel observations are retained privately. Their hashes in the unchanged source receipt are provenance references, not additional public source files or a scientific acceptance claim.",
+  "receiptPathBases": {
+    "rawBuild.preferredSourceTree": "receipt directory",
+    "rawBuild.runtimeSourceReceipt": "receipt directory",
+    "runtimeComposition.parentSourceReceipt": "this component directory",
+    "originalRuntimeSourceReceipt": "this component directory",
+    "unchangedRuntimeAndParameters": "portable runtime/resources/xtb root",
+    "rawBuild.inventoryFiles": "original raw build payload, before the separately stated runtime composition"
+  }
+}

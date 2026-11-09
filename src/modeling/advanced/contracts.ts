@@ -61,6 +61,11 @@ export type AdvancedMixedSamplingCard =
   | { id: string; kind: 'conformer-search'; search: AdvancedFlexibleSamplingDefinition };
 /** Draft only. Each run captures its own selected initial geometry and settings. */
 export interface AdvancedMixedSamplingDefinition {
+  /** New captures use the initial document's shared hard freezes only.
+   * Absent on historical soft-protection definitions; never infer conversion. */
+  protectionMode?:'shared-freeze';
+  /** Missing preserves legacy nonempty activation; false retains definitions. */
+  coreProtectionEnabled?:boolean;
   cards: AdvancedMixedSamplingCard[]; dedupRmsdAngstrom?: number;
   /** One optional final collection pass; generation itself counts received frames. */
   deduplicationEnabled?: boolean;
@@ -156,6 +161,7 @@ export interface AdvancedResultFrame {
   /** Two complete input sources, not a guessed screened/refined pose bijection. */
   parentRefs?: [AdvancedFrameRef, AdvancedFrameRef];
   samplingOrigin?: { initialGuessId: string; cardId: string; cardRevision?:number;batchId?:string;segmentId?:string;source: AdvancedFrameSource; protectedAtomIds: string[];
+    protection?:import('./conformer-protection').ConformerProtectionSnapshot;
     discreteTorsions?:{atomIds:[string,string,string,string];pointIndex:number;pointCount:number;targetDegrees:number}[] };
 }
 export interface AdvancedCalculationResult {
@@ -188,7 +194,8 @@ export interface AdvancedSamplingGenerationProgress {
   startedAt:number;elapsedMs:number;etaMs:number|null;
 }
 export interface AdvancedTaskRun {
-  backgroundProgress?: { phase: 'generate' | 'deduplicate' | 'cluster' | 'prepare-results'; completed: number; total: number | null; valid?: number;elapsedMs?:number;etaMs?:number|null;generation?:AdvancedSamplingGenerationProgress };
+  protection?:import('./conformer-protection').ConformerProtectionSnapshot;
+  backgroundProgress?: { phase: 'generate' | 'deduplicate' | 'cluster' | 'eliminate-equivalent' | 'prepare-results';stageId?:string; completed: number; total: number | null; valid?: number;elapsedMs?:number;etaMs?:number|null;generation?:AdvancedSamplingGenerationProgress };
   id: string; taskId: string; mode: 'start' | 'resume' | 'retry'; fromRunId?: string;
   status: AdvancedRunStatus; createdAt: number; startedAt?: number; finishedAt?: number;
   intent?: 'sampling' | 'stage' | 'batch'; workflowRevision?: number;
