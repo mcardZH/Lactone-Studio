@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const xtbContract = require('../../desktop/xtb-runtime-contract.cjs');
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
@@ -9,22 +14,24 @@ const HELPER_SUFFIXES = Object.freeze(['', ' (GPU)', ' (Plugin)', ' (Renderer)']
 
 function collectTransitiveDependencies(nodeModulesDir, rootPackageNames) {
   const seen = new Set();
-  function visit(pkgName) {
+  function visit(pkgName, isOptional = false) {
     if (seen.has(pkgName)) return;
     const pkgJsonPath = path.join(nodeModulesDir, pkgName, 'package.json');
-    if (!fs.existsSync(pkgJsonPath)) return;
+    if (!fs.existsSync(pkgJsonPath)) {
+      if (isOptional) return;
+      throw new Error(`Missing required packaging input (node_modules package ${pkgName}): ${pkgJsonPath}`);
+    }
     seen.add(pkgName);
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-    const deps = {
-      ...(pkgJson.dependencies || {}),
-      ...(pkgJson.optionalDependencies || {}),
-    };
-    for (const depName of Object.keys(deps)) {
-      visit(depName);
+    for (const depName of Object.keys(pkgJson.dependencies || {})) {
+      visit(depName, false);
+    }
+    for (const depName of Object.keys(pkgJson.optionalDependencies || {})) {
+      visit(depName, true);
     }
   }
   for (const name of rootPackageNames) {
-    visit(name);
+    visit(name, false);
   }
   return [...seen];
 }
@@ -288,6 +295,34 @@ function readJsonStrictIfExists(filePath, label) {
   }
 }
 
+function sha256File(filePath) {
+  const bytes = fs.readFileSync(filePath);
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function verifyLockedMemberRows(repoRoot, rootRel, files, label) {
+  if (!Array.isArray(files)) return;
+  for (const row of files) {
+    if (!row || typeof row.path !== 'string') continue;
+    const memberPath = path.join(repoRoot, rootRel, row.path);
+    if (!fs.existsSync(memberPath)) {
+      throw new Error(`Missing locked runtime member in ${label} (${row.path}): ${memberPath}`);
+    }
+    const stat = fs.lstatSync(memberPath);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error(`Invalid locked runtime member in ${label} (${row.path}): ${memberPath}`);
+    }
+    if (typeof row.bytes === 'number' && stat.size !== row.bytes) {
+      throw new Error(
+        `Locked runtime member size mismatch in ${label} (${row.path}): expected ${row.bytes}, got ${stat.size}`,
+      );
+    }
+    if (typeof row.sha256 === 'string' && sha256File(memberPath) !== row.sha256) {
+      throw new Error(`Locked runtime member sha256 mismatch in ${label} (${row.path}): ${memberPath}`);
+    }
+  }
+}
+
 function verifyLockInventoryIfPresent(repoRoot, lockObj, label) {
   if (!lockObj) return;
   if (lockObj.inventory && typeof lockObj.inventory.path === 'string') {
@@ -302,26 +337,16 @@ function verifyLockInventoryIfPresent(repoRoot, lockObj, label) {
     ) {
       throw new Error(`Inventory size mismatch for ${label}: ${invPath}`);
     }
+    if (
+      typeof lockObj.inventory.sha256 === 'string' &&
+      sha256File(invPath) !== lockObj.inventory.sha256
+    ) {
+      throw new Error(`Inventory sha256 mismatch for ${label}: ${invPath}`);
+    }
     const invDoc = readJsonStrictIfExists(invPath, `${label} inventory`);
-    if (Array.isArray(invDoc?.files)) {
-      for (const row of invDoc.files) {
-        if (!row || typeof row.path !== 'string') continue;
-        const memberPath = path.join(repoRoot, lockObj.root, row.path);
-        if (!fs.existsSync(memberPath)) {
-          throw new Error(`Missing locked runtime member in ${label} (${row.path}): ${memberPath}`);
-        }
-      }
-    }
+    verifyLockedMemberRows(repoRoot, lockObj.root, invDoc?.files, label);
   }
-  if (Array.isArray(lockObj.files)) {
-    for (const row of lockObj.files) {
-      if (!row || typeof row.path !== 'string') continue;
-      const memberPath = path.join(repoRoot, lockObj.root, row.path);
-      if (!fs.existsSync(memberPath)) {
-        throw new Error(`Missing locked runtime member in ${label} (${row.path}): ${memberPath}`);
-      }
-    }
-  }
+  verifyLockedMemberRows(repoRoot, lockObj.root, lockObj.files, label);
 }
 
 export function resolveDefaultMacRuntimeSources(
@@ -512,8 +537,15 @@ export function assembleMacAppBundle(options = {}) {
   const distDir = path.join(repoRoot, 'dist');
   const desktopDir = path.join(repoRoot, 'desktop');
   const chemistrySrcDir = path.join(desktopDir, 'chemistry');
+  const pkgJsonPath = path.join(repoRoot, 'package.json');
+  const licensePath = path.join(repoRoot, 'LICENSE.txt');
+  const nodeModulesDir = path.join(repoRoot, 'node_modules');
 
   for (const [label, targetPath] of [
+    ['package.json', pkgJsonPath],
+    ['LICENSE.txt', licensePath],
+    ['node_modules directory', nodeModulesDir],
+    ['ssh2 runtime dependency', path.join(nodeModulesDir, 'ssh2', 'package.json')],
     ['Electron.app template', electronAppPath],
     ['Electron Info.plist', path.join(electronAppPath, 'Contents', 'Info.plist')],
     ['frontend dist directory', distDir],
@@ -532,6 +564,7 @@ export function assembleMacAppBundle(options = {}) {
       throw new Error(`Missing required packaging input (${label}): ${targetPath}`);
     }
   }
+  const runtimePackages = collectTransitiveDependencies(nodeModulesDir, ['ssh2']);
 
   for (const pkgName of REQUIRED_PYTHON_PACKAGES) {
     const pkgPath = path.join(pythonDepsRoot, 'lib', 'python3.12', 'site-packages', pkgName);
@@ -556,10 +589,11 @@ export function assembleMacAppBundle(options = {}) {
   validateMachOTreeArch(pythonDepsRoot, arch, 'Python scientific dependencies');
 
   const xtbManifestPath = path.join(xtbSourceRoot, 'runtime.json');
-  const xtbManifest = readJsonStrictIfExists(xtbManifestPath, 'xTB runtime.json');
+  const xtbManifest = xtbContract.validateDescriptor(
+    readJsonStrictIfExists(xtbManifestPath, 'xTB runtime.json'),
+  );
   const expectedPlatformId = `darwin-${arch}`;
   if (
-    !xtbManifest ||
     xtbManifest.schema !== 'sciyue-xtb-bundled-runtime/v1' ||
     xtbManifest.platform !== expectedPlatformId ||
     xtbManifest.entry !== 'bin/xtb'
@@ -575,13 +609,16 @@ export function assembleMacAppBundle(options = {}) {
     if (!fs.existsSync(libPath)) {
       throw new Error(`Missing required packaging input (xTB library ${relLib}): ${libPath}`);
     }
+    xtbContract.ordinary(xtbSourceRoot, relLib);
   }
   for (const relParam of DARWIN_XTB_PARAMETERS) {
     const paramPath = path.join(xtbSourceRoot, relParam);
     if (!fs.existsSync(paramPath)) {
       throw new Error(`Missing required packaging input (xTB parameter ${relParam}): ${paramPath}`);
     }
+    xtbContract.ordinary(xtbSourceRoot, relParam);
   }
+  xtbContract.ordinary(xtbSourceRoot, 'bin/xtb');
 
   fs.mkdirSync(outputDir, { recursive: true });
   const appBundlePath = path.join(outputDir, `${productName}.app`);
@@ -597,14 +634,8 @@ export function assembleMacAppBundle(options = {}) {
   removeTreeForce(appResourcesPath);
   fs.mkdirSync(appResourcesPath, { recursive: true });
 
-  const pkgJsonPath = path.join(repoRoot, 'package.json');
-  if (fs.existsSync(pkgJsonPath)) {
-    fs.copyFileSync(pkgJsonPath, path.join(appResourcesPath, 'package.json'));
-  }
-  const licensePath = path.join(repoRoot, 'LICENSE.txt');
-  if (fs.existsSync(licensePath)) {
-    fs.copyFileSync(licensePath, path.join(appResourcesPath, 'LICENSE.txt'));
-  }
+  fs.copyFileSync(pkgJsonPath, path.join(appResourcesPath, 'package.json'));
+  fs.copyFileSync(licensePath, path.join(appResourcesPath, 'LICENSE.txt'));
 
   copyTreePreservingSymlinks(distDir, path.join(appResourcesPath, 'dist'));
   copyTreePreservingSymlinks(desktopDir, path.join(appResourcesPath, 'desktop'));
@@ -619,15 +650,11 @@ export function assembleMacAppBundle(options = {}) {
     copyTreePreservingSymlinks(ocrRuntimeDir, path.join(appResourcesPath, 'runtime', 'ocr'));
   }
 
-  const nodeModulesDir = path.join(repoRoot, 'node_modules');
-  if (fs.existsSync(nodeModulesDir)) {
-    const runtimePackages = collectTransitiveDependencies(nodeModulesDir, ['ssh2']);
-    for (const pkgName of runtimePackages) {
-      copyTreePreservingSymlinks(
-        path.join(nodeModulesDir, pkgName),
-        path.join(appResourcesPath, 'node_modules', pkgName),
-      );
-    }
+  for (const pkgName of runtimePackages) {
+    copyTreePreservingSymlinks(
+      path.join(nodeModulesDir, pkgName),
+      path.join(appResourcesPath, 'node_modules', pkgName),
+    );
   }
 
   const chemistryDestDir = path.join(resourcesPath, 'chemistry');

@@ -366,6 +366,12 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     writeText(repoRoot, 'dist/index.html', '<html></html>');
     writeText(repoRoot, 'desktop/main.cjs', '// main');
     writeText(repoRoot, 'desktop/chemistry/engine.py', 'print("{}")\n');
+    writeText(
+      repoRoot,
+      'node_modules/ssh2/package.json',
+      JSON.stringify({ name: 'ssh2', version: '1.17.0' }),
+    );
+    writeText(repoRoot, 'node_modules/ssh2/index.js', 'module.exports = {};\n');
 
     // Simulate stageDarwinRuntime default directory naming on darwin-x64 (conda-py312-arm64 / conda-chem-arm64)
     const tcPrefix = '.local/toolchains/darwin-x64/conda-py312-arm64/python';
@@ -442,20 +448,26 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     );
     writeText(repoRoot, `${depPrefix}/lib/python3.12/site-packages/scipy/__init__.py`, '');
 
-    // Rejects unsupported xtb v2 schema without provenance anchor
+    // Rejects unsupported xtb v2 schema without provenance anchor or localUseReady: false
     writeText(
       repoRoot,
       `${xtbPrefix}/runtime.json`,
       JSON.stringify({
-        schema: 'sciyue-xtb-bundled-runtime/v2',
+        schema: 'sciyue-xtb-bundled-runtime/v1',
         version: '6.7.1',
         platform: 'darwin-x64',
+        scope: 'local-experimental',
+        localUseReady: false,
+        publicRedistributionReviewed: false,
+        distributionLicenseReady: false,
         entry: 'bin/xtb',
+        dataDirectory: 'share/xtb',
+        methods: ['gfn0', 'gfn1', 'gfn2', 'gfnff'],
       }),
     );
     assert.throws(
       () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
-      /expected schema sciyue-xtb-bundled-runtime\/v1/,
+      /XTB_RUNTIME_INCOMPLETE/,
     );
     writeText(
       repoRoot,
@@ -473,6 +485,43 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
         methods: ['gfn0', 'gfn1', 'gfn2', 'gfnff'],
       }),
     );
+
+    // Locked runtime member size/sha256 mismatch (e.g. truncated parameter file) must fail
+    writeText(
+      repoRoot,
+      'desktop/packaging/xtb-runtime.darwin-x64.lock.json',
+      JSON.stringify({
+        schema: 'sciyue-xtb-lock-v1',
+        platform: 'darwin-x64',
+        root: '.local/dependencies/darwin-x64/conda-chem-arm64',
+        contentDirectories: ['xtb'],
+        files: [
+          {
+            path: 'xtb/share/xtb/param_gfn2-xtb.txt',
+            bytes: 35849,
+            sha256: '0'.repeat(64),
+          },
+        ],
+      }),
+    );
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Locked runtime member size mismatch/,
+    );
+    fs.rmSync(path.join(repoRoot, 'desktop/packaging/xtb-runtime.darwin-x64.lock.json'));
+
+    // Missing ssh2 runtime dependency must fail
+    fs.rmSync(path.join(repoRoot, 'node_modules/ssh2'), { recursive: true, force: true });
+    assert.throws(
+      () => assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir }),
+      /Missing required packaging input \(ssh2 runtime dependency\)/,
+    );
+    writeText(
+      repoRoot,
+      'node_modules/ssh2/package.json',
+      JSON.stringify({ name: 'ssh2', version: '1.17.0' }),
+    );
+    writeText(repoRoot, 'node_modules/ssh2/index.js', 'module.exports = {};\n');
 
     // Mach-O extension (.so) architecture mismatch inside pythonDepsRoot must throw
     const arm64MachO = Buffer.alloc(32);
