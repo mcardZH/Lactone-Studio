@@ -93,7 +93,23 @@ npm run package:mac
 > sudo xattr -rd com.apple.quarantine "/Applications/Lactone Studio.app"
 > ```
 
-### 3.4 GitHub Actions 自动编译与分发 (`.github/workflows/release-macos.yml`)
+### 3.4 在 macOS 上通过 Homebrew 安装 Multiwfn（可选，波函数与轨道分析）
+
+如需使用分子轨道（HOMO/LUMO/NTO）、静电势（ESP）、电子密度、IGM/mIGM 弱相互作用等值面及原子电荷等后处理功能，可通过社区维护的 Homebrew Tap（[`digital-chemistry-laboratory/homebrew-multiwfn`](https://github.com/digital-chemistry-laboratory/homebrew-multiwfn)）在 macOS 上编译安装命令行版 `Multiwfn`：
+
+```bash
+# 添加 Tap 并启用 OpenMP 多线程支持编译安装（首次从源码编译需数分钟）
+brew tap digital-chemistry-laboratory/multiwfn
+brew install --HEAD multiwfn --with-openmp
+
+# 后续如需跟进上游更新：
+# brew upgrade multiwfn --fetch-HEAD --with-openmp
+```
+
+- **免配置自动识别**：安装完成后，Lactone Studio 启动时会自动探测 Homebrew 默认安装路径（Apple Silicon：`/opt/homebrew/opt/multiwfn/bin/multiwfn` 或 `/opt/homebrew/bin/multiwfn`；Intel Mac：`/usr/local/opt/multiwfn/bin/multiwfn` 或 `/usr/local/bin/multiwfn`），并自动关联 `<brew_prefix>/etc/multiwfn/settings.ini` 配置文件，**无需手动设置系统环境变量 `Multiwfnpath`**。
+- **手动指定路径（可选）**：若安装在其他自定义目录，或升级版本后需要重新指定，可在软件左上角 **「LS（全局设置）」->「工具与文件」** 中手动选择 `multiwfn` 可执行文件。
+
+### 3.5 GitHub Actions 自动编译与分发 (`.github/workflows/release-macos.yml`)
 
 仓库内置了自动化 macOS 构建与发布流水线 [.github/workflows/release-macos.yml](.github/workflows/release-macos.yml)：
 - **触发方式**：
