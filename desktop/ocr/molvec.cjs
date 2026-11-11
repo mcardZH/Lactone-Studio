@@ -4,6 +4,7 @@ const {assert} = require('../security.cjs');
 
 const DARWIN_ARCHITECTURES = new Set(['arm64', 'x64']);
 const DARWIN_EXECUTABLE_PATTERN = /^runtime\/(?!\.+$)([^/\\\0]+)\/(?:Contents\/Home\/)?bin\/java$/;
+const LINUX_EXECUTABLE_PATTERN = /^runtime\/(?!\.+$)([^/\\\0]+)\/bin\/java$/;
 const WIN32_EXECUTABLE_PATTERN = /^runtime\/(?!\.+$)([^/\\<>:"|?*\x00-\x1f]+)\/bin\/java\.exe$/;
 
 function isValidRelativeJreSegment(segment, platform) {
@@ -51,8 +52,23 @@ function isSupportedJavaExecutable(executable, platform, {allowAbsolute = true} 
     const match = executable.match(WIN32_EXECUTABLE_PATTERN);
     return Boolean(match && isValidRelativeJreSegment(match[1], 'win32'));
   }
+  if (platform === 'linux') {
+    if (path.posix.isAbsolute(executable)) {
+      if (!allowAbsolute) return false;
+      const parts = executable.split('/').filter(Boolean);
+      if (parts.some(part => part === '.' || part === '..')) return false;
+      const tail3 = parts.slice(-3);
+      return tail3.length === 3 && tail3[1] === 'bin' && tail3[2] === 'java';
+    }
+    if (executable.includes('\\')) return false;
+    const parts = executable.split('/');
+    if (parts.some(part => !part || part === '.' || part === '..')) return false;
+    const match = executable.match(LINUX_EXECUTABLE_PATTERN);
+    return Boolean(match && isValidRelativeJreSegment(match[1], 'linux'));
+  }
   if (platform === undefined) {
     return isSupportedJavaExecutable(executable, 'darwin', {allowAbsolute})
+      || isSupportedJavaExecutable(executable, 'linux', {allowAbsolute})
       || isSupportedJavaExecutable(executable, 'win32', {allowAbsolute});
   }
   return false;
@@ -61,7 +77,7 @@ function isSupportedJavaExecutable(executable, platform, {allowAbsolute = true} 
 function resolveJavaHome(executable, platform) {
   assert(isSupportedJavaExecutable(executable, platform), 'OCR_COMPONENT_EXECUTABLE: 组件Java启动器路径不受支持。');
   const useWin32 = platform === 'win32'
-    || (platform !== 'darwin' && !executable.startsWith('/') && (/^[A-Za-z]:[\\/]/.test(executable) || executable.includes('\\') || /\.exe$/i.test(executable)));
+    || (platform !== 'darwin' && platform !== 'linux' && !executable.startsWith('/') && (/^[A-Za-z]:[\\/]/.test(executable) || executable.includes('\\') || /\.exe$/i.test(executable)));
   const pathImpl = useWin32 ? path.win32 : path.posix;
   return pathImpl.dirname(pathImpl.dirname(executable));
 }
@@ -87,6 +103,7 @@ function parse(text) {
 module.exports = {
   DARWIN_ARCHITECTURES,
   DARWIN_EXECUTABLE_PATTERN,
+  LINUX_EXECUTABLE_PATTERN,
   WIN32_EXECUTABLE_PATTERN,
   isSupportedJavaExecutable,
   resolveJavaHome,

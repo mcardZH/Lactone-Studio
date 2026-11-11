@@ -109,6 +109,29 @@ test('sanitizeEnvironment on darwin allows ssh/slurm with POSIX privateKeyPath a
       ),
     (err) => err && err.code === 'ENVIRONMENT_INVALID'
   );
+
+  // 7. Linux behaves like POSIX client: allows ssh/slurm with POSIX privateKeyPath and rejects local/wsl
+  const linuxSsh = sanitizeEnvironment(
+    makeSshEnv({
+      schedulerKind: 'slurm',
+      authentication: 'private-key',
+      privateKeyPath: '/home/researcher/.ssh/id_ed25519'
+    }),
+    { platform: 'linux' }
+  );
+  assert.equal(linuxSsh.connectionKind, 'ssh');
+  assert.throws(
+    () =>
+      sanitizeEnvironment(
+        makeSshEnv({
+          connectionKind: 'wsl',
+          distribution: 'Ubuntu-22.04',
+          user: 'researcher'
+        }),
+        { platform: 'linux' }
+      ),
+    (err) => err && err.code === 'ENVIRONMENT_INVALID'
+  );
 });
 
 test('sanitizeEnvironment on win32 preserves local, wsl, and ssh with Windows privateKeyPath', () => {

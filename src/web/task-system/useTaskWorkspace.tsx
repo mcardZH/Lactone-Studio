@@ -40,10 +40,15 @@ export function useTaskWorkspace(ports: {
 		[libraryEntry, setLibraryEntry] = useState<TaskLibraryView | null>(null);
 	const pendingDraft = useRef<{
 		draft: ExternalInputDraft;
+		options?: { environmentId?: string; displayName?: string };
 		identity: string;
 		epoch: number;
 	} | null>(null);
 	const [operationIds, setOperationIds] = useState<string[]>([]);
+	const trackOperation = useCallback(
+		(id: string) => setOperationIds((prior) => (prior.includes(id) ? prior : [...prior, id])),
+		[]
+	);
 	const [monitorCache] = useState(() => new TaskMonitorWorkspaceCache());
 	const openedRef = useRef(false),
 		isOpen = useCallback(() => openedRef.current, []);
@@ -106,7 +111,10 @@ export function useTaskWorkspace(ports: {
 		[closeSubmission]
 	);
 	const submit = useCallback(
-		async (draft: ExternalInputDraft) => {
+		async (
+			draft: ExternalInputDraft,
+			options?: { environmentId?: string; displayName?: string }
+		) => {
 			closeSubmission();
 			const epoch = revision.current,
 				identity = current.current.identity(),
@@ -120,10 +128,10 @@ export function useTaskWorkspace(ports: {
 				revision.current === epoch &&
 				current.current.identity() === identity;
 			try {
-				let center = await bridge.request("center.enter", { entryId });
+				const center = await bridge.request("center.enter", { entryId });
 				if (!valid()) return;
 				if (!center.library.libraryId || center.manager.access === "unavailable") {
-					pendingDraft.current = { draft, identity, epoch };
+					pendingDraft.current = { draft, options, identity, epoch };
 					setLibraryEntry(center.library);
 					preparing.current = null;
 					return;
@@ -131,6 +139,22 @@ export function useTaskWorkspace(ports: {
 				if (!valid()) return;
 				if (center.manager.access !== "manager")
 					throw new Error("当前任务库由其他窗口管理，请取得管理权后提交。");
+				let resolvedEnvId = options?.environmentId;
+				if (resolvedEnvId) {
+					const env = center.environments.find((item) => item.environmentId === resolvedEnvId);
+					if (!env) {
+						throw new Error(`未找到指定的计算环境 "${resolvedEnvId}"。`);
+					}
+					if (env.engineId !== draft.engineId) {
+						throw new Error(
+							`计算环境 "${env.displayName}" (${env.environmentId}) 属于 ${env.engineId.toUpperCase()}，不能用于提交 ${draft.engineId.toUpperCase()} 任务。`
+						);
+					}
+				} else {
+					resolvedEnvId =
+						center.environments.find((item) => item.engineId === draft.engineId)?.environmentId ??
+						"";
+				}
 				const prepared = await stageExternalInput(
 					draft,
 					bridge,
@@ -144,6 +168,13 @@ export function useTaskWorkspace(ports: {
 					return;
 				}
 				preparing.current = null;
+				if (options?.environmentId || options?.displayName) {
+					setInitialRequest({
+						input: prepared,
+						environmentId: resolvedEnvId,
+						displayName: options.displayName?.trim() || prepared.suggestedName
+					});
+				}
 				setInput(prepared);
 			} catch (error) {
 				if (stagingEntry.current === entryId) releaseEntry();
@@ -178,6 +209,7 @@ export function useTaskWorkspace(ports: {
 		openTask,
 		leave,
 		submit,
+		trackOperation,
 		retainSnapshotResults: (bundle: SnapshotProjectSources, file: ScientificSourceFile) =>
 			retainSnapshotMonitorResults(monitorCache, bundle, file),
 		center: (
@@ -255,7 +287,7 @@ export function useTaskWorkspace(ports: {
 							setLibraryEntry(center.library);
 							return;
 						}
-						await submit(saved.draft);
+						await submit(saved.draft, saved.options);
 					}}
 				/>
 			</DialogShell>

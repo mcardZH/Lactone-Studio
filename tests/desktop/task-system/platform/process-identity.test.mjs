@@ -332,9 +332,34 @@ test("win32 provider inspect, probe, exact args matching, and host failure handl
 	assert.equal(failedHost.reason, "HOST_OR_BOOT_MISMATCH");
 
 	// Unsupported platform returns PLATFORM_NOT_IMPLEMENTED
-	const unsupported = createProcessIdentityProvider({ platform: "linux" });
+	const unsupported = createProcessIdentityProvider({ platform: "freebsd" });
 	assert.equal(await unsupported.inspect(100), null);
 	assert.equal((await unsupported.probe(identity)).reason, "PLATFORM_NOT_IMPLEMENTED");
+
+	// Linux platform inspects via /proc/sys/kernel/random/boot_id + /etc/machine-id + ps
+	const linuxProvider = createProcessIdentityProvider({
+		platform: "linux",
+		fs: {
+			async readFile(filePath) {
+				if (filePath === "/proc/sys/kernel/random/boot_id") return "boot-linux-001\n";
+				if (filePath === "/etc/machine-id") return "machine-linux-001\n";
+				throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+			}
+		},
+		execFile(_file, args, _opts, cb) {
+			const fmt = args[args.length - 1];
+			if (fmt.endsWith("comm=")) {
+				cb(null, "  4242  1000 S    Mon Nov  9 10:20:30 2026 lactone-studio-bin\n", "");
+			} else {
+				cb(null, "  4242  1000 S    Mon Nov  9 10:20:30 2026 /opt/lactone-studio/lactone-studio-bin --no-sandbox\n", "");
+			}
+		}
+	});
+	const linuxIdentity = await linuxProvider.inspect(4242, { instanceId: "linux-host-test" });
+	assert.ok(linuxIdentity);
+	assert.equal(linuxIdentity.hostId, "machine-linux-001");
+	assert.equal(linuxIdentity.bootId, "boot-linux-001");
+	assert.equal((await linuxProvider.probe(linuxIdentity)).status, "alive");
 });
 
 if (process.platform === "darwin") {

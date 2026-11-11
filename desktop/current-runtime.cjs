@@ -39,6 +39,16 @@ const PLATFORM_LAYOUTS = Object.freeze({
     pythonRequiredMembers: Object.freeze(['python/lib/python3.12/os.py']),
     xtbEntry: 'xtb/bin/xtb',
     packagedEngineEntry: 'engine'
+  }),
+  'linux-x64': Object.freeze({
+    platform: 'linux-x64',
+    dependenciesParent: '.local/dependencies/linux-x64',
+    toolchainsParent: '.local/toolchains/linux-x64',
+    pythonEntries: Object.freeze(['python/bin/python3', 'python/bin/python']),
+    pythonBasenames: Object.freeze(['python3', 'python']),
+    pythonRequiredMembers: Object.freeze(['python/lib/python3.12/os.py']),
+    xtbEntry: 'xtb/bin/xtb',
+    packagedEngineEntry: 'engine'
   })
 });
 
@@ -812,7 +822,7 @@ function currentRuntimeEnvironment({
   result.SCIYUE_APP_PATH = path.resolve(appPath);
   result.PYTHONNOUSERSITE = '1';
   result.PYTHONDONTWRITEBYTECODE = '1';
-  if (matchedLayout.platform.startsWith('darwin-')) {
+  if (matchedLayout.platform.startsWith('darwin-') || matchedLayout.platform.startsWith('linux-')) {
     const depLibAbs = path.join(appPath, runtime.root, 'python/lib');
     const tcLibAbs = path.join(appPath, declared.root, 'python/lib');
     if (hasCandidateEntry(depLibAbs)) {
@@ -826,7 +836,11 @@ function currentRuntimeEnvironment({
         !hasUnsafePathDelimiter(tcLibAbs, expectedPlatform),
       'Current runtime path contains unsafe delimiter'
     );
-    result.DYLD_FALLBACK_LIBRARY_PATH = [depLibAbs, tcLibAbs, '/usr/lib'].join(envDelimiter);
+    if (matchedLayout.platform.startsWith('darwin-')) {
+      result.DYLD_FALLBACK_LIBRARY_PATH = [depLibAbs, tcLibAbs, '/usr/lib'].join(envDelimiter);
+    } else {
+      result.LD_LIBRARY_PATH = [depLibAbs, tcLibAbs].join(envDelimiter);
+    }
   }
   return result;
 }

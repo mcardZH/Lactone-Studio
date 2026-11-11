@@ -94,13 +94,46 @@ def require(condition, message, code='SAMPLING_NATIVE_MD_INVALID'):
         raise NativeMDError(message, code)
 
 
+PLATFORM_BUNDLED_V1_ANCHORS = {
+    'darwin': frozenset({
+        ('6.4.1', 'legacy-manifest-fe5699eb38672b5ba10af32951614b5e58e2209c87019d7e8c7f736baab620c9'),
+        ('6.4.1', 'legacy-manifest-95720882e01e756cf8818de95eab20e0ea46b093ce489eae649ba191fb62354c'),
+    }),
+    'linux': frozenset({
+        ('6.7.1', 'legacy-manifest-4a22fa7162c1b47691623d1fe658b44adcce0334343bac59f28eb296f78a6fd7'),
+        ('6.4.1', 'legacy-manifest-3763b45c6cd94e0a64bc3b73cc4bfa55741d77c6f4423df6b45c548b269079bb'),
+    }),
+    'win32': frozenset({
+        ('6.7.1', 'legacy-manifest-4eb25c769e6b157e4c61f2244f370f3033e68f98d3c575e93955f9ca4aab9434'),
+        ('6.4.1', 'legacy-manifest-908a5e04798e9057865b3d152cc4d04e44930ecbc752b6869a3464aa205dac4b'),
+    }),
+}
+ADMITTED_PARAMETER_DIGESTS = frozenset({
+    '0393b0ab523fd1e193396d480c0b44f659e5350af421400e3b631335d870c0d2',
+    '0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2',
+})
+
+
+def _platform_anchor_key(plat: str) -> str | None:
+    if plat == 'darwin':
+        return 'darwin'
+    if plat.startswith('linux'):
+        return 'linux'
+    if plat == 'win32':
+        return 'win32'
+    return None
+
+
 def _admitted_darwin_md_engine_identity(runtime, identity):
-    if sys.platform != 'darwin' or not isinstance(identity, dict):
+    plat_key = _platform_anchor_key(sys.platform)
+    if plat_key is None or not isinstance(identity, dict):
         return False
     if set(identity) != set(MD_ENGINE_IDENTITIES[0]):
         return False
     if not (isinstance(identity.get('runtimeMemberDigest'), str)
             and re.fullmatch(r'[0-9a-f]{64}', identity['runtimeMemberDigest'])
+            and isinstance(identity.get('parameterDigest'), str)
+            and re.fullmatch(r'[0-9a-f]{64}', identity['parameterDigest'])
             and isinstance(identity.get('sha256'), str)
             and re.fullmatch(r'[0-9a-f]{64}', identity['sha256'])):
         return False
@@ -110,11 +143,27 @@ def _admitted_darwin_md_engine_identity(runtime, identity):
     ).hexdigest()
     if identity['sha256'] != expected_sha:
         return False
-    fixed_fields = {k: v for k, v in identity.items() if k not in ('runtimeMemberDigest', 'sha256')}
-    return any(
-        runtime.get('version') == expected['version']
-        and fixed_fields == {k: v for k, v in expected.items() if k not in ('runtimeMemberDigest', 'sha256')}
-        for expected in MD_ENGINE_IDENTITIES
+    if plat_key == 'darwin':
+        fixed_fields = {k: v for k, v in identity.items() if k not in ('runtimeMemberDigest', 'sha256')}
+        if any(
+            runtime.get('version') == expected['version']
+            and fixed_fields == {k: v for k, v in expected.items() if k not in ('runtimeMemberDigest', 'sha256')}
+            for expected in MD_ENGINE_IDENTITIES
+        ):
+            return True
+    anchors = PLATFORM_BUNDLED_V1_ANCHORS.get(plat_key, frozenset())
+    return (
+        identity.get('schema') == 'sciyue-xtb-engine-identity/v1'
+        and identity.get('engine') == 'xtb'
+        and identity.get('kind') == 'legacy-binary-observation'
+        and identity.get('version') == runtime.get('version')
+        and (runtime.get('version'), identity.get('buildId')) in anchors
+        and identity.get('parameterDigest') in ADMITTED_PARAMETER_DIGESTS
+        and identity.get('sourceCommit') is None
+        and identity.get('compiler') is None
+        and identity.get('toolchainArchiveSha256') is None
+        and identity.get('sourceReceiptSha256') is None
+        and identity.get('scientificPinsSha256') is None
     )
 
 

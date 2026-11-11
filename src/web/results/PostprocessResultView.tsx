@@ -45,13 +45,18 @@ import {sourceChargeViewport} from './source-charge-viewport';
 import {usePreparedTrajectory,type TrajectoryGeometryPreparation} from './usePreparedTrajectory';
 import {usePostprocessMultiframe} from './usePostprocessMultiframe';
 import {observePreparedTrajectory,emitTrajectoryRenderCompletion,useTrajectoryObservationEnabled} from './trajectory-observation';
-import SurfaceAnalysisInstance from './SurfaceAnalysisInstance';
+import SurfaceAnalysisInstance,{surfaceSourceAtomOrder} from './SurfaceAnalysisInstance';
 import {useAnalysisAtomCapture} from './useAnalysisAtomCapture';
 import type {SurfaceInteractionPort,SurfaceProjection} from './surface-controls-contracts';
 import InteractionAnalysisInstance,{createInteractionMeshObservers,withoutInteractionProjection,type InteractionViewportProjection} from './InteractionAnalysisInstance';
 import ExcitationAnalysisInstance,{createExcitationMeshObservers,type ExcitationViewportProjection} from './ExcitationAnalysisInstance';
 import ReactivityAnalysisInstance,{type ReactivityViewportProjection} from './ReactivityAnalysisInstance';
 import type {ReactivityInteractionPort} from './reactivity-controls-contracts';
+import {reactivityAtomDisplay,REACTIVITY_ATOM_LABELS,reactivityMetricUnit} from './reactivity-presentation';
+import {professionalChargeColumns,professionalChargeDisplay} from './analysis-comparison';
+import {compositionRows} from './AnalysisControls';
+import {DEFAULT_ORBITAL_LAYER} from './orbital-display';
+import type {McpAnalysisFrameRequest,McpAnalysisPanelRequest,McpAnalysisViewportOverlay} from '../mcp/analysis-export';
 import type {InteractionInteractionPort,InteractionScatterSnapshot} from './interaction-controls-contracts';
 import type {SurfaceMeshState} from '../modeling/render/surface-layer';
 import PostprocessPlotDeck,{type InteractionPlotWindowSnapshot,type HirshfeldPlotWindowSnapshot} from './PostprocessPlotDeck';
@@ -132,6 +137,9 @@ export interface PostprocessResultViewProps {
  allowedPages?:readonly AnalysisPage[];
  observationOnly?:boolean;
  initialPage?:AnalysisPage;
+ requestedPage?:McpAnalysisPanelRequest;
+ requestedFrame?:McpAnalysisFrameRequest;
+ mcpOverlay?:McpAnalysisViewportOverlay|null;
  /** Window-session observation hosts can resume playback; saved projects reopen paused. */
  resumeObservedPlayback?:boolean;
  /** Stable observation owner for incremental publications of the same source. */
@@ -246,7 +254,7 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
  const bondingWarnings=useRef(new Set<string>());
  const uiScope=useProjectUiScope();
  const collection=useMemo(()=>p.playbackCollection??createPlaybackCollection(result,{ownerId:playbackScopeIdentity(uiScope?.store??p.document,p.document.id),stageId:p.stageKey,fixed:p.collectionFixed??!p.observationOnly,generation:p.playbackContinuity?.sourceGeneration,revision:p.playbackContinuity?.revision}),[p.playbackCollection,result,uiScope?.store,p.document,p.stageKey,p.collectionFixed,p.observationOnly,p.playbackContinuity?.sourceGeneration,p.playbackContinuity?.revision]);
- const playback=useOptPlayback(result,{collection,active:p.active&&p.available!==false,ready:viewReady,autoPreview:result.frames.length>1&&!p.restore,prepared,onError:p.onError,restored:p.restore?.playback,liveContinuation:p.resumeObservedPlayback?p.restore?.playback:undefined,continuation:p.playbackContinuity?{...p.playbackContinuity,stageId:p.stageKey}:undefined});
+ const playback=useOptPlayback(result,{collection,active:p.active&&p.available!==false,ready:viewReady,autoPreview:result.frames.length>1&&!p.restore&&!p.requestedFrame,prepared,onError:p.onError,restored:p.restore?.playback,liveContinuation:p.resumeObservedPlayback?p.restore?.playback:undefined,continuation:p.playbackContinuity?{...p.playbackContinuity,stageId:p.stageKey}:undefined});
  useEffect(()=>{for(const warning of playback.preparation?.warnings??[])if(!bondingWarnings.current.has(warning)){bondingWarnings.current.add(warning);p.onError(warning);}},[playback.preparation?.warnings,p.onError]);
  const frame=playback.frame,currentIndex=frame.index;
  const multiframe=usePostprocessMultiframe({result,prepared,documentId:p.document.id,sourceRevision:metadata?.sourceRevision??result.source.id,
@@ -257,6 +265,19 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
  useLayoutEffect(()=>{if(!p.stageKey)return;return p.onBrowsePort({stageKey:p.stageKey,snapshot:()=>{const playback=browseState.capture();return{frameIndex:playback.frameIndex,cameraView:getView.current?.().slice()??lastView.current,playback};},pause:()=>browseState.pause()});},[p.onBrowsePort,p.stageKey,browseState]);
  const restored=useRef<string|null>(null);
  useEffect(()=>{if(!p.active||p.available===false||!viewReady||restored.current===p.stageKey)return;restored.current=p.stageKey;if(p.restore&&!p.restore.playback)playback.controls.onSeek(Math.max(0,Math.min(p.restore.frameIndex,result.frames.length-1)));},[p.stageKey,p.active,p.available,viewReady,p.restore,result,playback.controls.onSeek]);
+ const handledRequestedFrameSerial=useRef(0);
+ useEffect(()=>{
+  if(!p.requestedFrame||p.requestedFrame.serial===handledRequestedFrameSerial.current||!result.frames.length)return;
+  if(!p.active||p.available===false||!viewReady||!p.stageKey||playback.controls.disabled)return;
+  const targetIdx=Math.max(0,Math.min(p.requestedFrame.frameIndex,result.frames.length-1));
+  if(currentIndex===targetIdx){
+   if(playback.playing||playback.previewing)playback.controls.onPause();
+   handledRequestedFrameSerial.current=p.requestedFrame.serial;
+   return;
+  }
+  playback.controls.onPause();
+  playback.controls.onSeek(targetIdx);
+ },[p.requestedFrame?.serial,p.requestedFrame?.frameIndex,p.active,p.available,viewReady,p.stageKey,playback.controls,playback.playing,playback.previewing,currentIndex,result.frames.length]);
  const cameraView=p.restore?.cameraView;
  const observing=useTrajectoryObservationEnabled();
  const frameProjection=useMemo(()=>projectPostprocessFrame(p.document,currentIndex),[p.document,currentIndex]);
@@ -293,27 +314,59 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
  const onNtoMeshState=useCallback<NonNullable<ModelViewportProps['onNtoMeshState']>>((state,actual)=>{if(activeId&&page==='excited')excitationMeshes.current.get(activeId)?.nto(state,actual);},[activeId,page]);
  const surfaceViewport=useMemo(()=>({calculationRanges:page==='excited'?excitationProjection?.calculationRanges:page==='interaction'?interactionProjection?.calculationRanges:hirshfeld?.calculationRanges,surfaceLayer:interactionProjection?.surfaceLayer??hirshfeld?.surfaceLayer??surface?.surfaceLayer??undefined,surfaceLayers:page==='excited'?excitationProjection?.surfaceLayers:undefined,surfaceExtrema:surface?.surfaceExtrema??undefined,hiddenAtomIds:hirshfeld?.hiddenAtomIds,onSurfaceExtremumHover:hoverSurface,onSurfaceExtremumPick:pickSurface,analysisAtomCapture:capture.viewportCapture,renderIdentity,onRenderComplete,onSurfaceMeshState,onSurfaceMeshStates}),[page,excitationProjection?.calculationRanges,interactionProjection?.calculationRanges,hirshfeld?.calculationRanges,excitationProjection?.surfaceLayers,interactionProjection?.surfaceLayer,hirshfeld?.surfaceLayer,hirshfeld?.hiddenAtomIds,surface?.surfaceLayer,surface?.surfaceExtrema,hoverSurface,pickSurface,capture.viewportCapture,renderIdentity,onRenderComplete,onSurfaceMeshState,onSurfaceMeshStates]);
  const display=useMemo(()=>({...p.display,alignment:'off' as const}),[p.display]);
- const bond=page==='bonds'&&current&&frameWaveAvailable&&current.bond.result?.sessionId===current.sessionId&&current.bond.result.sourceRevision===metadata?.sourceRevision?current.bond.result:null;
- const chargeView=useMemo(()=>page==='charges'?sourceChargeViewport(current?.sourceChargeDisplay,result,view.structure,currentIndex,current?.printedHighlights):null,[page,current?.sourceChargeDisplay,current?.printedHighlights,result,view.structure,currentIndex]);
- const scalarValues=useMemo(()=>page==='reactivity'?(reactivityProjection?.scalarValues??[]).flatMap(row=>{const atomIndex=view.structure.atoms.findIndex(atom=>atom.id===row.atomId);return atomIndex<0?[]:[{atomIndex,value:row.value,color:row.color,label:row.label}];}):chargeView?.scalarValues??[],[page,reactivityProjection,view.structure,chargeView]),chargeColor=page==='reactivity'?!!reactivityProjection?.color:!!chargeView?.color;
- const bondValues=useMemo(()=>page==='interaction'?(interactionProjection?.highlights.pairs??[]).map(row=>{const atoms=row.atomIds.map(id=>view.structure.atoms.find(atom=>atom.id===id));return{...row,measurementLabel:row.label,length:atoms.every(Boolean)?Math.hypot(atoms[0]!.x-atoms[1]!.x,atoms[0]!.y-atoms[1]!.y,atoms[0]!.z-atoms[1]!.z):undefined,decimals:interactionProjection?.decimals};}):bond&&metadata?visibleBondDisplayValues(mapComparedAnalysisResult(bond,current?.bond.comparisons,metadata,view.structure,current!.bond.display).bonds,current!.bond.display):[],[page,interactionProjection,bond,metadata,view.structure,current?.bond.display,current?.bond.comparisons]);
- const resultHighlights=useMemo(()=>{if(page==='reactivity')return{atomIds:(reactivityProjection?.highlights??[]).map(row=>row.atomId),bondPairs:[]};if(page==='interaction')return{atomIds:(interactionProjection?.highlights.atoms??[]).map(row=>row.atomId),bondPairs:(interactionProjection?.highlights.pairs??[]).map(row=>row.atomIds)};const native=page!=='charges'&&metadata&&current&&frameWaveAvailable?mapAnalysisHighlight(current.highlights.ids,metadata,view.structure):[];return{atomIds:page==='charges'?chargeView?.ids??[]:native,bondPairs:page==='bonds'&&metadata&&current&&frameWaveAvailable?current.pairs.map(pair=>mapAnalysisHighlight(pair,metadata,view.structure) as [string,string]):[]};},[reactivityProjection,interactionProjection,metadata,current?.highlights,current?.pairs,page,view.structure,frameWaveAvailable,chargeView]);
+ const activeMcpOverlay=p.mcpOverlay&&frameProjection.wavefunctionAvailable&&p.mcpOverlay.sourceId===result.source.id&&p.mcpOverlay.sourceRevision===(metadata?.sourceRevision??result.source.id)&&p.mcpOverlay.frameIndex===currentIndex&&(!page||page===p.mcpOverlay.page)?p.mcpOverlay:null;
+ const effectivePage=page??activeMcpOverlay?.page;
+ const uiBond=page==='bonds'&&current&&frameWaveAvailable&&current.bond.result?.sessionId===current.sessionId&&current.bond.result.sourceRevision===metadata?.sourceRevision?current.bond.result:null;
+ const mcpBond=!uiBond&&effectivePage==='bonds'&&activeMcpOverlay?.bondResult&&activeMcpOverlay.bondResult.sourceRevision===metadata?.sourceRevision?activeMcpOverlay.bondResult:null;
+ const bond=uiBond??mcpBond;
+ const bondDisplay=uiBond?current!.bond.display:{color:true,labels:true,spin:false,decimals:2};
+ const mcpChargeDisplay=useMemo(()=>{
+  if(effectivePage!=='charges'||!activeMcpOverlay?.chargeResult||!metadata)return null;
+  if(current?.sourceChargeDisplay?.columns.some(col=>col.origin.producedBy==='calculated'))return null;
+  const ctx={result,structure:view.structure,frameIndex:currentIndex,wavefunctionAvailable:true,generatedXtb:!!generatedXtb,nativeAtomIds:metadata.structure.atoms.map(atom=>atom.id!),nativeSessionId:activeMcpOverlay.chargeResult.sessionId,nativeSourceRevision:metadata.sourceRevision};
+  const cols=professionalChargeColumns(ctx,[activeMcpOverlay.chargeResult],[activeMcpOverlay.chargeResult.method],false);
+  return cols.length?professionalChargeDisplay(ctx,cols,activeMcpOverlay.chargeResult.method,{color:true,labels:true,spin:false,decimals:2}):null;
+ },[effectivePage,activeMcpOverlay?.chargeResult,metadata,current?.sourceChargeDisplay,result,view.structure,currentIndex,generatedXtb]);
+ const chargeView=useMemo(()=>effectivePage==='charges'?sourceChargeViewport(mcpChargeDisplay??current?.sourceChargeDisplay,result,view.structure,currentIndex,mcpChargeDisplay?undefined:current?.printedHighlights):null,[effectivePage,mcpChargeDisplay,current?.sourceChargeDisplay,current?.printedHighlights,result,view.structure,currentIndex]);
+ const mcpReactivityDisplay=useMemo(()=>{
+  if(effectivePage!=='reactivity'||reactivityProjection?.result||!activeMcpOverlay?.reactivityResult)return null;
+  const metric=activeMcpOverlay.reactivityMetric??'dual';
+  const order=surfaceSourceAtomOrder(view.structure,document,metadata?.structure)??[];
+  const rows=reactivityAtomDisplay(activeMcpOverlay.reactivityResult,metric,order,view.structure,2);
+  const range=analysisRange(rows.map(r=>r.value),{color:true,labels:false,spin:false},metric==='dual');
+  const unit=reactivityMetricUnit(metric);
+  return {
+   scalarValues:rows,
+   color:true,
+   highlights:rows,
+   colorbar:range?{...range,palette:'blue-red' as const,decimals:2,label:`${REACTIVITY_ATOM_LABELS[metric]}${unit?` / ${unit}`:''}`}:undefined
+  };
+ },[effectivePage,reactivityProjection?.result,activeMcpOverlay?.reactivityResult,activeMcpOverlay?.reactivityMetric,view.structure,document,metadata?.structure]);
+ const scalarValues=useMemo(()=>effectivePage==='reactivity'?((reactivityProjection?.result?reactivityProjection.scalarValues:mcpReactivityDisplay?.scalarValues)??[]).flatMap(row=>{const atomIndex=view.structure.atoms.findIndex(atom=>atom.id===row.atomId);return atomIndex<0?[]:[{atomIndex,value:row.value,color:row.color,label:row.label}];}):chargeView?.scalarValues??[],[effectivePage,reactivityProjection,mcpReactivityDisplay,view.structure,chargeView]),chargeColor=effectivePage==='reactivity'?(reactivityProjection?.result?!!reactivityProjection.color:!!mcpReactivityDisplay?.color):!!chargeView?.color;
+ const bondValues=useMemo(()=>effectivePage==='interaction'?(interactionProjection?.highlights.pairs??[]).map(row=>{const atoms=row.atomIds.map(id=>view.structure.atoms.find(atom=>atom.id===id));return{...row,measurementLabel:row.label,length:atoms.every(Boolean)?Math.hypot(atoms[0]!.x-atoms[1]!.x,atoms[0]!.y-atoms[1]!.y,atoms[0]!.z-atoms[1]!.z):undefined,decimals:interactionProjection?.decimals};}):bond&&metadata?visibleBondDisplayValues(mapComparedAnalysisResult(bond,uiBond?current?.bond.comparisons:undefined,metadata,view.structure,bondDisplay).bonds,bondDisplay):[],[effectivePage,interactionProjection,bond,uiBond,metadata,view.structure,bondDisplay,current?.bond.comparisons]);
+ const mcpCompositionHighlights=useMemo(()=>{
+  if(effectivePage!=='orbitals'||current?.highlights.values?.length||!activeMcpOverlay?.compositionResult||!metadata)return null;
+  const top=compositionRows(activeMcpOverlay.compositionResult,'threshold');
+  return top.map(row=>({atomId:mapAnalysisHighlight([row.atomId],metadata,view.structure)[0],label:`贡献 ${formatResultValue(row.value,2)} %`}));
+ },[effectivePage,current?.highlights.values,activeMcpOverlay?.compositionResult,metadata,view.structure]);
+ const resultHighlights=useMemo(()=>{if(effectivePage==='reactivity')return{atomIds:((reactivityProjection?.result?reactivityProjection.highlights:mcpReactivityDisplay?.highlights)??[]).map(row=>row.atomId),bondPairs:[]};if(effectivePage==='interaction')return{atomIds:(interactionProjection?.highlights.atoms??[]).map(row=>row.atomId),bondPairs:(interactionProjection?.highlights.pairs??[]).map(row=>row.atomIds)};if(mcpCompositionHighlights)return{atomIds:mcpCompositionHighlights.map(row=>row.atomId),bondPairs:[]};const native=effectivePage!=='charges'&&metadata&&current&&frameWaveAvailable?mapAnalysisHighlight(current.highlights.ids,metadata,view.structure):[];return{atomIds:effectivePage==='charges'?chargeView?.ids??[]:native,bondPairs:effectivePage==='bonds'&&metadata&&current&&frameWaveAvailable?current.pairs.map(pair=>mapAnalysisHighlight(pair,metadata,view.structure) as [string,string]):[]};},[reactivityProjection,mcpReactivityDisplay,interactionProjection,mcpCompositionHighlights,metadata,current?.highlights,current?.pairs,effectivePage,view.structure,frameWaveAvailable,chargeView]);
  const atomLabels=useMemo(()=>{
-  if(page==='charges')return chargeView?.atomLabels??[];
-  if(page==='reactivity')return reactivityProjection?.highlights??[];
-  if(page==='interaction')return interactionProjection?.highlights.atoms??[];
-  return metadata&&current&&frameWaveAvailable&&page==='orbitals'?(current.highlights.values??[]).map(row=>({atomId:mapAnalysisHighlight([row.atomId],metadata,view.structure)[0],label:row.label??'贡献 '+formatResultValue(row.value,2)+' %'})):[];
- },[metadata,current?.highlights,page,view.structure,frameWaveAvailable,chargeView,interactionProjection,reactivityProjection]);
+  if(effectivePage==='charges')return chargeView?.atomLabels??[];
+  if(effectivePage==='reactivity')return (reactivityProjection?.result?reactivityProjection.highlights:mcpReactivityDisplay?.highlights)??[];
+  if(effectivePage==='interaction')return interactionProjection?.highlights.atoms??[];
+  if(mcpCompositionHighlights)return mcpCompositionHighlights;
+  return metadata&&current&&frameWaveAvailable&&effectivePage==='orbitals'?(current.highlights.values??[]).map(row=>({atomId:mapAnalysisHighlight([row.atomId],metadata,view.structure)[0],label:row.label??'贡献 '+formatResultValue(row.value,2)+' %'})):[];
+ },[metadata,current?.highlights,effectivePage,view.structure,frameWaveAvailable,chargeView,interactionProjection,reactivityProjection,mcpReactivityDisplay,mcpCompositionHighlights]);
  const colorbar=useMemo<AnalysisColorbar|undefined>(()=>{
-  if(page==='surface')return hirshfeld?.colorbar??surface?.colorbar??undefined;
-  if(page==='reactivity')return reactivityProjection?.colorbar??undefined;
-  if(page==='interaction')return interactionProjection?.colorbar??undefined;
-  if(page==='charges')return chargeView?.colorbar;
-  const settings=page==='bonds'?current?.bond.display:undefined;
+  if(effectivePage==='surface')return hirshfeld?.colorbar??surface?.colorbar??undefined;
+  if(effectivePage==='reactivity')return (reactivityProjection?.result?reactivityProjection.colorbar:mcpReactivityDisplay?.colorbar)??undefined;
+  if(effectivePage==='interaction')return interactionProjection?.colorbar??undefined;
+  if(effectivePage==='charges')return chargeView?.colorbar;
+  const settings=effectivePage==='bonds'?bondDisplay:undefined;
   if(!settings?.color)return;const range=analysisRange(bondValues.map(row=>row.value),settings,false);
   return range?{...range,palette:settings.palette??'blue-red',decimals:settings.decimals??2,label:'BO'+(bond?.method?` · ${bond.method}`:''),layout:settings.colorbarLayout}:undefined;
- },[page,chargeView,current?.bond.display,bondValues,bond?.method,hirshfeld?.colorbar,surface?.colorbar,interactionProjection?.colorbar,reactivityProjection?.colorbar]);
- const colorbarOwnerKey=activeId&&colorbar?JSON.stringify([sourceIdentity,activeId,page,currentIndex,document.id,document.revision]):undefined;
+ },[effectivePage,chargeView,bondDisplay,bondValues,bond?.method,hirshfeld?.colorbar,surface?.colorbar,interactionProjection?.colorbar,reactivityProjection,mcpReactivityDisplay]);
+ const colorbarOwnerKey=activeId&&colorbar?JSON.stringify([sourceIdentity,activeId,effectivePage,currentIndex,document.id,document.revision]):undefined;
  const changeColorbarLayout=useCallback((layout:AnalysisColorbarLayout)=>{
   if(!activeId||!p.active||p.available===false)return;
   if(page==='surface'&&hirshfeld)hirshfeldLayouts.current.get(activeId)?.(layout);
@@ -331,10 +384,16 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
   return{origin,vector:vector.map(value=>3*value/norm) as Vector3,color:'#ae4dbe'};
  },[page,current?.dipoleVisible,dipole?.vector.join(','),view.structure,p.document.pair]);
  const orbitalLayer=useMemo<ViewportOrbitalLayer|undefined>(()=>{
-  if(page==='reactivity')return reactivityProjection?.orbitalLayer??undefined;
-  const field=current?.field;if(page!=='orbitals'||!frameWaveAvailable||!field||!metadata||field.sourceRevision!==metadata.sourceRevision||field.sessionId!==current.sessionId||field.orbitalKey!==current.selectedKey)return;
-  return{field,documentId:document.id,geometryRevision:document.revision,...current.layer,sourceToDocument:p.document.pair?.sourceToDisplay};
- },[page,reactivityProjection?.orbitalLayer,current?.field,current?.layer,current?.selectedKey,current?.sessionId,metadata,document.id,document.revision,p.document.pair,frameWaveAvailable]);
+  if(effectivePage==='reactivity')return reactivityProjection?.orbitalLayer??undefined;
+  const field=current?.field;
+  if(page==='orbitals'&&frameWaveAvailable&&field&&metadata&&field.sourceRevision===metadata.sourceRevision&&field.sessionId===current.sessionId&&field.orbitalKey===current.selectedKey){
+   return{field,documentId:document.id,geometryRevision:document.revision,...current.layer,sourceToDocument:p.document.pair?.sourceToDisplay};
+  }
+  if(effectivePage==='orbitals'&&activeMcpOverlay?.orbitalField&&metadata&&activeMcpOverlay.orbitalField.sourceRevision===metadata.sourceRevision){
+   return{field:activeMcpOverlay.orbitalField,documentId:document.id,geometryRevision:document.revision,...DEFAULT_ORBITAL_LAYER,visible:true,isovalue:activeMcpOverlay.orbitalIsovalue??DEFAULT_ORBITAL_LAYER.isovalue,sourceToDocument:p.document.pair?.sourceToDisplay};
+  }
+  return undefined;
+ },[effectivePage,page,reactivityProjection?.orbitalLayer,current?.field,current?.layer,current?.selectedKey,current?.sessionId,activeMcpOverlay?.orbitalField,activeMcpOverlay?.orbitalIsovalue,metadata,document.id,document.revision,p.document.pair,frameWaveAvailable]);
  const ntoLayer=page==='excited'?excitationProjection?.ntoLayer??undefined:undefined;
  const exportController=useRef<AbortController|null>(null);
  useEffect(()=>()=>exportController.current?.abort(),[]);
@@ -351,7 +410,7 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
   const owner=requestedOwner??viewport.current?.ownerDocument??p.toolbarHost?.ownerDocument??p.toolHost?.ownerDocument??fileInput.current?.ownerDocument;
   if(!owner){p.onError('导出窗口尚未准备完成。');return;}
   const controller=new AbortController();exportController.current=controller;setExporting(true);
-  try{const bounds=viewport.current?.getBoundingClientRect();const exportDocument=vibration?{...document,draft:{...document.draft,structure:shownStructure}}:document;const blob=await exportViewportImage({document:exportDocument,cameraView:getView.current(),display,showAxes,multiframeDisplay:multiframe.plan,hiddenAtomIds:surfaceViewport.hiddenAtomIds,calculationRanges:surfaceViewport.calculationRanges,width:1600,height:1200,viewportWidth:bounds?.width??800,viewportHeight:bounds?.height??600,measurement,atomScalarValues:scalarValues,atomScalarColor:chargeColor,atomScalarLabels:false,orbitalLayer,ntoLayer,dipoleVector,surfaceLayer:surfaceViewport.surfaceLayer,surfaceLayers:surfaceViewport.surfaceLayers,surfaceExtrema:surfaceViewport.surfaceExtrema,resultKind:result.kind,viewBonds:bondCache.snapshot(view.structure,currentIndex),resultBondValues:bondValues,resultBondLabels:page==='interaction'||!!current?.bond.display.labels,resultBondColor:page==='bonds'&&!!current?.bond.display.color,resultAtomLabels:atomLabels,resultHighlights,resultColorbar:colorbar,vibrationVectors,...(vibration?{displayGeometry:'vibration' as const,vibrationBaseStructure:view.structure}:{})},options,owner,controller.signal);if(!controller.signal.aborted)exportBlob(blob,'Ester-Studio-'+(current?.selectedKey?.replace(':','-')??page??'structure')+'.'+options.format,owner);}catch(error){if(!controller.signal.aborted)p.onError(error instanceof Error?error.message:String(error));}finally{if(exportController.current===controller){exportController.current=null;setExporting(false);}}
+  try{const bounds=viewport.current?.getBoundingClientRect();const exportDocument=vibration?{...document,draft:{...document.draft,structure:shownStructure}}:document;const blob=await exportViewportImage({document:exportDocument,cameraView:getView.current(),display,showAxes,multiframeDisplay:multiframe.plan,hiddenAtomIds:surfaceViewport.hiddenAtomIds,calculationRanges:surfaceViewport.calculationRanges,width:1600,height:1200,viewportWidth:bounds?.width??800,viewportHeight:bounds?.height??600,measurement,atomScalarValues:scalarValues,atomScalarColor:chargeColor,atomScalarLabels:false,orbitalLayer,ntoLayer,dipoleVector,surfaceLayer:surfaceViewport.surfaceLayer,surfaceLayers:surfaceViewport.surfaceLayers,surfaceExtrema:surfaceViewport.surfaceExtrema,resultKind:result.kind,viewBonds:bondCache.snapshot(view.structure,currentIndex),resultBondValues:bondValues,resultBondLabels:effectivePage==='interaction'||!!bondDisplay.labels,resultBondColor:effectivePage==='bonds'&&!!bondDisplay.color,resultAtomLabels:atomLabels,resultHighlights,resultColorbar:colorbar,vibrationVectors,...(vibration?{displayGeometry:'vibration' as const,vibrationBaseStructure:view.structure}:{})},options,owner,controller.signal);if(!controller.signal.aborted)exportBlob(blob,'Ester-Studio-'+(current?.selectedKey?.replace(':','-')??effectivePage??'structure')+'.'+options.format,owner);}catch(error){if(!controller.signal.aborted)p.onError(error instanceof Error?error.message:String(error));}finally{if(exportController.current===controller){exportController.current=null;setExporting(false);}}
  }
  const overlayKey=JSON.stringify(playbackOverlayPresentation(multiframe));
  const multiframeControls=useMemo(()=><PlaybackOverlayControls {...multiframe} disabled={!p.active||p.available===false||!viewReady||page==='vibrations'}/>,[overlayKey,p.active,p.available,viewReady,page,multiframe.onToggle,multiframe.onFitAtoms,multiframe.onReference,multiframe.onReferenceIndex,multiframe.onCurrentReference,multiframe.onCancelCenter]);
@@ -368,7 +427,7 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
   {(result.frames.length>1||playback.preparation)&&<TrajectoryControls {...playback.controls} loadingHost={p.loadingHost} detailsContent={multiframeControls}/>}
  </div>,[p.contextControls,multiframeControls,result,currentIndex,playback.playing,playback.previewing,playback.busy,playback.frameDelayMs,playback.fps,playback.direction,playback.mode,playback.range,playback.endpointPauseMs,playback.tsFrameIndex,playback.preparation,playback.loading,playback.loadCancelled,playback.silentLoading,p.active,p.available,viewReady,frameProjection.wavefunctionAvailable]);
  const trajectoryPlayback=useMemo<TrajectoryPlaybackBridge>(()=>({state:{...trajectoryPlaybackState(playback.controls),resultId:result.id,projectionKey:collection.identity.revision,collectionIdentity:collection.identity,frameId:collection.frames.find(frame=>frame.sourceFrameIndex===currentIndex)?.frameId,targets:collection.targets,overlay:playbackOverlayPresentation({...multiframe,disabled:!p.active||p.available===false||!viewReady})},dispatch:dispatchBridge}),[playbackControls,collection,currentIndex,dispatchBridge]);
- const canvas=useMemo<AnalysisCanvas>(()=>({document,staticDocument,prepareModelEdit,result,frameIndex:currentIndex,controls:playbackControls,trajectoryPlayback,viewport:{displayAtoms:vibration?shownStructure.atoms:undefined,...surfaceViewport,cameraView,multiframeDisplay:multiframe.plan,vibrationVectors,atomScalarValues:scalarValues,atomScalarColor:chargeColor,atomScalarLabels:false,orbitalLayer,ntoLayer,onNtoMeshState,dipoleVector,resultBondValues:page==='bonds'||page==='interaction'?bondValues:undefined,resultBondLabels:page==='interaction'||page==='bonds'&&!!current?.bond.display.labels,resultBondColor:page==='bonds'&&!!current?.bond.display.color,resultHighlights,resultColorbar:colorbar,resultColorbarOwnerKey:colorbarOwnerKey,onResultColorbarLayoutChange:changeColorbarLayout,resultAtomLabels:atomLabels},onViewReady,onExport:()=>void exportImage(),onExportImage:exportImage,exportAvailable:viewReady&&p.available!==false,exporting}),[shownStructure,vibration,surfaceViewport,cameraView,multiframe.plan,multiframeControls,scalarValues,chargeColor,page,current?.bond.display,orbitalLayer,ntoLayer,onNtoMeshState,dipoleVector,bondValues,resultHighlights,colorbar,colorbarOwnerKey,changeColorbarLayout,atomLabels,onViewReady,exporting,viewReady,p.available,document,staticDocument,prepareModelEdit,display,showAxes,playbackControls,trajectoryPlayback,currentIndex,vibrationVectors,result]);
+ const canvas=useMemo<AnalysisCanvas>(()=>({document,staticDocument,prepareModelEdit,result,frameIndex:currentIndex,controls:playbackControls,trajectoryPlayback,viewport:{displayAtoms:vibration?shownStructure.atoms:undefined,...surfaceViewport,cameraView,multiframeDisplay:multiframe.plan,vibrationVectors,atomScalarValues:scalarValues,atomScalarColor:chargeColor,atomScalarLabels:false,orbitalLayer,ntoLayer,onNtoMeshState,dipoleVector,resultBondValues:effectivePage==='bonds'||effectivePage==='interaction'?bondValues:undefined,resultBondLabels:effectivePage==='interaction'||effectivePage==='bonds'&&!!bondDisplay.labels,resultBondColor:effectivePage==='bonds'&&!!bondDisplay.color,resultHighlights,resultColorbar:colorbar,resultColorbarOwnerKey:colorbarOwnerKey,onResultColorbarLayoutChange:changeColorbarLayout,resultAtomLabels:atomLabels},onViewReady,onExport:()=>void exportImage(),onExportImage:exportImage,exportAvailable:viewReady&&p.available!==false,exporting}),[shownStructure,vibration,surfaceViewport,cameraView,multiframe.plan,multiframeControls,scalarValues,chargeColor,effectivePage,bondDisplay,orbitalLayer,ntoLayer,onNtoMeshState,dipoleVector,bondValues,resultHighlights,colorbar,colorbarOwnerKey,changeColorbarLayout,atomLabels,onViewReady,exporting,viewReady,p.available,document,staticDocument,prepareModelEdit,display,showAxes,playbackControls,trajectoryPlayback,currentIndex,vibrationVectors,result]);
  useLayoutEffect(()=>p.onCanvas?.(p.active&&p.available!==false?canvas:null),[p.onCanvas,p.active,p.available,canvas]);
  const onCanvasRef=useRef(p.onCanvas);onCanvasRef.current=p.onCanvas;
  useEffect(()=>()=>onCanvasRef.current?.(null),[]);
@@ -383,7 +442,7 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
   setScatterPlots(previous=>[...previous,{...snapshot,id:`hirshfeld-fingerprint-${crypto.randomUUID()}`,kind:'hirshfeld-fingerprint',title:'Hirshfeld指纹',source:{...result.source},resultId:result.id,jobIndex:result.jobIndex,frameIndex:currentIndex}]);
   notifyAnalysisProjectStateChanged();
  }
- const controls=<AnalysisWorkspace key={sourceIdentity} sourceId={sourceIdentity} allowedPages={p.allowedPages} initialPage={p.initialPage} active={p.active&&p.available!==false} unavailableReason={kind=>generatedXtbAnalysisReason(p.document.wavefunction?.source.generatedXtb,kind)??(p.available===false?'当前结构已修改或阶段正在读取。':kind==='trajectory'&&result.frames.length<2&&!p.canReturnToTrajectory&&!p.allowedPages?'当前来源只有一个结构帧。':undefined)} onActive={id=>setActiveSelection({source:sourceIdentity,id})} onActivate={()=>p.onActivate?.()} onRequest={p.onAnalysisRequest} onError={p.onError} render={(instance,active)=><AnalysisPanelInstance id={instance.id} kind={instance.kind} document={p.document} structure={view.structure} currentIndex={currentIndex} onColorbarLayoutReady={setter=>{if(setter)colorbarLayoutPorts.current.set(instance.id,setter);else colorbarLayoutPorts.current.delete(instance.id);}}
+ const controls=<AnalysisWorkspace key={sourceIdentity} sourceId={sourceIdentity} allowedPages={p.allowedPages} initialPage={p.initialPage} requestedPage={p.requestedPage} active={p.active&&p.available!==false} unavailableReason={kind=>generatedXtbAnalysisReason(p.document.wavefunction?.source.generatedXtb,kind)??(p.available===false?'当前结构已修改或阶段正在读取。':kind==='trajectory'&&result.frames.length<2&&!p.canReturnToTrajectory&&!p.allowedPages?'当前来源只有一个结构帧。':undefined)} onActive={id=>setActiveSelection({source:sourceIdentity,id})} onActivate={()=>p.onActivate?.()} onRequest={p.onAnalysisRequest} onError={p.onError} render={(instance,active)=><AnalysisPanelInstance id={instance.id} kind={instance.kind} document={p.document} structure={view.structure} currentIndex={currentIndex} onColorbarLayoutReady={setter=>{if(setter)colorbarLayoutPorts.current.set(instance.id,setter);else colorbarLayoutPorts.current.delete(instance.id);}}
    surfaceControls={instance.kind==='surface'?<SurfaceAnalysisInstance analysisId={instance.id} context={surfaceContext} document={p.document} structure={view.structure} modelDocument={document} wavefunctionAvailable={frameProjection.wavefunctionAvailable} electronicSurfaceAllowed={electronicSurfaceAllowed} electronicSurfaceMethods={electronicSurfaceMethods} active={active} available={p.available} capturePort={capture.selectionPort} onProjection={value=>receiveSurface(instance.id,value)} onHirshfeldProjection={value=>receiveHirshfeld(instance.id,value)} onSurfaceFamilyChange={family=>setSurfaceFamilies(previous=>previous[instance.id]===family?previous:{...previous,[instance.id]:family})} onOpenHirshfeldFingerprint={openHirshfeldFingerprint}
      onHirshfeldColorbarLayoutReady={setter=>{if(setter)hirshfeldLayouts.current.set(instance.id,setter);else hirshfeldLayouts.current.delete(instance.id);}}
      onHirshfeldMeshObserverReady={observer=>{if(observer)hirshfeldMeshes.current.set(instance.id,observer);else hirshfeldMeshes.current.delete(instance.id);}}
@@ -400,7 +459,7 @@ function PostprocessFrameView(p:PostprocessResultViewProps&StageViewProps&{prepa
    legendVisible={p.legendVisible} legendExpanded={p.legendExpanded} onLegendExpandedChange={p.onLegendExpandedChange} onLegendSurfaceChange={p.onLegendSurfaceChange?surface=>{if(p.selected)p.onLegendSurfaceChange?.(surface);}:undefined}
    measurement={measurement} onMeasurementPick={(id,image)=>setMeasurement(value=>id?pickMeasurement(value,id,image):emptyMeasurement(value.mode))} onMeasurementBondPick={pick=>setMeasurement(value=>pickBondMeasurement(value,pick))}
    displayAtoms={vibration?shownStructure.atoms:undefined} {...surfaceViewport} multiframeDisplay={multiframe.plan} vibrationVectors={vibrationVectors} atomScalarValues={scalarValues} atomScalarColor={chargeColor} atomScalarLabels={false} orbitalLayer={orbitalLayer} ntoLayer={ntoLayer} onNtoMeshState={onNtoMeshState} dipoleVector={dipoleVector}
-   resultBondValues={page==='bonds'||page==='interaction'?bondValues:undefined} resultBondLabels={page==='interaction'||page==='bonds'&&!!current?.bond.display.labels} resultBondColor={page==='bonds'&&!!current?.bond.display.color} resultHighlights={resultHighlights} resultColorbar={colorbar} resultColorbarOwnerKey={colorbarOwnerKey} onResultColorbarLayoutChange={changeColorbarLayout} resultAtomLabels={atomLabels}
+   resultBondValues={effectivePage==='bonds'||effectivePage==='interaction'?bondValues:undefined} resultBondLabels={effectivePage==='interaction'||effectivePage==='bonds'&&!!bondDisplay.labels} resultBondColor={effectivePage==='bonds'&&!!bondDisplay.color} resultHighlights={resultHighlights} resultColorbar={colorbar} resultColorbarOwnerKey={colorbarOwnerKey} onResultColorbarLayoutChange={changeColorbarLayout} resultAtomLabels={atomLabels}
    onViewReady={onViewReady} onHover={observation.onHover} onGestureStart={noEdit} onGestureEnd={noEdit} onSelection={observation.onSelection} onCommand={noEdit} onError={p.onError}/></div>
   <div className="postprocess-view-caption">{view.structure.atoms.length} 原子 · {view.message}</div></>}
  </section>;

@@ -30,8 +30,12 @@ export function isMacClientPlatform(explicitPlatform?: string): boolean {
 	return detectClientPlatform(explicitPlatform) === "darwin";
 }
 
+export function isSshOnlyClientPlatform(explicitPlatform?: string): boolean {
+	return detectClientPlatform(explicitPlatform) !== "win32";
+}
+
 export function availableEnvironmentPresets(platform?: string) {
-	if (isMacClientPlatform(platform)) {
+	if (isSshOnlyClientPlatform(platform)) {
 		return environmentPresets.filter((preset) => preset.fields.connectionKind === "ssh");
 	}
 	return [...environmentPresets];

@@ -524,11 +524,32 @@ extra_key_rt = copy.deepcopy(signed_rt)
 extra_key_rt["engineIdentity"]["extraKey"] = "unexpected"
 expect_rejected(extra_key_rt)
 
-# Reject codesign-modified runtimeMemberDigest on non-darwin platforms
+# Reject codesign-modified runtimeMemberDigest on non-darwin platforms, while admitting platform-anchored linux/win32 v1 bundles
 orig_platform = conformer_native_md.sys.platform
 try:
     conformer_native_md.sys.platform = "win32"
     expect_rejected(signed_rt)
+
+    win_conda_rt = copy.deepcopy(rt)
+    win_conda_rt["version"] = "6.7.1"
+    win_conda_rt["engineIdentity"]["version"] = "6.7.1"
+    win_conda_rt["engineIdentity"]["buildId"] = "legacy-manifest-4eb25c769e6b157e4c61f2244f370f3033e68f98d3c575e93955f9ca4aab9434"
+    win_conda_rt["engineIdentity"]["runtimeMemberDigest"] = "d" * 64
+    win_payload = {k: v for k, v in win_conda_rt["engineIdentity"].items() if k not in ("schema", "engine", "kind", "sha256")}
+    win_conda_rt["engineIdentity"]["sha256"] = hashlib.sha256(
+        json.dumps(win_payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+    assert admitted_md_engine_identity(win_conda_rt)["version"] == "6.7.1"
+
+    conformer_native_md.sys.platform = "linux"
+    expect_rejected(win_conda_rt)
+    linux_conda_rt = copy.deepcopy(win_conda_rt)
+    linux_conda_rt["engineIdentity"]["buildId"] = "legacy-manifest-4a22fa7162c1b47691623d1fe658b44adcce0334343bac59f28eb296f78a6fd7"
+    lin_payload = {k: v for k, v in linux_conda_rt["engineIdentity"].items() if k not in ("schema", "engine", "kind", "sha256")}
+    linux_conda_rt["engineIdentity"]["sha256"] = hashlib.sha256(
+        json.dumps(lin_payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+    assert admitted_md_engine_identity(linux_conda_rt)["version"] == "6.7.1"
 finally:
     conformer_native_md.sys.platform = orig_platform
 

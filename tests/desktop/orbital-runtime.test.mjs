@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import { ensureDarwinRuntimeReady } from '../../scripts/native/stage-darwin-runtime.mjs';
 
 const require = createRequire(import.meta.url);
-const { createOrbitalBackendStore } = require('../../desktop/orbital-runtime.cjs');
+const { createOrbitalBackendStore, LINUX_DEFAULT_CANDIDATES } = require('../../desktop/orbital-runtime.cjs');
 const { chemistryRuntime } = require('../../desktop/runtime.cjs');
 const { currentRuntimeEnvironment } = require('../../desktop/current-runtime.cjs');
 
@@ -230,6 +230,32 @@ test('createOrbitalBackendStore resolves lowercase multiwfn, skips non-executabl
 
     const unconfigured = await store.info();
     assert.equal(unconfigured.configured, false);
+
+    // Verify Linux default candidate auto-discovery when defaultCandidates is omitted
+    assert.ok(Array.isArray(LINUX_DEFAULT_CANDIDATES) && LINUX_DEFAULT_CANDIDATES.includes('/usr/local/bin/Multiwfn'));
+    const linuxMockFs = {
+      ...posixFs,
+      async realpath(target) {
+        if (target === '/opt/Multiwfn/Multiwfn') return canonicalBinary;
+        if (LINUX_DEFAULT_CANDIDATES.includes(target)) return null;
+        return posixFs.realpath(target);
+      },
+      async readFile(filePath, enc) {
+        return posixFs.readFile(filePath, enc);
+      },
+      async lstat(target) {
+        if (target === canonicalBinary) return posixFs.lstat(canonicalBinary);
+        return posixFs.lstat(target);
+      },
+    };
+    const linuxStore = createOrbitalBackendStore(path.join(root, 'linuxUserData'), {
+      platform: 'linux',
+      env: {},
+      fs: linuxMockFs,
+    });
+    const linuxAutoInfo = await linuxStore.info();
+    assert.equal(linuxAutoInfo.configured, true);
+    assert.equal(linuxAutoInfo.path, canonicalBinary);
 
     // 1. Directory contains non-executable Multiwfn AND executable bin/multiwfn -> must resolve bin/multiwfn
     const fromDirWithNonExecFirst = await store.select(pkgRoot);

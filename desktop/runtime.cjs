@@ -14,6 +14,11 @@ const ALLOWED_PTH_STDLIB_BY_PLATFORM = Object.freeze({
     'lib/python312.zip',
     'lib/python3.12',
     'lib/python3.12/lib-dynload'
+  ]),
+  'linux-x64': new Set([
+    'lib/python312.zip',
+    'lib/python3.12',
+    'lib/python3.12/lib-dynload'
   ])
 });
 

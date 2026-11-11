@@ -292,13 +292,15 @@ function buildMockNativeProject(root, platformId, options = {}) {
 }
 
 test('SUPPORTED_PLATFORMS, defaultPlatformId, hasUnsafePathDelimiter, and resolveTrustedWindowsSystemRoot validate platform contracts', () => {
-  assert.deepEqual(SUPPORTED_PLATFORMS, ['win32-x64', 'darwin-arm64', 'darwin-x64']);
+  assert.deepEqual(SUPPORTED_PLATFORMS, ['win32-x64', 'darwin-arm64', 'darwin-x64', 'linux-x64']);
   assert.equal(defaultPlatformId('darwin', 'arm64'), 'darwin-arm64');
   assert.equal(defaultPlatformId('darwin', 'x64'), 'darwin-x64');
+  assert.equal(defaultPlatformId('linux', 'x64'), 'linux-x64');
   assert.equal(defaultPlatformId('win32', 'x64'), 'win32-x64');
-  assert.throws(() => defaultPlatformId('linux', 'x64'), /Current runtime lock schema\/platform/);
-  assert.throws(() => resolvePlatformLayout('linux-x64'), /Current runtime lock schema\/platform/);
+  assert.throws(() => defaultPlatformId('freebsd', 'x64'), /Current runtime lock schema\/platform/);
+  assert.throws(() => resolvePlatformLayout('freebsd-x64'), /Current runtime lock schema\/platform/);
   assert.equal(PLATFORM_LAYOUTS['darwin-arm64'].packagedEngineEntry, 'engine');
+  assert.equal(PLATFORM_LAYOUTS['linux-x64'].packagedEngineEntry, 'engine');
   assert.equal(PLATFORM_LAYOUTS['win32-x64'].packagedEngineEntry, 'engine.exe');
 
   assert.equal(hasUnsafePathDelimiter('/Users/dev/Ester-Studio', 'darwin-arm64', 'darwin'), false);
@@ -376,8 +378,8 @@ test('SUPPORTED_PLATFORMS, defaultPlatformId, hasUnsafePathDelimiter, and resolv
   );
 });
 
-test('developmentNative, developmentXtb, and currentRuntimeEnvironment support darwin-arm64, darwin-x64, and win32-x64 and reject incomplete or mismatched probes', () => {
-  for (const platformId of ['darwin-arm64', 'darwin-x64', 'win32-x64']) {
+test('developmentNative, developmentXtb, and currentRuntimeEnvironment support darwin-arm64, darwin-x64, linux-x64, and win32-x64 and reject incomplete or mismatched probes', () => {
+  for (const platformId of ['darwin-arm64', 'darwin-x64', 'linux-x64', 'win32-x64']) {
     const tmpDir = makeRealTempDir(`es-rt-${platformId}-`);
     try {
       const { pythonExecutablePath, runtimeLockRef, toolchainLockRef, xtbLockRef } =
@@ -427,7 +429,15 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
       const mergedEnv = { ...pollutedEnv, ...envVars };
       for (const pollutedKey of Object.keys(pollutedEnv)) {
         assert.equal(Object.hasOwn(envVars, pollutedKey), true, `Expected ${pollutedKey} in envVars`);
-        assert.equal(mergedEnv[pollutedKey], undefined);
+        if (platformId.startsWith('linux-') && pollutedKey === 'LD_LIBRARY_PATH') {
+          assert.ok(
+            typeof mergedEnv.LD_LIBRARY_PATH === 'string' &&
+              !mergedEnv.LD_LIBRARY_PATH.includes('/bad/ld') &&
+              mergedEnv.LD_LIBRARY_PATH.includes(path.join('python', 'lib'))
+          );
+        } else {
+          assert.equal(mergedEnv[pollutedKey], undefined);
+        }
       }
       assert.equal(envVars.PYTHONNOUSERSITE, '1');
       assert.equal(envVars.PYTHONDONTWRITEBYTECODE, '1');
@@ -435,6 +445,12 @@ test('developmentNative, developmentXtb, and currentRuntimeEnvironment support d
         assert.ok(
           typeof envVars.DYLD_FALLBACK_LIBRARY_PATH === 'string' &&
             envVars.DYLD_FALLBACK_LIBRARY_PATH.includes(path.join('python', 'lib'))
+        );
+      }
+      if (platformId.startsWith('linux-')) {
+        assert.ok(
+          typeof envVars.LD_LIBRARY_PATH === 'string' &&
+            envVars.LD_LIBRARY_PATH.includes(path.join('python', 'lib'))
         );
       }
 

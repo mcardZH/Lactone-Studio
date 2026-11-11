@@ -464,7 +464,23 @@ export function createWorkspaceRegistry() {
     return {documentId:id,documentEpoch:entry.epoch,sourceEpoch:entry.sourceEpoch,revision:model.revision,label:entry.label,structure,charge:structure.charge??0,multiplicity:structure.multiplicity??1,confirmed:entry.electronicStateConfirmed,geometryUnits:'angstrom'};
   }
   function sourceIsCurrent(bound:WorkspaceTaskSource){const current=documents.get(bound.documentId);return Boolean(current&&!readOnlyResult(current)&&current.epoch===bound.documentEpoch&&current.sourceEpoch===bound.sourceEpoch&&current.store.getSnapshot().revision===bound.revision);}
-  function setDraft(id:string,engine:'gaussian'|'orca',value:JsonValue,dirty=true){const entry=editableDocument(id);if(JSON.stringify(entry.drafts[engine])===JSON.stringify(value)&&entry.inputDirty[engine]===dirty)return;entry.drafts[engine]=freezeJSON(clone(value));entry.inputDirty[engine]=dirty;emit();}
+  function setDraft(id:string,engine:'gaussian'|'orca',value:JsonValue,dirty=true){
+    const entry=editableDocument(id);
+    let taskSeeded=false;
+    if(!documentInputTasks.has(id)){
+      const seeded=Object.freeze({id:newModelId(),documentId:id,activationEpoch:++inputActivationEpoch});
+      documentInputTasks.set(id,seeded);
+      if(!borrowedInputTask&&!inputTask&&activeViewId&&views.get(activeViewId)?.documentId===id){
+        inputTask=seeded;
+        taskSeeded=true;
+      }
+    }
+    if(JSON.stringify(entry.drafts[engine])===JSON.stringify(value)&&entry.inputDirty[engine]===dirty){
+      if(taskSeeded)emit();
+      return;
+    }
+    entry.drafts[engine]=freezeJSON(clone(value));entry.inputDirty[engine]=dirty;emit();
+  }
   function claimRuntime(id:string,ownerId:string){if(typeof ownerId!=='string'||!ownerId.length||ownerId.length>200||!/^[-a-zA-Z0-9_.:]+$/.test(ownerId))throw new Error('运行协调者身份无效。');const entry=editableDocument(id);if(entry.runtime.ownerId&&entry.runtime.ownerId!==ownerId)throw new Error('文档已有唯一运行协调者。');if(entry.runtime.ownerId===ownerId)return;entry.runtime.ownerId=ownerId;emit();}
   function runtimePhase(id:string,ownerId:string,phase:RuntimePhase){const entry=document(id);if(entry.runtime.ownerId!==ownerId)throw new Error('运行协调者身份不匹配。');entry.runtime.phase=phase;emit();}
   function releaseRuntime(id:string,ownerId:string){const entry=document(id);if(entry.runtime.ownerId!==ownerId||busyPhases.has(entry.runtime.phase))throw new Error('运行尚未结束或协调者不匹配。');entry.runtime.ownerId=null;emit();}

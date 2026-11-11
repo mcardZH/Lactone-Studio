@@ -133,6 +133,11 @@ PLATFORM_LAYOUTS = {
         "toolchains_parent": ".local/toolchains/darwin-x64",
         "python_entries": ("python/bin/python3", "python/bin/python"),
     },
+    "linux-x64": {
+        "dependencies_parent": ".local/dependencies/linux-x64",
+        "toolchains_parent": ".local/toolchains/linux-x64",
+        "python_entries": ("python/bin/python3", "python/bin/python"),
+    },
 }
 
 
@@ -290,6 +295,11 @@ def detect_host_platform() -> str:
         if machine in ("x86_64", "amd64"):
             return "darwin-x64"
         raise RuntimeError(f"DEV_RUNTIME_PLATFORM_UNSUPPORTED: Unsupported Darwin machine '{machine}'.")
+    if plat.startswith("linux"):
+        machine = getattr(os.uname(), "machine", "").lower() if hasattr(os, "uname") else "x86_64"
+        if machine in ("x86_64", "amd64"):
+            return "linux-x64"
+        raise RuntimeError(f"DEV_RUNTIME_PLATFORM_UNSUPPORTED: Unsupported Linux machine '{machine}'.")
     return f"{plat}-x64"
 
 

@@ -105,7 +105,7 @@ import {createTrustedViewportDisplayProjection,type ViewportDisplayProjection} f
 import type {ModelViewportProps} from './ModelViewport';
 import {useCurrentCipUsage} from './use-cip-usage';
 import { transferSlabCameraView } from './slab-preview-presentation';
-import { XtbController } from '../../modeling/xtb/controller';
+import { XtbController, type XtbOptions, type XtbState } from '../../modeling/xtb/controller';
 import { nextXtbDisplayObservation, projectXtbPreview, xtbOptimizationDisplayStatus, type XtbDisplayObservation } from './xtb-preview';
 import { getMDProtectionInfo } from '../../modeling/dynamics/md-methods';
 import type { DynamicsConfig } from '../../modeling/dynamics/controller';
@@ -150,6 +150,7 @@ export interface ModelWorkspaceProps extends ModelWorkspaceBaseProps {
   onSavedName?(name: string): void;
   onViewportState?(state: WorkspaceViewportState): void;
   onViewportController?(controller: WorkspaceViewportController | null): void;
+  onXtbController?(controller: { runMcpXtb(calculation: 'singlepoint' | 'optimize', options: XtbOptions, timeoutSeconds?: number): Promise<XtbState> } | null): void;
   /** Complete view-local pose for a newly borrowed/extracted frame. */
   initialCameraView?:readonly number[];
   initialViewTransform?:ModelViewportProps['viewTransform'];
@@ -406,8 +407,9 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   const [saveState, setSaveState] = useState<{ format: ModelFormat; token?: string; snapshot: ModelDocument; request: JobRequest | OrcaJobRequest; assertCurrent():void } | null>(null);
   const saveModalGuard = useRef<(()=>void)|null>(null), saveBusyRef=useRef(false), asyncAlive = useRef(true);
   const xtbContext = useRef<{ store: ModelStore; documentId: string; generation: number; lease?: WorkspaceActivationStamp; referenceStructure?: Structure } | null>(null);
+  const mcpAutoConfirmConstraints = useRef(false);
   const xtb = useMemo(() => new XtbController({ store, bridge: desktopBridge(), chemistry: createChemistryPort(),allowWorkingEdits:true,
-    confirmConstraints: () => confirmSynchronousOperation('xTB原子冻结保持坐标不变；内坐标使用强约束势。仅接受键长偏差≤0.001 Å、键角/二面角偏差≤0.1°且收敛的结果，未达标保留原模型。是否继续？',scope.current?.ownerDocument),
+    confirmConstraints: () => mcpAutoConfirmConstraints.current || confirmSynchronousOperation('xTB原子冻结保持坐标不变；内坐标使用强约束势。仅接受键长偏差≤0.001 Å、键角/二面角偏差≤0.1°且收敛的结果，未达标保留原模型。是否继续？',scope.current?.ownerDocument),
     assertCurrent() {
       const context = xtbContext.current;
       if(!context)throw new Error('xTB运行缺少所属文档身份。');
@@ -644,6 +646,56 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     xtbContext.current = { store: sourceStore, documentId: sourceStore.getSnapshot().id, generation: generation.current, lease: latest.current.props.activationStamp?.(), referenceStructure:structuredClone(sourceStore.getSnapshot().draft.structure) };
     try { await xtb.run(hasPeriodicBox?{...options,rebuildBonds:false}:options); } catch (cause) { setError(message(cause)); } finally { sourceStore.clearScientificEditApproval?.(); }
   }
+  const runMcpXtbRef = useRef<(calculation: 'singlepoint' | 'optimize', options: XtbOptions, timeoutSeconds?: number) => Promise<XtbState>>(null!);
+  runMcpXtbRef.current = async (calculation: 'singlepoint' | 'optimize', options: XtbOptions, timeoutSeconds?: number): Promise<XtbState> => {
+    if (!structureEditAllowed() || busy || optimizationBusy || geometryEditing) {
+      throw new Error('当前建模窗口正在执行其他操作或处于只读模式，请先结束当前操作。');
+    }
+    if (hasPeriodicBox && calculation === 'singlepoint' && !periodicGfn2Available) {
+      throw new Error('当前运行环境尚未提供周期 GFN2 辅助单点能力。');
+    }
+    cancelTask();
+    const sourceStore = latest.current.store;
+    xtbContext.current = {
+      store: sourceStore,
+      documentId: sourceStore.getSnapshot().id,
+      generation: generation.current,
+      lease: latest.current.props.activationStamp?.(),
+      ...(calculation === 'optimize' ? { referenceStructure: structuredClone(sourceStore.getSnapshot().draft.structure) } : {})
+    };
+    mcpAutoConfirmConstraints.current = true;
+    let timedOut = false;
+    const deadlineTimer = timeoutSeconds && timeoutSeconds > 0
+      ? setTimeout(() => {
+          timedOut = true;
+          void xtb.stop().catch(() => {});
+        }, timeoutSeconds * 1000)
+      : undefined;
+    try {
+      const effectiveOptions: XtbOptions = {
+        ...options,
+        ...(timeoutSeconds !== undefined ? { maxWallTimeSeconds: timeoutSeconds } : {}),
+        maxSccIterations: options.maxSccIterations ?? optimizationPreferences.xtb.maxSccIterations ?? 250,
+        empiricalBondParameters: options.empiricalBondParameters ?? empiricalParameters,
+        ...(hasPeriodicBox && calculation === 'optimize' ? { rebuildBonds: false } : {})
+      };
+      await xtb.run(effectiveOptions, calculation, 'rebuild');
+      if (timedOut) {
+        await xtb.stop().catch(() => {});
+        throw Object.assign(
+          new Error(`本机 xTB 计算超过超时限制（${timeoutSeconds} 秒），已自动终止子进程。`),
+          { code: 'MCP_XTB_TIMEOUT' }
+        );
+      }
+      const snap = xtb.getSnapshot();
+      if (snap.error && !snap.metadata) setError(snap.error);
+      return snap;
+    } finally {
+      if (deadlineTimer !== undefined) clearTimeout(deadlineTimer);
+      mcpAutoConfirmConstraints.current = false;
+      sourceStore.clearScientificEditApproval?.();
+    }
+  };
   async function perceiveBonds(parameters?:EmpiricalBondPerceptionParameters,electronicOverride?:BondElectronicDraft){
     if(!structureEditAllowed()||busy||optimizationBusy||geometryEditing)return;
     const current=latest.current.store.getSnapshot();if(current.id!==model.id){setError('模型文档已变化，请重新判断成键。');return;}
@@ -1402,6 +1454,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     },
   });
   useEffect(()=>{props.onViewportController?.(viewportController);return()=>props.onViewportController?.(null);},[props.onViewportController,viewportController]);
+  useEffect(()=>{if(!props.onXtbController)return;props.onXtbController({runMcpXtb:(calculation,options,timeoutSeconds)=>runMcpXtbRef.current(calculation,options,timeoutSeconds)});return()=>props.onXtbController?.(null);},[props.onXtbController,xtb]);
   const cellGuides = useMemo<CellPresentationOptions|undefined>(() => {
     if (props.advancedModelingRoute?.category !== 'periodic') return;
     if (tiledTransform) return { preview: structurePreview?.structure.cell };

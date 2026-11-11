@@ -182,8 +182,8 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
   }; }, []);
   useEffect(()=>{const owner=readOwnerRef.current;if(!owner||owner.transferred||owner.controller.signal.aborted)return;try{owner.validate?.();}catch(error){void stopReadOwner(owner,error);}},[documents,generated,activeDocumentId,ports]);
 
-  async function read(files: ScientificSourceFile[], targetId?: string | null, expectedEngine?: PostprocessEngine, mode:'smart'|'replace'='smart',newDocument?:{guard?():void;beforeCommit?(document:PostprocessDocument):Promise<void>;beforeFileCommit?(document:PostprocessScientificFileDocument):Promise<void>;onCreated?(id:string):void;canNavigate?():boolean;throwOnFailure?:boolean;signal?:AbortSignal;reuseParsedOutput?(file:ScientificSourceFile,input:ResultInputFile):PostprocessParsedResultsLease|null},replacementSlot?:{slotKey?:PostprocessSlotKey;sourceId?:string}) {
-    if (!files.length || busyRef.current) { if(newDocument?.throwOnFailure)throw Error(busyRef.current?'后处理正在读取其他来源，请稍后重试。':'没有可接入的完整来源。');return; }
+  async function read(files: ScientificSourceFile[], targetId?: string | null, expectedEngine?: PostprocessEngine, mode:'smart'|'replace'='smart',newDocument?:{guard?():void;beforeCommit?(document:PostprocessDocument):Promise<void>;beforeFileCommit?(document:PostprocessScientificFileDocument):Promise<void>;onCreated?(id:string):void;canNavigate?():boolean;throwOnFailure?:boolean;signal?:AbortSignal;reuseParsedOutput?(file:ScientificSourceFile,input:ResultInputFile):PostprocessParsedResultsLease|null},replacementSlot?:{slotKey?:PostprocessSlotKey;sourceId?:string},automation?:{strictTargetId?:string;autoConfirmReplace?:boolean;throwOnFailure?:boolean;beforeCommit?(document:PostprocessDocument):Promise<void>|void;beforeFileCommit?(document:PostprocessScientificFileDocument):Promise<void>|void;onCommitted?(id:string):void}) {
+    if (!files.length || busyRef.current) { if(newDocument?.throwOnFailure||automation?.throwOnFailure)throw Error(busyRef.current?'后处理正在读取其他来源，请稍后重试。':'没有可接入的完整来源。');return; }
     busyRef.current = true; setBusy(true);setReadState('reading'); setNotice(''); const epoch = ++requestEpoch.current;
     let finish!:()=>void;const done=new Promise<void>(resolve=>finish=resolve),owner:ImportReadOwner={controller:new AbortController(),inputs:new Map(),sessions:new Map(),extras:new Map(),targets:new Set(targetId?[targetId]:[]),settled:false,transferred:false,done,finish};readOwnerRef.current=owner;
     const signal=owner.controller.signal,externalAbort=()=>{void stopReadOwner(owner,newDocument?.signal?.reason);};newDocument?.signal?.addEventListener('abort',externalAbort,{once:true});if(newDocument?.signal?.aborted)externalAbort();
@@ -222,7 +222,10 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       if(!forceNew)initialGuard?.();selectedGuard?.(); };
     owner.validate=guard;
     try {
-      const preparation=newDocument?{forceNew:true as const,onCreated:(id:string)=>{newDocument.onCreated?.(id);if(newDocument.canNavigate?.()!==false){portsRef.current.activate(id);portsRef.current.analyze();}}}:fileBase?undefined:await portsRef.current.prepareRead?.(targetId??activeDocumentId);
+      if(automation?.strictTargetId&&!initialBase&&!initialFileBase){
+        throw Object.assign(new Error(`Target document "${automation.strictTargetId}" does not contain an active Result Analysis output to pair onto.`),{code:'MCP_ANALYSIS_UNAVAILABLE'});
+      }
+      const preparation=newDocument?{forceNew:true as const,onCreated:(id:string)=>{newDocument.onCreated?.(id);if(newDocument.canNavigate?.()!==false){portsRef.current.activate(id);portsRef.current.analyze();}}}:(fileBase||automation?.strictTargetId)?undefined:await portsRef.current.prepareRead?.(targetId??activeDocumentId);
       if(preparation===null)return;
       if(preparation?.forceNew){forceNew=preparation;base=undefined;fileBase=undefined;targetId=null;owner.targets.clear();expectedEngine=undefined;mode='smart';}
       guard();
@@ -263,7 +266,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
             continue;
           } else throw new Error(identity.message ?? '请选择支持的OUT、XYZ、HESS、FCHK或Molden。');
           owner.inputs.get(input)!.adopted=true;
-        } catch (error) { if (nativeSessionId&&owner.sessions.has(nativeSessionId)) await closeImportSession(owner,nativeSessionId).catch(() => {}); await closeImportInput(owner,input); guard(); if (error instanceof DOMException && error.name === 'AbortError') throw error; sourceReadWarnings.push(`${file.name}：${textError(error)}`); }
+        } catch (error) { if (nativeSessionId&&owner.sessions.has(nativeSessionId)) await closeImportSession(owner,nativeSessionId).catch(() => {}); await closeImportInput(owner,input); guard(); if (error instanceof DOMException && error.name === 'AbortError') throw error; if (automation?.throwOnFailure) throw error; sourceReadWarnings.push(`${file.name}：${textError(error)}`); }
       }
       guard();
       if(fileIncoming.length||fileBase&&!incoming.some(item=>item.source.kind.endsWith('-output'))){
@@ -272,17 +275,25 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         const replacingWave=incoming.some(item=>['fchk','molden'].includes(item.source.kind))&&!!fileBase?.wavefunction;
         let useBase=fileBase;
         if(replacingOutput||replacingWave){
-          const answer=await ask('文件槽已有来源','替换当前文件来源？其他原始来源保留；新建分析可保留原分析。',[{label:'替换当前文件',value:'replace'},{label:'新建分析',value:'new'},{label:'取消',value:'cancel'}]);guard();
+          const answer=automation?.autoConfirmReplace?'replace':await ask('文件槽已有来源','替换当前文件来源？其他原始来源保留；新建分析可保留原分析。',[{label:'替换当前文件',value:'replace'},{label:'新建分析',value:'new'},{label:'取消',value:'cancel'}]);guard();
           if(answer==='cancel')return;if(answer==='new')useBase=undefined;
         }
         let prepared=await preparePostprocessFileIncoming([...fileIncoming,...incoming],useBase??base,guard,{nebAuxiliaries,mdAuxiliaries,signal});guard();
+        if(automation?.strictTargetId){
+          if(incoming.some(item=>['fchk','molden'].includes(item.source.kind))&&(!prepared.wavefunction||prepared.sourceWarnings.length>0)){
+            throw Object.assign(new Error(prepared.sourceWarnings.map(w=>w.message).join('；')||'波函数未能与当前文件分析来源可靠配对。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
+          }
+          if(incoming.some(item=>['xyz','hess'].includes(item.source.kind))&&prepared.sourceWarnings.length>0){
+            throw Object.assign(new Error(prepared.sourceWarnings.map(w=>w.message).join('；')||'配套文件未能与当前文件分析来源可靠配对。'),{code:'MCP_FILE_IMPORT_FAILED'});
+          }
+        }
         if(mode==='replace'&&useBase&&!fileIncoming.length){
           const role=(item:PostprocessAttachment)=>item.role??item.source.result.scientific?.ircEvidence?.role??(item.source.kind==='hess'?'hess':item.source.result.role);
           const ids=new Set(incoming.map(item=>item.source.result.source.id));
           const verified=prepared.companions.filter(item=>ids.has(item.source.result.source.id)&&!prepared.sourceWarnings.some(warning=>warning.sourceId===item.source.result.source.id)&&Boolean(role(item))&&role(item)!=='unknown');
           const targets=(useBase.companions??[]).filter(item=>replacementSlot?.sourceId?item.source.result.source.id===replacementSlot.sourceId:verified.length===1&&role(item)===role(verified[0]));
           if(verified.length===1&&targets.length===1&&role(verified[0])===role(targets[0])&&(!replacementSlot?.slotKey||role(verified[0])===replacementSlot.slotKey)){
-            const answer=await ask('配套文件槽已有来源','新文件已取得相同任务角色的科学配对，替换已选择的配套来源？',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();if(answer!=='replace')return;
+            const answer=automation?.autoConfirmReplace?'replace':await ask('配套文件槽已有来源','新文件已取得相同任务角色的科学配对，替换已选择的配套来源？',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();if(answer!=='replace')return;
             const companions=prepared.companions.filter(item=>item.source.result.source.id!==targets[0].source.result.source.id);
             prepared=await preparePostprocessFileIncoming([],{...useBase,companions},guard,{nebAuxiliaries,mdAuxiliaries,signal});guard();
           }
@@ -291,7 +302,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         const value=composePostprocessFileDocument(useBase?.id??`analysis-file-${crypto.randomUUID()}`,prepared.output,prepared.wavefunction,prepared) as PostprocessScientificFileDocument;
         if(mdExtras.length)value.extraSources=[...value.extraSources??[],...mdExtras.map(extra=>({...extra,dispose(){}}))];
         pendingFileDocument=value;
-        await newDocument?.beforeFileCommit?.(value);guard();
+        await newDocument?.beforeFileCommit?.(value);await automation?.beforeFileCommit?.(value);guard();
         fileDocumentsRef.current={...fileDocumentsRef.current,[value.id]:value};setFileDocuments(fileDocumentsRef.current);
         // Source-specific restrictions are shown once beside their own slot.
         sourceNotices.current[value.id]=sourceReadWarnings.join('；');
@@ -299,7 +310,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
         const canNavigate=newDocument?newDocument.canNavigate?.()!==false:fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
         if(canNavigate){selectFile(value.id);portsRef.current.onFileDocument?.(value);portsRef.current.analyze();}
-        newDocument?.onCreated?.(value.id);
+        newDocument?.onCreated?.(value.id);automation?.onCommitted?.(value.id);
         if(useBase){
           const retained=new Set([value.output.source,...value.companions?.map(item=>item.source)??[],value.wavefunction?.source]);
           const retainedIds=new Set(value.companions?.map(item=>item.source.result.source.id));
@@ -325,7 +336,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       const replacedExtra=mode==='replace'&&replacementSlot?.slotKey==='md-log'&&mdExtras.length===1
         ?retainedExtras.find(extra=>extra.sourceId===replacementSlot.sourceId&&extra.format===mdExtras[0].format):undefined;
       if(replacedExtra){
-        const answer=await ask('配套文件槽已有来源','替换选中的 MD 辅助原始文件？新文件仍须核对其实际作业和单位。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);
+        const answer=automation?.autoConfirmReplace?'replace':await ask('配套文件槽已有来源','替换选中的 MD 辅助原始文件？新文件仍须核对其实际作业和单位。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);
         guard();if(answer!=='replace')return;
         retainedExtras=retainedExtras.filter(extra=>extra!==replacedExtra);
       }
@@ -345,7 +356,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       let matching=await matchingImportTargetForFrames(base,output,wavefunction);guard();
       let useTarget = base && (mode==='replace'||matching.reuse||(companions.length>0||auxiliaryOnly)&&!output) ? targetId! : null;
       const ordinary=incoming.length>0&&incoming.every(row=>['gaussian-output','orca-output','fchk','molden'].includes(row.source.kind));
-      if(!forceNew&&mode==='smart'&&ordinary&&Boolean(output)!==Boolean(wavefunction)){
+      if(!forceNew&&!automation?.strictTargetId&&mode==='smart'&&ordinary&&Boolean(output)!==Boolean(wavefunction)){
         const candidates=Object.entries(documentsRef.current).filter(([id])=>!closingIds.current.has(id)&&portsRef.current.exists(id)&&portsRef.current.available?.(id)!==false);
         const checks=new Map(candidates.map(([id,value])=>[id,snapshot(id,value)]));
         const ids=new Map<string,typeof candidates>();
@@ -372,6 +383,40 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
           if(!matching.reuse)throw new Error(matching.reason?.message??'所选来源已不能可靠配对。');
         }
       }
+      if(automation?.strictTargetId){
+        if(!base)throw Object.assign(new Error(`Analysis document not found: ${automation.strictTargetId}`),{code:'MCP_ANALYSIS_UNAVAILABLE'});
+        if(wavefunction&&!output){
+          if(!base.output)throw Object.assign(new Error('目标分析页缺少主输出文件，无法挂载波函数。'),{code:'MCP_FILE_IMPORT_FAILED'});
+          let strictPair;
+          try{
+            strictPair=await pairPostprocessSourcesForFrames(base.output.source,wavefunction.source,{signal});guard();
+          }catch(error){
+            throw Object.assign(new Error(textError(error)),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
+          }
+          const conflict=postprocessMetadataConflict(strictPair);
+          if(conflict||strictPair.conflicts.length||strictPair.frameIndex===undefined){
+            throw Object.assign(new Error(conflict??'波函数与目标输出文档电子态或几何不一致，拒绝配对。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
+          }
+          matching={reuse:true,pair:strictPair};
+        }else if(output&&!wavefunction&&base.wavefunction){
+          let strictPair;
+          try{
+            strictPair=await pairPostprocessSourcesForFrames((enrichedOutput??output).source,base.wavefunction.source,{signal});guard();
+          }catch(error){
+            throw Object.assign(new Error(textError(error)),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
+          }
+          const conflict=postprocessMetadataConflict(strictPair);
+          if(conflict||strictPair.conflicts.length){
+            throw Object.assign(new Error(conflict??'新输出与已挂载波函数不一致，拒绝替换。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
+          }
+          matching={reuse:true,pair:strictPair};
+        }else if(!output&&!wavefunction){
+          if(!base.output||(!companions.length&&!auxiliaryOnly)||sourceWarnings.length>0){
+            throw Object.assign(new Error(sourceWarnings.map(w=>w.message).join('；')||readNotice||'配套来源未能与目标输出文档可靠配对。'),{code:'MCP_FILE_IMPORT_FAILED'});
+          }
+        }
+        useTarget=automation.strictTargetId;
+      }
       const companionOnly=companions.length>0&&!output;
       const occupiedCompanion=companions.some(next=>base?.companions?.some(old=>old.source.result.role===next.source.result.role));
       // Unknown Molden may use the counterpart's pairing proof, never a renamed
@@ -386,15 +431,16 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         ||expectedEngine==='unknown'&&base?.wavefunction?.source.kind==='molden'&&(!base.wavefunction.source.software||base.wavefunction.source.software==='unknown'));
       if (!mdAuxiliaryOnly && mode==='replace' && expectedEngine && actualEngine !== expectedEngine && !unknownMoldenPair) {
         const name=actualEngine==='gaussian'?'Gaussian':actualEngine==='orca'?'ORCA':actualEngine==='cp2k'?'CP2K':'生产软件未确认的Molden';
+        if(automation?.strictTargetId)throw Object.assign(new Error(counterpartReason??`识别为 ${name} 来源，与当前页软件不一致。`),{code:'MCP_FILE_IMPORT_FAILED'});
         const answer = await ask('来源软件与当前页不同', `识别为 ${name} 来源。${counterpartReason??'与当前页软件不一致。'}原分析保持不变。`, [{ label: '新建对应分析', value: 'new' }, { label: '取消', value: 'cancel' }]); guard();
         if (answer !== 'new') return; useTarget = null;
       }
       if(!mdAuxiliaryOnly&&companionOnly&&(mode==='replace'&&base?.companions?.length||occupiedCompanion)){
-        const answer=await ask('配套文件槽已有来源','替换已选择的配套来源？其他来源及原始文件保留。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();
+        const answer=automation?.autoConfirmReplace?'replace':await ask('配套文件槽已有来源','替换已选择的配套来源？其他来源及原始文件保留。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();
         if(answer!=='replace')return;
       }
       if (mode==='replace' && useTarget && base && (output && base.output || wavefunction && base.wavefunction)) {
-        const answer = await ask('文件槽已有来源', '替换会释放被替换波函数的本次内存缓存；已打开图窗仍保留其来源快照。', [{ label: '替换当前文件', value: 'replace' }, { label: '新建分析', value: 'new' }, { label: '取消', value: 'cancel' }]); guard();
+        const answer = automation?.autoConfirmReplace ? 'replace' : await ask('文件槽已有来源', '替换会释放被替换波函数的本次内存缓存；已打开图窗仍保留其来源快照。', [{ label: '替换当前文件', value: 'replace' }, { label: '新建分析', value: 'new' }, { label: '取消', value: 'cancel' }]); guard();
         if (answer === 'cancel') return; if (answer === 'new') useTarget = null;
       }
       if(companionOnly&&!useTarget)throw new Error('这些配套来源已与当前主OUT核对；独立新建时请一同提供主OUT，当前分析未改变。');
@@ -414,17 +460,21 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
           const conflict=postprocessMetadataConflict(pair);if(conflict)throw new Error(conflict);
         }catch(error){
           guard(); if(error instanceof DOMException&&error.name==='AbortError')throw error;
+          if(automation?.strictTargetId)throw Object.assign(new Error(textError(error)),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
           pair=undefined; recordNotice(previous=>[previous,`${textError(error)} 波函数保留为独立来源，依赖可靠配对的分析暂不可用。`].filter(Boolean).join('；'));
         }
       }
-      if(pair?.conflicts.length)recordNotice(previous=>`${previous}；几何身份已核对，${pair.conflicts.length}项打印数值不一致；两槽及各自数值保留，依赖一致电子态的分析不可用。`);
+      if(pair?.conflicts.length){
+        if(automation?.strictTargetId)throw Object.assign(new Error('几何身份已核对，但打印数值存在电子态冲突，拒绝自动配对。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
+        recordNotice(previous=>`${previous}；几何身份已核对，${pair.conflicts.length}项打印数值不一致；两槽及各自数值保留，依赖一致电子态的分析不可用。`);
+      }
       if(wavefunction?.nativeSessionId)await portsRef.current.reserveViews?.(wavefunction.nativeSessionId,useTarget);
       guard();
       const displayedResult=await defaultPostprocessCompanion(nextOutput,nextCompanions);guard();
       const value = composePostprocessDocument(useTarget ? base!.id : `analysis-${crypto.randomUUID()}`, nextOutput, nextWave, pair,{companions:nextCompanions,displayedResult});
       const extras=[...(useTarget?retainedExtras:[]),...nebExtras,...mdExtras];if(extras.length)retainPostprocessSourceExtras(value,extras.filter((extra,index)=>extras.findIndex(other=>other.sourceId===extra.sourceId&&other.revision===extra.revision)===index));
       const structure = await readInitialPostprocessStructure(value,signal); guard();
-      await newDocument?.beforeCommit?.(value);guard();
+      await newDocument?.beforeCommit?.(value);await automation?.beforeCommit?.(value);guard();
       const canNavigate=newDocument?newDocument.canNavigate?.()!==false:fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
       const documentId = useTarget ?? portsRef.current.add(value.result, value, { structure,...(!canNavigate||forceNew?{activate:false}:{}),...(forceNew?{initialModule:'analysis' as const}:{}) });
       if (useTarget) portsRef.current.replace(documentId, value.result, value, structure);
@@ -436,8 +486,9 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       if(canNavigate){setEngine(sourceEngine(value));setTask(postprocessDocumentTask(value));setStage('files');setNotice(readNotice);}committed = true;owner.transferred=true;for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
       if(diagnostics.length){portsRef.current.onDiagnostics?.(diagnostics);diagnosticsCommitted=Boolean(portsRef.current.onDiagnostics);}
       if(forceNew)forceNew.onCreated(documentId);else if(canNavigate){portsRef.current.activate(documentId);portsRef.current.analyze();}
+      automation?.onCommitted?.(documentId);
       if (useTarget && base) {const retained=new Set(nextCompanions.map(value=>value.source.result.source.id));const issues=await dispose([output ? base.output : undefined, wavefunction ? base.wavefunction : undefined,...(base.companions??[]).filter(value=>!retained.has(value.source.result.source.id))],useTarget);if(issues.length)portsRef.current.onError(`新来源已接入；旧来源释放提示：${issues.join('；')}`);}
-    } catch (error) { if(newDocument?.throwOnFailure)throw error;if (alive.current) portsRef.current.onError(textError(error)); }
+    } catch (error) { if(newDocument?.throwOnFailure||automation?.throwOnFailure)throw error;if (alive.current) portsRef.current.onError(textError(error)); }
     finally {
       newDocument?.signal?.removeEventListener('abort',externalAbort);
       if(!committed)for(const extra of pendingFileDocument?.extraSources??[])if(!retainedFileExtras.has(extra)&&!owner.extras.has(extra))owner.extras.set(extra,{closed:false});

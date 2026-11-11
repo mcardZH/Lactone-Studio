@@ -15,7 +15,8 @@ import {
 	environmentConfigurationMarkdown,
 	initializationSnippets,
 	environmentPathPlaceholder,
-	isMacClientPlatform
+	isMacClientPlatform,
+	isSshOnlyClientPlatform
 } from "./environment-assistant";
 import TaskFieldHelp from "./TaskFieldHelp";
 import DialogShell from "../DialogShell";
@@ -106,13 +107,13 @@ export interface EnvironmentSettingsProps {
 	onClose(): void;
 }
 export function newEnvironment(platform?: string): EnvironmentView {
-	const mac = isMacClientPlatform(platform);
+	const sshOnly = isSshOnlyClientPlatform(platform);
 	return {
 		environmentId: "",
 		revision: 0,
-		displayName: mac ? "Gaussian · SSH服务器" : "Gaussian · Windows 本机",
+		displayName: sshOnly ? "Gaussian · SSH服务器" : "Gaussian · Windows 本机",
 		engineId: "gaussian",
-		connectionKind: mac ? "ssh" : "local",
+		connectionKind: sshOnly ? "ssh" : "local",
 		schedulerKind: "none",
 		host: "",
 		port: 22,
@@ -302,7 +303,7 @@ export default function EnvironmentSettings({
 		);
 	}
 	const valid =
-		(!isMacClientPlatform() || draft.connectionKind === "ssh") &&
+		(!isSshOnlyClientPlatform() || draft.connectionKind === "ssh") &&
 		!invalid("displayName") &&
 		!invalid("executable") &&
 		!invalid("workingRoot") &&
@@ -796,7 +797,7 @@ export default function EnvironmentSettings({
 											disabled={
 												!canManage ||
 												pending ||
-												(isMacClientPlatform() && draft.connectionKind !== "ssh") ||
+												(isSshOnlyClientPlatform() && draft.connectionKind !== "ssh") ||
 												!siteName.trim() ||
 												!draft.workingRoot ||
 												(draft.connectionKind !== "local" && !draft.user) ||
@@ -990,18 +991,18 @@ export default function EnvironmentSettings({
 								aria-label="环境类型"
 								disabled={!canManage || pending}
 								value={
-									isMacClientPlatform() && draft.connectionKind !== "ssh"
+									isSshOnlyClientPlatform() && draft.connectionKind !== "ssh"
 										? ""
 										: environmentMode(draft)
 								}
 								onChange={(event) => switchMode(event.target.value as EnvironmentMode)}
 							>
-								{isMacClientPlatform() && draft.connectionKind !== "ssh" && (
+								{isSshOnlyClientPlatform() && draft.connectionKind !== "ssh" && (
 									<option value="" disabled hidden>
 										请选择远程环境
 									</option>
 								)}
-								{!isMacClientPlatform() && (
+								{!isSshOnlyClientPlatform() && (
 									<>
 										<option value="local">Windows 本机</option>
 										<option value="wsl">WSL2</option>
@@ -1012,14 +1013,14 @@ export default function EnvironmentSettings({
 							</select>
 						</label>
 					</div>
-					{isMacClientPlatform() && draft.connectionKind !== "ssh" && (
+					{isSshOnlyClientPlatform() && draft.connectionKind !== "ssh" && (
 						<p role="status">
-							当前已加载的环境类型（{draft.connectionKind === "local" ? "Windows 本机" : "WSL2"}）在 macOS 上不受支持，请切换为 SSH服务器 或 SSH + Slurm。
+							当前已加载的环境类型（{draft.connectionKind === "local" ? "Windows 本机" : "WSL2"}）在 {isMacClientPlatform() ? "macOS" : "Linux"} 上不受支持，请切换为 SSH服务器 或 SSH + Slurm。
 						</p>
 					)}
 				</section>
 				{draft.connectionKind !== "local" &&
-					(!isMacClientPlatform() || draft.connectionKind === "ssh") && (
+					(!isSshOnlyClientPlatform() || draft.connectionKind === "ssh") && (
 					<section className="task-env-section">
 						<h3>连接设置</h3>
 						{draft.connectionKind === "wsl" ? (

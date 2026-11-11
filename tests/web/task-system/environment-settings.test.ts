@@ -122,9 +122,12 @@ describe("task-system macOS and Windows environment settings helpers", () => {
 		expect(isMacClientPlatform("linux")).toBe(false);
 	});
 
-	it("availableEnvironmentPresets hides local and wsl on macOS and preserves all 4 presets on Windows", () => {
+	it("availableEnvironmentPresets hides local and wsl on macOS/Linux and preserves all 4 presets on Windows", () => {
 		const macPresets = availableEnvironmentPresets("darwin");
 		expect(macPresets.map((p) => p.id)).toEqual(["ssh", "slurm"]);
+
+		const linuxPresets = availableEnvironmentPresets("linux");
+		expect(linuxPresets.map((p) => p.id)).toEqual(["ssh", "slurm"]);
 
 		const winPresets = availableEnvironmentPresets("win32");
 		expect(winPresets.map((p) => p.id)).toEqual(["windows", "wsl", "ssh", "slurm"]);
@@ -152,6 +155,11 @@ describe("task-system macOS and Windows environment settings helpers", () => {
 		expect(macEnv.schedulerKind).toBe("none");
 		expect(macEnv.displayName).toBe("Gaussian · SSH服务器");
 		expect(isDefaultEnvironmentDisplayName(macEnv.displayName)).toBe(true);
+
+		const linuxEnv = newEnvironment("linux");
+		expect(linuxEnv.connectionKind).toBe("ssh");
+		expect(linuxEnv.schedulerKind).toBe("none");
+		expect(linuxEnv.displayName).toBe("Gaussian · SSH服务器");
 
 		const winEnv = newEnvironment("win32");
 		expect(winEnv.connectionKind).toBe("local");

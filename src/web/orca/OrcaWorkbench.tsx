@@ -7,7 +7,7 @@ import DialogShell from '../DialogShell';
 import {editOrcaGeneratedFile,orcaGeneratedSource,type OrcaGeneratedDraft} from '../../modeling/application/orca-generated-draft';
 import { buildOrcaCommon, createOrcaCommonSettings, getOrcaCommonMethodProfile, getOrcaCommonCompatibility, type OrcaJobRequest, type OrcaSettings } from '../../core/orca';
 import { referencedOrcaAssets } from '../../core/orca/assets';
-import { orcaExternalInputDraft, selectOrcaMainInput, type SubmitExternalInput } from '../../task-system/integration/input-draft';
+import { orcaExternalInputDraft, selectOrcaMainInput, type ExternalInputDraft, type SubmitExternalInput } from '../../task-system/integration/input-draft';
 import type { InputStructureSource,Structure } from '../../core/types';
 import type { BuilderApplyResult } from '../../core/builder-draft';
 import { applySharedOrcaConstraints, captureOrcaAssignments, integrateOrcaBuilderResult, invalidateOrcaRequestForModel } from '../../modeling/application/orca-bridge';
@@ -61,6 +61,7 @@ export interface OrcaWorkbenchProps extends MultiStructureSourceActions {
   generatedDraft?:OrcaGeneratedDraft;
   onGeneratedDraftChange?:(task:OrcaJobRequest['settings']['task'],draft:OrcaGeneratedDraft)=>void;
   onSubmitExternalInput?: SubmitExternalInput;
+  onCaptureExternalDraft?: (capture: (() => ExternalInputDraft | null) | null) => void;
   onPreparedInput?:(input:import('../citations/state').PreparedCitationInput)=>void;
   onResetTask?:()=>void;
   onResetElectronicState?:()=>void;
@@ -101,7 +102,7 @@ function saveFile(name: string, content: BlobPart, type = 'text/plain;charset=ut
 }
 function safeDefaultStem(name: string) { return name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9_.-]+/g, '_').replace(/^[^A-Za-z0-9]+/, '').replace(/\.{2,}/g, '.').slice(0, 70) || 'molecule'; }
 
-export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyChange, embedded = false, selected, onSelectionChange, onModelResult, beforeExport, onEffectiveRequest, workflowStep, onWorkflowStep, onNavigationReady, inputPreview, onRequestSelection, capabilityError: inheritedCapabilityError, inputLayerEditor,onExitMultiscale,sourceCandidates,sharedConstraints,namingPolicy,onNamingPolicyChange,onInheritLevel,canInheritLevel=false,onInheritFreezes,canInheritFreezes=false,onRequestSourcePick,onImportSources,onFreezeEnabledChange,onGenerateBatch,onResetTask,onResetElectronicState,onBeforeLocalReset,onPreparedInput,onSubmitExternalInput,generatedDraft,onGeneratedDraftChange,active=true }: OrcaWorkbenchProps) {
+export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyChange, embedded = false, selected, onSelectionChange, onModelResult, beforeExport, onEffectiveRequest, workflowStep, onWorkflowStep, onNavigationReady, inputPreview, onRequestSelection, capabilityError: inheritedCapabilityError, inputLayerEditor,onExitMultiscale,sourceCandidates,sharedConstraints,namingPolicy,onNamingPolicyChange,onInheritLevel,canInheritLevel=false,onInheritFreezes,canInheritFreezes=false,onRequestSourcePick,onImportSources,onFreezeEnabledChange,onGenerateBatch,onResetTask,onResetElectronicState,onBeforeLocalReset,onPreparedInput,onSubmitExternalInput,onCaptureExternalDraft,generatedDraft,onGeneratedDraftChange,active=true }: OrcaWorkbenchProps) {
   const [localGenerated,setLocalGenerated]=useState<Partial<Record<OrcaJobRequest['settings']['task'],OrcaGeneratedDraft>>>({});
   const generated=onGeneratedDraftChange?generatedDraft:localGenerated[request.settings.task];
   const generatedLive=useRef(generated);generatedLive.current=generated;
@@ -160,7 +161,7 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
     if(embedded)return;
     return modelStore.subscribe(()=>{
       const document=modelStore.getSnapshot();if(document.revision===modelRevision.current)return;modelRevision.current=document.revision;
-      try{const current=latest.current;const result=projectSessionModel(document,current.structure,captureOrcaAssignments(current.structure,current.settings),captureOrcaCoordinates(current.structure,current.settings),true);const next=invalidateOrcaRequestForModel(current,integrateOrcaBuilderResult(current.structure,result,current.settings));if(document.sharedConstraints?.canonical)next.settings=projectCanonicalOrcaFreezes(next.structure,next.settings,document.sharedConstraints);projectedModel.current=next.structure;latest.current=next;onChange(next);setError('');}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
+      try{const current=latest.current;const result=projectSessionModel(document,current.structure,captureOrcaAssignments(current.structure,current.settings),captureOrcaCoordinates(current.structure,current.settings),true);const next=invalidateOrcaRequestForModel(current,integrateOrcaBuilderResult(current.structure,result,current.settings));if(document.internalCoordinates?.some(row=>row.action==='scan')&&next.settings.task!=='scan'&&next.settings.task!=='md')next.settings={...next.settings,task:'scan'};if(document.sharedConstraints?.canonical)next.settings=projectCanonicalOrcaFreezes(next.structure,next.settings,document.sharedConstraints);projectedModel.current=next.structure;latest.current=next;onChange(next);setError('');}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
     });
   },[embedded,modelStore,onChange]);
   useEffect(()=>{if(!embedded&&request.structure&&request.structure!==projectedModel.current){projectedModel.current=request.structure;modelStore.execute({type:'replace-structure',structure:request.structure,assignments:captureOrcaAssignments(request.structure,request.settings)});}},[embedded,modelStore,request.structure]);
@@ -350,6 +351,18 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
       submittingExternal.current=false;if(exportLifetime.current.alive)setExternalSubmitBusy(false);
     }
   }
+  const captureExternalDraftRef=useRef<()=>ExternalInputDraft|null>(()=>null);
+  captureExternalDraftRef.current=()=>{
+    const snapshot=generatedLive.current;
+    if(!snapshot||dirtyRef.current||!exportReady||onGenerateBatch)return null;
+    if(generatedStale){
+      if(snapshot.editedNames.length>0)return null;
+      if(!result.files.length||result.issues.some(issue=>issue.severity==='error'))return null;
+      return orcaExternalInputDraft(result.files,0,referencedOrcaAssets(effectiveRequest),binaryFiles.current);
+    }
+    return orcaExternalInputDraft(snapshot.files,previewIndex,snapshot.assets,binaryFiles.current);
+  };
+  useEffect(()=>{if(!onCaptureExternalDraft)return;onCaptureExternalDraft(()=>captureExternalDraftRef.current());return()=>onCaptureExternalDraft(null);},[onCaptureExternalDraft]);
   function electronic(patch: Pick<Partial<OrcaJobRequest>, 'charge' | 'multiplicity'>) {
     const next={...request,...patch};
     update({ ...next, electronicStateConfirmed:false, settings: { ...s, neb: { ...s.neb, mappingConfirmed: false }, md: { ...s.md, restartConfirmed: false }, multiscale: { ...s.multiscale, configurationConfirmed: false } }, assets: request.assets.map(asset => asset.orbitalEvidence ? { ...asset, orbitalEvidence: { ...asset.orbitalEvidence, compatibilityConfirmed: false } } : asset) });

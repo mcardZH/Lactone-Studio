@@ -1,6 +1,6 @@
 # Lactone Studio (LS)
 
-**面向计算化学、量子化学与分子模拟工作流的跨平台（macOS / Windows）一体化桌面工作台**
+**面向计算化学、量子化学与分子模拟工作流的跨平台（macOS / Windows / Linux）一体化桌面工作台**
 
 > [!IMPORTANT]
 > **非官方修改版声明（Unofficial Modified Version Notice — 遵循 `LICENSE.txt` 第七条）**
@@ -80,6 +80,14 @@ npm run build
 
 # 在 macOS 上打包生成 Lactone Studio.app、.dmg 安装镜像与 安装说明 (INSTALL).txt
 npm run package:mac
+
+# 在 Windows (x64) 上暂存 Conda 科学栈并打包免安装便携版 .zip
+npm run native:stage:conda -- --conda-prefix <conda_env_path> --platform win32-x64
+npm run package:win
+
+# 在 Linux (x64) 上暂存 Conda 科学栈并打包便携版 .tar.gz 与单文件 .AppImage
+npm run native:stage:conda -- --conda-prefix <conda_env_path> --platform linux-x64
+npm run package:linux
 ```
 
 打包产物默认输出至 `release/darwin-arm64/`（或 `release/darwin-x64/`），包含：
@@ -109,13 +117,17 @@ brew install --HEAD multiwfn --with-openmp
 - **免配置自动识别**：安装完成后，Lactone Studio 启动时会自动探测 Homebrew 默认安装路径（Apple Silicon：`/opt/homebrew/opt/multiwfn/bin/multiwfn` 或 `/opt/homebrew/bin/multiwfn`；Intel Mac：`/usr/local/opt/multiwfn/bin/multiwfn` 或 `/usr/local/bin/multiwfn`），并自动关联 `<brew_prefix>/etc/multiwfn/settings.ini` 配置文件，**无需手动设置系统环境变量 `Multiwfnpath`**。
 - **手动指定路径（可选）**：若安装在其他自定义目录，或升级版本后需要重新指定，可在软件左上角 **「LS（全局设置）」->「工具与文件」** 中手动选择 `multiwfn` 可执行文件。
 
-### 3.5 GitHub Actions 自动编译与分发 (`.github/workflows/release-macos.yml`)
+### 3.5 GitHub Actions 跨平台自动编译与分发 (`.github/workflows/release.yml`)
 
-仓库内置了自动化 macOS 构建与发布流水线 [.github/workflows/release-macos.yml](.github/workflows/release-macos.yml)：
+仓库内置了统一的跨平台自动化构建与发布流水线 [.github/workflows/release.yml](.github/workflows/release.yml)：
 - **触发方式**：
-  1. 推送 `v*` 版本标签（如 `git tag v2.0.3-lactone.1 && git push origin v2.0.3-lactone.1`）；
-  2. 在 GitHub 仓库 **Actions -> Build & Release macOS App -> Run workflow** 手动触发（可选填写 `release_tag` 自动创建或更新 GitHub Release）。
-- **自动化流程**：默认使用免排队秒级启动的 `macos-15-intel` 运行器（支持通过 `micromamba --platform osx-arm64` 跨架构拉取 Apple Silicon `darwin-arm64` 科学计算栈与 Electron 模板并完成原生 `codesign` 与 `hdiutil` DMG 打包，亦可在手动触发时选择 `target_arch: arm64/x64` 或 `runner: macos-latest/macos-26`），自动将 `.dmg`、`.app.zip`、`安装说明 (INSTALL).txt` 与 `SHA256SUMS.txt` 分发至 GitHub Releases 与 Actions Artifacts。
+  1. 推送 `v*` 版本标签（如 `git tag v2.0.3-lactone.1 && git push origin v2.0.3-lactone.1`），自动并行构建 **macOS (`arm64` + `x64`) + Windows (`x64`) + Linux (`x64`)** 全平台安装包并汇总至同一 GitHub Release；
+  2. 在 GitHub 仓库 **Actions -> Build & Release Cross-Platform Apps -> Run workflow** 手动触发（支持通过 `target_platform` 选择 `all` 或单独构建 `macos-arm64` / `macos-x64` / `windows-x64` / `linux-x64`，可选填写 `release_tag` 发布到 GitHub Releases）。
+- **自动化产物**：
+  - **macOS (`darwin-arm64` / `darwin-x64`)**：`Lactone-Studio-<ver>-darwin-<arch>.dmg`、`*.app.zip` 与 `INSTALL-macos-<arch>.txt`；
+  - **Windows (`win32-x64`)**：免安装绿色便携包 `Lactone-Studio-<ver>-win32-x64.zip` 与 `INSTALL-windows-x64.txt`；
+  - **Linux (`linux-x64`)**：单文件可执行包 `Lactone-Studio-<ver>-linux-x64.AppImage`、便携压缩包 `Lactone-Studio-<ver>-linux-x64.tar.gz` 与 `INSTALL-linux-x64.txt`；
+  - 统一汇总校验清单 `SHA256SUMS.txt`。
 
 关于原版源码快照的完整离线重构建流程，请同时参阅 [BUILDING.md](BUILDING.md)。
 

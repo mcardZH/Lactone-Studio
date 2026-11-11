@@ -300,7 +300,7 @@ function enqueueLaunch(window, request) {
   catch (error) { if (!headless) dialog.showErrorBox?.('启动文件导入失败', error.message); }
 }
 const syProjectStore=createSyProjectStore({appVersion:appDisplayVersion});
-const projectIPC=createSyProjectIPC({store:syProjectStore,dialog,ownerWindow:window=>window,createWindow:()=>createModelWindow(),appVersion:appDisplayVersion,executablePath:portableProfile?.layout?.distributionRoot?path.join(portableProfile.layout.distributionRoot,path.basename(process.execPath).toLowerCase()==='ester-studio-host.exe'?'Ester-Studio.exe':'SY-Studio.exe'):process.execPath});
+const projectIPC=createSyProjectIPC({store:syProjectStore,dialog,ownerWindow:window=>window,createWindow:()=>createModelWindow(),appVersion:appDisplayVersion,executablePath:portableProfile?.layout?.layoutVersion===2?path.join(portableProfile.layout.distributionRoot,path.basename(process.execPath).toLowerCase()==='ester-studio-host.exe'?'Ester-Studio.exe':'SY-Studio.exe'):process.execPath});
 const projectCompanionSources=createProjectCompanionSources({root:path.join(portableProfile?.paths.temp??app.getPath('temp'),'project-companions'),openLaunchSources:(owner,paths,options)=>launchSources.open(owner,paths,options),closeLaunchSource:(owner,token)=>launchSources.close(owner,token)});
 const xtbElectronicSources = createXtbElectronicArtifacts({ root: path.join(app.getPath('userData'), 'xtb-electronic-sources') });
 const xtb = createXtbHost({

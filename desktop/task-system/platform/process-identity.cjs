@@ -172,6 +172,7 @@ function createProcessIdentityProvider(options = {}) {
 	const helper = options.helperPath || HELPER;
 	const spawnProcess = options.spawn || spawn;
 	const execFileProcess = options.execFile || execFile;
+	const hostFs = options.fs || fs;
 	function runDarwinCommand(file, args) {
 		return new Promise((resolve) => {
 			execFileProcess(
@@ -213,11 +214,34 @@ function createProcessIdentityProvider(options = {}) {
 			return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
 		return { hostId, bootId };
 	}
-	async function darwinInspect(pid) {
-		const host = await darwinHost();
+	async function linuxHost() {
+		let bootId = "";
+		try {
+			bootId = (await hostFs.readFile("/proc/sys/kernel/random/boot_id", "utf8")).trim();
+		} catch {}
+		let hostId = "";
+		for (const candidate of ["/etc/machine-id", "/var/lib/dbus/machine-id"]) {
+			try {
+				const raw = (await hostFs.readFile(candidate, "utf8")).trim();
+				if (raw) {
+					hostId = raw;
+					break;
+				}
+			} catch {}
+		}
+		if (!hostId) {
+			const unameNode = await runDarwinCommand("/bin/uname", ["-n"]);
+			if (unameNode.ok && unameNode.stdout.trim()) hostId = `linux-host:${unameNode.stdout.trim()}`;
+		}
+		if (!hostId || !bootId || /[\r\n]/.test(hostId) || /[\r\n]/.test(bootId))
+			return { status: "unknown", reason: "HOST_IDENTITY_UNAVAILABLE" };
+		return { hostId, bootId };
+	}
+	async function posixPsInspect(pid, hostResolver, psCommand = "/bin/ps") {
+		const host = await hostResolver();
 		if (!host.hostId || !host.bootId)
 			return { status: "unknown", reason: host.reason || "HOST_IDENTITY_UNAVAILABLE" };
-		const commRes = await runDarwinCommand("/bin/ps", [
+		const commRes = await runDarwinCommand(psCommand, [
 			"-ww",
 			"-p",
 			String(pid),
@@ -237,7 +261,7 @@ function createProcessIdentityProvider(options = {}) {
 		if (!commParsed) return { status: "unknown", reason: "IDENTITY_HELPER_INVALID_REPLY" };
 		if (commParsed.zombie) return { status: "dead" };
 		if (commParsed.unreadableArgs) return { status: "unknown", reason: "PROCESS_UNREADABLE" };
-		const argsRes = await runDarwinCommand("/bin/ps", [
+		const argsRes = await runDarwinCommand(psCommand, [
 			"-ww",
 			"-p",
 			String(pid),
@@ -278,7 +302,12 @@ function createProcessIdentityProvider(options = {}) {
 	async function control(request) {
 		if (platform === "darwin") {
 			if (request.action === "host") return darwinHost();
-			if (request.action === "inspect") return darwinInspect(request.pid);
+			if (request.action === "inspect") return posixPsInspect(request.pid, darwinHost, "/bin/ps");
+			return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
+		}
+		if (platform === "linux") {
+			if (request.action === "host") return linuxHost();
+			if (request.action === "inspect") return posixPsInspect(request.pid, linuxHost, "ps");
 			return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
 		}
 		if (platform !== "win32") return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
@@ -485,7 +514,7 @@ function createProcessIdentityProvider(options = {}) {
 		const actual = await control({ action: "inspect", pid: identity.pid });
 		if (actual.status === "dead") {
 			const host = await control({ action: "host" });
-			if (platform === "darwin" && (!host?.hostId || !host?.bootId))
+			if ((platform === "darwin" || platform === "linux") && (!host?.hostId || !host?.bootId))
 				return { status: "unknown", reason: host?.reason || "HOST_IDENTITY_UNAVAILABLE" };
 			return host.hostId === identity.hostId && host.bootId === identity.bootId
 				? { status: "dead", identity }
@@ -494,7 +523,7 @@ function createProcessIdentityProvider(options = {}) {
 		if (actual.status !== "alive")
 			return { status: "unknown", reason: actual.reason || "PROCESS_UNREADABLE" };
 		if (
-			platform === "darwin" &&
+			(platform === "darwin" || platform === "linux") &&
 			(actual.hostId !== identity.hostId || actual.bootId !== identity.bootId)
 		)
 			return { status: "conflict", reason: "HOST_OR_BOOT_MISMATCH", identity: actual };

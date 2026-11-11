@@ -66,16 +66,16 @@ import type {DynamicsController} from '../../modeling/dynamics/controller';
 import {importWorkspaceItems,type WorkspaceImportItem} from '../../results/import-workspace';
 import TrajectoryWorkspace from '../results/TrajectoryWorkspace';
 import PostprocessSidebar,{postprocessDocumentFileSlots} from '../results/PostprocessSidebar';
-import ScientificFileResultView from '../results/ScientificFileResultView';
+import ScientificFileResultView,{inputEchoViewDocument} from '../results/ScientificFileResultView';
 import {isExcitationSlot} from '../results/postprocess-excitation-slots';
 import {postprocessFileDocumentVersion} from '../../projects/companion-sources';
 import PostprocessManagedTaskControls from '../results/PostprocessManagedTaskControls';
 import CurrentStructureAnalysisEntry, {currentStructureAnalysisActive} from '../results/CurrentStructureAnalysisEntry';
-import PostprocessDisplayPanel from '../results/PostprocessDisplayPanel';
+import PostprocessDisplayPanel,{type AnalysisPage} from '../results/PostprocessDisplayPanel';
 import type {AnalysisCanvas} from '../results/analysis-canvas';
 import {type TrajectoryResult,type ResultDiagnostic} from '../../results/contracts';
 import SourceDiagnostics from '../results/SourceDiagnostics';
-import type {PostprocessDocument,PostprocessScientificFileDocument} from '../../results/postprocess-document';
+import {postprocessFileDisplayDocument,postprocessWavefunctionFrame,type PostprocessDocument,type PostprocessScientificFileDocument} from '../../results/postprocess-document';
 import type {AnalysisAtomCapture} from './ModelViewport';
 import {WorkflowSessionBar} from '../WorkflowPresentation';
 import PostprocessResultView from '../results/PostprocessResultView';
@@ -142,6 +142,11 @@ import StructureLibrary from './StructureLibrary';
 import type { StructureLibraryEntry } from '../../modeling/structure-library';
 import {applicationVersion} from '../../application-version';
 import {blobToBase64,computeHillFormula,useMcpCollaborationBridge} from '../mcp/useMcpCollaborationBridge';
+import type {McpAnalysisFrameRequest,McpAnalysisPanelRequest,McpAnalysisViewportOverlay} from '../mcp/analysis-export';
+import type {ConfigureCalculationResult} from '../mcp/calculation-config';
+import {executeMcpConformerSearch,runStandaloneXtbCalculation} from '../mcp/task-execution';
+import type {XtbOptions,XtbState} from '../../modeling/xtb/controller';
+import type {ExternalInputDraft} from '../../task-system/integration/input-draft';
 import {exportViewportImage} from '../results/export-image';
 import './workspace-shell.css';
 const TwoDImportWorkspace=lazy(()=>import('./TwoDImportWorkspace'));
@@ -179,7 +184,7 @@ export interface DocumentWorkspaceSurface extends MultiStructureSourceActions {
  initialViewTransform?:ModelViewportProps['viewTransform'];
  inputStamp():import('../../modeling/workspace-contracts').WorkspaceInputTaskStamp;
  assertInputIdentityCurrent(stamp:import('../../modeling/workspace-contracts').WorkspaceInputTaskStamp):void;
- onInputController(controller:{history?(kind:'undo'|'redo'):boolean;canUndo?():boolean;canRedo?():boolean;reset():void;cancel():void;isBusy():boolean;getAdvancedInputTemplate?():AdvancedInputTemplate|undefined}|null):void;
+ onInputController(controller:{history?(kind:'undo'|'redo'):boolean;canUndo?():boolean;canRedo?():boolean;reset():void;cancel():void;isBusy():boolean;hasUnappliedBuilderDraft?():boolean;getAdvancedInputTemplate?():AdvancedInputTemplate|undefined;applyMcpConfiguration?(configured:ConfigureCalculationResult):void;captureMcpSubmissionDraft?(preferredEngine?:'gaussian'|'orca'):ExternalInputDraft|null}|null):void;
  onInputHistoryChange?():void;
  onNewInputTask():void;
  onPreparedInput(input:PreparedCitationInput):void;
@@ -198,6 +203,7 @@ export interface DocumentWorkspaceSurface extends MultiStructureSourceActions {
  onSourceRolesChange(roles:{documentId:string;label:string}[]):void;onCancelSourcePick():void;
  onSavedName(name:string):void;onActivate():void;
  onViewportState(state:WorkspaceViewportState):void;onViewportController(controller:WorkspaceViewportController|null):void;
+ onXtbController?(controller:{runMcpXtb(calculation:'singlepoint'|'optimize',options:XtbOptions,timeoutSeconds?:number):Promise<XtbState>}|null):void;
  onDisplayProjection?(projection:ViewportDisplayProjection|null,observer:ModelViewportProps['onSurfaceMeshState']):void;
  viewportDockTarget?:{x:number;y:number;width:number;height:number};
  displaySettings:DisplaySettings;onDisplaySettingsChange(next:DisplaySettings):void;
@@ -442,7 +448,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const [advancedAnalysisBindings,setAdvancedAnalysisBindings]=useState<Record<string,string>>({});
  const [structureAnalysisSelected,setStructureAnalysisSelected]=useState<Record<string,boolean>>({});
  const canvasCallbacks=useRef(new Map<string,(value:AnalysisCanvas|null)=>void>());
- function canvasFor(id:string){let callback=canvasCallbacks.current.get(id);if(!callback){callback=value=>{if(value?.result)lastScientificCanvases.current.set(id,value);setAnalysisCanvases(previous=>previous[id]===value?previous:{...previous,[id]:value});};canvasCallbacks.current.set(id,callback);}return callback;}
+ const mcpPendingFrameRef=useRef<Record<string,number>>({});
+ function canvasFor(id:string){let callback=canvasCallbacks.current.get(id);if(!callback){callback=value=>{if(value?.result)lastScientificCanvases.current.set(id,value);if(value&&mcpPendingFrameRef.current[id]===value.frameIndex)delete mcpPendingFrameRef.current[id];analysisCanvasesRef.current={...analysisCanvasesRef.current,[id]:value};setAnalysisCanvases(previous=>previous[id]===value?previous:{...previous,[id]:value});};canvasCallbacks.current.set(id,callback);}return callback;}
  const analysisHostCallbacks=useRef(new Map<string,(node:HTMLDivElement|null)=>void>());
  function analysisHostRef(id:string){let callback=analysisHostCallbacks.current.get(id);if(!callback){callback=node=>setAnalysisToolHosts(previous=>previous[id]===node?previous:{...previous,[id]:node});analysisHostCallbacks.current.set(id,callback);}return callback;}
  const [plots,setPlots]=useState<(PostprocessPlotSnapshot|FilePathPlotSnapshot)[]>([]),[resultImportRequest,setResultImportRequest]=useState<ScientificSourceFile[]|null>(null),[resultImportDescriptions,setResultImportDescriptions]=useState<string[]>([]);
@@ -458,7 +465,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const [sourcePick,setSourcePick]=useState<{ownerId:string;stamp:import('../../modeling/workspace-contracts').WorkspaceInputTaskStamp;request:StructureSourcePickRequest}|null>(null);
  const sourcePickLive=useRef(sourcePick);sourcePickLive.current=sourcePick;
  const [sourceRoles,setSourceRoles]=useState<Record<string,{documentId:string;label:string}[]>>({});
- const inputControllers=useRef(new Map<string,{history?(kind:'undo'|'redo'):boolean;canUndo?():boolean;canRedo?():boolean;reset():void;cancel():void;isBusy():boolean;getAdvancedInputTemplate?():AdvancedInputTemplate|undefined}>());
+ const inputControllers=useRef(new Map<string,{history?(kind:'undo'|'redo'):boolean;canUndo?():boolean;canRedo?():boolean;reset():void;cancel():void;isBusy():boolean;hasUnappliedBuilderDraft?():boolean;getAdvancedInputTemplate?():AdvancedInputTemplate|undefined;applyMcpConfiguration?(configured:ConfigureCalculationResult):void;captureMcpSubmissionDraft?(preferredEngine?:'gaussian'|'orca'):ExternalInputDraft|null}>());
+ const xtbControllers=useRef(new Map<string,{runMcpXtb(calculation:'singlepoint'|'optimize',options:XtbOptions,timeoutSeconds?:number):Promise<XtbState>}>());
  const [,setInputHistoryRevision]=useState(0);
  const notifyInputHistoryChange=useCallback(()=>setInputHistoryRevision(value=>value+1),[]);
  const [newInputTarget,setNewInputTarget]=useState<string|null>(null);
@@ -508,6 +516,12 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const callbacks=useRef(new Map<string,DocumentWorkspaceSurface>());
  const pagePresentations=useRef(new Map<string,Pick<DocumentWorkspaceSurface,'analysisCanvas'|'advancedModelingRoute'|'samplingSphereDraft'>>());
  const pageScroll=useRef(new Map<string,{top:number;left:number}>());
+ const mcpControlSerialRef=useRef(0);
+ const mcpPanelRequestsRef=useRef<Record<string,McpAnalysisPanelRequest>>({});
+ const mcpFrameRequestsRef=useRef<Record<string,McpAnalysisFrameRequest>>({});
+ const [mcpPanelRequests,setMcpPanelRequests]=useState<Record<string,McpAnalysisPanelRequest>>({});
+ const [mcpFrameRequests,setMcpFrameRequests]=useState<Record<string,McpAnalysisFrameRequest>>({});
+ const [mcpAnalysisOverlays,setMcpAnalysisOverlays]=useState<Record<string,McpAnalysisViewportOverlay|null>>({});
  useEffect(()=>subscribeGlobalSettings(desktop,()=>{setEnvironmentPage('resources');setEnvironmentOpen(true);}),[desktop]);
  useEffect(()=>desktop?.onWorkbenchFileAction?.(request=>{void nativeFileAction.current?.(request).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));}),[desktop]);
  useEffect(()=>desktop?.onCitationsOpen?.(request=>{void citationOpenAction.current(request.documentId).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));}),[desktop]);
@@ -1294,7 +1308,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   pagePresentations.current.delete(id);pageScroll.current.forEach((_value,key)=>{if(key.startsWith('['+JSON.stringify(id)+','))pageScroll.current.delete(key);});
   setStructureAnalysisSelected(previous=>{const next={...previous};delete next[id];return next;});
   runtimeOwners.current.get(id)?.unsubscribe();runtimeOwners.current.delete(id);
-  ownerAdapters.current.get(id)?.dispose();ownerAdapters.current.delete(id);viewportStates.current.delete(id);viewportControllers.current.delete(id);inputControllers.current.delete(id);
+  ownerAdapters.current.get(id)?.dispose();ownerAdapters.current.delete(id);viewportStates.current.delete(id);viewportControllers.current.delete(id);inputControllers.current.delete(id);xtbControllers.current.delete(id);
   pendingCameraRestores.current.delete(id);callbacks.current.delete(id);displayOwners.current.get(id)?.close();displayOwners.current.delete(id);displaySources.current.delete(id);displaySerials.current.delete(id);inheritedViews.current.delete(id);inheritedNavigation.current.delete(id);
   projectUi.removeScope(['document',id]);
   setDetached(previous=>{const next={...previous};delete next[id];return next;});setClosing(current=>current===id?null:current);
@@ -1752,29 +1766,73 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     }
    },
    captureViewportScreenshot:async(id,screenshotOptions)=>{
+    const fileDoc=postprocess.captureFileDocuments()[id];
     const entry=registry.getSnapshot().documents.find(doc=>doc.id===id);
-    if(!entry)throw Object.assign(new Error(`Document not found: ${id}`),{code:'MCP_DOCUMENT_NOT_FOUND'});
+    if(!entry&&!fileDoc)throw Object.assign(new Error(`Document not found: ${id}`),{code:'MCP_DOCUMENT_NOT_FOUND'});
+    const ownerDoc=rootElement.current?.ownerDocument??(typeof document!=='undefined'?document:null);
+    if(!ownerDoc)throw new Error('DOM document unavailable for WebGL capture');
+    if(!entry&&fileDoc){
+     const displayDoc=postprocessFileDisplayDocument(fileDoc);
+     const fallbackStructure=fileObservedStructures[id]??displayDoc?.result.initialStructure??inputEchoViewDocument(fileDoc)?.draft.structure;
+     if(!fallbackStructure||!fallbackStructure.atoms.length){
+      throw Object.assign(new Error(`Document "${id}" has no renderable 3D structure`),{code:'MCP_EMPTY_STRUCTURE'});
+     }
+     const ensuredStructure={...fallbackStructure,atoms:fallbackStructure.atoms.map((atom,idx)=>({...atom,id:atom.id??`${id}:atom:${idx}`}))};
+     const atomIds=ensuredStructure.atoms.map(a=>a.id!);
+     const emptyAssign={layers:[],basis:[],fragments:[],frozenAtomIds:[]};
+     const fileModelDoc={id,revision:0,draft:{structure:ensuredStructure,assignments:emptyAssign,revision:0,selectedIds:[],touchedIds:[],assignmentIssues:[],createdFrom:{},past:[],future:[],dirty:false,baseAtomIds:atomIds,baseStructure:ensuredStructure,baseAssignments:emptyAssign},selection:{atomIds:[],bonds:[],auxiliaryIds:[],portIds:[]},auxiliaryRelations:[],deletedBonds:[],attachmentPorts:[],canUndo:false,canRedo:false};
+     const fileStage=rootElement.current?.querySelector(`[data-file-document-id="${id}"] .model-viewport-stage`);
+     const fileBox=fileStage?.getBoundingClientRect();
+     const fileBlob=await exportViewportImage(
+      {
+       document:structuredClone(fileModelDoc),
+       cameraView:[...screenshotOptions.cameraView],
+       display:structuredClone(screenshotOptions.displaySettings),
+       showAxes:screenshotOptions.showAxes,
+       width:screenshotOptions.width,
+       height:screenshotOptions.height,
+       viewportWidth:fileBox&&fileBox.width>0?fileBox.width:screenshotOptions.width,
+       viewportHeight:fileBox&&fileBox.height>0?fileBox.height:screenshotOptions.height
+      },
+      {
+       format:'png',
+       includeAnnotations:screenshotOptions.includeAnnotations,
+       width:screenshotOptions.width,
+       height:screenshotOptions.height,
+       transparent:screenshotOptions.transparent
+      },
+      ownerDoc
+     );
+     return {
+      base64Png:await blobToBase64(fileBlob),
+      width:screenshotOptions.width,
+      height:screenshotOptions.height,
+      renderer:'webgl' as const
+     };
+    }
     const vp=viewportStates.current.get(id);
     const displayProjection=displaySources.current.get(id)?.projection;
-    const analysisCanvas=pagePresentations.current.get(id)?.analysisCanvas;
-    let docSnapshot=displayProjection?.displayDocument?.document
+    const analysisCanvas=analysisCanvasesRef.current[id]??pagePresentations.current.get(id)?.analysisCanvas;
+    const preferAnalysisCanvas=registry.getSnapshot().module==='analysis'&&Boolean(analysisCanvas?.document);
+    let docSnapshot=(preferAnalysisCanvas?analysisCanvas?.document:undefined)
+     ??displayProjection?.displayDocument?.document
      ??analysisCanvas?.document
      ??vp?.editingDocument
-     ??entry.store.getSnapshot();
-    if(docSnapshot.draft.structure.atoms.length===0&&entry.result?.initialStructure){
+     ??entry!.store.getSnapshot();
+    if(docSnapshot.draft.structure.atoms.length===0&&entry!.result?.initialStructure){
      docSnapshot={
       ...docSnapshot,
       draft:{
        ...docSnapshot.draft,
-       structure:entry.result.initialStructure
+       structure:entry!.result.initialStructure
       }
      };
     }
-    const ownerDoc=rootElement.current?.ownerDocument??(typeof document!=='undefined'?document:null);
-    if(!ownerDoc)throw new Error('DOM document unavailable for WebGL capture');
     const stageEl=rootElement.current?.querySelector(`#doc-${id} .model-viewport-stage`);
     const box=stageEl?.getBoundingClientRect();
-    const projectedViewport=displayProjection?.viewport??analysisCanvas?.viewport;
+    const projectedViewport=preferAnalysisCanvas
+     ? {...displayProjection?.viewport,...analysisCanvas?.viewport}
+     : (displayProjection?.viewport??analysisCanvas?.viewport);
     const snapshot={
      document:structuredClone(docSnapshot),
      displayFrozenAtomIds:vp?.displayFrozenAtomIds?[...vp.displayFrozenAtomIds]:undefined,
@@ -1809,6 +1867,286 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      height:screenshotOptions.height,
      renderer:'webgl' as const
     };
+   },
+   assertCalculationConfigurable:id=>{
+    if(borrowedBatchRef.current){
+     throw Object.assign(new Error('请先完成或取消当前批量输入会话后再通过 MCP 配置计算任务。'),{code:'MCP_DOCUMENT_BUSY'});
+    }
+    if(sourcePickLive.current||linkedControls.selecting){
+     throw Object.assign(new Error('当前界面正在选择来源结构或关联文档，请先完成或取消选择后再通过 MCP 配置计算任务。'),{code:'MCP_DOCUMENT_BUSY'});
+    }
+    const currentInputOwnerId=registry.getSnapshot().inputTask?.documentId;
+    if(currentInputOwnerId&&inputControllers.current.get(currentInputOwnerId)?.isBusy()){
+     throw Object.assign(new Error('当前活动输入任务正在处理或保存，请稍后再试。'),{code:'MCP_DOCUMENT_BUSY'});
+    }
+    const ctrl=inputControllers.current.get(id);
+    if(ctrl?.isBusy()){
+     throw Object.assign(new Error('当前文档输入任务正在处理或保存，请稍后再试。'),{code:'MCP_DOCUMENT_BUSY'});
+    }
+    if(ctrl?.hasUnappliedBuilderDraft?.()){
+     throw Object.assign(new Error('当前文档存在未提交的建模草稿，请先在界面点击“应用结构”或取消草稿后再配置计算任务。'),{code:'MCP_DOCUMENT_BUSY'});
+    }
+   },
+   switchToConfiguredInputView:id=>{
+    closeTwoD();
+    taskWorkspace.leave();
+    activateDocument(id);
+    registry.setModule('input');
+    setError('');
+   },
+   applyCalculationConfig:(id,configured)=>{
+    inputControllers.current.get(id)?.applyMcpConfiguration?.(configured);
+    publishMetadata(id);
+   },
+   runLocalXtb:async(id,{calculation,xtbOptions,timeoutSeconds})=>{
+    flushSync(()=>{
+     closeTwoD();
+     taskWorkspace.leave();
+     activateDocument(id);
+     registry.setModule('modeling');
+     setError('');
+    });
+    if(registry.stamp().documentId!==id){
+     throw Object.assign(new Error('当前界面存在未完成的选择或交互，无法切换到目标建模文档。'),{code:'MCP_DOCUMENT_BUSY'});
+    }
+    const ctrl=xtbControllers.current.get(id);
+    if(ctrl)return await ctrl.runMcpXtb(calculation,xtbOptions,timeoutSeconds);
+    return await runStandaloneXtbCalculation({
+     store:registry.document(id).store,
+     bridge:desktop??null,
+     calculation,
+     xtbOptions,
+     timeoutSeconds
+    });
+   },
+   runConformerSearch:async(id,params)=>{
+    await ensurePendingAdvancedProject();
+    flushSync(()=>{
+     closeTwoD();
+     taskWorkspace.leave();
+     activateDocument(id);
+     registry.setModule('advanced');
+     advancedSectionRef.current='conformer';
+     setAdvancedSection('conformer');
+     setConformerSamplingChoice('conformer-search');
+     setError('');
+    });
+    if(registry.stamp().documentId!==id){
+     throw Object.assign(new Error('当前界面存在未完成的选择或交互，无法切换到目标文档执行构象搜索。'),{code:'MCP_DOCUMENT_BUSY'});
+    }
+    const entry=registry.document(id);
+    return await executeMcpConformerSearch({
+     entry,
+     controller:advancedIntegration.current.controller??advancedController,
+     bridge:desktop??null,
+     computeResources:computeSnapshotRef.current?.effective??computeResources??null,
+     bindTaskToWorkspace:(taskId,source)=>bindConformerTask(taskId,source),
+     readInitialSource:taskId=>captureConformerInitial(taskId),
+     openResultCollection:(collection,frameId)=>openConformerCollection(collection,frameId)
+    },params);
+   },
+   captureLiveSubmissionDraft:(id,preferredEngine)=>
+    registry.getSnapshot().inputTask?.documentId===id
+     ? inputControllers.current.get(id)?.captureMcpSubmissionDraft?.(preferredEngine)??null
+     : null,
+   openTaskSubmissionDialog:async(id,draft,submitOptions)=>{
+    flushSync(()=>{
+     closeTwoD();
+     taskWorkspace.leave();
+     activateDocument(id);
+     registry.setModule('input');
+     setError('');
+    });
+    await taskWorkspace.submit(draft,submitOptions);
+   },
+   getTaskSystemBridge:()=>taskWorkspace.bridge,
+   getProjectId:()=>projectInfo.current.project?.projectId??null,
+   openSubmittedTaskInCenter:taskId=>{
+    closeTwoD();
+    taskWorkspace.openTask(taskId);
+   },
+   trackTaskOperation:operationId=>taskWorkspace.trackOperation(operationId),
+   openTaskSnapshotInAnalysis:async taskId=>{
+    closeTwoD();
+    latestErrorRef.current='';
+    const opened=await taskWorkspace.bridge.request('snapshot.open',{taskId});
+    await openExternalSnapshot(taskId,opened.snapshotId,opened.leaseId,()=>true);
+    const row=taskSnapshotPagesRef.current[opened.snapshotId];
+    if(!row?.documentId){
+     throw Object.assign(new Error(latestErrorRef.current||`Failed to open task snapshot "${taskId}" into Result Analysis`),{code:'MCP_TASK_SNAPSHOT_OPEN_FAILED'});
+    }
+    return {documentId:row.documentId};
+   },
+   openResultFileInAnalysis:async(file,{targetDocumentId,label,frameIndex})=>{
+    closeTwoD();
+    taskWorkspace.leave();
+    latestErrorRef.current='';
+    const assertValidFrameCount=(availableFrames:number,docId:string)=>{
+     if(frameIndex!==undefined&&availableFrames>0&&frameIndex>=availableFrames){
+      throw Object.assign(
+       new Error(`frameIndex ${frameIndex} is out of range (document "${docId}" has ${availableFrames} frame(s), valid indices: 0..${availableFrames-1})`),
+       {code:'INVALID_FRAME_INDEX'}
+      );
+     }
+    };
+    if(targetDocumentId){
+     const existingFileDoc=postprocess.captureFileDocuments()[targetDocumentId];
+     if(existingFileDoc){
+      postprocess.selectFile(targetDocumentId);
+      await postprocess.read([file],targetDocumentId,undefined,'smart',undefined,undefined,{
+       strictTargetId:targetDocumentId,
+       autoConfirmReplace:true,
+       throwOnFailure:true,
+       beforeFileCommit:fd=>{
+        const display=postprocessFileDisplayDocument(fd);
+        assertValidFrameCount(display?.result.frames.length??0,targetDocumentId);
+       }
+      });
+      registry.setModule('analysis');
+      return {documentId:targetDocumentId};
+     }
+     if(!registry.getSnapshot().documents.some(entry=>entry.id===targetDocumentId)){
+      throw Object.assign(new Error(`Document not found: ${targetDocumentId}`),{code:'MCP_DOCUMENT_NOT_FOUND'});
+     }
+     activateDocument(targetDocumentId);
+     await postprocess.read([file],targetDocumentId,undefined,'smart',undefined,undefined,{
+      strictTargetId:targetDocumentId,
+      autoConfirmReplace:true,
+      throwOnFailure:true,
+      beforeCommit:doc=>{
+       assertValidFrameCount(doc.result.frames.length,targetDocumentId);
+      }
+     });
+     if(label)registry.rename(targetDocumentId,label);
+     registry.setModule('analysis');
+     return {documentId:targetDocumentId};
+    }
+    const beforeIds=new Set(registry.getSnapshot().documents.map(entry=>entry.id));
+    let createdId:string|null=null;
+    await postprocess.read([file],null,undefined,'smart',{
+     throwOnFailure:true,
+     beforeCommit:async doc=>{
+      assertValidFrameCount(doc.result.frames.length,doc.id);
+     },
+     beforeFileCommit:async fd=>{
+      const display=postprocessFileDisplayDocument(fd);
+      assertValidFrameCount(display?.result.frames.length??0,fd.id);
+     },
+     onCreated:id=>{createdId=id;}
+    });
+    const addedIds=registry.getSnapshot().documents.filter(entry=>!beforeIds.has(entry.id)).map(entry=>entry.id);
+    const targetId=createdId??addedIds.at(-1)??null;
+    if(targetId&&registry.getSnapshot().documents.some(entry=>entry.id===targetId)){
+     if(label)registry.rename(targetId,label);
+     activateDocument(targetId);
+     registry.setModule('analysis');
+     return {documentId:targetId};
+    }
+    if(targetId&&postprocess.captureFileDocuments()[targetId]){
+     postprocess.selectFile(targetId);
+     registry.setModule('analysis');
+     return {documentId:targetId};
+    }
+    throw Object.assign(new Error(latestErrorRef.current||`Failed to open analysis file "${file.name}"`),{code:'MCP_FILE_IMPORT_FAILED'});
+   },
+   getAnalysisTarget:requestedId=>{
+    const fileDocs=postprocess.captureFileDocuments();
+    if(requestedId&&fileDocs[requestedId]){
+     const fd=fileDocs[requestedId];
+     const displayDoc=postprocessFileDisplayDocument(fd);
+     const defaultFileFrame=displayDoc?(postprocessWavefunctionFrame(displayDoc)??Math.max(0,displayDoc.result.frames.length-1)):0;
+     return {
+      documentId:fd.id,
+      label:fd.output.source.identity.name,
+      fileDocument:fd,
+      postprocessDocument:displayDoc,
+      currentFrameIndex:mcpFrameRequestsRef.current[fd.id]?.frameIndex??defaultFileFrame,
+      currentStructure:fileObservedStructures[fd.id]??null,
+      activePanel:mcpPanelRequestsRef.current[fd.id]?.page??mcpPanelRequests[fd.id]?.page??null
+     };
+    }
+    const activeFileId=postprocess.fileOwnerId;
+    const liveFileCurrent=registry.getSnapshot().module==='analysis'&&activeFileId?fileDocs[activeFileId]??null:null;
+    if(!requestedId&&liveFileCurrent){
+     const displayDoc=postprocessFileDisplayDocument(liveFileCurrent);
+     const defaultFileFrame=displayDoc?(postprocessWavefunctionFrame(displayDoc)??Math.max(0,displayDoc.result.frames.length-1)):0;
+     return {
+      documentId:liveFileCurrent.id,
+      label:liveFileCurrent.output.source.identity.name,
+      fileDocument:liveFileCurrent,
+      postprocessDocument:displayDoc,
+      currentFrameIndex:mcpFrameRequestsRef.current[liveFileCurrent.id]?.frameIndex??defaultFileFrame,
+      currentStructure:fileObservedStructures[liveFileCurrent.id]??null,
+      activePanel:mcpPanelRequestsRef.current[liveFileCurrent.id]?.page??mcpPanelRequests[liveFileCurrent.id]?.page??null
+     };
+    }
+    const snap=registry.getSnapshot();
+    const activeViewDocId=snap.views.find(v=>v.id===snap.activeViewId)?.documentId;
+    const entry=requestedId
+     ? (snap.documents.find(doc=>doc.id===requestedId)??snap.documents.find(doc=>doc.label===requestedId))
+     : (snap.documents.find(doc=>doc.id===(activeViewDocId??displayedDocumentId??activeId??''))??snap.documents[0]);
+    if(!entry)return null;
+    const analysisAvail=registry.analysisAvailable(entry.id);
+    const bindingId=entry.store.getSnapshot().analysisBindingId;
+    const directDoc=postprocess.getDocument(entry.id);
+    const generatedMatch=Object.values(postprocess.generated).find(row=>row.ownerId===entry.id&&bindingId===row.bindingId);
+    const rawPostDoc=analysisAvail?(directDoc??generatedMatch?.document??null):null;
+    const activeRes=rawPostDoc&&activeAnalysisResults[entry.id]?.source===rawPostDoc?activeAnalysisResults[entry.id]?.result:null;
+    const postDoc=rawPostDoc&&activeRes&&activeRes!==rawPostDoc.result?{...rawPostDoc,result:activeRes}:rawPostDoc;
+    const canvas=analysisCanvasesRef.current[entry.id]??analysisCanvases[entry.id];
+    const trajResult=entry.result??entry.analysisBinding?.result??entry.legacyResult??null;
+    const defaultFrame=postDoc?(postprocessWavefunctionFrame(postDoc)??Math.max(0,postDoc.result.frames.length-1)):trajResult?Math.max(0,trajResult.frames.length-1):0;
+    const pendingMcpFrame=mcpPendingFrameRef.current[entry.id];
+    const liveCanvasFrame=snap.module==='analysis'?canvas?.frameIndex:undefined;
+    const currentFrameIndex=pendingMcpFrame??liveCanvasFrame??mcpFrameRequestsRef.current[entry.id]?.frameIndex??defaultFrame;
+    const storeStructure=entry.store.getSnapshot().draft.structure;
+    const currentStructure=snap.module==='analysis'&&pendingMcpFrame===undefined&&canvas?.document?.draft.structure.atoms.length
+     ? canvas.document.draft.structure
+     : storeStructure.atoms.length
+       ? storeStructure
+       : (postDoc?.result.initialStructure??trajResult?.initialStructure??null);
+    return {
+     documentId:entry.id,
+     label:entry.label,
+     entry,
+     postprocessDocument:postDoc,
+     trajectoryResult:trajResult,
+     currentFrameIndex,
+     currentStructure,
+     activePanel:mcpPanelRequestsRef.current[entry.id]?.page??mcpPanelRequests[entry.id]?.page??null
+    };
+   },
+   syncAnalysisPresentation:(id,{panel,frameIndex,overlay})=>{
+    flushSync(()=>{
+     closeTwoD();
+     taskWorkspace.leave();
+     if(postprocess.captureFileDocuments()[id]){
+      postprocess.selectFile(id);
+      registry.invalidateActivation();
+     }else if(registry.getSnapshot().documents.some(entry=>entry.id===id)){
+      postprocess.selectFile(null);
+      setMainDocumentId(id);
+      activateDocument(id);
+     }
+     registry.setModule('analysis');
+     if(panel){
+      const serial=++mcpControlSerialRef.current;
+      const req={serial,page:panel};
+      mcpPanelRequestsRef.current={...mcpPanelRequestsRef.current,[id]:req};
+      setMcpPanelRequests(prev=>({...prev,[id]:req}));
+     }
+     if(frameIndex!==undefined){
+      const serial=++mcpControlSerialRef.current;
+      const req={serial,frameIndex};
+      mcpPendingFrameRef.current[id]=frameIndex;
+      mcpFrameRequestsRef.current={...mcpFrameRequestsRef.current,[id]:req};
+      setMcpFrameRequests(prev=>({...prev,[id]:req}));
+     }
+     if(overlay!==undefined){
+      setMcpAnalysisOverlays(prev=>({...prev,[id]:overlay}));
+     }
+     setError('');
+    });
    }
   }
  });
@@ -1919,6 +2257,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     onViewportState:value=>{const restoredView=restoreCommittedCamera(entry.id,value);const pendingCam=pendingCameraRestores.current.get(entry.id);const overrideView=restoredView??(pendingCam?.deferUntilActive?pendingCam.view:undefined);const nextValue=overrideView?{...value,cameraView:[...overrideView]}:value;if(JSON.stringify(viewportStates.current.get(entry.id))===JSON.stringify(nextValue))return;viewportStates.current.set(entry.id,nextValue);publishMetadata(entry.id);},
     onDisplayProjection:(projection,observer)=>{const previous=displaySources.current.get(entry.id),signature=projection?viewportDisplaySignature(projection):'';if(previous?.signature===signature){previous.observer=observer;if(projection){previous.projection=projection;displayOwners.current.get(entry.id)?.publish(projection,previous.descriptor.projectionSerial);}return;}if(!previous&&!projection)return;const serial=(displaySerials.current.get(entry.id)??0)+1;displaySerials.current.set(entry.id,serial);if(projection){const {viewport:_viewport,...identity}=projection;displaySources.current.set(entry.id,{projection,descriptor:{...identity,projectionSerial:serial},signature,observer});}else displaySources.current.delete(entry.id);displayOwners.current.get(entry.id)?.publish(projection,serial);publishMetadata(entry.id);},
     onViewportController:controller=>{if(controller)viewportControllers.current.set(entry.id,controller);else viewportControllers.current.delete(entry.id);},
+    onXtbController:controller=>{if(controller)xtbControllers.current.set(entry.id,controller);else xtbControllers.current.delete(entry.id);},
     onElectronicConfirmation:confirmed=>{registry.confirmElectronicState(entry.id,confirmed);publishMetadata(entry.id);},
     onDraftState:(engine,value,dirty)=>{if(registry.getSnapshot().inputTask?.documentId===entry.id){registry.setDraft(entry.id,engine,value,dirty);publishMetadata(entry.id);}},
     onRuntime:controller=>{if(!registry.getSnapshot().documents.some(value=>value.id===entry.id))return;const current=registry.document(entry.id),previous=runtimeOwners.current.get(entry.id);if(previous?.controller===controller)return;
@@ -2043,7 +2382,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     // Retire the new window's initial blank owner before replacing its IDs.
     // Its queued publisher must never query a document removed by hydration.
     for(const [id,adapter]of ownerAdapters.current){await adapter.flush();if(hostBridge&&adapter.getState().membership)await hostBridge.closeWorkspaceDocument(authFor(id));adapter.dispose();}
-    ownerAdapters.current.clear();viewportStates.current.clear();viewportControllers.current.clear();callbacks.current.clear();
+    ownerAdapters.current.clear();viewportStates.current.clear();viewportControllers.current.clear();inputControllers.current.clear();xtbControllers.current.clear();callbacks.current.clear();
     for(const id of [...Object.keys(postprocess.captureFileDocuments()),...postprocess.pendingFileCloses()]){const issues=await postprocess.closeFile(id);if(issues.length)throw Error(`旧文件来源尚未释放：${issues.join('；')}`);}
     await registry.restoreProjectState(restored.registry,{results:restored.results});
     retainedProjectShell.current=structuredClone(shell);projectMDSnapshotSources.current=shell.mdSnapshotSources;capturedProjectMDSnapshotSources.current=undefined;capturedProjectModels.current=new Map();
@@ -2194,10 +2533,10 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
        onPointerDownCapture={event=>{if(!(event.target instanceof Node)||!event.currentTarget.contains(event.target))return;if(sourcePick||linkedControls.selecting){event.preventDefault();event.stopPropagation();if(sourcePick)selectTaskSource(entry.id);else linkedControls.toggleMember(entry.id);}}}>
        {borrowedBatch?.documentId===entry.id&&<span className="workspace-batch-input-notice" data-testid="workspace-batch-input-notice" style={{position:'absolute',left:'50%',top:56,transform:'translateX(-50%)',zIndex:3,pointerEvents:'none',color:'#617168',fontSize:13,whiteSpace:'nowrap'}}>正在批量产生输入文件</span>}
        {state.module==='input'&&(sourceRoles[inputOwnerId??'']??[]).filter(role=>role.documentId===entry.id).map(role=><span key={role.label} className="workspace-task-role" data-testid="workspace-task-role" data-input-task-id={inputTask?.id} data-source-document-id={entry.id} data-source-role={role.label.includes('反应物')?'reactant':role.label.includes('产物')?'product':'tsGuess'}>{role.label}</span>)}
-       {entry.result?<><div className="workspace-legacy-trajectory" hidden={advancedLayout}><TrajectoryWorkspace onCipLabelsUsed={cipUsageFor(entry.id,entry.epoch)} result={entry.result} onScientificFrame={value=>trajectoryFrames.current.set(entry.id,value)} active={!fileCurrent&&entry.id===activeId&&!ownerHidden&&!taskWorkspace.opened&&!closingPending&&state.module!=='input'&&!advancedLayout} displaySettings={displaySettings} onDisplaySettingsChange={changeDisplaySettings} onExtract={extractFrame} onPrepareIrc={entry.result.engine==='gaussian'||entry.result.engine==='orca'?structure=>prepareIrc(structure,entry.result!.engine as 'gaussian'|'orca'):undefined} onExport={exportWorkspaceResult} onError={setError}/></div>{advancedLayout&&renderDocument(surface(entry))}</>:<>{renderDocument(surface(entry))}{postprocess.documents[entry.id]&&<div hidden><PostprocessResultView onCipLabelsUsed={cipUsageFor(entry.id,entry.epoch)} onActiveResult={activeResultFor(entry.id,postprocess.documents[entry.id])} document={postprocess.documents[entry.id]} modelDocument={entry.store.getSnapshot()} available={registry.analysisAvailable(entry.id)} onCanvas={canvasFor(entry.id)} active={!fileCurrent&&!ownerHidden&&!taskWorkspace.opened&&!closingPending&&(analysisLayout&&(entry.id===displayedDocumentId||Boolean(detached[entry.id])&&entry.id===activeId)||entry.id===xtbAnalysisOwnerId)} selected={!fileCurrent&&analysisLayout&&(entry.id===displayedDocumentId||Boolean(detached[entry.id])&&entry.id===activeId)||entry.id===xtbAnalysisOwnerId}
+       {entry.result?<><div className="workspace-legacy-trajectory" hidden={advancedLayout}><TrajectoryWorkspace onCipLabelsUsed={cipUsageFor(entry.id,entry.epoch)} result={entry.result} onScientificFrame={value=>trajectoryFrames.current.set(entry.id,value)} active={!fileCurrent&&entry.id===activeId&&!ownerHidden&&!taskWorkspace.opened&&!closingPending&&state.module!=='input'&&!advancedLayout} displaySettings={displaySettings} onDisplaySettingsChange={changeDisplaySettings} onExtract={extractFrame} onPrepareIrc={entry.result.engine==='gaussian'||entry.result.engine==='orca'?structure=>prepareIrc(structure,entry.result!.engine as 'gaussian'|'orca'):undefined} onExport={exportWorkspaceResult} onError={setError}/></div>{advancedLayout&&renderDocument(surface(entry))}</>:<>{renderDocument(surface(entry))}{postprocess.documents[entry.id]&&<div hidden><PostprocessResultView onCipLabelsUsed={cipUsageFor(entry.id,entry.epoch)} onActiveResult={activeResultFor(entry.id,postprocess.documents[entry.id])} document={postprocess.documents[entry.id]} modelDocument={entry.store.getSnapshot()} available={registry.analysisAvailable(entry.id)} requestedPage={mcpPanelRequests[entry.id]} requestedFrame={mcpFrameRequests[entry.id]} mcpOverlay={mcpAnalysisOverlays[entry.id]??null} onCanvas={canvasFor(entry.id)} active={!fileCurrent&&!ownerHidden&&!taskWorkspace.opened&&!closingPending&&(analysisLayout&&(entry.id===displayedDocumentId||Boolean(detached[entry.id])&&entry.id===activeId)||entry.id===xtbAnalysisOwnerId)} selected={!fileCurrent&&analysisLayout&&(entry.id===displayedDocumentId||Boolean(detached[entry.id])&&entry.id===activeId)||entry.id===xtbAnalysisOwnerId}
         toolHost={analysisToolHosts[entry.id]??null} onNewDocument={createDocument} onImportFiles={importFiles} display={displaySettings} onDisplay={changeDisplaySettings} onOpenPlot={openPlot} onExtract={extractFrame} onError={setError} onActivate={()=>{if(entry.id!==xtbAnalysisOwnerId){activateDocument(entry.id);registry.setModule('analysis');}}}/></div>}{entry.legacyResult&&ownedTrajectory(entry)}</>}
       </div></ProjectNativeDetailsBoundary></ProjectUiScope>}))}/></div>
-     {Object.values(postprocess.fileDocuments).map(value=><div key={value.id} className="workspace-document-surface" hidden={!analysisLayout||fileCurrent?.id!==value.id} data-testid="scientific-file-workspace" data-file-document-id={value.id}><ProjectUiScope store={projectUi} scope={['scientific-file',value.id]}><ProjectNativeDetailsBoundary><ScientificFileResultView onCipLabelsUsed={cipUsageFor(value.id)} document={value} active={!ownerHidden&&!taskWorkspace.opened&&!closingPending&&analysisLayout&&fileCurrent?.id===value.id} selected={analysisLayout&&fileCurrent?.id===value.id} toolHost={analysisToolHosts[value.id]??null} toolbarHost={toolbarHost} display={displaySettings} onDisplay={changeDisplaySettings} onObservedFrame={fileFrameFor(value)} onFileJob={jobId=>void postprocess.selectFileJob(value.id,jobId)} onOpenFilePathPlot={openPlot} onNewDocument={createDocument} onImportFiles={importFiles} onOpenPlot={openPlot} onExtract={extractFrame} onError={setError} sharedShowAxes={sharedShowAxes} onSharedShowAxesChange={setSharedShowAxes} legendVisible legendExpanded={legendExpanded} onLegendExpandedChange={setLegendExpanded}/></ProjectNativeDetailsBoundary></ProjectUiScope></div>)}
+     {Object.values(postprocess.fileDocuments).map(value=><div key={value.id} className="workspace-document-surface" hidden={!analysisLayout||fileCurrent?.id!==value.id} data-testid="scientific-file-workspace" data-file-document-id={value.id}><ProjectUiScope store={projectUi} scope={['scientific-file',value.id]}><ProjectNativeDetailsBoundary><ScientificFileResultView onCipLabelsUsed={cipUsageFor(value.id)} document={value} requestedPage={mcpPanelRequests[value.id]} requestedFrame={mcpFrameRequests[value.id]} mcpOverlay={mcpAnalysisOverlays[value.id]??null} active={!ownerHidden&&!taskWorkspace.opened&&!closingPending&&analysisLayout&&fileCurrent?.id===value.id} selected={analysisLayout&&fileCurrent?.id===value.id} toolHost={analysisToolHosts[value.id]??null} toolbarHost={toolbarHost} display={displaySettings} onDisplay={changeDisplaySettings} onObservedFrame={fileFrameFor(value)} onFileJob={jobId=>void postprocess.selectFileJob(value.id,jobId)} onOpenFilePathPlot={openPlot} onNewDocument={createDocument} onImportFiles={importFiles} onOpenPlot={openPlot} onExtract={extractFrame} onError={setError} sharedShowAxes={sharedShowAxes} onSharedShowAxesChange={setSharedShowAxes} legendVisible legendExpanded={legendExpanded} onLegendExpandedChange={setLegendExpanded}/></ProjectNativeDetailsBoundary></ProjectUiScope></div>)}
      {state.module==='input'&&active?.result&&<div className="workspace-module-placeholder"><h2>从结果帧创建输入</h2><p>选定结果帧并“取帧建模”，即可使用该结构准备Gaussian或ORCA输入。</p><button onClick={()=>registry.setModule('modeling')}>返回轨迹</button></div>}
      <PostprocessPlotDeck snapshots={plots} active={analysisLayout||xtbAnalysisLayout} visibleFilePlotScope={analysisLayout&&fileCurrent?filePathPlotScope(fileCurrent):null} visibleResultId={xtbAnalysisLayout?(xtbAnalysisOwnerId?analysisCanvases[xtbAnalysisOwnerId]?.result?.id??null:activeId?xtbAnalysisCanvases[activeId]?.result?.id??null:null):sidebarResult?.id??null} onClose={id=>setPlots(previous=>previous.filter(value=>value.id!==id))}/>
     </div>

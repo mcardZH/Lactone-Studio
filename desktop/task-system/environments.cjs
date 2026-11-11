@@ -43,7 +43,7 @@ function sanitizeEnvironment(input, { allowDraft = false, platform = process.pla
 	const value = Object.fromEntries(
 		FIELDS.filter((key) => Object.hasOwn(input || {}, key)).map((key) => [key, input[key]])
 	);
-	const allowedConnections = platform === "darwin" ? ["ssh"] : ["local", "wsl", "ssh"];
+	const allowedConnections = platform === "win32" ? ["local", "wsl", "ssh"] : ["ssh"];
 	if (
 		typeof value.environmentId !== "string" ||
 		(!value.environmentId && !(allowDraft && value.revision === 0)) ||

@@ -131,6 +131,22 @@ test('molvec helpers validate Java launcher paths (including spaces, Chinese JRE
     '/private/tmp/ocr\\component/molvec/runtime/jdk-17.0.20.1+1-jre/Contents/Home',
   );
 
+  // Linux flat JRE executable validation, JAVA_HOME, and path-traversal/backslash/absolute guards
+  for (const jreDir of ['openjdk-21', 'JRE 21', '运行库-21']) {
+    const relLinux = `runtime/${jreDir}/bin/java`;
+    const absLinux = `/opt/lactone-studio/runtime/ocr-components/molvec/runtime/${jreDir}/bin/java`;
+    assert.equal(isSupportedJavaExecutable(relLinux, 'linux'), true);
+    assert.equal(isSupportedJavaExecutable(absLinux, 'linux'), true);
+    assert.equal(isSupportedJavaExecutable(absLinux, 'linux', { allowAbsolute: false }), false);
+    assert.equal(
+      resolveJavaHome(absLinux, 'linux'),
+      `/opt/lactone-studio/runtime/ocr-components/molvec/runtime/${jreDir}`,
+    );
+  }
+  assert.equal(isSupportedJavaExecutable('runtime\\openjdk-21\\bin\\java', 'linux'), false);
+  assert.equal(isSupportedJavaExecutable('runtime/../openjdk-21/bin/java', 'linux'), false);
+  assert.equal(isSupportedJavaExecutable('/usr/bin/../bin/java', 'linux'), false);
+
   // Relative manifest executable must reject backslashes, traversal, absolute paths (when allowAbsolute=false), or non-java names
   assert.equal(isSupportedJavaExecutable('runtime\\jdk-17.0.20.1+1-jre\\bin\\java', 'darwin'), false);
   assert.equal(isSupportedJavaExecutable('runtime\\jdk-17.0.20.1+1-jre\\bin\\java.exe', 'win32'), false);
@@ -202,6 +218,7 @@ test('createOcrRuntime reports not-installed on missing directory for win32-x64,
       ['win32', 'x64'],
       ['darwin', 'arm64'],
       ['darwin', 'x64'],
+      ['linux', 'x64'],
     ]) {
       const runtime = createOcrRuntime({
         distributionRoot: tmpRoot,
@@ -213,8 +230,11 @@ test('createOcrRuntime reports not-installed on missing directory for win32-x64,
       assert.equal(molvecStatus?.status, 'not-installed');
     }
 
-    const linuxRuntime = createOcrRuntime({ distributionRoot: tmpRoot, platform: 'linux', architecture: 'x64' });
-    await assert.rejects(() => linuxRuntime.resolve('molvec'), /OCR_UNSUPPORTED: 组件不支持当前系统。/);
+    const freebsdRuntime = createOcrRuntime({ distributionRoot: tmpRoot, platform: 'freebsd', architecture: 'x64' });
+    await assert.rejects(() => freebsdRuntime.resolve('molvec'), /OCR_UNSUPPORTED: 组件不支持当前系统。/);
+
+    const linuxArmRuntime = createOcrRuntime({ distributionRoot: tmpRoot, platform: 'linux', architecture: 'arm64' });
+    await assert.rejects(() => linuxArmRuntime.resolve('molvec'), /OCR_UNSUPPORTED: 组件不支持当前处理器架构。/);
 
     const winArmRuntime = createOcrRuntime({ distributionRoot: tmpRoot, platform: 'win32', architecture: 'arm64' });
     await assert.rejects(() => winArmRuntime.resolve('molvec'), /OCR_UNSUPPORTED: 组件不支持当前处理器架构。/);

@@ -8,6 +8,10 @@ const {
   registerFoundationTools,
   registerWindowAndFileTools,
   registerViewportAndVisionTools,
+  registerStructureAndGeometryTools,
+  registerInputConfigTools,
+  registerTaskExecutionTools,
+  registerAnalysisAndExportTools,
   createMcpProtocolProcessor,
   jsonRpcError
 } = require('./protocol.cjs');
@@ -41,6 +45,22 @@ function createMcpStdioServer({
     serverVersion
   });
   registerViewportAndVisionTools(registry, {
+    dispatchToHost: dispatch,
+    serverVersion
+  });
+  registerStructureAndGeometryTools(registry, {
+    dispatchToHost: dispatch,
+    serverVersion
+  });
+  registerInputConfigTools(registry, {
+    dispatchToHost: dispatch,
+    serverVersion
+  });
+  registerTaskExecutionTools(registry, {
+    dispatchToHost: dispatch,
+    serverVersion
+  });
+  registerAnalysisAndExportTools(registry, {
     dispatchToHost: dispatch,
     serverVersion
   });

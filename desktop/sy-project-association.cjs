@@ -43,10 +43,16 @@ function associationEntries(executablePath) {
   add(CLASSES + '.sy', '', PROGRAM_ID, { legacyDefault: true });
   return rows;
 }
+const ALLOWED_PORTABLE_EXECUTABLES = Object.freeze([
+  'lactone studio.exe',
+  'lactone-studio.exe',
+  'ester-studio.exe',
+  'sy-studio.exe',
+]);
 function launcherPath(executablePath) {
   if (typeof executablePath !== 'string' || !/^[a-z]:[\\/]/i.test(executablePath) || !path.win32.isAbsolute(executablePath)
-    || /["%\x00-\x1f]/.test(executablePath) || !['ester-studio.exe', 'sy-studio.exe'].includes(path.win32.basename(executablePath).toLowerCase())) {
-    throw failure('SY_ASSOCIATION_INVALID_EXECUTABLE', '文件关联需要本机盘符下当前便携目录中的 Ester-Studio.exe（兼容旧版 SY-Studio.exe）；暂不支持 UNC 网络程序路径，以及含引号、控制字符或 Windows 命令占位符 % 的程序路径。导入文件路径不受此注册限制。');
+    || /["%\x00-\x1f]/.test(executablePath) || !ALLOWED_PORTABLE_EXECUTABLES.includes(path.win32.basename(executablePath).toLowerCase())) {
+    throw failure('SY_ASSOCIATION_INVALID_EXECUTABLE', '文件关联需要本机盘符下当前便携目录中的 Lactone Studio.exe / Ester-Studio.exe（兼容旧版 SY-Studio.exe）；暂不支持 UNC 网络程序路径，以及含引号、控制字符或 Windows 命令占位符 % 的程序路径。导入文件路径不受此注册限制。');
   }
   return path.win32.normalize(executablePath);
 }

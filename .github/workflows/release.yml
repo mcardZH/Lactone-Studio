@@ -1,0 +1,449 @@
+name: Build & Release Cross-Platform Apps
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      target_platform:
+        description: '构建目标平台（all = 全平台并行打包；也可单独指定某一平台）'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - macos-arm64
+          - macos-x64
+          - windows-x64
+          - linux-x64
+      release_tag:
+        description: '可选：发布到指定 GitHub Release 标签（例如 v2.0.3-lactone.1，留空则仅生成 Actions 构建产物）'
+        required: false
+        default: ''
+        type: string
+      macos_runner:
+        description: 'macOS 构建运行器（默认 macos-15-intel 免排队秒级启动并支持交叉打包 arm64/x64）'
+        required: false
+        default: 'macos-15-intel'
+        type: choice
+        options:
+          - macos-15-intel
+          - macos-26-intel
+          - macos-latest
+          - macos-26
+      prerelease:
+        description: '是否标记为 Pre-release（预发布版）'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    if: >-
+      github.event_name == 'push' ||
+      inputs.target_platform == 'all' ||
+      inputs.target_platform == 'macos-arm64' ||
+      inputs.target_platform == 'macos-x64'
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: >-
+          ${{
+            (github.event_name == 'push' || inputs.target_platform == 'all') && fromJSON('["arm64","x64"]') ||
+            (inputs.target_platform == 'macos-x64' && fromJSON('["x64"]') || fromJSON('["arm64"]'))
+          }}
+    name: Build & Package macOS (${{ matrix.arch }})
+    runs-on: ${{ inputs.macos_runner || 'macos-15-intel' }}
+    env:
+      TARGET_ARCH: ${{ matrix.arch }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install npm dependencies & target-arch Electron.app
+        run: |
+          npm ci --ignore-scripts
+          rm -rf node_modules/electron/dist node_modules/electron/path.txt
+          ELECTRON_INSTALL_PLATFORM=darwin \
+          ELECTRON_INSTALL_ARCH="${TARGET_ARCH}" \
+          force_no_cache=true \
+          node node_modules/electron/install.js
+
+      - name: Install Python 3.12 Scientific Stack & GNU xTB via Micromamba
+        run: |
+          HOST_MACHINE="$(uname -m)"
+          if [ "${HOST_MACHINE}" = "arm64" ]; then
+            MAMBA_HOST_PLATFORM="osx-arm64"
+          else
+            MAMBA_HOST_PLATFORM="osx-64"
+          fi
+          if [ "${TARGET_ARCH}" = "arm64" ]; then
+            CONDA_TARGET_PLATFORM="osx-arm64"
+          else
+            CONDA_TARGET_PLATFORM="osx-64"
+          fi
+          mkdir -p "${RUNNER_TEMP}/mamba"
+          curl -fsSL --retry 5 "https://micro.mamba.pm/api/micromamba/${MAMBA_HOST_PLATFORM}/latest" | tar -xvj -C "${RUNNER_TEMP}/mamba" bin/micromamba
+          CONDA_ENV_PATH="${HOME}/lactone-studio-conda-runtime-env"
+          rm -rf "${CONDA_ENV_PATH}"
+          "${RUNNER_TEMP}/mamba/bin/micromamba" create -y -p "${CONDA_ENV_PATH}" \
+            --platform "${CONDA_TARGET_PLATFORM}" \
+            -c conda-forge --channel-priority strict \
+            python=3.12 \
+            numpy \
+            scipy \
+            rdkit \
+            ase \
+            spglib \
+            tblite \
+            tblite-python \
+            threadpoolctl \
+            xtb=6.4.1
+
+      - name: Stage macOS native Python & xTB runtime into .local
+        run: |
+          CONDA_ENV_PATH="${HOME}/lactone-studio-conda-runtime-env"
+          node scripts/native/stage-darwin-runtime.mjs \
+            --conda-prefix "${CONDA_ENV_PATH}" \
+            --platform "darwin-${TARGET_ARCH}" \
+            --update-locks
+
+      - name: Prepare desktop assets & build frontend bundle
+        run: |
+          npm run prepare:runtime
+          npm run build
+
+      - name: Package Lactone Studio (.app + .dmg + 安装说明)
+        run: |
+          node scripts/release/package-macos.mjs --skip-build --arch "${TARGET_ARCH}"
+
+      - name: Archive .app bundle & stage release files
+        id: artifacts
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          OUT_DIR="release/darwin-${TARGET_ARCH}"
+          STAGE_DIR="release/upload-macos-${TARGET_ARCH}"
+          rm -rf "${STAGE_DIR}"
+          mkdir -p "${STAGE_DIR}"
+
+          APP_ZIP="${STAGE_DIR}/Lactone-Studio-${VERSION}-darwin-${TARGET_ARCH}.app.zip"
+          DMG_SRC="${OUT_DIR}/Lactone-Studio-${VERSION}-darwin-${TARGET_ARCH}.dmg"
+          GUIDE_SRC="${OUT_DIR}/安装说明 (INSTALL).txt"
+
+          ditto -c -k --sequesterRsrc --keepParent \
+            "${OUT_DIR}/Lactone Studio.app" \
+            "${APP_ZIP}"
+          cp "${DMG_SRC}" "${STAGE_DIR}/"
+          cp "${GUIDE_SRC}" "${STAGE_DIR}/INSTALL-macos-${TARGET_ARCH}.txt"
+
+          (
+            cd "${STAGE_DIR}"
+            shasum -a 256 * > "${RUNNER_TEMP}/SHA256SUMS-macos-${TARGET_ARCH}.txt"
+            mv "${RUNNER_TEMP}/SHA256SUMS-macos-${TARGET_ARCH}.txt" "SHA256SUMS-macos-${TARGET_ARCH}.txt"
+            cat "SHA256SUMS-macos-${TARGET_ARCH}.txt"
+          )
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "stage_dir=${STAGE_DIR}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload macOS Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle-macos-${{ env.TARGET_ARCH }}
+          if-no-files-found: error
+          retention-days: 30
+          path: ${{ steps.artifacts.outputs.stage_dir }}/*
+
+  build-windows:
+    if: >-
+      github.event_name == 'push' ||
+      inputs.target_platform == 'all' ||
+      inputs.target_platform == 'windows-x64'
+    name: Build & Package Windows (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install npm dependencies & Windows x64 Electron
+        shell: pwsh
+        run: |
+          npm ci --ignore-scripts
+          if (Test-Path "node_modules/electron/dist") { Remove-Item -Recurse -Force "node_modules/electron/dist" }
+          if (Test-Path "node_modules/electron/path.txt") { Remove-Item -Force "node_modules/electron/path.txt" }
+          $env:ELECTRON_INSTALL_PLATFORM = "win32"
+          $env:ELECTRON_INSTALL_ARCH = "x64"
+          $env:force_no_cache = "true"
+          node node_modules/electron/install.js
+
+      - name: Install Python 3.12 Scientific Stack & GNU xTB via Micromamba
+        shell: pwsh
+        run: |
+          $MambaDir = Join-Path $env:RUNNER_TEMP "mamba"
+          New-Item -ItemType Directory -Force -Path $MambaDir | Out-Null
+          $ArchivePath = Join-Path $env:RUNNER_TEMP "micromamba.tar.bz2"
+          curl.exe -fsSL --retry 5 "https://micro.mamba.pm/api/micromamba/win-64/latest" -o $ArchivePath
+          tar.exe -xjf $ArchivePath -C $MambaDir
+          $MicromambaExe = Join-Path $MambaDir "Library\bin\micromamba.exe"
+          if (-not (Test-Path $MicromambaExe)) {
+            $MicromambaExe = Get-ChildItem -Path $MambaDir -Filter "micromamba.exe" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          }
+          $CondaEnvPath = Join-Path $env:USERPROFILE "lactone-studio-conda-win64"
+          if (Test-Path $CondaEnvPath) { Remove-Item -Recurse -Force $CondaEnvPath }
+          & $MicromambaExe create -y -p $CondaEnvPath `
+            -c conda-forge --channel-priority strict `
+            python=3.12 `
+            "libblas=*=*openblas" `
+            numpy `
+            scipy `
+            rdkit `
+            ase `
+            spglib `
+            tblite `
+            tblite-python `
+            threadpoolctl `
+            libgomp `
+            xtb=6.7.1
+
+      - name: Stage Windows native Python & xTB runtime into .local
+        shell: pwsh
+        run: |
+          $CondaEnvPath = Join-Path $env:USERPROFILE "lactone-studio-conda-win64"
+          node scripts/native/stage-conda-runtime.mjs `
+            --conda-prefix "$CondaEnvPath" `
+            --platform "win32-x64" `
+            --expected-xtb-version "6.7.1"
+
+      - name: Prepare desktop assets & build frontend bundle
+        shell: pwsh
+        run: |
+          npm run prepare:runtime
+          npm run build
+
+      - name: Package Lactone Studio Windows Portable (.zip + 安装说明)
+        shell: pwsh
+        run: |
+          node scripts/release/package-windows.mjs --skip-build
+
+      - name: Stage Windows release files & compute SHA-256
+        id: artifacts
+        shell: pwsh
+        run: |
+          $Version = node -p "require('./package.json').version"
+          $OutDir = "release/win32-x64"
+          $StageDir = "release/upload-windows-x64"
+          if (Test-Path $StageDir) { Remove-Item -Recurse -Force $StageDir }
+          New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
+
+          Copy-Item "$OutDir/Lactone-Studio-$Version-win32-x64.zip" "$StageDir/"
+          Copy-Item "$OutDir/安装说明 (INSTALL).txt" "$StageDir/INSTALL-windows-x64.txt"
+
+          $SumLines = Get-ChildItem -File $StageDir | Sort-Object Name | ForEach-Object {
+            $Hash = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLower()
+            "$Hash  $($_.Name)"
+          }
+          $SumFile = Join-Path $StageDir "SHA256SUMS-windows-x64.txt"
+          [System.IO.File]::WriteAllLines($SumFile, $SumLines)
+          Get-Content $SumFile
+          "stage_dir=$StageDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Upload Windows Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle-windows-x64
+          if-no-files-found: error
+          retention-days: 30
+          path: ${{ steps.artifacts.outputs.stage_dir }}/*
+
+  build-linux:
+    if: >-
+      github.event_name == 'push' ||
+      inputs.target_platform == 'all' ||
+      inputs.target_platform == 'linux-x64'
+    name: Build & Package Linux (x64 .tar.gz + .AppImage)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux packaging utilities (patchelf, desktop-file-utils, appimagetool)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends file patchelf desktop-file-utils xz-utils bzip2 ca-certificates
+          curl -fsSL --retry 5 \
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" \
+            -o "${RUNNER_TEMP}/appimagetool-x86_64.AppImage"
+          chmod +x "${RUNNER_TEMP}/appimagetool-x86_64.AppImage"
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install npm dependencies & Linux x64 Electron
+        run: |
+          npm ci --ignore-scripts
+          rm -rf node_modules/electron/dist node_modules/electron/path.txt
+          ELECTRON_INSTALL_PLATFORM=linux \
+          ELECTRON_INSTALL_ARCH=x64 \
+          force_no_cache=true \
+          node node_modules/electron/install.js
+
+      - name: Install Python 3.12 Scientific Stack & GNU xTB via Micromamba
+        run: |
+          mkdir -p "${RUNNER_TEMP}/mamba"
+          curl -fsSL --retry 5 "https://micro.mamba.pm/api/micromamba/linux-64/latest" | tar -xvj -C "${RUNNER_TEMP}/mamba" bin/micromamba
+          CONDA_ENV_PATH="${HOME}/lactone-studio-conda-linux64"
+          rm -rf "${CONDA_ENV_PATH}"
+          "${RUNNER_TEMP}/mamba/bin/micromamba" create -y -p "${CONDA_ENV_PATH}" \
+            -c conda-forge --channel-priority strict \
+            python=3.12 \
+            "libblas=*=*openblas" \
+            numpy \
+            scipy \
+            rdkit \
+            ase \
+            spglib \
+            tblite \
+            tblite-python \
+            threadpoolctl \
+            libgomp \
+            xtb=6.7.1
+
+      - name: Stage Linux native Python & xTB runtime into .local
+        run: |
+          CONDA_ENV_PATH="${HOME}/lactone-studio-conda-linux64"
+          node scripts/native/stage-conda-runtime.mjs \
+            --conda-prefix "${CONDA_ENV_PATH}" \
+            --platform "linux-x64" \
+            --expected-xtb-version "6.7.1"
+
+      - name: Prepare desktop assets & build frontend bundle
+        run: |
+          npm run prepare:runtime
+          npm run build
+
+      - name: Package Lactone Studio Linux (.tar.gz + .AppImage + 安装说明)
+        run: |
+          node scripts/release/package-linux.mjs \
+            --skip-build \
+            --appimagetool "${RUNNER_TEMP}/appimagetool-x86_64.AppImage"
+
+      - name: Stage Linux release files & compute SHA-256
+        id: artifacts
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          OUT_DIR="release/linux-x64"
+          STAGE_DIR="release/upload-linux-x64"
+          rm -rf "${STAGE_DIR}"
+          mkdir -p "${STAGE_DIR}"
+
+          cp "${OUT_DIR}/Lactone-Studio-${VERSION}-linux-x64.tar.gz" "${STAGE_DIR}/"
+          cp "${OUT_DIR}/Lactone-Studio-${VERSION}-linux-x64.AppImage" "${STAGE_DIR}/"
+          chmod +x "${STAGE_DIR}/Lactone-Studio-${VERSION}-linux-x64.AppImage"
+          cp "${OUT_DIR}/安装说明 (INSTALL).txt" "${STAGE_DIR}/INSTALL-linux-x64.txt"
+
+          (
+            cd "${STAGE_DIR}"
+            sha256sum * > "${RUNNER_TEMP}/SHA256SUMS-linux-x64.txt"
+            mv "${RUNNER_TEMP}/SHA256SUMS-linux-x64.txt" "SHA256SUMS-linux-x64.txt"
+            cat "SHA256SUMS-linux-x64.txt"
+          )
+          echo "stage_dir=${STAGE_DIR}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Linux Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle-linux-x64
+          if-no-files-found: error
+          retention-days: 30
+          path: ${{ steps.artifacts.outputs.stage_dir }}/*
+
+  publish-release:
+    needs:
+      - build-macos
+      - build-windows
+      - build-linux
+    if: >-
+      always() &&
+      (startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != '') &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    name: Publish Unified GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all built platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-bundle-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate unified SHA256SUMS.txt & Release Notes
+        id: release_meta
+        env:
+          RAW_TAG: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+        run: |
+          rm -f release-assets/SHA256SUMS*.txt
+          (
+            cd release-assets
+            sha256sum * | sort -k 2 > "${RUNNER_TEMP}/SHA256SUMS.txt"
+            mv "${RUNNER_TEMP}/SHA256SUMS.txt" SHA256SUMS.txt
+            cat SHA256SUMS.txt
+          )
+          node -e '
+            const fs = require("node:fs");
+            const rawTag = String(process.env.RAW_TAG || "").trim();
+            if (!/^v[0-9A-Za-z._+-]{1,120}$/.test(rawTag)) {
+              console.error("Invalid release tag format:", rawTag);
+              process.exit(1);
+            }
+            const lines = [
+              `## Lactone Studio ${rawTag}（跨平台非官方修改版 / Unofficial Modified Version）`,
+              "",
+              "> **非官方修改版声明（遵循 `LICENSE.txt` 第七条）**：**Lactone Studio (LS)** 是基于 **Ester Studio (ES)**（原作者 Zixuan Zhang，官方仓库 https://github.com/Ahey1/Ester-Studio）改造的社区非官方修改版，维护仓库 https://github.com/mcardZH/Lactone-Studio。未获得原始作者审核、科学验证或商业认可。科研论文发表请遵循 `LICENSE.txt` 第八条引用原版 Ester Studio。",
+              "",
+              "### 平台安装包说明",
+              "- **macOS Apple Silicon (`darwin-arm64`, M1/M2/M3/M4)**：下载 `*-darwin-arm64.dmg`（首次拖入 `/Applications` 后如遇系统拦截，请在终端执行 `sudo xattr -rd com.apple.quarantine \"/Applications/Lactone Studio.app\"`）",
+              "- **macOS Intel (`darwin-x64`)**：下载 `*-darwin-x64.dmg`",
+              "- **Windows 10/11 64-bit (`win32-x64`)**：下载免安装便携包 `*-win32-x64.zip`，完整解压到可写目录后双击 `Lactone Studio.exe` 即可运行",
+              "- **Linux x86_64 (`linux-x64`)**：下载单文件 `*-linux-x64.AppImage`（`chmod +x` 后直接运行）或免安装便携包 `*-linux-x64.tar.gz`",
+              "",
+              "所有安装包均已内置自包含的 **Python 3.12 科学计算引擎（RDKit / ASE / Spglib / tblite / SciPy / NumPy）** 与原生 **GNU xTB**，无需在本机额外配置 Python 或 Conda。",
+              ""
+            ];
+            fs.writeFileSync("release-notes.md", lines.join("\n"), "utf8");
+            if (process.env.GITHUB_OUTPUT) {
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, `tag_name=${rawTag}\n`, "utf8");
+            }
+          '
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag_name }}
+          name: Lactone Studio ${{ steps.release_meta.outputs.tag_name }} (macOS / Windows / Linux 非官方修改版)
+          body_path: release-notes.md
+          prerelease: ${{ inputs.prerelease || false }}
+          generate_release_notes: true
+          files: release-assets/*

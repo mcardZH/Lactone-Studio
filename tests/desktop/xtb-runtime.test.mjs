@@ -73,7 +73,12 @@ async function populateXtbRoot(xtbRoot, platformId, options = {}) {
   }
 
   const libraries =
-    options.libraries ?? (platformId === 'win32-x64' ? EXPECTED_WIN32_LIBS : EXPECTED_DARWIN_LIBS);
+    options.libraries ??
+    (platformId === 'win32-x64'
+      ? EXPECTED_WIN32_LIBS
+      : platformId === 'linux-x64'
+        ? contract.LINUX_V1_LIBRARIES
+        : EXPECTED_DARWIN_LIBS);
   for (const libRel of libraries) {
     if (options.omitLibrary === libRel) continue;
     files.push(await writeOrdinaryFile(xtbRoot, libRel, `lib:${libRel}\n`, 0o644));
@@ -245,23 +250,34 @@ async function replaceBinWithLinkOrJunction(xtbRoot, sandbox, forceJunctionFallb
   }
 }
 
-test('xtb-runtime-contract platform helpers and validateDescriptor support win32-x64, darwin-arm64, and darwin-x64', () => {
+test('xtb-runtime-contract platform helpers and validateDescriptor support win32-x64, darwin-arm64, darwin-x64, and linux-x64', () => {
   assert.deepEqual(contract.REQUIRED_PARAMETERS, EXPECTED_PARAMETERS);
   assert.deepEqual(contract.WIN32_V1_LIBRARIES, EXPECTED_WIN32_LIBS);
   assert.deepEqual(contract.DARWIN_V1_LIBRARIES, EXPECTED_DARWIN_LIBS);
+  assert.deepEqual(contract.LINUX_V1_LIBRARIES, [
+    'lib/libgfortran.so.5',
+    'lib/libgomp.so.1',
+    'lib/libquadmath.so.0'
+  ]);
 
   assert.equal(contract.entryForPlatform('win32-x64'), 'bin/xtb.exe');
   assert.equal(contract.entryForPlatform('darwin-arm64'), 'bin/xtb');
   assert.equal(contract.entryForPlatform('darwin-x64'), 'bin/xtb');
-  assert.throws(() => contract.entryForPlatform('linux-x64'), /XTB_RUNTIME_INVALID: descriptor identity/);
+  assert.equal(contract.entryForPlatform('linux-x64'), 'bin/xtb');
+  assert.throws(() => contract.entryForPlatform('freebsd-x64'), /XTB_RUNTIME_INVALID: descriptor identity/);
 
   assert.deepEqual(contract.contentRootsForPlatform('win32-x64'), ['bin', 'share/xtb']);
   assert.deepEqual(contract.contentRootsForPlatform('darwin-arm64'), ['bin', 'lib', 'share/xtb']);
   assert.deepEqual(contract.contentRootsForPlatform('darwin-x64'), ['bin', 'lib', 'share/xtb']);
-  assert.throws(() => contract.contentRootsForPlatform('linux-x64'), /XTB_RUNTIME_INVALID: descriptor identity/);
+  assert.deepEqual(contract.contentRootsForPlatform('linux-x64'), ['bin', 'lib', 'share/xtb']);
+  assert.throws(() => contract.contentRootsForPlatform('freebsd-x64'), /XTB_RUNTIME_INVALID: descriptor identity/);
 
   assert.deepEqual(contract.requiredMembersForPlatform('win32-x64'), contract.REQUIRED);
   assert.deepEqual(contract.requiredMembersForPlatform('darwin-arm64'), [
+    'bin/xtb',
+    ...EXPECTED_PARAMETERS
+  ]);
+  assert.deepEqual(contract.requiredMembersForPlatform('linux-x64'), [
     'bin/xtb',
     ...EXPECTED_PARAMETERS
   ]);
@@ -269,7 +285,8 @@ test('xtb-runtime-contract platform helpers and validateDescriptor support win32
   for (const [platform, entry] of [
     ['win32-x64', 'bin/xtb.exe'],
     ['darwin-arm64', 'bin/xtb'],
-    ['darwin-x64', 'bin/xtb']
+    ['darwin-x64', 'bin/xtb'],
+    ['linux-x64', 'bin/xtb']
   ]) {
     const record = contract.validateDescriptor({
       schema: 'sciyue-xtb-bundled-runtime/v1',
@@ -465,6 +482,47 @@ test('xtbRuntime rejects platform mismatch, every missing Windows DLL or macOS d
       );
     } finally {
       await fs.rm(missingDylib.sandbox, { recursive: true, force: true });
+    }
+  }
+
+  // 2c. Missing each required Windows GNU Fortran DLL when WIN32_GNU_V1_LIBRARIES mode is active
+  for (const gnuDllRel of contract.WIN32_GNU_V1_LIBRARIES) {
+    const missingGnu = await createPackagedXtbSandbox('win32-x64', {
+      libraries: contract.WIN32_GNU_V1_LIBRARIES,
+      omitLibrary: gnuDllRel
+    });
+    try {
+      await assert.rejects(
+        () =>
+          xtbRuntime({
+            packaged: true,
+            resourcesPath: missingGnu.resourcesPath,
+            platformId: 'win32-x64'
+          }),
+        /ENOENT|XTB_RUNTIME_INVALID/
+      );
+    } finally {
+      await fs.rm(missingGnu.sandbox, { recursive: true, force: true });
+    }
+  }
+
+  // 2d. Missing each required Linux shared library on linux-x64
+  for (const soRel of contract.LINUX_V1_LIBRARIES) {
+    const missingSo = await createPackagedXtbSandbox('linux-x64', {
+      omitLibrary: soRel
+    });
+    try {
+      await assert.rejects(
+        () =>
+          xtbRuntime({
+            packaged: true,
+            resourcesPath: missingSo.resourcesPath,
+            platformId: 'linux-x64'
+          }),
+        /ENOENT|XTB_RUNTIME_INVALID/
+      );
+    } finally {
+      await fs.rm(missingSo.sandbox, { recursive: true, force: true });
     }
   }
 

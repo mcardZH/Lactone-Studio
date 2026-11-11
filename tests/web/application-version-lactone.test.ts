@@ -82,13 +82,13 @@ describe('Lactone Studio rebranding & LICENSE.txt Article 7/8 compliance', () =>
     expect(licenseTxt).toContain('Copyright (c) 2026 Zixuan Zhang');
   });
 
-  it('provides Lactone Studio custom icons, asset hashes, and automated macOS GitHub Actions workflow', () => {
+  it('provides Lactone Studio custom icons, asset hashes, and automated cross-platform GitHub Actions workflow', () => {
     const svgPath = path.join(repoRoot, 'public/favicon.svg');
     const pngPath = path.join(repoRoot, 'public/brand-icon.png');
     const icnsPath = path.join(repoRoot, 'scripts/portable/assets/lactone.icns');
     const icoPath = path.join(repoRoot, 'scripts/portable/assets/sciyue.ico');
     const sourceJsonPath = path.join(repoRoot, 'scripts/portable/assets/source.json');
-    const workflowPath = path.join(repoRoot, '.github/workflows/release-macos.yml');
+    const workflowPath = path.join(repoRoot, '.github/workflows/release.yml');
 
     expect(fs.existsSync(svgPath)).toBe(true);
     expect(fs.readFileSync(svgPath, 'utf8')).toContain('<title>Lactone Studio</title>');
@@ -105,7 +105,11 @@ describe('Lactone Studio rebranding & LICENSE.txt Article 7/8 compliance', () =>
     expect(fs.existsSync(workflowPath)).toBe(true);
     const workflowYaml = fs.readFileSync(workflowPath, 'utf8');
     expect(workflowYaml).toContain('macos-15-intel');
+    expect(workflowYaml).toContain('windows-latest');
+    expect(workflowYaml).toContain('ubuntu-24.04');
     expect(workflowYaml).toContain('scripts/release/package-macos.mjs');
+    expect(workflowYaml).toContain('scripts/release/package-windows.mjs');
+    expect(workflowYaml).toContain('scripts/release/package-linux.mjs');
     expect(workflowYaml).toContain('softprops/action-gh-release@v2');
     expect(workflowYaml).toContain('安装说明 (INSTALL).txt');
   });

@@ -13,8 +13,8 @@ const catalogue = new Map([['molvec', approvedMolvec]]);
 
 function assertSupportedTarget(rawEntry, platform, architecture) {
   if (rawEntry === approvedMolvec) {
-    assert(platform === 'win32' || platform === 'darwin', 'OCR_UNSUPPORTED: 组件不支持当前系统。');
-    if (platform === 'win32') {
+    assert(platform === 'win32' || platform === 'darwin' || platform === 'linux', 'OCR_UNSUPPORTED: 组件不支持当前系统。');
+    if (platform === 'win32' || platform === 'linux') {
       assert(architecture === 'x64', 'OCR_UNSUPPORTED: 组件不支持当前处理器架构。');
     } else {
       assert(DARWIN_ARCHITECTURES.has(architecture), 'OCR_UNSUPPORTED: 组件不支持当前处理器架构。');

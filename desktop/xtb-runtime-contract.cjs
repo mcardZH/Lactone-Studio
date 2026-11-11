@@ -12,6 +12,12 @@ const REQUIRED_PARAMETERS = Object.freeze([
 ]);
 const REQUIRED = Object.freeze(['bin/xtb.exe', ...REQUIRED_PARAMETERS]);
 const WIN32_V1_LIBRARIES = Object.freeze(['bin/libiomp5md.dll', 'bin/vcruntime140.dll']);
+const WIN32_GNU_V1_LIBRARIES = Object.freeze([
+  'bin/libgfortran-5.dll',
+  'bin/libgomp-1.dll',
+  'bin/libquadmath-0.dll',
+  'bin/libwinpthread-1.dll'
+]);
 const DARWIN_V1_LIBRARIES = Object.freeze([
   'lib/libblas.3.dylib',
   'lib/libgcc_s.1.1.dylib',
@@ -21,9 +27,14 @@ const DARWIN_V1_LIBRARIES = Object.freeze([
   'lib/libopenblas.0.dylib',
   'lib/libquadmath.0.dylib'
 ]);
+const LINUX_V1_LIBRARIES = Object.freeze([
+  'lib/libgfortran.so.5',
+  'lib/libgomp.so.1',
+  'lib/libquadmath.so.0'
+]);
 function entryForPlatform(platform = 'win32-x64') {
   if (platform === 'win32-x64') return 'bin/xtb.exe';
-  if (platform === 'darwin-arm64' || platform === 'darwin-x64') return 'bin/xtb';
+  if (platform === 'darwin-arm64' || platform === 'darwin-x64' || platform === 'linux-x64') return 'bin/xtb';
   assert.fail('XTB_RUNTIME_INVALID: descriptor identity');
 }
 function requiredMembersForPlatform(platform = 'win32-x64') {
@@ -31,7 +42,7 @@ function requiredMembersForPlatform(platform = 'win32-x64') {
 }
 function contentRootsForPlatform(platform = 'win32-x64') {
   if (platform === 'win32-x64') return Object.freeze(['bin', 'share/xtb']);
-  if (platform === 'darwin-arm64' || platform === 'darwin-x64') return Object.freeze(['bin', 'lib', 'share/xtb']);
+  if (platform === 'darwin-arm64' || platform === 'darwin-x64' || platform === 'linux-x64') return Object.freeze(['bin', 'lib', 'share/xtb']);
   assert.fail('XTB_RUNTIME_INVALID: descriptor identity');
 }
 const hashes = new Map();
@@ -124,7 +135,7 @@ function validateDescriptor(record) {
     Boolean(record) &&
       ['sciyue-xtb-bundled-runtime/v1', 'sciyue-xtb-bundled-runtime/v2'].includes(record.schema) &&
       /^\d+\.\d+\.\d+(?:pre)?$/.test(record.version) &&
-      ['win32-x64', 'darwin-arm64', 'darwin-x64'].includes(record.platform) &&
+      ['win32-x64', 'darwin-arm64', 'darwin-x64', 'linux-x64'].includes(record.platform) &&
       record.entry === entryForPlatform(record.platform) &&
       record.dataDirectory === 'share/xtb',
     'XTB_RUNTIME_INVALID: descriptor identity'
@@ -143,7 +154,9 @@ module.exports = {
   REQUIRED,
   REQUIRED_PARAMETERS,
   WIN32_V1_LIBRARIES,
+  WIN32_GNU_V1_LIBRARIES,
   DARWIN_V1_LIBRARIES,
+  LINUX_V1_LIBRARIES,
   entryForPlatform,
   requiredMembersForPlatform,
   contentRootsForPlatform,

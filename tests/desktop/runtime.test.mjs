@@ -203,6 +203,16 @@ test('chemistryRuntime resolves packaged engine, SCIYUE_PYTHON override, and loc
     assert.deepEqual(pkgDarwin.args, []);
     assert.equal(pkgDarwin.bundled, true);
 
+    const pkgLinux = chemistryRuntime({
+      packaged: true,
+      resourcesPath: resDir,
+      appPath: tmpDir,
+      platform: 'linux'
+    });
+    assert.equal(pkgLinux.executable, path.join(resDir, 'chemistry', 'engine'));
+    assert.deepEqual(pkgLinux.args, []);
+    assert.equal(pkgLinux.bundled, true);
+
     const pkgWin = chemistryRuntime({
       packaged: true,
       resourcesPath: resDir,
@@ -248,8 +258,8 @@ test('chemistryRuntime resolves packaged engine, SCIYUE_PYTHON override, and loc
     assert.equal(overrideRuntime.provenance.source, 'explicit-user-override');
     assert.equal(overrideRuntime.provenance.locked, false);
 
-    // 4. Locked development mode across darwin-arm64, darwin-x64, win32-x64
-    for (const platformId of ['darwin-arm64', 'darwin-x64', 'win32-x64']) {
+    // 4. Locked development mode across darwin-arm64, darwin-x64, linux-x64, win32-x64
+    for (const platformId of ['darwin-arm64', 'darwin-x64', 'linux-x64', 'win32-x64']) {
       const projDir = path.join(tmpDir, `proj-${platformId}`);
       const { pythonExecutablePath, bootstrapPath, engineDir } = buildMockLockedProject(
         projDir,
@@ -267,6 +277,21 @@ test('chemistryRuntime resolves packaged engine, SCIYUE_PYTHON override, and loc
       assert.equal(rt.bundled, false);
       assert.equal(rt.provenance.locked, true);
     }
+
+    // 4b. Validate linux-x64 ._pth positive (lib/python3.12) and negative (import site) startup checks
+    const linuxPthProj = path.join(tmpDir, 'proj-linux-pth-check');
+    const { pythonExecutablePath: linuxPyExe } = buildMockLockedProject(linuxPthProj, 'linux-x64');
+    const linuxPyDir = path.dirname(linuxPyExe);
+    fs.writeFileSync(path.join(linuxPyDir, 'python312._pth'), '../lib/python3.12\n../lib/python3.12/lib-dynload\n', 'utf8');
+    const { validateToolchainStartupPaths } = require('../../desktop/runtime.cjs');
+    assert.doesNotThrow(() =>
+      validateToolchainStartupPaths({ executable: linuxPyExe, platform: 'linux-x64' })
+    );
+    fs.writeFileSync(path.join(linuxPyDir, 'python312._pth'), '../lib/python3.12\nimport site\n', 'utf8');
+    assert.throws(
+      () => validateToolchainStartupPaths({ executable: linuxPyExe, platform: 'linux-x64' }),
+      /Disallowed directive or path in toolchain \._pth/
+    );
 
     // 5. Rejects locked toolchain containing unsafe ._pth entries (import site, external path, or ../tools)
     for (const badPthContent of ['/tmp/external\n', '../tools\n', 'Lib\nimport site\n']) {

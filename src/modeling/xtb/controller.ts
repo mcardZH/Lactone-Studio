@@ -3,14 +3,14 @@ import { effectiveModelConstraints } from '../constraints';
 import { bondOrderObservation, periodicBondOrderConnections, validateBondOrderEvidence } from '../bond-orders';
 import { DEFAULT_EMPIRICAL_BOND_PARAMETERS, validateEmpiricalBondParameters, type EmpiricalBondPerceptionParameters } from '../../core/bond-perception-parameters';
 import { perceivePeriodicConnections } from '../../core/periodic';
-import type { XtbBondOrders, XtbBridge, XtbCoordinateResult, XtbEvent, XtbMetadata, XtbMethod, XtbRequest, XtbPreviewFrame, XtbOptimizationScope } from './contracts';
+import type { XtbBondOrders, XtbBridge, XtbCoordinateResult, XtbEvent, XtbMetadata, XtbMethod, XtbRequest, XtbPreviewFrame, XtbOptimizationScope, XtbSolvation } from './contracts';
 import { XTB_METHOD_LABELS } from './contracts';
 import { applyXtbCoordinates, applyXtbStoppedCoordinates, validateXtbPeriodicity } from './accept-result';
 import {coordinatesFingerprint} from '../../core/modeling/graph';
 import { empiricalBondAdmission } from '../empirical-bond-admission';
 import {runtimePreviewSourceCurrent} from '../../core/modeling/runtime-source-lineage';
 
-export interface XtbOptions { method: XtbMethod; charge: number; multiplicity: number; rebuildBonds: boolean; threads?: number; maxSteps?: number; maxSccIterations?: number; scope?: XtbOptimizationScope; empiricalBondParameters?:EmpiricalBondPerceptionParameters }
+export interface XtbOptions { method: XtbMethod; charge: number; multiplicity: number; rebuildBonds: boolean; solvation?: XtbSolvation; threads?: number; maxSteps?: number; maxSccIterations?: number; maxWallTimeSeconds?: number; scope?: XtbOptimizationScope; empiricalBondParameters?:EmpiricalBondPerceptionParameters }
 /** Capture a variable set only; the native calculation retains the complete
  * molecule and its electronic state. Scope never changes persistent freezes. */
 export function xtbOptimizationMovableAtomIds(document:ModelDocument,scope:XtbOptimizationScope='all'):string[]{
@@ -220,6 +220,7 @@ export class XtbController {
     const document = store.getSnapshot(), structure = structuredClone(document.draft.structure);
     if (structure.dimension !== 3 || !structure.atoms.length || structure.periodicSource?.completeness==='partial') throw new Error('xTB预优化需要三维结构及完整晶胞。');
     const periodic=Boolean(structure.cell);
+    if(periodic&&options.solvation)throw new Error('隐式溶剂模型仅支持非周期孤立结构。');
     const constraints = effectiveModelConstraints(document);
     if(periodic&&!singlepoint&&constraints.coordinates.length)throw new Error('周期内坐标冻结尚未验证，请明确调整本次约束后运行；原子冻结仍受支持。');
     if (!singlepoint&&constraints.coordinates.some(row => row.action !== 'freeze')) throw new Error('xTB预优化不执行内坐标扫描。');
@@ -233,6 +234,8 @@ export class XtbController {
     this.sourceDocument = document;
     const request: XtbRequest = { stamp, structure, method: options.method, calculation, charge: options.charge,
       ...(options.method === 'gfnff' ? {} : { uhf: options.multiplicity - 1 }),
+      ...(options.solvation ? { solvation: structuredClone(options.solvation) } : {}),
+      ...(options.maxWallTimeSeconds !== undefined ? { maxWallTimeSeconds: options.maxWallTimeSeconds } : {}),
       frozenAtomIds: frozen, constraints: singlepoint?[]:structuredClone(constraints.coordinates),
       internalConstraintsConfirmed: !singlepoint&&constraints.coordinates.length > 0, maxSteps: options.maxSteps ?? 500, maxSccIterations: options.maxSccIterations ?? 250 };
     this.clearPlayback(); this.cancelRequested = false;this.lastReliableFrame=undefined;this.nativeClosed=false;this.stopTask=undefined;
@@ -306,7 +309,7 @@ export class XtbController {
       if(singlepoint){
         if(!same(stamp,store.stamp(movable)))throw new Error('MBO结果已不属于当前模型。');
         bondOrderObservation(result,store.getSnapshot().draft.structure,sessionId);
-        if(periodic&&structure.cell!.pbc.some(Boolean)&&structure.cell!.pbcProvenance?.kind!=='unconfirmed'){
+        if(periodic&&options.rebuildBonds&&structure.cell!.pbc.some(Boolean)&&structure.cell!.pbcProvenance?.kind!=='unconfirmed'){
           const perceived=periodicBondOrderConnections(structure,result.metadata.bondOrders!,options.empiricalBondParameters);
           store.execute({type:'infer-bonds',mode:perceptionMode,aggression:'standard',perceivedBonds:perceived.bonds,perceivedIssues:perceived.issues});
         }
@@ -321,7 +324,7 @@ export class XtbController {
       this.clearPlayback();
       this.update({ metadata: result.metadata, status: singlepoint?'GFN2-xTB单点完成。':`${XTB_METHOD_LABELS[options.method]}优化完成。` });
       if(singlepoint&&periodic&&(!structure.cell!.pbc.some(Boolean)||structure.cell!.pbcProvenance?.kind==='unconfirmed'))this.update({status:structure.cell!.pbc.some(Boolean)?'原子对键级已保留；周期轴未确认，未用于连接。':'原子对键级已保留；当前模型无周期轴，未用于连接。'});
-      if (!periodic&&options.method === 'gfn2' && singlepoint) {
+      if (!periodic&&options.method === 'gfn2' && singlepoint && options.rebuildBonds) {
         this.update({ phase: 'bonding', status: singlepoint?'正在综合判断成键…':'xTB优化完成，正在重新判断全部成键…' });
         try {
           if(!result.metadata.bondOrders)throw new Error(result.metadata.bondOrdersWarning?.message??'本次GFN2结果没有可用MBO。');

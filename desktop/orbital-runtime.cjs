@@ -11,6 +11,15 @@ const DARWIN_DEFAULT_CANDIDATES = Object.freeze([
   '/usr/local/bin/multiwfn',
 ]);
 
+const LINUX_DEFAULT_CANDIDATES = Object.freeze([
+  '/usr/local/bin/Multiwfn',
+  '/usr/local/bin/multiwfn',
+  '/opt/Multiwfn/Multiwfn',
+  '/opt/multiwfn/multiwfn',
+  '/usr/bin/Multiwfn',
+  '/usr/bin/multiwfn',
+]);
+
 const POSIX_DIRECTORY_CANDIDATES = Object.freeze([
   'Multiwfn',
   'multiwfn',
@@ -99,7 +108,9 @@ function createOrbitalBackendStore(root, options = {}) {
         ? defaultCandidates
         : platform === 'darwin'
           ? DARWIN_DEFAULT_CANDIDATES
-          : []),
+          : platform === 'linux'
+            ? LINUX_DEFAULT_CANDIDATES
+            : []),
     ];
     for (const candidate of candidates) {
       if (!string(candidate, 4096)) continue;
@@ -132,4 +143,4 @@ function createOrbitalBackendStore(root, options = {}) {
   return { info, select };
 }
 
-module.exports = { createOrbitalBackendStore, DARWIN_DEFAULT_CANDIDATES };
+module.exports = { createOrbitalBackendStore, DARWIN_DEFAULT_CANDIDATES, LINUX_DEFAULT_CANDIDATES };

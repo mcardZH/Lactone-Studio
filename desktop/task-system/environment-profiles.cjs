@@ -21,7 +21,7 @@ function sanitizeSiteProfile(input, { allowDraft = false, platform = process.pla
 	const site = Object.fromEntries(
 		["siteId", "revision", "displayName", ...SITE_FIELDS].map((key) => [key, input?.[key]])
 	);
-	const allowedConnections = platform === "darwin" ? ["ssh"] : ["local", "wsl", "ssh"];
+	const allowedConnections = platform === "win32" ? ["local", "wsl", "ssh"] : ["ssh"];
 	if (
 		typeof site.siteId !== "string" ||
 		(!site.siteId && !(allowDraft && site.revision === 0)) ||

@@ -1,6 +1,7 @@
 'use strict';
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
 const { assert, within } = require('./security.cjs');
 const { developmentXtb } = require('./current-runtime.cjs');
 const contract = require('./xtb-runtime-contract.cjs');
@@ -45,7 +46,15 @@ async function xtbRuntime({
   } else {
     // Keep the previous v1 route at its existing scope, without calling its
     // observed bytes an official v2 rebuild or accepting a replacement alias.
-    const requiredLibraries = record.platform === 'win32-x64' ? contract.WIN32_V1_LIBRARIES : contract.DARWIN_V1_LIBRARIES;
+    let requiredLibraries;
+    if (record.platform === 'win32-x64') {
+      const hasGnuRuntime = fsSync.existsSync(path.join(root, ...contract.WIN32_GNU_V1_LIBRARIES[0].split('/')));
+      requiredLibraries = hasGnuRuntime ? contract.WIN32_GNU_V1_LIBRARIES : contract.WIN32_V1_LIBRARIES;
+    } else if (record.platform === 'linux-x64') {
+      requiredLibraries = contract.LINUX_V1_LIBRARIES;
+    } else {
+      requiredLibraries = contract.DARWIN_V1_LIBRARIES;
+    }
     for (const relative of requiredLibraries) contract.ordinary(root, relative);
     members = contentRoots.flatMap(dir => contract.walk(root, dir)).map(relative => contract.fileIdentity(root, relative)).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   }

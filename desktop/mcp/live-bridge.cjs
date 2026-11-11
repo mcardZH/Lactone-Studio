@@ -12,8 +12,41 @@ const { isPlainObject } = require('./protocol.cjs');
 const SESSION_SCHEMA = 'ester-mcp-session/v1';
 const MAX_HTTP_BODY_BYTES = 4 * 1024 * 1024;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_TASK_ACTION_TIMEOUT_MS = 60000;
+const DEFAULT_LOCAL_XTB_TIMEOUT_SECONDS = 300;
+const DEFAULT_WAVEFUNCTION_TIMEOUT_SECONDS = 300;
 const DEFAULT_MAX_INLINE_TEXT_BYTES = 8 * 1024 * 1024;
+const MAX_EXPORT_TEXT_BYTES = 64 * 1024 * 1024;
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+function resolveActionTimeoutMs(action, payload, configuredTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, { isClient = false } = {}) {
+  const clientSlackMs = isClient ? 5000 : 0;
+  const hostComputeSlackMs = 5000;
+  if (action === 'run-local-xtb' || action === 'run-wavefunction-analysis') {
+    if (isPlainObject(payload) && Number.isInteger(payload.timeoutSeconds) && payload.timeoutSeconds >= 5 && payload.timeoutSeconds <= 600) {
+      return payload.timeoutSeconds * 1000 + hostComputeSlackMs + clientSlackMs;
+    }
+    if (configuredTimeoutMs === DEFAULT_REQUEST_TIMEOUT_MS) {
+      const defaultSec = action === 'run-local-xtb'
+        ? DEFAULT_LOCAL_XTB_TIMEOUT_SECONDS
+        : DEFAULT_WAVEFUNCTION_TIMEOUT_SECONDS;
+      return defaultSec * 1000 + hostComputeSlackMs + clientSlackMs;
+    }
+    return configuredTimeoutMs;
+  }
+  if (
+    action === 'submit-task' ||
+    action === 'task-manage' ||
+    action === 'open-result-analysis' ||
+    action === 'export-artifact'
+  ) {
+    if (configuredTimeoutMs === DEFAULT_REQUEST_TIMEOUT_MS) {
+      return DEFAULT_TASK_ACTION_TIMEOUT_MS + clientSlackMs;
+    }
+    return configuredTimeoutMs;
+  }
+  return configuredTimeoutMs;
+}
 
 function resolveHostAppDataRoot(platform = process.platform, env = process.env, homedir = os.homedir()) {
   if (platform === 'darwin') {
@@ -214,7 +247,8 @@ function createMcpLiveHost({
       const errCode = isPlainObject(response.error) && typeof response.error.code === 'string'
         ? response.error.code
         : 'MCP_FRONTEND_ERROR';
-      pending.reject(Object.assign(new Error(errMessage), { code: errCode }));
+      const sourceAdopted = isPlainObject(response.error) && response.error.sourceAdopted === true;
+      pending.reject(Object.assign(new Error(errMessage), { code: errCode, sourceAdopted }));
     } else {
       pending.resolve(response.result ?? {});
     }
@@ -530,6 +564,329 @@ function createMcpLiveHost({
       };
     }
 
+    if (action === 'structure-info') {
+      const { windowId, ...infoPayload } = payload;
+      return await requestFrontend('frontend.getStructureInfo', infoPayload, {
+        windowId
+      });
+    }
+
+    if (action === 'measure-geometry') {
+      const { windowId, ...measurePayload } = payload;
+      return await requestFrontend('frontend.measureGeometry', measurePayload, {
+        windowId
+      });
+    }
+
+    if (action === 'edit-structure') {
+      const { windowId, ...editPayload } = payload;
+      return await requestFrontend('frontend.editStructure', editPayload, {
+        windowId
+      });
+    }
+
+    if (action === 'set-constraints') {
+      const { windowId, ...constraintPayload } = payload;
+      return await requestFrontend('frontend.setConstraints', constraintPayload, {
+        windowId
+      });
+    }
+
+    if (action === 'recommend-method') {
+      const { windowId, ...recommendPayload } = payload;
+      return await requestFrontend('frontend.recommendMethod', recommendPayload, {
+        windowId
+      });
+    }
+
+    if (action === 'configure-calculation') {
+      const { windowId, ...configurePayload } = payload;
+      return await requestFrontend('frontend.configureCalculation', configurePayload, {
+        windowId
+      });
+    }
+
+    if (action === 'run-local-xtb') {
+      const { windowId, ...xtbPayload } = payload;
+      return await requestFrontend('frontend.runLocalXtb', xtbPayload, {
+        windowId,
+        timeoutMs: resolveActionTimeoutMs(action, xtbPayload, requestTimeoutMs)
+      });
+    }
+
+    if (action === 'submit-task') {
+      const { windowId, ...submitPayload } = payload;
+      return await requestFrontend('frontend.submitTask', submitPayload, {
+        windowId,
+        timeoutMs: resolveActionTimeoutMs(action, submitPayload, requestTimeoutMs)
+      });
+    }
+
+    if (action === 'task-manage') {
+      const { windowId, ...managePayload } = payload;
+      return await requestFrontend('frontend.taskManage', managePayload, {
+        windowId,
+        timeoutMs: resolveActionTimeoutMs(action, managePayload, requestTimeoutMs)
+      });
+    }
+
+    if (action === 'open-result-analysis') {
+      const { windowId, ...analysisPayload } = payload;
+      const actionTimeoutMs = resolveActionTimeoutMs(action, analysisPayload, requestTimeoutMs);
+
+      if (isPlainObject(analysisPayload.source) && analysisPayload.source.filePath !== undefined) {
+        if (typeof analysisPayload.source.filePath !== 'string' || !analysisPayload.source.filePath.trim() || /[\r\n\0]/.test(analysisPayload.source.filePath)) {
+          throw Object.assign(new Error('source.filePath must be a non-empty single-line file path'), {
+            statusCode: 400,
+            code: 'INVALID_FILE_PATH'
+          });
+        }
+        const resolvedPath = path.resolve(analysisPayload.source.filePath.trim());
+        let stat;
+        try {
+          stat = await fsPromises.lstat(resolvedPath);
+        } catch (error) {
+          if (error?.code === 'ENOENT') {
+            throw Object.assign(new Error(`File not found: ${resolvedPath}`), {
+              statusCode: 404,
+              code: 'MCP_FILE_NOT_FOUND'
+            });
+          }
+          throw Object.assign(new Error(`Cannot access file "${resolvedPath}": ${error.message}`), {
+            statusCode: 400,
+            code: 'MCP_FILE_ACCESS_ERROR'
+          });
+        }
+        if (stat.isSymbolicLink()) {
+          throw Object.assign(new Error(`Symbolic links are not permitted for MCP analysis import: ${resolvedPath}`), {
+            statusCode: 400,
+            code: 'MCP_SYMLINK_NOT_ALLOWED'
+          });
+        }
+        if (!stat.isFile()) {
+          throw Object.assign(new Error(`Path is not a regular file: ${resolvedPath}`), {
+            statusCode: 400,
+            code: 'MCP_NOT_REGULAR_FILE'
+          });
+        }
+        if (stat.size <= 0) {
+          throw Object.assign(new Error(`File is empty: ${resolvedPath}`), {
+            statusCode: 400,
+            code: 'MCP_EMPTY_FILE'
+          });
+        }
+
+        const targetWindow = getTargetWindow(windowId);
+        if (!targetWindow || targetWindow.isDestroyed?.() || targetWindow.webContents?.isDestroyed?.()) {
+          throw Object.assign(new Error('No active Ester Studio workbench window is available'), {
+            statusCode: 404,
+            code: 'MCP_NO_WORKBENCH_WINDOW'
+          });
+        }
+        const ownerId = targetWindow.webContents.id;
+
+        let sourceDescriptor = null;
+        if (typeof openLaunchSource === 'function') {
+          sourceDescriptor = await openLaunchSource(ownerId, resolvedPath);
+        }
+
+        let text;
+        if (stat.size <= maxInlineTextBytes) {
+          try {
+            text = await fsPromises.readFile(resolvedPath, 'utf8');
+          } catch {
+            text = undefined;
+          }
+        }
+
+        try {
+          const frontendResult = await requestFrontend(
+            'frontend.openResultAnalysis',
+            {
+              ...analysisPayload,
+              source: {
+                filePath: resolvedPath,
+                name: path.basename(resolvedPath),
+                size: stat.size,
+                ...(text !== undefined ? { text } : {}),
+                ...(sourceDescriptor ? { sourceDescriptor } : {})
+              }
+            },
+            {
+              windowId,
+              timeoutMs: actionTimeoutMs
+            }
+          );
+          return {
+            sourcePath: resolvedPath,
+            fileName: path.basename(resolvedPath),
+            byteSize: stat.size,
+            ...frontendResult
+          };
+        } catch (error) {
+          if (!error?.sourceAdopted && sourceDescriptor?.token && typeof closeLaunchSource === 'function') {
+            await Promise.resolve(closeLaunchSource(ownerId, sourceDescriptor.token)).catch(() => {});
+          }
+          throw error;
+        }
+      }
+
+      return await requestFrontend('frontend.openResultAnalysis', analysisPayload, {
+        windowId,
+        timeoutMs: actionTimeoutMs
+      });
+    }
+
+    if (action === 'run-wavefunction-analysis') {
+      const { windowId, ...wfPayload } = payload;
+      return await requestFrontend('frontend.runWavefunctionAnalysis', wfPayload, {
+        windowId,
+        timeoutMs: resolveActionTimeoutMs(action, wfPayload, requestTimeoutMs)
+      });
+    }
+
+    if (action === 'export-artifact') {
+      if (typeof payload.outputPath !== 'string' || !payload.outputPath.trim() || /[\r\n\0]/.test(payload.outputPath)) {
+        throw Object.assign(new Error('outputPath must be a non-empty single-line string'), {
+          statusCode: 400,
+          code: 'INVALID_OUTPUT_PATH'
+        });
+      }
+      const resolvedOutputPath = path.resolve(payload.outputPath.trim());
+      const overwrite = payload.overwrite !== false;
+
+      const verifyExportPathSafety = async () => {
+        const parentDir = path.dirname(resolvedOutputPath);
+        let parentStat;
+        try {
+          parentStat = await fsPromises.lstat(parentDir);
+        } catch (error) {
+          if (error?.code === 'ENOENT') {
+            throw Object.assign(new Error(`Export directory does not exist: ${parentDir}`), {
+              statusCode: 400,
+              code: 'MCP_SAVE_DIR_NOT_FOUND'
+            });
+          }
+          throw Object.assign(new Error(`Cannot access export directory "${parentDir}": ${error.message}`), {
+            statusCode: 400,
+            code: 'MCP_FILE_ACCESS_ERROR'
+          });
+        }
+        if (parentStat.isSymbolicLink()) {
+          throw Object.assign(new Error(`Symbolic link directory is not permitted for artifact export: ${parentDir}`), {
+            statusCode: 400,
+            code: 'MCP_SYMLINK_NOT_ALLOWED'
+          });
+        }
+        if (!parentStat.isDirectory()) {
+          throw Object.assign(new Error(`Export parent path is not a directory: ${parentDir}`), {
+            statusCode: 400,
+            code: 'MCP_INVALID_SAVE_DIR'
+          });
+        }
+
+        try {
+          const targetStat = await fsPromises.lstat(resolvedOutputPath);
+          if (targetStat.isSymbolicLink()) {
+            throw Object.assign(new Error(`Symbolic links are not permitted for artifact export: ${resolvedOutputPath}`), {
+              statusCode: 400,
+              code: 'MCP_SYMLINK_NOT_ALLOWED'
+            });
+          }
+          if (!targetStat.isFile()) {
+            throw Object.assign(new Error(`Export outputPath is not a regular file: ${resolvedOutputPath}`), {
+              statusCode: 400,
+              code: 'MCP_NOT_REGULAR_FILE'
+            });
+          }
+          if (!overwrite) {
+            throw Object.assign(new Error(`Export file already exists and overwrite is false: ${resolvedOutputPath}`), {
+              statusCode: 409,
+              code: 'MCP_FILE_ALREADY_EXISTS'
+            });
+          }
+        } catch (error) {
+          if (error?.code !== 'ENOENT') {
+            throw error;
+          }
+        }
+      };
+
+      await verifyExportPathSafety();
+
+      const { windowId, overwrite: _ignoredOverwrite, ...exportPayload } = payload;
+      const frontendResult = await requestFrontend(
+        'frontend.exportArtifact',
+        {
+          ...exportPayload,
+          outputPath: resolvedOutputPath
+        },
+        {
+          windowId,
+          timeoutMs: resolveActionTimeoutMs(action, exportPayload, requestTimeoutMs)
+        }
+      );
+
+      if (!isPlainObject(frontendResult) || typeof frontendResult.content !== 'string' || !frontendResult.content.length) {
+        throw Object.assign(new Error('Frontend did not return valid text content for artifact export'), {
+          statusCode: 500,
+          code: 'MCP_INVALID_EXPORT_DATA'
+        });
+      }
+
+      const contentBuffer = Buffer.from(frontendResult.content, 'utf8');
+      if (contentBuffer.byteLength > MAX_EXPORT_TEXT_BYTES) {
+        throw Object.assign(new Error(`Export payload exceeds maximum size (${MAX_EXPORT_TEXT_BYTES} bytes)`), {
+          statusCode: 413,
+          code: 'MCP_EXPORT_TOO_LARGE'
+        });
+      }
+
+      await verifyExportPathSafety();
+
+      if (!overwrite) {
+        try {
+          await fsPromises.writeFile(resolvedOutputPath, contentBuffer, { flag: 'wx' });
+        } catch (error) {
+          if (error?.code === 'EEXIST') {
+            throw Object.assign(new Error(`Export file already exists and overwrite is false: ${resolvedOutputPath}`), {
+              statusCode: 409,
+              code: 'MCP_FILE_ALREADY_EXISTS'
+            });
+          }
+          throw Object.assign(new Error(`Failed to write exported artifact to "${resolvedOutputPath}": ${error.message}`), {
+            statusCode: 500,
+            code: 'MCP_EXPORT_WRITE_FAILED'
+          });
+        }
+      } else {
+        const tempSavePath = `${resolvedOutputPath}.${process.pid}.${Date.now()}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+        try {
+          await fsPromises.writeFile(tempSavePath, contentBuffer);
+          await fsPromises.rename(tempSavePath, resolvedOutputPath);
+        } catch (error) {
+          await fsPromises.unlink(tempSavePath).catch(() => {});
+          throw Object.assign(new Error(`Failed to write exported artifact to "${resolvedOutputPath}": ${error.message}`), {
+            statusCode: 500,
+            code: 'MCP_EXPORT_WRITE_FAILED'
+          });
+        }
+      }
+
+      const { content, ...metadata } = frontendResult;
+      const normalizedLines = content.endsWith('\n')
+        ? content.slice(0, -1).split('\n').length
+        : content.split('\n').length;
+      const preview = content.length <= 2048 ? content : `${content.slice(0, 2048)}\n... [truncated]`;
+      return {
+        ...metadata,
+        savedPath: resolvedOutputPath,
+        byteLength: contentBuffer.byteLength,
+        lineCount: normalizedLines,
+        preview
+      };
+    }
+
     if (customActionHandlers.has(action)) {
       const handler = customActionHandlers.get(action);
       return await handler(payload, { requestFrontend, getHostStatus });
@@ -814,7 +1171,7 @@ function createMcpLiveClient({
         port: session.port,
         token: session.token,
         body: { action, payload },
-        timeoutMs
+        timeoutMs: resolveActionTimeoutMs(action, payload, timeoutMs, { isClient: true })
       });
     } catch (error) {
       if (
@@ -849,6 +1206,7 @@ module.exports = {
   SESSION_SCHEMA,
   resolveHostAppDataRoot,
   resolveDefaultMcpSessionFile,
+  resolveActionTimeoutMs,
   safeTokenEquals,
   createMcpLiveHost,
   createMcpLiveClient

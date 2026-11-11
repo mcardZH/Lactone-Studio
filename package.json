@@ -8,6 +8,7 @@
   "main": "desktop/main.cjs",
   "scripts": {
     "native:stage:darwin": "node scripts/native/stage-darwin-runtime.mjs",
+    "native:stage:conda": "node scripts/native/stage-conda-runtime.mjs",
     "prepare:chemistry": "node scripts/prepare-chemistry.mjs",
     "prepare:runtime": "node scripts/prepare-runtime-assets.mjs",
     "predev": "npm run prepare:runtime",
@@ -20,6 +21,8 @@
     "desktop:dev": "node scripts/desktop-dev.mjs",
     "mcp:server": "node desktop/mcp/stdio-server.cjs",
     "package:mac": "node scripts/release/package-macos.mjs",
+    "package:win": "node scripts/release/package-windows.mjs",
+    "package:linux": "node scripts/release/package-linux.mjs",
     "test": "node scripts/workflow/run-tests.mjs",
     "hooks:install": "node scripts/workflow/install-hooks.mjs",
     "check:branch": "node scripts/workflow/pre-commit-check.mjs",
