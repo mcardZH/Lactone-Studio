@@ -33,10 +33,47 @@ const STDLIB_EXCLUDES = new Set([
   'tkinter',
   'idlelib',
   'ensurepip',
+  'venv',
   'turtledemo',
   'pydoc_data',
   'lib2to3',
 ]);
+
+const SITE_PACKAGES_EXCLUDED_TOP_DIRS = new Set([
+  'pip',
+  'setuptools',
+  'wheel',
+  'pkg_resources',
+  '_distutils_hack',
+  'distlib',
+  'conda',
+  'conda_env',
+  'conda_package_handling',
+  'conda_package_streaming',
+  'menuinst',
+]);
+
+const SITE_PACKAGES_EXCLUDED_DIST_PREFIXES = [
+  'pip',
+  'setuptools',
+  'wheel',
+  'distlib',
+  'conda',
+  'conda_package_handling',
+  'conda_package_streaming',
+  'menuinst',
+];
+
+export function isExcludedSitePackagesTopEntry(name) {
+  const entryName = String(name || '');
+  if (!entryName) return false;
+  if (SITE_PACKAGES_EXCLUDED_TOP_DIRS.has(entryName)) return true;
+  if (entryName === 'distutils-precedence.pth' || entryName === 'easy-install.pth') return true;
+  const distMatch = /^([A-Za-z0-9_.-]+?)-[0-9][A-Za-z0-9_.-]*\.(?:dist-info|egg-info)$/.exec(entryName);
+  if (!distMatch) return false;
+  const normalizedPkg = distMatch[1].toLowerCase().replace(/-/g, '_');
+  return SITE_PACKAGES_EXCLUDED_DIST_PREFIXES.includes(normalizedPkg);
+}
 
 const LINUX_SYSTEM_LIB_PATTERNS = [
   /^ld-linux/i,
@@ -586,9 +623,17 @@ export function stageCondaRuntime({
       path.join(tcDestRoot, 'DLLs'),
     );
 
+    const realSrcSitePackages = fs.realpathSync(srcSitePackages);
     const destSitePackages = path.join(depPythonRoot, 'Lib', 'site-packages');
     copyTreeMaterialized(srcSitePackages, destSitePackages, {
-      filter: (name) => name !== '__pycache__' && !name.endsWith('.pyc') && !name.endsWith('.pdb'),
+      filter: (name, srcChild) => {
+        if (name === '__pycache__' || name.endsWith('.pyc') || name.endsWith('.pdb')) return false;
+        if (name.toLowerCase().endsWith('.exe')) return false;
+        if (path.dirname(srcChild) === realSrcSitePackages && isExcludedSitePackagesTopEntry(name)) {
+          return false;
+        }
+        return true;
+      },
     });
 
     for (const reqPkg of REQUIRED_PYTHON_PACKAGES) {
@@ -759,9 +804,18 @@ export function stageCondaRuntime({
   }
 
   fs.mkdirSync(path.join(depPythonRoot, 'bin'), { recursive: true });
+  const realSrcSitePackages = fs.realpathSync(srcSitePackages);
   const destSitePackages = path.join(depPythonRoot, 'lib', 'python3.12', 'site-packages');
   copyTreeMaterialized(srcSitePackages, destSitePackages, {
-    filter: (name) => name !== '__pycache__' && !name.endsWith('.pyc'),
+    filter: (name, srcChild) => {
+      if (name === '__pycache__' || name.endsWith('.pyc') || name.toLowerCase().endsWith('.exe')) {
+        return false;
+      }
+      if (path.dirname(srcChild) === realSrcSitePackages && isExcludedSitePackagesTopEntry(name)) {
+        return false;
+      }
+      return true;
+    },
   });
 
   for (const reqPkg of REQUIRED_PYTHON_PACKAGES) {

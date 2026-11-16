@@ -53,8 +53,16 @@ function makeTreeOwnerWritable(targetPath) {
   }
 }
 
+const PYTHON_LAUNCHER_STUB_EXE_RE =
+  /(?:^|[\\/])(?:setuptools[\\/](?:cli|gui)(?:-(?:32|64|arm64))?\.exe|(?:pip[\\/]_vendor[\\/])?distlib[\\/][tw](?:32|64|64-arm)\.exe|distutils[\\/]command[\\/]wininst-[^\\/]+\.exe|venv[\\/]scripts[\\/]nt[\\/][^\\/]+\.exe)$/i;
+
+export function isKnownPythonLauncherStubExe(filePath) {
+  return PYTHON_LAUNCHER_STUB_EXE_RE.test(String(filePath || ''));
+}
+
 function copyTreeMaterialized(src, dest) {
   const realSrc = fs.realpathSync(src);
+  if (isKnownPythonLauncherStubExe(realSrc)) return;
   const stat = fs.statSync(realSrc);
   if (stat.isDirectory()) {
     fs.mkdirSync(dest, { recursive: true });
@@ -183,6 +191,7 @@ function validatePeTreeArch(rootDir, expectedArch, label) {
       }
       if (!entry.isFile()) continue;
       if (/\.(?:exe|dll|pyd)$/i.test(entry.name)) {
+        if (isKnownPythonLauncherStubExe(full)) continue;
         const arch = detectPeArchitecture(full);
         if (arch !== null && arch !== expectedArch) {
           throw new Error(
@@ -208,13 +217,16 @@ export function compileWindowsEngineLauncher(cSourcePath, outputExePath) {
   for (const gccBin of gccCandidates) {
     const probe = spawnSync(gccBin, ['--version'], { stdio: 'pipe' });
     if (!probe.error && probe.status === 0) {
-      const compile = spawnSync(
-        gccBin,
+      const flagVariants = [
+        ['-O2', '-static', cSourcePath, '-lshell32', '-o', outputExePath],
         ['-O2', cSourcePath, '-lshell32', '-o', outputExePath],
-        { encoding: 'utf8', timeout: 60000 },
-      );
-      if (!compile.error && compile.status === 0 && fs.existsSync(outputExePath)) {
-        return { compiler: gccBin };
+      ];
+      for (const args of flagVariants) {
+        fs.rmSync(outputExePath, { force: true });
+        const compile = spawnSync(gccBin, args, { encoding: 'utf8', timeout: 60000 });
+        if (!compile.error && compile.status === 0 && fs.existsSync(outputExePath)) {
+          return { compiler: gccBin };
+        }
       }
     }
   }

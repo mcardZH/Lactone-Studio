@@ -15,11 +15,13 @@ import {
   parsePeImportedDlls,
   stageCondaRuntime,
   removeTreeForce,
+  isExcludedSitePackagesTopEntry,
 } from '../../scripts/native/stage-conda-runtime.mjs';
 import {
   assembleWindowsPortableBundle,
   buildWindowsChemistryBootstrapScript,
   buildWindowsInstallGuideText,
+  isKnownPythonLauncherStubExe,
 } from '../../scripts/release/package-windows.mjs';
 import {
   assembleLinuxPortableBundle,
@@ -497,6 +499,20 @@ test('stageCondaRuntime stages win32-x64 and assembleWindowsPortableBundle produ
     for (const p of XTB_REQUIRED_PARAMS) {
       writeFile(condaWin, `Library/share/xtb/${p}`, `param:${p}\n`);
     }
+    // Seed conda-forge multi-arch Windows launcher stub templates (exact CI repro: setuptools/cli-32.exe ia32)
+    writeFile(condaWin, 'Lib/site-packages/setuptools/cli-32.exe', makeSyntheticPe64({ machine: 0x014c }));
+    writeFile(condaWin, 'Lib/site-packages/setuptools/gui-arm64.exe', makeSyntheticPe64({ machine: 0xaa64 }));
+    writeFile(condaWin, 'Lib/site-packages/setuptools-75.1.0.dist-info/METADATA', 'Name: setuptools\nVersion: 75.1.0\n');
+    writeFile(condaWin, 'Lib/site-packages/pip/_vendor/distlib/t32.exe', makeSyntheticPe64({ machine: 0x014c }));
+    writeFile(condaWin, 'Lib/site-packages/pip-24.2.dist-info/METADATA', 'Name: pip\nVersion: 24.2\n');
+    writeFile(condaWin, 'Lib/venv/scripts/nt/venvlauncher.exe', makeSyntheticPe64({ machine: 0x014c }));
+
+    assert.equal(isExcludedSitePackagesTopEntry('setuptools'), true);
+    assert.equal(isExcludedSitePackagesTopEntry('setuptools-75.1.0.dist-info'), true);
+    assert.equal(isExcludedSitePackagesTopEntry('pip'), true);
+    assert.equal(isExcludedSitePackagesTopEntry('rdkit'), false);
+    assert.equal(isKnownPythonLauncherStubExe('D:\\x\\Lib\\site-packages\\setuptools\\cli-32.exe'), true);
+    assert.equal(isKnownPythonLauncherStubExe('D:\\x\\Lib\\site-packages\\numpy\\core\\_multiarray.pyd'), false);
 
     const staged = stageCondaRuntime({
       appPath: repoRoot,
@@ -504,6 +520,9 @@ test('stageCondaRuntime stages win32-x64 and assembleWindowsPortableBundle produ
       platformId: 'win32-x64',
     });
     assert.equal(staged.xtbVersion, '6.7.1');
+    assert.equal(fs.existsSync(path.join(staged.pythonDepsRoot, 'Lib/site-packages/setuptools')), false);
+    assert.equal(fs.existsSync(path.join(staged.pythonDepsRoot, 'Lib/site-packages/pip')), false);
+    assert.equal(fs.existsSync(path.join(staged.pythonToolchainRoot, 'Lib/venv')), false);
     assert.equal(fs.existsSync(path.join(staged.xtbRoot, 'bin/libquadmath-0.dll')), true);
     assert.equal(fs.existsSync(path.join(staged.xtbRoot, 'bin/KERNEL32.dll')), false);
     assert.doesNotThrow(() =>
@@ -565,6 +584,32 @@ test('stageCondaRuntime stages win32-x64 and assembleWindowsPortableBundle produ
 
     assert.ok(buildWindowsChemistryBootstrapScript().includes('add_dll_directory'));
     assert.ok(buildWindowsInstallGuideText({ version: '2.0.3' }).includes('Lactone Studio.exe'));
+
+    // Defense-in-depth: unstaged setuptools/cli-32.exe stub inside pythonDepsRoot is ignored & omitted from bundle,
+    // while genuine non-x64 executables/DLLs inside pythonDepsRoot or xtbRoot are strictly rejected!
+    writeFile(staged.pythonDepsRoot, 'Lib/site-packages/setuptools/cli-32.exe', makeSyntheticPe64({ machine: 0x014c }));
+    const stubGuardedBundle = assembleWindowsPortableBundle({
+      repoRoot,
+      engineLauncherExePath: mockEngineLauncher,
+      createZip: false,
+    });
+    assert.equal(
+      fs.existsSync(path.join(stubGuardedBundle.resourcesPath, 'chemistry/deps/Lib/site-packages/setuptools/cli-32.exe')),
+      false,
+    );
+    removeTreeForce(path.join(staged.pythonDepsRoot, 'Lib/site-packages/setuptools'));
+
+    writeFile(staged.pythonDepsRoot, 'Lib/site-packages/numpy/bad-ia32-helper.exe', makeSyntheticPe64({ machine: 0x014c }));
+    assert.throws(
+      () =>
+        assembleWindowsPortableBundle({
+          repoRoot,
+          engineLauncherExePath: mockEngineLauncher,
+          createZip: false,
+        }),
+      /PE binary architecture mismatch/,
+    );
+    fs.rmSync(path.join(staged.pythonDepsRoot, 'Lib/site-packages/numpy/bad-ia32-helper.exe'), { force: true });
 
     // Architecture mismatch guard: arm64 PE inside win32-x64 must be rejected
     writeFile(staged.xtbRoot, 'bin/bad-arm64.dll', makeSyntheticPe64({ machine: 0xaa64 }));
