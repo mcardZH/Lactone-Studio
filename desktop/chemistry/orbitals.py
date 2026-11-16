@@ -20,7 +20,9 @@ import threading
 import time
 
 import numpy as np
-from multiwfn_resources import resolve_resources, total_physical_memory, native_binary_identity
+from multiwfn_resources import resolve_resources, total_physical_memory, native_binary_identity, require_native_binary_grant, start_multiwfn
+
+SYMBOLS='X H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og'.split()
 
 
 def _windows_owned_job(process, memory_limit=None):
@@ -239,13 +241,24 @@ def _molden_metadata(text):
     if units.upper() not in ('AU', 'ANGS'):
         raise OrbitalError('coordinate-unit', 'Molden atom units must explicitly be AU or Angs.')
     factor = 1 if units.upper() == 'AU' else 1 / 0.529177210903
+    from gxtb_molden import TITLE
+    title_sections = [(index, sections[k + 1][2] if k + 1 < len(sections) else len(lines)) for k, (tag, _, index) in enumerate(sections) if tag == 'title']
+    effective_nuclei = len(title_sections) == 1 and [line.strip() for line in lines[title_sections[0][0] + 1:title_sections[0][1]] if line.strip()] == [TITLE]
     atoms = []
     for line in lines[start:end]:
         if not line.strip(): continue
         p = line.split()
         if len(p) != 6 or _integer(_number(p[1]), 1) != len(atoms)+1:
             raise OrbitalError('molden-atoms', 'Molden atom order is incomplete or ambiguous.')
-        atoms.append(dict(atomicNumber=_integer(_number(p[2]),1), positionBohr=[_number(v)*factor for v in p[3:]]))
+        nuclear = _integer(_number(p[2]), 1)
+        atom = dict(atomicNumber=nuclear, positionBohr=[_number(v)*factor for v in p[3:]])
+        if effective_nuclei:
+            if p[0] not in SYMBOLS[1:] or nuclear > SYMBOLS.index(p[0]):
+                raise OrbitalError('molden-atoms', 'Effective nuclear charge does not match the declared g-xTB element.')
+            atom.update(atomicNumber=SYMBOLS.index(p[0]), effectiveNuclearCharge=nuclear)
+        elif p[0] in SYMBOLS[1:] and SYMBOLS.index(p[0]) != nuclear:
+            raise OrbitalError('molden-atoms', 'Molden element and nuclear charge disagree; a verified effective-nucleus representation is required.')
+        atoms.append(atom)
     if not atoms:
         raise OrbitalError('molden-atoms', 'Molden has no atoms.')
     tags = {tag.upper() for tag,_,_ in sections}
@@ -318,7 +331,7 @@ def _molden_metadata(text):
         orbital.update(spin=spin,index=counts[spin],sourceIndex=source_index,displayIndex=counts[spin],multiwfnIndex=source_index,id=f'{spin}:{counts[spin]}')
     if any(count>basis for count in counts.values()): raise OrbitalError('molden-mo','Molden has more channel orbitals than basis functions.')
     return dict(format='molden',charge=None,multiplicity=None,atoms=atoms,basisCount=basis,shellTypes=sorted(set(shell_types)),orbitals=orbitals,
-                basisConvention='Molden GTO and explicit angular tags; ORCA normalization/order delegated to Multiwfn')
+                basisConvention=('g-xTB Cartesian s/p/d/f; effective nuclear charges and represented electrons' if effective_nuclei else 'Molden GTO and explicit angular tags; ORCA normalization/order delegated to Multiwfn'))
 
 
 def _wavefunction_format(raw):
@@ -404,12 +417,13 @@ class MultiwfnSession:
     requesting the next. stop() may be called from another thread. Continuing
     generate() reuses completed entries and restarts the native process if needed.
     """
-    def __init__(self, executable, source_path, grid, threads, memory_budget_bytes, workspace_path, mode='all',expected_settings_revision=None,progress_callback=None,native_start_callback=None):
+    def __init__(self, executable, source_path, grid, threads, memory_budget_bytes, workspace_path, mode='all',expected_settings_revision=None,progress_callback=None,native_start_callback=None,expected_native_binary=None):
         self.progress_callback=progress_callback
         self.native_start_callback=native_start_callback
         self.executable=Path(executable).resolve()
         if not self.executable.is_file(): raise OrbitalError('backend-missing','Configure a local Multiwfn executable before generating orbitals.')
         self.resources,settings=resolve_resources(self.executable,threads,memory_budget_bytes)
+        if expected_native_binary is not None: require_native_binary_grant(self.resources, {'nativeBinaryIdentity':expected_native_binary})
         if expected_settings_revision is not None and self.resources['settingsRevision']!=expected_settings_revision: raise OrbitalError('resource-changed','Multiwfn settings changed after planning; refresh the resource configuration.')
         self.metadata=inspect_wavefunction(source_path); self.grid=grid; self.threads=self.resources['threads']
         self.mode=mode; self.plan=plan_grid(self.metadata,grid,self.resources['memoryBudgetBytes'],mode,native_static_image_bytes=self.resources['nativeStaticImageBytes'])
@@ -445,9 +459,14 @@ class MultiwfnSession:
         """An admitted next run may update resources while keeping completed MOs."""
         if self.process is not None and self.process.poll() is None:
             raise OrbitalError('resource-active', 'An active native orbital run retains its admitted resources.')
-        executable = Path(grant.get('executable',str(self.executable))).resolve()
+        selected = grant.get('executable')
+        if not selected: raise OrbitalError('backend-missing','The current grant did not identify a Multiwfn executable.')
+        executable = Path(selected).resolve()
+        if executable != self.executable: raise OrbitalError('resource-changed','The Multiwfn executable changed; reopen the source before generating new fields.')
         if not executable.is_file(): raise OrbitalError('backend-missing','The admitted Multiwfn executable is unavailable.')
         resources, settings = resolve_resources(executable, grant.get('threads'), grant.get('memoryBudgetBytes'))
+        require_native_binary_grant(resources, self.resources)
+        require_native_binary_grant(resources, grant)
         if grant.get('settingsRevision') != resources['settingsRevision']:
             raise OrbitalError('resource-changed', 'Multiwfn settings changed after the current resource grant.')
         proposed = plan_grid(self.metadata, self.grid, resources['memoryBudgetBytes'], self.mode, len(self.cache),resources['nativeStaticImageBytes'])
@@ -467,7 +486,7 @@ class MultiwfnSession:
         self._queue=queue.Queue()
         self._output_tail=''; self._memory={}; self._native_phase='source-load'; self.last_diagnostics=None
         env=dict(os.environ,Multiwfnpath=str(self.executable.parent),OMP_NUM_THREADS=str(self.threads),OPENBLAS_NUM_THREADS=str(self.threads),MKL_NUM_THREADS=str(self.threads))
-        process=subprocess.Popen([str(self.executable),self.input_path.name],cwd=self.work,env=env,
+        process=start_multiwfn([str(self.executable),self.input_path.name],cwd=self.work,env=env,
                                       stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
                                       creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         # Observe actual Popen success, including a subsequent ownership/close

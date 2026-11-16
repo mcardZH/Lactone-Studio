@@ -10,6 +10,7 @@ import { isZindo } from '../core/tasks';
 import { mixedBasisSize } from '../core/mixed-basis';
 import { InputSettingsCard } from './InputSettingsFields';
 import { InputSettingsAction } from './InputSettingsLayout';
+import {PostprocessReadWarning,type SourceReadWarningField} from './results/PostprocessSourceFeedback';
 
 /** Each alternative has its own ordinary basis defaults; only the selected basis uses source/mixed shells. */
 export function methodBasisComparison(structure:Structure|null,settings:GaussianSettings,basis:string,reference:string){
@@ -28,6 +29,9 @@ export default function MethodChooser({settings,files,structure,onRecommend,onMe
   const coordinates=files.geometry==='explicit'&&structure?.atoms.length?structure:null;
   const semi=isSemiempirical(settings.method),stored=settings.task==='freq'&&files.hessian==='readfc';
   const inherited=stored||files.basisFromCheckpoint;
+  const source=structure?.gaussianSource;
+  const readWarnings=source?.issues?.flatMap((issue):SourceReadWarningField[]=>issue.code==='route-incomplete'?[{field:'route',message:issue.message}]
+    :issue.code==='title-limited'?[{field:'title',message:issue.message}]:[])??[];
   function sizeText(value:string){if(!coordinates)return '无显式坐标：不统计';if(settings.mixedBasis?.enabled&&canonicalBasis(value)===canonicalBasis(settings.basis)){const angular=angularBasisPlan(settings),data=mixedBasisSize(coordinates,value,settings.mixedBasis,angular.dForm,angular.fForm);return data.count===null?data.reason:'混合分配共 '+data.count+' 个基函数';}const data=methodBasisComparison(coordinates,settings,value,reference);return data.count===null?data.reason:data.count+' 个基函数';}
   function sizeSummary(value:string){const text=sizeText(value);return <span className="basis-stat" title={text} data-testid={canonicalBasis(settings.basis)===canonicalBasis(value)?'basis-count':undefined}>{inherited?'继承CHK，不统计':semi?'半经验内置参数':!coordinates?'无显式坐标：不统计':text?.match(/\d+ 个基函数/)?.[0]??'基函数数待核实'}</span>;}
   function methodLabel(id:MethodId,dispersion:GaussianSettings['dispersion']){const method=METHODS.find(item=>item.id===id);return (method?.label??id)+(dispersion==='gd3bj'?'-D3(BJ)':dispersion==='gd3'?'-D3':'');}
@@ -36,6 +40,7 @@ export default function MethodChooser({settings,files,structure,onRecommend,onMe
   if(!bases.some(item=>item.value===settings.basis))bases.unshift({value:settings.basis,label:settings.basis+' · 来源名称待核实',disabled:false,summary:<span>未核实目录</span>,body:<p>请改选已核实完整数据，不能只填Gen/GenECP名称。</p>});
   if(onMixedBasis)bases.unshift({value:'__mixed__',label:'混合基组',disabled:files.geometry!=='explicit'||!!inherited||semi,summary:settings.mixedBasis?.enabled?sizeSummary(settings.basis):<span>按原子区域分配</span>,body:<p>添加区域，确认成员后选择各自基组；保留当前全局基组供其余原子使用。</p>});
   return <InputSettingsCard title="方法与基组" sectionKey="level" className="method-chooser input-level-card" actions={<>{onInherit&&<InputSettingsAction disabled={inheritDisabled} onClick={onInherit}>继承级别</InputSettingsAction>}<InputSettingsAction reset ariaLabel="恢复方法/基组" disabled={stored} onClick={onRecommend}>恢复默认</InputSettingsAction></>}>
+    {source&&<PostprocessReadWarning key={source.id} fields={readWarnings} hasStructure={!!structure?.atoms.length}/>}
     {zindo?<div className="zindo-method-note" data-testid="zindo-method"><strong>ZINDO/S · 垂直激发</strong><p>使用ZINDO/S内置半经验参数，不使用轨道基组、DFT泛函或额外色散。原有方法与基组选择保留，切回TD/TDA后恢复显示。</p></div>:<>
     <div className="shared-method-fields">
     <CardDropdown label="计算方法" triggerLabel={methodLabel(settings.method,settings.dispersion)} layout="catalog" value={settings.method} options={methods} disabled={stored} onChange={value=>onMethod(value as MethodId)}/>

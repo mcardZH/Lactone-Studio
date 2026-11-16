@@ -1,7 +1,8 @@
 import {DismissibleNotice} from '../DismissibleNotice';
-import NumericInput from '../NumericInput';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { withSamplingSphereMargin, withSamplingSphereRadius, type SamplingSphereDraft } from '../../modeling/advanced/sampling-sphere';
+import { InputSettingsField, InputSettingsRow, InputSettingsStack } from '../InputSettingsFields';
+import { InputSettingsAction, InputSettingsCheckbox } from '../InputSettingsLayout';
 import './sampling-sphere-editor.css';
 
 export interface SamplingSphereEditorProps {
@@ -9,44 +10,47 @@ export interface SamplingSphereEditorProps {
   disabled?: boolean;
   onChange(draft: SamplingSphereDraft): void;
   onRefit?(): void;
+  onInvalidChange?(invalid:boolean):void;
 }
-const text = (value: number) => String(Number(value.toPrecision(12)));
+const text = (value: number) => String(value);
 
 /** Controlled parameter editor. All geometry and preview ownership stays with
  * the sampling task; incomplete typed numbers are presentation-only drafts. */
-export default function SamplingSphereEditor({ draft, disabled, onChange, onRefit }: SamplingSphereEditorProps) {
+export default function SamplingSphereEditor({ draft, disabled, onChange, onRefit, onInvalidChange }: SamplingSphereEditorProps) {
   const [margin, setMargin] = useState(draft ? text(draft.marginAngstrom) : '');
   const [radius, setRadius] = useState(draft ? text(draft.radiusAngstrom) : '');
+  const minimumId=useId();
   const [error, setError] = useState('');
+  const [invalidField,setInvalidField]=useState<'margin'|'radius'|null>(null);
   useEffect(() => {
-    setMargin(draft ? text(draft.marginAngstrom) : '');
-    setRadius(draft ? text(draft.radiusAngstrom) : '');
-    setError('');
+    setMargin(raw=>draft ? raw.trim()&&Number(raw)===draft.marginAngstrom?raw:text(draft.marginAngstrom) : '');
+    setRadius(raw=>draft ? raw.trim()&&Number(raw)===draft.radiusAngstrom?raw:text(draft.radiusAngstrom) : '');
+    setError('');setInvalidField(null);onInvalidChange?.(false);
   }, [draft?.sourceDocumentId, draft?.sourceRevision, draft?.marginAngstrom, draft?.radiusAngstrom]);
   if (!draft) return <p className="sampling-sphere-empty" role="status">当前来源没有可用的球形约束。</p>;
   const edit = (field: 'margin' | 'radius', value: string) => {
     if (disabled) return;
     if (field === 'margin') setMargin(value); else setRadius(value);
     try {
-      const number = value.trim() ? Number(value) : NaN;
+      const number = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim()) ? Number(value) : NaN;
       const next = field === 'margin' ? withSamplingSphereMargin(draft, number) : withSamplingSphereRadius(draft, number);
-      setError(''); onChange(next);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+      setError('');setInvalidField(null);onInvalidChange?.(false);onChange(next);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause));setInvalidField(field);onInvalidChange?.(true); }
   };
+  const restore=(action:()=>void)=>{setMargin(text(draft.marginAngstrom));setRadius(text(draft.radiusAngstrom));setError('');setInvalidField(null);onInvalidChange?.(false);action();};
   return <div className="sampling-sphere-editor ui-control-surface" data-testid="sampling-sphere-editor">
-    <fieldset disabled={disabled}>
-      <div className="sampling-sphere-control-flow">
-        <span className="sampling-sphere-minimum">最小半径 <output aria-label="最小半径 / Å">{text(draft.minimumRadiusAngstrom)}</output> Å</span>
-        <label>外扩 / Å<NumericInput aria-label="球形约束外扩 / Å"  min="0" step="any" value={margin} onChange={event => edit('margin', event.target.value)}
-          onBlur={() => { setMargin(text(draft.marginAngstrom)); setError(''); }}/></label>
-        <label>最终半径 / Å<NumericInput aria-label="球形约束最终半径 / Å"  min={draft.minimumRadiusAngstrom} step="any" value={radius} onChange={event => edit('radius', event.target.value)}
-          onBlur={() => { setRadius(text(draft.radiusAngstrom)); setError(''); }}/></label>
-        <label className="sampling-sphere-preview-toggle"><input aria-label="球形约束实时预览" type="checkbox" checked={draft.previewEnabled}
-          onChange={event => onChange({ ...draft, previewEnabled: event.target.checked })}/>实时预览</label>
-        {onRefit && <button type="button" onClick={onRefit}>重新贴合</button>}
-        <button type="button" onClick={() => onChange(withSamplingSphereMargin(draft, 3))}>恢复默认外扩</button>
-      </div>
-    </fieldset>
-    {error && <DismissibleNotice className="sampling-sphere-error" role="alert">{error}</DismissibleNotice>}
+    <InputSettingsStack><fieldset disabled={disabled}><InputSettingsStack>
+      <output id={minimumId} className="sampling-sphere-minimum" aria-label="最小半径 / Å">最小半径 {text(draft.minimumRadiusAngstrom)} Å</output>
+      <InputSettingsRow>
+        <InputSettingsField label="外扩" unit="Å" controlWidth="number"><input type="text" inputMode="decimal" aria-label="球形约束外扩 / Å" aria-invalid={invalidField==='margin'||undefined} value={margin} onChange={event=>edit('margin',event.target.value)}/></InputSettingsField>
+        <InputSettingsField label="最终半径" unit="Å" controlWidth="long-number"><input type="text" inputMode="decimal" aria-describedby={minimumId} aria-label="球形约束最终半径 / Å" aria-invalid={invalidField==='radius'||undefined} value={radius} onChange={event=>edit('radius',event.target.value)}/></InputSettingsField>
+      </InputSettingsRow>
+      <InputSettingsRow variant="actions">
+        <InputSettingsCheckbox label="实时预览" ariaLabel="球形约束实时预览" checked={draft.previewEnabled} onChange={previewEnabled=>onChange({...draft,previewEnabled})}/>
+        {onRefit&&<InputSettingsAction onClick={()=>restore(onRefit)}>重新贴合</InputSettingsAction>}
+        <InputSettingsAction onClick={()=>restore(()=>onChange(withSamplingSphereMargin(draft,3)))}>恢复默认外扩</InputSettingsAction>
+      </InputSettingsRow>
+    </InputSettingsStack></fieldset>
+    {error&&<DismissibleNotice className="sampling-sphere-error" role="alert">{error}</DismissibleNotice>}</InputSettingsStack>
   </div>;
 }

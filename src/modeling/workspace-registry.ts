@@ -2,26 +2,45 @@ import { createModelStore,getModelStoreProjectLinkGroups,restoreModelStoreProjec
 import {createLinkedModels,type LinkedModels} from './application/linked-models';
 import { newModelId } from '../core/modeling/hydrogen-policy';
 import type { Structure } from '../core/types';
+import type { ModelDocument } from './contracts';
 import {initialBaseElectronicState} from '../core/base-electronic-state';
 import { prepareDerivedStructure, derivedDocumentContent } from '../core/modeling/derived-structure-document';
-import { periodicWorkingStructure } from '../core/modeling/periodic-working-structure';
+import { normalizePeriodicModelContentKey, periodicWorkingStructure } from '../core/modeling/periodic-working-structure';
+import { automaticStem } from '../core/naming';
+import { PROJECT_INPUT_ENGINES,inspectProjectInputDraftIssues,readProjectInputDraftsForUi,type ProjectInputEngine } from './application/project-input-draft';
+import { copyProjectInputDrafts } from './application/copy-project-input-draft';
 import type { StructureTransformCandidate, ModelStoreProjectState, ModelProjectLinkGroup } from '../core/modeling/contracts';
 import type { FragmentSnapshot,ModelStore } from './contracts';
 import type { TrajectoryResult } from '../results/contracts';
+import {trajectoryFrameBondIdentity} from '../results/frame-bond-identity';
+import type {FrameBondIdentity} from '../core/modeling/frame-bond-overrides';
 import type { ResultInputIntent } from '../results/continuation';
+import type { PesNode } from './pes/contracts';
 import type { JsonValue, WorkspaceActivationStamp, WorkspaceDocumentSnapshot, WorkspaceInputTask, WorkspaceInputTaskStamp, WorkspaceModule, WorkspaceTaskSource, WorkspaceViewKind, WorkspaceTrajectoryIdentity, WorkspaceTrajectoryBinding, WorkspaceConformerGroup, WorkspaceDiscardPlan, WorkspaceDiscardTransaction } from './workspace-contracts';
 
 type RuntimePhase='idle'|'starting'|'running'|'pausing'|'paused'|'stopping'|'completed'|'stopped'|'error';
 const busyPhases=new Set<RuntimePhase>(['starting','running','pausing','paused','stopping']);
+const readOnlyModelMessage='结果为只读；请先提取所需帧为新模型。';
 const clone=<T>(value:T):T=>structuredClone(value);
 const freezeJSON=<T>(value:T):T=>{if(value!==null&&typeof value==='object'){for(const part of Object.values(value))freezeJSON(part);Object.freeze(value);}return value;};
-export const workspaceDocumentLabel=(name:string)=>name.replace(/^.*[\\/]/,'').replace(/\.[^.]+$/,'')||'task';
+export const workspaceDocumentLabel=automaticStem;
+export type WorkspaceLabelOrigin='automatic'|'manual';
+export interface WorkspacePesGroup { groupId:string; nodeId:string; kind:PesNode['kind'] }
+export const protectedPesDocument=(entry:Pick<WorkspaceDocumentEntry,'pesGroup'>)=>entry.pesGroup?.kind==='snapshot'||entry.pesGroup?.kind==='result';
 export const workspaceTrajectoryKey=(identity:WorkspaceTrajectoryIdentity)=>JSON.stringify([identity.taskId,identity.collectionId]);
+function resultDocumentLabel(result:TrajectoryResult):string {
+  const prefix=`${result.source.name} · `;
+  return result.label.startsWith(prefix)?`${workspaceDocumentLabel(result.source.name)}-${result.label.slice(prefix.length)}`:result.label;
+}
 export interface WorkspaceDocumentEntry {
   readonly id:string; readonly epoch:string; readonly store:ModelStore;
   readonly initialElectronicState:Readonly<{charge:number;multiplicity:number}>;
-  label:string; electronicStateConfirmed:boolean;
+  label:string; labelOrigin?:WorkspaceLabelOrigin; electronicStateConfirmed:boolean;
   drafts:{gaussian?:JsonValue;orca?:JsonValue};inputDirty:{gaussian:boolean;orca:boolean};
+  /** Damaged drafts archived only when the user explicitly starts a new input. */
+  retiredInputDrafts?:Readonly<Partial<Record<ProjectInputEngine,readonly JsonValue[]>>>;
+  /** This copy opened independently while the unusable draft stayed with its source. */
+  inputDraftCopyIssues?:Readonly<Partial<Record<ProjectInputEngine,string>>>;
   runtime:{ownerId:string|null;phase:RuntimePhase};
   publicationSerial:number;sourceEpoch:number;
   /** Result frames are read-only observations, excluded from input/model ownership. */
@@ -31,6 +50,8 @@ export interface WorkspaceDocumentEntry {
   trajectory?:WorkspaceTrajectoryBinding;
   /** Presentation membership only; the controller remains the scientific owner. */
   conformerGroup?:Readonly<WorkspaceConformerGroup>;
+  /** Project Shell persists the node-to-document link with the PES asset lease. */
+  pesGroup?:Readonly<WorkspacePesGroup>;
   /** Original single-point result stays outside Store/Undo; the matching Store
    * token controls availability while this attachment remains recoverable. */
   analysisBinding?:{id:string;result:TrajectoryResult};
@@ -51,8 +72,9 @@ export interface WorkspaceRegistrySnapshot {
 }
 export interface WorkspaceProjectAttachments {result?:string;legacyResult?:string;analysisBinding?:{id:string;resultId:string}}
 export interface WorkspaceProjectDocument {
-  id:string;epoch:string;label:string;initialElectronicState:WorkspaceDocumentEntry['initialElectronicState'];
+  id:string;epoch:string;label:string;labelOrigin?:WorkspaceLabelOrigin;initialElectronicState:WorkspaceDocumentEntry['initialElectronicState'];
   model:ModelStoreProjectState;drafts:WorkspaceDocumentEntry['drafts'];inputDirty:WorkspaceDocumentEntry['inputDirty'];
+  retiredInputDrafts?:WorkspaceDocumentEntry['retiredInputDrafts'];inputDraftCopyIssues?:WorkspaceDocumentEntry['inputDraftCopyIssues'];
   publicationSerial:number;sourceEpoch:number;initialInput?:ResultInputIntent;
   derivation?:WorkspaceDocumentEntry['derivation'];trajectory?:WorkspaceTrajectoryBinding;conformerGroup?:Readonly<WorkspaceConformerGroup>;
   trajectoryBaseline?:{revision:number;content:string};
@@ -89,10 +111,11 @@ export function createWorkspaceRegistry() {
   }
   let restoredLinkedModels:LinkedModels|null=null;
   const trajectoryBaselines=new WeakMap<WorkspaceDocumentEntry,{revision:number;content:string}>();
+  const quarantinedDrafts=new WeakMap<WorkspaceDocumentEntry,ReadonlySet<ProjectInputEngine>>();
   type Creation={entry:WorkspaceDocumentEntry;views:WorkspaceViewEntry[];parentViewId:string;parentId:string;parentEpoch:string;baseline:string;contexts:string;parentContent:string};
   const creations:Creation[]=[],creationRedo:Creation[]=[];
   let batchDepth=0,batchPending=false;
-  let activeViewId:string|null=null,activationEpoch=0,version=0,module:WorkspaceModule='modeling',taskSerial=0;
+  let activeViewId:string|null=null,activationEpoch=0,version=0,mutationVersion=0,module:WorkspaceModule='modeling',taskSerial=0;
   let restoredActivationFloor=0;
   let inputTask:WorkspaceInputTask|null=null,inputActivationEpoch=0;
   const documentInputTasks=new Map<string,WorkspaceInputTask>();
@@ -100,22 +123,46 @@ export function createWorkspaceRegistry() {
   function retainInputTask(){if(inputTask)documentInputTasks.set(inputTask.documentId,inputTask);}
   function selectDocumentInputTask(documentId:string){if(borrowedInputTask){inputTask=borrowedInputTask;return;}if(inputTask&&inputTask.documentId!==documentId)previousInputTask=inputTask;retainInputTask();const target=documents.get(documentId);inputTask=target&&!readOnlyResult(target)?documentInputTasks.get(documentId)??null:null;if(inputTask){inputTask=Object.freeze({...inputTask,activationEpoch:++inputActivationEpoch});retainInputTask();}}
   let state:WorkspaceRegistrySnapshot={version,activationEpoch,activeViewId,module,inputTask,documents:[],views:[]};
-  function emit(){if(batchDepth){batchPending=true;return;}state=Object.freeze({version:++version,activationEpoch,activeViewId,module,inputTask,documents:Object.freeze([...documents.values()].map(entry=>Object.freeze({...entry,drafts:Object.freeze({...entry.drafts}),inputDirty:Object.freeze({...entry.inputDirty}),runtime:Object.freeze({...entry.runtime})}))),views:Object.freeze([...views.values()].map(entry=>Object.freeze({...entry})))});for(const listener of listeners)listener();}
-  function batch<T>(operation:()=>T):T{batchDepth++;try{return operation();}finally{if(--batchDepth===0&&batchPending){batchPending=false;emit();}}}
+  function publish(){state=Object.freeze({version:++version,activationEpoch,activeViewId,module,inputTask,documents:Object.freeze([...documents.values()].map(entry=>Object.freeze({...entry,drafts:Object.freeze({...entry.drafts}),inputDirty:Object.freeze({...entry.inputDirty}),runtime:Object.freeze({...entry.runtime})}))),views:Object.freeze([...views.values()].map(entry=>Object.freeze({...entry})))});for(const listener of listeners)listener();}
+  function emit(mutated=true){if(mutated)mutationVersion++;if(batchDepth){batchPending=true;return;}publish();}
+  function batch<T>(operation:()=>T):T{batchDepth++;try{return operation();}finally{if(--batchDepth===0&&batchPending){batchPending=false;publish();}}}
   function subscribeDocument(entry:WorkspaceDocumentEntry){
     const sourceKey=()=>{const value=entry.store.getSnapshot();return JSON.stringify([value.id,value.revision,value.draft.structure.charge,value.draft.structure.multiplicity,value.electronicStateConfirmed===true]);};
     let previousSourceKey=sourceKey();
     unsubscribers.set(entry.id,entry.store.subscribe(()=>{const nextKey=sourceKey();if(nextKey!==previousSourceKey){previousSourceKey=nextKey;entry.sourceEpoch++;}emit();}));
   }
   function document(id:string){const found=documents.get(id);if(!found)throw new Error('模型文档已关闭或不存在。');return found;}
-  function readOnlyResult(entry:WorkspaceDocumentEntry){return Boolean(entry.result||projectAttachmentRefs.get(entry.id)?.result);}
-  function editableDocument(id:string){const entry=document(id);if(readOnlyResult(entry))throw new Error('结果为只读；请先提取所需帧为新模型。');return entry;}
+  function availableDocumentLabel(label:string,exceptId?:string){
+    const used=new Set([...documents.values()].filter(entry=>entry.id!==exceptId).map(entry=>entry.label));
+    let candidate=label,suffix=0;while(used.has(candidate))candidate=`${label} (${++suffix})`;
+    return candidate;
+  }
+  function automaticDocumentLabel(source:string,exceptId?:string,sequence=1){
+    const occupied=[...documents.values(),...creationRedo.map(creation=>creation.entry)]
+      .filter(entry=>entry.id!==exceptId).map(entry=>entry.label);
+    return workspaceDocumentLabel(source,{occupied,sequence});
+  }
+  function legacyReadOnlyResult(entry:WorkspaceDocumentEntry){return Boolean(entry.result||projectAttachmentRefs.get(entry.id)?.result);}
+  function readOnlyResult(entry:WorkspaceDocumentEntry){return legacyReadOnlyResult(entry)||protectedPesDocument(entry);}
+  function editableDocument(id:string){const entry=document(id);if(readOnlyResult(entry))throw new Error(readOnlyModelMessage);return entry;}
   function assertInputTaskIdle(entry:WorkspaceDocumentEntry){if(busyPhases.has(entry.runtime.phase)||entry.store.isRuntimeSessionActive?.()||entry.store.hasTransaction?.())throw new Error('原输入任务或新来源仍在运行、暂停或编辑，请先结束后再新建输入任务。');}
   function assertCurrentInputTaskIdle(){if(inputTask)assertInputTaskIdle(editableDocument(inputTask.documentId));}
-  function beginInputTaskInternal(documentId:string,publish=true){
+  function beginInputTaskInternal(documentId:string,publish=true,resetDrafts=true){
     const target=editableDocument(documentId),previous=inputTask?editableDocument(inputTask.documentId):undefined;
     assertInputTaskIdle(target);
-    target.drafts={};target.inputDirty={gaussian:false,orca:false};
+    if(resetDrafts){
+      const issues=inspectProjectInputDraftIssues(target.drafts,target.id);
+      const retired={...target.retiredInputDrafts};
+      for(const engine of PROJECT_INPUT_ENGINES){
+        const raw=target.drafts[engine];
+        if(raw===undefined||!issues[engine])continue;
+        const history=retired[engine]??[];
+        if(!history.some(value=>JSON.stringify(value)===JSON.stringify(raw)))retired[engine]=[...history,clone(raw)];
+      }
+      if(Object.keys(retired).length)target.retiredInputDrafts=freezeJSON(retired);
+      target.drafts={};target.inputDirty={gaussian:false,orca:false};
+      delete target.inputDraftCopyIssues;quarantinedDrafts.delete(target);
+    }
     retainInputTask();
     borrowedInputTask=null;inputTask=Object.freeze({id:newModelId(),documentId,activationEpoch:++inputActivationEpoch});
     retainInputTask();if(publish)emit();return inputTask;
@@ -161,7 +208,7 @@ export function createWorkspaceRegistry() {
     if(!current||readOnlyResult(current))return null;
     if(inputTask?.documentId===current.id)return inputTask;
     selectDocumentInputTask(current.id);
-    return inputTask??beginInputTaskInternal(current.id,publish);
+    return inputTask??beginInputTaskInternal(current.id,publish,false);
   }
   function ensureInputTask(){return ensureInputTaskInternal();}
   function inputStamp():WorkspaceInputTaskStamp{
@@ -176,23 +223,30 @@ export function createWorkspaceRegistry() {
   }
   function assertInputCurrent(stamp:WorkspaceInputTaskStamp){const current=assertInputIdentityCurrent(stamp);if(current.store.getSnapshot().revision!==stamp.revision)throw new Error('输入来源模型修订已变化，请重新操作。');return current;}
   function view(id:string){const found=views.get(id);if(!found)throw new Error('结构视图已关闭或不存在。');return found;}
-  function activate(id:string){const target=view(id);if(activeViewId!==id){activeViewId=id;module=target.module;selectDocumentInputTask(target.documentId);if(module==='input')ensureInputTaskInternal(false);activationEpoch++;emit();}}
+  function activate(id:string){const target=view(id);if(activeViewId!==id){
+    // Switching a model keeps the user's main function. Its page/parameters
+    // remain owned by the target document's existing presentation and draft.
+    activeViewId=id;target.module=module;selectDocumentInputTask(target.documentId);
+    if(module==='input')ensureInputTaskInternal(false);activationEpoch++;emit();
+  }}
   function addView(documentId:string,kind:WorkspaceViewKind='tab',windowId='local'){
     document(documentId);const entry:WorkspaceViewEntry={id:newModelId(),documentId,kind,windowId,presentation:null,module};views.set(entry.id,entry);emit();return entry;
   }
   function addDocument(structure:Structure|null=null,label?:string,fragment?:FragmentSnapshot,result?:TrajectoryResult,initialInput?:ResultInputIntent,activateNew=true,analysisBinding?:WorkspaceDocumentEntry['analysisBinding'],preparedStore?:ModelStore){
-    if(label===undefined){if(structure?.name)label=workspaceDocumentLabel(structure.name);else{const used=new Set([...documents.values()].map(entry=>entry.label));do{label=`task${++taskSerial}`;}while(used.has(label));}}
+    const sourceLabel=label??structure?.name;
+    label=sourceLabel===undefined?automaticDocumentLabel('',undefined,taskSerial+1):automaticDocumentLabel(sourceLabel);
+    if(sourceLabel===undefined)taskSerial=Number(label.slice('model_'.length));
     if(structure)structure=periodicWorkingStructure(structure);
     const initialStructure=structure??{id:newModelId(),name:label,format:'builder' as const,atoms:[],bonds:[],charge:null,multiplicity:null,notes:[],dimension:3 as const};
     const store=preparedStore??createModelStore(initialStructure,fragment?.assignments,fragment?.internalCoordinates,fragment,analysisBinding?.id),id=store.getSnapshot().id;
     if(documents.has(id))throw new Error('模型文档身份已存在，未重复发布。');
     if(!structure){store.setElectronicState(0,1);store.markApplied();}
-    const entry:WorkspaceDocumentEntry={id,epoch:newModelId(),store,label,initialElectronicState:Object.freeze(initialBaseElectronicState(initialStructure)),get electronicStateConfirmed(){return store.getSnapshot().electronicStateConfirmed===true;},drafts:{},inputDirty:{gaussian:false,orca:false},runtime:{ownerId:null,phase:'idle'},publicationSerial:0,sourceEpoch:0,...(result?{result}:{}),...(analysisBinding?{analysisBinding}:{}),...(initialInput?{initialInput:clone(initialInput)}:{})};
+    const entry:WorkspaceDocumentEntry={id,epoch:newModelId(),store,label,labelOrigin:'automatic',initialElectronicState:Object.freeze(initialBaseElectronicState(initialStructure)),get electronicStateConfirmed(){return store.getSnapshot().electronicStateConfirmed===true;},drafts:{},inputDirty:{gaussian:false,orca:false},runtime:{ownerId:null,phase:'idle'},publicationSerial:0,sourceEpoch:0,...(result?{result}:{}),...(analysisBinding?{analysisBinding}:{}),...(initialInput?{initialInput:clone(initialInput)}:{})};
     documents.set(id,entry);subscribeDocument(entry);const first=addView(id);if(activateNew)activate(first.id);return entry;
   }
   /** Allocate a private store identity for source/asset preparation. No tab,
    * activation, dirty change or subscriber is published until commit succeeds. */
-  function prepareFragmentDocument(input:FragmentSnapshot,label=workspaceDocumentLabel(input.structure.name)){
+  function prepareFragmentDocument(input:FragmentSnapshot,label?:string){
     const fragment=clone(input);fragment.structure=periodicWorkingStructure(fragment.structure);
     const store=createModelStore(fragment.structure,fragment.assignments,fragment.internalCoordinates,fragment);
     const id=store.getSnapshot().id;let phase:'prepared'|'committed'|'cancelled'='prepared';
@@ -209,36 +263,51 @@ export function createWorkspaceRegistry() {
   const contextKey=(entry:WorkspaceDocumentEntry)=>JSON.stringify([entry.store.getContext('gaussian'),entry.store.getContext('orca')]);
   /** Independent working copy for a pending edit. Source attachments and native
    * owners are deliberately not cloned; original atom identities are retained. */
-  function copyForModeling(stamp:WorkspaceActivationStamp){
+  function copyForModeling(stamp:WorkspaceActivationStamp,options?:{acceptPendingEdit?:boolean}){
     const parent=assertCurrent(stamp),source=parent.store.getSnapshot();
     const contexts={gaussian:parent.store.getContext('gaussian'),orca:parent.store.getContext('orca')};
     const activeScope=JSON.stringify(contexts.orca)===JSON.stringify({assignments:source.draft.assignments,coordinates:source.internalCoordinates??[]})?'orca':'gaussian';
-    const used=new Set([...documents.values()].map(entry=>entry.label));let label=parent.label+'-建模',serial=2;while(used.has(label))label=parent.label+'-建模-'+serial++;
+    const label=`${workspaceDocumentLabel(parent.label)}-model`;
     const fragment:FragmentSnapshot=clone({structure:parent.store.getPendingScientificEditBase?.()??source.draft.structure,assignments:source.draft.assignments,auxiliaryRelations:source.auxiliaryRelations,deletedBonds:source.deletedBonds,attachmentPorts:source.attachmentPorts,internalCoordinates:source.internalCoordinates,sharedConstraints:source.sharedConstraints,coordinateObjects:source.coordinateObjects,gaussianBoundCoordinates:source.gaussianBoundCoordinates});
+    fragment.structure=periodicWorkingStructure(fragment.structure);
+    const target=createModelStore(fragment.structure,fragment.assignments,fragment.internalCoordinates,fragment);
+    if(documents.has(target.getSnapshot().id))throw new Error('模型文档身份已存在，未重复发布。');
+    for(const engine of PROJECT_INPUT_ENGINES){const context=contexts[engine];if(context)target.synchronizeContext(context.assignments,context.coordinates,engine);}
+    target.synchronizeContext(fragment.assignments,fragment.internalCoordinates??[],activeScope);
+    if(source.gaussianBasisState)target.synchronizeGaussianBasisState?.(clone(source.gaussianBasisState));
+    const structure=fragment.structure,sameElectronicSource=structure.charge===source.draft.structure.charge&&structure.multiplicity===source.draft.structure.multiplicity&&JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]))===JSON.stringify(source.draft.structure.atoms.map(atom=>[atom.id,atom.element]));
+    if(structure.charge!==null&&structure.multiplicity!==null)target.setElectronicState(structure.charge,structure.multiplicity,sameElectronicSource&&source.electronicStateConfirmed===true);
+    target.select(clone(source.selection));
+    const valid=readProjectInputDraftsForUi(parent.drafts,source);
+    const issues:Partial<Record<ProjectInputEngine,string>>={};
+    const dirty={gaussian:!!valid.gaussian&&parent.inputDirty.gaussian,orca:!!valid.orca&&parent.inputDirty.orca};
+    for(const engine of PROJECT_INPUT_ENGINES)if(valid.issues[engine]){
+      const name=engine==='gaussian'?'Gaussian':'ORCA';
+      issues[engine]=`未继承${name}草稿，原草稿保留在来源标签。${valid.issues[engine].message}`;
+    }
+    let drafts:WorkspaceDocumentEntry['drafts']={};
+    const prepareDrafts=(candidate:ModelDocument)=>{drafts=copyProjectInputDrafts(valid,source,candidate,target);};
+    if(options?.acceptPendingEdit){
+      if(!parent.store.getPendingScientificEdit?.()||!parent.store.resolvePendingScientificEdit)throw new Error('本次编辑尚未形成有效操作，请重新操作。');
+      parent.store.resolvePendingScientificEdit('copy',target,prepareDrafts);
+    }else prepareDrafts(target.getSnapshot());
     return batch(()=>{
-      const child=addDocument(fragment.structure,label,fragment,undefined,undefined,false);
+      const child=addDocument(fragment.structure,label,fragment,undefined,undefined,false,undefined,target);
       for(const item of views.values())if(item.documentId===child.id)item.module='modeling';
-      try{
-        for(const engine of ['gaussian','orca'] as const){const context=contexts[engine];if(context)child.store.synchronizeContext(context.assignments,context.coordinates,engine);}
-        child.store.synchronizeContext(fragment.assignments,fragment.internalCoordinates??[],activeScope);
-        if(source.gaussianBasisState)child.store.synchronizeGaussianBasisState?.(clone(source.gaussianBasisState));
-        const structure=fragment.structure,sameElectronicSource=structure.charge===source.draft.structure.charge&&structure.multiplicity===source.draft.structure.multiplicity&&JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]))===JSON.stringify(source.draft.structure.atoms.map(atom=>[atom.id,atom.element]));
-        if(structure.charge!==null&&structure.multiplicity!==null)child.store.setElectronicState(structure.charge,structure.multiplicity,sameElectronicSource&&source.electronicStateConfirmed===true);
-        child.store.select(clone(source.selection));
-        child.drafts=clone(parent.drafts);child.inputDirty=clone(parent.inputDirty);
-        emit();return child;
-      }catch(error){closeDocument(child.id,true);throw error;}
+      child.drafts=freezeJSON(drafts);child.inputDirty=dirty;
+      if(Object.keys(issues).length)child.inputDraftCopyIssues=freezeJSON(issues);
+      emit();return child;
     });
   }
-  function deriveDocument(stamp:WorkspaceActivationStamp,candidate:StructureTransformCandidate,operationLabel=candidate.operation){
+  function deriveDocument(stamp:WorkspaceActivationStamp,candidate:StructureTransformCandidate,operationLabel=candidate.operation,scientificSource?:ModelDocument){
     const parent=assertCurrent(stamp);editableDocument(parent.id);assertInputTaskIdle(parent);
-    const source=parent.store.getSnapshot();
+    const owner=parent.store.getSnapshot(),source=scientificSource??owner;
+    if(source.id!==owner.id||source.revision!==owner.revision||JSON.stringify(source.draft.structure.atoms.map(atom=>[atom.id,atom.element]))!==JSON.stringify(owner.draft.structure.atoms.map(atom=>[atom.id,atom.element])))throw Error('派生来源的文档、修订或原子身份已变化。');
     const contexts={gaussian:parent.store.getContext('gaussian'),orca:parent.store.getContext('orca')};
     const activeScope=JSON.stringify(contexts.orca)===JSON.stringify({assignments:source.draft.assignments,coordinates:source.internalCoordinates??[]})?'orca':'gaussian';
     const prepared=prepareDerivedStructure(source,candidate,contexts);
-    const root=`${parent.label}-${operationLabel.trim()||candidate.operation}`,used=new Set([...documents.values()].map(entry=>entry.label));
-    let label=root,suffix=2;while(used.has(label))label=`${root}-${suffix++}`;
-    prepared.fragment.structure.id=newModelId();prepared.fragment.structure.name=label;
+    const label=`${workspaceDocumentLabel(parent.label)}-${workspaceDocumentLabel(operationLabel.trim()||candidate.operation)}`;
+    prepared.fragment.structure.id=newModelId();
     return batch(()=>{
       const child=addDocument(prepared.fragment.structure,label,prepared.fragment);
       try{
@@ -250,13 +319,16 @@ export function createWorkspaceRegistry() {
       child.derivation=freezeJSON({parentDocumentId:parent.id,parentDocumentEpoch:parent.epoch,parentRevision:source.revision,
         operation:candidate.operation,sourceStructure:clone(source.draft.structure),atomMapping:clone(candidate.atomMapping)});
       creations.push({entry:child,views:[...views.values()].filter(view=>view.documentId===child.id),parentViewId:stamp.viewId,parentId:parent.id,parentEpoch:parent.epoch,
-        baseline:derivedDocumentContent(child.store.getSnapshot()),contexts:contextKey(child),parentContent:derivedDocumentContent(source)});
+        baseline:derivedDocumentContent(child.store.getSnapshot()),contexts:contextKey(child),parentContent:derivedDocumentContent(owner)});
       creationRedo.length=0;emit();return child;
       }catch(error){closeDocument(child.id,true);activeViewId=stamp.viewId;activationEpoch++;emit();throw error;}
     });
   }
   function derivedCreationBlockReason(id:string):string|null{
-    const entry=document(id),creation=creations.find(item=>item.entry.id===id);
+    const entry=documents.get(id);
+    if(!entry)return '派生结构已关闭。';
+    if(readOnlyResult(entry))return readOnlyModelMessage;
+    const creation=creations.find(item=>item.entry.id===id);
     if(!creation)return null;
     if(entry.store.hasTransaction?.()||entry.store.isRuntimeSessionActive?.()||busyPhases.has(entry.runtime.phase))return '派生结构仍在编辑或运行，请先结束当前操作。';
     if(entry.store.getSnapshot().canUndo)return '请先撤销派生结构的后续编辑。';
@@ -268,7 +340,12 @@ export function createWorkspaceRegistry() {
     const parent=documents.get(creation.parentId);if(!parent||parent.epoch!==creation.parentEpoch)return '父结构已关闭，不能撤销本次派生创建。';
     return null;
   }
-  function historyDocument(id?:string){return id?editableDocument(id):activeViewId?editableDocument(view(activeViewId).documentId):undefined;}
+  function historyTarget(id?:string){return id??(activeViewId?views.get(activeViewId)?.documentId:undefined);}
+  function historyDocument(id?:string){const target=historyTarget(id);return target?editableDocument(target):undefined;}
+  function historyCapabilityDocument(id?:string){
+    const target=historyTarget(id),entry=target?documents.get(target):undefined;
+    return entry&&!readOnlyResult(entry)?entry:undefined;
+  }
   function undo(id?:string):boolean{
     const entry=historyDocument(id);if(!entry)return false;
     if(entry.store.getSnapshot().canUndo){entry.store.undo();return true;}
@@ -294,8 +371,8 @@ export function createWorkspaceRegistry() {
     }
     if(entry.store.getSnapshot().canRedo){entry.store.redo();return true;}return false;
   }
-  function canUndo(id?:string){const entry=historyDocument(id);return Boolean(entry&&(entry.store.getSnapshot().canUndo||creations.some(item=>item.entry.id===entry.id)));}
-  function canRedo(id?:string){const entry=historyDocument(id);return Boolean(entry&&(entry.store.getSnapshot().canRedo||creationRedo.at(-1)?.parentId===entry.id));}
+  function canUndo(id?:string){const entry=historyCapabilityDocument(id);return Boolean(entry&&(entry.store.getSnapshot().canUndo||creations.some(item=>item.entry.id===entry.id)));}
+  function canRedo(id?:string){const entry=historyCapabilityDocument(id);return Boolean(entry&&(entry.store.getSnapshot().canRedo||creationRedo.at(-1)?.parentId===entry.id));}
   function registerConsumer(id:string,consumerId:string,reason='派生结构仍被下游任务使用，请先结束该任务。'){
     document(id);const owned=consumers.get(id)??new Map<string,string>();if(owned.has(consumerId))throw new Error('下游消费者身份已注册。');owned.set(consumerId,reason);consumers.set(id,owned);emit();
     return ()=>{if(consumers.get(id)!==owned)return;owned.delete(consumerId);if(!owned.size)consumers.delete(id);emit();};
@@ -304,14 +381,16 @@ export function createWorkspaceRegistry() {
   function closeView(id:string){view(id);views.delete(id);if(activeViewId===id)focusFallback();emit();}
   /** Replace an explicitly confirmed analysis source, never an editable Store.
    * Source/cache disposal remains with the analysis attachment owner. */
-  function replaceResultDocument(id:string,result:TrajectoryResult){const entry=document(id);if(!entry.result)throw new Error('只有结果文档可替换分析来源。');entry.result=result;entry.label=workspaceDocumentLabel(result.label);entry.sourceEpoch++;emit();}
-  function addAnalysisDocument(result:TrajectoryResult,resolvedStructure:Structure,bindingId:string,activateNew=true,initialModule?:WorkspaceModule){
-    if(!initialModule||activateNew)return addDocument(resolvedStructure,workspaceDocumentLabel(result.label),undefined,undefined,undefined,activateNew,{id:bindingId,result});
-    return batch(()=>{const entry=addDocument(resolvedStructure,workspaceDocumentLabel(result.label),undefined,undefined,undefined,activateNew,{id:bindingId,result});
-      for(const value of views.values())if(value.documentId===entry.id)value.module=initialModule;emit();return entry;});
+  function replaceResultDocument(id:string,result:TrajectoryResult){const entry=document(id);if(!entry.result)throw new Error('只有结果文档可替换分析来源。');if(entry.labelOrigin==='automatic'&&entry.result.label!==result.label)entry.label=automaticDocumentLabel(resultDocumentLabel(result),id);entry.result=result;entry.sourceEpoch++;emit();}
+  function addAnalysisDocument(result:TrajectoryResult,resolvedStructure:Structure,bindingId:string,activateNew=true,initialModule?:WorkspaceModule,frameBondIdentity?:FrameBondIdentity){
+    const label=resultDocumentLabel(result);
+    const attachOrigin=(entry:WorkspaceDocumentEntry)=>{if(frameBondIdentity)entry.store.bindAnalysisFrameBondOrigin?.(bindingId,frameBondIdentity);return entry;};
+    if(!initialModule||activateNew)return attachOrigin(addDocument(resolvedStructure,label,undefined,undefined,undefined,activateNew,{id:bindingId,result}));
+    return batch(()=>{const entry=addDocument(resolvedStructure,label,undefined,undefined,undefined,activateNew,{id:bindingId,result});
+      for(const value of views.values())if(value.documentId===entry.id)value.module=initialModule;attachOrigin(entry);emit();return entry;});
   }
   function addEditableResultDocument(result:TrajectoryResult,resolvedStructure:Structure,activateNew=true){
-    const entry=addAnalysisDocument(result,resolvedStructure,`trajectory:${result.id}`,activateNew);entry.legacyResult=result;emit();return entry;
+    const entry=addAnalysisDocument(result,resolvedStructure,`trajectory:${result.id}`,activateNew,undefined,result.frames.length?trajectoryFrameBondIdentity(result,0):undefined);entry.legacyResult=result;emit();return entry;
   }
   const trajectoryWorkingContent=(model:ReturnType<ModelStore['getSnapshot']>)=>JSON.stringify([derivedDocumentContent(model),model.cellCheckpoint??null]);
   function rememberTrajectoryBaseline(entry:WorkspaceDocumentEntry){const model=entry.store.getSnapshot();trajectoryBaselines.set(entry,{revision:model.revision,content:trajectoryWorkingContent(model)});}
@@ -333,7 +412,7 @@ export function createWorkspaceRegistry() {
     if(existing)return batch(()=>{
       if(existing.legacyResult?.id!==result.id){
         if(trajectoryHasUnsavedEdits(existing))throw new Error('轨迹页面有未保存的模型或输入修改，请先保存为独立建模页再更新集合。');
-        replaceAnalysisDocument(existing.id,result,result.initialStructure,`trajectory:${result.id}`);
+        replaceAnalysisDocument(existing.id,result,result.initialStructure,`trajectory:${result.id}`,result.frames.length?trajectoryFrameBondIdentity(result,0):undefined);
         rememberTrajectoryBaseline(existing);
         existing.legacyResult=result;
         existing.trajectory={identity:freezeJSON(clone(identity)),frameIds:Object.freeze([...frameIds]),currentFrameId:frameIds.includes(existing.trajectory!.currentFrameId)?existing.trajectory!.currentFrameId:frameIds[0]??''};emit();
@@ -353,13 +432,13 @@ export function createWorkspaceRegistry() {
     if(!binding||!binding.frameIds.includes(frameId))throw new Error('轨迹帧不属于当前文档。');
     if(binding.currentFrameId!==frameId){entry.trajectory={...binding,currentFrameId:frameId};emit();}
   }
-  function replaceAnalysisDocument(id:string,result:TrajectoryResult,resolvedStructure:Structure,bindingId:string){
+  function replaceAnalysisDocument(id:string,result:TrajectoryResult,resolvedStructure:Structure,bindingId:string,frameBondIdentity?:FrameBondIdentity){
     resolvedStructure=periodicWorkingStructure(resolvedStructure);
     const entry=editableDocument(id);if(!entry.analysisBinding)throw new Error('只有后处理模型可替换分析来源。');
     assertInputTaskIdle(entry);
     const previous=entry.analysisBinding,label=entry.label;
-    entry.analysisBinding={id:bindingId,result};entry.label=workspaceDocumentLabel(result.label);
-    try{entry.store.replaceAnalysisSource!(resolvedStructure,bindingId);}catch(error){entry.analysisBinding=previous;entry.label=label;throw error;}
+    entry.analysisBinding={id:bindingId,result};if(entry.labelOrigin==='automatic'&&previous.result.label!==result.label)entry.label=automaticDocumentLabel(resultDocumentLabel(result),id);
+    try{entry.store.replaceAnalysisSource!(resolvedStructure,bindingId,frameBondIdentity);}catch(error){entry.analysisBinding=previous;entry.label=label;throw error;}
   }
   function analysisAvailable(id:string){const entry=documents.get(id);return Boolean(entry?.analysisBinding&&entry.store.getSnapshot().analysisBindingId===entry.analysisBinding.id);}
   /** Register applicability only. Existing graphs, labels, history and source
@@ -387,6 +466,28 @@ export function createWorkspaceRegistry() {
     const candidates=new Set([entry.result,entry.legacyResult,entry.analysisBinding?.result].filter((result):result is TrajectoryResult=>Boolean(result)));
     const live=new Set([...documents.values()].flatMap(other=>[other.result,other.legacyResult,other.analysisBinding?.result]));
     return Promise.all([...candidates].filter(result=>!live.has(result)).map(releaseResult)).then(()=>undefined);
+  }
+  /** Retire the temporary representative and restore its real input owner in one publication. */
+  function closeBorrowedInputDocument(
+    borrowed:{taskId:string;documentId:string;previous:WorkspaceInputTask|null},documentEpoch:string,
+    returnTo:{viewId:string|null;documentId?:string;documentEpoch?:string;module:WorkspaceModule;frameId?:string},
+  ){
+    const entry=document(borrowed.documentId);
+    if(entry.epoch!==documentEpoch||borrowedInputTask?.id!==borrowed.taskId||borrowedInputTask.documentId!==entry.id
+      ||inputTask?.id!==borrowed.taskId)throw Error('批量输入会话已变化，未关闭其他输入文档。');
+    const previous=borrowed.previous,previousEntry=previous&&documents.get(previous.documentId);
+    const previousOwner=previousEntry&&!readOnlyResult(previousEntry)&&documentInputTasks.get(previousEntry.id)?.id===previous.id?previous:null;
+    const priorView=returnTo.viewId&&views.get(returnTo.viewId),priorEntry=priorView&&documents.get(priorView.documentId);
+    const restoreView=priorView&&priorEntry&&priorEntry!==entry&&priorEntry.id===returnTo.documentId&&priorEntry.epoch===returnTo.documentEpoch?priorView:null;
+    return batch(()=>{
+      const release=closeDocument(entry.id,true);
+      if(restoreView){
+        activate(restoreView.id);restoreView.module=returnTo.module;module=returnTo.module;activationEpoch++;
+        if(returnTo.frameId&&priorEntry&&priorEntry.trajectory?.frameIds.includes(returnTo.frameId))selectTrajectoryFrame(priorEntry.id,returnTo.frameId);
+      }
+      if(previousOwner){inputTask=Object.freeze({...previousOwner,activationEpoch:++inputActivationEpoch});retainInputTask();}
+      emit();return release;
+    });
   }
   const discardResultKey=(entry:WorkspaceDocumentEntry)=>JSON.stringify([entry.result?.id,entry.legacyResult?.id,entry.analysisBinding?.id,entry.analysisBinding?.result.id,entry.trajectory,entry.conformerGroup,projectAttachmentRefs.get(entry.id)]);
   function discardDescendants(roots:readonly string[]){
@@ -464,10 +565,11 @@ export function createWorkspaceRegistry() {
     return {documentId:id,documentEpoch:entry.epoch,sourceEpoch:entry.sourceEpoch,revision:model.revision,label:entry.label,structure,charge:structure.charge??0,multiplicity:structure.multiplicity??1,confirmed:entry.electronicStateConfirmed,geometryUnits:'angstrom'};
   }
   function sourceIsCurrent(bound:WorkspaceTaskSource){const current=documents.get(bound.documentId);return Boolean(current&&!readOnlyResult(current)&&current.epoch===bound.documentEpoch&&current.sourceEpoch===bound.sourceEpoch&&current.store.getSnapshot().revision===bound.revision);}
-  function setDraft(id:string,engine:'gaussian'|'orca',value:JsonValue,dirty=true){
-    const entry=editableDocument(id);
+  function setDraft(id:string,engine:ProjectInputEngine,value:JsonValue,dirty=true){
+    const entry=editableDocument(id),same=JSON.stringify(entry.drafts[engine])===JSON.stringify(value),quarantined=Boolean(quarantinedDrafts.get(entry)?.has(engine));
+    if(!same&&quarantined)return;
     let taskSeeded=false;
-    if(!documentInputTasks.has(id)){
+    if(!quarantined&&!documentInputTasks.has(id)){
       const seeded=Object.freeze({id:newModelId(),documentId:id,activationEpoch:++inputActivationEpoch});
       documentInputTasks.set(id,seeded);
       if(!borrowedInputTask&&!inputTask&&activeViewId&&views.get(activeViewId)?.documentId===id){
@@ -475,26 +577,29 @@ export function createWorkspaceRegistry() {
         taskSeeded=true;
       }
     }
-    if(JSON.stringify(entry.drafts[engine])===JSON.stringify(value)&&entry.inputDirty[engine]===dirty){
+    if(same&&entry.inputDirty[engine]===dirty){
       if(taskSeeded)emit();
       return;
     }
-    entry.drafts[engine]=freezeJSON(clone(value));entry.inputDirty[engine]=dirty;emit();
+    entry.drafts={...entry.drafts,[engine]:freezeJSON(clone(value))};entry.inputDirty[engine]=dirty;emit();
   }
   function claimRuntime(id:string,ownerId:string){if(typeof ownerId!=='string'||!ownerId.length||ownerId.length>200||!/^[-a-zA-Z0-9_.:]+$/.test(ownerId))throw new Error('运行协调者身份无效。');const entry=editableDocument(id);if(entry.runtime.ownerId&&entry.runtime.ownerId!==ownerId)throw new Error('文档已有唯一运行协调者。');if(entry.runtime.ownerId===ownerId)return;entry.runtime.ownerId=ownerId;emit();}
   function runtimePhase(id:string,ownerId:string,phase:RuntimePhase){const entry=document(id);if(entry.runtime.ownerId!==ownerId)throw new Error('运行协调者身份不匹配。');entry.runtime.phase=phase;emit();}
-  function releaseRuntime(id:string,ownerId:string){const entry=document(id);if(entry.runtime.ownerId!==ownerId||busyPhases.has(entry.runtime.phase))throw new Error('运行尚未结束或协调者不匹配。');entry.runtime.ownerId=null;emit();}
+  function releaseRuntime(id:string,ownerId:string){const entry=document(id);if(entry.runtime.ownerId!==ownerId||busyPhases.has(entry.runtime.phase))throw new Error('运行尚未结束或协调者不匹配。');entry.runtime.ownerId=null;emit(false);}
   function nextPublication(id:string):WorkspaceDocumentSnapshot{
-    const entry=document(id);if(readOnlyResult(entry))throw new Error('结果文档不能作为可编辑模型发布。');const snapshot=clone(entry.store.getSnapshot());snapshot.draft.past=[];snapshot.draft.future=[];
+    const entry=document(id);if(legacyReadOnlyResult(entry))throw new Error('结果文档不能作为可编辑模型发布。');
+    const snapshot=clone(entry.store.getSnapshot());snapshot.draft.past=[];snapshot.draft.future=[];
+    if(protectedPesDocument(entry)){snapshot.canUndo=false;snapshot.canRedo=false;}
     const contexts={gaussian:entry.store.getContext('gaussian'),orca:entry.store.getContext('orca')};
     // Native transport forbids undefined and functions; omission is explicit JSON.
-    return JSON.parse(JSON.stringify({schema:'sciyue-workspace-document',version:1,documentEpoch:entry.epoch,publicationSerial:++entry.publicationSerial,document:snapshot,contexts,metadata:{label:entry.label,electronicStateConfirmed:entry.electronicStateConfirmed,sourceEpoch:entry.sourceEpoch,inputDirty:entry.inputDirty},ui:entry.drafts,runtime:entry.runtime})) as WorkspaceDocumentSnapshot;
+    return JSON.parse(JSON.stringify({schema:'sciyue-workspace-document',version:1,documentEpoch:entry.epoch,publicationSerial:++entry.publicationSerial,document:snapshot,contexts,metadata:{label:entry.label,labelOrigin:entry.labelOrigin,electronicStateConfirmed:entry.electronicStateConfirmed,sourceEpoch:entry.sourceEpoch,inputDirty:entry.inputDirty},ui:entry.drafts,runtime:entry.runtime})) as WorkspaceDocumentSnapshot;
   }
   function exportProjectState(options?:{saved?:boolean}):WorkspaceProjectState{
     retainInputTask();
     const encodeDocument=(entry:WorkspaceDocumentEntry):WorkspaceProjectDocument=>({
-      id:entry.id,epoch:entry.epoch,label:entry.label,initialElectronicState:clone(entry.initialElectronicState),
+      id:entry.id,epoch:entry.epoch,label:entry.label,labelOrigin:entry.labelOrigin,initialElectronicState:clone(entry.initialElectronicState),
       model:entry.store.exportProjectState!(options),drafts:clone(entry.drafts),inputDirty:options?.saved?{gaussian:false,orca:false}:clone(entry.inputDirty),
+      retiredInputDrafts:entry.retiredInputDrafts,inputDraftCopyIssues:entry.inputDraftCopyIssues,
       publicationSerial:entry.publicationSerial,sourceEpoch:entry.sourceEpoch,initialInput:entry.initialInput,
       derivation:entry.derivation,trajectory:entry.trajectory,conformerGroup:entry.conformerGroup,trajectoryBaseline:trajectoryBaselines.get(entry),savedRuntimePhase:entry.runtime.phase,
       attachments:{...projectAttachmentRefs.get(entry.id),...(entry.result?{result:entry.result.id}:{}),...(entry.legacyResult?{legacyResult:entry.legacyResult.id}:{}),...(entry.analysisBinding?{analysisBinding:{id:entry.analysisBinding.id,resultId:entry.analysisBinding.result.id}}:{})},
@@ -514,10 +619,14 @@ export function createWorkspaceRegistry() {
     for(const model of all.values()){model.document.canUndo=model.past.length>0;model.document.canRedo=model.future.length>0;}
     return graph;
   }
-  async function restoreProjectState(saved:WorkspaceProjectState,options:WorkspaceProjectRestoreOptions={}):Promise<void>{
+  function assertProjectRestoreIdle(){
     for(const entry of documents.values())if(busyPhases.has(entry.runtime.phase)||entry.store.isRuntimeSessionActive?.()||entry.store.hasTransaction?.())throw new Error('请先结束当前项目的运行或编辑，再恢复项目。');
+  }
+  function prepareProjectRestore(saved:WorkspaceProjectState,options:WorkspaceProjectRestoreOptions={}){
+    assertProjectRestoreIdle();
+    const preparedAgainst=mutationVersion;
     if(saved?.schema!=='sciyue-workspace-project'||saved.version!==1)throw new Error('项目工作区格式或版本无效。');
-    const data=clone(saved),validModules=new Set<WorkspaceModule>(['modeling','advanced-modeling','input','advanced','analysis','plot']);
+    const data=saved,validModules=new Set<WorkspaceModule>(['modeling','advanced-modeling','input','advanced','analysis','plot']);
     const integer=(value:number)=>Number.isSafeInteger(value)&&value>=0;
     if(!validModules.has(data.module)||![data.activationEpoch,data.inputActivationEpoch,data.taskSerial].every(integer)||![data.documents,data.detachedDocuments,data.views,data.documentInputTasks,data.creations,data.creationRedo,data.linkedGroups].every(Array.isArray))throw new Error('项目工作区索引无效。');
     const prepared=new Map<string,WorkspaceDocumentEntry>(),preparedViews=new Map<string,WorkspaceViewEntry>(),preparedRefs=new Map<string,WorkspaceProjectAttachments>();
@@ -526,12 +635,18 @@ export function createWorkspaceRegistry() {
       if(!value.id||typeof value.id!=='string'||!value.epoch||typeof value.epoch!=='string'||typeof value.label!=='string'||prepared.has(value.id)||!integer(value.publicationSerial)||!integer(value.sourceEpoch)||value.model?.document.id!==value.id||!value.initialElectronicState||!Number.isInteger(value.initialElectronicState.charge)||!Number.isInteger(value.initialElectronicState.multiplicity)||value.initialElectronicState.multiplicity<1)throw new Error('项目文档身份或初始状态无效。');
       const store=createModelStore();store.restoreProjectState!(value.model,{deferLinkedHistory:true});
       const attachments=value.attachments??{},actual=options.results?.get(value.id);
+      if(value.trajectory&&actual?.analysisBinding&&store.getSnapshot().analysisBindingId===actual.analysisBinding.id&&!store.getSnapshot().analysisFrameBondOrigin&&actual.analysisBinding.result.frames.length)store.bindAnalysisFrameBondOrigin?.(actual.analysisBinding.id,trajectoryFrameBondIdentity(actual.analysisBinding.result,0));
       if(actual?.result&&actual.result.id!==attachments.result||actual?.legacyResult&&actual.legacyResult.id!==attachments.legacyResult||actual?.analysisBinding&&(actual.analysisBinding.id!==attachments.analysisBinding?.id||actual.analysisBinding.result.id!==attachments.analysisBinding.resultId))throw new Error('项目结果附件与文档身份不一致。');
-      const entry:WorkspaceDocumentEntry={id:value.id,epoch:value.epoch,store,label:value.label,initialElectronicState:Object.freeze(clone(value.initialElectronicState)),
-        get electronicStateConfirmed(){return store.getSnapshot().electronicStateConfirmed===true;},drafts:clone(value.drafts),inputDirty:clone(value.inputDirty),runtime:{ownerId:null,phase:'idle'},publicationSerial:value.publicationSerial,sourceEpoch:value.sourceEpoch,
+      if(value.labelOrigin!==undefined&&value.labelOrigin!=='automatic'&&value.labelOrigin!=='manual')throw new Error('项目文档名称来源无效。');
+      const entry:WorkspaceDocumentEntry={id:value.id,epoch:value.epoch,store,label:value.label,labelOrigin:value.labelOrigin,initialElectronicState:Object.freeze(clone(value.initialElectronicState)),
+        get electronicStateConfirmed(){return store.getSnapshot().electronicStateConfirmed===true;},drafts:freezeJSON(clone(value.drafts)),inputDirty:clone(value.inputDirty),runtime:{ownerId:null,phase:'idle'},publicationSerial:value.publicationSerial,sourceEpoch:value.sourceEpoch,
+        ...(value.retiredInputDrafts?{retiredInputDrafts:freezeJSON(clone(value.retiredInputDrafts))}:{}),...(value.inputDraftCopyIssues?{inputDraftCopyIssues:freezeJSON(clone(value.inputDraftCopyIssues))}:{}),
         ...(value.initialInput?{initialInput:freezeJSON(clone(value.initialInput))}:{}),...(value.derivation?{derivation:freezeJSON(clone(value.derivation))}:{}),...(value.trajectory?{trajectory:freezeJSON(clone(value.trajectory))}:{}),...(value.conformerGroup?{conformerGroup:freezeJSON(clone(value.conformerGroup))}:{}),...actual};
       if(entry.trajectory&&(!entry.trajectory.frameIds.length||new Set(entry.trajectory.frameIds).size!==entry.trajectory.frameIds.length||!entry.trajectory.frameIds.includes(entry.trajectory.currentFrameId)))throw new Error('项目轨迹帧身份无效。');
-      if(value.trajectoryBaseline){if(!integer(value.trajectoryBaseline.revision)||typeof value.trajectoryBaseline.content!=='string')throw new Error('项目轨迹编辑基线无效。');trajectoryBaselines.set(entry,clone(value.trajectoryBaseline));}
+      if(value.trajectoryBaseline){if(!integer(value.trajectoryBaseline.revision)||typeof value.trajectoryBaseline.content!=='string')throw new Error('项目轨迹编辑基线无效。');trajectoryBaselines.set(entry,{...value.trajectoryBaseline,content:normalizePeriodicModelContentKey(value.trajectoryBaseline.content)});}
+      const issues=inspectProjectInputDraftIssues(entry.drafts,entry.id);
+      const quarantined=PROJECT_INPUT_ENGINES.filter(engine=>!!issues[engine]);
+      if(quarantined.length)quarantinedDrafts.set(entry,new Set(quarantined));
       prepared.set(entry.id,entry);preparedRefs.set(entry.id,clone(attachments));
     }
     const checkView=(value:WorkspaceViewEntry,allowed:Set<string>)=>{if(!value.id||typeof value.id!=='string'||!allowed.has(value.documentId)||!['tab','comparison','floating'].includes(value.kind)||typeof value.windowId!=='string'||!validModules.has(value.module))throw new Error('项目视图归属无效。');};
@@ -544,7 +659,7 @@ export function createWorkspaceRegistry() {
     const decodeCreation=(value:WorkspaceProjectCreation):Creation=>{
       const entry=prepared.get(value.documentId);if(!entry||!prepared.has(value.parentId)||prepared.get(value.parentId)!.epoch!==value.parentEpoch||![value.baseline,value.contexts,value.parentContent,value.parentViewId].every(part=>typeof part==='string'))throw new Error('项目派生历史归属无效。');
       for(const view of value.views){checkView(view,new Set([entry.id]));}
-      const {documentId:_,...rest}=value;return {...clone(rest),entry};
+      const {documentId:_,...rest}=value;return {...clone(rest),baseline:normalizePeriodicModelContentKey(rest.baseline),parentContent:normalizePeriodicModelContentKey(rest.parentContent),entry};
     };
     const preparedCreations=data.creations.map(decodeCreation),preparedRedo=data.creationRedo.map(decodeCreation);
     if(preparedCreations.some(item=>!activeIds.has(item.entry.id))||preparedRedo.some(item=>activeIds.has(item.entry.id)))throw new Error('项目派生历史状态不一致。');
@@ -557,36 +672,53 @@ export function createWorkspaceRegistry() {
       }
       restoreModelStoreProjectLinks([...prepared.values()].map(entry=>entry.store),(id,store)=>documents.get(id)?.store===store);
     }catch(error){preparedLinked?.dispose();throw error;}
-    // All validation precedes the single graph replacement and publication.
-    const oldEntries=[...documents.values()],retainedResults=new Set([...prepared.values()].flatMap(entry=>[entry.result,entry.legacyResult,entry.analysisBinding?.result].filter((result):result is TrajectoryResult=>Boolean(result))));
-    batch(()=>{
-      for(const unsubscribe of unsubscribers.values())unsubscribe();unsubscribers.clear();documents.clear();views.clear();consumers.clear();projectAttachmentRefs.clear();
-      restoredLinkedModels?.dispose();restoredLinkedModels=preparedLinked;
-      for(const id of activeIds){const entry=prepared.get(id)!;documents.set(id,entry);subscribeDocument(entry);}
-      for(const [id,refs] of preparedRefs)projectAttachmentRefs.set(id,refs);
-      for(const [id,value] of preparedViews)views.set(id,value);
-      creations.splice(0,creations.length,...preparedCreations);creationRedo.splice(0,creationRedo.length,...preparedRedo);
-      activeViewId=data.activeViewId;module=data.module;activationEpoch=Math.max(activationEpoch,data.activationEpoch)+1;taskSerial=data.taskSerial;
-      restoredActivationFloor=activationEpoch;
-      inputActivationEpoch=Math.max(inputActivationEpoch,data.inputActivationEpoch)+1;
-      documentInputTasks.clear();for(const [id,task] of preparedTasks)documentInputTasks.set(id,task);
-      inputTask=data.inputTask?Object.freeze({...data.inputTask,activationEpoch:inputActivationEpoch}):null;
-      previousInputTask=data.previousInputTask?Object.freeze(clone(data.previousInputTask)):null;borrowedInputTask=data.borrowedInputTask?Object.freeze({...data.borrowedInputTask,activationEpoch:inputActivationEpoch}):null;
-      if(inputTask&&!borrowedInputTask)documentInputTasks.set(inputTask.documentId,inputTask);
-      emit();
-    });
-    const release=new Set(oldEntries.flatMap(entry=>{entry.store.setScientificEditGuard?.(null);return [entry.result,entry.legacyResult,entry.analysisBinding?.result].filter((result):result is TrajectoryResult=>Boolean(result)&&!retainedResults.has(result!));}));
-    const outcomes=await Promise.allSettled([...release].map(releaseResult));
-    for(const outcome of outcomes)if(outcome.status==='rejected')console.warn('项目已恢复，但旧结果资源释放失败。',outcome.reason);
+    const savedWorkspace=clone({activeViewId:data.activeViewId,module:data.module,activationEpoch:data.activationEpoch,taskSerial:data.taskSerial,
+      inputActivationEpoch:data.inputActivationEpoch,inputTask:data.inputTask,previousInputTask:data.previousInputTask,borrowedInputTask:data.borrowedInputTask});
+    let used=false;
+    function cancel(){if(used)return;used=true;preparedLinked?.dispose();}
+    async function commit(){
+      if(used)throw Error('项目恢复计划已完成或取消。');
+      assertProjectRestoreIdle();
+      if(mutationVersion!==preparedAgainst)throw Error('准备恢复期间当前工作区已变化，请重新打开项目。');
+      used=true;
+      const oldEntries=[...documents.values()],retainedResults=new Set([...prepared.values()].flatMap(entry=>[entry.result,entry.legacyResult,entry.analysisBinding?.result].filter((result):result is TrajectoryResult=>Boolean(result))));
+      batch(()=>{
+        for(const unsubscribe of unsubscribers.values())unsubscribe();unsubscribers.clear();documents.clear();views.clear();consumers.clear();projectAttachmentRefs.clear();
+        restoredLinkedModels?.dispose();restoredLinkedModels=preparedLinked;
+        for(const id of activeIds){const entry=prepared.get(id)!;documents.set(id,entry);subscribeDocument(entry);}
+        for(const [id,refs] of preparedRefs)projectAttachmentRefs.set(id,refs);
+        for(const [id,value] of preparedViews)views.set(id,value);
+        creations.splice(0,creations.length,...preparedCreations);creationRedo.splice(0,creationRedo.length,...preparedRedo);
+        activeViewId=savedWorkspace.activeViewId;module=savedWorkspace.module;activationEpoch=Math.max(activationEpoch,savedWorkspace.activationEpoch)+1;taskSerial=savedWorkspace.taskSerial;
+        restoredActivationFloor=activationEpoch;
+        inputActivationEpoch=Math.max(inputActivationEpoch,savedWorkspace.inputActivationEpoch)+1;
+        documentInputTasks.clear();for(const [id,task] of preparedTasks)documentInputTasks.set(id,task);
+        inputTask=savedWorkspace.inputTask?Object.freeze({...savedWorkspace.inputTask,activationEpoch:inputActivationEpoch}):null;
+        previousInputTask=savedWorkspace.previousInputTask?Object.freeze(savedWorkspace.previousInputTask):null;borrowedInputTask=savedWorkspace.borrowedInputTask?Object.freeze({...savedWorkspace.borrowedInputTask,activationEpoch:inputActivationEpoch}):null;
+        if(inputTask&&!borrowedInputTask)documentInputTasks.set(inputTask.documentId,inputTask);
+        emit();
+      });
+      const release=new Set(oldEntries.flatMap(entry=>{entry.store.setScientificEditGuard?.(null);return [entry.result,entry.legacyResult,entry.analysisBinding?.result].filter((result):result is TrajectoryResult=>Boolean(result)&&!retainedResults.has(result!));}));
+      const outcomes=await Promise.allSettled([...release].map(releaseResult));
+      for(const outcome of outcomes)if(outcome.status==='rejected')console.warn('项目已恢复，但旧结果资源释放失败。',outcome.reason);
+    }
+    return {commit,cancel};
+  }
+  async function restoreProjectState(saved:WorkspaceProjectState,options:WorkspaceProjectRestoreOptions={}):Promise<void>{
+    const prepared=prepareProjectRestore(saved,options);
+    try{await prepared.commit();}finally{prepared.cancel();}
   }
   return {
     getSnapshot:()=>state,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},
-    exportProjectState,restoreProjectState,
+    exportProjectState,prepareProjectRestore,restoreProjectState,
     adoptRestoredLinkedModels(){const group=restoredLinkedModels;restoredLinkedModels=null;return group;},
-    addDocument,addBorrowedInputDocument,copyForModeling,deriveDocument,undo,redo,canUndo,canRedo,derivedCreationBlockReason,registerConsumer,planDiscardDocuments,assertDiscardDocumentsCurrent,prepareDiscardDocuments,
+    addDocument,addBorrowedInputDocument,closeBorrowedInputDocument,copyForModeling,deriveDocument,undo,redo,canUndo,canRedo,derivedCreationBlockReason,registerConsumer,planDiscardDocuments,assertDiscardDocumentsCurrent,prepareDiscardDocuments,
+    addPesDocument(structure:Structure,label:string,binding:WorkspacePesGroup){return batch(()=>{const entry=addDocument(structure,label,undefined,undefined,undefined,false);entry.pesGroup=Object.freeze({...binding});return entry;});},
+    bindPesDocument(id:string,binding:WorkspacePesGroup){const entry=document(id);if(entry.result||entry.conformerGroup||entry.trajectory)throw Error('此文档不能绑定势能面标签。');entry.pesGroup=Object.freeze({...binding});emit();},
+    namePesInitial(id:string,label:string){const entry=document(id);if(entry.pesGroup?.kind==='initial'&&entry.labelOrigin!=='manual'){entry.label=automaticDocumentLabel(label,id);emit();}},
     pendingDiscardResources:()=>[...pendingDiscards].map(([id,value])=>({id,documentIds:value.documentIds,pendingResults:[...value.remaining].map(result=>result.id)})),
     releasePendingDiscards:()=>Promise.all([...pendingDiscards.values()].map(value=>value.release())).then(()=>undefined),
-    addSourceDocument(structure:Structure){const entry=addDocument(structure,workspaceDocumentLabel(structure.name),undefined,undefined,undefined,false),initial=initialBaseElectronicState(structure);entry.store.setElectronicState(initial.charge,initial.multiplicity,false);return entry;},addPreparedInput(structure:Structure,intent:ResultInputIntent){return addDocument(structure,structure.name,undefined,undefined,intent);},addResultDocument(result:TrajectoryResult){return addDocument(null,workspaceDocumentLabel(result.label),undefined,result);},addFragmentDocument(fragment:FragmentSnapshot,label=workspaceDocumentLabel(fragment.structure.name)){return addDocument(fragment.structure,label,fragment);},prepareFragmentDocument,addView,activate,closeView,closeDocument,document,view,stamp,assertCurrent,assertIdentityCurrent,source,sourceIsCurrent,setDraft,claimRuntime,runtimePhase,releaseRuntime,nextPublication,
+    addSourceDocument(structure:Structure){const entry=addDocument(structure,undefined,undefined,undefined,undefined,false),initial=initialBaseElectronicState(structure);entry.store.setElectronicState(initial.charge,initial.multiplicity,false);return entry;},addPreparedInput(structure:Structure,intent:ResultInputIntent,label?:string){return addDocument(structure,label,undefined,undefined,intent);},addResultDocument(result:TrajectoryResult){return addDocument(null,resultDocumentLabel(result),undefined,result);},addFragmentDocument(fragment:FragmentSnapshot,label?:string){return addDocument(fragment.structure,label,fragment);},prepareFragmentDocument,addView,activate,closeView,closeDocument,document,view,stamp,assertCurrent,assertIdentityCurrent,source,sourceIsCurrent,setDraft,claimRuntime,runtimePhase,releaseRuntime,nextPublication,
     beginInputTask,borrowInputTask,releaseBorrowedInputTask,ensureInputTask,inputStamp,assertInputIdentityCurrent,assertInputCurrent,assertCurrentInputTaskIdle,replaceResultDocument,addAnalysisDocument,addEditableResultDocument,openTrajectoryDocument,selectTrajectoryFrame,replaceAnalysisDocument,analysisAvailable,bindExistingAnalysis,
     setModule(next:WorkspaceModule){
       const previousModule=module,hadTask=inputTask!==null,created=next==='input'?ensureInputTaskInternal(false):null;
@@ -594,8 +726,8 @@ export function createWorkspaceRegistry() {
       if(module!==next){module=next;activationEpoch++;if(inputTask&&hadTask&&(previousModule==='input'||next==='input'))inputTask=Object.freeze({...inputTask,activationEpoch:++inputActivationEpoch});emit();}
       else if(created)emit();
     },
-    invalidateActivation(){activationEpoch++;emit();},assertRuntimeCurrent,
-    rename(id:string,label:string){document(id).label=label;emit();},
+    invalidateActivation(){activationEpoch++;emit(false);},assertRuntimeCurrent,
+    rename(id:string,label:string){const entry=document(id);entry.label=availableDocumentLabel(label,id);entry.labelOrigin='manual';emit();},
     bindConformerGroup(id:string,taskId:string,role:'initial'|'collection',initialId?:string,initialIndex?:number){const entry=document(id);if(entry.conformerGroup&&entry.conformerGroup.taskId!==taskId)throw Error('原标签已属于另一构象任务。');entry.conformerGroup=Object.freeze(role==='initial'?{taskId,role,initialId,initialIndex}:{taskId,role});const snapshot=entry.store.getSnapshot();entry.store.bindAnalysisContext?.(snapshot.analysisBindingId??`conformer:${taskId}:${id}`,snapshot.id,snapshot.revision);emit();},
     confirmElectronicState(id:string,confirmed:boolean){const entry=editableDocument(id),structure=entry.store.getSnapshot().draft.structure;if(entry.electronicStateConfirmed!==confirmed)entry.store.setElectronicState(structure.charge??0,structure.multiplicity??1,confirmed);},
     setPresentation(id:string,value:JsonValue){view(id).presentation=freezeJSON(clone(value));emit();},

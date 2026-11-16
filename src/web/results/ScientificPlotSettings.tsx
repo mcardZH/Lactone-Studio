@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import {useProjectState,useProjectUiScope} from '../../projects/ui-state';
 import NumericInput from '../NumericInput';
 import fontData from './fonts/DejaVuSans.woff2.txt?raw';
@@ -44,13 +44,14 @@ export function usePlotFont(ownerDocument?: Document) {
   }, [ownerDocument]);
 }
 export type PlotAppearanceControl = ReturnType<typeof usePlotAppearance>;
-export function ScientificPlotSettings({ appearance, title, xLabel, yLabel, names = [] }: {
-  appearance: PlotAppearanceControl; title: string; xLabel?: string; yLabel?: string; names?: readonly { id: string; label: string }[];
+export function ScientificPlotSettings({ appearance, title, xLabel, yLabel, names = [], children }: {
+  appearance: PlotAppearanceControl; title: string; xLabel?: string; yLabel?: string; names?: readonly { id: string; label: string }[]; children?: ReactNode;
 }) {
   const a = appearance.value;
   const [open,setOpen]=useProjectState('plot-settings.open',false,appearance.key),[fontsOpen,setFontsOpen]=useProjectState('plot-settings.fontsOpen',false,appearance.key),[namesOpen,setNamesOpen]=useProjectState('plot-settings.namesOpen',false,appearance.key);
   const size = (key: 'titleSize' | 'axisSize' | 'tickSize' | 'legendSize', label: string) => <label>{label}<NumericInput aria-label={`绘图${label}`} min={5} max={36} step={1} value={a[key]} onChange={e => { const n = Number(e.target.value); if (Number.isFinite(n) && n >= 5 && n <= 36) appearance.update({ [key]: n }); }}/><span>pt</span></label>;
   return <details className="scientific-plot-settings" open={open} onToggle={event=>setOpen(event.currentTarget.open)}><summary><span>绘图设置</span><button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); appearance.reset(); }}>恢复默认</button></summary><div className="scientific-plot-settings-body">
+    {children}
     <label className="scientific-plot-title-field">标题<input aria-label="绘图标题" value={a.title ?? title} onChange={e => appearance.update({ title: e.target.value })}/></label>
     {(xLabel !== undefined || yLabel !== undefined) && <div className="scientific-plot-setting-row">{xLabel !== undefined && <label>X轴名称<input aria-label="绘图X轴名称" value={a.xLabel ?? xLabel} onChange={e => appearance.update({ xLabel: e.target.value })}/></label>}{yLabel !== undefined && <label>Y轴名称<input aria-label="绘图Y轴名称" value={a.yLabel ?? yLabel} onChange={e => appearance.update({ yLabel: e.target.value })}/></label>}</div>}
     <div className="scientific-plot-setting-row"><label>字体<select aria-label="绘图字体" value={a.font} onChange={e => appearance.update({ font: e.target.value })}><option>DejaVu Sans</option><option>Arial</option></select></label><label>基础字号<NumericInput aria-label="绘图基础字号" min={5} max={36} step={1} value={a.baseSize} onChange={e => { const n = Number(e.target.value); if (Number.isFinite(n) && n >= 5 && n <= 36) { const ratio = n / a.baseSize; appearance.update({ baseSize: n, titleSize: a.titleSize * ratio, axisSize: a.axisSize * ratio, tickSize: a.tickSize * ratio, legendSize: a.legendSize * ratio }); } }}/><span>pt</span></label></div>

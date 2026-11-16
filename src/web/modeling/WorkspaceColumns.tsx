@@ -8,6 +8,7 @@ import {
 } from "react";
 import { clampWorkbenchPaneSize } from "../../modeling/workbench-layout";
 import "./workspace-columns.css";
+import {beginWorkspaceDividerDrag,moveWorkspaceDividerDrag,endWorkspaceDividerDrag} from './workspace-divider-drag';
 export interface WorkspaceColumnSizes {
 	left: number;
 	right: number | null;
@@ -128,20 +129,26 @@ export function WorkspaceColumnDivider(p: {
 			tabIndex={0}
 			onPointerDown={(event) => {
 				event.preventDefault();
+				beginWorkspaceDividerDrag(event.currentTarget,event.pointerId,event.clientX);
 				event.currentTarget.setPointerCapture(event.pointerId);
 			}}
 			onPointerMove={(event) => {
-				if (event.currentTarget.hasPointerCapture(event.pointerId))
+				if (event.currentTarget.hasPointerCapture(event.pointerId)){
+					moveWorkspaceDividerDrag(event.currentTarget,event.pointerId,event.clientX);
 					resize(event.currentTarget, event.clientX);
+				}
 			}}
 			onPointerUp={(event) => {
+				endWorkspaceDividerDrag(event.currentTarget,event.pointerId);
 				if (event.currentTarget.hasPointerCapture(event.pointerId))
 					event.currentTarget.releasePointerCapture(event.pointerId);
 			}}
 			onPointerCancel={(event) => {
+				endWorkspaceDividerDrag(event.currentTarget,event.pointerId);
 				if (event.currentTarget.hasPointerCapture(event.pointerId))
 					event.currentTarget.releasePointerCapture(event.pointerId);
 			}}
+			onLostPointerCapture={event=>endWorkspaceDividerDrag(event.currentTarget,event.pointerId)}
 			onDoubleClick={() => p.onChange(p.side === "left" ? { left: 27 } : { right: null })}
 			onKeyDown={(event) => {
 				if (event.key === "Home") {

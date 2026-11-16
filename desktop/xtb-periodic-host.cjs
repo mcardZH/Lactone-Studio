@@ -9,7 +9,8 @@ const {DEFAULT_OUTPUT_BUDGET_BYTES,outputBudget:resourceOutputBudget,boundedLog}
 
 /** One SciPy worker owns serial xTB gradient children. It reports native close
  * before final results; host ownership and actual worker close precede publish. */
-function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveResources,admit,jobRoot,sendToWindow,fs,limits={}}){
+const {armWallDeadline}=require('./wall-deadline.cjs');
+function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveResources,admit,jobRoot,sendToWindow,fs,limits={},monotonicNow,later,clearLater}){
   const sessions=new Map(),closedOwners=new Set();let disposed=false;
   const policy={stopMs:2000,maxOutputBytes:DEFAULT_OUTPUT_BUDGET_BYTES,...limits},key=(owner,id)=>`${owner}:${id}`;
   function outputBudget(request,id){
@@ -31,7 +32,7 @@ function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveRe
     return new Promise((resolve,reject)=>{const signal=s.abort.signal,aborted=()=>reject(new Error('Periodic resource capture cancelled'));if(signal.aborted){aborted();return;}signal.addEventListener('abort',aborted,{once:true});Promise.resolve(task).then(resolve,reject).finally(()=>signal.removeEventListener('abort',aborted));});
   }
   function stop(s,reason='cancelled'){
-    if(s.stopReason||s.terminal)return;s.stopReason=reason;s.abort.abort();
+    if(s.stopReason||s.terminal)return;s.stopReason=reason;s.abort.abort();s.cancelWallDeadline?.();
     if(s.child&&!s.closed){try{s.child.stdin.write(JSON.stringify({command:'stop'})+'\n');}catch{}
       s.killTimer=setTimeout(()=>{if(!s.closed)try{s.child.kill();}catch{}},policy.stopMs);s.killTimer.unref?.();}
   }
@@ -40,13 +41,28 @@ function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveRe
     const atoms=s.request.structure.atoms;assert(value&&value.definition==='mayer-wiberg'&&value.sourceField==='tblite:bond-orders'&&value.threshold===0&&Array.isArray(value.entries)&&value.entries.length===atoms.length*(atoms.length-1)/2,'Incomplete periodic atom-pair bond orders');
     let index=0;for(let a=0;a<atoms.length;a++)for(let b=a+1;b<atoms.length;b++){const entry=value.entries[index++];assert(entry&&same(Object.keys(entry).sort(),['atomIds','value'])&&same(entry.atomIds,[atoms[a].id,atoms[b].id])&&Number.isFinite(entry.value),'Periodic atom-pair identity/order/value changed');}return value;
   }
-  function coordinates(s,values){const fixed=new Set(s.request.frozenAtomIds);assert(Array.isArray(values)&&values.length===s.request.structure.atoms.length,'Periodic optimizer atom count changed');values.forEach((point,i)=>{const atom=s.request.structure.atoms[i];assert(point.id===atom.id&&point.element===atom.element&&['x','y','z'].every(axis=>Number.isFinite(point[axis])&&Math.abs(point[axis])<=1e6),'Periodic coordinate identity/order changed');if(singlepoint(s)||fixed.has(atom.id))assert(['x','y','z'].every(axis=>Object.is(point[axis],atom[axis])),singlepoint(s)?'Periodic singlepoint changed coordinates':'Periodic optimizer moved a fixed atom');});return values;}
+  function coordinates(s,values){
+    const atoms=s.request.structure.atoms, fixed=new Set(s.request.frozenAtomIds), sp=singlepoint(s);
+    const axes=['x','y','z'];
+    assert(Array.isArray(values)&&values.length===atoms.length,'Periodic optimizer atom count changed');
+    let accepted;
+    for(const [i,point] of values.entries()){
+      const atom=atoms[i];
+      assert(point&&point.id===atom.id&&point.element===atom.element&&axes.every(axis=>Number.isFinite(point[axis])&&Math.abs(point[axis])<=1e6),'Periodic coordinate identity/order changed');
+      if(!sp&&!fixed.has(atom.id))continue;
+      // JSON may lose the sign of zero. Validate actual numbers before
+      // restoring the request's exact fixed axes for the consumer.
+      assert(axes.every(axis=>point[axis]===atom[axis]),sp?'Periodic singlepoint changed coordinates':'Periodic optimizer moved a fixed atom');
+      if(!axes.every(axis=>Object.is(point[axis],atom[axis]))) (accepted??=values.slice())[i]={...point,x:atom.x,y:atom.y,z:atom.z};
+    }
+    return accepted??values;
+  }
   function optimization(s,value){
     if(value==null)return undefined;
     assert(!singlepoint(s)&&value.schema==='sciyue-periodic-optimization-v1'&&typeof value.reason==='string'&&value.reason.length<=128&&typeof value.message==='string'&&value.message.length<=8192&&(value.status===null||Number.isSafeInteger(value.status))&&value.gradientThresholdHartreePerBohr===1e-4&&value.maxSteps===s.request.maxSteps&&(value.maxWallTimeSeconds??undefined)===s.request.maxWallTimeSeconds&&value.method===s.request.method&&value.charge===s.request.charge&&value.uhf===s.request.uhf&&same(value.sourceCell,s.request.structure.cell)&&same(value.effectivePbc,[true,true,true]),'Periodic optimizer diagnostic source changed');
     assert(Number.isSafeInteger(value.evaluations)&&value.evaluations>=0&&Number.isFinite(value.elapsedSeconds)&&value.elapsedSeconds>=0&&Array.isArray(value.attempts)&&value.attempts.length<=2&&value.timings&&['nativeProcessSeconds','evaluationSeconds','optimizerSeconds'].every(name=>Number.isFinite(value.timings[name])&&value.timings[name]>=0),'Invalid periodic timing/budget diagnostic');
     assert(value.attempts.every((attempt,i)=>attempt.attempt===i&&typeof attempt.reason==='string'&&typeof attempt.message==='string'&&attempt.message.length<=2048&&typeof attempt.success==='boolean'&&(attempt.status===null||Number.isSafeInteger(attempt.status))&&Number.isSafeInteger(attempt.iterations)&&attempt.iterations>=0&&Number.isSafeInteger(attempt.functionEvaluations)&&attempt.functionEvaluations>=0&&Number.isFinite(attempt.energyHartree)&&Number.isFinite(attempt.gradientMaxHartreePerBohr)&&attempt.gradientMaxHartreePerBohr>=0)&&value.attempts.reduce((sum,attempt)=>sum+attempt.iterations,0)<=s.request.maxSteps,'Invalid periodic optimizer attempt history');
-    if(value.accepted){const a=value.accepted,movable=s.request.structure.atoms.filter(atom=>!s.request.frozenAtomIds.includes(atom.id));coordinates(s,a.coordinates);assert(Number.isSafeInteger(a.step)&&a.step>=0&&a.step<=s.request.maxSteps&&Number.isFinite(a.energyHartree)&&Number.isFinite(a.gradientMaxHartreePerBohr)&&a.gradientMaxHartreePerBohr>=0&&same(a.movableAtomIds,movable.map(atom=>atom.id))&&Array.isArray(a.movableGradientHartreePerBohr)&&a.movableGradientHartreePerBohr.length===movable.length&&a.movableGradientHartreePerBohr.every(point=>Array.isArray(point)&&point.length===3&&point.every(Number.isFinite)),'Invalid last accepted periodic state');const maximum=a.movableGradientHartreePerBohr.reduce((maximum,point)=>point.reduce((maximum,component)=>Math.max(maximum,Math.abs(component)),maximum),0);assert(a.gradientMaxHartreePerBohr===maximum,'Accepted periodic gradient maximum differs from its raw components');}
+    if(value.accepted){const a=value.accepted,movable=s.request.structure.atoms.filter(atom=>!s.request.frozenAtomIds.includes(atom.id)),acceptedCoordinates=coordinates(s,a.coordinates);assert(Number.isSafeInteger(a.step)&&a.step>=0&&a.step<=s.request.maxSteps&&Number.isFinite(a.energyHartree)&&Number.isFinite(a.gradientMaxHartreePerBohr)&&a.gradientMaxHartreePerBohr>=0&&same(a.movableAtomIds,movable.map(atom=>atom.id))&&Array.isArray(a.movableGradientHartreePerBohr)&&a.movableGradientHartreePerBohr.length===movable.length&&a.movableGradientHartreePerBohr.every(point=>Array.isArray(point)&&point.length===3&&point.every(Number.isFinite)),'Invalid last accepted periodic state');const maximum=a.movableGradientHartreePerBohr.reduce((maximum,point)=>point.reduce((maximum,component)=>Math.max(maximum,Math.abs(component)),maximum),0);assert(a.gradientMaxHartreePerBohr===maximum,'Accepted periodic gradient maximum differs from its raw components');return {...value,accepted:{...a,coordinates:acceptedCoordinates}};}
     return value;
   }
   function packet(s,value){
@@ -56,11 +72,21 @@ function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveRe
     assert(kind==='frame'?count<=s.budget.frames:kind.startsWith('native-')?true:(s.terminalPackets=(s.terminalPackets??0)+1)<=1,'Periodic worker event budget exceeded');
     if(value.kind==='native-started'){assert(Number.isSafeInteger(value.pid)&&value.pid>0&&!s.nativePids.has(value.pid),'Invalid periodic child identity');s.nativePids.add(value.pid);return;}
     if(value.kind==='native-closed'){assert(s.nativePids.has(value.pid)&&Number.isSafeInteger(value.code),'Unknown periodic native close');s.nativePids.delete(value.pid);return;}
-    if(value.kind==='frame'){assert(!singlepoint(s),'Periodic singlepoint cannot publish optimizer frames');if(s.stopReason)return;assert(!s.result&&Number.isSafeInteger(value.step)&&value.step>s.lastStep&&value.step<=s.request.maxSteps&&value.stepKind==='outer-optimizer-iteration'&&Number.isFinite(value.energyHartree),'Invalid outer optimizer frame');periodic(s,value.periodic);coordinates(s,value.coordinates);s.lastStep=value.step;emit(s,'frame',{step:value.step,stepKind:value.stepKind,coordinates:value.coordinates,periodic:value.periodic});return;}
+    if(value.kind==='frame'){assert(!singlepoint(s),'Periodic singlepoint cannot publish optimizer frames');if(s.stopReason)return;assert(!s.result&&Number.isSafeInteger(value.step)&&value.step>s.lastStep&&value.step<=s.request.maxSteps&&value.stepKind==='outer-optimizer-iteration'&&Number.isFinite(value.energyHartree),'Invalid outer optimizer frame');periodic(s,value.periodic);const acceptedCoordinates=coordinates(s,value.coordinates);s.lastStep=value.step;emit(s,'frame',{step:value.step,stepKind:value.stepKind,coordinates:acceptedCoordinates,periodic:value.periodic});return;}
     assert(['completed','stopped','error'].includes(value.kind)&&!s.result&&value.nativeClosed===true&&s.nativePids.size===0,'Periodic worker did not settle its native children');
-    optimization(s,value.optimization);
-    if(value.kind==='completed'){coordinates(s,value.coordinates);periodic(s,value.periodic);assert(Number.isFinite(value.energyHartree),'Nonfinite periodic result energy');if(singlepoint(s))pairOrders(s,value.bondOrders);else{assert((!value.optimization||value.optimization.reason==='converged')&&Number.isFinite(value.gradientMaxHartreePerBohr)&&value.gradientMaxHartreePerBohr<=1e-4&&Number.isSafeInteger(value.iterations)&&value.iterations>=0&&value.iterations<=s.request.maxSteps,'Periodic result did not meet its convergence contract');if(value.optimization){const accepted=value.optimization.accepted;assert(accepted&&same(value.coordinates,accepted.coordinates)&&value.energyHartree===accepted.energyHartree&&value.gradientMaxHartreePerBohr===accepted.gradientMaxHartreePerBohr,'Periodic completed result differs from its last accepted state');}}}
-    s.result=value;
+    const acceptedOptimization=optimization(s,value.optimization);
+    const result=acceptedOptimization?{...value,optimization:acceptedOptimization}:value;
+    if(value.kind==='completed'){
+      const acceptedCoordinates=coordinates(s,value.coordinates);
+      periodic(s,value.periodic);
+      assert(Number.isFinite(value.energyHartree),'Nonfinite periodic result energy');
+      if(singlepoint(s))pairOrders(s,value.bondOrders);
+      else{
+        assert((!acceptedOptimization||acceptedOptimization.reason==='converged')&&Number.isFinite(value.gradientMaxHartreePerBohr)&&value.gradientMaxHartreePerBohr<=1e-4&&Number.isSafeInteger(value.iterations)&&value.iterations>=0&&value.iterations<=s.request.maxSteps,'Periodic result did not meet its convergence contract');
+        if(acceptedOptimization){const accepted=acceptedOptimization.accepted;assert(accepted&&same(acceptedCoordinates,accepted.coordinates)&&value.energyHartree===accepted.energyHartree&&value.gradientMaxHartreePerBohr===accepted.gradientMaxHartreePerBohr,'Periodic completed result differs from its last accepted state');}
+      }
+      s.result={...result,coordinates:acceptedCoordinates};
+    }else s.result=result;
   }
   async function diagnostics(s){if(!s.job)return;for(const [name,text]of [['worker-stdout.ndjson',s.stdout],['worker-stderr.txt',s.stderr]])try{await fs.writeFile(path.join(s.job,name),text,{flag:'wx'});}catch{}}
   async function releaseClosed(s){
@@ -69,7 +95,7 @@ function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveRe
     catch(error){s.reject(error);}
   }
   async function finish(s,code,signal){
-    if(s.finishing)return;s.finishing=true;s.closed=true;clearTimeout(s.wallTimer);clearTimeout(s.killTimer);
+    if(s.finishing)return;s.finishing=true;s.closed=true;s.cancelWallDeadline?.();clearTimeout(s.killTimer);
     try{
       if(s.nativePids.size){
         // A killed Windows worker closes its KILL_ON_JOB_CLOSE handle. Observe
@@ -103,7 +129,7 @@ function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveRe
       if(admit){s.release=await admit(owner,structuredClone(request),{signal:s.abort.signal,resources:s.configuredResources});assert(typeof s.release==='function','Periodic admission must return a trusted release function');if(s.configuredResources){assert(s.release.resources&&Number.isSafeInteger(s.release.resources.memoryBudgetBytes)&&s.release.resources.memoryBudgetBytes>0,'XTB_RESOURCE_GRANT: Shared periodic resource grant unavailable');s.effectiveResources=structuredClone(s.release.resources);Object.assign(request,validateStart({...request,threads:s.release.resources.threads}));}}
       if(s.stopReason){s.result={kind:'stopped',nativeClosed:true};await finish(s,null,null);return{sessionId:id,status:'stopped'};}
       s.budget.total=resourceOutputBudget(s.effectiveResources??s.configuredResources,policy.maxOutputBytes);
-      s.runtime=await resolveXtbRuntime();const workerRuntime=await resolveRuntime();assert(workerRuntime&&path.isAbsolute(workerRuntime.executable)&&Array.isArray(workerRuntime.args)&&workerRuntime.args.includes('--xtb-periodic')&&path.isAbsolute(workerRuntime.cwd),'Trusted packaged periodic worker required');
+      s.runtime=await resolveXtbRuntime(request);const workerRuntime=await resolveRuntime();assert(workerRuntime&&path.isAbsolute(workerRuntime.executable)&&Array.isArray(workerRuntime.args)&&workerRuntime.args.includes('--xtb-periodic')&&path.isAbsolute(workerRuntime.cwd),'Trusted packaged periodic worker required');
       await fs.mkdir(jobRoot,{recursive:true});await directory(jobRoot);s.job=await fs.mkdtemp(path.join(jobRoot,'periodic-'));assert(within(jobRoot,s.job)&&path.dirname(s.job)===path.resolve(jobRoot),'Periodic workspace escaped ownership');await directory(s.job);
       beforeStart();if(s.stopReason){s.result={kind:'stopped',nativeClosed:true};await finish(s,null,null);return{sessionId:id,status:'stopped'};}
       const child=s.child=spawn(workerRuntime.executable,workerRuntime.args,{cwd:workerRuntime.cwd,shell:false,windowsHide:true,stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONUTF8:'1',PYTHONDONTWRITEBYTECODE:'1',OMP_NUM_THREADS:String(request.threads),OPENBLAS_NUM_THREADS:String(request.threads),MKL_NUM_THREADS:String(request.threads),OMP_MAX_ACTIVE_LEVELS:'1',OMP_DYNAMIC:'FALSE'}});
@@ -117,7 +143,7 @@ function createPeriodicXtbHost({spawn,resolveRuntime,resolveXtbRuntime,resolveRe
       child.stdin.on('error',error=>{s.failure=error;stop(s,'Periodic worker input failed');});child.on('error',error=>{s.failure=error;stop(s,'Periodic worker failed to start');});
       child.once('close',(code,signal)=>{s.stdout+=out.end();s.stderr+=err.end();void finish(s,code,signal??null);});
       child.stdin.write(JSON.stringify({sessionId:id,request,runtime:s.runtime,workspacePath:s.job})+'\n');
-      if(request.maxWallTimeSeconds!==undefined){s.wallTimer=setTimeout(()=>stop(s,'Periodic optimizer wall budget exceeded'),request.maxWallTimeSeconds*1000);s.wallTimer.unref?.();}emit(s,'started',{status:'running'});return{sessionId:id,status:'starting'};
+      s.cancelWallDeadline=armWallDeadline(request.maxWallTimeSeconds,()=>stop(s,'Periodic optimizer wall budget exceeded'),{monotonicNow,later,clearLater});emit(s,'started',{status:'running'});return{sessionId:id,status:'starting'};
     }catch(error){if(!s.stopReason)s.failure=error;if(!s.child)await finish(s,null,null);else stop(s,'Periodic setup failed');return{sessionId:id,status:s.stopReason==='cancelled'?'stopped':'error'};}
   }
   function command(owner,id){const s=sessions.get(key(owner,id));assert(s&&!s.terminal,'Periodic xTB session is not owned/active');stop(s);return s.finished.then(()=>({sessionId:id,status:'stopped'}));}

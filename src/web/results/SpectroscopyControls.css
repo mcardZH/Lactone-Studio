@@ -5,13 +5,15 @@
 .spectroscopy-control-row input[type=range] { width:9em; }
 .spectroscopy-card .scientific-data-table[data-variant=legacy] { margin-top:8px;overflow-x:auto; }
 .spectroscopy-card .analysis-comparison-table td,.spectroscopy-card .analysis-comparison-table th { text-align:center; }
-.spectroscopy-card .scientific-data-table[data-variant=legacy] .analysis-comparison-table tbody tr[aria-selected=true] { background:#e8f3e9; }
+.spectroscopy-card .scientific-data-table[data-variant=legacy] .analysis-comparison-table tbody tr[aria-selected=true] { background:var(--ui-control-selected-bg); }
 .spectroscopy-card.analysis-task-card .spectroscopy-control-row { gap:6px 10px;margin:0;font-size:inherit; }
 .spectroscopy-level-labels { display:flex;flex-wrap:wrap;gap:8px 16px; }
-.spectroscopy-missing { color:var(--muted-text,#64748b); }
+.spectroscopy-missing { color:var(--ui-note-ink,#5a707a); }
 .spectroscopy-vibration-playback { display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;flex:1 1 100%;min-width:0; }
-.spectroscopy-vibration-playback > .spectroscopy-control-row,
-.spectroscopy-card .scientific-plot-tools > .spectroscopy-control-row { display:contents; }
+.spectroscopy-vibration-playback > .spectroscopy-control-row { display:contents; }
+.spectroscopy-card .scientific-plot-tools > .spectroscopy-control-row { display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;max-width:100%; }
+.spectroscopy-generation-range { display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:100%;min-width:0; }
+.spectroscopy-generation-range>.scientific-plot-control-group { flex-wrap:wrap; }
 .spectroscopy-current-mode { flex:1 1 100%;margin:0; }
 .spectroscopy-export-panel { flex:1 1 100%;min-width:0; }
 .spectroscopy-export-panel > summary { cursor:pointer;width:fit-content;font-weight:600; }

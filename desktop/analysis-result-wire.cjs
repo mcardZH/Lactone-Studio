@@ -41,7 +41,8 @@ async function readManagedResult(value, directory) {
     await checkDirectory(directory,parent);await handle.close();await fs.unlink(target);return result;
   } finally {await handle.close().catch(()=>{});}
 }
-async function inspectManagedSource(target) {
+async function inspectManagedSource(target,{signal}={}) {
+  signal?.throwIfAborted();
   const {identity,directoryIdentity,checkDirectory}=require('./portable-storage.cjs');
   const parent=await directoryIdentity(path.dirname(target)),selected=await fs.lstat(target);
   assert(selected.isFile()&&!selected.isSymbolicLink()&&selected.nlink===1,'Managed source is not an owned regular file');
@@ -49,7 +50,8 @@ async function inspectManagedSource(target) {
   try {
     assert(identity(await handle.stat())===identity(selected),'Managed source changed before hashing');
     const digest=createHash('sha256');let bytesLength=0;
-    for await(const chunk of handle.createReadStream({autoClose:false})){digest.update(chunk);bytesLength+=chunk.length;}
+    for await(const chunk of handle.createReadStream({autoClose:false})){signal?.throwIfAborted();digest.update(chunk);bytesLength+=chunk.length;}
+    signal?.throwIfAborted();
     assert(identity(await fs.lstat(target))===identity(selected)&&bytesLength===selected.size,'Managed source changed during hashing');
     await checkDirectory(path.dirname(target),parent);
     return {path:target,parent,identity:identity(selected),sha256:digest.digest('hex'),bytesLength};

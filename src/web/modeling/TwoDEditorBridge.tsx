@@ -2,16 +2,19 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Editor } from "ketcher-react";
 import { fromNewCanvas, type Ketcher } from "ketcher-core";
 import "ketcher-react/dist/index.css";
-import type { Structure } from "../../core/types";
 import {
-	componentToStructure,
 	parseKetDraft,
 	parseTwoDDraft,
-	remainingTwoDSourceIssues
+	remainingTwoDSourceIssues,
+	twoDComponentFormalCharge
 } from "../../modeling/two-d";
 import type { TwoDCommitData, TwoDDraft, TwoDSourceInput } from "../../modeling/two-d";
-import { createTwoDEditorProvider, twoDIndigoConverter } from "./two-d-editor-service";
+import {prepareTwoDAssembly,type TwoDAssemblyInput} from '../../modeling/application/two-d-assembly';
+import { calculateGeometryCip, createTwoDEditorProvider, twoDIndigoConverter } from "./two-d-editor-service";
+import { deriveTwoDCip, paintTwoDBoardLabels, type TwoDCipLabel } from "./two-d-board-display";
 import "./two-d-editor-ui.css";
+import { ScientificImageCopyButton } from "../ScientificImageCopyButton";
+import { captureTwoDBoardPng } from "./two-d-image-copy";
 import TwoDInteractionLayer, { TwoDIcon } from "./TwoDInteractionLayer";
 import { TwoDSourceOperation } from "./two-d-source-operation";
 import {
@@ -22,6 +25,7 @@ import {
 	zoomTwoDViewport
 } from "./two-d-ketcher-api";
 import { normalizeTwoDDisplayKet, assertTwoDSelectedGraph } from "./two-d-display-normalization";
+import TwoDPreviewSplit from './TwoDPreviewSplit';
 
 export interface TwoDEditorSnapshot {
 	documentKey?: string;
@@ -42,12 +46,19 @@ export interface TwoDEditorRuntime {
 		options?: { history?: "reset" | "append"; metadata?: unknown; expectedRevision?: number }
 	): Promise<boolean>;
 }
+/** Captured synchronously by the generating click, before editor serialization. */
+export type TwoDGenerationGuard = (()=>void)&{target?:{kind:'new'}|{kind:'replace';documentId:string;revision:number}};
 
 interface Props {
 	busy: boolean;
 	initialSource?: TwoDSourceInput;
 	sourceName?: string;
-	onGenerate(structure: Structure, draft?: TwoDCommitData, snapshot?: TwoDEditorSnapshot): void;
+	onGenerate(assembly: TwoDAssemblyInput, draft?: TwoDCommitData, snapshot?: TwoDEditorSnapshot, guard?: TwoDGenerationGuard): void;
+	onAssembly?(assembly:TwoDAssemblyInput, draft:TwoDCommitData, snapshot:TwoDEditorSnapshot):void;
+	previewEnabled?:boolean;
+	onPreviewEnabledChange?(enabled:boolean):void;
+	previewPanel?:ReactNode;
+	captureGenerationGuard?(): TwoDGenerationGuard;
 	onClose(): void;
 	onError(message: string): void;
 	onImportFiles?(files: File[]): void;
@@ -89,6 +100,7 @@ const buttons = {
 	fullscreen: hidden
 };
 const emptyKet = JSON.stringify({ root: { nodes: [] } });
+const showRsByWindow = new WeakMap<Document,boolean>();
 function emptyDraft(sourceId: string, ket = emptyKet): TwoDDraft {
 	return parseKetDraft(ket, { sourceId, allowEmpty: true });
 }
@@ -99,6 +111,11 @@ export default function TwoDEditorBridge({
 	initialSource,
 	sourceName,
 	onGenerate,
+	onAssembly,
+	previewEnabled=false,
+	onPreviewEnabledChange,
+	previewPanel,
+	captureGenerationGuard,
 	onClose,
 	onError,
 	onImportFiles,
@@ -116,6 +133,9 @@ export default function TwoDEditorBridge({
 }: Props) {
 	const [provider] = useState(createTwoDEditorProvider);
 	const [editor, setEditor] = useState<Ketcher | null>(null);
+	const [showRS,setShowRS]=useState(()=>showRsByWindow.get(document)??false);
+	const showRSRef=useRef(showRS);showRSRef.current=showRS;
+	const cipJob=useRef<{ket:string;revision:number;controller:AbortController;promise:Promise<TwoDCipLabel[]>;labels?:TwoDCipLabel[]} | null>(null);
 	const [nativeReadyEpoch, setNativeReadyEpoch] = useState(0);
 	const [sourceEpoch, setSourceEpoch] = useState(0);
 	const [sourceVisibility, setSourceVisibility] = useState<{ key?: string; hidden: boolean }>({
@@ -130,7 +150,6 @@ export default function TwoDEditorBridge({
 		setNativeReadyEpoch((previous) => previous + 1);
 	}, []);
 	const [draft, setDraft] = useState<TwoDDraft | null>(null);
-	const [selected, setSelected] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [dirty, setDirty] = useState(false);
 	const [history, setHistory] = useState({ undo: 0, redo: 0 });
@@ -143,8 +162,8 @@ export default function TwoDEditorBridge({
 	const loadingRef = useRef(false);
 	const fileInput = useRef<HTMLInputElement>(null);
 	const imageInput = useRef<HTMLInputElement>(null);
-	const latest = useRef({ onError, onGenerate });
-	latest.current = { onError, onGenerate };
+	const latest = useRef({ onError, onGenerate, captureGenerationGuard });
+	latest.current = { onError, onGenerate, captureGenerationGuard };
 	const manualId = useRef(crypto.randomUUID());
 	const sourceDocumentKey = useRef<string | undefined>(undefined);
 	const sourceInput = useRef<TwoDSourceInput | undefined>(undefined),
@@ -157,6 +176,25 @@ export default function TwoDEditorBridge({
 		cancelGesture.current = cancel;
 	}, []);
 	const getRevision = useCallback(() => revision.current, []);
+	function discardCip() {
+		cipJob.current?.controller.abort();cipJob.current=null;
+		if(editor)paintTwoDBoardLabels(editor,[]);
+	}
+	function boardCip(ket:string,expected:number) {
+		const current=cipJob.current;
+		if(current?.ket===ket&&current.revision===expected)return current.promise;
+		current?.controller.abort();
+		const controller=new AbortController();
+		const job={ket,revision:expected,controller,promise:Promise.resolve([] as TwoDCipLabel[]),labels:undefined as TwoDCipLabel[]|undefined};
+		cipJob.current=job;
+		job.promise=deriveTwoDCip(ket,calculateGeometryCip,controller.signal).catch(()=>[]).then(labels=>{
+			if(cipJob.current!==job||controller.signal.aborted||!showRSRef.current||revision.current!==expected)return [];
+			job.labels=labels;
+			if(editor)paintTwoDBoardLabels(editor,labels);
+			return labels;
+		});
+		return job.promise;
+	}
 	const snapshot = (ket: string): TwoDEditorSnapshot => ({
 		documentKey: sourceDocumentKey.current,
 		ket,
@@ -189,6 +227,7 @@ export default function TwoDEditorBridge({
 		return () => {
 			mounted.current = false;
 			session.current++;
+			cipJob.current?.controller.abort();cipJob.current=null;
 			provider.dispose();
 		};
 	}, [provider]);
@@ -200,13 +239,14 @@ export default function TwoDEditorBridge({
 			if (loadingRef.current) return;
 			const request = ++sequence;
 			revision.current++;
+			discardCip();
 			try {
 				const ket = await editor.getKet();
 				if (!active || request !== sequence || loadingRef.current) return;
 				setHistory(nativeEditorApi(editor).historySize());
 				const sourceId = source.current?.source.id ?? manualId.current;
 				const next = parseKetDraft(ket, {
-					sourceId: `${sourceId}:edited:${revision.current}`,
+					sourceId,
 					filename: source.current?.source.name,
 					allowEmpty: true
 				});
@@ -214,13 +254,6 @@ export default function TwoDEditorBridge({
 				setDraft(next);
 				setDirty(ket !== originalKet.current);
 				snapshotCallback.current?.(snapshot(ket));
-				setSelected((previous) =>
-					next.components.some((value) => value.id === previous)
-						? previous
-						: next.components.length === 1
-							? next.components[0].id
-							: ""
-				);
 			} catch (error) {
 				if (active) latest.current.onError(error instanceof Error ? error.message : String(error));
 			}
@@ -237,6 +270,7 @@ export default function TwoDEditorBridge({
 		const controller = new AbortController();
 		const epoch = ++session.current;
 		cancelGesture.current?.();
+		discardCip();
 		loadingRef.current = true;
 		setLoading(true);
 		void (async () => {
@@ -277,11 +311,6 @@ export default function TwoDEditorBridge({
 			hasContent.current = next.components.some((c) => c.atoms.length > 0);
 			revision.current++;
 			snapshotCallback.current?.(snapshot(originalKet.current));
-			setSelected(
-				editorBaseline.current.components.length === 1
-					? editorBaseline.current.components[0].id
-					: ""
-			);
 			if (display.restriction) latest.current.onError(display.restriction);
 		})()
 			.catch((error) => {
@@ -296,6 +325,25 @@ export default function TwoDEditorBridge({
 			});
 		return () => controller.abort();
 	}, [editor, initialSource?.id, documentKey]);
+	useEffect(()=>{
+		if(!editor)return;
+		const svg=editor.editor.render.paper.canvas;
+		if(!svg)return;
+		const repaint=()=>{const job=cipJob.current;paintTwoDBoardLabels(editor,showRSRef.current&&job?.revision===revision.current?job.labels??[]:[]);};
+		const observer=new MutationObserver(records=>{
+			if(records.some(r=>!(r.target as Element).closest?.('[data-two-d-derived-labels]')))repaint();
+		});
+		observer.observe(svg,{childList:true,subtree:true,attributes:true,attributeFilter:['viewBox']});
+		repaint();
+		return()=>{observer.disconnect();svg.querySelector('[data-two-d-derived-labels]')?.remove();};
+	},[editor,nativeReadyEpoch]);
+	useEffect(()=>{
+		if(!editor||!showRS||!visible){discardCip();return;}
+		if(!draft?.components.length)return;
+		const expected=revision.current, ket=draft.ket;
+		const timer=setTimeout(()=>{if(revision.current===expected&&showRSRef.current)void boardCip(ket,expected);},90);
+		return()=>clearTimeout(timer);
+	},[editor,draft,showRS,visible]);
 
 	useEffect(() => {
 		if (!visible) cancelGesture.current?.();
@@ -365,6 +413,20 @@ export default function TwoDEditorBridge({
 		onRuntime?.(runtime);
 		return () => onRuntime?.(null);
 	}, [editor, onRuntime]);
+	function assemblyDraft(current:TwoDDraft) {
+		const edited=current.ket!==originalKet.current;
+		const assembly=prepareTwoDAssembly(current,{name:source.current?.source.name??'drawing',sourceIssues:component=>{
+			const issues=source.current?remainingTwoDSourceIssues({sourceDraft:source.current,editorBaselineDraft:editorBaseline.current,currentComponent:component,edited}):[];
+			try{assertTwoDSelectedGraph(component.ket);}catch(error){issues.push({code:'invalid-visible-graph',severity:'blocking',message:error instanceof Error?error.message:String(error),scope:'component',componentIds:[component.id]});}
+			return issues;
+		}});
+		const commit:TwoDCommitData={source:source.current?.source??current.source,selectedComponentId:`${current.source.id}:all`,selectedComponentIds:assembly.selectedComponentIds,originalKet:source.current?.ket??emptyKet,finalKet:current.ket,finalGraph:assembly.finalGraph,issues:assembly.issues,edited};
+		return {assembly,commit,editorSnapshot:snapshot(current.ket)};
+	}
+	useEffect(()=>{
+		if(!draft||loading||!onAssembly)return;
+		try{const prepared=assemblyDraft(draft);onAssembly(prepared.assembly,prepared.commit,prepared.editorSnapshot);}catch(error){latest.current.onError(error instanceof Error?error.message:String(error));}
+	},[draft,loading,onAssembly]);
 	async function generate() {
 		if (!editor || loading || busy) return;
 		const epoch = session.current;
@@ -372,52 +434,22 @@ export default function TwoDEditorBridge({
 		cancelGesture.current?.();
 		setLoading(true);
 		try {
+			const ownerGuard = latest.current.captureGenerationGuard?.();
+			ownerGuard?.();
 			const ket = await editor.getKet();
 			if (!mounted.current || epoch !== session.current || expectedRevision !== revision.current)
 				return;
-			const isEdited = ket !== originalKet.current;
-			const current = parseKetDraft(ket, {
-				sourceId: isEdited
-					? `${source.current?.source.id ?? manualId.current}:edited:${revision.current}`
-					: (source.current?.source.id ?? manualId.current),
+			ownerGuard?.();
+			const current = draft?.ket===ket?draft:parseKetDraft(ket, {
+				sourceId: source.current?.source.id ?? manualId.current,
 				allowEmpty: true
 			});
-			const component =
-				current.components.length === 1
-					? current.components[0]
-					: current.components.find((value) => value.id === selected);
-			if (!component)
-				throw new Error(
-					current.components.length ? "请先选择要生成三维的结构。" : "请先绘制分子。"
-				);
-			assertTwoDSelectedGraph(component.ket);
-			// Source-level fidelity failures cannot disappear merely because an
-			// editor round trip omitted the original unsupported property.
-			const sourceIssues = source.current
-				? remainingTwoDSourceIssues({
-						sourceDraft: source.current,
-						editorBaselineDraft: editorBaseline.current,
-						currentComponent: component,
-						edited: isEdited
-					})
-				: [];
-			const graph = componentToStructure(
-				{ ...component, issues: [...component.issues, ...sourceIssues] },
-				{ name: source.current?.source.name ?? "drawing" }
-			);
+			if(!current.components.length)throw new Error('请先绘制分子。');
+			const prepared=assemblyDraft(current);
 			if (!mounted.current || epoch !== session.current) return;
 			latest.current.onGenerate(
-				graph,
-				{
-					source: source.current?.source ?? current.source,
-					selectedComponentId: component.id,
-					originalKet: source.current?.ket ?? emptyKet,
-					finalKet: ket,
-					finalGraph: { atoms: graph.atoms, bonds: graph.bonds, layout2D: graph.layout2D },
-					issues: [...current.issues, ...component.issues, ...sourceIssues],
-					edited: isEdited
-				},
-				snapshot(ket)
+				prepared.assembly,prepared.commit,prepared.editorSnapshot,
+				ownerGuard
 			);
 		} catch (error) {
 			if (mounted.current && epoch === session.current)
@@ -427,6 +459,9 @@ export default function TwoDEditorBridge({
 		}
 	}
 	const visibleIssues = draft?.issues.filter((issue) => issue.code !== "invalid-valence") ?? [];
+	const canvasAtomCount=draft?.components.reduce((total,component)=>total+component.atoms.filter(atom=>!atom.sourceProperties.generatedFromImplicitH).length,0)??0;
+	const charges=draft?.components.map(component=>{const issues=source.current?remainingTwoDSourceIssues({sourceDraft:source.current,editorBaselineDraft:editorBaseline.current,currentComponent:component,edited:draft.ket!==originalKet.current}):[];return twoDComponentFormalCharge({...component,issues:[...component.issues,...issues]});})??[];
+	const charge=charges.length&&charges.every(value=>value!==null)?charges.reduce<number>((sum,value)=>sum+(value??0),0):null;
 	return (
 		<section
 			className="model-plane-window two-d-editor-window"
@@ -536,6 +571,25 @@ export default function TwoDEditorBridge({
 						<TwoDIcon name="eye" />
 					</button>
 				)}
+				<ScientificImageCopyButton
+					disabled={!editor || !visible || loading || !draft?.components.length}
+					resetKey={visible ? `${documentKey}:${sourceEpoch}` : undefined}
+					capture={async(owner,signal)=>{
+						if(!editor)throw new Error('当前二维画板不可用。');
+						const expected=revision.current,enabled=showRSRef.current;
+						const ket=await editor.getKet();signal.throwIfAborted();
+						if(expected!==revision.current)throw new Error('二维结构已变化，请重新复制。');
+						const labels=enabled?await boardCip(ket,expected):[];signal.throwIfAborted();
+						if(expected!==revision.current||enabled!==showRSRef.current)throw new Error('二维结构或标注已变化，请重新复制。');
+						paintTwoDBoardLabels(editor,labels);
+						return captureTwoDBoardPng(editor.editor.render.paper.canvas,owner,signal);
+					}}
+				/>
+				<label className="two-d-rs-toggle"><input type="checkbox" checked={showRS} onChange={event=>{
+					const checked=event.currentTarget.checked;showRsByWindow.set(event.currentTarget.ownerDocument,checked);
+					showRSRef.current=checked;setShowRS(checked);if(!checked)discardCip();
+				}}/>显示R/S</label>
+				{onPreviewEnabledChange&&<label className="two-d-preview-toggle"><input type="checkbox" checked={previewEnabled} onChange={event=>onPreviewEnabledChange(event.currentTarget.checked)}/>三维预览</label>}
 				<input
 					ref={fileInput}
 					type="file"
@@ -596,6 +650,7 @@ export default function TwoDEditorBridge({
 						{sourcePanel}
 					</aside>
 				)}
+				<TwoDPreviewSplit enabled={previewEnabled&&Boolean(previewPanel)} preview={previewPanel}>
 				<div className="two-d-editor-canvas" inert={editingDisabled || loading ? true : undefined}>
 					<Editor
 						staticResourcesUrl="./ketcher"
@@ -610,6 +665,7 @@ export default function TwoDEditorBridge({
 							sourceEpoch={sourceEpoch}
 							nativeReadyEpoch={nativeReadyEpoch}
 							editor={editor}
+							visible={visible}
 							active={visible && !editingDisabled && !loading}
 							revision={getRevision}
 							onError={onError}
@@ -618,26 +674,10 @@ export default function TwoDEditorBridge({
 						/>
 					)}
 				</div>
+				</TwoDPreviewSplit>
 			</div>
 			<footer>
-				<label>
-					{(draft?.components.length ?? 0) > 1 ? (
-						<select
-							value={selected}
-							onChange={(event) => setSelected(event.target.value)}
-							aria-label="选择二维结构"
-						>
-							<option value="">请选择目标结构</option>
-							{draft!.components.map((value) => (
-								<option key={value.id} value={value.id}>
-									{value.label} · {value.atoms.length} 原子
-								</option>
-							))}
-						</select>
-					) : (
-						`${draft?.components[0]?.atoms.length ?? 0} 原子`
-					)}
-				</label>
+				<div className="two-d-graph-state" aria-live="polite"><span>{canvasAtomCount} 原子</span><span>{draft?.components.length??0} 个片段</span><span>形式电荷合计 {charge===null?'未确定':charge>0?`+${charge}`:charge}</span></div>
 				<button
 					title="生成三维并退出"
 					aria-label="生成三维并退出"

@@ -371,7 +371,7 @@ export default function OperationDialog(p: {
 					{valid ? "正在登记操作…" : "正在核对所选目标…"}
 				</div>
 			)}
-			<footer>
+			<footer className="ui-action-row">
 				<button type="button" onClick={p.onClose}>
 					{executing ? "后台继续，返回" : "取消"}
 				</button>

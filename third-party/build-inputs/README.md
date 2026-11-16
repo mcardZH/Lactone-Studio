@@ -52,3 +52,38 @@ remain defined by the acquisition/transformations contracts. Open Babel remains
 only a historical strict-preparation input; product output checks it absent.
 These contracts establish byte/source identities, not redistribution approval.
 Keep the supplied license/source indexes. Public approval remains false here.
+
+## Ester Studio 2.0.8 internal xTB runtime set
+
+The current local set has four routes. Official Windows xTB 6.8.0 serves
+ordinary GFN calls. Non-FIRE GFN0 uses the same release and parameters with
+the already measured 64 MiB PE stack reserve change. Nonperiodic g-xTB uses
+its own release 2.0.1, with host xTB 6.7.1 (30c6303) and its own DLL directory.
+Periodic optimization uses the bounded-cycle rebuild of xTB 6.8.0; periodic
+MD stays on its ordinary GFN route. The independent complete-matrix tblite
+API for periodic bond analysis is separate from these command-line runtimes.
+
+- `declarations/xtb-v208-inputs.json` pins the upstream archives, exact
+  FIRE source commits and archives, toolchain inputs and LP64 OpenBLAS.
+  Git-archive entries are produced from the listed commit with
+  `git archive --format=tar.gz --prefix=<component>/ <commit>`. Use the
+  exact matching archives; the builder does not acquire inputs.
+- `declarations/xtb-v208-assembly.json` pins the release DLLs and the
+  linked rebuild DLLs and licenses. The official g-xTB tag's license is
+  retained as `literals/xtb-v208-gxtb-LICENSE.txt`.
+- `scripts/native/build-xtb-v208-fire.py` uses the existing WinLibs GCC
+  13.2/Meson 1.4.1 toolchain and OpenBLAS 0.3.33 LP64. It changes the FIRE
+  microcycle request to the smaller of the planned block and the remaining
+  cycles, and replaces two local build identity strings. It does not change
+  the optimizer, its thresholds, or the shipped parameter files.
+  `declarations/xtb-v208-fire-build.json` is the actual build receipt.
+- `scripts/native/assemble-xtb-v208.py` verifies those inputs and the
+  official archives, validates the existing stack-only derivative and the
+  complete DLL import closure, and stages a fresh local runtime. The root
+  inventory for the selected bytes is `inventories/xtb-v208-win64.json`.
+  The active development lock and portable dependency summary anchor
+  the manifest and all four runtime identities. Assembly and lock checks
+  do not execute a scientific program.
+
+This section describes the internal 2.0.8 build. The preceding public
+source-export blueprint and redistribution review are separate.

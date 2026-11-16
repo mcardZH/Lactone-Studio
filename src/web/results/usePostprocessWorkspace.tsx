@@ -18,19 +18,30 @@ import { createPostprocessRetirement } from '../../modeling/application/postproc
 import { readPreparedTrajectoryFrame } from './usePreparedTrajectory';
 import {getPostprocessTaskAssociation,setPostprocessTaskAssociation} from '../../projects/postprocess-task-association';
 import {resultStageChoices} from './PostprocessResultView';
-import {projectTrajectoryStage} from '../../results/trajectory-stages';
+import {projectTrajectoryStage,attachTrajectoryStages} from '../../results/trajectory-stages';
 import {notifyAnalysisProjectStateChanged} from '../../projects/analysis-state';
 import {isExcitationSlot,updatePostprocessExcitationSlot,type ExcitationSlotKey} from './postprocess-excitation-slots';
+import {resultFrameBondSource,resultFrameBondIdentity,initialResultFrameBondIdentity} from '../../results/frame-bond-identity';
+import type {FrameBondIdentity} from '../../core/modeling/frame-bond-overrides';
 
 /** Initial model handoff follows the same first source/stage as the public
  * result view. This transient projection does not replace the original source. */
-export async function readInitialPostprocessStructure(document:PostprocessDocument,signal?:AbortSignal):Promise<Structure>{
+export function initialPostprocessFrameBondIdentity(document:PostprocessDocument):FrameBondIdentity|undefined {
+  const selected=resultStageChoices(document)[0];if(!selected)return initialResultFrameBondIdentity(document.result);
+  const stage=attachTrajectoryStages(selected.result).stages?.find(stage=>stage.id===selected.stageId),index=stage?.frameIndices[0]??0;
+  // resultStageChoices attaches derived stages without replacing its original
+  // result; stage indices can also be obtained from that same public contract.
+  const sourceFrame=selected.result.frames[index];if(!sourceFrame)return;
+  return resultFrameBondIdentity(resultFrameBondSource(selected.result,selected.stageId,undefined,selected.sourceResultId??selected.result.id),sourceFrame.sourceFrameIndex??index);
+}
+export async function readInitialPostprocessFrame(document:PostprocessDocument,signal?:AbortSignal):Promise<{structure:Structure;identity:FrameBondIdentity|undefined}>{
   const selected=resultStageChoices(document)[0];
-  if(!selected)return readPreparedTrajectoryFrame(document.result,0,signal);
+  if(!selected)return{structure:await readPreparedTrajectoryFrame(document.result,0,signal),identity:initialResultFrameBondIdentity(document.result)};
   const result=await projectTrajectoryStage(selected.result,selected.stageId,signal);
   const projected=projectPostprocessStage(observePostprocessSource(document,selected.result),result);
-  return readPreparedTrajectoryFrame(projected.result,0,signal);
+  return{structure:await readPreparedTrajectoryFrame(projected.result,0,signal),identity:resultFrameBondIdentity(resultFrameBondSource(selected.result,selected.stageId,undefined,selected.sourceResultId??selected.result.id),projected.result.frames[0].sourceFrameIndex??0)};
 }
+export async function readInitialPostprocessStructure(document:PostprocessDocument,signal?:AbortSignal):Promise<Structure>{return(await readInitialPostprocessFrame(document,signal)).structure;}
 /** A non-owning view of proven computed geometry. The file document continues
  * owning OUT bytes and all visited/unvisited jobs. Input echo never enters it. */
 export function fileDisplayDocument(document:PostprocessScientificFileDocument):PostprocessDocument|null{
@@ -38,10 +49,11 @@ export function fileDisplayDocument(document:PostprocessScientificFileDocument):
 }
 
 interface Ports {
-  add(result: TrajectoryResult, document?: PostprocessDocument, options?: { activate?: boolean; structure?: Structure;initialModule?:'analysis' }): string;
-  replace(id: string, result: TrajectoryResult, document?: PostprocessDocument, structure?: Structure): void;
+  add(result: TrajectoryResult, document?: PostprocessDocument, options?: { activate?: boolean; structure?: Structure;initialModule?:'analysis';frameBondIdentity?:FrameBondIdentity }): string;
+  replace(id: string, result: TrajectoryResult, document?: PostprocessDocument, structure?: Structure,frameBondIdentity?:FrameBondIdentity): void;
   /** Bind a source to an existing geometry without replacing its model or label. */
-  attach?(id:string,result:TrajectoryResult,bindingId:string):string;
+  attach?(id:string,result:TrajectoryResult,bindingId:string,frameBondIdentity?:FrameBondIdentity):string;
+  bindFrameBondOrigin?(id:string,bindingId:string,identity:FrameBondIdentity):void;
   /** Resolve protected sources before reading bytes or opening native sessions. */
   prepareRead?(targetId:string|undefined):Promise<{forceNew:true;onCreated(id:string):void}|null|undefined>;
   guardRemove?(id:string):void;
@@ -473,11 +485,11 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       const displayedResult=await defaultPostprocessCompanion(nextOutput,nextCompanions);guard();
       const value = composePostprocessDocument(useTarget ? base!.id : `analysis-${crypto.randomUUID()}`, nextOutput, nextWave, pair,{companions:nextCompanions,displayedResult});
       const extras=[...(useTarget?retainedExtras:[]),...nebExtras,...mdExtras];if(extras.length)retainPostprocessSourceExtras(value,extras.filter((extra,index)=>extras.findIndex(other=>other.sourceId===extra.sourceId&&other.revision===extra.revision)===index));
-      const structure = await readInitialPostprocessStructure(value,signal); guard();
+      const {structure,identity:frameBondIdentity} = await readInitialPostprocessFrame(value,signal); guard();
       await newDocument?.beforeCommit?.(value);await automation?.beforeCommit?.(value);guard();
       const canNavigate=newDocument?newDocument.canNavigate?.()!==false:fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
-      const documentId = useTarget ?? portsRef.current.add(value.result, value, { structure,...(!canNavigate||forceNew?{activate:false}:{}),...(forceNew?{initialModule:'analysis' as const}:{}) });
-      if (useTarget) portsRef.current.replace(documentId, value.result, value, structure);
+      const documentId = useTarget ?? portsRef.current.add(value.result, value, { structure,frameBondIdentity,...(!canNavigate||forceNew?{activate:false}:{}),...(forceNew?{initialModule:'analysis' as const}:{}) });
+      if (useTarget) portsRef.current.replace(documentId, value.result, value, structure,frameBondIdentity);
       if(canNavigate)selectFile(null);
       const priorAssociation=useTarget&&base?getPostprocessTaskAssociation(base):undefined;
       if(priorAssociation)setPostprocessTaskAssociation(value,priorAssociation);
@@ -544,7 +556,9 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
     try {
       guard();
       attachment = await readGeneratedXtbSource(bundle, expected, nativeSessionId, async (artifactId, sessionId) => { guard(); opened = true;
-        const metadata = archived ? await bridge.openOrbitalSession!({ sessionId, sourceId: `xtb-${artifactId}:molden`, name: bundle.files.find(file => file.role === 'molden')!.name, text: bundle.files.find(file => file.role === 'molden')!.text }) : await bridge.openXtbOrbitalSession!(artifactId, sessionId); guard();
+        const source=archived?bundle.files.find(file=>file.role===(bundle.metadata.method==='gxtb'?'analysis-molden':'molden')):undefined;
+        if(archived&&!source)throw Error('XTB保存来源缺少可用于分析的波函数。');
+        const metadata = source ? await bridge.openOrbitalSession!({ sessionId, sourceId: `xtb-${artifactId}:molden`, name: source.name, text: source.text }) : await bridge.openXtbOrbitalSession!(artifactId, sessionId); guard();
         return archived?.analysisPolicy ? { ...metadata, analysisPolicy: archived.analysisPolicy } : metadata;
       }); guard();
       await portsRef.current.reserveViews?.(nativeSessionId, target?.id??null); guard();
@@ -552,13 +566,13 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       await options?.beforeCommit?.(value);guard();
       if(target){
         if(!portsRef.current.attach)throw Error('当前工作区缺少原位分析绑定入口。');
-        const bindingId=portsRef.current.attach(target.id,value.result,value.id);guard();
+        const bindingId=portsRef.current.attach(target.id,value.result,value.id,initialPostprocessFrameBondIdentity(value));guard();
         const id=value.id;
         generatedRef.current={...generatedRef.current,[id]:{document:value,ownerId:target.id,bindingId}};setGenerated(generatedRef.current);committed=true;
         return id;
       }
-      const structure = await readInitialPostprocessStructure(value); guard();
-      const id = portsRef.current.add(value.result, value, { activate: false, structure });
+      const {structure,identity:frameBondIdentity} = await readInitialPostprocessFrame(value); guard();
+      const id = portsRef.current.add(value.result, value, { activate: false, structure,frameBondIdentity });
       documentsRef.current = { ...documentsRef.current, [id]: value }; setDocuments(documentsRef.current); committed = true;
       options?.onCreated?.(id);
       return id;
@@ -610,12 +624,12 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       if(preparedOutput&&wavefunction){try{pair=await pairPostprocessSourcesForFrames(preparedOutput.source,wavefunction.source);guard();const conflict=postprocessMetadataConflict(pair);if(conflict)throw Error(conflict);}catch(error){guard();pair=undefined;setNotice(`${textError(error)} 波函数仍保留为独立来源。`);}}
       const next = composePostprocessDocument(value.id, preparedOutput, wavefunction,pair,{companions,displayedResult});
       if(remainingExtras.length)retainPostprocessSourceExtras(next,[...remainingExtras]);
-      const structure = await readInitialPostprocessStructure(next);
+      const {structure,identity:frameBondIdentity} = await readInitialPostprocessFrame(next);
       if(!alive.current||closingIds.current.has(id)||documentsRef.current[id]!==value||!portsRef.current.exists(id)||portsRef.current.available?.(id)===false)throw new Error('分析来源已关闭或切换，未重放移除操作。');
       // Register outgoing leases with the retry owner only after the metadata
       // replacement has committed successfully.
       {
-        portsRef.current.replace(id, next.result, next, structure); documentsRef.current = { ...documentsRef.current, [id]: next }; setDocuments(documentsRef.current);
+        portsRef.current.replace(id, next.result, next, structure,frameBondIdentity); documentsRef.current = { ...documentsRef.current, [id]: next }; setDocuments(documentsRef.current);
       }
       const issues=await dispose([...outgoing,...(role==='output'?value.companions??[]:[])],id);
       if(issues.length)portsRef.current.onError(`来源已移除；native释放提示：${issues.join('；')}`);
@@ -707,6 +721,8 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
   function restoreProjectDocuments(next:Record<string,PostprocessDocument>,nextGenerated:Record<string,{document:PostprocessDocument;ownerId:string;bindingId:string}>={}) {
     if(busyRef.current)throw new Error('来源正在读取，不能恢复另一项目。');
     requestEpoch.current++;closingIds.current.clear();sourceNotices.current={};documentsRef.current=next;generatedRef.current=nextGenerated;setDocuments(next);setGenerated(nextGenerated);setNotice('');
+    for(const [id,document]of Object.entries(next)){const identity=initialPostprocessFrameBondIdentity(document);if(identity)portsRef.current.bindFrameBondOrigin?.(id,document.id,identity);}
+    for(const row of Object.values(nextGenerated)){const identity=initialPostprocessFrameBondIdentity(row.document);if(identity)portsRef.current.bindFrameBondOrigin?.(row.ownerId,row.bindingId,identity);}
   }
   return { documents, generated, ownerId, current, fileDocuments,fileOwnerId,currentFile:fileOwnerId?fileDocuments[fileOwnerId]??null:null,selectFile,selectFileJob,closeFile,captureFileDocuments,restoreFileDocuments,
     pendingFileCloses:()=>[...new Set([...pendingFileCloses.current.keys(),...releases.pending().map(item=>item.id)])],releasePendingFileCloses:async()=>{

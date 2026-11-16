@@ -8,8 +8,9 @@ import { formatAtomSelection } from '../core/structures';
 import type { TaskSelectionHandle, TaskSelectionIntent } from '../modeling/contracts';
 import { parseInteractiveSelection, RegionSelectionConflict, regionSelectionIdentityError } from '../modeling/application/region-selection';
 import type { AtomPickerRequest } from './AtomPickerModal';
-import type { AnalysisSelectionIntent, AnalysisSelectionOwner } from './analysis-selection-intent';
+import type { AnalysisSelectionHandle, AnalysisSelectionIntent, AnalysisSelectionOwner } from './analysis-selection-intent';
 import './interactive-selection.css';
+import {InputSettingsCardHeader} from './InputSettingsFields';
 
 interface SelectionFieldBase {
   structure: Structure | null; label: string; rowId: string;
@@ -20,10 +21,24 @@ interface SelectionFieldBase {
   draftChoices?: { label: string; atomIds: readonly string[] }[];
   onPick?: (request: AtomPickerRequest) => void;
   onClear?:()=>void; clearLabel?:string; clearDisabled?:boolean;
-  /** Keep the number field and the two selection actions as intact wrapping groups. */
+  /** Opt in to the same title/action header used by an adjacent subcard. */
+  headerVariant?:'subcard';
+  /** Retained for existing callers; the action pair now always wraps as one group. */
   wrapActions?:boolean;
+  /** Analysis variants can repair obsolete IDs and type into the active capture draft. */
+  liveNumberDraft?:boolean;
+  /** Optional owner-held text, including incomplete input, for saved row drafts. */
+  numberText?:string;
+  onNumberTextChange?(text:string):void;
+  preserveNumberDraftOnCancel?:boolean;
+  autoPick?:boolean;
+  renderDraft?(ids:readonly string[],images?:readonly Vector3[]):ReactNode;
   /** Fragment owners provide the first row; selection actions keep draft semantics here. */
   renderHeader?: (selectionActions: ReactNode) => ReactNode;
+  /** A card can place this field's clear button in its own visible header. */
+  renderContainer?: (field: ReactNode, clearAction: ReactNode) => ReactNode;
+  /** Specialized rows may keep additional controls in the same wrapping action group. */
+  renderSelectionRow?: (numberControl: ReactNode, actionButtons: ReactNode) => ReactNode;
 }
 export interface InteractiveSelectionFieldProps extends SelectionFieldBase {
   engine: TaskSelectionIntent['engine']; purpose: TaskSelectionIntent['purpose']; taskId?: string;
@@ -33,7 +48,7 @@ export interface InteractiveSelectionFieldProps extends SelectionFieldBase {
 export interface AnalysisInteractiveSelectionFieldProps extends SelectionFieldBase {
   captureOwner: AnalysisSelectionOwner; contextKey: string; kind?: 'atoms' | 'coordinate';
   analysisPurpose?: AnalysisSelectionIntent['purpose'];
-  onRequestAnalysisSelection(intent: AnalysisSelectionIntent): TaskSelectionHandle | void;
+  onRequestAnalysisSelection(intent: AnalysisSelectionIntent): AnalysisSelectionHandle | void;
   engine?: never; purpose?: never; taskId?: never; onRequestSelection?: never;
 }
 type SelectionFieldProps = InteractiveSelectionFieldProps | AnalysisInteractiveSelectionFieldProps;
@@ -59,11 +74,16 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
   const identity = props.structure ? pickerStructureIdentity(props.structure) : '';
   const members = JSON.stringify(props.atomIds);
   const owner = selectionOwner(props), canonical = formatSelection(props, props.atomIds);
-  const [text, setText] = useState(canonical), [error, setError] = useState(''), [picking, setPicking] = useState(false);
+  const [localText, setLocalText] = useState(canonical), [error, setError] = useState(''), [picking, setPicking] = useState(false);
+  const text=props.numberText??localText;
+  function setText(value:string){setLocalText(value);latest.current.props.onNumberTextChange?.(value);}
   const [pending, setPending] = useState<{ ids: string[]; guard: () => void; conflict: RegionSelectionConflict } | null>(null);
   const latest = useRef({ props, identity, members, owner }); latest.current = { props, identity, members, owner };
-  const alive = useRef(true), handle = useRef<TaskSelectionHandle | null>(null), epoch = useRef(0);
+  const alive = useRef(true), handle = useRef<AnalysisSelectionHandle | null>(null), epoch = useRef(0);
+  const typing=useRef(false);
+  const manualDraftText=useRef<string|null>(null);
   const captureOwner = useRef<string | null>(null), draftIds = useRef<string[]>([]);
+  const draftImages=useRef<Vector3[]|undefined>(undefined);
   const overwritePermit = useRef<{ ids: string[]; guard: () => void } | null>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; epoch.current++; handle.current?.cancel(); }; }, []);
   useEffect(() => {
@@ -76,8 +96,9 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
       } catch { /* An unrelated form/document change still ends this capture. */ }
     }
     epoch.current++; handle.current = null; captureOwner.current = null; overwritePermit.current = null;
-    own?.cancel(); setPicking(false); setText(canonical); setError(''); setPending(null);
+    own?.cancel(); setPicking(false); setLocalText(canonical); setError(''); setPending(null);
   }, [identity, owner, members, props.contextKey, props.disabled]);
+  useEffect(()=>{if(props.autoPick)pick();},[]);
   function guard(strictSnapshot = Boolean(latest.current.props.captureOwner)) {
     const captured = latest.current, ownEpoch = epoch.current, ownHandle = handle.current;
     return () => {
@@ -90,14 +111,33 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
       if ((!ownHandle || strictSnapshot) && (current.identity !== captured.identity || current.members !== captured.members || current.props.contextKey !== captured.props.contextKey)) throw new Error('模型、区域或输入条件已变化，请重新选择。');
     };
   }
-  function draft(ids: string[], images?:Vector3[]) { const changed=JSON.stringify(draftIds.current)!==JSON.stringify(ids); draftIds.current = [...ids]; setText(formatSelection(latest.current.props, ids)); if(changed){setError(''); setPending(null); overwritePermit.current = null;} latest.current.props.onDraftChange?.([...ids],images); }
+  function draft(ids: string[], images?:Vector3[]) { const changed=JSON.stringify(draftIds.current)!==JSON.stringify(ids)||JSON.stringify(draftImages.current)!==JSON.stringify(images); draftIds.current = [...ids];draftImages.current=images; if(!typing.current)setText(formatSelection(latest.current.props, ids)); if(changed){setError(''); setPending(null); overwritePermit.current = null;} latest.current.props.onDraftChange?.([...ids],images); }
+  function updateNumbers(value:string){
+    manualDraftText.current=value;
+    setText(value);setError('');setPending(null);
+    const current=latest.current.props,structure=current.structure;
+    if(!structure)return;
+    if(picking&&current.liveNumberDraft&&handle.current?.setAtomIds){
+      try{
+        const normalized=value.trim();
+        const ids=!normalized?[]:kind==='coordinate'&&/^\d+$/.test(normalized)
+          ?[structure.atoms[Number(normalized)-1]?.id??'']:parseInteractiveSelection(value,structure,kind);
+        typing.current=true;handle.current.setAtomIds(ids);
+      }catch{/* Leave incomplete text editable; confirmation validates it. */}
+      finally{typing.current=false;}
+    }else try{current.onDraftChange?.(parseInteractiveSelection(value,structure,kind));}catch{current.onDraftChange?.([]);}
+  }
   function accept(ids: string[], assertCurrent = guard(), overwrite = false, propagateError = false, images?:Vector3[]) {
     try { assertCurrent(); const current = latest.current.props; if (!current.structure) throw new Error('请先提供结构。'); inputSelectionIndices(current.structure, ids); current.onConfirm([...ids], assertCurrent, overwrite, images); setPending(null); setError(''); return true; }
     catch (cause) { if (cause instanceof RegionSelectionConflict) { const snapshotGuard = guard(true); setPending({ ids: [...ids], guard: () => { assertCurrent(); snapshotGuard(); }, conflict: cause }); setError(''); } else { setPending(null); setError(causeText(cause)); if (propagateError) throw cause; } return false; }
   }
   function confirm() {
     try {
-      if (picking && handle.current) { handle.current.assertCurrent(); handle.current.confirm(); return; }
+      if (picking && handle.current) {
+        handle.current.assertCurrent();
+        if(props.liveNumberDraft&&handle.current.setAtomIds&&props.structure)handle.current.setAtomIds(parseInteractiveSelection(text,props.structure,kind));
+        handle.current.confirm();return;
+      }
       if (!latest.current.props.structure) throw new Error('请先提供结构。');
       const ids = parseInteractiveSelection(text, latest.current.props.structure, kind);
       // The manual-number path acquires the same owner/activation seal too.
@@ -111,7 +151,11 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
     try {
       const current = latest.current.props, currentKind = current.kind ?? 'atoms';
       if (!current.structure) throw new Error('请先提供结构。');
-      const initial = initialOverride ?? [];
+      let initial = initialOverride ?? (current.liveNumberDraft?[...new Set(current.atomIds.filter(id=>current.structure!.atoms.some(atom=>atom.id===id)))]:[]);
+      if(current.preserveNumberDraftOnCancel&&initialOverride===undefined){
+        manualDraftText.current=current.numberText??text;
+        try{if(manualDraftText.current.trim())initial=parseInteractiveSelection(manualDraftText.current,current.structure,currentKind);}catch{/* An incomplete number draft remains available after cancelling capture. */}
+      }
       handle.current?.cancel(); handle.current = null; epoch.current++;
       const assertLocal = guard(), captureEpoch = epoch.current;
       if (current.onRequestSelection || current.onRequestAnalysisSelection) {
@@ -126,7 +170,7 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
             const confirmed = !immediate && current.purpose === 'frozen-atoms' ? [...new Set([...latest.current.props.atomIds, ...ids])] : ids;
             return accept(confirmed, guard(), Boolean(permit), true, images);
           },
-          onEnd: result => { if (!alive.current || epoch.current !== captureEpoch) return; epoch.current++; handle.current = null; captureOwner.current = null; overwritePermit.current = null; setPicking(false); if (result === 'cancelled') { setPending(null); setText(formatSelection(latest.current.props, latest.current.props.atomIds)); latest.current.props.onDraftChange?.([...latest.current.props.atomIds]); } latest.current.props.onEnd?.(result); },
+          onEnd: result => { if (!alive.current || epoch.current !== captureEpoch) return; epoch.current++; handle.current = null; captureOwner.current = null; overwritePermit.current = null; setPicking(false); if (result === 'cancelled') { setPending(null); if(latest.current.props.preserveNumberDraftOnCancel){if(manualDraftText.current!==null)setText(manualDraftText.current);}else{setText(formatSelection(latest.current.props, latest.current.props.atomIds)); latest.current.props.onDraftChange?.([...latest.current.props.atomIds]);} } latest.current.props.onEnd?.(result); },
         };
         const returned = current.captureOwner
           ? current.onRequestAnalysisSelection({ ...callbacks, owner: current.captureOwner, contextKey: current.contextKey, purpose: current.analysisPurpose ?? 'surface-region', kind: current.kind==='coordinate'?'coordinate':'atoms' })
@@ -159,18 +203,24 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
     } catch (cause) { setError(causeText(cause)); }
   }
   const selectionActions = <>{kind==='atoms'&&props.remainingAtomIds && <button type="button" disabled={disabled || picking || !props.remainingAtomIds.length} onClick={appendRemaining}>使用剩余所有原子</button>}{!!props.draftChoices?.length&&<select aria-label={props.label+'更多选择'} value="" disabled={disabled||picking} onChange={event=>{const choice=props.draftChoices?.[Number(event.target.value)];if(choice)draft([...choice.atomIds]);}}><option value="" disabled>更多选择</option>{props.draftChoices.map((choice,index)=><option key={choice.label} value={index} disabled={!choice.atomIds.length}>{choice.label}</option>)}</select>}</>;
-  function clear() { handle.current?.cancel();handle.current=null;setPicking(false);setPending(null);latest.current.props.onClear?.(); }
+  function clear() { try{latest.current.props.onClear?.();handle.current?.cancel();handle.current=null;setPicking(false);setPending(null);}catch(cause){setError(causeText(cause));} }
   const actionButtons=<><button type="button" className="button button-white" disabled={disabled || picking || (!props.onRequestSelection && !props.onRequestAnalysisSelection && !props.onPick)} aria-label={props.label + '交互式选择'} title="交互式选择" onClick={() => pick()}><span className="interactive-selection-button-text">交互式选择</span><MousePointer2 className="interactive-selection-button-icon" size={15} aria-hidden="true"/></button>
       <button type="button" className="button button-primary" disabled={disabled} aria-label={props.label + '确定'} title="确定选择" onClick={confirm}><span className="interactive-selection-button-text">确定</span><Check className="interactive-selection-button-icon" size={15} aria-hidden="true"/></button></>;
-  return <div className="interactive-selection-field" data-testid="interactive-selection-field" data-row-id={props.rowId} data-picking={picking}>
-    {props.renderHeader?props.renderHeader(null):props.onClear&&<SelectionGroupHeader title={props.label} actions={<button type="button" disabled={disabled||props.clearDisabled} onClick={clear}>{props.clearLabel??'清空定义'}</button>}/>}
-    <div className={`interactive-selection-row${props.wrapActions?' interactive-selection-row-wrap':''}`}><label className="field">原子编号<input aria-label={props.label + '原子编号'} placeholder={kind === 'atoms' ? '1-10,21' : '按顺序填2、3或4个编号'} value={text} disabled={disabled || picking} aria-invalid={!!error} onChange={event => { setText(event.target.value); setError(''); setPending(null); try { props.onDraftChange?.(parseInteractiveSelection(event.target.value, props.structure!, kind)); } catch { props.onDraftChange?.([]); } }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); confirm(); } }} /></label>
-      {props.wrapActions?<span className="interactive-selection-buttons">{actionButtons}</span>:actionButtons}</div>
-    {picking && <div className="interactive-selection-actions"><button type="button" onClick={() => { handle.current?.cancel(); handle.current = null; setPicking(false); setText(canonical); setPending(null); }}>取消本次选择</button></div>}
+  const clearAction = props.onClear && <SelectionRemoveButton label={props.clearLabel??`清空${props.label}定义`} disabled={disabled||props.clearDisabled} onClick={clear}/>;
+  const numberControl = <label className="field">原子编号<input aria-label={props.label + '原子编号'} placeholder={kind === 'atoms' ? '1-10,21' : '按顺序填2、3或4个编号'} value={text} disabled={disabled || picking&&!props.liveNumberDraft} aria-invalid={!!error} onChange={event=>updateNumbers(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); confirm(); } }} /></label>;
+  const field = <div className="interactive-selection-field" data-testid="interactive-selection-field" data-row-id={props.rowId} data-picking={picking}>
+    {props.renderHeader ? props.renderHeader(null) : !props.renderContainer && clearAction && (props.headerVariant==='subcard'
+      ? <InputSettingsCardHeader title={props.label} titleRole="subcard" actions={<span className="interactive-selection-header-actions">{clearAction}</span>}/>
+      : <SelectionGroupHeader title={props.label} actions={clearAction}/>)}
+    {props.renderSelectionRow ? props.renderSelectionRow(numberControl, actionButtons) : <div className="interactive-selection-row interactive-selection-row-wrap">{numberControl}
+      <span className="interactive-selection-buttons">{actionButtons}</span></div>}
+    {picking && <div className="interactive-selection-actions"><button type="button" onClick={() => { handle.current?.cancel(); handle.current = null; setPicking(false); if(!props.preserveNumberDraftOnCancel)setText(canonical); setPending(null); }}>取消本次选择</button></div>}
+    {picking&&props.renderDraft?.(draftIds.current,draftImages.current)}
     {!picking&&(kind==='atoms'&&props.remainingAtomIds||props.draftChoices?.length)&&<div className="interactive-selection-actions">{selectionActions}</div>}
     {text !== canonical && !picking && !pending && <p className="interactive-selection-hint">编号草稿尚未确认，当前科学成员不变。</p>}
     {pending && <div role="alertdialog" aria-label="区域覆盖确认" className="interactive-selection-conflict"><p>{pending.conflict.message}</p><button type="button" onClick={confirmOverwrite}>确认覆盖</button><button type="button" onClick={() => { overwritePermit.current = null; setPending(null); }}>取消覆盖</button></div>}
     {error && <DismissibleNotice className="interactive-selection-error" role="alert">{error}</DismissibleNotice>}
     {identityError && <DismissibleNotice className="interactive-selection-error" role="alert">{identityError}</DismissibleNotice>}
   </div>;
+  return props.renderContainer ? props.renderContainer(field, clearAction) : field;
 }

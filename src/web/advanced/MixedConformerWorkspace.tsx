@@ -1,3 +1,4 @@
+import {useGxtbBackend,gxtbSamplingRunBlocked,GxtbAvailability} from '../results/GxtbPathControl';
 import NumericInput from '../NumericInput';
 import {DismissibleNotice} from '../DismissibleNotice';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -25,9 +26,10 @@ import {
 } from "../../modeling/advanced/sampling-sphere";
 import { conformerSamplingSchedule } from "../../modeling/advanced/sampling-progress";
 import { molecularFormula } from "../../core/elements";
-import { baseElectronicStateError } from "../../core/base-electronic-state";
+import { baseElectronicStateParameterError as baseElectronicStateError } from "../../core/base-electronic-state";
+import {electronicStateWarning} from '../../core/elements';
 import BaseElectronicStateFields from "../BaseElectronicStateFields";
-import { InputSettingsCard, InputSettingsField, InputSettingsRow } from "../InputSettingsFields";
+import { InputSettingsCard, InputSettingsField, InputSettingsNumericControl, InputSettingsRow, InputSettingsStack } from "../InputSettingsFields";
 import {
 	InputSettingsAction,
 	InputSettingsCheckbox,
@@ -50,10 +52,13 @@ import ConformerOptimizationStages from "./ConformerOptimizationStages";
 import ConformerRunError from './ConformerRunError';
 import {conformerUpstreamSummary} from '../../modeling/advanced/conformer-cluster-collection';
 import ConformerStageResults from "./ConformerStageResults";
+import ConformerRetainedBatch from "./ConformerRetainedBatch";
+import ConformerConstraintSettings,{type ConformerCoordinateSelection} from './ConformerConstraintSettings';
 import SamplingSphereEditor from "./SamplingSphereEditor";
+import InlineModelHelp from '../modeling/InlineModelHelp';
 import { overrideAdvancedTaskSource } from "./capture-source";
 import {conformerInitialGeometrySelected,conformerInitialCompatible,conformerInitialHasInformation} from './conformer-initial-state';
-import {advancedElectronicConfirmationKey,advancedElectronicDraftState} from './electronic-state-sync';
+import {advancedElectronicConfirmationMatches,advancedElectronicDraftState,advancedElectronicTextValues,submitAdvancedElectronicText,type AdvancedElectronicText} from './electronic-state-sync';
 import {
 	createAdvancedDisplay,
 	sameDisplaySource,
@@ -134,6 +139,7 @@ function usableComputeResources(value:AdvancedWorkspaceProps['computeResources']
 
 /** One page owns one search. Controller snapshots own all scientific runs. */
 export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
+ const gxtbBackend=useGxtbBackend();
 	const state = useSyncExternalStore(
 		p.controller.subscribe,
 		p.controller.getSnapshot,
@@ -161,7 +167,6 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	// Retained soft fields are historical only. This card and new requests use
 	// the same public hard-freeze owner as F and the modeling workspace.
 	const effectiveDraft=draft;
-	const [emptyProtectionOpen,setEmptyProtectionOpen]=useState(false);
 	const [fallbackSource, setFallbackSource] = useState<AdvancedFrameSource | null>(
 		initial.current?.source ?? null
 	);
@@ -175,7 +180,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		[clearing,setClearing]=useState(false),
 		[error, setError] = useState(""),
 		[adding, setAdding] = useState(false);
-	const busy = running(run) || submitting;
+	const busy = running(run) || submitting || p.controller.isConformerBatchReloading(task?.id);
 	// The selected initial owns scientific input. Observation is used only by
 	// an explicit capture or while creating a new search.
 	const editingInitial = Boolean(task && p.activeConformerInitial?.taskId===task.id&&p.activeConformerInitial?.initialId===selectedInitial?.id);
@@ -187,6 +192,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const frameSelected = Boolean(initialGeometryCurrent&&taskSource&&(!editingInitial||conformerInitialGeometrySelected(taskSource,source)));
 	const requiresNewSearch=Boolean(conformerInitialHasInformation(task)&&taskSource&&editingInitial&&source&&!conformerInitialCompatible(taskSource,source));
 	const [sphere, setSphere] = useState<SamplingSphereDraft | null>(initial.current?.sphere ?? null);
+	const [sphereInputInvalid,setSphereInputInvalid]=useState(false);
 	const [collectionId, setCollectionId] = useState(initial.current?.collectionId ?? "");
 	const [fit, setFit] = useState<AdvancedDisplayFit>(initial.current?.fit ?? "proper");
 	const [displayCoreIds,setDisplayCoreIds]=useProjectState<string[]|null>('conformer.playback.displayCoreIds',initial.current?.displayCoreIds??null,scope);
@@ -202,10 +208,14 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		[hover, setHover] = useState<{ cardId: string; rowId: string } | null>(null);
 	const sourceElectronic=advancedElectronicDraftState(source??taskSource,p.sourceElectronicState,p.displayedSource,p.displayTargetId,busy);
 	const [electronic, setElectronic] = useState(sourceElectronic);
+  const electronicTextKey=JSON.stringify([task?.id??scope,selectedInitial?.id??null]);
+  const [electronicText,setElectronicText]=useProjectState<{key:string;charge:string;multiplicity:string}|null>('conformer-electronic-draft',null,scope);
+  const rawElectronic=electronicText?.key===electronicTextKey?{charge:electronicText.charge,multiplicity:electronicText.multiplicity}:{charge:Number.isFinite(electronic.charge)?String(electronic.charge):'',multiplicity:Number.isFinite(electronic.multiplicity)?String(electronic.multiplicity):''};
+  const electronicInput=useRef({key:electronicTextKey,raw:rawElectronic});electronicInput.current={key:electronicTextKey,raw:rawElectronic};
+  const lastElectronicEdit=useRef<{key:string;field:'charge'|'multiplicity'}|null>(null);
 	const [confirmedElectronic,setConfirmedElectronic]=useState(task?.mixedSampling?.electronicConfirmation??'');
 	const confirmationSource=editingInitial?source:observedInitialSource??taskSource;
-	const electronicConfirmationKey=advancedElectronicConfirmationKey(confirmationSource,electronic);
-	const electronicConfirmed=frameSelected&&(confirmedElectronic===electronicConfirmationKey||task?.mixedSampling?.electronicConfirmation===electronicConfirmationKey);
+	const electronicConfirmed=frameSelected&&(advancedElectronicConfirmationMatches(confirmedElectronic,confirmationSource,electronic)||advancedElectronicConfirmationMatches(task?.mixedSampling?.electronicConfirmation,confirmationSource,electronic));
 	const [clock,setClock]=useState(()=>Date.now());
 	useEffect(()=>{if(!p.active||!running(run))return;const timer=setInterval(()=>setClock(Date.now()),1000);return()=>clearInterval(timer);},[p.active,run?.id,run?.status]);
 	const resources = usableComputeResources(p.computeResources);
@@ -297,8 +307,6 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			const owned = latest.current.task;
 			if (owned&&(!conformerInitialHasInformation(owned)||conformerInitialCompatible(owned.spec.source,next))) {
 				p.controller.updateInitialSource(owned.id,next);
-				p.controller.clearMixedElectronicConfirmation(owned.id);
-				setConfirmedElectronic('');
 				setInitialGeometryCurrent(true);
 				setFallbackSource(next);
 				p.onObserve(next);
@@ -332,9 +340,11 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	}, [p.active, task, source, p.displayedSource,resources?.threads,resources?.memoryBudgetBytes]);
 	useEffect(() => {
 		if (!source) return;
+    if(electronicText?.key===electronicTextKey)return;
 		if(sourceElectronic.charge!==electronic.charge||sourceElectronic.multiplicity!==electronic.multiplicity)setConfirmedElectronic('');
 		setElectronic(sourceElectronic);
 	}, [sourceElectronic.charge,sourceElectronic.multiplicity,task?.id]);
+  useEffect(()=>{if(electronicText?.key===electronicTextKey)setElectronic({charge:/^[+-]?\d+$/.test(electronicText.charge)?Number(electronicText.charge):NaN,multiplicity:/^\+?\d+$/.test(electronicText.multiplicity)?Number(electronicText.multiplicity):NaN});},[electronicText,electronicTextKey]);
 	const sphereSource = JSON.stringify([
 		selectedInitial?.id,
 		source?.ref.documentId,
@@ -413,12 +423,12 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		);
 		return () => p.onSphereDraft?.(undefined);
 	}, [p.active, p.onSphereDraft, draft.shared.sphereEnabled, sphere, source, p.displayedSource]);
-	const definition = useMemo(() => {
-		if (!source || !resources) return null;
+	const {definition,compileError} = useMemo(() => {
+		if (!source || !resources) return {definition:null,compileError:''};
 		try {
-			return compileMixedDefinition(effectiveDraft, source, resources);
-		} catch {
-			return null;
+			return {definition:compileMixedDefinition(effectiveDraft, source, resources),compileError:''};
+		} catch(cause) {
+			return {definition:null,compileError:cause instanceof Error?cause.message:String(cause)};
 		}
 	}, [effectiveDraft, source, resources?.threads, resources?.memoryBudgetBytes]);
 	const definitionKey = definition ? JSON.stringify(definition) : "",
@@ -494,7 +504,9 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const ownerDocument = () => root.current?.ownerDocument;
 	const confirm = (message: string) => confirmSynchronousOperation(message, ownerDocument());
 	function beginSampling(mode: "continue" | "append" | "restart") {
+  if(mode==='continue'?samplingContinueBlocked:samplingNewBlocked)throw Error('请先在全局设置中配置可用的 g-xTB 程序。');
 		if (submitLock.current || !task?.mixedSampling || busy) return;
+		if(draft.shared.sphereEnabled&&sphereInputInvalid)throw Error('请修正球内限制的参数。');
 		if (!resources) throw Error(RESOURCES_WAITING);
 		if (!source || !draft.cards.length) throw Error("请先添加采样方式。");
 		if (!electronicConfirmed || baseElectronicStateError(source.structure,electronic)) throw Error("请先确认本次任务的电荷与自旋多重度。");
@@ -567,29 +579,48 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	}
 	function commitElectronic() {
 		if (!task || !source || busy) return;
+		const edited=lastElectronicEdit.current;
+    if(edited?.key===electronicTextKey)commitElectronicText(edited.field,electronicInput.current.raw[edited.field]);
+    const submitted=advancedElectronicTextValues(electronicInput.current.raw);
+    if(!submitted)throw Error('电荷必须为整数，自旋多重度必须为正整数。');
 		const captured=p.onReadConformerInitialSource?.(task.id)??source;
 		const initialId=selectedInitial?.id;
 		if(!initialId)throw Error('请明确选择本次采样使用的初猜。');
-		const issue = baseElectronicStateError(captured.structure, electronic);
+		const issue = baseElectronicStateError(captured.structure, submitted);
 		if (issue) {
 			setError(issue);
 			return;
 		}
 		const previous={charge:task.spec.source.structure.charge!,multiplicity:task.spec.source.structure.multiplicity!};
 		const hasResults=collections.some(collection=>collection.frames.length>0)||Boolean(task.mixedSampling?.batches?.some(batch=>batch.cards.some(card=>card.frameIds.length)))||task.runs.some(run=>run.frames.length>0);
-		const accepted=commitConformerElectronicDraft(previous,electronic,hasResults,confirm,()=>{
-			if(p.onConformerElectronicStateChange)p.onConformerElectronicStateChange(task.id,initialId,captured,{...electronic,confirmed:false});
-			else p.onElectronicStateChange?.(captured,{...electronic,confirmed:false});
+		const accepted=commitConformerElectronicDraft(previous,submitted,hasResults,confirm,()=>{
+			if(p.onConformerElectronicStateChange)p.onConformerElectronicStateChange(task.id,initialId,captured,{...submitted,confirmed:false});
+			else p.onElectronicStateChange?.(captured,{...submitted,confirmed:false});
 			const current=p.onReadConformerInitialSource?.(task.id)??captured;
 			if(current.ref.documentId!==captured.ref.documentId||current.ref.documentEpoch!==captured.ref.documentEpoch||!conformerInitialGeometrySelected(captured,current))throw Error('初始帧在确认期间已变化，请重新确认。');
-			setConfirmedElectronic(p.controller.confirmMixedInitialSource(task.id,current,electronic));
+			setConfirmedElectronic(p.controller.confirmMixedInitialSource(task.id,current,submitted));
 			setInitialGeometryCurrent(true);setObservedInitialSource(current);setFallbackSource(current);
+      if(editingInitial&&p.active&&p.displayTargetId===current.ref.documentId)p.onObserve(current);
 		});
-		if(!accepted)setElectronic(previous);
+		if(!accepted)publishElectronicText({charge:String(previous.charge),multiplicity:String(previous.multiplicity)},previous);
 	}
+	function publishElectronicText(raw:AdvancedElectronicText,values=advancedElectronicTextValues(raw)){
+    electronicInput.current={key:electronicTextKey,raw};
+    setElectronicText({key:electronicTextKey,...raw});
+    setElectronic(values??{charge:/^[+-]?\d+$/.test(raw.charge)?Number(raw.charge):NaN,multiplicity:/^\+?\d+$/.test(raw.multiplicity)?Number(raw.multiplicity):NaN});
+  }
+  function editElectronicText(field:'charge'|'multiplicity',text:string){
+    if(electronicInput.current.key!==electronicTextKey)return;
+    lastElectronicEdit.current={key:electronicTextKey,field};publishElectronicText({...electronicInput.current.raw,[field]:text});
+  }
+  function commitElectronicText(field:'charge'|'multiplicity',text:string){
+    if(!source||electronicInput.current.key!==electronicTextKey)return null;
+    const next=submitAdvancedElectronicText(source.structure,electronicInput.current.raw,field,text);
+    publishElectronicText(next.raw,next.values);lastElectronicEdit.current=null;return next.values;
+  }
 	function changeElectronic(patch:Partial<typeof electronic>) {
-		const next={...electronic,...patch};
-		setConfirmedElectronic('');setElectronic(next);
+    const field=patch.charge!==undefined?'charge':'multiplicity',value=patch[field];
+    if(value!==undefined)commitElectronicText(field,String(value));
 	}
 	function updateCard(id: string, patch: Partial<MixedSamplingCardDraft>) {
 		setDraft((value) => ({
@@ -616,15 +647,14 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	async function changeFrozenAtoms(ids:readonly string[]):Promise<boolean>{
 		if(!task||!editingInitial||!p.conformerFreezeEditable||!p.displayedSource||!p.onConformerFreezeChange)return false;
 		const accepted=await p.onConformerFreezeChange(task.id,p.displayedSource,[...ids]);
-		if(accepted)setEmptyProtectionOpen(false);
 		return accepted;
 	}
-	async function changeProtectionCardEnabled(enabled:boolean){
-		if(!p.conformerFreezeEditable)return;
-		if(enabled){if(!(p.currentSourceFreezeAtomIds?.length))setEmptyProtectionOpen(true);return;}
-		regionCapture.cancel();
-		if(!(p.currentSourceFreezeAtomIds?.length)){setEmptyProtectionOpen(false);return;}
-		await changeFrozenAtoms([]);
+	function changeFrozenCoordinate(ids:string[],frozen:boolean,previousCoordinate?:ConformerCoordinateSelection):boolean|Promise<boolean>{
+		if(!task||!editingInitial||!p.conformerFreezeEditable||!p.displayedSource||!p.onConformerCoordinateFreezeChange)return false;
+		if(!ids.length)return false;
+		const type=ids.length===2?'B':ids.length===3?'A':ids.length===4?'D':undefined;
+		if(!type||new Set(ids).size!==ids.length)throw Error('请按顺序选择 2–4 个不同原子。');
+		return p.onConformerCoordinateFreezeChange(task.id,p.displayedSource,{type,atomIds:ids},frozen,previousCoordinate);
 	}
 	const previewOwner = hover ?? preview;
 	const torsionPreview = useMemo(() => {
@@ -741,14 +771,19 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		mix = samplingRun?.mixedSampling;
 	const cardFrozenIds=p.currentSourceFreezeAtomIds??[];
 	const freezeEditable=Boolean(editingInitial&&p.conformerFreezeEditable&&p.onConformerFreezeChange&&p.displayedSource);
-	const protectionCardEnabled=cardFrozenIds.length>0||(freezeEditable&&emptyProtectionOpen);
+	const constraintSource=editingInitial?p.displayedSource??source:source;
+	const constraints=constraintSource?effectiveSharedFreezes(constraintSource.constraints).coordinates:[];
+	const coordinateEditable=Boolean(editingInitial&&p.conformerFreezeEditable&&p.displayedSource&&p.onConformerCoordinateFreezeChange&&!busy);
 	const batches=task?.mixedSampling?.batches??[],currentBatch=batches.find(batch=>batch.id===task?.mixedSampling?.currentBatchId);
 	const hasSamplingHistory=batches.length>0||Boolean(task?.runs.some(run=>run.intent==='sampling'))||Boolean(collections[0]?.frames.length);
 	const atomConfigurationError=atomConfigurationIssues.core??Object.values(atomConfigurationIssues.cards)[0]??'';
-	let samplingConfigurationError='';
+	const invalidSphere=draft.shared.sphereEnabled&&sphereInputInvalid;
+	let samplingConfigurationError=atomConfigurationError?'':compileError;
 	let samplingImpact:ReturnType<AdvancedController['previewMixedConfiguration']>|undefined;
 	try{samplingImpact=task&&definition?p.controller.previewMixedConfiguration(task.id,definition):undefined;}catch(cause){samplingConfigurationError=cause instanceof Error?cause.message:String(cause);}
 	const batchLocked=Boolean(currentBatch?.sealed||samplingImpact?.sealed);
+ const samplingNewBlocked=gxtbSamplingRunBlocked(gxtbBackend,draft.cards);
+ const samplingContinueBlocked=gxtbSamplingRunBlocked(gxtbBackend,draft.cards,samplingImpact?.pendingCardIds);
 	const renderCardProgress=(card:AdvancedSamplingCardState,configuration:AdvancedMixedSamplingCard,index:number)=><ConformerSamplingCardProgress card={card} configuration={configuration} index={index} batchRunning={running(samplingRun)} configurationChanged={samplingImpact?.affectedCardIds.includes(card.id)} remainingMs={card.id===currentCard?.id?remaining:null} generationProgress={conformerGenerationProgressForCard(samplingRun,task?.id,currentBatch?.id,card.id)}/>;
 	const currentCard=mix?.definition.cards[mix.currentCardIndex];
 	const currentSchedule=currentCard?.kind==='sampling'?conformerSamplingSchedule(currentCard.sampling):null;
@@ -766,19 +801,19 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			task?.conformerWorkflow?.candidateSet?.valid &&
 			task.conformerWorkflow.candidateSet.frameIds.length &&
 			(index === 0 ||
-				conformerUpstreamSummary(task,index,draft.stages[index].inputClusterCount??10,draft.stages[index].inputStride??1).ready)
+				conformerUpstreamSummary(task,index,draft.stages[index].inputClusterCount??10).ready)
 		);
 	const collectionStates = Object.fromEntries(
 		collections.map((collection) => {
 			const owned = task?.runs.find((value) => value.id === collection.identity.runId);
-			const interrupted=collection.id.endsWith(':interrupted'),stage=task?.conformerWorkflow?.stages.find(stage=>stage.collectionId===collection.id||stage.collectionId+':interrupted'===collection.id),partial=!interrupted&&stage?.resultFrameIds!==undefined&&!stage.completed;
+			const interrupted=collection.id.endsWith(':interrupted')||collection.id.endsWith(':unconverged'),stage=task?.conformerWorkflow?.stages.find(stage=>stage.collectionId===collection.id),partial=!interrupted&&stage?.resultFrameIds!==undefined&&!stage.completed;
 			const stale=collection.includeEnergies&&stage&&!stage.valid&&!partial&&stage.representativeFrameIds.length;
 			return [
 				collection.id,
 				{
 					runId: owned?.id,
 					partial,interrupted,
-					message: interrupted?'本级中断时的可信结构，未收敛；不计入当前有效完成或晋级名单。':partial?`部分有效结果可浏览；本级晋级尚未结算${owned?' · '+RUN_LABEL[owned.status]:''}`:stale?'待更新：尚未包含当前采样集合':owned
+					message: interrupted?'达到最大优化步数。可查看本次结构和能量，并从该结构继续本级优化。':partial?`部分有效结果可浏览；本级晋级尚未结算${owned?' · '+RUN_LABEL[owned.status]:''}`:stale?'待更新：尚未包含当前采样集合':owned
 						? `${RUN_LABEL[owned.status]}${owned.error ? " · " + owned.error : owned.stopReason ? " · " + owned.stopReason : ""}`
 						: undefined
 				}
@@ -794,15 +829,16 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			hidden={!p.active}
 			data-testid="mixed-conformer-workspace"
 		>
-			<WorkflowSessionBar label="构象搜索" />
+			{!p.navigationInShell&&<WorkflowSessionBar label="构象搜索" />}
 			<div className="engine-parameter-scroll" data-page-scroll="advanced-configuration" data-testid="mixed-conformer-scroll">
-			<InputSettingsLayout>
+				<InputSettingsLayout variant="standard" className="conformer-configuration-surface advanced-settings-surface"><InputSettingsStack kind="cards">
 				{!resources&&<output role="status" aria-label="构象搜索资源状态">{RESOURCES_WAITING}</output>}
 				{requiresNewSearch&&<InputSettingsAction disabled={busy||capturing||!resources} onClick={()=>act(capture)}>以当前帧建立新搜索</InputSettingsAction>}
-				<BaseElectronicStateFields
-                    disabled={!source || !task || busy || capturing || requiresNewSearch}
+				<InputSettingsCard title="基础设置" stack><BaseElectronicStateFields embedded preserveNumericDraft chargeFieldLabel="电荷" confirmButtonText="确定"
+                    disabled={!source} confirmationDisabled={!task||busy||capturing||requiresNewSearch}
                     charge={electronic.charge} multiplicity={electronic.multiplicity}
-                    confirmed={electronicConfirmed} error={electronicError}
+                    confirmed={electronicConfirmed} error={electronicError} warning={source?electronicStateWarning(source.structure.atoms,electronic.charge,electronic.multiplicity):null}
+                    rawText={rawElectronic} onRawTextChange={editElectronicText} onRawTextCommit={commitElectronicText}
                     chargeLabel="本次任务电荷" multiplicityLabel="本次任务自旋多重度"
                     confirmationLabel="确认构象搜索基础电子态"
                     onChargeChange={charge=>act(()=>changeElectronic({charge}))}
@@ -811,15 +847,19 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
                 >
                     <p className="conformer-current-source" data-initial-guess-id={selectedInitial?.id}>{source?`初猜：${selectedInitial?.label??`帧 ${(source.ref.sourceFrameIndex??0)+1}`} · ${molecularFormula(source.structure.atoms)} · ${source.structure.atoms.length} 原子`:'尚无当前帧'}</p>
                     {task&&!frameSelected&&<p role="status">{requiresNewSearch?'当前体系与原搜索不兼容，请以当前帧建立新搜索；原搜索及结果保留。':'初始结构已修改，请确认电荷与自旋多重度。'}</p>}
-                </BaseElectronicStateFields>
-				<InputSettingsCard title="混合采样" testId="mixed-sampling-settings">
-					<div className="mixed-sampling-definition">
-						<details className="conformer-advanced-sampling"><summary>高级采样设置{protectionCardEnabled||draft.shared.sphereEnabled?' · 已启用':''}</summary><fieldset disabled={!source} className="conformer-advanced-groups">
-							<InputSettingsEnableCard className="conformer-advanced-card" level="subcard" title="保护原子" switchLabel="启用保护原子" testId="conformer-core-protection-card" enabled={protectionCardEnabled} disabled={!freezeEditable} onEnabledChange={enabled=>act(()=>changeProtectionCardEnabled(enabled))}>
-								<div className="conformer-freeze-field"><AdvancedRegionField source={editingInitial?p.displayedSource??source:source} port={regionCapture.selectionPort} enabled={freezeEditable} ids={[...cardFrozenIds]} label="保护原子" onRequest={()=>coordinateCapture.cancel()} onConfirm={ids=>act(()=>changeFrozenAtoms(ids))}/></div>
-							</InputSettingsEnableCard>
-							<InputSettingsEnableCard className="conformer-advanced-card" level="subcard" title="限制在球内" switchLabel="将体系限制在一个球内" testId="conformer-sphere-protection-card" enabled={draft.shared.sphereEnabled} disabled={busy||!source} onEnabledChange={sphereEnabled=>setDraft(value=>({...value,shared:{...value.shared,sphereEnabled}}))}><SamplingSphereEditor draft={sphere} disabled={busy} onChange={acceptSphere} onRefit={()=>source&&acceptSphere(createSamplingSphereDraft(source.ref.documentId,source.ref.revision,source.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),draft.shared.spherePaddingAngstrom))}/></InputSettingsEnableCard>
-						</fieldset></details>
+				</BaseElectronicStateFields></InputSettingsCard>
+				<InputSettingsSection title="高级采样设置" collapsible stack sectionKey="conformer-advanced-sampling">
+					<fieldset disabled={!source} className="conformer-advanced-groups"><InputSettingsStack>
+						<ConformerConstraintSettings source={constraintSource} atomIds={cardFrozenIds} coordinates={constraints} ownerKey={JSON.stringify([task?.id,selectedInitial?.id])}
+						 atomPort={regionCapture.selectionPort} coordinatePort={coordinateCapture.selectionPort} atomsEditable={freezeEditable} coordinatesEditable={coordinateEditable}
+						 onAtomRequest={()=>coordinateCapture.cancel()} onCoordinateRequest={()=>regionCapture.cancel()}
+						 onAtoms={ids=>act(()=>changeFrozenAtoms(ids))} onCoordinate={changeFrozenCoordinate}/>
+						<InputSettingsEnableCard className="conformer-advanced-card" level="subcard" title="球内限制" stack switchLabel="将体系限制在一个球内" testId="conformer-sphere-protection-card" enabled={draft.shared.sphereEnabled} disabled={busy||!source} onEnabledChange={sphereEnabled=>setDraft(value=>({...value,shared:{...value.shared,sphereEnabled}}))}><SamplingSphereEditor draft={sphere} disabled={busy} onInvalidChange={setSphereInputInvalid} onChange={acceptSphere} onRefit={()=>source&&acceptSphere(createSamplingSphereDraft(source.ref.documentId,source.ref.revision,source.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),draft.shared.spherePaddingAngstrom))}/></InputSettingsEnableCard>
+					</InputSettingsStack></fieldset>
+				</InputSettingsSection>
+				<InputSettingsCard title="混合采样" testId="mixed-sampling-settings" stack actions={<InputSettingsAction variant="primary" ariaLabel="添加采样方式" disabled={busy||!source} onClick={()=>setAdding(value=>!value)}>添加采样方式</InputSettingsAction>}>
+					{adding&&<InputSettingsRow>{MIXED_SAMPLING_CHOICES.map(choice=><InputSettingsAction key={choice.id} disabled={busy||!source}
+						ariaLabel={`添加${choice.label}`} onClick={()=>addCard(choice.id)}>{choice.label}</InputSettingsAction>)}</InputSettingsRow>}
 						{draft.cards.map((card, index) => (
 							<div key={card.id} className="conformer-sampling-card">
 							<details
@@ -831,8 +871,8 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 										updateCard(card.id, { expanded: event.currentTarget.open });
 								}}
 							>
-								<summary className="shared-input-card-title">
-									<span>
+								<summary className="shared-input-section-toggle">
+									<span className="shared-input-section-label">
 										采样{index + 1} ·{" "}
 										{MIXED_SAMPLING_CHOICES.find((value) => value.id === card.kind)?.label}
 									</span>
@@ -871,7 +911,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 										</button>
 									</span>
 								</summary>
-								<fieldset disabled={busy||!source} className="conformer-sampling-parameters">
+								<fieldset disabled={busy||!source} className="conformer-sampling-parameters"><InputSettingsStack>
 								{atomConfigurationIssues.cards[card.id]&&<output role="status">{atomConfigurationIssues.cards[card.id]}</output>}
 								{card.kind === "conformer-search" ? (
 									<>
@@ -973,56 +1013,29 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 										}
 									/>
 								)}
-								</fieldset>
+								</InputSettingsStack></fieldset>
 							</details>
 							{currentBatch?.cards.find(value=>value.id===card.id)&&renderCardProgress(currentBatch.cards.find(value=>value.id===card.id)!,definition?.cards.find(value=>value.id===card.id)??currentBatch.cards.find(value=>value.id===card.id)!.configuration,index)}
 							</div>
 						))}
-						<InputSettingsRow>
-							<InputSettingsAction
-								ariaLabel="添加采样方式"
-								variant="primary"
-								disabled={busy||!source}
-								onClick={() => setAdding((value) => !value)}
-							>
-								添加采样方式
-							</InputSettingsAction>
-							{adding &&
-								MIXED_SAMPLING_CHOICES.map((choice) => (
-									<InputSettingsAction
-										key={choice.id}
-										disabled={busy||!source}
-										ariaLabel={`添加${choice.label}`}
-										onClick={() => addCard(choice.id)}
-									>
-										{choice.label}
-									</InputSettingsAction>
-								))}
-						</InputSettingsRow>
-						<fieldset disabled={busy||!source||!resources} className="conformer-deduplication"><InputSettingsCheckbox label="去重" ariaLabel="采样末尾去重" checked={draft.deduplicationEnabled!==false} onChange={deduplicationEnabled=>act(()=>changeDeduplication({deduplicationEnabled}))}/>
-						<InputSettingsField label="RMSD / Å">
-							<NumericInput
-								aria-label="采样去重 RMSD"
+						<fieldset disabled={busy||!source||!resources} className="conformer-deduplication"><InputSettingsStack><InputSettingsRow>
+						<InputSettingsCheckbox label="去重" ariaLabel="采样末尾去重" checked={draft.deduplicationEnabled!==false} onChange={deduplicationEnabled=>act(()=>changeDeduplication({deduplicationEnabled}))}/>
+						<InputSettingsField label="RMSD" unit="Å" controlWidth="number">
+							<InputSettingsNumericControl
+								ariaLabel="采样去重 RMSD"
 								disabled={draft.deduplicationEnabled===false}
 								min={0.000001}
-								step={0.001}
-								value={draft.dedupRmsdAngstrom}
-								onBlur={()=>act(()=>changeDeduplication({dedupRmsdAngstrom:draft.dedupRmsdAngstrom}))}
-								onChange={(event) =>
-									setDraft((value) => ({
-										...value,
-										dedupRmsdAngstrom: event.currentTarget.valueAsNumber
-									}))
-								}
+								value={draft.dedupRmsdAngstrom??.01}
+								onCommit={dedupRmsdAngstrom=>act(()=>changeDeduplication({dedupRmsdAngstrom}))}
+								onValue={dedupRmsdAngstrom=>setDraft(value=>({...value,dedupRmsdAngstrom}))}
 							/>
-						</InputSettingsField>
+						</InputSettingsField></InputSettingsRow>
 						{draft.deduplicationEnabled!==false&&samplingRun?.backgroundProgress?.phase==='deduplicate'&&(()=>{const progress=samplingRun.backgroundProgress;return <><output>总共收到 {progress.total??'—'}帧，已处理 {progress.completed} / {progress.total??'—'}</output><div className="conformer-progress-row"><progress aria-label="采样末尾去重进度" max={progress.total??undefined} value={progress.total===null?undefined:progress.completed}/><output>{progress.total?Number((progress.completed/progress.total*100).toFixed(1)):0}%　预计剩余 {progress.etaMs==null?'估算中':samplingRemainingLabel(progress.etaMs)}</output></div></>;})()}
 						{samplingRun?.backgroundProgress?.phase==='prepare-results'&&<div className="conformer-progress-row"><output role="status">{samplingRun.status==='stopping'?'采样计算已停止 · 正在准备保留结果':'正在准备采样结果'}</output><progress aria-label="准备采样结果"/><output>预计剩余 估算中</output></div>}
 						{mix?.deduplicationCompleted&&<output>保留 {collections[0]?.frames.length??0} 帧</output>}
 						{mix?.deduplicationCompleted===false&&<output role="status">去重未完成 · 已处理 {mix.deduplicationProcessed??0} / {mix.deduplicationTotal??0} 帧，未分类完整帧已保留</output>}
-						</fieldset>
-					</div>
-					<div className="mixed-sampling-actions conformer-progress-row">
+						</InputSettingsStack></fieldset>
+					{samplingNewBlocked&&<GxtbAvailability method="gxtb"/>}<InputSettingsRow variant="actions" className="mixed-sampling-actions">
 						<InputSettingsAction
 							variant="primary"
 							disabled={
@@ -1032,16 +1045,16 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 								!draft.cards.length ||
                                 !electronicConfirmed ||
 								!resources ||
-								!task?.mixedSampling || batchLocked || !samplingImpact?.canContinue || Boolean(samplingConfigurationError||atomConfigurationError)
+								!task?.mixedSampling || samplingContinueBlocked || batchLocked || !samplingImpact?.canContinue || invalidSphere || Boolean(samplingConfigurationError||atomConfigurationError)
 							}
 							onClick={() => act(() => beginSampling("continue"))}
 						>
 							{hasSamplingHistory ? "继续采样" : "开始采样"}
 						</InputSettingsAction>
-						<InputSettingsAction disabled={busy||!resources||!electronicConfirmed||!draft.cards.length||!hasSamplingHistory||Boolean(samplingConfigurationError||atomConfigurationError)} onClick={()=>act(()=>beginSampling('restart'))}>重新采样</InputSettingsAction>
+						<InputSettingsAction disabled={samplingNewBlocked||busy||!resources||!electronicConfirmed||!draft.cards.length||!hasSamplingHistory||invalidSphere||Boolean(samplingConfigurationError||atomConfigurationError)} onClick={()=>act(()=>beginSampling('restart'))}>重新采样</InputSettingsAction>
 						<InputSettingsAction
 							disabled={
-								busy || !electronicConfirmed || !draft.cards.length || !hasSamplingHistory || !resources || Boolean(samplingConfigurationError||atomConfigurationError)
+								samplingNewBlocked || busy || !electronicConfirmed || !draft.cards.length || !hasSamplingHistory || !resources || invalidSphere || Boolean(samplingConfigurationError||atomConfigurationError)
 							}
 							onClick={() => act(() => beginSampling("append"))}
 						>
@@ -1061,7 +1074,8 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 						>
 							清空采样
 						</InputSettingsAction>
-					</div>
+					</InputSettingsRow>
+					{hasSamplingHistory&&draft.cards.some(card=>card.kind!=='conformer-search')&&<InlineModelHelp label="继续采样说明">MD／MTD 从上一段的末帧开始新的采样段，重新初始化速度与偏置历史。</InlineModelHelp>}
 					{samplingRun?.error&&error!==samplingRun.error&&<ConformerRunError run={samplingRun}/>}
 					{clearing&&<p role="status">正在清空并释放本任务资源…</p>}
 					{samplingConfigurationError&&<DismissibleNotice>{samplingConfigurationError}</DismissibleNotice>}
@@ -1069,28 +1083,35 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 				</InputSettingsCard>
 				<ConformerOptimizationStages
 					stages={draft.stages}
+					hasCoordinates={constraints.length>0}
 					samplingInputCount={task?.conformerWorkflow?.candidateSet?.valid?task.conformerWorkflow.candidateSet.frameIds.length:undefined}
 					busy={busy}
 					onChange={(stages) => act(()=>changeStages(stages))}
 					canStart={canStartStage}
-					upstreamForStage={index=>conformerUpstreamSummary(task,index,draft.stages[index].inputClusterCount??10,draft.stages[index].inputStride??1)}
+					upstreamForStage={index=>conformerUpstreamSummary(task,index,draft.stages[index].inputClusterCount??10)}
 					onStart={(index) => act(() => startOptimization(index))}
 					onRunAll={() => act(() => startOptimization())}
-					actionForStage={(id)=>{const action=optimizationActionView(task,id);return {...action,error:action.hasRunError&&action.run?<ConformerRunError run={action.run}/>:undefined};}}
+					actionForStage={id => {
+						const action = optimizationActionView(task, id);
+						const error = task && action.run && action.retainedStage
+							? <ConformerRetainedBatch controller={p.controller} taskId={task.id} runId={action.run.id} stage={action.retainedStage} active={p.active} busy={busy}/>
+							: action.hasRunError && action.run ? <ConformerRunError run={action.run}/> : undefined;
+						return { ...action, error };
+					}}
 					onContinue={(index)=>act(()=>startOptimization(index))}
 					onRestart={(index)=>act(()=>startOptimization(index,'restart'))}
 					onRestartAll={()=>act(()=>startOptimization(undefined,'restart'))}
-					onPause={(index)=>act(()=>{const owned=optimizationActionView(task,draft.stages[index].id).run;if(task&&owned)p.controller.pauseOptimization(task.id,owned.id);})}
+					onPause={(index)=>act(()=>{const owned=optimizationActionView(task,draft.stages[index].id).run;if(task&&owned)return p.controller.pauseOptimization(task.id,owned.id);})}
 					onViewResults={(index)=>{const id=task?.conformerWorkflow?.stages.find(stage=>stage.stageId===draft.stages[index].id)?.collectionId??`pending:${task?.id}:${draft.stages[index].id}`,collection=collections.find(value=>value.id===id);if(collection?.frames.length)openCollection(collection);}}
 				/>
-			</InputSettingsLayout>
+			</InputSettingsStack></InputSettingsLayout>
 			</div>
 		</div>
 	);
 	const results = (
 		<div className="advanced-results" hidden={!p.active} data-testid="conformer-results">
 			<WorkflowSessionBar label="采样与优化结果" />
-			<InputSettingsLayout>
+			<InputSettingsLayout variant="standard" className="conformer-results-surface">
 				<ConformerStageResults busy={busy} onOrganize={id=>act(()=>organizeCollection(id))}
 					collections={collections}
 					collectionId={currentCollection?.id}

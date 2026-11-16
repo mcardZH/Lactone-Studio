@@ -208,7 +208,7 @@ export function buildChemistryEngineLauncherScript() {
 
 export function buildMacInstallGuideText({
   productName = 'Lactone Studio',
-  version = '2.0.3',
+  version = '2.1.1',
   arch = 'arm64',
 } = {}) {
   const archLabel = arch === 'arm64' ? 'Apple Silicon (M1/M2/M3/M4, darwin-arm64)' : 'Intel (darwin-x64)';
@@ -257,7 +257,7 @@ export function buildMacInstallGuideText({
     `  点击软件左侧导航栏「任务中心」->「运行环境」，即可添加远程 Linux 服务器的`,
     `  SSH 直连或 SSH + Slurm 调度队列环境，一键提交与监控量化计算任务。`,
     `- 工程文件兼容性：`,
-    `  完美兼容原版 .es 与 .sy 工程文件及 Gaussian/ORCA/CIF/POSCAR/XYZ 等化学格式。`,
+    `  采用 .es 工程格式，并兼容历史 .sy 工程文件与 Gaussian/ORCA/CIF/POSCAR/XYZ 等化学格式。`,
     ``,
     `--------------------------------------------------------------------------------`,
     `【四、科研引用与许可协议提示（遵循 LICENSE.txt）】`,
@@ -331,25 +331,32 @@ function validateExecutableFile(filePath, expectedArch, label, { allowSymlink = 
   }
 }
 
-function verifyXtbRuntimeVersion(xtbRootDir, expectedVersion, arch) {
+function verifyXtbEmbeddedVersion(xtbRootDir, expectedVersion) {
   const xtbBinPath = path.join(xtbRootDir, 'bin', 'xtb');
   const machOArchs = detectMachOArchitectures(xtbBinPath);
   if (machOArchs !== null) {
     const rawLatin1 = fs.readFileSync(xtbBinPath).toString('latin1');
-    const embeddedMatch = /xtb version\x00+(\d+\.\d+\.\d+(?:pre)?)/i.exec(rawLatin1);
+    const embeddedMatch = /xtb version(?:\x00+|\s*|":\s*")(\d+\.\d+\.\d+(?:pre)?)/i.exec(rawLatin1);
     if (!embeddedMatch || embeddedMatch[1] !== expectedVersion) {
       throw new Error(
         `xTB runtime version mismatch (${xtbBinPath}): runtime.json declares ${expectedVersion}, but binary contains ${embeddedMatch ? embeddedMatch[1] : 'unverified version'}`,
       );
     }
   }
+  return machOArchs;
+}
+
+function verifyXtbRuntimeVersion(xtbRootDir, expectedVersion, arch) {
+  const xtbBinPath = path.join(xtbRootDir, 'bin', 'xtb');
+  const machOArchs = verifyXtbEmbeddedVersion(xtbRootDir, expectedVersion);
   if (process.platform === 'darwin' && (arch === process.arch || machOArchs === null)) {
+    const xtbLibDir = path.join(xtbRootDir, 'lib');
     const res = spawnSync(xtbBinPath, ['--version'], {
       env: {
         PATH: '/usr/bin:/bin',
         XTBPATH: path.join(xtbRootDir, 'share', 'xtb'),
         OMP_NUM_THREADS: '1',
-        DYLD_FALLBACK_LIBRARY_PATH: `${path.join(xtbRootDir, 'lib')}:/usr/lib`,
+        DYLD_FALLBACK_LIBRARY_PATH: fs.existsSync(xtbLibDir) ? `${xtbLibDir}:/usr/lib` : '/usr/lib',
       },
       encoding: 'utf8',
       timeout: 15000,
@@ -658,7 +665,7 @@ export function assembleMacAppBundle(options = {}) {
     pythonDepsRoot = defaults.pythonDepsRoot,
     xtbSourceRoot = defaults.xtbSourceRoot,
     productName = repoPkg?.productName || 'Ester Studio',
-    version = repoPkg?.version || '2.0.3',
+    version = repoPkg?.version || '2.1.1',
     bundleId = 'com.sciyue.esterstudio',
     sign = false,
     createDmg = false,
@@ -753,10 +760,20 @@ export function assembleMacAppBundle(options = {}) {
   }
   validateExecutableFile(path.join(xtbSourceRoot, 'bin', 'xtb'), arch, 'xTB executable (bin/xtb)');
   validateMachOTreeArch(xtbSourceRoot, arch, 'xTB runtime');
-  for (const relLib of DARWIN_XTB_LIBRARIES) {
-    const libPath = path.join(xtbSourceRoot, relLib);
-    if (!fs.existsSync(libPath)) throw new Error(`Missing required packaging input (xTB library ${relLib}): ${libPath}`);
-    xtbContract.ordinary(xtbSourceRoot, relLib);
+  verifyXtbEmbeddedVersion(xtbSourceRoot, xtbManifest.version);
+  let hasXtbLibDir = false;
+  try {
+    fs.lstatSync(path.join(xtbSourceRoot, 'lib'));
+    hasXtbLibDir = true;
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (xtbManifest.version !== '6.8.0' || hasXtbLibDir) {
+    for (const relLib of DARWIN_XTB_LIBRARIES) {
+      const libPath = path.join(xtbSourceRoot, relLib);
+      if (!fs.existsSync(libPath)) throw new Error(`Missing required packaging input (xTB library ${relLib}): ${libPath}`);
+      xtbContract.ordinary(xtbSourceRoot, relLib);
+    }
   }
   for (const relParam of DARWIN_XTB_PARAMETERS) {
     const paramPath = path.join(xtbSourceRoot, relParam);

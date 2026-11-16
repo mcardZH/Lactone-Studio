@@ -45,6 +45,18 @@ function contentRootsForPlatform(platform = 'win32-x64') {
   if (platform === 'darwin-arm64' || platform === 'darwin-x64' || platform === 'linux-x64') return Object.freeze(['bin', 'lib', 'share/xtb']);
   assert.fail('XTB_RUNTIME_INVALID: descriptor identity');
 }
+const RUNTIME_SET = 'sciyue-xtb-bundled-runtime/v3';
+const EXTERNAL_GXTB_RUNTIME_SET = 'sciyue-xtb-bundled-runtime/v4';
+const isRuntimeSet = record => [RUNTIME_SET, EXTERNAL_GXTB_RUNTIME_SET].includes(record?.schema);
+const SET_ROOTS = Object.freeze(['bin', 'share/xtb', 'licenses', 'variants', 'provenance']);
+const GFN = Object.freeze(['gfn0', 'gfn1', 'gfn2', 'gfnff']);
+const SET_VARIANTS = Object.freeze({
+  official: { root: '', entry: 'bin/xtb.exe', kind: 'official-release' },
+  'gfn0-stack64': { root: '', entry: 'bin/xtb680-stack64.exe', kind: 'pe-stack-derivative' },
+  gxtb: { root: 'variants/gxtb', entry: 'bin/xtb.exe', kind: 'official-gxtb-release' },
+  fire: { root: 'variants/fire', entry: 'bin/xtb.exe', kind: 'fire-step-limit-rebuild' },
+});
+const forVariant = (value, callback) => Object.fromEntries(Object.keys(value).map(id => [id, callback(value[id], id)]));
 const hashes = new Map();
 function canonical(value) {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -119,11 +131,44 @@ function identityPayload(record, rows, manifestSha256) {
     runtimeMemberDigest: digest(rows), parameterDigest: digest(rows.filter(row => row.path.startsWith('share/xtb/'))),
   };
 }
+function isSafeRelativeMemberPath(relative) {
+  return typeof relative === 'string' && relative.length > 0 && !relative.includes('\\') && !relative.includes('\0')
+    && !path.isAbsolute(relative)
+    && relative.split('/').every(part => part && part !== '.' && part !== '..' && !part.includes(':'));
+}
+function isValidExternalMember(row, restrictLibDepth) {
+  if (!row || typeof row !== 'object' || !isSafeRelativeMemberPath(row.path)) return false;
+  if (restrictLibDepth) {
+    const parts = row.path.split('/');
+    if (parts.length > 2 || (parts.length === 2 && parts[0] !== 'lib')) return false;
+  }
+  return Number.isSafeInteger(row.bytes) && row.bytes >= 0 && SHA.test(row.sha256);
+}
 function assertEngineIdentity(identity) {
   assert(identity?.schema === 'sciyue-xtb-engine-identity/v1' && identity.engine === 'xtb' && SHA.test(identity.sha256)
     && SHA.test(identity.runtimeMemberDigest) && SHA.test(identity.parameterDigest) && typeof identity.buildId === 'string' && identity.buildId.length > 0, 'XTB_RUNTIME_IDENTITY_REQUIRED: engine/build/parameter identity required');
   const { schema, engine, kind, sha256, ...payload } = identity;
   assert.equal(digest(payload), sha256, 'XTB_RUNTIME_IDENTITY_REQUIRED: engine identity digest differs');
+  if (kind === 'external-user-program') {
+    assert(payload.runtimeVariant === 'gxtb' && payload.provider === 'user-external-cli'
+      && SHA.test(payload.executableSha256) && Array.isArray(payload.capabilities) && payload.capabilities.includes('gxtb-cli')
+      && [payload.version,payload.hostVersion,payload.gxtbRelease].every(value => value === null || typeof value === 'string')
+      && Array.isArray(payload.members) && payload.members.length > 0
+      && payload.members.every(row => isValidExternalMember(row, true))
+      && Array.isArray(payload.parameters)
+      && payload.parameters.every(row => isValidExternalMember(row, false)), 'XTB_RUNTIME_IDENTITY_REQUIRED: external g-xTB evidence required');
+    return identity;
+  }
+  if (payload.runtimeVariant !== undefined) {
+    assert(Object.hasOwn(SET_VARIANTS, payload.runtimeVariant)
+      && SET_VARIANTS[payload.runtimeVariant].kind === kind
+      && SHA.test(payload.runtimeManifestSha256), 'XTB_RUNTIME_IDENTITY_REQUIRED: invalid variant identity');
+    if (payload.runtimeVariant === 'gxtb') {
+      assert(payload.gxtbRelease === '2.0.1' && payload.version === '6.7.1'
+        && payload.hostVersion === '6.7.1' && payload.sourceCommit === '30c6303'
+        && payload.hostCommit === '30c6303', 'XTB_RUNTIME_IDENTITY_REQUIRED: g-xTB release and host identity required');
+    }
+  }
   return identity;
 }
 function engineIdentity(record, rows, manifestSha256) {
@@ -131,6 +176,7 @@ function engineIdentity(record, rows, manifestSha256) {
   return { schema: 'sciyue-xtb-engine-identity/v1', engine: 'xtb', kind: record.schema.endsWith('/v1') ? 'legacy-binary-observation' : 'bundled-independent-rebuild', ...payload, sha256: digest(payload) };
 }
 function validateDescriptor(record) {
+  if (isRuntimeSet(record)) return validateRuntimeSet(record);
   assert(
     Boolean(record) &&
       ['sciyue-xtb-bundled-runtime/v1', 'sciyue-xtb-bundled-runtime/v2'].includes(record.schema) &&
@@ -150,6 +196,129 @@ function validateDescriptor(record) {
   }
   return record;
 }
+
+function validateRuntimeSet(record) {
+  assert(isRuntimeSet(record) && record.platform === 'win32-x64' && record.version === '6.8.0' && record.entry === 'bin/xtb.exe'
+    && record.dataDirectory === 'share/xtb' && record.inventory?.path === 'inventory.json'
+    && record.scope === 'local-experimental' && record.localUseReady === true
+    && canonical(record.methods) === canonical(record.schema === EXTERNAL_GXTB_RUNTIME_SET ? GFN : [...GFN, 'gxtb'])
+    && canonical(Object.keys(record.variants ?? {}).sort()) === canonical(Object.keys(SET_VARIANTS).filter(id => record.schema !== EXTERNAL_GXTB_RUNTIME_SET || id !== 'gxtb').sort())
+    && (record.schema !== EXTERNAL_GXTB_RUNTIME_SET || record.externalProviders?.gxtb === 'user-supplied-cli'),
+  'XTB_RUNTIME_INVALID: incomplete runtime set');
+  forVariant(record.variants, (variant, id) => {
+    const expected = SET_VARIANTS[id];
+    assert(variant && variant.root === expected.root && variant.entry === expected.entry && variant.kind === expected.kind
+      && typeof variant.buildId === 'string' && /^[a-zA-Z0-9._-]{1,160}$/.test(variant.buildId)
+      && SHA.test(variant.executableSha256) && SHA.test(variant.sourceReceiptSha256),
+    'XTB_RUNTIME_INVALID: fixed variant entry and build identity required: ' + id);
+    if (id === 'gxtb') {
+      assert(variant.version === '6.7.1' && variant.hostVersion === '6.7.1' && variant.gxtbRelease === '2.0.1'
+        && variant.sourceCommit === '30c6303' && variant.hostCommit === '30c6303' && SHA.test(variant.archiveSha256),
+      'XTB_RUNTIME_INVALID: separate g-xTB release and host identities required');
+    } else {
+      assert(variant.version === record.version && /^[a-f0-9]{40}$/.test(variant.sourceCommit),
+        'XTB_RUNTIME_INVALID: pinned xTB source required: ' + id);
+      if (id === 'fire') {
+        assert(variant.compiler?.name === 'gfortran' && variant.compiler?.version === '13.2.0'
+          && SHA.test(variant.toolchainArchiveSha256) && variant.stackReserveBytes === 67108864
+          && variant.fireStepLimit === 'remaining-microcycles-v1',
+        'XTB_RUNTIME_INVALID: missing FIRE build or algorithm identity');
+      } else {
+        assert(SHA.test(variant.archiveSha256), 'XTB_RUNTIME_INVALID: official archive identity required');
+        if (id === 'gfn0-stack64') assert(variant.stackReserveBytes === 67108864
+          && variant.archiveSha256 === record.variants.official.archiveSha256
+          && variant.parentExecutableSha256 === record.variants.official.executableSha256
+          && variant.executableSha256 !== variant.parentExecutableSha256, 'XTB_RUNTIME_INVALID: GFN0 PE-only derivative identity required');
+      }
+    }
+  });
+  return record;
+}
+
+function runtimeSetVariant({ method, operation, periodic }) {
+  assert(method === undefined || GFN.includes(method) || method === 'gxtb', 'XTB_RUNTIME_INVALID: unsupported method');
+  assert(periodic === undefined || typeof periodic === 'boolean', 'XTB_RUNTIME_INVALID: periodic context must be boolean');
+  if (method === 'gxtb') {
+    assert(!periodic, 'XTB_RUNTIME_INVALID: g-xTB has no periodic route');
+    return 'gxtb';
+  }
+  if (periodic && ['optimize', 'optimization'].includes(operation)) return 'fire';
+  return method === 'gfn0' ? 'gfn0-stack64' : 'official';
+}
+
+function variantMembers(record, files, id) {
+  const variant = record.variants[id], prefix = variant.root ? variant.root + '/' : '';
+  return files.filter(row => row.path.startsWith(prefix + 'share/xtb/')
+    || (row.path.startsWith(prefix + 'bin/') && (
+      row.path.endsWith('.dll') || row.path === prefix + variant.entry
+    ))).map(row => ({ path: row.path.slice(prefix.length), bytes: row.bytes, sha256: row.sha256 }))
+    .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}
+
+function verifiedVariant(record, files, id, manifestSha256) {
+  const variant = record.variants[id], members = variantMembers(record, files, id);
+  for (const relative of [variant.entry, ...REQUIRED.slice(1)]) {
+    assert(members.some(row => row.path === relative), 'XTB_RUNTIME_INCOMPLETE: required parameter/executable absent: ' + id);
+  }
+  assert.equal(members.find(row => row.path === variant.entry).sha256, variant.executableSha256,
+    'XTB_RUNTIME_CHANGED: executable does not match variant identity: ' + id);
+  assert.equal(files.find(row => row.path === 'provenance/' + id + '.json')?.sha256, variant.sourceReceiptSha256,
+    'XTB_RUNTIME_CHANGED: source receipt does not match variant identity: ' + id);
+  const { root: ignoredRoot, entry: ignoredEntry, kind, ...provenance } = variant;
+  const payload = {
+    runtimeVariant: id, runtimeManifestSha256: manifestSha256,
+    compiler: null, toolchainArchiveSha256: null, scientificPinsSha256: null, ...provenance,
+    runtimeMemberDigest: digest(members),
+    parameterDigest: digest(members.filter(row => row.path.startsWith('share/xtb/'))),
+  };
+  const identity = assertEngineIdentity({ schema: 'sciyue-xtb-engine-identity/v1', engine: 'xtb', kind, ...payload, sha256: digest(payload) });
+  return { ...variant, engineIdentity: identity };
+}
+
+function verifyRuntimeVariant(root, expectedManifest, id) {
+  assert(Object.hasOwn(SET_VARIANTS, id), 'XTB_RUNTIME_INVALID: unknown runtime variant');
+  const record = validateRuntimeSet(readJson(root, expectedManifest));
+  const inventory = readJson(root, record.inventory, 8 * 1024 * 1024), files = inventory.files;
+  assert(inventory.schema === 'sciyue-xtb-runtime-inventory/v1' && Array.isArray(files)
+    && new Set(files.map(row => row.path?.toLowerCase())).size === files.length,
+  'XTB_RUNTIME_INVALID: missing or duplicate inventory');
+  const selected = verifiedVariant(record, files, id, expectedManifest.sha256);
+  const members = variantMembers(record, files, id);
+  const variantRoot = selected.root ? ordinary(root, selected.root, true).target : root;
+  for (const row of members) reference(variantRoot, row);
+  const source = files.find(row => row.path === 'provenance/' + id + '.json');
+  reference(root, source);
+  // Only the chosen executable, its loader DLL directory, and its parameters
+  // can affect this run. Other native variants have independent availability.
+  ordinary(variantRoot, 'bin', true);
+  const actual = [
+    ...fs.readdirSync(path.join(variantRoot, 'bin')).filter(name => name.toLowerCase().endsWith('.dll')).map(name => 'bin/' + name),
+    selected.entry,
+    ...walk(variantRoot, 'share/xtb'),
+  ].sort();
+  assert.deepEqual(actual, members.map(row => row.path).sort(),
+    'XTB_RUNTIME_CHANGED: selected variant membership differs: ' + id);
+  return { record, variants: { [id]: selected } };
+}
+
+function verifyRuntimeSet(root, expectedManifest) {
+  const record = validateRuntimeSet(readJson(root, expectedManifest));
+  const inventory = readJson(root, record.inventory, 8 * 1024 * 1024);
+  assert(inventory.schema === 'sciyue-xtb-runtime-inventory/v1', 'XTB_RUNTIME_INVALID: runtime inventory schema');
+  const files = verifyMemberInventory(root, inventory.files, SET_ROOTS);
+  // The only root metadata outside the complete payload inventory is the
+  // anchored descriptor and its referenced inventory.
+  assert.deepEqual(fs.readdirSync(root).sort(), ['bin', 'inventory.json', 'licenses', 'provenance', 'runtime.json', 'share', 'variants'],
+    'XTB_RUNTIME_CHANGED: runtime root membership differs');
+  assert.deepEqual(fs.readdirSync(path.join(root, 'share')), ['xtb'], 'XTB_RUNTIME_CHANGED: runtime share membership differs');
+  const variants = forVariant(record.variants, (_, id) => verifiedVariant(record, files, id, expectedManifest.sha256));
+  assert.equal(variants.official.engineIdentity.parameterDigest, variants['gfn0-stack64'].engineIdentity.parameterDigest,
+    'XTB_RUNTIME_CHANGED: PE derivative must preserve official parameters');
+  assert.equal(variants.official.engineIdentity.parameterDigest, variants.fire.engineIdentity.parameterDigest,
+    'XTB_RUNTIME_CHANGED: FIRE derivative must preserve official parameters');
+  return { record, variants };
+}
+
 module.exports = {
   REQUIRED,
   REQUIRED_PARAMETERS,
@@ -160,6 +329,11 @@ module.exports = {
   entryForPlatform,
   requiredMembersForPlatform,
   contentRootsForPlatform,
+  RUNTIME_SET,
+  EXTERNAL_GXTB_RUNTIME_SET,
+  isRuntimeSet,
+  SET_ROOTS,
+  SET_VARIANTS,
   canonical,
   digest,
   ordinary,
@@ -169,6 +343,10 @@ module.exports = {
   walk,
   verifyMemberInventory,
   validateDescriptor,
+  validateRuntimeSet,
   engineIdentity,
-  assertEngineIdentity
+  assertEngineIdentity,
+  runtimeSetVariant,
+  verifyRuntimeSet,
+  verifyRuntimeVariant,
 };

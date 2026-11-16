@@ -5,7 +5,7 @@ import { LegacyScientificDataTable } from './LegacyScientificDataTable';
 import { exportBlob } from './export-image';
 import { scientificTableCellEdges, scientificTableCellSelected, scientificTableColumnSelected, scientificTableText, scientificTableDefaultWidths, scientificTableRetainedWidths, type ScientificTableColumn, type ScientificTableProjection, type ScientificTableRow, type TableCellAddress, type TableSelection, type ScientificTableFormat, type ScientificTableLayoutState } from './scientific-table';
 import ScientificTableToolbar from './ScientificTableToolbar';
-import { scientificTableHeader, type ScientificTableSorting } from './scientific-table';
+import { decimalEnergyTable, scientificTableHeader, type ScientificTableSorting } from './scientific-table';
 import './ScientificDataTable.css';
 
 // Keep immutable table inputs/JSX stable across local layout and scroll writes.
@@ -63,6 +63,8 @@ export interface ScientificDataTableProps {
 /** Numeric tables render every expanded row; the explicit legacy variant keeps
  * the previous orbital/Hirshfeld presentation and interactions. */
 export function ScientificDataTable(props: ScientificDataTableProps) {
+  const projection=useTableValue(()=>decimalEnergyTable(props.projection),[props.projection]);
+  props={...props,projection};
   const project=useProjectUiScope();
   if(!project)return props.variant==='legacy'?<LegacyScientificDataTable {...props}/>:<NumericScientificDataTable {...props}/>;
   return <ProjectUiScope scope={['table',props.selectionScope??props.exportFileName??props.title??props.format?.ariaLabel??'table']}>
@@ -177,7 +179,7 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
   function minimumRowHeight() {
     const host=root.current;
     const size=host?.ownerDocument.defaultView?.getComputedStyle?.(host).fontSize;
-    return Math.max(32,(parseFloat(size??'')||14)*20/14+6);
+    return Math.max(32,(parseFloat(size??'')||14)*20/14+13);
   }
   // Only explicit vertical resizing needs wrapped text geometry. Auto widths
   // and horizontal resizing must never walk the table's text nodes / Ranges.

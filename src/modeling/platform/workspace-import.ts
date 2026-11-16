@@ -34,7 +34,7 @@ function assertSdfMetadataTags(text: string) {
 /** Returns fragments only: the registry creates a fresh document for every
  * result. It never constructs a temporary ModelStore or rewrites stable IDs.
  * Dependency components are imported together by the existing scientific core. */
-export async function importWorkspaceSources(sources: ScientificSourceFile[] | OpenedModelFile[], bridge?: DesktopBridge, signal?: AbortSignal, restoredModels?: WeakMap<FragmentSnapshot, RestoredWorkspaceModel>): Promise<FragmentSnapshot[]> {
+export async function importWorkspaceSources(sources: ScientificSourceFile[] | OpenedModelFile[], bridge?: DesktopBridge, signal?: AbortSignal, restoredModels?: WeakMap<FragmentSnapshot, RestoredWorkspaceModel>, options?: { onSourceError(file: ScientificSourceFile | OpenedModelFile, error: unknown): void }): Promise<FragmentSnapshot[]> {
   const opened = Array.isArray(sources) ? (sources as OpenedModelFile[]).filter(file => typeof file?.streamToken === 'string') : [];
   try {
     aborted(signal);
@@ -55,6 +55,13 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
       return browser ? browserFile(source as ScientificSourceFile, signal) : desktopFile(source as OpenedModelFile, bridge ?? {} as DesktopBridge, signal);
     });
     const textCache = new Map<number, string>();
+    const failedIndices = new Set<number>();
+    const failed = (indices: number[], error: unknown) => {
+      aborted(signal);
+      if (!options || error instanceof DOMException && error.name === 'AbortError') throw error;
+      indices.forEach(index => failedIndices.add(index));
+      options.onSourceError(sources[indices[0]], error);
+    };
     async function read(index: number): Promise<string> {
       aborted(signal);
       const file = files[index];
@@ -73,6 +80,7 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
     // with newly assigned identities or a lossy ordinary-structure fallback.
     const sdfFragments = new Map<number, FragmentSnapshot[]>();
     for (let index = 0; index < files.length; index++) if (/\.(sdf|sciyue)$/i.test(files[index].name)) {
+      try {
       const text = await read(index);
       // A CP2K include or coordinate dependency may have an arbitrary extension.
       // Without a metadata claim, preserve dependency grouping before decoding.
@@ -86,6 +94,7 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
         });
         sdfFragments.set(index, fragments);
       }
+      } catch (error) { failed([index], error); }
     }
     const claimed = new Map<number, string>(), results: { index: number; fragments: FragmentSnapshot[] }[] = [];
     const claim = (indices: number[], main: string) => {
@@ -96,17 +105,20 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
       for (const index of indices) claimed.set(index, main);
     };
     const candidates: { index: number; text: string; cp2k: boolean }[] = [];
-    for (let index = 0; index < files.length; index++) if (input(files[index].name)) {
+    for (let index = 0; index < files.length; index++) if (input(files[index].name) && !failedIndices.has(index)) {
+      try {
       const text = await read(index);
       candidates.push({ index, text, cp2k: /^\s*&(?:SUBSYS|FORCE_EVAL)\b/im.test(text) });
+      } catch (error) { failed([index], error); }
     }
     // An explicitly referenced SUBSYS include is not a second document. Full
     // FORCE_EVAL roots run first; ownership is still proven by core references.
     const rootPriority = (candidate: typeof candidates[number]) => !candidate.cp2k ? 0 : /^\s*&FORCE_EVAL\b/im.test(candidate.text) ? 3 : /^\s*@INCLUDE\b/im.test(candidate.text) ? 2 : 1;
     candidates.sort((a, b) => rootPriority(b) - rootPriority(a) || a.index - b.index);
     for (const candidate of candidates) {
-      if (claimed.has(candidate.index)) continue;
+      if (claimed.has(candidate.index) || failedIndices.has(candidate.index)) continue;
       const main = files[candidate.index], indices = [candidate.index];
+      try {
       if (candidate.cp2k) {
         // Ask the existing CP2K parser for each unresolved explicit dependency.
         // Its own @SET/@INCLUDE/unit/section logic chooses paths; this adapter
@@ -138,27 +150,33 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
         const structures = await importStructureFiles(indices.map(coreFile)); aborted(signal);
         claim(indices, main.name); results.push({ index: candidate.index, fragments: modelFragmentsFromStructures(structures) });
       }
+      } catch (error) { failed(indices, error); }
     }
-    const gaussianIndices = files.flatMap((file, index) => !claimed.has(index) && gaussian(file.name) ? [index] : []);
+    const gaussianIndices = files.flatMap((file, index) => !claimed.has(index) && !failedIndices.has(index) && gaussian(file.name) ? [index] : []);
     if (gaussianIndices.length) {
       const structures: Structure[] = [];
       for (const index of gaussianIndices) {
+        try {
         if (/\.(gjf|com)$/i.test(files[index].name)) structures.push(...parseModelFiles([{ name: files[index].name, bytes: files[index].size, text: await read(index) }]).map(fragment => fragment.structure));
         else structures.push(...await importStructureFiles([coreFile(index)]));
         aborted(signal);
+        } catch (error) { failed([index], error); }
       }
-      claim(gaussianIndices, 'Gaussian/量化来源组'); results.push({ index: gaussianIndices[0], fragments: modelFragmentsFromStructures(reconcileGaussianSources(structures)) });
+      const valid = gaussianIndices.filter(index => !failedIndices.has(index));
+      if (valid.length) { claim(valid, 'Gaussian/量化来源组'); results.push({ index: valid[0], fragments: modelFragmentsFromStructures(reconcileGaussianSources(structures)) }); }
     }
-    for (let index = 0; index < files.length; index++) if (!claimed.has(index)) {
+    for (let index = 0; index < files.length; index++) if (!claimed.has(index) && !failedIndices.has(index)) {
+      try {
       const text = await read(index);
       // One independent source at a time retains all records and the native
       // SCIYUE SDF restore path; bad metadata is never caught/fallback-parsed.
       const fragments = sdfFragments.get(index) ?? parseModelFiles([{ name: files[index].name, bytes: files[index].size, text }]);
       if (!fragments.length) throw new Error('未能消费独立来源文件：' + files[index].name);
       claim([index], files[index].name); results.push({ index, fragments });
+      } catch (error) { failed([index], error); }
     }
     aborted(signal);
-    if (claimed.size !== files.length) throw new Error('存在未消费的文件或依赖歧义。');
+    if (files.some((_, index) => !claimed.has(index) && !failedIndices.has(index))) throw new Error('存在未消费的文件或依赖歧义。');
     return results.sort((a, b) => a.index - b.index).flatMap(result => result.fragments);
   } finally {
     if (bridge?.closeFileStream) await Promise.all([...new Set(opened.map(file => file.streamToken!))].map(token => bridge.closeFileStream!(token).catch(() => ({ closed: false }))));

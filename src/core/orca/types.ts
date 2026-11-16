@@ -156,9 +156,11 @@ export interface OrcaNebSettings {
   product: Structure | null;
   /** Optional explicit document snapshot; imported files keep their existing route. */
   productSource?: InputStructureSource | null;
-  /** Explicit product atom identity corresponding to each reactant atom ID. */
+  /** Retained correspondence evidence; new inputs derive displayed source order. */
   mapping: { reactantId: string; productId: string }[];
   mappingConfirmed: boolean;
+  /** Explicit confirmation bound to the actual displayed endpoint order. */
+  productOrderContext?: string;
   /** User-facing total bead count, including both endpoints. */
   images: number;
   freeEnds: boolean;
@@ -169,6 +171,7 @@ export interface OrcaNebSettings {
   tsGuessSource?: InputStructureSource | null;
   tsGuessMapping?: { reactantId: string; productId: string }[];
   tsGuessMappingConfirmed?: boolean;
+  tsGuessOrderContext?: string;
   /** False suspends the four compact NEB overrides without deleting their drafts.
    * Omitted on retained tasks: existing explicit compact overrides remain active. */
   customConvergenceEnabled?: boolean;

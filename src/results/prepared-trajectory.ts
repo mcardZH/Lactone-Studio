@@ -44,8 +44,8 @@ export interface PreparedFramePreparer {
   reuseContract?:object;
   onInherited?(frame:PreparedFrame,previous:PreparedFrame):void;
   prepareFrame(raw: Structure, sourceIndex: number, signal: AbortSignal): Promise<Structure>;
-  /** Atoms-only capability fallbacks remain viewable, but must be retried
-   * rather than reused as completed empirical preparation on a later visit. */
+  /** A preparation policy can reject an incompatible cached projection.
+   * Optional drawing failures remain reusable; explicit retryFrame owns retry. */
   canReuse?(frame: PreparedFrame): boolean;
   dispose?(): void;
 }
@@ -208,12 +208,12 @@ export class PreparedTrajectorySource {
    if(inherited){this.peak=Math.max(this.peak,this.retained+this.sharedBytes);this.notify(true);}return inherited;
   }
   /** All accepted frames remain resident until this source owner is disposed. */
-  async ensure(index: number, signal?: AbortSignal, priority = false): Promise<PreparedFrame> {
+  async ensure(index: number, signal?: AbortSignal, priority = false, retry = false): Promise<PreparedFrame> {
     assertResultNotAborted(signal);
     if (this.closed) throw new Error('轨迹预备来源已关闭。');
     if (!Number.isSafeInteger(index) || index < 0 || index >= this.source.frames.length) throw new Error('轨迹预备帧越界。');
     const ready = this.entries.get(index);
-    if (ready && this.preparer.canReuse?.(ready) !== false) return ready;
+    if (ready && !retry && this.preparer.canReuse?.(ready) !== false) return ready;
     // Keep a usable atoms-only display and its accounted raw geometry while
     // retrying only the incomplete projection. Publication replaces it below.
     let job = this.pending.get(index);
@@ -345,6 +345,14 @@ export class PreparedTrajectoryView {
     if (!this.pendingPins.has(original) && original !== this.pinned) { this.owner.pin(original); this.pendingPins.add(original); }
     return this.present(frame,index)!;
   }
+  /** Explicit display-preparation retry. Keep the current usable scientific
+   * frame published while only this frame's optional display graph is retried. */
+  async retryFrame(index:number,signal?:AbortSignal){
+    const current=this.signal(signal);assertResultNotAborted(current);
+    if(!Number.isSafeInteger(index)||this.indices[index]===undefined)throw Error('阶段预备帧越界。');
+    const frame=await this.owner.ensure(this.indices[index],current,true,true);
+    assertResultNotAborted(current);return this.present(frame,index)!;
+  }
   /** Never hold a foreground publication behind a window fill. A seek/pause or
    * the next view publication can cancel this view's background consumer. */
   prefetch(start = 0) {
@@ -373,6 +381,12 @@ export class PreparedTrajectoryView {
 interface PreparedProjectionBinding {source:TrajectoryResult;indices:readonly number[];header?:PreparedFrameHeaderAdapter;adapted?:{input:WeakRef<PreparedFrame>;index:number;frame:WeakRef<PreparedFrame>}}
 const bindings = new WeakMap<TrajectoryResult, PreparedProjectionBinding>();
 const owners = new WeakMap<TrajectoryResult, PreparedTrajectorySource>();
+/** Borrow the current source preparation policy without allocating a new owner.
+ * Capture/edit consumers must use the geometry already published for display. */
+export function existingPreparedTrajectoryView(result: TrajectoryResult): PreparedTrajectoryView | undefined {
+  const binding = bindings.get(result), owner = owners.get(binding?.source ?? result);
+  return owner ? new PreparedTrajectoryView(owner, binding?.indices ?? owner.indices, binding?.header) : undefined;
+}
 /** Read-only admission check. It must never allocate an owner or start work. */
 export function isPreparedTrajectoryReady(result: TrajectoryResult): boolean {
   const binding = bindings.get(result), owner = owners.get(binding?.source ?? result);

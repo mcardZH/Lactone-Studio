@@ -3,3 +3,12 @@
 .personal-fragment-library.personal-fragment-popup{position:fixed;inset:auto;box-sizing:border-box;width:min(340px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100vh - 24px);margin:0;padding:10px;overflow:auto;border:1px solid #b5cec5;border-radius:7px;background:#fff;color:#294443;box-shadow:0 6px 24px #244f4230;z-index:1000}
 .personal-fragment-popup .personal-fragment-groups{max-height:min(330px,45vh)}
 .personal-fragment-library.personal-fragment-popup:not(:popover-open){display:none}
+
+.personal-fragment-library,.personal-fragment-save-dialog { color:var(--ui-field-ink); font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family); }
+.personal-fragment-group h4 { color:var(--ui-section-ink); font-size:var(--ui-control-font); }
+.personal-fragment-card { border-color:var(--ui-surface-border); border-radius:var(--ui-subcard-radius); }
+.personal-fragment-card:has([aria-pressed=true]) { outline-color:var(--ui-control-accent); background:var(--ui-control-selected-bg); }
+.personal-fragment-card-pick strong { color:var(--ui-control-ink); font-size:var(--ui-control-font); }
+.personal-fragment-card-pick span,.personal-fragment-help,.personal-fragment-empty { color:var(--ui-note-ink); font-size:var(--ui-control-small-font); opacity:1; }
+.personal-fragment-save-dialog { border-color:var(--ui-surface-border); border-radius:var(--ui-window-radius); }
+.personal-fragment-trash,.personal-fragment-icon { min-inline-size:var(--ui-control-height); min-block-size:var(--ui-control-height); }

@@ -137,17 +137,25 @@ export async function bindTrajectoryCompanion(output: TrajectoryResult, trajecto
 }
 
 /** Multiple matches remain independent; do not silently choose a job by order. */
-export async function bindTrajectoryCompanions(results: readonly TrajectoryResult[], signal?: AbortSignal, neb?: NebCompanionInputs, md?: MdCompanionInputs, irc?: IrcCompanionInputs): Promise<TrajectoryResult[]> {
+export async function bindTrajectoryCompanions(results: readonly TrajectoryResult[], signal?: AbortSignal, neb?: NebCompanionInputs, md?: MdCompanionInputs, irc?: IrcCompanionInputs, options?: { onPairingError(source: TrajectoryResult, error: unknown): void }): Promise<TrajectoryResult[]> {
   const outputs = results.filter(result => result.engine === 'orca');
   const bound: TrajectoryResult[] = [];
   for (const result of results) {
     assertResultNotAborted(signal);
     if (result.engine !== 'xyz') { bound.push(result); continue; }
     const matches: TrajectoryResult[] = [];
-    for (const context of irc?.contexts ?? []) { const match = await bindIrcCompanion(context, result, signal); if (match) matches.push(match); }
-    for (const context of neb?.contexts ?? []) { const match = await bindNebCompanion(context.output, result, context, neb!.auxiliaries, signal); if (match) matches.push(match); }
+    const attempt = async (read: () => Promise<TrajectoryResult | null>) => {
+      try { const match = await read(); if (match) matches.push(match); }
+      catch (error) {
+        assertResultNotAborted(signal);
+        if (!options || error instanceof DOMException && error.name === 'AbortError') throw error;
+        options.onPairingError(result, error);
+      }
+    };
+    for (const context of irc?.contexts ?? []) await attempt(() => bindIrcCompanion(context, result, signal));
+    for (const context of neb?.contexts ?? []) await attempt(() => bindNebCompanion(context.output, result, context, neb!.auxiliaries, signal));
     const ambiguousMdName = result.role === 'md-trajectory' && results.filter(other => other.engine === 'xyz' && fileLeaf(other.source.name) === fileLeaf(result.source.name)).length > 1;
-    for (const output of outputs.filter(output => !neb?.contexts.some(context => context.outputId === output.id) && !irc?.contexts.some(context => context.outputId === output.id) && !(ambiguousMdName && output.scientific?.tasks.includes('md')))) { const match = await bindTrajectoryCompanion(output, result, signal, neb, md, irc); if (match) matches.push(match); }
+    for (const output of outputs.filter(output => !neb?.contexts.some(context => context.outputId === output.id) && !irc?.contexts.some(context => context.outputId === output.id) && !(ambiguousMdName && output.scientific?.tasks.includes('md')))) await attempt(() => bindTrajectoryCompanion(output, result, signal, neb, md, irc));
     if (matches.length === 1 && matches[0].scientific?.nebEvidence?.geometryMapped) for (const source of neb?.auxiliaries ?? []) {
       const match = matches[0], evidence = match.scientific!.nebEvidence!;
       if (!evidence.auxiliaries.some(aux => aux.source.id === source.data.source.id)) continue;

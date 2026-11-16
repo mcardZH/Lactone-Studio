@@ -4,7 +4,7 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const {inspectManagedSource}=require('./analysis-result-wire.cjs');
 const { assert, plain, string } = require('./security.cjs');
-const { hash, directoryIdentity, checkDirectory, readChecked, sameFile, currentFile, atomicWrite } = require('./portable-storage.cjs');
+const { hash, identity, directoryIdentity, checkDirectory, readChecked, sameFile, currentFile, atomicWrite } = require('./portable-storage.cjs');
 const MAX_SOURCE_BYTES = Number.MAX_SAFE_INTEGER;
 /** Main-owned immutable source snapshots. Tokens never grant arbitrary path access. */
 function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(root), 'surface-domain-records'), snapshotSource }) {
@@ -44,8 +44,14 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
     return value;
   }
   function context(value) { assert(plain(value) && string(value.sourceId, 256) && string(value.sourceRevision, 256) && Number.isSafeInteger(value.generation) && value.generation >= 0 && (value.jobIndex === null || Number.isSafeInteger(value.jobIndex) && value.jobIndex >= 0) && (value.sourceFrameIndex === null || Number.isSafeInteger(value.sourceFrameIndex) && value.sourceFrameIndex >= 0), 'Invalid surface source context'); return structuredClone(value); }
-  async function verifyRecord(record){if(!record.streamed)return sameFile(record.path,record,fs,MAX_SOURCE_BYTES);const current=await inspectManagedSource(record.path);assert(current.identity===record.identity&&current.sha256===record.sha256,'Managed surface source changed');return current;}
-  function remove(record) { return record.removal ??= (async () => { await checkDirectory(root, rootIdentity); await verifyRecord(record); const stat = await fs.lstat(record.path); assert(stat.nlink === 1, 'Shared surface snapshot retained'); await fs.unlink(record.path); records.delete(record.token); })(); }
+  async function verifyRecord(record,signal){if(!record.streamed)return sameFile(record.path,record,fs,MAX_SOURCE_BYTES);const current=await inspectManagedSource(record.path,{signal});assert(current.identity===record.identity&&current.sha256===record.sha256,'Managed surface source changed');return current;}
+  function remove(record) {
+    if(record.removal)return record.removal;
+    const removing=record.removal=(async()=>{ await checkDirectory(root, rootIdentity); await verifyRecord(record); const stat = await fs.lstat(record.path); assert(stat.nlink === 1, 'Shared surface snapshot retained'); await fs.unlink(record.path); records.delete(record.token);
+    })();
+    void removing.catch(()=>{record.removal=null;});
+    return removing;
+  }
   async function register(owner, value, originalPath = null, kind = 'cube') {
     active(owner); assert(plain(value) && Object.keys(value).every(key => ['name', 'text'].includes(key)) && string(value.name, 256) && !/[\\/]/.test(value.name) && string(value.text, MAX_SOURCE_BYTES) && Buffer.byteLength(value.text) <= MAX_SOURCE_BYTES, 'Invalid bounded surface source');
     reservedSlots.set(owner, (reservedSlots.get(owner) ?? 0) + 1);
@@ -72,10 +78,12 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
     const metadata = structuredClone(ref.fieldMetadata); if (record.knownDomain) metadata.validDomain = structuredClone(record.knownDomain.validDomain);
     return { record, trusted: { path: record.path, fieldMetadata: metadata } };
   }
-  async function openOwned(owner, request) {
+  async function openOwned(owner,request,{signal}={}) {
+    const current=()=>{signal?.throwIfAborted();active(owner);};
+    current();
     active(owner); assert(plain(request) && string(request.sessionId, 100) && /^[A-Za-z0-9_-]+$/.test(request.sessionId) && plain(request.source), 'Invalid surface session source');
     const key = sessionKey(owner, request.sessionId); assert(!sessions.has(key), 'Surface session source already registered');
-    const source = request.source, sourceContext = context(source.context); let trusted, used, temporaryToken;
+    const source = request.source, sourceContext = context(source.context); let trusted, used, temporaryToken, copied;
     try {
     if (source.kind === 'wavefunction') {
       assert(Object.keys(source).every(key => ['kind', 'text', 'sourceToken', 'name', 'sourceId', 'sourceRevision', 'context'].includes(key)) && string(source.sourceId, 256), 'Invalid wavefunction source');
@@ -83,10 +91,16 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
       if(source.sourceToken!==undefined){
         assert(source.text===undefined&&string(source.sourceToken,256)&&string(source.name,256)&&typeof snapshotSource==='function','Managed wavefunction source required');
         await fs.mkdir(root,{recursive:true});rootIdentity??=await directoryIdentity(root);await checkDirectory(root,rootIdentity);
-        const saved=await snapshotSource(owner,source.sourceToken,{directory:root,name:source.name,...(source.sourceRevision?{revision:source.sourceRevision}:{})});
+        current();
+        const saved=await snapshotSource(owner,source.sourceToken,{directory:root,name:source.name,signal,...(source.sourceRevision?{revision:source.sourceRevision}:{})});
         assert(path.dirname(saved.path)===root,'Wavefunction snapshot is outside its owned root');
-        const checked=await inspectManagedSource(saved.path);const token=randomUUID();
+        const stat=await fs.lstat(saved.path);
+        assert(stat.isFile()&&!stat.isSymbolicLink()&&stat.nlink===1,'Managed wavefunction copy is not an owned regular file');
+        copied={path:saved.path,identity:identity(stat)};
+        const checked=await inspectManagedSource(saved.path,{signal}),token=randomUUID();
+        assert(checked.identity===copied.identity,'Managed wavefunction copy changed');
         records.set(token,{...checked,streamed:true,token,owner,kind:'wavefunction',name:source.name,refs:new Set()});
+        copied=null;
         imported={token,sourceRevision:checked.sha256};
       }else imported = await register(owner, { name: source.name, text: source.text }, null, 'wavefunction');
       temporaryToken = imported.token;
@@ -97,13 +111,36 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
       const shape = cube(owner, source.shape), mapping = source.mapping === null ? null : cube(owner, source.mapping); used = [shape.record, ...(mapping ? [mapping.record] : [])];
       trusted = { sessionId: request.sessionId, kind: 'cube-pair', shape: shape.trusted, mapping: mapping?.trusted ?? null, context: sourceContext };
     }
-    active(owner);
-    for (const record of used) { await verifyRecord(record); active(owner); record.refs.add(key); }
+    current();
+    for (const record of used) { await verifyRecord(record,signal); current(); record.refs.add(key); }
     sessions.set(key, { owner, sessionId: request.sessionId, records: used, temporaryToken }); return trusted;
-    } catch (error) { for (const record of used ?? []) record.refs.delete(key); const record = records.get(temporaryToken); if (record && !record.refs.size) await remove(record); throw error; }
+    } catch (error) {
+      for (const record of used ?? []) record.refs.delete(key);
+      const record=records.get(temporaryToken);
+      try {
+        if(record&&!record.refs.size)await remove(record);
+        if(copied){
+          await checkDirectory(root,rootIdentity);
+          const stat=await fs.lstat(copied.path);
+          assert(stat.isFile()&&!stat.isSymbolicLink()&&stat.nlink===1&&identity(stat)===copied.identity,'Managed wavefunction cleanup identity changed');
+          await fs.unlink(copied.path);
+        }
+      }catch(cleanupError){if(error instanceof Error){error.cleanupError=cleanupError;error.message+='\n清理：'+cleanupError.message;}}
+      throw error;
+    }
   }
-  async function open(owner,request){const task=openOwned(owner,request);pending.set(task,owner);try{return await task;}finally{pending.delete(task);}}
-  async function closeSession(owner, id) { const key = sessionKey(owner, id), session = sessions.get(key); if (!session) return; sessions.delete(key); for (const record of session.records) { record.refs.delete(key); if (record.token === session.temporaryToken && !record.refs.size) await remove(record); } }
+  async function open(owner,request,options){const task=openOwned(owner,request,options);pending.set(task,owner);try{return await task;}finally{pending.delete(task);}}
+  async function closeSession(owner,id) {
+    const key=sessionKey(owner,id),session=sessions.get(key);
+    if(!session)return;
+    if(session.closing)return session.closing;
+    const closing=session.closing=(async()=>{
+      for(const record of session.records){record.refs.delete(key);if(record.token===session.temporaryToken&&!record.refs.size)await remove(record);}
+      sessions.delete(key);
+    })();
+    void closing.catch(()=>{session.closing=null;});
+    return closing;
+  }
   async function release(owner, token) { active(owner); const record = records.get(token); assert(record && record.owner === owner && record.kind === 'cube', 'Surface source token is not owned'); assert(record.refs.size === 0, 'Surface source is in use'); await remove(record); return { released: true }; }
   async function read(owner, token) { active(owner); const record = records.get(token); assert(record && record.owner === owner && record.kind === 'cube', 'Surface source token is not owned'); const checked = await sameFile(record.path, record, fs, MAX_SOURCE_BYTES); const known = await knownDomain(record.sha256); active(owner); return { token, name: record.name, text: checked.bytes.toString('utf8'), bytes: checked.bytes.length, sourceRevision: record.sha256, ...(known ? { knownDomain: known } : {}) }; }
   async function closeOwner(owner) { closedOwners.add(owner); await Promise.allSettled([...pending].filter(([, pendingOwner]) => pendingOwner === owner).map(([task]) => task)); for (const record of [...records.values()]) if (record.owner === owner) await remove(record); for (const [key, session] of sessions) if (session.owner === owner) sessions.delete(key); }

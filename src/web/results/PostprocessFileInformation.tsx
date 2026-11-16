@@ -7,7 +7,7 @@ import {SourceFields} from './PostprocessNumericBook';
 import {ScientificDataTable} from './ScientificDataTable';
 import {ScientificPlot} from './ScientificPlot';
 import type {ScientificTableProjection} from './scientific-table';
-import {fullPrecisionValue} from '../../results/numeric-format';
+import {decimalEnergyValue} from '../../results/numeric-format';
 import {excitedStateTable,vibrationModeTable} from './spectroscopy-presentation';
 import {projectVibrationModes} from '../../results/spectroscopy';
 import {createFilePathPlotSnapshot,filePathPlotProjection,type FilePathPlotSnapshot} from './file-path-plot';
@@ -45,7 +45,7 @@ export function PostprocessScientificStatus({data,currentIndex}:{data:Scientific
 }
 export function postprocessPathTable(data:ScientificData,reference:'absolute'|'relative-to-ts'):ScientificTableProjection{
  const nodes=(data.pathSummary??[]).filter(row=>(row.energyReference??'absolute')===reference);
- return{columns:[{key:'node',label:'源节点'},{key:'energy',label:reference==='relative-to-ts'?'相对 TS 能量 / Eh':'能量 / Eh',precision:'source'},{key:'role',label:'标记'}],rows:nodes.map((row,index)=>({key:`${row.stageId??row.kind}:${row.sourceNode}:${row.sourceLine}:${index}`,cells:[String(row.sourceNode),row.rawEnergy??fullPrecisionValue(row.energy),row.isTs?'TS':'']}))};
+ return{columns:[{key:'node',label:'源节点'},{key:'energy',label:reference==='relative-to-ts'?'相对 TS 能量 / Eh':'能量 / Eh',precision:'source'},{key:'role',label:'标记'}],rows:nodes.map((row,index)=>({key:`${row.stageId??row.kind}:${row.sourceNode}:${row.sourceLine}:${index}`,cells:[String(row.sourceNode),decimalEnergyValue(row.rawEnergy??row.energy),row.isTs?'TS':'']}))};
 }
 type FileJob=TrajectoryResult|ResultDiagnostic;
 const keepSourcePrecision=()=>{};

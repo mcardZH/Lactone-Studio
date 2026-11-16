@@ -64,6 +64,17 @@ class OrbitalWorker:
                 self._reply(request,resources=resources);return
             if operation=='inspect':
                 self._reply(request,metadata=inspect_wavefunction(request['sourcePath'])); return
+            if operation=='convert-gxtb-molden':
+                from gxtb_molden import convert
+                source = Path(request['sourcePath'])
+                destination = source.with_name('analysis.molden')
+                raw = source.read_bytes()
+                if hashlib.sha256(raw).hexdigest() != request['sourceRevision']:
+                    raise OrbitalError('source-changed', 'The retained g-xTB Molden changed before conversion.')
+                derived, conversion = convert(raw, request['atoms'], request['charge'], request['uhf'])
+                with destination.open('xb') as output:
+                    output.write(derived)
+                self._reply(request, conversion=conversion); return
             if operation=='plan':
                 metadata=inspect_wavefunction(request['sourcePath'])
                 mode=request.get('mode','all')
@@ -81,7 +92,7 @@ class OrbitalWorker:
                 with self.lock:
                     if session_id in self.sessions: raise OrbitalError('session-exists','This analysis already has an orbital session.')
                 mode=request.get('mode','all')
-                session=MultiwfnSession(request['executable'],request['sourcePath'],request['grid'],request.get('threads'),request.get('memoryBudgetBytes'),request['workspacePath'],mode,request.get('settingsRevision'))
+                session=MultiwfnSession(request['executable'],request['sourcePath'],request['grid'],request.get('threads'),request.get('memoryBudgetBytes'),request['workspacePath'],mode,request.get('settingsRevision'),expected_native_binary=request.get('nativeBinaryIdentity'))
                 with self.lock:
                     combined=sum(item['session'].plan['estimatedPeakBytes'] for item in self.sessions.values())+session.plan['estimatedPeakBytes']
                     identity=dict(sessionId=session_id,sourceRevision=request.get('sourceRevision',session.metadata['sourceSha256']),

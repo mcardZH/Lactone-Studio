@@ -1,5 +1,5 @@
 import type {ModelDocument} from '../../modeling/contracts';
-import {electronicStateError} from '../../core/elements';
+import {electronicStateInputError} from '../../core/elements';
 import {electronicInventory} from '../../modeling/application/electronic-state-context';
 
 export interface BondElectronicValues {charge:number;multiplicity:number}
@@ -17,6 +17,6 @@ export function bondPerceptionElectronicState(document:ModelDocument,options:{lo
   const explicit=[options.override,options.local,options.consent].find(value=>bondElectronicDraftCurrent(document,value));
   const electronic:BondElectronicValues=explicit?{charge:explicit.charge,multiplicity:explicit.multiplicity}:{charge:document.draft.structure.charge??Number.NaN,multiplicity:document.draft.structure.multiplicity??Number.NaN};
   const known=Boolean(explicit||document.electronicStateConfirmed===true);
-  const valid=known&&Number.isSafeInteger(electronic.charge)&&Number.isSafeInteger(electronic.multiplicity)&&electronic.multiplicity>=1&&!electronicStateError(document.draft.structure.atoms,electronic.charge,electronic.multiplicity);
+  const valid=known&&Number.isSafeInteger(electronic.charge)&&Number.isSafeInteger(electronic.multiplicity)&&electronic.multiplicity>=1&&!electronicStateInputError(document.draft.structure.atoms,electronic.charge,electronic.multiplicity);
   return{known,valid,electronic};
 }

@@ -1,12 +1,14 @@
 import {DismissibleNotice} from '../DismissibleNotice';
 import NumericInput from '../NumericInput';
+import BaseElectronicStateFields from '../BaseElectronicStateFields';
+import {electronicStateWarning} from '../../core/elements';
 import { useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { importStructureFiles } from '../../core/file-import';
 import { withAtomIds } from '../../core/structures';
 import type { InputStructureSource, Structure } from '../../core/types';
 import type { OrcaAsset, OrcaJobRequest, OrcaSettings } from '../../core/orca/types';
-import { OrcaIrcStartEvidence } from './OrcaHessianPathEvidence';
+import { updateOrcaFileReference } from './OrcaAssets';
 import type { TaskSelectionHandle, TaskSelectionIntent } from '../../modeling/contracts';
 import { inputSelectionIndices } from '../../core/input-selection';
 import InteractiveSelectionField from '../InteractiveSelectionField';
@@ -14,7 +16,9 @@ import ExcitedStructureStageControls from '../ExcitedStructureStageControls';
 import OrcaCoordinates from './OrcaCoordinates';
 import MultiStructureSourcePicker, { inputStructureSourceIsCurrent } from '../MultiStructureSourcePicker';
 import type { MultiStructureSourceActions } from '../MultiStructureSourcePicker';
-import { orcaNebConvergenceDefaults, orcaNebCustomConvergenceEnabled } from '../../core/orca/neb';
+import { orcaNebConvergenceDefaults, orcaNebCustomConvergenceEnabled, orcaNebOrderContext } from '../../core/orca/neb';
+import { inputAtomOrder } from '../../core/input-atom-order';
+import InputAtomOrderWarning from '../InputAtomOrderWarning';
 import './neb-panel.css';
 import { CoreParameterGroup, FrequencyCoreControls, OptionalCoreNumber } from '../TaskCoreControls';
 import { InputSettingsField, InputSettingsRow } from '../InputSettingsFields';
@@ -88,8 +92,8 @@ export default function OrcaTaskControls({ request, onChange, onBeforeLocalReset
   const allAtomIds = atoms.flatMap(atom => atom.id ? [atom.id] : []);
   const update = (patch: Partial<OrcaSettings>) => onChange({ ...request, settings: { ...s, ...patch } });
   const excited = (patch: Partial<OrcaSettings['excited']>) => update({ excited: { ...s.excited, ...patch } });
-  const neb = (patch: Partial<OrcaSettings['neb']>) => update({ neb: { ...s.neb, ...patch, mappingConfirmed: false } });
-  const nebParameter = (patch: Partial<OrcaSettings['neb']>) => update({ neb: { ...s.neb, ...patch } });
+  const nebParameter = (patch: Partial<OrcaSettings['neb']>) => {const next={...s.neb,...patch};update({neb:{...next,mapping:inputAtomOrder(atoms,next.product?.atoms).mapping,tsGuessMapping:inputAtomOrder(atoms,next.tsGuess?.atoms).mapping}});};
+  const neb = (patch: Partial<OrcaSettings['neb']>) => nebParameter({ ...patch, mappingConfirmed: false, productOrderContext: undefined });
   const nebDefaults = orcaNebConvergenceDefaults(s.neb.variant);
   const customConvergenceEnabled = orcaNebCustomConvergenceEnabled(s.neb);
   const retainedNebExtras = [
@@ -97,9 +101,7 @@ export default function OrcaTaskControls({ request, onChange, onBeforeLocalReset
     s.neb.convergence?.toleranceScale !== undefined ? `Tol_Scale=${s.neb.convergence.toleranceScale}` : '',
     s.neb.tsConvergence && Object.values(s.neb.tsConvergence).some(value => value !== undefined) ? (s.neb.variant === 'neb-ts' ? 'TS优化参数（%geom）' : 'TS优化参数（NEB-TS时生效）') : '',
   ].filter(Boolean);
-  const canMapByIndex = (other: Structure | null | undefined) => !!other && atoms.length > 0 && other.atoms.length === atoms.length
-    && atoms.every((atom, index) => !!atom.id && !!other.atoms[index].id && atom.element === other.atoms[index].element)
-    && new Set(atoms.map(atom => atom.id)).size === atoms.length && new Set(other.atoms.map(atom => atom.id)).size === other.atoms.length;
+  const productOrder=inputAtomOrder(atoms,s.neb.product?.atoms),guessOrder=inputAtomOrder(atoms,s.neb.tsGuess?.atoms);
   const md = (patch: Partial<OrcaSettings['md']>) => update({ md: { ...s.md, ...patch, restartConfirmed: false } });
   const currentSelection = selectedIds.filter(id => atoms.some(atom => atom.id === id));
   function assertMembers(ids: string[], assertCurrent: () => void) {
@@ -115,7 +117,7 @@ export default function OrcaTaskControls({ request, onChange, onBeforeLocalReset
       setImportError('反应物已变化，请重新导入Product以核对两端身份。'); setProductChoices([]); return;
     }
     current.onChange({ ...current.request, settings: { ...current.request.settings,
-      neb: { ...current.request.settings.neb, product, productSource: null, mapping: [], mappingConfirmed: false } } });
+      neb: { ...current.request.settings.neb, product, productSource: null, mapping: inputAtomOrder(current.request.structure?.atoms,product.atoms).mapping, mappingConfirmed: false, productOrderContext:undefined } } });
     onNebProductSourceChange?.(null);
   }
   async function importProduct(files: File[]) {
@@ -166,13 +168,13 @@ export default function OrcaTaskControls({ request, onChange, onBeforeLocalReset
       <option value="shielding">GIAO核屏蔽</option><option value="coupling">核屏蔽及自旋耦合</option>
     </select></Field></div>}
     {s.task === 'stable' && <Field label="稳定性任务"><select aria-label="稳定性任务" value={s.stableOptimize?'opt':'check'} onChange={event=>update({stableOptimize:event.target.value==='opt'})}><option value="check">仅检测</option><option value="opt">不稳定时优化</option></select></Field>}
-    {s.task === 'irc' && <CoreParameterGroup title="双向IRC"><div className="orca-grid"><Field label="初始Hessian"><select aria-label="IRC初始Hessian" value={s.ircHessianId?'read':'calc'} onChange={event=>{if(event.target.value==='calc')update({ircHessianId:undefined});else{const asset=request.assets.find(row=>row.kind==='hessian');const next=asset??{id:crypto.randomUUID(),kind:'hessian' as const,name:''};onChange({...request,assets:asset?request.assets:[...request.assets,next],settings:{...s,ircHessianId:next.id}});}}}><option value="calc">计算初始Hessian</option><option value="read">读取来源HESS</option></select></Field><NumberField label="最大迭代次数" value={s.ircMaxIterations} min={1} step={1} onChange={value=>update({ircMaxIterations:value})}/></div></CoreParameterGroup>}
+    {s.task === 'irc' && <CoreParameterGroup title="双向IRC"><div className="orca-grid"><Field label="初始Hessian"><select aria-label="IRC初始Hessian" value={s.ircHessianId?'read':'calc'} onChange={event=>onChange(updateOrcaFileReference(request,'hessian',event.target.value==='read'))}><option value="calc">计算初始Hessian</option><option value="read">读取来源HESS</option></select></Field><NumberField label="最大迭代次数" value={s.ircMaxIterations} min={1} step={1} onChange={value=>update({ircMaxIterations:value})}/></div></CoreParameterGroup>}
 
-    {s.task === 'neb' && <CoreParameterGroup title="NEB两端与映射" ariaLabel="NEB设置">
+    {s.task === 'neb' && <CoreParameterGroup title="NEB结构来源" ariaLabel="NEB设置">
       <Field label="模式"><select aria-label="NEB模式" value={s.neb.variant??'ci-neb'} onChange={event=>nebParameter({variant:event.target.value as 'ci-neb'|'neb-ts'})}><option value="ci-neb">CI-NEB</option><option value="neb-ts">NEB-TS</option></select></Field>
-      <MultiStructureSourcePicker label="反应物来源" value={s.neb.reactantSource ?? null} candidates={sourceCandidates} onRequestSourcePick={onRequestSourcePick} onImportSources={onImportSources} onChange={source => nebParameter({ reactantSource: source, mapping: [], mappingConfirmed: false, tsGuessMapping: [], tsGuessMappingConfirmed: false })} />
-      <MultiStructureSourcePicker label="产物来源" value={boundProductSource??null} candidates={sourceCandidates} onRequestSourcePick={onRequestSourcePick} onImportSources={onImportSources} onChange={source=>{const product=source?{...structuredClone(source.structure),charge:source.charge,multiplicity:source.multiplicity}:null;neb({product,productSource:source,mapping:[]});onNebProductSourceChange?.(source);}}/>
-      {showTsGuess||s.neb.tsGuess||s.neb.tsGuessSource?<><MultiStructureSourcePicker label="过渡态初猜来源（可选）" value={s.neb.tsGuessSource ?? null} candidates={sourceCandidates} onRequestSourcePick={onRequestSourcePick} onImportSources={onImportSources} onChange={source => nebParameter({ tsGuess: source ? { ...structuredClone(source.structure), charge: source.charge, multiplicity: source.multiplicity } : null, tsGuessSource: source, tsGuessMapping: [], tsGuessMappingConfirmed: false })} /><button type="button" onClick={()=>{nebParameter({tsGuess:null,tsGuessSource:null,tsGuessMapping:[],tsGuessMappingConfirmed:false});setShowTsGuess(false);}}>移除过渡态初猜</button></>:<button type="button" onClick={()=>setShowTsGuess(true)}>添加过渡态初猜</button>}
+      <div className="input-source-order-row"><MultiStructureSourcePicker label="反应物来源" value={s.neb.reactantSource ?? null} candidates={sourceCandidates} onRequestSourcePick={onRequestSourcePick} onImportSources={onImportSources} onChange={source => nebParameter({ reactantSource: source, mappingConfirmed: false, productOrderContext:undefined, tsGuessMappingConfirmed: false, tsGuessOrderContext:undefined })} /></div>
+      <div className="input-source-order-row"><MultiStructureSourcePicker label="产物来源" value={boundProductSource??null} candidates={sourceCandidates} onRequestSourcePick={onRequestSourcePick} onImportSources={onImportSources} onChange={source=>{const product=source?{...structuredClone(source.structure),charge:source.charge,multiplicity:source.multiplicity}:null;neb({product,productSource:source});onNebProductSourceChange?.(source);}}/>{s.neb.product&&<InputAtomOrderWarning label="产物" message={productOrder.issue}/>}</div>
+      {showTsGuess||s.neb.tsGuess||s.neb.tsGuessSource?<><div className="input-source-order-row"><MultiStructureSourcePicker label="过渡态初猜来源（可选）" value={s.neb.tsGuessSource ?? null} candidates={sourceCandidates} onRequestSourcePick={onRequestSourcePick} onImportSources={onImportSources} onChange={source => nebParameter({ tsGuess: source ? { ...structuredClone(source.structure), charge: source.charge, multiplicity: source.multiplicity } : null, tsGuessSource: source, tsGuessMappingConfirmed: false,tsGuessOrderContext:undefined })} />{s.neb.tsGuess&&<InputAtomOrderWarning label="TS初猜" message={guessOrder.issue}/>}</div><button type="button" onClick={()=>{nebParameter({tsGuess:null,tsGuessSource:null,tsGuessMappingConfirmed:false,tsGuessOrderContext:undefined});setShowTsGuess(false);}}>移除过渡态初猜</button></>:<button type="button" onClick={()=>setShowTsGuess(true)}>添加过渡态初猜</button>}
       {boundProductSource&&(!boundProductSource.confirmed||!inputStructureSourceIsCurrent(boundProductSource,sourceCandidates))&&<DismissibleNotice role="alert" className="orca-note">产物来源已变或电子态待确认，请重新核对。</DismissibleNotice>}
       {!onImportSources && <Field label="导入产物结构（可同时选择依赖文件）"><input aria-label="导入Product结构" type="file" multiple disabled={importing}
         onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; if (files.length) void importProduct(files); }} /></Field>
@@ -185,37 +187,19 @@ export default function OrcaTaskControls({ request, onChange, onBeforeLocalReset
       {s.neb.product && <>
         <p className="orca-note">产物：{s.neb.product.name} · {s.neb.product.atoms.length}原子</p>
         <div className="orca-grid">
-          <NumberField label="产物电荷（须明确核对）" value={s.neb.product.charge} step={1} onChange={value => neb({ product: { ...s.neb.product!, charge: value ?? null } })} />
-          <NumberField label="产物多重度（须明确核对）" value={s.neb.product.multiplicity} min={1} step={1} onChange={value => neb({ product: { ...s.neb.product!, multiplicity: value ?? null } })} />
+          <BaseElectronicStateFields embedded preserveNumericDraft chargeFieldLabel="电荷" chargeLabel="产物电荷（须明确核对）" multiplicityLabel="产物多重度（须明确核对）" charge={s.neb.product.charge??NaN} multiplicity={s.neb.product.multiplicity??NaN} atoms={s.neb.product.atoms} onElectronicStateChange={values=>neb({product:{...s.neb.product!,...values}})} warning={electronicStateWarning(s.neb.product.atoms,s.neb.product.charge??NaN,s.neb.product.multiplicity??NaN)} onChargeChange={charge=>neb({product:{...s.neb.product!,charge}})} onMultiplicityChange={multiplicity=>neb({product:{...s.neb.product!,multiplicity}})}/>
         </div>
-        <details className="shared-input-inline"><summary>逐原子映射（编号从1开始）</summary>
-          <button type="button" disabled={!canMapByIndex(s.neb.product)} onClick={() => { if (canMapByIndex(s.neb.product)) neb({ mapping: atoms.map((atom, index) => ({ reactantId: atom.id!, productId: s.neb.product!.atoms[index].id! })) }); }}>产物按当前编号对应</button>
-          {atoms.map((atom, index) => <Field key={atom.id ?? index} label={`反应物 ${index + 1} ${atom.element} → Product`}>
-            <select aria-label={`反应物原子${index + 1}的Product映射`} value={s.neb.mapping.find(pair => pair.reactantId === atom.id)?.productId ?? ''}
-              onChange={event => neb({ mapping: [...s.neb.mapping.filter(pair => pair.reactantId !== atom.id), ...(event.target.value && atom.id ? [{ reactantId: atom.id, productId: event.target.value }] : [])] })}>
-              <option value="">请选择对应原子</option>{s.neb.product!.atoms.map((productAtom, productIndex) => <option key={productAtom.id ?? productIndex} value={productAtom.id}>{productIndex + 1} {productAtom.element}</option>)}
-            </select></Field>)}
-        </details>
-        <Check label="已逐项确认完整一一原子映射及两端电子态" disabled={!!boundProductSource&&(!boundProductSource.confirmed||!inputStructureSourceIsCurrent(boundProductSource,sourceCandidates))} checked={s.neb.mappingConfirmed&&(!boundProductSource||boundProductSource.confirmed&&inputStructureSourceIsCurrent(boundProductSource,sourceCandidates))} onChange={value => update({ neb: { ...s.neb, mappingConfirmed: value } })} />
-        <button type="button" aria-label="清除Product及映射" onClick={() => {neb({ product: null, productSource: null, mapping: [] });onNebProductSourceChange?.(null);}}>清除Product</button>
+        <Check label="已核对两端按显示顺序对应及相同电子态" disabled={!!productOrder.issue||!!boundProductSource&&(!boundProductSource.confirmed||!inputStructureSourceIsCurrent(boundProductSource,sourceCandidates))} checked={!productOrder.issue&&s.neb.mappingConfirmed&&s.neb.productOrderContext===orcaNebOrderContext(request,'product')&&(!boundProductSource||boundProductSource.confirmed&&inputStructureSourceIsCurrent(boundProductSource,sourceCandidates))} onChange={value => nebParameter({mappingConfirmed:value,productOrderContext:value?orcaNebOrderContext(request,'product'):undefined})} />
+        <button type="button" aria-label="清除产物来源" onClick={() => {neb({ product: null, productSource: null });onNebProductSourceChange?.(null);}}>清除产物</button>
       </>}
       {s.neb.tsGuess && <>
         <p className="orca-note">TS路径初猜：{s.neb.tsGuess.name} · {s.neb.tsGuess.atoms.length}原子</p>
         {s.neb.tsGuessSource && (!s.neb.tsGuessSource.confirmed || !inputStructureSourceIsCurrent(s.neb.tsGuessSource, sourceCandidates)) && <DismissibleNotice role="alert" className="orca-note">TS初猜来源已变或电子态未确认，请重新选择并核对。</DismissibleNotice>}
         <div className="orca-grid">
-          <NumberField label="TS初猜电荷（须明确核对）" value={s.neb.tsGuess.charge} step={1} onChange={value => nebParameter({ tsGuess: { ...s.neb.tsGuess!, charge: value ?? null }, tsGuessMappingConfirmed: false })} />
-          <NumberField label="TS初猜多重度（须明确核对）" value={s.neb.tsGuess.multiplicity} min={1} step={1} onChange={value => nebParameter({ tsGuess: { ...s.neb.tsGuess!, multiplicity: value ?? null }, tsGuessMappingConfirmed: false })} />
+          <BaseElectronicStateFields embedded preserveNumericDraft chargeFieldLabel="电荷" chargeLabel="TS初猜电荷（须明确核对）" multiplicityLabel="TS初猜多重度（须明确核对）" charge={s.neb.tsGuess.charge??NaN} multiplicity={s.neb.tsGuess.multiplicity??NaN} atoms={s.neb.tsGuess.atoms} onElectronicStateChange={values=>nebParameter({tsGuess:{...s.neb.tsGuess!,...values},tsGuessMappingConfirmed:false})} warning={electronicStateWarning(s.neb.tsGuess.atoms,s.neb.tsGuess.charge??NaN,s.neb.tsGuess.multiplicity??NaN)} onChargeChange={charge=>nebParameter({tsGuess:{...s.neb.tsGuess!,charge},tsGuessMappingConfirmed:false})} onMultiplicityChange={multiplicity=>nebParameter({tsGuess:{...s.neb.tsGuess!,multiplicity},tsGuessMappingConfirmed:false})}/>
         </div>
-        <details className="shared-input-inline"><summary>TS初猜逐原子映射（界面编号从1开始）</summary>
-          <button type="button" disabled={!canMapByIndex(s.neb.tsGuess)} onClick={() => { if (canMapByIndex(s.neb.tsGuess)) nebParameter({ tsGuessMapping: atoms.map((atom, index) => ({ reactantId: atom.id!, productId: s.neb.tsGuess!.atoms[index].id! })), tsGuessMappingConfirmed: false }); }}>过渡态初猜按当前编号对应</button>
-          {atoms.map((atom, index) => <Field key={atom.id ?? index} label={`反应物 ${index + 1} ${atom.element} → TS初猜`}>
-            <select aria-label={`反应物原子${index + 1}的TS初猜映射`} value={s.neb.tsGuessMapping?.find(pair => pair.reactantId === atom.id)?.productId ?? ''}
-              onChange={event => nebParameter({ tsGuessMapping: [...(s.neb.tsGuessMapping ?? []).filter(pair => pair.reactantId !== atom.id), ...(event.target.value && atom.id ? [{ reactantId: atom.id, productId: event.target.value }] : [])], tsGuessMappingConfirmed: false })}>
-              <option value="">请选择对应原子</option>{s.neb.tsGuess!.atoms.map((guessAtom, guessIndex) => <option key={guessAtom.id ?? guessIndex} value={guessAtom.id}>{guessIndex + 1} {guessAtom.element}</option>)}
-            </select></Field>)}
-        </details>
-        <Check label="已确认TS初猜完整一一映射及相同电子态" disabled={!!s.neb.tsGuessSource && (!s.neb.tsGuessSource.confirmed || !inputStructureSourceIsCurrent(s.neb.tsGuessSource, sourceCandidates))} checked={!!s.neb.tsGuessMappingConfirmed && (!s.neb.tsGuessSource || s.neb.tsGuessSource.confirmed && inputStructureSourceIsCurrent(s.neb.tsGuessSource, sourceCandidates))} onChange={value => nebParameter({ tsGuessMappingConfirmed: value })} />
-        <button type="button" aria-label="清除TS初猜及映射" onClick={() => nebParameter({ tsGuess: null, tsGuessSource: null, tsGuessMapping: [], tsGuessMappingConfirmed: false })}>清除TS初猜</button>
+        <Check label="已核对TS初猜按显示顺序对应及相同电子态" disabled={!!guessOrder.issue||!!s.neb.tsGuessSource && (!s.neb.tsGuessSource.confirmed || !inputStructureSourceIsCurrent(s.neb.tsGuessSource, sourceCandidates))} checked={!guessOrder.issue&&!!s.neb.tsGuessMappingConfirmed&&s.neb.tsGuessOrderContext===orcaNebOrderContext(request,'tsGuess') && (!s.neb.tsGuessSource || s.neb.tsGuessSource.confirmed && inputStructureSourceIsCurrent(s.neb.tsGuessSource, sourceCandidates))} onChange={value => nebParameter({ tsGuessMappingConfirmed: value,tsGuessOrderContext:value?orcaNebOrderContext(request,'tsGuess'):undefined })} />
+        <button type="button" aria-label="清除TS初猜来源" onClick={() => nebParameter({ tsGuess: null, tsGuessSource: null, tsGuessMappingConfirmed: false, tsGuessOrderContext:undefined })}>清除TS初猜</button>
       </>}
       <div className="orca-grid">
         <NumberField label="含两端的总珠子数" value={s.neb.images} min={3} step={1} onChange={value => neb({ images: requiredNumber(value) })} />

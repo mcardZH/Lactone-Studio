@@ -29,6 +29,31 @@ const unit = (direction?: EditPoint): EditPoint => {
 	return n > 1e-9 ? { x: x / n, y: y / n } : { x: 1, y: 0 };
 };
 const validLength = (value: number) => Number.isFinite(value) && value > 0;
+/** KET/model units only. A local edge is best; otherwise use the median of
+ * the anchor's connected component before falling back to new-drawing units. */
+export function localDrawingBondLength(graph: EditGraph, atomId: string | undefined, fallback: number): number {
+	if (!atomId) return fallback;
+	const atoms = new Map(graph.atoms.map(a => [a.id, a])), adjacency = new Map<string, EditGraph['bonds']>();
+	for (const edge of graph.bonds) for (const id of [edge.begin, edge.end]) {
+		const edges = adjacency.get(id); if (edges) edges.push(edge); else adjacency.set(id, [edge]);
+	}
+	const distance = (edge: EditGraph['bonds'][number]) => {
+		const a = atoms.get(edge.begin), b = atoms.get(edge.end);
+		return a && b ? Math.hypot(a.x-b.x, a.y-b.y) : NaN;
+	};
+	const median = (values:number[]) => {
+		values.sort((a,b)=>a-b);
+		return (values[Math.floor((values.length-1)/2)] + values[Math.floor(values.length/2)])/2;
+	};
+	const local = (adjacency.get(atomId) ?? []).map(distance).filter(validLength);
+	if (local.length) return median(local);
+	const seen = new Set<string>(), queue = new Set([atomId]), lengths: number[] = [];
+	for (const id of queue) for (const edge of adjacency.get(id) ?? []) if (!seen.has(edge.id)) {
+		seen.add(edge.id); queue.add(opposite(edge,id));
+		const d=distance(edge); if (validLength(d)) lengths.push(d);
+	}
+	return lengths.length ? median(lengths) : fallback;
+}
 const hasAtomStereo = (graph: EditGraph, atom: EditAtom) =>
 	atom.props.stereoParity ||
 	atom.props.stereoLabel ||
@@ -120,8 +145,7 @@ export function applyGroup(input: EditGraph, options: GroupEditOptions): GraphEd
 		const edges = atomEdges(graph, anchor.id);
 		if (
 			edges.some((b) => ![1, 2, 3].includes(b.order)) ||
-			(!options.allowHypervalence &&
-				edges.reduce((n, b) => n + b.order, 0) > template.externalBondOrderMax)
+			edges.reduce((n, b) => n + b.order, 0) > template.externalBondOrderMax
 		)
 			return rejectEdit(input, `${template.name}连接点只允许一根外接单键；原有外接边全部保留。`);
 		if (hasAtomStereo(graph, anchor))
@@ -264,15 +288,15 @@ export function placeRing(input: EditGraph, options: RingEditOptions): GraphEdit
 	} catch {
 		return rejectEdit(input, "未知环模板。");
 	}
-	const { size, orders } = definition,
-		length = options.bondLength,
-		tolerance = (options.tolerance ?? 0.12) * length;
-	if (!(tolerance > 0 && tolerance < length * 0.4)) return rejectEdit(input, "局部融合容差无效。");
+	const { size, orders } = definition;
+	const ratio = options.tolerance ?? 0.12;
+	if (!(ratio > 0 && ratio < 0.4)) return rejectEdit(input, "局部融合容差无效。");
 	const anchor = options.anchor;
 	const anchorAtom =
 		"atomId" in anchor ? input.atoms.find((a) => a.id === anchor.atomId) : undefined;
 	const anchorBond =
 		"bondId" in anchor ? input.bonds.find((b) => b.id === anchor.bondId) : undefined;
+	let length = localDrawingBondLength(input, anchorAtom?.id, options.bondLength);
 	if (("atomId" in options.anchor && !anchorAtom) || ("bondId" in options.anchor && !anchorBond))
 		return rejectEdit(input, "环的目标已变化，请重新选择。");
 	if (
@@ -298,13 +322,17 @@ export function placeRing(input: EditGraph, options: RingEditOptions): GraphEdit
 			[first, second] = [second, first];
 			[firstId, secondId] = [secondId, firstId];
 		}
-		if (Math.hypot(second.x - first.x, second.y - first.y) < length * 0.1)
+		length = Math.hypot(second.x - first.x, second.y - first.y);
+		if (!validLength(length))
 			return rejectEdit(input, "共享边退化，不能确定新环。");
+		let requestedSide = options.side;
 		if (options.direction) {
 			const cross =
 				(second.x - first.x) * options.direction.y - (second.y - first.y) * options.direction.x;
-			if (Math.abs(cross) > 1e-8) side = cross > 0 ? 1 : -1;
-		} else if (options.side === undefined) {
+			if (Math.abs(cross) > length * length * .025) requestedSide = cross > 0 ? 1 : -1;
+		}
+		if (requestedSide !== undefined) side = requestedSide;
+		else {
 			const shared = new Set([anchorBond.begin, anchorBond.end]);
 			const score = (sign: 1 | -1) =>
 				ringPlacementCost(input, polygon(first, second, size, sign), shared, length);
@@ -319,6 +347,7 @@ export function placeRing(input: EditGraph, options: RingEditOptions): GraphEdit
 		second = { x: first.x + length * Math.cos(angle), y: first.y + length * Math.sin(angle) };
 	}
 	const points = polygon(first, second, size, side);
+	const tolerance = ratio * length;
 	if (points.some((p) => ![p.x, p.y].every(Number.isFinite)))
 		return rejectEdit(input, "环放置坐标无效。");
 	let graph = cloneGraph(input);
@@ -348,6 +377,16 @@ export function placeRing(input: EditGraph, options: RingEditOptions): GraphEdit
 		mapped.push(atom);
 		atomMap[String(i)] = atom.id;
 	}
+	// Exact shared anchors fix the polygon pose. Verify the whole placement:
+	// accepting points independently within radius could distort the edge
+	// between two adjacent reused vertices by twice that radius.
+	for (let i = 0; i < size; i++) {
+		const j = (i + 1) % size;
+		const dx = (mapped[j].x - mapped[i].x) - (points[j].x - points[i].x);
+		const dy = (mapped[j].y - mapped[i].y) - (points[j].y - points[i].y);
+		if (Math.hypot(dx, dy) > tolerance * (1 + 1e-9))
+			return rejectEdit(input, "已有顶点不能以一致键长和方向组成新环，原图已保留。");
+	}
 	for (let i = 0; i < size; i++) {
 		const a = mapped[i],
 			b = mapped[(i + 1) % size],
@@ -365,6 +404,10 @@ export function placeRing(input: EditGraph, options: RingEditOptions): GraphEdit
 			// graph below may change a necessary single/double assignment.
 			bondMap[String(i)] = old.id;
 		} else bondMap[String(i)] = addBond(graph, a, b, orders[i]).id;
+	}
+	if(orders.every(order=>order===1)) {
+		const problem=validateEditGraph(graph,mapped.map(a=>a.id),options);
+		return problem?rejectEdit(input,problem):acceptEdit(graph,atomMap,bondMap);
 	}
 	const pi = definition.conjugated.map((i) => mapped[i].id);
 	const kekule = assignKekule(

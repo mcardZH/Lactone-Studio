@@ -1,0 +1,81 @@
+{
+  "basis": "Official xTB 6.8 tagged wrap files versus acquired exact source archives; establishes declared source versions, not bitwise rebuild",
+  "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+  "bindings": [
+    {
+      "component": "cpx",
+      "url": "https://github.com/grimme-lab/CPCM-X",
+      "tag": "v1.1.0",
+      "expectedCommit": "e7f894c76d41ee1f703cf6f03e931cbcf046bc7f",
+      "api": "https://api.github.com/repos/grimme-lab/CPCM-X/commits/v1.1.0",
+      "actualCommit": "e7f894c76d41ee1f703cf6f03e931cbcf046bc7f",
+      "matchesSourceArchive": true
+    },
+    {
+      "component": "ddx",
+      "url": "https://github.com/ddsolvation/ddX",
+      "tag": "v1.0.2",
+      "expectedCommit": "4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "api": "https://api.github.com/repos/ddsolvation/ddX/commits/v1.0.2",
+      "actualCommit": "4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "matchesSourceArchive": true
+    },
+    {
+      "component": "dftd4",
+      "url": "https://github.com/dftd4/dftd4",
+      "tag": "v4.3.1",
+      "expectedCommit": "1107ea7c7c2131719e306fd57a5f4a1579e2577e",
+      "api": "https://api.github.com/repos/dftd4/dftd4/commits/v4.3.1",
+      "actualCommit": "1107ea7c7c2131719e306fd57a5f4a1579e2577e",
+      "matchesSourceArchive": true
+    },
+    {
+      "component": "mctc-lib",
+      "url": "https://github.com/grimme-lab/mctc-lib",
+      "tag": "v0.7.0",
+      "expectedCommit": "aec7f40ccf1b0dceb9156ae6dc6667fd61206916",
+      "api": "https://api.github.com/repos/grimme-lab/mctc-lib/commits/v0.7.0",
+      "actualCommit": "aec7f40ccf1b0dceb9156ae6dc6667fd61206916",
+      "matchesSourceArchive": true
+    },
+    {
+      "component": "multicharge",
+      "url": "https://github.com/grimme-lab/multicharge",
+      "tag": "v0.6.0",
+      "expectedCommit": "576f499b49eb57f8c2dc1ba6f7017800f1e332d9",
+      "api": "https://api.github.com/repos/grimme-lab/multicharge/commits/v0.6.0",
+      "actualCommit": "576f499b49eb57f8c2dc1ba6f7017800f1e332d9",
+      "matchesSourceArchive": true
+    },
+    {
+      "component": "tblite",
+      "url": "https://github.com/tblite/tblite",
+      "tag": "v0.8.0",
+      "expectedCommit": "e14351bfafb38a78715d5fb8f18654a149cfbecf",
+      "api": "https://api.github.com/repos/tblite/tblite/commits/v0.8.0",
+      "actualCommit": "e14351bfafb38a78715d5fb8f18654a149cfbecf",
+      "matchesSourceArchive": true
+    },
+    {
+      "component": "test-drive",
+      "url": "https://github.com/fortran-lang/test-drive",
+      "tag": "v0.6.1",
+      "expectedCommit": "c506771aefd594e7e372240a8027b3fd06d61264",
+      "api": "https://api.github.com/repos/fortran-lang/test-drive/commits/v0.6.1",
+      "actualCommit": "c506771aefd594e7e372240a8027b3fd06d61264",
+      "matchesSourceArchive": true
+    }
+  ],
+  "staticArchives": [
+    {
+      "name": "libxtb.a",
+      "sha256": "a5a53af2f9e88d80eb4f910d35d29305b24cd6bf15fbfa9e57486bd6471dad0c",
+      "objectCount": 730
+    },
+    {
+      "name": "libcpx.a",
+      "sha256": "3319a4714ddc466515450a33d0a58f3544d6e99069263f8a5c6b15e7f128c4a4",
+      "objectCount": 137
+    }
+  ]
+}

@@ -2,11 +2,12 @@ import type { AdvancedFrameSource } from '../../modeling/advanced/frame-source';
 import { prepareAdvancedFrameInputs, prepareAdvancedFrameTrajectory, type AdvancedFrameOutputPlan, type AdvancedInputTemplate } from '../../modeling/application/advanced-frame-output';
 import type { AdvancedOutputManifest, AdvancedOutputPartial } from '../../modeling/advanced/output-contracts';
 import type { AdvancedOutputBridge } from '../../modeling/advanced/output-contracts';
+import {pairEditedElectronicState,type ElectronicStateEditField} from '../../core/base-electronic-state';
 
 export interface AdvancedFrameOutputCandidate { id: string; source: AdvancedFrameSource }
 /** Candidate collection position, independent from checked output order. */
 export const advancedOutputCandidateLabel = (candidate: AdvancedFrameOutputCandidate, candidateIndex: number) => `第 ${candidateIndex + 1} 帧 · ${candidate.source.label}`;
-export interface AdvancedFrameOutputRow { sourceKey: string; stem: string; charge: string; multiplicity: string; confirmed: boolean }
+export interface AdvancedFrameOutputRow { sourceKey: string; stem: string; charge: string; multiplicity: string; confirmed: boolean; lastEditedField?:ElectronicStateEditField; pairingIssue?:string|null }
 export interface AdvancedFrameOutputDraft {
   selectedIds: readonly string[]; rows: Readonly<Record<string, AdvancedFrameOutputRow>>;
   mode: 'inputs' | 'trajectory'; format: 'xyz' | 'extxyz'; stem: string; directoryName: string;
@@ -36,7 +37,19 @@ export function moveAdvancedOutputFrame(draft: AdvancedFrameOutputDraft, id: str
 export function editAdvancedOutputFrame(draft: AdvancedFrameOutputDraft, id: string, patch: Partial<Omit<AdvancedFrameOutputRow, 'sourceKey'>>): AdvancedFrameOutputDraft {
   const row = draft.rows[id]; if (!row) return draft;
   const confirmationChanged = patch.stem !== undefined && patch.stem !== row.stem || patch.charge !== undefined && patch.charge !== row.charge || patch.multiplicity !== undefined && patch.multiplicity !== row.multiplicity;
-  return { ...draft, rows: { ...draft.rows, [id]: { ...row, ...patch, ...(confirmationChanged ? { confirmed: false } : {}) } } };
+  return { ...draft, rows: { ...draft.rows, [id]: { ...row, ...patch,
+    ...(patch.charge!==undefined?{lastEditedField:'charge' as const,pairingIssue:null}:patch.multiplicity!==undefined?{lastEditedField:'multiplicity' as const,pairingIssue:null}:{}),
+    ...(confirmationChanged ? { confirmed: false } : {}) } } };
+}
+export function commitAdvancedOutputFrame(candidates:readonly AdvancedFrameOutputCandidate[],draft:AdvancedFrameOutputDraft,id:string,field?:ElectronicStateEditField,text?:string):AdvancedFrameOutputDraft {
+  const row=draft.rows[id],candidate=candidates.find(value=>value.id===id),edited=field??row?.lastEditedField;
+  if(!row||!candidate||!edited||field&&row.lastEditedField!==field&&(text===undefined||text===row[field]))return draft;
+  const raw={...row,...(text===undefined?{}:{[edited]:text})};
+  if(!/^[+-]?\d+$/.test(raw.charge)||!/^\+?\d+$/.test(raw.multiplicity))return draft;
+  const values={charge:Number(raw.charge),multiplicity:Number(raw.multiplicity)},result=pairEditedElectronicState(candidate.source.structure.atoms,values,edited,values[edited]);
+  if(result.error)return {...draft,rows:{...draft.rows,[id]:{...raw,pairingIssue:result.error}}};
+  const next=editAdvancedOutputFrame(draft,id,{charge:String(result.values.charge),multiplicity:String(result.values.multiplicity)});
+  return {...next,rows:{...next.rows,[id]:{...next.rows[id],lastEditedField:undefined,pairingIssue:null}}};
 }
 export function advancedOutputDraftKey(candidates: readonly AdvancedFrameOutputCandidate[], draft: AdvancedFrameOutputDraft): string {
   return JSON.stringify([draft.mode, draft.format, draft.stem, draft.directoryName, draft.selectedIds.map(id => [id, draft.rows[id],

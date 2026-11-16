@@ -3,7 +3,7 @@ import { assertResultNotAborted } from '../results/contracts';
 import { createLazyTrajectoryResult } from '../results/lazy-trajectory';
 import { readPostprocessSourceBytes, retainPostprocessSourceBytes, type PostprocessAttachment, type PostprocessDocument } from '../results/postprocess-document';
 import type { PostprocessSource, PostprocessSourcePair } from '../results/postprocess-sources';
-import type { Structure } from '../core/types';
+import type { MDPreparationProvenance, Structure } from '../core/types';
 import { createLazyConformerTrajectory, type ConformerTrajectoryResult } from '../modeling/conformers/trajectory';
 import { captureProjectCompanionBundles, restoreProjectCompanionBundles, captureRawProjectCompanionCandidates, restoreRawProjectCompanionCandidates, rawProjectCompanionOutputIdentity, projectCompanionVersion, type ProjectCompanionBundleSnapshot, type ProjectRawCompanionBundleSnapshot } from './companion-sources';
 import { createRestoredManagedSource } from './managed-source';
@@ -15,11 +15,14 @@ import { postprocessSourceExtras, retainPostprocessSourceExtras } from './postpr
 import { isScientificFileDocument, retainPostprocessFileSourceBytes, readPostprocessFileSourceBytes, type PostprocessFileDocument, type PostprocessScientificFileDocument } from '../results/postprocess-document';
 import {postprocessFileJobSource, type PostprocessScientificFileSource} from '../results/postprocess-sources';
 import type { ResultDiagnostic, ResultDiagnosticSnapshot } from '../results/contracts';
+import { requiresProjectFormat15 } from './format15';
 
 export interface ProjectAssetWriter { write(category: string, name: string, bytes: Uint8Array | string): Promise<{ assetId: string }>;writeMany?(values:readonly ProjectAssetWrite[]):Promise<{assetId:string}[]> }
 export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]> }
 type ResultData = Omit<TrajectoryResult, 'getFrame' | 'dispose'>;
 export interface TrajectoryResultSnapshot { schema: 1; data: ResultData; frameAssets: string[];
+  /** The first frame's metadata may not describe later native frames. */
+  frameFormatVersion?: 8 | 15;
   conformer?: Pick<ConformerTrajectoryResult, 'identity' | 'frameIds' | 'protectedAtomIds' | 'displayRestoration'> }
 export interface PostprocessAttachmentSnapshot {
   role?: import('../results/postprocess-document').PostprocessAttachmentRole;
@@ -52,6 +55,43 @@ export interface PostprocessScientificFileDocumentSnapshot {
 }
 export type PostprocessFileDocumentSnapshot = PostprocessDocumentSnapshot | PostprocessScientificFileDocumentSnapshot;
 export const POSTPROCESS_SCIENTIFIC_FILE_CAPABILITY = 'scientific-file-v1';
+
+export function nativeMDRequiresFormat8(native: MDPreparationProvenance['native'] | undefined): boolean {
+  return !!native && (native.periodic === true || native.solvation !== undefined || native.effectiveSeed !== undefined ||
+    native.seedTreatment !== undefined || !!native.internalConstraints?.length || native.engineIdentity !== undefined ||
+    native.degreesOfFreedom !== undefined || native.restartInputSha256 !== undefined);
+}
+
+export function structureRequiresXtbFormat8(structure: Structure | undefined): boolean {
+  const preparation = structure?.preparation, xtb = preparation?.xtb, md = preparation?.md;
+  return !!(xtb?.schema === 1 && xtb.engine === 'xtb' && (xtb.method === 'gxtb' || xtb.terminal === 'unconverged' ||
+    xtb.periodic?.optimizer === 'native-fire' || xtb.engineIdentity !== undefined || xtb.iterations !== undefined || xtb.optimizer !== undefined) ||
+    md?.schema === 1 && md.driver === 'native-xtb-md' && (md.method === 'gxtb' || nativeMDRequiresFormat8(md.native)));
+}
+
+export function trajectorySnapshotRequiresFormat8(snapshot: TrajectoryResultSnapshot): boolean {
+  const display = snapshot.conformer?.displayRestoration;
+  return snapshot.frameFormatVersion !== undefined || structureRequiresXtbFormat8(snapshot.data?.initialStructure) ||
+    display?.projection === 'rigid-v2' || !!display?.references?.some(reference => structureRequiresXtbFormat8(reference.structure));
+}
+
+function attachmentRequiresFormat8(value: PostprocessAttachmentSnapshot | undefined): boolean {
+  if (!value) return false;
+  const generated = value.data?.generatedXtb;
+  return !!(generated && (generated.kind === 'trusted-generated-gxtb-sp' || generated.moldenConversion ||
+    generated.engineIdentity || generated.files?.some(file => file.role === 'analysis-molden')) ||
+    trajectorySnapshotRequiresFormat8(value.result) || value.results?.some(trajectorySnapshotRequiresFormat8));
+}
+
+export function postprocessSnapshotRequiresFormat8(snapshot: PostprocessFileDocumentSnapshot): boolean {
+  if (attachmentRequiresFormat8(snapshot.wavefunction) || snapshot.companions?.some(attachmentRequiresFormat8)) return true;
+  if ('kind' in snapshot) {
+    return !!(snapshot.displayResult && trajectorySnapshotRequiresFormat8(snapshot.displayResult) ||
+      snapshot.output.jobs.some(job => job.kind === 'geometry' && trajectorySnapshotRequiresFormat8(job.snapshot)));
+  }
+  return attachmentRequiresFormat8(snapshot.output) || trajectorySnapshotRequiresFormat8(snapshot.result);
+}
+
 const encoder = new TextEncoder();
 function json(value: unknown): string {
   return JSON.stringify(value, (_key, part) => {
@@ -67,13 +107,15 @@ const clone = <T>(value: T): T => JSON.parse(json(value)) as T;
 export async function encodeTrajectoryResult(result: TrajectoryResult, writer: ProjectAssetWriter): Promise<TrajectoryResultSnapshot> {
   const { getFrame: _get, dispose: _dispose, displayRestoration:_displayRestoration, ...metadata } = result as TrajectoryResult & Partial<ConformerTrajectoryResult>;
   const data = clone(metadata), frameAssets: string[] = [];
-  let batch:ProjectAssetWrite[]=[],batchBytes=0;
+  let batch:ProjectAssetWrite[]=[],batchBytes=0,requiresFormat8=false,requiresFormat15=false;
   const flush=async()=>{if(!batch.length)return;const values=batch;batch=[];batchBytes=0;
     const written=writer.writeMany?await writer.writeMany(values):await Promise.all(values.map(value=>writer.write(value.category,value.name,value.bytes)));
     if(written.length!==values.length||written.some(value=>typeof value.assetId!=='string'||!value.assetId))throw new Error('项目轨迹批写回执不完整。');
     frameAssets.push(...written.map(value=>value.assetId));};
   for (let index = 0; index < data.frames.length; index++) {
     const structure = await result.getFrame(index);
+    if (!requiresFormat15 && requiresProjectFormat15(structure)) requiresFormat15 = true;
+    if (!requiresFormat8 && structureRequiresXtbFormat8(structure)) requiresFormat8 = true;
     const bytes=encoder.encode(json(structure)),name=`${result.id}-${index}.json`;
     if(!writer.writeMany){frameAssets.push((await writer.write('trajectories',name,bytes)).assetId);continue;}
     if(bytes.byteLength>PROJECT_CHUNK_BYTES){await flush();frameAssets.push((await writer.write('trajectories',name,bytes)).assetId);continue;}
@@ -83,10 +125,12 @@ export async function encodeTrajectoryResult(result: TrajectoryResult, writer: P
   }
   await flush();
   const collection = result as Partial<ConformerTrajectoryResult>;
-  return { schema: 1, data, frameAssets, ...(collection.identity && collection.frameIds ? { conformer: clone({ identity: collection.identity, frameIds: collection.frameIds, protectedAtomIds: collection.protectedAtomIds ?? [],...(collection.displayRestoration?{displayRestoration:collection.displayRestoration}:{}) }) } : {}) };
+  return { schema: 1, data, frameAssets, ...(requiresFormat15 ? { frameFormatVersion: 15 as const } : requiresFormat8 ? { frameFormatVersion: 8 as const } : {}),
+    ...(collection.identity && collection.frameIds ? { conformer: clone({ identity: collection.identity, frameIds: collection.frameIds, protectedAtomIds: collection.protectedAtomIds ?? [],...(collection.displayRestoration?{displayRestoration:collection.displayRestoration}:{}) }) } : {}) };
 }
 export function decodeTrajectoryResult(snapshot: TrajectoryResultSnapshot, reader: ProjectAssetReader): TrajectoryResult {
-  if (snapshot.schema !== 1 || snapshot.frameAssets.length !== snapshot.data.frames.length) throw new Error('项目轨迹索引无效。');
+  if (snapshot.schema !== 1 || snapshot.frameAssets.length !== snapshot.data.frames.length ||
+    snapshot.frameFormatVersion !== undefined && snapshot.frameFormatVersion !== 8 && snapshot.frameFormatVersion !== 15) throw new Error('项目轨迹索引无效。');
   const input = { ...clone(snapshot.data), async readFrame(index: number, signal?: AbortSignal) {
     assertResultNotAborted(signal);
     const bytes = await reader.read(snapshot.frameAssets[index]); assertResultNotAborted(signal);
@@ -126,7 +170,8 @@ async function encodeAttachment(attachment: PostprocessAttachment, writer: Proje
   const rawCompanionCandidates=await captureRawProjectCompanionCandidates(attachment,writer);
   const sourceRevision=inspected?.sourceRevision??rawOutput?.revision;
   const generatedPackage = await readGeneratedXtbSourcePackage(attachment.source);
-  const generatedXtbPackage = generatedPackage ? await writer.write('sources', 'gfn2-source-package.json', encoder.encode(json(generatedPackage))) : undefined;
+  const packageName = data.generatedXtb?.kind === 'trusted-generated-gxtb-sp' ? 'gxtb-source-package.json' : 'gfn2-source-package.json';
+  const generatedXtbPackage = generatedPackage ? await writer.write('sources', packageName, encoder.encode(json(generatedPackage))) : undefined;
   if (projectCompanionVersion(attachment) !== companionRevision) throw Error('保存期间来源配套集合变化；未提交混合快照。');
   return { data, ...(attachment.role ? { role: attachment.role } : {}), result: await encode(result), results: await Promise.all(results.map(encode)), raw: { sourceId: identity.id, name: identity.name, size: identity.size, ...(sourceRevision ? { revision: sourceRevision } : {}), chunks },...(companionBundles?{companionBundles}:{}),...(rawCompanionCandidates?{rawCompanionCandidates}:{}), ...(generatedXtbPackage ? { generatedXtbPackage } : {}) };
 }
@@ -149,9 +194,9 @@ function restoreAttachment(snapshot: PostprocessAttachmentSnapshot, reader: Proj
   const source: PostprocessSource = { ...clone(snapshot.data), result: decodeTrajectoryResult(snapshot.result, reader), results: snapshot.results.map(result => decodeTrajectoryResult(result, reader)) };
   if (snapshot.generatedXtbPackage) retainGeneratedXtbSourcePackage(source, async () => {
     const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await reader.read(snapshot.generatedXtbPackage!.assetId))) as GeneratedXtbSourcePackage;
-    if (value.schema !== 1 || value.bundle.artifactId !== source.generatedXtb?.artifactId) throw Error('GFN2原始来源包身份无效。');
-    await validateGeneratedXtbBundle(value.bundle, value.expected);
-    if (value.bundle.files.find(file => file.role === 'molden')?.sha256 !== source.metadata?.sourceRevision) throw Error('GFN2原始来源包与波函数版本不一致。');
+    if (value.schema !== 1 || value.bundle.artifactId !== source.generatedXtb?.artifactId) throw Error('XTB原始来源包身份无效。');
+    const validated=await validateGeneratedXtbBundle(value.bundle, value.expected);
+    if (validated.analysisMolden.sha256 !== source.metadata?.sourceRevision) throw Error('XTB来源包与实际分析波函数版本不一致。');
     return value;
   });
   const raw = snapshot.raw;

@@ -12,6 +12,7 @@ import { normalizeSelector, stableToken } from './identity';
 import {assertStructureInteractionContext,interactionUsesStructure} from '../results/interaction-structure-context';
 import type {ModelDocument} from '../modeling/contracts';
 import type {SurfaceContext} from '../results/surface-contracts';
+import { isXtbPreparationProvenance } from '../modeling/xtb/accept-result';
 
 export interface GeneratedInputCitationReceipt {
   engine: 'gaussian' | 'orca'; text: string; documentId: string; receiptId: string; sourceName: string;
@@ -72,7 +73,7 @@ const str = (value: unknown): string | undefined => typeof value === 'string' &&
 const items = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
 function producer(value?: string): string | undefined {
   if (!value || /^(unknown|xyz|structure)$/i.test(value)) return undefined;
-  const known: Record<string, string> = { gaussian: 'Gaussian', orca: 'ORCA', multiwfn: 'Multiwfn', xtb: 'xTB', 'native-xtb': 'xTB', 'xtb-aiss': 'xTB', tblite: 'tblite', ase: 'ASE', rdkit: 'RDKit' };
+  const known: Record<string, string> = { gaussian: 'Gaussian', orca: 'ORCA', multiwfn: 'Multiwfn', xtb: 'xTB', gxtb:'g-xTB', 'g-xtb':'g-xTB', 'native-xtb': 'xTB', 'xtb-aiss': 'xTB', tblite: 'tblite', ase: 'ASE', rdkit: 'RDKit' };
   return known[value.toLowerCase()] || value;
 }
 /** Canonicalize only catalogued aliases; a custom label stays explicit. */
@@ -83,7 +84,7 @@ export function normalizeCitationMethod(value: string, software?: string): strin
   if (software === 'Gaussian' && /^(?:[ru])?tpss-tpss$/.test(lower)) return 'tpss';
   const exactAliases:Record<string,string>={'ωb97x-d':'wb97xd','wb97x-d':'wb97xd','ωb97x-d3':'wb97x-d3','m06-2x':'m062x'};
   if(exactAliases[lower])return exactAliases[lower];
-  const xtb: Record<string, string> = { gfn0: 'gfn0-xtb', 'gfn0-xtb': 'gfn0-xtb', gfn1: 'gfn1-xtb', 'gfn1-xtb': 'gfn1-xtb', gfn2: 'gfn2-xtb', xtb2: 'gfn2-xtb', 'gfn2-xtb': 'gfn2-xtb', gfnff: 'gfn-ff', 'gfn-ff': 'gfn-ff' };
+  const xtb: Record<string, string> = { gfn0: 'gfn0-xtb', 'gfn0-xtb': 'gfn0-xtb', gfn1: 'gfn1-xtb', 'gfn1-xtb': 'gfn1-xtb', gfn2: 'gfn2-xtb', xtb2: 'gfn2-xtb', 'gfn2-xtb': 'gfn2-xtb', gfnff: 'gfn-ff', 'gfn-ff': 'gfn-ff',gxtb:'g-xtb','g-xtb':'g-xtb' };
   if (xtb[lower]) return xtb[lower];
   if (software === 'ORCA') {
     const match = getOrcaMethods('6.1').find(m => m.id === lower || m.keywords[0].toLowerCase() === lower.replace(/^m06-2x$/, 'm062x'));
@@ -105,6 +106,13 @@ function citationBasis(value: string): string {
 const normalizedDispersion = (v: string) => ({ gd3: 'd3', gd3bj: 'd3bj', d3zero: 'd3' })[v.toLowerCase() as 'gd3'] || v.toLowerCase();
 function addFact(output: CitationFact[], base: Omit<CitationFact, 'id' | 'feature'>, feature: string, method?: string, suffix = '') {
   output.push({ ...base, feature, method, id: `citation:${stableToken(JSON.stringify([base.documentId, base.sourceId, base.jobId, base.frameId, base.taskId, base.stage, base.kind, feature, method, base.software, base.version, suffix]))}` });
+}
+export function gxtbRuntimeFacts(output:CitationFact[],base:Omit<CitationFact,'id'|'feature'>,method:unknown,identity:unknown,suffix=''){
+ if(typeof method!=='string'||normalizeCitationMethod(method)!=='g-xtb')return;
+ const runtime=bag(identity),actual={...base,software:'g-xTB',version:str(runtime?.gxtbRelease),
+  evidence:[...base.evidence,{kind:'metadata' as const,locator:`${base.sourceId??base.taskId??base.documentId}:gxtb-runtime`,detail:JSON.stringify({hostVersion:runtime?.hostVersion??base.version,gxtbRelease:runtime?.gxtbRelease,engineIdentity:runtime})}]};
+ addFact(output,actual,'software','g-xTB',suffix);
+ addFact(output,{...actual,kind:'runtime-dependency'},'runtime-dependency','g-xTB',suffix);
 }
 function gaussianFacts(meta: GaussianSourceMeta, base: Omit<CitationFact, 'id' | 'feature'>, output: CitationFact[]) {
   const route = meta.route || '';
@@ -187,13 +195,19 @@ function modelingMDFacts(structure:Structure,documentId:string,output:CitationFa
   const raw=md.native?.rawPotential;
   const rawExecuted=Boolean(raw&&Number.isFinite(raw.value)&&raw.unit==='hartree'&&raw.sourceArtifact==='xtb.trj'
     &&Number.isSafeInteger(raw.sourceStep)&&raw.sourceStep>=0&&raw.sourceStep<=md.step&&raw.sourceTimeFs===raw.sourceStep*2);
-  if(native && (!['gfn0','gfn1','gfn2','gfnff'].includes(md.method) || md.native?.dtFs!==2 || md.timeFs!==md.step*2 || md.step===0&&!rawExecuted))return true;
+  if(native && (!['gfn0','gfn1','gfn2','gfnff','gxtb'].includes(md.method) || md.native?.dtFs!==2 || md.timeFs!==md.step*2 || md.step===0&&!rawExecuted))return true;
   if(ase && (md.step<=0 || !['mmff94','mmff94s','uff'].includes(md.method.toLowerCase())))return true;
   const software=native?'xTB':'RDKit',observed=md.software.find(item=>item?.name===software);
   if(!observed)return true;
   const base={documentId,sourceId:`md:${md.documentId}:${md.sourceRevision}`,frameId:String(md.frameSeq),stage:'modeling-md',kind:'model-operation' as const,
     software,version:str(observed.version),evidence:[{kind:'metadata' as const,locator:`${structure.id}:preparation:md`,detail:JSON.stringify(md)}],purpose:'保留的建模MD实际运行帧；方法、版本与原始输入来源分别记录'};
   addFact(output,base,'method',normalizeCitationMethod(md.method,software),suffix);
+  if(native){
+   gxtbRuntimeFacts(output,base,md.method,md.native?.engineIdentity,suffix);
+   const solvation=md.native?.solvation;
+   if(solvation?.sourceField==='stdout:solvation-model'&&solvation.model==='alpb'&&solvation.solvent)
+    addFact(output,{...base,parameters:{solvent:solvation.solvent,temperatureKelvin:solvation.temperatureKelvin}},'solvation','alpb',suffix);
+  }
   // The driver determines which observed producers did scientific work. Native
   // xTB does not gain an ASE integrator citation from importing unit constants.
   for(const name of native?['xTB']:['RDKit','ASE']){
@@ -202,6 +216,30 @@ function modelingMDFacts(structure:Structure,documentId:string,output:CitationFa
     addFact(output,source,'software',name,suffix);
     addFact(output,{...source,kind:'runtime-dependency'},'runtime-dependency',name,suffix);
   }
+  return true;
+}
+function modelingXtbPreparationFacts(structure:Structure,documentId:string,output:CitationFact[],suffix:string):boolean {
+  const preparation=structure.preparation,receipt=preparation?.xtb;
+  if(receipt===undefined)return false;
+  if(!isXtbPreparationProvenance(receipt,preparation?.after,preparation?.unit))return true;
+  const completed=receipt.terminal==='completed',usable=receipt.terminal!=='stopped';
+  const parameters={charge:receipt.charge,...(receipt.multiplicity===null?{}:{multiplicity:receipt.multiplicity}),
+    ...(usable?{energy:preparation!.after!,energyUnit:preparation!.unit!}:{})};
+  const base={documentId,sourceId:`xtb:${receipt.documentId}:${receipt.sourceRevision}`,frameId:receipt.terminal==='stopped'?String(receipt.frameSeq):undefined,
+    stage:'modeling-xtb-preoptimization',kind:'model-operation' as const,software:'xTB',version:usable?receipt.version:undefined,parameters,
+    evidence:[{kind:'metadata' as const,locator:`${structure.id}:preparation:xtb`,detail:JSON.stringify({receipt,...parameters})}],
+    purpose:completed?'保留模型的xTB预优化完成结果':usable?'保留模型的xTB预优化未收敛结果':'保留模型的xTB预优化停止帧'};
+  addFact(output,base,'method',normalizeCitationMethod(receipt.method,'xTB'),suffix);
+  addFact(output,base,'software','xTB',suffix);
+  gxtbRuntimeFacts(output,base,receipt.method,receipt.engineIdentity,suffix);
+  const dependency={...base,kind:'runtime-dependency' as const};
+  addFact(output,dependency,'runtime-dependency','xTB',suffix);
+  if(receipt.periodic) {
+    if(receipt.periodic.optimizer!=='native-fire')addFact(output,{...dependency,software:'scipy',version:receipt.periodic.optimizerVersion},'runtime-dependency','scipy',suffix);
+    if(receipt.periodic.backend==='tblite')addFact(output,{...dependency,software:'tblite',version:undefined},'runtime-dependency','tblite',suffix);
+  }
+  if(usable&&receipt.solvation)addFact(output,{...base,parameters:{...parameters,solvent:receipt.solvation.solvent}},
+    'solvation','alpb',suffix);
   return true;
 }
 function structureSourceFacts(structure: Structure, documentId: string, output: CitationFact[], suffix = '') {
@@ -217,7 +255,8 @@ function structureSourceFacts(structure: Structure, documentId: string, output: 
     const base = { documentId, sourceId: `source:${meta.id}`, jobId: String(meta.jobIndex), kind: 'generated-input' as const, software: 'ORCA', evidence: [{ kind: 'source' as const, locator: `${meta.fileName}:job:${meta.jobIndex}`, detail: '保留的ORCA输入来源，未据此推定运行' }], purpose: '保留结构的输入来源；无运行证据' };
     addFact(output, base, 'software', 'ORCA', suffix); orcaFacts(meta.rawInput, meta.fileName, meta.jobIndex, base, output);
   }
-  if (!modelingMDFacts(structure,documentId,output,suffix) && structure.preparation?.forcefield && typeof structure.preparation.after === 'number' && Number.isFinite(structure.preparation.after)) {
+  if (!modelingMDFacts(structure,documentId,output,suffix) && !modelingXtbPreparationFacts(structure,documentId,output,suffix)
+    && structure.preparation?.forcefield && typeof structure.preparation.after === 'number' && Number.isFinite(structure.preparation.after)) {
     addFact(output, { documentId, sourceId: structure.id, kind: 'model-operation', evidence: [{ kind: 'metadata', locator: `${structure.id}:preparation`, detail: JSON.stringify(structure.preparation) }], purpose: '保留模型的力场准备' }, 'method', structure.preparation.forcefield.toLowerCase());
   }
 }
@@ -228,6 +267,8 @@ function resultFacts(result: CitationJob, documentId: string, output: CitationFa
     parameters:{charge:state.charge??'unknown',multiplicity:state.multiplicity??'unknown',sourceRevision:revision??result.source.sha256??result.source.id},
     evidence: [{ kind: 'source' as const, locator: `${result.source.name}:job:${result.jobIndex??'unknown'}${segment==null?'':`:segment:${segment}`}`, detail: `status=${result.status}; source=${result.source.id}; job=${result.id}; charge=${state.charge??'unknown'}; multiplicity=${state.multiplicity??'unknown'}; version=${data?.version??'unknown'}` }], purpose: '保留的已读取科学来源；终止与收敛状态独立' };
   if (software) addFact(output, base, 'software', software);
+  const generated=(source as Partial<Pick<PostprocessSource,'generatedXtb'>>|undefined)?.generatedXtb;
+  if(generated?.kind==='trusted-generated-gxtb-sp')gxtbRuntimeFacts(output,base,'gxtb',generated.engineIdentity);
   let methodFound = false;
   for (const row of [...(data?.summary || []), ...(data?.properties || [])]) {
     if (typeof row.value !== 'string' || !row.value.trim()) continue;
@@ -381,15 +422,24 @@ function collectNativeSamplingSolvation(run:Bag,taskId:string|undefined,owners:r
   const rows:{native:Bag;scope:string;frameId?:string;locator:string}[]=[];
   for(const value of items(run.frames)){
     const frame=bag(value),process=bag(frame?.process),native=bag(bag(process?.data)?.nativeMD);
-    if(process?.kind==='sampling'&&native?.nativeSolvation)rows.push({native,scope:str(bag(frame?.samplingOrigin)?.cardId)??'sampling',frameId:str(frame?.id),locator:`frames:${str(frame?.id)}:process:data:nativeMD`});
+    if(process?.kind==='sampling'&&native)rows.push({native,scope:str(bag(frame?.samplingOrigin)?.cardId)??'sampling',frameId:str(frame?.id),locator:`frames:${str(frame?.id)}:process:data:nativeMD`});
   }
   const cards=items(bag(run.mixedSampling)?.cards);
   for(const value of cards){const card=bag(value),terminal=bag(bag(card?.sampling)?.terminal),native=bag(bag(terminal?.lastFrame)?.nativeMD);
-    if(native?.nativeSolvation&&['completed','stopped','error'].includes(str(terminal?.event)??''))rows.push({native,scope:str(card?.id)??'sampling',locator:`mixedSampling:cards:${str(card?.id)}:sampling:terminal:lastFrame:nativeMD`});}
+    if(native&&['completed','stopped','error'].includes(str(terminal?.event)??''))rows.push({native,scope:str(card?.id)??'sampling',locator:`mixedSampling:cards:${str(card?.id)}:sampling:terminal:lastFrame:nativeMD`});}
   if(!cards.length&&!rows.length){const terminal=bag(bag(run.sampling)?.terminal),native=bag(bag(terminal?.lastFrame)?.nativeMD);
-    if(native?.nativeSolvation&&['completed','stopped','error'].includes(str(terminal?.event)??''))rows.push({native,scope:'sampling',locator:'sampling:terminal:lastFrame:nativeMD'});}
+    if(native&&['completed','stopped','error'].includes(str(terminal?.event)??''))rows.push({native,scope:'sampling',locator:'sampling:terminal:lastFrame:nativeMD'});}
   const seen=new Set<string>();
   for(const row of rows){
+    if(str(row.native.method)&&str(row.native.version)&&['xtb.trj','mdrestart'].includes(str(row.native.sourceArtifact)??'')){
+      const key=JSON.stringify(['runtime',row.scope,row.native.method,row.native.version,bag(row.native.engineIdentity)?.sha256]);
+      if(!seen.has(key)){seen.add(key);for(const owner of owners){
+        const base={documentId:owner.id,taskId,stage:`${str(run.id)}:${row.scope}`,frameId:row.frameId,kind:'retained-result' as const,software:'xTB',version:str(row.native.version),
+          evidence:[{kind:'metadata' as const,locator:`advanced:${taskId}:${str(run.id)}:${row.locator}`,detail:JSON.stringify(row.native)}],purpose:'保留采样帧的实际原生程序及方法'};
+        addFact(output,base,'method',normalizeCitationMethod(String(row.native.method),'xTB'),key);
+        addFact(output,base,'software','xTB',key);gxtbRuntimeFacts(output,base,row.native.method,row.native.engineIdentity,key);
+      }}
+    }
     const solvation=bag(row.native.nativeSolvation),method=str(row.native.method),parameterMethod=({gfnff:'GFN-FF',gfn1:'GFN1-xTB',gfn2:'GFN2-xTB'} as Record<string,string>)[method??''];
     // Read only the validated stdout block, never a request, selection, UI
     // dielectric reference or xTB's unconditional bibliography paragraph.
@@ -452,13 +502,38 @@ function collectAdvancedFacts(root: unknown, documents: readonly WorkspaceDocume
         }
       }
       const calculations = [...items(run.results), ...items(run.stages).flatMap(s => items(bag(s)?.results))];
+      let framesById:Map<unknown,Bag|undefined>|undefined;
       for (const calculationValue of calculations) {
         const calculation = bag(calculationValue), metadata = bag(calculation?.metadata);
+        const identity=bag(calculation?.identity),frameId=str(calculation?.frameId),runId=str(run.id),stageId=str(calculation?.stageId);
+        const forcefield=identity?.energyKind==='forcefield-potential'&&str(identity.method)?.match(/^RDKit:([^:\s]+):(MMFF94s?|UFF)$/);
+        if(forcefield&&calculation&&frameId&&runId&&stageId&&taskId&&['completed','unconverged'].includes(String(calculation.status))
+          &&Number.isFinite(calculation.energyHartree)){
+          framesById??=new Map(items(run.frames).map(value=>{const frame=bag(value);return [frame?.id,frame];}));
+          const frame=framesById.get(frameId);
+          if(frame&&frame.taskId===taskId&&(frame.runId===undefined||frame.runId===runId)&&frame.stageId===stageId
+            &&frame.candidateId===calculation.candidateId&&['optimized','intermediate'].includes(String(frame.kind))&&frame.energyHartree===calculation.energyHartree){
+            const [,version,method]=forcefield,optimization=bag(calculation.forcefieldOptimization);
+            const detail=JSON.stringify({method:identity.method,status:calculation.status,energyHartree:calculation.energyHartree,optimization});
+            for(const owner of owners){
+              const base={documentId:owner.id,sourceId:str(bag(bag(calculation.input)?.ref)?.sourceId),taskId,jobId:runId,stage:stageId,frameId,
+                kind:'retained-result' as const,software:'RDKit',version,purpose:'保留高级任务的实际力场优化结果',
+                evidence:[{kind:'metadata' as const,locator:`advanced:${taskId}:${runId}:${stageId}:${frameId}`,detail}]};
+              addFact(output,base,'method',method.toLowerCase());
+              addFact(output,base,'software','RDKit');
+              addFact(output,{...base,kind:'runtime-dependency'},'runtime-dependency','RDKit');
+              if(optimization?.optimizer==='scipy-slsqp'&&typeof optimization.maxSteps==='number'&&Number.isSafeInteger(optimization.maxSteps)&&optimization.maxSteps>0)
+                addFact(output,{...base,kind:'runtime-dependency',software:'scipy',version:undefined,purpose:'实际力场内坐标约束优化的 SciPy SLSQP 求解'},'runtime-dependency','scipy');
+            }
+            continue;
+          }
+        }
         if (!metadata || !str(metadata.method) || !str(metadata.engine)) continue;
         for (const owner of owners) {
           const software = producer(str(metadata.engine)), method = normalizeCitationMethod(str(metadata.method)!, software);
           const base = { documentId: owner.id, sourceId: str(bag(bag(calculation?.input)?.ref)?.sourceId), taskId, stage: str(calculation?.stageId), frameId: str(calculation?.frameId), kind: 'retained-result' as const, software, version: str(metadata.version), evidence: [{ kind: 'metadata' as const, locator: `advanced:${taskId}:${str(run.id)}:${str(calculation?.stageId)}:${str(calculation?.candidateId)}`, detail: JSON.stringify({ engine: metadata.engine, version: metadata.version, method: metadata.method, status: calculation?.status }) }], purpose: '保留高级任务的实际计算结果' };
           addFact(output, base, 'method', method); if (software) { addFact(output, base, 'software', software); addFact(output, { ...base, kind: 'runtime-dependency' }, 'runtime-dependency', software); }
+          gxtbRuntimeFacts(output,base,metadata.method,metadata.engineIdentity);
           const solvation = bag(metadata.solvation); if (str(solvation?.model)) addFact(output, base, 'solvation', str(solvation?.model));
         }
       }

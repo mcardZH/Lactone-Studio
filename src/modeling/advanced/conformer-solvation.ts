@@ -1,11 +1,12 @@
 import capability from '../../data/conformer-solvation.json';
+import {XTB_ALPB_PRESETS, XTB_METHOD_LABELS, isXtbMethod, supportsXtbAlpb, xtbSolvents} from '../../core/xtb-capabilities';
 import type {XtbSolvationEvidence} from '../xtb/contracts';
 import type {AdvancedTaskRecord,AdvancedMixedSamplingDefinition} from './contracts';
 
 /** Display projection only. Native dielectric/parameter values never enter UI input. */
-export const CONFORMER_ALPB_PRESETS:readonly Readonly<{id:string;label:string;dielectric:number}>[]=Object.freeze(capability.presets.map(({id,label,dielectric})=>Object.freeze({id,label,dielectric})));
-export function conformerAlpbPresets(method:string){return capability.nativeMethods.includes(method)?CONFORMER_ALPB_PRESETS:[];}
-export function isConformerAlpbSupported(method:string,solvent:string):boolean{return capability.nativeMethods.includes(method)&&capability.presets.some(row=>row.id===solvent);}
+export const CONFORMER_ALPB_PRESETS=XTB_ALPB_PRESETS;
+export function conformerAlpbPresets(method:string){const supported=xtbSolvents(method,'alpb');return CONFORMER_ALPB_PRESETS.filter(row=>supported.includes(row.id));}
+export const isConformerAlpbSupported=supportsXtbAlpb;
 export function conformerSolvationIssue(method:string,model:string,solvent:string):string|undefined{
  if(model==='none')return;
  if(model!=='alpb')return '此构象卡的新运行使用ALPB；请明确选择气相或ALPB溶剂，历史结果保留原介质。';
@@ -23,16 +24,31 @@ export function conformerTaskRequiresAlpbSemantics(task:AdvancedTaskRecord):bool
   ||run.sampling?.stageEvents.some(event=>changed(event.configuration))
   ||run.mixedSampling?.cards.some(card=>card.sampling?.stageEvents.some(event=>changed(event.configuration))));
 }
+export function conformerTaskRequiresXtbV208Semantics(task:AdvancedTaskRecord):boolean{
+ const sampling=(value:{method:string;seedMode?:string;seedTreatment?:string;constraints?:readonly unknown[]}|undefined)=>!!value
+   &&(value.method==='gxtb'||value.seedMode!==undefined||value.seedTreatment!==undefined||!!value.constraints?.length);
+ const cards=(value:AdvancedMixedSamplingDefinition|undefined)=>value?.cards?.some(card=>card.kind==='sampling'&&sampling(card.sampling))??false;
+ const method=(value:{backend:string;options?:{method:string}}|undefined)=>value?.backend==='xtb'&&value.options?.method==='gxtb';
+ const spec=task.spec;
+ if(spec.kind==='sampling'&&(sampling(spec.sampling)||cards(spec.mixedSampling)))return true;
+ if(spec.kind==='singlepoint'&&spec.options?.method==='gxtb'||spec.kind==='optimization'&&method(spec.method))return true;
+ const stages=spec.kind==='conformer-search'?spec.search?.stages:spec.kind==='sampling'||spec.kind==='docking'?spec.optimizationStages:[];
+ if(stages?.some(stage=>method(stage.method))||cards(task.mixedSampling?.draft)||task.mixedSampling?.batches?.some(batch=>cards(batch.definition)))return true;
+ return task.runs?.some(run=>cards(run.mixedSampling?.definition)||sampling(run.sampling?.terminal)
+  ||run.sampling?.stageEvents?.some(event=>sampling(event.configuration))
+  ||run.mixedSampling?.cards?.some(card=>sampling(card.sampling?.terminal)||card.sampling?.stageEvents?.some(event=>sampling(event.configuration)))
+  ||run.stages?.some(stage=>stage.resumeFrameIds!==undefined||stage.results?.some(result=>result.status==='unconverged'||result.metadata?.method==='gxtb')))??false;
+}
 export interface ConformerNativeSolvationEvidence extends Omit<XtbSolvationEvidence,'temperatureKelvin'> {temperatureKelvin:number;dielectricConstant:number}
 /** Readback evidence is mandatory for newly consumed native solvent frames.
  * Historical stored results are not revalidated or relabelled on project load. */
 export function validateConformerNativeSolvation(request:{method:string;operation:string;molecularMD?:{temperatureK?:number};metadynamics?:{temperatureK?:number};solvation?:{model:string;solvent:string}},evidence:ConformerNativeSolvationEvidence|undefined):void{
  if(!request.solvation){if(evidence!==undefined)throw Error('气相采样混入原生隐式溶剂结果。');return;}
- const wanted=request.solvation,methodLabel:Record<string,string>={gfnff:'GFN-FF',gfn1:'GFN1-xTB',gfn2:'GFN2-xTB'};
+ const wanted=request.solvation,methodLabel=isXtbMethod(request.method)?XTB_METHOD_LABELS[request.method]:undefined;
  const target=request.operation==='metadynamics'?request.metadynamics?.temperatureK??300:request.molecularMD?.temperatureK??600;
  if(!evidence||evidence.model!==wanted.model||evidence.solvent!==wanted.solvent||evidence.kernel!==(wanted.model==='alpb'?'p16':'still')
   ||evidence.referenceState!=='gsolv'||evidence.temperatureKelvin!==Number(target.toExponential(4))||evidence.sourceField!=='stdout:solvation-model'
-  ||evidence.parameterSet!==`internal ${methodLabel[request.method]}/${wanted.model.toUpperCase()}`
+  ||evidence.parameterSet!==`internal ${methodLabel}/${wanted.model.toUpperCase()}`
   ||!Number.isFinite(evidence.dielectricConstant)||evidence.dielectricConstant<=0)throw Error('采样缺少与本次请求一致的原生溶剂模型及参数来源。');
  if(wanted.model==='alpb'&&isConformerAlpbSupported(request.method,wanted.solvent)){
   const row=capability.presets.find(row=>row.id===wanted.solvent)!,expected=row.nativeDielectric[request.method as keyof typeof row.nativeDielectric];

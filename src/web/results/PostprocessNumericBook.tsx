@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import type { TrajectoryResult } from '../../results/contracts';
 import type { AtomicProperty,OrbitalChannel, ScientificField } from '../../results/scientific-contracts';
-import { convertEnergy } from '../../results/energy';
+import { convertEnergy, isEnergyUnit } from '../../results/energy';
 import { frontierOrbitals } from '../../results/scientific-analysis';
 import { exportBlob } from './export-image';
 import { scientificDisplayValue as number, frameBindingLabel } from './scientific-presentation';
@@ -9,7 +9,7 @@ import { postprocessSoftwareLabel } from './postprocess-import-policy';
 import { postprocessFields, postprocessFieldGroups, postprocessEnergyFields, postprocessThermochemistryGroups, postprocessDipoleFields, postprocessSourceLabel, postprocessSolventLabel, postprocessFinalSpinFields, postprocessStatusLabel, postprocessUnitLabel, postprocessFieldLabel,isPostprocessEnergyField,preferredPostprocessAtomic, type PostprocessEnergyUnit } from './PostprocessPresentation';
 import './ScientificResultPanels.css';
 import './Postprocess.css';
-import {formatResultValue,fullPrecisionValue} from '../../results/numeric-format';
+import {decimalEnergyValue,formatEnergyValue,formatResultValue,fullPrecisionValue} from '../../results/numeric-format';
 import { scientificTableText } from './scientific-table';
 import type {ScientificTableProjection,ScientificTableLayoutState} from './scientific-table';
 import {ScientificDataTable} from './ScientificDataTable';
@@ -29,9 +29,9 @@ export function PostprocessSourceReference({ source, fallback }: { source: { sou
   return <span className="postprocess-source-name" title={`${name} · ${source.sourceId ?? fallback.id}`}>{postprocessSourceLabel(name)}</span>;
 }
 export function PostprocessOrbitalSource({ orbital, channel, fallback }: { orbital: OrbitalChannel['orbitals'][number]; channel: OrbitalChannel; fallback: TrajectoryResult['source'] }) {
-  return <><PostprocessSourceReference source={{ sourceName: orbital.sourceName ?? channel.sourceName, sourceId: orbital.sourceId ?? channel.sourceId, sourceLine: orbital.sourceLine ?? channel.sourceLine }} fallback={fallback}/><span>来源编号 {orbital.sourceIndex ?? '未记录'}</span><span>{String(orbital.energy)} {channel.unit}</span></>;
+  return <><PostprocessSourceReference source={{ sourceName: orbital.sourceName ?? channel.sourceName, sourceId: orbital.sourceId ?? channel.sourceId, sourceLine: orbital.sourceLine ?? channel.sourceLine }} fallback={fallback}/><span>来源编号 {orbital.sourceIndex ?? '未记录'}</span><span>{decimalEnergyValue(orbital.energy)} {channel.unit}</span></>;
 }
-const sourceValue=(field:ScientificField)=>field.rawValue??fullPrecisionValue(field.value);
+const sourceValue=(field:ScientificField)=>isEnergyUnit(field.unit)||isPostprocessEnergyField(field)?decimalEnergyValue(field.rawValue??field.value):field.rawValue??fullPrecisionValue(field.value);
 function metadataDisplayValue(field?:ScientificField){
   const value=field?.value;if(typeof value!=='string')return value;
   const labels:Record<string,Record<string,string>>={
@@ -61,7 +61,7 @@ export function SourceFields({ fields, fallbackSource,decimals,onDecimalsChange,
 
 const cleanCell = (value: unknown) => String(value ?? '').replace(/[\t\r\n]/g, ' ');
 export function numericFieldsAuditText(fields: readonly ScientificField[], source: TrajectoryResult['source'],decimals?:number,fullPrecisionFields:readonly ScientificField[]=[]): string {
-  return ['property\tvalue\tunit\tsource_name\tsource_id\tsource_line\tframe_index', ...fields.map(field => [field.label, decimals===undefined||fullPrecisionFields.includes(field)?sourceValue(field):formatResultValue(field.value,decimals), field.unit, field.sourceName ?? source.name, field.sourceId ?? source.id, Number.isSafeInteger(field.sourceLine)&&field.sourceLine>0?field.sourceLine:undefined, field.frameIndex].map(cleanCell).join('\t'))].join('\n') + '\n';
+  return ['property\tvalue\tunit\tsource_name\tsource_id\tsource_line\tframe_index', ...fields.map(field => [field.label, decimals===undefined||fullPrecisionFields.includes(field)?sourceValue(field):isEnergyUnit(field.unit)?formatEnergyValue(field.value,decimals):formatResultValue(field.value,decimals), field.unit, field.sourceName ?? source.name, field.sourceId ?? source.id, Number.isSafeInteger(field.sourceLine)&&field.sourceLine>0?field.sourceLine:undefined, field.frameIndex].map(cleanCell).join('\t'))].join('\n') + '\n';
 }
 export function numericFieldsText(fields:readonly ScientificField[],source:TrajectoryResult['source'],decimals=2,fullPrecisionFields:readonly ScientificField[]=[]):string {
   return scientificTableText(sourceFieldsProjection(fields,source,decimals,false,fullPrecisionFields));
@@ -70,16 +70,16 @@ export function numericBookAuditText(result: TrajectoryResult,decimals?:number,o
   const data = result.scientific,format=(value:number|string|null|undefined)=>decimals===undefined?fullPrecisionValue(value):formatResultValue(value,decimals);
   const fields=[...postprocessFields(result), ...(data?.thermochemistry ?? []), ...(data?.stability ?? []), ...(data?.bsse ?? [])];
   const rows = [`# Printed scientific values; ${decimals===undefined?'original precision':`display decimals=${decimals}`}; units retained`, numericFieldsAuditText(fields, result.source,decimals,[...postprocessFieldGroups(postprocessFields(result)).energy,...(data?.thermochemistry??[])]), '# orbitals', 'spin\torbital\tenergy\tunit\toccupation\tsource_name\tsource_id\tsource_line\tsource_index\tframe_index'];
-  for (const channel of data?.orbitals ?? []) for (const row of channel.orbitals) rows.push([channel.spin, row.index, format(orbitalUnit?convertEnergy({value:row.energy,unit:channel.unit},orbitalUnit):row.energy), orbitalUnit??channel.unit, Number.isInteger(row.occupation)?String(row.occupation):format(row.occupation), row.sourceName ?? channel.sourceName ?? result.source.name, row.sourceId ?? channel.sourceId ?? result.source.id, row.sourceLine ?? channel.sourceLine, row.sourceIndex, channel.frameIndex].map(cleanCell).join('\t'));
+  for (const channel of data?.orbitals ?? []) for (const row of channel.orbitals) rows.push([channel.spin, row.index, decimals===undefined?decimalEnergyValue(orbitalUnit?convertEnergy({value:row.energy,unit:channel.unit},orbitalUnit):row.energy):formatEnergyValue(orbitalUnit?convertEnergy({value:row.energy,unit:channel.unit},orbitalUnit):row.energy,decimals), orbitalUnit??channel.unit, Number.isInteger(row.occupation)?String(row.occupation):format(row.occupation), row.sourceName ?? channel.sourceName ?? result.source.name, row.sourceId ?? channel.sourceId ?? result.source.id, row.sourceLine ?? channel.sourceLine, row.sourceIndex, channel.frameIndex].map(cleanCell).join('\t'));
   rows.push('# atomic_properties', 'kind\tscheme\tatom_index\telement\tvalue\tunit\tsource_name\tsource_id\tsource_line\tframe_index');
   for (const property of data?.atomicProperties ?? []) for (const row of property.values) rows.push([property.kind, property.scheme, row.atomIndex + 1, row.element, format(row.value), property.unit, property.sourceName ?? result.source.name, property.sourceId ?? result.source.id, property.sourceLine, property.frameIndex].map(cleanCell).join('\t'));
   if(data&&nmrCouplingTableProjection(data,result.source).rows.length)rows.push('# nmr_couplings',nmrCouplingAuditText(data,result.source));
   rows.push('# scf_cycles', 'cycle\titeration\tenergy\tdelta_energy\tunit\tsource_name\tsource_line\tframe_index');
-  data?.scfCycles.forEach((cycle, index) => cycle.points.forEach(row => rows.push([index + 1, row.iteration, row.energy, row.deltaEnergy, 'hartree', result.source.name, cycle.sourceLine, cycle.frameIndex].map(cleanCell).join('\t'))));
+  data?.scfCycles.forEach((cycle, index) => cycle.points.forEach(row => rows.push([index + 1, row.iteration, decimalEnergyValue(row.energy), decimalEnergyValue(row.deltaEnergy), 'hartree', result.source.name, cycle.sourceLine, cycle.frameIndex].map(cleanCell).join('\t'))));
   return rows.join('\n') + '\n';
 }
 export function orbitalTableProjection(channel:OrbitalChannel,unit:PostprocessEnergyUnit,decimals=2):ScientificTableProjection {
-  return{columns:[{key:'orbital',label:'轨道'},{key:'energy',label:`能量 / ${postprocessUnitLabel(unit)}`},{key:'occupation',label:'占据数'}],rows:channel.orbitals.map(row=>({key:String(row.index),cells:[String(row.index),formatResultValue(convertEnergy({value:row.energy,unit:channel.unit},unit),decimals),Number.isInteger(row.occupation)?String(row.occupation):formatResultValue(row.occupation,decimals)]}))};
+  return{columns:[{key:'orbital',label:'轨道'},{key:'energy',label:`能量 / ${postprocessUnitLabel(unit)}`},{key:'occupation',label:'占据数'}],rows:channel.orbitals.map(row=>({key:String(row.index),cells:[String(row.index),formatEnergyValue(convertEnergy({value:row.energy,unit:channel.unit},unit),decimals),Number.isInteger(row.occupation)?String(row.occupation):formatResultValue(row.occupation,decimals)]}))};
 }
 export function atomicTableProjection(property:AtomicProperty,decimals=2):ScientificTableProjection {
   const name=property.kind==='spin'?'自旋布居':property.kind==='shielding'?'屏蔽常数 σ':'净电荷 q';
@@ -122,16 +122,20 @@ export function PostprocessBasicInfo({ result, currentIndex, metadata }: { resul
   const version=result?.scientific?.version;
   const software=postprocessSoftwareLabel(result?.engine==='gaussian'||result?.engine==='orca'?result.engine:result?.source.software);
   const readLimited=!!result?.scientific?.readLimits?.observations?.omitted;
-  const info = [ ['软件', result ? version&&/^(?:Gaussian|ORCA)\b/i.test(version)?version:`${software}${version?` ${version}`:''}` : '未载入'],
+  const energyField=field('Total Energy', 'SCF Energy', 'target-energy', 'final-energy');
+  const energyValue=displayedEnergy?.rawValue??displayedEnergy?.value??energy?.value??energyField?.rawValue??energyField?.value;
+  const energyUnit=displayedEnergy?.unit??energy?.unit??energyField?.unit;
+  const shownEnergy=energyValue==null?'未输出':<><span className="postprocess-energy-number">{decimalEnergyValue(energyValue)}</span>{energyUnit&&<span className="postprocess-energy-unit">{energyUnit==='hartree'?'Eh':energyUnit}</span>}</>;
+  const info:[string,ReactNode][] = [ ['软件', result ? version&&/^(?:Gaussian|ORCA)\b/i.test(version)?version:`${software}${version?` ${version}`:''}` : '未载入'],
     ['任务', result?.scientific?.tasks.map(task => task.toUpperCase()).join(' + ') || '未确认'],
-    ['方法', metadata?.method?.value ?? field('method')?.value], ['基组', metadata?.basis?.value ?? field('basis', 'basis-set')?.value], ['色散', metadata?.dispersion?.value ?? field('dispersion')?.value], [potential?'势能':'电子能量', potential ? displayedEnergy ? `${sourceValue(displayedEnergy)} ${displayedEnergy.unit==='hartree'?'Eh':displayedEnergy.unit??'单位未确认'}` : '未输出' : energy ? `${displayedEnergy?.rawValue??fullPrecisionValue(energy.value)} ${energy.unit === 'hartree' ? 'Eh' : energy.unit}` : field('Total Energy', 'SCF Energy', 'target-energy', 'final-energy')?sourceValue(field('Total Energy', 'SCF Energy', 'target-energy', 'final-energy')!):'未输出'], ['参考态', metadataDisplayValue(field('reference-state'))], ['溶剂模型', field('solvent-model', 'solvent-model-smd')?.value], ['溶剂', postprocessSolventLabel(metadata?.solvent?.value ?? field('solvent', 'solvation')?.value, field('solvent-model', 'solvent-model-smd')?.value, field('solvent-epsilon')?.value)], ['ε', field('solvent-epsilon')?.value],
+    ['方法', metadata?.method?.value ?? field('method')?.value], ['基组', metadata?.basis?.value ?? field('basis', 'basis-set')?.value], ['色散', metadata?.dispersion?.value ?? field('dispersion')?.value], [potential?'势能':'电子能量', shownEnergy], ['参考态', metadataDisplayValue(field('reference-state'))], ['溶剂模型', field('solvent-model', 'solvent-model-smd')?.value], ['溶剂', postprocessSolventLabel(metadata?.solvent?.value ?? field('solvent', 'solvation')?.value, field('solvent-model', 'solvent-model-smd')?.value, field('solvent-epsilon')?.value)], ['ε', field('solvent-epsilon')?.value],
     ['电荷 / 多重度', result ? `${number(result.initialStructure.charge)} / ${number(result.initialStructure.multiplicity)}` : '未输出'],
-    ...(field('solvent-epsilon-infinity') ? [['ε∞', field('solvent-epsilon-infinity')!.value]] : []),
+    ...(field('solvent-epsilon-infinity') ? [['ε∞', field('solvent-epsilon-infinity')!.value] as [string,ReactNode]] : []),
     ['偶极矩总量', dipoleTotal ? `${formatResultValue(dipoleTotal.value)} ${dipoleTotal.unit ?? '单位未确认'}` : '未输出'],
     ['SCF 状态 / 次数', `${number(metadataDisplayValue(scfStatus))} / ${number(scfCount?.value)}`],
-    ...(field('integration-grid') ? [['积分格点', field('integration-grid')!.value]] : []),
-    ...(field('scf-settings') ? [['SCF 设置', field('scf-settings')!.value]] : []) ];
-  return <section className="postprocess-basic" aria-label="后处理基础信息"><div className="postprocess-section-heading"><strong>基础信息</strong><span>{readLimited?`${result?.status==='failed'?'异常结束 · ':''}数据读取受限`:postprocessStatusLabel(result?.status)}</span></div><dl className="postprocess-values" style={{ fontSize: 'var(--workflow-body-size, 14px)', fontWeight: 500 }}>{info.map(([label, value]) => <div key={label as string} className={['方法', '基组', '色散', '电子能量','势能'].includes(String(label)) ? 'postprocess-value-accent' : undefined}><dt>{label}</dt><dd>{number(value)}</dd></div>)}</dl>{result && <details className="postprocess-metadata-details"><summary>详细计算设置</summary><SourceFields fallbackSource={result.source} fields={fields.filter(item => ['optimization-settings', 'ecp', 'relativistic', 'auxiliary-basis', 'ri', 'output-verbosity'].includes(item.key) && (item.frameIndex == null || item.frameIndex === currentIndex))}/>{result.scientific?.route && <pre>{result.scientific.route}</pre>}</details>}</section>;
+    ...(field('integration-grid') ? [['积分格点', field('integration-grid')!.value] as [string,ReactNode]] : []),
+    ...(field('scf-settings') ? [['SCF 设置', field('scf-settings')!.value] as [string,ReactNode]] : []) ];
+  return <section className="postprocess-basic" aria-label="后处理基础信息"><div className="postprocess-section-heading"><strong>基础信息</strong><span>{readLimited?`${result?.status==='failed'?'异常结束 · ':''}数据读取受限`:postprocessStatusLabel(result?.status)}</span></div><dl className="postprocess-values" style={{ fontSize: 'var(--workflow-body-size, 14px)', fontWeight: 500 }}>{info.map(([label, value]) => <div key={label as string} className={['方法', '基组', '电子能量','势能'].includes(label)&&value!=null&&value!==''&&value!=='未输出' ? 'postprocess-value-accent' : undefined}><dt>{label}</dt><dd>{value==null||typeof value==='string'||typeof value==='number'?number(value):value}</dd></div>)}</dl>{result && <details className="postprocess-metadata-details"><summary>详细计算设置</summary><SourceFields fallbackSource={result.source} fields={fields.filter(item => ['optimization-settings', 'ecp', 'relativistic', 'auxiliary-basis', 'ri', 'output-verbosity'].includes(item.key) && (item.frameIndex == null || item.frameIndex === currentIndex))}/>{result.scientific?.route && <pre>{result.scientific.route}</pre>}</details>}</section>;
 }
 export default function PostprocessNumericBook({ result, currentIndex, sourceDifferences = [] }: PostprocessNumericBookProps) {
   const [precisions,setPrecisions]=useState<Record<string,number>>({});
@@ -165,7 +169,7 @@ export default function PostprocessNumericBook({ result, currentIndex, sourceDif
     <div className="postprocess-book-page">
       {page==='atoms'&&<label>来源原子性质 <select aria-label="数值册原子性质" value={atomicIndex??defaultAtomic} onChange={event=>setAtomicIndex(Number(event.target.value))}><option value={-1}>请选择来源方案</option>{properties.map((property,index)=><option key={index} value={index}>{property.kind==='spin'?'自旋布居':property.kind==='shielding'?'屏蔽常数':'净电荷'} · {property.scheme} · {frameBindingLabel(property.frameIndex)}</option>)}</select></label>}
       {page!=='source'&&!tables.length&&<p className="postprocess-empty">来源未输出此项，或尚未选择来源方案。</p>}
-      {tables.map(table=><section key={table.id}><h4>{table.label}</h4>{table.channel&&<dl className="postprocess-values">{(()=>{const frontier=frontierOrbitals(table.channel,unit(table.id));return [['HOMO',frontier.homo?.energy],['LUMO',frontier.lumo?.energy],['GAP',frontier.gap]].map(([label,value])=><div key={String(label)}><dt>{label}</dt><dd>{formatResultValue(value as number|undefined,precision(table.id))} {postprocessUnitLabel(unit(table.id))}</dd></div>);})()}</dl>}
+      {tables.map(table=><section key={table.id}><h4>{table.label}</h4>{table.channel&&<dl className="postprocess-values">{(()=>{const frontier=frontierOrbitals(table.channel,unit(table.id));return [['HOMO',frontier.homo?.energy],['LUMO',frontier.lumo?.energy],['GAP',frontier.gap]].map(([label,value])=><div key={String(label)}><dt>{label}</dt><dd>{formatEnergyValue(value as number|undefined,precision(table.id))} {postprocessUnitLabel(unit(table.id))}</dd></div>);})()}</dl>}
         {table.coupling?<NmrCouplingTable result={result} currentIndex={currentIndex} projection={table.projection} hideTitle selectionScope={tableId(table.id)} layoutState={layouts[tableId(table.id)]} onLayoutChange={value=>setLayouts(old=>({...old,[tableId(table.id)]:value}))}/>:table.fields?<SourceFields fields={table.fields} fallbackSource={result.source} fullPrecision={table.fullPrecision} decimals={precision(table.id)} onDecimalsChange={value=>setPrecisions(old=>({...old,[tableId(table.id)]:value}))} tableLabel={table.label} scope={tableId(table.id)} layoutState={layouts[tableId(table.id)]} onLayoutChange={value=>setLayouts(old=>({...old,[tableId(table.id)]:value}))}/>
           :<ScientificDataTable variant={table.channel?'legacy':'numeric'} title={table.label} projection={table.projection} selectionScope={tableId(table.id)} layoutState={layouts[tableId(table.id)]} onLayoutChange={value=>setLayouts(old=>({...old,[tableId(table.id)]:value}))} format={{decimals:precision(table.id),onDecimalsChange:value=>setPrecisions(old=>({...old,[tableId(table.id)]:value})),ariaLabel:table.label,...(table.channel?{unit:unit(table.id),units:[{value:'eV',label:'eV'},{value:'hartree',label:'Eh'}],onUnitChange:(value:string)=>setUnits(old=>({...old,[tableId(table.id)]:value as PostprocessEnergyUnit}))}:{})}}/>}
       </section>)}

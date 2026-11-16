@@ -6,11 +6,14 @@ import {initialSamplingDraft,type SamplingDraft} from './process-config';
 import type {ConformerOptimizationDraft} from './ConformerOptimizationStages';
 import type {ConformerTorsionDraft} from './ConformerTorsionControls';
 
+const {maxSteps:_genericOptimizationSteps,...conformerStageMethod}=initialAdvancedMethod;
+export const initialConformerStageMethod:Readonly<Omit<AdvancedMethodDraft,'maxSteps'>>=Object.freeze(conformerStageMethod);
+
 export function restoreConformerStages(stages:readonly AdvancedOptimizationStageConfig[]):ConformerOptimizationDraft[]{
   return stages.map((stage,index)=>{
     const method=stage.method,options=method.backend==='xtb'?method.options:null;
-    const draft:AdvancedMethodDraft={...initialAdvancedMethod,method:options?.method??(method.backend==='forcefield'&&method.forcefield!=='auto'?method.forcefield:'gfn2'),threads:options?.threads??(method.backend==='forcefield'?method.threads:1),maxSteps:options?.maxSteps??(method.backend==='forcefield'?method.maxSteps:500),internalConstraintsConfirmed:options?.internalConstraintsConfirmed??false,solvationModel:options?.solvation?.model??'none',solvent:options?.solvation?.solvent??'water'};
-    return{id:stage.id,method:draft,energyThresholdKcalMol:stage.clustering?.maxDeltaEnergyHartree===undefined?.25:convertEnergy({value:stage.clustering.maxDeltaEnergyHartree,unit:'hartree'},'kcal/mol')!,rmsdThresholdAngstrom:stage.clustering?.rmsdThresholdAngstrom??.1,rmsdMatching:stage.clustering?.rmsdMatching??'fixed',eliminateEquivalent:stage.clustering?.eliminateEquivalent===true,inputStride:stage.inputStride??1,...(index?{inputClusterCount:stage.inputClusterCount??stages[index-1].advanceCount??10}:{}),checkpointAfter:stage.checkpointAfter};
+    const draft:ConformerOptimizationDraft['method']={...initialConformerStageMethod,method:options?.method??(method.backend==='forcefield'&&method.forcefield!=='auto'?method.forcefield:'gfn2'),threads:options?.threads??(method.backend==='forcefield'?method.threads:1),internalConstraintsConfirmed:options?.internalConstraintsConfirmed??false,solvationModel:options?.solvation?.model??'none',solvent:options?.solvation?.solvent??'water'};
+    return{id:stage.id,method:draft,energyThresholdKcalMol:stage.clustering?.maxDeltaEnergyHartree===undefined?.25:convertEnergy({value:stage.clustering.maxDeltaEnergyHartree,unit:'hartree'},'kcal/mol')!,rmsdThresholdAngstrom:stage.clustering?.rmsdThresholdAngstrom??.1,rmsdMatching:stage.clustering?.rmsdMatching??'fixed',eliminateEquivalent:stage.clustering?.eliminateEquivalent===true,...(index?{inputClusterCount:stage.inputClusterCount??stages[index-1].advanceCount??10}:{inputStride:stage.inputStride??1}),checkpointAfter:stage.checkpointAfter};
   });
 }
 
@@ -26,6 +29,8 @@ export function restoreConformerTaskDraft(spec:AdvancedTaskSpec){
   if(spec.kind==='sampling'){
     const saved=spec.sampling;
     sampling={...sampling,operation:saved.operation,method:saved.method,threads:saved.threads,maxSteps:saved.maxSteps,maxEvaluations:saved.maxEvaluations,maxWallTimeSeconds:saved.maxWallTimeSeconds??sampling.maxWallTimeSeconds,seed:saved.seed??sampling.seed,dtFs:saved.dtFs??.5,frictionPerFs:saved.frictionPerFs??sampling.frictionPerFs,reportEvery:saved.reportEvery??sampling.reportEvery,maxFrames:saved.maxFrames??sampling.maxFrames,shakeHydrogenBonds:saved.shakeHydrogenBonds??getConformerSamplingCapability(saved).shakeDefaultEnabled,hydrogenMassAmu:saved.hydrogenMassAmu,memoryBudgetBytes:saved.memoryBudgetBytes,solvationModel:saved.solvation?.model??'none',solvent:saved.solvation?.solvent??'water',coreIds:[...saved.coreProtection?.atomIds??[]],coreForce:saved.coreProtection?.forceConstantEVPerAngstrom2??sampling.coreForce,sphereEnabled:!!saved.sphere,sphere:structuredClone(saved.sphere??sampling.sphere)};
+    sampling.seedMode=saved.seedMode??(saved.seed===undefined?'auto':'explicit');
+    sampling.seed=saved.seedDraft??saved.seed??sampling.seed;
     if(saved.nativeProtection?.core)sampling={...sampling,coreIds:[...saved.nativeProtection.core.atomIds],coreForce:saved.nativeProtection.core.forceConstantEVPerAngstrom2};
     if(saved.nativeProtection?.sphere)sampling={...sampling,sphereEnabled:true,sphere:{centerAngstrom:[...saved.nativeProtection.sphere.centerAngstrom],radiusAngstrom:saved.nativeProtection.sphere.radiusAngstrom,forceConstantEVPerAngstrom2:initialSamplingDraft.sphere.forceConstantEVPerAngstrom2}};
     if(saved.sphere||saved.nativeProtection?.sphere){const extent=suggestConformerSamplingSphere(spec.source.structure,.01).radiusAngstrom-.01;sampling.spherePaddingAngstrom=sampling.sphere.radiusAngstrom-extent;}

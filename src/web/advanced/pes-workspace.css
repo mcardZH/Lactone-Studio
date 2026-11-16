@@ -1,0 +1,39 @@
+.pes-definition {
+  border-block-start: 1px solid var(--input-card-border);
+  padding-block-start: var(--input-gap);
+}
+.pes-algorithm-coordinate-row > .shared-input-field { flex: 0 1 auto; }
+.pes-path-method-facts > output,.pes-method-fact { color: var(--input-color); white-space: normal; }
+.pes-path-method-facts { column-gap: calc(var(--input-gap, 8px) * 2); }
+.pes-progress progress { flex: 1 1 8rem; min-inline-size: 4rem; }
+.pes-record-interval { flex-basis:100%; inline-size:100%; min-inline-size:0; max-inline-size:100%; }
+.pes-scan-coordinate-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.7fr) auto; gap: var(--input-gap, 8px); align-items: center; }
+.pes-scan-coordinate-grid > .shared-input-field { grid-column: 1; min-inline-size: 0; }
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-grid > .shared-input-field { flex-wrap: nowrap; }
+.pes-scan-coordinate-grid > .shared-input-field > .shared-input-field-label { flex: none; white-space: nowrap; }
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-grid > .shared-input-field .shared-input-field-control,
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-grid > .shared-input-field input { inline-size: 100%; min-inline-size: 0; }
+.pes-scan-coordinate-grid > .interactive-selection-field,
+.pes-scan-coordinate-grid .interactive-selection-row { display: contents; }
+.pes-scan-coordinate-grid .interactive-selection-row > label.field { grid-column: 2 / 4; }
+.pes-scan-coordinate-grid .interactive-selection-buttons { grid-column: 1 / 3; grid-row: 2; }
+.pes-scan-coordinate-grid > .shared-coordinate-row-delete { grid-column: 3; grid-row: 2; }
+.pes-scan-coordinate-grid .interactive-selection-field > :is(.interactive-selection-actions,.interactive-selection-hint,.interactive-selection-error,.interactive-selection-conflict,output) { grid-column: 1 / -1; }
+@container (min-width: 540px) {
+  .pes-scan-coordinate-grid { grid-template-columns: minmax(0,1fr) minmax(0,1.7fr) auto auto; }
+  .pes-scan-coordinate-grid .interactive-selection-row > label.field { grid-column: 2; }
+  .pes-scan-coordinate-grid .interactive-selection-buttons { grid-column: 3; grid-row: 1; }
+  .pes-scan-coordinate-grid > .shared-coordinate-row-delete { grid-column: 4; grid-row: 1; }
+}
+.pes-scan-coordinate-row + .pes-scan-coordinate-row { border-block-start: 1px solid var(--input-card-border); padding-block-start: var(--input-gap, 8px); }
+.pes-card-input-owner { display: contents; }
+.pes-source-row > .shared-input-field { flex: 0 1 auto; max-inline-size: 100%; }
+.pes-source-row .shared-input-field-control { flex: 0 1 auto; }
+.input-settings-layout.input-settings-surface .pes-source-row select { inline-size: calc(12ch + 32px); max-inline-size: 100%; }
+.pes-source-actions { display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; gap: var(--input-gap,8px); align-items: center; }
+.pes-local-failures { position: relative; color: #916d12; }
+.pes-local-failures > summary { display: grid; place-items: center; inline-size: 24px; block-size: 24px; border: 1px solid #bd8b2c; border-radius: 50%; background: #fff3cc; font-weight: 600; cursor: pointer; list-style: none; }
+.pes-local-failures > summary::-webkit-details-marker { display: none; }
+.pes-local-failures > [role=note] { position: absolute; z-index: 50; inset-inline-end: 0; inline-size: min(30rem,70vw); padding: 10px 12px; border: 1px solid var(--input-card-border,#d8e4db); border-radius: 8px; background: #fff; color: var(--input-color,#294454); box-shadow: 0 3px 12px #20334520; }
+.pes-local-failures > [role=note] p { overflow-wrap: anywhere; }
+.pes-local-failures > [role=note] p + p { margin-block-start: 8px; }

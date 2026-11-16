@@ -1,0 +1,11 @@
+.scientific-image-copy {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.scientific-image-copy > button {
+  white-space: nowrap;
+}

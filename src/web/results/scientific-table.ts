@@ -1,3 +1,6 @@
+import { isEnergyUnit } from '../../results/energy';
+import { decimalEnergyValue } from '../../results/numeric-format';
+
 /** Display projection shared by the table, TXT and clipboard; no source data is mutated. */
 export interface ScientificTableColumn {
   key: string;
@@ -15,6 +18,27 @@ export interface ScientificTableColumn {
 }
 export interface ScientificTableRow { key: string; cells: readonly string[] }
 export interface ScientificTableProjection { columns: readonly ScientificTableColumn[]; rows: readonly ScientificTableRow[] }
+/** Energy columns and mixed-unit value rows share exact decimal screen/copy text. */
+export function decimalEnergyTable(projection: ScientificTableProjection): ScientificTableProjection {
+  const energyColumns = projection.columns.map(column => {
+    const unit = column.unit ?? column.headerUnit ?? column.label.split(' / ').at(-1)?.replace(/[（(].*$/, '').trim();
+    return isEnergyUnit(unit) || /energy/i.test(column.key) && /^(?:a\.?u\.?)$/i.test(unit ?? '');
+  });
+  const unitColumn = projection.columns.findIndex(column => column.key === 'unit');
+  const valueColumn = projection.columns.findIndex(column => column.key === 'value');
+  if (!energyColumns.some(Boolean) && (unitColumn < 0 || valueColumn < 0)) return projection;
+  let changed = false;
+  const rows = projection.rows.map(row => {
+    const mixedEnergy = unitColumn >= 0 && isEnergyUnit(row.cells[unitColumn]);
+    const cells = row.cells.map((cell, index) => {
+      const value = energyColumns[index] || mixedEnergy && index === valueColumn ? decimalEnergyValue(cell) : cell;
+      changed ||= value !== cell;
+      return value;
+    });
+    return { ...row, cells };
+  });
+  return changed ? { ...projection, rows } : projection;
+}
 export interface TableCellAddress { row: number; column: number }
 export interface TableSelection { anchor: TableCellAddress; end: TableCellAddress; kind?: 'cells' | 'columns' | 'rows' }
 export interface ScientificTableFormat {
@@ -77,6 +101,7 @@ const textCell = (value: string) => value.replace(/[\t\r\n]/g, ' ');
 
 /** A selected rectangle contains cells only; whole-table exports also include its header. */
 export function scientificTableText(table: ScientificTableProjection, selection?: TableSelection): string {
+  table = decimalEnergyTable(table);
   if (table.rows.some(row => row.cells.length !== table.columns.length)) throw new Error('表格显示投影的行列数不一致，未复制不完整数据。');
   if (!selection) return [table.columns.map(column => textCell(scientificTableHeader(column))).join('\t'), ...table.rows.map(row => row.cells.map(textCell).join('\t'))].join('\n') + '\n';
   const firstRow = Math.max(0, Math.min(selection.anchor.row, selection.end.row));

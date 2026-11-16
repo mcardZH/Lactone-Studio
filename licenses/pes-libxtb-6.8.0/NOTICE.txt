@@ -1,0 +1,5 @@
+Resident PES library: xTB 6.8.0 official static archive re-linked with OpenBLAS 0.3.30 LP64.
+xTB and bundled library license texts retain their original copyright and terms in xtb-static/.
+GNU runtime components retain GPL-3.0 with GCC Runtime Library Exception 3.1; winpthreads MIT and Microsoft UCRT terms are included.
+OpenBLAS 0.3.30 retains its BSD-3-Clause license. These terms are not replaced by the Ester Studio license.
+Project-local source archives, locked re-link inputs and a portable recipe are under runtime/provenance/pes-libxtb/.

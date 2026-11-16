@@ -8,6 +8,7 @@ import {superposeViewAtoms} from '../view-superposition';
 /** Pure run facts only. Scientific trajectory assets remain raw. */
 export interface ConformerDisplayRestoration {
   schema:1;
+  projection?:'rigid-v2';
   references:{sourceRef:AdvancedFrameSource['ref'];coordinatesFingerprint:string;structure:Structure;restorationAtomIds:string[];strategy?:'freeze'|'flexible'|'rmsd';fitAtomIds?:string[]}[];
   frameReferences:(number|null)[];
   unavailableFrameIndices?:number[];
@@ -31,11 +32,11 @@ export function createConformerDisplayRestoration(frames:readonly AdvancedResult
     const key=sha256Utf8(JSON.stringify(item));let index=keys.get(key);
     if(index===undefined){index=references.length;references.push(item);keys.set(key,index);}return index;
   });
-  return references.length||unavailableFrameIndices.length?{schema:1,references,frameReferences,...(unavailableFrameIndices.length?{unavailableFrameIndices}:{})}:undefined;
+  return references.length||unavailableFrameIndices.length?{schema:1,projection:'rigid-v2',references,frameReferences,...(unavailableFrameIndices.length?{unavailableFrameIndices}:{})}:undefined;
 }
 export function validateConformerDisplayRestoration(value:ConformerDisplayRestoration|undefined,count:number):void {
   if(!value)return;
-  if(value.schema!==1||!Array.isArray(value.references)||!Array.isArray(value.frameReferences)||value.frameReferences.length!==count
+  if(value.schema!==1||value.projection!==undefined&&value.projection!=='rigid-v2'||!Array.isArray(value.references)||!Array.isArray(value.frameReferences)||value.frameReferences.length!==count
     ||value.frameReferences.some(index=>index!==null&&(!Number.isSafeInteger(index)||index<0||index>=value.references.length))
     ||value.unavailableFrameIndices?.some(index=>!Number.isSafeInteger(index)||index<0||index>=count))throw Error('构象显示恢复索引无效。');
   for(const reference of value.references){const ids=new Set(reference.structure.atoms.map(atom=>atom.id));
@@ -66,13 +67,12 @@ export function prepareConformerPlaybackDisplay(result:TrajectoryResult,index:nu
   if(!ids.length){batch.set(index,{structure:raw,restored:false,aligned:false});return;}
   const selected=new Set(ids),fit=superposeViewAtoms({movingAtoms:raw.atoms.filter(atom=>selected.has(atom.id!)),referenceAtoms:reference.structure.atoms.filter(atom=>selected.has(atom.id!)),pairs:ids.map(id=>({movingAtomId:id,referenceAtomId:id})),mappingConfirmed:true});
   if(!fit.ok){restricted('本帧运行参考无法叠合，保留原始显示。');return;}
-  const {rotation,translation}=fit.transform,restore=new Set(reference.restorationAtomIds);
+  const {rotation,translation}=fit.transform;
   const atoms=raw.atoms.map(atom=>{
-    if(restore.has(atom.id!)){const ref=original.get(atom.id)!;return{...atom,x:ref.x,y:ref.y,z:ref.z};}
     const point=[atom.x,atom.y,atom.z],moved=rotation.map((row,i)=>row.reduce((sum,v,j)=>sum+v*point[j],translation[i]));
     return{...atom,x:moved[0],y:moved[1],z:moved[2]};
   });
-  batch.set(index,{structure:{...raw,atoms},restored:restore.size>0,aligned:true});
+  batch.set(index,{structure:{...raw,atoms},restored:false,aligned:true});
 }
 export function conformerPlaybackDisplay(result:TrajectoryResult,index:number,raw:Structure):ConformerPlaybackDisplay {
   const cached=batches.get(result)?.get(index);if(!cached)return{structure:raw,restored:false,aligned:false};

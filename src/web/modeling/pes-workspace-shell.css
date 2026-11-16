@@ -1,0 +1,101 @@
+.workspace-advanced-panel[data-pes="true"] > .workflow-panel-content {
+  display: block;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  padding: 8px;
+}
+
+.workspace-common-tools[data-pes="true"] {
+  overflow: auto;
+  scrollbar-gutter: stable;
+  padding: 8px;
+}
+
+.workspace-workflow-panel .pes-workflow-navigation {
+  flex: none;
+  padding: 0;
+}
+
+.workspace-workflow-panel .pes-workflow-navigation .input-workflow-steps {
+  gap: 8px;
+  padding: 8px 8px 0;
+}
+
+.workspace-workflow-panel .pes-workflow-navigation .input-workflow-steps .step {
+  min-height: round(up, calc(var(--ui-secondary-size, 14px) * 30 / 14), 1px);
+  gap: 6px;
+  font-size: var(--ui-secondary-size, 14px);
+  line-height: 1.428571;
+  white-space: normal;
+}
+
+.workspace-workflow-panel .pes-workflow-navigation .step-number {
+  width: calc(var(--ui-secondary-size, 14px) * 20 / 14);
+  height: calc(var(--ui-secondary-size, 14px) * 20 / 14);
+  flex: none;
+}
+
+.pes-workflow-title {
+  display: flex;
+  align-items: center;
+  min-height: round(up, calc(var(--ui-primary-size, 16px) * 44 / 16), 1px);
+  padding: 6px 8px;
+  box-sizing: border-box;
+  font: 600 var(--ui-primary-size, 16px) / 1.5 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  color: var(--ui-control-ink);
+}
+
+.pes-workflow-title > strong {
+  font-weight: inherit;
+}
+
+.pes-result-controls {
+  flex: none;
+  margin-block-end: 12px;
+}
+
+.pes-result-controls:empty {
+  display: none;
+}
+
+[data-testid="pes-result-workspace"] {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.pes-result-workspace[hidden] { display:none!important; }
+.pes-path-preparation { flex:none; padding:8px; color:var(--ui-note-ink); }
+.pes-path-history { display:grid; gap:8px; min-width:0; }
+
+.pes-series-tools:has(> .analysis-workspace) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: calc(var(--ui-control-line, 20px) * 12);
+}
+
+/* Keep analysis usable when the preceding controls exceed the rail height;
+   the existing outer rail then scrolls to the final control. */
+.pes-series-tools > .analysis-workspace > :not(.analysis-groups) {
+  flex-shrink: 0;
+}
+
+.pes-series-tools > .analysis-workspace > .analysis-groups {
+  min-height: calc(var(--ui-control-line, 20px) * 6);
+}
+
+/* Canvas and tools are portalled elsewhere, but preparation/error messages
+   still belong to this mounted result view. */
+[data-testid="pes-result-workspace"] > .postprocess-result-view {
+  height: auto;
+  flex: none;
+}
+
+.pes-run-details-body {
+  max-block-size: min(24rem, 35dvh);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}

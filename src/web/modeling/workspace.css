@@ -79,3 +79,6 @@
 .model-transform-view-label{position:absolute;left:8px;top:7px;z-index:5;background:#ffffffd9;color:#335d4b;border:1px solid #d5e4dc;border-radius:5px;padding:3px 7px;font-size:var(--ui-small-size,13px);pointer-events:none}
 .model-transform-link{position:absolute;right:8px;top:7px;z-index:6;border:1px solid #99bbaa;border-radius:5px;padding:3px 8px;font-size:var(--ui-small-size,13px);color:#335d4b;background:#fff}
 .model-transform-link[aria-pressed=true]{background:#dceee1;border-color:#4c936b}
+
+.model-workspace-heading,.model-workspace-floating-content { color:var(--ui-field-ink); }
+.model-workspace-heading button[aria-pressed=true],.model-workspace button[aria-pressed=true],.model-tool-rail button[aria-pressed=true] { background:var(--ui-control-selected-bg); border-color:var(--ui-tool-selected-border); }

@@ -21,7 +21,7 @@ export interface SurfaceDesktopBridgeOptions {
   onCleanupError?(message: string): void;
 }
 interface SourceSession { id: string; key: string; function: 'esp' | 'alie'; analysis: SurfaceAnalysisResult | null; capabilities: readonly SurfaceCapability[] }
-interface Operation { requestId: string; epoch: number; abort: AbortController; sessionId?: string; cancel?: Promise<unknown>; readOnly: boolean }
+interface Operation { requestId: string; epoch: number; abort: AbortController; sessionId?: string; cancel?: Promise<unknown>; settlement?: Promise<unknown>; readOnly: boolean }
 interface ImportedField { ref: SurfaceCubeSourceRef; revision: string; signature: string; projectRestored?: boolean }
 interface GeneratedField { session: SourceSession; stamp: SurfaceStamp; revision: string }
 interface GeneratedArtifact { session: SourceSession; stamp: SurfaceStamp; quality: SurfaceCubeQuality; shape: string; mapping: string | null }
@@ -106,7 +106,7 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
   async function cancelOperation(op: Operation): Promise<void> {
     op.abort.abort();
     if (op.sessionId && desktop.cancelSurface && !op.cancel) op.cancel = desktop.cancelSurface(op.sessionId);
-    await op.cancel;
+    try{await op.cancel;}finally{await op.settlement?.catch(()=>{});}
   }
   async function closeSession(session: SourceSession): Promise<void> {
     assert(desktop.closeSurfaceSession, '当前环境缺少表面会话关闭入口。');
@@ -123,8 +123,8 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
     const abort = () => { void cancelOperation(op).catch(report); };
     signal.addEventListener('abort', abort, { once: true });
     const promise = Promise.resolve().then(async () => { current(op); const value = await execute(op); current(op); if(!op.readOnly)notifyAnalysisProjectStateChanged(); return value; })
-      .finally(() => { signal.removeEventListener('abort', abort); if (operation === op) operation = null; inFlight.delete(promise); });
-    inFlight.add(promise); return promise;
+      .finally(async () => { await op.cancel?.catch(()=>{}); signal.removeEventListener('abort', abort); if (operation === op) operation = null; inFlight.delete(promise); });
+    op.settlement=promise; inFlight.add(promise); return promise;
   }
   function acceptedAnalysis(analysis: SurfaceAnalysisResult): SourceSession {
     checkedContext(analysis.stamp);

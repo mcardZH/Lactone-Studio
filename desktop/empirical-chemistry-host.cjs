@@ -68,18 +68,20 @@ function createEmpiricalChemistryHost({ spawn, resolveRuntime, canSpawn = () => 
     }
     if (job.settled || closedOwners.has(job.owner)) { if (!job.settled) finish(job, new Error('CHEMISTRY_CANCELLED: 窗口已关闭')); schedule(); return; }
     try {
+      job.beforeStart?.();
       active = job; const w = job.worker = ensureWorker();
       if (policy.requestMs !== undefined) { job.timer = setTimeout(() => closeWorker('CHEMISTRY_TIMEOUT: 原生化学任务超过显式时限', true), policy.requestMs); job.timer.unref?.(); }
       w.child.stdin.write(job.payload + '\n');
     } catch (error) { finish(job, error); schedule(); }
   }
-  function start(owner, request, jobId) {
+  function start(owner, request, jobId, beforeStart) {
     assert(!disposed && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner), 'Empirical owner closed');
     assert(string(jobId, 100) && /^[a-zA-Z0-9_-]+$/.test(jobId), 'Invalid chemistry job identity');
     assert(plain(request) && request.operation === 'perceive-bonds', 'Reusable worker accepts empirical perception only'); validateChemistry(request);
     assert(!jobs.has(key(owner, jobId)) && (policy.maxPending === undefined || jobs.size < policy.maxPending), 'Empirical pending budget reached');
     const snapshot = structuredClone(request), transportId = `empirical-${++serial}`, payload = JSON.stringify({ id: transportId, request: snapshot });
-    return new Promise((resolve, reject) => { const job = { owner, key: key(owner, jobId), request: snapshot, payload, transportId, resolve, reject, settled: false }; jobs.set(job.key, job); pending.push(job); schedule(); });
+    assert(beforeStart === undefined || typeof beforeStart === 'function', 'Invalid empirical dispatch guard');
+    return new Promise((resolve, reject) => { const job = { owner, key: key(owner, jobId), request: snapshot, payload, transportId, beforeStart, resolve, reject, settled: false }; jobs.set(job.key, job); pending.push(job); schedule(); });
   }
   function cancel(owner, jobId, reason = 'CHEMISTRY_CANCELLED: 用户取消任务') {
     const job = jobs.get(key(owner, jobId)); if (!job) return;

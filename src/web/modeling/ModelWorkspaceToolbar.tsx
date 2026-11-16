@@ -21,6 +21,8 @@ export interface ModelWorkspaceToolbarProps {
   onRedo?():void;
   disabled?:Partial<Record<'new'|'import'|'save'|'open2D'|'undo'|'redo',boolean>>;
   readOnly?:boolean;
+  /** An owner may export a ready observed structure while editing stays locked. */
+  readOnlySaveAllowed?:boolean;
   /** Observation hosts retain shared display controls without project/editor flows. */
   observationOnly?:boolean;
   /** Temporary transform previews can lock source editing without locking
@@ -42,7 +44,7 @@ export default function ModelWorkspaceToolbar(p:ModelWorkspaceToolbarProps){
   useTransientLayer({open:saveMenu,triggerRef:saveTrigger,contentRef:savePopup,onDismiss:()=>setSaveMenu(false)});
   const projectMode=typeof window!=='undefined'&&Boolean(window.sciyueDesktop?.syProject);
   const projectAction=(action:'save'|'save-as'|'open')=>{setSaveMenu(false);if(window.sciyueDesktop?.requestProjectAction)void window.sciyueDesktop.requestProjectAction(action);else window.dispatchEvent(new CustomEvent('sciyue-project-action',{detail:action}));};
-  const disabled=(action:keyof NonNullable<ModelWorkspaceToolbarProps['disabled']>,callback:unknown)=>!callback||Boolean(p.disabled?.[action])||Boolean(['undo','redo'].includes(action)?p.historyReadOnly??p.readOnly:p.readOnly&&['save','open2D'].includes(action));
+  const disabled=(action:keyof NonNullable<ModelWorkspaceToolbarProps['disabled']>,callback:unknown)=>!callback||Boolean(p.disabled?.[action])||Boolean(['undo','redo'].includes(action)?p.historyReadOnly??p.readOnly:p.readOnly&&(action==='open2D'||action==='save'&&!p.readOnlySaveAllowed));
   return <header className="model-workspace-heading model-workspace-toolbar" data-testid="model-shared-toolbar" data-read-only={Boolean(p.readOnly)} data-observation-only={Boolean(p.observationOnly)} onPointerDownCapture={p.onActivate}>
     <div className="model-workspace-heading-left">
       {!p.observationOnly&&<>{p.onNew&&<button type="button" disabled={disabled('new',p.onNew)} onClick={p.onNew}>新建</button>}

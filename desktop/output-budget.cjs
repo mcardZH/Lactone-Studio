@@ -15,12 +15,17 @@ function boundedLog(previous, text) {
   const half = MAX_RETAINED_LOG_CHARS / 2;
   return value.slice(0, half) + value.slice(-half);
 }
-function scientificLog() {
+function scientificLog({periodicFire=false,gxtbSinglepoint=false,gxtb=false}={}) {
   let tail='', selected='';
-  const significant=/xtb version|GEOMETRY OPTIMIZATION|CONVERGED AFTER|convergence criteria|RF solver|Fast Inertial|TOTAL ENERGY|FAILED TO CONVERGE|ABNORMAL|ERROR|Solvation|Solvent|Parameter file|Dielectric|Reference state|Free energy shift|Temperature|Density|Interaction kernel|Born|H-bond|Ion screening|Surface tension|Grid points/i;
-  const accept=line=>{if(significant.test(line)){selected+=line+'\n';}};
+  const significant=/xtb version|GEOMETRY OPTIMIZATION|CONVERGED AFTER|convergence criteria|RF solver|max\. optcycles|Fast Inertial|TOTAL ENERGY|FAILED TO CONVERGE|normal termination|ABNORMAL|ERROR|ANC generation failed, not enough modes|Solvation|Solvent|Parameter file|Dielectric|Reference state|Free energy shift|Temperature|Density|Interaction kernel|Born|H-bond|Ion screening|Surface tension|Grid points|constraining (?:bond|angle)|force constant\s*=|total constraint energy\/grad norm:|(?:SCC|SCF) not converged|Diagonalization of Hamiltonian failed|GFN-FF topology read from file successfully!|generating topology and atomic info file/i;
+  const accept=line=>{
+    if(significant.test(line)||periodicFire&&/\|\s*GRADIENT NORM|program call|Periodic properties/.test(line)
+      ||gxtb&&/^\s*(?:wavefunction|molecular charge|number of (?:unpaired )?electrons)\s+/i.test(line)
+      ||gxtbSinglepoint&&/^\s*(?:energy convergence|Post processing|\d+\s+[-+\d.]+\s+[-+\d.eEdD]+\s+[-+\d.eEdD]+\s*$)/i.test(line)) selected+=line+'\n';
+  };
   return {
     push(text){tail+=text;let end;while((end=tail.indexOf('\n'))>=0){accept(tail.slice(0,end));tail=tail.slice(end+1);}},
+    snapshot(){return selected;},
     finish(){if(tail){accept(tail);tail='';}return selected;},
   };
 }

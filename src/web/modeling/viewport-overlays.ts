@@ -5,7 +5,7 @@ import { bondRefKey, centroid, coordinates, measurementGeometryGuide, unionBox }
 import { coordinateSelectionObjects } from '../../core/modeling/coordinate-selection';
 import { modelCoordinateKey } from '../../modeling/constraints';
 
-export interface MeasurementLabel { record: MeasurementRecord; label: string; valueLabel: string; detail: string; x: number; y: number; error?: string }
+export interface MeasurementLabel { record: MeasurementRecord; label: string; valueLabel: string; displayLabel?:string; detail: string; x: number; y: number; error?: string }
 export type AtomStateAction = 'select-add' | 'select-remove' | 'freeze' | 'unfreeze';
 export interface ViewportStateMarker { id: string; kind: 'selection' | 'freeze' | 'scan'; atomIds: readonly string[]; images?:readonly Vector3[]; label?: string; coordinateId?: string; removable?: boolean; inactive?: boolean }
 
@@ -52,6 +52,7 @@ export function resolveKnownCoordinateMarkerAction(document:ModelDocument,marker
   const none:ViewportObjectState={atomIds:[],coordinateIds:[]};
   if(!mode)return {consumed:false,action:null,objects:none};
   if(marker&&'coordinateId' in marker){
+    if(mode==='select')return {consumed:true,action:null,objects:none};
     const object=typeof marker.coordinateId==='string'&&marker.coordinateId?coordinateSelectionObjects(document).find(object=>object.id===marker.coordinateId):undefined;
     const known=new Set(document.draft.structure.atoms.map(atom=>atom.id));
     if(!object||object.atomIds.some(id=>!known.has(id)))return {consumed:true,action:null,objects:none};
@@ -77,7 +78,7 @@ export function selectionWithCoordinateState(selection:ModelSelection,coordinate
 }
 /** Label/coordinate marker modes never turn their tuple into an atom action. */
 export function coordinateOverlayPointerAction(mode:'select'|'freeze'|null,button:number,coordinateId?:string,freezeRemoval=false):AtomStateAction|null {
-  return mode&&coordinateId?pointerStateAction(mode,button,freezeRemoval):null;
+  return mode==='freeze'&&coordinateId?pointerStateAction(mode,button,freezeRemoval):null;
 }
 /** Anchors use the same projected label positions the user can actually see.
  * Pending auto measurements are not passed as records/selectable identities. */
@@ -145,8 +146,9 @@ export function projectMeasurementLabels(atoms: Atom[], records: readonly Measur
     if (![screen.x, screen.y].every(Number.isFinite)) return [];
     const valueLabel = guide.value === null || guide.error ? '—' : `${guide.value.toFixed(type === 'B' ? 3 : 2)}${type === 'B' ? ' Å' : '°'}`;
     const names = path.map((index,endpoint) => modelAtomLabel(atoms[index], index, { atomNumbers: true, elementNames: true })+(record.images?.some(image=>image.some(Boolean))?'['+(record.images[endpoint]?.join(',')??'?')+']':''));
-    const detail = guide.error ?? `${type} ${names.join(' → ')} = ${valueLabel}`;
-    return [{ record, label: guide.error ?? guide.label, valueLabel, detail, error: guide.error, x: screen.x - offset.x, y: screen.y - offset.y }];
+    const displayName=record.displayNames?.join(' / ');
+    const detail = (displayName?`${displayName} · `:'')+(guide.error ?? `${type} ${names.join(' → ')} = ${valueLabel}`);
+    return [{ record, label: guide.error ?? guide.label, valueLabel, displayLabel:displayName?`${displayName}  ${valueLabel}`:valueLabel, detail, error: guide.error, x: screen.x - offset.x, y: screen.y - offset.y }];
   });
 }
 

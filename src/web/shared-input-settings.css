@@ -18,7 +18,7 @@
 .shared-input-card-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin:0 0 8px; }
 .shared-input-card .shared-input-card-title,.shared-input-card.base-electronic-state-card h3,
 .input-settings-layout.input-settings-surface :is(h2,h3,.subheading h3,.section-default-heading h3) {
-  display:flex; align-items:center; gap:6px; margin:0; font-size:var(--input-font,var(--ui-primary-size,16px)); color:var(--input-color,#294454); line-height:1.6; font-weight:600;
+  display:flex; align-items:center; gap:6px; margin:0; font-size:var(--input-font,var(--ui-primary-size,16px)); color:var(--ui-section-ink); line-height:1.6; font-weight:600;
 }
 .shared-input-card.base-electronic-state-card h3 { margin-bottom:8px; }
 .shared-input-card-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-left:auto; }
@@ -46,7 +46,7 @@
   display:flex; flex:1 1 210px; flex-direction:row; flex-wrap:wrap; align-items:center; gap:5px 8px; min-width:0; margin:0;
   font-size:var(--input-font,var(--ui-primary-size,16px)); line-height:1.6; color:var(--input-color,#294454);
 }
-.shared-input-field-label { flex:0 0 auto; }
+.shared-input-field-label { flex:0 1 auto; min-width:0; overflow-wrap:anywhere; }
 .shared-input-field-control { display:flex; flex:1 1 64px; min-width:0; gap:8px; align-items:center; }
 .shared-input-field.field>span { position:static; color:inherit; font-size:inherit; }
 .shared-input-field-caption { flex-basis:100%; color:var(--input-muted,#526879); font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); line-height:1.6; }
@@ -64,12 +64,12 @@
 .shared-input-action[data-input-action][data-input-variant=primary]:hover:not(:disabled) { background:var(--teal-dark); border-color:var(--teal-dark); }
 .shared-input-card .base-electronic-state-fields .shared-input-field { flex-basis:145px; }
 .shared-input-card .base-electronic-state-fields .shared-input-field-control { flex-basis:48px; }
-.base-electronic-state-card[data-state=pending] .shared-input-field { --input-border:#d8bd73; --input-control-bg:#fffaf0; --input-color:#765b20; padding:5px 7px; border:1px solid #d8bd73; border-radius:7px; background:#fff5d8; color:#765b20; }
-.base-electronic-state-card[data-state=pending] .shared-input-field input { border-color:#d8bd73; background:#fffaf0; }
+.base-electronic-state-card[data-state=pending] .shared-input-field { --input-border:#d8bd73; --input-control-bg:#fffbef; --input-color:#765b20; padding:5px 7px; border:1px solid #d8bd73; border-radius:7px; background:#fff3cc; color:#765b20; }
+.base-electronic-state-card[data-state=pending] .shared-input-field input { border-color:#d8bd73; background:#fffbef; }
 .base-electronic-state-card[data-state=error] .shared-input-field { padding:5px 7px; border:1px solid var(--input-border,#cadfd1); border-radius:7px; background:#fff; }
 .base-electronic-state-card[data-state=error] .shared-input-field input { border-color:var(--input-border,#cadfd1); background:#fff; }
-.base-electronic-state-card[data-state=confirmed] .shared-input-field { padding:5px 7px; border:1px solid #a4cdb3; border-radius:7px; background:#e8f5ed; }
-.base-electronic-state-card[data-state=confirmed] .shared-input-field input { background:#f5fbf7; }
+.base-electronic-state-card[data-state=confirmed] .shared-input-field { padding:5px 7px; border:1px solid var(--ui-control-border); border-radius:7px; background:#fff; }
+.base-electronic-state-card[data-state=confirmed] .shared-input-field input { background:#fff; }
 .input-parameter-settings .shared-input-checkbox,.input-parameter-settings :is(.check-line,.orca-check,.option-explanation) { font-size:var(--input-font); }
 .shared-input-card.base-electronic-state-card .base-electronic-state-error { font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); }
 .input-settings-layout.input-settings-surface :is(.field,.orca-field):not(.shared-input-field) { display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; gap:5px 8px; margin:0 0 8px; color:var(--input-color); font-size:var(--input-font); line-height:1.6; }
@@ -123,10 +123,18 @@
   .input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
   .input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-trigger { width:100%; }
 }
-.input-task-picker { container:input-tasks / inline-size; min-width:0; }
-.input-task-picker .task-category { margin:0 0 16px; }
-.input-task-picker .task-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:stretch; }
-@container input-tasks (min-width:600px) { .input-task-picker .task-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.workflow-choice-picker { min-width:0; font-size:var(--ui-control-font); }
+.workflow-choice-region { container:workflow-choices / inline-size; min-width:0; font-size:var(--ui-control-font); }
+.workflow-choice-picker .workflow-choice-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; align-items:stretch; }
+@container workflow-choices (min-width:calc(23em + 8px)) {
+  .software-chooser[data-choice-kind=software] .workflow-choice-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@container workflow-choices (min-width:27em) {
+  .input-task-picker .workflow-choice-grid,.software-chooser[data-choice-kind=function] .workflow-choice-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+.input-task-picker .task-category { margin:0; }
+.input-task-picker .task-category+.task-category { margin-top:16px; }
+.input-task-picker .task-category>h3 { color:var(--workflow-choice-group-ink,#293f4c);font:600 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family); }
 .task-card.shared-task-choice,.input-settings-layout.input-settings-surface .task-card.shared-task-choice { box-sizing:border-box; display:block; width:100%; min-width:0; height:auto; min-height:0; padding:8px 10px; border:1px solid #d4e5db; border-radius:11px; background:#f7fbf8; text-align:left; color:#294454; cursor:pointer; font:var(--input-font,var(--ui-primary-size,16px))/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
 .task-card.shared-task-choice .task-top { display:grid; grid-template-columns:32px minmax(0,1fr) auto 17px; align-items:center; width:100%; min-width:0; gap:8px; margin:0; }
 .shared-task-choice .task-top .task-title,.input-settings-layout.input-settings-surface .shared-task-choice .task-top .task-title { display:block; min-width:0; margin:0; text-align:left; overflow-wrap:anywhere; color:inherit; font:inherit; font-weight:600; line-height:1.4; }
@@ -136,23 +144,50 @@
 .task-card.shared-task-choice .task-check { display:grid; place-items:center; width:17px; height:17px; margin:0; border-radius:50%; background:#548f74; color:#fff; visibility:hidden; }
 .shared-task-choice.selected .task-check { visibility:visible; }
 .shared-task-choice.selected,.input-settings-layout.input-settings-surface .shared-task-choice.selected { border-color:#548f74; background:#e8f4ec; box-shadow:0 0 0 1px #548f74; }
-.shared-task-choice:disabled { opacity:.5; cursor:default; }
+.shared-task-choice:disabled { cursor:default; }
+.input-settings-layout.input-settings-surface .task-card.shared-task-choice:disabled {
+  opacity:1; color:var(--ui-action-disabled-ink); background:var(--ui-action-disabled-bg);
+  border-color:var(--ui-action-disabled-border); box-shadow:none;
+}
+.input-settings-layout.input-settings-surface .task-card.shared-task-choice:disabled :is(.task-icon,.task-code) {
+  color:var(--ui-action-disabled-ink);
+}
+.input-task-picker .task-card.shared-task-choice { container:workflow-task-card / inline-size; font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family); }
+.input-task-picker .shared-task-choice .task-top {
+  grid-template-columns:24px minmax(0,1fr) auto 17px;
+  grid-template-areas:"icon title code check";
+  gap:8px;
+}
+.input-task-picker .shared-task-choice .task-icon { grid-area:icon; width:24px; height:24px; background:transparent;color:var(--workflow-choice-icon-ink,#436879); }
+.input-task-picker .shared-task-choice .task-icon svg { width:20px; height:20px; }
+.input-task-picker .shared-task-choice .task-title { grid-area:title; }
+.input-task-picker .shared-task-choice .task-code {
+  grid-area:code; justify-self:end; white-space:normal; overflow-wrap:normal; word-break:normal;
+  color:var(--workflow-choice-code-ink,#486476);font:400 var(--ui-control-small-font)/var(--ui-control-line) var(--ui-font-family);
+}
+.input-task-picker .shared-task-choice .task-check { grid-area:check; align-self:center; }
+@container workflow-task-card (max-width:18em) {
+  .input-task-picker .shared-task-choice .task-top { grid-template-columns:24px minmax(0,1fr) 17px; grid-template-areas:"icon title check" "icon code check"; row-gap:2px; }
+  .input-task-picker .shared-task-choice .task-code { justify-self:start; }
+}
+.input-task-picker .task-card.shared-task-choice { border-radius:var(--ui-subcard-radius); }
+.input-task-picker .task-card.shared-task-choice:enabled { background:#fff;color:var(--workflow-choice-item-ink,#284250);border-color:var(--workflow-choice-border,#c5d8cd); }
+.input-task-picker .task-card.shared-task-choice.selected:enabled { background:var(--workflow-choice-selected-bg,#e8f9ee);border-color:var(--workflow-choice-mark,#226d4c);box-shadow:inset 0 0 0 1px var(--workflow-choice-mark,#226d4c);color:var(--workflow-choice-active-ink,#147d75); }
+.input-task-picker .task-card.shared-task-choice.selected:enabled :is(.task-icon,.task-code) { background:transparent;color:var(--workflow-choice-active-ink,#147d75); }
+.input-task-picker .task-card.shared-task-choice .task-check { background:transparent;color:var(--workflow-choice-active-ink,#147d75); }
+.input-task-picker .task-card.shared-task-choice:disabled,.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice:disabled { opacity:1;color:var(--workflow-choice-disabled-ink,#467672);background:var(--workflow-choice-disabled-bg,#f0f3f2);border-color:var(--workflow-choice-border,#c5d8cd);box-shadow:none; }
+.input-task-picker .task-card.shared-task-choice:disabled :is(.task-title,.task-icon,.task-code),.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice:disabled :is(.task-title,.task-icon,.task-code) { color:var(--workflow-choice-disabled-ink,#467672); }
+.input-task-picker .task-card.shared-task-choice.selected:disabled,.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice.selected:disabled { border-color:var(--workflow-choice-mark,#226d4c);box-shadow:inset 0 0 0 1px var(--workflow-choice-mark,#226d4c); }
 .shared-input-card :focus-visible,.input-settings-layout :focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
 .input-settings-layout .shared-freeze-records { min-width:0; margin:0; padding:0; border:0; }
-.desktop-mode [data-testid="engine-navigation"] { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 13px; min-height:52px; border-top:1px solid #eff2f5; background:#fff; font:var(--ui-primary-size,16px)/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
-.desktop-mode [data-testid="engine-navigation"]>.button { display:inline-flex; flex:1 1 0; align-items:center; justify-content:center; gap:6px; height:40px; min-height:40px; padding:5px 12px; border:1px solid transparent; border-radius:7px; font:inherit; }
-.desktop-mode [data-testid="engine-navigation"]>.button-quiet { background:transparent; color:#526879; }
-.desktop-mode [data-testid="engine-navigation"]>.button-primary { background:var(--teal); border-color:var(--teal); color:#fff; }
-.desktop-mode [data-testid="engine-navigation"]>.button-quiet:hover:not(:disabled) { background:#edf7f1; border-color:transparent; }
-.desktop-mode [data-testid="engine-navigation"]>.button-primary:hover:not(:disabled) { background:var(--teal-dark); border-color:var(--teal-dark); }
-.desktop-mode [data-testid="engine-navigation"]>.button:disabled { opacity:.45; cursor:default; }
-.desktop-mode [data-testid="engine-navigation"]>span { flex:0 0 auto; font:var(--ui-secondary-size,14px)/1.6 "Segoe UI","Microsoft YaHei",sans-serif; color:#71818c; }
 .input-capability-paused { padding:9px 12px; margin:9px 0; border:1px solid #d9bc81; border-radius:8px; background:#fff8e9; color:#74561f; }
 .input-capability-paused p { margin:0 0 7px; font-size:var(--ui-secondary-size,14px); }
-.engine-step-content .input-settings-layout .task-category>h3{font-family:inherit;font-size:var(--input-field-font,var(--ui-primary-size,16px));font-weight:600;line-height:1.6;color:#294454;margin:0 0 12px;padding-bottom:8px}
+.engine-step-content .input-settings-layout .task-category>h3{font-family:inherit;font-size:var(--input-field-font,var(--ui-primary-size,16px));font-weight:600;line-height:1.6;color:var(--workflow-choice-group-ink,#293f4c);margin:0 0 12px;padding-bottom:8px}
 .shared-input-enable-card>.shared-input-card-header{margin:0;justify-content:flex-start}
 .shared-input-enable-card[data-enabled=true]>.shared-input-card-header{margin-bottom:6px}
 .shared-input-card .shared-input-enable-toggle,.input-settings-layout.input-settings-surface .shared-input-enable-toggle{display:inline-flex;align-items:center;justify-content:flex-start;gap:7px;min-height:30px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.shared-input-enable-card .shared-input-enable-toggle:disabled { opacity:.5; cursor:default; }
+.shared-input-enable-toggle .shared-input-card-title { min-width:0; overflow-wrap:anywhere; }
 .shared-input-switch-track{display:inline-flex;align-items:center;flex:0 0 30px;width:30px;height:18px;padding:2px;border-radius:10px;background:#aebdb5;box-sizing:border-box}
 .shared-input-switch-track>span{width:14px;height:14px;background:white;border-radius:50%;box-shadow:0 1px 2px #0002}
 [aria-checked=true]>.shared-input-switch-track{background:var(--ui-control-accent,#548f74)}
@@ -167,9 +202,7 @@
 .input-settings-layout.input-settings-surface .solvent-controls-row select{width:auto;max-width:100%}
 .input-settings-layout.input-settings-surface .solvent-controls>.shared-input-enable-content{display:grid;gap:6px}
 /* Opt-in parameter presentation keeps orbital and Hirshfeld consumers stable. */
-.input-settings-layout.input-parameter-settings{--input-card-border:#c9dcd2;--input-card-bg:#f6fbf8ed;--input-radius:8px;--input-card-padding:7px 8px;--input-gap:6px;--input-row-gap:10px}
-.input-parameter-settings :is(.shared-input-card,.orca-group,.advanced-details,.source-options){margin-bottom:10px}
-.input-settings-layout.input-parameter-settings .shared-input-field{display:grid;grid-template-columns:max-content minmax(0,auto);flex:0 1 auto;max-width:100%}
+.input-settings-layout.input-parameter-settings .shared-input-field{display:grid;grid-template-columns:minmax(0,max-content) auto;flex:0 1 auto;max-width:100%}
 .input-settings-layout.input-parameter-settings .shared-input-field-caption{grid-column:1/-1}
 .input-settings-layout.input-parameter-settings .shared-input-field-control{flex:0 1 auto}
 .input-parameter-settings .shared-input-field-control :is(input,textarea){width:18ch;max-width:100%}
@@ -188,10 +221,10 @@
 .input-settings-layout.input-parameter-settings .shared-method-fields>.card-dropdown{display:flex;align-items:center;flex:0 1 auto;flex-wrap:nowrap;max-width:100%}
 .input-settings-layout.input-parameter-settings .shared-method-fields .card-dropdown-label{position:static;width:auto;height:auto;margin:0;overflow:visible;clip-path:none;white-space:nowrap}
 .input-settings-layout.input-parameter-settings .shared-method-fields .card-dropdown-trigger{flex:0 1 auto;width:auto;max-width:100%}
-.input-settings-layout.input-parameter-settings { --input-font:calc(14px * var(--ui-font-scale,1)); --input-caption-font:calc(13px * var(--ui-font-scale,1)); }
-.input-settings-layout.input-parameter-settings :is(.shared-input-card-title,.base-electronic-state-card h3,.shared-input-section>summary,.source-options .subheading h3) { font-size:calc(16px * var(--ui-font-scale,1)); font-weight:600; }
-.input-settings-layout.input-parameter-settings .input-task-name-row { margin:0 0 10px; flex-wrap:nowrap; gap:8px; }
-.input-settings-layout.input-parameter-settings .input-task-name-row .shared-input-field { flex:1 1 0!important; width:auto; flex-wrap:nowrap; min-width:0; }
+.input-settings-layout.input-parameter-settings .shared-method-fields .card-dropdown-trigger>span { min-width:0; }
+.input-settings-layout.input-parameter-settings .shared-method-fields .card-dropdown-trigger strong { white-space:normal; overflow-wrap:anywhere; }
+.input-settings-layout.input-parameter-settings:not([data-input-layout=standard]) .input-task-name-row { margin:0 0 10px; flex-wrap:nowrap; gap:8px; }
+.input-settings-layout.input-parameter-settings:not([data-input-layout=standard]) .input-task-name-row .shared-input-field { flex:1 1 0; width:auto; flex-wrap:nowrap; min-width:0; }
 .input-task-name-row .shared-input-field-label { flex:0 0 42px; }
 .input-task-name-row .shared-input-field-control input { width:100%; min-width:0; }
 .input-settings-layout .resource-preset-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
@@ -224,10 +257,13 @@
 .input-settings-layout.input-settings-surface .shared-input-subcard .coordinate-draft {
   padding:8px 0 0; border:0; border-top:1px solid #dce8e0; border-radius:0; background:transparent;
 }
-/* Shared v0.58 input roles follow the global font scale. */
+/* Parameter density follows the global font scale without changing other consumers. */
 .input-settings-layout.input-parameter-settings {
+  --input-card-border:var(--ui-surface-border); --input-card-bg:var(--ui-surface-bg); --input-radius:var(--ui-surface-radius);
   --input-font:calc(14px * var(--ui-font-scale,1));
   --input-caption-font:calc(14px * var(--ui-font-scale,1));
+  --input-control-height:calc(30px + (var(--ui-font-scale,1) - 1) * 32px);
+  --ui-control-height:var(--input-control-height);
   --input-card-padding:10px 12px; --input-row-gap:8px; --input-gap:4px;
   line-height:calc(20px * var(--ui-font-scale,1));
 }
@@ -235,7 +271,7 @@
 .input-settings-layout.input-parameter-settings :is(.shared-input-card-title,.base-electronic-state-card h3,.shared-input-section>summary,.source-options .subheading h3,.orca-group>summary) {
   font-size:calc(16px * var(--ui-font-scale,1)); font-weight:600; line-height:calc(24px * var(--ui-font-scale,1));
 }
-.input-settings-layout.input-parameter-settings :is(.shared-input-row,.two-fields,.orca-grid) { align-items:center; row-gap:4px; column-gap:8px; }
+.input-settings-layout.input-parameter-settings :is(.shared-input-row,.two-fields,.orca-grid,.input-control-flow) { align-items:center; gap:4px 8px; }
 .input-settings-layout.input-parameter-settings :is(.shared-input-field,.field,.orca-field,.shared-input-checkbox,.check-line,.orca-check,.muted-note,.orca-note,.field-caption,.shared-input-field-caption) { font-size:var(--input-font); font-weight:400; line-height:calc(20px * var(--ui-font-scale,1)); }
 .input-settings-layout.input-parameter-settings :is(.field,.orca-field):not(.shared-input-field) { margin-bottom:4px; }
 .input-settings-layout.input-parameter-settings :is(.shared-input-checkbox,.check-line,.orca-check) { margin:4px 0; }
@@ -259,15 +295,8 @@
 .input-settings-layout.input-parameter-settings .fragment-editor[data-state=confirmed] input { border-color:#a4cdb3; background:#f5fbf7; }
 
 .input-settings-layout.input-parameter-settings .base-electronic-state-card h3 { margin-bottom:0; }
-/* v0.59: parameter density is scoped to the input workbench. */
-.input-settings-layout.input-parameter-settings {
-  --input-control-height:calc(30px + (var(--ui-font-scale,1) - 1) * 32px);
-  --ui-control-height:var(--input-control-height); --input-radius:8px;
-  --input-card-padding:10px 12px; --input-row-gap:8px;
-}
 .input-settings-layout.input-parameter-settings :is(input,select,textarea,button) { font-family:"Segoe UI","Microsoft YaHei",sans-serif; }
-.input-settings-layout.input-parameter-settings :is(.shared-input-row,.two-fields,.orca-grid,.input-control-flow) { gap:4px 8px; }
-.input-settings-layout.input-parameter-settings .input-control-flow { display:flex; flex-wrap:wrap; align-items:center; min-width:0; }
+.input-settings-layout.input-parameter-settings .input-control-flow { display:flex; flex-wrap:wrap; min-width:0; }
 .input-settings-layout.input-parameter-settings .task-core-group>.input-control-flow>:is(.shared-input-row,.two-fields,.orca-grid),
 .input-settings-layout.input-parameter-settings .excited-stage-controls { display:contents; }
 .input-settings-layout.input-parameter-settings .input-control-flow>:is(.field,.orca-field,.shared-input-field),
@@ -313,8 +342,232 @@
   display:block; flex:0 0 100%; box-sizing:border-box; width:100%; min-width:0; max-width:100%;
   margin:0; white-space:normal; overflow-wrap:anywhere; color:#af6b40;
 }
+.input-settings-layout.input-settings-surface .shared-input-field-control :is(input,select,textarea)[aria-invalid=true] {
+  --input-border:var(--ui-control-invalid);
+}
 /* Subcard headings keep their own role even under the global h3/summary scale. */
-:root[data-font-size] .input-settings-layout.input-settings-surface.input-parameter-settings :is(.shared-input-subcard,.shared-input-inline)>summary,
-:root[data-font-size] .input-settings-layout.input-settings-surface.input-parameter-settings :is(.shared-input-subcard,.shared-input-inline)>.shared-input-card-header>.shared-input-card-title {
+:root[data-font-size] .input-settings-layout.input-settings-surface.input-parameter-settings:not([data-input-layout=standard]) :is(.shared-input-subcard,.shared-input-inline)>summary,
+:root[data-font-size] .input-settings-layout.input-settings-surface.input-parameter-settings:not([data-input-layout=standard]) :is(.shared-input-subcard,.shared-input-inline)>.shared-input-card-header>.shared-input-card-title {
   font-size:calc(14px * var(--ui-font-scale,1))!important; font-weight:600; line-height:calc(20px * var(--ui-font-scale,1));
+}
+
+/* Explicit migration surface. Opt-in JSX owns card and parameter stacks, so
+   vertical spacing comes from the complete groups rather than child margins. */
+.input-settings-layout.input-settings-surface[data-input-layout=standard] {
+  --input-card-border:var(--ui-surface-border);
+  --input-card-bg:var(--ui-surface-bg);
+  --input-radius:var(--ui-surface-radius);
+  --input-gap:8px;
+  --input-row-gap:8px;
+  --input-line-height:var(--ui-control-line);
+  font:400 var(--input-font)/var(--input-line-height) var(--ui-font-family);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-stack {
+  display:flex; flex-direction:column; gap:var(--input-gap); min-inline-size:0;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-stack[data-input-stack=cards] { gap:12px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard].input-parameter-settings {
+  --input-card-bg:var(--ui-parameter-card-bg);
+  --input-color:var(--ui-field-ink);
+  --input-muted:var(--ui-note-ink);
+  display:flex; flex-direction:column; gap:12px;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-card-header .shared-input-card-title,summary.shared-input-card-title,.shared-input-section-label,.base-electronic-state-card h3) {
+  color:var(--ui-section-ink);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(button:disabled,[aria-disabled=true]) .shared-input-card-title {
+  color:var(--ui-action-disabled-ink);
+}
+.input-settings-layout.input-parameter-settings[data-input-layout=standard] .shared-input-field-label {
+  color:var(--field-label-ink,var(--ui-label-ink));
+}
+.input-settings-layout .base-electronic-state-card[data-state=pending] {
+  --field-label-ink:#765b20;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.input-option-group,.input-hessian-group,.input-control-flow,.two-fields,.orca-grid,.shared-method-fields,.advanced-options-stack) {
+  gap:8px;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.input-task-name-row,.advanced-options-stack,.orca-group,.advanced-details,.source-options) { margin-block:0; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-stack > [data-input-row=actions]:not(:first-child) { margin-block-start:4px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-card,p,.shared-input-field-caption,.base-electronic-state-error) { margin:0; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-subcard { background:#fff; border-radius:var(--ui-subcard-radius); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-inline { border:0; padding:0; background:transparent; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-subcard,.shared-input-inline) .shared-input-enable-toggle > .shared-input-card-title {
+  line-height:var(--input-line-height);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-subcard .shared-input-subcard {
+  border:0; border-block-start:1px solid var(--input-card-border); padding:8px 0 0; border-radius:0;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-card:not(details) {
+  display:flex; flex-direction:column; gap:8px;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-card-header { gap:8px; margin:0; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-card-body:not([hidden]) { display:grid; gap:8px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-card > .shared-input-enable-content { display:grid; gap:8px; min-width:0; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] details.shared-input-card[open]::details-content { display:grid; gap:8px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-card-title,.shared-input-section-toggle > span:not(.shared-input-card-actions)) {
+  font-size:var(--ui-primary-size,16px); line-height:var(--ui-title-line); font-weight:600; overflow-wrap:anywhere;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-subcard,.shared-input-inline) > .shared-input-card-header .shared-input-card-title,
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-subcard,.shared-input-inline) > .shared-input-section-toggle > span:first-child {
+  font-size:var(--input-font); line-height:var(--input-line-height); font-weight:600;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-subcard,.shared-input-inline) > summary.shared-input-card-title {
+  font-size:var(--input-font); line-height:var(--input-line-height);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-section-toggle { cursor:pointer; margin:0; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] summary[data-input-section-actions] {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] summary[data-input-section-actions]::before { content:none; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] summary[data-input-section-actions] > .shared-input-section-label {
+  display:inline-flex; align-items:center; gap:8px; min-inline-size:0; max-inline-size:100%;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] summary[data-input-section-actions] > .shared-input-section-label::before {
+  content:''; flex:none; box-sizing:border-box; inline-size:.42em; block-size:.42em;
+  border:solid currentColor; border-width:0 1.5px 1.5px 0; transform:rotate(-45deg);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] details[open] > summary[data-input-section-actions] > .shared-input-section-label::before {
+  transform:rotate(45deg);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] summary[data-input-section-actions] > .shared-input-card-actions {
+  flex:0 0 auto; min-inline-size:0; max-inline-size:100%;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [open] > .shared-input-section-toggle { margin-block-end:8px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-card-toggle {
+  display:inline-flex; align-items:center; gap:8px; min-inline-size:0; max-inline-size:100%; padding:0; border:0; background:transparent; color:inherit;
+  line-height:inherit; font-weight:600; text-align:start; cursor:pointer;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-card-toggle > [aria-hidden=true] { flex:none; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-card-title-text {
+  font:600 var(--ui-primary-size,16px)/var(--ui-title-line) var(--ui-font-family); overflow-wrap:anywhere;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-subcard,.shared-input-inline) .shared-input-card-title-text {
+  font-size:var(--input-font); line-height:var(--input-line-height);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-row,.base-electronic-state-fields) {
+  display:flex; flex-wrap:wrap; gap:var(--input-row-gap); align-items:center; min-inline-size:0;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-field,.conformer-solvent-field) {
+  display:flex; flex:0 0 auto; flex-wrap:wrap; inline-size:max-content; max-inline-size:100%; min-inline-size:0; margin:0;
+  gap:8px; align-items:center; font-size:var(--input-font); line-height:var(--input-line-height);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-field-control {
+  flex:0 1 auto; max-inline-size:100%; min-inline-size:0; gap:6px;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-field-control > span:not(.numeric-adaptive) { flex:none; white-space:nowrap; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-width=short] { --input-field-characters:5; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-width=long-number] { --input-field-characters:12; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-width=text] { --input-field-characters:24; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-width=full] { inline-size:100%; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-width=full] > .shared-input-field-control { flex:1 1 24ch; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-field-control,.conformer-solvent-field) > :is(input,select,textarea) {
+  box-sizing:border-box; flex:0 1 auto; max-inline-size:100%; min-inline-size:0;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-field-control > input {
+  inline-size:calc(var(--input-field-characters,8) * 1ch + 18px);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-field:not([data-input-width]) > .shared-input-field-control > input:not([type=number]):not(.numeric-input-direct) { inline-size:calc(24ch + 18px); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-width=full] .shared-input-field-control > input { inline-size:100%; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-field-control,.conformer-solvent-field) > select {
+  inline-size:auto; min-inline-size:min(100%, calc(8ch + 18px + 24px * var(--ui-font-scale,1)));
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-field-caption { flex-basis:100%; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-field-caption,.shared-input-checkbox,.dismissible-notice,.base-electronic-state-error) {
+  font-size:var(--input-font); line-height:var(--input-line-height);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-field:has(>.shared-input-field-caption) { row-gap:4px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-checkbox { min-height:var(--ui-control-height); margin:0; gap:7px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-checkbox > input[type=checkbox] {
+  width:calc(15px * var(--ui-font-scale,1)); height:calc(15px * var(--ui-font-scale,1));
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.shared-input-field-control,.conformer-solvent-field) :is(input,select,textarea),
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.button,.shared-input-action) {
+  box-sizing:border-box; min-height:var(--ui-control-height); height:auto; padding:var(--ui-control-padding);
+  border:1px solid var(--input-border); border-radius:var(--input-control-radius); background:var(--input-control-bg); color:var(--input-color);
+  font:inherit; line-height:var(--input-line-height);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.button,.shared-input-action) { gap:6px; max-inline-size:100%; white-space:normal; overflow-wrap:anywhere; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.button,.shared-input-action):hover:not(:disabled) { background:var(--ui-control-hover-bg); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.button-primary,[data-input-variant=primary]) {
+  min-height:var(--ui-control-primary-height); min-width:min(100%, var(--ui-control-primary-width)); padding:5px 12px;
+  border-color:var(--ui-action-primary-bg); background:var(--ui-action-primary-bg); color:white; font-weight:600;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.button-primary,[data-input-variant=primary]):hover:not(:disabled) {
+  border-color:var(--ui-action-primary-hover); background:var(--ui-action-primary-hover);
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-ui-action=global-reset] {
+  min-width:min(100%,round(up,calc(104px * var(--ui-font-scale,1)),1px));
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-action[data-input-reset=true] {
+  flex:0 0 var(--ui-control-height); width:var(--ui-control-height); height:var(--ui-control-height);
+  min-width:var(--ui-control-height); min-height:var(--ui-control-height); padding:0;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-action[data-input-reset=true]>svg {
+  inline-size:calc(14px * var(--ui-font-scale,1)); block-size:calc(14px * var(--ui-font-scale,1));
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .input-card-unavailable { opacity:1; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-enable-toggle { min-height:var(--ui-control-height); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-enable-toggle:disabled { opacity:1; color:var(--ui-action-disabled-ink); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-switch-track {
+  flex-basis:calc(30px * var(--ui-font-scale,1)); width:calc(30px * var(--ui-font-scale,1)); height:calc(18px * var(--ui-font-scale,1));
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-switch-track>span {
+  width:calc(14px * var(--ui-font-scale,1)); height:calc(14px * var(--ui-font-scale,1));
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [aria-checked=true]>.shared-input-switch-track>span { transform:translateX(calc(12px * var(--ui-font-scale,1))); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(.button,.shared-input-action,input,select,textarea):disabled {
+  border-color:var(--ui-action-disabled-border); background:var(--ui-action-disabled-bg); color:var(--ui-action-disabled-ink); opacity:1;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(input,select,textarea)[aria-invalid=true]:not(:disabled) {
+  border-color:var(--ui-control-invalid); background:#fff;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] :is(input,select,textarea,button,summary):focus-visible {
+  outline:2px solid var(--ui-control-focus); outline-offset:2px;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .base-electronic-state-card:not(.shared-input-card) {
+  display:flex; flex-direction:column; gap:4px; padding:0; border:0; border-radius:0;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .base-electronic-state-fields .numeric-adaptive {
+  inline-size:calc(5ch + 18px + 22px * var(--ui-font-scale,1)); max-inline-size:100%;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .shared-input-field-control > .numeric-adaptive {
+  flex:0 1 auto; inline-size:calc(var(--input-field-characters,8) * 1ch + 18px + 22px * var(--ui-font-scale,1)); max-inline-size:100%;
+}
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .numeric-adaptive .numeric-adaptive-arrows,
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .numeric-adaptive .numeric-adaptive-arrows > button { width:calc(18px * var(--ui-font-scale,1)); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .numeric-adaptive > input { padding-inline-end:calc(22px * var(--ui-font-scale,1)); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .base-electronic-state-card[data-state=pending] .shared-input-field { --input-border:#9c7829; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-section=naming-resources][data-state=pending] :is(input,select):not(:disabled):not([aria-invalid=true]) { border-color:#9c7829; background:#fffaf0; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-section=naming-resources][data-state=confirmed] :is(input,select):not(:disabled):not([aria-invalid=true]) { border-color:var(--ui-control-border); background:#f5fbf7; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .base-electronic-state-card[data-state=confirmed] .shared-input-field { --input-control-bg:#f5fbf7; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .model-inline-help > summary { min-inline-size:24px; min-block-size:24px; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .conformer-solvent-heading { gap:6px; align-items:center; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .conformer-solvent-field > .dismissible-notice { margin:0; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] pre {
+  margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font:400 var(--input-font)/var(--input-line-height) Consolas,"Cascadia Mono",monospace;
+}
+
+/* Main and nested cards differ by fill, with an identical fractional stroke. */
+:root .input-settings-layout.input-settings-surface :is(.shared-input-card,.orca-group,.advanced-details,.source-options):not(.shared-input-inline) {
+  border:1px solid var(--ui-surface-border);
+  box-shadow:var(--ui-card-stroke-inset);
+}
+:root .input-settings-layout.input-settings-surface .shared-input-card:not(.shared-input-subcard):not(.shared-input-inline) {
+  background:var(--input-card-bg);
+}
+:root .input-settings-layout.input-settings-surface :is(.shared-input-subcard,.shared-input-card .shared-input-card):not(.shared-input-inline) {
+  background:var(--ui-subcard-bg);
+}
+:root .input-settings-layout.input-settings-surface :is(.shared-input-card-title,.shared-input-subcard>summary,.shared-input-inline>summary) {
+  color:var(--ui-section-ink);
+}
+:root .input-settings-layout.input-settings-surface :is(button:disabled,[aria-disabled=true]) .shared-input-card-title {
+  color:var(--ui-action-disabled-ink);
+}
+:root .input-settings-layout.input-settings-surface .task-card.shared-task-choice:enabled {
+  color:var(--ui-section-ink);
+}
+:root .input-settings-layout.input-settings-surface .task-card.shared-task-choice:enabled :is(.task-title,.task-icon) {
+  color:var(--ui-section-ink);
 }

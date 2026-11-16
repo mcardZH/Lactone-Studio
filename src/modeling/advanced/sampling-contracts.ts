@@ -2,9 +2,12 @@ import type { Structure, Atom, Vector3 } from '../../core/types';
 import type { DocumentStamp } from '../../core/modeling/contracts';
 import {minimumEnclosingSphere} from './sampling-sphere';
 import {conformerAlpbPresets,type ConformerNativeSolvationEvidence} from './conformer-solvation';
+import {XTB_METHOD_IDS,supportsXtbOperation,type XtbNativeMethod} from '../../core/xtb-capabilities';
 
 export type ConformerSamplingOperation = 'md' | 'anneal' | 'metadynamics' | 'spherical-md';
-export type ConformerSamplingMethod = 'MMFF94' | 'MMFF94s' | 'UFF' | 'gfn0' | 'gfn1' | 'gfn2' | 'gfnff';
+export type ConformerNativeSamplingMethod = XtbNativeMethod;
+export type ConformerSamplingMethod = 'MMFF94' | 'MMFF94s' | 'UFF' | ConformerNativeSamplingMethod;
+export const NATIVE_CONFORMER_SEED_MAX = 0x7fffffff;
 export type ConformerSamplingDriver = 'ase-langevin' | 'native-xtb-md';
 export type ConformerSamplingDriverReason = 'native-ordinary-md' | 'native-rmsd-metadynamics' | 'ase-forcefield-or-temperature-bias-route';
 /** Supported native relative-distance restraint routes, not a claim that all
@@ -13,16 +16,15 @@ export type ConformerSamplingDriverReason = 'native-ordinary-md' | 'native-rmsd-
  * Historical v052 route evidence is kept in its original benchmark records. */
 export const NATIVE_CONFORMER_CORE_PROTECTION = Object.freeze({
   forceConstantKJMolNm2: 500_000, legacyForceConstantKJMolNm2: 5_000_000, maxRmsdAngstrom: .2, dtFs: 2,
-  supportedRoutes: ['gfnff:md','gfnff:metadynamics','gfn0:md','gfn0:metadynamics',
-    'gfn1:md','gfn1:metadynamics','gfn2:md','gfn2:metadynamics'] as readonly string[],
+  supportedRoutes: XTB_METHOD_IDS.flatMap(method=>(['md','metadynamics'] as const).filter(operation=>supportsXtbOperation(method,operation)).map(operation=>`${method}:${operation}`)) as readonly string[],
 });
 /** Ordinary xTB MD never silently switches integrator to provide a protection. */
 export function getConformerSamplingCapability(request: { operation: ConformerSamplingOperation; method: ConformerSamplingMethod }) {
-  const native = ['md', 'metadynamics'].includes(request.operation) && ['gfnff', 'gfn0', 'gfn1', 'gfn2'].includes(request.method);
+  const native = NATIVE_CONFORMER_CORE_PROTECTION.supportedRoutes.includes(`${request.method}:${request.operation}`);
   const shake = !(native && request.method === 'gfnff');
   return { driver: native ? 'native-xtb-md' as const : 'ase-langevin' as const,
     shakeSupported: shake, shakeDefaultEnabled: shake,
-    coreProtectionSupported: !native || NATIVE_CONFORMER_CORE_PROTECTION.supportedRoutes.includes(`${request.method}:${request.operation}`), sphereSupported: true, xyzFreezeSupported: !native };
+    coreProtectionSupported: true, sphereSupported: true, xyzFreezeSupported: !native };
 }
 export function selectConformerSamplingDriver(request: { operation: ConformerSamplingOperation; method: ConformerSamplingMethod; coreProtection?: unknown; sphere?: unknown; frozenAtomIds?: readonly string[] }): { driver: ConformerSamplingDriver; reason: ConformerSamplingDriverReason } {
   if (getConformerSamplingCapability(request).driver === 'native-xtb-md') return { driver: 'native-xtb-md', reason: request.operation === 'metadynamics' ? 'native-rmsd-metadynamics' : 'native-ordinary-md' };
@@ -73,6 +75,11 @@ export interface ConformerNativeProtectionEvidence {
     nativeCenterBohr: [0, 0, 0]; nativeRadiusBohr: number; energyScaleHartree: 1; appliesTo: 'all-atoms' };
   /** Source to native offset; inverse is applied to every public frame. */
   coordinateTransform: { kind: 'identity' | 'translation'; offsetAngstrom: Vector3 };
+  constraints?: (Omit<ConformerSamplingCoordinateConstraint,'objectId'> & {nativeAtomIndices:number[];unit:'angstrom'|'degree'})[];
+  sharedForceConstantHartreePerBohr2?:number;
+}
+export interface ConformerSamplingCoordinateConstraint {
+  id: string; objectId?: string; type: 'B'|'A'|'D'; atomIds: string[]; value: number;
 }
 interface ConformerSamplingRequestBase {
   schema: 1; stamp: DocumentStamp & { activationEpoch?: number }; runIdentity: ConformerSamplingRunIdentity;
@@ -80,8 +87,8 @@ interface ConformerSamplingRequestBase {
   /** A fresh integration segment from the explicitly supplied source geometry. */
   segment?:ConformerSamplingSegment;
   frozenAtomIds?: string[];
-  /** Momentum constraints on internal coordinates have not been validated; admission accepts only an empty list. */
-  constraints?: [];
+  /** Native harmonic B/A/D potentials share the atom-group force constant. */
+  constraints?: ConformerSamplingCoordinateConstraint[];
   threads?: number; maxSteps?: number; maxEvaluations?: number; maxWallTimeSeconds?: number;
   maxFrames?: number; seed?: number; dtFs?: number; frictionPerFs?: number; reportEvery?: number;
   /** SHAKE/RATTLE constrains X-H distances, not hydrogen Cartesian coordinates. */
@@ -119,7 +126,9 @@ export interface ConformerInitialVelocityCorrection {
 export interface ConformerNativeMDFrameEvidence {
   nativeSolvation?:ConformerNativeSolvationEvidence;
   initialVelocityCorrection?: ConformerInitialVelocityCorrection | null;
-  method: 'gfnff' | 'gfn0' | 'gfn1' | 'gfn2'; version: string; inputSha256: string;
+  engineIdentity?:{sourceCommit:string;[key:string]:unknown};
+  seedTreatment?:'native-internal-initialization'|'native-controlled'|'native-program-random'; requestedSeed?:number; effectiveSeed?:number|null;
+  method: ConformerNativeSamplingMethod; version: string; inputSha256: string;
   shakeHydrogenBonds: boolean;
   /** Legacy natural-mass evidence; never emitted for fixed-mass runs. */
   hydrogenMassScaling?: 1;
@@ -159,6 +168,7 @@ export interface ConformerSamplingFramePayload extends ConformerSamplingSegmentP
   sampledPotentialEV: number | null; kineticEnergyEV: number | null; temperatureK: number | null; targetTemperatureK: number;
   biasHistoryCount: number; diagnostics: { maxWallPenetrationAngstrom: number; core?: ConformerCoreDiagnostics;
     nativeCoreMaxPairResidualAngstrom?: number;
+    nativeConstraintResiduals?: {id:string;type:'B'|'A'|'D';value:number;actual:number;residual:number;unit:'angstrom'|'degree'}[];
     shake?: { enabled: boolean; hydrogenBondCount: number | null; maxBondResidualAngstrom: number | null;
       algorithm: 'ASE-RATTLE' | 'native-X-H' | 'native-xTB-SHAKE'; actualConstraintCount?: number;
       reference?: 'input-geometry'; observedBondLengthsAngstrom?: number[] } };
@@ -180,6 +190,7 @@ interface ConformerSamplingEventBase extends ConformerSamplingSegmentProgress {
   runIdentity: ConformerSamplingRunIdentity; operation: ConformerSamplingOperation;
   method: ConformerSamplingMethod; seq: number;
   effectiveResources?: ConformerSamplingEffectiveResources;
+  seedTreatment?:'native-internal-initialization'|'native-controlled'|'native-program-random'; requestedSeed?:number; effectiveSeed?:number|null;
   initialVelocityCorrection?: ConformerInitialVelocityCorrection | null;
 }
 export interface ConformerSamplingFrameEvent extends ConformerSamplingEventBase, ConformerSamplingFramePayload { event: 'frame' }
@@ -190,7 +201,7 @@ export interface ConformerSamplingStageEvent extends ConformerSamplingEventBase 
   integration?: { driver: 'ASE-Langevin' | 'native-xtb-md'; aseVersion?: string; fixcm?: false; dtFs: number; frictionPerFs?: number;
     shakeHydrogenBonds?: boolean; constraintAlgorithm?: 'ASE-RATTLE' | 'native-X-H'; thermostat?: 'Berendsen';
     hydrogenMassAmu?: 4 | null; hydrogenMassMode?: 'natural' | 'fixed-amu';
-    seedTreatment?: 'native-internal-initialization'; requestedSeed?: number; effectiveSeed?: null;
+    seedTreatment?: 'native-internal-initialization' | 'native-controlled' | 'native-program-random'; requestedSeed?: number; effectiveSeed?: number | null;
     frictionTreatment?: 'not-applicable-native-Berendsen' };
   coordinateTransform?: { kind: 'identity' | 'translation'; offsetAngstrom: Vector3 };
   nativeProtection?: ConformerNativeProtectionEvidence;
@@ -209,12 +220,13 @@ export interface ConformerSamplingCompletionEvent extends ConformerSamplingEvent
   requiresUnbiasedOptimization: true; candidateCount: number; frameCount: number; step: number;
   evaluations: number | null; driver?: ConformerSamplingDriver;
   evaluationCountSource?: 'observed-physical-calculator' | 'not-reported-native-md'; budgetEvaluationUpperBound?: number;
-  seed: number; lastFrame: ConformerSamplingFramePayload;
+  seed?: number; lastFrame: ConformerSamplingFramePayload;
   biasHistory: ConformerBiasHistoryEntry[]; postSamplingPotentials: { core: false; metadynamics: false; sphere: false };
   exit?: { code: number | null; signal: string | null };
   diagnosticDirectory?: string; nativeClosed?: boolean;
   thermostatWarning?:ConformerNativeMDTemperatureWarning;
   nativeTemperatureObservations?: ConformerNativeTemperatureObservation[];
+  optionalDiagnostics?: string[];
 }
 export interface ConformerSamplingStopEvent extends ConformerSamplingEventBase {
   biasHistory?:ConformerBiasHistoryEntry[];
@@ -223,6 +235,7 @@ export interface ConformerSamplingStopEvent extends ConformerSamplingEventBase {
   exit?: { code: number | null; signal: string | null };
   diagnosticDirectory?: string; nativeClosed?: boolean;
   nativeTemperatureObservations?: ConformerNativeTemperatureObservation[];
+  optionalDiagnostics?: string[];
 }
 export interface ConformerSamplingErrorEvent extends ConformerSamplingEventBase {
   biasHistory?:ConformerBiasHistoryEntry[];
@@ -231,6 +244,7 @@ export interface ConformerSamplingErrorEvent extends ConformerSamplingEventBase 
   exit?: { code: number | null; signal: string | null };
   diagnosticDirectory?: string; nativeClosed?: boolean;
   nativeTemperatureObservations?: ConformerNativeTemperatureObservation[];
+  optionalDiagnostics?: string[];
 }
 export type ConformerSamplingEvent = ConformerSamplingFrameEvent | ConformerSamplingStageEvent
   | ConformerSamplingBiasEvent | ConformerSamplingCompletionEvent | ConformerSamplingStopEvent
@@ -255,7 +269,7 @@ export function suggestConformerSamplingSphere(structure: Pick<Structure, 'atoms
 
 /** These are candidate capabilities until each route/method's native fixture gate passes. */
 export const CONFORMER_SAMPLING_CAPABILITIES = Object.freeze({
-  implementedMethods: ['MMFF94', 'MMFF94s', 'UFF', 'gfn0', 'gfn1', 'gfn2', 'gfnff'] as readonly ConformerSamplingMethod[],
+  implementedMethods: ['MMFF94', 'MMFF94s', 'UFF', ...XTB_METHOD_IDS] as readonly ConformerSamplingMethod[],
   nativeRouteValidation: 'not-run' as const,
   gfnff: { status: 'implemented-unverified' as const, solvation: 'native-md-alpb' as const,aseSolvation:'not-enabled' as const,
     nativeMDSolvation:{model:'alpb' as const,solvents:conformerAlpbPresets('gfnff').map(row=>row.id)},

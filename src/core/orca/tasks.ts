@@ -1,4 +1,4 @@
-import { atomicNumber, electronicStateError } from '../elements';
+import { atomicNumber, electronicStateInputError } from '../elements';
 import type { Atom } from '../types';
 import type { OrcaAsset, OrcaCoordinate, OrcaJobRequest, OrcaRenderContext, OrcaTaskRender } from './types';
 import { recommendedExcitedStates } from '../input-recommendations';
@@ -265,7 +265,7 @@ export function renderOrcaTask(request: OrcaJobRequest, context: OrcaRenderConte
         }
         const fragmentAtoms = atoms.filter((_, i) => selected.has(i));
         if (fragmentAtoms.length) {
-          const stateError = electronicStateError(fragmentAtoms, fragment.charge, fragment.multiplicity);
+          const stateError = electronicStateInputError(fragmentAtoms, fragment.charge, fragment.multiplicity);
           if (stateError) error(field, `片段电子态：${stateError}`);
         }
         charge += fragment.charge;

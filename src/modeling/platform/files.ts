@@ -10,16 +10,18 @@ import { getInputLayerDraftRole, inputLayerCapabilityError } from '../../core/in
 import { electronCount, electronicStateError, elementSymbol } from '../../core/elements';
 import { parseStructures } from '../../core/parsers';
 import { assertNoMol2Source, parsePeriodicStructures, validatePeriodicSourceMetadata } from '../../core/periodic-parsers';
-import { exportStructure } from '../../core/structure-export';
+import { exportStructure, geometryPeriodicity, validateGeometryAtomIdentity, validateGeometryAtoms, validateGeometryCell } from '../../core/structure-export';
+import { asciiJson, automaticStem } from '../../core/naming';
 import { makeDocumentStamp } from '../../core/modeling';
 import { canonicalPeriodicBond, cellInverse, validatePeriodicEndpointImages } from '../../core/periodic';
 import { validateStructureLibraryProvenance } from '../../core/structure-library-provenance';
 import { validateBondSemantics, validateBondPerceptionIssues } from '../../core/bond-semantics';
 import { validateAttachmentPorts } from '../../core/modeling/attachment-ports';
-import { effectiveModelConstraints, effectiveModelCoordinates, modelCoordinateKey, validateGaussianBoundCoordinates, validateSharedConstraints } from '../constraints';
+import { effectiveModelCoordinates, modelCoordinateKey, validateGaussianBoundCoordinates, validateSharedConstraints } from '../constraints';
 import { defaultTaskOptions, supportsConstraints } from '../../core/tasks';
 import type { Bond, Structure } from '../../core/types';
 import type { ChemistryPort, FormatDescriptor, FragmentSnapshot, ModelDocument, ModelFormat, OpenedModelFile, SaveContext } from '../contracts';
+import { isXtbPreparationProvenance } from '../xtb/accept-result';
 
 const clone = <T,>(value: T): T => structuredClone(value);
 const emptyAssignments = (): BuilderAssignments => ({ layers: [], basis: [], fragments: [], frozenAtomIds: [] });
@@ -28,7 +30,7 @@ const formats: FormatDescriptor[] = [
   { id: 'gjf', label: 'Gaussian GJF', extensions: ['gjf'] },
   { id: 'com', label: 'Gaussian COM', extensions: ['com'] },
   { id: 'inp', label: 'ORCA INP', extensions: ['inp'] },
-  { id: 'sdf', label: 'SDF（含本应用建模元数据）', extensions: ['sdf'] },
+  { id: 'sdf', label: 'SDF（含原子身份与适用晶胞）', extensions: ['sdf'] },
   { id: 'mol', label: 'MDL MOL', extensions: ['mol'] },
   { id: 'pdb', label: 'PDB', extensions: ['pdb'] },
   { id: 'xyz', label: 'XYZ', extensions: ['xyz'] },
@@ -96,6 +98,12 @@ function parseGaussianFiles(text: string, name: string): Structure[] {
 }
 
 const SDF_FIELD = 'SCIYUE_MODEL_METADATA_V1';
+const SDF_GEOMETRY_FIELD = 'SCIYUE_GEOMETRY_METADATA_V1';
+type SdfGeometryMetadata = {
+  version: 1;
+  atoms: Pick<Structure['atoms'][number], 'id' | 'sourceIndex' | 'element'>[];
+  structure: Pick<Structure, 'name' | 'charge' | 'multiplicity' | 'cell' | 'periodicSource' | 'periodicWorkingSource'>;
+};
 interface SdfMetadata {
   version: 1;
   atoms: Omit<Structure['atoms'][number], 'x' | 'y' | 'z'>[];
@@ -268,7 +276,25 @@ function parseNativeModel(text: string): FragmentSnapshot {
   if (structure.groups !== undefined) knownRows(structure.groups, ['name', 'atomIds']);
   if (structure.modelLayers !== undefined) knownRows(structure.modelLayers, ['id', 'label', 'kind', 'atomIds', 'frozen', 'draftRole']);
   if (structure.mapping !== undefined) knownRows(structure.mapping, ['original', 'current']);
-  if (structure.preparation !== undefined) knownObject(structure.preparation, ['forcefield', 'before', 'after', 'unit', 'status'], ['status']);
+  if (structure.preparation !== undefined) {
+    knownObject(structure.preparation, ['forcefield', 'before', 'after', 'unit', 'status', 'xtb'], ['status']);
+    const {xtb,after,unit}=structure.preparation;
+    if(xtb!==undefined) {
+      const base=['schema','engine','method','documentId','sourceRevision','charge','multiplicity','terminal'];
+      if(!isXtbPreparationProvenance(xtb,after,unit))throw new Error('Ester Studio模型的xTB预优化回执无效。');
+      knownObject(xtb,[...base,'periodic','engineIdentity','iterations','optimizer','internalConstraints',...(xtb.terminal==='stopped'?['frameSeq','step']:['version','solvation','convergenceStatus'])],base);
+      if(xtb.internalConstraints)knownRows(xtb.internalConstraints,['id','type','atomIds','images','action','value','steps','increment','objectId','target','actual','residual','unit','mode']);
+      if(xtb.periodic){
+        knownObject(xtb.periodic,['backend','optimizerVersion','optimizer','coordinateChart','movableGradientNormHartreePerBohr','gradientTargetHartreePerBohr','gradientTargetMet'],['backend','optimizerVersion']);
+        if(xtb.periodic.coordinateChart){const fields=['schema','nativeOriginAngstrom','projection','sourceImagesSha256','nonzeroAtomImageCount'];knownObject(xtb.periodic.coordinateChart,[...fields,'sourceImages'],fields);
+          if(xtb.periodic.coordinateChart.sourceImages)knownRows(xtb.periodic.coordinateChart.sourceImages,['atomId','image']);}
+      }
+      if(xtb.terminal!=='stopped'&&xtb.solvation) {
+        const fields=['model','solvent','kernel','referenceState','temperatureKelvin','parameterSet','sourceField'];
+        knownObject(xtb.solvation,fields,fields);
+      }
+    }
+  }
   if (structure.cell !== undefined) knownObject(structure.cell, ['vectors', 'pbc', 'origin', 'source', 'pbcProvenance'], ['vectors', 'pbc']);
   const finiteTree = (node: unknown, depth = 0): void => {
     if (depth > 64 || typeof node === 'number' && !Number.isFinite(node)) throw new Error('Ester Studio模型含非有限数字或嵌套超出范围。');
@@ -295,8 +321,33 @@ function nativeJSON(value: unknown): string | undefined {
   return JSON.stringify(value);
 }
 
+const sdfMetadataFields = (record: string, field: string) => [...record.matchAll(new RegExp(`^>[^\\n]*<${field}>[^\\n]*\\n([^\\n]+)`, 'gm'))];
+
+function restoreSdfGeometryMetadata(fragment: FragmentSnapshot, data: string): FragmentSnapshot {
+  let meta: SdfGeometryMetadata;
+  try { meta = JSON.parse(data); } catch { throw new Error('SDF几何元数据JSON损坏。'); }
+  knownObject(meta, ['version', 'atoms', 'structure'], ['version', 'atoms', 'structure']);
+  const original = fragment.structure;
+  if (meta.version !== 1 || !Array.isArray(meta.atoms) || meta.atoms.length !== original.atoms.length) throw new Error('SDF几何元数据版本/原子数无效。');
+  knownObject(meta.structure, ['name', 'charge', 'multiplicity', 'cell', 'periodicSource', 'periodicWorkingSource'], ['name', 'charge', 'multiplicity']);
+  if (typeof meta.structure.name !== 'string') throw new Error('SDF几何元数据名称无效。');
+  const atoms = original.atoms.map((atom, i) => {
+    const identity = meta.atoms[i];
+    knownObject(identity, ['element', 'id', 'sourceIndex'], ['element', 'id', 'sourceIndex']);
+    if (identity.element !== atom.element || typeof identity.id !== 'string' || !Number.isSafeInteger(identity.sourceIndex)) throw new Error('SDF几何元数据的元素顺序或原子身份无效。');
+    return { ...atom, id: identity.id, sourceIndex: identity.sourceIndex };
+  });
+  if (meta.structure.cell) validateGeometryCell(meta.structure.cell);
+  // The record's chemical properties belong to its actual MOL block. This
+  // field can restore identities and cell data without restoring a bond graph.
+  return { ...fragment, structure: { ...original, ...meta.structure, atoms } };
+}
+
 function restoreSdfMetadata(fragment: FragmentSnapshot, record: string): FragmentSnapshot {
-  const fields = [...record.matchAll(new RegExp(`^>[^\\n]*<${SDF_FIELD}>[^\\n]*\\n([^\\n]+)`, 'gm'))];
+  const fields = sdfMetadataFields(record, SDF_FIELD);
+  const geometry = sdfMetadataFields(record, SDF_GEOMETRY_FIELD);
+  if (geometry.length > 1 || geometry.length && fields.length) throw new Error('SDF几何元数据重复或与旧建模元数据混用。');
+  if (geometry.length) return restoreSdfGeometryMetadata(fragment, geometry[0][1]);
   if (!fields.length) return fragment;
   if (fields.length !== 1) throw new Error('SDF建模元数据字段重复。');
   let meta: SdfMetadata;
@@ -370,53 +421,17 @@ export function modelFragmentsFromStructures(structures: Structure[]): FragmentS
   });
 }
 
-function metadataLosses(document: ModelDocument, format: ModelFormat): string[] {
-  if (format === 'sdf') return ['SDF连接表坐标精度由原生转换器决定；本应用元数据由其它软件另存时可能移除。'];
-  const losses: string[] = [], s = document.draft.structure, a = document.draft.assignments;
-  if(document.attachmentPorts?.length)losses.push('该格式不保留建模待接端口。');
-  if(s.atoms.some(atom=>atom.geometryPresetId))losses.push('该格式不保留建模几何模板。');
-  if (effectiveModelConstraints(document).frozenAtomIds.length || effectiveModelCoordinates(document).length) losses.push('该格式不保存本应用冻结/扫描定义。');
-  if (document.coordinateObjects?.length) losses.push('该格式不保存本应用B/A/D对象身份与关联。');
-  if (document.gaussianBoundCoordinates?.length) losses.push('该格式不保存Gaussian已绑定行的开关与编辑文本。');
-  if (a.layers.length || a.basis.length || a.fragments.length) losses.push('该格式不保存本应用层/基组/片段分区。');
-  if (document.auxiliaryRelations.length) losses.push('0.5辅助虚线不会导出为普通化学键。');
-  if (document.deletedBonds.length) losses.push('显式删键记录不保存；重新推断连接时须重新核对。');
-  if (s.atoms.some(atom => atom.hydrogenMode || atom.aromaticHydrogen)) losses.push('手动氢策略/芳香氢意图不保存。');
-  if (s.layout2D) losses.push('独立二维草稿坐标不保存。');
-  if (s.dimension === 2) losses.push('该格式不保留二维建模维度标记；这些坐标不能代替真实三维生成。');
-  if (s.bonds?.length && ['xyz', 'extxyz', 'cif', 'poscar'].includes(format)) losses.push('此导出只保存结构坐标与适用晶胞，不保存化学键。');
-  if (['xyz', 'extxyz', 'cif', 'poscar'].includes(format) && (s.atoms.some(atom => atom.stereoParity !== undefined) || s.bonds?.some(bond => bond.stereo))) losses.push('该格式不保存逐原子立体标签和键的楔线／未指定构型标记；三维坐标仍按当前模型保存。');
-  if (s.bonds?.length && format === 'pdb') losses.push('当前PDB读取器只恢复显式原子坐标，不恢复CONECT键级/芳香语义。');
-  if (s.bonds?.some(bond => bond.kind === 'coordination' || bond.image?.some(Boolean)) && ['mol', 'pdb'].includes(format)) losses.push('配位键类型/跨胞键映像元数据不保证保留。');
-  if (!['xyz', 'extxyz'].includes(format) && (s.charge !== null || s.multiplicity !== null)) losses.push('总电荷/多重度不能保证由该格式重新读取。');
-  if (s.atoms.some(atom => atom.formalCharge) && ['xyz', 'extxyz', 'cif', 'poscar', 'pdb'].includes(format)) losses.push('逐原子形式电荷不能保证重载恢复。');
-  if (['mol', 'pdb'].includes(format)) losses.push('稳定原子ID/来源序号不保存；坐标精度由原生格式写出器决定。');
-  if (s.cell && ['mol', 'pdb'].includes(format)) losses.push('该原生导出不保证晶胞方向/原点/周期边界与跨胞键完整保留；保留真实晶胞请用extXYZ/CIF/POSCAR/SDF。');
-  return losses;
-}
-
 /** A geometry interchange file, deliberately independent of task settings.
  * It carries no selected method, optimization or frequency calculation. */
-function gaussianStructureExport(document: ModelDocument): { text: string; losses: string[] } {
-  const s = document.draft.structure;
+function gaussianStructureExport(s: Structure): string {
+  validateGeometryAtoms(s.atoms);
   if (s.charge === null || s.multiplicity === null) throw new Error('结构GJF/COM需要明确模型电荷和多重度；请先确认模型电子态。');
+  if (!Number.isSafeInteger(s.charge) || !Number.isSafeInteger(s.multiplicity)) throw new Error('结构GJF/COM的电荷与多重度必须为有效整数。');
   const stateError = electronicStateError(s.atoms, s.charge, s.multiplicity);
   if (stateError) throw new Error(stateError);
-  if (s.bonds?.some(bond => bond.kind === 'coordination' || bond.image?.some(Boolean))) throw new Error('普通Gaussian连接表不表达配位语义/跨胞键；请使用Ester Studio模型格式完整保存。');
-  const title = s.name.replace(/[\r\n\x00-\x1f]/g, ' ').trim() || 'Ester Studio structure';
-  const route = s.bonds === undefined ? '#' : '# geom=connectivity';
+  const title = automaticStem(s.name);
   const coordinates = s.atoms.map(atom => `${atom.element} ${atom.x} ${atom.y} ${atom.z}`).join('\n');
-  const connection = s.bonds === undefined ? '' : '\n' + s.atoms.map((_atom, index) => [String(index + 1), ...s.bonds!.filter(bond => Math.min(bond.a, bond.b) === index).flatMap(bond => [String(Math.max(bond.a, bond.b) + 1), String(bond.aromatic || bond.order === 4 ? 1.5 : bond.order)])].join(' ')).join('\n') + '\n';
-  const text = `${route}\n\n${title} - Generated by Ester Studio; structure only; calculation method and task not specified\n\n${s.charge} ${s.multiplicity}\n${coordinates}\n\n${connection}\n`;
-  const losses = metadataLosses(document, 'gjf').filter(loss => !loss.startsWith('总电荷/多重度'));
-  losses.unshift('这是结构交换GJF/COM，仅保存坐标、电子态及可表达连接；尚未指定计算方法或任务，不能直接作为已确认的计算输入。');
-  if (s.cell) losses.push('结构GJF/COM不保存晶胞；有限坐标仍按当前模型原样保存。');
-  if (s.bonds?.some(bond => bond.order === 0.5)) losses.push('0.5分数化学键按原数值写入连接表；不取整，也不等于0.5辅助虚线。');
-  if (s.bonds?.some(bond => bond.order === 1.5 || bond.order === 4 || bond.aromatic)) losses.push('GJF/COM的1.5连接表数值不能区分非芳香分数键与芳香键；重载按已有芳香兼容规则读取，请用Ester Studio模型格式完整保留语义。');
-  if (s.bonds?.some(bond => bond.perception || bond.mbo !== undefined)) losses.push('GJF/COM不保留逐键识别来源与原始MBO数值。');
-  if (s.atoms.some(atom => atom.formalCharge || atom.stereoParity !== undefined)) losses.push('Gaussian坐标不保存逐原子形式电荷或二维立体标签。');
-  losses.push('结构GJF/COM不保存来源任务的科学设置；稳定ID、来源/删键历史及显示设置请用Ester Studio模型格式保存。');
-  return { text, losses };
+  return `#\n\n${title} - Generated by Ester Studio; structure only; calculation method and task not specified\n\n${s.charge} ${s.multiplicity}\n${coordinates}\n\n`;
 }
 
 function gaussianExport(document: ModelDocument, context: SaveContext): { text: string; losses: string[] } {
@@ -520,49 +535,72 @@ function orcaExport(document: ModelDocument, context: SaveContext): { text: stri
 
 export async function exportModel(document: ModelDocument, format: ModelFormat, context: SaveContext, chemistry: ChemistryPort): Promise<{ text: string; losses: string[] }> {
   if ((format as string) === 'mol2') throw new Error('已移除MOL2导入与导出；请使用MOL或SDF。');
-  const snapshot = clone(document), s = snapshot.draft.structure;
-  validateFragment(modelFragment(snapshot));
   if (!formats.some(entry => entry.id === format)) throw new Error('不支持的模型保存格式。');
+  const s = document.draft.structure;
   if (format === 'sciyue') {
-    const text = nativeJSON({ schema: NATIVE_SCHEMA, fragment: modelFragment(snapshot) })! + '\n';
-    if (new TextEncoder().encode(text).length > 16 * 1024 * 1024) throw new Error('Ester Studio模型超出当前桌面保存16MiB范围。');
+    const fragment = modelFragment(document);
+    validateFragment(fragment);
+    const text = nativeJSON({ schema: NATIVE_SCHEMA, fragment })! + '\n';
     parseNativeModel(text);
     return { text, losses: s.cell && context.withCell === false ? ['Ester Studio模型格式始终完整保存晶胞；“不含晶胞”仅适用于结构导出格式。'] : [] };
   }
-  if(s.periodicSource&&!['sdf','xyz','extxyz','cif'].includes(format))throw new Error('该格式不能保留来源部分Tv平移信息；请选择Ester Studio模型或支持周期来源元数据的SDF/XYZ/extXYZ/CIF，未改写为有限分子。');
-  if(s.bonds?.some(bond=>bond.fractional===true)&&['mol','sdf','pdb'].includes(format))throw new Error('该格式的当前原生写出器不能无损表达非芳香0.5/1.5分数键；请使用Ester Studio模型格式完整保存。');
   const withCell = context.withCell !== false;
-  const cellLoss = s.cell && !withCell ? ['已明确选择无盒保存；真实晶胞向量、原点与周期边界不写入此文件。'] : [];
-  if (format === 'inp') {
+  const losses = s.cell && !withCell ? ['已明确选择无盒保存；真实晶胞向量、原点与周期边界不写入此文件。'] : [];
+  const gaussian = format === 'gjf' || format === 'com';
+  if (format === 'inp' || gaussian && context.purpose !== 'structure') {
     if (context.purpose === 'structure') throw new Error('建模区仅保存结构；完整ORCA计算输入请在输入模块导出。');
-    if (!withCell) delete s.cell;
-    const output = orcaExport(snapshot, context); return { text: output.text, losses: [...cellLoss, ...output.losses] };
+    const snapshot = clone(document);
+    validateFragment(modelFragment(snapshot));
+    if (s.periodicSource) throw new Error('该格式不能保留来源部分Tv平移信息；请选择Ester Studio模型或支持周期来源元数据的SDF/XYZ/extXYZ/CIF，未改写为有限分子。');
+    if (!withCell) delete snapshot.draft.structure.cell;
+    const output = gaussian ? gaussianExport(snapshot, context) : orcaExport(snapshot, context);
+    return { text: output.text, losses: [...losses, ...output.losses] };
   }
-  if (format === 'gjf' || format === 'com') {
-    if (!withCell) delete s.cell;
-    const output = context.purpose === 'structure' ? gaussianStructureExport(snapshot) : gaussianExport(snapshot, context);
-    return { text: output.text, losses: [...cellLoss, ...output.losses] };
+  if (gaussian || format === 'mol' || format === 'pdb') {
+    if (s.cell && withCell) losses.push('此格式不写入原晶胞；原子坐标按当前模型保留。');
+    if (s.periodicSource) losses.push('此格式不写入来源的部分平移矢量；原子坐标按当前模型保留。');
   }
-  const losses = metadataLosses(snapshot, format);
-  if (format === 'xyz' || format === 'extxyz' || format === 'cif' || format === 'poscar') return { text: exportStructure(s, format, withCell), losses: [...cellLoss, ...losses] };
-  if (!withCell) {
-    if (s.bonds?.some(bond => bond.image?.some(Boolean))) throw new Error('无盒分子文件不能保留跨胞键映像；请保留晶胞导出SDF/extXYZ/CIF/POSCAR，或明确重建有限模型。');
-    delete s.cell;
+  if (gaussian) return { text: gaussianStructureExport(s), losses };
+  if (format === 'xyz' || format === 'extxyz' || format === 'cif' || format === 'poscar') return { text: exportStructure(s, format, withCell), losses };
+
+  validateGeometryAtoms(s.atoms);
+  const defaultAtomId = (i: number) => `atom_${i + 1}`;
+  const geometry: Structure = {
+    id: s.id, name: automaticStem(s.name), format: s.format, dimension: s.dimension ?? 3, notes: [], charge: null, multiplicity: null,
+    atoms: s.atoms.map(({ element, x, y, z, formalCharge }, i) => {
+      if (format !== 'pdb' && formalCharge !== undefined && (!Number.isSafeInteger(formalCharge) || formalCharge < -128 || formalCharge > 127)) throw new Error('MOL/SDF的逐原子形式电荷超出原生格式转换器的整数范围。');
+      return { id: defaultAtomId(i), element, x, y, z, ...(format === 'pdb' || formalCharge === undefined ? {} : { formalCharge }) };
+    }),
+  };
+  let meta: SdfGeometryMetadata | undefined;
+  if (format === 'sdf') {
+    validateGeometryAtomIdentity(s.atoms, defaultAtomId);
+    meta = {
+      version: 1,
+      atoms: s.atoms.map(({ id, sourceIndex, element }, i) => ({ id: id ?? defaultAtomId(i), sourceIndex: sourceIndex ?? i + 1, element })),
+      structure: { name: s.name, charge: Number.isSafeInteger(s.charge) ? s.charge : null, multiplicity: Number.isSafeInteger(s.multiplicity) && s.multiplicity! > 0 ? s.multiplicity : null, ...geometryPeriodicity(s, withCell) },
+    };
   }
   const capabilities = await chemistry.capabilities();
   if (!capabilities.native || !capabilities.operations.includes('convert')) throw new Error('该格式需要可用的本机原生格式转换器。');
-  const stamp = makeDocumentStamp(snapshot, []), result = await chemistry.start({ operation: 'convert', stamp, structure: s, movableAtomIds: [], format }).promise;
+  const geometryDocument = { ...document, draft: { ...document.draft, structure: geometry, assignments: emptyAssignments() }, internalCoordinates: [], coordinateObjects: [], gaussianBoundCoordinates: [], sharedConstraints: undefined };
+  const stamp = makeDocumentStamp(geometryDocument, []);
+  const result = await chemistry.start({ operation: 'convert', stamp, structure: geometry, movableAtomIds: [], format }).promise;
   if (result.operation !== 'convert' || result.format !== format || JSON.stringify(result.stamp) !== JSON.stringify(stamp) || !result.text?.trim()) throw new Error('原生转换响应身份/格式不匹配或没有文本。');
-  if (result.structure.atoms.length !== s.atoms.length || result.structure.atoms.some((atom, index) => atom.id !== s.atoms[index].id || atom.element !== s.atoms[index].element)) throw new Error('原生转换改变了显式原子身份或顺序。');
+  if (result.structure.atoms.length !== geometry.atoms.length || result.structure.atoms.some((atom, i) => atom.id !== geometry.atoms[i].id || atom.element !== geometry.atoms[i].element)) throw new Error('原生转换改变了显式原子身份或顺序。');
   let text = result.text.replace(/\r\n?/g, '\n');
-  if (format === 'sdf') {
-    const parsed = parseStructures(text, 'converted.sdf');
-    if (parsed.length !== 1 || parsed[0].atoms.length !== s.atoms.length || parsed[0].atoms.some((atom, i) => atom.element !== s.atoms[i].element || Math.hypot(atom.x - s.atoms[i].x, atom.y - s.atoms[i].y, atom.z - s.atoms[i].z) > 0.002)) throw new Error('SDF写出连接表改变了原子顺序/坐标，拒绝附加身份元数据。');
-    assertSdfChemicalAgreement(parsed[0], s.atoms, s.bonds);
-    const meta: SdfMetadata = { version: 1, connectionTable: sdfConnectionSignature(parsed[0], text), atoms: s.atoms.map(({ x: _x, y: _y, z: _z, ...props }) => props),
-      structure: { name: s.name, charge: s.charge, multiplicity: s.multiplicity, cell: s.cell, periodicSource:s.periodicSource,periodicWorkingSource:s.periodicWorkingSource,libraryProvenance:s.libraryProvenance,groups: s.groups, modelLayers: s.modelLayers, layout2D: s.layout2D, dimension: s.dimension, gaussianSource: s.gaussianSource, gaussianSources: s.gaussianSources, orcaSource: s.orcaSource, sourceAtomIds: s.sourceAtomIds, sourceRoute: s.sourceRoute, mapping: s.mapping, bondPerceptionIssues: s.bondPerceptionIssues, bondSource:s.bondSource },
-      bonds: s.bonds, assignments: snapshot.draft.assignments, auxiliaryRelations: snapshot.auxiliaryRelations, deletedBonds: snapshot.deletedBonds, internalCoordinates: snapshot.internalCoordinates, sharedConstraints:snapshot.sharedConstraints, coordinateObjects:snapshot.coordinateObjects,gaussianBoundCoordinates:snapshot.gaussianBoundCoordinates,attachmentPorts:snapshot.attachmentPorts };
-    text = text.replace(/^\$\$\$\$\s*$/m, '').trimEnd() + `\n\n>  <${SDF_FIELD}>\n${JSON.stringify(meta)}\n\n$$$$\n`;
+  const parsed = parseStructures(text, `converted.${format}`);
+  const precision = format === 'pdb' ? .0005 : .00005;
+  if (parsed.length !== 1 || parsed[0].atoms.length !== geometry.atoms.length || parsed[0].atoms.some((atom, i) => {
+    const source = geometry.atoms[i];
+    return atom.element !== source.element || (['x', 'y', 'z'] as const).some(axis => Math.abs(atom[axis] - source[axis]) > precision + Math.abs(source[axis]) * Number.EPSILON);
+  })) throw new Error('原生转换写出改变了原子顺序/坐标，超出目标格式的坐标精度。');
+  if (parsed[0].bonds?.length || format === 'pdb' && /^CONECT/m.test(text)) throw new Error('原生转换的几何文件含有意外的化学键记录。');
+  if (format !== 'pdb') assertSdfChemicalAgreement(parsed[0], geometry.atoms);
+  if (meta) {
+    const end = /^M  END$/m.exec(text);
+    if (!end) throw new Error('SDF几何记录缺少M END。');
+    text = text.slice(0, end.index + end[0].length) + `\n\n>  <SCIYUE_ATOM_IDS>\n${asciiJson(meta.atoms.map(atom => atom.id))}\n\n>  <${SDF_GEOMETRY_FIELD}>\n${asciiJson(meta)}\n\n$$$$\n`;
   }
-  return { text, losses: [...cellLoss, ...losses, ...result.warnings] };
+  return { text, losses: [...losses, ...result.warnings] };
 }

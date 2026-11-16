@@ -15,6 +15,9 @@ import type {ViewportSurfaceLayer,SurfaceLayerMeshState} from '../modeling/rende
 import type {ViewportNtoLayer,NtoMeshState} from '../modeling/render/orbital-layer';
 import TDDFTControls,{tddftStateKey} from './TDDFTControls';
 import ExcitationAnalysisControls from './ExcitationAnalysisControls';
+import MultiwfnErrorNotice from './MultiwfnErrorNotice';
+import { isMultiwfnBackendFailure } from './multiwfn-errors';
+import { MULTIWFN_CONFIGURATION_CHANGED } from '../global-settings-events';
 import type {ExcitationProjection} from './excitation-controls-contracts';
 import {createExcitationDesktopBridge,type ExcitationDesktopApi} from './excitation-desktop-bridge';
 import {surfaceScientificContextKey,surfaceSourceLifetimeKey} from './surface-context-pool';
@@ -69,6 +72,13 @@ export default function ExcitationAnalysisInstance(p:ExcitationAnalysisInstanceP
  const supported=excitationStateAdmission(targetState).supported||excitationStateAdmission(electronHoleState).supported,admittedRef=useRef(supported);admittedRef.current=supported;
  const pool=poolState?.lifetime===lifetime?poolState.pool:null,current=pool?.entries.get(key),controller=current?.controller;
  const latestProjection=useRef<ExcitationViewportProjection|null>(null);
+ const [openFailure,setOpenFailure]=useState<{key:string;message:string}|null>(null),[retry,setRetry]=useState(0);
+ useEffect(()=>{
+  if(openFailure?.key!==lifetime||!isMultiwfnBackendFailure(openFailure.message))return;
+  const recheck=()=>setRetry(value=>value+1);
+  window.addEventListener(MULTIWFN_CONFIGURATION_CHANGED,recheck);
+  return()=>window.removeEventListener(MULTIWFN_CONFIGURATION_CHANGED,recheck);
+ },[lifetime,openFailure]);
  useEffect(()=>{const pool:Pool={entries:new Map(),disposed:false,ready:closeBarrier.current};setPoolState({lifetime,pool});return()=>{pool.disposed=true;const entries=[...pool.entries.values()];for(const entry of entries)entry.unsubscribe();pool.entries.clear();const closing=pool.ready.then(()=>Promise.all(entries.map(entry=>entry.controller.dispose()))).then(()=>{});closeBarrier.current=closing;void closing.catch(error=>latest.current.onError(String(error instanceof Error?error.message:error)));};},[lifetime,desktop,p.document.wavefunction?.readSourceText,p.document.output?.readSourceText]);
  useEffect(()=>{if(!pool||!desktop)return;let alive=true;const props=latest.current;
   for(const [other,entry] of pool.entries)if(other!==key)void entry.controller.setActive(false).catch(error=>latest.current.onError(String(error)));
@@ -82,10 +92,10 @@ export default function ExcitationAnalysisInstance(p:ExcitationAnalysisInstanceP
    if(!alive||pool.disposed)return;
    // Read the source and capabilities before enabling explicit science actions.
    await owned.controller.open();
-   if(alive&&!pool.disposed)refresh(value=>value+1);
-  })().catch(error=>{if(alive&&!pool.disposed)latest.current.onError(error instanceof Error?error.message:String(error));});
+   if(alive&&!pool.disposed){setOpenFailure(null);refresh(value=>value+1);}
+  })().catch(error=>{if(alive&&!pool.disposed)setOpenFailure({key:lifetime,message:error instanceof Error?error.message:String(error)});});
   return()=>{alive=false;void owned.controller.setActive(false).catch(()=>{});};
- },[pool,desktop,key,p.active,p.available,p.wavefunctionAvailable,supported,hasPairConflict]);
+ },[pool,desktop,key,p.active,p.available,p.wavefunctionAvailable,supported,hasPairConflict,retry]);
  const publish=useCallback((projection:ExcitationProjection|null)=>{const props=latest.current;if(lifetimeRef.current!==lifetime||!admittedRef.current||surfaceScientificContextKey(props.context)!==key)return;const next=excitationInstanceProjection(projection,props);latestProjection.current=next;props.onProjection(next);},[key,lifetime]);
  useEffect(()=>{if(!supported){latestProjection.current=null;latest.current.onProjection(null);}},[supported,key]);
  const accepted=useCallback((requestId:string,_operation:string,renderRequired:boolean)=>{controller?.accepted(requestId,renderRequired);},[controller]);
@@ -103,6 +113,6 @@ export default function ExcitationAnalysisInstance(p:ExcitationAnalysisInstanceP
   const native:ExcitationStateRef={index:state.index,sourceLine:state.sourceLine,frameIndex:p.context.sourceFrameIndex??p.currentIndex,energyEv:state.energyEv,label:state.label,...(multiplicity!==undefined?{multiplicity}:{})};
   const refs=states.flatMap(item=>{const admission=excitationStateAdmission(item);return admission.supported?[{index:item.index,sourceLine:item.sourceLine,frameIndex:p.context.sourceFrameIndex??p.currentIndex,energyEv:item.energyEv,label:item.label,...(admission.multiplicity!==undefined?{multiplicity:admission.multiplicity}:{})}]:[];});
   const densityState=refs.find(item=>item.index===electronHoleState?.index&&item.sourceLine===electronHoleState?.sourceLine&&item.multiplicity===excitationPrintedMultiplicity(electronHoleState?.multiplicity??null))??native;
-  return <ExcitationAnalysisControls key={lifetime} companionIdentity={companionIdentity} structure={p.document.wavefunction?.source.metadata?.structure??p.structure} context={p.context} state={native} electronHoleState={densityState} states={refs} onStateChange={(next,owner='nto')=>{const state=states.find(item=>item.index===next.index&&item.sourceLine===next.sourceLine&&excitationPrintedMultiplicity(item.multiplicity)===next.multiplicity);if(state)setTargets(previous=>({...previous,[key]:{nto:previous[key]?.nto??tddftStateKey(frame.result,targetState),electronHole:previous[key]?.electronHole??tddftStateKey(frame.result,electronHoleState),[owner==='nto'?'nto':'electronHole']:tddftStateKey(frame.result,state)}}));}} active={p.active} available={p.available} wavefunctionAvailable={p.wavefunctionAvailable} unavailableReason={hasPairConflict?'OUT与波函数的电子态数据存在差异，需一致的配套来源。':undefined} info={controller?.info??null} bridge={controller?.bridge??{}} progress={current?.progress??null} decimals={p.decimals} onProjection={publish} onAccepted={accepted} onExportImage={p.onExportImage} onError={p.onError}/>;
+  return <>{openFailure?.key===lifetime && <MultiwfnErrorNotice message={openFailure.message} identity={openFailure}/>}<ExcitationAnalysisControls key={lifetime} companionIdentity={companionIdentity} structure={p.document.wavefunction?.source.metadata?.structure??p.structure} context={p.context} state={native} electronHoleState={densityState} states={refs} onStateChange={(next,owner='nto')=>{const state=states.find(item=>item.index===next.index&&item.sourceLine===next.sourceLine&&excitationPrintedMultiplicity(item.multiplicity)===next.multiplicity);if(state)setTargets(previous=>({...previous,[key]:{nto:previous[key]?.nto??tddftStateKey(frame.result,targetState),electronHole:previous[key]?.electronHole??tddftStateKey(frame.result,electronHoleState),[owner==='nto'?'nto':'electronHole']:tddftStateKey(frame.result,state)}}));}} active={p.active} available={p.available} wavefunctionAvailable={p.wavefunctionAvailable} unavailableReason={hasPairConflict?'OUT与波函数的电子态数据存在差异，需一致的配套来源。':undefined} info={controller?.info??null} bridge={controller?.bridge??{}} progress={current?.progress??null} decimals={p.decimals} onProjection={publish} onAccepted={accepted} onExportImage={p.onExportImage} onError={p.onError}/></>;
  }}/>;
 }

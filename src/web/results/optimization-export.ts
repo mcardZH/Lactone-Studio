@@ -24,8 +24,9 @@ export function serializeOptimizationSvg(svg: SVGSVGElement): string {
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new Serializer().serializeToString(copy);
 }
 
-/** Rasterize a captured SVG at 2x resolution on an owned, detached canvas. */
-export async function optimizationSvgPng(svgText: string, ownerDocument: Document, signal?: AbortSignal): Promise<Blob> {
+/** Rasterize a captured SVG at 2x resolution on an owned, detached canvas.
+ * Copy an optional live raster layer onto that canvas before decoding the SVG. */
+export async function optimizationSvgPng(svgText: string, ownerDocument: Document, signal?: AbortSignal, underlay?: HTMLCanvasElement): Promise<Blob> {
   assertResultNotAborted(signal);
   const realm = ownerDocument.defaultView;
   if (!realm) throw new Error('图像导出窗口已关闭。');
@@ -40,26 +41,44 @@ export async function optimizationSvgPng(svgText: string, ownerDocument: Documen
     const width = Number(node.getAttribute('stroke-width')); if (Number.isFinite(width) && width > 0) node.setAttribute('stroke-width', String(width * scaleHint));
   });
   const pngSvg = new realm.XMLSerializer().serializeToString(root);
-  const url = urls.createObjectURL(new Blob([pngSvg], { type: 'image/svg+xml;charset=utf-8' }));
   const canvas = ownerDocument.createElement('canvas');
+  const url = urls.createObjectURL(new Blob([pngSvg], { type: 'image/svg+xml;charset=utf-8' }));
+  function outputContext(width: number, height: number) {
+    const pixelWidth = Math.round(width * scaleHint), pixelHeight = Math.round(height * scaleHint);
+    if (pixelWidth < 1 || pixelHeight < 1 || !Number.isSafeInteger(pixelWidth * pixelHeight * 4))
+      throw new Error('PNG 图像尺寸无效。');
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) throw new Error('当前浏览器无法创建完整 PNG 画布。');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('PNG 画布不可用。');
+    context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
+    return context;
+  }
   try {
+    const rasterContext = underlay ? outputContext(Number(root.getAttribute('width')), Number(root.getAttribute('height'))) : undefined;
+    if (underlay && rasterContext) {
+      if (!underlay.width || !underlay.height) throw new Error('当前图的像素层不可用。');
+      rasterContext.drawImage(underlay, 0, 0, canvas.width, canvas.height);
+    }
     await new Promise<void>((resolve, reject) => {
       const cleanup = () => { image.onload = null; image.onerror = null; signal?.removeEventListener('abort', abort); };
-      const abort = () => { cleanup(); image.src = ''; reject(new DOMException('能量图导出已取消。', 'AbortError')); };
+      const abort = () => { cleanup(); image.src = ''; reject(new DOMException('图像输出已取消。', 'AbortError')); };
       image.onload = () => { cleanup(); resolve(); };
-      image.onerror = () => { cleanup(); reject(new Error('能量图SVG解码失败。')); };
+      image.onerror = () => { cleanup(); reject(new Error('图像 SVG 解码失败。')); };
       signal?.addEventListener('abort', abort, { once: true });
       if (signal?.aborted) { abort(); return; }
       image.src = url;
     });
     assertResultNotAborted(signal);
-    const scale = 2;
-    canvas.width = Math.max(1, Math.round((image.naturalWidth || 900) * scale));
-    canvas.height = Math.max(1, Math.round((image.naturalHeight || 330) * scale));
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('能量图PNG画布不可用。');
-    context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
+    const context = rasterContext ?? outputContext(image.naturalWidth || 900, image.naturalHeight || 330);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     return await canvasPng(canvas, signal);
   } finally { urls.revokeObjectURL(url); image.src = ''; canvas.width = 0; canvas.height = 0; }
+}
+
+/** Reuse the figure's vector snapshot and PNG size for either destination. */
+export function captureScientificSvgPng(svg: SVGSVGElement | null, ownerDocument: Document, signal?: AbortSignal, underlay?: HTMLCanvasElement): Promise<Blob> {
+  if (!svg?.isConnected || svg.ownerDocument !== ownerDocument) throw new Error('当前图不可用或已切换窗口。');
+  return optimizationSvgPng(serializeOptimizationSvg(svg), ownerDocument, signal, underlay);
 }

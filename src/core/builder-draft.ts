@@ -1,4 +1,5 @@
 import { elementSymbol } from './elements';
+import {electronicInventorySignature,reconcileElectronicStateAfterInventoryEdit} from './modeling/electronic-state-policy';
 import { validateBondSemantics, validateBondPerceptionIssues } from './bond-semantics';
 import type { Bond, Structure, Vector3, InputLayerDraftRole } from './types';
 import { editBuilderGeometry, transformBuilderSelection, placeBuilderHydrogens, inferBuilderBonds, initializeBuilderNewGeometry, validateBuilderValence, setBuilderDoubleBondConfiguration } from './builder-geometry';
@@ -141,7 +142,7 @@ function cleanAssignments(assignments: BuilderAssignments, structure: Structure,
 function invalidate(structure: Structure): Structure {
   return { ...structure, molfile: undefined, preparation: undefined, sourceRoute: undefined, gaussianSource: undefined, gaussianSources: undefined };
 }
-function commit(draft: BuilderDraft, structure: Structure, touched: string[], createdFrom: Record<string, string> = {}, stereochemistry = true): BuilderDraft {
+function commit(draft: BuilderDraft, structure: Structure, touched: string[], createdFrom: Record<string, string> = {}, stereochemistry = true,preserveElectronicState=false): BuilderDraft {
   createdFrom = { ...draft.createdFrom, ...createdFrom };
   structure = invalidate(clone(structure));
   if (structure.layout2D) structure.layout2D = Object.fromEntries(structure.atoms.map(atom => [atom.id!, structure.layout2D![atom.id!] ?? {x:atom.x,y:atom.y}]));
@@ -155,7 +156,22 @@ function commit(draft: BuilderDraft, structure: Structure, touched: string[], cr
   }
   const originalById = new Map((draft.structure.mapping ?? []).map(pair => [draft.structure.atoms[pair.current - 1]?.id, pair.original]));
   if (draft.structure.mapping) structure.mapping = structure.atoms.flatMap((atom,index) => originalById.has(atom.id) ? [{ original: originalById.get(atom.id)!, current: index + 1 }] : []);
-  if (draft.structure.charge != null) structure.charge = draft.structure.charge + structure.atoms.reduce((sum,atom)=>sum+(atom.formalCharge??0),0) - draft.structure.atoms.reduce((sum,atom)=>sum+(atom.formalCharge??0),0);
+  if(!preserveElectronicState&&draft.structure.atoms.length){
+    structure.charge=draft.structure.charge;
+    if(electronicInventorySignature(draft.structure)!==electronicInventorySignature(structure)){
+      const paired=reconcileElectronicStateAfterInventoryEdit(structure.atoms,{charge:draft.structure.charge,multiplicity:draft.structure.multiplicity});
+      structure.multiplicity=paired.multiplicity;
+    }
+    inherited.assignments.fragments=inherited.assignments.fragments.map(fragment=>{
+      const previous=draft.assignments.fragments.find(row=>row.id===fragment.id);
+      if(!previous||previous.charge===undefined||previous.multiplicity===undefined)return fragment;
+      const before={atoms:draft.structure.atoms.filter(atom=>previous.atomIds.includes(atom.id!))};
+      const after={atoms:structure.atoms.filter(atom=>fragment.atomIds.includes(atom.id!))};
+      if(electronicInventorySignature(before)===electronicInventorySignature(after))return fragment;
+      const paired=reconcileElectronicStateAfterInventoryEdit(after.atoms,{charge:previous.charge,multiplicity:previous.multiplicity});
+      return {...fragment,charge:paired.charge,multiplicity:paired.multiplicity};
+    });
+  }
   // Generic groups follow the same stable identity and explicit anchor inheritance.
   structure.groups = (structure.groups ?? []).map(group => ({ ...group, atomIds: unique([...group.atomIds, ...Object.keys(createdFrom).filter(child => group.atomIds.includes(inheritanceAnchor(child,createdFrom)))]).filter(id => ids.has(id)) }));
   const revision = draft.revision + 1;
@@ -168,10 +184,10 @@ function commit(draft: BuilderDraft, structure: Structure, touched: string[], cr
 /** Commit an already prepared, explicitly scoped edit. The v0.11 model domain
  * owns hydrogen policy; this entry retains the shared structural, identity,
  * stereo and assignment validation without invoking legacy auto-saturation. */
-export function commitBuilderTransaction(draft: BuilderDraft, structure: Structure, touchedIds: string[], createdFrom: Record<string, string> = {}, stereochemistry = true): BuilderDraft {
+export function commitBuilderTransaction(draft: BuilderDraft, structure: Structure, touchedIds: string[], createdFrom: Record<string, string> = {}, stereochemistry = true,preserveElectronicState=false): BuilderDraft {
   // This transaction validates the complete structure and rebases accepted
   // state into input-task projections without starting a scientific operation.
-  return commit(draft, structure, touchedIds, createdFrom, stereochemistry);
+  return commit(draft, structure, touchedIds, createdFrom, stereochemistry,preserveElectronicState);
 }
 
 export function createBuilderDraft(input: Structure | null, assignments: BuilderAssignments = emptyAssignments()): BuilderDraft {

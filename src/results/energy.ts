@@ -33,6 +33,11 @@ function canonicalUnit(unit: string): EnergyUnit | 'meV' | null {
   if (['kcal/mol', 'kcalmol-1', 'kcalmol^-1'].includes(token)) return 'kcal/mol';
   return null;
 }
+export function isEnergyUnit(unit: string | null | undefined): boolean {
+  // Atomic units alone can also label density/gradient integrals and other
+  // non-energy quantities; those need a proven energy field, not unit inference.
+  return typeof unit === 'string' && !/^(?:a\.?u\.?)$/i.test(unit.trim()) && canonicalUnit(unit.replace(/[·⋅]/g, '').replace(/⁻¹/g, '-1')) !== null;
+}
 
 /** Unknown units and missing/nonfinite observations remain gaps. */
 export function convertEnergy(energy: ResultQuantity | null, unit: EnergyUnit): number | null {

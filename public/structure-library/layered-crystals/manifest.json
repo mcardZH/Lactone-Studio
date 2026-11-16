@@ -1193,9 +1193,17 @@
         "license": "CC BY 4.0",
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "structureKind": "computed",
-        "version": "current COD record",
+        "version": "NOMAD entry eY52zuvCPqREcR9Kfuyb4CQMR6P-",
         "retrievedAt": "2026-10-23T17:19:40.925551+00:00",
-        "conditions": "NOMAD record reports Cr2I6 (reduced CrI3), C2/m and VASP PBEsol; temperature and magnetic condition are not specified in the record."
+        "conditions": "NOMAD record reports Cr2I6 (reduced CrI3), C2/m and VASP PBEsol; temperature and magnetic condition are not specified in the record.",
+        "citation": "Miguel Marques. Alexandria PBEsol. NOMAD entry eY52zuvCPqREcR9Kfuyb4CQMR6P-. https://nomad-lab.eu/prod/v1/api/v1/entries/eY52zuvCPqREcR9Kfuyb4CQMR6P-. CC BY 4.0.",
+        "authors": [
+          "Miguel Marques"
+        ],
+        "attributionVerifiedAt": "2026-11-14",
+        "datasets": [
+          "Alexandria PBEsol"
+        ]
       },
       "normalization": {
         "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
@@ -1232,9 +1240,17 @@
         "license": "CC BY 4.0",
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "structureKind": "computed",
-        "version": "current COD record",
+        "version": "NOMAD entry 0KmHGP4Wsogndy_Ab_kgTZkAdGY0",
         "retrievedAt": "2026-10-23T17:19:40.954943+00:00",
-        "conditions": "NOMAD record reports Mn2P2S6 (reduced MnPS3), C2/m and VASP PBEsol; temperature and magnetic ordering are not specified in the record."
+        "conditions": "NOMAD record reports Mn2P2S6 (reduced MnPS3), C2/m and VASP PBEsol; temperature and magnetic ordering are not specified in the record.",
+        "citation": "Miguel Marques. Alexandria PBEsol. NOMAD entry 0KmHGP4Wsogndy_Ab_kgTZkAdGY0. https://nomad-lab.eu/prod/v1/api/v1/entries/0KmHGP4Wsogndy_Ab_kgTZkAdGY0. CC BY 4.0.",
+        "authors": [
+          "Miguel Marques"
+        ],
+        "attributionVerifiedAt": "2026-11-14",
+        "datasets": [
+          "Alexandria PBEsol"
+        ]
       },
       "normalization": {
         "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
@@ -1271,9 +1287,17 @@
         "license": "CC BY 4.0",
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "structureKind": "computed",
-        "version": "current COD record",
+        "version": "NOMAD entry Af-W_sE5ItxeUYsUbhjZLnm88GTr",
         "retrievedAt": "2026-10-23T17:19:41.592237+00:00",
-        "conditions": "NOMAD record reports Ni2P2S6 (reduced NiPS3), C2/m and VASP PBEsol; temperature and magnetic ordering are not specified in the record."
+        "conditions": "NOMAD record reports Ni2P2S6 (reduced NiPS3), C2/m and VASP PBEsol; temperature and magnetic ordering are not specified in the record.",
+        "citation": "Miguel Marques. Alexandria PBEsol. NOMAD entry Af-W_sE5ItxeUYsUbhjZLnm88GTr. https://nomad-lab.eu/prod/v1/api/v1/entries/Af-W_sE5ItxeUYsUbhjZLnm88GTr. CC BY 4.0.",
+        "authors": [
+          "Miguel Marques"
+        ],
+        "attributionVerifiedAt": "2026-11-14",
+        "datasets": [
+          "Alexandria PBEsol"
+        ]
       },
       "normalization": {
         "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",
@@ -1310,9 +1334,14 @@
         "license": "CC BY 4.0",
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "structureKind": "computed",
-        "version": "current COD record",
+        "version": "NOMAD entry 2WKR1Sl8ubB4VNbDkUefNQtIq-Lz",
         "retrievedAt": "2026-10-23T17:22:53.073714+00:00",
-        "conditions": "NOMAD record reports Fe2P2S6 (reduced FePS3), C2/m and VASP PBE; candidate CIF was converted from retained raw CONTCAR.relax2.gz with pymatgen without relaxation or lattice changes. Temperature and magnetic ordering are not specified in the record."
+        "conditions": "NOMAD record reports Fe2P2S6 (reduced FePS3), C2/m and VASP PBE; candidate CIF was converted from retained raw CONTCAR.relax2.gz with pymatgen without relaxation or lattice changes. Temperature and magnetic ordering are not specified in the record.",
+        "citation": "Materials Project. NOMAD entry 2WKR1Sl8ubB4VNbDkUefNQtIq-Lz. https://nomad-lab.eu/prod/v1/api/v1/entries/2WKR1Sl8ubB4VNbDkUefNQtIq-Lz. CC BY 4.0.",
+        "authors": [
+          "Materials Project"
+        ],
+        "attributionVerifiedAt": "2026-11-14"
       },
       "normalization": {
         "method": "pymatgen 2026.5.4 CifParser; full-cell expansion; explicit source-preserving normalization",

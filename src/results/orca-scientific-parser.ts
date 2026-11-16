@@ -1,3 +1,4 @@
+import { assertOutputSoftware, orcaOutputComment, orcaOutputEcho, orcaNormalTermination, orcaPrintedState } from './output-sections';
 import { atomicNumber, elementSymbol } from '../core/elements';
 import { orcaNativeJobNumber, orcaSourceKeywords, orcaSourceLine } from '../core/orca/input-source';
 import { parseOrcaInput, readOrcaInputCenters } from '../core/orca-readers';
@@ -100,6 +101,8 @@ export class OrcaScientificParser implements ScientificParser {
   private expectedWitness: { value: number; rawValue: string; sourceLine: number } | null = null;
   private charge: number | null = null;
   private multiplicity: number | null = null;
+  private chargePrinted = false;
+  private multiplicityPrinted = false;
   private version: string | null = null;
   private terminated = false;
   private failed = false;
@@ -380,6 +383,7 @@ export class OrcaScientificParser implements ScientificParser {
   private newJob(index = this.jobIndex + 1) {
     this.archive(); this.jobIndex = index; this.segmentIndex = 0;
     this.charge = null; this.multiplicity = null; this.expected = null; this.expectedWitness = null;
+    this.chargePrinted = false; this.multiplicityPrinted = false;
     this.jobMarkerObserved = false;
   }
   private replayJobInput(records: ScientificLine[]) {
@@ -571,11 +575,13 @@ export class OrcaScientificParser implements ScientificParser {
       else if (trimmed && !/^[-=]+$/.test(trimmed)) this.inputFileHeader = false;
     }
     // Echoes are input evidence, never native termination/error/energy markers.
-    if (/^\s*#/.test(text)) return;
-    if (!this.replayingInput && !this.jobMarkerObserved && this.appliedInputJobs.size === 0 && /^\s*\|\s*\d+>/.test(text)) {
+    if (orcaOutputComment(text)) return;
+    const echoPayload = orcaOutputEcho(text);
+    if (echoPayload === undefined) assertOutputSoftware(text, 'orca');
+    if (!this.replayingInput && !this.jobMarkerObserved && this.appliedInputJobs.size === 0 && echoPayload !== undefined) {
       {
         this.inputEchoCharacters += text.length + 1;
-        const clean = orcaSourceLine(text.replace(/^\s*\|\s*\d+>\s?/, '')).trim();
+        const clean = orcaSourceLine(echoPayload).trim();
         if (/^\$new_job$/i.test(clean)) this.inputEchoJobs.push([]);
         else this.inputEchoJobs.at(-1)!.push({ ...line });
       }
@@ -607,6 +613,7 @@ export class OrcaScientificParser implements ScientificParser {
         this.archive(); // reset input-derived state without manufacturing a preamble job
         this.data.properties.push(...adopted);
         this.charge = null; this.multiplicity = null; this.expected = null; this.expectedWitness = null;
+        this.chargePrinted = false; this.multiplicityPrinted = false;
       }
       // A first JOB NUMBER 1 can label the version-only preamble of that same
       // job. It cannot erase an earlier zero-frame failure or an observed run.
@@ -624,8 +631,7 @@ export class OrcaScientificParser implements ScientificParser {
       this.inputEchoJobs = [[]]; this.inputEchoCharacters = 0; this.inputEchoTruncated = false; this.appliedInputJobs.clear();
       this.observed = true;
     }
-    if (this.geometryLine(line)) return;
-    if (this.readNebSaddle(line)) return;
+    if (echoPayload === undefined && (this.geometryLine(line) || this.readNebSaddle(line))) return;
     // A numerical Hessian is also an internal preparation stage of IRC. Its
     // displaced evaluations remain suppressed, but a proven native task/phase
     // boundary must be handled before the NumFreq suppression return.
@@ -664,16 +670,16 @@ export class OrcaScientificParser implements ScientificParser {
     if(this.numericalFrequency&&!this.frequencyResults){
       if(/^\s*VIBRATIONAL FREQUENCIES\s*$/i.test(text))this.frequencyResults=true;
       else {
-        if(/^\s*\**\s*ORCA TERMINATED NORMALLY\s*\**\s*$/i.test(text)) { this.terminated = true; this.diagnostics().termination = { status: 'normal', sourceLine: line.number, raw: text }; }
+        if(orcaNormalTermination.test(text)) { this.terminated = true; this.diagnostics().termination = { status: 'normal', sourceLine: line.number, raw: text }; }
         if(/^\s*\**\s*(?:ORCA finished by error termination|ORCA TERMINATED ABNORMALLY|SCF NOT CONVERGED)\b/i.test(text)) this.error(line, /SCF NOT CONVERGED/i.test(text) ? 'scf' : 'runtime');
         return;
       }
     }
     const version = text.match(/^\s*Program Version\s+([^\s]+)/i);
     if (version) { this.version = version[1]; this.data.version = this.version; this.field(this.data.properties, 'program-version-banner', 'Program version banner', text.trim(), line, undefined, text, 'program-adopted'); }
-    const printedEcho = text.replace(/^\s*\|\s*\d+>\s?/, '').trim();
+    const printedEcho = (echoPayload ?? text).trim();
     const echo = orcaSourceLine(printedEcho).trim();
-    const isEcho = /^\s*\|\s*\d+>/.test(text);
+    const isEcho = echoPayload !== undefined;
     if (isEcho) this.inputGeometryEcho(echo, line);
     if (version) this.observed = true;
     if (isEcho) {
@@ -736,15 +742,21 @@ export class OrcaScientificParser implements ScientificParser {
         if (atoms.length === required && new Set(atoms).size === required && this.budget()) (this.data.scanCoordinates ??= []).push({ kind: kind === 'B' ? 'bond' : kind === 'A' ? 'angle' : 'dihedral', atomIndices: atoms, unit: kind === 'B' ? 'angstrom' : 'degree', sourceLine: line.number });
       }
     }
-    const charge = text.match(/Total Charge(?:\s+Charge)?\s*[.:=]*\s*([+-]?\d+)\s*$/i);
-    const mult = this.dipoleContext ? null : text.match(/Multiplicity(?:\s+Mult)?\s*[.:=]*\s*(\d+)\s*$/i);
+    const printedState = isEcho || this.dipoleContext ? null : orcaPrintedState(text);
+    const charge = printedState?.charge, mult = printedState?.multiplicity;
     const echoState=isEcho?echo.match(/^\*\s*xyz(?:file)?\s+([+-]?\d+)\s+(\d+)(?:\s|$)/i):null;
     if (charge || mult || echoState) {
       const q = charge ? num(charge[1]) : echoState?num(echoState[1]):this.charge, m = mult ? indexNumber(mult[1]) : echoState?indexNumber(echoState[2]):this.multiplicity;
-      if ((charge||echoState) && (q === null || !Number.isSafeInteger(q)) || (mult||echoState) && m === 0) throw new Error('ORCA电荷或多重度无效。');
+      if ((charge||echoState) && (q === null || !Number.isSafeInteger(q)) || (mult||echoState) && (m === null || m < 1)) throw new Error('ORCA电荷或多重度无效。');
       const requestedCharge = this.data.properties.find(field => field.key === 'input-charge'), requestedMultiplicity = this.data.properties.find(field => field.key === 'input-multiplicity');
-      if ((this.charge !== null && q !== this.charge || this.multiplicity !== null && m !== this.multiplicity) && (this.pending || this.frames.length)) this.split('电荷或自旋多重度改变，已分成独立结果段。');
-      this.charge = q; this.multiplicity = m;
+      // An initial coordinate table can precede the first native SCF state.
+      // Only two different adopted values prove a change of calculated state.
+      if ((charge && this.chargePrinted && q !== this.charge || mult && this.multiplicityPrinted && m !== this.multiplicity)
+        && (this.pending || this.frames.length)) this.split('电荷或自旋多重度改变，已分成独立结果段。');
+      if (charge || !this.chargePrinted) this.charge = q;
+      if (mult || !this.multiplicityPrinted) this.multiplicity = m;
+      this.chargePrinted ||= !!charge;
+      this.multiplicityPrinted ||= !!mult;
       if (charge && requestedCharge && q !== requestedCharge.value) this.fieldStatus({ field: 'charge', status: 'conflict', sourceLine: line.number, message: `输入源行${requestedCharge.sourceLine}请求${requestedCharge.value}；程序打印${q}，分别保留。` });
       if (mult && requestedMultiplicity && m !== requestedMultiplicity.value) this.fieldStatus({ field: 'multiplicity', status: 'conflict', sourceLine: line.number, message: `输入源行${requestedMultiplicity.sourceLine}请求${requestedMultiplicity.value}；程序打印${m}，分别保留。` });
       if (charge || echoState) this.field(this.data.properties, echoState ? 'input-charge' : 'printed-charge', echoState ? 'Input requested charge' : 'Program printed charge', q!, line, 'electron', charge?.[1] ?? echoState![1], echoState ? 'input-request' : 'program-adopted');
@@ -836,7 +848,7 @@ export class OrcaScientificParser implements ScientificParser {
     if (/MAXIMUM NUMBER OF ITERATIONS REACHED\s*-\s*STOPPING IRC RUN/i.test(text)) { this.failed = true; this.notice('IRC达到最大迭代数；已输出路径保留，未称为收敛路径。'); }
     if (this.ircPhase && (this.direction === 'forward' || this.direction === 'reverse') && /^\s*\**\s*THE IRC HAS CONVERGED\s*\**\s*$/i.test(text)) this.taskStatus({ task: 'path', status: 'completed', sourceLine: line.number, stageId: 'irc-' + this.direction, frameIndex: null, raw: text });
     if (/^\s*\**\s*THE NEB OPTIMIZATION HAS CONVERGED\b|^\s*The elastic band(?: and climbing image)? (?:have|has) converged successfully\b/i.test(text)) { this.nebConverged = true; this.field(this.data.summary, 'neb-converged', 'NEB convergence (printed)', text.trim(), line); this.taskStatus({ task: 'path', status: 'completed', sourceLine: line.number, stageId: 'neb-path', raw: text }); }
-    if (/^\s*\**\s*ORCA TERMINATED NORMALLY\s*\**\s*$/i.test(text)) {
+    if (orcaNormalTermination.test(text)) {
       this.terminated = true;
       this.diagnostics().termination = { status: 'normal', sourceLine: line.number, raw: text };
       if (this.compoundStart !== null) for (const previous of this.jobs.slice(this.compoundStart)) {

@@ -123,6 +123,7 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
     const appFiles = JSON.parse(
       fs.readFileSync(path.resolve(import.meta.dirname, '../../scripts/release/application-files.json'), 'utf8')
     );
+    assert.ok(appFiles.includes('desktop/mcp/connection-config.cjs'));
     assert.ok(appFiles.includes('desktop/mcp/protocol.cjs'));
     assert.ok(appFiles.includes('desktop/mcp/live-bridge.cjs'));
     assert.ok(appFiles.includes('desktop/mcp/stdio-server.cjs'));
@@ -259,6 +260,196 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
     // Disposing host removes session file
     await host.dispose();
     assert.equal(fs.existsSync(sessionFilePath), false);
+  });
+
+  it('supports standard MCP Streamable HTTP (POST /mcp, POST /, ?token= query auth, notifications) and Legacy SSE (GET /sse + POST /messages)', async () => {
+    const dir = makeTempDir();
+    const sessionFilePath = path.join(dir, 'mcp-session.json');
+    let hostRef = null;
+    const mockWindow = {
+      isDestroyed: () => false,
+      webContents: {
+        id: 303,
+        isDestroyed: () => false,
+        send(_channel, message) {
+          setImmediate(() => {
+            if (message.action === 'frontend.ping') {
+              hostRef.handleFrontendReply(303, {
+                requestId: message.requestId,
+                ok: true,
+                result: { workbenchOnline: true, echo: message.payload?.message ?? null }
+              });
+            }
+          });
+        }
+      }
+    };
+
+    const host = createMcpLiveHost({
+      sessionFilePath,
+      serverVersion: '2.0.3',
+      getTargetWindow: () => mockWindow,
+      getHostStatus: () => ({ windowCount: 1, primaryWorkbenchWindowId: 303 })
+    });
+    hostRef = host;
+    activeHosts.push(host);
+    const sessionInfo = await host.start();
+
+    function httpJsonRequest(urlPath, { method = 'POST', headers = {}, body } = {}) {
+      return new Promise((resolve, reject) => {
+        const req = http.request(
+          {
+            hostname: sessionInfo.host,
+            port: sessionInfo.port,
+            path: urlPath,
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              ...headers
+            }
+          },
+          res => {
+            let raw = '';
+            res.on('data', chunk => { raw += chunk; });
+            res.on('end', () => {
+              let parsedBody = null;
+              if (raw) {
+                try { parsedBody = JSON.parse(raw); } catch { parsedBody = raw; }
+              }
+              resolve({
+                statusCode: res.statusCode,
+                headers: res.headers,
+                body: parsedBody
+              });
+            });
+          }
+        );
+        req.on('error', reject);
+        if (body !== undefined) {
+          req.end(typeof body === 'string' ? body : JSON.stringify(body));
+        } else {
+          req.end();
+        }
+      });
+    }
+
+    // 1. Unauthorized POST /mcp is rejected with 401
+    const unauth = await httpJsonRequest('/mcp', {
+      body: { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26' } }
+    });
+    assert.equal(unauth.statusCode, 401);
+
+    // 2. Authorized POST /mcp via Authorization: Bearer <token>
+    const initRes = await httpJsonRequest('/mcp', {
+      headers: { Authorization: `Bearer ${sessionInfo.token}` },
+      body: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2025-03-26', clientInfo: { name: 'http-client', version: '1.0' } }
+      }
+    });
+    assert.equal(initRes.statusCode, 200);
+    assert.equal(initRes.body.result.protocolVersion, '2025-03-26');
+    assert.ok(initRes.headers['mcp-session-id']);
+
+    // 3. Notification returns 202 Accepted with empty body
+    const notifyRes = await httpJsonRequest('/mcp', {
+      headers: {
+        Authorization: `Bearer ${sessionInfo.token}`,
+        'Mcp-Session-Id': initRes.headers['mcp-session-id']
+      },
+      body: { jsonrpc: '2.0', method: 'notifications/initialized' }
+    });
+    assert.equal(notifyRes.statusCode, 202);
+    assert.equal(notifyRes.body, null);
+
+    // 4. Authorized POST /?token=<token> (query param auth + root path fallback) for tools/list and tools/call
+    const toolsListRes = await httpJsonRequest(`/?token=${encodeURIComponent(sessionInfo.token)}`, {
+      body: { jsonrpc: '2.0', id: 2, method: 'tools/list' }
+    });
+    assert.equal(toolsListRes.statusCode, 200);
+    assert.equal(toolsListRes.body.result.tools.length, 19);
+
+    const pingCallRes = await httpJsonRequest(`/mcp?token=${encodeURIComponent(sessionInfo.token)}`, {
+      body: {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'ester_ping', arguments: { message: 'http-hello' } }
+      }
+    });
+    assert.equal(pingCallRes.statusCode, 200);
+    assert.equal(pingCallRes.body.result.structuredContent.echo, 'http-hello');
+    assert.equal(pingCallRes.body.result.structuredContent.host.frontend.workbenchOnline, true);
+
+    // 5. Batch JSON-RPC over POST /mcp
+    const batchRes = await httpJsonRequest('/mcp', {
+      headers: { 'X-MCP-Token': sessionInfo.token },
+      body: [
+        { jsonrpc: '2.0', id: 10, method: 'ping' },
+        { jsonrpc: '2.0', method: 'notifications/initialized' }
+      ]
+    });
+    assert.equal(batchRes.statusCode, 200);
+    assert.equal(Array.isArray(batchRes.body), true);
+    assert.equal(batchRes.body.length, 1);
+    assert.equal(batchRes.body[0].id, 10);
+
+    // 6. Legacy SSE transport: GET /sse emits event: endpoint, POST /messages emits event: message on the SSE stream
+    const sseReceived = [];
+    let endpointReceivedResolve;
+    const endpointReceivedPromise = new Promise(resolve => { endpointReceivedResolve = resolve; });
+    let messageReceivedResolve;
+    const messageReceivedPromise = new Promise(resolve => { messageReceivedResolve = resolve; });
+
+    const sseReq = http.request(
+      {
+        hostname: sessionInfo.host,
+        port: sessionInfo.port,
+        path: `/sse?token=${encodeURIComponent(sessionInfo.token)}`,
+        method: 'GET'
+      },
+      res => {
+        assert.equal(res.statusCode, 200);
+        assert.match(res.headers['content-type'], /text\/event-stream/);
+        let buffer = '';
+        res.on('data', chunk => {
+          buffer += chunk.toString('utf8');
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() ?? '';
+          for (const frame of frames) {
+            const lines = frame.split('\n');
+            const eventLine = lines.find(l => l.startsWith('event: '));
+            const dataLine = lines.find(l => l.startsWith('data: '));
+            if (eventLine && dataLine) {
+              const eventType = eventLine.slice(7).trim();
+              const data = dataLine.slice(6).trim();
+              sseReceived.push({ eventType, data });
+              if (eventType === 'endpoint') endpointReceivedResolve(data);
+              if (eventType === 'message') messageReceivedResolve(JSON.parse(data));
+            }
+          }
+        });
+      }
+    );
+    sseReq.end();
+
+    const endpointPath = await endpointReceivedPromise;
+    assert.match(endpointPath, /^\/messages\?sessionId=/);
+
+    const postMsgRes = await httpJsonRequest(endpointPath, {
+      headers: { Authorization: `Bearer ${sessionInfo.token}` },
+      body: { jsonrpc: '2.0', id: 77, method: 'ping' }
+    });
+    assert.equal(postMsgRes.statusCode, 202);
+
+    const sseRpcReply = await messageReceivedPromise;
+    assert.equal(sseRpcReply.id, 77);
+    assert.deepEqual(sseRpcReply.result, {});
+    sseReq.destroy();
+
+    await host.dispose();
   });
 
   it('handles frontend request timeout, window closure, and offline desktop gracefully', async () => {
@@ -549,6 +740,7 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
     assert.deepEqual(tools, [
       'ester_configure_calculation',
       'ester_edit_structure',
+      'ester_environment_manage',
       'ester_export_artifact',
       'ester_get_structure_info',
       'ester_measure_geometry',
@@ -1238,7 +1430,7 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
       sessionFilePath
     });
     const listedTools = stdioServer.registry.listTools();
-    assert.equal(listedTools.length, 18);
+    assert.equal(listedTools.length, 19);
     assert.ok(listedTools.some(t => t.name === 'ester_run_local_xtb'));
     assert.ok(listedTools.some(t => t.name === 'ester_submit_task'));
     assert.ok(listedTools.some(t => t.name === 'ester_task_manage'));
@@ -1350,6 +1542,21 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
     });
     assert.equal(badXtbSolvModel.isError, true);
     assert.equal(badXtbSolvModel.structuredContent.error.code, 'INVALID_XTB_SOLVATION');
+
+    const badXtbGbsaModel = await registry.callTool('ester_run_local_xtb', {
+      calculation: 'optimize',
+      solvent: 'water',
+      solvationModel: 'gbsa'
+    });
+    assert.equal(badXtbGbsaModel.isError, true);
+    assert.equal(badXtbGbsaModel.structuredContent.error.code, 'INVALID_XTB_SOLVATION');
+
+    const badXtbConformerSteps = await registry.callTool('ester_run_local_xtb', {
+      calculation: 'conformer-search',
+      maxSteps: 80
+    });
+    assert.equal(badXtbConformerSteps.isError, true);
+    assert.equal(badXtbConformerSteps.structuredContent.error.code, 'INVALID_XTB_MAX_STEPS');
 
     const badXtbSteps = await registry.callTool('ester_run_local_xtb', {
       calculation: 'optimize',
@@ -1596,7 +1803,7 @@ describe('MCP Foundation Protocol & Live Bridge (Phase 1)', () => {
     await host.start();
 
     const stdioServer = createMcpStdioServer({ sessionFilePath });
-    assert.equal(stdioServer.registry.listTools().length, 18);
+    assert.equal(stdioServer.registry.listTools().length, 19);
 
     // 2. ester_open_result_analysis happy paths & launch-source cleanup
     const openByFileRes = await stdioServer.registry.callTool('ester_open_result_analysis', {

@@ -53,6 +53,7 @@ import type { ConformerResultCollection } from '../../modeling/conformers/trajec
 import { effectiveModelConstraints } from '../../modeling/constraints';
 import type { ChemistryPort, ModelDocument, ModelStore } from '../../modeling/contracts';
 import type { WorkspaceDocumentEntry } from '../../modeling/workspace-registry';
+import { xtbPreoptimizationSolvationIssue } from '../../modeling/xtb/accept-result';
 import type { XtbBridge, XtbMethod, XtbSolvation } from '../../modeling/xtb/contracts';
 import { XtbController, type XtbOptions, type XtbState } from '../../modeling/xtb/controller';
 import { convertEnergy } from '../../results/energy';
@@ -267,28 +268,44 @@ export function resolveXtbSolvation(options: {
     );
   }
 
-  const model: 'alpb' | 'gbsa' = options.solvationModel ?? 'alpb';
-  if (model !== 'alpb' && model !== 'gbsa') {
+  if (options.method === 'gxtb') {
     throw Object.assign(
-      new Error('solvationModel 必须为 "alpb" 或 "gbsa"。'),
+      new Error('g-xTB 不支持隐式溶剂参数化，请改用 gfn2、gfn1 或 gfnff，或使用气相计算。'),
       { code: 'MCP_INVALID_XTB_SOLVATION' }
     );
   }
 
-  if (options.calculation === 'conformer-search' && model !== 'alpb') {
+  const normalizedModel =
+    options.solvationModel === undefined
+      ? 'alpb'
+      : String(options.solvationModel).trim().toLowerCase();
+  if (normalizedModel === 'gbsa') {
+    if (options.calculation === 'conformer-search') {
+      throw Object.assign(
+        new Error('构象搜索（conformer-search）仅支持气相或 ALPB 隐式溶剂模型，不支持 GBSA。'),
+        { code: 'MCP_INVALID_XTB_SOLVATION' }
+      );
+    }
+    const issue = xtbPreoptimizationSolvationIssue(
+      options.method,
+      { model: 'gbsa', solvent: XTB_SOLVENT_ALIASES[compactKey] ?? compactKey },
+      options.isPeriodic
+    );
     throw Object.assign(
-      new Error('构象搜索（conformer-search）仅支持气相或 ALPB 隐式溶剂模型，不支持 GBSA。'),
+      new Error(
+        `${issue ?? '当前xTB预优化方法不支持所选溶剂，请选择有效介质。'}（仅支持气相或 ALPB 隐式溶剂模型，不支持 GBSA。）`
+      ),
+      { code: 'MCP_INVALID_XTB_SOLVATION' }
+    );
+  }
+  if (normalizedModel !== 'alpb') {
+    throw Object.assign(
+      new Error('solvationModel 必须为 "alpb"。'),
       { code: 'MCP_INVALID_XTB_SOLVATION' }
     );
   }
 
-  if (options.method === 'gfnff' && model !== 'alpb') {
-    throw Object.assign(
-      new Error('GFN-FF 仅支持 ALPB 隐式溶剂模型，不支持 GBSA。'),
-      { code: 'MCP_INVALID_XTB_SOLVATION' }
-    );
-  }
-
+  const model = 'alpb' as const;
   const canonical = XTB_SOLVENT_ALIASES[compactKey] ?? compactKey;
   const supported = advancedMethodSolvents(options.method, model);
   if (!supported.includes(canonical)) {
@@ -298,6 +315,17 @@ export function resolveXtbSolvation(options: {
       ),
       { code: 'MCP_INVALID_XTB_SOLVATION' }
     );
+  }
+
+  if (options.calculation !== 'conformer-search') {
+    const issue = xtbPreoptimizationSolvationIssue(
+      options.method,
+      { model, solvent: canonical },
+      options.isPeriodic
+    );
+    if (issue) {
+      throw Object.assign(new Error(issue), { code: 'MCP_INVALID_XTB_SOLVATION' });
+    }
   }
 
   if (options.calculation === 'conformer-search' && !isConformerAlpbSupported(options.method, canonical)) {
@@ -482,7 +510,6 @@ export async function executeMcpConformerSearch(
   params: {
     method: XtbMethod;
     solvation?: XtbSolvation;
-    maxSteps: number;
     maxCandidates: number;
     pointsPerTorsion: number;
     timeoutSeconds?: number;
@@ -561,7 +588,6 @@ export async function executeMcpConformerSearch(
       ...draft.stages[0].method,
       method: params.method,
       threads: resources.threads,
-      maxSteps: params.maxSteps,
       solvationModel: params.solvation ? params.solvation.model : 'none',
       solvent: params.solvation ? params.solvation.solvent : 'water',
       internalConstraintsConfirmed: constraints.coordinates.length > 0
@@ -1123,7 +1149,7 @@ function resolveTargetEnvironment(
   if (engineEnvs.length === 0) {
     throw Object.assign(
       new Error(
-        `任务中心尚未配置任何 ${engineId.toUpperCase()} 计算环境，请先在全局设置/任务中心添加环境。`
+        `任务中心尚未配置任何 ${engineId.toUpperCase()} 计算环境。可调用 ester_environment_manage（action="create"）创建环境，或由用户在任务中心「执行环境」中添加。`
       ),
       { code: 'MCP_NO_MATCHING_ENVIRONMENT' }
     );

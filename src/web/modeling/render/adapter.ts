@@ -1,7 +1,8 @@
-import type { Atom, Vector3, PeriodicCell } from '../../../core/types';
+import type { Atom, Vector3, PeriodicCell, Structure } from '../../../core/types';
 import type { DisplaySettings, MeasurementRecord, MeasurementState, ModelDocument, PickResult, ScreenPoint, SelectionCaptureRequest } from '../../../modeling/contracts';
 import { FREEZE_COLOR, SCAN_COLOR, type ViewerHighlights } from '../../../core/display-highlights';
 import { modelAtomLabel } from '../viewport-overlays';
+import {modelCoordinateKey} from '../../../modeling/constraints';
 import { MODEL_HOVER_COLOR } from '../modeling-interaction-policy';
 import { builderExplicitGeometryFrame } from '../../../core/builder-geometry';
 import {rotateAttachmentDirection} from '../../../core/modeling/attachment-ports';
@@ -12,9 +13,11 @@ import {physicalViewportSize,samePhysicalViewportSize,createViewportResizeSettle
 import { rotateObjectView, principalInertiaFrame, cellViewFrame, orientObjectView, rotateObjectViewStep, projectPhysicalAxes } from './camera';
 import { colorRegions, modelHighlights } from './display';
 import { elementColor } from './element-colors';
-import { DEFAULT_BACKGROUND_COLOR, effectiveBackgroundColor, cellEdgeStrokesWork } from './display-settings';
+import { DEFAULT_BACKGROUND_COLOR, cellEdgeStrokesWork } from './display-settings';
+import { viewportDefaultBackgroundColor, observeCanvasBackground } from './viewport-background';
 import {finishRenderWork,runRenderWork,type RenderWork} from './render-work';
-import {prepareCarbonCipLabels,preparedCarbonCipLabels,preparedCarbonCipWarning,type CipLabelWarning} from './stereochemistry';
+import {carbonCipSource,createCarbonCipRequests,emptyCarbonCip,prepareCarbonCipLabels,preparedCarbonCipUsage,type CipDisplayUsage,type CipLabelWarning} from './stereochemistry';
+import type {CarbonCipLabel} from '../../../core/stereochemistry-cip';
 import {createSamplingSphereLayer} from './sampling-sphere-layer';
 import { attachLocalMeshFinish, attachStructureModelFinish } from './mesh-finish';
 import { applyResolvedAtomStyles } from './atom-style-batch';
@@ -64,6 +67,10 @@ export interface ViewportDipoleVector { origin: Vector3; vector: Vector3; color?
 export interface RenderFeedbackOptions extends CalculationRangeFeedback {
   /** Nonfatal label-only diagnostics, published only after the current scene. */
   onCipWarning?(warning:CipLabelWarning|null):void;
+  onCipLabelsUsed?(usage:CipDisplayUsage):void;
+  isCipCurrent?():boolean;
+  liveCip?:boolean;
+  cipGeometryPreview?:boolean;
   /** Trusted caller's live document/activation/revision guard; never serialized. */
   isCurrent?():boolean;
   /** Verified document lifetime, supplied only by its owning workspace. */
@@ -202,7 +209,7 @@ export interface RenderAdapter {
   previewFragment?(atoms:readonly Atom[]|null,context?:FragmentRenderPreviewContext):void;
   dispose(): void;
 }
-export function requiresCooperativeDisplay(document:ModelDocument,display:DisplaySettings,feedback?:RenderFeedbackOptions):boolean{return !!(display.stereochemistry||document.draft.structure.cell?.pbc.some(Boolean)||document.draft.structure.bonds?.some(b=>b.order===.5)||document.auxiliaryRelations.length||display.cell&&display.cellStyle?.lineStyle==='dashed'||feedback?.multiframeDisplay);}
+export function requiresCooperativeDisplay(document:ModelDocument,display:DisplaySettings,feedback?:RenderFeedbackOptions):boolean{return !!(display.stereochemistry&&!feedback?.liveCip||document.draft.structure.cell?.pbc.some(Boolean)||document.draft.structure.bonds?.some(b=>b.order===.5)||document.auxiliaryRelations.length||display.cell&&display.cellStyle?.lineStyle==='dashed'||feedback?.multiframeDisplay);}
 export interface FragmentRenderPreviewContext {
   documentId:string;revision:number;
   gestureId?:number;sampleGeneration?:number;
@@ -221,7 +228,8 @@ export async function createRenderAdapter(container: HTMLDivElement, options: { 
 /** Exported for renderer-independent unit checks with a purpose-built fake. */
 export function buildRenderAdapter(container: HTMLDivElement, mol: any, options: { orthographic?: boolean; backgroundAlpha?:0|1 } = {}): RenderAdapter {
   const realm = container.ownerDocument.defaultView!;
-  const nativeSizing=captureNativeResizeListeners(realm,()=>captureViewerListeners(container.ownerDocument.body, () => mol.createViewer(container, { backgroundColor: MODEL_BACKGROUND_COLOR, backgroundAlpha:options.backgroundAlpha??1, disableFog:true, antialias: true, nomouse: true, orthographic: options.orthographic ?? true })));
+  const initialBackground=viewportDefaultBackgroundColor(container);
+  const nativeSizing=captureNativeResizeListeners(realm,()=>captureViewerListeners(container.ownerDocument.body, () => mol.createViewer(container, { backgroundColor: initialBackground, backgroundAlpha:options.backgroundAlpha??1, disableFog:true, antialias: true, nomouse: true, orthographic: options.orthographic ?? true })));
   const captured=nativeSizing.value;nativeSizing.release();
   const viewer = captured.value;
   if (!viewer) { captured.release(); throw new Error('无法初始化WebGL结构视图。'); }
@@ -243,7 +251,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   let drawController:AbortController|null=null,drawTail:Promise<void>=Promise.resolve(),lastDrawCooperative=false;
   let fragmentSamples=0,scenePreparations=0,sceneAborts=0;
   let fragmentRetirementBatches=0,fragmentPartialPresents=0,fragmentFullPresents=0,fragmentFallbackCode=0;
-  let background = MODEL_BACKGROUND_COLOR;
+  let background = initialBackground;
   let fadeStrength=0;
   let currentDocument: ModelDocument | null = null, positions: Atom[] = [], proxies: any[] = [], mirrorInstances: PeriodicDisplayInstance[] = [];
   let baseAtomStyles: any[] = [], hoverKey = '';
@@ -275,6 +283,10 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   let shapeTasks:ShapeTask[]=[],activeShapeTask:ShapeTask|null=null;
   let atomLabelHandles=new Map<number,any[]>(),regionLabelMoves:{indices:readonly number[];label:any;center:Vector3}[]=[];
   let lastDraw:{document:ModelDocument;settings:DisplaySettings;incoming:ViewerHighlights;preview?:Atom[];transform:RigidTransform;measurement?:MeasurementState;feedback:RenderFeedbackOptions}|null=null;
+  let cipLease:object|undefined,cipRequestKey:object|undefined;
+  let paintedCip=emptyCarbonCip.labels;
+  let paintAtomLabels:(index:number,cip?:CarbonCipLabel)=>void=()=>{};
+  const cipRequests=createCarbonCipRequests();
   let fragmentPreview:{documentId:string;revision:number;gestureId?:number;sampleGeneration:number;indices:number[];ids:Set<string>;raw:Atom[];tasks:ShapeTask[];staticProxyCount:number;model:any;cpu:any;baseModelSynced:boolean;periodic:Map<unknown,ReturnType<typeof periodicBondGlyphContext>>;instances:PeriodicDisplayInstance[];connections?:PeriodicDisplayConnectionContext;rotation?:FragmentRenderPreviewContext['rotation']}|null=null;
   let atomBounds:RenderBounds|null=null;
   const depthEnvelope=retainViewerDepthEnvelope(viewer,()=>unionRenderBounds(atomBounds,sceneShapes.bounds(),hoverShapes.bounds(),orbitals.bounds(),surfaces.bounds(),trajectoryLayer.bounds(),samplingSphereShapes.bounds(),calculationRangeShapes.bounds()));
@@ -436,13 +448,11 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   const resetView=()=>renderSubmissions.run('reset-view',resetViewContent);
   function* drawContent(document: ModelDocument, settings: DisplaySettings, incoming: ViewerHighlights = {}, preview?: Atom[], transform = identityTransform(), measurement?: MeasurementState, feedback: RenderFeedbackOptions = {},cooperative=false):RenderWork<void> {
     assertLive();
-    // Preview/vibration coordinates are display projections. CIP follows the
-    // current scientific structure/frame and changes with its committed source.
     const cipSource=document.draft.structure;
-    if(settings.stereochemistry&&cooperative)yield signal=>prepareCarbonCipLabels(cipSource,signal);
-    const cipLabels=settings.stereochemistry?preparedCarbonCipLabels(cipSource):new Map();
+    if(settings.stereochemistry&&cooperative&&!feedback.liveCip)yield signal=>prepareCarbonCipLabels(cipSource,signal);
+    const cipLabels=settings.stereochemistry&&!feedback.cipGeometryPreview?carbonCipSource(cipSource)?.result?.labels??emptyCarbonCip.labels:emptyCarbonCip.labels;
     hiddenAtoms=displayHiddenAtomIds(feedback.hiddenAtomIds,document.draft.structure);
-    const nextBackground = feedback.capturePurpose ? CAPTURE_BACKGROUND_COLOR : feedback.linkedAtomsActive ? LINKED_BACKGROUND_COLOR : effectiveBackgroundColor(settings);
+    const nextBackground = feedback.capturePurpose ? CAPTURE_BACKGROUND_COLOR : feedback.linkedAtomsActive ? LINKED_BACKGROUND_COLOR : settings.backgroundColor??viewportDefaultBackgroundColor(container);
     if (background !== nextBackground) {
       if (typeof viewer.setBackgroundColor !== 'function') throw new Error('渲染器缺少交互式选择背景接口。');
       viewer.setBackgroundColor(nextBackground, options.backgroundAlpha??1); background = nextBackground;
@@ -578,15 +588,20 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     const rendered = model.selectedAtoms({});
     if (!reuseCoordinates) baseAtomStyles = rendered.map((atom: any) => structuredClone(atom.style));
     const atomProxies=new Map<number,any>();
+    paintedCip=cipLabels;
+    paintAtomLabels=(i,cip)=>{
+      const atom=positions[i];if(!atom||hiddenAtoms.has(atom.id!))return;
+      if (settings.atomNumbers || settings.elementNames || cip) {
+        const materialColor = baseAtomStyles[i]?.sphere?.color ?? baseAtomStyles[i]?.stick?.color ?? elementColor(atom.element, settings.elementColors);
+        const atomText=modelAtomLabel(atom,i,settings),text=cip?`${atomText}${atomText?' ':''}(${cip})`:atomText;
+        const handle=labels.add(text, { position: point(coordinates(atom)), alignment: 'center', bold: true, fontSize: settings.fontSize, fontColor: atomLabelFontColor(materialColor), fontOpacity: 1, backgroundOpacity: 0, showBackground: false, borderThickness: 0, inFront: true }, undefined, true);if(handle)atomLabelHandles.set(i,[handle]);
+      }
+      if (scalarLabels.has(i)){const handle=labels.add(scalarLabels.get(i), { position: point(coordinates(atom)), alignment: 'center', screenOffset: { x: 0, y: settings.atomNumbers || settings.elementNames || cip ? -19 : 0 }, bold: true, fontSize: settings.fontSize, fontColor: '#153846', backgroundOpacity: .8, backgroundColor: 'white', showBackground: true, borderThickness: 0, inFront: true }, undefined, true);if(handle)atomLabelHandles.set(i,[...(atomLabelHandles.get(i)??[]),handle]);}
+    };
     for(const [i,atom] of positions.entries()) {
       yield;if(hiddenAtoms.has(atom.id!))continue;
       const target=proxy({ kind: 'atom', atomId: atom.id! }, { sphere: [sphere(coordinates(atom), atomRadius(atom.element, settings))] });proxies.push(target);atomProxies.set(i,target);
-      if (settings.atomNumbers || settings.elementNames || cipLabels.has(i)) {
-        const materialColor = baseAtomStyles[i]?.sphere?.color ?? baseAtomStyles[i]?.stick?.color ?? elementColor(atom.element, settings.elementColors);
-        const atomText=modelAtomLabel(atom,i,settings),cip=cipLabels.get(i),text=cip?`${atomText}${atomText?' ':''}(${cip})`:atomText;
-        const handle=labels.add(text, { position: point(coordinates(atom)), alignment: 'center', bold: true, fontSize: settings.fontSize, fontColor: atomLabelFontColor(materialColor), fontOpacity: 1, backgroundOpacity: 0, showBackground: false, borderThickness: 0, inFront: true }, undefined, true);if(handle)atomLabelHandles.set(i,[handle]);
-      }
-      if (scalarLabels.has(i)){const handle=labels.add(scalarLabels.get(i), { position: point(coordinates(atom)), alignment: 'center', screenOffset: { x: 0, y: settings.atomNumbers || settings.elementNames || cipLabels.has(i) ? -19 : 0 }, bold: true, fontSize: settings.fontSize, fontColor: '#153846', backgroundOpacity: .8, backgroundColor: 'white', showBackground: true, borderThickness: 0, inFront: true }, undefined, true);if(handle)atomLabelHandles.set(i,[...(atomLabelHandles.get(i)??[]),handle]);}
+      paintAtomLabels(i,cipLabels.get(i));
     }
     // Native scene shapes rotate/project/capture with the molecule. They have
     // no editable atom, pick proxy or playback phase of their own.
@@ -751,7 +766,14 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       for(const bond of settings.showBonds===false?[]:reference.bonds??[])for(const [start,end] of bondSegments(reference.atoms,bond,reference.cell))sceneShape('addLine',{start:point(transformPoint(displayTransform,start)),end:point(transformPoint(displayTransform,end)),color:'#82999b',linewidth:1.3,opacity:.55,clickable:false,hoverable:false});
     }
     const guides = [...(settings.scanMarks ? (highlights.scan ?? []).map(guide => ({ guide, color: SCAN_COLOR })) : []), ...(settings.frozenMarks ? (highlights.frozenCoordinates ?? []).map(guide => ({ guide, color: FREEZE_COLOR })) : [])];
+    // Projected annotations own their guide even while hidden. State icons keep
+    // their own switches; toggling measurements must not resurrect a second line.
+    const measuredPaths=new Set([...(measurement?.records??[]).filter(record=>record.readOnly),...userMeasurementRecords].map(record=>modelCoordinateKey({type:record.mode==='distance'?'B':record.mode==='angle'?'A':'D',atomIds:record.atomIds,images:record.images})));
+    const statePaths=new Set<string>();
     for (const { guide, color } of guides){
+      const key=modelCoordinateKey({type:guide.type,atomIds:guide.atoms.map(index=>rawPositions[index]?.id!),images:guide.images});
+      if(measuredPaths.has(key)||statePaths.has(key))continue;
+      statePaths.add(key);
       renderTask(guide.atoms,rawPositions=>{
       let paths;try{paths=measurementGeometryGuide({...structure,atoms:rawPositions},guide.type,guide.atoms.map(index=>rawPositions[index]?.id!),guide.images).paths;}catch{return;}
       for(const path of paths)for(let i=1;i<path.length;i++)sceneShape('addLine',{start:point(transformPoint(displayTransform,coordinates(path[i-1]))),end:point(transformPoint(displayTransform,coordinates(path[i]))),color,dashed:true,dashLength:.08,gapLength:.07,linewidth:1.4});
@@ -826,19 +848,61 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     }
     if(displayHighlights.size||(feedback.displayMeasurementRecords?.length??0)>0)viewer.render();
     sceneSequence.end();
-    if(feedback.isCurrent?.()!==false)feedback.onCipWarning?.(settings.stereochemistry?preparedCarbonCipWarning(cipSource)??null:null);
+  }
+  function replaceCipLabels(next:typeof paintedCip):boolean{
+    const changed=[...new Set([...paintedCip.keys(),...next.keys()])].filter(index=>paintedCip.get(index)!==next.get(index));
+    labels.remove(changed.flatMap(index=>atomLabelHandles.get(index)??[]));
+    for(const index of changed){atomLabelHandles.delete(index);paintAtomLabels(index,next.get(index));}
+    paintedCip=next;return changed.length>0;
+  }
+  function cancelCip(){cipLease=undefined;cipRequestKey=undefined;cipRequests.cancel();}
+  function cancelObsoleteCip(document:ModelDocument,settings:DisplaySettings,feedback:RenderFeedbackOptions){
+    if(cipRequestKey&&(!settings.stereochemistry||feedback.cipGeometryPreview||cipRequestKey!==carbonCipSource(document.draft.structure)))cancelCip();
+  }
+  function syncCip(scene:NonNullable<typeof lastDraw>,scientificPreview?:()=>Structure){
+    const {document,settings,feedback}=scene,structure=document.draft.structure;
+    const source=settings.stereochemistry?carbonCipSource(structure):undefined;
+    const preview=scientificPreview??(feedback.cipGeometryPreview&&scene.preview?()=>({...structure,atoms:[...scene.preview!]}):undefined);
+    const token={},key=source&&(preview?token:source);cipLease=token;cipRequestKey=key;
+    const current=()=>!disposed&&cipLease===token&&(feedback.isCipCurrent??feedback.isCurrent)?.()!==false;
+    const announce=(result:typeof emptyCarbonCip)=>{
+      if(!current())return;
+      feedback.onCipWarning?.(result.warning??null);
+      if(!preview&&result.labels.size){const usage=preparedCarbonCipUsage(structure,feedback.hiddenAtomIds);if(usage)feedback.onCipLabelsUsed?.(usage);}
+    };
+    if(!key||(!preview&&source?.result)){
+      cipRequests.cancel();
+      const result=source?.result??emptyCarbonCip;
+      if(current()&&replaceCipLabels(result.labels))viewer.setView(viewer.getView(),true);
+      announce(result);return;
+    }
+    // Preview snapshots are only materialized for the sample that can start
+    // work. Clear prior descriptors before the moving geometry is presented.
+    if(preview)replaceCipLabels(emptyCarbonCip.labels);
+    announce(emptyCarbonCip);
+    cipRequests.request({key,structure:preview??(()=>structure),source:preview?undefined:source,publish:async result=>{
+      while(drawController)await drawTail;
+      if(!current())return;
+      if(replaceCipLabels(result.labels))viewer.setView(viewer.getView(),true);
+      announce(result);
+    },onError:error=>{
+      if(!current())return;
+      const reason=error instanceof Error?error.message:String(error);
+      feedback.onCipWarning?.({identity:'cip-render:'+reason,reason});
+    }});
   }
   function draw(document: ModelDocument, settings: DisplaySettings, incoming: ViewerHighlights = {}, preview?: Atom[], transform = identityTransform(), measurement?: MeasurementState, feedback: RenderFeedbackOptions = {}) {
     assertLive();
     scenePreparations++;
     if(drawController)throw new Error('异步显示准备尚未结束，请通过受管绘制入口更新。');lastDrawCooperative=false;
+    cancelObsoleteCip(document,settings,feedback);
     if(fragmentPreview)clearFragmentPreview(false);
     renderSubmissions.configure(feedback.renderIdentity&&feedback.onRenderComplete?{identity:feedback.renderIdentity,documentId:document.id,geometryRevision:document.revision,observer:feedback.onRenderComplete}:null);
-    try{renderSubmissions.run('draw',()=>finishRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback)));lastDraw={document,settings,incoming,preview,transform,measurement,feedback};}
+    try{renderSubmissions.run('draw',()=>finishRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback)));lastDraw={document,settings,incoming,preview,transform,measurement,feedback};syncCip(lastDraw);}
     catch(error){clearNativeCoordinates();renderSubmissions.configure(null);try{sceneSequence.abort();}catch{/* Preserve the original draw failure. */}throw error;}
   }
   function beginAtomicDraw(){
-    const previous={labels,renderedModel,modelMaterialKey,nativeCoordinates,nativeCoordinateEpoch,currentDocument,currentId,positions,proxies,mirrorInstances,baseAtomStyles,displayTransform,atomBounds,shapeTasks,atomLabelHandles,regionLabelMoves,hiddenAtoms,initialized,fragmentPreview,
+    const previous={labels,renderedModel,modelMaterialKey,nativeCoordinates,nativeCoordinateEpoch,currentDocument,currentId,positions,proxies,mirrorInstances,baseAtomStyles,displayTransform,atomBounds,shapeTasks,atomLabelHandles,regionLabelMoves,hiddenAtoms,initialized,fragmentPreview,paintAtomLabels,paintedCip,
       bondVisuals:new Map(bondVisuals),displayHoverKeys:new Set(displayHoverKeys),view:viewer.getView(),background,fadeStrength};
     const deferred=new Set<any>(),renderer=viewer.getRenderer?.(),nativeRender=renderer?.render,viewerRender=viewer.render;
     const suppressed=()=>viewer,suppressNative=()=>{};
@@ -861,6 +925,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         nativeCoordinates=previous.nativeCoordinates;nativeCoordinateEpoch=previous.nativeCoordinateEpoch;
         currentDocument=previous.currentDocument;currentId=previous.currentId;positions=previous.positions;proxies=previous.proxies;mirrorInstances=previous.mirrorInstances;baseAtomStyles=previous.baseAtomStyles;displayTransform=previous.displayTransform;atomBounds=previous.atomBounds;
         shapeTasks=previous.shapeTasks;atomLabelHandles=previous.atomLabelHandles;regionLabelMoves=previous.regionLabelMoves;hiddenAtoms=previous.hiddenAtoms;initialized=previous.initialized;fragmentPreview=previous.fragmentPreview;
+        paintAtomLabels=previous.paintAtomLabels;paintedCip=previous.paintedCip;
         bondVisuals.clear();for(const [key,value]of previous.bondVisuals)bondVisuals.set(key,value);displayHoverKeys.clear();for(const key of previous.displayHoverKeys)displayHoverKeys.add(key);
         if(!disposed){if(renderedModel?.setCoordinates){renderedModel.setCoordinates([positions.map(atom=>[atom.x,atom.y,atom.z])],'array');void renderedModel.setFrame(0);}viewer.setView(previous.view);if(background!==previous.background)viewer.setBackgroundColor(previous.background,options.backgroundAlpha??1);if(fadeStrength!==previous.fadeStrength)viewer.enableFog?.(depthFadeFog(previous.fadeStrength));}
         background=previous.background;fadeStrength=previous.fadeStrength;
@@ -870,16 +935,16 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   }
   async function drawAsync(document:ModelDocument,settings:DisplaySettings,incoming:ViewerHighlights={},preview?:Atom[],transform=identityTransform(),measurement?:MeasurementState,feedback:RenderFeedbackOptions={},signal?:AbortSignal){
     if(preview)preview=preview.map(atom=>({...atom}));
-    assertLive();drawController?.abort();const controller=new AbortController();drawController=controller;const previous=drawTail;
+    assertLive();cancelObsoleteCip(document,settings,feedback);drawController?.abort();const controller=new AbortController();drawController=controller;const previous=drawTail;
     let release!:()=>void;drawTail=new Promise(resolve=>{release=resolve;});const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
     try{await previous;if(controller.signal.aborted||disposed)throw new DOMException('显示准备已取消。','AbortError');
       lastDrawCooperative=true;
       scenePreparations++;
       renderSubmissions.configure(feedback.renderIdentity&&feedback.onRenderComplete?{identity:feedback.renderIdentity,documentId:document.id,geometryRevision:document.revision,observer:feedback.onRenderComplete}:null);
       atomicDraw=beginAtomicDraw();const transaction=atomicDraw;
-      try{await runRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback,true),controller.signal,feedback.isCurrent);lastDraw={document,settings,incoming,preview,transform,measurement,feedback};}
+      try{await runRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback,true),controller.signal,feedback.isCurrent);lastDraw={document,settings,incoming,preview,transform,measurement,feedback};syncCip(lastDraw);}
       catch(error){sceneAborts++;try{transaction.rollback();}catch{/* Preserve original preparation error; adapter still owns final release. */}renderSubmissions.configure(null);throw error;}
-    }finally{signal?.removeEventListener('abort',abort);if(drawController===controller)drawController=null;release();}
+    }finally{signal?.removeEventListener('abort',abort);if(drawController===controller)drawController=null;release();if(backgroundRefreshPending)refreshInterfaceBackground();}
   }
   function clearFragmentPreview(restore:boolean){
     const state=fragmentPreview;if(!state)return;fragmentPreview=null;
@@ -917,6 +982,11 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       state.rotation=context?.rotation;
       for(const index of state.indices){const atom=current.get(state.raw[index].id!)!;if(atom.element!==state.raw[index].element)throw new Error('片段显示预览不能改变元素。');state.raw[index]={...state.raw[index],x:atom.x,y:atom.y,z:atom.z};const displayed=transformPoint(displayTransform,[atom.x,atom.y,atom.z]);positions[index]={...state.raw[index],x:displayed[0],y:displayed[1],z:displayed[2]};atomBounds=includeRenderPoint(atomBounds,displayed,atomRadius(atom.element,source.settings));for(const label of atomLabelHandles.get(index)??[])labels.move(label,point(displayed));}
       state.sampleGeneration=context?.sampleGeneration??state.sampleGeneration+1;
+      if(source.settings.stereochemistry)syncCip(source,()=>{
+        const structure=source.document.draft.structure,atoms=[...structure.atoms];
+        for(const index of state.indices)atoms[index]=state.raw[index];
+        return {...structure,atoms};
+      });
       fragmentSamples++;
       state.instances=finishRenderWork(periodicDisplayInstancesWork(source.document.draft.structure,state.raw,source.settings,hiddenAtoms));
       state.connections=finishRenderWork(preparePeriodicDisplayConnectionsWork(source.document.draft.structure,state.raw,state.instances,source.settings));
@@ -957,8 +1027,23 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       state.baseModelSynced=true;
     }catch(error){clearFragmentPreview(true);throw error;}
   }
+  let backgroundRefreshPending=false;
+  function refreshInterfaceBackground(){
+    if(disposed)return;
+    if(drawController||atomicDraw){backgroundRefreshPending=true;return;}
+    backgroundRefreshPending=false;
+    const display=lastDraw?.settings,feedback=lastDraw?.feedback;
+    const next=feedback?.capturePurpose?CAPTURE_BACKGROUND_COLOR:feedback?.linkedAtomsActive?LINKED_BACKGROUND_COLOR:display?.backgroundColor??viewportDefaultBackgroundColor(container);
+    if(next===background)return;
+    renderSubmissions.run('interface-background',()=>{
+      viewer.setBackgroundColor(next,options.backgroundAlpha??1);background=next;
+      if(fadeStrength>0)viewer.enableFog?.(depthFadeFog(fadeStrength));
+      viewer.render();
+    });
+  }
+  const releaseBackgroundObserver=container.closest?.('.model-viewport')?observeCanvasBackground(container.ownerDocument,refreshInterfaceBackground):()=>{};
   return {
-    draw,drawAsync,cancelDraw:()=>drawController?.abort(),cooperativeDisplay:()=>lastDrawCooperative,presentationReady:()=>!atomicDraw, project, atomRadius, plane, hitTest, worldPoint, projectionReady,previewFragment,
+    draw,drawAsync,cancelDraw:()=>{drawController?.abort();cancelCip();},cooperativeDisplay:()=>lastDrawCooperative,presentationReady:()=>!atomicDraw, project, atomRadius, plane, hitTest, worldPoint, projectionReady,previewFragment,
     projectSphere(sphere){
       const orthographic=typeof viewer.camera?.ortho==='boolean'?viewer.camera.ortho:(options.orthographic??true);
       if(!orthographic)return null;
@@ -1062,7 +1147,8 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     },
     dispose() {
       if (disposed) return; disposed = true;
-      drawController?.abort();
+      releaseBackgroundObserver();
+      drawController?.abort();cancelCip();
       let failure: unknown;
       const release = (action: () => unknown) => { try { action(); } catch (error) { failure ??= error; } };
       release(()=>atomicDraw?.rollback());

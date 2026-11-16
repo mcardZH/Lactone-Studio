@@ -7,6 +7,7 @@ const {TERMINAL,sessionIdentity,validateStart,validateEvent,expectedFrames,expec
 const {cleanTaskDirectory}=require('./task-cache.cjs');
 const {DEFAULT_OUTPUT_BUDGET_BYTES,outputBudget}=require('./output-budget.cjs');
 const {createConformerSamplingStore}=require('./conformer-sampling-store.cjs');
+const {armWallDeadline}=require('./wall-deadline.cjs');
 
 /** Shared admission belongs to Main. A stop/kill request retains the lease until
  * the actual owned worker close; this module has no independent scheduler. */
@@ -17,14 +18,14 @@ function createConformerSamplingHost({spawn,resolveRuntime,resolveXtbRuntime,res
   const resultStore=fs&&typeof fs.writeFile==='function'&&(resultRoot||jobRoot)?createConformerSamplingStore({fs,root:resultRoot??path.join(jobRoot,'results')}):null;
   const resultCloseTasks=new Set();
   function detachResults(owner){if(!resultStore)return;const closing=resultStore.closeOwner(owner).catch(error=>console.warn('SAMPLING_RESULT_CACHE_RETAINED',error.message)).finally(()=>resultCloseTasks.delete(closing));resultCloseTasks.add(closing);}
-  const policy={stopMs:2000,maxOutputBytes:DEFAULT_OUTPUT_BUDGET_BYTES,maxPacketBytes:Infinity,maxEvents:50000,...limits};
+  const policy={stopMs:2000,maxOutputBytes:DEFAULT_OUTPUT_BUDGET_BYTES,maxPacketBytes:Infinity,...limits};
   const key=(owner,id)=>`${owner}:${id}`;
   function emit(s,value){if(s.ownerClosed)return;try{const{kind,seq,...rest}=value;sendToWindow(s.owner,{...rest,...(s.effectiveResources?{effectiveResources:s.effectiveResources}:{}),event:kind,seq:s.emitSeq++});}catch{closeOwner(s.owner);}}
   function terminal(s,kind,data){const step=data.step??data.lastFrame?.step??(s.request.segment&&TERMINAL.has(kind)?0:undefined);return{schema:1,sessionId:s.id,runIdentity:s.request.runIdentity,stamp:s.request.stamp,operation:s.request.operation,method:s.request.method,kind,...data,...samplingSegmentFields(s.request,step),...(s.request.segment&&step!==undefined?{step}:{})};}
   async function directory(target){const stat=await fs.lstat(target),actual=await fs.realpath(target);assert(stat.isDirectory()&&!stat.isSymbolicLink()&&(process.platform==='win32'?path.resolve(actual).toLowerCase()===path.resolve(target).toLowerCase():path.resolve(actual)===path.resolve(target)),'Sampling workspace must not traverse links');}
   async function nativeSetup(s){
     assert(typeof resolveXtbRuntime==='function'&&fs&&typeof jobRoot==='string'&&path.isAbsolute(jobRoot),'Host-owned native GFN-FF runtime/workspace unavailable');
-    const runtime=await ownedWait(s,resolveXtbRuntime({signal:s.abortController.signal}));
+    const runtime=s.xtbRuntime??await ownedWait(s,resolveXtbRuntime({method:s.request.method,operation:s.request.operation,periodic:false,signal:s.abortController.signal}));
     assert(runtime&&['executable','directory','dataDirectory'].every(k=>typeof runtime[k]==='string'&&path.isAbsolute(runtime[k]))&&path.dirname(runtime.executable)===path.resolve(runtime.directory)&&typeof runtime.version==='string','Trusted fixed xTB runtime required');
     await fs.mkdir(jobRoot,{recursive:true});await directory(jobRoot);const job=await fs.mkdtemp(path.join(jobRoot,'sampling-'));
     assert(path.dirname(job)===path.resolve(jobRoot),'Native sampling workspace escaped ownership');await directory(job);s.job=job;s.xtbRuntime=runtime;
@@ -48,18 +49,18 @@ function createConformerSamplingHost({spawn,resolveRuntime,resolveXtbRuntime,res
     });
   }
   function stop(s,reason='cancelled'){
-    if(s.closed||s.stopReason)return;s.stopReason=reason;
+    if(s.closed||s.stopReason)return;s.stopReason=reason;s.cancelWallDeadline?.();
     if(!s.child){s.abortController.abort(reason);return;}
     if(s.child){try{s.child.stdin.write(JSON.stringify({schema:1,sessionId:s.id,runIdentity:s.request.runIdentity,command:'stop'})+'\n');}catch{}
       s.killTimer=setTimeout(()=>{if(!s.closed)try{s.child.kill();}catch{}},policy.stopMs);s.killTimer.unref?.();}
   }
   async function finish(s,code,signal){
-    if(s.closed)return;s.closed=true;clearTimeout(s.wallTimer);clearTimeout(s.killTimer);
+    if(s.closed)return;s.closed=true;s.cancelWallDeadline?.();clearTimeout(s.killTimer);
     let outgoing;
     try{
       await waitNativeClosed(s);
       const extra=s.job?{nativeClosed:true}:{};
-      if(s.stopReason){const observed=s.result?.nativeTemperatureObservations;const temperature=observed?{nativeTemperatureObservations:observed}:{};outgoing=terminal(s,s.stopReason==='cancelled'?'stopped':'error',s.stopReason==='cancelled'?{reason:'cancelled',lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal},...extra,...temperature}:{error:{code:'SAMPLING_HOST_STOPPED',message:s.stopReason},lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal},...extra,...temperature});}
+      if(s.stopReason){const observed=s.result?.nativeTemperatureObservations,optional=s.result?.optionalDiagnostics;const observations={...(observed?{nativeTemperatureObservations:observed}:{}),...(optional?{optionalDiagnostics:optional}:{})};outgoing=terminal(s,s.stopReason==='cancelled'?'stopped':'error',s.stopReason==='cancelled'?{reason:'cancelled',lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal},...extra,...observations}:{error:{code:'SAMPLING_HOST_STOPPED',message:s.stopReason},lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal},...extra,...observations});}
       else if(s.failure||s.tail.trim()||!s.result||(code!==0&&s.result.kind!=='error')||signal!==null){outgoing=terminal(s,'error',{error:{code:'SAMPLING_WORKER_REJECTED',message:String(s.failure?.message??'Worker closed without a valid sampling terminal result').slice(0,8192)},lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal},...extra});}
       else outgoing={...s.result,exit:{code,signal},...extra};
       if(s.storeEntry)Object.assign(outgoing,{frameCount:s.frames,candidateCount:s.candidates,biasHistory:s.history});
@@ -81,9 +82,10 @@ function createConformerSamplingHost({spawn,resolveRuntime,resolveXtbRuntime,res
     assert(!disposed&&Number.isSafeInteger(owner)&&owner>=0&&!closedOwners.has(owner)&&typeof admit==='function','Sampling owner/shared resource admission unavailable');sessionIdentity(id);
     assert(![...sessions.values()].some(s=>s.owner===owner),'Owned sampling worker must close before another start');
     if(resolveResources)assert(raw.threads===undefined||Number.isSafeInteger(raw.threads)&&raw.threads>0,'Requested sampling threads must be a positive safe integer');
-    let request=validateStart(resolveResources?{...raw,threads:1}:raw);const s={owner,id,request,workerSeq:-1,emitSeq:0,tail:'',bytes:0,stderrBytes:0,frames:0,candidates:0,events:0,history:[],nativePids:new Set(),expectedFrames:expectedFrames(request),abortController:new AbortController()};
+    let request=validateStart(resolveResources?{...raw,threads:1}:raw);const s={owner,id,request,workerSeq:-1,emitSeq:0,tail:'',bytes:0,stderrBytes:0,frames:0,candidates:0,history:[],nativePids:new Set(),expectedFrames:expectedFrames(request),abortController:new AbortController()};
     s.finished=new Promise(resolve=>{s.resolve=resolve;});sessions.set(key(owner,id),s);
     try{
+      if(requiresXtbRuntime(request))s.xtbRuntime=await ownedWait(s,resolveXtbRuntime({method:request.method,operation:request.operation,periodic:false,signal:s.abortController.signal}));
       if(resolveResources){s.resourceSnapshot=Object.freeze(resourceFields(await ownedWait(s,Promise.resolve(resolveResources(owner,structuredClone(raw))))));request=validateStart({...request,threads:s.resourceSnapshot.threads,memoryBudgetBytes:s.resourceSnapshot.memoryBudgetBytes});s.request=request;}
       s.release=await ownedWait(s,admit(owner,request,{signal:s.abortController.signal,...(s.resourceSnapshot?{resources:s.resourceSnapshot}:{})}),true);
       if(s.resourceSnapshot){const actual=resourceFields(s.release.resources),configured=actual.configured??s.resourceSnapshot.configured??s.resourceSnapshot;assert(actual.threads<=configured.threads&&actual.memoryBudgetBytes<=configured.memoryBudgetBytes,'Actual grant exceeds the admitted resource ceiling');request=validateStart({...request,threads:actual.threads,memoryBudgetBytes:actual.memoryBudgetBytes});s.request=request;s.effectiveResources={...actual,memoryEnforced:false,configured,requested:{threads:raw.threads??s.resourceSnapshot.threads,memoryBudgetBytes:raw.memoryBudgetBytes??s.resourceSnapshot.memoryBudgetBytes},actual:{threads:actual.threads,memoryBudgetBytes:actual.memoryBudgetBytes}};}
@@ -97,7 +99,7 @@ function createConformerSamplingHost({spawn,resolveRuntime,resolveXtbRuntime,res
       child.stdout.on('data',chunk=>{if(s.closed)return;try{
         const bytes=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);s.bytes+=bytes.length;if(limits.maxOutputBytes!==undefined)assert(s.bytes<=s.outputBudgetBytes,'Sampling cumulative output exceeded budget');s.tail+=out.write(bytes);let end;
         while((end=s.tail.indexOf('\n'))>=0){const line=s.tail.slice(0,end);s.tail=s.tail.slice(end+1);assert(Buffer.byteLength(line)<=policy.maxPacketBytes,'Sampling packet exceeded budget');
-          const value=validateEvent(JSON.parse(line),s);assert(!s.result&&++s.events<=Math.max(policy.maxEvents,2*request.maxEvaluations+request.maxFrames+(request.metadynamics?.maxHistory??0)+10*(request.annealing?.cycles??1)+100),'Late/duplicate or excessive sampling event');s.workerSeq=value.seq;
+          const value=validateEvent(JSON.parse(line),s);assert(!s.result,'Late or duplicate sampling event');s.workerSeq=value.seq;
           // Charge retained scientific values once. Repeated task stamps,
           // protection definitions, progress and terminal copies are transport
           // metadata and cannot exhaust the user's scientific output budget.
@@ -124,7 +126,8 @@ function createConformerSamplingHost({spawn,resolveRuntime,resolveXtbRuntime,res
       child.stdin.on('error',error=>{s.failure=error;stop(s,'Sampling worker input failed');});child.once('error',error=>{s.failure=error;stop(s,'Sampling worker spawn failed');});
       child.once('close',(code,signal)=>{s.tail+=out.end();void finish(s,code,signal??null);});
       child.stdin.write(JSON.stringify({schema:1,sessionId:id,request,...(s.xtbRuntime?{runtime:s.xtbRuntime,workspacePath:s.job}:{})})+'\n');
-      if(request.maxWallTimeSeconds!==undefined){s.wallTimer=setTimeout(()=>stop(s,'Sampling walltime budget exceeded'),request.maxWallTimeSeconds*1000);s.wallTimer.unref?.();}
+      if(request.maxWallTimeSeconds!==undefined)
+        s.cancelWallDeadline=armWallDeadline(request.maxWallTimeSeconds,()=>stop(s,'Sampling walltime budget exceeded'));
       emit(s,terminal(s,'started',{status:'running'}));return{sessionId:id,status:'starting'};
     }catch(error){s.failure=error;if(!s.child)await finish(s,null,null);else stop(s,'Sampling start failed');return{sessionId:id,status:'error'};}
   }

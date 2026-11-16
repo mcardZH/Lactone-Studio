@@ -938,6 +938,7 @@ export default function SubmitTaskDialog({
 				<span className="task-submit-status" role="status">
 					{checkState}
 				</span>
+				<div className="ui-action-row">
 				<button type="button" onClick={closeDialog}>
 					取消
 				</button>
@@ -952,6 +953,7 @@ export default function SubmitTaskDialog({
 				>
 					提交计算
 				</button>
+				</div>
 			</footer>
 			{configuration && (
 				<EnvironmentSettings
@@ -985,11 +987,11 @@ export default function SubmitTaskDialog({
 				>
 					<h2>恢复生成脚本？</h2>
 					<p>将替换当前手改计算脚本。</p>
-					<footer>
+					<footer className="ui-action-row">
 						<button type="button" onClick={() => setConfirmReset(false)}>
 							取消
 						</button>
-						<button type="button" onClick={restoreScript}>
+						<button type="button" data-ui-action="primary" onClick={restoreScript}>
 							恢复
 						</button>
 					</footer>
@@ -1018,12 +1020,13 @@ export default function SubmitTaskDialog({
 							))}
 						</ul>
 					</details>
-					<footer>
+					<footer className="ui-action-row">
 						<button type="button" onClick={() => setOverwrite(null)}>
 							取消
 						</button>
 						<button
 							type="button"
+							data-ui-action="primary"
 							disabled={pending || overwriteKey !== key}
 							onClick={() => {
 								const id = overwrite.overwritePlanId;

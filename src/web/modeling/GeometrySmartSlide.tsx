@@ -27,6 +27,8 @@ export interface GeometrySmartSlideProps {
   bondOrder?: number | null;
   onBondOrderChange?(order: 0.5 | 1 | 1.5 | 2 | 3): void;
   disabled?: boolean;
+  /** Display bond edits can remain available while scientific geometry is locked. */
+  bondEditingDisabled?:boolean;
   onBegin(): void;
   /** Solve this absolute target from baseline, then validate and commit its XYZ.
    * Throw when rejected so the tool cannot present a failed edit as accepted. */
@@ -178,10 +180,10 @@ export default function GeometrySmartSlide(props: GeometrySmartSlideProps) {
           <option value="fixed">固定</option><option value="atom">仅端原子</option><option value="branch">连接片段</option>
         </select></label>)}
       </div>
-      {kind === 'B' && props.onBondOrderChange && <div className="geometry-smart-bond"><label>键型／样式<select aria-label="距离键型与样式" value={bondOrder ?? ''} disabled={editing || bondOrder === null} onChange={event => { try { props.onBondOrderChange?.(Number(event.target.value) as 0.5 | 1 | 1.5 | 2 | 3); showError(''); } catch (cause) { failed(cause); } }}>
+    </fieldset>
+      {kind === 'B' && props.onBondOrderChange && <div className="geometry-smart-bond"><label>键型／样式<select aria-label="距离键型与样式" value={bondOrder ?? ''} disabled={(props.bondEditingDisabled??disabled) || editing || bondOrder === null} onChange={event => { try { props.onBondOrderChange?.(Number(event.target.value) as 0.5 | 1 | 1.5 | 2 | 3); showError(''); } catch (cause) { failed(cause); } }}>
         {bondOrder === null && <option value="">未连接</option>}<option value="0.5">0.5 · 短杆虚线</option><option value="1">单键 · 实杆</option><option value="1.5">1.5键</option><option value="2">双键</option><option value="3">三键</option>
       </select></label></div>}
-    </fieldset>
     {editing && <div className="geometry-smart-actions"><button type="button" onClick={commit} disabled={Boolean(error)}>确认几何</button><button type="button" onClick={() => cancel()}>取消几何</button></div>}
     <p className="geometry-smart-note">两侧可动时各半，一侧固定时另一侧全动。连接片段刚性移动；夹角顶点、二面角中轴不动。距离编辑不创建键。含冻结原子的移动侧整体固定。</p>
     {scopeError&&!error&&!measurementError&&<p className="geometry-smart-error" role="status">{scopeError}</p>}

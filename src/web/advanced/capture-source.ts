@@ -9,9 +9,10 @@ import type {PostprocessDocument} from '../../results/postprocess-document';
 import type {AnalysisCanvas} from '../results/analysis-canvas';
 import {readPreparedTrajectoryFrame} from '../results/usePreparedTrajectory';
 import {graphFingerprint} from '../../core/modeling/graph';
-import {baseElectronicStateError} from '../../core/base-electronic-state';
+import {baseElectronicStateParameterError as baseElectronicStateError} from '../../core/base-electronic-state';
 import {advancedDisplayDocument} from './advanced-display';
 import type {ElectronicStateSourceContext} from '../../modeling/application/electronic-state-draft';
+import {automaticStem} from '../../core/naming';
 
 /** Local task overrides retain source identity and exact coordinates. Running
  * tasks continue owning the earlier immutable source object. */
@@ -28,7 +29,8 @@ export function overrideAdvancedTaskSource(source:AdvancedFrameSource,patch:{cha
 export function boundAdvancedCanvasResult(binding:PostprocessDocument|undefined,canvas:AnalysisCanvas|undefined):TrajectoryResult|undefined{
  if(!binding||!canvas?.result)return undefined;
  const sources=[binding.result,...[binding.output,binding.wavefunction,...(binding.companions??[])].flatMap(attachment=>attachment?[attachment.source.result,...attachment.source.results]:[])];
- return sources.some(result=>result.source.id===canvas.result!.source.id&&result.jobIndex===canvas.result!.jobIndex)?canvas.result:undefined;
+ return sources.some(result=>result.source.id===canvas.result!.source.id&&result.jobIndex===canvas.result!.jobIndex
+  &&result.source.sha256===canvas.result!.source.sha256&&result.source.size===canvas.result!.source.size)?canvas.result:undefined;
 }
 
 /** A plain model has neither a result nor collection/source IDs. Missing IDs
@@ -61,15 +63,17 @@ async function captureWorkspaceFrame<T>(p:WorkspaceFrameCapture,consume:(source:
  p.guard();
  if(p.signal?.aborted)throw Error('读取已取消。');
  if(p.result&&(p.frameIndex===undefined||!Number.isSafeInteger(p.frameIndex)||p.frameIndex<0||p.frameIndex>=p.result.frames.length))throw Error('请先在来源轨迹中显示所需的完整帧。');
- const structure=p.result?await readPreparedTrajectoryFrame(p.result,p.frameIndex!,p.signal):p.document.draft.structure;p.guard();if(p.signal?.aborted)throw Error('读取已取消。');
+ const result=p.result,index=p.frameIndex,sourceIdentity=result?JSON.stringify([result.id,result.source,result.jobIndex,result.frames[index!]]):undefined;
+ const structure=result?await readPreparedTrajectoryFrame(result,index!,p.signal):p.document.draft.structure;p.guard();if(p.signal?.aborted)throw Error('读取已取消。');
+ if(result&&sourceIdentity!==JSON.stringify([result.id,result.source,result.jobIndex,result.frames[index!]]))throw Error('读取期间科学来源或帧身份已变化。');
  const scientific={...p.document,draft:{...p.document.draft,structure}},frame=p.frameIndex===undefined?undefined:p.result?.frames[p.frameIndex];
  if(!structure.atoms.length||structure.atoms.some(atom=>!atom.id||![atom.x,atom.y,atom.z].every(Number.isFinite))
   ||new Set(structure.atoms.map(atom=>atom.id)).size!==structure.atoms.length)throw Error('当前帧需要完整有限坐标和唯一原子身份。');
  const constraints=p.document.sharedConstraints??{frozenAtomIds:[],coordinates:[]},ids=new Set(structure.atoms.map(atom=>atom.id));
  if(constraints.frozenAtomIds.some(id=>!ids.has(id))||constraints.coordinates.some(row=>row.atomIds.some(id=>!ids.has(id))))throw Error('当前帧的冻结定义不匹配原子身份。');
  return consume({structure:structuredClone(structure),ref:{documentId:p.document.id,documentEpoch:p.documentEpoch,revision:p.document.revision,
-  ...(p.result?{sourceId:p.result.source.id,collectionId:p.result.id,frameId:`${p.result.id}:${frame?.sourceFrameIndex??p.frameIndex}`,stageId:frame?.stageId,sourceFrameIndex:frame?.sourceFrameIndex??p.frameIndex}: {})},
-  stamp:makeDocumentStamp(scientific),label:p.label+(p.frameIndex===undefined?'':` · 帧 ${p.frameIndex+1}`),constraints:structuredClone(constraints),coordinateUnit:'angstrom'});
+  ...(p.result?{sourceId:p.result.source.id,sourceRevision:p.result.source.sha256,collectionId:p.result.id,frameId:`${p.result.id}:${frame?.sourceFrameIndex??p.frameIndex}`,stageId:frame?.stageId,sourceFrameIndex:frame?.sourceFrameIndex??p.frameIndex}: {})},
+  stamp:makeDocumentStamp(scientific),label:p.frameIndex===undefined?p.label:`${automaticStem(p.label)}-frame-${p.frameIndex+1}`,constraints:structuredClone(constraints),coordinateUnit:'angstrom'});
 }
 export function captureWorkspaceElectronicSourceContext(p:WorkspaceFrameCapture):Promise<ElectronicStateSourceContext>{
  return captureWorkspaceFrame(p,source=>source);

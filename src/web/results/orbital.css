@@ -1,22 +1,22 @@
 .orbital-selector{--orbital-columns:32px 46px minmax(0,1fr);--orbital-column-gap:6px;min-width:0;font-size:var(--ui-small-size,13px)}
 .orbital-list-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:9px 0 6px}
 .orbital-list-toolbar label{display:flex;gap:4px;align-items:center}
-.input-settings-layout.input-settings-surface .orbital-frontier-jump{min-height:28px;padding:4px 7px;font-size:var(--ui-small-size,13px);white-space:nowrap}
+.input-settings-layout.input-settings-surface .orbital-frontier-jump{min-height:var(--ui-control-height);padding:var(--ui-control-padding);font-size:var(--ui-control-small-font);white-space:nowrap}
 .orbital-channels{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}
 .orbital-channels.is-spin-split{--orbital-columns:24px 42px minmax(0,1fr);--orbital-column-gap:4px;grid-template-columns:repeat(2,minmax(164px,1fr));overflow-x:auto}
-.orbital-channel{min-width:0;border:1px solid #cadfd1;border-radius:5px;overflow:hidden}
-.orbital-channel h4{margin:0;padding:3px;text-align:center;background:#eff6f2;font-size:inherit}
+.orbital-channel{min-width:0;border:1px solid var(--ui-surface-border);border-radius:var(--ui-subcard-radius);overflow:hidden}
+.orbital-channel h4{margin:0;padding:3px;text-align:center;background:var(--ui-table-header-bg);color:var(--ui-section-ink,#13766e);font-size:inherit}
 .orbital-column-heading,.orbital-select-row{display:grid;grid-template-columns:var(--orbital-columns);gap:var(--orbital-column-gap);align-items:center}
-.orbital-column-heading{padding:4px 5px;font-size:var(--ui-small-size,13px);color:#667d72;background:#f6faf7}
+.orbital-column-heading{padding:4px 5px;font-size:var(--ui-control-small-font);color:var(--ui-label-ink,#506b75);background:var(--ui-table-header-bg)}
 .orbital-column-heading>span:first-child,.orbital-column-heading>span:nth-child(2){text-align:center}
 .orbital-column-heading>span:last-child{text-align:center}
 .orbital-header-unit{display:block;font-size:inherit;font-weight:400}
 .orbital-channel-scroll{position:relative;max-height:310px;overflow:auto;overflow-anchor:none;scrollbar-gutter:stable}
 /* More specific than the shared action's inline-flex presentation; these are fixed table-like rows. */
-.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row{display:grid;grid-template-columns:var(--orbital-columns);gap:var(--orbital-column-gap);box-sizing:border-box;width:100%;min-height:38px;padding:4px 5px;text-align:left;border:0;border-bottom:1px solid #e8eeea;border-radius:0;background:#fff;color:#294454;font:inherit;line-height:1.3}
-.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row:hover{background:#eff7f3}
-.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row[aria-pressed=true]{background:#e0f0e6;color:#214b35;box-shadow:inset 0 0 0 1px #75a689;font-weight:600}
-.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row[aria-pressed=true] .orbital-energy small{color:#396f4f}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row{display:grid;grid-template-columns:var(--orbital-columns);gap:var(--orbital-column-gap);box-sizing:border-box;width:100%;min-height:38px;padding:4px 5px;text-align:left;border:0;border-bottom:1px solid var(--ui-table-line);border-radius:0;background:var(--ui-table-body-bg);color:var(--ui-field-ink,#3c5763);font:inherit;line-height:1.3}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row:hover{background:var(--ui-control-hover-bg)}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row[aria-pressed=true]{background:var(--ui-control-selected-bg);color:var(--ui-action-primary-bg);box-shadow:inset 0 0 0 1px var(--ui-action-primary-bg);font-weight:600}
+.input-settings-layout.input-settings-surface .orbital-controls .orbital-select-row[aria-pressed=true] .orbital-energy small{color:var(--ui-action-primary-bg)}
 .orbital-index{white-space:nowrap;text-align:center;font-variant-numeric:tabular-nums}
 .orbital-electron-box{display:flex;align-items:center;justify-content:center;width:46px;min-width:46px;height:29px;border:1px solid #829d90;border-radius:2px;font:22px/1 "Segoe UI Symbol",system-ui,sans-serif;letter-spacing:1px}
 .orbital-energy{min-width:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-align:center;font-size:var(--ui-secondary-size,14px);font-weight:500}
@@ -40,11 +40,34 @@
 .orbital-draw-row .orbital-numeric-control input[type=range]{flex:0 0 110px;width:110px;max-width:110px;min-width:55px;padding:0}
 .orbital-draw-row .orbital-numeric-control input[type=number]{flex:0 0 72px;width:72px;min-width:72px;min-height:30px;box-sizing:border-box;padding:3px 5px}
 .orbital-draw-quality{margin-bottom:0}
-.orbital-single-status{font-size:var(--ui-small-size,13px);min-height:20px;color:#536f62}
+.orbital-single-status{font-size:var(--ui-control-small-font);min-height:20px;color:var(--ui-note-ink,#5a707a)}
 .orbital-controls .analysis-controls .scientific-table,.orbital-controls .analysis-angular{font-size:var(--ui-secondary-size,14px)}
-.orbital-draw-options.is-embedded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.orbital-draw-options.is-embedded {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+  max-width: 100%;
+  container: orbital-draw / inline-size;
+}
 .orbital-draw-options.is-embedded > .orbital-draw-row { display: contents; }
 .orbital-draw-options.is-embedded > .appearance-preset-picker { flex: 0 1 auto; width: auto; max-width: 100%; margin: 0; }
 .orbital-draw-options .appearance-preset-toolbar { flex-wrap: wrap; }
+.orbital-draw-options.is-embedded .appearance-preset-current { min-width: 0; overflow-wrap: anywhere; }
+.orbital-draw-options.is-embedded .orbital-draw-row label { max-width: 100%; }
+.orbital-draw-options.is-embedded .orbital-draw-row label > select { min-width: 0; flex: 0 1 auto; }
+.orbital-draw-options.is-embedded .orbital-draw-color-pair { max-width: 100%; flex-wrap: wrap; }
+.orbital-draw-options.is-embedded .orbital-numeric-control { flex: 0 1 auto; }
+/* This span owns the number input and steppers, so it follows the input width. */
+.orbital-draw-options.is-embedded .orbital-numeric-control > .numeric-adaptive { flex: 0 0 72px; }
+.orbital-draw-options.is-embedded .orbital-numeric-control > input[type=range] { flex-shrink: 1; }
+.orbital-draw-options.is-embedded :is(.orbital-numeric-control,.mesh-finish-numeric) > input[type=range] { margin: 0; }
+@container orbital-draw (max-width: 15em) {
+  .orbital-draw-options.is-embedded :is(.orbital-numeric-control,.mesh-finish-numeric) { flex-wrap: wrap; }
+  .orbital-draw-options.is-embedded :is(.orbital-numeric-control,.mesh-finish-numeric) > span:first-child { flex: 0 0 100%; }
+  .orbital-draw-options.is-embedded :is(.orbital-numeric-control,.mesh-finish-numeric) > input[type=range] { flex: 1 1 55px; }
+}
 .orbital-grid-preview { font-size: var(--ui-small-size,13px); color: var(--ui-control-muted); }
 .orbital-export-menu { margin-top: 8px; }

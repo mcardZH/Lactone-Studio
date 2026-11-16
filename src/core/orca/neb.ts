@@ -3,6 +3,7 @@ import { ELEMENTS } from '../elements';
 import { inputStructureBodyMatches, inputStructureSourceIsCurrent } from '../input-structure-source';
 import type { OrcaJobRequest, OrcaNebConvergence, OrcaNebSettings, OrcaNebTsConvergence, OrcaRenderContext, OrcaTaskRender } from './types';
 import { safeOrcaFilename } from './validation';
+import { inputAtomOrder } from '../input-atom-order';
 
 /** Reviewed against ORCA 6.0 §7.29 and 6.1 §4.5; these are display defaults only. */
 export function orcaNebConvergenceDefaults(variant: 'ci-neb' | 'neb-ts' = 'ci-neb') {
@@ -24,6 +25,16 @@ export function orcaNebEffectiveConvergence(settings: OrcaNebSettings): OrcaNebC
   return { convType: settings.convergence.convType, toleranceScale: settings.convergence.toleranceScale };
 }
 
+/** Separate endpoint confirmations are bound to the source geometry and order,
+ * including same-element atom exchanges. Retained manual mappings are not read. */
+export function orcaNebOrderContext(req: OrcaJobRequest, field: 'product' | 'tsGuess'): string {
+  const s=req.settings.neb,target=s[field],order=inputAtomOrder(req.structure?.atoms,target?.atoms);
+  if(order.issue||!req.structure||!target)return 'neb-order-invalid';
+  const geometry=(value:Structure)=>({id:value.id,dimension:value.dimension,cell:value.cell??null,charge:value.charge,multiplicity:value.multiplicity,atoms:value.atoms.map(atom=>[atom.id,atom.element,atom.x,atom.y,atom.z])});
+  const source=(value:InputStructureSource|null|undefined)=>value?{documentId:value.documentId,documentEpoch:value.documentEpoch??null,sourceEpoch:value.sourceEpoch??null,revision:value.revision,confirmed:value.confirmed,charge:value.charge,multiplicity:value.multiplicity,geometryUnits:value.geometryUnits}:null;
+  return JSON.stringify({schema:1,correspondence:'source-order',field,charge:req.charge,multiplicity:req.multiplicity,confirmed:req.electronicStateConfirmed,reactant:geometry(req.structure),target:geometry(target),reactantSource:source(s.reactantSource),targetSource:source(field==='product'?s.productSource:s.tsGuessSource)});
+}
+
 export function renderOrcaNeb(req: OrcaJobRequest, ctx: OrcaRenderContext): OrcaTaskRender {
   const result: OrcaTaskRender = { keywords: [], blocksBeforeCoordinates: [], blocksAfterCoordinates: [], files: [], issues: [] };
   const error = (field: string, message: string) => result.issues.push({ field, message, severity: 'error' });
@@ -36,7 +47,7 @@ export function renderOrcaNeb(req: OrcaJobRequest, ctx: OrcaRenderContext): Orca
     || reactantSource.structure.charge !== reactantSource.charge || reactantSource.structure.multiplicity !== reactantSource.multiplicity
     || !inputStructureBodyMatches(reactantSource, reactant, req.charge, req.multiplicity) || !req.electronicStateConfirmed)) error('neb.reactantSource', '反应物来源已变、已关闭或与当前坐标/已确认电子态不一致，请重新选择并核对。');
   function orderedStructure(structure: Structure, source: InputStructureSource | null | undefined,
-    mapping: { reactantId: string; productId: string }[] | undefined, confirmed: boolean | undefined, field: 'product' | 'tsGuess') {
+    confirmed: boolean | undefined, context:string|undefined, field: 'product' | 'tsGuess') {
     const label = field === 'product' ? 'Product' : 'TS初猜';
     if (source != null && (!inputStructureSourceIsCurrent(source, req.inputSources) || source.confirmed !== true
       || source.structure.charge !== source.charge || source.structure.multiplicity !== source.multiplicity
@@ -46,20 +57,15 @@ export function renderOrcaNeb(req: OrcaJobRequest, ctx: OrcaRenderContext): Orca
       return [];
     }
     const mappingField = field === 'product' ? 'neb.mapping' : 'neb.tsGuessMapping';
-    if (!confirmed) error(mappingField, `须确认${label}逐原子一一映射，不能凭元素排列推断身份。`);
-    if (!Array.isArray(structure.atoms) || !Array.isArray(mapping) || mapping.some(pair => !pair || typeof pair.reactantId !== 'string' || typeof pair.productId !== 'string')) { error(mappingField, `${label}原子或映射记录无效。`); return []; }
-    const ids = reactant!.atoms.map(atom => atom.id), otherIds = structure.atoms.map(atom => atom.id);
-    if (ids.some(id => !id) || otherIds.some(id => !id) || new Set(ids).size !== ids.length || new Set(otherIds).size !== otherIds.length) error(mappingField, `${label}与反应物原子必须具有唯一稳定身份。`);
-    const pairs = new Map(mapping.map(pair => [pair.reactantId, pair.productId]));
-    if (structure.atoms.length !== ids.length || mapping.length !== ids.length || pairs.size !== ids.length || new Set(mapping.map(pair => pair.productId)).size !== otherIds.length || mapping.some(pair => !ids.includes(pair.reactantId) || !otherIds.includes(pair.productId))) error(mappingField, '映射必须完整覆盖且一一对应，不能遗漏、重复或引用失效原子。');
-    const ordered = reactant!.atoms.map(atom => structure.atoms.find(other => other.id === pairs.get(atom.id!)));
-    if (ordered.some((atom, index) => !atom || atom.element !== reactant!.atoms[index].element)) error(mappingField, '每对映射原子元素必须相同。');
+    const order=inputAtomOrder(reactant!.atoms,structure.atoms);
+    if(order.issue){error(mappingField,`${label}：${order.issue}`);return [];}
+    if (confirmed!==true||context!==orcaNebOrderContext(req,field)) error(mappingField, `须核对${label}按显示顺序对应及当前来源/电子态；来源变化后请重新确认。`);
     if (structure.charge === null || structure.multiplicity === null || structure.charge !== req.charge || structure.multiplicity !== req.multiplicity || !req.electronicStateConfirmed) error(`neb.${field}`, `须核对${label}与反应物同一已确认电荷/自旋态。`);
     if (structure.cell || structure.dimension === 2 || structure.atoms.some(atom => !ELEMENTS.includes(atom.element) || ![atom.x, atom.y, atom.z].every(Number.isFinite))) error(`neb.${field}`, `${label}须为有限、显式非周期三维Cartesian坐标（Å）。`);
-    return ordered;
+    return structure.atoms;
   }
-  const orderedProduct = orderedStructure(s.product, s.productSource, s.mapping, s.mappingConfirmed, 'product');
-  const orderedTs = s.tsGuess ? orderedStructure(s.tsGuess, s.tsGuessSource, s.tsGuessMapping, s.tsGuessMappingConfirmed, 'tsGuess') : null;
+  const orderedProduct = orderedStructure(s.product, s.productSource, s.mappingConfirmed, s.productOrderContext, 'product');
+  const orderedTs = s.tsGuess ? orderedStructure(s.tsGuess, s.tsGuessSource, s.tsGuessMappingConfirmed, s.tsGuessOrderContext, 'tsGuess') : null;
   if (!s.tsGuess && s.tsGuessSource != null) error('neb.tsGuessSource', 'TS初猜来源存在但结构已缺失，请重新选择或清除来源。');
   if (!Number.isSafeInteger(s.images) || s.images < 3) error('neb.images', 'NEB总珠子数必须为含两个端点的至少3个整数。');
   if (!['sidpp', 'idpp', 'linear'].includes(s.interpolation)) error('neb.interpolation', '未知初始路径插值方式。');

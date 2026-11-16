@@ -1,11 +1,71 @@
 # Build Lactone Studio (LS) / Ester Studio (ES) and replace runtimes from the exported source
 
-> **Unofficial Modified Version Notice (`LICENSE.txt` Article 7)**: **Lactone Studio (LS)** (`v2.0.3-lactone.1`, maintained by `mcardZH` at https://github.com/mcardZH/Lactone-Studio) is an unofficial modified version based on **Ester Studio (ES) v2.0.3** (by Zixuan Zhang, https://github.com/Ahey1/Ester-Studio). For macOS native development and `.app`/`.dmg` packaging (`npm run native:stage:darwin` and `npm run package:mac`), see [README.md](README.md). The sections below preserve the upstream Windows source-snapshot build documentation.
+> **Unofficial Modified Version Notice (`LICENSE.txt` Article 7)**: **Lactone Studio (LS)** (`v2.1.1-lactone.1`, maintained by `mcardZH` at https://github.com/mcardZH/Lactone-Studio) is an unofficial modified version based on **Ester Studio (ES) v2.1.1** (by Zixuan Zhang, https://github.com/Ahey1/Ester-Studio). For macOS native development and `.app`/`.dmg` packaging (`npm run native:stage:darwin` and `npm run package:mac`), see [README.md](README.md). The sections below preserve the upstream Windows source-snapshot build documentation.
 
-Ester Studio is the current name of SY-Studio/SciYue. The current naming contract
-sets `.es` for new project saves with legacy `.sy` read compatibility; runtime
-completion requires the release's actual validation. Historical source paths,
-receipt schemas and internal compatibility identifiers retain their existing names.
+## Current xTB/PES runtime and a locally modified library
+
+The current runtime uses xTB 6.8.0 with separate official, GFN0 stack-header
+derivative and FIRE variants. g-xTB is a user-supplied external CLI; it is not
+one of the distributed variants. The source archive includes the actual PES
+Python modules, provider/model code, fixed source archives, patches and build
+controls under `third-party/corresponding-sources/pes/`, covered by
+`third-party/pes-corresponding-source-index.json` and the central source index.
+Earlier GNU 6.7/native instructions below retain their original component scope;
+they are not the source identity of the newer PES libxtb provider.
+
+For a fresh ordinary runtime, `scripts/native/assemble-xtb-v208.py` has a
+dedicated `--external-gxtb` profile. It needs only the pinned official xTB ZIP,
+the verified GFN0 PE stack derivative, the exact FIRE build output, its compiler
+support/OpenBLAS files and licenses. It neither requires nor reads a g-xTB ZIP
+or g-xTB license. Supply those ordinary input locations explicitly:
+
+```text
+python scripts/native/assemble-xtb-v208.py --external-gxtb --official-zip OFFICIAL_XTB_ZIP --stack64 VERIFIED_STACK64_EXE --fire-build FIRE_BUILD_DIRECTORY --tools PINNED_FIRE_TOOLCHAIN --math-bin PINNED_OPENBLAS_BIN --openblas-licenses OPENBLAS_LICENSE_DIRECTORY --legacy-licenses PINNED_COMPILER_LICENSE_DIRECTORY --node NODE_EXE --lock-output NEW_LOCK_JSON
+```
+
+The source and file hashes in
+`third-party/build-inputs/declarations/xtb-v208-inputs.json` and
+`xtb-v208-assembly.json` remain authoritative. The FIRE builder is
+`scripts/native/build-xtb-v208-fire.py`; its complete modified sources, exact
+tool requirements and offline build options are provided under the PES source
+material directory. No scientific library method or parameter is changed by
+the external-program profile. It emits the v4 descriptor with only official,
+GFN0-stack64 and FIRE variants and verifies that descriptor using the desktop
+runtime contract. The default profile remains the historical v3 reproduction
+route and explicitly requires its legacy g-xTB inputs; it is not the current
+public preparation step.
+
+`third-party/corresponding-sources/pes/libxtb-relink/PUBLIC-RELINK.md` describes
+the independent re-link recipe and its exact inputs. Re-linking is an explicit
+local build operation, not part of browsing a result or exporting source.
+To admit a compatible modified library, supply an options JSON containing
+absolute user-chosen `sourceRoot`, `baseLibraryRoot`, `basePesRoot`,
+`replacementLibrary` and fresh `outputRoot`, then run:
+
+```text
+node scripts/release/derive-pes-library.mjs derive-options.json
+```
+
+The tool verifies the complete parent library inventory and creates a new
+`libxtb/` plus `source-overlay/desktop/packaging/` containing two matching
+derived locks. Apply that overlay only to your independent source copy, then
+build/assemble that copy and call `refreshPesProductRuntime` from
+`scripts/portable/refresh-pes-product-runtime.mjs` with the derived `libxtb/`
+as `residentRoot`. The staging owner checks remain active. The assembled
+application, its PES runtime manifest and the component manifest must all
+describe the new bytes. A DLL-only overwrite without these identity updates
+is intentionally not treated as an admitted configuration.
+
+The derivation does not execute the DLL. The runtime checks the actual loaded
+API 20000, dependencies and parameters when used; compatible modifications
+retain their actual new identity and do not claim official scientific approval.
+Keep source/patch/build materials and all applicable LGPL notices with a
+redistributed modification. No compiler is required for ordinary use of the
+provided portable application.
+
+Ester Studio is the current name of SY-Studio/SciYue. The project open and save
+entry points use `.es` indexes. Historical source paths, receipt schemas and
+internal compatibility identifiers retain their existing names.
 
 Use Windows x64, Node.js 24 or newer (built-in zstd support), and an explicitly
 selected Python >=3.12 as bootstrap tools. Run commands in the independent

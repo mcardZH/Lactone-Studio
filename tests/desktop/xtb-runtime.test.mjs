@@ -83,6 +83,11 @@ async function populateXtbRoot(xtbRoot, platformId, options = {}) {
     if (options.omitLibrary === libRel) continue;
     files.push(await writeOrdinaryFile(xtbRoot, libRel, `lib:${libRel}\n`, 0o644));
   }
+  if (options.extraParameters) {
+    for (const paramRel of options.extraParameters) {
+      files.push(await writeOrdinaryFile(xtbRoot, paramRel, `param:${paramRel}\n`, 0o644));
+    }
+  }
 
   const schema = options.schema ?? 'sciyue-xtb-bundled-runtime/v1';
   const descriptor = {
@@ -333,8 +338,8 @@ test('xtb-runtime-contract platform helpers and validateDescriptor support win32
   );
 });
 
-test('xtbRuntime resolves packaged v1 and v2 runtimes for win32-x64, darwin-arm64, and darwin-x64', async () => {
-  for (const platformId of ['win32-x64', 'darwin-arm64', 'darwin-x64']) {
+test('xtbRuntime resolves packaged v1 and v2 runtimes for win32-x64, darwin-arm64, darwin-x64, and linux-x64', async () => {
+  for (const platformId of ['win32-x64', 'darwin-arm64', 'darwin-x64', 'linux-x64']) {
     const v1 = await createPackagedXtbSandbox(platformId, { schema: 'sciyue-xtb-bundled-runtime/v1' });
     try {
       const resolved = await xtbRuntime({
@@ -372,6 +377,214 @@ test('xtbRuntime resolves packaged v1 and v2 runtimes for win32-x64, darwin-arm6
     } finally {
       await fs.rm(v2.sandbox, { recursive: true, force: true });
     }
+  }
+});
+
+async function createPackagedV4RuntimeSetSandbox(options = {}) {
+  const baseTmp = await fs.realpath(os.tmpdir());
+  const sandbox = await fs.mkdtemp(path.join(baseTmp, 'es-xtb-v4-test-'));
+  const resourcesPath = path.join(sandbox, 'resources');
+  const xtbRoot = path.join(resourcesPath, 'xtb');
+  await fs.mkdir(xtbRoot, { recursive: true });
+
+  const commit = '4b8c9871234567890abcdef1234567890abcdef1';
+  const archiveSha = '1'.repeat(64);
+  const toolchainSha = '2'.repeat(64);
+  const files = [];
+
+  const officialExe = await writeOrdinaryFile(xtbRoot, 'bin/xtb.exe', 'official-xtb-exe\n', 0o644);
+  const gfn0Exe = await writeOrdinaryFile(xtbRoot, 'bin/xtb680-stack64.exe', 'gfn0-stack64-xtb-exe\n', 0o644);
+  const fireExe = await writeOrdinaryFile(xtbRoot, 'variants/fire/bin/xtb.exe', 'fire-xtb-exe\n', 0o644);
+  files.push(officialExe, gfn0Exe, fireExe);
+
+  for (const libRel of EXPECTED_WIN32_LIBS) {
+    files.push(await writeOrdinaryFile(xtbRoot, libRel, `root:${libRel}\n`, 0o644));
+    files.push(await writeOrdinaryFile(xtbRoot, `variants/fire/${libRel}`, `fire:${libRel}\n`, 0o644));
+  }
+
+  for (const paramRel of EXPECTED_PARAMETERS) {
+    const content = `shared-param:${paramRel}\n`;
+    files.push(await writeOrdinaryFile(xtbRoot, paramRel, content, 0o644));
+    files.push(await writeOrdinaryFile(xtbRoot, `variants/fire/${paramRel}`, content, 0o644));
+  }
+
+  files.push(await writeOrdinaryFile(xtbRoot, 'licenses/NOTICE.txt', 'xTB LGPL-3.0 notice\n', 0o644));
+  const officialReceipt = await writeOrdinaryFile(xtbRoot, 'provenance/official.json', '{"variant":"official"}\n', 0o644);
+  const gfn0Receipt = await writeOrdinaryFile(xtbRoot, 'provenance/gfn0-stack64.json', '{"variant":"gfn0-stack64"}\n', 0o644);
+  const fireReceipt = await writeOrdinaryFile(xtbRoot, 'provenance/fire.json', '{"variant":"fire"}\n', 0o644);
+  files.push(officialReceipt, gfn0Receipt, fireReceipt);
+
+  const sortedFiles = [...files].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  const inventoryRef = await writeOrdinaryFile(
+    xtbRoot,
+    'inventory.json',
+    JSON.stringify({ schema: 'sciyue-xtb-runtime-inventory/v1', files: sortedFiles }, null, 2),
+    0o644
+  );
+
+  const descriptor = {
+    schema: 'sciyue-xtb-bundled-runtime/v4',
+    version: '6.8.0',
+    platform: 'win32-x64',
+    entry: 'bin/xtb.exe',
+    dataDirectory: 'share/xtb',
+    scope: 'local-experimental',
+    localUseReady: true,
+    methods: ['gfn0', 'gfn1', 'gfn2', 'gfnff'],
+    externalProviders: { gxtb: 'user-supplied-cli' },
+    inventory: inventoryRef,
+    variants: {
+      official: {
+        root: '',
+        entry: 'bin/xtb.exe',
+        kind: 'official-release',
+        version: '6.8.0',
+        sourceCommit: commit,
+        archiveSha256: archiveSha,
+        buildId: 'official-win32-x64-6.8.0',
+        executableSha256: officialExe.sha256,
+        sourceReceiptSha256: officialReceipt.sha256
+      },
+      'gfn0-stack64': {
+        root: '',
+        entry: 'bin/xtb680-stack64.exe',
+        kind: 'pe-stack-derivative',
+        version: '6.8.0',
+        sourceCommit: commit,
+        archiveSha256: archiveSha,
+        parentExecutableSha256: officialExe.sha256,
+        stackReserveBytes: 67108864,
+        buildId: 'gfn0-stack64-win32-x64-6.8.0',
+        executableSha256: gfn0Exe.sha256,
+        sourceReceiptSha256: gfn0Receipt.sha256
+      },
+      fire: {
+        root: 'variants/fire',
+        entry: 'bin/xtb.exe',
+        kind: 'fire-step-limit-rebuild',
+        version: '6.8.0',
+        sourceCommit: commit,
+        compiler: { name: 'gfortran', version: '13.2.0' },
+        toolchainArchiveSha256: toolchainSha,
+        stackReserveBytes: 67108864,
+        fireStepLimit: 'remaining-microcycles-v1',
+        buildId: 'fire-win32-x64-6.8.0',
+        executableSha256: fireExe.sha256,
+        sourceReceiptSha256: fireReceipt.sha256
+      }
+    }
+  };
+  if (options.mutateDescriptor) {
+    options.mutateDescriptor(descriptor);
+  }
+  const manifestRef = await writeOrdinaryFile(xtbRoot, 'runtime.json', JSON.stringify(descriptor, null, 2), 0o644);
+  if (!options.skipSummary) {
+    const verified = contract.verifyRuntimeSet(xtbRoot, manifestRef);
+    const provenanceDir = path.join(sandbox, 'provenance');
+    await writeOrdinaryFile(
+      provenanceDir,
+      'dependencies.json',
+      JSON.stringify(
+        {
+          schema: 'sciyue-portable-dependency-summary/v1',
+          xtb: {
+            runtimeManifest: manifestRef,
+            variants: {
+              official: verified.variants.official.engineIdentity,
+              'gfn0-stack64': verified.variants['gfn0-stack64'].engineIdentity,
+              fire: verified.variants.fire.engineIdentity
+            }
+          }
+        },
+        null,
+        2
+      ),
+      0o644
+    );
+  }
+  return { sandbox, resourcesPath, xtbRoot, manifestRef, descriptor };
+}
+
+test('xtb-runtime-contract and xtbRuntime accept v4 runtime-set descriptors and select fire variant for periodic optimize', async () => {
+  assert.equal(contract.runtimeSetVariant({ method: 'gfn2', operation: 'singlepoint', periodic: false }), 'official');
+  assert.equal(contract.runtimeSetVariant({ method: 'gfn0', operation: 'optimize', periodic: false }), 'gfn0-stack64');
+  assert.equal(contract.runtimeSetVariant({ method: 'gfn2', operation: 'optimize', periodic: true }), 'fire');
+  assert.equal(contract.runtimeSetVariant({ method: 'gfn1', operation: 'optimization', periodic: true }), 'fire');
+  assert.equal(contract.runtimeSetVariant({ method: 'gxtb', operation: 'singlepoint', periodic: false }), 'gxtb');
+  assert.throws(
+    () => contract.runtimeSetVariant({ method: 'gxtb', operation: 'optimize', periodic: true }),
+    /g-xTB has no periodic route/
+  );
+
+  const v4 = await createPackagedV4RuntimeSetSandbox();
+  try {
+    contract.validateDescriptor(v4.descriptor);
+
+    // periodic: true + operation: 'optimize' selects variants/fire
+    const resolvedFire = await xtbRuntime({
+      packaged: true,
+      resourcesPath: v4.resourcesPath,
+      platformId: 'win32-x64',
+      method: 'gfn2',
+      operation: 'optimize',
+      periodic: true
+    });
+    assert.equal(resolvedFire.root, path.join(v4.xtbRoot, 'variants/fire'));
+    assert.equal(resolvedFire.executable, path.join(v4.xtbRoot, 'variants/fire/bin/xtb.exe'));
+    assert.equal(resolvedFire.dataDirectory, path.join(v4.xtbRoot, 'variants/fire/share/xtb'));
+    assert.equal(resolvedFire.engineIdentity.runtimeVariant, 'fire');
+    assert.equal(resolvedFire.engineIdentity.kind, 'fire-step-limit-rebuild');
+    contract.assertEngineIdentity(resolvedFire.engineIdentity);
+
+    // gfn0 non-periodic selects gfn0-stack64
+    const resolvedGfn0 = await xtbRuntime({
+      packaged: true,
+      resourcesPath: v4.resourcesPath,
+      platformId: 'win32-x64',
+      method: 'gfn0',
+      operation: 'optimize',
+      periodic: false
+    });
+    assert.equal(resolvedGfn0.root, v4.xtbRoot);
+    assert.equal(resolvedGfn0.executable, path.join(v4.xtbRoot, 'bin/xtb680-stack64.exe'));
+    assert.equal(resolvedGfn0.engineIdentity.runtimeVariant, 'gfn0-stack64');
+
+    // gfn2 non-periodic selects official
+    const resolvedOfficial = await xtbRuntime({
+      packaged: true,
+      resourcesPath: v4.resourcesPath,
+      platformId: 'win32-x64',
+      method: 'gfn2',
+      operation: 'singlepoint',
+      periodic: false
+    });
+    assert.equal(resolvedOfficial.executable, path.join(v4.xtbRoot, 'bin/xtb.exe'));
+    assert.equal(resolvedOfficial.engineIdentity.runtimeVariant, 'official');
+
+    // method: 'gxtb' routes to external user CLI in v4
+    let resolvedExternal = false;
+    const gxtbRuntime = await xtbRuntime({
+      packaged: true,
+      resourcesPath: v4.resourcesPath,
+      platformId: 'win32-x64',
+      method: 'gxtb',
+      periodic: false,
+      externalGxtb: {
+        async resolve() {
+          resolvedExternal = true;
+          return { executable: '/usr/local/bin/xtb', version: '6.7.1', gxtbRelease: '2.0.1' };
+        }
+      }
+    });
+    assert.equal(resolvedExternal, true);
+    assert.equal(gxtbRuntime.gxtbRelease, '2.0.1');
+
+    // Invalid v4 missing externalProviders.gxtb is rejected
+    const invalidDescriptor = structuredClone(v4.descriptor);
+    delete invalidDescriptor.externalProviders;
+    assert.throws(() => contract.validateDescriptor(invalidDescriptor), /XTB_RUNTIME_INVALID: incomplete runtime set/);
+  } finally {
+    await fs.rm(v4.sandbox, { recursive: true, force: true });
   }
 });
 
@@ -622,7 +835,60 @@ if (process.platform === 'darwin' && process.arch === 'arm64') {
     assert.equal(resolved.executable, path.join(resolved.root, 'bin/xtb'));
     assert.equal(resolved.directory, path.join(resolved.root, 'bin'));
     assert.equal(resolved.dataDirectory, path.join(resolved.root, 'share/xtb'));
-    assert.match(resolved.version, /^\d+\.\d+\.\d+/);
+    assert.equal(resolved.version, '6.8.0');
     contract.assertEngineIdentity(resolved.engineIdentity);
   });
 }
+
+test('xtbRuntime resolves statically-linked 6.8.0 darwin-arm64 and darwin-x64 bundles without lib/ while rejecting symlinked or partial lib/', async () => {
+  for (const platformId of ['darwin-arm64', 'darwin-x64']) {
+    const staticBundle = await createPackagedXtbSandbox(platformId, {
+      version: '6.8.0',
+      libraries: [],
+      extraParameters: ['share/xtb/param_gfn1-si-xtb.txt', 'share/xtb/param_ipea-xtb.txt']
+    });
+    try {
+      const resolved = await xtbRuntime({
+        packaged: true,
+        resourcesPath: staticBundle.resourcesPath,
+        platformId
+      });
+      assert.equal(resolved.version, '6.8.0');
+      assert.equal(resolved.executable, path.join(staticBundle.xtbRoot, 'bin/xtb'));
+      contract.assertEngineIdentity(resolved.engineIdentity);
+
+      // Partial lib/ on 6.8.0 missing required dylibs must still be rejected
+      await fs.mkdir(path.join(staticBundle.xtbRoot, 'lib'), { recursive: true });
+      await assert.rejects(
+        () =>
+          xtbRuntime({
+            packaged: true,
+            resourcesPath: staticBundle.resourcesPath,
+            platformId
+          }),
+        /ENOENT|XTB_RUNTIME_INVALID/
+      );
+
+      // Symlinked lib/ on 6.8.0 must be rejected
+      await fs.rm(path.join(staticBundle.xtbRoot, 'lib'), { recursive: true, force: true });
+      const externalLib = path.join(staticBundle.sandbox, 'external-lib');
+      await fs.mkdir(externalLib, { recursive: true });
+      await fs.symlink(
+        externalLib,
+        path.join(staticBundle.xtbRoot, 'lib'),
+        process.platform === 'win32' ? 'junction' : 'dir'
+      );
+      await assert.rejects(
+        () =>
+          xtbRuntime({
+            packaged: true,
+            resourcesPath: staticBundle.resourcesPath,
+            platformId
+          }),
+        /XTB_RUNTIME_INVALID/
+      );
+    } finally {
+      await fs.rm(staticBundle.sandbox, { recursive: true, force: true });
+    }
+  }
+});

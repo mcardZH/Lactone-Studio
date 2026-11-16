@@ -9,12 +9,12 @@ export const FREEZE_ICON_PATHS = [
   'm4 10 1.5 2L4 14', 'm7 21 3-6-1.5-3', 'm7 3 3 6h4',
 ] as const;
 
-export function drawFreezeMarker(context:CanvasRenderingContext2D,x:number,y:number):void {
+export function drawFreezeMarker(context:CanvasRenderingContext2D,x:number,y:number,inactive=false):void {
   context.save();context.translate(x,y);
   context.fillStyle='#ecf5ffeb';context.strokeStyle=FREEZE_COLOR;context.lineWidth=1;
   context.beginPath();context.arc(0,0,8.5,0,Math.PI*2);context.fill();context.stroke();
   context.translate(-6.5,-6.5);context.scale(13/24,13/24);
-  context.lineWidth=2;context.lineCap='round';context.lineJoin='round';
+  context.strokeStyle=inactive?'#d59e1f':FREEZE_COLOR;context.lineWidth=2;context.lineCap='round';context.lineJoin='round';
   const Path=context.canvas.ownerDocument.defaultView?.Path2D??Path2D;
   for(const path of FREEZE_ICON_PATHS)context.stroke(new Path(path));
   context.restore();

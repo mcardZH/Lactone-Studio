@@ -5,7 +5,10 @@ export interface AnalysisInstance { id:string; kind:AnalysisPage; group:string; 
 export interface AnalysisWorkspaceState { instances:AnalysisInstance[]; activeId:string|null; groupActive:Record<string,string>; mode:'tabs'|'tiled'|'free'; windowBounds?:Record<string,AnalysisWindowBounds> }
 export type AnalysisWorkspaceAction={type:'add';instance:AnalysisInstance}|{type:'activate';id:string}|{type:'close';id:string}|{type:'place';id:string;group:string;detached:boolean;before?:string}|{type:'layout';mode:AnalysisWorkspaceState['mode']}|{type:'reorder';ids:string[]}|{type:'window-bounds';id:string;bounds:AnalysisWindowBounds};
 export const ANALYSIS_TITLES:Record<AnalysisPage,string>={energy:'能量',charges:'电荷',bonds:'键级',orbitals:'轨道',surface:'分子表面',interaction:'相互作用',trajectory:'轨迹',excited:'激发',vibrations:'振动',reactivity:'反应性'};
-export function initialAnalysisWorkspace(id:string,kind:AnalysisPage='energy'):AnalysisWorkspaceState{return{instances:[{id,kind,group:'main',detached:false}],activeId:id,groupActive:{main:id},mode:'tabs'};}
+export function initialAnalysisWorkspace(id:string,kind:AnalysisPage|null='energy'):AnalysisWorkspaceState{
+ if(kind===null)return{instances:[],activeId:null,groupActive:{},mode:'tabs'};
+ return{instances:[{id,kind,group:'main',detached:false}],activeId:id,groupActive:{main:id},mode:'tabs'};
+}
 /** Reject malformed owner graphs instead of silently inventing replacement ids. */
 export function validateAnalysisWorkspace(state:AnalysisWorkspaceState):AnalysisWorkspaceState{
  if(!state||!Array.isArray(state.instances)||!['tabs','tiled','free'].includes(state.mode)||!state.groupActive||typeof state.groupActive!=='object')throw new Error('分析工作区状态无效。');

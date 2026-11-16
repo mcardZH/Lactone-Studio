@@ -1,9 +1,11 @@
 /** Versioned stateful native protocol. No DOM, Electron or process imports. */
 import type { Structure, Vector3 } from '../../core/types';
 import type { AttachmentPort, DocumentStamp, ForcefieldChoice, ModelCoordinate } from '../contracts';
+import type { XtbNativeMethod } from '../../core/xtb-capabilities';
+import type { XtbConstraintResult, XtbSolvation, XtbSolvationEvidence } from '../xtb/contracts';
 
 export type DynamicsOperation = 'md' | 'optimize' | 'geometry';
-export type DynamicsMethod = 'gfnff' | 'gfn0' | 'gfn1' | 'gfn2';
+export type DynamicsMethod = XtbNativeMethod;
 export type MDMethod = ForcefieldChoice | DynamicsMethod;
 export interface GeometryDistanceTarget {
   atomIds: [string, string]; image?: Vector3; distanceAngstrom: number;
@@ -31,6 +33,7 @@ export interface DynamicsRequest {
   untilStopped?: true;
   /** Runtime soft protection; the editor's XYZ freezes remain unchanged. */
   protectedAtomIds?: string[];
+  solvation?: XtbSolvation;
   maxSteps?: number;
   maxWallTimeSeconds?: number;
   temperatureK?: number;
@@ -89,7 +92,7 @@ export interface DynamicsTermination {
   status: 'pending' | 'settled' | 'failed';
   scope: 'controller-session-release';
   via: 'host-terminal-observed' | 'stop-request';
-  /** The current host API does not expose worker-close acknowledgement. */
+  /** This receipt covers controller release; document retirement awaits host close separately. */
   workerExitVerified: false;
   error?: string;
 }
@@ -100,6 +103,9 @@ export interface DynamicsEvent {
   /** Host-owned bounded presentation batch. Removed before scientific writes. */
   displayFrames?: DynamicsFrame[];
   nativeMD?: { method: DynamicsMethod; dtFs: number; thermostat: 'Berendsen'; hydrogenMassAmu: 4 | null; shakeHydrogenBonds: boolean; protection: 'none' | 'pairwise-distance'; protectedAtomIds: string[]; forceConstantKJMolNm2: number; segment: number; velocityInitialization: 'fresh' | 'restart'; nativeClosed: boolean;
+    periodic?:true; internalConstraints?:XtbConstraintResult[]; solvation?:Omit<XtbSolvationEvidence,'temperatureKelvin'> & {temperatureKelvin:number;dielectricConstant?:number};
+    seedTreatment?:'verified'|'program-random'|'native-internal-initialization'; effectiveSeed?:number; engineIdentity?:Record<string,unknown>;
+    degreesOfFreedom?:number; restartInputSha256?:string;
     /** Independently sourced raw observation; may precede a final restart geometry. */
     rawPotential?: { value:number; unit:'hartree'; definition:'native-total-including-protection'|'native-physical-potential'; includesProtection:boolean; sourceArtifact:'xtb.trj'; sourceStep:number; sourceTimeFs:number; segment:number };
   };

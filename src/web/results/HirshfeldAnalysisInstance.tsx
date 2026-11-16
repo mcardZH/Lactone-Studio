@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Structure } from '../../core/types';
 import type { SurfaceContext } from '../../results/surface-contracts';
-import { calculationRangeFromGrid, estimatedCalculationRange } from '../../results/calculation-range';
 import { sameSurfaceContext } from '../../results/surface-field';
 import { hirshfeldClusterFromStructure, hirshfeldSelection } from '../../results/hirshfeld-presentation';
 import type { AnalysisSelectionPort } from '../analysis-selection-intent';
@@ -22,19 +21,17 @@ import { restoreHirshfeldAppearance } from './surface-appearance-defaults';
 import {useComputeResources} from '../useComputeResources';
 import { analysisProjectCubeArtifacts, notifyAnalysisProjectStateChanged, rebindAnalysisContext, useAnalysisProjectSnapshot } from '../../projects/analysis-state';
 import { exportBlob } from './export-image';
+import {prepareHirshfeldDisplayRanges} from './hirshfeld-range-display';
 
 export interface HirshfeldAnalysisInstanceProps { analysisId: string; context: SurfaceContext; structure: Structure; active: boolean; available?: boolean;
   capturePort?: AnalysisSelectionPort; desktop?: HirshfeldDesktopApi | null; sourceError?: string;
   onProjection(value: HirshfeldProjection | null): void; onExportImage?(): void | Promise<void>; onOpenFingerprint?(snapshot: HirshfeldFingerprintSnapshot): void; onError(message: string): void;
   onColorbarLayoutReady?(setter: ((layout: AnalysisColorbarLayout) => void) | null): void;
   onMeshObserverReady?(observer: ((state: Readonly<SurfaceMeshState>, document: Pick<ModelDocument, 'id' | 'revision'>) => void) | null): void }
-export function hirshfeldProjection(state: HirshfeldControlsState, context: SurfaceContext, structure?: Structure): HirshfeldProjection | null {
+export function hirshfeldProjection(state: HirshfeldControlsState, context: SurfaceContext, structure?: Structure,
+  ranges = prepareHirshfeldDisplayRanges(state, context, structure)): HirshfeldProjection | null {
   const result = state.result;
-  const target = structure ? { ...structure, atoms: structure.atoms.filter(atom => state.targetIds.includes(atom.id ?? '')) } : null;
-  const changed = !!result && (result.quantitativeGrid.spacingBohr !== state.spacingBohr || state.targetIds.length !== result.source.targetAtomIndices.length || result.source.targetAtomIndices.some(index => !state.targetIds.includes(result.source.atoms[index - 1].stableId)));
-  const actual = result && state.showRange ? calculationRangeFromGrid(result.pair.shape.grid, `${result.stamp.requestId}:actual`, 'Hirshfeld·实际计算范围') : null;
-  const estimate = target && state.rangeExtensionBohr !== null && (!result || changed) ? estimatedCalculationRange(target, { mode: 'spacing', spacingBohr: state.spacingBohr }, state.rangeExtensionBohr, `${context.sourceId}:${state.spacingBohr}:${state.targetIds.join(',')}`, 'Hirshfeld·预计计算范围') : null;
-  const calculationRanges = state.showRange ? [actual, estimate].filter((value): value is NonNullable<typeof value> => !!value) : [];
+  const calculationRanges = state.showRange ? [ranges.actual, ranges.viewportEstimate].filter((value): value is NonNullable<typeof value> => !!value) : [];
   if (!result) return calculationRanges.length ? { context, result: null, calculationRanges, display: state.display, surfaceLayer: null, colorbar: null, hiddenAtomIds: [], selectedContact: null } : null;
   // Rebind observation epoch only after an exact source/frame/revision key match.
   // Original native stamps remain untouched for restore and scientific export.
@@ -61,7 +58,7 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
   const key = surfaceScientificContextKey(p.context), lifetime = surfaceSourceLifetimeKey(p.analysisId, p.context);
   const latest = useRef(p); latest.current = p;
   const stores = useRef(new Map<string, HirshfeldControlsState>()), completed = useRef(new Map<string, HirshfeldCompletedSession>());
-  const activeRun = useRef<{ key: string; token: string; run: ReturnType<typeof createHirshfeldRun> } | null>(null);
+  const activeRun = useRef<{ key: string; token: string; stopping?:boolean; run: ReturnType<typeof createHirshfeldRun> } | null>(null);
   const [planningVersion, setPlanningVersion] = useState(0), [, render] = useState(0), [runningKey, setRunningKey] = useState<string | null>(null), [progress, setProgress] = useState<MultiwfnProgressSnapshot | null>(null);
   const [resourceDefaults, setResourceDefaults] = useState<OrbitalResourceInfo | null>(null), [resourceReadError, setResourceReadError] = useState('');
   const appearanceDefaults = useSurfaceAppearanceDefaults();
@@ -108,8 +105,16 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
     return () => { valid = false; };
   }, [current.showRange, current.rangeExtensionBohr, key, p.active, runningKey, resourceDefaults, admission.cluster, desktop, planningVersion]);
   useEffect(() => { const clearPlanning = () => { for (const [id, value] of stores.current) stores.current.set(id, { ...value, rangeExtensionBohr: null, rangeError: '' }); setPlanningVersion(value => value + 1); }; window.addEventListener(MULTIWFN_CONFIGURATION_CHANGED, clearPlanning); return () => window.removeEventListener(MULTIWFN_CONFIGURATION_CHANGED, clearPlanning); }, []);
-  const stop = useCallback(() => { const owned = activeRun.current; if (!owned) return; activeRun.current = null;
-    setRunningKey(null); setOpenInfo(null); const tracker = progressRun.current; tracker?.stopping(); void owned.run.cancel().then(() => { if (progressRun.current === tracker) tracker?.stopped('native-settled'); }).catch(error => latest.current.onError(String(error instanceof Error ? error.message : error))); }, []);
+  const stop = useCallback(() => {
+    const owned = activeRun.current;
+    if (!owned || owned.stopping) return;
+    owned.stopping=true;
+    const tracker=progressRun.current;
+    tracker?.stopping();
+    void owned.run.cancel().then(()=>{if(tracker&&progressRun.current===tracker){const settlement=tracker.getSnapshot().settlement;tracker.stopped(settlement==='cancelled-before-start'?'cancelled-before-start':'native-settled');}})
+      .catch(error=>{if(alive.current&&activeRun.current===owned){const current=stores.current.get(owned.key);if(current){stores.current.set(owned.key,{...current,error:String(error instanceof Error?error.message:error)});render(value=>value+1);}}})
+      .finally(()=>{if(alive.current&&activeRun.current===owned){activeRun.current=null;setRunningKey(null);setOpenInfo(null);}});
+  }, []);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   useEffect(() => {
     return () => { const run = activeRun.current; activeRun.current = null; void run?.run.cancel().catch(error => latest.current.onError(String(error)));
@@ -134,7 +139,8 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
     else if (mesh.status === 'committed' && mesh.submitted && mesh.committedKey === mesh.attemptKey && mesh.vertexCount > 0 && mesh.triangleCount > 0) tracker.renderCommitted();
   }, [key]);
   useEffect(() => { latest.current.onMeshObserverReady?.(meshObserver); return () => latest.current.onMeshObserverReady?.(null); }, [meshObserver]);
-  useEffect(() => { latest.current.onProjection(p.active && p.available !== false ? hirshfeldProjection(current, p.context, p.structure) : null); }, [current, p.active, p.available, key, p.context.activationEpoch, p.structure]);
+  const displayRanges = useMemo(() => prepareHirshfeldDisplayRanges(current, p.context, p.structure), [current, p.context, p.structure]);
+  useEffect(() => { latest.current.onProjection(p.active && p.available !== false ? hirshfeldProjection(current, p.context, p.structure, displayRanges) : null); }, [current, p.active, p.available, key, p.context.activationEpoch, p.structure, displayRanges]);
   const calculate = async () => {
     if (!desktop || !admission.cluster || admission.error || resourceReadError || !resourceDefaults || !p.active || p.available === false || activeRun.current) return;
     const token = `hs-${Date.now()}-${++serial.current}`, context = { ...p.context }, sessionId = `${p.analysisId}:${token}`;
@@ -153,7 +159,7 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
       activeRun.current = null; setRunningKey(null); setOpenInfo(null); render(value => value + 1);
       if (previous) void previous.close().catch(error => latest.current.onError(String(error)));
     } catch (error) {
-      if (activeRun.current?.token === token) { activeRun.current = null; setRunningKey(null); setOpenInfo(null); progressRun.current?.failed('native-settled', error instanceof Error ? error.message : String(error));
+      if (activeRun.current?.token === token && !activeRun.current.stopping) { activeRun.current = null; setRunningKey(null); setOpenInfo(null); progressRun.current?.failed('native-settled', error instanceof Error ? error.message : String(error));
         const message = error instanceof Error ? error.message : String(error); change({ error: message }); }
     }
   };
@@ -163,7 +169,7 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
     return;
   }
     void owner.exportField(role).catch(error => latest.current.onError(String(error instanceof Error ? error.message : error))); };
-  return <HirshfeldAnalysisControls structure={p.structure} context={p.context} state={current} disabled={!p.active || p.available === false || !desktop}
+  return <HirshfeldAnalysisControls structure={p.structure} context={p.context} state={current} displayRanges={displayRanges} disabled={!p.active || p.available === false || !desktop}
     running={runningKey === key} sourceError={admission.error} capturePort={p.capturePort} progress={progress?.identity.sourceFrameIndex === p.context.sourceFrameIndex ? progress : null}
     resourceDefaults={resourceDefaults} resourceError={resourceReadError} sessionInfo={runningKey === key ? openInfo?.key === key ? openInfo.info : null : current.result?.sessionInfo ?? null}
     onChange={change} onCalculate={() => { void calculate(); }} onStop={stop} onExportCube={exportCube} onExportImage={p.onExportImage} onOpenFingerprint={p.onOpenFingerprint}/>;

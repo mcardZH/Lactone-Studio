@@ -1122,11 +1122,14 @@ export async function executeWavefunctionAnalysis(options: {
           : (params.method ?? (generatedXtb ? 'scpa' : 'mulliken'));
 
     if (!analysisMethodAvailable(params.kind, effectiveMethod, analysisContext)) {
+      const generatedSourceLabel =
+        attachment.source.generatedXtb?.kind === 'trusted-generated-gxtb-sp' ? 'g-xTB' : 'GFN2-xTB';
       const reason =
         effectiveMethod === 'bader'
           ? 'Bader charge analysis requires an all-electron or pseudopotential .fchk wavefunction source (not Molden or generated xTB).'
-          : generatedXtb && !generatedXtbMethodAllowed(metadata.analysisPolicy, metadata.sourceRevision, params.kind, effectiveMethod)
-            ? `Method "${effectiveMethod}" is not permitted for generated GFN2-xTB wavefunctions.`
+          : (generatedXtb || metadata.analysisPolicy !== undefined) &&
+              !generatedXtbMethodAllowed(metadata.analysisPolicy, metadata.sourceRevision, params.kind, effectiveMethod)
+            ? `Method "${effectiveMethod}" is not permitted for generated ${generatedSourceLabel} wavefunctions.`
             : `Method "${effectiveMethod}" is not supported for ${params.kind}.`;
       throw Object.assign(new Error(reason), { code: 'MCP_METHOD_NOT_AVAILABLE' });
     }
@@ -1193,8 +1196,12 @@ export async function executeWavefunctionAnalysis(options: {
         );
       }
 
+      const stripGeneratedSpin =
+        rawResult.kind === 'charges' &&
+        (generatedXtb || metadata.analysisPolicy !== undefined) &&
+        metadata.analysisPolicy?.spinPopulation !== true;
       const cleanedResult: WavefunctionAnalysisResult =
-        rawResult.kind === 'charges' && (generatedXtb || metadata.analysisPolicy !== undefined)
+        rawResult.kind === 'charges' && stripGeneratedSpin
           ? rawResult.method === 'bader'
             ? {
                 ...rawResult,
@@ -1562,8 +1569,10 @@ export async function executeWavefunctionAnalysis(options: {
 
   // kind === 'reactivity'
   if (generatedXtb) {
+    const generatedSourceLabel =
+      attachment.source.generatedXtb?.kind === 'trusted-generated-gxtb-sp' ? 'g-xTB' : 'GFN2-xTB';
     throw Object.assign(
-      new Error('Conceptual DFT FMO reactivity analysis is not supported on generated GFN2-xTB wavefunctions.'),
+      new Error(`Conceptual DFT FMO reactivity analysis is not supported on generated ${generatedSourceLabel} wavefunctions.`),
       { code: 'MCP_METHOD_NOT_AVAILABLE' }
     );
   }

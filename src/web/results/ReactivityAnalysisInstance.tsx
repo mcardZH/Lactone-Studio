@@ -6,6 +6,9 @@ import type { SurfaceContext } from '../../results/surface-contracts';
 import type { ViewportOrbitalLayer, WavefunctionMetadata } from '../../results/orbital-contracts';
 import type { ReactivitySessionInfo } from '../../results/reactivity-contracts';
 import ReactivityAnalysisControls from './ReactivityAnalysisControls';
+import MultiwfnErrorNotice from './MultiwfnErrorNotice';
+import { isMultiwfnBackendFailure } from './multiwfn-errors';
+import { MULTIWFN_CONFIGURATION_CHANGED } from '../global-settings-events';
 import type { ReactivityProjection, ReactivityInteractionPort } from './reactivity-controls-contracts';
 import { createReactivityContextPool, type ReactivityContextPool, type ReactivityDesktopController } from './reactivity-context-pool';
 import type { ReactivityDesktopApi } from './reactivity-desktop-bridge';
@@ -40,6 +43,13 @@ export default function ReactivityAnalysisInstance(p: ReactivityAnalysisInstance
   const [poolState, setPoolState] = useState<{ lifetime: string; pool: ReactivityContextPool } | null>(null);
   const [owned, setOwned] = useState<{ key: string; controller: ReactivityDesktopController; opened: Opened } | null>(null);
   const [, refresh] = useState(0);
+  const [openFailure,setOpenFailure]=useState<{key:string;message:string}|null>(null),[retry,setRetry]=useState(0);
+  useEffect(()=>{
+    if(openFailure?.key!==key||!isMultiwfnBackendFailure(openFailure.message))return;
+    const recheck=()=>setRetry(value=>value+1);
+    window.addEventListener(MULTIWFN_CONFIGURATION_CHANGED,recheck);
+    return()=>window.removeEventListener(MULTIWFN_CONFIGURATION_CHANGED,recheck);
+  },[key,openFailure]);
   const pool = poolState?.lifetime === lifetime ? poolState.pool : null, current = owned?.key === key ? owned : null;
   useEffect(() => {
     if (!desktop) { setPoolState(null); setOwned(null); return; }
@@ -56,10 +66,10 @@ export default function ReactivityAnalysisInstance(p: ReactivityAnalysisInstance
       .then(async controller => {
         if (!controller || !alive || !props.active || !props.wavefunctionAvailable || props.available === false) return;
         const opened = await controller.open();
-        if (alive && latest.current.key === key) setOwned({ key, controller, opened });
-      }).catch(error => { if (alive) latest.current.props.onError(String(error instanceof Error ? error.message : error)); });
+        if (alive && latest.current.key === key) {setOwned({ key, controller, opened });setOpenFailure(null);}
+      }).catch(error => { if (alive && latest.current.key===key)setOpenFailure({key,message:String(error instanceof Error?error.message:error)}); });
     return () => { alive = false; };
-  }, [desktop, pool, key, p.active, p.available, p.wavefunctionAvailable]);
+  }, [desktop, pool, key, p.active, p.available, p.wavefunctionAvailable,retry]);
   const publish = useCallback((projection: ReactivityProjection | null) => {
     if (latest.current.key !== key) return;
     latest.current.props.onProjection(reactivityInstanceProjection(projection, latest.current.props.context, latest.current.props.document, current?.opened ?? null));
@@ -68,9 +78,9 @@ export default function ReactivityAnalysisInstance(p: ReactivityAnalysisInstance
   const accepted = useCallback((requestId: string) => current?.controller.accepted(requestId), [current]);
   const order = useMemo(() => surfaceSourceAtomOrder(p.structure, p.modelDocument,
     p.wavefunctionAvailable ? p.document.wavefunction?.source.metadata?.structure : undefined) ?? [], [p.structure, p.modelDocument, p.wavefunctionAvailable, p.document.wavefunction?.source.metadata]);
-  return <ReactivityAnalysisControls key={lifetime} analysisId={p.analysisId} context={p.context} structure={p.structure} sourceAtomOrder={order}
+  return <>{openFailure?.key===key && <MultiwfnErrorNotice message={openFailure.message} identity={openFailure}/>}<ReactivityAnalysisControls key={lifetime} analysisId={p.analysisId} context={p.context} structure={p.structure} sourceAtomOrder={order}
     active={p.active} available={p.available} wavefunctionAvailable={p.wavefunctionAvailable} bridge={current?.controller.bridge ?? {}}
     sessionInfo={current?.opened.info} metadata={current?.opened.metadata} orbitalSessionId={current?.opened.orbitalSessionId}
     orbitalBridge={desktop as OrbitalBridge | null} progress={pool?.progress(p.context)} onProjection={publish} onInteractionReady={interaction}
-    onResultAccepted={accepted} onExportImage={p.onExportImage} onError={p.onError}/>;
+    onResultAccepted={accepted} onExportImage={p.onExportImage} onError={p.onError}/></>;
 }

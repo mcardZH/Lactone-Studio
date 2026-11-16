@@ -9,15 +9,17 @@ import { scientificPlotLayout } from '../../results/scientific-plot-layout';
 import { useScientificPlotSize } from './ScientificPlotSize';
 import { formatPlotTick, plotTicks, validPlotViewport, zoomPlotViewport, type ScientificPlotViewport } from '../../results/scientific-plot';
 import { nearestScatterPoint, scatterDataSummary, scatterDataText, scatterScreenPoint, type ScientificScatterData, type ScientificScatterPoint } from '../../results/scatter-data';
-import { formatResultValue } from '../../results/numeric-format';
+import { decimalEnergyValue, formatResultValue } from '../../results/numeric-format';
+import { isEnergyUnit } from '../../results/energy';
 import { useScientificPlotViewport } from './ScientificPlot';
 import { exportBlob } from './export-image';
-import { optimizationSvgPng } from './optimization-export';
+import { captureScientificSvgPng } from './optimization-export';
 import { paintScatterBatch } from './scientific-scatter-canvas';
 import { scatterSvgSnapshot, waitForScatterFrame } from './scientific-scatter-export';
 import './OptimizationPlot.css';
 import './ScientificScatterPlot.css';
 import { ScientificPlotExportMenu } from './ScientificPlotExportMenu';
+import { ScientificImageCopyButton } from '../ScientificImageCopyButton';
 import { usePlotFrameUpdate } from './scientific-plot-frame';
 import { dragScatterLegend, scatterLegendLayout, type ScatterLegendGesture, type ScatterLegendLayout } from './scientific-scatter-legend';
 
@@ -53,6 +55,8 @@ export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, 
   viewport, onViewportChange, initialViewport, resetKey, height, decimals = 2, exportFileName = 'Ester-Studio-scatter', metadata, ariaLabel = title,
   testId = 'scientific-scatter-plot', exportHandle, onPointSelect, children, appearanceKey }: ScientificScatterPlotProps) {
   const appearance = usePlotAppearance(appearanceKey), textStyle = appearance.value;
+  const energyX=isEnergyUnit(xLabel.split(' / ').at(-1)),energyY=isEnergyUnit(yLabel.split(' / ').at(-1));
+  const axisText=(text:string,energy:boolean)=>energy?decimalEnergyValue(text):text;
   const displayTitle = textStyle.title ?? title, displayX = textStyle.xLabel ?? xLabel, displayY = textStyle.yLabel ?? yLabel;
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), svg = useRef<SVGSVGElement>(null);
   const sizing = useScientificPlotSize(appearanceKey??exportFileName);
@@ -86,7 +90,7 @@ export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, 
   let layout = scientificPlotLayout(sizing.width, displayTitle, { height: sizing.height ?? height, square: true, footer: colorLegend ? 52 : 0 });
   const preliminaryY = range ? plotTicks(range.y, layout.bottom - layout.top, 48) : { major: [], minor: [], step: 1 };
   layout = scientificPlotLayout(sizing.width, displayTitle, { height: sizing.height ?? height, square: true, footer: colorLegend ? 52 : 0,
-    yLabelWidth: Math.max(0, ...preliminaryY.major.map(value => formatPlotTick(value, preliminaryY.step).length)) * 7 + 14 });
+    yLabelWidth: Math.max(0, ...preliminaryY.major.map(value => axisText(formatPlotTick(value, preliminaryY.step),energyY).length)) * 7 + 14 });
   const yt = range ? plotTicks(range.y, layout.bottom - layout.top, 48) : preliminaryY;
   const xt = range ? plotTicks(range.x, layout.right - layout.left) : { major: [], minor: [], step: 1 };
   const legendLayout = scatterLegendLayout(layout, legendPosition);
@@ -159,16 +163,24 @@ export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, 
     } });
     return () => { active = false; lifetime.abort(); exportHandle(null); };
   }, [exportHandle, sceneIdentity]);
+  const capturePng = (owner: Document, signal: AbortSignal) => {
+    const source = svg.current, pixels = canvas.current;
+    if (!source?.isConnected || !pixels?.isConnected || source.ownerDocument !== owner || pixels.ownerDocument !== owner)
+      throw new Error('当前散点图不可用或已切换窗口。');
+    if (!range || painted.current !== paintIdentity) throw new Error('散点绘制尚未完成。');
+    return captureScientificSvgPng(source, owner, signal, pixels);
+  };
   const exportFigure = async (kind: 'svg' | 'png' | 'txt' | 'raw') => {
     const source = svg.current, pixels = canvas.current; if (!source || !pixels || exporting) return;
     const job = new AbortController(); controller.current = job; setExporting(true); setMessage('');
     try {
       let blob: Blob;
       if (kind === 'txt' || kind === 'raw') blob = new Blob([scatterDataText(data, { x: xLabel, y: yLabel }, kind === 'raw' ? 'raw' : decimals)], { type: 'text/plain;charset=utf-8' });
+      else if (kind === 'png') blob = await capturePng(source.ownerDocument, job.signal);
       else {
         if (painted.current !== paintIdentity) throw new Error('散点绘制尚未完成。');
-        const text = scatterSvgSnapshot(source, pixels, { data, range: range!, layout, colorForX, colorForPoint, size, alpha, raster: kind !== 'svg' || rasterSvg });
-        blob = kind === 'png' ? await optimizationSvgPng(text, source.ownerDocument, job.signal) : new Blob([text], { type: 'image/svg+xml;charset=utf-8' });
+        const text = scatterSvgSnapshot(source, pixels, { data, range: range!, layout, colorForX, colorForPoint, size, alpha, raster: rasterSvg });
+        blob = new Blob([text], { type: 'image/svg+xml;charset=utf-8' });
       }
       assertResultNotAborted(job.signal);
       if (kind !== 'txt' && kind !== 'raw' && scene.current !== sceneIdentity) throw new Error('散点图已切换，请重新导出当前图。');
@@ -199,27 +211,15 @@ export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, 
     }}
     onCopy={event => { if (!copyAll || editableCopyTarget(event.target)) return; event.clipboardData.setData('text/plain', scatterDataText(data, { x: xLabel, y: yLabel }, decimals)); event.preventDefault(); event.stopPropagation(); }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setCopyAll(false); }}>
-    <ScientificPlotSettings appearance={appearance} title={title} xLabel={xLabel} yLabel={yLabel} names={colorLegend?.label ? [{ id: 'color-legend', label: colorLegend.label }] : []}/>
-    <div className="optimization-plot-options scientific-plot-tools scientific-scatter-tools" onPointerUp={() => styleFrame.flush()} onBlur={() => styleFrame.flush()}>
+    <div className="optimization-plot-options scientific-plot-tools scientific-scatter-tools scientific-plot-data-controls" aria-label="数据与显示" onPointerUp={() => styleFrame.flush()} onBlur={() => styleFrame.flush()}>
       {children}
-      {(['x', 'y'] as const).map(axis => <label key={axis}>{axis.toUpperCase()}范围
+      {(['x', 'y'] as const).map(axis => <span className="scientific-plot-control-group scientific-plot-range-control" role="group" aria-label={`${axis.toUpperCase()}范围`} key={axis}><span>{axis.toUpperCase()}范围</span><span className="scientific-plot-range-values">
         <NumericInput aria-label={`${axis.toUpperCase()}轴最小值`}  step="any" value={range[axis][0]} onChange={event => { if (event.currentTarget.value !== '') applyRange(axis, 0, event.currentTarget.valueAsNumber); }}/>
-        <span>—</span><NumericInput aria-label={`${axis.toUpperCase()}轴最大值`}  step="any" value={range[axis][1]} onChange={event => { if (event.currentTarget.value !== '') applyRange(axis, 1, event.currentTarget.valueAsNumber); }}/></label>)}
+        <span>—</span><NumericInput aria-label={`${axis.toUpperCase()}轴最大值`}  step="any" value={range[axis][1]} onChange={event => { if (event.currentTarget.value !== '') applyRange(axis, 1, event.currentTarget.valueAsNumber); }}/></span></span>)}
       <label>点大小<input aria-label="散点大小滑杆" type="range" min="0.5" max="10" step="0.5" value={size} onChange={event => changeSize(event.currentTarget.valueAsNumber)}/><NumericInput aria-label="散点大小"  min="0.5" max="10" step="0.5" value={size} onChange={event => changeSize(event.currentTarget.valueAsNumber)}/></label>
       <label>透明度<input aria-label="散点透明度滑杆" type="range" {...matchingSliderRange(alpha,.01,1,.01)} value={alpha} onChange={event => changeOpacity(event.currentTarget.valueAsNumber)}/><NumericInput aria-label="散点透明度" stepper adaptiveStep={0.1} min="0.01" max="1" step="0.01" value={alpha} onChange={event => changeOpacity(event.currentTarget.valueAsNumber)}/></label>
-      {sizing.controls(layout.height)}
-      <button type="button" disabled={!view.canGoBack} onClick={view.back}>返回上一级</button>
-      <button type="button" onClick={() => { setShowAll(false); view.reset(); sizing.reset(); legendFrame.cancel(); setLegendPosition(null); changeSize(2); changeOpacity(.65); styleFrame.flush(); }}>恢复视图</button>
-      {validPlotViewport(initialViewport) && summary.viewport && (initialViewport.x[0] !== summary.viewport.x[0] || initialViewport.x[1] !== summary.viewport.x[1] || initialViewport.y[0] !== summary.viewport.y[0] || initialViewport.y[1] !== summary.viewport.y[1]) &&
-        <button type="button" disabled={showAll && !view.zoomed} onClick={() => { setShowAll(true); view.reset(); }}>全图</button>}
-      <ScientificPlotExportMenu disabled={exporting} options={[
-        { key: 'svg', label: rasterSvg ? 'SVG（嵌入点图）' : 'SVG', disabled: paintState !== 'ready', run: () => void exportFigure('svg') },
-        { key: 'png', label: 'PNG', disabled: paintState !== 'ready', run: () => void exportFigure('png') },
-        { key: 'txt', label: '所见格式 TXT', run: () => void exportFigure('txt') },
-        { key: 'raw', label: '原始数据 TXT', run: () => void exportFigure('raw') },
-      ]}/>
-      <button type="button" aria-pressed={copyAll} title="选择全部有效点，按 Ctrl/Cmd+C 复制" onClick={() => { setCopyAll(true); host.current?.focus({ preventScroll: true }); }}>选择全部数据</button>
     </div>
+    <ScientificPlotSettings appearance={{...appearance,reset:()=>{appearance.reset();sizing.reset();}}} title={title} xLabel={xLabel} yLabel={yLabel} names={colorLegend?.label ? [{ id: 'color-legend', label: colorLegend.label }] : []}>{sizing.controls(layout.height)}</ScientificPlotSettings>
     <div className="scientific-plot-viewport"><div ref={sizing.stageRef} className="scientific-scatter-stage scientific-plot-stage" style={sizing.style(layout.height)}>
       <canvas ref={canvas} aria-hidden="true"/>
       <svg ref={svg} xmlns="http://www.w3.org/2000/svg" width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={ariaLabel} className="scientific-plot-svg" fontFamily={plotFontFamily(textStyle.font)}
@@ -238,11 +238,11 @@ export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, 
         <metadata>{JSON.stringify({ metadata, appearance: textStyle, viewport: range, pointSize: size, opacity: alpha, colorLegend, ...(colorLegend ? { colorLegendLayout: legendLayout } : {}), pointCount: summary.count, sampled: false, svgPointLayer: rasterSvg ? 'raster' : 'vector' })}</metadata>
         {layout.titleLines.map((line, i) => <text key={i} x={layout.width / 2} y={24 + i * 18} textAnchor="middle" fill="#1e293b" fontSize={plotPt(textStyle.titleSize)}>{line}</text>)}
         <text x={layout.left} y={layout.top - 12} fill="#334155" fontSize={plotPt(textStyle.axisSize)}>{displayY}</text>
-        {yt.major.map(value => <g key={value}><line x1={layout.left - 5} x2={layout.left} y1={at(0, value).y} y2={at(0, value).y} stroke="#64748b"/><text x={layout.left - 8} y={at(0, value).y + 4} textAnchor="end" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{formatPlotTick(value, yt.step)}</text></g>)}
+        {yt.major.map(value => <g key={value}><line x1={layout.left - 5} x2={layout.left} y1={at(0, value).y} y2={at(0, value).y} stroke="#64748b"/><text x={layout.left - 8} y={at(0, value).y + 4} textAnchor="end" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatPlotTick(value, yt.step),energyY)}</text></g>)}
         {yt.minor.map(value => <line key={value} x1={layout.left - 3} x2={layout.left} y1={at(0, value).y} y2={at(0, value).y} stroke="#94a3b8"/>)}
         <rect data-plot-frame="true" x={layout.left} y={layout.top} width={layout.right - layout.left} height={layout.bottom - layout.top} fill="none" stroke="#111827"/>
         {xt.minor.map(value => <line key={value} x1={at(value, 0).x} x2={at(value, 0).x} y1={layout.bottom} y2={layout.bottom + 3} stroke="#94a3b8"/>)}
-        {xt.major.map(value => <g key={value}><line x1={at(value, 0).x} x2={at(value, 0).x} y1={layout.bottom} y2={layout.bottom + 5} stroke="#64748b"/><text x={at(value, 0).x} y={layout.bottom + 21} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{formatPlotTick(value, xt.step)}</text></g>)}
+        {xt.major.map(value => <g key={value}><line x1={at(value, 0).x} x2={at(value, 0).x} y1={layout.bottom} y2={layout.bottom + 5} stroke="#64748b"/><text x={at(value, 0).x} y={layout.bottom + 21} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatPlotTick(value, xt.step),energyX)}</text></g>)}
         <text x={(layout.left + layout.right) / 2} y={layout.bottom + 45} textAnchor="middle" fill="#334155" fontSize={plotPt(textStyle.axisSize)}>{displayX}</text>
         {colorLegend && <g data-scatter-color-legend="true" aria-label={colorLegend.label ?? xLabel} className="scientific-scatter-legend" tabIndex={0}
           onPointerDown={event => {
@@ -266,8 +266,8 @@ export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, 
           </linearGradient></defs>
           {colorLegend.label && <text x={legendLayout.x} y={legendLayout.y - 8} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{appearance.name('color-legend', colorLegend.label)}</text>}
           <rect x={legendLayout.x - legendLayout.width / 2} y={legendLayout.y} width={legendLayout.width} height="10" fill={`url(#${legendId})`} stroke="#d8e2ea"/>
-          <text x={legendLayout.x - legendLayout.width / 2} y={legendLayout.y + 26} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{formatResultValue(colorLegend.min, decimals)}</text>
-          <text x={legendLayout.x + legendLayout.width / 2} y={legendLayout.y + 26} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{formatResultValue(colorLegend.max, decimals)}</text>
+          <text x={legendLayout.x - legendLayout.width / 2} y={legendLayout.y + 26} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatResultValue(colorLegend.min, decimals),isEnergyUnit(colorLegend.label?.split(' / ').at(-1)))}</text>
+          <text x={legendLayout.x + legendLayout.width / 2} y={legendLayout.y + 26} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatResultValue(colorLegend.max, decimals),isEnergyUnit(colorLegend.label?.split(' / ').at(-1)))}</text>
           <g data-plot-interaction="legend-handles">
             <rect x={legendLayout.x - legendLayout.width / 2 - 8} y={legendLayout.y - 20} width={legendLayout.width + 16} height="52" fill="transparent"/>
             {(['left', 'right'] as const).map(side => <g key={side} data-scatter-legend-handle={side} style={{ cursor: 'ew-resize' }}>
@@ -281,7 +281,21 @@ export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, 
           width={Math.max(0, Math.min(layout.right, Math.max(dragBox.start.x, dragBox.end.x)) - Math.max(layout.left, Math.min(dragBox.start.x, dragBox.end.x)))} height={Math.max(0, Math.min(layout.bottom, Math.max(dragBox.start.y, dragBox.end.y)) - Math.max(layout.top, Math.min(dragBox.start.y, dragBox.end.y)))} fill="#397a9a22" stroke="#397a9a" pointerEvents="none"/>}
       </svg>{sizing.handles}
     </div></div>
-    <p className="optimization-plot-note" role="status">{summary.count} 点 · 全量{summary.excluded ? ` · 有效域外 ${summary.excluded} 点` : ''}{summary.nonfinite ? ` · 非有限值 ${summary.nonfinite} 点` : ''}{paintState === 'drawing' ? ' · 绘制中' : ''}{selected ? ` · ${xLabel}: ${formatResultValue(selected.x, decimals)}；${yLabel}: ${formatResultValue(selected.y, decimals)}` : ''}</p>
+    <div className="optimization-plot-options scientific-plot-tools scientific-plot-actions scientific-scatter-actions" aria-label="图像操作">
+      <button type="button" disabled={!view.canGoBack} onClick={view.back}>返回上一级</button>
+      <button type="button" onClick={() => { setShowAll(false); view.reset(); sizing.reset(); legendFrame.cancel(); setLegendPosition(null); changeSize(2); changeOpacity(.65); styleFrame.flush(); }}>恢复视图</button>
+      {validPlotViewport(initialViewport) && summary.viewport && (initialViewport.x[0] !== summary.viewport.x[0] || initialViewport.x[1] !== summary.viewport.x[1] || initialViewport.y[0] !== summary.viewport.y[0] || initialViewport.y[1] !== summary.viewport.y[1]) &&
+        <button type="button" disabled={showAll && !view.zoomed} onClick={() => { setShowAll(true); view.reset(); }}>全图</button>}
+      <ScientificImageCopyButton resetKey={data} disabled={paintState !== 'ready' || painted.current !== paintIdentity} capture={capturePng}/>
+      <ScientificPlotExportMenu disabled={exporting} options={[
+        { key: 'svg', label: rasterSvg ? 'SVG（嵌入点图）' : 'SVG', disabled: paintState !== 'ready', run: () => void exportFigure('svg') },
+        { key: 'png', label: 'PNG', disabled: paintState !== 'ready', run: () => void exportFigure('png') },
+        { key: 'txt', label: '所见格式 TXT', run: () => void exportFigure('txt') },
+        { key: 'raw', label: '原始数据 TXT', run: () => void exportFigure('raw') },
+      ]}/>
+      <button type="button" aria-pressed={copyAll} title="选择全部有效点，按 Ctrl/Cmd+C 复制" onClick={() => { setCopyAll(true); host.current?.focus({ preventScroll: true }); }}>选择全部数据</button>
+    </div>
+    <p className="optimization-plot-note" role="status">{summary.count} 点 · 全量{summary.excluded ? ` · 有效域外 ${summary.excluded} 点` : ''}{summary.nonfinite ? ` · 非有限值 ${summary.nonfinite} 点` : ''}{paintState === 'drawing' ? ' · 绘制中' : ''}{selected ? ` · ${xLabel}: ${axisText(formatResultValue(selected.x, decimals),energyX)}；${yLabel}: ${axisText(formatResultValue(selected.y, decimals),energyY)}` : ''}</p>
     {message && <p className="optimization-plot-note" role="status">{message}</p>}
   </div>;
 }

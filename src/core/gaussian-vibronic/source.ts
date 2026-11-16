@@ -1,7 +1,8 @@
-import { FchkReader, fchkNumber } from '../fchk-reader';
-import { fchkTextRecords, fchkRecordText, looksLikeFchk, streamFchkRecords, type FchkRecord } from '../fchk-records';
+import { FchkReader, fchkGeometryFields, type FchkTrackedField } from '../fchk-reader';
+import { fchkTextRecords, fchkRecordText, looksLikeFchk, streamFchkRecords } from '../fchk-records';
 import { atomicNumber } from '../elements';
 import { GaussianOutputReader } from '../gaussian-reader';
+import { gaussianEntry, gaussianErrorTermination, gaussianExplicitLink, gaussianJobLink, gaussianNormalTermination, gaussianOutputBodyText } from '../../results/gaussian-output-archive';
 import { gaussianRouteTokens } from '../gaussian-source';
 import type { Atom } from '../types';
 import type { VibronicEvidence, VibronicFileIdentity, VibronicState } from './types';
@@ -23,29 +24,16 @@ export function expectedModeCount(atoms: Atom[]): number {
   return 3*atoms.length-(linear?5:6);
 }
 
-/** FCHK arrays are counted, including skipped arrays, to detect truncated evidence. */
-function fchkArrays(records: FchkRecord[]): { arrays: Map<string, number[]>; errors: string[] } {
-  const arrays = new Map<string, number[]>(), errors: string[]=[];
-  const wanted = new Set(['Real atomic weights','Cartesian Force Constants','Vib-E2','Vib-Modes']);
-  for (let i=2;i<records.length;i++) {
-    const field=records[i].field;
-    if (field?.count===undefined) continue;
-    const {label,type,count}=field;
-    if (!Number.isSafeInteger(count)||count<0) {errors.push(`FCHK ${label} 数组长度声明无效。`);break;}
-    let seen=0;const values:number[]=[];
-    while (seen<count && i+1<records.length) {
-      if (records[i+1].field) break;
-      const record=records[++i],line=record.text;
-      if (type==='C'||type==='H') { seen+=record.character?.count??0;continue; }
-      const parts=line.trim().split(/\s+/).filter(Boolean);seen+=parts.length;
-      if (type==='L'?parts.some(v=>!/^[TF]$/.test(v)):parts.some(v=>fchkNumber(v)===null||type==='I'&&!Number.isSafeInteger(fchkNumber(v)))) errors.push(`FCHK ${label} 包含无效数值。`);
-      if (wanted.has(label)) values.push(...parts.map(v=>fchkNumber(v)??NaN));
-    }
-    if (seen!==count) errors.push(`FCHK ${label} 数组不完整（${seen}/${count}）。`);
-    if(wanted.has(label)) {if(arrays.has(label))errors.push(`FCHK ${label} 重复。`);arrays.set(label,values);}
-  }
-  return {arrays,errors};
-}
+const fchkVibronicFields = {
+  ...fchkGeometryFields,
+  'Charge': { shape: 'I' },
+  'Multiplicity': { shape: 'I' },
+  'Route': { shape: 'C[]' },
+  'Real atomic weights': { shape: 'R[]', retainValues: true },
+  'Cartesian Force Constants': { shape: 'R[]' },
+  'Vib-E2': { shape: 'R[]', retainValues: true },
+  'Vib-Modes': { shape: 'R[]' },
+} as const satisfies Readonly<Record<string, FchkTrackedField>>;
 
 function parseLogModes(lines:string[], atoms:Atom[]): { frequencies:number[]; complete:boolean } {
   const frequencies:number[]=[];let complete=true;
@@ -68,40 +56,51 @@ export function parseVibronicEvidence(identity:VibronicFileIdentity,sourceText:s
   const format=looksLikeFchk(sourceText)?'fchk':'log';
   const selection=format==='log'?selectVibronicLogJob(sourceText,options?.jobIndex):undefined;
   const text=selection?.text??sourceText,lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);
-  const reader=format==='fchk'?new FchkReader():new GaussianOutputReader();
-  const records=format==='fchk'?fchkTextRecords(text):undefined;
-  if(records&&reader instanceof FchkReader)for(const record of records)reader.consume(record.text,{sourceLine:record.sourceLine,byteProven:true});
+  const reader=format==='fchk'?new FchkReader(fchkVibronicFields):new GaussianOutputReader();
+  if(reader instanceof FchkReader){
+    for(const record of fchkTextRecords(text)){
+      reader.consume(record.text,{sourceLine:record.sourceLine,byteProven:true});
+      const issue=reader.diagnostics.at(-1);
+      if(issue?.boundaryReliable===false)throw new Error(issue.message);
+    }
+  }
   else lines.forEach(line=>reader.consume(line));
   const structures=reader.finish(identity.name),structure=structures[0];
   if(structure.charge===null||structure.multiplicity===null)throw new Error('来源缺少电荷或多重度。');
   const modeCount=expectedModeCount(structure.atoms),errors:string[]=[...(selection?.errors??[])],warnings:string[]=[...(selection?.warnings??[])];
-  if(reader instanceof FchkReader&&reader.incomplete)errors.push('FCHK含损坏或未完成字段，保留可读结构但不能作为完整振电计算来源。');
+  if(reader instanceof FchkReader)for(const issue of reader.diagnostics){
+    const required=Object.hasOwn(fchkVibronicFields,issue.field);
+    (required?errors:warnings).push(issue.message);
+  }
   for(const issue of structure.gaussianSource?.issues??[])if(issue.severity==='conflict')errors.push(issue.message);
   if(structure.gaussianSource?.frozenAtoms?.length)errors.push('来源含冻结原子，首批完整两态振动路线不接受部分Hessian。');
   const route=selection?.effectiveRoute??structure.sourceRoute??'',td=gaussianRouteTokens(route).find(t=>/^(?:td|cis)(?:\b|=|\()/i.test(t));
   const root=td?Number(td.match(/\broot\s*=\s*(\d+)/i)?.[1]??NaN):null;
   let masses:number[]=[],frequencies:number[]=[],completeModes=false,completeHessian=false,normalTermination=false,transitionDipole:[number,number,number]|null=null;
-  if(format==='fchk') {
-    const data=fchkArrays(records!);errors.push(...data.errors);
-    masses=data.arrays.get('Real atomic weights')??[];
-    frequencies=(data.arrays.get('Vib-E2')??[]).slice(0,modeCount);
-    completeModes=data.arrays.get('Vib-Modes')?.length===3*structure.atoms.length*modeCount;
-    completeHessian=data.arrays.get('Cartesian Force Constants')?.length===(3*structure.atoms.length)*(3*structure.atoms.length+1)/2;
+  if(reader instanceof FchkReader) {
+    const fields=reader.validatedFields, cartesianCount=3*structure.atoms.length;
+    masses=[...fields.get('Real atomic weights')?.values??[]];
+    frequencies=fields.get('Vib-E2')?.values.slice(0,modeCount)??[];
+    completeModes=fields.get('Vib-Modes')?.count===cartesianCount*modeCount;
+    completeHessian=fields.get('Cartesian Force Constants')?.count===cartesianCount*(cartesianCount+1)/2;
     warnings.push('FCHK可检查力常数、模式、质量和坐标；它不是二进制CHK，也不证明Gaussian正常终止。');
   } else {
-    const normalCount=(text.match(/Normal termination of Gaussian/g)??[]).length;
-    if(!/Gaussian\s+16\b/.test(text)||/Gaussian\s+(?:09|03)\b/.test(text))errors.push('本入口的ReadFCHT语法与频率前提按Gaussian 16核定；来源版本不是可识别G16。');
-    if(normalCount!==1||(text.match(/Entering Gaussian System/g)??[]).length>1||/Error termination|Link1:.*Proceeding to internal job step|--Link1--/.test(text))errors.push('须选择一个正常终止的独立频率作业；多作业或错误结束不能合并证据。');
-    normalTermination=normalCount===1&&!/Error termination/.test(text);
-    const modeData=parseLogModes(lines,structure.atoms);frequencies=modeData.frequencies;completeModes=modeData.complete;
+    const body = gaussianOutputBodyText(lines), bodyText = body.join('\n');
+    const normalCount = body.filter(line => gaussianNormalTermination.test(line)).length;
+    const failed = body.some(line => gaussianErrorTermination.test(line));
+    if (!/Gaussian\s+16\b/.test(bodyText) || /Gaussian\s+(?:09|03)\b/.test(bodyText)) errors.push('本入口的ReadFCHT语法与频率前提按Gaussian 16核定；来源版本不是可识别G16。');
+    if (normalCount !== 1 || failed || body.filter(line => gaussianEntry.test(line)).length > 1
+      || body.some(line => gaussianJobLink.test(line) || gaussianExplicitLink.test(line))) errors.push('须选择一个正常终止的独立频率作业；多作业或错误结束不能合并证据。');
+    normalTermination = normalCount === 1 && !failed;
+    const modeData=parseLogModes(body,structure.atoms);frequencies=modeData.frequencies;completeModes=modeData.complete;
     masses=Array(structure.atoms.length).fill(NaN);
-    for(const line of lines) {const m=line.match(/Atom\s+(\d+)\s+has atomic number\s+\d+\s+and mass\s+([\d.EeDd+-]+)/);if(m)masses[Number(m[1])-1]=Number(m[2].replace(/[dD]/,'e'));}
+    for(const line of body) {const m=line.match(/Atom\s+(\d+)\s+has atomic number\s+\d+\s+and mass\s+([\d.EeDd+-]+)/);if(m)masses[Number(m[1])-1]=Number(m[2].replace(/[dD]/,'e'));}
     if(td && !Number.isSafeInteger(root))errors.push('激发态频率Route未明确Root；请提供含明确目标根的原作业证据。');
     if(root) {
-      for(let i=0;i<lines.length;i++)if(/Ground to excited state transition electric dipole moments/i.test(lines[i])) {
+      for(let i=0;i<body.length;i++)if(/Ground to excited state transition electric dipole moments/i.test(body[i])) {
         let inRows=false;
-        for(let j=i+1;j<lines.length;j++) {
-          const line=lines[j].trim();
+        for(let j=i+1;j<body.length;j++) {
+          const line=body[j].trim();
           if(!inRows&&(!line||/^state\s+X\s+Y\s+Z/i.test(line)))continue;
           const row=numbers(line);
           if(row.length<5||!row.every(Number.isFinite)||!Number.isSafeInteger(row[0])||row[0]<1)break;
@@ -117,7 +116,7 @@ export function parseVibronicEvidence(identity:VibronicFileIdentity,sourceText:s
   if(!completeModes)errors.push('缺少完整正常模式向量。');
   if(masses.length!==structure.atoms.length||!masses.every(v=>Number.isFinite(v)&&v>0))errors.push('缺少完整逐原子质量，不能推定同位素一致。');
   if(format==='fchk'&&!completeHessian)errors.push('FCHK缺少完整Cartesian Force Constants矩阵。');
-  const routeComplete=format==='log'||!structure.gaussianSource?.issues.some(issue=>issue.code==='fchk-route-missing');
+  const routeComplete=format==='log'?Boolean(route):!structure.gaussianSource?.issues.some(issue=>issue.code==='fchk-route-missing');
   return {identity,format,atoms:structure.atoms,charge:structure.charge,multiplicity:structure.multiplicity,route,routeComplete,masses,frequencies,modeCount,completeModes,completeHessian,normalTermination,root:Number.isSafeInteger(root)?root:null,transitionDipole,errors,warnings,selectedJob:selection?.selectedJob};
 }
 

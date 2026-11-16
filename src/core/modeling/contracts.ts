@@ -18,7 +18,13 @@ export interface AttachmentPort {
   displayLength: number; presetId?: string; slotId?: string;
 }
 
-export interface MeasurementRecord { id: string; mode: 'distance' | 'angle' | 'dihedral'; atomIds: AtomId[]; images?: Vector3[]; color: string }
+export interface MeasurementRecord {
+  id: string; mode: 'distance' | 'angle' | 'dihedral'; atomIds: AtomId[]; images?: Vector3[]; color: string;
+  /** View projection metadata only; never a scientific coordinate or editing grant. */
+  readOnly?: true;
+  displayNames?: readonly string[];
+  displaySourceKey?: string;
+}
 
 export interface MeasurementState {
   mode: 'auto' | 'distance' | 'angle' | 'dihedral' | null; atomIds: AtomId[];
@@ -66,6 +72,10 @@ export interface GaussianBoundCoordinateDefinition {
 export interface ModelSelection { atomIds: AtomId[]; bonds: BondRef[]; auxiliaryIds: string[]; portIds?: string[]; coordinateIds?: string[] }
 
 export interface ModelDocument {
+  /** Result-frame display edits and their independent current-frame histories. */
+  frameBondOverrides?:import('./frame-bond-overrides').FrameBondOverrides;
+  /** Exact original result frame handed to this bound working model. */
+  analysisFrameBondOrigin?:{bindingId:string;identity:import('./frame-bond-overrides').FrameBondIdentity};
   /** Explicit structure checkpoint; independent of edits and runtime results. */
   cellCheckpoint?: CellCheckpoint;
   /** Reversible validity token only. Source files, analysis caches and native
@@ -84,6 +94,7 @@ export interface ModelDocument {
   coordinateObjects?: ModelCoordinateObject[];
   gaussianBoundCoordinates?:GaussianBoundCoordinateDefinition[];
   attachmentPorts?: AttachmentPort[];
+  projectHistoryLimited?: { omittedPast:number; omittedFuture:number };
   canUndo: boolean; canRedo: boolean;
 }
 
@@ -97,7 +108,7 @@ export interface ModelProjectLinkedToken {
 }
 export type ModelProjectHistoryEntry = ModelProjectReplayState | {kind:'linked';token:ModelProjectLinkedToken};
 export interface ModelProjectLinkGroup {id:string;documentIds:string[];referenceDocumentId:string;confirmedOrder:string[]|null}
-/** Pure, bounded project data. Native sessions, callbacks and linked-store
+/** Pure project data. Native sessions, callbacks and linked-store
  * tokens deliberately have no representation in this contract. */
 export interface ModelStoreProjectState {
   schema:'sciyue-model-store'; version:1;
@@ -107,16 +118,21 @@ export interface ModelStoreProjectState {
   baseline:{structure:Structure;assignments:BuilderAssignments;content:string};
   past:ModelProjectHistoryEntry[]; future:ModelProjectHistoryEntry[];
   history:{maxEntries:number;maxBytes:number;omittedPast:number;omittedFuture:number};
+  /** Standalone Store recovery. Workspace projects retain the original registry asset instead. */
+  projectHistoryArchive?:ModelStoreProjectHistoryArchive[];
 }
+export type ModelStoreProjectHistoryArchive = Omit<ModelStoreProjectState,'projectHistoryArchive'>;
 
 /** Explicit permission for one native GFN MD snapshot, never a generic
  * exemption from editor freezes or a serializable running-process handle. */
 export interface NativeMDPolicy {
   kind: 'native-gfn-md';
-  method: 'gfnff' | 'gfn0' | 'gfn1' | 'gfn2';
+  method: import('../xtb-capabilities').XtbNativeMethod;
   dtFs: 2;
   protectedAtomIds: AtomId[];
   forceConstantKJMolNm2: number;
+  periodic?:true;
+  internalConstraintMode?:'native-harmonic';
 }
 
 export interface DocumentStamp {
@@ -173,6 +189,8 @@ export interface PastePolicy { cell?: 'require-compatible' | 'keep-target' | 'us
 export interface PasteConflict { kind: 'cell' | 'assignments'; message: string }
 
 export interface ScientificEditRequest {
+  /** Complete validated asynchronous outcome; its source is sealed at launch. */
+  resultSource?: true;
   documentId: string; revision: number; bindingId: string;
   operation: 'edit' | 'undo' | 'redo';
 }

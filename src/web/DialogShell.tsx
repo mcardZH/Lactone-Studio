@@ -19,7 +19,7 @@ export interface DialogShellProps extends Omit<HTMLAttributes<HTMLElement>, 'onC
 }
 
 /** Native non-modal popovers reuse appearance without acquiring modal focus/scroll semantics. */
-export function dialogSurfaceStyle():CSSProperties{return{background:'var(--ui-control-bg)',color:'var(--ui-control-ink)',borderColor:'var(--ui-control-border)',borderRadius:'var(--ui-surface-radius)',fontFamily:'"Segoe UI","Microsoft YaHei",sans-serif',fontSize:'var(--ui-control-caption-font)'};}
+export function dialogSurfaceStyle():CSSProperties{return{background:'var(--ui-control-bg)',color:'var(--ui-control-ink)',borderColor:'var(--ui-surface-border)',borderRadius:'var(--ui-surface-radius)',fontFamily:'var(--ui-font-family)',fontSize:'var(--ui-control-font)',lineHeight:'var(--ui-control-line)'};}
 
 export function useDialogSurfaceLifecycle(panel:RefObject<HTMLElement|null>,onCancel:()=>void,enabled:boolean,modal=true){
   const latest=useRef(onCancel);latest.current=onCancel;
@@ -32,7 +32,7 @@ export interface DialogSurfaceProps extends Omit<HTMLAttributes<HTMLElement>,'on
 /** Inline scientific choices share presentation but retain non-modal Tab/background interaction. */
 export function DialogSurface({onCancel,children,className='',style,onKeyDown,...attributes}:DialogSurfaceProps){
   const panel=useRef<HTMLElement>(null),keyDown=useDialogSurfaceLifecycle(panel,onCancel,true,false);
-  return <section {...attributes} ref={panel} className={'dialog-surface '+className} role="dialog" aria-modal="false" tabIndex={-1}
+  return <section {...attributes} ref={panel} className={'dialog-surface ui-control-surface '+className} role="dialog" aria-modal="false" tabIndex={-1}
     style={{...dialogSurfaceStyle(),...style}} onKeyDown={event=>{onKeyDown?.(event);keyDown(event);}}>{children}</section>;
 }
 
@@ -52,7 +52,7 @@ export default function DialogShell({ children, onCancel, initialFocus, backdrop
   const dialog = <div className={'dialog-backdrop ' + backdropClassName} data-testid={backdropTestId} hidden={!open} style={open?undefined:{display:'none'}} data-dialog-open={open}
     onPointerDown={event => { event.stopPropagation(); if (dismissOnBackdrop && backdropDismissEvent === 'pointerdown' && event.target === event.currentTarget) current.current.onCancel(); }}
     onClick={event => { event.stopPropagation(); if (dismissOnBackdrop && backdropDismissEvent === 'click' && event.target === event.currentTarget) current.current.onCancel(); }}>
-    <section {...attributes} ref={panel} className={'dialog-shell ' + className} role={role} aria-modal="true" tabIndex={-1}
+    <section {...attributes} ref={panel} className={'dialog-shell ui-control-surface ' + className} role={role} aria-modal="true" tabIndex={-1}
       style={{...dialogSurfaceStyle(),...style}}
       onKeyDown={event => { onKeyDown?.(event); lifecycle.current?.handleKeyDown(event); }} onKeyUp={event => event.stopPropagation()}>{children}</section>
   </div>;

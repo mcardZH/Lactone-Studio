@@ -7,7 +7,13 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { profileForVersion } = require('../version-profile.cjs');
-const { isPlainObject } = require('./protocol.cjs');
+const {
+  isPlainObject,
+  createMcpToolRegistry,
+  registerAllMcpTools,
+  createMcpProtocolProcessor,
+  jsonRpcError
+} = require('./protocol.cjs');
 
 const SESSION_SCHEMA = 'ester-mcp-session/v1';
 const MAX_HTTP_BODY_BYTES = 4 * 1024 * 1024;
@@ -37,6 +43,7 @@ function resolveActionTimeoutMs(action, payload, configuredTimeoutMs = DEFAULT_R
   if (
     action === 'submit-task' ||
     action === 'task-manage' ||
+    action === 'environment-manage' ||
     action === 'open-result-analysis' ||
     action === 'export-artifact'
   ) {
@@ -84,7 +91,7 @@ function safeTokenEquals(expectedToken, providedToken) {
   return crypto.timingSafeEqual(expectedBuf, providedBuf);
 }
 
-function readJsonRequest(req, maxBytes = MAX_HTTP_BODY_BYTES) {
+function readRawBody(req, maxBytes = MAX_HTTP_BODY_BYTES) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let total = 0;
@@ -105,17 +112,7 @@ function readJsonRequest(req, maxBytes = MAX_HTTP_BODY_BYTES) {
     req.on('end', () => {
       if (settled) return;
       settled = true;
-      try {
-        const raw = Buffer.concat(chunks).toString('utf8');
-        const parsed = raw ? JSON.parse(raw) : {};
-        if (!isPlainObject(parsed)) {
-          reject(Object.assign(new Error('Expected JSON object body'), { statusCode: 400, code: 'INVALID_BODY' }));
-          return;
-        }
-        resolve(parsed);
-      } catch (error) {
-        reject(Object.assign(new Error(`Invalid JSON body: ${error.message}`), { statusCode: 400, code: 'INVALID_JSON' }));
-      }
+      resolve(Buffer.concat(chunks).toString('utf8'));
     });
 
     req.on('error', error => {
@@ -126,14 +123,46 @@ function readJsonRequest(req, maxBytes = MAX_HTTP_BODY_BYTES) {
   });
 }
 
-function sendJsonResponse(res, statusCode, payload) {
+async function readJsonRequest(req, maxBytes = MAX_HTTP_BODY_BYTES) {
+  const raw = await readRawBody(req, maxBytes);
+  try {
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!isPlainObject(parsed)) {
+      throw Object.assign(new Error('Expected JSON object body'), { statusCode: 400, code: 'INVALID_BODY' });
+    }
+    return parsed;
+  } catch (error) {
+    if (error?.code === 'INVALID_BODY') throw error;
+    throw Object.assign(new Error(`Invalid JSON body: ${error.message}`), { statusCode: 400, code: 'INVALID_JSON' });
+  }
+}
+
+function sendJsonResponse(res, statusCode, payload, extraHeaders = {}) {
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
-    'Cache-Control': 'no-store'
+    'Cache-Control': 'no-store',
+    ...extraHeaders
   });
   res.end(body);
+}
+
+function extractRequestToken(req, parsedUrl) {
+  const authHeader = typeof req.headers?.authorization === 'string' ? req.headers.authorization : '';
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
+  if (match && match[1]) {
+    return { token: match[1], fromQuery: false };
+  }
+  const headerToken = typeof req.headers?.['x-mcp-token'] === 'string' ? req.headers['x-mcp-token'].trim() : '';
+  if (headerToken) {
+    return { token: headerToken, fromQuery: false };
+  }
+  const queryToken = parsedUrl?.searchParams?.get('token') || '';
+  if (queryToken) {
+    return { token: queryToken, fromQuery: true };
+  }
+  return { token: '', fromQuery: false };
 }
 
 function createMcpLiveHost({
@@ -146,8 +175,12 @@ function createMcpLiveHost({
   sessionFilePath,
   host = '127.0.0.1',
   port = 0,
+  preferredPort = 0,
+  initialToken,
   requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
-  serverVersion = '2.0.3'
+  serverName = 'ester-studio-mcp',
+  serverVersion = '2.0.3',
+  registerExtraTools
 } = {}) {
   if (typeof getTargetWindow !== 'function') {
     throw new Error('createMcpLiveHost requires getTargetWindow function');
@@ -159,9 +192,16 @@ function createMcpLiveHost({
   const resolvedSessionFile = sessionFilePath
     ? path.resolve(sessionFilePath)
     : resolveDefaultMcpSessionFile();
-  const token = crypto.randomBytes(32).toString('hex');
+  let token = typeof initialToken === 'string' && initialToken.trim().length >= 16
+    ? initialToken.trim()
+    : crypto.randomBytes(32).toString('hex');
+  let configuredPreferredPort = Number.isInteger(preferredPort) && preferredPort >= 1 && preferredPort <= 65535
+    ? preferredPort
+    : 0;
   const pendingFrontendRequests = new Map();
   const customActionHandlers = new Map();
+  const sseSessions = new Map();
+  const streamableSseResponses = new Set();
   let httpServer = null;
   let boundPort = null;
   let startedAt = null;
@@ -630,6 +670,14 @@ function createMcpLiveHost({
       });
     }
 
+    if (action === 'environment-manage') {
+      const { windowId, ...environmentPayload } = payload;
+      return await requestFrontend('frontend.environmentManage', environmentPayload, {
+        windowId,
+        timeoutMs: resolveActionTimeoutMs(action, environmentPayload, requestTimeoutMs)
+      });
+    }
+
     if (action === 'open-result-analysis') {
       const { windowId, ...analysisPayload } = payload;
       const actionTimeoutMs = resolveActionTimeoutMs(action, analysisPayload, requestTimeoutMs);
@@ -902,6 +950,40 @@ function createMcpLiveHost({
     });
   }
 
+  const mcpRegistry = createMcpToolRegistry();
+  registerAllMcpTools(mcpRegistry, {
+    dispatchToHost: dispatchAction,
+    serverVersion,
+    registerExtraTools
+  });
+  const mcpProcessor = createMcpProtocolProcessor({
+    registry: mcpRegistry,
+    serverName,
+    serverVersion
+  });
+
+  function closeAllSseStreams() {
+    for (const res of sseSessions.values()) {
+      try { res.end(); } catch { /* ignore */ }
+    }
+    sseSessions.clear();
+    for (const res of streamableSseResponses.values()) {
+      try { res.end(); } catch { /* ignore */ }
+    }
+    streamableSseResponses.clear();
+  }
+
+  async function evaluateMcpJsonRpcPayload(parsed) {
+    if (Array.isArray(parsed)) {
+      if (parsed.length === 0) {
+        return jsonRpcError(null, -32600, 'Invalid JSON-RPC 2.0 batch request');
+      }
+      const responses = (await Promise.all(parsed.map(item => mcpProcessor.handleMessage(item)))).filter(Boolean);
+      return responses.length > 0 ? responses : null;
+    }
+    return await mcpProcessor.handleMessage(parsed);
+  }
+
   async function writeSessionFile(sessionInfo) {
     await fsPromises.mkdir(path.dirname(resolvedSessionFile), { recursive: true });
     const tempFile = `${resolvedSessionFile}.${process.pid}.${Date.now()}.tmp`;
@@ -923,6 +1005,22 @@ function createMcpLiveHost({
     }
   }
 
+  function listenOnPort(server, candidatePort) {
+    return new Promise((resolve, reject) => {
+      const onError = error => {
+        server.removeListener('listening', onListening);
+        reject(error);
+      };
+      const onListening = () => {
+        server.removeListener('error', onError);
+        resolve();
+      };
+      server.once('error', onError);
+      server.once('listening', onListening);
+      server.listen(candidatePort, host);
+    });
+  }
+
   async function start() {
     if (disposed) {
       throw new Error('Cannot start a disposed MCP live host');
@@ -932,38 +1030,193 @@ function createMcpLiveHost({
     }
 
     startedAt = new Date().toISOString();
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Mcp-Session-Id, Last-Event-ID, X-MCP-Token',
+      'Access-Control-Expose-Headers': 'Mcp-Session-Id'
+    };
+
     const server = http.createServer(async (req, res) => {
       try {
-        const authHeader = req.headers.authorization || '';
-        const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
-        if (!match || !safeTokenEquals(token, match[1])) {
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204, corsHeaders);
+          res.end();
+          return;
+        }
+
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(req.url || '/', `http://${host}`);
+        } catch {
+          sendJsonResponse(res, 400, {
+            ok: false,
+            error: { code: 'MCP_INVALID_URL', message: 'Invalid request URL' }
+          }, corsHeaders);
+          return;
+        }
+
+        const extracted = extractRequestToken(req, parsedUrl);
+        if (!extracted.token || !safeTokenEquals(token, extracted.token)) {
           sendJsonResponse(res, 401, {
             ok: false,
             error: {
               code: 'MCP_UNAUTHORIZED',
-              message: 'Invalid or missing MCP session token'
+              message: 'Invalid or missing MCP session token (pass Authorization: Bearer <token> header or ?token=<token> query parameter)'
             }
+          }, corsHeaders);
+          return;
+        }
+
+        const pathname = parsedUrl.pathname;
+
+        // 1. Internal stdio-bridge dispatch endpoint
+        if (pathname === '/mcp/dispatch') {
+          if (req.method !== 'POST') {
+            sendJsonResponse(res, 404, {
+              ok: false,
+              error: {
+                code: 'MCP_NOT_FOUND',
+                message: 'Expected POST /mcp/dispatch'
+              }
+            }, corsHeaders);
+            return;
+          }
+          const body = await readJsonRequest(req);
+          const result = await dispatchAction(body.action, isPlainObject(body.payload) ? body.payload : {});
+          sendJsonResponse(res, 200, {
+            ok: true,
+            result
+          }, corsHeaders);
+          return;
+        }
+
+        // 2. Standard MCP Streamable HTTP endpoint (/mcp or /)
+        if (pathname === '/mcp' || pathname === '/') {
+          const mcpSessionId = typeof req.headers['mcp-session-id'] === 'string' && req.headers['mcp-session-id'].trim()
+            ? req.headers['mcp-session-id'].trim()
+            : crypto.randomUUID();
+          const sessionHeaders = {
+            ...corsHeaders,
+            'Mcp-Session-Id': mcpSessionId
+          };
+
+          if (req.method === 'POST') {
+            const raw = await readRawBody(req);
+            let parsed;
+            try {
+              parsed = raw ? JSON.parse(raw) : null;
+            } catch (error) {
+              sendJsonResponse(res, 200, jsonRpcError(null, -32700, `Parse error: ${error.message}`), sessionHeaders);
+              return;
+            }
+            const rpcOut = await evaluateMcpJsonRpcPayload(parsed);
+            if (rpcOut === null) {
+              res.writeHead(202, sessionHeaders);
+              res.end();
+              return;
+            }
+            sendJsonResponse(res, 200, rpcOut, sessionHeaders);
+            return;
+          }
+
+          if (req.method === 'GET') {
+            const accept = String(req.headers.accept || '');
+            if (accept.includes('text/event-stream')) {
+              res.writeHead(200, {
+                ...sessionHeaders,
+                'Content-Type': 'text/event-stream; charset=utf-8',
+                'Cache-Control': 'no-cache, no-transform',
+                Connection: 'keep-alive'
+              });
+              res.write(': connected\n\n');
+              streamableSseResponses.add(res);
+              req.on('close', () => {
+                streamableSseResponses.delete(res);
+              });
+              return;
+            }
+            sendJsonResponse(res, 200, {
+              ok: true,
+              protocol: 'mcp-streamable-http',
+              serverName,
+              version: serverVersion,
+              endpoints: {
+                streamableHttp: '/mcp',
+                sse: '/sse',
+                messages: '/messages',
+                internalDispatch: '/mcp/dispatch'
+              }
+            }, sessionHeaders);
+            return;
+          }
+
+          if (req.method === 'DELETE') {
+            res.writeHead(204, sessionHeaders);
+            res.end();
+            return;
+          }
+        }
+
+        // 3. Legacy MCP HTTP+SSE endpoints (/sse and /messages)
+        if (pathname === '/sse' && req.method === 'GET') {
+          const sseSessionId = crypto.randomUUID();
+          res.writeHead(200, {
+            ...corsHeaders,
+            'Content-Type': 'text/event-stream; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+            Connection: 'keep-alive'
+          });
+          const endpointUri = extracted.fromQuery
+            ? `/messages?sessionId=${encodeURIComponent(sseSessionId)}&token=${encodeURIComponent(token)}`
+            : `/messages?sessionId=${encodeURIComponent(sseSessionId)}`;
+          res.write(`event: endpoint\ndata: ${endpointUri}\n\n`);
+          sseSessions.set(sseSessionId, res);
+          req.on('close', () => {
+            sseSessions.delete(sseSessionId);
           });
           return;
         }
 
-        if (req.method !== 'POST' || req.url !== '/mcp/dispatch') {
-          sendJsonResponse(res, 404, {
-            ok: false,
-            error: {
-              code: 'MCP_NOT_FOUND',
-              message: 'Expected POST /mcp/dispatch'
+        if (pathname === '/messages' && req.method === 'POST') {
+          const raw = await readRawBody(req);
+          let parsed;
+          try {
+            parsed = raw ? JSON.parse(raw) : null;
+          } catch (error) {
+            sendJsonResponse(res, 400, jsonRpcError(null, -32700, `Parse error: ${error.message}`), corsHeaders);
+            return;
+          }
+          const sseSessionId = parsedUrl.searchParams.get('sessionId') || '';
+          const sseRes = sseSessions.get(sseSessionId);
+          const rpcOut = await evaluateMcpJsonRpcPayload(parsed);
+          if (sseRes && !sseRes.writableEnded) {
+            if (rpcOut !== null) {
+              const items = Array.isArray(rpcOut) ? rpcOut : [rpcOut];
+              for (const item of items) {
+                sseRes.write(`event: message\ndata: ${JSON.stringify(item)}\n\n`);
+              }
             }
-          });
+            res.writeHead(202, corsHeaders);
+            res.end('Accepted');
+            return;
+          }
+          if (rpcOut === null) {
+            res.writeHead(202, corsHeaders);
+            res.end();
+            return;
+          }
+          sendJsonResponse(res, 200, rpcOut, corsHeaders);
           return;
         }
 
-        const body = await readJsonRequest(req);
-        const result = await dispatchAction(body.action, isPlainObject(body.payload) ? body.payload : {});
-        sendJsonResponse(res, 200, {
-          ok: true,
-          result
-        });
+        sendJsonResponse(res, 404, {
+          ok: false,
+          error: {
+            code: 'MCP_NOT_FOUND',
+            message: 'Supported MCP endpoints: POST /mcp (Streamable HTTP), GET /sse + POST /messages (Legacy SSE), POST /mcp/dispatch (Internal Bridge)'
+          }
+        }, corsHeaders);
       } catch (error) {
         const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
         sendJsonResponse(res, statusCode, {
@@ -972,21 +1225,30 @@ function createMcpLiveHost({
             code: error?.code ?? 'MCP_BRIDGE_ERROR',
             message: error instanceof Error ? error.message : String(error)
           }
-        });
+        }, corsHeaders);
       }
     });
 
-    await new Promise((resolve, reject) => {
-      server.once('error', reject);
-      server.listen(port, host, () => {
-        server.removeListener('error', reject);
-        resolve();
-      });
-    });
+    if (port === 0 && configuredPreferredPort > 0) {
+      try {
+        await listenOnPort(server, configuredPreferredPort);
+      } catch (error) {
+        if (error?.code === 'EADDRINUSE' || error?.code === 'EACCES') {
+          await listenOnPort(server, 0);
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      await listenOnPort(server, port);
+    }
 
     httpServer = server;
     const address = server.address();
     boundPort = typeof address === 'object' && address ? address.port : port;
+    if (boundPort > 0) {
+      configuredPreferredPort = boundPort;
+    }
 
     const sessionInfo = getSessionInfo();
     await writeSessionFile(sessionInfo);
@@ -1007,30 +1269,80 @@ function createMcpLiveHost({
     };
   }
 
-  async function dispose() {
-    if (disposed) return;
-    disposed = true;
-
+  async function shutdownServer(reason) {
     for (const [requestId, pending] of pendingFrontendRequests.entries()) {
       clearTimeout(pending.timer);
       pendingFrontendRequests.delete(requestId);
-      pending.reject(Object.assign(new Error('MCP live host shutting down'), { code: 'MCP_HOST_SHUTDOWN' }));
+      pending.reject(Object.assign(new Error(reason), { code: 'MCP_HOST_SHUTDOWN' }));
     }
 
+    closeAllSseStreams();
     removeSessionFileSyncIfOwned();
 
     if (httpServer) {
       const serverToClose = httpServer;
       httpServer = null;
       boundPort = null;
+      startedAt = null;
+      serverToClose.closeAllConnections?.();
       await new Promise(resolve => {
         serverToClose.close(() => resolve());
       });
     }
   }
 
+  /**
+   * Stop listening without disposing: the session file is removed. By default
+   * the bearer token is rotated so standalone callers never reuse old tokens,
+   * while `stop({ rotateToken: false })` preserves a user-persisted token.
+   */
+  async function stop({ rotateToken: shouldRotate = true } = {}) {
+    if (disposed) return;
+    await shutdownServer('MCP live host stopped');
+    if (shouldRotate) {
+      token = crypto.randomBytes(32).toString('hex');
+    }
+  }
+
+  async function rotateToken(nextToken) {
+    if (disposed) {
+      throw new Error('Cannot rotate token on a disposed MCP live host');
+    }
+    const previousToken = token;
+    const replacement = typeof nextToken === 'string' && nextToken.trim().length >= 16
+      ? nextToken.trim()
+      : crypto.randomBytes(32).toString('hex');
+    closeAllSseStreams();
+    if (httpServer && boundPort) {
+      token = replacement;
+      await writeSessionFile(getSessionInfo());
+    } else {
+      // Remove any stale session file owned by the previous token before updating
+      if (previousToken) {
+        removeSessionFileSyncIfOwned();
+      }
+      token = replacement;
+    }
+    return token;
+  }
+
+  function isRunning() {
+    return Boolean(httpServer && boundPort);
+  }
+
+  async function dispose() {
+    if (disposed) return;
+    disposed = true;
+    await shutdownServer('MCP live host shutting down');
+  }
+
   return Object.freeze({
     start,
+    stop,
+    rotateToken,
+    getToken: () => token,
+    getPort: () => boundPort || configuredPreferredPort || null,
+    isRunning,
     dispose,
     disposeOwner,
     requestFrontend,

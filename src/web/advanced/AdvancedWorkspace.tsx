@@ -1,5 +1,7 @@
+import {useGxtbBackend,gxtbRunBlocked} from '../results/GxtbPathControl';
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
+import {useProjectState} from '../../projects/ui-state';
 import type {AdvancedController} from '../../modeling/advanced/controller';
 import type {AdvancedTaskSpec,AdvancedRunStatus,AdvancedTaskRun,AdvancedSameFrameFragments,AdvancedOptimizationStageConfig,AdvancedResultFrame,AdvancedTaskRecord} from '../../modeling/advanced/contracts';
 import {DEFAULT_ADVANCED_RUN_BUDGET} from '../../modeling/advanced/contracts';
@@ -9,13 +11,18 @@ import type {AdvancedFrameSource} from '../../modeling/advanced/frame-source';
 import {sameAdvancedFrame} from '../../modeling/advanced/frame-source';
 import {createConformerSnapshot,discoverConformerTorsionRows,inspectManualConformerTorsion,inspectConformerTorsion,allocateConformerTorsionPoints,conformerTorsionCombinationCount,planConformerTorsionHierarchy,createConformerTorsionPreview,orderConformerTorsionFrames,type TorsionAtoms} from '../../modeling/conformers';
 import {overrideAdvancedTaskSource} from './capture-source';
-import {baseElectronicStateError} from '../../core/base-electronic-state';
+import {baseElectronicStateParameterError as baseElectronicStateError} from '../../core/base-electronic-state';
+import {electronicStateWarning} from '../../core/elements';
+import BaseElectronicStateFields from '../BaseElectronicStateFields';
 import {molecularFormula} from '../../core/elements';
+import {automaticStem} from '../../core/naming';
 import {ScientificDataTable} from '../results/ScientificDataTable';
 import {InputSettingsCard,InputSettingsField,InputSettingsRow} from '../InputSettingsFields';
 import {InputSettingsLayout,InputSettingsAction,InputSettingsCheckbox,InputSettingsSection} from '../InputSettingsLayout';
 import {WorkflowSessionBar,WorkflowContentCard} from '../WorkflowPresentation';
-import {compileAdvancedMethod,initialAdvancedMethod} from './AdvancedMethodControls';
+import {compileAdvancedMethod} from './AdvancedMethodControls';
+import {compileConformerStageMethod} from './mixed-conformer-draft';
+import {initialConformerStageMethod} from './conformer-draft-hydration';
 import type {AnalysisAtomCapture} from '../modeling/ModelViewport';
 import {useAnalysisAtomCapture} from '../results/useAnalysisAtomCapture';
 import {AdvancedPathControls,AdvancedSamplingControls,AdvancedRegionField} from './AdvancedProcessControls';
@@ -38,6 +45,7 @@ import ConformerRunError from './ConformerRunError';
 import {buildAdvancedClusterCollection,conformerUpstreamSummary} from '../../modeling/advanced/conformer-cluster-collection';
 import ConformerTorsionControls,{type ConformerTorsionDraft} from './ConformerTorsionControls';
 import ConformerStageResults from './ConformerStageResults';
+import ConformerRetainedBatch from './ConformerRetainedBatch';
 import {restoreConformerTaskDraft} from './conformer-draft-hydration';
 import {convertEnergy} from '../../results/energy';
 import type {AdvancedInputTemplate} from '../../modeling/application/advanced-frame-output';
@@ -46,7 +54,7 @@ import AdvancedFrameOutputControls from './AdvancedFrameOutputControls';
 import MixedConformerWorkspace from './MixedConformerWorkspace';
 import NumericInput from '../NumericInput';
 import {DismissibleNotice} from '../DismissibleNotice';
-import {advancedElectronicConfirmationKey,advancedElectronicDraftState,validAdvancedElectronicDraft,type AdvancedElectronicState} from './electronic-state-sync';
+import {advancedElectronicConfirmationKey,advancedElectronicConfirmationMatches,advancedElectronicDraftState,advancedElectronicTextValues,submitAdvancedElectronicText,type AdvancedElectronicState,type AdvancedElectronicText} from './electronic-state-sync';
 import './advanced-workspace.css';
 
 export interface AdvancedWorkspaceProps {
@@ -61,6 +69,7 @@ export interface AdvancedWorkspaceProps {
  /** Single public hard-freeze owner; result sidebars never edit this source. */
  conformerFreezeEditable?:boolean;
  onConformerFreezeChange?(taskId:string,source:AdvancedFrameSource,atomIds:readonly string[]):Promise<boolean>|boolean;
+ onConformerCoordinateFreezeChange?(taskId:string,source:AdvancedFrameSource,coordinate:{type:'B'|'A'|'D';atomIds:string[]},frozen:boolean,previousCoordinate?:{type:'B'|'A'|'D';atomIds:string[]}):Promise<boolean>|boolean;
  onCommitConformerCoreChange?(taskId:string,atomIds:readonly string[]):Promise<boolean>|boolean;
  onElectronicStateChange?(source:AdvancedFrameSource,state:AdvancedElectronicState):void;sourceElectronicState?:AdvancedElectronicState;
  controller:AdvancedController;
@@ -98,14 +107,15 @@ export function conformerCollectionRevision(task:AdvancedTaskRecord|undefined):s
  if(!task)return '';
  const workflow=task.conformerWorkflow;
  return JSON.stringify([task.id,workflow?.candidateSet?.id,workflow?.candidateSet?.producerRunId,workflow?.candidateSet?.revision,workflow?.candidateSet?.valid,
-  workflow?.candidateSet?.frameIds,workflow?.stages.map(stage=>[stage.stageId,stage.producerRunId,stage.stageRunId,stage.collectionId,stage.revision,stage.valid,stage.completed,stage.representativeFrameIds,stage.resultFrameIds])]);
+  workflow?.candidateSet?.frameIds,workflow?.stages.map(stage=>[stage.stageId,stage.producerRunId,stage.stageRunId,stage.collectionId,stage.revision,stage.valid,stage.completed,stage.representativeFrameIds,stage.resultFrameIds]),
+  task.runs.flatMap(run=>run.stages.flatMap(stage=>stage.results.filter(result=>result.status==='unconverged').map(result=>result.frameId)))]);
 }
 /** Activate only this run's published nonempty result, including a real stop.
  * An empty optimization stage must not redirect to a different stage/run. */
 export function conformerTerminalResultCollection(collections:readonly ConformerResultCollection[],run:AdvancedTaskRun|undefined):ConformerResultCollection|undefined {
  if(!run||!['completed','checkpoint','stopped'].includes(run.status))return;
  const owned=collections.filter(collection=>collection.frames.length>0&&collection.identity.runId===run.id);
- return run.intent==='sampling'?owned.find(collection=>!collection.includeEnergies):owned.filter(collection=>collection.includeEnergies).at(-1);
+ return run.intent==='sampling'?owned.find(collection=>!collection.includeEnergies):owned.filter(collection=>collection.includeEnergies).at(-1)??owned.find(collection=>collection.id.endsWith(':unconverged'));
 }
 /** New batches read the task's initial document even from a result tab. Existing
  * continuation keeps its captured batch/last-frame source. */
@@ -119,22 +129,27 @@ export function buildConformerResultCollections(task:AdvancedTaskRecord|undefine
  const candidates=workflow?.candidateSet,frames=candidates?.frameIds.flatMap(id=>frameMap.has(id)?[frameMap.get(id)!]:[])??[];
  const producer=candidates?.producerRunId??frames[0]?.runId??task.runs.slice().reverse().find(run=>run.intent==='sampling'||run.sampling)?.id??candidates?.id??'';
  const candidateId=candidates?.id??`pending:${task.id}:sampling`;
- const result:ConformerResultCollection[]=[{id:candidateId,label:'采样轨迹',frames,identity:{taskId:task.id,runId:producer,stageId:frames[0]?.stageId??'sampling',collectionId:candidateId},includeEnergies:false}];
+ const result:ConformerResultCollection[]=[{id:candidateId,label:'sampling',frames,identity:{taskId:task.id,runId:producer,stageId:frames[0]?.stageId??'sampling',collectionId:candidateId},includeEnergies:false}];
  for(const [index,configuration] of stages.entries()){
   const stage=workflow?.stages.find(row=>row.stageId===configuration.id);
   const id=stage?.collectionId??`pending:${task.id}:${configuration.id}`;
   const pendingRun=task.runs.slice().reverse().find(run=>run.stages.some(row=>row.configurationId===configuration.id||row.id===configuration.id)),pendingStage=pendingRun?.stages.find(row=>row.configurationId===configuration.id||row.id===configuration.id);
   const clusterCollection=stage?buildAdvancedClusterCollection(task,configuration.id):undefined;
   const available=clusterCollection?.clusters.flatMap(row=>!row.unavailableReason&&row.representativeFrameId&&frameMap.has(row.representativeFrameId)?[frameMap.get(row.representativeFrameId)!]:[])??[];
-  const label=`优化${index+1}归簇`;
+  const label=`opt${index+1}_clusters`;
   result.push({id,label,frames:available,clusterCollection,playbackAvailable:!clusterCollection?.clusters.some(row=>row.unavailableReason||!row.representativeFrameId)&&clusterCollection?.settlement!=='needs-clustering',identity:{taskId:task.id,runId:stage?.producerRunId??pendingRun?.id??'',stageId:stage?.stageRunId??pendingStage?.id??configuration.id,collectionId:id},includeEnergies:true});
+  const unconverged=pendingStage?.results.flatMap(row=>row.status==='unconverged'&&row.frameId&&frameMap.has(row.frameId)?[frameMap.get(row.frameId)!]:[])??[];
+  if(unconverged.length){
+    const collectionId=`${id}:unconverged`;
+    result.push({id:collectionId,label:`第 ${index+1} 级未收敛`,frames:unconverged,identity:{taskId:task.id,runId:pendingRun!.id,stageId:pendingStage!.id,collectionId},includeEnergies:false});
+  }
  }
  const retained=new Map(previous.map(collection=>[collection.id,collection]));
  return result.map(collection=>{const old=retained.get(collection.id);return old&&JSON.stringify(old.clusterCollection)===JSON.stringify(collection.clusterCollection)&&old.label===collection.label&&old.includeEnergies===collection.includeEnergies&&old.identity.runId===collection.identity.runId&&old.identity.stageId===collection.identity.stageId&&old.frames.length===collection.frames.length&&old.frames.every((frame,index)=>frame.id===collection.frames[index].id&&frame.energyHartree===collection.frames[index].energyHartree&&frame.source.stamp.coordinatesFingerprint===collection.frames[index].source.stamp.coordinatesFingerprint)?old:collection;});
 }
 const STATUS:Record<AdvancedRunStatus,string>={queued:'排队中',running:'运行中',stopping:'正在停止',checkpoint:'等待继续',completed:'已完成',failed:'失败',stopped:'已停止'};
 const DOCKING_PHASES:Record<string,string>={'monomer-precomputation':'单体预计算',screening:'初筛','stack-search':'堆叠搜索','angular-search':'角度搜索','genetic-search':'遗传搜索','native-refinement':'原生精化'};
-const TASK_LABELS:Record<AdvancedTaskSpec['kind'],string>={singlepoint:'GFN2 单点后处理',optimization:'独立结构优化','conformer-search':'柔性键构象搜索',path:'反应路径',sampling:'构象采样',docking:'双分子对接'};
+const TASK_LABELS:Record<AdvancedTaskSpec['kind'],string>={singlepoint:'xTB 单点后处理',optimization:'独立结构优化','conformer-search':'柔性键构象搜索',path:'反应路径',sampling:'构象采样',docking:'双分子对接'};
 type ConfiguredTaskKind='path'|'sampling'|'conformer-search'|'docking';
 const DOCKING_PAUSED='本版已暂停双分子对接；历史结果仍可浏览，可选择其他采样方式新建任务。';
 const EMPTY_CAPTURE_STRUCTURE={id:'advanced-empty',name:'',format:'xyz' as const,notes:[],atoms:[],charge:null,multiplicity:null};
@@ -190,11 +205,17 @@ export default function AdvancedWorkspace(p:AdvancedWorkspaceProps){
  return <LegacyAdvancedWorkspace {...p}/>;
 }
 function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
+ const gxtbBackend=useGxtbBackend();
  const state=useSyncExternalStore(p.controller.subscribe,p.controller.getSnapshot,p.controller.getSnapshot);
  const [source,setSource]=useState<AdvancedFrameSource|null>(null),[capturing,setCapturing]=useState(false);
  const [electronicDraft,setElectronicDraft]=useState<{charge:number;multiplicity:number}>({charge:0,multiplicity:1});
- const [confirmedElectronic,setConfirmedElectronic]=useState('');
- const electronicConfirmationKey=advancedElectronicConfirmationKey(source,electronicDraft),electronicConfirmed=confirmedElectronic===electronicConfirmationKey;
+ const [confirmedElectronic,setConfirmedElectronic]=useProjectState('advanced-electronic-confirmation','',p.contextKey??'default');
+ const [electronicRaw,setElectronicRaw]=useProjectState<{key:string;raw:AdvancedElectronicText}|null>('advanced-electronic-text',null,p.contextKey??'default');
+ const electronicTextKey=advancedElectronicConfirmationKey(source,{charge:0,multiplicity:1});
+ const rawElectronic=electronicRaw?.key===electronicTextKey?electronicRaw.raw:{charge:Number.isFinite(electronicDraft.charge)?String(electronicDraft.charge):'',multiplicity:Number.isFinite(electronicDraft.multiplicity)?String(electronicDraft.multiplicity):''};
+ const electronicInput=useRef({key:electronicTextKey,raw:rawElectronic});electronicInput.current={key:electronicTextKey,raw:rawElectronic};
+ const lastElectronicEdit=useRef<{key:string;field:'charge'|'multiplicity'}|null>(null);
+ const electronicConfirmed=advancedElectronicConfirmationMatches(confirmedElectronic,source,electronicDraft);
  const captureRequest=useRef(0),autoCaptureAttempt=useRef('');
  const hydration=useRef<{taskId:string;key?:string}|null>(null),restoredTorsionSource=useRef<AdvancedFrameSource|null>(null);
  const restoredClustering=useRef(new Map<string,{displayValue:number;clustering:AdvancedOptimizationStageConfig['clustering']}>());
@@ -210,7 +231,8 @@ function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
  const [torsionRows,setTorsionRows]=useState<ConformerTorsionDraft[]>([]),[activeTorsion,setActiveTorsion]=useState(''),[taskId,setTaskId]=useState<string|null>(null),[selectedFrame,setSelectedFrame]=useState<{targetId?:string;id:string}|null>(null),[runId,setRunId]=useState<string|null>(null);
  const frameId=p.activeConformerFrame?.taskId===taskId?p.activeConformerFrame.frameId:selectedFrame?.targetId===p.displayTargetId?selectedFrame?.id:null;
  const setFrameId=(id:string|null)=>setSelectedFrame(id?{targetId:p.displayTargetId,id}:null);
- const [stages,setStages]=useState<ConformerOptimizationDraft[]>([{id:'stage-1',method:{...initialAdvancedMethod,maxSteps:500},energyThresholdKcalMol:.25,rmsdThresholdAngstrom:.1,rmsdMatching:'fixed',eliminateEquivalent:false,inputStride:1,advanceCount:10,checkpointAfter:true}]);
+ const initialStage:ConformerOptimizationDraft={id:'stage-1',method:initialConformerStageMethod,energyThresholdKcalMol:.25,rmsdThresholdAngstrom:.1,rmsdMatching:'fixed',eliminateEquivalent:false,inputStride:1,advanceCount:10,checkpointAfter:true};
+ const [stages,setStages]=useState<ConformerOptimizationDraft[]>([initialStage]);
  const [path,setPath]=useState({...initialPathDraft}),[sampling,setSampling]=useState({...initialSamplingDraft}),[product,setProduct]=useState<AdvancedFrameSource|null>(null),[collectionId,setCollectionId]=useState('');
  const [sphereDraft,setSphereDraft]=useState<SamplingSphereDraft|null>(null);
  const pendingCompletion=useRef<{taskId:string;runId:string;targetId?:string;source:AdvancedFrameSource;stageId?:string;sampling:boolean}|null>(null);
@@ -229,8 +251,11 @@ function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
  function acceptSphereDraft(next:SamplingSphereDraft){if(!currentSource||!sameSamplingSphereSource(next,{sourceDocumentId:currentSource.ref.documentId,sourceRevision:currentSource.ref.revision}))return;setSphereDraft(next);setSampling(previous=>({...previous,spherePaddingAngstrom:next.marginAngstrom,sphere:{...previous.sphere,centerAngstrom:next.centerAngstrom,radiusAngstrom:next.radiusAngstrom}}));}
  function refitSphere(){if(currentSource)acceptSphereDraft({...createSamplingSphereDraft(currentSource.ref.documentId,currentSource.ref.revision,currentSource.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),sampling.spherePaddingAngstrom),previewEnabled:sphereDraft?.previewEnabled??true});}
  function changeSampling(next:typeof sampling){setSampling(next);if(currentSource&&JSON.stringify(next.coreIds)!==JSON.stringify(sampling.coreIds)){const updated=overrideAdvancedTaskSource(currentSource,{protectionAtomIds:next.coreIds});restoredTorsionSource.current=updated;setSource(updated);hydration.current=null;p.onProtectionChange?.(updated,next.coreIds);}if(currentSource&&next.sphereEnabled&&!sampling.sphereEnabled){const draft=createSamplingSphereDraft(currentSource.ref.documentId,currentSource.ref.revision,currentSource.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),next.spherePaddingAngstrom);setSphereDraft(draft);}}
- function changeElectronicState(patch:Partial<typeof electronicDraft>){const next={...electronicDraft,...patch};if(currentSource&&validAdvancedElectronicDraft(next))p.onElectronicStateChange?.(currentSource,{...next,confirmed:false});setConfirmedElectronic('');setElectronicDraft(next);}
- function commitElectronicState(){if(!currentSource)return;const issue=baseElectronicStateError(currentSource.structure,electronicDraft);if(issue)throw Error(issue);const updated=overrideAdvancedTaskSource(currentSource,electronicDraft);p.onElectronicStateChange?.(currentSource,{...electronicDraft,confirmed:false});restoredTorsionSource.current=updated;setSource(updated);hydration.current=null;setConfirmedElectronic(advancedElectronicConfirmationKey(updated,electronicDraft));}
+ function publishElectronicText(raw:AdvancedElectronicText){electronicInput.current={key:electronicTextKey,raw};setElectronicRaw({key:electronicTextKey,raw});setElectronicDraft(advancedElectronicTextValues(raw)??{charge:/^[+-]?\d+$/.test(raw.charge)?Number(raw.charge):NaN,multiplicity:/^\+?\d+$/.test(raw.multiplicity)?Number(raw.multiplicity):NaN});}
+ function editElectronicText(field:'charge'|'multiplicity',text:string){lastElectronicEdit.current={key:electronicTextKey,field};publishElectronicText({...electronicInput.current.raw,[field]:text});}
+ function commitElectronicText(field:'charge'|'multiplicity',text:string){if(!currentSource||electronicInput.current.key!==electronicTextKey)return;const submitted=submitAdvancedElectronicText(currentSource.structure,electronicInput.current.raw,field,text);publishElectronicText(submitted.raw);lastElectronicEdit.current=null;return submitted.values;}
+ function changeElectronicState(patch:Partial<typeof electronicDraft>){const field=patch.charge!==undefined?'charge':'multiplicity',value=patch[field];if(value!==undefined)commitElectronicText(field,String(value));}
+ function commitElectronicState(){if(!currentSource)return;const edited=lastElectronicEdit.current;if(edited?.key===electronicTextKey)commitElectronicText(edited.field,electronicInput.current.raw[edited.field]);const submitted=advancedElectronicTextValues(electronicInput.current.raw);if(!submitted)throw Error('电荷必须为整数，自旋多重度必须为正整数。');const issue=baseElectronicStateError(currentSource.structure,submitted);if(issue)throw Error(issue);const updated=overrideAdvancedTaskSource(currentSource,submitted);p.onElectronicStateChange?.(currentSource,{...submitted,confirmed:false});restoredTorsionSource.current=updated;setSource(updated);hydration.current=null;setConfirmedElectronic(advancedElectronicConfirmationKey(updated,submitted));if(p.active&&p.displayTargetId===updated.ref.documentId)p.onObserve(updated);}
  useEffect(()=>{if(!currentSource||p.sourceProtectionAtomIds===undefined||p.displayTargetId!==currentSource.ref.documentId&&(!p.contextTaskId||p.contextTaskId!==taskId))return;const ids=p.sourceProtectionAtomIds;if(ids.some(id=>!currentSource.structure.atoms.some(atom=>atom.id===id)))return;if(JSON.stringify(ids)===JSON.stringify(currentSource.constraints.frozenAtomIds))return;const updated=overrideAdvancedTaskSource(currentSource,{protectionAtomIds:ids});restoredTorsionSource.current=updated;setSource(updated);setSampling(previous=>({...previous,coreIds:[...ids]}));hydration.current=null;},[JSON.stringify(p.sourceProtectionAtomIds),currentSource?.ref.documentId,p.contextTaskId,taskId]);
  useEffect(()=>{if(!currentSource){setSphereDraft(null);return;}setSphereDraft(previous=>previous&&sameSamplingSphereSource(previous,{sourceDocumentId:currentSource.ref.documentId,sourceRevision:currentSource.ref.revision})?previous:createSamplingSphereDraft(currentSource.ref.documentId,currentSource.ref.revision,currentSource.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),sampling.spherePaddingAngstrom));},[currentSource]);
  useEffect(()=>{if(!p.sphereRadiusChange||!sphereDraft||!p.active||section!=='conformer'||!sampling.sphereEnabled||!sphereDraft.previewEnabled||!sameDisplaySource(currentSource,p.displayedSource))return;try{const next=applySamplingSphereRadiusChange(sphereDraft,p.sphereRadiusChange);if(next!==sphereDraft)acceptSphereDraft(next);}catch(error){p.onError(error instanceof Error?error.message:String(error));}},[p.sphereRadiusChange]);
@@ -245,7 +270,7 @@ function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
  const electronicBusy=Boolean(run&&['queued','running','stopping'].includes(run.status));
  const sourceElectronic=advancedElectronicDraftState(currentSource,p.sourceElectronicState,p.displayedSource,p.displayTargetId,electronicBusy);
  const electronicSourceKey=advancedElectronicConfirmationKey(currentSource,sourceElectronic);
- useEffect(()=>{if(!currentSource)return;if(sourceElectronic.charge!==electronicDraft.charge||sourceElectronic.multiplicity!==electronicDraft.multiplicity)setConfirmedElectronic('');setElectronicDraft(sourceElectronic);},[electronicSourceKey]);
+ useEffect(()=>{if(!currentSource)return;const stored=electronicRaw?.key===electronicTextKey?electronicRaw.raw:undefined;setElectronicDraft(stored?advancedElectronicTextValues(stored)??{charge:NaN,multiplicity:NaN}:sourceElectronic);},[electronicSourceKey]);
  const frames=run?.frames.length?run.frames:task?.guessFrames??[];
  const collections=advancedFrameCollections(frames,run),selectedCollection=collections.find(row=>row.id===collectionId)??collections[0],visibleFrames=selectedCollection?.frames??[];
  const observed=task?[...task.guessFrames,...task.runs.flatMap(row=>row.frames)].find(frame=>frame.id===frameId):undefined;
@@ -289,35 +314,40 @@ function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
  useEffect(()=>{const key=JSON.stringify([p.contextKey??'default',p.displayTargetId??p.displayedSource?.ref.documentId??'current']);if(viewChanging||!p.active||!section||!p.displayedSource||source||autoCaptureAttempt.current===key)return;autoCaptureAttempt.current=key;void capture(true);},[p.active,section,p.contextKey,p.displayTargetId,p.displayedSource,source,viewEpoch]);
  const optimizationStages=(drafts=stages)=>drafts.map((stage,index)=>{
   const restored=restoredClustering.current.get(stage.id),unchangedEnergy=restored?.displayValue===stage.energyThresholdKcalMol;
-  if(!Number.isSafeInteger(stage.inputStride??1)||(stage.inputStride??1)<1)throw Error('抽帧间隔须为正整数。');
-  return{id:stage.id,inputStride:stage.inputStride??1,...(index?{inputClusterCount:stage.inputClusterCount??10}:{}),checkpointAfter:true,clustering:{...restored?.clustering,rmsdMatching:'fixed' as const,eliminateEquivalent:stage.eliminateEquivalent===true,rmsdThresholdAngstrom:stage.rmsdThresholdAngstrom,...(unchangedEnergy?{}:{maxDeltaEnergyHartree:convertEnergy({value:stage.energyThresholdKcalMol,unit:'kcal/mol'},'hartree')!})},method:compileAdvancedMethod({...stage.method,threads:['MMFF94','MMFF94s','UFF'].includes(stage.method.method)?1:p.computeResources?.threads??stage.method.threads})};
+  if((index===0||kind==='docking')&&(!Number.isSafeInteger(stage.inputStride??1)||(stage.inputStride??1)<1))throw Error('抽帧间隔须为正整数。');
+  const threads=['MMFF94','MMFF94s','UFF'].includes(stage.method.method)?1:p.computeResources?.threads??stage.method.threads;
+  const historical=task?.spec.kind==='docking'?task.spec.optimizationStages.find(item=>item.id===stage.id)?.method:undefined;
+  const historicalSteps=historical?.backend==='xtb'?historical.options.maxSteps:historical?.maxSteps;
+  const method=kind==='docking'?compileAdvancedMethod({...stage.method,threads,maxSteps:historicalSteps??500}):compileConformerStageMethod(stage.method,threads);
+  return{id:stage.id,...(index===0||kind==='docking'?{inputStride:stage.inputStride??1}:{}),...(index?{inputClusterCount:stage.inputClusterCount??10}:{}),checkpointAfter:true,clustering:{...restored?.clustering,rmsdMatching:'fixed' as const,eliminateEquivalent:stage.eliminateEquivalent===true,rmsdThresholdAngstrom:stage.rmsdThresholdAngstrom,...(unchangedEnergy?{}:{maxDeltaEnergyHartree:convertEnergy({value:stage.energyThresholdKcalMol,unit:'kcal/mol'},'hartree')!})},method};
  });
  function spec():AdvancedTaskSpec{
   if(kind==='docking')throw Error(DOCKING_PAUSED);
   if(!currentSource)throw Error('请先取用当前完整结构帧。');
   const electronicError=baseElectronicStateError(currentSource.structure,electronicDraft);if(electronicError)throw Error(electronicError);
   if(!electronicConfirmed)throw Error('请先确认本次任务的电荷与自旋多重度。');
-  if(kind==='path')return{kind,source:currentSource,path:compilePath({...path,threads:p.computeResources?.threads??path.threads},currentSource,product),...(product?{productSource:product}:{})};
+  const label=`${kind==='path'?'path':'sampling'}-${automaticStem(currentSource.label)}`;
+  if(kind==='path')return{kind,label,source:currentSource,path:compilePath({...path,threads:p.computeResources?.threads??path.threads},currentSource,product),...(product?{productSource:product}:{})};
   if(stages.some(stage=>!Number.isFinite(stage.rmsdThresholdAngstrom)||stage.rmsdThresholdAngstrom<=0))throw Error('各级归簇RMSD须为正数。');
   const configuredStages=optimizationStages();
-  if(kind==='sampling'){const options=compileSampling({...sampling,threads:p.computeResources?.threads??sampling.threads,memoryBudgetBytes:p.computeResources?.memoryBudgetBytes},currentSource),plan=conformerSamplingBudgetPlan(options,currentSource.structure.atoms.length,{maxRetainedFrames:DEFAULT_ADVANCED_RUN_BUDGET.maxRetainedFrames,maxRetainedCoordinates:DEFAULT_ADVANCED_RUN_BUDGET.maxRetainedCoordinates});return{kind,source:currentSource,budget:{maxCandidates:plan.candidateCount},sampling:options,optimizationStages:configuredStages,checkpointAfterSampling:true};}
+  if(kind==='sampling'){const options=compileSampling({...sampling,threads:p.computeResources?.threads??sampling.threads,memoryBudgetBytes:p.computeResources?.memoryBudgetBytes},currentSource),plan=conformerSamplingBudgetPlan(options,currentSource.structure.atoms.length,{maxRetainedFrames:DEFAULT_ADVANCED_RUN_BUDGET.maxRetainedFrames,maxRetainedCoordinates:DEFAULT_ADVANCED_RUN_BUDGET.maxRetainedCoordinates});return{kind,label,source:currentSource,budget:{maxCandidates:plan.candidateCount},sampling:options,optimizationStages:configuredStages,checkpointAfterSampling:true};}
   const snapshot=createConformerSnapshot(currentSource.structure,currentSource.ref,currentSource.constraints);
   const torsions=torsionRows.filter(row=>row.enabled).map(row=>{if(row.atomIds.length!==4)throw Error('请确认每个柔性键的四原子定义。');const inspected=(row.origin==='manual'?inspectManualConformerTorsion:inspectConformerTorsion)(snapshot,row.atomIds as TorsionAtoms);if(!inspected.accepted)throw Error(`柔性键不可旋转：${inspected.reason}`);return{torsion:inspected.torsion,pointCount:row.pointCount,pointCountMode:row.pointCountMode};});
   if(!torsions.length)throw Error('请选择至少一个有效柔性键。');
   const combinationProduct=BigInt(conformerTorsionCombinationCount(torsionRows)),capacity=expectedTarget??Number(combinationProduct);
   if(!Number.isSafeInteger(capacity)||capacity<1)throw Error('组合数超出本次可处理容量，请填写预期有效帧数。');
-  return{kind:'conformer-search',source:currentSource,budget:{maxCandidates:capacity},search:{torsions,quantity:expectedTarget===null?{mode:'per-torsion',pointsPerTorsion:points}:{mode:'total-effective',targetCount:expectedTarget,pointsPerTorsion:points,automaticPointAllocation:true},samplingLimits:{maxCandidates:capacity},stages:configuredStages,checkpointAfterGuesses:true}};
+  return{kind:'conformer-search',label,source:currentSource,budget:{maxCandidates:capacity},search:{torsions,quantity:expectedTarget===null?{mode:'per-torsion',pointsPerTorsion:points}:{mode:'total-effective',targetCount:expectedTarget,pointsPerTorsion:points,automaticPointAllocation:true},samplingLimits:{maxCandidates:capacity},stages:configuredStages,checkpointAfterGuesses:true}};
  }
  function bindCreatedTask(id:string){createdContextTask.current=id;p.onTaskCreated?.(id,currentSource!);}
  function create(start:boolean){const id=p.controller.createTask(spec());setTaskId(id);setFrameId(null);setRunId(null);if(start)p.controller.start(id);else p.controller.generateGuesses(id);}
- function startSampling(){if(kind==='docking')throw Error(DOCKING_PAUSED);if(!p.computeResources)throw Error('全局计算资源尚未就绪。');hydration.current=null;setHistoricalReason('');const id=p.controller.createTask(spec());setTaskId(id);bindCreatedTask(id);const startedRun=p.controller.startSampling(id);setRunId(startedRun);pendingCompletion.current={taskId:id,runId:startedRun,targetId:p.displayTargetId,source:currentSource!,sampling:true};}
+ function startSampling(){if(kind==='sampling'&&gxtbRunBlocked(gxtbBackend,sampling.method))throw Error('请先在全局设置中配置可用的 g-xTB 程序。');if(kind==='docking')throw Error(DOCKING_PAUSED);if(!p.computeResources)throw Error('全局计算资源尚未就绪。');hydration.current=null;setHistoricalReason('');const id=p.controller.createTask(spec());setTaskId(id);bindCreatedTask(id);const startedRun=p.controller.startSampling(id);setRunId(startedRun);pendingCompletion.current={taskId:id,runId:startedRun,targetId:p.displayTargetId,source:currentSource!,sampling:true};}
  function selectConformerTask(id:string,observe=true){
   const selected=visibleTasks.find(row=>row.id===id);if(!selected){setTaskId(null);setRunId(null);hydration.current=null;setHistoricalReason('');return;}
   const restored=restoreConformerTaskDraft(selected.spec);captureRequest.current++;setCapturing(false);hydration.current={taskId:id};
   const savedStages=selected.spec.kind==='conformer-search'?selected.spec.search.stages:selected.spec.kind==='sampling'||selected.spec.kind==='docking'?selected.spec.optimizationStages:[];
   restoredClustering.current=new Map(restored.stages.map((stage,index)=>[stage.id,{displayValue:stage.energyThresholdKcalMol,clustering:structuredClone(savedStages[index].clustering)}]));
   if(selected.spec.kind==='conformer-search')restoredTorsionSource.current=selected.spec.source;
-  setSource(selected.spec.source);setKind(selected.spec.kind as ConfiguredTaskKind);lastConformerKind.current=selected.spec.kind as Exclude<ConfiguredTaskKind,'path'>;setSampling(restored.sampling);setStages(restored.stages.length?restored.stages:[{id:'stage-1',method:{...initialAdvancedMethod,maxSteps:500},energyThresholdKcalMol:.25,rmsdThresholdAngstrom:.1,rmsdMatching:'fixed',eliminateEquivalent:false,inputStride:1,advanceCount:10,checkpointAfter:true}]);setCandidateLimit(restored.candidateLimit);setHistoricalReason(restored.reason);
+  setSource(selected.spec.source);setKind(selected.spec.kind as ConfiguredTaskKind);lastConformerKind.current=selected.spec.kind as Exclude<ConfiguredTaskKind,'path'>;setSampling(restored.sampling);setStages(restored.stages.length?restored.stages:[initialStage]);setCandidateLimit(restored.candidateLimit);setHistoricalReason(restored.reason);
   if(selected.spec.kind==='conformer-search')setTorsionRows(restored.torsions);
   const selectedOperation=selected.spec.kind==='conformer-search'?'conformer-search':selected.spec.kind==='sampling'?restored.sampling.operation:null;
   if(selectedOperation&&selectedOperation!=='spherical-md'){setLocalSamplingOperation(selectedOperation);p.onSamplingOperationChange?.(selectedOperation);}
@@ -338,7 +368,7 @@ function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
  const samplerRun=task?.runs.slice().reverse().find(value=>value.intent==='sampling'||value.sampling||value.docking)??(task?.spec.kind==='conformer-search'?task.runs[0]:undefined)??(run&&!run.stages.length?run:undefined);
  const ownsSamplingMode=Boolean(task&&(kind==='conformer-search'?task.spec.kind==='conformer-search':kind==='sampling'&&task.spec.kind==='sampling'&&task.spec.sampling.operation===sampling.operation));
  const workProgress=(configurationId?:string)=>{if(!ownsSamplingMode)return null;const owned=configurationId?task?.runs.slice().reverse().find(value=>value.stages.some(stage=>stage.configurationId===configurationId||stage.id===configurationId)):samplerRun,stageId=configurationId?owned?.stages.find(stage=>stage.configurationId===configurationId||stage.id===configurationId)?.id:undefined;return task&&owned?ConformerWorkProgressDisplay({controller:p.controller,taskId:task.id,run:owned,stageId,active:p.active,onStop:()=>act(()=>p.controller.stop(task.id,owned.id))}):null;};
- const samplingAction=<InputSettingsAction variant="primary" disabled={kind==='docking'||!currentSource||!p.computeResources||capturing||!!historicalReason} onClick={()=>act(startSampling)}>开始采样</InputSettingsAction>;
+ const samplingAction=<InputSettingsAction variant="primary" disabled={kind==='sampling'&&gxtbRunBlocked(gxtbBackend,sampling.method)||kind==='docking'||!currentSource||!p.computeResources||capturing||!!historicalReason} onClick={()=>act(startSampling)}>开始采样</InputSettingsAction>;
  const samplingSchedule=currentSamplingSpec?.kind==='sampling'?conformerSamplingSchedule(currentSamplingSpec.sampling):null;
  const theoreticalCombinations=(()=>{try{return conformerTorsionCombinationCount(torsionRows);}catch{return '待有效点数';}})();
  const samplingFrames=<output aria-label="采样候选帧数">{kind==='conformer-search'?<>理论组合数 {theoreticalCombinations}{expectedTarget!==null&&` · 目标有效帧数 ${expectedTarget}`} · 实际有效帧数 {ownsSamplingMode?task?.conformerWorkflow?.candidateSet?.frameIds.length??0:0}</>:<>预计采样 {samplingSchedule?.candidateCount??'待有效参数'} 帧{ownsSamplingMode&&task?.conformerWorkflow?.candidateSet&&` · 已采样 ${task.conformerWorkflow.candidateSet.frameIds.length} 帧`}</>}</output>;
@@ -348,7 +378,7 @@ function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
  const configuration=<div className="advanced-configuration" hidden={!p.active} data-testid="advanced-configuration"><WorkflowSessionBar label={section==='path'?'反应路径探索（开发中）':'构象搜索'}/>{!p.navigationInShell&&<AdvancedWorkflowNavigation activeSection={section} onSectionChange={changeSection} samplingOperation={samplingOperation} onSamplingOperation={chooseSampling}/>} {showSettings&&<WorkflowContentCard title={section==='path'?'任务设置':'构象搜索'}><div className="engine-step-content"><InputSettingsLayout>
   <InputSettingsCard title="当前帧来源" actions={<InputSettingsAction variant="surface" disabled={capturing} onClick={()=>void capture()}>{capturing?'读取中…':'取用当前帧'}</InputSettingsAction>}>
    <p className="muted-note">{currentSource?.label??'尚未取用结构'}</p>
-   {currentSource&&<><p className="muted-note">{molecularFormula(currentSource.structure.atoms)} · {currentSource.structure.atoms.length} 原子</p><InputSettingsRow><InputSettingsField label="电荷"><NumericInput aria-label="本次任务电荷" stepper disabled={electronicBusy} step={1} value={Number.isFinite(electronicDraft.charge)?electronicDraft.charge:''} onChange={event=>{const charge=event.currentTarget.valueAsNumber;act(()=>changeElectronicState({charge}));}}/></InputSettingsField><InputSettingsField label="自旋多重度"><NumericInput aria-label="本次任务自旋多重度" stepper disabled={electronicBusy} min={1} step={1} value={Number.isFinite(electronicDraft.multiplicity)?electronicDraft.multiplicity:''} onChange={event=>{const multiplicity=event.currentTarget.valueAsNumber;act(()=>changeElectronicState({multiplicity}));}}/></InputSettingsField><InputSettingsAction variant="primary" disabled={electronicBusy||electronicConfirmed||!!baseElectronicStateError(currentSource.structure,electronicDraft)} onClick={()=>act(commitElectronicState)}>{electronicConfirmed?'已确认':'确认'}</InputSettingsAction></InputSettingsRow>{baseElectronicStateError(currentSource.structure,electronicDraft)&&<DismissibleNotice role="alert">{baseElectronicStateError(currentSource.structure,electronicDraft)}</DismissibleNotice>}</>}
+   {currentSource&&<><p className="muted-note">{molecularFormula(currentSource.structure.atoms)} · {currentSource.structure.atoms.length} 原子</p><BaseElectronicStateFields embedded preserveNumericDraft chargeFieldLabel="电荷" charge={electronicDraft.charge} multiplicity={electronicDraft.multiplicity} confirmed={electronicConfirmed} confirmationDisabled={electronicBusy} chargeLabel="本次任务电荷" multiplicityLabel="本次任务自旋多重度" error={baseElectronicStateError(currentSource.structure,electronicDraft)} warning={electronicStateWarning(currentSource.structure.atoms,electronicDraft.charge,electronicDraft.multiplicity)} rawText={rawElectronic} onRawTextChange={editElectronicText} onRawTextCommit={commitElectronicText} onChargeChange={charge=>act(()=>changeElectronicState({charge}))} onMultiplicityChange={multiplicity=>act(()=>changeElectronicState({multiplicity}))} onConfirm={()=>act(commitElectronicState)}/></>}
    {currentSource&&!selectionEnabled&&(kind==='path'||kind==='sampling')&&<InputSettingsAction variant="surface" onClick={()=>p.onObserve(currentSource)}>显示任务来源以选择原子</InputSettingsAction>}
   </InputSettingsCard>
   {section==='conformer'&&kind==='docking'&&<InputSettingsCard title="历史对接"><output role="status">{DOCKING_PAUSED}</output><AdvancedWorkflowNavigation activeSection="conformer" onSectionChange={changeSection} samplingOperation={null} onSamplingOperation={chooseSampling}/></InputSettingsCard>}
@@ -359,14 +389,14 @@ function LegacyAdvancedWorkspace(p:AdvancedWorkspaceProps){
    <InputSettingsCard title="柔性键与初猜">{workProgress()}<ConformerTorsionControls source={currentSource} rows={torsionRows} onChange={changeTorsions} activeId={activeTorsion} onActive={setActiveTorsion} onHover={setHoverTorsion} onPreview={setPreviewTorsion} previewId={previewTorsion} selectionPort={coordinateCapture.selectionPort} selectionEnabled={selectionEnabled} onRequest={()=>{regionCapture.cancel();coreCapture.cancel();}} onAutomatic={()=>act(()=>{if(currentSource)changeTorsions(discoverConformerTorsionRows(createConformerSnapshot(currentSource.structure,currentSource.ref,currentSource.constraints)));})} validate={ids=>{if(!currentSource)throw Error('请先载入当前帧。');const inspected=inspectManualConformerTorsion(createConformerSnapshot(currentSource.structure,currentSource.ref,currentSource.constraints),ids as TorsionAtoms);if(!inspected.accepted)throw Error(inspected.reason==='closed-ring'?'该轴存在闭环，不能旋转整侧。':`二面角定义不可旋转：${inspected.reason}`);}}/><InputSettingsField label="预期有效帧数（可选）"><NumericInput aria-label="预期有效帧数（可选）" min={1} value={targetText} onChange={event=>setTargetText(event.currentTarget.value)} onBlur={commitExpectedTarget} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();commitExpectedTarget();}}}/></InputSettingsField>{samplingFrames}{task?.guesses?.status==='partial'&&<p role="status">实际有效 {task.guesses.guesses.length} / 目标 {task.guesses.requestedEffectiveCount} · {task.guesses.stopReason==='combination-space-exhausted'?'已耗尽允许的角度组合':'已达到本次有界采样容量'}</p>}{samplingAction}
    </InputSettingsCard>
   </>}
-  {section==='conformer'&&<>{historicalReason?<output role="status">{historicalReason}</output>:kind!=='docking'&&task&&(!samplingMatches||task.conformerWorkflow?.candidateSet?.valid===false)&&<output role="status">采样配置已调整，待重新采样；已有任务仍可浏览或停止。</output>}<ConformerOptimizationStages stages={stages} samplingInputCount={task?.conformerWorkflow?.candidateSet?.valid?task.conformerWorkflow.candidateSet.frameIds.length:undefined} upstreamForStage={index=>conformerUpstreamSummary(task,index,stages[index].inputClusterCount??10,stages[index].inputStride??1)} progressForStage={id=>workProgress(id)} actionForStage={id=>{const action=optimizationActionView(task,id);return {...action,error:action.hasRunError&&action.run?<ConformerRunError run={action.run}/>:undefined};}} onPause={index=>act(()=>{const owned=optimizationActionView(task,stages[index].id).run;if(task&&owned)p.controller.pauseOptimization(task.id,owned.id);})} onChange={next=>{setStages(next);if(task&&samplingMatches)act(()=>p.controller.configureStages(task.id,optimizationStages(next)));}} canStart={index=>Boolean(samplingMatches&&p.computeResources&&task?.conformerWorkflow?.candidateSet?.valid&&(index===0||task.conformerWorkflow.stages.find(row=>row.stageId===stages[index-1].id)?.valid&&conformerUpstreamSummary(task,index,stages[index].inputClusterCount??10,stages[index].inputStride??1).ready))} busy={!!historicalReason||run?.status==='running'||run?.status==='queued'||run?.status==='stopping'} onStart={index=>act(()=>startOptimization(index))} onRunAll={()=>act(()=>startOptimization())}/></>}
+  {section==='conformer'&&<>{historicalReason?<output role="status">{historicalReason}</output>:kind!=='docking'&&task&&(!samplingMatches||task.conformerWorkflow?.candidateSet?.valid===false)&&<output role="status">采样配置已调整，待重新采样；已有任务仍可浏览或停止。</output>}<ConformerOptimizationStages stages={stages} samplingInputCount={task?.conformerWorkflow?.candidateSet?.valid?task.conformerWorkflow.candidateSet.frameIds.length:undefined} upstreamForStage={index=>conformerUpstreamSummary(task,index,stages[index].inputClusterCount??10)} progressForStage={id=>workProgress(id)} actionForStage={id=>{const action=optimizationActionView(task,id);const error=task&&action.run&&action.retainedStage?<ConformerRetainedBatch controller={p.controller} taskId={task.id} runId={action.run.id} stage={action.retainedStage} active={p.active} busy={p.controller.isConformerBatchReloading(task.id)}/>:action.hasRunError&&action.run?<ConformerRunError run={action.run}/>:undefined;return {...action,error};}} onPause={index=>act(()=>{const owned=optimizationActionView(task,stages[index].id).run;if(task&&owned)return p.controller.pauseOptimization(task.id,owned.id);})} onChange={next=>{setStages(next);if(task&&samplingMatches)act(()=>p.controller.configureStages(task.id,optimizationStages(next)));}} canStart={index=>Boolean(samplingMatches&&p.computeResources&&task?.conformerWorkflow?.candidateSet?.valid&&(index===0||task.conformerWorkflow.stages.find(row=>row.stageId===stages[index-1].id)?.valid&&conformerUpstreamSummary(task,index,stages[index].inputClusterCount??10).ready))} busy={!!historicalReason||run?.status==='running'||run?.status==='queued'||run?.status==='stopping'} onStart={index=>act(()=>startOptimization(index))} onRunAll={()=>act(()=>startOptimization())}/></>}
   {section==='path'&&<InputSettingsAction variant="primary" disabled={!currentSource||!p.computeResources} onClick={()=>act(()=>create(true))}>开始任务</InputSettingsAction>}
  </InputSettingsLayout></div></WorkflowContentCard>}</div>;
  const legacyResults=<div className="advanced-results" hidden={!p.active} data-testid="advanced-results"><WorkflowSessionBar label="任务与结果"/><InputSettingsLayout><InputSettingsCard title="任务与进度"><InputSettingsField label="任务"><select aria-label="当前高级任务" value={task?.id??''} onChange={event=>{setTaskId(event.target.value||null);setFrameId(null);const selected=visibleTasks.find(row=>row.id===event.target.value);if(selected)p.onObserve(selected.spec.source);}}><option value="">选择任务</option>{visibleTasks.map(row=><option key={row.id} value={row.id}>{row.spec.label??TASK_LABELS[row.spec.kind]} · {row.spec.source.label}</option>)}</select></InputSettingsField>
   {task&&task.runs.length>1&&<InputSettingsField label="运行记录"><select aria-label="高级任务运行记录" value={run?.id??''} onChange={event=>{setRunId(event.target.value);setFrameId(null);}}>{task.runs.map((row,index)=><option key={row.id} value={row.id}>运行 {index+1} · {STATUS[row.status]}</option>)}</select></InputSettingsField>}
   {run&&<><p className="muted-note" role="status">{STATUS[run.status]} · 已用 {Math.round(run.elapsedMs/1000)} s · {run.subjobCount} 个子作业</p><InputSettingsRow>{['queued','running','stopping'].includes(run.status)&&<InputSettingsAction variant="surface" disabled={run.status==='stopping'} onClick={()=>act(()=>p.controller.stop(task!.id,run.id))}>停止</InputSettingsAction>}{task&&advancedCheckpointAvailable(task.spec.kind,run)&&<InputSettingsAction variant="primary" onClick={()=>act(()=>{setRunId(p.controller.resume(task!.id,run.id));setFrameId(null);})}>继续下一阶段</InputSettingsAction>}{['failed','stopped'].includes(run.status)&&<InputSettingsAction variant="primary" onClick={()=>act(()=>{setRunId(p.controller.retry(task!.id,run.id));setFrameId(null);})}>重试未完成项</InputSettingsAction>}</InputSettingsRow>{run.error&&<DismissibleNotice identity={run.id}>{run.error}</DismissibleNotice>}{run.stopReason&&<p role="status">{run.stopReason}</p>}</>}
   {task?.guesses&&<p className="muted-note">初猜 {task.guesses.guesses.length} / 目标 {task.guesses.requestedEffectiveCount} · {task.guesses.status==='complete'?'生成完成':'未足量'}</p>}
-  {task&&!run&&<InputSettingsAction variant="primary" onClick={()=>act(()=>p.controller.start(task.id))}>开始已选任务</InputSettingsAction>}
+  {task&&!run&&<InputSettingsAction variant="primary" disabled={task.spec.kind==='sampling'&&gxtbRunBlocked(gxtbBackend,task.spec.sampling.method)} onClick={()=>act(()=>p.controller.start(task.id))}>开始已选任务</InputSettingsAction>}
   {run?.stages.map((stage,index)=><p className="muted-note" key={stage.id}>第 {index+1} 级 · {stage.status==='completed'?'完成':stage.status==='running'?'运行中':stage.status==='failed'?'失败':stage.status==='stopped'?'已停止':'等待'} · {stage.results.length}/{stage.inputCandidateIds.length}</p>)}
   {run?.path&&<InputSettingsSection level="subcard" title="路径阶段" collapsible defaultOpen>{[...new Map(run.path.stageEvents.map(event=>[event.stageId,event])).values()].map(event=><p key={event.stageId} className="muted-note">{processStageLabel(event.stageId)} · {event.phase==='completed'?'结束':'运行中'}{event.searchConverged===false?' · 未收敛':''}</p>)}</InputSettingsSection>}
   {run?.sampling&&<InputSettingsSection level="subcard" title="采样阶段" collapsible defaultOpen>{[...new Map(run.sampling.stageEvents.map(event=>[event.stageId,event])).values()].map(event=><p key={event.stageId} className="muted-note">{processStageLabel(event.stageId)} · {event.status==='completed'?'结束':'运行中'}{event.skipped?' · 零时长跳过':''}</p>)}{run.sampling.biasEvents.length>0&&<p className="muted-note">已保留 {run.sampling.biasEvents.length} 条完整偏置历史</p>}</InputSettingsSection>}

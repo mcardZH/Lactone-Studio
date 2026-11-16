@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import type {ModelDocument} from '../../modeling/contracts';
 import type {PostprocessScientificFileDocument} from '../../results/postprocess-document';
@@ -12,6 +12,11 @@ import {fileDisplayDocument} from './usePostprocessWorkspace';
 import {createChemistryPort} from '../../modeling/chemistry';
 import {EmpiricalFrameBonds,empiricalFrameBondDisplayStructure,empiricalFrameBondDisplayWarnings} from '../../results/empirical-frame-bonds';
 import type {TrajectoryOperationContext} from '../../results/trajectory-operations';
+import type {StructureExportPort,StructureExportSource} from './structure-export-source';
+import {useStructureExport} from './useStructureExport';
+import {captureDisplayedStructureDocument} from '../modeling/scientific-frame-source';
+import ModelWorkspaceToolbar from '../modeling/ModelWorkspaceToolbar';
+import type {ModelViewportProps} from '../modeling/ModelViewport';
 
 /** Input coordinates are a display snapshot, with no trajectory or Store. */
 export function inputEchoViewDocument(document:PostprocessScientificFileDocument):ModelDocument|null{
@@ -46,7 +51,7 @@ export function useInputEchoBondDocument(input:ModelDocument|null,active:boolean
  const current=active&&prepared?.input===input?prepared:null;
  return{document:current?.document??empty,preparing:Boolean(input&&active&&!current),warnings:current?.warnings??[]};
 }
-export interface ScientificFileResultViewProps extends Omit<PostprocessResultViewProps,'document'>{document:PostprocessScientificFileDocument;onFileJob?(jobId:string):void;onOpenFilePathPlot?(snapshot:FilePathPlotSnapshot):void}
+export interface ScientificFileResultViewProps extends Omit<PostprocessResultViewProps,'document'>{document:PostprocessScientificFileDocument;onFileJob?(jobId:string):void;onOpenFilePathPlot?(snapshot:FilePathPlotSnapshot):void;onStructureExportPort?(document:PostprocessScientificFileDocument,port:StructureExportPort|null):void}
 /** Actual associated frames reuse the complete public result/playback view.
  * An input echo uses the same read-only viewport with an explicit origin. */
 export default function ScientificFileResultView(p:ScientificFileResultViewProps){
@@ -55,13 +60,41 @@ export default function ScientificFileResultView(p:ScientificFileResultViewProps
  const input=useMemo(()=>inputEchoViewDocument(p.document),[p.document.id,job?.id,inputGeometry]);
  const inputView=useInputEchoBondDocument(display?null:input,p.active,{sourceId:p.document.output.source.identity.id,resultId:job?.id,jobIndex:job?.jobIndex??undefined},p.document.output.source.identity.sha256);
  const onCipLabelsUsed=useCurrentCipUsage(inputView.document??undefined,p.active&&!display,p.onCipLabelsUsed);
- if(display)return <PostprocessResultView {...p} document={display} stageAdmission="defer-unattributed"/>;
+ const [preparedSource,setPreparedSource]=useState<{owner:PostprocessScientificFileDocument;source:StructureExportSource}|null>(null);
+ const [imageSource,setImageSource]=useState<{owner:PostprocessScientificFileDocument;exportImage:()=>void}|null>(null);
+ const receiveSource=useCallback((source:StructureExportSource|null)=>setPreparedSource(current=>source?{owner:p.document,source}:current?.owner===p.document?null:current),[p.document]);
+ const receiveImage=useCallback((exportImage:(()=>void)|null)=>setImageSource(current=>exportImage?{owner:p.document,exportImage}:current?.owner===p.document?null:current),[p.document]);
+ const live=useRef({owner:p.document,input,active:p.active});useLayoutEffect(()=>{live.current={owner:p.document,input,active:p.active};});
+ const alive=useRef(true);useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
+ const captureInput=useCallback(()=>{
+  const current=live.current;if(!alive.current||!current.active||current.owner!==p.document||!current.input)throw Error('当前文件尚没有可靠的完整结构。');
+  return{document:captureDisplayedStructureDocument(current.input),name:p.document.output.source.identity.name,assertCurrent:()=>{if(!alive.current||!live.current.active||live.current.owner!==p.document)throw Error('结构导出所属文件或作业已切换。');}};
+ },[p.document]);
+ const inputSource=useMemo<StructureExportSource>(()=>({available:p.active&&!!input,capture:captureInput}),[p.active,input,captureInput]);
+ const source=display?preparedSource?.owner===p.document?preparedSource.source:undefined:inputSource;
+ const structureExport=useStructureExport(source,p.onError);
+ const currentImage=imageSource?.owner===p.document?imageSource.exportImage:undefined;
+ const port=useMemo<StructureExportPort>(()=>({available:Boolean(source?.available&&!structureExport.busy),busy:structureExport.busy,save:structureExport.save,exportImage:currentImage}),[source?.available,structureExport.busy,structureExport.save,currentImage]);
+ useLayoutEffect(()=>{p.onStructureExportPort?.(p.document,port);return()=>p.onStructureExportPort?.(p.document,null);},[p.onStructureExportPort,p.document,port]);
+ useEffect(()=>{if(p.active)void window.sciyueDesktop?.updateWorkbenchFileState?.({canImport:Boolean(p.onImportFiles),canExportStructure:port.available,canExportImage:Boolean(port.exportImage)}).catch(()=>{});},[p.active,p.onImportFiles,port.available,port.exportImage]);
+ const [cameraRequest,setCameraRequest]=useState<ModelViewportProps['cameraRequest']>(),[resetView,setResetView]=useState(0),[localAxes,setAxes]=useState(false);
+ const axes=p.sharedShowAxes??localAxes,toggleAxes=()=>p.onSharedShowAxesChange?p.onSharedShowAxesChange(!axes):setAxes(!axes);
+ const importInput=useRef<HTMLInputElement>(null);
+ const exportStructure=()=>{void structureExport.save().catch(error=>p.onError(error instanceof Error?error.message:String(error)));};
+ const toolbar=<ModelWorkspaceToolbar readOnly readOnlySaveAllowed={port.available} onSave={exportStructure} disabled={{save:!port.available}} onNew={p.onNewDocument} onImport={p.onImportFiles?()=>importInput.current?.click():undefined} display={p.display} onDisplayChange={p.onDisplay} onActivate={p.onActivate}
+  atoms={inputView.document?.draft.structure.atoms} targetLabel={p.document.output.source.identity.name} hasCell={Boolean(inputView.document?.draft.structure.cell)} showAxes={axes} onShowAxesChange={value=>p.onSharedShowAxesChange?p.onSharedShowAxesChange(value):setAxes(value)}
+  view={{showAxes:axes,hasAtoms:Boolean(input),hasCell:Boolean(input?.draft.structure.cell),showCell:p.display.cell,onCamera:request=>setCameraRequest(previous=>({...request,serial:(previous?.serial??0)+1})),onReset:()=>setResetView(value=>value+1),onToggleAxes:toggleAxes,onToggleCell:()=>p.onDisplay({...p.display,cell:!p.display.cell})}}/>;
+ useLayoutEffect(()=>{if(p.selected&&!display)p.onToolbarSurfaceChange?.(toolbar);});
+ if(display)return <><PostprocessResultView {...p} document={display} stageAdmission="defer-unattributed" onStructureExportSource={receiveSource} onImageExportReady={receiveImage} onExportStructure={exportStructure} structureExportBusy={structureExport.busy}/>{structureExport.dialog}</>;
  const numbers=<PostprocessFileInformation document={p.document} mode="numbers" onJob={p.onFileJob} onOpenFilePathPlot={p.onOpenFilePathPlot}/>;
  return <section className="postprocess-result-view" data-testid="scientific-file-result-view" data-file-source-id={p.document.output.source.identity.id}>
+  {p.toolbarHost&&p.selected?createPortal(toolbar,p.toolbarHost):!p.onToolbarSurfaceChange?toolbar:null}
+  <input hidden type="file" multiple ref={importInput} aria-label="后处理视口导入文件" onChange={event=>{const files=Array.from(event.currentTarget.files??[]);event.currentTarget.value='';if(files.length)void p.onImportFiles?.(files).catch(error=>p.onError(error instanceof Error?error.message:String(error)));}}/>
   {p.toolHost?createPortal(numbers,p.toolHost):null}
   <div className="postprocess-model-canvas">
-   {inputView.document?<ModelViewport onCipLabelsUsed={onCipLabelsUsed} document={inputView.document} display={p.display} interaction={{element:null,box:false,alt:false,gesture:'none'}} active={p.active} readOnly structureLocked observationFixedFrame observationTool="rotate" onHover={noEdit} onGestureStart={noEdit} onGestureEnd={noEdit} onSelection={noEdit} onCommand={noEdit} onError={p.onError} legendVisible={p.legendVisible} legendExpanded={p.legendExpanded} onLegendExpandedChange={p.onLegendExpandedChange} onLegendSurfaceChange={p.onLegendSurfaceChange}/>:<p className="postprocess-note">当前来源没有可显示的完整结构；已打印数值与原始来源保留。</p>}
+   {inputView.document?<ModelViewport onCipLabelsUsed={onCipLabelsUsed} document={inputView.document} display={p.display} cameraRequest={cameraRequest} resetViewRequest={resetView} showAxes={axes} interaction={{element:null,box:false,alt:false,gesture:'none'}} active={p.active} readOnly structureLocked observationFixedFrame observationTool="rotate" onHover={noEdit} onGestureStart={noEdit} onGestureEnd={noEdit} onSelection={noEdit} onCommand={noEdit} onError={p.onError} legendVisible={p.legendVisible} legendExpanded={p.legendExpanded} onLegendExpandedChange={p.onLegendExpandedChange} onLegendSurfaceChange={p.onLegendSurfaceChange}/>:<p className="postprocess-note">当前来源没有可显示的完整结构；已打印数值与原始来源保留。</p>}
   </div>
   {input&&<div className="postprocess-view-caption">输入 / 起始结构 · {input.draft.structure.atoms.length} 原子{inputView.preparing?' · 正在准备显示连接…':''}{inputView.warnings.length>0&&<details className="postprocess-metadata-details"><summary>显示连接提示</summary>{inputView.warnings.map((warning,index)=><p key={index}>{warning}</p>)}</details>}</div>}
+  {structureExport.dialog}
  </section>;
 }

@@ -13,6 +13,7 @@ import { isInputLayerDraft, isInputLayerDraftForEngine, migrateInputLayerDraft }
 import { inheritedSharedFreezes } from './shared-freeze-inheritance';
 import { projectOrcaFreezeSettings } from '../../core/input-freezes';
 import { projectCanonicalOrcaFreezes } from './canonical-freezes';
+import {electronicInventorySignature,reconcileElectronicStateAfterInventoryEdit} from '../../core/modeling/electronic-state-policy';
 
 type OrcaApplyResult = BuilderApplyResult & { internalCoordinates?: ModelCoordinate[] };
 export interface OrcaBuilderIntegration { structure: Structure; settings: OrcaSettings; warnings: string[]; materialChanged: boolean; constraintsChanged: boolean }
@@ -180,8 +181,15 @@ export function integrateOrcaBuilderResult(original: Structure | null, result: O
   }
   settings.md.activeAtomIds = retainedDefinition(settings.md.activeAtomIds);
   settings.fragments = result.assignments.fragments.map(region => {
-    if (!Number.isInteger(region.charge) || !Number.isInteger(region.multiplicity) || region.multiplicity! < 1) throw new Error('ORCA片段须保留明确电荷和多重度。');
-    return { id: region.id, atomIds: [...region.atomIds], charge: region.charge!, multiplicity: region.multiplicity! };
+    const previousFragment=previous.fragments.find(row=>row.id===region.id);
+    const mapped={ id: region.id, atomIds: [...region.atomIds], charge: region.charge??previousFragment?.charge??NaN, multiplicity: region.multiplicity??previousFragment?.multiplicity??NaN };
+    const before={atoms:original?.atoms.filter(atom=>previousFragment?.atomIds.includes(atom.id!))??[]};
+    const after={atoms:structure.atoms.filter(atom=>mapped.atomIds.includes(atom.id!))};
+    if(previousFragment&&electronicInventorySignature(before)!==electronicInventorySignature(after)){
+      const paired=reconcileElectronicStateAfterInventoryEdit(after.atoms,previousFragment);
+      mapped.charge=paired.charge;mapped.multiplicity=paired.multiplicity;
+    }
+    return mapped;
   });
   const capturedFragments = new Set(captureOrcaAssignments(original, previous).fragments.map(region => region.id));
   settings.fragments.push(...previous.fragments.filter(fragment => !capturedFragments.has(fragment.id) && retainedDefinition(fragment.atomIds).length === fragment.atomIds.length).map(clone));
@@ -201,8 +209,9 @@ export function integrateOrcaBuilderResult(original: Structure | null, result: O
   const materialChanged = builderMaterialSignature(original) !== builderMaterialSignature(structure);
   const science = (s: OrcaSettings) => JSON.stringify([s.frozenAtomIds, s.constraints, s.md.constraints, s.md.activeAtomIds, s.multiscale.qmAtomIds, s.multiscale.activeAtomIds, s.multiscale.freezeLowLayer, s.multiscale.boundaries, s.fragments]);
   const constraintsChanged = science(previous) !== science(settings);
+  const fragmentState=(model:Structure|null,fragments:OrcaSettings['fragments'])=>JSON.stringify(fragments.map(fragment=>[electronicInventorySignature({atoms:model?.atoms.filter(atom=>fragment.atomIds.includes(atom.id!))??[]}),fragment.charge,fragment.multiplicity]));
+  if(fragmentState(original,previous.fragments)!==fragmentState(structure,settings.fragments))settings.fragmentStatesConfirmed=false;
   if (materialChanged || constraintsChanged) {
-    settings.fragmentStatesConfirmed = false;
     settings.neb.mappingConfirmed = false; settings.md.restartConfirmed = false; settings.multiscale.configurationConfirmed = false;
     settings.multiscale.boundaries = settings.multiscale.boundaries.map(row => ({ ...row, confirmed: false }));
     if (settings.multiscale.graphEvidence) settings.multiscale.graphEvidence.confirmed = false;
@@ -214,8 +223,11 @@ export function integrateOrcaBuilderResult(original: Structure | null, result: O
 export function invalidateOrcaRequestForModel(request: OrcaJobRequest, integrated: OrcaBuilderIntegration): OrcaJobRequest {
   const next = clone(request); next.charge = builderCommittedCharge(request.structure, integrated.structure, request.charge);
   if (!request.structure) { const initial = initialBaseElectronicState(integrated.structure); next.charge = initial.charge; next.multiplicity = initial.multiplicity; }
+  else if(electronicInventorySignature(request.structure)!==electronicInventorySignature(integrated.structure)){
+    const paired=reconcileElectronicStateAfterInventoryEdit(integrated.structure.atoms,{charge:request.charge,multiplicity:request.multiplicity});
+    next.charge=paired.charge;next.multiplicity=paired.multiplicity;
+  }
   next.structure = { ...clone(integrated.structure), charge: next.charge, multiplicity: next.multiplicity }; next.settings = clone(integrated.settings);
-  if (integrated.materialChanged || integrated.constraintsChanged) next.settings.fragmentStatesConfirmed = false;
   if (integrated.materialChanged || integrated.constraintsChanged) next.assets = next.assets.map(asset => ({ ...asset,
     orbitalEvidence: asset.orbitalEvidence ? { ...asset.orbitalEvidence, compatibilityConfirmed: false } : undefined,
     hessianEvidence: asset.hessianEvidence ? { ...invalidateHessianPathEvidence(asset.hessianEvidence)!, minimumConfirmed: false, atomOrderConfirmed: false } : undefined,
@@ -223,7 +235,7 @@ export function invalidateOrcaRequestForModel(request: OrcaJobRequest, integrate
     restartEvidence: asset.restartEvidence ? { ...asset.restartEvidence, conditionsConfirmed: false } : undefined }));
   if ((integrated.materialChanged || integrated.constraintsChanged) && next.settings.ircStartEvidence)
     next.settings.ircStartEvidence = { confirmed: false, context: '' };
-  next.electronicStateConfirmed = retainBaseElectronicStateConfirmation(request.electronicStateConfirmed, next.structure, next);
+  next.electronicStateConfirmed = electronicInventorySignature(request.structure)===electronicInventorySignature(next.structure)&&request.charge===next.charge&&request.multiplicity===next.multiplicity&&retainBaseElectronicStateConfirmation(request.electronicStateConfirmed, next.structure, next);
   return next;
 }
 

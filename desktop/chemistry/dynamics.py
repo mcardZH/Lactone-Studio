@@ -26,6 +26,7 @@ from ase.optimize import LBFGS
 from scipy.optimize import minimize
 
 import engine
+from native_stdin import control_blocks
 
 SCHEMA = 1
 KCAL_MOL_TO_EV = units.kcal / units.mol
@@ -139,18 +140,6 @@ class Session:
         movable = set(request["movableAtomIds"])
         self.fixed = [i for i, a in enumerate(self.structure["atoms"]) if a["id"] not in movable]
         self.initial_xyz = self.atoms.positions.copy()
-        # An imported XYZ can carry genuine stereochemistry without redundant
-        # app stereoParity metadata. Identify chemically stereogenic four-
-        # neighbour centers once at startup; thereafter protect their actual
-        # stable-ID-ordered signed volumes without reassigning static labels
-        # on every thermally moving frame or changing public atom metadata.
-        self.md_stereo_reference = copy.deepcopy(self.structure)
-        self.md_tetrahedral_indices = set()
-        for atom in self.calculator.mol.GetAtoms():
-            if atom.HasProp("_CIPCode") and len(atom.GetNeighbors()) == 4:
-                self.md_tetrahedral_indices.add(atom.GetIdx())
-                self.md_stereo_reference["atoms"][atom.GetIdx()]["stereoParity"] = 1
-        self.md_expected_tetra, self.md_expected_double = engine.stereo_geometry(self.md_stereo_reference)
         if self.fixed:
             self.atoms.set_constraint(FixAtoms(indices=self.fixed))
         self.atoms.calc = self.calculator
@@ -214,17 +203,6 @@ class Session:
         for atom, pos in zip(output["atoms"], xyz):
             atom.update(x=float(pos[0]), y=float(pos[1]), z=float(pos[2]))
         output.pop("molfile", None)
-        if self.operation == "md":
-            # Thermal motion is not an optimizer endpoint: test actual signed
-            # geometry rather than reassigning RDKit's static stereo labels.
-            geometry = dict(output, atoms=[dict(a, stereoParity=1) if i in self.md_tetrahedral_indices else a
-                                           for i, a in enumerate(output["atoms"])])
-            after_tetra, after_double = engine.stereo_geometry(geometry)
-            if any(value != after_tetra.get(i) for i, value in self.md_expected_tetra.items()) or any(
-                    value and value != after_double.get(i) for i, value in self.md_expected_double.items()):
-                engine.reject("md-stereo-instability", "A molecular stereocenter or double-bond geometry inverted or became singular; the last validated frame is retained.")
-        else:
-            engine.check_stereo(self.structure, output)
         energy = float(self.atoms.get_potential_energy())
         kinetic = float(self.atoms.get_kinetic_energy())
         temperature = float(self.atoms.get_temperature())
@@ -333,27 +311,39 @@ def create_session(request, native_context=None):
 
 def main():
     incoming = queue.Queue(maxsize=64)
+    reader_done = threading.Event()
+
+    def enqueue(value):
+        while not reader_done.is_set():
+            try:
+                incoming.put(value, timeout=.05)
+                return
+            except queue.Full:
+                continue
+
     def reader():
         pending = b""
-        while True:
-            # Read the raw fd: a blocked daemon must not own Python's buffered
-            # stdin lock while the finite worker shuts down on Windows.
-            block = os.read(sys.stdin.fileno(), 65536)
-            if not block:
-                incoming.put(None)
-                return
-            pending += block
-            while b"\n" in pending:
-                line, pending = pending.split(b"\n", 1)
-                try:
+        try:
+            # Poll the owned Windows pipe so the empty pipe cannot hold the
+            # CRT descriptor lock while the selected driver initializes.
+            for block in control_blocks(sys.stdin.fileno(), reader_done):
+                if not block:
+                    enqueue(None)
+                    return
+                pending += block
+                while b"\n" in pending:
+                    line, pending = pending.split(b"\n", 1)
                     obj = json.loads(line, parse_constant=lambda _: engine.reject("request", "Non-finite JSON is unsupported."))
                     if not isinstance(obj, dict):
                         engine.reject("request", "A session command must be an object.")
-                    incoming.put(obj)
-                except Exception as exc:
-                    incoming.put(exc)
-                    return
-    threading.Thread(target=reader, daemon=True).start()
+                    enqueue(obj)
+        except OSError:
+            enqueue(engine.Rejected("dynamics-stdin", "无法读取原生动力学会话控制管道。"))
+        except Exception as exc:
+            enqueue(exc)
+
+    reader_thread = threading.Thread(target=reader, daemon=True)
+    reader_thread.start()
     session = None
     session_id = None
     seq = 0
@@ -449,6 +439,10 @@ def main():
     except Exception as exc:
         emit("error", error=engine.error_payload(exc, "The native session failed; its last validated frame is retained."))
         return 1
+    finally:
+        reader_done.set()
+        if os.name == "nt":
+            reader_thread.join()
 
 
 if __name__ == "__main__":

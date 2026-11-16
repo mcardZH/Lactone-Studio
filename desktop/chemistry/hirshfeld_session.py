@@ -20,7 +20,7 @@ import threading
 
 from hirshfeld_analysis import (HirshfeldError, require, finite, validate_cluster_geometry,
                                 validate_cluster, admit_native_result, validate_native_cube_pair, native_boundary_faces)
-from multiwfn_resources import resolve_resources, _values
+from multiwfn_resources import resolve_resources, _values, require_native_binary_grant
 from multiwfn_progress import report_progress
 from surface_analysis import (NativeSurfaceProcess, SurfaceError, retained_size, read_scalar_cube,
                               NUMBER, number, SETUP_END, MAIN_MENU, BOHR_TO_ANGSTROM)
@@ -120,6 +120,7 @@ class HirshfeldAnalysisSession:
         self.executable = Path(request['executable']).resolve()
         grant = request.get('resources') or {}
         self.resources, self.settings = resolve_resources(self.executable, grant.get('threads'), grant.get('memoryBudgetBytes'))
+        require_native_binary_grant(self.resources, grant)
         self.open_settings_revision = self.resources['settingsRevision']
         require(grant.get('settingsRevision', self.open_settings_revision) == self.open_settings_revision,
                 'resource-changed', 'Multiwfn settings changed after planning the HS session.')
@@ -152,6 +153,8 @@ class HirshfeldAnalysisSession:
         require(isinstance(grant, dict) and all(type(grant.get(key)) is int and grant[key] > 0 for key in ('threads', 'memoryBudgetBytes')),
                 'resources', 'A current explicit shared Multiwfn resource grant is required.')
         resources, settings = resolve_resources(self.executable, grant['threads'], grant['memoryBudgetBytes'])
+        require_native_binary_grant(resources, self.resources)
+        require_native_binary_grant(resources, grant)
         require(resources['settingsRevision'] == self.open_settings_revision
                 and grant.get('settingsRevision', self.open_settings_revision) == self.open_settings_revision,
                 'resource-changed', 'Multiwfn settings changed after opening; no HS process was started.')
@@ -165,7 +168,7 @@ class HirshfeldAnalysisSession:
         self._current(); self.stop_native()
         self.work_count += 1
         work = Path(tempfile.mkdtemp(prefix='hirshfeld-', dir=self.root)); source = work / 'source.xyz'
-        require(len(str(source)) < 240, 'path', 'The owned HS workspace path exceeds this native profile.')
+        require(len(str(source)) < 240, 'path', f'The owned HS input path is too long (length={len(str(source))}; native profile requires <240).')
         rows = [str(len(self.cluster['atoms'])), 'Ester Studio immutable complete finite cluster; native Hirshfeld weight, no quantum wavefunction']
         rows.extend(atom['element'] + ' ' + ' '.join(format(value, '.17g') for value in atom['position']) for atom in self.cluster['atoms'])
         source.write_text('\n'.join(rows) + '\n', encoding='ascii')
@@ -198,31 +201,29 @@ class HirshfeldAnalysisSession:
                 native.hirshfeld_recorded = True
 
     def _route(self, native, selection, spacing):
-        native.send(['12']); native.wait(SETUP_END, 30)
-        native.send(['1']); native.wait('10 Isosurface of a grid data loaded from external file', 30)
-        native.send(['5']); native.wait('Input atomic indices.', 30)
-        native.send([','.join(map(str, sorted(selection['targetAtomIndices'])))]); native.wait(SETUP_END, 30)
-        native.send(['2']); native.wait('22 d_norm:', 30)
-        native.send(['22']); setup = native.wait(SETUP_END, 30)
-        native.send(['3']); native.wait('Input a value (in Bohr)', 30)
-        native.send([format(spacing, '.17g')]); setup += native.wait(SETUP_END, 30)
+        native.send(['12']); native.wait(SETUP_END)
+        native.send(['1']); native.wait('10 Isosurface of a grid data loaded from external file')
+        native.send(['5']); native.wait('Input atomic indices.')
+        native.send([','.join(map(str, sorted(selection['targetAtomIndices'])))]); native.wait(SETUP_END)
+        native.send(['2']); native.wait('22 d_norm:')
+        native.send(['22']); setup = native.wait(SETUP_END)
+        native.send(['3']); native.wait('Input a value (in Bohr)')
+        native.send([format(spacing, '.17g')]); setup += native.wait(SETUP_END)
         require('Hirshfeld surface' in setup and 'current: d_norm' in setup, 'definition', 'Native HS/dnorm setup was not confirmed.')
-        native.send(['0']); output = setup + native.wait(HS_POST, 120)
+        native.send(['0']); output = setup + native.wait(HS_POST)
         require('Surface analysis finished!' in output, 'incomplete', 'The native HS analysis did not complete.')
         for answer in ('8', '-2', '13'):
-            self._current(); native.send([answer]); native.wait(HS_POST, 120 if answer == '13' else 30)
-        native.send(['20']); native.wait(CONTACT_MENU, 30)
-        native.send(['3']); output += native.wait(CONTACT_MENU, 30)
-        native.send(['0']); output += native.wait(FINGER_POST, 120)
-        native.send(['5']); native.wait(FINGER_POST, 30)
+            self._current(); native.send([answer]); native.wait(HS_POST)
+        native.send(['20']); native.wait(CONTACT_MENU)
+        native.send(['3']); output += native.wait(CONTACT_MENU)
+        native.send(['0']); output += native.wait(FINGER_POST)
+        native.send(['5']); native.wait(FINGER_POST)
         for marker in (CONTACT_MENU, HS_POST, SETUP_END, MAIN_MENU):
-            native.send(['-1']); native.wait(marker, 30)
+            native.send(['-1']); native.wait(marker)
         native.send(['q'])
         self._current()
-        # This wait is inside the existing host request deadline; it neither
-        # creates another operation nor resets the host timer. Cancellation
-        # still calls stop_native immediately from its own control thread and
-        # the process exit wakes this wait. Only normal q gets this short grace.
+        # Only the normal q handshake gets an exit grace. Owner cancellation
+        # can stop the process on its control thread, waking this wait.
         process = native.process
         if process is not None:
             try:

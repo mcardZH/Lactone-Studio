@@ -1,5 +1,4 @@
 import {DismissibleNotice} from '../DismissibleNotice';
-import NumericInput from '../NumericInput';
 import type {AdvancedFrameSource} from '../../modeling/advanced/frame-source';
 import {useEffect,useRef,useState} from 'react';
 import {builderCoordinateValue} from '../../core/builder-geometry';
@@ -7,7 +6,7 @@ import type {ConformerPointCountMode} from '../../modeling/conformers/point-allo
 import {DEFAULT_CONFORMER_SAMPLING_LIMITS} from '../../modeling/conformers/sampling';
 import type {AnalysisSelectionPort} from '../analysis-selection-intent';
 import InteractiveSelectionField,{SelectionGroupHeader,SelectionAddButton,SelectionRemoveButton} from '../InteractiveSelectionField';
-import {InputSettingsField,InputSettingsRow} from '../InputSettingsFields';
+import {InputSettingsField,InputSettingsNumericControl,InputSettingsRow,InputSettingsStack} from '../InputSettingsFields';
 import {InputSettingsAction,InputSettingsCheckbox} from '../InputSettingsLayout';
 import '../geometry-controls.css';
 import './conformer-torsion-controls.css';
@@ -27,7 +26,7 @@ export default function ConformerTorsionControls(p:{
   const update=(id:string,patch:Partial<ConformerTorsionDraft>)=>{if(pending?.id===id)setPending({...pending,...patch});else p.onChange(p.rows.map(row=>row.id===id?{...row,...patch}:row));};
   const atomLabel=(id:string)=>{const index=p.source?.structure.atoms.findIndex(atom=>atom.id===id)??-1;return index<0?'未定义':`${p.source!.structure.atoms[index].element}${index+1}`;};
   const angle=(row:ConformerTorsionDraft)=>{try{return p.source&&row.atomIds.length===4?`${builderCoordinateValue(p.source.structure,'D',[...row.atomIds]).toFixed(1)}°`:'';}catch{return ''}};
-  return <div className="geometry-controls conformer-torsion-controls" data-testid="conformer-torsion-controls">
+  return <div className="geometry-controls conformer-torsion-controls" data-testid="conformer-torsion-controls"><InputSettingsStack>
     <SelectionGroupHeader title={`柔性键（${p.rows.length}）`} actions={<SelectionAddButton label="添加柔性键" disabled={!p.source||!!pending} onClick={()=>setPending({id:crypto.randomUUID(),atomIds:[],pointCount:3,enabled:true,origin:'manual',pointCountMode:'automatic'})}/>}/>
     <p className="muted-note">本卡最多启用{DEFAULT_CONFORMER_SAMPLING_LIMITS.maxTorsions}条柔性键</p>
     <InputSettingsRow>{p.onAutomatic&&<InputSettingsAction disabled={!p.source} onClick={p.onAutomatic}>自动判定柔性键</InputSettingsAction>}<InputSettingsAction disabled={!p.rows.length} onClick={()=>{p.onPreview?.(null);p.onHover?.(null);p.onChange([]);}}>清空柔性键</InputSettingsAction></InputSettingsRow>
@@ -36,9 +35,9 @@ export default function ConformerTorsionControls(p:{
       <div className="conformer-torsion-body">
       <InteractiveSelectionField structure={p.source?.structure??null} label={`柔性键 ${index+1}`} rowId={row.id} kind="coordinate" atomIds={row.atomIds} disabled={!p.selectionEnabled} captureOwner={p.selectionPort.owner} contextKey={p.selectionPort.contextKey} analysisPurpose="advanced-coordinate" onRequestAnalysisSelection={intent=>{p.onRequest();return p.selectionPort.requestSelection(intent);}} onEnd={result=>{if(result==='cancelled'&&row.id===pending?.id)setPending(null);}} onConfirm={(ids,guard)=>{guard();if(ids.length!==4)throw Error('二面角需要按顺序选择4个不同原子。');p.validate(ids);if(row.id===pending?.id){p.onChange([...p.rows,{...row,atomIds:[...ids]}]);setPending(null);p.onActive(row.id);}else update(row.id,{atomIds:[...ids]});}}/>
       {row.id===pending?.id&&<InputSettingsAction onClick={()=>setPending(null)}>取消添加</InputSettingsAction>}
-      <div className="conformer-torsion-count-group"><InputSettingsField label="撒点数" className="conformer-torsion-points"><NumericInput aria-label={`柔性键${index+1}撒点数`} stepper min={1} max={4096} step={1} value={Number.isFinite(row.pointCount)?row.pointCount:''} onChange={event=>update(row.id,{pointCount:event.currentTarget.valueAsNumber,pointCountMode:'manual'})}/></InputSettingsField>{row.pointCountMode==='manual'?<InputSettingsAction onClick={()=>update(row.id,{pointCountMode:'automatic'})}>恢复自动</InputSettingsAction>:<span className="conformer-torsion-auto">自动</span>}</div>
+      <InputSettingsRow className="conformer-torsion-count-group"><InputSettingsField label="撒点数" controlWidth="number"><InputSettingsNumericControl ariaLabel={`柔性键${index+1}撒点数`} min={1} max={4096} step={1} integer value={row.pointCount} onValue={pointCount=>update(row.id,{pointCount,pointCountMode:'manual'})}/></InputSettingsField>{row.pointCountMode==='manual'?<InputSettingsAction onClick={()=>update(row.id,{pointCountMode:'automatic'})}>恢复自动</InputSettingsAction>:<span className="conformer-torsion-auto">自动</span>}</InputSettingsRow>
       </div>
     </article>)}</div>
     {!p.rows.length&&<p role="status">暂无柔性键定义</p>}{p.error&&<DismissibleNotice role="alert">{p.error}</DismissibleNotice>}
-  </div>;
+  </InputSettingsStack></div>;
 }

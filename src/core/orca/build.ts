@@ -1,4 +1,5 @@
 import { getOrcaMethodProfile } from './catalog';
+import { orcaAssetsForInputValidation } from './assets';
 import { mergeOrcaScfBlocks, normalizeOrcaScientificKeywords, orcaReferenceKeywords, renderOrcaHeader } from './header';
 import { renderOrcaTask } from './tasks';
 import { renderOrcaWorkflow } from './workflows';
@@ -45,7 +46,7 @@ export function buildOrca(req: OrcaJobRequest, assetTargetVersion: OrcaVersion =
   files.push(...task.files, ...multiscale.files);
   const seen = new Set<string>();
   const outputStems = files.filter(file => file.role === 'input').map(file => file.name.slice(0, -4).toLowerCase());
-  if (req.assets.some(asset => outputStems.some(stem => asset.name.toLowerCase().startsWith(`${stem}.`)))) issues.push({ field: 'assets', severity: 'error', message: '依赖文件与独立子任务输出同名，可能被覆盖。' });
+  if (orcaAssetsForInputValidation(req).some(asset => outputStems.some(stem => asset.name.toLowerCase().startsWith(`${stem}.`)))) issues.push({ field: 'assets', severity: 'error', message: '依赖文件与独立子任务输出同名，可能被覆盖。' });
   for (const file of files) {
     const normalized = file.name.toLowerCase();
     if (seen.has(normalized)) issues.push({ field: 'files', severity: 'error', message: `输出文件名称冲突：${file.name}` });

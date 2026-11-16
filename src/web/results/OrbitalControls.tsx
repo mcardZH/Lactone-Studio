@@ -17,6 +17,7 @@ import { MULTIWFN_CONFIGURATION_CHANGED } from './MultiwfnPathControl';
 import {useComputeResources} from '../useComputeResources';
 import type {ComputeResourcePreferencesBridge} from '../../modeling/resource-preferences';
 import MultiwfnProgress from './MultiwfnProgress';
+import MultiwfnErrorNotice,{multiwfnBackendFailure} from './MultiwfnErrorNotice';
 import './orbital.css';
 import type {TrajectoryResult} from '../../results/contracts';
 import {printedOrbitalList} from './PrintedFrameProperties';
@@ -71,9 +72,9 @@ export function OrbitalCalculationQuality({quality,spacing,onChange,label='轨�
 export function OrbitalAppearanceOptions({value,onChange,children}:{value:OrbitalLayerSettings;onChange(value:OrbitalLayerSettings):void;children:ReactNode}) {
   const defaults = useSurfaceAppearanceDefaults();
   const [name,setName] = useProjectState('OrbitalControls.name', '');
-  const [selection,setSelection] = useProjectState<{name:string;appearance:string}|null>('OrbitalControls.selection', null);
+  const [selection,setSelection] = useProjectState<{name:string;appearance:string}|null>('OrbitalAppearanceOptions.namedSelection', null);
   const current = JSON.stringify(captureOrbitalAppearance(value));
-  const selected = selection?.appearance === current ? selection.name : undefined;
+  const selected = selection?.appearance === current && typeof selection.name === 'string' ? selection.name : undefined;
   const named = defaults.snapshot?.namedOrbitalPresets ?? [];
   const selectNamed = (id:string) => {
     const row = named.find(item => `saved:${item.name}` === id);
@@ -129,7 +130,9 @@ function OrbitalControlsInner(props: OrbitalControlsProps) {
   const selectionIdentity = JSON.stringify([list?.sourceId,list?.sourceRevision,props.sourceFrameIndex??0]);
   const [selection,setSelection] = useProjectState<{identity:string;key:string|null}>('OrbitalControls.selection', {identity:selectionIdentity,key:null});
   const nativeKey=(key:string|null)=>canCompute?resolveNativeOrbitalKey({metadata:props.metadata,list,printed:!!printed,key,sourceResult:props.sourceResult,sourceFrameIndex:props.sourceFrameIndex,sourcePair:props.sourcePair}):null;
-  const localSelected=selection.identity===selectionIdentity?selection.key:null;
+  // Older projects can have null or a named appearance in the row slot.
+  const localSelected=useMemo(()=>selection?.identity===selectionIdentity && typeof selection.key==='string'
+    && list?.orbitals.some(row=>row.key===selection.key) ? selection.key : null,[selection,selectionIdentity,list]);
   const selected = canCompute&&props.selectedKey!==undefined&&props.selectedKey!==nativeKey(localSelected)?props.selectedKey?list?.orbitals.find(row=>nativeKey(row.key)===props.selectedKey)?.key??null:null:localSelected;
   const selectedKey = nativeKey(selected);
   const [quality,setQuality] = useProjectState<OrbitalQuality>('OrbitalControls.quality', 'normal'),[customSpacing,setCustomSpacing]=useProjectState('OrbitalControls.customSpacing', .15);
@@ -139,7 +142,8 @@ function OrbitalControlsInner(props: OrbitalControlsProps) {
   const [unit,setUnit] = useProjectState<'eV'|'hartree'>('OrbitalControls.unit', 'eV'),[layer,setLayer] = useProjectState<OrbitalLayerSettings>('OrbitalControls.layer', {...DEFAULT_LAYER});
   useEffect(()=>{if(!appearanceDefaults.ready||appearanceInitialized.current)return;appearanceInitialized.current=true;const saved=appearanceDefaults.snapshot?.value.orbital;if(saved&&'colors' in saved)setLayer(old=>restoreOrbitalAppearance(old,saved));},[appearanceDefaults.ready,appearanceDefaults.snapshot]);
   const changeLayer=(next:OrbitalLayerSettings)=>{appearanceInitialized.current=true;setLayer(next);};
-  const [exporting,setExporting] = useState(false),[localError,setLocalError] = useState('');
+  const [exporting,setExporting] = useState(false),[localError,setLocalError] = useState(''),[resourceError,setResourceError]=useState('');
+  const [errorRevision,setErrorRevision]=useState(0);
   const [computeRequest,setComputeRequest]=useState<{identity:string;token:object;sampling:OrbitalSampling}|null>(null);
   const callbacks = useRef(props); callbacks.current=props; const liveIdentity=useRef(identity);liveIdentity.current=identity;
   const mounted=useRef(true);useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -148,15 +152,15 @@ function OrbitalControlsInner(props: OrbitalControlsProps) {
     const refresh=async()=>{
       const own=++serial;
       if(!canCompute){setResourceReady(true);return;}
-      if(globalResources.loading||globalResources.error||!globalResources.snapshot){setResourceReady(false);if(globalResources.error)setLocalError(globalResources.error);return;}
+      if(globalResources.loading||globalResources.error||!globalResources.snapshot){setResourceReady(false);setResourceError(globalResources.error);return;}
       if(!bridge?.orbitalResourceInfo){setResourceReady(false);return;}
       try{
         const info=await bridge.orbitalResourceInfo();
         if(!alive||own!==serial)return;
         if(!Number.isSafeInteger(info.threads)||info.threads<=0||!Number.isSafeInteger(info.memoryBudgetBytes)||info.memoryBudgetBytes<=0)throw new Error('本机资源配置回执无效。');
         if(info.computeResourceVersion!==globalResources.snapshot.revision)throw new Error('计算资源配置已变化，请等待当前配置回执。');
-        setResourceInfo(info);setResources(old=>({...old,threads:info.threads,memoryBudgetBytes:info.memoryBudgetBytes}));setResourceReady(true);
-      }catch(error){if(alive&&own===serial){setLocalError(message(error));setResourceReady(false);}}
+        setResourceInfo(info);setResources(old=>({...old,threads:info.threads,memoryBudgetBytes:info.memoryBudgetBytes}));setResourceError('');setResourceReady(true);
+      }catch(error){if(alive&&own===serial){setResourceError(message(error));setResourceReady(false);}}
     };
     void refresh();const changed=()=>void refresh();
     if(typeof window!=='undefined')window.addEventListener(MULTIWFN_CONFIGURATION_CHANGED,changed);
@@ -164,30 +168,50 @@ function OrbitalControlsInner(props: OrbitalControlsProps) {
   },[bridge,canCompute,globalResources.loading,globalResources.error,globalResources.snapshot?.revision]);
   const spacing=orbitalQualitySpacing(quality,customSpacing);
   const sampling=useMemo(()=>({...resources,spacingAngstrom:spacing}),[resources,spacing]);
-  const {controller,state,field}=useOrbitalField({bridge,metadata:canCompute?props.metadata:null,sessionId:canCompute?props.nativeSessionId:null,selectedKey,active:props.active!==false,cancelOnInactive:props.cancelOnInactive,computeIntent:computeRequest?.identity===identity?computeRequest.token:null,sampling:computeRequest?.identity===identity?computeRequest.sampling:sampling,onError: text=>{setLocalError(text);callbacks.current.onError(text);}});
+  const {controller,state,field}=useOrbitalField({bridge,metadata:canCompute?props.metadata:null,sessionId:canCompute?props.nativeSessionId:null,selectedKey,active:props.active!==false,cancelOnInactive:props.cancelOnInactive,computeIntent:computeRequest?.identity===identity?computeRequest.token:null,sampling:computeRequest?.identity===identity?computeRequest.sampling:sampling,onError:setLocalError});
   useEffect(()=>{callbacks.current.onField(field);return()=>callbacks.current.onField(null);},[field,identity]);
   useEffect(()=>{callbacks.current.onLayerSettings(layer);},[layer,identity]);
   const gridResult=useMemo(()=>{if(!props.metadata)return{grid:null,error:''};try{return{grid:orbitalGridFor(props.metadata,sampling),error:''};}catch(error){return{grid:null,error:message(error)};}},[props.metadata,sampling]);
-  const status=state.planning?'正在准备当前轨道…':state.progress?.status==='running'||state.progress?.status==='queued'?'正在计算当前轨道…':field?'当前轨道可用':selectedKey?state.error||'当前轨道未缓存':'';
+  const status=state.planning?'正在准备当前轨道…':'正在计算当前轨道…';
   const busy=state.planning||state.progress?.status==='running'||state.progress?.status==='queued';
-  function requestCompute(key=selectedKey){if(key&&resourceReady)setComputeRequest({identity,token:{},sampling:{...sampling}});}
-  function choose(key:string){const next=key;setSelection({identity:selectionIdentity,key:next});const computeKey=nativeKey(next);if(computeKey!==selectedKey)props.onSelectedKey?.(computeKey);if(computeKey){if(!resourceReady||state.backend?.configured===false)notify('请先配置本机 Multiwfn');else if(key!==selected||!field)requestCompute(computeKey);}else if(next&&canCompute)notify('此轨道只有来源数值，未找到匹配的已保存系数。');setLocalError('');}
-  async function exportCube(){if(exporting)return;if(field&&isRestoredAnalysisData(field)&&props.metadata){try{const files=projectOrbitalCubeArtifacts(field,props.metadata);exportBlob(new Blob([files.cube],{type:'text/plain'}),'Ester-Studio-orbital.cube');exportBlob(new Blob([files.metadata],{type:'application/json'}),'Ester-Studio-orbital.sciyue-domain.json');}catch(error){setLocalError(message(error));}return;}if(!field||!props.nativeSessionId||!selectedKey){notify('请先选择并计算轨道');return;}if(!bridge?.exportOrbitalCube){notify('当前环境不支持 Cube 导出');return;}const started=identity;setExporting(true);try{const text=await bridge.exportOrbitalCube(props.nativeSessionId,selectedKey);if(!mounted.current||liveIdentity.current!==started)return;if(!text?.trim())throw new Error('轨道 Cube 导出回执为空。');exportBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),`${safeName(props.metadata?.name??'wavefunction')}-${safeName(selectedKey)}.cube`);}catch(error){if(mounted.current&&liveIdentity.current===started)setLocalError(message(error));}finally{if(mounted.current)setExporting(false);}}
+  const backendFailure=state.backend&&(state.backend.configured===false||state.backend.status==='work-directory-unavailable')?multiwfnBackendFailure(state.backend,'ORBITAL'):'';
+  const failedProgress=state.taskProgress?.phase==='failed'?state.taskProgress:null;
+  const taskError=localError||state.error||failedProgress?.message||resourceError;
+  function beginAction(error=''){
+    setErrorRevision(value=>value+1);
+    setLocalError(error);
+  }
+  function requestCompute(key=selectedKey){
+    if(!key)return;
+    beginAction(backendFailure);
+    if(backendFailure)return;
+    if(resourceReady)setComputeRequest({identity,token:{},sampling:{...sampling}});
+    else if(!resourceError)notify('正在读取本机计算资源。');
+  }
+  function choose(key:string){
+    setSelection({identity:selectionIdentity,key});
+    const computeKey=nativeKey(key);
+    if(computeKey!==selectedKey)props.onSelectedKey?.(computeKey);
+    if(computeKey){if(key!==selected||!field)requestCompute(computeKey);}
+    else if(key&&canCompute)notify('此轨道只有来源数值，未找到匹配的已保存系数。');
+  }
+  function stop(){if(controller){beginAction();void controller.stop().catch(error=>setLocalError(message(error)));}}
+  async function exportCube(){if(exporting)return;beginAction();if(field&&isRestoredAnalysisData(field)&&props.metadata){try{const files=projectOrbitalCubeArtifacts(field,props.metadata);exportBlob(new Blob([files.cube],{type:'text/plain'}),'Ester-Studio-orbital.cube');exportBlob(new Blob([files.metadata],{type:'application/json'}),'Ester-Studio-orbital.sciyue-domain.json');}catch(error){setLocalError(message(error));}return;}if(!field||!props.nativeSessionId||!selectedKey){notify('请先选择并计算轨道');return;}if(!bridge?.exportOrbitalCube){notify('当前环境不支持 Cube 导出');return;}const started=identity;setExporting(true);try{const text=await bridge.exportOrbitalCube(props.nativeSessionId,selectedKey);if(!mounted.current||liveIdentity.current!==started)return;if(!text?.trim())throw new Error('轨道 Cube 导出回执为空。');exportBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),`${safeName(props.metadata?.name??'wavefunction')}-${safeName(selectedKey)}.cube`);}catch(error){if(mounted.current&&liveIdentity.current===started)setLocalError(message(error));}finally{if(mounted.current)setExporting(false);}}
   const diagnostics=canCompute&&<details className="orbital-diagnostics"><summary>采样与后端详情</summary>
-    <p>当前来源：{props.metadata?.name}</p><p>状态：{state.backend?.configured?'Multiwfn 已配置':'未配置 Multiwfn'}</p>{state.backend?.path&&<p className="orbital-backend-path">{state.backend.path}</p>}
+    <p>当前来源：{props.metadata?.name}</p><p>状态：{backendFailure?'Multiwfn 暂不可用':state.backend?.configured?'Multiwfn 已配置':'等待后端检查'}</p>{state.backend?.path&&<p className="orbital-backend-path">{state.backend.path}</p>}
     <div className="orbital-resource-grid"><label>边界留白 / Å<NumericInput aria-label="轨道边界留白"  min={.01} step={.5} value={resources.paddingAngstrom} onChange={event=>{const value=Number(event.target.value);if(Number.isFinite(value)&&value>0&&value!==resources.paddingAngstrom){setResources(old=>({...old,paddingAngstrom:value}));}}}/></label></div>
     {(state.progress?.resources??state.plan?.resources??resourceInfo)&&<OrbitalResourceSummary info={(state.progress?.resources??state.plan?.resources??resourceInfo)!}/>}
-    {gridResult.grid&&<p>网格 {gridResult.grid.dimensions.join(' × ')}；内存预算 {bytes(resources.memoryBudgetBytes)}</p>}{state.plan&&<p>当前内存估计 {bytes(state.plan.totalBytes)}</p>}{state.error&&<DismissibleNotice>{state.error}</DismissibleNotice>}
+    {gridResult.grid&&<p>网格 {gridResult.grid.dimensions.join(' × ')}；内存预算 {bytes(resources.memoryBudgetBytes)}</p>}{state.plan&&<p>当前内存估计 {bytes(state.plan.totalBytes)}</p>}
   </details>;
   return <InputSettingsLayout><section className="orbital-controls" data-testid="orbital-controls" aria-label="轨道">
     <AnalysisTaskLayout variant="card" title={props.analysis?.generatedXtb?'空间分子轨道':'分子轨道'} onRestoreQuality={canCompute?()=>{setQuality('normal');setCustomSpacing(.15);}:undefined} qualityDisabled={busy}
       quality={canCompute&&<><OrbitalCalculationQuality quality={quality} spacing={spacing} onChange={(next,value)=>{setQuality(next);setCustomSpacing(value);}}/>{(gridResult.grid||field?.grid)&&<OrbitalSpatialGridSummary planned={gridResult.grid} actual={field?.grid}/>}{selectedKey&&computeRequest?.identity===identity&&JSON.stringify(computeRequest.sampling)!==JSON.stringify(sampling)&&<InputSettingsAction disabled={!resourceReady||busy||!!gridResult.error} onClick={()=>requestCompute()}>应用质量</InputSettingsAction>}</>}
-      progress={canCompute&&<><MultiwfnProgress progress={state.taskProgress??null} operationLabel="轨道格点生成" onStop={()=>{void controller?.stop().catch(error=>setLocalError(message(error)));}}/>{busy&&!state.taskProgress&&<div className="orbital-planning-progress"><output role="status">{status}</output><InputSettingsAction onClick={()=>{void controller?.stop().catch(error=>setLocalError(message(error)));}}>停止</InputSettingsAction></div>}</>}
+      progress={canCompute&&<><MultiwfnProgress progress={failedProgress&&taskError?{...failedProgress,message:undefined}:state.taskProgress??null} operationLabel="轨道格点生成" onStop={stop}/>{busy&&!state.taskProgress&&<div className="orbital-planning-progress"><output role="status">{status}</output><InputSettingsAction onClick={stop}>停止</InputSettingsAction></div>}</>}
       >
     {list&&<AnalysisTaskSection title="轨道列表"><OrbitalList metadata={list} selectedKey={selected} unit={unit} decimals={decimals} onDecimalsChange={setDecimals} onUnit={setUnit} onChoose={choose} active={props.active!==false} readOnly={!canCompute}/></AnalysisTaskSection>}
-    {canCompute&&<AnalysisTaskSection title="轨道绘图" onRestore={()=>{const saved=appearanceDefaults.snapshot?.value.orbital,base={...DEFAULT_LAYER,isovalue:layer.isovalue};changeLayer(saved && 'colors' in saved ? restoreOrbitalAppearance(base,saved):base);}}><OrbitalDrawOptions embedded value={layer} onChange={changeLayer}/><details className="orbital-export-menu"><summary>导出</summary><InputSettingsAction disabled={exporting||!field} onClick={()=>void exportCube()}>当前轨道 Cube</InputSettingsAction>{props.onExportImage&&<InputSettingsAction disabled={!field} onClick={()=>void props.onExportImage?.()}>当前视图图片</InputSettingsAction>}</details></AnalysisTaskSection>}
+    {canCompute&&<AnalysisTaskSection title="轨道绘图" onRestore={()=>{const saved=appearanceDefaults.snapshot?.value.orbital,base={...DEFAULT_LAYER,phase:layer.phase,isovalue:layer.isovalue};changeLayer(saved && 'colors' in saved ? restoreOrbitalAppearance(base,saved):base);}}><OrbitalDrawOptions embedded value={layer} onChange={changeLayer}/><details className="orbital-export-menu"><summary>导出</summary><InputSettingsAction disabled={exporting||!field} onClick={()=>void exportCube()}>当前轨道 Cube</InputSettingsAction>{props.onExportImage&&<InputSettingsAction disabled={!field} onClick={()=>void props.onExportImage?.()}>当前视图图片</InputSettingsAction>}</details></AnalysisTaskSection>}
     {!canCompute?<p className="postprocess-note">{list?'当前帧缺少匹配波函数，轨道数值仍可查看；轨道格点与组成计算不可用。':'当前帧没有可靠轨道数值；请补入来源或匹配波函数。'}</p>:<>
-      {localError&&<DismissibleNotice role="alert">{localError}</DismissibleNotice>}{gridResult.error&&<DismissibleNotice role="alert">{gridResult.error}</DismissibleNotice>}
+      {taskError&&<MultiwfnErrorNotice message={taskError} identity={errorRevision}/>}{gridResult.error&&<DismissibleNotice role="alert">{gridResult.error}</DismissibleNotice>}
     </>}{diagnostics}{feedback}</AnalysisTaskLayout>
     {canCompute&&<AnalysisControls key={identity} kind="composition" context={props.analysis} orbitalKey={selectedKey} active={props.active!==false} cancelOnInactive={props.cancelOnInactive} defaultMethod={props.analysis?.generatedXtb?'scpa':'mulliken'} autoCalculate={false} onAtomHighlight={props.onAtomHighlight}/>}
   </section></InputSettingsLayout>;

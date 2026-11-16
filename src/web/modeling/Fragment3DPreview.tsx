@@ -10,12 +10,13 @@ import './fragment-preview.css';
 
 /** Exact read snapshot adapter: no builder initialization, bond perception,
  * hydrogen policy, forcefield, generation, seed edit or application store. */
-export function fragmentPreviewDocument(snapshot: Structure, sourceKey = snapshot.id, attachmentPorts: readonly AttachmentPort[] = [], kind: 'fragment' | 'crystal' = 'fragment'): ModelDocument {
+export type FragmentPreviewKind = 'fragment' | 'crystal' | 'drawing';
+export function fragmentPreviewDocument(snapshot: Structure, sourceKey = snapshot.id, attachmentPorts: readonly AttachmentPort[] = [], kind: FragmentPreviewKind = 'fragment'): ModelDocument {
   const structure = structuredClone(snapshot), ids = structure.atoms.map(atom => atom.id);
-  const limit = kind === 'crystal' ? 10000 : 500;
+  const limit = kind === 'drawing' ? Infinity : kind === 'crystal' ? 10000 : 500;
   if (kind === 'crystal' && ids.length > limit) throw new Error('结构超过10000个原子，请选择更小晶胞。');
   if (!ids.length || ids.length > limit || ids.some(id => !id) || new Set(ids).size !== ids.length
-    || structure.atoms.some(atom => ![atom.x, atom.y, atom.z].every(Number.isFinite))) throw new Error(`${kind === 'crystal' ? '晶体' : '片段'}预览需要1–${limit}个有稳定身份的真实有限坐标原子。`);
+    || structure.atoms.some(atom => ![atom.x, atom.y, atom.z].every(Number.isFinite))) throw new Error(kind === 'drawing' ? '三维预览需要非空、稳定且唯一的原子身份和有限坐标。' : `${kind === 'crystal' ? '晶体' : '片段'}预览需要1–${limit}个有稳定身份的真实有限坐标原子。`);
   if ((structure.bonds ?? []).some(bond => ![bond.a, bond.b].every(index => Number.isSafeInteger(index) && index >= 0 && index < ids.length))) throw new Error('片段预览的真实键端点无效。');
   validateAttachmentPorts(attachmentPorts, structure);
   const assignments = { layers: [], basis: [], fragments: [], frozenAtomIds: [] };
@@ -25,10 +26,11 @@ export function fragmentPreviewDocument(snapshot: Structure, sourceKey = snapsho
   }, selection: { atomIds: [], bonds: [], auxiliaryIds: [], portIds: [] }, auxiliaryRelations: [], deletedBonds: [], attachmentPorts: structuredClone([...attachmentPorts]), canUndo: false, canRedo: false };
 }
 
-export interface Fragment3DPreviewProps { snapshot: Structure; attachmentPorts?: readonly AttachmentPort[]; sourceKey?: string; activeAtomIndex?: number; onActiveAtomChange?(index: number): void; disabled?: boolean; compact?: boolean; display?: DisplaySettings; height?: number; kind?: 'fragment' | 'crystal'; summary?: string; cellPresentation?: CellFramePresentation }
+export interface FragmentPreviewControls { center(): void; resetView(): void }
+export interface Fragment3DPreviewProps { snapshot: Structure; attachmentPorts?: readonly AttachmentPort[]; sourceKey?: string; activeAtomIndex?: number; onActiveAtomChange?(index: number): void; disabled?: boolean; compact?: boolean; display?: DisplaySettings; height?: number; kind?: FragmentPreviewKind; summary?: string; cellPresentation?: CellFramePresentation; preserveCamera?: boolean; active?: boolean; onControlsReady?(controls: FragmentPreviewControls | null): void }
 /** Preview observes appearance defaults, but keeps its own port/anchor semantics. */
-export function fragmentPreviewDisplay(display: DisplaySettings = DEFAULT_DISPLAY, kind: 'fragment' | 'crystal' = 'fragment'): DisplaySettings {
-  return { ...DEFAULT_DISPLAY, periodicDisplay:display.periodicDisplay, structurePreset:display.structurePreset,structureFinish:display.structureFinish,structureLighting:display.structureLighting,structureSizing:display.structureSizing,vdwShell:display.vdwShell, representation: display.representation, elementColors: display.elementColors, atomScale: display.atomScale, bondScale: display.bondScale, elementScales: display.elementScales, depthFade: display.depthFade, atomNumbers: kind !== 'crystal', legend: false, cell: kind === 'crystal', alignment: 'off' };
+export function fragmentPreviewDisplay(display: DisplaySettings = DEFAULT_DISPLAY, kind: FragmentPreviewKind = 'fragment'): DisplaySettings {
+  return { ...DEFAULT_DISPLAY, periodicDisplay:display.periodicDisplay, structurePreset:display.structurePreset,structureFinish:display.structureFinish,structureLighting:display.structureLighting,structureSizing:display.structureSizing,vdwShell:display.vdwShell, representation: display.representation, elementColors: display.elementColors, atomScale: display.atomScale, bondScale: display.bondScale, elementScales: display.elementScales, depthFade: display.depthFade, atomNumbers: kind === 'fragment', legend: false, cell: kind === 'crystal', alignment: 'off' };
 }
 export const FRAGMENT_PREVIEW_CAMERA = { orthographic: true } as const;
 /** Project atom centres with the renderer's exact current atom envelope.
@@ -77,23 +79,27 @@ export default function Fragment3DPreview(props: Fragment3DPreviewProps) {
   const preview = useMemo(() => { try { return { document: fragmentPreviewDocument(props.snapshot, props.sourceKey, props.attachmentPorts, props.kind), error: '' }; } catch (error) { return { document: null, error: error instanceof Error ? error.message : String(error) }; } }, [props.snapshot, props.sourceKey, props.attachmentPorts, props.kind]);
   const current = useRef(preview); current.current = preview;
   const framed = useRef<{snapshot:Structure;sourceKey?:string;sizeKey:string}|null>(null),lastSize=useRef({width:0,height:0});
-  const drag = useRef<{ pointerId: number; x: number; y: number; view: number[]; moved: boolean; snapshot: Structure; sourceKey?: string } | null>(null);
+  const drag = useRef<{ pointerId: number; x: number; y: number; view: number[]; moved: boolean; snapshot: Structure; sourceKey?: string; mode:'rotate'|'pan' } | null>(null);
   const [ready, setReady] = useState(false), [failure, setFailure] = useState('');
+  const [activated,setActivated]=useState(props.active!==false);
+  useEffect(()=>{if(props.active!==false)setActivated(true);},[props.active]);
   const drawing=useRef<AbortController|null>(null);
   function clearDrag() { const own = drag.current; drag.current = null; if (own && surface.current?.hasPointerCapture(own.pointerId)) surface.current.releasePointerCapture(own.pointerId); }
   function draw() {
-    const document = current.current.document, p = latest.current; if (!document || !adapter.current) return;
-    const atom = p.kind === 'crystal' ? undefined : document.draft.structure.atoms[p.activeAtomIndex ?? 0];
+    const document = current.current.document, p = latest.current; if (!document || !adapter.current || p.active===false) return;
+    const atom = p.kind === 'crystal' || p.kind === 'drawing' ? undefined : document.draft.structure.atoms[p.activeAtomIndex ?? 0];
     const settings = fragmentPreviewDisplay(p.display, p.kind);
     const instance=adapter.current,renderDocument={ ...document, selection: { ...document.selection, atomIds: atom?.id ? [atom.id] : [] } };
     const fit=()=>{
     const sizeKey=JSON.stringify([p.kind,p.cellPresentation,p.display?.representation,p.display?.atomScale,p.display?.bondScale,p.display?.elementScales]);
     const sourceChanged=framed.current?.snapshot!==p.snapshot||framed.current.sourceKey!==p.sourceKey;
-    if(sourceChanged||framed.current?.sizeKey!==sizeKey){
-      if(sourceChanged)instance.resetView();
+    const retained=p.preserveCamera && framed.current?.sourceKey===p.sourceKey;
+    if((sourceChanged||framed.current?.sizeKey!==sizeKey)&&!retained){
+      if(sourceChanged){instance.resetView();if(p.kind==='drawing'){const view=instance.getView();view.splice(4,4,0,0,0,1);instance.setView(view);}}
       const bounds=canvas.current!.getBoundingClientRect();lastSize.current={width:bounds.width,height:bounds.height};
       fitFragmentPreview(instance,p.snapshot,bounds.width,bounds.height,settings,p.cellPresentation);framed.current={snapshot:p.snapshot,sourceKey:p.sourceKey,sizeKey};
     }
+    framed.current={snapshot:p.snapshot,sourceKey:p.sourceKey,sizeKey};
     };
     if(instance.drawAsync&&(drawing.current||instance.cooperativeDisplay?.()||requiresCooperativeDisplay(renderDocument,settings))){
       drawing.current?.abort();const own=new AbortController();drawing.current=own;
@@ -102,7 +108,7 @@ export default function Fragment3DPreview(props: Fragment3DPreviewProps) {
     }else{instance.draw(renderDocument,settings,undefined,undefined,undefined,undefined,{cellPresentation:p.cellPresentation});fit();}
   }
   useEffect(() => {
-    if (!current.current.document) return;
+    if (!current.current.document || !activated) return;
     let cancelled = false, resize: ResizeObserver | undefined;
     const node = canvas.current!, win = node.ownerDocument.defaultView!;
     const cancel = () => clearDrag();
@@ -110,18 +116,24 @@ export default function Fragment3DPreview(props: Fragment3DPreviewProps) {
     void createRenderAdapter(node, FRAGMENT_PREVIEW_CAMERA).then(instance => {
       if (cancelled) { instance.dispose(); return; }
       adapter.current = instance; draw(); setReady(true);
-      resize = new ResizeObserver(() => { const bounds=node.getBoundingClientRect(),prior=lastSize.current;clearDrag();instance.resize();if(bounds.width===prior.width&&bounds.height===prior.height)return;lastSize.current={width:bounds.width,height:bounds.height}; }); resize.observe(node);
+      resize = new ResizeObserver(() => { const bounds=node.getBoundingClientRect(),prior=lastSize.current;if(bounds.width<=0||bounds.height<=0)return;clearDrag();instance.resize();if(bounds.width===prior.width&&bounds.height===prior.height)return;lastSize.current={width:bounds.width,height:bounds.height}; }); resize.observe(node);
     }).catch(error => { if (!cancelled) setFailure(error instanceof Error ? error.message : String(error)); });
     win.addEventListener('blur', cancel);
     const wheel = (event: WheelEvent) => { event.preventDefault(); event.stopPropagation(); if (!drag.current&&adapter.current) adapter.current.zoom(event.deltaY); };
     surface.current!.addEventListener('wheel', wheel, { passive: false });
     const target = surface.current!;
     return () => { cancelled = true;drawing.current?.abort();drawing.current=null; clearDrag(); win.removeEventListener('blur', cancel); target.removeEventListener('wheel', wheel); resize?.disconnect(); adapter.current?.dispose(); adapter.current = null;framed.current=null; };
-  }, [Boolean(preview.document)]);
-  useEffect(() => { clearDrag(); if (ready) draw(); }, [ready, preview, props.sourceKey, props.activeAtomIndex, props.display, props.cellPresentation]);
+  }, [Boolean(preview.document),activated]);
+  useEffect(() => { clearDrag(); if (ready) draw(); }, [ready, preview, props.sourceKey, props.activeAtomIndex, props.display, props.cellPresentation,props.active]);
+  useEffect(()=>{
+    if(!ready)return;
+    const reset=(retainRotation:boolean)=>{const instance=adapter.current,p=latest.current;if(!instance||!current.current.document||p.active===false)return;clearDrag();const previous=instance.getView();instance.resetView();const view=instance.getView();view.splice(4,4,...(retainRotation?previous.slice(4,8):p.kind==='drawing'?[0,0,0,1]:view.slice(4,8)));instance.setView(view);const bounds=canvas.current!.getBoundingClientRect();fitFragmentPreview(instance,p.snapshot,bounds.width,bounds.height,fragmentPreviewDisplay(p.display,p.kind),p.cellPresentation);};
+    props.onControlsReady?.({center:()=>reset(true),resetView:()=>reset(false)});
+    return()=>props.onControlsReady?.(null);
+  },[ready,props.onControlsReady]);
   function down(event: ReactPointerEvent<HTMLDivElement>) {
-    event.stopPropagation(); if (!adapter.current || !current.current.document || event.button !== 0 || drag.current) return;
-    event.preventDefault(); drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, view: adapter.current.getView(), moved: false, snapshot: latest.current.snapshot, sourceKey: latest.current.sourceKey };
+    event.stopPropagation(); if (!adapter.current || !current.current.document || (event.button !== 0 && !(props.kind==='drawing'&&event.button===1)) || drag.current) return;
+    event.preventDefault(); drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, view: adapter.current.getView(), moved: false, snapshot: latest.current.snapshot, sourceKey: latest.current.sourceKey,mode:props.kind==='drawing'&&(event.button===1||event.shiftKey)?'pan':'rotate' };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
   function move(event: ReactPointerEvent<HTMLDivElement>) {
@@ -130,17 +142,17 @@ export default function Fragment3DPreview(props: Fragment3DPreviewProps) {
     if (!own) { instance.hover(instance.pick({ x: event.clientX, y: event.clientY })); return; }
     if (own.pointerId !== event.pointerId) return;
     const dx = event.clientX - own.x, dy = event.clientY - own.y; own.moved ||= Math.hypot(dx, dy) >= 4;
-    if (own.moved) instance.camera(own.view, dx, dy, 'rotate');
+    if (own.moved) instance.camera(own.view, dx, dy, own.mode);
   }
   function up(event: ReactPointerEvent<HTMLDivElement>) {
     event.stopPropagation(); const own = drag.current; if (!own || own.pointerId !== event.pointerId) return;
     move(event); clearDrag(); const p = latest.current;
-    if (own.moved || p.disabled || p.kind === 'crystal') return;
+    if (own.moved || p.disabled || p.kind === 'crystal' || p.kind === 'drawing') return;
     const pick = adapter.current?.pick({ x: event.clientX, y: event.clientY });
     if (pick?.kind === 'atom') { const index = fragmentPreviewChoiceIndex(p.snapshot, p.sourceKey, own, pick.atomId); if (index !== null) p.onActiveAtomChange?.(index); }
   }
-  return <section className={`fragment-3d-preview${props.compact?' fragment-3d-preview-compact':''}`} data-testid="fragment-3d-preview" data-preview-kind={props.kind ?? 'fragment'} data-source-key={props.sourceKey ?? props.snapshot.id} data-ready={ready} data-projection="orthographic" aria-label={props.kind === 'crystal' ? '真实晶体三维预览' : '真实片段三维预览'}>
-    <div className="fragment-3d-stage" style={props.height===undefined?undefined:{height:props.height,minHeight:160}}><div ref={canvas} className="fragment-3d-canvas"/><div data-no-reorder ref={surface} className="fragment-3d-surface" data-testid="fragment-3d-surface" tabIndex={0} aria-label="旋转和缩放片段，方向键旋转，加减号缩放" onKeyDown={event=>{if(event.key==='+'||event.key==='='||event.key==='-'){event.preventDefault();event.stopPropagation();adapter.current?.zoom(event.key==='-'?80:-80);}else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){event.preventDefault();event.stopPropagation();adapter.current?.step(({ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'} as const)[event.key as 'ArrowLeft'|'ArrowRight'|'ArrowUp'|'ArrowDown']);}}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={clearDrag} onLostPointerCapture={clearDrag} onPointerLeave={() => { if (!drag.current) adapter.current?.hover({ kind: 'none', worldPoint: [0, 0, 0] }); }} onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}/></div>
+  return <section className={`fragment-3d-preview${props.compact?' fragment-3d-preview-compact':''}`} data-testid="fragment-3d-preview" data-preview-kind={props.kind ?? 'fragment'} data-source-key={props.sourceKey ?? props.snapshot.id} data-ready={ready} data-projection="orthographic" aria-label={props.kind === 'drawing' ? '二维草稿的只读三维预览' : props.kind === 'crystal' ? '真实晶体三维预览' : '真实片段三维预览'}>
+    <div className="fragment-3d-stage" style={props.height===undefined?undefined:{height:props.height,minHeight:160}}><div ref={canvas} className="fragment-3d-canvas"/><div data-no-reorder ref={surface} className="fragment-3d-surface" data-testid="fragment-3d-surface" tabIndex={0} aria-label="旋转和缩放片段，方向键旋转，加减号缩放" onKeyDown={event=>{if(props.kind==='drawing')event.stopPropagation();if(event.key==='+'||event.key==='='||event.key==='-'){event.preventDefault();event.stopPropagation();adapter.current?.zoom(event.key==='-'?80:-80);}else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){event.preventDefault();event.stopPropagation();adapter.current?.step(({ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'} as const)[event.key as 'ArrowLeft'|'ArrowRight'|'ArrowUp'|'ArrowDown']);}}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={clearDrag} onLostPointerCapture={clearDrag} onPointerLeave={() => { if (!drag.current) adapter.current?.hover({ kind: 'none', worldPoint: [0, 0, 0] }); }} onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}/></div>
     {(preview.error || failure) && <DismissibleNotice role="alert">{preview.error || failure}</DismissibleNotice>}
     {props.kind === 'crystal' && <p>{props.summary ?? <>实际 {props.snapshot.atoms.length} 个原子</>}</p>}
   </section>;

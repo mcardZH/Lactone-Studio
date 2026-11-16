@@ -3,6 +3,7 @@ import type { TrajectoryRange, TrajectoryResult } from './contracts';
 import { advancePlayback, LatestFrameReader, playbackRange, trajectoryViewDocument, type PlaybackDirection, type PlaybackMode } from './playback';
 import type { PreparedTrajectoryView, PreparationSnapshot } from './prepared-trajectory';
 import { recordTrajectoryOperation } from './trajectory-operations';
+import { confirmedStageTsFrame } from './trajectory-stages';
 
 export interface OptPlaybackSnapshot {
   frame: { index: number; structure: Structure };
@@ -17,6 +18,8 @@ export interface OptPlaybackSnapshot {
   loadFailed?: boolean;
   previewStartedAt: number | null; previewCompletedAt: number | null;
   frameDelayMs: number; fps: number; direction: PlaybackDirection; mode: PlaybackMode; range: TrajectoryRange; endpointPauseMs: number;
+  /** Automatic full membership follows growth; an explicitly edited range does not. */
+  rangeMode?: 'all' | 'custom';
 }
 
 export interface OptPlaybackSessionOptions {
@@ -31,12 +34,24 @@ export interface OptPlaybackSessionOptions {
   initialFrameIndex?: number;
   mode?: PlaybackMode;
   frameOrder?: readonly number[];
+  /** Stable identities indexed by source ordinal, independent of display sorting. */
+  frameIds?: readonly string[];
   notifyPreparation?: boolean;
-  restored?: Pick<OptPlaybackSnapshot, 'frameDelayMs' | 'fps' | 'direction' | 'mode' | 'range' | 'endpointPauseMs'> & { frameIndex: number };
+  restored?: Pick<OptPlaybackSnapshot, 'frameDelayMs' | 'fps' | 'direction' | 'mode' | 'range' | 'endpointPauseMs' | 'rangeMode'> & {
+    frameIndex: number; frameCount?: number; frameId?: string;
+    rangeFrameIds?: { start: string; end: string };
+  };
   /** Only an already-open, proven same-source incremental view may supply this intent. */
   liveContinuation?:Pick<OptPlaybackSnapshot,'playing'|'silentLoading'>;
 }
 export type OptPlaybackViewState=NonNullable<OptPlaybackSessionOptions['restored']>&Pick<OptPlaybackSnapshot,'playing'|'silentLoading'>;
+/** Batch navigation needs the complete prepared collection. A retained ready
+ * frame remains independently available to canvas/export consumers. */
+export function playbackCapabilities(state: Pick<OptPlaybackSnapshot,'loading'|'loadCancelled'|'loadFailed'|'preparation'|'range'>, count:number, active=true, ready=true) {
+  const navigation=active&&ready&&count>0&&!state.loading&&!state.loadCancelled&&!state.loadFailed
+    &&(!state.preparation||state.preparation.completed===state.preparation.total);
+  return { navigation, play:navigation&&playbackRange(state.range,count).length>1 };
+}
 /** Historical sessions scheduled milliseconds. A missing millisecond field
  * may use an explicit FPS; zero/invalid values are never treated as missing. */
 export function restoredPlaybackRate(saved:{frameDelayMs?:number;fps?:number}){
@@ -50,9 +65,8 @@ function confirmedTsFrame(result: TrajectoryResult, supplied: number | null | un
   const completeStage = stage?.kind === 'irc' && stage.frameIndices.length === result.frames.length
     && new Set(stage.frameIndices).size === result.frames.length
     && stage.frameIndices.every(index => Number.isSafeInteger(index) && index >= 0 && index < result.frames.length);
-  const candidate = supplied !== undefined ? supplied : completeStage ? stage.tsFrameIndex : undefined;
-  return typeof candidate === 'number' && Number.isSafeInteger(candidate) && candidate >= 0 && candidate < result.frames.length
-    && (supplied !== undefined || stage!.frameIndices.includes(candidate)) ? candidate : null;
+  const candidate = supplied !== undefined ? supplied : completeStage ? confirmedStageTsFrame(result, stage) : undefined;
+  return typeof candidate === 'number' && Number.isSafeInteger(candidate) && candidate >= 0 && candidate < result.frames.length ? candidate : null;
 }
 
 /** A display-only owner: it reads and prepares existing frames without mutating models or requesting QM. */
@@ -79,6 +93,7 @@ export class OptPlaybackSession {
   private playAfterPreparation = false;
   private readonly prepared?: PreparedTrajectoryView;
   private frameOrder: readonly number[];
+  private readonly frameIds: readonly string[];
   private unsubscribePreparation?: () => void;
   private readonly notifyPreparation: boolean;
   private readonly liveContinuation:boolean;
@@ -99,27 +114,50 @@ export class OptPlaybackSession {
     this.liveContinuation=Boolean(configuration.liveContinuation&&configuration.restored);
     this.frameOrder = configuration.frameOrder ?? result.frames.map((_, index) => index);
     this.validateFrameOrder(this.frameOrder);
+    this.frameIds=configuration.frameIds??result.frames.map(frame=>JSON.stringify([result.source.id,result.jobIndex,frame.stageId??null,frame.sourceFrameIndex??frame.index,frame.sourceLine]));
+    if(this.frameIds.length!==result.frames.length||new Set(this.frameIds).size!==this.frameIds.length)throw Error('播放帧需要不同的稳定身份。');
     this.initialFramePrepared = !(this.prepareFrame || this.prepared) || result.frames.length === 0;
     const tsFrameIndex = confirmedTsFrame(result, configuration.tsFrameIndex);
     if (!this.autoPreview && tsFrameIndex !== null) this.landingIndex = tsFrameIndex;
     if (configuration.initialFrameIndex !== undefined) this.landingIndex = configuration.initialFrameIndex;
     this.state = { frame: { index: 0, structure: result.initialStructure }, tsFrameIndex, preparation: this.prepared?.snapshot() ?? null, loading: false, loadCancelled: false, silentLoading: false, busy: !this.initialFramePrepared, error: '', playing: false, previewing: false, previewStartedAt: null, previewCompletedAt: null,
-      frameDelayMs: 40, fps: 25, direction: 1, mode: configuration.mode ?? 'once', range: { start: 0, end: Math.max(0, result.frames.length - 1), stride: 1 }, endpointPauseMs: 0 };
+      frameDelayMs: 40, fps: 25, direction: 1, mode: configuration.mode ?? 'once', range: { start: 0, end: Math.max(0, result.frames.length - 1), stride: 1 }, rangeMode:'all', endpointPauseMs: 0 };
     if (configuration.restored) {
       const saved = configuration.restored;
       const rate=restoredPlaybackRate(saved);
-      playbackRange(saved.range, result.frames.length);
-      if (!Number.isSafeInteger(saved.frameIndex) || saved.frameIndex < 0 || saved.frameIndex >= result.frames.length
+      if (!Number.isSafeInteger(saved.frameIndex) || saved.frameIndex < 0
         || ![1,-1].includes(saved.direction) || !['once','loop','bounce'].includes(saved.mode)
         || !Number.isInteger(saved.endpointPauseMs) || saved.endpointPauseMs < 0 || saved.endpointPauseMs > 10000) throw new Error('保存的轨迹播放设置无效。');
-      this.state = {...this.state, ...rate, direction:saved.direction, mode:saved.mode, range:{...saved.range}, endpointPauseMs:saved.endpointPauseMs};
-      this.landingIndex = saved.frameIndex; this.preparationLanding=saved.frameIndex; this.previewAttempted = true;
+      const oldCount=saved.frameCount??result.frames.length;
+      playbackRange(saved.range,Math.max(oldCount,saved.range.start+1,saved.range.end+1));
+      const all=saved.rangeMode==='all'||saved.rangeMode===undefined&&saved.range.start===0&&saved.range.end===oldCount-1&&saved.range.stride===1;
+      let range={...saved.range},rangeMode:'all'|'custom'=all?'all':'custom';
+      if(all)range={start:0,end:Math.max(0,result.frames.length-1),stride:1};
+      else if(saved.rangeFrameIds){
+        const start=this.frameOrder.indexOf(this.frameIds.indexOf(saved.rangeFrameIds.start)),end=this.frameOrder.indexOf(this.frameIds.indexOf(saved.rangeFrameIds.end));
+        if(start>=0&&end>=0)range={start,end,stride:range.stride};
+        else {range={start:0,end:Math.max(0,result.frames.length-1),stride:1};rangeMode='all';}
+      }else if(range.start>=result.frames.length||range.end>=result.frames.length){range={start:0,end:Math.max(0,result.frames.length-1),stride:1};rangeMode='all';}
+      this.state = {...this.state, ...rate, direction:saved.direction, mode:saved.mode, range,rangeMode, endpointPauseMs:saved.endpointPauseMs};
+      const retained=saved.frameId?this.frameIds.indexOf(saved.frameId):saved.frameIndex;
+      this.landingIndex = retained>=0&&retained<result.frames.length?retained:0; this.previewAttempted = true;
       if(this.liveContinuation){this.liveResumePlaying=Boolean(configuration.liveContinuation?.playing);this.state={...this.state,silentLoading:Boolean(configuration.liveContinuation?.silentLoading)};}
-      const current=this.prepared?.canReuse(saved.frameIndex)?this.prepared.get(saved.frameIndex):undefined;if(current){this.state={...this.state,frame:{index:saved.frameIndex,structure:current.structure},busy:false};this.initialFramePrepared=true;}
+    }
+    // The requested landing is independent of transient frame previews and
+    // must survive cancellation and retry of the same preparation batch.
+    if (this.prepared || configuration.restored) this.preparationLanding = this.landingIndex;
+    const landing = this.landingIndex;
+    const preparation = this.state.preparation;
+    if (landing !== undefined && (configuration.restored || preparation && preparation.completed === preparation.total) && this.prepared?.canReuse(landing)) {
+      const cached = this.prepared.get(landing);
+      if (cached) {
+        this.state = { ...this.state, frame: { index: landing, structure: cached.structure }, busy: false };
+        this.initialFramePrepared = true;
+      }
     }
   }
   getSnapshot = () => this.state;
-  captureViewState=():OptPlaybackViewState=>({frameIndex:this.preparationLanding??this.state.frame.index,frameDelayMs:this.state.frameDelayMs,fps:this.state.fps,direction:this.state.direction,mode:this.state.mode,range:{...this.state.range},endpointPauseMs:this.state.endpointPauseMs,silentLoading:this.state.silentLoading,playing:this.liveContinuation&&this.state.loading?this.liveResumePlaying:this.state.playing});
+  captureViewState=():OptPlaybackViewState=>{const frameIndex=this.preparationLanding??this.state.frame.index;return{frameIndex,frameCount:this.result.frames.length,frameId:this.frameIds[frameIndex],rangeFrameIds:{start:this.frameIds[this.frameOrder[this.state.range.start]],end:this.frameIds[this.frameOrder[this.state.range.end]]},rangeMode:this.state.rangeMode,frameDelayMs:this.state.frameDelayMs,fps:this.state.fps,direction:this.state.direction,mode:this.state.mode,range:{...this.state.range},endpointPauseMs:this.state.endpointPauseMs,silentLoading:this.state.silentLoading,playing:this.liveContinuation&&this.state.loading?this.liveResumePlaying:this.state.playing};};
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private publish(patch: Partial<OptPlaybackSnapshot>) { this.state = { ...this.state, ...patch }; this.listeners.forEach(listener => listener()); }
   private clearTimer() { this.timerSerial++; if (this.timer !== undefined) clearTimeout(this.timer); this.timer = undefined; }
@@ -139,7 +177,7 @@ export class OptPlaybackSession {
   private validateFrameOrder(order: readonly number[]) {
     if (order.length !== this.result.frames.length || new Set(order).size !== order.length || order.some(index => !Number.isSafeInteger(index) || index < 0 || index >= order.length)) throw new Error('轨迹播放顺序必须包含全部帧且不得重复。');
   }
-  setFrameOrder(order: readonly number[]) { this.validateFrameOrder(order); if (order.every((index, position) => index === this.frameOrder[position])) return; this.pause(); this.frameOrder = [...order]; }
+  setFrameOrder(order: readonly number[]) { this.validateFrameOrder(order); if (order.every((index, position) => index === this.frameOrder[position])) return; const {range,rangeMode}=this.state,start=this.frameOrder[range.start],end=this.frameOrder[range.end];this.pause(); this.frameOrder = [...order];if(rangeMode==='custom')this.publish({range:{start:order.indexOf(start),end:order.indexOf(end),stride:range.stride}}); }
   /** Effect cleanup is reversible: StrictMode may set up this same owner again.
    * Keep preview/manual intent, but release every live resource and invalidate reads.
    * The source itself belongs to the workspace and must not be disposed here. */
@@ -193,11 +231,16 @@ export class OptPlaybackSession {
   }
   pause = () => { this.liveResumePlaying=false;this.previewAttempted = true; this.playAfterPreparation = false; this.landingIndex = undefined; this.clearTimer(); this.cancelRead(); this.publish({ playing: false, previewing: false, busy: false }); };
   seek = (index: number) => {
-    if (this.state.loading || this.state.loadCancelled || this.state.loadFailed) return;
+    if (!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).navigation) return;
     this.pause();
     if (this.active && this.ready) void this.load(index);
   };
   seekTs = () => { if (this.state.tsFrameIndex !== null) this.seek(this.state.tsFrameIndex); };
+  /** An explicit display-only retry replaced an already prepared cache entry. */
+  refreshPreparedFrame = (index=this.state.frame.index) => {
+    if(!this.prepared||!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).navigation)return;
+    this.pause();void this.load(index,undefined,true);
+  };
   prepare = () => { this.pause(); if (this.active && this.ready && this.prepared) void this.loadBatch(); };
   setSilentLoading = (silentLoading: boolean) => { this.publish({ silentLoading,...(this.liveContinuation?{holdingFrameDuringPreparation:false}:{}) }); };
   cancelPreparation = () => {
@@ -229,15 +272,14 @@ export class OptPlaybackSession {
     } finally { if (this.batchController === controller) { this.batchController = null; clearInterval(this.batchProgressTimer); this.batchProgressTimer = undefined; } }
   }
   step = (direction: PlaybackDirection) => {
-    if (this.state.loading || this.state.loadCancelled || this.state.loadFailed) return;
+    if (!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).navigation) return;
     this.pause();
     if (!this.active || !this.ready || !this.result.frames.length) return;
     const next = advancePlayback(this.frameOrder.indexOf(this.state.frame.index), this.state.range, this.result.frames.length, direction, 'once');
     if (!next.stopped) void this.load(this.frameOrder[next.index]);
   };
   play = () => {
-    if (!this.active || !this.ready || this.result.frames.length < 2) return;
-    if (this.prepared && (this.state.loading || this.state.loadCancelled || this.state.loadFailed || this.prepared.snapshot().completed !== this.prepared.indices.length)) return;
+    if (!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).play) return;
     if (!this.initialFramePrepared) { this.previewAttempted = true; this.playAfterPreparation = true; this.schedule(); return; }
     this.pause();
     const { range, direction, mode, frame } = this.state;
@@ -259,7 +301,7 @@ export class OptPlaybackSession {
   setEndpointPause = (endpointPauseMs: number) => { if (Number.isInteger(endpointPauseMs) && endpointPauseMs >= 0 && endpointPauseMs <= 10000) this.configure({ endpointPauseMs }); };
   setRange = (range: TrajectoryRange) => {
     playbackRange(range, this.result.frames.length);
-    this.pause(); this.publish({ range });
+    this.pause(); this.publish({ range:{...range},rangeMode:'custom' });
   };
   private configure(patch: Partial<OptPlaybackSnapshot>) {
     if (this.state.previewing) this.pause();

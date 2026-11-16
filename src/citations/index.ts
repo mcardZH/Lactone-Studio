@@ -7,3 +7,4 @@ export * from './workspace-facts';
 export * from './source-records';
 export * from './two-d-facts';
 export * from './stereochemistry-facts';
+export * from './pes-facts';

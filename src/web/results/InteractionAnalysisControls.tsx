@@ -1,10 +1,12 @@
 import {DismissibleNotice} from '../DismissibleNotice';
+import MultiwfnErrorNotice from './MultiwfnErrorNotice';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
 import {useAnalysisProjectSnapshot,rebindAnalysisContext,isRestoredAnalysisData,analysisProjectCubeArtifacts} from '../../projects/analysis-state';
 import {matchingSliderRange} from '../numeric-step';
 import NumericInput from '../NumericInput';
 import {SelectionGroupHeader,SelectionAddButton,SelectionRemoveButton} from '../InteractiveSelectionField';
-import {calculationRangeFromGrid,estimatedCalculationRange} from '../../results/calculation-range';
+import {calculationRangeFromGrid,estimatedCalculationRange,prepareCalculationRange} from '../../results/calculation-range';
+import {sha256Utf8} from '../../core/file-identity';
 import CalculationRangeControl from './CalculationRangeControl';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -243,7 +245,15 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 	const patchDisplay = (change: Partial<InteractionDisplaySettings>) =>
 		update((before) => ({ ...before, display: { ...before.display, ...change } }));
 	const qualityTier = state.qualityTier ?? interactionQualityTier(state.quality);
-	const qualityIssue = useMemo(() => interactionQualityIssue(state.quality, method, p.resourceBudgetBytes), [state.quality, method, p.resourceBudgetBytes]);
+	const plannedRange = useMemo(() => prepareCalculationRange(() => {
+		if (state.input !== 'internal') return null;
+		const key = sha256Utf8(JSON.stringify([contextKey, method, state.quality]));
+		return estimatedCalculationRange(p.structure, state.quality, 1.5, `interaction-range:estimate:${key}`, '相互作用');
+	}), [contextKey, p.structure, method, state.input, state.quality]);
+	const rangeRejectsSpacing = state.input === 'internal' && state.quality.mode === 'spacing' && !plannedRange.value && p.structure.atoms.length > 0;
+	const nativeQualityIssue = useMemo(() => interactionQualityIssue(state.quality, method, p.resourceBudgetBytes), [state.quality, method, p.resourceBudgetBytes]);
+	const qualityIssue = nativeQualityIssue
+		?? (rangeRejectsSpacing ? `当前格距无法形成可用的计算范围，请修改格距。${plannedRange.issue}` : null);
 	const source = useMemo(() => {
 		try {
 			return {
@@ -332,7 +342,6 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 			) {
 				const text = message(error);
 				setFailure({ owner: contextKey, value: text });
-				if (!stale) p.onError?.(text);
 			}
 		} finally {
 			if (running.current?.id === id) {
@@ -384,6 +393,7 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 	const computeContributions = () => {
 		if (
 			!interactionHasContributions(method) ||
+			!p.methods.includes(method) ||
 			state.input === "external" ||
 			(method !== "migm" && !p.wavefunctionAvailable) ||
 			!p.bridge.contributions
@@ -486,7 +496,12 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 					: null
 		};
 	}, [state.display]);
-	const range=useMemo(()=>fieldView.pair?calculationRangeFromGrid(fieldView.pair.shape.grid,`${surfaceContextKey(p.context)}:${method}:${fieldView.pair.shape.id}`,'相互作用'):state.input==='internal'?estimatedCalculationRange(p.structure,state.quality,1.5,`${surfaceContextKey(p.context)}:${method}:planned:${JSON.stringify(state.quality)}`,'相互作用'):null,[p.context,p.structure,method,fieldView.pair,state.input,state.quality]);
+	const actualRange = useMemo(() => prepareCalculationRange(() => {
+		if (!fieldView.pair) return null;
+		const key = sha256Utf8(JSON.stringify([contextKey, method, fieldView.pair.shape.id]));
+		return calculationRangeFromGrid(fieldView.pair.shape.grid, `interaction-range:actual:${key}`, '相互作用');
+	}), [contextKey, method, fieldView.pair]);
+	const range = fieldView.pair ? actualRange.value : plannedRange.value;
  const calculationRanges=useMemo(()=>state.showRange!==false&&range?[range]:[],[state.showRange,range]);
 	const projection = useMemo<InteractionProjection>(
 		() => ({
@@ -714,7 +729,10 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 	const sourceColors=state.display.color,paletteKey=JSON.stringify(sourceColors?.colors??null);
 	const colors = useMemo(()=>sourceColors?{...sourceColors,colors:[...sourceColors.colors],zeroCentered:true}:null,[sourceColors?.min,sourceColors?.max,sourceColors?.reverse,paletteKey]);
 	const scatterColorForX=useCallback((value:number)=>colors&&Number.isFinite(colors.min)&&Number.isFinite(colors.max)&&colors.min<colors.max?surfaceColor(value,colors):"#64748b",[colors]);
-	const gridPreview=surfaceGridPreview(state.quality,p.structure,1.5,generated?.mapping.grid);
+	const gridPreview = useMemo(() => prepareCalculationRange(() => qualityTier === 'custom' && state.quality.mode !== 'spacing' && state.quality.mode !== 'dimensions'
+		? surfaceGridPreview(state.quality, p.structure, 1.5, generated?.mapping.grid)
+		: null), [qualityTier, state.quality, p.structure, generated?.mapping.grid]);
+	const rangeIssue = actualRange.issue || plannedRange.issue || gridPreview.issue;
 	const patchColors = (color: InteractionDisplaySettings['color']) => patchDisplay({ color });
 	const scatterSnapshot = fieldView.scatter
 		? {
@@ -758,7 +776,7 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 		>
 			<InputSettingsLayout>
 				{feedback}
-				{failure?.owner === contextKey && <DismissibleNotice role="alert">{failure.value}</DismissibleNotice>}
+				{failure?.owner === contextKey && <MultiwfnErrorNotice message={failure.value} identity={lastRun?.id}/>}
 
 				<AnalysisTaskLayout variant="card" methodDetails plottingSections
 					title="相互作用分析"
@@ -788,6 +806,8 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 								!p.wavefunctionAvailable && (
 									<p className="postprocess-note">当前帧缺少匹配波函数。</p>
 								)}
+              {state.input === 'internal' && !interactionUsesStructure(method) && p.wavefunctionAvailable && !p.methods.includes(method) &&
+                <p className="postprocess-note">当前波函数来源未通过此电子方法的适用性核验；结构 IGM/mIGM 仍可使用。</p>}
 							{interactionHasFragments(method) && state.input === "internal" && (
 								<div className="interaction-fragments" aria-label="片段">
 									<SelectionGroupHeader title={`片段（${state.fragments.length}）`} actions={<SelectionAddButton label="添加片段" disabled={disabled} onClick={()=>update(before=>({...before,fragments:[...before.fragments,nextInteractionFragment(before.fragments)]}))}/>}/>
@@ -870,10 +890,11 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 										<InputSettingsField label={`${state.quality.mode==='spacing'?'格距':'预计格距'} / Bohr`}>
 											<NumericInput
 												aria-label="相互作用格距"
+												aria-invalid={!!qualityIssue || undefined}
 
 												step="any"
 												min={0}
-												value={state.quality.mode==='spacing'?Number.isFinite(state.quality.spacingBohr)?state.quality.spacingBohr:'':gridPreview?.spacingBohr?Number(gridPreview.spacingBohr.toPrecision(6)):''}
+												value={state.quality.mode==='spacing'?Number.isFinite(state.quality.spacingBohr)?state.quality.spacingBohr:'':gridPreview.value?.spacingBohr?Number(gridPreview.value.spacingBohr.toPrecision(6)):''}
 												disabled={disabled}
 												onChange={(event) =>
 													update({
@@ -927,7 +948,8 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 									)}
 								</CalculationQualityControl>
 								<CalculationRangeControl checked={state.showRange!==false} onChange={showRange=>update({showRange})} range={range}/>
-								{qualityIssue && <DismissibleNotice role="alert">{qualityIssue}</DismissibleNotice>}
+								{qualityIssue ? <DismissibleNotice identity={stateKey}>{qualityIssue}</DismissibleNotice>
+									: rangeIssue && <DismissibleNotice identity={stateKey}>相互作用范围暂无法显示。{rangeIssue}</DismissibleNotice>}
 							</>
 						) : undefined
 					}
@@ -952,6 +974,7 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 						<>
 							<MultiwfnProgress
 								progress={taskProgress}
+								showFailureReason={!failure}
 								operationLabel={visibleRun?.label ?? "相互作用"}
 								onStop={cancel}
 							/>
@@ -1190,6 +1213,7 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 											disabled ||
 											state.input === "external" ||
 											(method !== "migm" && !p.wavefunctionAvailable) ||
+											!p.methods.includes(method) ||
 											!p.bridge.contributions ||
 											!!membershipError
 										}

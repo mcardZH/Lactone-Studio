@@ -2,11 +2,12 @@
 .source-diagnostics-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .source-diagnostics-heading h2,.source-diagnostics-heading h3{margin:0;overflow-wrap:anywhere}
 .source-diagnostics-list{min-height:0;overflow:auto;display:grid;gap:12px}
-.source-diagnostics-list article{border:1px solid var(--border,#d5e2dc);border-radius:8px;padding:12px;background:var(--surface,#fff);overflow-wrap:anywhere}
-.source-diagnostics-list h3{font-size:16px;line-height:24px;font-weight:600}
-.source-diagnostics-list dl{margin:10px 0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px}
+.source-diagnostics-list article{min-width:0;border:1px solid var(--ui-surface-border);border-radius:var(--ui-surface-radius);padding:12px;background:var(--ui-control-bg);overflow-wrap:anywhere}
+.source-diagnostics-list h3{font:600 var(--ui-primary-size)/var(--ui-title-line) var(--ui-font-family);color:var(--ui-section-ink)}
+.source-diagnostics-list dl{margin:10px 0;display:grid;grid-template-columns:fit-content(40%) minmax(0,1fr);gap:4px 12px}
 .source-diagnostics-list dl>div{display:contents}
 .source-diagnostics-list dd{margin:0;min-width:0}
-.source-diagnostics-list dt{font-weight:600}
-.source-diagnostics-list pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;background:#f2f7f4;padding:8px;border-radius:4px}
+.source-diagnostics-list dt{font-weight:600;color:var(--ui-label-ink)}
+.source-diagnostics-list dd{color:var(--ui-field-ink)}
+.source-diagnostics-list pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;background:var(--ui-control-bg);border:1px solid var(--ui-surface-border);padding:8px;border-radius:var(--ui-control-radius)}
 .source-diagnostics-list p{margin:8px 0}

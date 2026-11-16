@@ -5,13 +5,7 @@ const readline = require('node:readline');
 const packageMeta = require('../../package.json');
 const {
   createMcpToolRegistry,
-  registerFoundationTools,
-  registerWindowAndFileTools,
-  registerViewportAndVisionTools,
-  registerStructureAndGeometryTools,
-  registerInputConfigTools,
-  registerTaskExecutionTools,
-  registerAnalysisAndExportTools,
+  registerAllMcpTools,
   createMcpProtocolProcessor,
   jsonRpcError
 } = require('./protocol.cjs');
@@ -36,37 +30,11 @@ function createMcpStdioServer({
     : (action, payload) => client.dispatch(action, payload);
 
   const registry = createMcpToolRegistry();
-  registerFoundationTools(registry, {
+  registerAllMcpTools(registry, {
     dispatchToHost: dispatch,
-    serverVersion
+    serverVersion,
+    registerExtraTools
   });
-  registerWindowAndFileTools(registry, {
-    dispatchToHost: dispatch,
-    serverVersion
-  });
-  registerViewportAndVisionTools(registry, {
-    dispatchToHost: dispatch,
-    serverVersion
-  });
-  registerStructureAndGeometryTools(registry, {
-    dispatchToHost: dispatch,
-    serverVersion
-  });
-  registerInputConfigTools(registry, {
-    dispatchToHost: dispatch,
-    serverVersion
-  });
-  registerTaskExecutionTools(registry, {
-    dispatchToHost: dispatch,
-    serverVersion
-  });
-  registerAnalysisAndExportTools(registry, {
-    dispatchToHost: dispatch,
-    serverVersion
-  });
-  if (typeof registerExtraTools === 'function') {
-    registerExtraTools(registry, { dispatchToHost: dispatch, serverVersion });
-  }
 
   const processor = createMcpProtocolProcessor({
     registry,

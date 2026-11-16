@@ -118,7 +118,24 @@ export function isAllowedSitePackagesTopEntry(name) {
   return ALLOWED_SITE_PACKAGES_DIST_INFO_PREFIXES.includes(normalizedPkg);
 }
 
-export const EXPECTED_XTB_VERSION = "6.4.1";
+export const EXPECTED_XTB_VERSION = "6.8.0";
+
+export const OFFICIAL_DARWIN_XTB_ARCHIVES = Object.freeze({
+  "darwin-arm64": Object.freeze({
+    version: "6.8.0",
+    filename: "xtb-6.8.0-macos-arm64-openblas.tar.xz",
+    url: "https://github.com/grimme-lab/xtb/releases/download/v6.8.0/xtb-6.8.0-macos-arm64-openblas.tar.xz",
+    sha256: "fdbbf60abdc3fdd8bde24bfecba2cb12d23ad4e1c59ba283037f0212ca4a3cc9",
+    bytes: 13048200,
+  }),
+  "darwin-x64": Object.freeze({
+    version: "6.8.0",
+    filename: "xtb-6.8.0-macos-x86_64-openblas.tar.xz",
+    url: "https://github.com/grimme-lab/xtb/releases/download/v6.8.0/xtb-6.8.0-macos-x86_64-openblas.tar.xz",
+    sha256: "247c9a58e3c01174dbd4cf905c708b6bf9ed24abcd2cb58b49022951f8ea01d9",
+    bytes: 16758012,
+  }),
+});
 
 export const TOOLCHAIN_DYLIB_PREFIXES = Object.freeze([
   "libpython",
@@ -154,6 +171,18 @@ export const XTB_REQUIRED_PARAMS = Object.freeze([
   "param_gfn1-xtb.txt",
   "param_gfn2-xtb.txt",
 ]);
+
+export const XTB_OPTIONAL_PARAMS = Object.freeze([
+  "param_gfn1-si-xtb.txt",
+  "param_ipea-xtb.txt",
+]);
+
+export function readEmbeddedXtbVersion(xtbBinPath) {
+  if (!xtbBinPath || !fs.existsSync(xtbBinPath)) return null;
+  const rawLatin1 = fs.readFileSync(xtbBinPath).toString("latin1");
+  const match = /xtb version(?:\x00+|\s*|":\s*")(\d+\.\d+\.\d+(?:pre)?)/i.exec(rawLatin1);
+  return match ? match[1] : null;
+}
 
 export const CANONICAL_RDPATHS_PY = [
   "import os",
@@ -783,11 +812,137 @@ export function buildInventoryFiles(rootDir, contentDirectories = ["python"]) {
   return files;
 }
 
+export function resolveDarwinXtbSource({
+  condaPrefix = null,
+  platformId = `darwin-${process.arch}`,
+  appPath = DEFAULT_APP_PATH,
+  xtbPrefix = null,
+  xtbArchive = null,
+  expectedXtbVersion = EXPECTED_XTB_VERSION,
+  env = process.env,
+} = {}) {
+  const resolvedAppPath = path.resolve(appPath);
+  const officialSpec = OFFICIAL_DARWIN_XTB_ARCHIVES[platformId];
+  let archivePath = xtbArchive ? path.resolve(xtbArchive) : null;
+  let sourcePrefix = xtbPrefix ? path.resolve(xtbPrefix) : null;
+
+  if (!archivePath && !sourcePrefix && condaPrefix) {
+    const resolvedConda = path.resolve(condaPrefix);
+    const condaXtbBin = path.join(resolvedConda, "bin", "xtb");
+    const embeddedVer = readEmbeddedXtbVersion(condaXtbBin);
+    const needsFallbackArchive =
+      expectedXtbVersion === EXPECTED_XTB_VERSION &&
+      (!fs.existsSync(condaXtbBin) ||
+        (embeddedVer !== null && embeddedVer !== EXPECTED_XTB_VERSION));
+    if (needsFallbackArchive && officialSpec) {
+      const envArchive = env.SCIYUE_XTB_ARCHIVE ? path.resolve(env.SCIYUE_XTB_ARCHIVE) : null;
+      const cachedArchive = path.join(resolvedAppPath, ".cache", "upstream", officialSpec.filename);
+      if (envArchive && fs.existsSync(envArchive)) {
+        archivePath = envArchive;
+      } else if (fs.existsSync(cachedArchive)) {
+        archivePath = cachedArchive;
+      }
+    }
+    if (!archivePath) {
+      sourcePrefix = resolvedConda;
+    }
+  }
+
+  if (archivePath) {
+    if (!fs.existsSync(archivePath)) {
+      throw new Error(`STAGE_XTB_MISSING: xTB archive does not exist: ${archivePath}`);
+    }
+    if (officialSpec && (!expectedXtbVersion || expectedXtbVersion === officialSpec.version)) {
+      const actualSha = sha256File(archivePath).sha256;
+      if (actualSha !== officialSpec.sha256) {
+        throw new Error(
+          `STAGE_XTB_ARCHIVE_HASH_MISMATCH: Expected SHA-256 ${officialSpec.sha256} for ${archivePath}, got ${actualSha}`
+        );
+      }
+    }
+    const extractRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "es-xtb-archive-"));
+    try {
+      execFileSync(
+        "/usr/bin/tar",
+        ["-xJf", archivePath, "-C", extractRoot, "stage/bin/xtb", "stage/share/xtb"],
+        { stdio: ["ignore", "pipe", "pipe"] }
+      );
+    } catch (err) {
+      fs.rmSync(extractRoot, { recursive: true, force: true });
+      const stderr = err.stderr ? String(err.stderr).trim() : err.message;
+      throw new Error(`STAGE_XTB_ARCHIVE_EXTRACT_FAILED: Failed to unpack ${archivePath}: ${stderr}`);
+    }
+    const extractedStage = path.join(extractRoot, "stage");
+    return {
+      xtbPrefix: extractedStage,
+      fromArchive: true,
+      cleanup: () => fs.rmSync(extractRoot, { recursive: true, force: true }),
+    };
+  }
+
+  if (!sourcePrefix) {
+    return null;
+  }
+  return {
+    xtbPrefix: sourcePrefix,
+    fromArchive: false,
+    cleanup: () => {},
+  };
+}
+
+function stageXtbFromSource(sourcePrefix, runtimeXtbDir, { expectedXtbVersion, fallbackLibDir, copyFlag }) {
+  const srcXtbBin = path.join(sourcePrefix, "bin", "xtb");
+  const srcXtbShare = path.join(sourcePrefix, "share", "xtb");
+  if (!fs.existsSync(srcXtbBin) || !fs.existsSync(srcXtbShare)) {
+    throw new Error(
+      `STAGE_XTB_MISSING: Expected xtb binary and share/xtb parameters in ${sourcePrefix}`
+    );
+  }
+  const dstXtbBin = path.join(runtimeXtbDir, "bin", "xtb");
+  fs.mkdirSync(path.dirname(dstXtbBin), { recursive: true });
+  fs.copyFileSync(fs.realpathSync(srcXtbBin), dstXtbBin, copyFlag);
+  fs.chmodSync(dstXtbBin, 0o755);
+
+  const srcLibDir = fs.existsSync(path.join(sourcePrefix, "lib"))
+    ? path.join(sourcePrefix, "lib")
+    : fallbackLibDir;
+  if (expectedXtbVersion !== "6.8.0" && srcLibDir) {
+    const dstXtbLib = path.join(runtimeXtbDir, "lib");
+    let copiedAnyDylib = false;
+    for (const dylibName of XTB_REQUIRED_DYLIBS) {
+      const srcDylib = path.join(srcLibDir, dylibName);
+      if (!fs.existsSync(srcDylib)) continue;
+      if (!copiedAnyDylib) {
+        fs.mkdirSync(dstXtbLib, { recursive: true });
+        copiedAnyDylib = true;
+      }
+      fs.copyFileSync(fs.realpathSync(srcDylib), path.join(dstXtbLib, dylibName), copyFlag);
+    }
+  }
+
+  const dstXtbShare = path.join(runtimeXtbDir, "share", "xtb");
+  fs.mkdirSync(dstXtbShare, { recursive: true });
+  for (const paramName of XTB_REQUIRED_PARAMS) {
+    const srcParam = path.join(srcXtbShare, paramName);
+    if (!fs.existsSync(srcParam)) {
+      throw new Error(`STAGE_XTB_PARAM_MISSING: Missing ${srcParam}`);
+    }
+    fs.copyFileSync(fs.realpathSync(srcParam), path.join(dstXtbShare, paramName), copyFlag);
+  }
+  for (const optParam of XTB_OPTIONAL_PARAMS) {
+    const srcParam = path.join(srcXtbShare, optParam);
+    if (fs.existsSync(srcParam)) {
+      fs.copyFileSync(fs.realpathSync(srcParam), path.join(dstXtbShare, optParam), copyFlag);
+    }
+  }
+}
+
 export function stageFromCondaPrefix(
   condaPrefix,
   toolchainPythonDir,
   runtimePythonDir,
-  runtimeXtbDir
+  runtimeXtbDir,
+  options = {}
 ) {
   const resolvedPrefix = path.resolve(condaPrefix);
   if (!fs.existsSync(resolvedPrefix)) {
@@ -796,6 +951,8 @@ export function stageFromCondaPrefix(
   const realPrefix = fs.realpathSync(resolvedPrefix);
   const prefixesToRelocate = [resolvedPrefix, realPrefix, "/opt/anaconda3/envs/ester-studio"];
   const copyFlag = fs.constants.COPYFILE_FICLONE || 0;
+  const expectedXtbVersion =
+    options.expectedXtbVersion === undefined ? EXPECTED_XTB_VERSION : options.expectedXtbVersion;
 
   makeDirectoryTreeWritable(toolchainPythonDir);
   makeDirectoryTreeWritable(runtimePythonDir);
@@ -944,37 +1101,23 @@ export function stageFromCondaPrefix(
   }
   fs.writeFileSync(rdPathsFile, CANONICAL_RDPATHS_PY, "utf8");
 
-  // 3. xTB runtime: bin/xtb, lib/*.dylib, share/xtb/param*
-  const srcXtbBin = path.join(resolvedPrefix, "bin", "xtb");
-  const srcXtbShare = path.join(resolvedPrefix, "share", "xtb");
-  if (!fs.existsSync(srcXtbBin) || !fs.existsSync(srcXtbShare)) {
-    throw new Error(
-      `STAGE_XTB_MISSING: Expected xtb binary and share/xtb parameters in ${resolvedPrefix}`
-    );
-  }
-  const dstXtbBin = path.join(runtimeXtbDir, "bin", "xtb");
-  fs.mkdirSync(path.dirname(dstXtbBin), { recursive: true });
-  fs.copyFileSync(fs.realpathSync(srcXtbBin), dstXtbBin, copyFlag);
-  fs.chmodSync(dstXtbBin, 0o755);
-
-  const dstXtbLib = path.join(runtimeXtbDir, "lib");
-  fs.mkdirSync(dstXtbLib, { recursive: true });
-  for (const dylibName of XTB_REQUIRED_DYLIBS) {
-    const srcDylib = path.join(srcLibDir, dylibName);
-    if (!fs.existsSync(srcDylib)) {
-      throw new Error(`STAGE_XTB_DYLIB_MISSING: Missing required xTB dylib ${srcDylib}`);
-    }
-    fs.copyFileSync(fs.realpathSync(srcDylib), path.join(dstXtbLib, dylibName), copyFlag);
-  }
-
-  const dstXtbShare = path.join(runtimeXtbDir, "share", "xtb");
-  fs.mkdirSync(dstXtbShare, { recursive: true });
-  for (const paramName of XTB_REQUIRED_PARAMS) {
-    const srcParam = path.join(srcXtbShare, paramName);
-    if (!fs.existsSync(srcParam)) {
-      throw new Error(`STAGE_XTB_PARAM_MISSING: Missing ${srcParam}`);
-    }
-    fs.copyFileSync(fs.realpathSync(srcParam), path.join(dstXtbShare, paramName), copyFlag);
+  // 3. xTB runtime: bin/xtb, share/xtb/param* (plus lib/*.dylib for legacy < 6.8.0 bundles)
+  const resolvedXtb = resolveDarwinXtbSource({
+    condaPrefix: resolvedPrefix,
+    platformId: options.platformId || `darwin-${process.arch}`,
+    appPath: options.appPath || DEFAULT_APP_PATH,
+    xtbPrefix: options.xtbPrefix || null,
+    xtbArchive: options.xtbArchive || null,
+    expectedXtbVersion,
+  });
+  try {
+    stageXtbFromSource(resolvedXtb.xtbPrefix, runtimeXtbDir, {
+      expectedXtbVersion,
+      fallbackLibDir: srcLibDir,
+      copyFlag,
+    });
+  } finally {
+    resolvedXtb.cleanup();
   }
 
   cleanBytecodeAndSymlinks(toolchainPythonDir);
@@ -1008,12 +1151,31 @@ export function verifyStagedXtbRuntime(
     }
   }
 
-  for (const dylibName of XTB_REQUIRED_DYLIBS) {
-    const dylibPath = path.join(xtbDir, "lib", dylibName);
-    if (!fs.existsSync(dylibPath)) {
-      throw new Error(`STAGE_XTB_DYLIB_MISSING: ${dylibPath} does not exist`);
+  const machOCpus = readMachOCpuTypes(xtbBinPath);
+  if (machOCpus.length > 0 && expectedVersion) {
+    const embeddedVersion = readEmbeddedXtbVersion(xtbBinPath);
+    if (!embeddedVersion || embeddedVersion !== expectedVersion) {
+      throw new Error(
+        `STAGE_XTB_VERSION_MISMATCH: Expected xtb version ${expectedVersion}, got ${embeddedVersion || "unverified"}`
+      );
     }
-    verifyMachOArchitecture(dylibPath, platformId);
+  }
+
+  let hasXtbLibDir = false;
+  try {
+    fs.lstatSync(path.join(xtbDir, "lib"));
+    hasXtbLibDir = true;
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+  if (expectedVersion !== "6.8.0" || hasXtbLibDir) {
+    for (const dylibName of XTB_REQUIRED_DYLIBS) {
+      const dylibPath = path.join(xtbDir, "lib", dylibName);
+      if (!fs.existsSync(dylibPath)) {
+        throw new Error(`STAGE_XTB_DYLIB_MISSING: ${dylibPath} does not exist`);
+      }
+      verifyMachOArchitecture(dylibPath, platformId);
+    }
   }
 
   for (const paramName of XTB_REQUIRED_PARAMS) {
@@ -1034,7 +1196,9 @@ export function verifyStagedXtbRuntime(
           PATH: "/usr/bin:/bin",
           XTBPATH: path.join(xtbDir, "share", "xtb"),
           OMP_NUM_THREADS: "1",
-          DYLD_FALLBACK_LIBRARY_PATH: [path.join(xtbDir, "lib"), "/usr/lib"].join(path.delimiter),
+          DYLD_FALLBACK_LIBRARY_PATH: hasXtbLibDir
+            ? [path.join(xtbDir, "lib"), "/usr/lib"].join(path.delimiter)
+            : "/usr/lib",
         },
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
@@ -1569,6 +1733,8 @@ export function stageDarwinRuntime({
   appPath = DEFAULT_APP_PATH,
   platformId = `darwin-${process.arch}`,
   condaPrefix = null,
+  xtbPrefix = null,
+  xtbArchive = null,
   toolchainLockId = "conda-py312-arm64",
   runtimeLockId = "conda-chem-arm64",
   xtbLockId = `${platformId}-xtb-v1`,
@@ -1818,21 +1984,48 @@ export function stageDarwinRuntime({
         condaPrefix,
         path.join(txTcAbsRoot, "python"),
         path.join(txDepAbsRoot, "python"),
-        path.join(txDepAbsRoot, "xtb")
+        path.join(txDepAbsRoot, "xtb"),
+        {
+          platformId,
+          appPath: resolvedAppPath,
+          xtbPrefix,
+          xtbArchive,
+          expectedXtbVersion,
+        }
       );
     } else {
+      const explicitXtbSource = resolveDarwinXtbSource({
+        platformId,
+        appPath: resolvedAppPath,
+        xtbPrefix,
+        xtbArchive,
+        expectedXtbVersion,
+      });
       if (
         !fs.existsSync(path.join(tcAbsRoot, "python")) ||
         !fs.existsSync(path.join(depAbsRoot, "python")) ||
-        !fs.existsSync(path.join(depAbsRoot, "xtb"))
+        (!explicitXtbSource && !fs.existsSync(path.join(depAbsRoot, "xtb")))
       ) {
+        explicitXtbSource?.cleanup();
         throw new Error(
           `STAGE_SOURCE_MISSING: No condaPrefix provided and existing .local directories are incomplete in ${resolvedAppPath}`
         );
       }
       copyDirectoryTree(path.join(tcAbsRoot, "python"), path.join(txTcAbsRoot, "python"));
       copyDirectoryTree(path.join(depAbsRoot, "python"), path.join(txDepAbsRoot, "python"));
-      copyDirectoryTree(path.join(depAbsRoot, "xtb"), path.join(txDepAbsRoot, "xtb"));
+      if (explicitXtbSource) {
+        try {
+          stageXtbFromSource(explicitXtbSource.xtbPrefix, path.join(txDepAbsRoot, "xtb"), {
+            expectedXtbVersion,
+            fallbackLibDir: null,
+            copyFlag: fs.constants.COPYFILE_FICLONE || 0,
+          });
+        } finally {
+          explicitXtbSource.cleanup();
+        }
+      } else {
+        copyDirectoryTree(path.join(depAbsRoot, "xtb"), path.join(txDepAbsRoot, "xtb"));
+      }
       cleanBytecodeAndSymlinks(path.join(txTcAbsRoot, "python"));
       cleanBytecodeAndSymlinks(path.join(txDepAbsRoot, "python"));
       cleanBytecodeAndSymlinks(path.join(txDepAbsRoot, "xtb"));
@@ -2277,6 +2470,8 @@ export function ensureDarwinRuntimeReady({
   appPath = DEFAULT_APP_PATH,
   platformId = `darwin-${process.arch}`,
   condaPrefix = null,
+  xtbPrefix = null,
+  xtbArchive = null,
   waitTimeoutMs = 180000,
 } = {}) {
   const resolvedAppPath = path.resolve(appPath);
@@ -2310,6 +2505,8 @@ export function ensureDarwinRuntimeReady({
         appPath: resolvedAppPath,
         platformId,
         condaPrefix: resolvedPrefix,
+        xtbPrefix,
+        xtbArchive,
       });
       return;
     } catch (err) {
@@ -2367,6 +2564,10 @@ function parseCliArgs(argv) {
       opts.appPath = argv[++i];
     } else if (arg === "--conda-prefix" && argv[i + 1]) {
       opts.condaPrefix = argv[++i];
+    } else if (arg === "--xtb-prefix" && argv[i + 1]) {
+      opts.xtbPrefix = argv[++i];
+    } else if (arg === "--xtb-archive" && argv[i + 1]) {
+      opts.xtbArchive = argv[++i];
     } else if (arg === "--platform" && argv[i + 1]) {
       opts.platformId = argv[++i];
     } else if (arg === "--update-locks") {

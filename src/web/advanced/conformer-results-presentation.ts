@@ -1,7 +1,7 @@
 import type {AdvancedResultFrame,AdvancedTaskRun,AdvancedClusterCollection} from '../../modeling/advanced/contracts';
 import {estimateConformerPopulations,conformerCalculationIdentityKey} from '../../modeling/conformers';
 import {convertEnergy,type EnergyUnit} from '../../results/energy';
-import {formatResultValue} from '../../results/numeric-format';
+import {decimalEnergyValue,formatEnergyValue,formatResultValue} from '../../results/numeric-format';
 import type {ScientificTableProjection} from '../results/scientific-table';
 export interface ConformerDisplayCollection {id:string;label:string;frames:readonly AdvancedResultFrame[];clusterCollection?:AdvancedClusterCollection;playbackAvailable?:boolean}
 
@@ -17,7 +17,7 @@ export function conformerSamplingCells(frame:AdvancedResultFrame,options:{decima
   const biases=sample?[sample.coreBiasEV,sample.metaBiasEV,sample.sphereBiasEV]:[];
   const bias=biases.some(value=>Number.isFinite(value)&&value!==0)?'含偏置':sample?.nativeMD?.energyDefinition==='native-total-including-sampling-potentials'?'含偏置项（未分解）':sample&&biases.every(value=>Number.isFinite(value))?'无偏置':'';
   return [Number.isFinite(temperature)?formatResultValue(temperature!,options.decimals):'',
-    Number.isFinite(potential)?formatResultValue(convertEnergy({value:potential!,unit:'eV'},options.unit),options.decimals):'',bias];
+    Number.isFinite(potential)?formatEnergyValue(convertEnergy({value:potential!,unit:'eV'},options.unit),options.decimals):'',bias];
 }
 /** Missing optional values do not create empty columns or synthetic observations. */
 function populatedColumns(projection:ScientificTableProjection):ScientificTableProjection {
@@ -56,7 +56,7 @@ export function conformerResultProjection(collection:ConformerDisplayCollection,
     let populations:ReturnType<typeof estimateConformerPopulations>|undefined;
     if(complete){try{populations=estimateConformerPopulations(group!,options.temperatureK,options.unit);}catch{/* Preserve readable energies when the scientific group cannot be estimated. */}}
     const values=new Map(populations?.populations.map(row=>[row.representativeCandidateId,row]));
-    const projection:ScientificTableProjection={columns:[{key:'cluster',label:'簇序号'},{key:'members',label:'成员数'},{key:'absolute',label:'绝对能量 / Eh',precision:'source'},{key:'relative',label:`相对能量 / ${energyUnitLabel(options.unit)}`,precision:'adjustable'},{key:'weight',label:'权重 / %',precision:'adjustable'},{key:'population',label:'玻尔兹曼占比 / %',precision:'adjustable'},{key:'availability',label:'状态'}],rows:clusters.map((row,index)=>{const value=values.get(row.representativeCandidateId);return {key:row.clusterId,cells:[String(index+1),row.memberCount===null?'':String(row.memberCount),row.energyHartree===null?'':String(row.energyHartree),minimum!==null&&row.energyHartree!==null?formatResultValue(convertEnergy({value:row.energyHartree-minimum,unit:'hartree'},options.unit),options.decimals):'',value?formatResultValue(value.weight*100,options.decimals):'',value?formatResultValue(value.fraction*100,options.decimals):'',row.unavailableReason??'']};})};
+    const projection:ScientificTableProjection={columns:[{key:'cluster',label:'簇序号'},{key:'members',label:'成员数'},{key:'absolute',label:'绝对能量 / Eh',precision:'source'},{key:'relative',label:`相对能量 / ${energyUnitLabel(options.unit)}`,precision:'adjustable'},{key:'weight',label:'权重 / %',precision:'adjustable'},{key:'population',label:'玻尔兹曼占比 / %',precision:'adjustable'},{key:'availability',label:'状态'}],rows:clusters.map((row,index)=>{const value=values.get(row.representativeCandidateId);return {key:row.clusterId,cells:[String(index+1),row.memberCount===null?'':String(row.memberCount),row.energyHartree===null?'':decimalEnergyValue(row.energyHartree),minimum!==null&&row.energyHartree!==null?formatEnergyValue(convertEnergy({value:row.energyHartree-minimum,unit:'hartree'},options.unit),options.decimals):'',value?formatResultValue(value.weight*100,options.decimals):'',value?formatResultValue(value.fraction*100,options.decimals):'',row.unavailableReason??'']};})};
     return {frames,optimized:true,projection:populatedColumns(projection),energyLabel:!comparison?'':comparison.identity.energyKind==='forcefield-potential'?'力场势能 · 势能估算':'电子能量',populationMessage:''};
   }
   const optimized=collection.frames.length>0&&collection.frames.every(frame=>frame.kind==='optimized');
@@ -64,7 +64,7 @@ export function conformerResultProjection(collection:ConformerDisplayCollection,
   if(displayOrder&&(displayOrder.length!==collection.frames.length||new Set(displayOrder.map(frame=>frame.id)).size!==originals.size||displayOrder.some(frame=>!originals.has(frame.id))))throw Error('显示顺序必须完整覆盖同一真实帧集合。');
   const frames=conformerResultFrames(displayOrder?displayOrder.map(frame=>originals.get(frame.id)!):collection.frames,options.sort,options.direction);
   const ordinals=new Map(collection.frames.map((frame,index)=>[frame.id,index+1]));
-  if(frames.length&&frames.every(frame=>frame.kind==='intermediate'))return{frames,optimized:false,projection:populatedColumns({columns:[{key:'frame',label:'帧'},{key:'interruptedEnergy',label:'中间能量 / Eh（未收敛）',precision:'source'}],rows:frames.map(frame=>({key:frame.id,cells:[String(ordinals.get(frame.id)),Number.isFinite(frame.energyHartree)?String(frame.energyHartree):'']}))}),energyLabel:'中断末态 · 未收敛，不作为有效优化或晋级结果',populationMessage:''};
+  if(frames.length&&frames.every(frame=>frame.kind==='intermediate'))return{frames,optimized:false,projection:populatedColumns({columns:[{key:'frame',label:'帧'},{key:'interruptedEnergy',label:'末态能量 / Eh（未收敛）',precision:'source'}],rows:frames.map(frame=>({key:frame.id,cells:[String(ordinals.get(frame.id)),Number.isFinite(frame.energyHartree)?decimalEnergyValue(frame.energyHartree):'']}))}),energyLabel:'未收敛末态 · 可继续优化',populationMessage:''};
   if(!optimized)return {frames,optimized,projection:populatedColumns({columns:[{key:'frame',label:'帧'},{key:'temperature',label:'温度 / K',precision:'adjustable'},{key:'sampledPotential',label:`采样势能 / ${energyUnitLabel(options.unit)}`,precision:'adjustable'},{key:'bias',label:'偏置'}],rows:frames.map(frame=>({key:frame.id,cells:[String(ordinals.get(frame.id)),...conformerSamplingCells(frame,options)]}))}),energyLabel:'',populationMessage:''};
   const stageIds=new Set(frames.map(frame=>frame.stageId)),frameIds=new Set(frames.map(frame=>frame.id));
   const stage=run?.stages.find(stage=>stageIds.size===1&&stage.id===frames[0].stageId
@@ -95,7 +95,7 @@ export function conformerResultProjection(collection:ConformerDisplayCollection,
   const minimum=comparableGroup?frames.reduce((value,frame)=>Math.min(value,frame.energyHartree!),Infinity):null;
   const projection:ScientificTableProjection={columns:[{key:'frame',label:'构象'},{key:'absolute',label:'绝对能量 / Eh',precision:'source'},{key:'relative',label:`相对能量 / ${energyUnitLabel(options.unit)}`,precision:'adjustable'},{key:'weight',label:'权重 / %',precision:'adjustable'},{key:'population',label:'玻尔兹曼占比 / %',precision:'adjustable'}],rows:frames.map(frame=>{
     const value=values.get(frame.candidateId),relative=value?.relativeEnergy??(minimum!==null&&Number.isFinite(frame.energyHartree)?convertEnergy({value:frame.energyHartree!-minimum,unit:'hartree'},options.unit):null);
-    return{key:frame.id,cells:[String(ordinals.get(frame.id)),Number.isFinite(frame.energyHartree)?String(frame.energyHartree):'',relative===null?'':formatResultValue(relative,options.decimals),value?formatResultValue(value.weight*100,options.decimals):'',value?formatResultValue(value.fraction*100,options.decimals):'']};
+    return{key:frame.id,cells:[String(ordinals.get(frame.id)),Number.isFinite(frame.energyHartree)?decimalEnergyValue(frame.energyHartree):'',relative===null?'':formatEnergyValue(relative,options.decimals),value?formatResultValue(value.weight*100,options.decimals):'',value?formatResultValue(value.fraction*100,options.decimals):'']};
   })};
   return {frames,optimized,projection:populatedColumns(projection),energyLabel,populationMessage};
 }

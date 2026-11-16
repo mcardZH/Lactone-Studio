@@ -2,8 +2,29 @@ import type {AdvancedFrameSource} from '../../modeling/advanced/frame-source';
 import {sameAdvancedFrame} from '../../modeling/advanced/frame-source';
 import type {WorkspaceActivationStamp} from '../../modeling/workspace-contracts';
 import {advancedElectronicSourceConfirmationKey} from '../../modeling/advanced/electronic-confirmation';
+import type {Structure} from '../../core/types';
+import {pairEditedElectronicState,type ElectronicStateEditField} from '../../core/base-electronic-state';
+export {advancedElectronicConfirmationMatches} from '../../modeling/advanced/electronic-confirmation';
 
 export interface AdvancedElectronicState {charge:number;multiplicity:number;confirmed?:boolean;documentId?:string}
+export interface AdvancedElectronicText {charge:string;multiplicity:string}
+export function advancedElectronicTextValues(raw:AdvancedElectronicText):AdvancedElectronicState|null{
+ if(!/^[+-]?\d+$/.test(raw.charge)||!/^\+?\d+$/.test(raw.multiplicity))return null;
+ const values={charge:Number(raw.charge),multiplicity:Number(raw.multiplicity)};
+ return validAdvancedElectronicDraft(values)?values:null;
+}
+/** Submit a single explicit edit to the common pairing policy. Raw typing is
+ * separate; failures retain that text and cannot write either owner field. */
+export function submitAdvancedElectronicText(structure:Structure,raw:AdvancedElectronicText,field:ElectronicStateEditField,text:string){
+ const next={...raw,[field]:text};
+ if(!/^[+-]?\d+$/.test(text)||!Number.isSafeInteger(Number(text))||field==='multiplicity'&&Number(text)<1)
+  return {raw:next,values:null,error:'电荷必须为整数，自旋多重度必须为正整数。'};
+ const previous={charge:/^[+-]?\d+$/.test(next.charge)?Number(next.charge):structure.charge??NaN,
+  multiplicity:/^\+?\d+$/.test(next.multiplicity)?Number(next.multiplicity):structure.multiplicity??NaN};
+ const result=pairEditedElectronicState(structure.atoms,previous,field,Number(text));
+ if(result.error)return{raw:next,values:null,error:result.error};
+ return{raw:{charge:field==='charge'?text:String(result.values.charge),multiplicity:field==='multiplicity'?text:String(result.values.multiplicity)},values:result.values,error:null};
+}
 
 /** Electronic metadata is editable without changing a frame's scientific identity.
  * In particular, confirming a draft must not invalidate itself when q/M returns

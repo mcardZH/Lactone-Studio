@@ -1,0 +1,114 @@
+{
+  "schema": "ester-xtb-v208-assembly/v1",
+  "gxtb": {
+    "license": {
+      "spdx": "GPL-3.0",
+      "url": "https://raw.githubusercontent.com/grimme-lab/g-xtb/23f81c2db64fa4272c25b86f8776ce862aeb59e2/LICENSE",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bytes": 35149
+    },
+    "dlls": {
+      "libblas.dll": {
+        "bytes": 926664,
+        "sha256": "a77453546754b637f3eef74a64d45bcdbd3c487bd2cdce30f81d7c09e0566b14"
+      },
+      "libgcc_s_seh-1.dll": {
+        "bytes": 150196,
+        "sha256": "eeda86410a82012a22b47f73d63c9e93667b7ed19e0b4aa22bcd02aed2215c66"
+      },
+      "libgfortran-5.dll": {
+        "bytes": 3769650,
+        "sha256": "0f1d41564b04dc2c8f911a244048d0911af311bf1723892490feaf5e8e927cb5"
+      },
+      "liblapack.dll": {
+        "bytes": 15566494,
+        "sha256": "d3af8da61d176534d9f618938ff9165e643cc3c1b5a30867fd83329c8cb46b7d"
+      },
+      "libquadmath-0.dll": {
+        "bytes": 399279,
+        "sha256": "b27fba37dc5a5aa1c9aa00c3b72467ad3dc27de090c72a6b79525bcc8b9ac6aa"
+      },
+      "libwinpthread-1.dll": {
+        "bytes": 65442,
+        "sha256": "5c978176fd66590dad8cbf76c161a01872d6bf2f956c47a04bdde983a7ec0627"
+      }
+    }
+  },
+  "fireLibraries": {
+    "libdl.dll": {
+      "bytes": 23566,
+      "sha256": "2d7d94bc427cac1b2b0aaf0a36b7a0b13289c89ee3ed6afa16b666861b324c1a"
+    },
+    "libgcc_s_seh-1.dll": {
+      "bytes": 740183,
+      "sha256": "d9de4402dc244bdf896068e8e45c8687f965006ebf39ddf36f4067582235e85f"
+    },
+    "libgfortran-5.dll": {
+      "bytes": 3224337,
+      "sha256": "c68798c73830387250af0220071e4b38449aa455e8d5e5f6fa0bf7c706489c7f"
+    },
+    "libgomp-1.dll": {
+      "bytes": 309881,
+      "sha256": "91ddfebc4a3204b18d3432e433f43c24a9cd991e23cf9b27b4eb63737c330fa4"
+    },
+    "libquadmath-0.dll": {
+      "bytes": 383483,
+      "sha256": "15f394ddf8357594e5f714ed8ed22f45ec5ae5baae6b280ca63132549f8ad5eb"
+    },
+    "libwinpthread-1.dll": {
+      "bytes": 94355,
+      "sha256": "f7c3c93b2ea8c78fe2c514602662bf479b0fe90989815989e5d6b3f52c2c485a"
+    },
+    "VCRUNTIME140.dll": {
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60"
+    }
+  },
+  "fireLicenses": {
+    "openblas/LICENSE": {
+      "path": "LICENSE",
+      "sha256": "190b5a9c8d9723fe958ad33916bd7346d96fab3c5ea90832bb02d854f620fcff",
+      "bytes": 1548
+    },
+    "openblas/lapack-netlib/LICENSE": {
+      "path": "lapack-netlib/LICENSE",
+      "sha256": "978539245c405775bf347b1256c36df4daf8b69a64b099e94b1d53742201621e",
+      "bytes": 2266
+    },
+    "dlfcn-win32/COPYING": {
+      "path": "dlfcn-win32/COPYING",
+      "sha256": "4cc7ac997b9293db5919baf630100cc09b3508efdfe6a6611c95511fb863b3c7",
+      "bytes": 1040
+    },
+    "dlfcn-win32/source-copyright-and-grant.c": {
+      "path": "dlfcn-win32/source-copyright-and-grant.c",
+      "sha256": "0b7a7e71d4beeef7df6ad9422da7b311bb15edd05ac7016d2d93fa8f90a4944e",
+      "bytes": 29461
+    },
+    "gcc13.2/COPYING.RUNTIME": {
+      "path": "gcc13.2/COPYING.RUNTIME",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "bytes": 3324
+    },
+    "gcc13.2/COPYING3": {
+      "path": "gcc13.2/COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "bytes": 35147
+    },
+    "gcc13.2/libquadmath-COPYING.LIB": {
+      "path": "gcc13.2/libquadmath-COPYING.LIB",
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b",
+      "bytes": 26440
+    },
+    "winpthreads/COPYING": {
+      "path": "winpthreads/COPYING",
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177",
+      "bytes": 2883
+    },
+    "Microsoft-VC-runtime-license.rtf": {
+      "path": "Microsoft-VC-runtime-license.rtf",
+      "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b",
+      "bytes": 9235
+    }
+  }
+}

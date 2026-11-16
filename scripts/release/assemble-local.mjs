@@ -24,7 +24,7 @@ the source root and every supplied input. Links/hardlinks, private/user-state/
 cache directories, case collisions and conflicting license destinations fail.
 No download, install, native compilation, application or scientific run occurs.
 The manifest hashes all payload members and explicitly excludes its own hash;
-the command result reports the manifest hash and complete member count. GNU xTB v2 requires a real native receipt and its recorded build contract.
+the command result reports the manifest hash and complete member count. Current xTB requires a real native receipt and its recorded build contract.
 Receipt references resolve under --native-receipt-root (default: source root).
 Legacy calls without a receipt retain their unverified behavior. This does not
 prove official QA or redistribution rights.
@@ -157,7 +157,19 @@ async function nativeProvenance(options,sourceRoot,roots,actualFiles,guards){
 }
 async function xtbProvenance(sourceRoot,root,guards){
  const path=join(root,'runtime.json');try{await lstat(path);}catch(error){if(error.code==='ENOENT')return null;throw error;}
- const selected=await jsonInput(path,guards),record=selected.value;assert(['sciyue-xtb-bundled-runtime/v1','sciyue-xtb-bundled-runtime/v2'].includes(record.schema)&&/^\d+\.\d+\.\d+(?:pre)?$/.test(record.version),'Actual xTB descriptor schema/version required');
+ const selected=await jsonInput(path,guards),record=selected.value;
+ if(['sciyue-xtb-bundled-runtime/v3','sciyue-xtb-bundled-runtime/v4'].includes(record.schema)){
+  const {default:contract}=await import(pathToFileURL(join(sourceRoot,'desktop/xtb-runtime-contract.cjs')).href);
+  const runtimeManifest={path:'runtime.json',...selected.identity};
+  const {variants}=contract.verifyRuntimeSet(root,runtimeManifest);
+  const locked=(await jsonInput(join(sourceRoot,'desktop/packaging/xtb-runtime.lock.json'),guards)).value;
+  assert.deepEqual(locked.runtimeManifest,runtimeManifest,'xTB runtime set must match the current source lock');
+  assert.deepEqual(locked.variantIdentities,Object.fromEntries(Object.entries(variants).map(([id,variant])=>[id,variant.engineIdentity])),
+    'xTB variants must match the current source lock');
+  return {schema:record.schema,version:record.version,scope:record.scope,publicRedistributionReviewed:false,
+    runtimeManifest,variants:locked.variantIdentities};
+ }
+ assert(['sciyue-xtb-bundled-runtime/v1','sciyue-xtb-bundled-runtime/v2'].includes(record.schema)&&/^\d+\.\d+\.\d+(?:pre)?$/.test(record.version),'Actual xTB descriptor schema/version required');
  if(record.schema==='sciyue-xtb-bundled-runtime/v2'){const {default:contract}=await import(pathToFileURL(join(sourceRoot,'desktop/xtb-runtime-contract.cjs')).href);contract.validateDescriptor(record);const inventory=(await referencedJson(root,record.inventory,guards)).value;assert.equal(inventory.schema,'sciyue-xtb-runtime-inventory/v1');const members=contract.verifyMemberInventory(root,inventory.files);for(const required of contract.REQUIRED)assert(members.some(row=>row.path===required),'Missing required xTB executable/parameter');}
  let runtimeLibraries;
  if(record.runtimeRevision){const revision=(await referencedJson(root,record.runtimeRevision,guards)).value;assert.equal(revision.schema,'sy-xtb-runtime-library-revision/v1');assert.equal(record.build.sourceReceiptSha256,record.runtimeRevision.sha256);assert.equal(revision.scientificProgramUnchanged,true);assert.equal(revision.parametersUnchanged,true);assert.equal(revision.replacements.length,1);const delta=revision.replacements[0];assert.equal(delta.target,'bin/openblas.dll');assert.equal(delta.before.sha256,openblasBefore.sha256);assert.equal(delta.after.sha256,openblasAfter.sha256);assert.deepEqual(delta.after,{path:'bin/openblas.dll',...await digest(join(root,'bin/openblas.dll'))});assert.equal(revision.upstreamArtifact.localBuildExecuted,false);runtimeLibraries={openblas:{version:'0.3.33',origin:'official-conda-forge-upstream-prebuilt',packageURL:revision.upstreamArtifact.packageURL,archiveSha256:revision.upstreamArtifact.archiveSha256,member:delta.after,parentRawBuildVersion:'0.3.34',parentSourceReceiptSha256:revision.parentSourceReceiptSha256}};}
@@ -190,7 +202,7 @@ export async function assembleLocalPortable(options,{sourceRoot=resolve(import.m
  for(const name of c.applicationFiles){if(name==='dist')continue;safeMember(name);assert(!/^(?:LICENSE\.txt|licenses\/)/.test(name),'Project license sources are handled only at package root');await add(join(sourceRoot,name),c.layout.member('resources/app/'+name),'application',name);}
  await walk(roots.dist,(source,path)=>add(source,c.layout.member('resources/app/dist/'+path),'dist',path));
  for(const role of ['native','xtb'])await walk(roots[role],(source,path)=>add(source,c.layout.member('resources/'+(role==='native'?'chemistry':'xtb')+'/'+path),role,path));
- const xtbSummary=await xtbProvenance(sourceRoot,roots.xtb,verificationGuards);if(xtbSummary?.schema==='sciyue-xtb-bundled-runtime/v2')assert(options.nativeReceipt,'GNU xTB v2 requires an explicit actual native receipt');const nativeSummary=await nativeProvenance(options,sourceRoot,roots,inputs.filter(row=>row.role==='native').map(({path,bytes,sha256})=>({path,bytes,sha256})),verificationGuards);if(nativeSummary){for(const file of nativeSummary.libraryReplacement?.licenseInputs??[])await add(file.source,file.path,'upstream-library-license',file.member);assert(xtbSummary,'Receipt-backed assembly requires an actual xTB descriptor');generated('runtime/provenance/dependencies.json',Buffer.from(JSON.stringify({schema:'sciyue-portable-dependency-summary/v1',electron:pkg.devDependencies.electron,native:nativeSummary,xtb:xtbSummary},null,2)+'\n'));}
+ const xtbSummary=await xtbProvenance(sourceRoot,roots.xtb,verificationGuards);if(xtbSummary&&['sciyue-xtb-bundled-runtime/v2','sciyue-xtb-bundled-runtime/v3','sciyue-xtb-bundled-runtime/v4'].includes(xtbSummary.schema))assert(options.nativeReceipt,'Current xTB runtime requires an explicit actual native receipt');const nativeSummary=await nativeProvenance(options,sourceRoot,roots,inputs.filter(row=>row.role==='native').map(({path,bytes,sha256})=>({path,bytes,sha256})),verificationGuards);if(nativeSummary){for(const file of nativeSummary.libraryReplacement?.licenseInputs??[])await add(file.source,file.path,'upstream-library-license',file.member);assert(xtbSummary,'Receipt-backed assembly requires an actual xTB descriptor');generated('runtime/provenance/dependencies.json',Buffer.from(JSON.stringify({schema:'sciyue-portable-dependency-summary/v1',electron:pkg.devDependencies.electron,native:nativeSummary,xtb:xtbSummary},null,2)+'\n'));}
  await add(launcher,c.names.executableName,'launcher',c.names.executableName);
  await add(join(sourceRoot,'LICENSE.txt'),'LICENSE.txt','project-license','LICENSE.txt');
  let rootLicenseFiles=0;await walk(join(sourceRoot,'licenses'),async(source,path)=>{rootLicenseFiles++;await add(source,'licenses/'+path,'source-licenses','licenses/'+path);});assert(rootLicenseFiles>0,'Complete source license directory is empty');

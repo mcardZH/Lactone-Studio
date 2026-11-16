@@ -16,8 +16,11 @@ const MIME='application/x-sciyue-analysis';
 type Popup={window:Window;lease:AnalysisWindowLease|null;header:HTMLElement;released:boolean;restoring:boolean;disposeVisuals():void};
 type AnalysisTabDrag={id?:string;kind?:AnalysisPage;source:string;handled:boolean;cancelled:boolean;x:number;y:number;release():void};
 function Slot({container,parking}:{container:HTMLElement;parking:HTMLElement|null}){const ref=useRef<HTMLDivElement>(null);useLayoutEffect(()=>{ref.current?.appendChild(container);return()=>{if(container.parentNode===ref.current)parking?.appendChild(container);};},[container,parking]);return <div className="analysis-pane-slot" ref={ref}/>;}
-function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:AnalysisPage;requestedPage?:{serial:number;page:AnalysisPage};allowedPages?:readonly AnalysisPage[];unavailableReason?(page:AnalysisPage):string|undefined;onActive(id:string|null):void;onActivate():void;onRequest?(kind:AnalysisPage):void;onError(message:string):void;render(instance:AnalysisInstance,active:boolean):ReactNode}){
- const [savedState,setState]=useProjectState<AnalysisWorkspaceState>('state',()=>initialAnalysisWorkspace(`analysis-${crypto.randomUUID()}`,p.initialPage&&(!p.allowedPages||p.allowedPages.includes(p.initialPage))?p.initialPage:p.allowedPages?.[0]));
+function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:AnalysisPage;requestedPage?:{id:string;kind:AnalysisPage};mcpRequestedPage?:{serial:number;page:AnalysisPage};startEmpty?:boolean;allowedPages?:readonly AnalysisPage[];unavailableReason?(page:AnalysisPage):string|undefined;onActive(id:string|null):void;onActivate():void;onRequest?(kind:AnalysisPage):void;onError(message:string):void;render(instance:AnalysisInstance,active:boolean):ReactNode}){
+ const [savedState,setState]=useProjectState<AnalysisWorkspaceState>('state',()=>{
+  const page=p.initialPage&&(!p.allowedPages||p.allowedPages.includes(p.initialPage))?p.initialPage:p.allowedPages?.[0];
+  return initialAnalysisWorkspace(`analysis-${crypto.randomUUID()}`,p.startEmpty?null:page);
+ });
  const citationUi=useProjectUiScope(),citationDocumentId=citationDocumentIdFromScope(citationUi?.scope??[]);
  const citationSource=(()=>{try{return JSON.parse(p.sourceId) as unknown[];}catch{return [];}})();
  const validated=validateAnalysisWorkspace(savedState),allowedInstances=p.allowedPages?validated.instances.filter(item=>p.allowedPages!.includes(item.kind)):validated.instances;
@@ -58,14 +61,14 @@ function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:A
   dispatch({type:'add',instance});
   callbacks.current.onRequest?.(kind);
   if(external)void detach(instance.id);callbacks.current.onActivate();return instance.id;
- },[detach,focus]);
+ },[detach,focus,p.allowedPages]);
  const select=(kind:AnalysisPage)=>{add(kind);};
  const handledRequestedSerial=useRef(0);
  useEffect(()=>{
-  if(!p.requestedPage||p.requestedPage.serial===handledRequestedSerial.current)return;
-  handledRequestedSerial.current=p.requestedPage.serial;
-  add(p.requestedPage.page);
- },[p.requestedPage?.serial,p.requestedPage?.page,add]);
+  if(!p.mcpRequestedPage||p.mcpRequestedPage.serial===handledRequestedSerial.current)return;
+  handledRequestedSerial.current=p.mcpRequestedPage.serial;
+  add(p.mcpRequestedPage.page);
+ },[p.mcpRequestedPage?.serial,p.mcpRequestedPage?.page,add]);
  const startDrag=(event:DragEvent,id?:string,kind?:AnalysisPage)=>{drag.current?.release();const owner=event.currentTarget.ownerDocument.defaultView??window;const value:AnalysisTabDrag={id,kind,source:p.sourceId,handled:false,cancelled:false,x:event.screenX,y:event.screenY,release:()=>owner.removeEventListener('keydown',cancel,true)};const cancel=(event:KeyboardEvent)=>{if(event.key==='Escape')value.cancelled=true;};drag.current=value;owner.addEventListener('keydown',cancel,true);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData(MIME,JSON.stringify({source:p.sourceId,id,kind}));};
  const dragEnd=(event:DragEvent)=>{const value=drag.current;drag.current=null;value?.release();if(!value||value.handled||event.dataTransfer.dropEffect!=='none')return;const owner=event.currentTarget.ownerDocument.defaultView??window,x=event.screenX,y=event.screenY;if(!Number.isFinite(x)||!Number.isFinite(y)||x===0&&y===0)return;const intent=resolveWorkspaceTabDropIntent({moved:workspaceTabDragMoved(value.x,value.y,x,y),cancelled:value.cancelled,source:value.source,expectedSource:p.sourceId,detached:!!value.id&&!!stateRef.current.instances.find(item=>item.id===value.id)?.detached,insideTarget:workspaceTabTargetContains({x:owner.screenX,y:owner.screenY,width:owner.outerWidth,height:owner.outerHeight},x,y)});if(intent==='detach'){if(value.id)void detach(value.id);else if(value.kind)add(value.kind,true);}};
  const receive=(event:DragEvent,group:string,before?:string)=>{try{const value=JSON.parse(event.dataTransfer.getData(MIME));if(!value||typeof value.source!=='string')return;const item=stateRef.current.instances.find(row=>row.id===value.id),gesture=drag.current;const intent=resolveWorkspaceTabDropIntent({moved:gesture?workspaceTabDragMoved(gesture.x,gesture.y,event.screenX,event.screenY):true,cancelled:gesture?.cancelled,source:value.source,expectedSource:p.sourceId,detached:!!item?.detached,insideTarget:true,itemId:item?.id,before});if(value.source===p.sourceId){event.preventDefault();event.stopPropagation();if(gesture)gesture.handled=true;}if(intent==='none')return;if(item)dock(item.id,group,before);else if(typeof value.kind==='string'&&Object.hasOwn(ANALYSIS_TITLES,value.kind)){const id=add(value.kind as AnalysisPage);dock(id,group,before);}}catch{}};
@@ -81,6 +84,16 @@ function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:A
 
  },[p.active,detach,dispatch]);
  useLayoutEffect(()=>{const element=deck.current;if(!element)return;const update=()=>{const bounds=element.getBoundingClientRect();setSize({width:bounds.width,height:bounds.height});};update();const observer=new ResizeObserver(update);observer.observe(element);return()=>observer.disconnect();},[]);
+ const requestedPage=useRef<string|null>(null);
+ useEffect(()=>{
+  const request=p.requestedPage;
+  if(!p.active||!request||requestedPage.current===request.id||p.allowedPages&&!p.allowedPages.includes(request.kind))return;
+  requestedPage.current=request.id;
+  const existing=stateRef.current.instances.find(item=>item.kind===request.kind);
+  // Automatic workflow landing never focuses an already detached system window.
+  if(existing){callbacks.current.onRequest?.(request.kind);dispatch({type:'activate',id:existing.id});}
+  else add(request.kind);
+ },[p.active,p.requestedPage?.id,p.requestedPage?.kind,p.allowedPages,add,dispatch]);
  const compact=size.width<640,docked=state.instances.filter(row=>!row.detached),active=activeDockedAnalysis(state);
  const tab=(item:AnalysisInstance,group:string)=><WorkspaceTab key={item.id} className="analysis-tab" label={ANALYSIS_TITLES[item.kind]} active={active?.id===item.id} onActivate={()=>focus(item.id)} containerProps={{draggable:true,onDragStart:event=>startDrag(event,item.id),onDragEnd:dragEnd,onDragOver:event=>{if(event.dataTransfer.types.includes(MIME))event.preventDefault();},onDrop:event=>receive(event,group,item.id)}} actions={<><button aria-label={`弹出${ANALYSIS_TITLES[item.kind]}窗口`} onClick={()=>void detach(item.id)}>↗</button><button aria-label={`关闭${ANALYSIS_TITLES[item.kind]}窗口`} onClick={()=>close(item.id)}>×</button></>}/>;
  return <section ref={root} className="analysis-workspace" data-testid="analysis-workspace" data-active-instance={state.activeId??''} data-docked-active-instance={active?.id??''} data-compact={compact} data-layout={state.mode} onDragEnd={dragEnd}>

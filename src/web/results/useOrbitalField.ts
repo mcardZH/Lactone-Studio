@@ -13,6 +13,8 @@ export interface OrbitalSampling { spacingAngstrom: number; paddingAngstrom: num
 export const DEFAULT_ORBITAL_SAMPLING: OrbitalSampling = { spacingAngstrom: .15, paddingAngstrom: 4, threads: 4, memoryBudgetBytes: 4 * 1024 ** 3 };
 export const ORBITAL_QUALITY_SPACING = { fast: .25, standard: .15, fine: .1 } as const;
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
+import { multiwfnBackendFailure } from './multiwfn-errors';
+
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
 
 export function initialOccupiedOrbital(metadata: WavefunctionMetadata): string | null {
@@ -137,17 +139,16 @@ export function createOrbitalSessionController(bridge: OrbitalBridge, metadata: 
           }
           const backend = state.backend ?? await this.backendInfo();
           if (!current()) return;
-          assert(backend.configured, backend.message || '请先选择已安装的本机 Multiwfn。');
+          assert(backend.configured && backend.status!=='work-directory-unavailable', multiwfnBackendFailure(backend,'ORBITAL'));
           update({ attempted: true, planning: true, error: '' });
           if (selectionSignature !== signature || state.plan?.mode !== 'selected' || !state.plan.withinBudget) {
             if (state.plan) { await command('stop'); if (!current()) return; }
             selectionSignature = '';
             const plan = await bridge.planOrbitalSession(sessionId, { mode: 'selected', grid, threads: sampling.threads, memoryBudgetBytes: sampling.memoryBudgetBytes });
             if (!current()) return;
-            assert(plan.mode === 'selected' && plan.gridKey && plan.pointCount === grid.dimensions.reduce((a, b) => a * b, 1) && plan.orbitalCount === keys.size && [plan.cacheBytes, plan.workingBytes, plan.totalBytes].every(n => Number.isSafeInteger(n) && n >= 0) && plan.totalBytes >= plan.cacheBytes && plan.totalBytes >= plan.workingBytes, '单轨道内存计划回执无效。');
-            const accepted = { ...plan, withinBudget: plan.withinBudget === true && plan.totalBytes <= sampling.memoryBudgetBytes };
-            sequence = -1; update({ plan: accepted, grid, progress: null, sampling: { ...sampling } });
-            if (!accepted.withinBudget) { update({ error: '总内存估计超过预算，请调整网格或预算；未启动生成。' }); return; }
+            assert(plan.mode === 'selected' && plan.gridKey && plan.pointCount === grid.dimensions.reduce((a, b) => a * b, 1) && plan.orbitalCount === keys.size && [plan.cacheBytes, plan.workingBytes, plan.totalBytes].every(n => Number.isSafeInteger(n) && n >= 0) && plan.totalBytes >= plan.cacheBytes && plan.totalBytes >= plan.workingBytes && typeof plan.withinBudget === 'boolean', '单轨道内存计划回执无效。');
+            sequence = -1; update({ plan, grid, progress: null, sampling: { ...sampling } });
+            if (!plan.withinBudget) { update({ error: '当前可用内存预算不足，请调整网格或预算。' }); return; }
             selectionSignature = signature;
           }
           if (!current()) return;
@@ -185,17 +186,16 @@ export function createOrbitalSessionController(bridge: OrbitalBridge, metadata: 
       starting = true;
       try {
       const backend = state.backend ?? await this.backendInfo();
-      assert(backend.configured, backend.message || '请先选择已安装的本机 Multiwfn。');
+      assert(backend.configured && backend.status!=='work-directory-unavailable', multiwfnBackendFailure(backend,'ORBITAL'));
       if (priorityKey) assert(keys.has(priorityKey), '轨道不属于当前波函数。');
       const currentEpoch = ++epoch; stopRequested = false; priorityPreference = priorityKey; update({ attempted: true, planning: true, error: '', sampling: { ...sampling } });
       try {
         const plan = await bridge.planOrbitalSession(sessionId, { grid, threads: sampling.threads, memoryBudgetBytes: sampling.memoryBudgetBytes });
         if (currentEpoch !== epoch) return;
-        assert(plan.gridKey && Number.isSafeInteger(plan.pointCount) && plan.pointCount === grid.dimensions.reduce((a, b) => a * b, 1) && plan.orbitalCount === keys.size && [plan.cacheBytes, plan.workingBytes, plan.totalBytes].every(n => Number.isSafeInteger(n) && n >= 0), '轨道内存计划回执无效。');
+        assert(plan.gridKey && Number.isSafeInteger(plan.pointCount) && plan.pointCount === grid.dimensions.reduce((a, b) => a * b, 1) && plan.orbitalCount === keys.size && [plan.cacheBytes, plan.workingBytes, plan.totalBytes].every(n => Number.isSafeInteger(n) && n >= 0) && typeof plan.withinBudget === 'boolean', '轨道内存计划回执无效。');
         assert(plan.totalBytes >= plan.cacheBytes && plan.totalBytes >= plan.workingBytes, '轨道总内存估计无效。');
-        const acceptedPlan = { ...plan, withinBudget: plan.withinBudget === true && plan.totalBytes <= sampling.memoryBudgetBytes };
-        sequence = -1; update({ plan: acceptedPlan, grid, progress: null });
-        if (!acceptedPlan.withinBudget) { update({ error: '总内存估计超过预算，请调整网格或预算，或取消；未启动生成。' }); return; }
+        sequence = -1; update({ plan, grid, progress: null });
+        if (!plan.withinBudget) { update({ error: '当前可用内存预算不足，请调整网格或预算。' }); return; }
         initializedSignature = signature;
         update({ progress: { sessionId, sourceRevision: metadata.sourceRevision, gridKey: plan.gridKey, status: stopRequested ? 'stopped' : 'queued', completedKeys: [], total: keys.size, currentKey: null, cacheBytes: 0 } });
         if (!stopRequested) { generating = true; await command('generate', priorityPreference ?? undefined); }

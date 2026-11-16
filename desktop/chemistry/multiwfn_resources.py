@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import struct
+import subprocess
 
 MAX_NATIVE_INTEGER=2**31-1
 MAX_SAFE_INTEGER=2**53-1
@@ -25,6 +26,29 @@ def native_binary_identity(executable):
     try: stat=path.stat()
     except FileNotFoundError: return None
     return dict(path=str(path),bytes=stat.st_size,modifiedNs=str(stat.st_mtime_ns),fileId=str(stat.st_ino))
+
+
+class MultiwfnResourceChanged(ResourceError):
+    code='multiwfn-resource-changed'
+
+
+class MultiwfnStartError(OSError):
+    code='multiwfn-start'
+
+
+def require_native_binary_grant(resources, grant):
+    if 'nativeBinaryIdentity' in grant and grant['nativeBinaryIdentity'] != resources.get('nativeBinaryIdentity'):
+        raise MultiwfnResourceChanged('Multiwfn executable changed after the resource grant.')
+
+
+def start_multiwfn(arguments, *, resources=None, **options):
+    if resources is not None and 'nativeBinaryIdentity' in resources:
+        require_native_binary_grant(dict(nativeBinaryIdentity=native_binary_identity(arguments[0])), resources)
+    try:
+        return subprocess.Popen(arguments, **options)
+    except OSError as error:
+        cwd=options.get('cwd')
+        raise MultiwfnStartError(f'Phase=process-start; executable path length={len(str(arguments[0]))}; cwd length={len(str(cwd))}; input argument length={len(str(arguments[1])) if len(arguments)>1 else 0}; errno={error.errno}; winerror={getattr(error,"winerror",None)}. {error}') from error
 
 
 def native_static_image_bytes(executable, *, platform=None):
@@ -106,6 +130,27 @@ def _override(raw,key,value):
     if not count: updated+= (b'' if not updated or updated.endswith(b'\n') else b'\n')+key_bytes+b'= '+encoded+b'\n'
     return bom+updated
 
+
+def gxtb_valence_settings(settings, metadata):
+    """Scope the approved valence-density convention to inspected g-xTB Molden.
+
+    Only the parser for the converted Cartesian representation publishes these
+    per-atom effective nuclei. Other input formats retain their job settings.
+    """
+    atoms = metadata.get('atoms') or ()
+    if metadata.get('format') != 'molden' or not atoms or not all('effectiveNuclearCharge' in atom for atom in atoms):
+        return settings, None
+    charges = [atom['effectiveNuclearCharge'] for atom in atoms]
+    return _override(settings, 'isupplyEDF', 0), dict(
+        sourceRepresentation='gxtb-valence-molden', nativeDensityRepresentation='valence-only',
+        effectiveNuclearCharges=charges, isupplyEDF=0)
+
+
+def native_output_has_edf(output):
+    """Detect actual added primitives or core electrons, including partial EDF."""
+    counts = re.findall(r'(?:EDF primitive GTFs|total inner-core electrons):[ \t]*(\d+)', output, re.I)
+    return any(int(count) > 0 for count in counts)
+
 def resolve_resources(executable=None,threads=None,memory_budget_bytes=None,*,cpu_count=None,physical_bytes=None):
     cpus=logical_cpu_count() if cpu_count is None else _positive_integer(cpu_count,MAX_NATIVE_INTEGER,'Logical CPU count')
     physical=total_physical_memory() if physical_bytes is None else _positive_integer(physical_bytes,MAX_SAFE_INTEGER,'Physical RAM')
@@ -155,6 +200,8 @@ def resolve_resources(executable=None,threads=None,memory_budget_bytes=None,*,cp
     if binary_before!=binary_after:
         raise ResourceError('Multiwfn executable changed while resolving its memory estimate; refresh the resource configuration.')
     info['nativeMemoryEstimateSource']='pe-private-writable-sections' if info['nativeStaticImageBytes'] else 'dynamic-scratch-only'
+    if executable is not None and binary_after is None:
+        raise MultiwfnResourceChanged('The selected Multiwfn executable is no longer available.')
     info['nativeBinaryIdentity']=binary_after
     return info,updated
 

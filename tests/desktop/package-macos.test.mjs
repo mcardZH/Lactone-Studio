@@ -21,6 +21,7 @@ const require = createRequire(import.meta.url);
 const { chemistryRuntime } = require('../../desktop/runtime.cjs');
 const { xtbRuntime } = require('../../desktop/xtb-runtime.cjs');
 const { createXtbHost } = require('../../desktop/xtb-host.cjs');
+const { validateNativeConstraints } = require('../../desktop/xtb-security.cjs');
 const { DARWIN_V1_LIBRARIES } = require('../../desktop/xtb-runtime-contract.cjs');
 const { createOcrRuntime } = require('../../desktop/ocr-runtime.cjs');
 const { assertExportDestination } = require('../../desktop/portable-export.cjs');
@@ -329,7 +330,60 @@ test('assembleMacAppBundle rebrands Electron executable and Helpers, stages DMG 
         assert.equal(terminal?.coordinates?.length, structure.atoms.length);
       }
 
-      // Overriding runtime.json version (6.7.1) on real 6.4.1 xTB binary must be rejected
+      // Live B/A/D internal-coordinate constraints against packaged macOS xtb 6.8.0 via xtbHost + validateNativeConstraints
+      const h2o2 = {
+        id: 'h2o2',
+        name: 'peroxide',
+        atoms: [
+          { id: 'o1', element: 'O', x: 0.0, y: 0.0, z: 0.0 },
+          { id: 'o2', element: 'O', x: 1.45, y: 0.0, z: 0.0 },
+          { id: 'h1', element: 'H', x: -0.3, y: 0.9, z: 0.0 },
+          { id: 'h2', element: 'H', x: 1.75, y: 0.0, z: 0.9 },
+        ],
+        bonds: [
+          { a: 0, b: 1, order: 1 },
+          { a: 0, b: 2, order: 1 },
+          { a: 1, b: 3, order: 1 },
+        ],
+      };
+      xtbEvents.length = 0;
+      await xtbHost.start(
+        1,
+        {
+          stamp: { documentId: 'doc-h2o2-bad', revision: 1, graphFingerprint: 'g1', coordinatesFingerprint: 'c1', constraintsFingerprint: 'k1' },
+          calculation: 'optimize',
+          method: 'gfn2',
+          charge: 0,
+          uhf: 0,
+          threads: 1,
+          maxSteps: 25,
+          maxWallTimeSeconds: 30,
+          frozenAtomIds: [],
+          internalConstraintsConfirmed: true,
+          constraints: [
+            { id: 'c-b', type: 'B', atomIds: ['o1', 'o2'], action: 'freeze', value: 1.45 },
+            { id: 'c-a', type: 'A', atomIds: ['h1', 'o1', 'o2'], action: 'freeze', value: 108.43494882292201 },
+            { id: 'c-d', type: 'D', atomIds: ['h1', 'o1', 'o2', 'h2'], action: 'freeze', value: 90 },
+          ],
+          structure: h2o2,
+        },
+        'sess-h2o2-bad',
+      );
+      await xtbHost.waitForSession(1, 'sess-h2o2-bad');
+      const badTerminal = xtbEvents.find((ev) => ['completed', 'error', 'stopped'].includes(ev.event));
+      assert.equal(badTerminal?.event, 'completed', `Expected constrained h2o2 optimization to complete, got ${JSON.stringify(badTerminal)}`);
+      assert.equal(badTerminal?.metadata?.internalConstraints?.length, 3);
+      for (const prefix of ['-> force constant=20', '   force constant=20']) {
+        validateNativeConstraints(
+          `${prefix}\nconstraining bond 1 2 to    1.4500000 Å, actual value:    1.4500000 Å\n     total constraint energy/grad norm: 0.0 0.0\n`,
+          {
+            structure: h2o2,
+            constraints: [{ id: 'c-b', type: 'B', atomIds: ['o1', 'o2'], value: 1.45 }],
+          },
+        );
+      }
+
+      // Overriding runtime.json version (6.7.1) on real 6.8.0 xTB binary must be rejected
       const mismatchedXtbRoot = path.join(root, 'xtb-version-mismatch');
       fs.cpSync(realXtbRoot, mismatchedXtbRoot, { recursive: true });
       fs.chmodSync(mismatchedXtbRoot, 0o755);
@@ -392,6 +446,46 @@ test('resolveDefaultMacRuntimeSources and assembleMacAppBundle support darwin-x6
     const result = assembleMacAppBundle({ repoRoot, arch: 'x64', outputDir, sign: false, createDmg: false });
     assert.equal(fs.existsSync(result.executablePath), true);
     assert.equal(fs.existsSync(result.chemistryEnginePath), true);
+
+    // Static 6.8.0 Mach-O binary without lib/*.dylib (embedded gfortran string xtb version6.8.0 ...) must package cleanly and reject mismatched runtime.json version
+    const crossArch = process.arch === 'arm64' ? 'x64' : 'arm64';
+    const crossMachO = Buffer.alloc(32);
+    crossMachO.writeUInt32BE(0xcffaedfe, 0);
+    crossMachO.writeInt32LE(crossArch === 'x64' ? 0x01000007 : 0x0100000c, 4);
+    const staticCrossXtbDir = path.join(root, 'static-cross-xtb-680');
+    writeText(staticCrossXtbDir, 'runtime.json', makeXtbManifest(`darwin-${crossArch}`, '6.8.0'));
+    const staticCrossBin = Buffer.concat([crossMachO, Buffer.from('xtb version6.8.0 (4b8c987)compiled by\0', 'latin1')]);
+    fs.mkdirSync(path.join(staticCrossXtbDir, 'bin'), { recursive: true });
+    fs.writeFileSync(path.join(staticCrossXtbDir, 'bin/xtb'), staticCrossBin);
+    fs.chmodSync(path.join(staticCrossXtbDir, 'bin/xtb'), 0o755);
+    for (const param of XTB_PARAMS) writeText(staticCrossXtbDir, param, 'param');
+    const staticCrossResult = assembleMacAppBundle({
+      repoRoot,
+      arch: crossArch,
+      outputDir: path.join(root, 'release-cross-static-680'),
+      pythonToolchainRoot: path.join(repoRoot, tcPrefix),
+      pythonDepsRoot: path.join(repoRoot, depPrefix),
+      xtbSourceRoot: staticCrossXtbDir,
+      sign: false,
+      createDmg: false,
+    });
+    assert.equal(fs.existsSync(path.join(staticCrossResult.xtbPath, 'bin/xtb')), true);
+    assert.equal(fs.existsSync(path.join(staticCrossResult.xtbPath, 'lib')), false);
+    writeText(staticCrossXtbDir, 'runtime.json', makeXtbManifest(`darwin-${crossArch}`, '6.7.1'));
+    assert.throws(
+      () =>
+        assembleMacAppBundle({
+          repoRoot,
+          arch: crossArch,
+          outputDir: path.join(root, 'release-cross-static-mismatch'),
+          pythonToolchainRoot: path.join(repoRoot, tcPrefix),
+          pythonDepsRoot: path.join(repoRoot, depPrefix),
+          xtbSourceRoot: staticCrossXtbDir,
+          sign: false,
+          createDmg: false,
+        }),
+      /xTB runtime version mismatch/,
+    );
 
     if (process.platform === 'darwin') {
       execFileSync('/usr/bin/plutil', ['-convert', 'binary1', path.join(electronAppPath, 'Contents/Info.plist')]);

@@ -19,7 +19,7 @@ import threading
 import time
 import numpy as np
 from orbitals import OrbitalError, MultiwfnSession, inspect_wavefunction, _windows_owned_job
-from multiwfn_resources import resolve_resources
+from multiwfn_resources import resolve_resources, require_native_binary_grant, start_multiwfn
 from multiwfn_progress import NativeProgressScanner
 from orca_excitation import (parse_orca_output, excitation_mode, validate_orca_wavefunction,
     companion_snapshot, verify_companion, budget_companions, prepare_rpa, write_selected_adapter, rounding as rounding_orca)
@@ -365,8 +365,11 @@ class ExcitationAnalysisService:
     def apply_resources(self,resources):
         if self.process is not None or self.native_session is not None: raise OrbitalError('excitation-busy','Cannot change resources during an active native calculation.')
         resources=resources or {}
-        self.resources,self.settings=resolve_resources(self.executable,resources.get('threads'),resources.get('memoryBudgetBytes'))
-        if resources.get('settingsRevision') is not None and resources['settingsRevision']!=self.resources['settingsRevision']:raise OrbitalError('resource-changed','Multiwfn settings revision changed.')
+        resolved,settings=resolve_resources(self.executable,resources.get('threads'),resources.get('memoryBudgetBytes'))
+        require_native_binary_grant(resolved,getattr(self,'resources',{}))
+        require_native_binary_grant(resolved,resources)
+        if resources.get('settingsRevision') is not None and resources['settingsRevision']!=resolved['settingsRevision']:raise OrbitalError('resource-changed','Multiwfn settings revision changed.')
+        self.resources,self.settings=resolved,settings
         return self.resources
 
     def _open(self,request):
@@ -422,7 +425,7 @@ class ExcitationAnalysisService:
         scanner=NativeProgressScanner(self.progress_callback);offset=0
         self._progress('running',stageId='excitation-native')
         with log.open('wb') as output:
-            process=subprocess.Popen([str(self.executable),source],cwd=work,env=env,stdin=subprocess.PIPE,stdout=output,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0));self._native_started(process);job=None
+            process=start_multiwfn([str(self.executable),source],resources=self.resources,cwd=work,env=env,stdin=subprocess.PIPE,stdout=output,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0));self._native_started(process);job=None
             try:
                 job=_windows_owned_job(process,self.resources['memoryBudgetBytes'])
                 with self._lock:self._job=job
@@ -576,7 +579,7 @@ class ExcitationAnalysisService:
         elif mode=='dimensions':self._quality(quality);dims=np.array(quality['dimensions']);spacing=None
         else:raise OrbitalError('nto-grid','Unsupported NTO field quality.')
         steps=np.full(3,spacing) if spacing else (upper-lower)/(dims-1);grid=dict(originBohr=lower.tolist(),axesBohr=np.diag(steps).tolist(),dimensions=dims.tolist())
-        self._check_cancel();session=_ExcitationNtoSession(self,self.executable,work/'nto.fchk',grid,self.resources['threads'],self.resources['memoryBudgetBytes'],self.root,mode='selected',expected_settings_revision=self.resources['settingsRevision'],progress_callback=self.progress_callback,native_start_callback=self._native_started);self.native_session=session
+        self._check_cancel();session=_ExcitationNtoSession(self,self.executable,work/'nto.fchk',grid,self.resources['threads'],self.resources['memoryBudgetBytes'],self.root,mode='selected',expected_settings_revision=self.resources['settingsRevision'],progress_callback=self.progress_callback,native_start_callback=self._native_started,expected_native_binary=self.resources.get('nativeBinaryIdentity'));self.native_session=session
         try:
             target=next(o for o in session.metadata['orbitals'] if o['multiwfnIndex']==pair[side]['nativeIndex'])
             generated=list(session.generate([target['id']],selected_only=True));self._check_cancel()

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Snowflake } from 'lucide-react';
 import {copyPlainText} from '../clipboard-text';
 import GeneratedInputEditor from '../GeneratedInputEditor';
+import {InputDeliveryDialog,useInputDeliveryOperation,type InputDeliveryRunner} from '../InputDeliveryOperation';
 import DialogShell from '../DialogShell';
 import {editOrcaGeneratedFile,orcaGeneratedSource,type OrcaGeneratedDraft} from '../../modeling/application/orca-generated-draft';
 import { buildOrcaCommon, createOrcaCommonSettings, getOrcaCommonMethodProfile, getOrcaCommonCompatibility, type OrcaJobRequest, type OrcaSettings } from '../../core/orca';
@@ -21,7 +22,7 @@ import { resolveOrcaElectronicState } from '../../modeling/application/orca-elec
 import type { DynamicsController } from '../../modeling/dynamics/controller';
 import { importStructureFiles } from '../../core/file-import';
 import { withAtomIds } from '../../core/structures';
-import { electronicStateError } from '../../core/elements';
+import { electronicStateParameterError, electronicStateWarning } from '../../core/elements';
 import { initialBaseElectronicState } from '../../core/base-electronic-state';
 import type { TaskSelectionHandle, TaskSelectionIntent } from '../../modeling/contracts';
 import { inputSelectionIndices } from '../../core/input-selection';
@@ -57,6 +58,7 @@ import './orca-readability.css';
 export { ORCA_TASKS } from './task-catalog';
 
 export interface OrcaWorkbenchProps extends MultiStructureSourceActions {
+  runInputDelivery?:InputDeliveryRunner;
   active?:boolean;
   generatedDraft?:OrcaGeneratedDraft;
   onGeneratedDraftChange?:(task:OrcaJobRequest['settings']['task'],draft:OrcaGeneratedDraft)=>void;
@@ -65,6 +67,10 @@ export interface OrcaWorkbenchProps extends MultiStructureSourceActions {
   onPreparedInput?:(input:import('../citations/state').PreparedCitationInput)=>void;
   onResetTask?:()=>void;
   onResetElectronicState?:()=>void;
+  electronicRawText?:{charge:string;multiplicity:string};
+  onElectronicRawTextChange?:(field:'charge'|'multiplicity',text:string)=>void;
+  onElectronicRawTextCommit?:(field:'charge'|'multiplicity',text:string)=>void;
+  onBeforeElectronicStateConfirm?:()=>{charge:number;multiplicity:number}|null;
   onBeforeLocalReset?:()=>void;
   onFreezeEnabledChange?:(enabled:boolean)=>void;
   onGenerateBatch?:(request:OrcaJobRequest,assertCurrent:()=>void)=>Promise<void>;
@@ -102,7 +108,9 @@ function saveFile(name: string, content: BlobPart, type = 'text/plain;charset=ut
 }
 function safeDefaultStem(name: string) { return name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9_.-]+/g, '_').replace(/^[^A-Za-z0-9]+/, '').replace(/\.{2,}/g, '.').slice(0, 70) || 'molecule'; }
 
-export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyChange, embedded = false, selected, onSelectionChange, onModelResult, beforeExport, onEffectiveRequest, workflowStep, onWorkflowStep, onNavigationReady, inputPreview, onRequestSelection, capabilityError: inheritedCapabilityError, inputLayerEditor,onExitMultiscale,sourceCandidates,sharedConstraints,namingPolicy,onNamingPolicyChange,onInheritLevel,canInheritLevel=false,onInheritFreezes,canInheritFreezes=false,onRequestSourcePick,onImportSources,onFreezeEnabledChange,onGenerateBatch,onResetTask,onResetElectronicState,onBeforeLocalReset,onPreparedInput,onSubmitExternalInput,onCaptureExternalDraft,generatedDraft,onGeneratedDraftChange,active=true }: OrcaWorkbenchProps) {
+export default function OrcaWorkbench({ runInputDelivery, request, onChange, onGaussian, onDirtyChange, embedded = false, selected, onSelectionChange, onModelResult, beforeExport, onEffectiveRequest, workflowStep, onWorkflowStep, onNavigationReady, inputPreview, onRequestSelection, capabilityError: inheritedCapabilityError, inputLayerEditor,onExitMultiscale,sourceCandidates,sharedConstraints,namingPolicy,onNamingPolicyChange,onInheritLevel,canInheritLevel=false,onInheritFreezes,canInheritFreezes=false,onRequestSourcePick,onImportSources,onFreezeEnabledChange,onGenerateBatch,onResetTask,onResetElectronicState,onBeforeLocalReset,onPreparedInput,onSubmitExternalInput,onCaptureExternalDraft,generatedDraft,onGeneratedDraftChange,active=true,electronicRawText,onElectronicRawTextChange,onElectronicRawTextCommit,onBeforeElectronicStateConfirm }: OrcaWorkbenchProps) {
+  const localDelivery=useInputDeliveryOperation();
+  const deliver=runInputDelivery??localDelivery.run;
   const [localGenerated,setLocalGenerated]=useState<Partial<Record<OrcaJobRequest['settings']['task'],OrcaGeneratedDraft>>>({});
   const generated=onGeneratedDraftChange?generatedDraft:localGenerated[request.settings.task];
   const generatedLive=useRef(generated);generatedLive.current=generated;
@@ -169,7 +177,7 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
   const capabilityError = pausedOrcaCapability(request.settings) ?? inheritedCapabilityError;
   const s = !embedded&&activeShared?.canonical?projectCanonicalOrcaFreezes(request.structure,request.settings,activeShared):request.settings, selectedIds = selection.map(index => request.structure?.atoms[index]?.id).filter((id): id is string => !!id);
   const method = getOrcaCommonMethodProfile(s.method);
-  const stateError = request.structure ? electronicStateError(request.structure.atoms, request.charge, request.multiplicity) : null;
+  const stateError = electronicStateParameterError(request.charge, request.multiplicity);
   const result = useMemo(() => capabilityError||sharedProjection.errors.length ? {files:[],issues:[...(capabilityError?[capabilityError]:[]),...sharedProjection.errors].map(message=>({field:'settings.constraints',code:'shared-constraint-capability',severity:'error' as const,message}))} : buildOrcaCommon(effectiveRequest), [effectiveRequest,capabilityError,sharedProjection.errors]);
   const exportReady = !dirty && !!generated?.files.length;
   const generatedStale=!!generated&&generated.sourceSignature!==orcaGeneratedSource(effectiveRequest);
@@ -290,14 +298,14 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
       const previous=generatedLive.current;
       const prepared=await captureExport();prepared.assertCurrent();if(onGenerateBatch){await onGenerateBatch(prepared.captured,prepared.assertCurrent);return;}
       const commit=()=>{try{prepared.assertCurrent();if(!activeRef.current||generatedLive.current!==previous)throw new Error('输入任务或文本已变化，请重新生成。');setGenerated(prepared.captured.settings.task,{sourceSignature:orcaGeneratedSource(prepared.captured),files:structuredClone(prepared.built.files),minimumVersion:getOrcaCommonCompatibility(prepared.captured).minimumVersion,issues:structuredClone(prepared.built.issues),editedNames:[],assets:structuredClone(referencedOrcaAssets(prepared.captured))});setPreviewIndex(0);setValidationFocus(null);setError('');setStep(3);}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}};
-      if(previous?.editedNames.length){setReplacement({action:commit});return;}commit();
+      if(previous?.editedNames.length&&step===3){setReplacement({action:commit});return;}commit();
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
     finally{generating.current=false;setGenerationBusy(false);}
   }
   function navigateTo(index:number){
     // Step tabs allow inspection. Next and export retain scientific gates.
     if(index===1||index===2){setError('');setStep(index);return;}
-    setError('');if(index===3&&!dirty&&!generated)void generate();else setStep(index);
+    setError('');if(index===3&&step!==3&&!dirty)void generate();else setStep(index);
   }
   useEffect(()=>{onNavigationReady?.(navigateTo);return()=>onNavigationReady?.(null);},[step,dirty,beforeExport,onNavigationReady,request,stateError]);
   function proceed() {
@@ -326,14 +334,16 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
   }
   async function downloadCurrent(){
     if(onGenerateBatch){await generate();return;}
-    try{const file=generatedLive.current?.files[previewIndex]??generatedLive.current?.files[0];if(!file||dirtyRef.current)throw new Error('请先生成输入并应用建模草稿。');saveFile(file.name,file.text);if(file.role==='input')onPreparedInput?.({engine:'orca',name:file.name,text:file.text,outcome:'requested'});}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
+    try{const file=generatedLive.current?.files[previewIndex]??generatedLive.current?.files[0];if(!file||dirtyRef.current)throw new Error('请先生成输入并应用建模草稿。');await deliver('正在准备输入文件下载',()=>{saveFile(file.name,file.text);if(file.role==='input')onPreparedInput?.({engine:'orca',name:file.name,text:file.text,outcome:'requested'});});}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
   }
   async function downloadAll() {
     if(onGenerateBatch){await generate();return;}
     try{
       const snapshot=generatedLive.current;if(!snapshot||dirtyRef.current)throw new Error('请先生成输入并应用建模草稿。');
-      snapshot.files.forEach(file=>{saveFile(file.name,file.text);if(file.role==='input')onPreparedInput?.({engine:'orca',name:file.name,text:file.text,outcome:'requested'});});
-      for(const asset of snapshot.assets){const file=binaryFiles.current.get(asset.id);if(file&&!snapshot.files.some(entry=>entry.name===asset.name))saveFile(asset.name,file,'application/octet-stream');}
+      await deliver('正在准备全部输入文件下载',()=>{
+        snapshot.files.forEach(file=>{saveFile(file.name,file.text);if(file.role==='input')onPreparedInput?.({engine:'orca',name:file.name,text:file.text,outcome:'requested'});});
+        for(const asset of snapshot.assets){const file=binaryFiles.current.get(asset.id);if(file&&!snapshot.files.some(entry=>entry.name===asset.name))saveFile(asset.name,file,'application/octet-stream');}
+      });
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
   }
   async function submitExternalInput() {
@@ -370,7 +380,7 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
   async function copyCurrent(){
     const snapshot=generatedLive.current,file=snapshot?.files[previewIndex]??snapshot?.files[0],generation=exportLifetime.current.generation;
     if(!file)return;
-    try{await copyPlainText(file.text);if(!activeRef.current||!exportLifetime.current.alive||exportLifetime.current.generation!==generation||generatedLive.current!==snapshot)return;if(file.role==='input')onPreparedInput?.({engine:'orca',name:file.name,text:file.text,outcome:'copied'});}catch(cause){if(activeRef.current&&exportLifetime.current.alive&&exportLifetime.current.generation===generation)setError(cause instanceof Error?cause.message:'剪贴板不可用，请在编辑器全选复制。');}
+    try{await deliver('正在复制输入文件',async()=>{await copyPlainText(file.text);if(!activeRef.current||!exportLifetime.current.alive||exportLifetime.current.generation!==generation||generatedLive.current!==snapshot)return;if(file.role==='input')onPreparedInput?.({engine:'orca',name:file.name,text:file.text,outcome:'copied'});});}catch(cause){if(activeRef.current&&exportLifetime.current.alive&&exportLifetime.current.generation===generation)setError(cause instanceof Error?cause.message:'剪贴板不可用，请在编辑器全选复制。');}
   }
   const outputFiles=generated?.files??[],file=outputFiles[previewIndex]??outputFiles[0];
   const downloadCount=outputFiles.length+(generated?.assets.filter(asset=>binaryFiles.current.has(asset.id)&&!outputFiles.some(entry=>entry.name===asset.name)).length??0);
@@ -380,13 +390,13 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
     {dirty && <p className="orca-dirty-status" role="status">建模草稿尚未应用，请先应用或取消，再切换软件。</p>}
     {!embedded&&<div className="orca-workflow-heading"><h1>输入工作台<span className="beta-label">桌面建模</span></h1><WorkflowSteps step={step} onStep={navigateTo} label="ORCA输入步骤" /></div>}
     <div className="orca-layout" ref={layout} style={{ '--orca-form-width': embedded ? '100%' : `${width}%`, ...(embedded ? { display: 'block' } : {}) } as CSSProperties}>
-      <WorkflowContentCard className="orca-form-panel" title={WORKFLOW_STEPS[step]} heading={embedded} step={step} footer={workflowFooter}>
+      <WorkflowContentCard fitContent={step<2} className="orca-form-panel" title={WORKFLOW_STEPS[step]} heading={embedded} step={step} footer={workflowFooter}>
         <div className="orca-step-content engine-step-content">
           {step === 0 && !embedded && <SoftwareChooser disabled={dirty} onChoose={engine=>{if(engine==='orca'){setError('');setStep(1);}else onGaussian();}}/>}
           {step === 1 && <InputSettingsLayout><OrcaTaskPicker taskAllowed={onGenerateBatch?task=>batchInputTaskAllowed('orca',task):undefined} value={s.task} onChange={task => {settings({ task });setStep(2);}}/></InputSettingsLayout>}
           {step === 2 && <InputSettingsLayout className="input-parameter-settings">
-            <InputSettingsRow className="input-task-name-row"><InputSettingsField label="任务名"><input aria-label="ORCA输出任务名" value={request.name} onChange={event=>{outputNameTouched.current=true;reportNamingPolicy();update({...request,name:event.target.value});}}/></InputSettingsField>{onResetTask&&<button type="button" className="button button-primary" style={{width:104,height:36,flex:'0 0 104px'}} onClick={onResetTask}>恢复默认</button>}</InputSettingsRow>
-            <BaseElectronicStateFields onReset={onResetElectronicState??(()=>resetLocal(()=>electronic(sourceElectronicState.current.initial)))} charge={request.charge} multiplicity={request.multiplicity} confirmed={request.electronicStateConfirmed} disabled={!request.structure?.atoms.length} error={stateError} chargeLabel="ORCA总电荷" multiplicityLabel="ORCA多重度" onChargeChange={charge=>electronic({charge})} onMultiplicityChange={multiplicity=>electronic({multiplicity})} confirmationLabel="确认ORCA基础电子态" onConfirm={()=>update({...request,electronicStateConfirmed:true})}/>
+            <InputSettingsRow className="input-task-name-row"><InputSettingsField label="任务名" controlWidth="text"><input aria-label="ORCA输出任务名" value={request.name} onChange={event=>{outputNameTouched.current=true;reportNamingPolicy();update({...request,name:event.target.value});}}/></InputSettingsField>{onResetTask&&<button type="button" className="button button-primary" data-ui-action="global-reset" onClick={onResetTask}>恢复默认</button>}</InputSettingsRow>
+            <BaseElectronicStateFields preserveNumericDraft confirmButtonText="确定" onReset={onResetElectronicState??(()=>resetLocal(()=>electronic(sourceElectronicState.current.initial)))} charge={request.charge} multiplicity={request.multiplicity} confirmed={request.electronicStateConfirmed} disabled={!request.structure?.atoms.length} error={stateError} warning={request.structure?electronicStateWarning(request.structure.atoms,request.charge,request.multiplicity):null} rawText={electronicRawText} onRawTextChange={onElectronicRawTextChange} onRawTextCommit={onElectronicRawTextCommit} atoms={request.structure?.atoms??[]} onElectronicStateChange={values=>electronic(values)} chargeLabel="ORCA总电荷" multiplicityLabel="ORCA多重度" onChargeChange={charge=>electronic({charge})} onMultiplicityChange={multiplicity=>electronic({multiplicity})} confirmationLabel="确认ORCA基础电子态" onConfirm={submitted=>{const values=onBeforeElectronicStateConfirm?onBeforeElectronicStateConfirm():submitted??{charge:request.charge,multiplicity:request.multiplicity};if(values)update({...request,...values,electronicStateConfirmed:true});}}/>
             <OrcaLevel common structure={request.structure} settings={s}
               onMethod={id=>{const next=getOrcaCommonMethodProfile(id)!;settings({method:next.id,basis:next.basisPolicy==='uniform-def2'?s.basis||'def2-SVP':''});}}
               onBasis={basis=>settings({basis})}
@@ -428,5 +438,6 @@ export default function OrcaWorkbench({ request, onChange, onGaussian, onDirtyCh
       {!embedded && <aside className="orca-model-panel"><button type="button" className="button button-white" disabled={busy||dirty} onClick={()=>input.current?.click()}>{busy?'正在读取…':'导入结构'}</button><input type="file" ref={input} hidden multiple aria-label="ORCA结构文件" onChange={event=>void importFiles(Array.from(event.target.files??[]))}/>{choices.length>1&&<label className="orca-field">完整结构条目<select aria-label="ORCA导入结构条目" value={choices.findIndex(choice=>choice.id===request.structure?.id)} onChange={event=>acceptStructure(choices[Number(event.target.value)])}><option value={-1}>选择需要的完整结构</option>{choices.map((choice,i)=><option value={i} key={choice.id}>{choice.name} · {choice.atoms.length} 原子</option>)}</select></label>}<ModelWorkspace realtime store={modelStore} onDynamicsController={value=>{localDynamics.current=value;}} structure={request.structure} orcaJobRequest={privateEffectiveRequest} assignments={assignments} selected={selection} onSelect={setSelection} onApply={applyModel} onDraftChange={reportDirty} onCancel={() => reportDirty(false)} openRequest={openRequest} /><p className="orca-model-note">当前选区：{atomNumbers(selectedIds, request.structure) || '无'} · 仅在点击“采用选区”后写入 QM、冻结或 MD 活动区域</p>{error && <DismissibleNotice className="error-box" role="alert">{error}</DismissibleNotice>}</aside>}
     </div>
     {replacement&&<DialogShell className="input-replacement-dialog" aria-label="重新生成会替换手工编辑" onCancel={()=>setReplacement(null)}><h2>重新生成会替换手工编辑</h2><p>当前输入文本已修改。重新生成将使用已捕获的表单设置替换生成文件，是否继续？</p><div className="modal-buttons"><button type="button" className="button button-white" onClick={()=>setReplacement(null)}>取消</button><button type="button" className="button button-primary" onClick={()=>{const action=replacement.action;setReplacement(null);action();}}>替换并重新生成</button></div></DialogShell>}
+    <InputDeliveryDialog label={localDelivery.label}/>
   </div>;
 }

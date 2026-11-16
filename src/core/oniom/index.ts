@@ -1,5 +1,5 @@
 import type { Atom, GaussianSettings, JobRequest, Structure } from '../types';
-import { atomicNumber, ELEMENTS, electronicStateError } from '../elements';
+import { atomicNumber, ELEMENTS, electronicStateInputError, electronicStateWarning } from '../elements';
 import { activeFrozenAtoms, defaultTaskOptions, spectrumStates } from '../tasks';
 import { isUksOptimization } from '../excited-state';
 import { BASES, canonicalBasis } from '../catalog';
@@ -60,6 +60,12 @@ function linkSpec(boundary:GaussianOniomBoundary,settings:GaussianOniomSettings)
 }
 function modelAtoms(structure:Structure,qm:Set<string>,boundaries:GaussianOniomBoundary[]):Atom[] {
   return [...structure.atoms.filter(atom=>!!atom.id&&qm.has(atom.id)),...boundaries.filter(boundary=>ELEMENTS.includes(boundary.linkElement)).map(boundary=>({element:boundary.linkElement,x:0,y:0,z:0}))];
+}
+export function oniomElectronicStateAtoms(structure:Structure|null,settings:GaussianOniomSettings):Atom[] {
+  return structure?modelAtoms(structure,new Set(settings.qmAtomIds),settings.boundaries):[];
+}
+export function oniomElectronicStateWarning(structure:Structure|null,settings:GaussianOniomSettings,state:{charge:number;multiplicity:number}):string|null {
+  return structure?electronicStateWarning(oniomElectronicStateAtoms(structure,settings),state.charge,state.multiplicity):null;
 }
 
 /** Parse complete element Gen blocks. Numeric centers have unresolved ONIOM mapping. */
@@ -190,7 +196,7 @@ export function validateGaussianOniom(request:JobRequest,highBasis=request.setti
   }
   if(!settings.statesConfirmed)issues.push('请确认ONIOM模型高层和模型低层的电荷/多重度（包括link原子）。');
   const model=modelAtoms(structure,qm,settings.boundaries);
-  for(const [label,state] of [['高层',settings.modelHigh],['低层',settings.modelLow]] as const){const error=electronicStateError(model,state.charge,state.multiplicity);if(error)issues.push(`ONIOM模型${label}：${error}`);}
+  for(const [label,state] of [['高层',settings.modelHigh],['低层',settings.modelLow]] as const){const error=electronicStateInputError(model,state.charge,state.multiplicity);if(error)issues.push(`ONIOM模型${label}：${error}`);}
   const uks=isUksOptimization(request.settings),td=request.settings.task==='td'||request.settings.task==='tdopt';
   const sourceMethod=request.settings.inheritedRoute?.methodKeyword??(request.settings.method==='custom'?request.settings.customMethod:'');
   const unrestricted=uks||request.settings.unrestricted||/^u/i.test(sourceMethod);

@@ -1,5 +1,6 @@
 import { createStoredZip, exportResultData, exportTrajectoryXYZ } from '../../results/export';
-import { createOffscreenCapture, exportBlob, exportFrameImages, openBinaryExportSink } from './export-image';
+import { automaticStem } from '../../core/naming';
+import { captureTrajectoryViewportPng, createOffscreenCapture, exportBlob, exportFrameImages, openBinaryExportSink } from './export-image';
 import type { TrajectoryExportRequest } from './TrajectoryWorkspace';
 import { assertResultNotAborted } from '../../results/contracts';
 import { vibrationExportResult } from './vibration-export';
@@ -9,12 +10,17 @@ export async function exportWorkspaceResult(request: TrajectoryExportRequest): P
   const {signal,format}=request;
   const vibration = request.vibration;
   assertResultNotAborted(signal);
-  const name=(request.result.label.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_.-]/g,'-').replace(/^-+|-+$/g,'')||'trajectory').slice(0,100);
+  const name=automaticStem(request.result.label, { fallback: 'trajectory' });
   const extension=format==='png-sequence'||format==='txt-json'?'zip':format;
   const sink=await openBinaryExportSink(name,extension,signal);if(sink==='cancelled')return;
   let committed=false;
-  const complete=async(blob:Blob,filename:string)=>{assertResultNotAborted(signal);if(sink){if(blob.size)await sink.write(blob);await sink.close();committed=true;}else exportBlob(blob,filename);};
+  const complete=async(blob:Blob,filename:string,owner?:Document)=>{assertResultNotAborted(signal);if(sink){if(blob.size)await sink.write(blob);await sink.close();committed=true;}else exportBlob(blob,filename,owner);};
   try {
+  if (format === 'png' && request.currentViewportImage) {
+    const { snapshot, ownerDocument } = request.currentViewportImage;
+    await complete(await captureTrajectoryViewportPng(snapshot, ownerDocument, signal), `${name}.png`, ownerDocument);
+    return;
+  }
   if (format === 'gif' && request.vibrationGif) {
     if (!vibration) throw new Error('振动GIF缺少已选模式与原结构。');
     const output = await captureVibrationGif({ snapshot: { ...request, displayGeometry: 'vibration', vibrationBaseStructure: vibration.baseStructure,

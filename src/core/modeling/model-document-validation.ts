@@ -1,8 +1,9 @@
 import type { Structure, Vector3 } from '../types';
 import { validateBondSemantics, validateBondPerceptionIssues } from '../bond-semantics';
 import { builderCoordinateValue } from '../builder-geometry';
+import type { BuilderAssignments } from '../builder-draft';
 import { cellInverse, validatePeriodicEndpointImages } from '../periodic';
-import type { ModelCoordinate, ModelDocument } from './contracts';
+import type { FragmentSnapshot, ModelCoordinate, ModelDocument } from './contracts';
 import { bondKey, bondReference, checkedInputLayerDraft, getFrozenAtomIds, referenceKey, unique } from './graph';
 import { validateAttachmentPorts } from './attachment-ports';
 import { coordinateSelectionObjects } from './coordinate-selection';
@@ -37,19 +38,42 @@ export function validateCoordinates(coordinates: readonly ModelCoordinate[], str
 
 /** Manual transforms may move an unselected branch. Check actual XYZ rather
  * than the selected/touched list, and leave metadata/history untouched on failure. */
-export function assertFrozenCoordinatesPreserved(document: ModelDocument, candidate: Structure): void {
+export function assertFrozenCoordinatesPreserved(document: ModelDocument, candidate: Structure, replaced?: ReadonlySet<string>): void {
   const frozen = new Set(getFrozenAtomIds(document));
   const positions = new Map(candidate.atoms.map(atom => [atom.id, atom]));
   for (const atom of document.draft.structure.atoms) {
-    if (!frozen.has(atom.id!)) continue;
+    if (!frozen.has(atom.id!) || replaced?.has(atom.id!)) continue;
     const next = positions.get(atom.id);
     if (!next || !Object.is(atom.x, next.x) || !Object.is(atom.y, next.y) || !Object.is(atom.z, next.z)) throw new Error('手工变换不能改变明确冻结原子；请先调整移动范围或明确解除冻结。');
   }
   for(const coordinate of effectiveModelCoordinates(document).filter(row=>row.action==='freeze')){
+    if (coordinate.atomIds.some(id => replaced?.has(id))) continue;
     const before=builderCoordinateValue(document.draft.structure,coordinate.type,coordinate.atomIds,coordinate.images),after=builderCoordinateValue(candidate,coordinate.type,coordinate.atomIds,coordinate.images);
     const delta=coordinate.type==='D'?Math.abs(((after-before+540)%360)-180):Math.abs(after-before);
     if((coordinate.type==='B'?delta:delta*Math.PI/180)>(coordinate.type==='B'?MODEL_CONSTRAINT_TOLERANCE.distanceAngstrom:MODEL_CONSTRAINT_TOLERANCE.angleRadians))throw new Error('手工变换不能改变明确冻结的内坐标。');
   }
+}
+
+/** An explicitly overwritten construction site can keep its storage ID to
+ * preserve the graph. Its old atom-bound definitions cannot keep that ID. */
+export function discardReplacedAtomDefinitions(
+  state: Pick<FragmentSnapshot, 'internalCoordinates' | 'sharedConstraints' | 'coordinateObjects' | 'gaussianBoundCoordinates'>,
+  assignments: BuilderAssignments, replaced: ReadonlySet<string>, renewingIds = false,
+): Set<string> {
+  const untouched = (row: { atomIds: readonly string[] }) => row.atomIds.every(id => !replaced.has(id));
+  const removedObjects = new Set(state.coordinateObjects?.filter(row => !untouched(row)).map(row => row.id));
+  assignments.frozenAtomIds = assignments.frozenAtomIds.filter(id => !replaced.has(id));
+  if (state.internalCoordinates) state.internalCoordinates = state.internalCoordinates.filter(row =>
+    ((!renewingIds && row.action !== 'freeze') || untouched(row)) && (!row.objectId || !removedObjects.has(row.objectId)));
+  if (state.sharedConstraints) {
+    state.sharedConstraints = { ...state.sharedConstraints,
+      frozenAtomIds: state.sharedConstraints.frozenAtomIds.filter(id => !replaced.has(id)),
+      coordinates: state.sharedConstraints.coordinates.filter(row => untouched(row) && (!row.objectId || !removedObjects.has(row.objectId))),
+    };
+  }
+  if (state.coordinateObjects) state.coordinateObjects = state.coordinateObjects.filter(untouched);
+  if (state.gaussianBoundCoordinates) state.gaussianBoundCoordinates = state.gaussianBoundCoordinates.filter(row => untouched(row) && !removedObjects.has(row.objectId));
+  return removedObjects;
 }
 
 export function validateExtras(document: ModelDocument): void {

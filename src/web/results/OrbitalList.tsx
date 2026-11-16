@@ -3,7 +3,7 @@ import {useProjectState,useProjectUiSnapshot} from '../../projects/ui-state';
 import type * as React from 'react';
 import type { WavefunctionMetadata } from '../../results/orbital-contracts';
 import { convertEnergy } from '../../results/energy';
-import { formatResultValue as formatAnalysisValue } from '../../results/numeric-format';
+import {formatEnergyValue, formatResultValue as formatAnalysisValue } from '../../results/numeric-format';
 import { alignedOrbitalRows, orbitalElectronMark, orbitalFrontierScrollTop, orbitalListChannels } from './orbital-list-presentation';
 import './orbital.css';
 import {scientificTableText,type ScientificTableProjection} from './scientific-table';
@@ -21,7 +21,7 @@ export interface OrbitalListProps {
 }
 const DEGENERACY_HELP = '同一自旋通道中原始能量完全相同；不按显示舍入判定。';
 export function orbitalListProjection(metadata:OrbitalListProps['metadata'],unit:'eV'|'hartree',decimals=2):ScientificTableProjection{
- return{columns:[{key:'spin',label:'自旋'},{key:'orbital',label:'轨道'},{key:'occupation',label:'占据数'},{key:'energy',label:`能量 / ${unit==='hartree'?'Eh':'eV'}`,heading:'能量',headerUnit:unit==='hartree'?'Eh':'eV'}],rows:orbitalListChannels(metadata).flatMap(channel=>channel.rows.map(row=>({key:row.key,cells:[channel.label||'受限',String(row.displayIndex),row.occupation!=null&&Number.isInteger(row.occupation)?String(row.occupation):formatAnalysisValue(row.occupation,decimals),formatAnalysisValue(row.energy==null?undefined:convertEnergy({value:row.energy,unit:row.energyUnit},unit),decimals)]})))};
+ return{columns:[{key:'spin',label:'自旋'},{key:'orbital',label:'轨道'},{key:'occupation',label:'占据数'},{key:'energy',label:`能量 / ${unit==='hartree'?'Eh':'eV'}`,heading:'能量',headerUnit:unit==='hartree'?'Eh':'eV'}],rows:orbitalListChannels(metadata).flatMap(channel=>channel.rows.map(row=>({key:row.key,cells:[channel.label||'受限',String(row.displayIndex),row.occupation!=null&&Number.isInteger(row.occupation)?String(row.occupation):formatAnalysisValue(row.occupation,decimals),formatEnergyValue(row.energy==null?undefined:convertEnergy({value:row.energy,unit:row.energyUnit},unit),decimals)]})))};
 }
 /** Scroll/focus only: navigating the list never selects or calculates an orbital. */
 export function positionOrbitalFrontier(host: HTMLDivElement, moveFocus = false,spin?:string): boolean {
@@ -54,7 +54,7 @@ export default function OrbitalList({ metadata, selectedKey, unit, onUnit, onCho
     const rows=channels.flatMap(channel=>channel.rows);
     const indexWidth=Math.max(3,...rows.map(row=>String(row.displayIndex).length+1));
     const occupationWidth=Math.max(2,...rows.map(row=>formatAnalysisValue(row.occupation,decimals).length));
-    const energyWidth=Math.max(7,...rows.map(row=>formatAnalysisValue(row.energy==null?undefined:convertEnergy({value:row.energy,unit:row.energyUnit},unit),decimals).length+1));
+    const energyWidth=Math.max(7,...rows.map(row=>formatEnergyValue(row.energy==null?undefined:convertEnergy({value:row.energy,unit:row.energyUnit},unit),decimals).length+1));
     return `${indexWidth}ch calc(35px + ${occupationWidth}ch) minmax(${energyWidth}ch, 1fr)`;
   },[channels,decimals,unit]);
   const source = JSON.stringify([metadata.sourceId, metadata.sourceRevision]);
@@ -116,7 +116,7 @@ export default function OrbitalList({ metadata, selectedKey, unit, onUnit, onCho
   const orbitalRow=(channel:typeof channels[number],row:typeof metadata.orbitals[number])=>{
     const frontier=row.key===channel.homoKey?'homo':row.key===channel.lumoKey?'lumo':undefined;
     const occupation=row.occupation!=null&&Number.isInteger(row.occupation)?String(row.occupation):formatAnalysisValue(row.occupation,decimals);
-    const energy=formatAnalysisValue(row.energy==null?undefined:convertEnergy({value:row.energy,unit:row.energyUnit},unit),decimals);
+    const energy=formatEnergyValue(row.energy==null?undefined:convertEnergy({value:row.energy,unit:row.energyUnit},unit),decimals);
     return <button className="shared-input-action orbital-select-row" type="button" key={row.key} aria-label={`${readOnly?'查看':'显示'}轨道 ${channel.label?`${channel.label} `:''}${row.displayIndex}`} aria-description={channel.degenerateKeys.has(row.key)?DEGENERACY_HELP:undefined} aria-pressed={row.key===selectedKey} data-orbital-key={row.key} data-orbital-index={row.displayIndex} data-spin={channel.spin} data-frontier={frontier} onPointerDown={event=>{if(event.button===0)gesture.current={key:row.key,x:event.clientX,y:event.clientY,dragged:false};}} onPointerMove={event=>{const own=gesture.current;if(own&&Math.hypot(event.clientX-own.x,event.clientY-own.y)>4)own.dragged=true;}} onPointerCancel={()=>{gesture.current=null;}} onClick={()=>{lastSpin.current=channel.spin;choose(row.key);}} title={`${row.displayIndex} · 占据 ${occupation} · ${energy} ${unit==='hartree'?'Eh':unit}${channel.degenerateKeys.has(row.key)?` · ${DEGENERACY_HELP}`:''}`}><span className="orbital-index">{row.displayIndex}{channel.degenerateKeys.has(row.key)&&<sup title={DEGENERACY_HELP} aria-label={DEGENERACY_HELP}>*</sup>}</span><span className="orbital-occupation" aria-label={`来源占据数 ${occupation}`}><span className="orbital-electron-box" aria-hidden="true">{orbitalElectronMark(row.occupation,row.spin,decimals)}</span><span className="orbital-occupation-value">{occupation}</span></span><span className="orbital-energy">{energy}{frontier&&<small>{frontier.toUpperCase()}</small>}</span></button>;
   };
   const heading=(channel:typeof channels[number])=><>{channel.label&&<h4>{channel.label}</h4>}<div className="orbital-column-heading"><span>编号</span><span>占据</span><span>能量 / {unit==='hartree'?'Eh':unit}</span></div></>;

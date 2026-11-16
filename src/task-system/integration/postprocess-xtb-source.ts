@@ -4,13 +4,14 @@ import { isGeneratedXtbAnalysisPolicy } from '../../results/generated-xtb-policy
 import type { SnapshotProjectSources } from './snapshot-project';
 import { VibronicSha256 } from '../../core/gaussian-vibronic/sha256-stream';
 
-/** Reconstruct only an archived, exact-role GFN2 native package. No scientific
+/** Reconstruct an archived, exact-role XTB native package. No scientific
  * command is launched and the historical native session is never resumed. */
 export async function readSnapshotGeneratedXtbPackage(bundle: SnapshotProjectSources): Promise<GeneratedXtbSourcePackage | undefined> {
- const metadata = bundle.description.files.filter(file => file.format === 'ester-gfn2-provenance'); if (!metadata.length) return undefined; if (metadata.length !== 1) throw Error('GFN2来源包身份不唯一。');
+ const metadata = bundle.description.files.filter(file => file.format === 'ester-gfn2-provenance'||file.format==='ester-gxtb-provenance'); if (!metadata.length) return undefined; if (metadata.length !== 1) throw Error('XTB来源包身份不唯一。');
  const provenanceFile = bundle.files.find(file => file.snapshotIdentity.sourceRef === metadata[0].sourceRef); if (!provenanceFile) throw Error('GFN2原始来源包不可取得。');
  const value = JSON.parse(await provenanceFile.text()) as { schema: string; metadata: Omit<XtbElectronicArtifactBundle, 'files'>; expected: GeneratedXtbSourcePackage['expected']; analysisPolicy?: GeneratedXtbSourcePackage['analysisPolicy']; files: Omit<XtbElectronicArtifactBundle['files'][number], 'text'>[] };
- if (value.schema !== 'ester-gfn2-source-package/v1' || !Array.isArray(value.files)) throw Error('GFN2原始来源包格式不兼容。');
+ const producer=metadata[0].format==='ester-gxtb-provenance'?'gxtb':'gfn2';
+ if (value.schema !== `ester-${producer}-source-package/v1` || value.metadata?.metadata?.method!==producer || !Array.isArray(value.files)) throw Error('XTB原始来源包格式或计算级别不一致。');
  const files: XtbElectronicArtifactBundle['files'] = [];
  for (const expected of value.files) {
   const candidates = bundle.description.files.filter(file => file.name === expected.name && file.sha256 === expected.sha256 && file.byteSize === expected.bytes);
@@ -20,8 +21,8 @@ export async function readSnapshotGeneratedXtbPackage(bundle: SnapshotProjectSou
   if (bytes.length !== expected.bytes || hash.digest() !== expected.sha256) throw Error('GFN2原始字节与保存来源不一致。'); files.push({ ...expected, text });
  }
  const saved = { schema: 1 as const, bundle: { ...value.metadata, files }, expected: value.expected, ...(value.analysisPolicy ? { analysisPolicy: value.analysisPolicy } : {}) };
- await validateGeneratedXtbBundle(saved.bundle, saved.expected);
- const revision = files.find(file => file.role === 'molden')!.sha256;
+ const { analysisMolden } = await validateGeneratedXtbBundle(saved.bundle, saved.expected);
+ const revision = analysisMolden.sha256;
  if (saved.analysisPolicy && !isGeneratedXtbAnalysisPolicy(saved.analysisPolicy, revision)) throw Error('GFN2保存的分析能力与原波函数不一致。');
  return saved;
 }

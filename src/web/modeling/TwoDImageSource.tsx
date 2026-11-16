@@ -7,6 +7,8 @@ import { TWO_D_OCR_LIMITS } from '../../modeling/two-d/image-types';
 import { decodeStaticImage, fullImageCrop, imageCropLimitReason, imageSelectionPng } from '../../modeling/two-d/static-image-decode';
 import './two-d-import.css';
 import { TwoDIcon } from './TwoDInteractionLayer';
+import { ScientificImageCopyButton } from '../ScientificImageCopyButton';
+import { canvasPng } from '../results/export-image';
 export type { TwoDImageCrop, TwoDImageDecoded, TwoDImageSelection } from '../../modeling/two-d/image-types';
 
 export function normalizeImageCrop(a: { x: number; y: number }, b: { x: number; y: number }, width: number, height: number): TwoDImageCrop {
@@ -109,6 +111,12 @@ export default function TwoDImageSource({ file, busy, capabilities, crop: contro
       <button title="缩小原图" aria-label="缩小原图" disabled={!decoded || zoom <= .01} onClick={() => setZoom(value => Math.max(.01, value / 1.25))}>−</button>
       <span className="two-d-image-zoom">{Math.round(zoom * 100)}%</span>
       <button title="放大原图" aria-label="放大原图" disabled={!decoded || zoom >= 4} onClick={() => setZoom(value => Math.min(4, value * 1.25))}>＋</button>
+      <ScientificImageCopyButton disabled={!decoded} resetKey={file.id} capture={(owner, signal) => {
+        const canvas = decoded?.canvas;
+        if (!canvas?.isConnected || canvas.ownerDocument !== owner || !host.current?.contains(canvas))
+          throw new Error('当前原图不可用或已切换窗口。');
+        return canvasPng(canvas, signal);
+      }}/>
     </div>
     <div className="two-d-image-scroll" ref={scroll}><div className="two-d-image-stage" style={style}
       onPointerDown={event => { if (!decoded || event.button !== 0) return; event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); const start = point(event.clientX, event.clientY); drag.current = { pointer: event.pointerId, start, before: crop }; select(normalizeImageCrop(start, start, decoded.metadata.width, decoded.metadata.height)); }}

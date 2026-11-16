@@ -21,6 +21,8 @@ import type { InteractionAnalysisControlsProps, InteractionInteractionPort, Inte
 import { INTERACTION_METHOD_REFERENCES } from '../../results/interaction-references';
 import { structureInteractionAtomOrder } from '../../results/interaction-structure-context';
 import { MULTIWFN_CONFIGURATION_CHANGED } from './MultiwfnPathControl';
+import {generatedXtbAnalysisRevision,generatedXtbMethodAllowed} from '../../results/generated-xtb-policy';
+import type {InteractionMethod} from '../../results/interaction-contracts';
 
 /** The trusted structure session writes its current numeric coordinates with
  * .17g and native validates the returned Cube against that same snapshot.
@@ -181,8 +183,12 @@ export default function InteractionAnalysisInstance(p: InteractionAnalysisInstan
     restoreFields:async(request,signal)=>{const target=pool?.get(request.context);if(!target?.bridge.restoreFields)throw new Error('原相互作用格点owner不可用，无法完整保存。');return target.bridge.restoreFields(request,signal);},
     restoreCube:async(request,signal)=>{const target=pool?.get(request.context);if(!target?.bridge.restoreCube)throw new Error('原相互作用Cube owner不可用，无法完整保存。');return target.bridge.restoreCube(request,signal);},
   }),[controller,pool]);
+  const generated=p.document?.wavefunction?.source.generatedXtb,metadata=p.document?.wavefunction?.source.metadata;
+  const revision=generated&&metadata?generatedXtbAnalysisRevision(generated,metadata.sourceRevision):'';
+  const electronicMethods=(['iri','rdg','igmh'] as const).filter(method=>p.wavefunctionAvailable&&(!generated||generatedXtbMethodAllowed(generated.analysisPolicy,revision,'interaction',method)));
+  const methods:InteractionMethod[]=[...electronicMethods,'migm','igm'];
   return <InteractionAnalysisControls key={lifetime} draftState={p.draftState} context={p.context} structure={p.structure} active={p.active} available={p.available} resourceBudgetBytes={resourceBudget}
-    wavefunctionAvailable={p.wavefunctionAvailable} methods={p.wavefunctionAvailable ? ['iri', 'rdg', 'igmh', 'migm', 'igm'] : ['migm', 'igm']}
+    wavefunctionAvailable={p.wavefunctionAvailable} methods={methods}
     sourceAtomOrder={sourceAtomOrder} methodReferences={INTERACTION_METHOD_REFERENCES} bridge={projectBridge} progress={pool?.progress(p.context)} cubeGeometryError={admit}
     renderFragmentSelection={p.capturePort ? props => <InteractionFragmentSelection {...props} structure={p.structure} capture={p.capturePort!}/> : undefined}
     onProjection={publish} onResultAccepted={accepted} onResultRejected={rejected} onInteractionReady={interaction} onOpenScatter={p.onOpenScatter} onExportImage={p.onExportImage} onError={p.onError}/>;

@@ -272,7 +272,7 @@ def validate_request(raw):
     electrons=sum(atomic_numbers[a['element']] for a in atoms)-request['charge']
     require(electrons>0 and integer(request.get('uhf'),0,electrons) and (electrons-request['uhf'])%2==0, 'Charge/UHF parity mismatch')
     require(integer(request['threads'],1,1024) and integer(request['maxSteps'],1,2**53-1) and integer(request['maxEvaluations'],1,2**53-1)
-            and ('maxWallTimeSeconds' not in request or finite(request['maxWallTimeSeconds'],.01,1800)) and finite(request['forceToleranceEVPerAngstrom'],1e-6,1), 'Invalid execution budget')
+            and ('maxWallTimeSeconds' not in request or finite(request['maxWallTimeSeconds'],.01,sys.float_info.max)) and finite(request['forceToleranceEVPerAngstrom'],1e-6,1), 'Invalid execution budget')
     request.setdefault('frozenAtomIds',[]); request.setdefault('constraints',[])
     frozen=request['frozenAtomIds']
     require(isinstance(frozen,list) and len(set(frozen))==len(frozen) and set(frozen)<set(ids), 'Invalid or fully frozen atoms')

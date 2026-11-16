@@ -12,6 +12,14 @@ export function referencedOrcaAssets(req: OrcaJobRequest): OrcaAsset[] {
   return req.assets.filter(asset => asset.kind === 'gbw' && asset.id === s.initialOrbitalsId
     || asset.kind === 'hessian' && hessianIds.includes(asset.id));
 }
+
+/** Ordinary file references may be retained while disabled. Special
+ * workflows keep their existing dependency validation. */
+export function orcaAssetsForInputValidation(req: OrcaJobRequest): OrcaAsset[] {
+  if (['bsse', 'esd', 'md', 'neb'].includes(req.settings.task) || req.settings.multiscale.mode !== 'none') return req.assets;
+  const referenced = new Set(referencedOrcaAssets(req));
+  return req.assets.filter(asset => asset.kind !== 'gbw' && asset.kind !== 'hessian' || referenced.has(asset));
+}
 export const safeOrcaFilename = (name: string): boolean => /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(name) && !name.includes('..') && !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name);
 const number = (value: string): number => Number(value.replace(/[dD]/g, 'E'));
 

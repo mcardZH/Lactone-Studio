@@ -18,7 +18,7 @@ import threading
 import time
 
 from orbitals import OrbitalError, inspect_wavefunction, _windows_owned_job, MultiwfnSession
-from multiwfn_resources import resolve_resources
+from multiwfn_resources import resolve_resources, require_native_binary_grant, start_multiwfn
 from multiwfn_progress import NativeProgressScanner, report_progress
 from wavefunction_analysis import SYMBOLS
 
@@ -228,6 +228,8 @@ class ReactivityAnalysisService:
         if not isinstance(grant, dict) or type(grant.get('threads')) is not int or type(grant.get('memoryBudgetBytes')) is not int:
             raise ReactivityError('reactivity-resources', 'A current shared resource grant is required.')
         resources, settings = resolve_resources(self.executable, grant['threads'], grant['memoryBudgetBytes'])
+        require_native_binary_grant(resources, self.resources)
+        require_native_binary_grant(resources, grant)
         if resources['settingsRevision'] != self.open_settings_revision or (grant.get('settingsRevision') is not None and grant['settingsRevision'] != resources['settingsRevision']):
             raise ReactivityError('reactivity-resources', 'Multiwfn settings changed after opening this FMO source.')
         for key in ('sharedReservedBytes', 'configuredMemoryBudgetBytes'):
@@ -245,6 +247,7 @@ class ReactivityAnalysisService:
         self.executable = Path(request['executable']).resolve()
         grant = request.get('resources') or {}
         self.resources, self.settings = resolve_resources(self.executable, grant.get('threads'), grant.get('memoryBudgetBytes'))
+        require_native_binary_grant(self.resources, grant)
         self.open_settings_revision = self.resources['settingsRevision']
         if grant.get('settingsRevision') is not None and grant['settingsRevision'] != self.open_settings_revision:
             raise ReactivityError('reactivity-resources', 'Multiwfn settings changed after resource planning.')
@@ -289,7 +292,7 @@ class ReactivityAnalysisService:
         offset = 0; scanner = NativeProgressScanner(self.progress_callback, 'reactivity-hirshfeld')
         with log.open('wb') as stream:
             with self._native_lock:
-                self.native = subprocess.Popen([str(self.executable), source.name], cwd=work, env=env, stdin=subprocess.PIPE,
+                self.native = start_multiwfn([str(self.executable), source.name], resources=self.resources, cwd=work, env=env, stdin=subprocess.PIPE,
                     stdout=stream, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
                 self.native_start_count += 1
                 self.job = _windows_owned_job(self.native, self.resources['memoryBudgetBytes'])

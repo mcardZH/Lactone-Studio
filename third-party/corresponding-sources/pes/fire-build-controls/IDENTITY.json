@@ -1,0 +1,20 @@
+[
+  {
+    "path": "third-party/corresponding-sources/pes/fire-build-controls/project/scripts/native/build-xtb-v208-fire.py",
+    "bytes": 9005,
+    "sha256": "69767ac59212a7fc4d9e24db7d9ac48926a0f67d783a30badc2c30e022402fb2",
+    "originalUnchanged": true
+  },
+  {
+    "path": "third-party/corresponding-sources/pes/fire-build-controls/project/third-party/build-inputs/declarations/xtb-v208-inputs.json",
+    "bytes": 8014,
+    "sha256": "b22f21f13be8933b653d56e65819cab2d271a72e2a2cf68b40c2bfe6c5e2ee7b",
+    "originalUnchanged": true
+  },
+  {
+    "path": "third-party/corresponding-sources/pes/fire-build-controls/project/third-party/corresponding-sources/build-support/xtb-gnu/bounded-command.py",
+    "bytes": 12383,
+    "sha256": "bcbde69d27437735cef263c74dd0cbdcb83c8fcc23cee0473cefacd949ed8876",
+    "originalUnchanged": true
+  }
+]

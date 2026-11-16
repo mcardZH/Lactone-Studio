@@ -2,7 +2,8 @@ import type { TrajectoryResult } from '../../results/contracts';
 import type { AtomicProperty, ScientificField } from '../../results/scientific-contracts';
 import { convertEnergy } from '../../results/energy';
 import { frontierOrbitals } from '../../results/scientific-analysis';
-import {formatResultValue} from '../../results/numeric-format';
+import {decimalEnergyValue,formatEnergyValue,formatResultValue} from '../../results/numeric-format';
+import {solventLabel} from '../solvent-presentation';
 
 export type PostprocessEnergyUnit = 'eV' | 'hartree';
 export const postprocessUnitLabel = (unit: PostprocessEnergyUnit) => unit === 'hartree' ? 'Eh' : 'eV';
@@ -90,8 +91,9 @@ export function postprocessSourceLabel(name: string): string {
 }
 
 export function postprocessSolventLabel(solvent: string | number | undefined, model: string | number | undefined, epsilon: string | number | undefined): string | number | undefined {
-  if (typeof solvent === 'string' && /^generic$/i.test(solvent.trim()) && typeof epsilon === 'number' && Number.isFinite(epsilon) && typeof model === 'string' && model.trim()) return `${model.trim().replace(/\.$/, '')} eps=${epsilon}`;
-  return solvent;
+  if(typeof solvent!=='string'||!solvent.trim())return solvent;
+  const value=typeof epsilon==='number'?epsilon:typeof epsilon==='string'&&epsilon.trim()?Number(epsilon):NaN;
+  return solventLabel(solvent,typeof model==='string'?model:undefined,Number.isFinite(value)?`ε=${epsilon}（来源）`:'ε=未收录');
 }
 
 /** Collapse aliases of the evaluated electronic energy, never equal-valued corrections. */
@@ -272,10 +274,10 @@ export function postprocessPlotText(snapshot: PostprocessPlotSnapshot, unit: Pos
   const rows = [`# ${snapshot.title}`, `# source=${snapshot.source.name}; source_id=${snapshot.source.id}; job=${snapshot.jobIndex + 1}; frame=${snapshot.frameIndex + 1}; unit=${postprocessUnitLabel(unit)}`];
   if (snapshot.kind === 'scf') {
     rows.push('cycle\tsource_line\titeration\tenergy\tdelta_energy');
-    data.cycles.forEach((cycle, index) => cycle.points.forEach(point => rows.push([index + 1, cycle.sourceLine, point.iteration, point.energy ?? '', point.deltaEnergy ?? ''].join('\t'))));
+    data.cycles.forEach((cycle, index) => cycle.points.forEach(point => rows.push([index + 1, cycle.sourceLine, point.iteration, point.energy == null?'':decimalEnergyValue(point.energy), point.deltaEnergy == null?'':decimalEnergyValue(point.deltaEnergy)].join('\t'))));
   } else {
     rows.push('spin\tsource_line\torbital\tenergy\toccupation\tsource_name\tsource_id\tsource_index');
-    data.channels.forEach(channel => channel.orbitals.forEach(orbital => rows.push([channel.spin, orbital.sourceLine ?? channel.sourceLine, orbital.index, formatResultValue(orbital.energy,snapshot.decimals??2), Number.isInteger(orbital.occupation)?String(orbital.occupation):formatResultValue(orbital.occupation,snapshot.decimals??2),
+    data.channels.forEach(channel => channel.orbitals.forEach(orbital => rows.push([channel.spin, orbital.sourceLine ?? channel.sourceLine, orbital.index, formatEnergyValue(orbital.energy,snapshot.decimals??2), Number.isInteger(orbital.occupation)?String(orbital.occupation):formatResultValue(orbital.occupation,snapshot.decimals??2),
       orbital.sourceName ?? channel.sourceName ?? snapshot.source.name, orbital.sourceId ?? channel.sourceId ?? snapshot.source.id, orbital.sourceIndex ?? ''].join('\t'))));
   }
   return rows.join('\n') + '\n';

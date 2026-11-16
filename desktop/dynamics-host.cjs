@@ -200,10 +200,11 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
     const previous = [...ownedChildren].filter(session => session.owner === owner);
     assert(previous.every(session => !session.ownerClosed && (session.terminal || session.failing || session.done)), 'Dynamics previous child is not retired');
     if (!previous.length&&!resolveResources&&!admit&&!request.method) { beforeStart(); return startNow(owner, request, sessionId,undefined,true); }
-    const pending = {sessionId,abort:new AbortController()};let release;
+    const pending = {sessionId,documentId:request.stamp.documentId,abort:new AbortController()};let release;
     pending.cancel=message=>{pending.abort.abort();pending.error=new Error(message);pending.reject?.(pending.error);};
     pendingStarts.set(owner, pending);
     try {
+      const resolvedXtb=request.method?await resolveXtbRuntime({...request,periodic:Boolean(request.structure.cell),signal:pending.abort.signal}):undefined;
       const snapshot=resolveResources?await new Promise((resolve,reject)=>{pending.reject=reject;Promise.resolve(resolveResources(owner,{...structuredClone(request),method:request.method??request.forcefield??'UFF'})).then(resolve,reject);}):undefined;
       assert(!pending.abort.signal.aborted,'DYNAMICS_CANCELLED: resource capture cancelled');
       if(previous.length)await new Promise((resolve, reject) => {
@@ -216,7 +217,6 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
       beforeStart(); // Main rechecks maintenance/document/concurrency after wait.
       if(admit){release=await admit(owner,request,{signal:pending.abort.signal,resources:snapshot});assert(typeof release==='function','Dynamics admission must return a trusted release');if(snapshot)assert(release.resources&&Number.isSafeInteger(release.resources.threads)&&release.resources.threads>=1&&(request.method||release.resources.threads===1)&&Number.isSafeInteger(release.resources.memoryBudgetBytes)&&release.resources.memoryBudgetBytes>0,'DYNAMICS_RESOURCE_GRANT: Actual soft grant required');}
       assert(!pending.abort.signal.aborted&&!disposed&&!closedOwners.has(owner),'DYNAMICS_CANCELLED: queued start cancelled');beforeStart();
-      const resolvedXtb=request.method?await resolveXtbRuntime():undefined;
       assert(!pending.abort.signal.aborted&&!disposed&&!closedOwners.has(owner),'DYNAMICS_CANCELLED: native runtime resolve cancelled');
       pendingStarts.delete(owner);
       const result=startNow(owner,request,sessionId,release,true,resolvedXtb);release=undefined;return result;
@@ -242,8 +242,28 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
     }
     return { sessionId, status: value.command === 'stop' ? 'stopping' : 'sent' };
   }
+  async function waitForClosed(owner, documentId, sessionId) {
+    const key = keyFor(owner, sessionId);
+    const belongs = session => session.owner === owner && session.request.stamp.documentId === documentId;
+    const pending = pendingStarts.get(owner);
+    assert(!pending || pending.sessionId !== sessionId || pending.documentId === documentId, 'Dynamics close source does not match the session');
+    assert(pending?.documentId !== documentId, 'Dynamics document still has a pending start');
+    const child = [...ownedChildren].find(session => session.key === key);
+    assert(!child || belongs(child), 'Dynamics close source does not match the session');
+    assert(![...ownedChildren].some(session => belongs(session) && session !== child), 'Dynamics document owns another session');
+    if (!child) return;
+    assert(child.terminal || child.failing || child.stopping || child.done, 'Dynamics session has not been stopped');
+    let timer;
+    try {
+      await Promise.race([child.closeTask, new Promise((_, reject) => {
+        timer = later(() => reject(new Error('DYNAMICS_CLOSE_TIMEOUT: actual owned child close not confirmed')), policy.stopMs + 250);
+        timer.unref?.();
+      })]);
+    } finally { clearLater(timer); }
+    assert(pendingStarts.get(owner)?.documentId !== documentId && ![...ownedChildren].some(belongs), 'Dynamics document acquired a new session during close');
+  }
   function closeOwner(owner) { closedOwners.add(owner); pendingStarts.get(owner)?.cancel('DYNAMICS_OWNER_CLOSED: native start cancelled'); for (const session of ownedChildren) if (session.owner === owner) { session.ownerClosed = true; discardFrame(session); stop(session); } }
   function dispose() { disposed = true; for (const pending of pendingStarts.values()) pending.cancel('DYNAMICS_DISPOSED: native start cancelled'); for (const session of ownedChildren) { session.ownerClosed = true; discardFrame(session); stop(session); } }
-  return { start, startWhenPreviousClosed, command, closeOwner, dispose, activeCount: () => sessions.size+pendingStarts.size, workerCount: () => workers.size };
+  return { start, startWhenPreviousClosed, command, waitForClosed, closeOwner, dispose, activeCount: () => sessions.size+pendingStarts.size, workerCount: () => workers.size };
 }
 module.exports = { createDynamicsHost };

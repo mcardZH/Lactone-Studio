@@ -1,4 +1,5 @@
 import {DismissibleNotice} from '../DismissibleNotice';
+import MultiwfnErrorNotice from './MultiwfnErrorNotice';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
 import {matchingSliderRange} from '../numeric-step';
 import NumericInput from '../NumericInput';
@@ -11,7 +12,7 @@ import { AnalysisTaskLayout, AnalysisTaskSection, SpatialGridSummary } from './A
 import { ScientificDataTable } from './ScientificDataTable';
 import { scientificTableText, type ScientificTableProjection } from './scientific-table';
 import { formatAnalysisValue } from './analysis-display';
-import { estimatedCalculationRange } from '../../results/calculation-range';
+import {prepareHirshfeldDisplayRanges,type HirshfeldDisplayRanges} from './hirshfeld-range-display';
 import { hirshfeldContactKey, hirshfeldContactLabel, hirshfeldContactOptions, type HirshfeldContactFocus } from '../../results/hirshfeld-presentation';
 import type { HirshfeldAnalysisControlsProps } from './hirshfeld-controls-contracts';
 import { initialHirshfeldState } from './hirshfeld-controls-contracts';
@@ -43,7 +44,7 @@ function combinedFingerprintSvg(panels: readonly string[], doc: Document): strin
     root.appendChild(copy); });
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new Serializer().serializeToString(root);
 }
-function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps) {
+function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {displayRanges?:HirshfeldDisplayRanges}) {
   const s = p.state, result = s.result, locked = p.disabled || p.running;
   const appearanceDefaults=useSurfaceAppearanceDefaults();
   const restorePlotting=()=>{const base=initialHirshfeldState().display,saved=appearanceDefaults.snapshot?.value['surface:hirshfeld'];p.onChange({display:saved && 'colors' in saved ? restoreHirshfeldAppearance(base,saved):base});};
@@ -84,9 +85,9 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps) {
     { key: 'percent', label: '完整表面占比 / %', heading: '完整表面占比', headerUnit: '%' },
   ], rows: rows.map(row => ({ key: hirshfeldContactKey(row.insideElement, row.outsideElement, s.merged),
     cells: [`${row.insideElement}${s.merged ? '···' : ' → '}${row.outsideElement}`, formatAnalysisValue(row.area, s.decimals), formatAnalysisValue(row.nativePercent, s.decimals)] })) }), [rows, s.merged, s.decimals]);
-  const targetChanged = !!result && (s.targetIds.length !== result.source.targetAtomIndices.length || result.source.targetAtomIndices.some(index => !s.targetIds.includes(result.source.atoms[index - 1].stableId)) || result.quantitativeGrid.spacingBohr !== s.spacingBohr || (result.mode ?? 'closed') !== s.mode);
-  const actualGrid = result?.pair.shape.grid;
-  const estimated = s.rangeExtensionBohr !== null && (!result || targetChanged) ? estimatedCalculationRange({ ...p.structure, atoms: p.structure.atoms.filter(atom => s.targetIds.includes(atom.id ?? '')) }, { mode: 'spacing', spacingBohr: s.spacingBohr }, s.rangeExtensionBohr, 'hirshfeld-parameter-preview', 'Hirshfeld·预计范围') : null;
+  const ranges = p.displayRanges ?? prepareHirshfeldDisplayRanges(s, p.context, p.structure);
+  const actualGrid = ranges.actual?.grid, estimated = ranges.estimate;
+  const rangeIssue = s.showRange ? ranges.issue || s.rangeError : '';
   return <section aria-label="Hirshfeld表面与指纹" data-testid="hirshfeld-analysis-controls"><InputSettingsLayout>
     <AnalysisTaskLayout variant="card" title="Hirshfeld表面与指纹" className="hirshfeld-analysis-card" qualityDisabled={locked} onRestoreQuality={()=>{const defaults=initialHirshfeldState();p.onChange({mode:defaults.mode,spacingBohr:defaults.spacingBohr,showRange:defaults.showRange});}} setup={<>
       <div className="hirshfeld-target-selection">{p.capturePort ? <InteractiveSelectionField structure={p.structure} label="目标片段" rowId="hirshfeld-target" atomIds={s.targetIds} kind="atoms" disabled={locked || !!p.sourceError}
@@ -103,7 +104,8 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps) {
         <InputSettingsField label="网格间距 / Bohr"><NumericInput aria-label="Hirshfeld网格间距"  min={.05} max={1} step={.05} value={s.spacingBohr} disabled={locked}
           onChange={event => { const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value) && value >= .05 && value <= 1) p.onChange({ spacingBohr: value }); }}/></InputSettingsField>
         <InputSettingsCheckbox label="显示计算范围" checked={s.showRange} onChange={showRange => p.onChange({ showRange })}/></InputSettingsRow>
-      {s.showRange && <output>{s.rangeError || (!actualGrid && s.rangeExtensionBohr === null ? '计算范围待读取' : targetChanged || !actualGrid ? '显示预计范围；已有结果保留实际范围' : '显示实际计算范围')}</output>}
+      {rangeIssue && <DismissibleNotice identity={projectUiSourceIdentity(p)}>Hirshfeld范围暂无法显示。{rangeIssue}</DismissibleNotice>}
+      {s.showRange && !rangeIssue && <output>{!actualGrid && s.rangeExtensionBohr === null ? '计算范围待读取' : !ranges.resultMatchesDraft || !actualGrid ? '显示预计范围；已有结果保留实际范围' : '显示实际计算范围'}</output>}
       <SpatialGridSummary preview={estimated ? { dimensions: estimated.grid.dimensions, pointCount: estimated.grid.dimensions.reduce((a, b) => a * b, 1), axisSpacingBohr: estimated.grid.axes.map(axis => Math.hypot(...axis)), estimated: true } : null}
         actual={actualGrid ? { dimensions: actualGrid.dimensions, pointCount: actualGrid.dimensions.reduce((a, b) => a * b, 1), axisSpacingBohr: actualGrid.axes.map(axis => Math.hypot(...axis) * (actualGrid.coordinateUnit === 'angstrom' ? 1 / .529177210903 : 1)), estimated: false } : null}/>
     </>} actions={<><InputSettingsAction variant="primary" disabled={locked || !!p.sourceError || !!p.resourceError || !p.resourceDefaults || !p.capturePort || !s.targetIds.length || s.targetIds.length >= p.structure.atoms.length} onClick={p.onCalculate}>计算</InputSettingsAction>
@@ -116,9 +118,11 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps) {
       </details>}
       {p.resourceError && <DismissibleNotice>{p.resourceError}</DismissibleNotice>}
       {p.running && !p.progress && <InputSettingsAction onClick={p.onStop}>停止</InputSettingsAction>}</>}
-      progress={<>{p.progress && <MultiwfnProgress progress={p.progress} operationLabel="Hirshfeld" onStop={p.onStop}/ >}{p.running && !p.progress && <output role="status">Hirshfeld计算中…</output>}</>}>
-      {s.error && <><DismissibleNotice role="alert" className="postprocess-warning">{s.error.includes('cube-closure') ? '权重0.5面到达当前计算边界。可切换开放接触面预览，或提供更完整的环境。' : s.error}</DismissibleNotice><details className="analysis-method-details"><summary>计算诊断</summary><pre>{s.error}</pre></details></>}
-      {targetChanged && <p role="status" className="postprocess-note">参数已改变；当前显示上次计算结果。</p>}
+      progress={<>{p.progress && <MultiwfnProgress progress={p.progress} showFailureReason={!s.error} operationLabel="Hirshfeld" onStop={p.onStop}/ >}{p.running && !p.progress && <output role="status">Hirshfeld计算中…</output>}</>}>
+      {s.error && (s.error.includes('cube-closure')
+        ? <DismissibleNotice role="alert" className="postprocess-warning">权重0.5面到达当前计算边界。可切换开放接触面预览，或提供更完整的环境。<details className="analysis-method-details"><summary>计算诊断</summary><pre>{s.error}</pre></details></DismissibleNotice>
+        : <MultiwfnErrorNotice message={s.error} identity={p.progress?.identity.runId}/>)}
+      {result && !ranges.resultMatchesDraft && <p role="status" className="postprocess-note">参数已改变；当前显示上次计算结果。</p>}
       <AnalysisTaskSection title="表面" testId="hirshfeld-surface-card" onRestore={restorePlotting}>
         {!result ? <p className="postprocess-empty">计算后显示Hirshfeld权重0.5表面。</p> : <>
           <output>{result.mode === 'open-preview' ? '开放接触面 · 当前计算范围' : '完整闭合Hirshfeld表面'} · dnorm</output>

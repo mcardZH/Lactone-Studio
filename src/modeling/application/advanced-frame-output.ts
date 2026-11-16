@@ -1,5 +1,5 @@
 import type { JobRequest, Structure } from '../../core/types';
-import { ELEMENTS, electronicStateError } from '../../core/elements';
+import { ELEMENTS, electronicStateInputError } from '../../core/elements';
 import { buildGaussian, defaultFiles } from '../../core/gaussian';
 import { buildOrcaCommon, type OrcaJobRequest } from '../../core/orca';
 import { exportStructure } from '../../core/structure-export';
@@ -171,7 +171,7 @@ export function prepareAdvancedFrameInputs(request: { frames: readonly AdvancedF
       if (previousName !== undefined) throw Error(`输出名称与第${previousName + 1}项重名。`);
       names.set(frame.stem.toLowerCase(), index);
       if (frame.electronicState.confirmed !== true) throw Error('请逐结构确认电荷与多重度，模板确认不能代替本帧确认。');
-      const stateError = electronicStateError(source.structure.atoms, frame.electronicState.charge, frame.electronicState.multiplicity);
+      const stateError = electronicStateInputError(source.structure.atoms, frame.electronicState.charge, frame.electronicState.multiplicity);
       if (stateError) throw Error(stateError);
       const { sharedConstraints } = frameConstraints(source);
       assertImageCoordinateExecutionSupported(sharedConstraints.enabled===false?[]:sharedConstraints.coordinates);
@@ -227,7 +227,7 @@ export function prepareAdvancedFrameTrajectory(request: { frames: readonly Advan
     try {
       const source = scientificSource(frame);
       if (request.frames.slice(0, index).some(previous => sameAdvancedFrame(previous.ref, source.ref))) throw Error('同一来源帧重复选择，请确认导出顺序。');
-      const stateError = electronicStateError(source.structure.atoms, source.structure.charge!, source.structure.multiplicity!);
+      const stateError = electronicStateInputError(source.structure.atoms, source.structure.charge!, source.structure.multiplicity!);
       if (stateError) throw Error(stateError);
       const { sharedConstraints } = frameConstraints(source);
       const text = exportStructure(source.structure, request.format, true), firstNewline = text.indexOf('\n'), secondNewline = text.indexOf('\n', firstNewline + 1);

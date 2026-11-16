@@ -4,9 +4,21 @@ import type { GaussianSourceMeta, InheritedRouteSettings, SourceIssue } from './
 import type { SolventSelection } from './solvents/types';
 import type { GaussianOniomSettings } from './oniom/types';
 import type { OrcaInputSourceMeta } from './orca/types';
+import type { XtbMethod, XtbPeriodicOptimizationEvidence, XtbSolvationEvidence, XtbConstraintResult } from '../modeling/xtb/contracts';
 
 /** Scientific layer-draft provenance is independent of regenerated row IDs. */
 export interface InputLayerDraftRole { type: 'input-layer'; engine: 'gaussian' | 'orca'; state: 'active' | 'cleared' }
+
+/** Selected drawing before any implicit hydrogens are given coordinates.
+ * The direction of a wedge belongs to its first atom. Used only for embedding. */
+export interface TwoDStereoSource {
+  schema: 'es-2d-stereo/v1';
+  atoms: {id: string; element: string; x: number; y: number; formalCharge?: number; hydrogenCount?: number}[];
+  bonds: {a: string; b: string; order: number; stereo?: number}[];
+  /** AND is a mixture; OR is one unknown member. Generated coordinates represent
+   * a source-compatible member; each group's centres can only invert together. */
+  stereoGroups?: {type: 'ABS' | 'AND' | 'OR'; id: string; atomIds: string[]}[];
+}
 
 export interface Atom {
   id?: string;
@@ -61,9 +73,39 @@ export interface MDPreparationProvenance {
     dtFs: number; thermostat: 'Berendsen'; hydrogenMassAmu: 4 | null; shakeHydrogenBonds: boolean;
     protection: 'none' | 'pairwise-distance'; protectedAtomIds: string[]; forceConstantKJMolNm2: number;
     segment: number; velocityInitialization: 'fresh' | 'restart';
+    /** Actual run evidence; absent on historical executions remains unknown. */
+    periodic?: true;
+    solvation?: Omit<XtbSolvationEvidence,'temperatureKelvin'> & {temperatureKelvin:number;dielectricConstant?:number};
+    effectiveSeed?: number;
+    seedTreatment?: 'verified' | 'program-random' | 'native-internal-initialization';
+    internalConstraints?: XtbConstraintResult[];
+    engineIdentity?: Record<string,unknown>;
+    degreesOfFreedom?: number;
+    restartInputSha256?: string;
     rawPotential?: { value: number; unit: 'hartree'; definition: 'native-total-including-protection' | 'native-physical-potential'; includesProtection: boolean; sourceArtifact: 'xtb.trj'; sourceStep: number; sourceTimeFs: number; segment: number };
   };
 }
+
+/** Accepted modeling xTB geometry. A stopped frame has no final native
+ * energy, version or solvation readback in its frame protocol. */
+export type XtbPreparationProvenance = {
+  schema: 1;
+  engine: 'xtb';
+  method: XtbMethod;
+  documentId: string;
+  sourceRevision: number;
+  charge: number;
+  multiplicity: number | null;
+  periodic?: Pick<XtbPeriodicOptimizationEvidence, 'backend' | 'optimizerVersion'> & Partial<Pick<XtbPeriodicOptimizationEvidence,'movableGradientNormHartreePerBohr'|'gradientTargetHartreePerBohr'|'gradientTargetMet'>> & {optimizer?:XtbPeriodicOptimizationEvidence['optimizer'];coordinateChart?:XtbPeriodicOptimizationEvidence['coordinateChart']};
+  internalConstraints?: XtbConstraintResult[];
+  engineIdentity?: Record<string,unknown>;
+  iterations?: number;
+  optimizer?: 'rf'|'inertial';
+} & (
+  | { terminal: 'completed'; version: string; solvation?: XtbSolvationEvidence }
+  | { terminal: 'unconverged'; version:string; solvation?:XtbSolvationEvidence; convergenceStatus:'step-limit' }
+  | { terminal: 'stopped'; frameSeq: number; step: number }
+);
 
 export interface Structure {
   id: string;
@@ -91,7 +133,7 @@ export interface Structure {
   molfile?: string;
   groups?: AtomGroup[];
   mapping?: { original: number; current: number }[];
-  preparation?: { forcefield?: string; before?: number; after?: number; unit?: string; status: string; md?: MDPreparationProvenance };
+  preparation?: { forcefield?: string; before?: number; after?: number; unit?: string; status: string; md?: MDPreparationProvenance; xtb?: XtbPreparationProvenance };
   cell?: PeriodicCell;
   /** Incomplete 1D/2D translation source, not an invented full 3D cell. */
   periodicSource?: { translationVectors: Vector3[]; completeness: 'partial'; evidence: string };

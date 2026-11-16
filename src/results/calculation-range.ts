@@ -10,21 +10,34 @@ export interface CalculationRangeDisplay {
   estimated: boolean;
   grid: CalculationRangeGrid;
 }
+class CalculationRangeValidationError extends Error {}
+
+/** A display consumer can omit an invalid range and report its own local error. */
+export function prepareCalculationRange<T>(prepare: () => T): { value: T | null; issue: string } {
+  try {
+    return { value: prepare(), issue: '' };
+  } catch (error) {
+    if (!(error instanceof CalculationRangeValidationError)) throw error;
+    return { value: null, issue: error.message };
+  }
+}
+
 export const CALCULATION_RANGE_STYLE = Object.freeze({ color: '#7797b0', linewidth: 1.3, opacity: .55 });
 const finiteVector = (value: unknown): value is Vector3 => Array.isArray(value) && value.length === 3 && value.every(n => typeof n === 'number' && Number.isFinite(n));
 export function validateCalculationRange(value: CalculationRangeDisplay): void {
   const grid = value?.grid;
   if (!value || typeof value.key !== 'string' || !value.key || value.key.length > 512 || typeof value.label !== 'string' || value.label.length > 100 || typeof value.estimated !== 'boolean'
     || !grid || !['bohr', 'angstrom'].includes(grid.coordinateUnit) || !finiteVector(grid.origin) || !Array.isArray(grid.axes) || grid.axes.length !== 3 || !grid.axes.every(finiteVector)
-    || !Array.isArray(grid.dimensions) || grid.dimensions.length !== 3 || !grid.dimensions.every(n => Number.isSafeInteger(n) && n >= 2 && n <= 16777216)) throw new Error('计算范围缺少有限原点、三轴、网格点数或单位。');
-  if(grid.axes.some((axis,i)=>axis.some(n=>!Number.isFinite(n*(grid.dimensions[i]-1))))||[0,1,2].some(j=>!Number.isFinite(grid.origin[j]+grid.axes.reduce((sum,axis,i)=>sum+Math.abs(axis[j])*(grid.dimensions[i]-1),0))))throw new Error('计算范围边界超出有限坐标。');
+    || !Array.isArray(grid.dimensions) || grid.dimensions.length !== 3 || !grid.dimensions.every(n => Number.isSafeInteger(n) && n >= 2 && n <= 16777216)) throw new CalculationRangeValidationError('计算范围缺少有限原点、三轴、网格点数或单位。');
+  if(grid.axes.some((axis,i)=>axis.some(n=>!Number.isFinite(n*(grid.dimensions[i]-1))))||[0,1,2].some(j=>!Number.isFinite(grid.origin[j]+grid.axes.reduce((sum,axis,i)=>sum+Math.abs(axis[j])*(grid.dimensions[i]-1),0))))throw new CalculationRangeValidationError('计算范围边界超出有限坐标。');
   const [a,b,c] = grid.axes;
   const determinant=a[0]*(b[1]*c[2]-b[2]*c[1])-a[1]*(b[0]*c[2]-b[2]*c[0])+a[2]*(b[0]*c[1]-b[1]*c[0]);
-  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-20) throw new Error('计算范围三轴退化。');
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-20) throw new CalculationRangeValidationError('计算范围三轴退化。');
 }
 export function calculationRangeFromGrid(grid: CalculationRangeGrid, key: string, label: string, estimated = false): CalculationRangeDisplay {
-  const value: CalculationRangeDisplay={key,label,estimated,grid:{coordinateUnit:grid.coordinateUnit,origin:[...grid.origin],axes:grid.axes.map(axis=>[...axis]) as [Vector3,Vector3,Vector3],dimensions:[...grid.dimensions]}};
-  validateCalculationRange(value);return value;
+  const value = {key,label,estimated,grid};
+  validateCalculationRange(value);
+  return {...value,grid:{coordinateUnit:grid.coordinateUnit,origin:[...grid.origin],axes:grid.axes.map(axis=>[...axis]) as [Vector3,Vector3,Vector3],dimensions:[...grid.dimensions]}};
 }
 /** Geometric estimate only: native field generation still receives its original quality. */
 export function estimatedCalculationRange(structure: Structure, quality: SurfaceCubeQuality, extensionBohr: number, key: string, label: string, reference?: CalculationRangeGrid | null): CalculationRangeDisplay | null {

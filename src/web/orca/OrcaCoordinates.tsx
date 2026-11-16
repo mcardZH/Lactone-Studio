@@ -8,6 +8,7 @@ import { confirmCoordinateSelection, orcaScanRange, recommendedScan } from '../.
 import { pickerStructureIdentity } from '../../core/geometry-guides';
 import { orcaFreezeCaptureRowId } from '../../core/input-capture-binding';
 import InteractiveSelectionField, { SelectionGroupHeader, SelectionAddButton, SelectionRemoveButton } from '../InteractiveSelectionField';
+import { CoordinateDraftStatus } from '../CoordinateDraftStatus';
 import { InputSettingsField, InputSettingsRow } from '../InputSettingsFields';
 import '../geometry-controls.css';
 
@@ -23,10 +24,10 @@ export function atomNumbers(ids: string[], structure: Structure | null): string 
   return ids.map(id => { const index = structure?.atoms.findIndex(atom => atom.id === id) ?? -1; return index >= 0 ? String(index + 1) : '?'; }).join(',');
 }
 type RequestSelection = (intent: TaskSelectionIntent) => TaskSelectionHandle | void;
-function Row({ value, index, structure, onChange, onRemove, md, taskId, onRequestSelection, rowIdOverride, onConfirmed }: {
+function Row({ value, index, structure, onChange, onRemove, md, taskId, onRequestSelection, rowIdOverride, onConfirmed, pending=false }: {
   value: OrcaCoordinate; index: number; structure: Structure | null;
   onChange: (value: OrcaCoordinate) => void; onRemove: () => void; md?: boolean;
-  taskId?: string; onRequestSelection?: RequestSelection; rowIdOverride?:string; onConfirmed?:(value:OrcaCoordinate)=>void;
+  taskId?: string; onRequestSelection?: RequestSelection; rowIdOverride?:string; onConfirmed?:(value:OrcaCoordinate)=>void; pending?:boolean;
 }) {
   const rowId = rowIdOverride??(value.action==='freeze'&&value.objectId?orcaFreezeCaptureRowId(value.objectId,md):`orca-${md ? 'md' : 'constraints'}-${index}`);
   const latest = useRef({ value, structure, taskId, onChange, onConfirmed });
@@ -45,8 +46,8 @@ function Row({ value, index, structure, onChange, onRemove, md, taskId, onReques
   const canonicalIncrement = increment === null ? '' : String(Number(increment.toPrecision(12)));
   const [incrementText, setIncrementText] = useState(canonicalIncrement);
   useEffect(() => setIncrementText(canonicalIncrement), [canonicalIncrement, value.start, value.end, value.steps, explicit]);
-  return <article className="orca-coordinate-row coordinate-draft" data-coordinate-id={rowId}>
-    <header className="shared-coordinate-row-header"><SelectionGroupHeader title={<>{md ? 'MD' : value.action === 'scan' ? '扫描' : '冻结'}坐标 {index + 1}{confirmed ? ` · ${{ B: '键长', A: '键角', D: '二面角' }[value.type]}` : ''}</>} actions={<SelectionRemoveButton label={`删除${prefix}`} onClick={onRemove}/>}/></header>
+  return <article className="orca-coordinate-row coordinate-draft" data-coordinate-id={rowId} data-coordinate-draft={pending}>
+    <header className="shared-coordinate-row-header"><SelectionGroupHeader title={<>{md ? 'MD' : value.action === 'scan' ? '扫描' : '冻结'}坐标 {index + 1}{confirmed ? ` · ${{ B: '键长', A: '键角', D: '二面角' }[value.type]}` : ''}<CoordinateDraftStatus/></>} actions={<SelectionRemoveButton label={`删除${prefix}`} onClick={onRemove}/>}/></header>
     <InteractiveSelectionField structure={structure} label={prefix} engine="orca" purpose="coordinate" rowId={rowId} taskId={taskId} kind="coordinate" atomIds={value.atomIds} disabled={!structure || structure.dimension === 2} contextKey={`${identity}:${taskId}:${value.type}:${value.action}:${value.atomIds.join(',')}`} onRequestSelection={onRequestSelection} onDraftChange={(ids,images)=>{setLiveIds(ids);setLiveImages(images);}} onConfirm={(atomIds, assertCurrent, _overwrite, images) => {
       assertCurrent(); const current = latest.current;
       if (!current.structure || current.taskId !== taskId || pickerStructureIdentity(current.structure) !== identity) throw new Error('内坐标选择已失效，请重新选择。');
@@ -77,7 +78,7 @@ export default function OrcaCoordinates({ value, onChange, structure, selectedId
     if(disabled||taskId==='sp')return <details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" open={false} style={{opacity:.5}} data-testid={action==='scan'?'orca-scan-coordinates':'orca-freeze-coordinates'}><summary aria-disabled="true" onClick={event=>event.preventDefault()}>{action==='scan'?'扫描内坐标':'冻结内坐标'}</summary></details>;
     const rows = value.map((row, index) => ({ row, index })).filter(entry => entry.row.action === action);
     return <details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" open={action === 'scan' && rows.length > 0 || pending?.value.action===action || undefined} data-testid={action === 'scan' ? 'orca-scan-coordinates' : 'orca-freeze-coordinates'}><summary><SelectionGroupHeader title={<>{action === 'scan' ? '扫描内坐标' : md ? 'MD内坐标约束' : '冻结内坐标'}（{action==='freeze'&&sharedFreezeCount!==undefined?sharedFreezeCount:rows.length}）</>} actions={<SelectionAddButton label="添加内坐标" disabled={!structure||structure.dimension===2||!!pending} onClick={()=>setPending({id:`orca-${md ? 'md-' : ''}coordinate-new-${action}-${crypto.randomUUID()}`,value:{type:'B',action,atomIds:[]}})}/>}/></summary>
-      {pending?.value.action===action&&<><Row value={pending.value} index={value.length} rowIdOverride={pending.id} structure={structure} md={md} taskId={taskId} onRequestSelection={onRequestSelection} onChange={next=>setPending({...pending,value:next})} onConfirmed={next=>{onChange([...value,next]);setPending(null);}} onRemove={()=>setPending(null)}/><button type="button" onClick={()=>setPending(null)}>取消添加</button></>}
+      {pending?.value.action===action&&<><Row pending value={pending.value} index={value.length} rowIdOverride={pending.id} structure={structure} md={md} taskId={taskId} onRequestSelection={onRequestSelection} onChange={next=>setPending({...pending,value:next})} onConfirmed={next=>{onChange([...value,next]);setPending(null);}} onRemove={()=>setPending(null)}/><button type="button" onClick={()=>setPending(null)}>取消添加</button></>}
       {rows.map(({ row, index }) => <Row key={index} value={row} index={index} structure={structure} md={md} taskId={taskId} onRequestSelection={onRequestSelection} onChange={next => onChange(value.map((current, i) => i === index ? next : current))} onRemove={() => onChange(value.filter((_, i) => i !== index))} />)}
     </details>;
   }

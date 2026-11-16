@@ -6,6 +6,8 @@ const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
 const safe = require('./portable-storage.cjs');
 const SCHEMA = 'sciyue-project/v1';
+const FORMATS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+const isProjectIndexPath = file => typeof file === 'string' && path.extname(file).toLowerCase() === '.es';
 const CATEGORIES = new Set(['models', 'sources', 'trajectories', 'results']);
 // JSON/Buffer runtime limits are reported as real resource/format failures;
 // project metadata has no separate business byte cap.
@@ -15,13 +17,44 @@ const ASSET_BATCH_ITEMS = 32, ASSET_BATCH_BYTES = 1024 * 1024;
 const fail = (code, message) => { throw safe.failure(code, message); };
 const clone = value => JSON.parse(JSON.stringify(value));
 const exists = async file => { try { return await fs.lstat(file); } catch (error) { if (error.code === 'ENOENT') return null; throw error; } };
+function validateWorkspaceReferences(state, formatVersion, assetIds) {
+  if (state?.schema !== 'sciyue-workspace-project/v1') return;
+  const floor = state.requiredProjectFormatVersion;
+  if (floor !== undefined && (!FORMATS.includes(floor) || floor > formatVersion))
+    fail('SY_SCHEMA_UNSUPPORTED', 'Workspace requires a newer project format.');
+  if (state.pesAsset === undefined && state.pesAssetReferences===undefined && state.historyArchives === undefined) return;
+  const available = new Set(assetIds);
+  const declared = new Set(Array.isArray(state.assetReferences) ? state.assetReferences : []);
+  const assetReference = id => typeof id === 'string' && /^[a-f0-9]{64}$/.test(id) && available.has(id) && declared.has(id);
+  if (state.pesAsset !== undefined) {
+    if (formatVersion < 9 || !floor || floor < 9)
+      fail('SY_SCHEMA_UNSUPPORTED', 'PES workspace assets require Ester Studio project format 9 or later.');
+    if (!assetReference(state.pesAsset)) fail('SY_INVALID_INDEX', 'Unknown PES workspace asset reference.');
+  }
+  if(state.pesAssetReferences!==undefined){
+    if(formatVersion<11||!floor||floor<11)fail('SY_SCHEMA_UNSUPPORTED','Chunked PES geometry requires Ester Studio project format 11.');
+    if(!state.pesAsset||!Array.isArray(state.pesAssetReferences)||new Set(state.pesAssetReferences).size!==state.pesAssetReferences.length||state.pesAssetReferences.some(id=>!assetReference(id)))fail('SY_INVALID_INDEX','Unknown PES coordinate asset reference.');
+  }
+  if (state.historyArchives === undefined) return;
+  if (formatVersion < 10 || !floor || floor < 10) fail('SY_SCHEMA_UNSUPPORTED', 'History archives require Ester Studio project format 10.');
+  const seen = new Set();
+  if (!Array.isArray(state.historyArchives) || state.historyArchives.some(row => {
+    if (!row || !assetReference(row.assetId) || seen.has(row.assetId) ||
+        !Array.isArray(row.documentIds) || !row.documentIds.length || row.documentIds.some(id => typeof id !== 'string' || !id) ||
+        new Set(row.documentIds).size !== row.documentIds.length || !Array.isArray(row.assetReferences) ||
+        new Set(row.assetReferences).size !== row.assetReferences.length || row.assetReferences.some(id => id === row.assetId || !assetReference(id))) return true;
+    seen.add(row.assetId);
+    return false;
+  })) fail('SY_INVALID_INDEX', 'Unknown workspace history archive reference.');
+}
 function validateManifest(value) {
-  if (!value || value.schema !== SCHEMA || ![1, 2, 3, 4, 5, 6].includes(value.formatVersion)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported Ester Studio project version; write-back is disabled.');
+  if (!value || value.schema !== SCHEMA || !FORMATS.includes(value.formatVersion)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported Ester Studio project version; write-back is disabled.');
   if (typeof value.projectId !== 'string' || !value.projectId || !Number.isSafeInteger(value.generation) || value.generation < 1 || !value.assets || typeof value.assets !== 'object' || !Array.isArray(value.assetIds) || !Object.hasOwn(value, 'state')) fail('SY_INVALID_INDEX', 'Invalid Ester Studio project index.');
   for (const [id, asset] of Object.entries(value.assets)) {
     if (!asset || id !== asset.assetId || !/^[a-f0-9]{64}$/.test(id) || asset.sha256 !== id || !Number.isSafeInteger(asset.bytes) || asset.bytes < 0 || !CATEGORIES.has(asset.category) || asset.relativePath !== `${asset.category}/asset-${id}.bin`) fail('SY_INVALID_INDEX', 'Invalid project asset reference.');
   }
   for (const id of value.assetIds) if (typeof id !== 'string' || !value.assets[id]) fail('SY_INVALID_INDEX', 'Unknown project asset reference.');
+  validateWorkspaceReferences(value.state, value.formatVersion, value.assetIds);
   return value;
 }
 async function readManifest(file) {
@@ -134,8 +167,8 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
     return { points, unreadable };
   }
   async function attach(indexPath, { create = false, readOnly = false, recovery = 'manual' } = {}) {
+    if (!isProjectIndexPath(indexPath)) fail('SY_INVALID_REQUEST', '请选择 .es 项目入口。');
     const absolute = path.resolve(indexPath);
-    if (!['.es', '.sy'].includes(path.extname(absolute).toLowerCase())) fail('SY_INVALID_REQUEST', 'Select an .es project index (.sy legacy projects are also supported).');
     const root = path.dirname(absolute);
     if (create) {
       await safe.directoryIdentity(path.dirname(root));
@@ -381,8 +414,9 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
       const state = options.state === undefined ? t.state : clone(options.state);
       const requested = options.requiredFormatVersion ?? 1;
       const declared = state && typeof state === 'object' ? state.requiredProjectFormatVersion : undefined;
-      if (![1, 2, 3, 4, 5, 6].includes(requested) || declared !== undefined && ![1, 2, 3, 4, 5, 6].includes(declared)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported project save format requirement.');
+      if (!FORMATS.includes(requested) || declared !== undefined && !FORMATS.includes(declared)) fail('SY_SCHEMA_UNSUPPORTED', 'Unsupported project save format requirement.');
       const formatVersion = Math.max(s.formatVersion, requested, declared || 1);
+      validateWorkspaceReferences(state, formatVersion, assetIds);
       // Protect the existing manual entry before publishing any newer auto
       // semantics. This is only a compatibility gate, never a manual save.
       if (t.kind === 'auto' && s.manual.formatVersion < formatVersion) {
@@ -507,6 +541,7 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
     });
   }
   async function inspectRecovery(indexPath) {
+    if (!isProjectIndexPath(indexPath)) fail('SY_INVALID_REQUEST', '请选择 .es 项目入口。');
     const root = path.dirname(path.resolve(indexPath)); const token = await safe.directoryIdentity(root);
     const points = {}, issues = [];
     for (const kind of ['previous', 'auto']) {
@@ -517,4 +552,4 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
   }
   return { create: indexPath => attach(indexPath, { create: true }), open: attach, inspectRecovery, begin, writeAssetChunk, writeAssets, importAsset, commit, abort, readAsset, readAssets, retainAssets, releaseAssets, gc, close, getSession: sessionId => describe(sessionFor(sessionId)) };
 }
-module.exports = { createSyProjectStore, validateManifest, SCHEMA, DEFAULT_CHUNK, ASSET_BATCH_ITEMS, ASSET_BATCH_BYTES };
+module.exports = { createSyProjectStore, isProjectIndexPath, validateManifest, SCHEMA, DEFAULT_CHUNK, ASSET_BATCH_ITEMS, ASSET_BATCH_BYTES };

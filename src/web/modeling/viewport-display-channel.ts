@@ -13,16 +13,18 @@ import { validateExtras } from '../../core/modeling/model-document-validation';
 import { elementSymbol } from '../../core/elements';
 import { validateStructureLibraryProvenance } from '../../core/structure-library-provenance';
 import { displayHiddenAtomIds } from './render/trajectory-layer';
+import {projectStructureExportDocument} from '../../modeling/application/structure-export-snapshot';
+import {checkedFrameBondEditing,type FrameBondEditingState,type FrameBondTarget} from './workspace-viewport';
 
 type DisplayProperties = Pick<ModelViewportProps,'surfaceLayer'|'viewTransform'|'hiddenAtomIds'|'multiframeDisplay'|'samplingSphere'|'calculationRanges'|'resultAtomLabels'|'resultBondValues'|'resultBondLabels'|'resultHighlights'|'resultColorbar'|'resultColorbarOwnerKey'>;
 /** Undefined observation fields mask a detached base view only while an explicit
  * transform is projected. No base observation state or camera is serialized. */
-export type ProjectedDisplayProperties = DisplayProperties & Partial<Pick<ModelViewportProps,'observationReference'|'observationEpoch'|'observationFrame'|'observationFixedFrame'|'observationAnchorAtomIds'|'observationTransform'>> & {displayDocument?:ReadonlyViewportDisplayDocument};
+export type ProjectedDisplayProperties = DisplayProperties & Partial<Pick<ModelViewportProps,'observationReference'|'observationEpoch'|'observationFrame'|'observationFixedFrame'|'observationAnchorAtomIds'|'observationTransform'>> & {displayDocument?:ReadonlyViewportDisplayDocument;exportDocument?:ModelDocument;exportSourceIdentity?:string;frameBondEditing?:FrameBondEditingState;frameBondTarget?:FrameBondTarget};
 export interface ReadonlyViewportDisplayDocument { sourceDocumentId:string; sourceRevision:number; document:ModelDocument }
-export interface ViewportDisplayProjection { documentId:string; revision:number; sourceId:string; sourceRevision:string; sourceKey:string; viewport:DisplayProperties;displayDocument?:ReadonlyViewportDisplayDocument }
-export interface ViewportDisplayDescriptor { documentId:string; revision:number; sourceId:string; sourceRevision:string; sourceKey:string; projectionSerial:number }
+export interface ViewportDisplayProjection { documentId:string; revision:number; sourceId:string; sourceRevision:string; sourceKey:string; viewport:DisplayProperties;displayDocument?:ReadonlyViewportDisplayDocument;exportDocument?:ModelDocument;exportSourceIdentity?:string;frameBondEditing?:FrameBondEditingState }
+export interface ViewportDisplayDescriptor { documentId:string; revision:number; sourceId:string; sourceRevision:string; sourceKey:string; projectionSerial:number;exportSourceIdentity?:string;frameBondEditing?:FrameBondEditingState }
 export interface ViewportDisplayPort { onmessage:((event:{data:any})=>void)|null; postMessage(message:unknown):void; close():void }
-type Metadata = { layer:Omit<ViewportSurfaceLayer,'pair'>|null; pair:Record<string,unknown>|null; shapeKey:string|null; mappingKey:string|null; display:Omit<DisplayProperties,'surfaceLayer'>; displayDocument?:ReadonlyViewportDisplayDocument };
+type Metadata = { layer:Omit<ViewportSurfaceLayer,'pair'>|null; pair:Record<string,unknown>|null; shapeKey:string|null; mappingKey:string|null; display:Omit<DisplayProperties,'surfaceLayer'>; displayDocument?:ReadonlyViewportDisplayDocument;exportDocument?:ModelDocument;exportSourceIdentity?:string;frameBondEditing?:FrameBondEditingState };
 // Executable setters stay with the trusted owner and never enter a descriptor or packet.
 const colorbarSetters=new WeakMap<ViewportDisplayProjection,NonNullable<ModelViewportProps['onResultColorbarLayoutChange']>>();
 function checkedColorbarLayout(value:unknown):AnalysisColorbarLayout|null{
@@ -71,13 +73,18 @@ export const viewportDisplayChannelName=(documentId:string,token:string)=>`sciyu
 export function openViewportDisplayPort(documentId:string,token:string):ViewportDisplayPort{return new BroadcastChannel(viewportDisplayChannelName(documentId,token)) as unknown as ViewportDisplayPort;}
 const fieldKey=(field:SurfaceScalarField)=>JSON.stringify([field.id,field.source.id,field.source.revision,field.context]);
 function metadata(projection:ViewportDisplayProjection):Metadata{
-  const {surfaceLayer,...display}=projection.viewport,displayDocument=projection.displayDocument;if(!surfaceLayer)return{layer:null,pair:null,shapeKey:null,mappingKey:null,display,...displayDocument?{displayDocument}:{}};
+  const {surfaceLayer,...display}=projection.viewport,displayDocument=projection.displayDocument,exportDocument=projection.exportDocument,exportSourceIdentity=projection.exportSourceIdentity,frameBondEditing=projection.frameBondEditing;if(!surfaceLayer)return{layer:null,pair:null,shapeKey:null,mappingKey:null,display,frameBondEditing,...displayDocument?{displayDocument}:{},...exportDocument?{exportDocument,exportSourceIdentity}:{}};
   const {pair,...layer}=surfaceLayer,{shape,mapping,...pairMetadata}=pair;
-  return {layer,pair:pairMetadata,shapeKey:fieldKey(shape),mappingKey:mapping?fieldKey(mapping):null,display,...displayDocument?{displayDocument}:{}};
+  return {layer,pair:pairMetadata,shapeKey:fieldKey(shape),mappingKey:mapping?fieldKey(mapping):null,display,frameBondEditing,...displayDocument?{displayDocument}:{},...exportDocument?{exportDocument,exportSourceIdentity}:{}};
 }
 export function viewportDisplaySignature(projection:ViewportDisplayProjection):string{return JSON.stringify([projection.documentId,projection.revision,projection.sourceId,projection.sourceRevision,projection.sourceKey,metadata(projection)]);}
-function viewportDisplayProjection(document:ModelDocument,viewport:Partial<ModelViewportProps>,observedDocument?:ModelDocument,trusted=false):ViewportDisplayProjection|null{
+function viewportDisplayProjection(document:ModelDocument,viewport:Partial<ModelViewportProps>,observedDocument?:ModelDocument,trusted=false,exportSource?:ModelDocument,exportSourceIdentity?:string,frameBondEditing?:FrameBondEditingState):ViewportDisplayProjection|null{
   const displayDocument=observedDocument?{sourceDocumentId:observedDocument.id,sourceRevision:observedDocument.revision,document:readonlyDisplayDocument(observedDocument,document,trusted)}:undefined;
+  const exported=exportSource?projectStructureExportDocument(document,exportSource.draft.structure):undefined;
+  // The publisher already owns these immutable frame inputs. Validate only at
+  // untrusted/wire admission; do not re-copy or re-prove a live frame every tick.
+  const exportDocument=exported?(trusted?exported:normalizeWorkspaceDocumentJSON(exported)):undefined;
+  if(exportDocument&&!trusted){readonlyDisplayDocument(exportDocument,document,true);const atoms=(displayDocument?.document??document).draft.structure.atoms;if(atoms.length!==exportDocument.draft.structure.atoms.length||atoms.some((atom,index)=>atom.id!==exportDocument.draft.structure.atoms[index].id||atom.element!==exportDocument.draft.structure.atoms[index].element))fail('结构导出快照与当前显示原子不一致。');}
   displayHiddenAtomIds(viewport.hiddenAtomIds,displayDocument?.document.draft.structure??document.draft.structure);
   const supplied=viewport.surfaceLayer,sourceDocument=observedDocument??document;
   const layer=supplied?.visible&&supplied.documentId===sourceDocument.id&&supplied.geometryRevision===sourceDocument.revision?{...supplied,documentId:document.id,geometryRevision:document.revision}:undefined;
@@ -85,20 +92,20 @@ function viewportDisplayProjection(document:ModelDocument,viewport:Partial<Model
   if(viewport.samplingSphere)validateSamplingSphereDisplay(viewport.samplingSphere);
   if(viewport.calculationRanges)viewport.calculationRanges.forEach(validateCalculationRange);
   const viewTransform=viewport.viewTransform===undefined?undefined:checkedRigidTransform(viewport.viewTransform);
-  if(!layer&&!viewport.resultColorbar&&!viewport.multiframeDisplay&&!viewport.samplingSphere&&!viewport.calculationRanges?.length&&!viewTransform&&!displayDocument&&!viewport.hiddenAtomIds)return null;
+  if(!layer&&!viewport.resultColorbar&&!viewport.multiframeDisplay&&!viewport.samplingSphere&&!viewport.calculationRanges?.length&&!viewTransform&&!displayDocument&&!exportDocument&&!viewport.hiddenAtomIds)return null;
   const context=layer?.pair.shape.context;
-  const projection:ViewportDisplayProjection={documentId:document.id,revision:document.revision,sourceId:context?.sourceId??displayDocument?.sourceDocumentId??document.id,sourceRevision:context?.sourceRevision??String(displayDocument?.sourceRevision??document.revision),sourceKey:JSON.stringify([context??['display',document.id,document.revision,displayDocument?.sourceDocumentId,displayDocument?.sourceRevision],layer?fieldKey(layer.pair.shape):null,layer?.pair.mapping?fieldKey(layer.pair.mapping):null,viewport.resultColorbarOwnerKey??null,viewport.multiframeDisplay?.key,viewport.multiframeDisplay?.activeFrameKey,viewport.samplingSphere,viewport.calculationRanges]),displayDocument,
+  const projection:ViewportDisplayProjection={documentId:document.id,revision:document.revision,sourceId:context?.sourceId??displayDocument?.sourceDocumentId??document.id,sourceRevision:context?.sourceRevision??String(displayDocument?.sourceRevision??document.revision),sourceKey:JSON.stringify([context??['display',document.id,document.revision,displayDocument?.sourceDocumentId,displayDocument?.sourceRevision],layer?fieldKey(layer.pair.shape):null,layer?.pair.mapping?fieldKey(layer.pair.mapping):null,viewport.resultColorbarOwnerKey??null,viewport.multiframeDisplay?.key,viewport.multiframeDisplay?.activeFrameKey,viewport.samplingSphere,viewport.calculationRanges]),displayDocument,exportDocument,exportSourceIdentity,frameBondEditing:frameBondEditing?checkedFrameBondEditing(frameBondEditing):undefined,
     viewport:{surfaceLayer:layer,viewTransform,hiddenAtomIds:viewport.hiddenAtomIds,multiframeDisplay:viewport.multiframeDisplay,samplingSphere:viewport.samplingSphere,calculationRanges:viewport.calculationRanges,resultAtomLabels:viewport.resultAtomLabels,resultBondValues:viewport.resultBondValues,resultBondLabels:viewport.resultBondLabels,resultHighlights:viewport.resultHighlights,resultColorbar:viewport.resultColorbar,resultColorbarOwnerKey:viewport.resultColorbarOwnerKey}};
   if(viewport.onResultColorbarLayoutChange&&viewport.resultColorbarOwnerKey)colorbarSetters.set(projection,viewport.onResultColorbarLayoutChange);
   return projection;
 }
-export function createViewportDisplayProjection(document:ModelDocument,viewport:Partial<ModelViewportProps>,observedDocument?:ModelDocument):ViewportDisplayProjection|null{
-  return viewportDisplayProjection(document,viewport,observedDocument);
+export function createViewportDisplayProjection(document:ModelDocument,viewport:Partial<ModelViewportProps>,observedDocument?:ModelDocument,exportDocument?:ModelDocument,exportSourceIdentity?:string,frameBondEditing?:FrameBondEditingState):ViewportDisplayProjection|null{
+  return viewportDisplayProjection(document,viewport,observedDocument,false,exportDocument,exportSourceIdentity,frameBondEditing);
 }
 /** Owner-renderer path only: inputs are already validated immutable Store or
  * prepared scientific snapshots. Sending/receiving still uses wire admission. */
-export function createTrustedViewportDisplayProjection(document:ModelDocument,viewport:Partial<ModelViewportProps>,observedDocument?:ModelDocument):ViewportDisplayProjection|null{
-  return viewportDisplayProjection(document,viewport,observedDocument,true);
+export function createTrustedViewportDisplayProjection(document:ModelDocument,viewport:Partial<ModelViewportProps>,observedDocument?:ModelDocument,exportDocument?:ModelDocument,exportSourceIdentity?:string,frameBondEditing?:FrameBondEditingState):ViewportDisplayProjection|null{
+  return viewportDisplayProjection(document,viewport,observedDocument,true,exportDocument,exportSourceIdentity,frameBondEditing);
 }
 function checkFieldBudget(field:SurfaceScalarField){
   const count=field?.grid?.dimensions?.reduce((n,value)=>n*value,1);
@@ -114,10 +121,16 @@ function checkedFields(projection:ViewportDisplayProjection):SurfaceScalarField[
 }
 function checkedMetadata(raw:Metadata,descriptor:ViewportDisplayDescriptor):Metadata{
   const value=normalizeViewportDisplayMetadataJSON(raw);
-  const validLayer=value?.layer?value.layer.documentId===descriptor.documentId&&value.layer.geometryRevision===descriptor.revision&&typeof value.shapeKey==='string'&&!!value.pair:value?.layer===null&&value.shapeKey===null&&value.mappingKey===null&&value.pair===null&&!!(value.display?.resultColorbar||value.display?.multiframeDisplay||value.display?.samplingSphere||value.display?.calculationRanges?.length||value.display?.viewTransform||value.displayDocument||value.display?.hiddenAtomIds);
+  if(value.frameBondEditing)checkedFrameBondEditing(value.frameBondEditing);
+  if(JSON.stringify(value.frameBondEditing)!==JSON.stringify(descriptor.frameBondEditing))fail('帧显示键编辑能力与可信投影身份不匹配。');
+  const validLayer=value?.layer?value.layer.documentId===descriptor.documentId&&value.layer.geometryRevision===descriptor.revision&&typeof value.shapeKey==='string'&&!!value.pair:value?.layer===null&&value.shapeKey===null&&value.mappingKey===null&&value.pair===null&&!!(value.display?.resultColorbar||value.display?.multiframeDisplay||value.display?.samplingSphere||value.display?.calculationRanges?.length||value.display?.viewTransform||value.displayDocument||value.exportDocument||value.display?.hiddenAtomIds);
   if(!value||!validLayer||!(value.mappingKey===null||typeof value.mappingKey==='string'))fail('独立显示元数据无效。');
   if(value.displayDocument){const data=value.displayDocument;if(typeof data.sourceDocumentId!=='string'||!data.sourceDocumentId||!Number.isSafeInteger(data.sourceRevision)||data.sourceRevision<0||data.document?.id!==descriptor.documentId||data.document.revision!==descriptor.revision)fail('只读显示快照与已认证容器身份不匹配。');
     const checked=readonlyDisplayDocument(data.document,{id:descriptor.documentId,revision:descriptor.revision},true);if(JSON.stringify(data.document)!==JSON.stringify(checked))fail('只读显示快照包含非显示状态、历史或非空选区。');}
+  if(value.exportDocument){const data=value.exportDocument;if(data.id!==descriptor.documentId||data.revision!==descriptor.revision)fail('结构导出快照与已认证容器身份不匹配。');
+    const checked=readonlyDisplayDocument(data,{id:descriptor.documentId,revision:descriptor.revision},true);if(JSON.stringify(data)!==JSON.stringify(projectStructureExportDocument(checked)))fail('结构导出快照包含非显示状态、历史或非空选区。');
+    const atoms=value.displayDocument?.document.draft.structure.atoms;if(atoms&&(atoms.length!==data.draft.structure.atoms.length||atoms.some((atom,index)=>atom.id!==data.draft.structure.atoms[index].id||atom.element!==data.draft.structure.atoms[index].element)))fail('结构导出快照与当前显示原子不一致。');}
+  if(value.exportSourceIdentity!==undefined&&(typeof value.exportSourceIdentity!=='string'||!value.exportSourceIdentity))fail('结构导出来源身份无效。');
   if(value.display.multiframeDisplay)validateMultiframeDisplayPlan(value.display.multiframeDisplay);
   if(value.displayDocument&&value.display.multiframeDisplay){const plan=value.display.multiframeDisplay,frame=plan.frames.find(frame=>frame.key===plan.activeFrameKey)!,atoms=value.displayDocument.document.draft.structure.atoms,byId=new Map(frame.structure.atoms.map(a=>[a.id,a]));
     if(atoms.length!==byId.size||atoms.some(a=>{const b=byId.get(a.id);return!b||a.element!==b.element||a.x!==b.x||a.y!==b.y||a.z!==b.z;}))fail('只读显示结构与叠合当前源帧不一致，未按容器原子猜测对应。');}
@@ -127,13 +140,13 @@ function checkedMetadata(raw:Metadata,descriptor:ViewportDisplayDescriptor):Meta
   displayHiddenAtomIds(value.display.hiddenAtomIds,value.displayDocument?.document.draft.structure);
   return value;
 }
-const matches=(a:ViewportDisplayDescriptor,b:ViewportDisplayDescriptor)=>a.documentId===b.documentId&&a.revision===b.revision&&a.sourceId===b.sourceId&&a.sourceRevision===b.sourceRevision&&a.sourceKey===b.sourceKey;
+const matches=(a:ViewportDisplayDescriptor,b:ViewportDisplayDescriptor)=>a.documentId===b.documentId&&a.revision===b.revision&&a.sourceId===b.sourceId&&a.sourceRevision===b.sourceRevision&&a.sourceKey===b.sourceKey&&a.exportSourceIdentity===b.exportSourceIdentity;
 /** The caller creates this endpoint only after the existing host has
  * authenticated doc/membershipNonce and identified the actual detached member.
  * This channel name alone never grants access. At most one packet is in flight. */
 export function createViewportDisplayOwner(options:{port:ViewportDisplayPort;documentId:string;token:string;onMesh(state:Readonly<SurfaceMeshState>,document:Pick<ModelDocument,'id'|'revision'>):void;onError(message:string):void}){
   let disposed=false,active=false,current:ViewportDisplayProjection|null=null,serial=0,inflight=0,sentKey:string|null=null,validatedKey:string|null=null,requestPending=false,requireFields=false;
-  const descriptor=():ViewportDisplayDescriptor|null=>current?{documentId:current.documentId,revision:current.revision,sourceId:current.sourceId,sourceRevision:current.sourceRevision,sourceKey:current.sourceKey,projectionSerial:serial}:null;
+  const descriptor=():ViewportDisplayDescriptor|null=>current?{documentId:current.documentId,revision:current.revision,sourceId:current.sourceId,sourceRevision:current.sourceRevision,sourceKey:current.sourceKey,projectionSerial:serial,exportSourceIdentity:current.exportSourceIdentity,frameBondEditing:current.frameBondEditing}:null;
   function send(){
     if(disposed||!active||inflight)return;
     const description=descriptor();
@@ -184,7 +197,7 @@ export function createViewportDisplayConsumer(options:{port:ViewportDisplayPort;
       if(small.layer&&(!shape||small.mappingKey&&!mapping))fail('独立显示格点尚未收到，未显示其他来源。');
       const layer=small.layer?{...small.layer,pair:{...small.pair,shape,mapping}} as ViewportSurfaceLayer:undefined;
       accepted=description.projectionSerial;acceptedOwnerKey=small.display.resultColorbarOwnerKey;
-      options.onProjection({...small.display,surfaceLayer:layer,displayDocument:small.displayDocument,...small.display.viewTransform||small.displayDocument?{observationReference:undefined,observationEpoch:undefined,observationFrame:undefined,observationFixedFrame:undefined,observationAnchorAtomIds:undefined,observationTransform:undefined}:{}});
+      options.onProjection({...small.display,surfaceLayer:layer,displayDocument:small.displayDocument,exportDocument:small.exportDocument,exportSourceIdentity:small.exportSourceIdentity,frameBondEditing:small.frameBondEditing,frameBondTarget:small.frameBondEditing?{frameKey:small.frameBondEditing.frameKey,projectionSerial:description.projectionSerial}:undefined,...small.display.viewTransform||small.displayDocument?{observationReference:undefined,observationEpoch:undefined,observationFrame:undefined,observationFixedFrame:undefined,observationAnchorAtomIds:undefined,observationTransform:undefined}:{}});
     }catch(error){cache.clear();acceptedOwnerKey=undefined;options.onProjection(null);options.onError(error instanceof Error?error.message:String(error));}
     finally{post({kind:'ack',serial:description.projectionSerial});}
   };

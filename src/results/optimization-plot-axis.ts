@@ -1,6 +1,7 @@
 import type { ResultFrameSummary, TrajectoryResult } from './contracts';
 import type { CoordinateTrace } from './scientific-analysis';
 import type { EnergySeries } from './energy';
+import { decimalEnergyValue } from './numeric-format';
 
 export function trajectoryPlotKind(result: TrajectoryResult): 'optimization' | 'scan' | 'irc' | 'neb' | 'trajectory' {
   const stage = result.stages?.length === 1 ? result.stages[0] : undefined;
@@ -59,7 +60,7 @@ export function trajectoryPlotAxis(result: TrajectoryResult, frames: readonly Re
 /** Complete source-stage rows; a display viewport never participates in this projection. */
 export function trajectoryEnergyPlotText(series: EnergySeries, axis: ReturnType<typeof trajectoryPlotAxis>, scan: boolean): string {
   return [scan ? `帧\t${axis.label}\t${series.relative ? 'ΔE' : 'E'} / ${series.unit}` : `帧\t${series.relative ? 'ΔE' : 'E'} / ${series.unit}`,
-    ...series.points.map((point, index) => [point.index + 1, ...(scan ? [axis.coordinates[index] ?? ''] : []), point.value ?? ''].join('\t'))].join('\n') + '\n';
+    ...series.points.map((point, index) => [point.index + 1, ...(scan ? [axis.coordinates[index] ?? ''] : []), point.value == null?'':decimalEnergyValue(point.value)].join('\t'))].join('\n') + '\n';
 }
 
 export function normalizedPlotWidth(width: number, previous: number): number {

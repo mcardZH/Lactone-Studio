@@ -1,4 +1,6 @@
 import type { ClipboardPayload, MeasurementSession, MeasurementState } from '../../modeling/contracts';
+import { isXtbMethod, XTB_ALPB_PRESETS, xtbSolvents, type XtbNativeMethod } from '../../core/xtb-capabilities';
+import type { XtbPreoptimizationSolvation } from '../../modeling/xtb/accept-result';
 import type { ActiveStructurePreviewSource } from './active-structure-preview';
 import { emptyMeasurementSession, setMeasurementMode } from './measurement-state';
 
@@ -11,12 +13,12 @@ export interface WorkspaceOptimizationPreferences {
   version: 2;
   defaultKind: 'forcefield' | 'xtb';
   forcefield: { method: 'auto' | 'UFF' | 'MMFF94' | 'geometry'; scope: 'all' | 'selection' | 'unselected' };
-  xtb: { method: 'gfn0' | 'gfn1' | 'gfn2' | 'gfnff'; rebuildBonds: boolean; scope:'all'|'selection'|'unselected'; maxSteps?:number;maxSccIterations?:number };
+  xtb: { method: XtbNativeMethod; rebuildBonds: boolean; scope:'all'|'selection'|'unselected'; maxSteps?:number;maxSccIterations?:number; solvation?:XtbPreoptimizationSolvation };
 }
 export const OPTIMIZATION_PREFERENCE_KEY = 'sciyue.workspace-optimization.v1';
 export const OPTIMIZATION_PREFERENCE_EVENT = 'sciyue-workspace-optimization-changed';
 export function defaultWorkspaceOptimizationPreferences(): WorkspaceOptimizationPreferences {
-  return { version: 2, defaultKind: 'xtb', forcefield: { method: 'auto', scope: 'all' }, xtb: { method: 'gfn2', rebuildBonds: true,scope:'all',maxSteps:500,maxSccIterations:250 } };
+  return { version: 2, defaultKind: 'xtb', forcefield: { method: 'auto', scope: 'all' }, xtb: { method: 'gfn2', rebuildBonds: true,scope:'all',maxSccIterations:250 } };
 }
 type StoredOptimizationPreferences = Omit<WorkspaceOptimizationPreferences, 'version' | 'xtb'> & {
   version: 1 | 2;
@@ -24,14 +26,17 @@ type StoredOptimizationPreferences = Omit<WorkspaceOptimizationPreferences, 'ver
 };
 function checkedOptimizationPreferences(value: unknown): WorkspaceOptimizationPreferences | null {
   const row = value as Partial<StoredOptimizationPreferences> | null;
+  const solvation = row?.xtb?.solvation;
   if (!row || ![1, 2].includes(row.version ?? 0) || !['forcefield', 'xtb'].includes(row.defaultKind ?? '')
     || !['auto', 'UFF', 'MMFF94', 'geometry'].includes(row.forcefield?.method ?? '')
     || !['all', 'selection', 'unselected'].includes(row.forcefield?.scope ?? '')
-    || !['gfn0', 'gfn1', 'gfn2', 'gfnff'].includes(row.xtb?.method ?? '') || row.xtb?.maxSteps !== undefined && (!Number.isSafeInteger(row.xtb.maxSteps)||row.xtb.maxSteps<1) || row.xtb?.maxSccIterations !== undefined && (!Number.isSafeInteger(row.xtb.maxSccIterations)||row.xtb.maxSccIterations<1) || typeof row.xtb?.rebuildBonds !== 'boolean'
-    || !['all','selection','unselected'].includes(row.xtb?.scope??'all')) return null;
+    || !isXtbMethod(row.xtb?.method ?? '') || row.xtb?.maxSteps !== undefined && (!Number.isSafeInteger(row.xtb.maxSteps)||row.xtb.maxSteps<1) || row.xtb?.maxSccIterations !== undefined && (!Number.isSafeInteger(row.xtb.maxSccIterations)||row.xtb.maxSccIterations<1) || typeof row.xtb?.rebuildBonds !== 'boolean'
+    || !['all','selection','unselected'].includes(row.xtb?.scope??'all')
+    || (solvation!==undefined&&!(solvation?.model==='alpb'&&XTB_ALPB_PRESETS.some(preset=>preset.id===solvation.solvent)
+      ||solvation?.model==='gbsa'&&['gfn1','gfn2'].some(method=>xtbSolvents(method,'gbsa').includes(solvation.solvent))))) return null;
   // Version 2 records that the one-time Space-default migration was consumed.
   // A later explicit forcefield choice is authoritative, not legacy data.
-  return { version: 2, defaultKind: row.version === 1 ? 'xtb' : row.defaultKind!, forcefield: { method: row.forcefield!.method, scope: row.forcefield!.scope }, xtb: { method: row.xtb!.method, rebuildBonds: row.xtb!.rebuildBonds,scope:row.xtb!.scope??'all',maxSteps:row.xtb!.maxSteps??500,maxSccIterations:row.xtb!.maxSccIterations??250 } };
+  return { version: 2, defaultKind: row.version === 1 ? 'xtb' : row.defaultKind!, forcefield: { method: row.forcefield!.method, scope: row.forcefield!.scope }, xtb: { method: row.xtb!.method, rebuildBonds: row.xtb!.rebuildBonds,scope:row.xtb!.scope??'all',...(row.xtb!.maxSteps===undefined?{}:{maxSteps:row.xtb!.maxSteps}),maxSccIterations:row.xtb!.maxSccIterations??250,...(solvation?{solvation:{model:solvation.model,solvent:solvation.solvent}}:{}) } };
 }
 export function parseWorkspaceOptimizationPreferences(value: unknown): WorkspaceOptimizationPreferences {
   return checkedOptimizationPreferences(value) ?? defaultWorkspaceOptimizationPreferences();
@@ -51,7 +56,7 @@ export function readWorkspaceOptimizationPreferences(): WorkspaceOptimizationPre
 }
 export function writeWorkspaceOptimizationPreferences(value: StoredOptimizationPreferences): WorkspaceOptimizationPreferences {
   const accepted = checkedOptimizationPreferences(value);
-  if(!accepted)throw new Error('优化偏好中的方法、范围或迭代预算无效。');
+  if(!accepted)throw new Error('优化偏好中的方法、范围、迭代预算或溶剂无效。');
   window.localStorage.setItem(OPTIMIZATION_PREFERENCE_KEY, JSON.stringify(accepted));
   window.dispatchEvent(new CustomEvent(OPTIMIZATION_PREFERENCE_EVENT, { detail: accepted }));
   return accepted;
@@ -115,8 +120,9 @@ const preserve = (): ToolSessionTransition => ({
   cancelManualGeometry: false, advancePreviewIntent: false, focusCanvas: false,
 });
 
-/** Choosing an editing/observation tool retires pending interaction, not
- * completed BAD records. It never clears yellow selection or task definitions. */
+/** Choosing an editing/observation tool retires pending interaction and asks
+ * the workspace to close its geometry editor. Completed BAD records, other
+ * selections and task definitions retain their own owners. */
 function choice(patch: Partial<ToolSessionState>, keyboard: ToolSessionTransition['keyboard'] = 'set-element', focusCanvas = true): ToolSessionTransition {
   return {
     patch: { element: null, persistentTool: null, copiedTool: false, freezeTool: null,
@@ -196,8 +202,8 @@ export function planToolSessionTransition(intent: ToolSessionIntent): ToolSessio
   }
 }
 
-/** Apply only the specified measurement policy. Completed annotations and their
- * identity/color/active record survive every mode/tool transition. */
+/** Apply only the specified measurement policy. The workspace separately
+ * retires an editor-owned active record when a tool closes that editor. */
 export function applyToolSessionMeasurement(previous: MeasurementSession, policy: ToolMeasurementPolicy): MeasurementSession {
   if (policy.type === 'preserve') return previous;
   return policy.type === 'document-reset' ? emptyMeasurementSession() : setMeasurementMode(previous, policy.mode);

@@ -30,19 +30,21 @@ export interface GeneratedXtbExpected {
   activate?: false;
 }
 export interface GeneratedXtbProvenance {
-  kind: 'trusted-generated-gfn2-sp'; artifactId: string; sessionId: string;
+  kind: 'trusted-generated-gfn2-sp'|'trusted-generated-gxtb-sp'; artifactId: string; sessionId: string;
   stamp: XtbElectronicArtifactBundle['stamp'];
   runIdentity?: { taskId: string; runId: string };
   files: readonly { role: string; name: string; bytes: number; sha256: string }[];
   /** Native thresholded observations, not a complete zero-filled bond matrix. */
   nativeBondOrders?: XtbElectronicArtifactBundle['metadata']['bondOrders'];
   solvation?: XtbSolvationEvidence;
+  engineIdentity?: XtbElectronicArtifactBundle['metadata']['engineIdentity'];
+  moldenConversion?: XtbElectronicArtifactBundle['metadata']['moldenConversion'];
   /** Derived methods require their own scientific acceptance; a Molden is not that proof. */
   capabilities: readonly ['native-properties', 'orbitals'];
   /** Exact immutable-host applicability policy; absent legacy sources remain restricted. */
   analysisPolicy?:GeneratedXtbAnalysisPolicy;
 }
-const filesByRole = { molden: 'molden.input', stdout: 'stdout.log', stderr: 'stderr.log', wbo: 'wbo' } as const;
+const filesByRole = { molden: 'molden.input', 'analysis-molden': 'analysis.molden', stdout: 'stdout.log', stderr: 'stderr.log', wbo: 'wbo' } as const;
 const fail = (message: string): never => { throw new Error(message); };
 const finite = (token: string): number | null => scientificNumber(token);
 const sameStamp = (a: XtbElectronicArtifactBundle['stamp'], b: XtbElectronicArtifactBundle['stamp']) =>
@@ -154,16 +156,50 @@ export function parseGeneratedXtbStdout(text: string, atoms: readonly { element:
   return { data, energy, iterations, converged: !failed && iterations !== null && energy !== null, normalTermination, failed };
 }
 
+function parseGeneratedGxtbStdout(text: string, sourceId: string, sourceName: string) {
+  const data=emptyScientificData();data.tasks=['sp'];data.source={id:sourceId,name:sourceName};
+  const output=text.replace(/\r\n?/g,'\n'),lines=output.split('\n');
+  data.version=output.match(/\bxtb version\s+(\d+\.\d+\.\d+(?:pre)?)(?:\s+\([a-f\d]{7,40}\))?/i)?.[1]??null;
+  const quantity=(label:string,unit:string)=>finite(output.match(new RegExp(`^[ \\t]*${label}[ \\t]+(${SCIENTIFIC_NUMBER})[ \\t]+${unit}[ \\t]*$`,'mi'))?.[1]??'');
+  const threshold=quantity('energy convergence','Eh'),densityThreshold=quantity('density convergence','e');
+  const charge=quantity('molecular charge','e'),electronCount=quantity('number of electrons','e'),uhf=quantity('number of unpaired electrons','e');
+  const spin=output.match(/^[ \t]*wavefunction[ \t]+(restricted|unrestricted)[ \t]*$/mi)?.[1];
+  const heading=lines.findIndex(line=>/^\s*cycle\s+total energy\s+energy error\s+density error\s*$/i.test(line));
+  const points=[];
+  if(heading>=0){
+    for(let index=heading+2;index<lines.length;index++){
+      const row=lines[index].trim().split(/\s+/);
+      if(row.length!==4||!/^\d+$/.test(row[0]))break;
+      const [iteration,energy,deltaEnergy,densityError]=row.map(finite);
+      if(iteration!==points.length+1||energy===null||deltaEnergy===null||densityError===null)break;
+      points.push({iteration,energy,deltaEnergy,densityError,sourceLine:index+1});
+    }
+  }
+  const end=points.at(-1),post=lines.findIndex(line=>/^\s*Post processing:\s*$/i.test(line));
+  const energyRow=lines.map((line,index)=>({index,match:line.match(new RegExp(`^\\s*\\|\\s*TOTAL ENERGY\\s+(${SCIENTIFIC_NUMBER})\\s+Eh\\s*\\|`,'i'))})).find(row=>row.match&&row.index>post);
+  const energyValue=energyRow?.match?finite(energyRow.match[1]):null;
+  const energy=energyRow?.match&&energyValue!==null?{value:energyValue,token:energyRow.match[1],sourceLine:energyRow.index+1}:null;
+  const failed=/FAILED TO CONVERGE|SCF did not converge|SCC did not converge|convergence criteria cannot be satisfied|ABNORMAL TERMINATION|\[ERROR\]|FATAL ERROR|GEOMETRY OPTIMIZATION/i.test(output);
+  const converged=!failed&&!!end&&post>=end.sourceLine&&threshold!==null&&densityThreshold!==null&&Math.abs(end.deltaEnergy)<=threshold&&Math.abs(end.densityError)<=densityThreshold&&!!energy&&Math.abs(energy.value-end.energy)<=1e-8;
+  const normalTermination=/^\s*normal termination of xtb\s*$/mi.test(output);
+  if(points.length)data.scfCycles.push({frameIndex:0,sourceLine:heading+1,sourceId,sourceName,unit:'hartree',deltaEnergyUnit:'hartree',points:points.map(({densityError,...point})=>point)});
+  if(converged&&end)data.summary.push({key:'scf-status',label:'SCC收敛',value:'converged',frameIndex:0,sourceId,sourceName,sourceLine:end.sourceLine},
+    {key:'scf-iterations',label:'SCC轮数',value:points.length,frameIndex:0,sourceId,sourceName,sourceLine:end.sourceLine});
+  if(energy)data.properties.push({key:'final-energy',label:'总电子能 E',value:energy.value,rawValue:energy.token,unit:'hartree',sourceLine:energy.sourceLine,frameIndex:0,sourceId,sourceName});
+  return {data,energy,iterations:points.length,normalTermination,converged,charge,electronCount,uhf,spin};
+}
+
 /** Validate only host-returned retained bundles, against the immutable launching request. */
 export async function validateGeneratedXtbBundle(bundle: XtbElectronicArtifactBundle, expected: GeneratedXtbExpected) {
-  const { request } = expected, metadata = bundle.metadata;
+  const { request } = expected, metadata = bundle.metadata, gxtb=request.method==='gxtb';
+  const requestedUhf = gxtb && request.uhf === undefined ? 0 : request.uhf;
   if (!bundle.artifactId || bundle.artifactId.length > 100 || bundle.sessionId !== expected.sessionId || !sameStamp(bundle.stamp, request.stamp)
-    || request.method !== 'gfn2' || request.calculation !== 'singlepoint' || request.electronicProperties !== true || request.structure.cell || metadata.periodic
+    || !['gfn2','gxtb'].includes(request.method) || request.calculation !== 'singlepoint' || request.electronicProperties !== true || request.structure.cell || metadata.periodic
     || request.structure.periodicSource?.completeness === 'partial' || request.structure.bonds?.some(bond => bond.image?.some(value => value !== 0))
-    || metadata.method !== 'gfn2' || metadata.engine !== 'xtb' || metadata.calculation !== 'singlepoint' || metadata.converged !== true
+    || metadata.method !== request.method || metadata.engine !== 'xtb' || metadata.calculation !== 'singlepoint' || metadata.converged !== true
     || metadata.energyUnit !== 'hartree' || metadata.coordinateUnit !== 'angstrom' || !Number.isFinite(metadata.energyHartree)
-    || metadata.charge !== request.charge || metadata.uhf !== request.uhf || !Number.isSafeInteger(metadata.uhf) || metadata.uhf! < 0
-    || electronicStateError(request.structure.atoms, metadata.charge, metadata.uhf! + 1)) fail('GFN2自产来源与单点请求身份或科学范围不一致。');
+    || metadata.charge !== request.charge || metadata.uhf !== requestedUhf || !Number.isSafeInteger(metadata.uhf) || metadata.uhf! < 0
+    || electronicStateError(request.structure.atoms, metadata.charge, metadata.uhf! + 1)) fail('XTB自产来源与单点请求身份或科学范围不一致。');
   const run = request.runIdentity;
   if ((expected.taskId === undefined) !== (expected.runId === undefined)
     || run && (bundle.runIdentity?.taskId !== run.taskId || bundle.runIdentity?.runId !== run.runId)
@@ -171,19 +207,23 @@ export async function validateGeneratedXtbBundle(bundle: XtbElectronicArtifactBu
   const atoms = metadata.orderedAtoms;
   if (!atoms.length || atoms.length !== request.structure.atoms.length || new Set(atoms.map(atom => atom.id)).size !== atoms.length
     || atoms.some((atom, index) => { const original = request.structure.atoms[index]; return !atom.id || atom.id !== original.id || atom.element !== original.element || ['x', 'y', 'z'].some(axis => !Number.isFinite(atom[axis as 'x']) || atom[axis as 'x'] !== original[axis as 'x']); })) fail('GFN2自产来源原子顺序或原始坐标不一致。');
-  if (bundle.files.length < 2 || bundle.files.length > 4 || new Set(bundle.files.map(file => file.role)).size !== bundle.files.length) fail('GFN2自产来源文件清单无效。');
-  let total = 0;
+  if (bundle.files.length < 2 || bundle.files.length > Object.keys(filesByRole).length || new Set(bundle.files.map(file => file.role)).size !== bundle.files.length) fail('XTB自产来源文件清单无效。');
   for (const file of bundle.files) {
-    const encoded = new TextEncoder().encode(file.text); total += encoded.byteLength;
-    if (file.name !== filesByRole[file.role] || file.bytes !== encoded.byteLength || total > 64 * 1024 ** 2) fail('GFN2自产来源文件字节或角色不一致。');
+    const encoded = new TextEncoder().encode(file.text);
+    if (file.name !== filesByRole[file.role] || file.bytes !== encoded.byteLength) fail('XTB自产来源文件字节或角色不一致。');
     const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', encoded))].map(value => value.toString(16).padStart(2, '0')).join('');
     if (digest !== file.sha256) fail('GFN2自产来源SHA与宿主清单不一致。');
   }
-  const molden = bundle.files.find(file => file.role === 'molden'), stdout = bundle.files.find(file => file.role === 'stdout');
-  if (!molden || !stdout) return fail('GFN2自产来源缺少Molden或原生输出。');
+  const molden = bundle.files.find(file => file.role === 'molden'), stdout = bundle.files.find(file => file.role === 'stdout'), derived=bundle.files.find(file=>file.role==='analysis-molden');
+  if (!molden || !stdout) return fail('XTB自产来源缺少Molden或原生输出。');
+  const conversion=metadata.moldenConversion;
+  if(gxtb){
+    if(!derived||!conversion||conversion.version!=='gxtb-cartesian-spdf-v1'||conversion.originalSha256!==molden.sha256||conversion.derivedSha256!==derived.sha256||request.solvation||metadata.solvation||!metadata.engineIdentity)
+      return fail('g-xTB来源缺少原生身份或有效的等价转换记录。');
+  }else if(derived||conversion)return fail('GFN2来源包含未经确认的g-xTB转换产物。');
   const lines = molden.text.replace(/\r\n?/g, '\n').split('\n'), atomLine = lines.findIndex(line => /^\s*\[Atoms\]\s+AU\s*$/i.test(line));
   if (atomLine < 0 || !/^\s*\[Molden Format\]/i.test(molden.text) || !/^\[GTO\]\s*$/mi.test(molden.text) || !/^\[MO\]\s*$/mi.test(molden.text) || !molden.text.endsWith('\n')) fail('GFN2自产Molden缺少完整原生包络。');
-  const geometry=parseMoldenStructure(molden.text,molden.name,`xtb-${bundle.artifactId}:molden`);
+  const geometry=parseMoldenStructure(molden.text,molden.name,`xtb-${bundle.artifactId}:molden`,gxtb?{effectiveNuclei:true}:undefined);
   if(geometry.unit!=='AU'||geometry.structure.atoms.length!==atoms.length)fail('GFN2自产Molden原子数或原子单位不一致。');
   const coordinateTolerance: number[] = [];
   atoms.forEach((atom, index) => {
@@ -194,7 +234,19 @@ export async function validateGeneratedXtbBundle(bundle: XtbElectronicArtifactBu
   });
   const following = lines.slice(atomLine + 1 + atoms.length).find(line => line.trim());
   if (!/^\s*\[/.test(following ?? '')) fail('GFN2自产Molden原子数与请求不一致。');
-  const parsed = parseGeneratedXtbStdout(stdout.text, atoms, `xtb-${bundle.artifactId}:stdout`);
+  const gxtbParsed=gxtb?parseGeneratedGxtbStdout(stdout.text,`xtb-${bundle.artifactId}:stdout`,stdout.name):undefined;
+  const parsed = gxtbParsed??parseGeneratedXtbStdout(stdout.text, atoms, `xtb-${bundle.artifactId}:stdout`);
+  if(gxtbParsed&&conversion&&derived){
+    const converted=parseMoldenStructure(derived.text,derived.name,`xtb-${bundle.artifactId}:molden`,{effectiveNuclei:true});
+    const effective=geometry.effectiveNuclearCharges??[];
+    if(JSON.stringify(converted.effectiveNuclearCharges)!==JSON.stringify(effective)||JSON.stringify(conversion.effectiveNuclearCharges)!==JSON.stringify(effective)
+      || converted.structure.atoms.length!==atoms.length||converted.structure.atoms.some((atom,i)=>atom.element!==atoms[i].element||(['x','y','z'] as const).some(axis=>atom[axis]!==geometry.structure.atoms[i][axis]))
+      || gxtbParsed.charge!==metadata.charge||gxtbParsed.uhf!==metadata.uhf||gxtbParsed.spin!==(conversion.spinResolution==='alpha-beta'?'unrestricted':'restricted')
+      || gxtbParsed.electronCount===null||Math.abs(gxtbParsed.electronCount-conversion.representedElectrons)>1e-7
+      || Math.abs(effective.reduce((sum,z)=>sum+z,0)-conversion.representedElectrons-metadata.charge)>1e-7
+      || Math.abs(conversion.alphaElectrons+conversion.betaElectrons-conversion.representedElectrons)>1e-7||Math.abs(conversion.alphaElectrons-conversion.betaElectrons-(metadata.uhf??0))>1e-7)
+      fail('g-xTB等价Molden的原子、有效核电荷、电子数或自旋与原件不一致。');
+  }
   const solvation = parseGeneratedXtbSolvation(stdout.text, request.solvation), evidence = metadata.solvation;
   const solvationKeys = ['model', 'solvent', 'kernel', 'referenceState', 'temperatureKelvin', 'parameterSet', 'sourceField'] as const;
   if (solvation === undefined ? evidence !== undefined : !evidence || Object.keys(evidence).length !== solvationKeys.length || solvationKeys.some(key => solvation.evidence[key] !== evidence[key])) fail('GFN2溶剂宿主元数据与同一原生输出不一致。');
@@ -202,10 +254,10 @@ export async function validateGeneratedXtbBundle(bundle: XtbElectronicArtifactBu
   const stderr = bundle.files.find(file => file.role === 'stderr');
   if (stderr && /FAILED TO CONVERGE|convergence criteria cannot be satisfied|ABNORMAL TERMINATION|\[ERROR\]|FATAL ERROR/i.test(stderr.text)) fail('GFN2自产stderr记录原生失败，未接入为已收敛来源。');
   if (stderr && /^\s*normal termination of xtb\s*$/mi.test(stderr.text)) parsed.normalTermination = true;
-  if (!parsed.converged || parsed.data.version !== metadata.version || parsed.energy?.value !== metadata.energyHartree) fail('GFN2自产原生输出未证明同一次SCC收敛、版本或最终能量。');
+  if (!parsed.converged || (parsed.data.version??'unknown') !== metadata.version || parsed.energy?.value !== metadata.energyHartree) fail('GFN2自产原生输出未证明同一次SCC收敛、版本或最终能量。');
   if (metadata.sccIterations !== undefined && metadata.sccIterations !== parsed.iterations) fail('GFN2自产SCC轮数与宿主元数据不一致。');
   const wbo = bundle.files.find(file => file.role === 'wbo'), bondOrders = metadata.bondOrders;
-  if (wbo || bondOrders) {
+  if (!gxtb&&wbo || bondOrders) {
     if (!wbo || !bondOrders || bondOrders.definition !== 'mayer-ao' || bondOrders.sourceField !== 'wbo' || bondOrders.threshold !== .1 || wbo.text && !wbo.text.endsWith('\n')) fail('GFN2原生键级来源或定义不一致。');
     const entries: { atomIds: [string, string]; value: number }[] = [], seen = new Set<string>();
     for (const line of wbo!.text.trim().split(/\r?\n/).filter(line => line.trim())) {
@@ -215,7 +267,7 @@ export async function validateGeneratedXtbBundle(bundle: XtbElectronicArtifactBu
     }
     if (JSON.stringify(entries) !== JSON.stringify(bondOrders!.entries)) fail('GFN2原生键级文本与宿主稳定原子映射不一致。');
   }
-  return { molden, stdout, parsed, coordinateTolerance };
+  return { molden, analysisMolden:derived??molden, stdout, parsed, coordinateTolerance };
 }
 
 /** The generated opener accepts only an owned host artifact and a new session ID. */
@@ -223,11 +275,17 @@ export async function readGeneratedXtbSource(bundle: XtbElectronicArtifactBundle
   open: (artifactId: string, sessionId: string) => Promise<WavefunctionMetadata>): Promise<PostprocessAttachment> {
   const snapshot = structuredClone(bundle), launching = structuredClone(expected);
   const checked = await validateGeneratedXtbBundle(snapshot, launching);
-  const { molden, parsed } = checked, bytes = new TextEncoder().encode(molden.text);
+  const { analysisMolden:molden, parsed } = checked, bytes = new TextEncoder().encode(molden.text);
+  const isGxtb=snapshot.metadata.method==='gxtb', methodLabel=isGxtb?'g-xTB':'GFN2-xTB', label=`${methodLabel} 单点`;
   const metadata = await open(snapshot.artifactId, nativeSessionId), sourceId = metadata.sourceId;
   if (sourceId !== `xtb-${snapshot.artifactId}:molden` || metadata.sourceRevision !== molden.sha256 || metadata.format !== 'molden' || metadata.name !== molden.name
     || !Number.isSafeInteger(metadata.basisCount) || metadata.basisCount < 1 || !metadata.orbitals.length || metadata.structure.atoms.length !== snapshot.metadata.orderedAtoms.length) fail('真实波函数后端未返回相符的Molden/基组/MO身份。');
-  if(metadata.analysisPolicy!==undefined&&(!isGeneratedXtbAnalysisPolicy(metadata.analysisPolicy,molden.sha256)||metadata.analysisPolicy.requestedUhf!==launching.request.uhf))fail('宿主分析许可与自产波函数身份或请求UHF不一致。');
+  if(metadata.analysisPolicy!==undefined&&(!isGeneratedXtbAnalysisPolicy(metadata.analysisPolicy,molden.sha256)||metadata.analysisPolicy.requestedUhf!==snapshot.metadata.uhf))fail('宿主分析许可与自产波函数身份或请求UHF不一致。');
+  const conversion=snapshot.metadata.moldenConversion;
+  if(isGxtb&&(!conversion||metadata.basisCount!==conversion.basisCount||metadata.orbitals.length!==conversion.orbitalCount
+    || JSON.stringify(metadata.effectiveNuclearCharges)!==JSON.stringify(conversion.effectiveNuclearCharges)
+    || metadata.orbitals.some(orbital=>orbital.spin==='beta')!==(conversion.spinResolution==='alpha-beta')))
+    fail('g-xTB波函数后端的有效核、轨道或自旋身份与转换记录不一致。');
   let closed = false;
   const input: ResultInputFile = { id: sourceId, name: molden.name, size: bytes.length,
     stream: () => new Blob([bytes]).stream(), async readRange(start, end) { if (closed) fail('自产波函数来源已关闭。'); return bytes.slice(start, end); }, close() { closed = true; } };
@@ -237,19 +295,21 @@ export async function readGeneratedXtbSource(bundle: XtbElectronicArtifactBundle
   });
   const source = await readPostprocessWavefunction(input, metadata);
   const structure: Structure = { ...structuredClone(launching.request.structure), format: 'molden', charge: snapshot.metadata.charge, multiplicity: snapshot.metadata.uhf! + 1,
-    atoms: snapshot.metadata.orderedAtoms.map(atom => ({ ...atom })), name: 'GFN2-xTB 单点' };
-  parsed.data.summary.push({ key: 'method', label: '方法', value: 'GFN2-xTB', sourceLine: 1, frameIndex: 0, sourceId: parsed.data.source!.id, sourceName: 'stdout.log' });
+    atoms: snapshot.metadata.orderedAtoms.map(atom => ({ ...atom })), name: label };
+  parsed.data.summary.push({ key: 'method', label: '方法', value: methodLabel, sourceLine: 1, frameIndex: 0, sourceId: parsed.data.source!.id, sourceName: 'stdout.log' });
   parsed.data.orbitals = source.result.scientific?.orbitals ?? [];
   parsed.data.orbitals = parsed.data.orbitals.map(channel => ({ ...channel, sourceId, sourceName: molden.name }));
   parsed.data.notices.push(...metadata.messages);
   const originalDispose = source.result.dispose;
-  const result = { ...source.result, label: 'GFN2-xTB 单点', source: { ...source.result.source, software: 'xtb' as const }, status: parsed.normalTermination ? 'completed' as const : 'incomplete' as const,
+  const result = { ...source.result, label, source: { ...source.result.source, software: 'xtb' as const }, status: parsed.normalTermination ? 'completed' as const : 'incomplete' as const,
     scientific: parsed.data, initialStructure: structure, frames: [{ index: 0, sourceStep: null, time: null, energy: { value: parsed.energy!.value, unit: 'hartree' }, convergence: [], sourceLine: parsed.energy!.sourceLine }],
     async getFrame(index: number) { if (closed || index !== 0) fail('自产单点来源已关闭或帧序号越界。'); return structuredClone(structure); }, dispose: originalDispose };
-  const generatedXtb: GeneratedXtbProvenance = { kind: 'trusted-generated-gfn2-sp', artifactId: snapshot.artifactId, sessionId: snapshot.sessionId, stamp: snapshot.stamp,
+  const generatedXtb: GeneratedXtbProvenance = { kind: isGxtb?'trusted-generated-gxtb-sp':'trusted-generated-gfn2-sp', artifactId: snapshot.artifactId, sessionId: snapshot.sessionId, stamp: snapshot.stamp,
     ...(snapshot.runIdentity ? { runIdentity: snapshot.runIdentity } : {}), files: snapshot.files.map(({ role, name, bytes, sha256 }) => ({ role, name, bytes, sha256 })),
     ...(snapshot.metadata.bondOrders ? { nativeBondOrders: snapshot.metadata.bondOrders } : {}), capabilities: ['native-properties', 'orbitals'] };
   if (snapshot.metadata.solvation) generatedXtb.solvation = structuredClone(snapshot.metadata.solvation);
+  if (snapshot.metadata.engineIdentity) generatedXtb.engineIdentity=structuredClone(snapshot.metadata.engineIdentity);
+  if (conversion) generatedXtb.moldenConversion=structuredClone(conversion);
   if(metadata.analysisPolicy)generatedXtb.analysisPolicy=structuredClone(metadata.analysisPolicy);
   const generated: PostprocessSource = { ...source, software: 'xtb', generatedXtb, result, results: [result], tasks: ['sp'] };
   retainGeneratedXtbSourcePackage(generated, async () => ({ schema: 1, bundle: snapshot, expected: launching, ...(metadata.analysisPolicy ? { analysisPolicy: metadata.analysisPolicy } : {}) }));

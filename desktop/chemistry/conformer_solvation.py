@@ -32,6 +32,10 @@ def native_alpb_supported(method, operation, solvent):
     return method in CAPABILITY['nativeMethods'] and operation in CAPABILITY['nativeOperations'] and solvent in PRESETS
 
 
+def legacy_gbsa_supported(method, solvent):
+    return solvent in CAPABILITY['legacyGbsaSolvents'].get(method, ())
+
+
 def native_solvation(output, request):
     """Read the one real setup block, never the ALPB literature reference."""
     output = output.replace('\r\n', '\n')

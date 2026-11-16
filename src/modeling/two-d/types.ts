@@ -1,9 +1,11 @@
-import type { Atom, Bond, Structure } from '../../core/types';
+import type { Atom, Bond, Structure, TwoDStereoSource } from '../../core/types';
 
 export type TwoDFormat = 'cdx' | 'cdxml' | 'mol' | 'ket';
 export interface TwoDSourceInput { id: string; name?: string; format?: TwoDFormat; data: string | Uint8Array }
 export interface TwoDIssue {
   code: string; message: string; severity: 'warning' | 'blocking'; atomIds?: string[];
+  /** Persisted with the source manifest, independent of 3D coordinate locks. */
+  stereoRepresentation?: { schema:'es-2d-stereo-representative/v1'; selection:'source-compatible-member'; groups:NonNullable<TwoDStereoSource['stereoGroups']> };
   /** Missing correspondence stays a document risk rather than inventing an affected molecule. */
   scope?: 'document' | 'component'; sourceFragmentKey?: string; componentIds?: string[];
   resolution?: {
@@ -47,8 +49,13 @@ export interface RemainingTwoDSourceIssuesInput {
   currentComponent: TwoDComponent; edited: boolean;
 }
 export interface TwoDCommitData {
+  /** Generation-only independent reference; never persisted as a 3D lock. */
+  sourceStereo?:TwoDStereoSource;
   source: TwoDDraft['source']; selectedComponentId: string;
+  /** Whole-board generation keeps each disconnected source component explicit. */
+  selectedComponentIds?: string[];
+  assembly?: { schema:'es-2d-assembly/v1'; components:{id:string;label:string;atomIds:string[]}[]; layoutScale:number };
   originalKet: string; finalKet: string;
-  finalGraph: Pick<Structure, 'atoms' | 'bonds' | 'layout2D'>;
+  finalGraph: Pick<Structure, 'atoms' | 'bonds' | 'layout2D'> & Partial<Pick<Structure,'charge'>>;
   issues: TwoDIssue[]; edited: boolean;
 }

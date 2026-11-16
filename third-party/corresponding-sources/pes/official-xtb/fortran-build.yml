@@ -1,0 +1,1007 @@
+name: CI
+on: [push, pull_request]
+env:
+   BUILD_DIR: _build
+jobs:
+   source-dist:
+      runs-on: ubuntu-latest
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.x
+         - name: Install LAPACK
+           run: sudo apt-get install liblapack-dev
+         - name: Install Meson
+           run: pip install meson==1.7.0 ninja
+         - name: Create source distribution
+           run: |
+            meson setup ${{ env.BUILD_DIR }} -Dlapack=netlib --wrap-mode=forcefallback
+            meson dist -C ${{ env.BUILD_DIR }} --no-tests --include-subprojects
+            mv ${{ env.BUILD_DIR }}/meson-dist/xtb-*.tar.xz .
+         - name: Upload source distribution
+           uses: actions/upload-artifact@v4
+           with:
+            name: xtb-source
+            path: ./xtb-*.tar.xz
+            retention-days: 5
+
+   gcc-meson-build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         fail-fast: false
+         matrix:
+            include:
+               - os: ubuntu-22.04
+                 version: 10
+               - os: ubuntu-22.04
+                 version: 11
+               - os: ubuntu-24.04
+                 version: 12
+               - os: ubuntu-24.04
+                 version: 13
+               - os: ubuntu-latest
+                 version: 14
+               # GCC 15/16 need 26.04 even while ubuntu-latest still serves 24.04.
+               - os: ubuntu-26.04
+                 version: 15
+               - os: ubuntu-26.04
+                 version: 16
+               - os: ubuntu-24.04-arm
+                 version: 14
+               - os: macos-15-intel
+                 version: 15
+               - os: macos-latest
+                 version: 14
+               - os: macos-latest
+                 version: 15
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.x
+         - name: Install OpenBLAS (macOS)
+           if: ${{ contains(matrix.os, 'macos') }}
+           run: |
+            brew install openblas
+            echo "PKG_CONFIG_PATH=/usr/local/opt/openblas/lib/pkgconfig" >> $GITHUB_ENV
+            echo "LDFLAGS=-L/opt/homebrew/opt/openblas/lib" >> $GITHUB_ENV
+            echo "CPPFLAGS=-I/opt/homebrew/opt/openblas/include" >> $GITHUB_ENV
+         - name: Install GNU compilers and OpenBLAS
+           if: ${{ contains(matrix.os, 'ubuntu') }}
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y \
+              gcc-${{ matrix.version }} \
+              gfortran-${{ matrix.version }} \
+              libopenblas-dev
+         - name: Install meson
+           run: pip install meson==1.7.0 ninja
+         - name: Configure build
+           run: >
+            meson setup ${{ env.BUILD_DIR }} --buildtype=debug --warnlevel=0 -Db_coverage=true ${{ env.MESON_ARGS }}
+           env:
+            FC: gfortran-${{ matrix.version }}
+            CC: gcc-${{ matrix.version }}
+            MESON_ARGS: ${{ contains(matrix.os, 'macos') && '-Dlapack=openblas' || '-Dlapack=netlib' }}
+         - name: Build project
+           run: meson compile -C ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: meson test -C ${{ env.BUILD_DIR }} --print-errorlogs --no-rebuild -t 120 --suite xtb
+           env:
+            OMP_NUM_THREADS: 2,1
+         - name: Upload coverage report
+           run: bash <(curl -s https://codecov.io/bash)
+
+   gcc-cmake-build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         fail-fast: false
+         matrix:
+            include:
+               - os: ubuntu-26.04
+                 fc: gfortran-15
+                 cc: gcc-15
+                 build: Release
+               - os: ubuntu-26.04
+                 fc: gfortran-15
+                 cc: gcc-15
+                 build: Debug
+               - os: ubuntu-24.04-arm
+                 fc: gfortran-14
+                 cc: gcc-14
+                 build: Release
+               - os: ubuntu-24.04-arm
+                 fc: gfortran-14
+                 cc: gcc-14
+                 build: Debug
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.x
+         - name: Install GNU compilers and OpenBLAS
+           if: ${{ contains(matrix.os, 'ubuntu') }}
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y ${{ matrix.cc }} ${{ matrix.fc }} libopenblas-dev
+         - name: Install CMake
+           run: pip install ninja cmake
+         - name: Configure build
+           run: cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build }}
+           env:
+            FC: ${{ matrix.fc }}
+            CC: ${{ matrix.cc }}
+         - name: Build project
+           run: cmake --build ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: ctest --parallel --output-on-failure -R '^xtb/'
+           working-directory: ${{ env.BUILD_DIR }}
+           env:
+            OMP_NUM_THREADS: 2,1
+
+   xtb-lightweight-meson-build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         fail-fast: false
+         matrix:
+            os: [ubuntu-26.04]
+            fc: [gfortran-15]
+            cc: [gcc-15]
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.10.x
+         - name: Install GNU compilers and OpenBLAS
+           if: ${{ contains(matrix.os, 'ubuntu') }}
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y ${{ matrix.cc }} ${{ matrix.fc }} libopenblas-dev
+         - name: Install meson
+           run: pip3 install meson==0.62.0 ninja cmake
+         - name: Configure build
+           run: >
+            meson setup ${{ env.BUILD_DIR }} --buildtype=debug --warnlevel=0 ${{ env.MESON_ARGS }}
+           env:
+            FC: ${{ matrix.fc }}
+            CC: ${{ matrix.cc }}
+            MESON_ARGS: ${{ '-Dlapack=netlib -Dtblite=disabled -Dcpcmx=disabled' }}
+         - name: Build project
+           run: meson compile -C ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: meson test -C ${{ env.BUILD_DIR }} --print-errorlogs --no-rebuild -t 120 --suite xtb
+           env:
+            OMP_NUM_THREADS: 2,1
+
+   xtb-lightweight-cmake-build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         fail-fast: false
+         matrix:
+            os: [ubuntu-26.04]
+            fc: [gfortran-15]
+            cc: [gcc-15]
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.x
+         - name: Install GNU compilers and OpenBLAS
+           if: ${{ contains(matrix.os, 'ubuntu') }}
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y ${{ matrix.cc }} ${{ matrix.fc }} libopenblas-dev
+         - name: Install CMake
+           run: pip3 install ninja cmake
+         - name: Configure build
+           run: cmake -B ${{ env.BUILD_DIR }} -DWITH_CPCMX=false -DWITH_TBLITE=false -G Ninja
+           env:
+            FC: ${{ matrix.fc }}
+            CC: ${{ matrix.cc }}
+         - name: Build project
+           run: cmake --build ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: ctest --parallel --output-on-failure -R '^xtb/'
+           working-directory: ${{ env.BUILD_DIR }}
+           env:
+            OMP_NUM_THREADS: 2,1
+
+   # Test native MinGW Windows build
+   mingw-meson-build:
+      runs-on: windows-latest
+      strategy:
+         fail-fast: false
+         matrix:
+            include: [{msystem: MINGW64, arch: x86_64,}
+               # { msystem: MINGW32, arch: i686   }
+            ]
+      defaults:
+         run:
+            shell: msys2 {0}
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup MSYS2 toolchain
+           uses: msys2/setup-msys2@v2
+           with:
+            msystem: ${{ matrix.msystem }}
+            update: false
+            install: >-
+               git
+               mingw-w64-${{ matrix.arch }}-gcc-fortran
+               mingw-w64-${{ matrix.arch }}-openblas
+               mingw-w64-${{ matrix.arch }}-lapack
+               mingw-w64-${{ matrix.arch }}-python
+               mingw-w64-${{ matrix.arch }}-python-pip
+               mingw-w64-${{ matrix.arch }}-meson
+               mingw-w64-${{ matrix.arch }}-ninja
+         - name: Configure build
+           run: meson setup ${{ env.BUILD_DIR }} -Dlapack=netlib --warnlevel=0
+           env:
+            FC: gfortran
+            CC: gcc
+         - name: Build project
+           run: meson compile -C ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: meson test -C ${{ env.BUILD_DIR }} --print-errorlogs --no-rebuild -t 120 --suite xtb
+           env:
+            OMP_NUM_THREADS: 1
+
+   intel-meson-build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         fail-fast: false
+         matrix:
+            os: [ubuntu-24.04]
+            fc: [ifort]
+            cc: [icc]
+      env:
+         FC: ${{ matrix.fc }}
+         CC: ${{ matrix.cc }}
+         APT_PACKAGES: >-
+            intel-oneapi-compiler-fortran-2022.1.0 intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic-2022.1.0 intel-oneapi-mkl-2022.1.0 intel-oneapi-mkl-devel-2022.1.0 asciidoctor
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.x
+         - run: pip3 install meson==1.7.0 ninja --user
+         - name: Add Intel repository
+           if: contains(matrix.os, 'ubuntu')
+           run: |
+            wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+              | gpg --dearmor \
+              | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg >/dev/null
+            echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+              | sudo tee /etc/apt/sources.list.d/oneAPI.list
+            sudo apt-get update
+         - name: Install Intel oneAPI compiler
+           if: contains(matrix.os, 'ubuntu')
+           run: |
+            sudo apt-get install ${APT_PACKAGES}
+            source /opt/intel/oneapi/setvars.sh
+            printenv >> $GITHUB_ENV
+         - name: Configure meson build
+           run: >
+            meson setup ${{ env.BUILD_DIR }} --prefix=/ --libdir=lib
+            -Dfortran_link_args="-lifcoremt -static"
+            -Ddefault_library=static
+            -Dlapack=mkl
+
+         - name: Build project
+           run: ninja -C ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: >
+            meson test -C ${{ env.BUILD_DIR }} --print-errorlogs --num-processes 1
+            --no-rebuild --suite xtb -t 120
+           env:
+            OMP_NUM_THREADS: 2,1
+
+   intel-ifx-cmake-build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         fail-fast: false
+         matrix:
+            os: [ubuntu-latest]
+            build: [Release]
+            version: ['2026.2']
+      env:
+         CC: icx
+         FC: ifx
+         APT_PACKAGES: >-
+            intel-oneapi-compiler-fortran-${{ matrix.version }} intel-oneapi-compiler-dpcpp-cpp-${{ matrix.version }} intel-oneapi-mkl-${{ matrix.version }} intel-oneapi-mkl-devel-${{ matrix.version }}
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.x
+         - run: pip3 install cmake ninja --user
+         - name: Install Intel oneAPI compiler and MKL
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y gpg wget
+            wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+              | gpg --dearmor \
+              | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg >/dev/null
+            echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+              | sudo tee /etc/apt/sources.list.d/oneAPI.list
+            sudo apt-get update
+            apt-cache policy ${APT_PACKAGES}
+            sudo apt-get install -y ${APT_PACKAGES}
+            source /opt/intel/oneapi/setvars.sh --force
+            ifx --version
+            icx --version
+            printenv >> $GITHUB_ENV
+         - name: Configure cmake build
+           run: >
+            cmake -B ${{ env.BUILD_DIR }} -G Ninja
+            -DCMAKE_BUILD_TYPE=${{ matrix.build }}
+            -DCMAKE_C_COMPILER=icx
+            -DCMAKE_CXX_COMPILER=icpx
+            -DCMAKE_Fortran_COMPILER=ifx
+            -DBLA_VENDOR=Intel10_64lp
+            -DWITH_TBLITE=ON
+            -DWITH_DDX=ON
+            -DTBLITE_WITH_DDX=ON
+            -DWITH_CPCMX=ON
+         - name: Build project
+           run: ninja -C ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: ctest --parallel --output-on-failure -R '^xtb/'
+           working-directory: ${{ env.BUILD_DIR }}
+           env:
+            OMP_NUM_THREADS: 2,1
+
+   intel-ifx-meson-build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         fail-fast: false
+         matrix:
+            os: [ubuntu-latest]
+            version: ['2026.2']
+      env:
+         CC: icx
+         FC: ifx
+         APT_PACKAGES: >-
+            intel-oneapi-compiler-fortran-${{ matrix.version }} intel-oneapi-compiler-dpcpp-cpp-${{ matrix.version }} intel-oneapi-mkl-${{ matrix.version }} intel-oneapi-mkl-devel-${{ matrix.version }}
+      steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+         - name: Setup Python
+           uses: actions/setup-python@v5
+           with:
+            python-version: 3.x
+         - run: pip3 install meson==1.7.0 ninja --user
+         - name: Install Intel oneAPI compiler and MKL
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y gpg wget
+            wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+              | gpg --dearmor \
+              | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg >/dev/null
+            echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+              | sudo tee /etc/apt/sources.list.d/oneAPI.list
+            sudo apt-get update
+            apt-cache policy ${APT_PACKAGES}
+            sudo apt-get install -y ${APT_PACKAGES}
+            source /opt/intel/oneapi/setvars.sh --force
+            ifx --version
+            icx --version
+            printenv >> $GITHUB_ENV
+         - name: Configure meson build
+           run: >
+            CC=${{ env.CC }} FC=${{ env.FC }} meson setup ${{ env.BUILD_DIR }}
+            --prefix=/ --libdir=lib
+            -Dfortran_args=-fp-model=precise
+            -Dfortran_link_args="-lifcoremt -static"
+            -Ddefault_library=static
+            -Dlapack=mkl
+            -Dtblite=disabled
+         - name: Build project
+           run: ninja -C ${{ env.BUILD_DIR }}
+         - name: Run unit tests
+           run: >
+            meson test -C ${{ env.BUILD_DIR }} --print-errorlogs --num-processes 1
+            --no-rebuild --suite xtb -t 120
+           env:
+            OMP_NUM_THREADS: 2,1
+
+   tests-passed:
+      needs:
+         - gcc-meson-build
+         - gcc-cmake-build
+         - xtb-lightweight-meson-build
+         - xtb-lightweight-cmake-build
+         - mingw-meson-build
+         - intel-meson-build
+         - intel-ifx-cmake-build
+         - intel-ifx-meson-build
+      runs-on: ubuntu-latest
+      steps:
+         - run: echo "All test jobs passed"
+
+   release-linux-x86_64:
+      needs: tests-passed
+      runs-on: ubuntu-24.04
+      steps:
+         - uses: actions/checkout@v4
+         - uses: fortran-lang/setup-fortran@v1
+           with:
+            compiler: intel
+            version: '2025.2'
+         - name: Install pinned MKL and build tools
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y intel-oneapi-mkl-devel-2025.2 ninja-build asciidoctor
+            source /opt/intel/oneapi/setvars.sh --force
+            printenv >> "$GITHUB_ENV"
+         - name: Configure fully static Release
+           run: |
+            ifx --version
+            icx --version
+            icpx --version
+            uname -m
+            for lib in mkl_intel_lp64 mkl_intel_thread mkl_core; do
+              test -f "$MKLROOT/lib/intel64/lib$lib.a"
+              ls -l "$MKLROOT/lib/intel64/lib$lib.a"
+            done
+            compiler_root=$(cd "$(dirname "$(command -v ifx)")/.." && pwd)
+            test -f "$compiler_root/lib/libiomp5.a"
+            ls -l "$compiler_root/lib/libiomp5.a"
+            mkl="-Wl,--start-group;$MKLROOT/lib/intel64/libmkl_intel_lp64.a;$MKLROOT/lib/intel64/libmkl_intel_thread.a;$MKLROOT/lib/intel64/libmkl_core.a;-Wl,--end-group"
+            cmake -B _release -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DCMAKE_Fortran_COMPILER=ifx \
+              -DBLA_VENDOR=Intel10_64lp -DBLA_STATIC=ON \
+              -DOpenMP_iomp5_LIBRARY="$compiler_root/lib/libiomp5.a" \
+              -DOpenMP_Fortran_LIB_NAMES=iomp5 -DOpenMP_C_LIB_NAMES=iomp5 -DOpenMP_CXX_LIB_NAMES=iomp5 \
+              -DBLAS_LIBRARIES="$mkl" -DLAPACK_LIBRARIES="$mkl" \
+              -DBUILD_SHARED_LIBS=OFF -DWITH_TBLITE=ON -DWITH_DDX=ON -DTBLITE_WITH_DDX=ON -DWITH_CPCMX=ON \
+              -DCMAKE_EXE_LINKER_FLAGS='-static -static-intel -fiopenmp -qopenmp-link=static' \
+              -DCMAKE_INSTALL_PREFIX=/ \
+              -DCMAKE_INSTALL_BINDIR=/bin \
+              -DCMAKE_INSTALL_LIBDIR=/lib \
+              -DCMAKE_INSTALL_INCLUDEDIR=/include \
+              -DCMAKE_INSTALL_DATADIR=/share \
+              -DCMAKE_INSTALL_MANDIR=/share/man
+         - name: Build and install
+           run: |
+            set -euo pipefail
+            cmake --build _release --verbose
+            DESTDIR="$PWD/_install" cmake --install _release
+            rm -rf stage
+            mkdir -p stage/bin stage/include stage/lib/pkgconfig stage/share/xtb \
+              stage/share/modules/modulefiles \
+              stage/share/man/man1 stage/share/man/man7 \
+              stage/share/licenses/xtb stage/share/licenses/ddcosmo stage/share/licenses/mkl \
+              stage/share/licenses/intel-runtime stage/share/licenses/gcc-runtime
+            cp _install/bin/xtb stage/bin/xtb
+            cp _install/bin/cpx stage/bin/cpx
+            cp _install/include/xtb.h stage/include/xtb.h
+            cp _install/lib/libxtb.a stage/lib/libxtb.a
+            cp _install/lib/libcpcmx.a stage/lib/libcpx.a
+            cp _install/lib/pkgconfig/xtb.pc stage/lib/pkgconfig/xtb.pc
+            cp -R _install/share/modules/modulefiles/xtb stage/share/modules/modulefiles/
+            for param in param_gfn0-xtb.txt param_gfn1-xtb.txt param_gfn1-si-xtb.txt param_gfn2-xtb.txt param_ipea-xtb.txt .param_gfnff.xtb; do
+              cp "_install/share/xtb/$param" "stage/share/xtb/$param"
+            done
+            asciidoctor -b manpage man/xtb.1.adoc -o stage/share/man/man1/xtb.1
+            asciidoctor -b manpage man/xcontrol.7.adoc -o stage/share/man/man7/xcontrol.7
+            cp COPYING COPYING.LESSER stage/share/licenses/xtb/
+            cp src/solv/ddcosmo/LICENSE stage/share/licenses/ddcosmo/LICENSE
+            copy_dpkg_notices() {
+              local dest="$1"
+              shift
+              mkdir -p "$dest"
+              local pkg path
+              for pkg in "$@"; do
+                while IFS= read -r path; do
+                  [ -f "$path" ] || continue
+                  case "${path,,}" in
+                    *license*|*licensing*|*copyright*|*third-party*|*third_party*|*redist*)
+                      cp "$path" "$dest/${pkg}-$(basename "$path")"
+                      ;;
+                  esac
+                done < <(dpkg-query -L "$pkg")
+              done
+            }
+            copy_dpkg_notices stage/share/licenses/mkl \
+              intel-oneapi-common-licensing-2025.2 \
+              intel-oneapi-mkl-classic-include-2025.2 \
+              intel-oneapi-mkl-core-2025.2 \
+              intel-oneapi-mkl-core-devel-2025.2 \
+              intel-oneapi-mkl-devel-2025.2
+            copy_dpkg_notices stage/share/licenses/intel-runtime \
+              intel-oneapi-common-licensing-2025.2 \
+              intel-oneapi-compiler-fortran-common-2025.2 \
+              intel-oneapi-compiler-fortran-runtime-2025.2 \
+              intel-oneapi-compiler-shared-common-2025.2 \
+              intel-oneapi-compiler-shared-runtime-2025.2 \
+              intel-oneapi-compiler-dpcpp-cpp-common-2025.2 \
+              intel-oneapi-compiler-dpcpp-cpp-runtime-2025.2 \
+              intel-oneapi-openmp-common-2025.2 \
+              intel-oneapi-openmp-2025.2
+            for f in /usr/share/doc/gcc-14-base/copyright /usr/share/doc/libstdc++6/copyright; do
+              if [ -f "$f" ]; then
+                cp "$f" stage/share/licenses/gcc-runtime/DEBIAN-COPYRIGHT
+                break
+              fi
+            done
+            cp /usr/share/common-licenses/GPL-3 stage/share/licenses/gcc-runtime/GPL-3
+            cp /usr/share/common-licenses/LGPL-2.1 stage/share/licenses/gcc-runtime/LGPL-2.1
+            for pkg in cpcmx numsa tblite ddx dftd4 s-dftd3 multicharge mctc-lib toml-f; do
+              d="_release/_deps/${pkg}-src"
+              if [ ! -d "$d" ]; then
+                d="subprojects/$pkg"
+              fi
+              out_pkg="${pkg/cpcmx/cpx}"
+              mkdir -p "stage/share/licenses/$out_pkg"
+              for f in "$d"/COPYING* "$d"/LICENSE*; do
+                if [ -f "$f" ]; then
+                  cp "$f" "stage/share/licenses/$out_pkg/"
+                fi
+              done
+            done
+         - name: Verify static linkage and package
+           run: |
+            set -euo pipefail
+            exe=stage/bin/xtb
+            description=$(file "$exe")
+            printf '%s\n' "$description"
+            [[ $description =~ statically\ linked|static-pie\ linked ]] || { echo 'Binary is not static' >&2; exit 1; }
+            headers=$(readelf -lW "$exe")
+            ! grep -Eq '(^|[[:space:]])INTERP([[:space:]]|$)' <<< "$headers" || { echo 'PT_INTERP found: binary is dynamic' >&2; exit 1; }
+            dynamic=$(readelf -dW "$exe")
+            ! grep -q '(NEEDED)' <<< "$dynamic" || { echo 'DT_NEEDED found: binary has dynamic dependencies' >&2; exit 1; }
+            echo 'PASS: no PT_INTERP; zero DT_NEEDED'
+            tar -cJf xtb-bleed-linux-x86_64-ifx-mkl.tar.xz stage
+         - uses: actions/upload-artifact@v4
+           with:
+            name: xtb-bleed-linux-x86_64-ifx-mkl.tar.xz
+            path: xtb-bleed-linux-x86_64-ifx-mkl.tar.xz
+            if-no-files-found: error
+
+   release-linux-aarch64:
+      needs: tests-passed
+      runs-on: ubuntu-24.04-arm
+      steps:
+         - uses: actions/checkout@v4
+         - uses: actions/setup-python@v5
+           with:
+            python-version: '3.12'
+         - name: Install toolchain and static OpenBLAS
+           run: |
+            sudo apt-get update
+            sudo apt-get install -y gcc-14 g++-14 gfortran-14 libopenblas-pthread-dev ninja-build asciidoctor
+            pip install meson==1.7.0
+         - name: Configure fully static Release
+           env:
+            CC: gcc-14
+            CXX: g++-14
+            FC: gfortran-14
+            LDFLAGS: -static -static-libgcc -static-libgfortran
+           run: |
+            test "$(uname -m)" = aarch64
+            uname -m
+            "$CC" --version
+            "$CXX" --version
+            "$FC" --version
+            archive=$(dpkg -L libopenblas-pthread-dev | awk '/\/libopenblas.a$/ {print; exit}')
+            test -f "$archive"
+            ls -l "$archive"
+            metadata=$(dpkg -L libopenblas-pthread-dev | awk '/\/openblas.pc$/ {print; exit}')
+            test -f "$metadata"
+            export PKG_CONFIG_PATH="$(dirname "$metadata")"
+            pkg-config --modversion openblas
+            pkg-config --static --libs openblas
+            for lib in libgfortran.a libgcc.a libgomp.a; do
+              runtime=$("$FC" -print-file-name="$lib")
+              test -f "$runtime"
+              ls -l "$runtime"
+            done
+            meson setup _release --prefix=/ --libdir=lib \
+              --buildtype=release --optimization=2 -Ddefault_library=static -Dprefer_static=true \
+              -Dlapack=openblas -Dtblite=enabled -Dtblite:ddx=true -Dcpcmx=enabled
+         - name: Build and install
+           run: |
+            set -euo pipefail
+            meson compile -C _release -v
+            DESTDIR="$PWD/_install" meson install -C _release
+            rm -rf stage
+            mkdir -p stage/bin stage/include stage/lib/pkgconfig stage/share/xtb \
+              stage/share/modules/modulefiles \
+              stage/share/man/man1 stage/share/man/man7 \
+              stage/share/licenses/xtb stage/share/licenses/ddcosmo stage/share/licenses/openblas \
+              stage/share/licenses/gcc-runtime
+            cp _install/bin/xtb stage/bin/xtb
+            cp _install/bin/cpx stage/bin/cpx
+            cp _install/include/xtb.h stage/include/xtb.h
+            cp _install/lib/libxtb.a stage/lib/libxtb.a
+            cp _install/lib/libcpx.a stage/lib/libcpx.a
+            cp _install/lib/pkgconfig/xtb.pc stage/lib/pkgconfig/xtb.pc
+            cp -R _install/share/modules/modulefiles/xtb stage/share/modules/modulefiles/
+            for param in param_gfn0-xtb.txt param_gfn1-xtb.txt param_gfn1-si-xtb.txt param_gfn2-xtb.txt param_ipea-xtb.txt .param_gfnff.xtb; do
+              cp "_install/share/xtb/$param" "stage/share/xtb/$param"
+            done
+            asciidoctor -b manpage man/xtb.1.adoc -o stage/share/man/man1/xtb.1
+            asciidoctor -b manpage man/xcontrol.7.adoc -o stage/share/man/man7/xcontrol.7
+            cp COPYING COPYING.LESSER stage/share/licenses/xtb/
+            cp src/solv/ddcosmo/LICENSE stage/share/licenses/ddcosmo/LICENSE
+            cp /usr/share/doc/libopenblas-pthread-dev/copyright stage/share/licenses/openblas/LICENSE
+            cp /usr/share/doc/gcc-14-base/copyright stage/share/licenses/gcc-runtime/DEBIAN-COPYRIGHT
+            cp /usr/share/common-licenses/GPL-3 stage/share/licenses/gcc-runtime/GPL-3
+            cp /usr/share/common-licenses/LGPL-2.1 stage/share/licenses/gcc-runtime/LGPL-2.1
+            for pkg in cpx numsa tblite ddx dftd4 s-dftd3 multicharge mctc-lib jonquil toml-f; do
+              mkdir -p "stage/share/licenses/$pkg"
+              for f in "subprojects/$pkg"/COPYING* "subprojects/$pkg"/LICENSE*; do
+                if [ -f "$f" ]; then
+                  cp "$f" "stage/share/licenses/$pkg/"
+                fi
+              done
+            done
+         - name: Verify static linkage and package
+           run: |
+            set -euo pipefail
+            exe=stage/bin/xtb
+            description=$(file "$exe")
+            printf '%s\n' "$description"
+            [[ $description =~ statically\ linked|static-pie\ linked ]] || { echo 'Binary is not static' >&2; exit 1; }
+            headers=$(readelf -lW "$exe")
+            ! grep -Eq '(^|[[:space:]])INTERP([[:space:]]|$)' <<< "$headers" || { echo 'PT_INTERP found: binary is dynamic' >&2; exit 1; }
+            dynamic=$(readelf -dW "$exe")
+            ! grep -q '(NEEDED)' <<< "$dynamic" || { echo 'DT_NEEDED found: binary has dynamic dependencies' >&2; exit 1; }
+            echo 'PASS: no PT_INTERP; zero DT_NEEDED'
+            tar -cJf xtb-bleed-linux-aarch64-openblas.tar.xz stage
+         - uses: actions/upload-artifact@v4
+           with:
+            name: xtb-bleed-linux-aarch64-openblas.tar.xz
+            path: xtb-bleed-linux-aarch64-openblas.tar.xz
+            if-no-files-found: error
+
+   release-macos:
+      needs: tests-passed
+      strategy:
+         fail-fast: false
+         matrix:
+            include:
+               - os: macos-15
+                 arch: arm64
+                 archive: xtb-bleed-macos-arm64-openblas.tar.xz
+               - os: macos-15-intel
+                 arch: x86_64
+                 archive: xtb-bleed-macos-x86_64-openblas.tar.xz
+      runs-on: ${{ matrix.os }}
+      steps:
+         - uses: actions/checkout@v4
+         - name: Select GNU toolchain and verify static runtimes
+           id: toolchain
+           run: |
+            set -euo pipefail
+            test "$(uname -m)" = "${{ matrix.arch }}"
+            brew install gcc meson ninja pkgconf asciidoctor
+            GCC_PREFIX="$(brew --prefix gcc)"
+            compilers=("$GCC_PREFIX"/bin/gfortran-[0-9]*)
+            test "${#compilers[@]}" = 1
+            export FC="${compilers[0]}" CC="$GCC_PREFIX/bin/gcc-${compilers[0]##*-}"
+            # DDX registers C++; its unqualified OpenMP probes must use the GNU toolchain.
+            export CXX="$GCC_PREFIX/bin/g++-${compilers[0]##*-}"
+            "$CC" --version
+            "$FC" --version
+            mkdir -p static-runtime
+            for lib in libgfortran.a libgcc.a libgomp.a; do
+              runtime=$("$FC" -print-file-name="$lib")
+              test -f "$runtime" || { echo "Required static runtime missing: $lib" >&2; exit 1; }
+              ls -l "$runtime"
+              ln -sf "$runtime" "$PWD/static-runtime/$lib"
+            done
+            for lib in libgcc_eh.a libquadmath.a libemutls_w.a; do
+              runtime=$("$FC" -print-file-name="$lib")
+              if [[ -f $runtime ]]; then ln -sf "$runtime" "$PWD/static-runtime/$lib"; fi
+            done
+            printf 'FC=%s\nCC=%s\nCXX=%s\n' "$FC" "$CC" "$CXX" >> "$GITHUB_ENV"
+            echo "version=$("$FC" -dumpfullversion)" >> "$GITHUB_OUTPUT"
+         - uses: actions/cache/restore@v4
+           id: openblas-cache
+           with:
+            path: static-openblas
+            key: openblas-0.3.30-static-pthreads-${{ matrix.arch }}-gcc${{ steps.toolchain.outputs.version }}-v2
+         - name: Build and install static third-party Release
+           run: |
+            set -euo pipefail
+            OPENBLAS_PREFIX="$PWD/static-openblas"
+            if [[ ! -f "$OPENBLAS_PREFIX/lib/libopenblas.a" ]]; then
+              curl -fL https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v0.3.30.tar.gz -o /tmp/openblas.tar.gz
+              tar -xf /tmp/openblas.tar.gz -C /tmp
+              make -C /tmp/OpenBLAS-0.3.30 -j2 NO_SHARED=1 USE_OPENMP=0 DYNAMIC_ARCH=1 CC="$CC" FC="$FC"
+              make -C /tmp/OpenBLAS-0.3.30 NO_SHARED=1 USE_OPENMP=0 DYNAMIC_ARCH=1 CC="$CC" FC="$FC" PREFIX="$OPENBLAS_PREFIX" install
+              cp /tmp/OpenBLAS-0.3.30/LICENSE "$OPENBLAS_PREFIX/LICENSE"
+            fi
+            if [[ ! -f "$OPENBLAS_PREFIX/LICENSE" ]]; then
+              curl -fL https://raw.githubusercontent.com/OpenMathLib/OpenBLAS/v0.3.30/LICENSE -o "$OPENBLAS_PREFIX/LICENSE"
+            fi
+            ls -l "$OPENBLAS_PREFIX/lib/libopenblas.a"
+            export PKG_CONFIG_PATH="$OPENBLAS_PREFIX/lib/pkgconfig"
+            pkg-config --modversion openblas
+            pkg-config --static --libs openblas
+            # CLI link_args replace LDFLAGS, so include the common flags for each language.
+            export LDFLAGS="-L$PWD/static-runtime -Wl,-search_paths_first"
+            if [[ -f static-runtime/libquadmath.a ]]; then LDFLAGS="$LDFLAGS $PWD/static-runtime/libquadmath.a"; fi
+            meson setup _release --prefix=/ --libdir=lib \
+              --buildtype=release --optimization=2 -Ddefault_library=static -Dprefer_static=true \
+              -Dlapack=openblas -Dtblite=enabled -Dtblite:ddx=true -Dcpcmx=enabled \
+              -Dc_link_args="$LDFLAGS -static-libgcc" \
+              -Dfortran_link_args="$LDFLAGS -static-libgfortran -static-libgcc"
+            meson compile -C _release -v
+            DESTDIR="$PWD/_install" meson install -C _release
+            rm -rf stage
+            mkdir -p stage/bin stage/include stage/lib/pkgconfig stage/share/xtb \
+              stage/share/modules/modulefiles \
+              stage/share/man/man1 stage/share/man/man7 \
+              stage/share/licenses/xtb stage/share/licenses/ddcosmo stage/share/licenses/openblas \
+              stage/share/licenses/gcc-runtime
+            cp _install/bin/xtb stage/bin/xtb
+            cp _install/bin/cpx stage/bin/cpx
+            cp _install/include/xtb.h stage/include/xtb.h
+            cp _install/lib/libxtb.a stage/lib/libxtb.a
+            cp _install/lib/libcpx.a stage/lib/libcpx.a
+            cp _install/lib/pkgconfig/xtb.pc stage/lib/pkgconfig/xtb.pc
+            cp -R _install/share/modules/modulefiles/xtb stage/share/modules/modulefiles/
+            for param in param_gfn0-xtb.txt param_gfn1-xtb.txt param_gfn1-si-xtb.txt param_gfn2-xtb.txt param_ipea-xtb.txt .param_gfnff.xtb; do
+              cp "_install/share/xtb/$param" "stage/share/xtb/$param"
+            done
+            asciidoctor -b manpage man/xtb.1.adoc -o stage/share/man/man1/xtb.1
+            asciidoctor -b manpage man/xcontrol.7.adoc -o stage/share/man/man7/xcontrol.7
+            cp COPYING COPYING.LESSER stage/share/licenses/xtb/
+            cp src/solv/ddcosmo/LICENSE stage/share/licenses/ddcosmo/LICENSE
+            cp "$OPENBLAS_PREFIX/LICENSE" stage/share/licenses/openblas/LICENSE
+            GCC_PREFIX="$(brew --prefix gcc)"
+            for f in "$GCC_PREFIX"/COPYING* "$GCC_PREFIX"/LICENSE*; do
+              if [ -f "$f" ]; then
+                cp "$f" stage/share/licenses/gcc-runtime/
+              fi
+            done
+            for pkg in cpx numsa tblite ddx dftd4 s-dftd3 multicharge mctc-lib jonquil toml-f; do
+              mkdir -p "stage/share/licenses/$pkg"
+              for f in "subprojects/$pkg"/COPYING* "subprojects/$pkg"/LICENSE*; do
+                if [ -f "$f" ]; then
+                  cp "$f" "stage/share/licenses/$pkg/"
+                fi
+              done
+            done
+         - uses: actions/cache/save@v4
+           if: success() && steps.openblas-cache.outputs.cache-hit != 'true'
+           with:
+            path: static-openblas
+            key: openblas-0.3.30-static-pthreads-${{ matrix.arch }}-gcc${{ steps.toolchain.outputs.version }}-v2
+         - name: Verify third-party static linkage and package
+           run: |
+            set -euo pipefail
+            test "$(lipo -archs stage/bin/xtb)" = "${{ matrix.arch }}"
+            deps=$(otool -L stage/bin/xtb)
+            printf '%s\n' "$deps"
+            paths=$(awk 'NR > 1 {print $1}' <<< "$deps")
+            test -n "$paths"
+            while IFS= read -r dep; do
+              case "$dep" in
+                /usr/lib/*|/System/Library/*) ;;
+                *) echo "Non-system dependency: $dep" >&2; exit 1 ;;
+              esac
+            done <<< "$paths"
+            echo 'PASS: expected architecture; Apple system dependencies only'
+            tar -cJf "${{ matrix.archive }}" stage
+         - uses: actions/upload-artifact@v4
+           with:
+            name: ${{ matrix.archive }}
+            path: ${{ matrix.archive }}
+            if-no-files-found: error
+
+   release-windows-x86_64:
+      needs: tests-passed
+      runs-on: windows-2025
+      defaults:
+         run:
+            shell: msys2 {0}
+      steps:
+         - uses: actions/checkout@v4
+         - uses: msys2/setup-msys2@v2
+           with:
+            msystem: UCRT64
+            update: true
+            install: >-
+              git zip
+              mingw-w64-ucrt-x86_64-gcc-fortran
+              mingw-w64-ucrt-x86_64-openblas
+              mingw-w64-ucrt-x86_64-python
+              mingw-w64-ucrt-x86_64-meson
+              mingw-w64-ucrt-x86_64-ninja
+              mingw-w64-ucrt-x86_64-binutils
+              mingw-w64-ucrt-x86_64-pkgconf
+              mingw-w64-ucrt-x86_64-asciidoctor
+         - name: Configure static UCRT64 Release with OpenBLAS
+           env:
+            CC: gcc
+            CXX: g++
+            FC: gfortran
+            LDFLAGS: -static -static-libgcc -static-libgfortran
+           run: |
+            test "$MSYSTEM" = UCRT64
+            echo "$MSYSTEM"
+            gcc --version
+            g++ --version
+            gfortran --version
+            test -f /ucrt64/lib/libopenblas.a
+            ls -l /ucrt64/lib/libopenblas.a
+            export PKG_CONFIG_PATH="$(cygpath -m /ucrt64/lib/pkgconfig)"
+            pkg-config --modversion openblas
+            pkg-config --static --libs openblas
+            for lib in libgfortran.a libgcc.a libgomp.a libwinpthread.a libquadmath.a; do
+              runtime=$(gfortran -print-file-name="$lib")
+              test -f "$runtime"
+              ls -l "$runtime"
+            done
+            # Meson supplies libgfortran for C API tests, but not its static
+            # quadmath dependency. Put quadmath in GCC's trailing runtime libs.
+            gcc -dumpspecs | sed '/^\*lib:$/ {n;s/$/ -lquadmath/;}' > static-runtime.specs
+            export CC="gcc -specs=$(cygpath -m "$PWD/static-runtime.specs")"
+            MSYS2_ARG_CONV_EXCL="--prefix=" meson setup _release --prefix=/ --libdir=lib \
+              --buildtype=release --optimization=2 -Ddefault_library=static -Dprefer_static=true \
+              -Dlapack=openblas \
+              -Dtblite=enabled -Dtblite:ddx=true -Dcpcmx=enabled
+         - name: Build and install
+           run: |
+            set -euo pipefail
+            meson compile -C _release -v
+            meson install -C _release --destdir "$(cygpath -m "$PWD/_install")"
+            rm -rf stage
+            mkdir -p stage/bin stage/include stage/lib/pkgconfig stage/share/xtb \
+              stage/share/modules/modulefiles \
+              stage/share/man/man1 stage/share/man/man7 \
+              stage/share/licenses/xtb stage/share/licenses/ddcosmo stage/share/licenses/openblas \
+              stage/share/licenses/gcc-runtime
+            cp _install/bin/xtb.exe stage/bin/xtb.exe
+            cp _install/bin/cpx.exe stage/bin/cpx.exe
+            cp _install/include/xtb.h stage/include/xtb.h
+            cp _install/lib/libxtb.a stage/lib/libxtb.a
+            cp _install/lib/libcpx.a stage/lib/libcpx.a
+            cp _install/lib/pkgconfig/xtb.pc stage/lib/pkgconfig/xtb.pc
+            cp -R _install/share/modules/modulefiles/xtb stage/share/modules/modulefiles/
+            for param in param_gfn0-xtb.txt param_gfn1-xtb.txt param_gfn1-si-xtb.txt param_gfn2-xtb.txt param_ipea-xtb.txt .param_gfnff.xtb; do
+              cp "_install/share/xtb/$param" "stage/share/xtb/$param"
+            done
+            asciidoctor -b manpage man/xtb.1.adoc -o stage/share/man/man1/xtb.1
+            asciidoctor -b manpage man/xcontrol.7.adoc -o stage/share/man/man7/xcontrol.7
+            cp COPYING COPYING.LESSER stage/share/licenses/xtb/
+            cp src/solv/ddcosmo/LICENSE stage/share/licenses/ddcosmo/LICENSE
+            cp /ucrt64/share/licenses/openblas/LICENSE stage/share/licenses/openblas/LICENSE
+            for d in /ucrt64/share/licenses/gcc* /ucrt64/share/licenses/*winpthread* /ucrt64/share/licenses/crt*; do
+              [ -d "$d" ] || continue
+              for f in "$d"/*; do
+                if [ -f "$f" ]; then
+                  cp "$f" "stage/share/licenses/gcc-runtime/$(basename "$d")-$(basename "$f")"
+                fi
+              done
+            done
+            for pkg in cpx numsa tblite ddx dftd4 s-dftd3 multicharge mctc-lib jonquil toml-f; do
+              mkdir -p "stage/share/licenses/$pkg"
+              for f in "subprojects/$pkg"/COPYING* "subprojects/$pkg"/LICENSE*; do
+                if [ -f "$f" ]; then
+                  cp "$f" "stage/share/licenses/$pkg/"
+                fi
+              done
+            done
+         - name: Verify static linkage and package
+           run: |
+            set -euo pipefail
+            imports=$(objdump -p stage/bin/xtb.exe)
+            dlls=$(awk '/DLL Name:/ {print tolower($3)}' <<< "$imports")
+            test -n "$dlls"
+            printf '%s\n' "$dlls"
+            if grep -E 'gfortran|gcc_s|quadmath|gomp|winpthread|openblas|(^|/)(lib)?(blas|lapack)\.dll' <<< "$dlls"; then
+              echo 'Dynamic third-party runtime detected' >&2
+              exit 1
+            fi
+            echo 'PASS: no third-party runtime DLL imports'
+            zip -r xtb-bleed-windows-x86_64-openblas.zip stage
+         - uses: actions/upload-artifact@v4
+           with:
+            name: xtb-bleed-windows-x86_64-openblas.zip
+            path: xtb-bleed-windows-x86_64-openblas.zip
+            if-no-files-found: error
+
+   continuous-delivery:
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      runs-on: ubuntu-24.04
+      permissions:
+         contents: write
+      concurrency:
+         group: publish-bleed
+         cancel-in-progress: false
+      needs:
+         - source-dist
+         - release-linux-x86_64
+         - release-linux-aarch64
+         - release-macos
+         - release-windows-x86_64
+      env:
+         GH_TOKEN: ${{ github.token }}
+      steps:
+         - uses: actions/checkout@v4
+         - uses: actions/download-artifact@v4
+           with:
+            pattern: xtb-*
+            merge-multiple: true
+            path: release-assets
+         - name: Require complete artifact set and calculate checksums before touching bleed
+           working-directory: release-assets
+           run: |
+            sources=(xtb-6*.tar.xz)
+            test "${#sources[@]}" = 1
+            mv "${sources[0]}" xtb-bleed.tar.xz
+            for archive in \
+              xtb-bleed.tar.xz \
+              xtb-bleed-linux-x86_64-ifx-mkl.tar.xz \
+              xtb-bleed-linux-aarch64-openblas.tar.xz \
+              xtb-bleed-macos-arm64-openblas.tar.xz \
+              xtb-bleed-macos-x86_64-openblas.tar.xz \
+              xtb-bleed-windows-x86_64-openblas.zip; do
+              test -s "$archive"
+              sha256sum "$archive" > "$archive.sha256"
+            done
+            sha256sum -c ./*.sha256
+         - name: Publish complete static release at tested commit
+           working-directory: release-assets
+           run: |
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/bleed" >/dev/null 2>&1; then
+              gh api \
+                --method PATCH \
+                "repos/$GITHUB_REPOSITORY/git/refs/tags/bleed" \
+                -f sha="$GITHUB_SHA" \
+                -F force=true \
+                >/dev/null
+            else
+              gh api \
+                --method POST \
+                "repos/$GITHUB_REPOSITORY/git/refs" \
+                -f ref='refs/tags/bleed' \
+                -f sha="$GITHUB_SHA" \
+                >/dev/null
+            fi
+            if ! gh release view bleed >/dev/null 2>&1; then
+              gh release create bleed --prerelease --title 'Bleeding edge version' --notes "Static release from $GITHUB_SHA"
+            fi
+            gh release edit bleed --prerelease --title 'Bleeding edge version' \
+              --notes "Static release from $GITHUB_SHA. CI: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            gh release upload bleed ./*.tar.xz ./*.zip ./*.sha256 --clobber
+            for asset in \
+              sha256.txt \
+              xtb-bleed-linux-x86_64.tar.xz \
+              xtb-bleed-linux-x86_64.tar.xz.sha256 \
+              xtb-bleed-windows.zip \
+              xtb-bleed-windows.zip.sha256; do
+              gh release delete-asset bleed "$asset" --yes || true
+            done
+         - name: Download every published archive and verify SHA256 and bleed SHA
+           run: |
+            mkdir published
+            gh release download bleed --dir published
+            cd published
+            for checksum in "$GITHUB_WORKSPACE"/release-assets/*.sha256; do
+              cmp "$checksum" "$(basename "$checksum")"
+              sha256sum -c "$(basename "$checksum")"
+            done
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/bleed" --jq '.object.sha')" = "$GITHUB_SHA"

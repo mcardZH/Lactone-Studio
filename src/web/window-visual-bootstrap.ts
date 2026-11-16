@@ -1,4 +1,5 @@
 import { bindInterfaceFontDocument } from './interface-font-preferences';
+import { bindInterfaceThemeDocument } from './interface-theme-preferences';
 
 /** Prepare an about:blank presentation document in its own DOM realm.
  * Stylesheets own visual tokens: copying computed variables inline would freeze
@@ -12,5 +13,6 @@ export function bootstrapWindowVisuals(source: Document, target: Document): () =
   }
   target.documentElement.className = source.documentElement.className;
   Object.assign(target.documentElement.dataset, source.documentElement.dataset);
-  return bindInterfaceFontDocument(target);
+  const disposeFont=bindInterfaceFontDocument(target),disposeTheme=bindInterfaceThemeDocument(target);
+  return()=>{disposeFont();disposeTheme();};
 }

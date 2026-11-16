@@ -46,7 +46,7 @@
 .task-environment-dialog .task-import-preview,
 .task-remote-browser {
 	padding: 12px;
-	border: 1px solid var(--border, #b8c8c1);
+	border: 1px solid var(--ui-surface-border);
 	border-radius: 10px;
 	margin: 10px 0;
 	max-height: 55vh;
@@ -57,14 +57,13 @@
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 }
-.task-check-pending {
+.task-check-pending:not(:disabled) {
 	background: #f1ce62 !important;
 	color: #352b10 !important;
 }
-.task-check-passed,
-.task-save-environment {
-	background: #35825d !important;
-	color: white !important;
+.task-check-passed:not(:disabled) {
+	background: var(--ui-control-selected-bg);
+	color: var(--ui-control-selected-ink);
 }
 .task-remote-browser ul {
 	list-style: none;
@@ -95,35 +94,44 @@
 }
 /* Environment P21: one main scroll owner, a fixed semantic label column. */
 .task-environment-dialog {
-	width: min(780px, calc(100vw - 32px));
-	max-height: calc(100vh - 40px);
-	overflow: hidden !important;
+	width: min(720px, calc(100vw - 32px));
+	max-height: calc(100dvh - 32px);
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
+	padding:0;
+	gap:0;
 }
 .task-environment-dialog > header,
 .task-environment-dialog > footer {
 	flex: 0 0 auto;
+	position:static;
+	margin:0;
+	padding:12px 16px;
 }
 .task-environment-dialog .task-environment-body {
 	overflow-y: auto;
 	min-height: 0;
-	padding: 0 6px 12px 0;
+	padding: 16px;
+	scrollbar-gutter:stable;
 	container-type: inline-size;
 }
 .task-environment-dialog .task-env-section {
-	margin: 18px 0;
+	display:grid;
+	gap:8px;
+	margin: 0 0 12px;
 }
 .task-environment-dialog h3 {
-	font-size: 1em;
-	margin: 12px 0;
+	font:600 var(--ui-primary-size,16px)/var(--ui-title-line) var(--ui-font-family);
+	color:var(--ui-section-ink);
+	margin: 0;
 }
 .task-environment-dialog .task-env-row {
 	display: grid;
 	grid-template-columns: minmax(145px, 24%) minmax(0, 1fr);
-	gap: 10px;
+	gap: 8px;
 	align-items: start;
-	margin: 10px 0;
+	margin: 0;
 }
 .task-environment-dialog .task-env-row > .task-field-heading,
 .task-environment-dialog .task-env-row > span:first-child {
@@ -150,7 +158,8 @@
 	min-width: 0;
 }
 .task-environment-dialog .task-env-panel {
-	border: 1px solid var(--ui-control-border);
+	border: 1px solid var(--ui-surface-border);
+	background: var(--ui-control-bg);
 	border-radius: 8px;
 	padding: 12px;
 	margin: 12px 0;
@@ -173,7 +182,7 @@
 	margin: 10px 0;
 }
 .task-environment-dialog .task-environment-advanced {
-	border-top: 1px solid var(--ui-control-border);
+	border-top: 1px solid var(--ui-surface-border);
 	padding: 12px 0;
 }
 .task-environment-dialog .task-env-group-heading {
@@ -242,7 +251,7 @@
 	min-width: 0;
 }
 .task-environment-dialog .task-env-site-manager {
-	border-top: 1px solid var(--ui-control-border);
+	border-top: 1px solid var(--ui-surface-border);
 	padding-top: 10px;
 	margin-top: 10px;
 }
@@ -303,9 +312,10 @@
 @media (max-width: 580px) {
 	.task-environment-dialog .task-env-row {
 		grid-template-columns: minmax(0, 1fr);
-		gap: 5px;
+		gap: 8px;
 	}
-	.task-environment-dialog {
-		max-height: calc(100vh - 20px);
-	}
+}
+@media(max-height:350px) {
+	.task-dialog.task-environment-dialog { overflow:auto; scrollbar-gutter:stable; }
+	.task-environment-dialog .task-environment-body { overflow:visible; }
 }

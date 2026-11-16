@@ -1,14 +1,13 @@
 import type { Structure } from '../../core/types';
 import { builderCoordinateValue } from '../../core/builder-geometry';
-import { assertBuilderStereoPreserved } from '../../core/builder-stereo';
-import { XTB_INTERNAL_CONSTRAINT_POLICY } from '../xtb/accept-result';
 import type { XtbCoordinate, XtbMetadata, XtbRequest, XtbResourceGrant } from '../xtb/contracts';
+import { validXtbOptimizationTerminal } from '../xtb/optimization-terminal';
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const delta = (type: string, n: number) => type === 'D' ? ((n + 180) % 360 + 360) % 360 - 180 : n;
 function requireValue(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
 
 /** Pure acceptance of an isolated request. No Store/model publication or activation guard. */
-export function advancedXtbCoordinates(request: XtbRequest, coordinates: readonly XtbCoordinate[], final = false): Structure {
+export function advancedXtbCoordinates(request: XtbRequest, coordinates: readonly XtbCoordinate[]): Structure {
   requireValue(Array.isArray(coordinates) && coordinates.length === request.structure.atoms.length, '高级任务原子数量不匹配。');
   const fixed = new Set(request.frozenAtomIds), singlepoint = request.calculation === 'singlepoint';
   const result = structuredClone(request.structure);
@@ -19,13 +18,6 @@ export function advancedXtbCoordinates(request: XtbRequest, coordinates: readonl
     return { ...atom, x: p.x, y: p.y, z: p.z };
   });
   result.preparation = undefined; result.molfile = undefined;
-  assertBuilderStereoPreserved(request.structure, result);
-  if (final) for (const row of request.constraints) {
-    const target = row.value ?? builderCoordinateValue(request.structure, row.type, row.atomIds);
-    const actual = builderCoordinateValue(result, row.type, row.atomIds), residual = delta(row.type, actual - target);
-    const tolerance = row.type === 'B' ? XTB_INTERNAL_CONSTRAINT_POLICY.bondToleranceAngstrom : XTB_INTERNAL_CONSTRAINT_POLICY.angleToleranceDegree;
-    requireValue(Number.isFinite(residual) && Math.abs(residual) <= tolerance, '高级任务最终冻结内坐标残差未达标。');
-  }
   return result;
 }
 
@@ -44,20 +36,29 @@ export function validateAdvancedXtbResult(request: XtbRequest, coordinates: read
       && Number.isSafeInteger(grant.reservedBytes) && grant.reservedBytes >= 0 && grant.memoryBudgetBytes + grant.reservedBytes === grant.configured.memoryBudgetBytes
       && metadata.threads === grant.threads, '高级任务缺少匹配的受管全局资源授权回执。');
   }
-  requireValue(metadata?.converged === true && metadata.engine === 'xtb' && metadata.method === request.method
+  requireValue((metadata?.converged === true || metadata?.converged === false && metadata.convergenceStatus==='step-limit' && request.calculation==='optimize')
+    && metadata.engine === 'xtb' && metadata.method === request.method
     && metadata.calculation === request.calculation && metadata.charge === request.charge
-    && metadata.uhf === (request.method === 'gfnff' ? null : request.uhf)
+    && metadata.uhf === (request.method === 'gfnff' ? null : request.uhf ?? 0)
     && metadata.energyUnit === 'hartree' && metadata.coordinateUnit === 'angstrom' && Number.isFinite(metadata.energyHartree)
     && typeof metadata.version === 'string' && metadata.version.length > 0 && metadata.periodic === undefined
-    && metadata.threads === (grant?.threads ?? request.threads) && metadata.maxSteps === request.maxSteps
+    && metadata.threads === (grant?.threads ?? request.threads)
+    && (request.optimizationStepPolicy === 'native-default'
+      ? request.calculation === 'optimize' && request.maxSteps === undefined && Number.isSafeInteger(metadata.maxSteps) && metadata.maxSteps > 0
+      : metadata.maxSteps === request.maxSteps)
     && (!request.optimizationPool || metadata.threads===1)
     && metadata.maxWallTimeSeconds === request.maxWallTimeSeconds, '高级任务完成方法、资源、单位或电子态回执不匹配。');
+  if(request.method==='gxtb')requireValue(metadata.engineIdentity?.runtimeVariant==='gxtb'
+    && (metadata.engineIdentity.version===metadata.version||metadata.engineIdentity.kind==='external-user-program'&&metadata.engineIdentity.version===null)
+    && (typeof metadata.engineIdentity.gxtbRelease==='string'||metadata.engineIdentity.kind==='external-user-program'&&metadata.engineIdentity.gxtbRelease===null)
+    && (metadata.spinTreatment==='unrestricted'||metadata.spinTreatment==='restricted'&&(request.uhf??0)===0),
+    '高级任务缺少独立 g-xTB 运行库或实际自旋回执。');
   if (request.solvation) {
     const evidence = metadata.solvation;
     requireValue(evidence?.model === request.solvation.model && evidence.solvent === request.solvation.solvent
       && evidence.kernel === (request.solvation.model === 'alpb' ? 'p16' : 'still') && evidence.referenceState === 'gsolv'
       && evidence.temperatureKelvin === 298.15 && evidence.sourceField === 'stdout:solvation-model'
-      && evidence.parameterSet === `internal ${{ gfn0: '', gfn1: 'GFN1-xTB', gfn2: 'GFN2-xTB', gfnff: 'GFN-FF' }[request.method]}/${request.solvation.model.toUpperCase()}`, '高级任务缺少匹配的原生隐式溶剂模型回执。');
+      && evidence.parameterSet === `internal ${{ gfn0: '', gfn1: 'GFN1-xTB', gfn2: 'GFN2-xTB', gfnff: 'GFN-FF', gxtb:'' }[request.method]}/${request.solvation.model.toUpperCase()}`, '高级任务缺少匹配的原生隐式溶剂模型回执。');
   } else requireValue(metadata.solvation === undefined, '气相高级任务混入隐式溶剂结果。');
   requireValue(same([...metadata.frozenAtomIds].sort(), [...request.frozenAtomIds].sort())
     && metadata.internalConstraintMode === (request.constraints.length ? 'native-harmonic' : 'none')
@@ -65,8 +66,8 @@ export function validateAdvancedXtbResult(request: XtbRequest, coordinates: read
   if (request.calculation === 'singlepoint') {
     requireValue(Number.isSafeInteger(metadata.sccIterations) && metadata.sccIterations! >= 1
       && metadata.sccIterations! <= (request.maxSccIterations??250) && metadata.sccIterationLimit === (request.maxSccIterations??250), '高级单点缺少真实SCC完成回执。');
-  } else requireValue(Number.isSafeInteger(metadata.iterations) && metadata.iterations! >= 0 && metadata.iterations! <= request.maxSteps!, '高级优化缺少有效完成迭代回执。');
-  const result = advancedXtbCoordinates(request, coordinates, true);
+  } else requireValue(validXtbOptimizationTerminal(request, metadata), '高级优化缺少有效完成迭代回执。');
+  const result = advancedXtbCoordinates(request, coordinates);
   for (const row of request.constraints) {
     const measured = metadata.internalConstraints.find(c => c.type === row.type && same(c.atomIds, row.atomIds));
     const target = row.value ?? builderCoordinateValue(request.structure, row.type, row.atomIds);

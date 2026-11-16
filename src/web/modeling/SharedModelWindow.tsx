@@ -12,15 +12,20 @@ import {createViewportDisplayConsumer,openViewportDisplayPort,type ViewportDispl
 import CanvasClearToolbar from './CanvasClearToolbar';
 import ViewportImageExportMenu from './ViewportImageExportMenu';
 import { exportViewportImage, exportBlob, type OffscreenCaptureSnapshot, type ViewportImageExportOptions } from '../results/export-image';
+import {captureViewportLegend} from '../results/viewport-legend-export';
 import { editableTarget, viewportCommand, workspaceSpacePressAllowed } from './workspace-actions';
 import { createDetachedTabDrag, type DockTarget } from './detached-window-drag';
-import { viewportJSON, type WorkspaceViewportEvent, type WorkspaceViewportState } from './workspace-viewport';
+import { viewportJSON, frameBondTargetCurrent,isFrameBondViewportEdit,type FrameBondEditingState,type FrameBondTarget,type WorkspaceViewportEvent, type WorkspaceViewportState } from './workspace-viewport';
+import {isFrameBondCommand} from '../../core/modeling/frame-bond-overrides';
 import type { ViewportStateMarker } from './viewport-overlays';
 import './shared-model-window.css';
 import { createViewportActivationPointerGate, viewportActivationTarget, type ViewportInteractionOwner } from './viewport-activation-pointer';
 import { bindInterfaceFontDocument } from '../interface-font-preferences';
 import TrajectoryControls from '../results/TrajectoryControls';
 import {trajectoryControlCallbacks,trajectoryOverlayControlCallbacks,type TrajectoryPlaybackCommand} from '../results/trajectory-playback-bridge';
+import {captureDisplayedStructureDocument} from './scientific-frame-source';
+import {useStructureExport} from '../results/useStructureExport';
+import type {StructureExportSource} from '../results/structure-export-source';
 import {PlaybackOverlayControls} from '../MultiframeDisplayControls';
 import {WorkspaceTabTitle,WorkspaceTabActions,WorkspaceTabCloseIcon} from './WorkspaceTab';
 import {useTransientLayerScope} from '../TransientLayer';
@@ -43,10 +48,12 @@ export function detachedDisplayDocument(target:ModelDocument,projection?:Readonl
 export function detachedViewportImageSnapshot(document:ModelDocument,viewport:WorkspaceViewportState&Pick<ProjectedDisplayProperties,'displayDocument'>,cameraView:readonly number[],size:{width:number;height:number}):OffscreenCaptureSnapshot{
   if(viewport.documentId!==document.id||viewport.revision!==document.revision)throw new Error('当前窗口的模型显示尚未同步，请稍后导出。');
   if(!size.width||!size.height||![size.width,size.height].every(value=>Number.isFinite(value)&&value>0)||cameraView.length!==8||!cameraView.every(Number.isFinite))throw new Error('当前窗口的视角或画布尺寸尚未就绪。');
-  return structuredClone({document:detachedDisplayDocument(document,viewport.displayDocument),cameraView:[...cameraView],display:viewport.display??DEFAULT_DISPLAY,showAxes:viewport.showAxes??false,width:1600,height:1200,viewportWidth:size.width,viewportHeight:size.height,
+  const observed=detachedDisplayDocument(document,viewport.displayDocument);
+  const displayDocument=viewport.displayAtoms?{...observed,draft:{...observed.draft,structure:{...observed.draft.structure,atoms:viewport.displayAtoms}}}:observed;
+  return structuredClone({document:displayDocument,cameraView:[...cameraView],display:viewport.display??DEFAULT_DISPLAY,showAxes:viewport.showAxes??false,width:1600,height:1200,viewportWidth:size.width,viewportHeight:size.height,
     multiframeDisplay:viewport.multiframeDisplay,samplingSphere:viewport.samplingSphere,calculationRanges:viewport.calculationRanges,hiddenAtomIds:viewport.hiddenAtomIds,previewGuides:viewport.previewGuides,previewCell:viewport.previewCell,cellGuides:viewport.cellGuides,
-    measurement:viewport.measurement,vibrationVectors:viewport.vibrationVectors,orbitalLayer:viewport.orbitalLayer,ntoLayer:viewport.ntoLayer,surfaceLayer:viewport.surfaceLayer,surfaceLayers:viewport.surfaceLayers,surfaceExtrema:viewport.surfaceExtrema,
-    atomScalarValues:viewport.atomScalarValues,atomScalarColor:viewport.atomScalarColor,atomScalarLabels:viewport.atomScalarLabels,dipoleVector:viewport.dipoleVector,viewTransform:viewport.viewTransform,
+    measurement:viewport.measurement,displayFrozenAtomIds:viewport.displayFrozenAtomIds??viewport.effectiveFrozenAtomIds,stateMarkers:viewport.stateMarkers,highlights:viewport.highlights,linkedAtomsActive:viewport.linkedAtomsActive,vibrationVectors:viewport.vibrationVectors,orbitalLayer:viewport.orbitalLayer,ntoLayer:viewport.ntoLayer,surfaceLayer:viewport.surfaceLayer,surfaceLayers:viewport.surfaceLayers,surfaceExtrema:viewport.surfaceExtrema,
+    atomScalarValues:viewport.atomScalarValues,atomScalarColor:viewport.atomScalarColor,atomScalarLabels:viewport.atomScalarLabels,dipoleVector:viewport.dipoleVector,viewTransform:viewport.viewTransform??viewport.observationTransform,
     resultBondValues:viewport.resultBondValues,resultBondLabels:viewport.resultBondLabels,resultBondColor:viewport.resultBondColor,resultAtomLabels:viewport.resultAtomLabels,resultHighlights:viewport.resultHighlights,resultColorbar:viewport.resultColorbar});
 }
 /** Shift can change event.key casing between press and release. */
@@ -60,6 +67,13 @@ export function createDetachedKeyTracker() {
     [Symbol.iterator]() { return keys.values(); },
   };
 }
+/** Delete and number-key actions finish on keydown. Their keyup has no owner
+ * cleanup, and must not become a second command after graph publication.
+ * User-configured pointer holds retain their real release lifecycle. */
+export function detachedKeyNeedsRelease(key:string,selectShortcut?:string,freezeShortcut?:string):boolean {
+  const value=key.toLowerCase();
+  return value===selectShortcut?.toLowerCase()||value===freezeShortcut?.toLowerCase()||!(['delete','backspace'].includes(value)||/^[1-5]$/.test(value));
+}
 export function sharedWindowRuntimePhase(snapshot: WorkspaceDocumentSnapshot): string {
   const runtime = snapshot.runtime;
   return runtime && typeof runtime === 'object' && !Array.isArray(runtime) ? typeof runtime.phase === 'string' ? runtime.phase : 'unknown' : 'idle';
@@ -69,6 +83,24 @@ export function sharedWindowEditingAllowed(state: WorkspaceBridgeState): boolean
   const viewport=state.membership.snapshot.viewport as unknown as WorkspaceViewportState|undefined;
   if(viewport?.structureLocked||viewport?.allowModelEditing===false)return false;
   return Boolean(viewport?.allowModelEditing)||['idle', 'completed', 'stopped', 'error'].includes(sharedWindowRuntimePhase(state.membership.snapshot));
+}
+export function sharedWindowFrameBondTarget(viewport:WorkspaceViewportState|null|undefined,display:ProjectedDisplayProperties|null|undefined):FrameBondTarget|undefined{
+  const state=viewport?.frameBondEditing,target=display?.frameBondTarget;
+  if(!state||!target||!frameBondTargetCurrent(state,viewport?.displayProjection?.projectionSerial,{type:'selection',selection:{atomIds:[],bonds:[],auxiliaryIds:[]},frameBondTarget:target})
+    ||JSON.stringify(state)!==JSON.stringify(display?.frameBondEditing))return;
+  return target;
+}
+function readonlyDrawingEventAllowed(event:WorkspaceViewportEvent,state:FrameBondEditingState|undefined,selectionShortcut?:string):boolean{
+  if(['save','camera','trajectory-playback','display-settings','axes-visible','display-subscribe'].includes(event.type))return true;
+  if(event.type==='file-action')return event.action!=='import';
+  if(event.type==='key'&&(event.key===' '||['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Escape'].includes(event.key)))return true;
+  if(!state||state.blocked||event.frameBondTarget?.frameKey!==state.frameKey)return false;
+  if(['selection','measurement-pick','measurement-select','measurement-delete'].includes(event.type))return true;
+  if(event.type==='clear')return event.kind==='selection';
+  if(event.type==='atom-state'||event.type==='object-state')return ['select-add','select-remove'].includes(event.action);
+  if(event.type==='command')return isFrameBondCommand(event.command,{atomIds:[],bonds:[],auxiliaryIds:[]});
+  if(event.type==='object-delete')return ['bond','auxiliary','port'].includes(event.pick.kind);
+  return event.type==='key'&&(isFrameBondViewportEdit(event)||event.key.toLowerCase()===selectionShortcut?.toLowerCase()||Boolean((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'));
 }
 /** Retained for existing callers; the detached UI has no clipboard/tool owner. */
 export function sharedWindowClipboardPayload(snapshot: WorkspaceDocumentSnapshot): ClipboardPayload {
@@ -114,6 +146,8 @@ export function createDetachedViewportDispatcher(replica: Pick<Replica, 'dispatc
           if (disposed) throw new Error('外部视口已关闭。');
           if (suspended) throw new WorkspaceClosePendingError();
           const snapshot = replica.getWorkspaceSnapshot(), current = snapshot.document;
+          const viewport=snapshot.viewport as unknown as WorkspaceViewportState|undefined;
+          if(!frameBondTargetCurrent(viewport?.frameBondEditing,viewport?.displayProjection?.projectionSerial,item.event))throw Error('当前科学帧或显示投影已变化，旧操作未发送。');
           // A measurement click first selects its coordinate object, which can
           // advance revision before the same click activates its label. Resolve
           // only that UI activation by stable ID against the confirmed record.
@@ -158,10 +192,10 @@ export function createDetachedViewportDispatcher(replica: Pick<Replica, 'dispatc
 /** Saving is a document intent, independent of a temporarily lagging viewport
  * projection. All edits still require that projection and a live replica. */
 export function dispatchDetachedViewportEvent(
-  source: { transport: { dispatch(event: WorkspaceViewportEvent): Promise<void> } | null; replica: Pick<Replica, 'getState'> | null; hasProjection: boolean; readonlyDisplay?:boolean },
+  source: { transport: { dispatch(event: WorkspaceViewportEvent): Promise<void> } | null; replica: Pick<Replica, 'getState'> | null; hasProjection: boolean; readonlyDisplay?:boolean;frameBondEditing?:FrameBondEditingState;selectionShortcut?:string },
   event: WorkspaceViewportEvent,
 ): Promise<void> {
-  if(source.readonlyDisplay)return Promise.reject(new Error('只读来源显示不能向容器模型发送编辑、选择或任务命令。'));
+  if(source.readonlyDisplay&&!readonlyDrawingEventAllowed(event,source.frameBondEditing,source.selectionShortcut))return Promise.reject(new Error('当前来源只允许观察、播放和就绪帧的显示键操作。'));
   const current = source.replica?.getState(), status = current?.status;
   if (!source.transport || !source.replica || status === 'unavailable' || status === 'disposed') {
     return Promise.reject(new Error('外部视口尚未连接或主工作台不可用。'));
@@ -181,7 +215,8 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
   const [viewReady,setViewReady]=useState(false),[imageExporting,setImageExporting]=useState(false),[imageExportOpenRequest,setImageExportOpenRequest]=useState(0);
   const [settingsOpen,setSettingsOpen]=useState(false);
   useEffect(()=>subscribeGlobalSettings(window.sciyueDesktop,()=>setSettingsOpen(true)),[]);
-  useEffect(()=>window.sciyueDesktop?.onWorkbenchFileAction?.(request=>{if(request.action==='export-image'&&(!request.documentId||request.documentId===membership.documentId))setImageExportOpenRequest(value=>value+1);}),[membership.documentId]);
+  const structureSaveRequest=useRef<(()=>Promise<void>)|null>(null);
+  useEffect(()=>window.sciyueDesktop?.onWorkbenchFileAction?.(request=>{if(request.documentId&&request.documentId!==membership.documentId)return;if(request.action==='export-image')setImageExportOpenRequest(value=>value+1);else if(request.action==='export-structure')void structureSaveRequest.current?.().catch(cause=>setError(message(cause)));}),[membership.documentId]);
   const [mirrorDisplayInput,setMirrorDisplay]=useState<{sourceKey:string;projection:ProjectedDisplayProperties}|null>(null),[displayHidden,setDisplayHidden]=useState(()=>typeof document!=='undefined'&&document.visibilityState==='hidden');
   const readonlyObservationContainer=useRef<string|null>(null);
   const displayConsumer=useRef<ViewportDisplayConsumer|null>(null);
@@ -193,6 +228,7 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
   const hover = useRef({ pick: emptyPick(), revision: membership.revision });
   const hoveredMarker = useRef<ViewportStateMarker | null>(null), hoveredMeasurement = useRef<string | null>(null);
   const held = useRef<{ key: string; mode: 'select' | 'freeze'; used: boolean } | null>(null), keys = useRef(createDetachedKeyTracker());
+  const keyFrameTargets=useRef(new Map<string,FrameBondTarget>());
   const [remoteUndo] = useState(createRemoteHeldUndo);
   const gesture = useRef<'box' | 'camera' | 'fragment' | null>(null), cameraPending = useRef(0), cameraGeneration = useRef(0), drag = useRef(createDetachedTabDrag());
   const cameraOwnerKey=JSON.stringify([membership.documentId,membership.membershipNonce]);
@@ -249,7 +285,9 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
   const displayWaiting=Boolean(displayDescription&&!mirrorDisplay);
   const displayMirrorState=!displayDescription?'inactive':displayHidden?'paused':mirrorDisplay?'accepted':'waiting';
   const observedModel=detachedDisplayDocument(model,mirrorDisplay?.displayDocument);
-  useEffect(()=>{void window.sciyueDesktop?.updateWorkbenchFileState?.({canImport:!readOnly,canExportStructure:!readOnly&&!displayWaiting&&observedModel.draft.structure.atoms.length>0,canExportImage:!readOnly&&!displayWaiting&&viewReady&&!imageExporting&&observedModel.draft.structure.atoms.length>0}).catch(()=>{});},[readOnly,displayWaiting,viewReady,imageExporting,observedModel.draft.structure.atoms.length]);
+  const drawingTarget=sharedWindowFrameBondTarget(viewport,mirrorDisplay);
+  const drawingAllowed=Boolean(drawingTarget&&viewport?.frameBondEditing&&!viewport.frameBondEditing.blocked&&!readOnly&&!displayWaiting);
+  const drawingDocument=drawingAllowed&&viewport?.editingDocument?{...observedModel,selection:viewport.editingDocument.selection}:observedModel;
   useEffect(()=>{
     if(!displayDescription||!transport||readOnly||displayHidden){setMirrorDisplay(null);return;}
     setMirrorDisplay(null);
@@ -269,6 +307,24 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
   const cameraRequest = useMemo(() => cameraRequestKey !== initialCameraRequests.current?.request ? viewport?.cameraRequest : undefined, [cameraRequestKey]);
   const resetViewRequest = viewport?.resetViewRequest !== initialCameraRequests.current?.reset ? viewport?.resetViewRequest : undefined;
   const latest = useRef({ model, viewport, transport, replica, readOnly,mirrorDisplay,readonlyProjection,displayWaiting,displayHidden,cameraView,cameraOwnerKey }); latest.current = { model, viewport, transport, replica, readOnly,mirrorDisplay,readonlyProjection,displayWaiting,displayHidden,cameraView,cameraOwnerKey };
+  const exportAlive=useRef(true);useEffect(()=>{exportAlive.current=true;return()=>{exportAlive.current=false;};},[]);
+  const captureStructure=useCallback(()=>{
+    const own=latest.current;
+    if(!exportAlive.current||own.readOnly||own.displayWaiting||own.displayHidden)throw Error('当前独立视图尚未准备完整，请稍后导出。');
+    const hasProjection=Boolean(own.viewport?.displayProjection),projected=own.mirrorDisplay?.exportDocument;
+    const declaredIdentity=own.viewport?.displayProjection?.exportSourceIdentity;
+    if(hasProjection&&(!projected||!own.mirrorDisplay?.exportSourceIdentity||declaredIdentity&&declaredIdentity!==own.mirrorDisplay.exportSourceIdentity))throw Error('当前独立视图尚没有对应的科学结构快照。');
+    const snapshot=captureDisplayedStructureDocument(projected??own.model),ownerId=own.model.id,ownerEpoch=own.replica?.getWorkspaceSnapshot().documentEpoch;
+    const sourceIdentity=own.mirrorDisplay?.exportSourceIdentity;
+    return{document:snapshot,name:snapshot.draft.structure.name,assertCurrent:()=>{
+      const current=latest.current,state=current.replica?.getState(),workspace=current.replica?.getWorkspaceSnapshot();
+      const identities=[current.viewport?.displayProjection?.exportSourceIdentity,current.mirrorDisplay?.exportSourceIdentity];
+      if(!exportAlive.current||!state||state.closing||['unavailable','disposed'].includes(state.status)||state.membership?.membershipNonce!==membership.membershipNonce||workspace?.document.id!==ownerId||workspace.documentEpoch!==ownerEpoch||identities.some(identity=>identity!==undefined&&identity!==sourceIdentity))throw Error('结构导出所属文档或来源已变化。');
+    }};
+  },[membership.documentId,membership.membershipNonce]);
+  const structureSource=useMemo<StructureExportSource>(()=>({available:!readOnly&&!displayWaiting&&!displayHidden&&observedModel.draft.structure.atoms.length>0&&(!displayDescription||Boolean(mirrorDisplay?.exportDocument&&mirrorDisplay.exportSourceIdentity&&(!displayDescription.exportSourceIdentity||displayDescription.exportSourceIdentity===mirrorDisplay.exportSourceIdentity))),capture:captureStructure}),[readOnly,displayWaiting,displayHidden,observedModel.draft.structure.atoms.length,displayDescription,mirrorDisplay?.exportDocument,mirrorDisplay?.exportSourceIdentity,captureStructure]);
+  const structureExport=useStructureExport(structureSource,setError);structureSaveRequest.current=structureExport.save;
+  useEffect(()=>{void window.sciyueDesktop?.updateWorkbenchFileState?.({canImport:!readOnly,canExportStructure:structureSource.available&&!structureExport.busy,canExportImage:!readOnly&&!displayWaiting&&viewReady&&!imageExporting&&observedModel.draft.structure.atoms.length>0}).catch(()=>{});},[readOnly,displayWaiting,viewReady,imageExporting,observedModel.draft.structure.atoms.length,structureSource.available,structureExport.busy]);
   function interactionOwner(): ViewportInteractionOwner {
     // Confirmed replica publication can precede React rendering. Read its owner
     // identity directly, as we already do when restoring the confirmed camera.
@@ -280,7 +336,10 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
   function send(event: WorkspaceViewportEvent) {
     const own = latest.current;
     if (!own.replica?.getState().closing) setError('');
-    return dispatchDetachedViewportEvent({ transport: own.transport, replica: own.replica, hasProjection: Boolean(own.viewport),readonlyDisplay:own.readonlyProjection&&!own.viewport?.allowModelEditing||own.displayWaiting }, event).catch(cause => { if (!isWorkspaceClosePendingError(cause)) setError(message(cause)); throw cause; });
+    const target=sharedWindowFrameBondTarget(own.viewport,own.mirrorDisplay);
+    const frameBound=isFrameBondViewportEdit(event)||['selection','atom-state','object-state','measurement-pick','measurement-select','measurement-delete','measurement-wheel'].includes(event.type)||event.type==='key'&&(event.key.toLowerCase()===own.viewport?.selectShortcut.toLowerCase()||Boolean((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'));
+    const submitted=frameBound&&target&&!event.frameBondTarget?{...event,frameBondTarget:target}:event;
+    return dispatchDetachedViewportEvent({ transport: own.transport, replica: own.replica, hasProjection: Boolean(own.viewport),readonlyDisplay:own.readonlyProjection&&!own.viewport?.allowModelEditing||own.displayWaiting,frameBondEditing:own.viewport?.frameBondEditing,selectionShortcut:own.viewport?.selectShortcut }, submitted).catch(cause => { if (!isWorkspaceClosePendingError(cause)) setError(message(cause)); throw cause; });
   }
   function emit(event: WorkspaceViewportEvent) { void send(event).catch(() => {}); }
   function emitCipUsage(receipt:CipViewportUsage){
@@ -360,10 +419,11 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
   useEffect(() => { if(readOnly || displayWaiting || closing || displayHidden) remoteUndo.stop(); }, [remoteUndo, readOnly, displayWaiting, closing, displayHidden]);
   function keyboard(event: KeyboardEvent<HTMLElement>, release: boolean) {
     const releasedKey=event.key.toLowerCase();
+    if(release&&!detachedKeyNeedsRelease(releasedKey,latest.current.viewport?.selectShortcut,latest.current.viewport?.freezeShortcut)&&held.current?.key!==releasedKey){keys.current.delete(releasedKey);keyFrameTargets.current.delete(releasedKey);return;}
     if(release&&['z','control','meta'].includes(releasedKey))remoteUndo.stop();
     // Releases belong to the owner that recorded the press, even when a
     // textbox, export menu or a new readonly projection now owns focus.
-    if(release&&(editableTarget(event.target)||event.nativeEvent.isComposing||latest.current.readOnly||latest.current.readonlyProjection&&!latest.current.viewport?.allowModelEditing||latest.current.displayWaiting)){
+    if(release&&(editableTarget(event.target)||event.nativeEvent.isComposing||latest.current.readOnly||latest.current.displayWaiting)){
       const owned=[...keys.current].filter(key=>key.toLowerCase()===releasedKey);
       for(const key of owned)keys.current.delete(key);
       if(held.current?.key===releasedKey){held.current=null;setTemporaryPointerMode(null);}
@@ -372,7 +432,7 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
     }
     if (editableTarget(event.target) || event.nativeEvent.isComposing) return;
     if (latest.current.replica?.getState().closing) { event.preventDefault(); return; }
-    if(latest.current.readonlyProjection&&!latest.current.viewport?.allowModelEditing||latest.current.displayWaiting){event.preventDefault();return;}
+    if(latest.current.displayWaiting){event.preventDefault();return;}
     const key = event.key.toLowerCase(), own = latest.current.viewport;
     if(own?.workspaceDocumentPickMode){event.preventDefault();if(!release&&key==='escape')emit({type:'cancel-document-pick'});return;}
     // Modifier flags travel on the actionable key. Standalone Control/Meta
@@ -384,9 +444,11 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
       event.preventDefault();
       if(!release&&!event.repeat){
         const ownerKey=latest.current.cameraOwnerKey;
-        remoteUndo.start(() => send({type:'key',key:'z',release:false,ctrlKey:event.ctrlKey,metaKey:event.metaKey,repeat:false,hover:emptyPick()}), () => {
+        const frameTarget=sharedWindowFrameBondTarget(latest.current.viewport,latest.current.mirrorDisplay);
+        remoteUndo.start(() => send({type:'key',key:'z',release:false,ctrlKey:event.ctrlKey,metaKey:event.metaKey,repeat:false,hover:emptyPick(),...(frameTarget?{frameBondTarget:frameTarget}:{})}), () => {
           const current=latest.current;
-          return current.cameraOwnerKey===ownerKey&&!current.readOnly&&!current.displayWaiting&&!current.displayHidden&&!(current.readonlyProjection&&!current.viewport?.allowModelEditing)&&!current.replica?.getState().closing&&current.model.canUndo&&!editableTarget(scope.current?.ownerDocument.activeElement??null);
+          const target=sharedWindowFrameBondTarget(current.viewport,current.mirrorDisplay),frameUndo=Boolean(frameTarget&&target&&frameTarget.frameKey===target.frameKey&&frameTarget.projectionSerial===target.projectionSerial&&!current.viewport?.frameBondEditing?.blocked&&current.viewport?.frameBondEditing?.canUndo);
+          return current.cameraOwnerKey===ownerKey&&!current.readOnly&&!current.displayWaiting&&!current.displayHidden&&(frameTarget?frameUndo:!(current.readonlyProjection&&!current.viewport?.allowModelEditing)&&current.model.canUndo)&&!current.replica?.getState().closing&&!editableTarget(scope.current?.ownerDocument.activeElement??null);
         }, cause => { if(!isWorkspaceClosePendingError(cause))setError(message(cause)); });
       }
       return;
@@ -399,12 +461,14 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
       return;
     }
     if (release && !keys.current.has(event.key)) return;
+    const frameTarget=release?keyFrameTargets.current.get(key):sharedWindowFrameBondTarget(latest.current.viewport,latest.current.mirrorDisplay);
+    if(release)keyFrameTargets.current.delete(key);else if(frameTarget)keyFrameTargets.current.set(key,frameTarget);
     let heldUsed = false;
     if (release) {
       keys.current.delete(event.key);
       if (held.current?.key === key) { heldUsed = held.current.used; held.current = null; setTemporaryPointerMode(null); }
     } else {
-      keys.current.add(event.key);
+      if(detachedKeyNeedsRelease(event.key,own?.selectShortcut,own?.freezeShortcut))keys.current.add(event.key);
       if (!event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
         const mode = key === own?.selectShortcut.toLowerCase() ? 'select' : key === own?.freezeShortcut.toLowerCase() ? 'freeze' : null;
         if (mode && !held.current) { held.current = { key, mode, used: false }; setTemporaryPointerMode(mode); }
@@ -413,7 +477,7 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
       if (key === 'escape') { held.current = null; setTemporaryPointerMode(null); }
     }
     event.preventDefault();
-    emit({ type: 'key', key: event.key, release, ctrlKey: event.ctrlKey, metaKey: event.metaKey, altKey: event.altKey, shiftKey: event.shiftKey, repeat: event.repeat, hover: currentHover(), heldUsed, marker: hoveredMarker.current, measurementRecordId: hoveredMeasurement.current });
+    emit({ type: 'key', key: event.key, release, ctrlKey: event.ctrlKey, metaKey: event.metaKey, altKey: event.altKey, shiftKey: event.shiftKey, repeat: event.repeat, hover: currentHover(), heldUsed, marker: hoveredMarker.current, measurementRecordId: hoveredMeasurement.current,...(frameTarget?{frameBondTarget:frameTarget}:{}) });
   }
   function finishDrag(event: ReactPointerEvent<HTMLDivElement>, cancel = false) {
     const outcome = drag.current.finish(event.pointerId, event.screenX, event.screenY, latest.current.viewport?.dockTarget, cancel);
@@ -421,15 +485,22 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (outcome.dock && !replica?.getState().closing && bridge.dockWorkspaceDocument) void bridge.dockWorkspaceDocument({ documentId: membership.documentId, membershipNonce: membership.membershipNonce }).catch(cause => { if (!isWorkspaceClosePendingError(cause)) setError(message(cause)); });
   }
-  function viewportSize(){const bounds=stage.current?.querySelector('.model-viewport-stage')?.getBoundingClientRect();return bounds?{width:bounds.width,height:bounds.height}:undefined;}
+  function viewportNode(){return stage.current?.querySelector('.model-viewport-stage');}
+  function viewportSize(){const bounds=viewportNode()?.getBoundingClientRect();return bounds?{width:bounds.width,height:bounds.height}:undefined;}
+  function captureCurrentViewport(options:ViewportImageExportOptions,ownerDocument:Document,signal:AbortSignal){
+    const own=latest.current,node=viewportNode(),size=node?.getBoundingClientRect(),getView=viewportGetter.current;
+    if(own.readOnly||own.displayWaiting||own.displayHidden||!own.viewport||!size||!getView||!node?.isConnected||node.ownerDocument!==ownerDocument)
+      throw new Error('当前窗口的视口尚未准备好。');
+    const scene=detachedViewportImageSnapshot(own.model,{...own.viewport,...own.mirrorDisplay},getView(),size);
+    return exportViewportImage(scene,{...options,legend:captureViewportLegend(node,scene.document.id),viewportWidth:size.width,viewportHeight:size.height},ownerDocument,signal);
+  }
   async function exportCurrentViewport(options:ViewportImageExportOptions,ownerDocument:Document){
-    const own=latest.current,size=viewportSize(),getView=viewportGetter.current;
-    if(imageExportAbort.current||own.readOnly||own.displayWaiting||!own.viewport||!size||!getView)return;
+    if(imageExportAbort.current)return;
+    const name=latest.current.model.draft.structure.name||'Ester-Studio';
     const controller=new AbortController();imageExportAbort.current=controller;setImageExporting(true);
     try{
-      const scene=detachedViewportImageSnapshot(own.model,{...own.viewport,...own.mirrorDisplay},getView(),size);
-      const blob=await exportViewportImage(scene,{...options,viewportWidth:size.width,viewportHeight:size.height},ownerDocument,controller.signal);
-      if(!controller.signal.aborted)exportBlob(blob,`${own.model.draft.structure.name||'Ester-Studio'}.${options.format}`,ownerDocument);
+      const blob=await captureCurrentViewport(options,ownerDocument,controller.signal);
+      if(!controller.signal.aborted)exportBlob(blob,`${name}.${options.format}`,ownerDocument);
     }catch(cause){if(!controller.signal.aborted)setError(message(cause));}
     finally{if(imageExportAbort.current===controller){imageExportAbort.current=null;setImageExporting(false);}}
   }
@@ -464,20 +535,21 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
         <WorkspaceTabActions><button type="button" className="workspace-tab-close" aria-label="关闭模型" disabled={closing || unavailable || !bridge.requestWorkspaceDocumentClose} onClick={() => { void bridge.requestWorkspaceDocumentClose?.({ documentId: membership.documentId, membershipNonce: membership.membershipNonce }).catch(cause => { if (!isWorkspaceClosePendingError(cause)) setError(message(cause)); }); }}><WorkspaceTabCloseIcon/></button></WorkspaceTabActions>
       </div>
       <span className="shared-model-window-drag" aria-hidden="true" />
-      <div className="shared-model-image-export"><button type="button" onClick={()=>setSettingsOpen(true)}>显示设置</button><ViewportImageExportMenu openRequest={imageExportOpenRequest} getViewportSize={viewportSize} disabled={!viewReady||readOnly||!observedModel.draft.structure.atoms.length||Boolean(displayDescription&&!mirrorDisplay)} exporting={imageExporting} onExport={exportCurrentViewport}/></div>
+      <div className="shared-model-image-export">{viewport?.frameBondEditing&&<><button type="button" data-testid="shared-frame-undo" aria-label="撤销当前帧改键" disabled={!drawingAllowed||!viewport.frameBondEditing.canUndo} onClick={()=>emit({type:'key',key:'z',ctrlKey:true,release:false,hover:emptyPick(),frameBondTarget:drawingTarget})}>↶</button><button type="button" data-testid="shared-frame-redo" aria-label="重做当前帧改键" disabled={!drawingAllowed||!viewport.frameBondEditing.canRedo} onClick={()=>emit({type:'key',key:'y',ctrlKey:true,release:false,hover:emptyPick(),frameBondTarget:drawingTarget})}>↷</button></>}<button type="button" onClick={()=>setSettingsOpen(true)}>显示设置</button><button type="button" data-testid="shared-model-save-structure" disabled={!structureSource.available||structureExport.busy} onClick={()=>void structureExport.save().catch(cause=>setError(message(cause)))}>导出结构文件…</button><ViewportImageExportMenu openRequest={imageExportOpenRequest} getViewportSize={viewportSize} disabled={!viewReady||readOnly||displayHidden||displayWaiting||!observedModel.draft.structure.atoms.length} exporting={imageExporting} onExport={exportCurrentViewport}
+        onCapture={captureCurrentViewport} captureKey={readOnly||displayHidden?null:JSON.stringify([cameraOwnerKey,displayDescription?.sourceKey,viewport?.trajectoryPlayback?.collectionIdentity?.stageId])}/></div>
       <output className="shared-model-status" role="status" aria-live="polite">{unavailable ? '主工作台不可用' : closing ? '正在确认关闭…' : !viewport || !replica ? '正在连接…' : state.pending ? '正在同步…' : ''}</output>
     </header>
     {viewport?.trajectoryPlayback&&viewport.trajectoryPlayback.count>0&&<div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...viewport.trajectoryPlayback} disabled={readOnly||viewport.trajectoryPlayback.disabled} {...trajectoryControlCallbacks(dispatchPlayback)} detailsContent={viewport.trajectoryPlayback.overlay&&<PlaybackOverlayControls {...viewport.trajectoryPlayback.overlay} {...trajectoryOverlayControlCallbacks(dispatchPlayback)}/>}/></div>}
     <div ref={stage} className="shared-model-stage" onPointerDownCapture={event => { if (held.current && event.target instanceof Element && event.target.closest('[data-testid="model-interaction-surface"]')) held.current.used = true; }}>
       {!!viewport?.workspaceInputRoles?.length&&<div className="workspace-task-roles">{viewport.workspaceInputRoles.map(role=><span key={role.role} className="workspace-task-role" data-testid="workspace-task-role" data-input-task-id={role.taskId} data-source-document-id={model.id} data-source-role={role.role}>{role.label}</span>)}</div>}
-      <ModelViewport {...viewport} {...mirrorDisplay} onCipLabelsUsed={emitCipUsage} sceneOwnerEpoch={!readonlyProjection?snapshot.documentEpoch:undefined} document={observedModel} active={!unavailable && !closing} legendVisible={viewport?.legendVisible} display={viewport?.display ?? DEFAULT_DISPLAY} interaction={viewport?.interaction ?? { element: null, box: false, alt: false, gesture: 'none' }}
+      <ModelViewport {...viewport} {...mirrorDisplay} onCipLabelsUsed={emitCipUsage} sceneOwnerEpoch={!readonlyProjection?snapshot.documentEpoch:undefined} document={drawingDocument} active={!unavailable && !closing} legendVisible={viewport?.legendVisible} display={viewport?.display ?? DEFAULT_DISPLAY} interaction={viewport?.interaction ?? { element: null, box: false, alt: false, gesture: 'none' }}
         cellEditorDraft={!readOnly&&!displayWaiting&&viewport?.cellEditor?{...viewport.cellEditor,onAxisHover:axis=>emit({type:'cell-editor',documentId:viewport.cellEditor!.documentId,expectedRevision:viewport.cellEditor!.expectedRevision,action:'hover',axis}),onLengthChange:(axis,length)=>emit({type:'cell-editor',documentId:viewport.cellEditor!.documentId,expectedRevision:viewport.cellEditor!.expectedRevision,action:'length',axis,length}),onLengthCommit:(axis,length)=>emit({type:'cell-editor',documentId:viewport.cellEditor!.documentId,expectedRevision:viewport.cellEditor!.expectedRevision,action:'commit',axis,length}),onDragStart:()=>emit({type:'cell-editor',documentId:viewport.cellEditor!.documentId,expectedRevision:viewport.cellEditor!.expectedRevision,action:'start'}),onDragEnd:cancel=>emit({type:'cell-editor',documentId:viewport.cellEditor!.documentId,expectedRevision:viewport.cellEditor!.expectedRevision,action:'end',cancel:cancel===true})}:null}
         samplingSphereDraft={!readOnly&&!displayWaiting?viewport?.samplingSphereEditor:null} onSamplingSphereRadiusChange={change=>emit({type:'sampling-sphere',...change})}
         onViewReady={onViewReady}
         onSurfaceMeshState={(mesh,document)=>displayConsumer.current?.mesh(mesh,document)}
         onResultColorbarLayoutChange={mirrorDisplay?.resultColorbarOwnerKey?layout=>{displayConsumer.current?.colorbarLayout(layout);}:undefined}
-        readOnly={readOnly || viewport?.readOnly || readonlyProjection || displayWaiting} allowModelEditing={!readOnly&&!displayWaiting&&viewport?.allowModelEditing} temporaryPointerMode={readonlyProjection&&!viewport?.allowModelEditing||displayWaiting?null:temporaryPointerMode ?? viewport?.temporaryPointerMode} getPointerMode={() => latest.current.readonlyProjection&&!latest.current.viewport?.allowModelEditing||latest.current.displayWaiting?null:held.current?.mode ?? latest.current.viewport?.temporaryPointerMode ?? null}
-        getDocument={() => detachedDisplayDocument(latest.current.model,latest.current.mirrorDisplay?.displayDocument)} selectionShortcut={viewport?.selectShortcut.toUpperCase()} cameraRequest={readonlyProjection?undefined:cameraRequest} resetViewRequest={readonlyProjection?undefined:resetViewRequest} cameraView={cameraView}
+        readOnly={readOnly || viewport?.readOnly || readonlyProjection || displayWaiting} readonlyDrawing={drawingAllowed} observationSelection={drawingAllowed} allowModelEditing={!readOnly&&!displayWaiting&&viewport?.allowModelEditing} temporaryPointerMode={readonlyProjection&&!viewport?.allowModelEditing&&!drawingAllowed||displayWaiting?null:temporaryPointerMode ?? viewport?.temporaryPointerMode} getPointerMode={() => latest.current.readonlyProjection&&!latest.current.viewport?.allowModelEditing&&!sharedWindowFrameBondTarget(latest.current.viewport,latest.current.mirrorDisplay)||latest.current.displayWaiting?null:held.current?.mode ?? latest.current.viewport?.temporaryPointerMode ?? null}
+        getDocument={() => {const current=latest.current,document=detachedDisplayDocument(current.model,current.mirrorDisplay?.displayDocument);return sharedWindowFrameBondTarget(current.viewport,current.mirrorDisplay)&&current.viewport?.editingDocument?{...document,selection:current.viewport.editingDocument.selection}:document;}} selectionShortcut={viewport?.selectShortcut.toUpperCase()} cameraRequest={readonlyProjection?undefined:cameraRequest} resetViewRequest={readonlyProjection?undefined:resetViewRequest} cameraView={cameraView}
         onCameraViewChange={view => { if (latest.current.cameraOwnerKey!==cameraOwnerKey||latest.current.replica?.getState().closing) return; const generation = cameraGeneration.current; setCameraView(view);if(latest.current.readonlyProjection||latest.current.displayWaiting)return; cameraPending.current++; void send({ type: 'camera', view }).catch(() => {}).finally(() => { if (latest.current.cameraOwnerKey!==cameraOwnerKey||generation !== cameraGeneration.current) return; cameraPending.current--; syncCamera(); }); }}
         onHover={pick => { hover.current = { pick: latest.current.replica?.getState().closing ? emptyPick() : pick, revision: latest.current.model.revision }; }} onStateMarkerHover={marker => { hoveredMarker.current = latest.current.replica?.getState().closing ? null : marker; }} onMeasurementRecordHover={record => { hoveredMeasurement.current = latest.current.replica?.getState().closing ? null : record?.id ?? null; }}
         onGestureStart={kind => { if (latest.current.replica?.getState().closing) return; gesture.current = kind; if (held.current) held.current.used = true; }} onGestureEnd={() => { gesture.current = null; syncCamera(); }}
@@ -490,6 +562,7 @@ export default function SharedModelWindow({ membership, bridge }: SharedModelWin
       <CanvasClearToolbar containerRef={stage} disabled={readOnly || viewport?.structureLocked || readonlyProjection&&!viewport?.allowModelEditing || displayWaiting} onClearSelection={() => emit({ type: 'clear', kind: 'selection' })} onClearFrozen={() => emit({ type: 'clear', kind: 'frozen' })} onClearCoordinates={() => emit({ type: 'clear', kind: 'coordinates' })} />
     </div>
     {(error || state.error || viewport?.error) && <DismissibleNotice className="shared-model-error" identity={cameraOwnerKey}>{error || state.error || viewport?.error}</DismissibleNotice>}
+    {structureExport.dialog}
     {settingsOpen&&<EnvironmentSettings onClose={()=>setSettingsOpen(false)} display={readOnly?undefined:viewport?.display??DEFAULT_DISPLAY} onDisplayChange={readOnly?undefined:display=>emit({type:'display-settings',display})} atoms={observedModel.draft.structure.atoms} hasCell={!!observedModel.draft.structure.cell} targetLabel={snapshot.metadata?.label??observedModel.draft.structure.name} showAxes={viewport?.showAxes??false} onShowAxesChange={visible=>emit({type:'axes-visible',visible})}/>}
   </section>;
 }

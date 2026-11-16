@@ -8,12 +8,14 @@ export interface DynamicsPort {
   subscribe(listener: (event: DynamicsEvent) => void): () => void;
   start(request: DynamicsRequest, sessionId: string): Promise<void>;
   command(sessionId: string, command: DynamicsCommand): Promise<void>;
+  waitForClosed?(documentId: string, sessionId: string): Promise<void>;
 }
 
 export interface DynamicsBridge {
   info(): Promise<{ nativeChemistry: boolean }>;
   startDynamics(request: DynamicsRequest, sessionId: string): Promise<void>;
   commandDynamics(sessionId: string, command: DynamicsCommand): Promise<void>;
+  waitForDynamicsClose?(documentId: string, sessionId: string): Promise<void>;
   onDynamicsEvent(callback: (event: DynamicsEvent) => void): () => void;
 }
 
@@ -36,5 +38,6 @@ export function createDynamicsPort(bridge: DesktopBridge | DynamicsBridge | null
       if (!complete) throw new Error('当前环境不支持原生动态力场。');
       return native!.commandDynamics!(sessionId, command);
     },
+    ...(native?.waitForDynamicsClose ? { waitForClosed: (documentId: string, sessionId: string) => native.waitForDynamicsClose!(documentId, sessionId) } : {}),
   };
 }

@@ -91,6 +91,11 @@ def validate_periodic_cell(structure):
 def validate(request):
     if request.get("operation") not in ("optimize", "generate3d", "perceive-bonds", "convert", "geometry"):
         reject("operation", "Unsupported chemistry operation.")
+    if 'sourceStereo' in request and request['operation'] != 'generate3d':
+        reject('stereo-source', 'The original 2D stereo reference applies only to this 3D generation operation.')
+    if 'optimizationStepPolicy' in request and (request['optimizationStepPolicy'] != 'native-default'
+            or request['operation'] != 'optimize' or not request.get('runIdentity') or 'steps' in request):
+        reject('steps', 'Native default steps require an advanced optimization without an explicit step count.')
     policy = request.get("bondPerceptionPolicy")
     if "empiricalBondParameters" in request:
         if request["operation"] != "perceive-bonds":
@@ -228,7 +233,7 @@ def molecule(structure, sanitize=True, declared_stereo=True):
             reject("charge-change", "Sanitization would change an explicit formal charge.")
         charge = structure.get("charge")
         if charge is not None and charge != sum(a.GetFormalCharge() for a in mol.GetAtoms()):
-            reject("charge-mismatch", "Overall charge and explicit atom formal charges disagree; native force fields cannot assign a charge distribution silently.")
+            reject("charge-mismatch", "Overall charge and explicit atom formal charges disagree. The supplied graph and charge must describe the same model.")
         if structure.get("dimension", 3) == 2:
             Chem.AssignChiralTypesFromBondDirs(mol)
             # The common graph carries E/Z through its actual 2D coordinates,
@@ -252,13 +257,244 @@ def molecule(structure, sanitize=True, declared_stereo=True):
                 reject("stereo-unsupported", "Specified tetrahedral parity requires four explicit neighbours.")
             tmp = Chem.Mol(mol)
             conf = tmp.GetConformer()
+            # These are synthetic spatial coordinates, even when the caller's
+            # conformer is a 2D drawing. RDKit must not re-read the old wedges.
+            conf.Set3D(True)
             # This ordering has a positive determinant.
             points = ((1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0))
+            conf.SetAtomPosition(i, (.25 * parity, .25, .25))
             for j, p in zip(neighbours, points):
                 conf.SetAtomPosition(j, (p[0] * parity, p[1], p[2]))
             Chem.AssignAtomChiralTagsFromStructure(tmp, replaceExistingTags=True)
             mol.GetAtomWithIdx(i).SetChiralTag(tmp.GetAtomWithIdx(i).GetChiralTag())
         Chem.AssignStereochemistry(mol, cleanIt=False, force=True)
+    return mol
+
+
+def _legacy_2d_stereo_source(structure):
+    """Recover a wedge reference without using temporary diagram-H positions.
+
+    New 2D entry points send their pre-expansion source explicitly. For old
+    callers, terminal non-wedge H can be represented as a counted ligand;
+    actual wedge-to-H endpoints remain explicit and retain their stable IDs.
+    """
+    graph = structure.get('bonds', [])
+    removed = set()
+    counts = {}
+    for index, atom in enumerate(structure['atoms']):
+        edges = [bond for bond in graph if index in (bond['a'], bond['b'])]
+        if atom['element'] == 'H' and len(edges) == 1 and edges[0]['order'] == 1 and not edges[0].get('stereo'):
+            parent = edges[0]['b'] if edges[0]['a'] == index else edges[0]['a']
+            if structure['atoms'][parent]['element'] != 'H':
+                removed.add(index)
+                counts[parent] = counts.get(parent, 0) + 1
+    return dict(schema='es-2d-stereo/v1', atoms=[dict(id=atom['id'], element=atom['element'],
+                x=atom['x'], y=atom['y'], formalCharge=atom.get('formalCharge', 0), hydrogenCount=counts.get(i, 0))
+                for i, atom in enumerate(structure['atoms']) if i not in removed],
+                bonds=[dict(a=structure['atoms'][bond['a']]['id'], b=structure['atoms'][bond['b']]['id'],
+                            order=bond['order'], stereo=bond.get('stereo', 0))
+                       for bond in graph if bond['a'] not in removed and bond['b'] not in removed])
+
+
+def _source_stereo_molecule(source, structure):
+    """Read the original 2D graph; no derived parity/CIP is an authority."""
+    if (not isinstance(source, dict) or source.get('schema') != 'es-2d-stereo/v1'
+            or not isinstance(source.get('atoms'), list) or not isinstance(source.get('bonds'), list)):
+        reject('stereo-source', 'The original 2D stereochemical reference is invalid.')
+    target = {atom['id']: atom for atom in structure['atoms']}
+    rw, indices = Chem.RWMol(), {}
+    for item in source['atoms']:
+        if (not isinstance(item, dict) or not isinstance(item.get('id'), str) or item['id'] in indices
+                or item['id'] not in target or item.get('element') != target[item['id']]['element']
+                or type(item.get('formalCharge', 0)) is not int
+                or item.get('formalCharge', 0) != target[item['id']].get('formalCharge', 0)
+                or any(type(item.get(axis)) not in (int, float) or not math.isfinite(item[axis]) for axis in ('x', 'y'))):
+            reject('stereo-source', 'The original 2D atoms do not match the generated model identities.')
+        atom = Chem.Atom(item['element'])
+        atom.SetFormalCharge(item.get('formalCharge', 0))
+        count = item.get('hydrogenCount')
+        if count is not None:
+            if type(count) is not int or count < 0:
+                reject('stereo-source', 'The original 2D hydrogen count is invalid.')
+            atom.SetNumExplicitHs(count)
+            atom.SetNoImplicit(True)
+        atom.SetProp('_StableId', item['id'])
+        indices[item['id']] = rw.AddAtom(atom)
+    types = {1: Chem.BondType.SINGLE, 1.5: Chem.BondType.AROMATIC, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
+    pairs = set()
+    for item in source['bonds']:
+        if (not isinstance(item, dict) or item.get('a') not in indices or item.get('b') not in indices
+                or item['a'] == item['b'] or item.get('order') not in types or item.get('stereo', 0) not in (0, 1, 6)
+                or item.get('stereo') and item['order'] != 1):
+            reject('stereo-source', 'The original 2D connection/stereo endpoints are invalid.')
+        pair = frozenset((item['a'], item['b']))
+        if pair in pairs:
+            reject('stereo-source', 'The original 2D reference repeats a connection.')
+        pairs.add(pair)
+        a, b = indices[item['a']], indices[item['b']]
+        rw.AddBond(a, b, types[item['order']])
+        bond = rw.GetBondBetweenAtoms(a, b)
+        if item['order'] == 1.5:
+            bond.SetIsAromatic(True)
+            rw.GetAtomWithIdx(a).SetIsAromatic(True)
+            rw.GetAtomWithIdx(b).SetIsAromatic(True)
+        if item.get('stereo'):
+            bond.SetBondDir(Chem.BondDir.BEGINWEDGE if item['stereo'] == 1 else Chem.BondDir.BEGINDASH)
+    mol = rw.GetMol()
+    conf = Chem.Conformer(len(source['atoms']))
+    conf.Set3D(False)
+    for index, item in enumerate(source['atoms']):
+        conf.SetAtomPosition(index, (item['x'], item['y'], 0.))
+    mol.AddConformer(conf)
+    try:
+        Chem.SanitizeMol(mol)
+        Chem.AssignChiralTypesFromBondDirs(mol, replaceExistingTags=True)
+        Chem.SetDoubleBondNeighborDirections(mol, mol.GetConformer())
+        Chem.SetBondStereoFromDirections(mol)
+        Chem.AssignStereochemistry(mol, cleanIt=True, force=True)
+        mol = Chem.AddHs(mol, addCoords=False)
+        groups = source.get('stereoGroups', [])
+        if not isinstance(groups, list):
+            reject('stereo-source', 'The original stereo groups are invalid.')
+        grouped, keys, native_groups = set(), set(), []
+        editable = Chem.RWMol(mol)
+        types = {'ABS': Chem.StereoGroupType.STEREO_ABSOLUTE,
+                 'AND': Chem.StereoGroupType.STEREO_AND, 'OR': Chem.StereoGroupType.STEREO_OR}
+        for group in groups:
+            if (not isinstance(group, dict) or group.get('type') not in types
+                    or not isinstance(group.get('id'), str) or not group['id']
+                    or not isinstance(group.get('atomIds'), list) or not group['atomIds']):
+                reject('stereo-source', 'The original stereo group declaration is invalid.')
+            key = (group['type'], group['id'])
+            members = group['atomIds']
+            if key in keys or any(not isinstance(identity, str) or identity not in indices or identity in grouped for identity in members):
+                reject('stereo-source', 'The original stereo group contains duplicate or unknown atom identities.')
+            keys.add(key)
+            for identity in members:
+                if identity in grouped:
+                    reject('stereo-source', 'The original stereo group repeats an atom identity.')
+                grouped.add(identity)
+            # Equivalent ligands can legitimately remove a nominal centre.
+            # Keep its source membership but only attach native stereo atoms.
+            active = [indices[identity] for identity in members
+                      if mol.GetAtomWithIdx(indices[identity]).GetChiralTag() != Chem.ChiralType.CHI_UNSPECIFIED]
+            if active:
+                native_groups.append(Chem.CreateStereoGroup(types[group['type']], editable, active))
+        editable.SetStereoGroups(native_groups)
+        return editable.GetMol()
+    except Exception as error:
+        reject('stereo-source', 'The original 2D stereochemical graph could not be read without changing its chemistry.',
+               {'nativeMessage': str(error)[:2048]})
+
+
+def _transfer_source_stereo(reference, target):
+    """Map counted H to existing output H and transfer native neighbour parity."""
+    target_ids = {atom.GetProp('_StableId'): atom.GetIdx() for atom in target.GetAtoms()}
+    mapping, source_ids = {}, set()
+    for atom in reference.GetAtoms():
+        if atom.HasProp('_StableId'):
+            identity = atom.GetProp('_StableId')
+            if identity not in target_ids:
+                reject('stereo-source', 'The original stereochemical atom is missing from the generated model.')
+            mapping[atom.GetIdx()] = target_ids[identity]
+            source_ids.add(identity)
+    required = set()
+    for atom in reference.GetAtoms():
+        if atom.GetChiralTag() != Chem.ChiralType.CHI_UNSPECIFIED:
+            required.update(neighbour.GetIdx() for neighbour in atom.GetNeighbors())
+    for bond in reference.GetBonds():
+        if bond.GetStereo() in (Chem.BondStereo.STEREOE, Chem.BondStereo.STEREOZ):
+            required.update(bond.GetStereoAtoms())
+    source_h, target_h = {}, {}
+    for atom in reference.GetAtoms():
+        if atom.GetIdx() in mapping or atom.GetIdx() not in required:
+            continue
+        neighbours = list(atom.GetNeighbors())
+        if atom.GetAtomicNum() != 1 or len(neighbours) != 1 or neighbours[0].GetIdx() not in mapping:
+            reject('stereo-source', 'The original implicit ligand cannot be mapped to the explicit model.')
+        parent = mapping[neighbours[0].GetIdx()]
+        source_h.setdefault(parent, []).append(atom.GetIdx())
+    for atom in target.GetAtoms():
+        if atom.GetProp('_StableId') in source_ids:
+            continue
+        neighbours = list(atom.GetNeighbors())
+        if atom.GetAtomicNum() == 1 and len(neighbours) == 1 and neighbours[0].GetIdx() in source_h:
+            target_h.setdefault(neighbours[0].GetIdx(), []).append(atom.GetIdx())
+    if any(len(values) != 1 or len(target_h.get(parent, [])) != 1 for parent, values in source_h.items()):
+        reject('stereo-source', 'A specified stereochemical hydrogen cannot be mapped uniquely to its original centre.')
+    for parent, values in source_h.items():
+        for source_index, target_index in zip(values, sorted(target_h[parent], key=lambda i: target.GetAtomWithIdx(i).GetProp('_StableId'))):
+            mapping[source_index] = target_index
+    source_edges = sorted((min(mapping[b.GetBeginAtomIdx()], mapping[b.GetEndAtomIdx()]),
+                           max(mapping[b.GetBeginAtomIdx()], mapping[b.GetEndAtomIdx()]), b.GetBondTypeAsDouble()) for b in reference.GetBonds()
+                          if b.GetBeginAtom().HasProp('_StableId') and b.GetEndAtom().HasProp('_StableId'))
+    target_edges = sorted((min(b.GetBeginAtomIdx(), b.GetEndAtomIdx()), max(b.GetBeginAtomIdx(), b.GetEndAtomIdx()),
+                           b.GetBondTypeAsDouble()) for b in target.GetBonds()
+                          if b.GetBeginAtom().GetProp('_StableId') in source_ids and b.GetEndAtom().GetProp('_StableId') in source_ids)
+    if source_edges != target_edges:
+        reject('stereo-source', 'The generated model changed the original 2D connection graph.')
+    Chem.RemoveStereochemistry(target)
+    for atom in reference.GetAtoms():
+        if atom.GetChiralTag() == Chem.ChiralType.CHI_UNSPECIFIED:
+            continue
+        other = target.GetAtomWithIdx(mapping[atom.GetIdx()])
+        source_order = [mapping[n.GetIdx()] for n in atom.GetNeighbors()]
+        target_order = [n.GetIdx() for n in other.GetNeighbors()]
+        order = [target_order.index(index) for index in source_order]
+        other.SetChiralTag(atom.GetChiralTag())
+        if sum(order[i] > order[j] for i in range(len(order)) for j in range(i + 1, len(order))) % 2:
+            other.InvertChirality()
+    # Validate the actual target atom centres before installing double-bond
+    # declarations. cleanIt=True after programmatic SetStereo would erase
+    # a valid E/Z declaration that has no serialized slash-direction cache.
+    Chem.AssignStereochemistry(target, cleanIt=True, force=True)
+    for bond in reference.GetBonds():
+        if bond.GetStereo() not in (Chem.BondStereo.STEREOE, Chem.BondStereo.STEREOZ):
+            continue
+        begin, end = mapping[bond.GetBeginAtomIdx()], mapping[bond.GetEndAtomIdx()]
+        other = target.GetBondBetweenAtoms(begin, end)
+        neighbours = [mapping[index] for index in bond.GetStereoAtoms()]
+        if other.GetBeginAtomIdx() != begin:
+            neighbours.reverse()
+        other.SetStereoAtoms(*neighbours)
+        other.SetStereo(bond.GetStereo())
+    Chem.SetDoubleBondNeighborDirections(target)
+    Chem.AssignStereochemistry(target, cleanIt=False, force=True)
+    editable = Chem.RWMol(target)
+    editable.SetStereoGroups([Chem.CreateStereoGroup(group.GetGroupType(), editable,
+        [mapping[atom.GetIdx()] for atom in group.GetAtoms()]) for group in reference.GetStereoGroups()])
+    return editable.GetMol()
+
+
+def generation_molecule(structure, source=None):
+    if source is not None:
+        if (not isinstance(source, dict) or source.get('schema') != 'es-2d-stereo/v1'
+                or not isinstance(source.get('atoms'), list) or not isinstance(source.get('bonds'), list)
+                or not all(isinstance(bond, dict) for bond in source['bonds'])):
+            reject('stereo-source', 'The original 2D stereochemical reference is invalid.')
+        degree = {}
+        for bond in source['bonds']:
+            for identity in (bond.get('a'), bond.get('b')):
+                if isinstance(identity, str):
+                    degree[identity] = degree.get(identity, 0) + 1
+        relevant = bool(source.get('stereoGroups')) or any(bond.get('stereo') in (1, 6) or bond.get('order') == 2
+                       and degree.get(bond.get('a'), 0) > 1 and degree.get(bond.get('b'), 0) > 1 for bond in source['bonds'])
+    else:
+        relevant = False
+    if source is not None and not relevant:
+        # No declared stereo or potentially configurable double bond: use the
+        # one target graph already required for embedding, without constructing
+        # a second molecule or turning old derived metadata into a declaration.
+        mol = molecule(structure, declared_stereo=False)
+        Chem.RemoveStereochemistry(mol)
+        return mol
+    if source is not None or structure.get('dimension', 3) == 2 and any(b.get('stereo') in (1, 6) for b in structure.get('bonds', [])):
+        reference = _source_stereo_molecule(source if source is not None else _legacy_2d_stereo_source(structure), structure)
+        return _transfer_source_stereo(reference, molecule(structure, declared_stereo=False))
+    # Legacy explicit ordered parity is calibrated using an actual 3D synthetic
+    # conformer; the caller's planar flag can no longer invalidate that mapping.
+    mol = molecule(structure)
+    Chem.AssignStereochemistry(mol, cleanIt=True, force=True)
     return mol
 
 
@@ -302,24 +538,31 @@ def stereo_geometry(structure):
     return tetra, double
 
 
-def check_stereo(before, after, generation=False):
-    bt, bd = stereo_geometry(before)
-    at, ad = stereo_geometry(after)
-    for i, prior in bt.items():
-        expected = before["atoms"][i]["stereoParity"] if generation else prior
-        if not expected or at.get(i) != expected:
-            reject("stereo-change", "Automatic geometry changed or flattened specified tetrahedral stereochemistry.")
-    for key, prior in bd.items():
-        if prior and ad.get(key) != prior:
-            a, b, left, right = key
-            reject("stereo-change", "Automatic geometry changed or flattened an existing double-bond configuration.",
-                   {"kind": "double-bond-geometry", "bondAtomIds": [before["atoms"][i]["id"] for i in (a, b)],
-                    "referenceAtomIds": [before["atoms"][i]["id"] for i in (left, right)],
-                    "beforeSign": prior, "afterSign": ad.get(key)})
-    # Independently read actual final geometry. Do not allow declared parity or
-    # cached wedge metadata to mask an inversion in the returned XYZ.
-    expected = molecule(before)
+def check_stereo(before, after, generation=False, reference=None):
+    # The reference is captured once, before embedding. Compare only genuine
+    # native stereocentres/E-Z bonds; arbitrary neighbour-index signs are not
+    # configurations (notably two equivalent ring paths or identical ligands).
+    expected = reference if reference is not None else (generation_molecule(before) if generation else molecule(before, declared_stereo=False))
     actual = molecule(after, declared_stereo=False)
+    Chem.AssignStereochemistry(actual, cleanIt=True, force=True)
+    # One valid representative may invert every centre of an AND/OR group.
+    # Normalize only a complete group inversion before the existing native
+    # tetrahedral/E-Z/ring comparison. Never accept a single-centre inversion.
+    for group in expected.GetStereoGroups():
+        if group.GetGroupType() == Chem.StereoGroupType.STEREO_ABSOLUTE:
+            continue
+        flips = []
+        for atom in group.GetAtoms():
+            other = actual.GetAtomWithIdx(atom.GetIdx())
+            if other.GetChiralTag() == Chem.ChiralType.CHI_UNSPECIFIED:
+                reject('stereo-change', 'Native validation detected loss of an enhanced stereo group centre.')
+            flips.append(other.GetChiralTag() != atom.GetChiralTag())
+        if any(flips) and not all(flips):
+            reject('stereo-change', 'Native validation detected a change within an enhanced stereo group.')
+        if flips and all(flips):
+            for atom in group.GetAtoms():
+                actual.GetAtomWithIdx(atom.GetIdx()).InvertChirality()
+    Chem.AssignStereochemistry(actual, cleanIt=True, force=True)
     for atom in expected.GetAtoms():
         if atom.HasProp("_CIPCode"):
             other = actual.GetAtomWithIdx(atom.GetIdx())
@@ -330,7 +573,26 @@ def check_stereo(before, after, generation=False):
         if stereo in (Chem.BondStereo.STEREOE, Chem.BondStereo.STEREOZ):
             other = actual.GetBondBetweenAtoms(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
             if other.GetStereo() != stereo:
-                reject("stereo-change", "Native stereochemical validation detected an E/Z inversion or loss.")
+                reject("stereo-change", "Native stereochemical validation detected an E/Z inversion or loss.",
+                       {'kind': 'double-bond-geometry', 'bondAtomIds': [before['atoms'][index]['id']
+                        for index in (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())],
+                        'expectedStereo': str(stereo), 'actualStereo': str(other.GetStereo())})
+    if any(atom.GetChiralTag() != Chem.ChiralType.CHI_UNSPECIFIED and not atom.HasProp('_CIPCode') for atom in expected.GetAtoms()):
+        # Coupled ring cis/trans can be defined without independently named
+        # R/S centres. Canonical stereo graph comparison permits equivalent
+        # ring-path permutations while preserving the declared relationship.
+        observed = Chem.Mol(actual)
+        for atom in observed.GetAtoms():
+            if expected.GetAtomWithIdx(atom.GetIdx()).GetChiralTag() == Chem.ChiralType.CHI_UNSPECIFIED:
+                atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
+        for bond in observed.GetBonds():
+            bond.SetBondDir(Chem.BondDir.NONE)
+            prior = expected.GetBondBetweenAtoms(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+            if prior.GetStereo() not in (Chem.BondStereo.STEREOE, Chem.BondStereo.STEREOZ):
+                bond.SetStereo(Chem.BondStereo.STEREONONE)
+        Chem.AssignStereochemistry(observed, cleanIt=True, force=True)
+        if Chem.MolToSmiles(Chem.RemoveHs(expected), isomericSmiles=True) != Chem.MolToSmiles(Chem.RemoveHs(observed), isomericSmiles=True):
+            reject('stereo-change', 'Native stereochemical validation detected a change in the specified ring configuration.')
 
 
 def with_coordinates(structure, mol):
@@ -389,6 +651,15 @@ def coordinate_delta(value, target, kind):
     return math.atan2(math.sin(delta), math.cos(delta)) if kind == "D" else delta
 
 
+def forcefield_numerical(call, phase):
+    """Classify a failure inside an initialized candidate's numeric operation."""
+    try:
+        return call()
+    except (RuntimeError, ValueError, ArithmeticError) as exc:
+        reject("forcefield-numerical", "The native force-field numerical operation failed for this candidate.",
+               dict(phase=phase, exceptionType=type(exc).__name__, nativeMessage=str(exc)[:2048]))
+
+
 def constrained_minimize(request, structure, mol, ff, steps, warnings):
     try:
         import numpy as np
@@ -416,13 +687,13 @@ def constrained_minimize(request, structure, mol, ff, steps, warnings):
         return flat
 
     def energy(x):
-        value = ff.CalcEnergy(full(x).tolist())
+        value = forcefield_numerical(lambda: ff.CalcEnergy(full(x).tolist()), "constraint-energy")
         if not math.isfinite(value):
             reject("energy", "Constrained force-field energy became non-finite.")
         return value
 
     def gradient(x):
-        values = np.asarray(ff.CalcGrad(full(x).tolist()))[variable_indices]
+        values = np.asarray(forcefield_numerical(lambda: ff.CalcGrad(full(x).tolist()), "constraint-gradient"))[variable_indices]
         if not np.all(np.isfinite(values)):
             reject("gradient", "Constrained force-field gradients became non-finite.")
         return values
@@ -439,8 +710,11 @@ def constrained_minimize(request, structure, mol, ff, steps, warnings):
         keys.add(key)
         active.append(dict(type="eq", fun=lambda x, row=(item, indices, target): coordinate_delta(
             internal_value(full(x).reshape((-1, 3)), row[0]["type"], row[1]), row[2], row[0]["type"])))
-    result = minimize(energy, initial[variable_indices], jac=gradient, method="SLSQP", constraints=active,
-                      options=dict(maxiter=steps, ftol=1e-9, disp=False))
+    options = dict(ftol=1e-9, disp=False)
+    if steps is not None:
+        options['maxiter'] = steps
+    result = forcefield_numerical(lambda: minimize(energy, initial[variable_indices], jac=gradient,
+                                                  method="SLSQP", constraints=active, options=options), "constraint-minimize")
     if not result.success and result.status != 9:
         reject("constraint-solver", "The exact internal-coordinate solver could not resolve this constraint set; the input structure is unchanged.")
     final = full(result.x).reshape((-1, 3))
@@ -497,10 +771,11 @@ def optimize(request, structure, mol, warnings):
     fixed = [i for i, a in enumerate(structure["atoms"]) if a["id"] not in movable]
     for i in fixed:
         ff.AddFixedPoint(i)
-    ff.Initialize()
-    before = ff.CalcEnergy()
-    steps = request.get("steps", 500)
-    if not isinstance(steps, int) or isinstance(steps, bool) or not 1 <= steps <= 2147483647:
+    forcefield_numerical(ff.Initialize, "initialize")
+    before = forcefield_numerical(ff.CalcEnergy, "initial-energy")
+    native_steps = request.get('optimizationStepPolicy') == 'native-default'
+    steps = None if native_steps else request.get('steps', 500)
+    if not native_steps and (type(steps) is not int or not 1 <= steps <= 2147483647):
         reject("steps", "Optimization steps must be a positive signed 32-bit integer supported by RDKit.")
     extra = {}
     freezes = [c for c in request.get("constraints", []) if c["action"] == "freeze"]
@@ -508,9 +783,16 @@ def optimize(request, structure, mol, warnings):
         warnings.append("Scan coordinates are not frozen and no force-field scan was performed.")
     if freezes:
         status, extra["constraintResiduals"] = constrained_minimize(request, structure, mol, ff, steps, warnings)
+        if native_steps:
+            # SciPy 1.17.1 _minimize_slsqp default; leave the option absent.
+            extra.update(optimizer='scipy-slsqp', maxSteps=100)
+    elif native_steps:
+        status = forcefield_numerical(lambda: ff.Minimize(forceTol=1e-4, energyTol=1e-6), "minimize")
+        # RDKit 2025.03.6 ForceField.Minimize wrapper default; omit maxIts.
+        extra.update(optimizer='rdkit-minimize', maxSteps=200)
     else:
-        status = ff.Minimize(maxIts=steps, forceTol=1e-4, energyTol=1e-6)
-    after = ff.CalcEnergy()
+        status = forcefield_numerical(lambda: ff.Minimize(maxIts=steps, forceTol=1e-4, energyTol=1e-6), "minimize")
+    after = forcefield_numerical(ff.CalcEnergy, "final-energy")
     if not math.isfinite(before) or not math.isfinite(after):
         reject("energy", "Force-field energy is non-finite; no coordinates were accepted.")
     if native_graph_signature(mol) != original_graph:
@@ -519,7 +801,6 @@ def optimize(request, structure, mol, warnings):
     for i in fixed:
         if coordinates(output)[i] != coordinates(structure)[i]:
             reject("fixed-atom-moved", "A fixed atom moved; the native result was rejected.")
-    check_stereo(structure, output)
     if status:
         warnings.append("The iteration limit was reached; these are final coordinates, not a convergence claim.")
     warnings.append("Molecular force fields do not certify quantum electronic state or scientific convergence.")
@@ -768,19 +1049,36 @@ def run(request):
         mol = molecule(structure)
         output, extra = optimize(request, structure, mol, warnings)
     elif operation == "generate3d":
-        mol = molecule(structure)
+        mol = generation_molecule(structure, request.get('sourceStereo'))
         original_graph = native_graph_signature(mol)
-        parameters = AllChem.ETKDGv3()
-        parameters.randomSeed = 0x511
-        parameters.numThreads = 1
-        parameters.enforceChirality = True
-        parameters.useRandomCoords = True
-        if AllChem.EmbedMolecule(mol, parameters) != 0:
-            reject("embedding", "ETKDG could not generate this explicit graph; no atoms or hydrogens were added.")
-        if native_graph_signature(mol) != original_graph:
-            reject("graph-change", "3D embedding changed the explicit chemical graph.")
-        output = with_coordinates(structure, mol)
-        check_stereo(structure, output, generation=True)
+        failure = None
+        for attempt, (seed, random_coordinates) in enumerate(((0x511, True), (0x512, True), (0x513, False)), 1):
+            candidate = Chem.Mol(mol)
+            parameters = AllChem.ETKDGv3()
+            parameters.randomSeed = seed
+            parameters.numThreads = 1
+            parameters.enforceChirality = True
+            parameters.useRandomCoords = random_coordinates
+            if AllChem.EmbedMolecule(candidate, parameters) != 0:
+                continue
+            if native_graph_signature(candidate) != original_graph:
+                reject("graph-change", "3D embedding changed the explicit chemical graph.")
+            proposed = with_coordinates(structure, candidate)
+            try:
+                check_stereo(structure, proposed, generation=True, reference=mol)
+            except Rejected as error:
+                if error.code != 'stereo-change':
+                    raise
+                failure = error
+                continue
+            output = proposed
+            if attempt > 1:
+                warnings.append(f"ETKDGv3 produced a verified geometry on attempt {attempt} (seed {seed}, random coordinates: {random_coordinates}).")
+            break
+        else:
+            if failure is not None:
+                raise failure
+            reject("embedding", "ETKDGv3 could not generate this explicit graph after three attempts; no atoms or hydrogens were added.")
         warnings.append("ETKDG generated explicit-atom coordinates; no force-field optimization or convergence is implied.")
     elif operation == "perceive-bonds":
         if request.get("bondPerceptionPolicy") == "composite-v1":

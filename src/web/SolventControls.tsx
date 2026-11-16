@@ -3,9 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createEpsilonOnlySolvent, defaultSolventModel, findSolventEntry, getSolventEntries, hasSolvation, isEpsilonOnlySolvent, pcmSolventModel, validateSolventSelection, solventSelectionForModelChange } from '../core/solvents';
 import type { SolventEngine, SolventModel, SolventParameters, SolventSelection } from '../core/solvents';
 import { BookOpen } from 'lucide-react';
-import SolventLibraryDialog, { solventDielectricLabel } from './SolventLibraryDialog';
+import SolventLibraryDialog from './SolventLibraryDialog';
 import './solvents.css';
 import { InputSettingsAction, InputSettingsEnableCard } from './InputSettingsLayout';
+import {solventEntryLabel,solventLabel,solventDielectricText} from './solvent-presentation';
 
 export interface SolventDraftMemory { current: { solvent:string; solvation?:SolventSelection; model:SolventModel } | null }
 
@@ -100,8 +101,8 @@ export function SolventControls(props: SolventControlsProps) {
     </div>
     {mode === 'builtin' && <>
       <div className="solvent-current-row"><span>溶剂</span><button type="button" className="shared-input-action solvent-library-trigger" aria-label={`${engine}内置溶剂`} aria-haspopup="dialog" aria-expanded={libraryOpen} disabled={disabled}
-        data-value={currentId ?? ''} onClick={() => setLibraryOpen(true)}><strong>{chosen ? `${chosen.chineseName} / ${chosen.englishName}` : solvent || currentId ? `${solvent || currentId}（未核对）` : '选择内置溶剂'}</strong><span><BookOpen size={16} aria-hidden="true" />浏览目录</span></button></div>
-      {chosen && <span className="solvent-reference" title={chosen.dielectricReference?.source}>{solventDielectricLabel(chosen)}{version === 'common' && /^orca6\./.test(chosen.id) ? ` · 来源 ORCA ${chosen.id.split(':')[0].slice(4)}` : ''}</span>}
+        data-value={currentId ?? ''} title={chosen?.dielectric===null?chosen.dielectricReference?.source:undefined} onClick={() => setLibraryOpen(true)}><strong>{chosen ? solventEntryLabel(chosen,model) : solvent || currentId ? `${solventLabel(solvent || currentId!,model,solventDielectricText())}（未核对）` : '选择内置溶剂'}</strong><span><BookOpen size={16} aria-hidden="true" />浏览目录</span></button></div>
+      {chosen && version === 'common' && /^orca6\./.test(chosen.id) && <span className="solvent-reference">来源 ORCA {chosen.id.split(':')[0].slice(4)}</span>}
       {(currentId || solvent) && !chosen && <p className="solvent-library-retained" role="alert">原选择已保留，当前软件、模型或版本尚未核对；请浏览目录明确选择。</p>}
       {libraryOpen && !disabled && <SolventLibraryDialog key={`${engine}:${model}:${version}`} engine={engine} model={model} version={version} currentId={currentId} currentName={solvent || currentId}
         onClose={() => setLibraryOpen(false)} onSelect={entry => {

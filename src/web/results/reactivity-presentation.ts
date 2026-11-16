@@ -1,8 +1,9 @@
+import { isEnergyUnit } from '../../results/energy';
 import type { Structure } from '../../core/types';
 import type { ReactivityAnalysisResult, ReactivityFrontierChannel, ReactivityFrontierOrbital, ReactivityMetricKey } from '../../results/reactivity-contracts';
 import type { WavefunctionMetadata } from '../../results/orbital-contracts';
 import type { SurfaceContext } from '../../results/surface-contracts';
-import { formatResultValue } from '../../results/numeric-format';
+import {formatEnergyValue, formatResultValue } from '../../results/numeric-format';
 import { analysisColor, analysisRange } from './analysis-display';
 import type { ReactivityAnalysisControlsProps, ReactivityAtomDisplay, ReactivityAtomMetric } from './reactivity-controls-contracts';
 import { scientificTableText, type ScientificTableProjection } from './scientific-table';
@@ -27,13 +28,13 @@ export function reactivityContextKey(context: SurfaceContext): string {
 export function reactivityGlobalTable(result: ReactivityAnalysisResult, decimals = 2, expanded = false): ScientificTableProjection {
   return { columns: [{ key: 'metric', label: '全局量' }, { key: 'value', label: '数值' }, { key: 'unit', label: '单位' }], rows: (expanded ? REACTIVITY_GLOBAL_ALL : REACTIVITY_GLOBAL_CORE).map(key => {
     const metric = result.globalMetrics[key];
-    return { key, cells: [REACTIVITY_GLOBAL_LABELS[key], formatResultValue(metric?.value, decimals), metric?.unit === 'eV^-1' ? 'eV⁻¹' : metric?.unit ?? ''] };
+    return { key, cells: [REACTIVITY_GLOBAL_LABELS[key], isEnergyUnit(metric?.unit)?formatEnergyValue(metric?.value, decimals):formatResultValue(metric?.value, decimals), metric?.unit === 'eV^-1' ? 'eV⁻¹' : metric?.unit ?? ''] };
   }) };
 }
 export function reactivityAtomTable(result: ReactivityAnalysisResult, decimals = 2, expanded = false): ScientificTableProjection {
   const keys = expanded ? REACTIVITY_ATOM_ALL : REACTIVITY_ATOM_CORE;
   return { columns: [{ key: 'atom', label: '原子' }, ...keys.map(key => ({ key, label: REACTIVITY_ATOM_LABELS[key] + (reactivityMetricUnit(key) ? ` / ${reactivityMetricUnit(key)}` : ''),heading:REACTIVITY_ATOM_LABELS[key],headerUnit:reactivityMetricUnit(key)||undefined }))],
-    rows: [...result.atoms].sort((a, b) => a.sourceIndex - b.sourceIndex).map(row => ({ key: `atom:${row.sourceIndex}`, cells: [`${row.sourceIndex} ${row.element}`, ...keys.map(key => formatResultValue(row[key], decimals))] })) };
+    rows: [...result.atoms].sort((a, b) => a.sourceIndex - b.sourceIndex).map(row => ({ key: `atom:${row.sourceIndex}`, cells: [`${row.sourceIndex} ${row.element}`, ...keys.map(key => isEnergyUnit(reactivityMetricUnit(key))?formatEnergyValue(row[key], decimals):formatResultValue(row[key], decimals))] })) };
 }
 /** Full public tables retain all fields regardless of the screen disclosure. */
 export function reactivityText(result: ReactivityAnalysisResult, decimals = 2, globalDecimals = decimals): string {
@@ -61,7 +62,7 @@ export function reactivityAtomDisplay(result: ReactivityAnalysisResult | null, m
   const rows = result.atoms.flatMap(row => {
     const atomId = bySource.get(row.sourceIndex), value = row[metric], unit = reactivityMetricUnit(metric);
     if (!atomId || elements.get(atomId) !== row.element || value === null || !Number.isFinite(value)) return [];
-    return [{ atomId, value, label: `${row.sourceIndex} ${row.element} · FMO ${REACTIVITY_ATOM_LABELS[metric]}=${formatResultValue(value, decimals)}${unit ? ` ${unit}` : ''}` }];
+    return [{ atomId, value, label: `${row.sourceIndex} ${row.element} · FMO ${REACTIVITY_ATOM_LABELS[metric]}=${isEnergyUnit(unit)?formatEnergyValue(value, decimals):formatResultValue(value, decimals)}${unit ? ` ${unit}` : ''}` }];
   });
   const range = analysisRange(rows.map(row => row.value), { color: true, labels: false, spin: false }, metric === 'dual');
   return range ? rows.map(row => ({ ...row, color: analysisColor(row.value, range) })) : rows;

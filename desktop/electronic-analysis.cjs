@@ -2,6 +2,7 @@
 const { readManagedResult,inspectManagedSource } = require('./analysis-result-wire.cjs');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { requireBackend, requireSameBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
 const { createHash } = require('node:crypto');
 const { isDeepStrictEqual: same } = require('node:util');
 const { assert, plain, string } = require('./security.cjs');
@@ -36,7 +37,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
   const sessions = new Map(), pending = new Map(), tasks = new Set(), closedOwners = new Set();
   const projectSourceLeases = new Map();
   async function releaseProjectCompanions(owner,id){const lease=projectSourceLeases.get(id);if(!lease)return{released:true};assert(lease.owner===owner,'Project source owner differs');if(lease.releaseTask)return lease.releaseTask;if(lease.aliases.size>1){lease.aliases.delete(id);projectSourceLeases.delete(id);return{released:true};}return lease.releaseTask=(async()=>{await Promise.allSettled([...(lease.reads??[])]);await checkDirectory(lease.directory,lease.pinned);for(const item of [lease.projectOutput,...Object.values(lease.projectCompanions)].filter(Boolean)){const stat=await fs.lstat(item.path);assert(stat.isFile()&&!stat.isSymbolicLink()&&stat.nlink===1&&stat.dev===item.dev&&stat.ino===item.ino,'Project source cleanup identity changed');await fs.unlink(item.path);}await fs.rmdir(lease.directory);projectSourceLeases.delete(id);return{released:true};})();}
-  async function retainProjectCompanions(s){if(!Object.keys(s.projectCompanions??{}).length)return;const{activationEpoch:_epoch,...science}=s.context,key=JSON.stringify([s.owner,science,[s.projectOutput.name,s.projectOutput.revision],Object.entries(s.projectCompanions).map(([role,file])=>[role,file.name,file.revision,file.bytes])]);const existing=[...projectSourceLeases.values()].find(lease=>lease.key===key);if(existing){existing.aliases.add(s.sessionId);projectSourceLeases.set(s.sessionId,existing);return;}const directory=await fs.mkdtemp(path.join(jobRoot,'project-source-')),pinned=await directoryIdentity(directory);const lease={owner:s.owner,sessionId:s.sessionId,key,aliases:new Set([s.sessionId]),family:'excitation',info:true,context:s.context,directory,pinned,projectCompanions:{}};projectSourceLeases.set(s.sessionId,lease);
+  async function retainProjectCompanions(s){if(!Object.keys(s.projectCompanions??{}).length)return;const{activationEpoch:_epoch,...science}=s.context,key=JSON.stringify([s.owner,science,[s.projectOutput.name,s.projectOutput.revision],Object.entries(s.projectCompanions).map(([role,file])=>[role,file.name,file.revision,file.bytes])]);const existing=[...projectSourceLeases.values()].find(lease=>lease.key===key);if(existing){existing.aliases.add(s.sessionId);projectSourceLeases.set(s.sessionId,existing);return;}await fs.mkdir(jobRoot,{recursive:true});const directory=await fs.mkdtemp(path.join(jobRoot,'project-source-')),pinned=await directoryIdentity(directory);const lease={owner:s.owner,sessionId:s.sessionId,key,aliases:new Set([s.sessionId]),family:'excitation',info:true,context:s.context,directory,pinned,projectCompanions:{}};projectSourceLeases.set(s.sessionId,lease);
     try{for(const [role,file]of [['output',s.projectOutput],...Object.entries(s.projectCompanions)]){const before=await fs.lstat(file.path);assert(before.isFile()&&!before.isSymbolicLink()&&before.nlink===1&&before.size===file.bytes,'Project source snapshot changed');const target=path.join(directory,path.basename(file.path));await fs.copyFile(file.path,target,require('node:fs').constants.COPYFILE_EXCL);const after=await fs.lstat(file.path),saved=await fs.lstat(target);assert(before.dev===after.dev&&before.ino===after.ino&&before.size===after.size&&before.mtimeMs===after.mtimeMs&&saved.isFile()&&!saved.isSymbolicLink()&&saved.size===file.bytes,'Project source snapshot copy changed');const retained={...file,path:target,dev:saved.dev,ino:saved.ino,statIdentity:[saved.dev,saved.ino,saved.size,saved.mtimeMs,saved.ctimeMs].join(':')};if(role==='output')lease.projectOutput=retained;else lease.projectCompanions[role]=retained;}}
     catch(error){await releaseProjectCompanions(s.owner,s.sessionId);throw error;}}
   let worker, sequence = 0, disposed = false;
@@ -45,7 +46,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
   function clean(s) { return s.cleanup ??= (async () => {
     if (!s.directory) return;
     const root = path.resolve(s.directory), files = [], directories = [];
-    assert(root.startsWith(path.resolve(jobRoot) + path.sep), 'Electronic cleanup escaped its session');
+    assert(root.startsWith(path.resolve(s.directoryRoot ?? jobRoot) + path.sep), 'Electronic cleanup escaped its session');
     async function list(directory) {
       await directoryIdentity(directory); directories.push(directory);
       for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
@@ -55,12 +56,13 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
         else { assert(stat.isFile() && stat.nlink === 1, 'Electronic cleanup preserves shared/unknown files'); files.push({ file, dev: stat.dev, ino: stat.ino }); }
       }
     }
-    try { await list(root); } catch (error) { if (error.code === 'ENOENT' && !directories.length) return; throw error; }
+    try { await verifyRunDirectory(s.runDirectory); await list(root); } catch (error) { if (error.code === 'ENOENT' && !directories.length) return; throw error; }
     for (const row of files) { await directoryIdentity(path.dirname(row.file)); const stat = await fs.lstat(row.file); assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.dev === row.dev && stat.ino === row.ino, 'Electronic cleanup file identity changed'); await fs.unlink(row.file); }
     for (const directory of directories.reverse()) { await directoryIdentity(directory); await fs.rmdir(directory); }
   })(); }
   async function stopWorker(w = worker, error = new Error('Electronic worker closed')) {
     if (!w) return;
+    w.firstError ??= error;
     if (!w.closing) { w.closing = true; try { w.child.stdin.end(); } catch {} w.timer = setTimeout(() => { if (!w.closed) w.child.kill(); }, policy.stopMs); w.timer.unref?.(); }
     await w.finished;
     for (const [id, entry] of pending) if (entry.w === w) { clearTimeout(entry.timer); pending.delete(id); entry.reject(error); }
@@ -91,17 +93,20 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
       }
       if (packet.retainedMemoryBytes !== undefined) { assert(Number.isSafeInteger(packet.retainedMemoryBytes) && packet.retainedMemoryBytes >= 0, 'Invalid electronic reservation'); entry.s.retainedBytes = packet.retainedMemoryBytes; }
       if (!packet.ok) assert(plain(packet.error) && string(packet.error.code, 128) && string(packet.error.message, 16384), 'Invalid electronic error');
+      if(packet.ok && entry.operation==='open')entry.s.registered=true;
       pending.delete(packet.id); clearTimeout(entry.timer);
       packet.ok ? entry.resolve(packet.result) : entry.reject(new Error(packet.error.code + ': ' + packet.error.message));
     }
     child.stdout.on('data', chunk => { if (w.closing) return; try { let bytes = Buffer.from(chunk); while (bytes.length) { const index = bytes.indexOf(10), part = index < 0 ? bytes : bytes.subarray(0, index); w.parts.push(part); w.bytes += part.length; if (index < 0) break; const line = Buffer.concat(w.parts, w.bytes).toString('utf8'); w.parts = []; w.bytes = 0; message(JSON.parse(line)); bytes = bytes.subarray(index + 1); } } catch (error) { void stopWorker(w, error).catch(() => {}); } });
     child.stderr.on('data', () => {}); child.stdin.on('error', error => { void stopWorker(w, error).catch(() => {}); }); child.on('error', error => { void stopWorker(w, error).catch(() => {}); });
-    child.once('close', code => { w.closed = true; clearTimeout(w.timer); if (worker === w) { worker = null; for (const s of sessions.values()) if (s.worker === w) s.failed = true; } w.finish(code); for (const [id, entry] of pending) if (entry.w === w) { clearTimeout(entry.timer); pending.delete(id); entry.reject(new Error('Electronic worker exited (' + code + ')')); } });
+    child.once('close', code => { w.closed = true; clearTimeout(w.timer); if (worker === w) { worker = null; for (const s of sessions.values()) if (s.worker === w) s.failed = true; } w.finish(code); for (const [id, entry] of pending) if (entry.w === w) { clearTimeout(entry.timer); pending.delete(id); entry.reject(w.firstError ?? new Error('Electronic worker exited (' + code + ')')); } });
     return w;
   }
   function request(operation, s, payload = {}, progress) {
 
-    const w = ensureWorker(), id = 'electronic-' + ++sequence;
+    const w = operation === 'open' ? ensureWorker() : s.worker;
+    assert(w && w === worker && !w.closing && !w.closed && (operation==='open'||s.registered), 'ELECTRONIC_WORKER_UNAVAILABLE: 原分析会话已结束');
+    const id = 'electronic-' + ++sequence;
     if (operation === 'open') s.worker = w;
     return new Promise((resolve, reject) => {
       const timer = policy.requestMs>0?setTimeout(() => { void stopWorker(w, new Error('ELECTRONIC_TIMEOUT')).catch(() => {}); }, policy.requestMs):undefined; timer?.unref?.();
@@ -109,14 +114,14 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
       try { w.child.stdin.write(JSON.stringify({ id, operation, sessionId: s.sessionId, family: s.family, ...payload }) + '\n'); } catch (error) { void stopWorker(w, error).catch(() => {}); }
     }).then(value=>readManagedResult(value,s.directory));
   }
-  async function resources(owner, s, lease, captured) {
-    const configured = await resolveResources(owner,undefined,captured);
+  async function resources(owner, s, lease, captured, backend, scientific=true) {
+    const configured = scientific?await resolveResources(owner,undefined,captured,backend):
+      {...s.openResources,memoryBudgetBytes:captured?.memoryBudgetBytes??s.openResources.configuredMemoryBudgetBytes};
     assert(plain(configured) && Number.isSafeInteger(configured.threads) && configured.threads > 0 && Number.isSafeInteger(configured.memoryBudgetBytes) && configured.memoryBudgetBytes > 0, 'Electronic resources unavailable');
     const budget = lease.budget(configured.memoryBudgetBytes, { domain: 'electronic', sessionId: s.sessionId });
     return { ...configured, memoryBudgetBytes: budget.availableBytes, sharedReservedBytes: budget.reservedBytes, configuredMemoryBudgetBytes: budget.memoryBudgetBytes };
   }
-  // Count every published field, including nested NTO pairs and both densities.
-  // A stable field id may be restored, but never silently reused for new values.
+  // Each reply may allocate fields again, including nested NTO pairs and densities.
   function preflightFields(s, value, lease, ceiling) {
     const ids = new Set(); let added = 0;
     function visit(item) {
@@ -131,7 +136,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
         } else assert(Array.isArray(item.values) && item.values.length === count && item.values.every(Number.isFinite), 'Invalid electronic raw field values');
         const mask = item.validDomain?.kind === 'node-mask' ? item.validDomain : null;
         if (mask) assert(mask.maskBase64 instanceof Uint8Array ? mask.maskBase64.byteLength===count : typeof mask.maskBase64 === 'string' && /^[A-Za-z0-9+/]*={0,2}$/.test(mask.maskBase64) && mask.maskBase64.length === 4 * Math.ceil(count / 3), 'Invalid electronic mask wire');
-        if (!s.published?.has(item.id)) added += count * 8 + (mask ? count : 0);
+        added += count * 8 + (mask ? count : 0);
         return;
       }
       for (const child of Object.values(item)) visit(child);
@@ -149,7 +154,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
     }
     visit(result); return result;
   }
-  function reservePublished(s, value, lease, ceiling) {
+  function recordPublishedFields(s, value) {
     const batch = new Map();
     function visit(item) {
       if (!item || typeof item !== 'object' || ArrayBuffer.isView(item)) return;
@@ -165,8 +170,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
       for (const child of Object.values(item)) visit(child);
     }
     visit(value);
-    const added = [...batch].reduce((total, [id, identity]) => total + (s.published?.has(id) ? 0 : identity.bytes), 0);
-    assert(Number.isSafeInteger(added) && added <= lease.budget(ceiling, { domain: 'electronic', sessionId: s.sessionId }).availableBytes, 'ELECTRONIC_MEMORY_BUDGET: Published fields exceed shared ceiling');
+    // The map holds identity metadata; renderer field buffers have their own owners.
     s.published ??= new Map(); for (const [id, identity] of batch) s.published.set(id, identity);
   }
   async function snapshot(s, raw, role) {
@@ -187,7 +191,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
   }
   async function open(owner, trusted) {
     assert(Number.isSafeInteger(owner) && owner >= 0 && !disposed && !closedOwners.has(owner) && plain(trusted) && FAMILIES.has(trusted.family) && string(trusted.sessionId, 100) && /^[A-Za-z0-9_-]+$/.test(trusted.sessionId) && !sessions.has(trusted.sessionId), 'Electronic owner/session unavailable');
-    const s = { owner, family: trusted.family, sessionId: trusted.sessionId, context: context(trusted.context), closed: false, retainedBytes: 0, inflight: new Set(), opening: new AbortController() }; sessions.set(s.sessionId, s);
+    const s = { owner, family: trusted.family, sessionId: trusted.sessionId, context: context(trusted.context), closed: false, retainedBytes: 0, inflight: new Set(), openingPending:true, opening: new AbortController() }; sessions.set(s.sessionId, s);
     let lease;
     try {
       assert(trusted.kind === 'wavefunction' && path.isAbsolute(trusted.sourcePath), 'Host-owned electronic wavefunction snapshot required');
@@ -201,10 +205,13 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
       }
       lease = await scheduler.acquire({ owner, key: 'electronic:open:' + s.sessionId, signal: s.opening.signal }); owned(owner, s.sessionId);
       const captured=captureResources?await require('./compute-resources.cjs').captureComputeResources(captureResources,owner,s.opening.signal):undefined;owned(owner,s.sessionId);assert(!s.opening.signal.aborted,'ELECTRONIC_CANCELLED');
-      const backend = await resolveBackend(); assert(backend.configured && string(backend.path, 4096), 'ELECTRONIC_BACKEND_MISSING');
-      s.backendPath=backend.path;
-      const configured = await resources(owner, s, lease, captured); if (worker?.closing) await worker.finished; owned(owner, s.sessionId);
-      await fs.mkdir(jobRoot, { recursive: true }); s.directory = await fs.mkdtemp(path.join(jobRoot, 'electronic-'));
+      const backend = requireBackend(await resolveBackend(),'ELECTRONIC');
+      owned(owner,s.sessionId); assert(!s.opening.signal.aborted,'ELECTRONIC_CANCELLED');
+      s.backend=backend;
+      const configured = await resources(owner, s, lease, captured, backend); s.openResources=configured; if (worker?.closing) await worker.finished; owned(owner, s.sessionId);
+      const directory = await createRunDirectory(backend,jobRoot,'e-');
+      s.directory=directory.directory; s.directoryRoot=directory.root; s.runDirectory=directory;
+      owned(owner,s.sessionId); assert(!s.opening.signal.aborted,'ELECTRONIC_CANCELLED');
       const { companionSourceToken, ...outputSource } = trusted.output ?? {};
       const output = trusted.output ? await snapshot(s, outputSource, 'output') : undefined;
       let companions = {};
@@ -219,17 +226,25 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
       }
       s.projectOutput = output; s.projectCompanions = companions;
       await retainProjectCompanions(s);
+      await verifyRunDirectory(s.runDirectory);
+      owned(owner,s.sessionId); assert(!s.opening.signal.aborted,'ELECTRONIC_CANCELLED');
       const source = { kind: 'wavefunction', sourcePath: trusted.sourcePath, name: trusted.name, sourceRevision: trusted.sourceRevision, sourceId: trusted.sourceId, context: s.context, ...(trusted.orbitalRepresentation ? { orbitalRepresentation: trusted.orbitalRepresentation, orbitalRepresentationEvidence: trusted.orbitalRepresentationEvidence } : {}) };
-      const result = await request('open', s, { source, output, ...companions, workspacePath: s.directory, executable: backend.path, resources: configured }); owned(owner, s.sessionId);
+      const result = await request('open', s, { source, output, ...companions, workspacePath: s.directory, executable: backend.path, resources: configured });
+      owned(owner, s.sessionId); assert(!s.opening.signal.aborted,'ELECTRONIC_CANCELLED');
       if (s.companionSource) await verifyCompanionSource(owner, companionSourceToken, s.companionSource);
       assert(plain(result) && result.sessionId === s.sessionId && same(context(result.context), s.context), 'Electronic open identity changed');
       s.info = result; return result;
     } catch (error) {
-      if (s.worker && !s.worker.closing && !s.worker.closed) await request('close', s).catch(() => {});
+      if (s.registered && s.worker && !s.worker.closing && !s.worker.closed) {
+        try { await request('close',s); s.registered=false; } catch(failure) { await stopWorker(s.worker,failure); }
+      }
       if (s.worker?.closing) await s.worker.finished;
-      if (sessions.get(s.sessionId) === s) sessions.delete(s.sessionId);
-      try { await clean(s);await releaseProjectCompanions(owner,s.sessionId); } finally { if (!sessions.size) await stopWorker(); } throw error;
-    } finally { lease?.release(); }
+      s.closed=true;
+      try { await clean(s); await releaseProjectCompanions(owner,s.sessionId); if(sessions.get(s.sessionId)===s)sessions.delete(s.sessionId); }
+      catch(cleanupError){s.cleanup=null;error.message+='\n清理：'+cleanupError.message;}
+      if (!sessions.size) await stopWorker();
+      throw error;
+    } finally { s.openingPending=false;lease?.release(); }
   }
   async function operate(owner, id, operation, raw) {
     const s = owned(owner, id); assert(s.info && !s.busy, 'ELECTRONIC_BUSY');
@@ -243,8 +258,12 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
     try {
       lease = await scheduler.acquire({ owner, key: 'electronic:' + operation + ':' + id, signal: controller.signal }); owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
       const captured=captureResources?await require('./compute-resources.cjs').captureComputeResources(captureResources,owner,controller.signal):undefined;owned(owner,id);assert(!controller.signal.aborted,'ELECTRONIC_CANCELLED');
-      if(scientific){const backend=await resolveBackend();owned(owner,id);assert(!controller.signal.aborted,'ELECTRONIC_CANCELLED');assert(backend.configured&&string(backend.path,4096)&&path.resolve(backend.path).toLowerCase()===path.resolve(s.backendPath).toLowerCase(),'ELECTRONIC_BACKEND_CHANGED: Multiwfn 路径已变化或不可用，请重新打开此分析来源；已有结果保留。');}
-      const configured = await resources(owner, s, lease, captured); owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
+      const backend=scientific?await resolveBackend():s.backend;
+      owned(owner,id); assert(!controller.signal.aborted,'ELECTRONIC_CANCELLED');
+      if(scientific)await verifyRunDirectory(s.runDirectory);
+      if(scientific)requireSameBackend(backend,s.backend,'ELECTRONIC');
+      const configured = await resources(owner, s, lease, captured, backend, scientific); owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
+      if(scientific)assert(configured.settingsRevision===s.openResources.settingsRevision,'ELECTRONIC_BACKEND_CHANGED: Multiwfn 设置已变化，请重新打开此分析来源；已有结果保留。');
       if (s.companionSource) await verifyCompanionSource(owner, s.companionSource.token, s.companionSource);
       owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
       submitted = true; s.submitted = true; progress.report(scientific ? 'running' : 'reading', scientific ? s.family === 'reactivity' ? { stageLabel: '计算指标' } : {} : { stageLabel: '读取已保存数据' });
@@ -258,7 +277,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
         if (scientific && s.family === 'excitation') assert(result.operation === checked.operation && same(result.state, checked.state), 'Excitation result state/operation changed');
       }
       preflightFields(s, result, lease, configured.configuredMemoryBudgetBytes);
-      const value = hydrateFields(result); reservePublished(s, value, lease, configured.configuredMemoryBudgetBytes);
+      const value = hydrateFields(result); recordPublishedFields(s, value);
       let progressSettlement = s.lastDisposition;
       if (scientific && s.family === 'reactivity') {
         assert(s.lastDispositionConfirmed && plain(value.provenance), 'Reactivity native disposition is not confirmed');
@@ -281,8 +300,11 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
   }
   function operation(owner, id, name, raw) { const s = owned(owner, id), task = operate(owner, id, name, raw); s.inflight.add(task); task.then(() => s.inflight.delete(task), () => s.inflight.delete(task)); return track(task); }
   async function cancel(owner, id) {
-    const s = owned(owner, id), hadOperation = s.busy, hadSubmitted = s.submitted; s.controller?.abort(); if (!s.info) s.opening.abort(); s.progress?.report('stopping'); const running = [...s.inflight];
-    if (s.worker && !s.worker.closing && !s.worker.closed) {
+    const s=sessions.get(id);
+    if(!s)return {cancelled:true,nativeSettled:true,activeOperationPending:false,settlement:'not-started'};
+    assert(s.owner===owner,'Electronic session belongs to another owner');
+    const hadOperation = s.busy, hadSubmitted = s.busy && s.submitted; s.controller?.abort(); if (!s.info) s.opening.abort(); s.progress?.report('stopping'); const running = [...s.inflight];
+    if (s.registered && hadSubmitted && s.worker && !s.worker.closing && !s.worker.closed) {
       try { const result = await request('cancel', s); if (result?.nativeSettled !== true) await stopWorker(s.worker, new Error('Electronic cancellation did not settle native')); }
       catch (error) { await stopWorker(s.worker, error); await Promise.allSettled(running); throw error; }
     }
@@ -292,20 +314,25 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
   async function closeSession(owner, id) {
     const s = sessions.get(id); if (!s) return { sessionId: id, status: 'closed' }; assert(s.owner === owner, 'Electronic session belongs to another owner'); if (s.closeTask) return s.closeTask;
     s.closed = true; s.opening.abort(); s.controller?.abort();
-    return s.closeTask = (async () => {
+    s.closeTask = (async () => {
       let failure;
       try {
         await s.openTask?.catch(() => {});
-        if (sessions.get(id) === s && s.worker && !s.worker.closing && !s.worker.closed) {
-          try { await request('close', s); }
+        if (sessions.get(id) === s && s.registered && s.worker && !s.worker.closing && !s.worker.closed) {
+          try { await request('close', s); s.registered=false; }
           catch (error) { failure = error; await stopWorker(s.worker, error); }
         }
         await Promise.allSettled([...s.inflight]); if (s.worker?.closing) await s.worker.finished;
       }
-      finally { if (sessions.get(id) === s) sessions.delete(id); try { await clean(s); } finally { if (!sessions.size) await stopWorker(); } }
+      finally {
+        try { if(sessions.get(id)===s){await clean(s);sessions.delete(id);} }
+        finally { if(![...sessions.values()].some(session=>!session.closed))await stopWorker(); }
+      }
       if (failure) throw failure;
       return { sessionId: id, status: 'closed' };
     })();
+    void s.closeTask.catch(()=>{s.closeTask=null;s.cleanup=null;});
+    return s.closeTask;
   }
   async function closeOwner(owner) { closedOwners.add(owner); await Promise.all([...sessions.values()].filter(s => s.owner === owner).map(s => closeSession(owner, s.sessionId)));for(const [id,lease]of [...projectSourceLeases])if(lease.owner===owner)await releaseProjectCompanions(owner,id); }
   function projectOwned(owner,id){const s=projectSourceLeases.get(id)??owned(owner,id);assert(s.owner===owner&&!disposed&&!closedOwners.has(owner),'Project companion source owner unavailable');return s;}
@@ -345,14 +372,18 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
   }
   function dispose() { if (disposed) return; disposed = true; for (const s of sessions.values()) { s.closed = true; s.opening.abort(); s.controller?.abort(); } const before = [...tasks]; track((async () => { await stopWorker(); await Promise.allSettled(before); for (const s of sessions.values()) await clean(s); sessions.clear();for(const [id,lease]of [...projectSourceLeases])await releaseProjectCompanions(lease.owner,id); })()); }
   return {
-    assertFamily(owner, id, family, absent = false) { const s = sessions.get(id); if (!s && absent) return; assert(owned(owner, id).family === family, 'Electronic session belongs to another family'); },
+    assertFamily(owner,id,family,allowClosed=false) {
+      const s=allowClosed?sessions.get(id):owned(owner,id);
+      if(!s&&allowClosed)return;
+      assert(s.owner===owner&&s.family===family,'Electronic session belongs to another owner or family');
+    },
     open: (...args) => { const task = open(...args), s = sessions.get(args[1]?.sessionId); if (s) s.openTask = task; return track(task); },
     run: (owner, id, raw) => operation(owner, id, 'run', raw), restoreFields: (owner, id, raw) => operation(owner, id, 'restore-fields', raw), exportCube: (owner, id, raw) => operation(owner, id, 'export-cube', raw),
     cancel: (...args) => track(cancel(...args)), closeSession: (...args) => track(closeSession(...args)), closeOwner: (...args) => track(closeOwner(...args)), dispose,
     describeProjectCompanions:async(owner,id)=>projectReadTask(owner,id,()=>describeProjectCompanions(owner,id)),readProjectCompanion:async(owner,id,...args)=>projectReadTask(owner,id,()=>readProjectCompanion(owner,id,...args)),
     releaseProjectCompanions:(...args)=>track(releaseProjectCompanions(...args)),
-    settle: async () => { while (tasks.size) await Promise.allSettled([...tasks]); }, workerCount: () => worker && !worker.closed ? 1 : 0, sessionCount: () => sessions.size, activeCount: () => [...sessions.values()].filter(s => s.busy || !s.info).length,
-    reservedMemoryBytes: () => [...sessions.values()].reduce((total, s) => total + s.retainedBytes + [...(s.published?.values() ?? [])].reduce((bytes, field) => bytes + field.bytes, 0), 0),
+    settle: async () => { while (tasks.size) await Promise.allSettled([...tasks]); }, workerCount: () => worker && !worker.closed ? 1 : 0, sessionCount: () => sessions.size, activeCount: () => [...sessions.values()].filter(s => s.busy || s.openingPending).length,
+    reservedMemoryBytes: () => [...sessions.values()].reduce((total, s) => total + (s.registered && !s.worker.closed ? s.retainedBytes : 0), 0),
   };
 }
 module.exports = { createElectronicAnalysisHost, checkedRequest };

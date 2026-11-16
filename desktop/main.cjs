@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, MenuItem, ipcMain, protocol, dialog, clipboard, ClipboardItem, session, shell, screen, safeStorage } = require('electron');
+const { app, BrowserWindow, Menu, MenuItem, ipcMain, protocol, dialog, clipboard, ClipboardItem, nativeImage, session, shell, screen, safeStorage } = require('electron');
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
 const path = require('node:path');
@@ -18,6 +18,9 @@ const { pickReferenceFile } = require('./reference-files.cjs');
 const { createDynamicsHost } = require('./dynamics-host.cjs');
 const { createXtbHost } = require('./xtb-host.cjs');
 const { createAdvancedPathHost } = require('./advanced-path-host.cjs');
+const { createPesHost } = require('./pes-host.cjs');
+const { attachTwoDPointerActivation, readTwoDPointerSettings } = require('./two-d-pointer-platform.cjs');
+const { resolvePesRuntime } = require('./pes-runtime.cjs');
 const { createConformerSamplingHost } = require('./conformer-sampling-host.cjs');
 const { createConformerOptimizationBatch } = require('./conformer-optimization-batch.cjs');
 const { createConformerBatchAdapter } = require('./conformer-batch-adapter.cjs');
@@ -28,15 +31,16 @@ const { createAdvancedOutputStore } = require('./advanced-output.cjs');
 const { createBinaryExportStore } = require('./binary-export-store.cjs');
 const { createManagedResultTransfers } = require('./managed-result-transfer.cjs');
 const { createFrontendWorkAdmission } = require('./frontend-work-admission.cjs');
-const { createSyProjectStore } = require('./sy-project-store.cjs');
+const { createSyProjectStore, isProjectIndexPath } = require('./sy-project-store.cjs');
 const { createSyProjectIPC } = require('./sy-project-ipc.cjs');
 const { createProjectCompanionSources } = require('./project-companion-sources.cjs');
-const { createXtbElectronicArtifacts } = require('./xtb-electronic-artifacts.cjs');
+const { createXtbElectronicArtifacts, createGxtbElectronicArtifactPreparation } = require('./xtb-electronic-artifacts.cjs');
 const { readCpuResources, cpuResourceSnapshot, closeCpuResources } = require('./cpu-resources.cjs');
 const { createOrbitalHost } = require('./orbital-host.cjs');
 const { identity: orbitalSessionIdentity } = require('./orbital-security.cjs');
 const { createOrbitalBackendStore } = require('./orbital-runtime.cjs');
 const { xtbRuntime } = require('./xtb-runtime.cjs');
+const { createGxtbBackendStore, DOWNLOAD_URL: GXTB_DOWNLOAD_URL } = require('./gxtb-backend.cjs');
 const { createWorkbenchPreferencesStore } = require('./preferences.cjs');
 const { createModelDisplayPreferencesStore } = require('./model-display-preferences.cjs');
 const { createSurfaceDisplayPreferencesStore } = require('./surface-display-preferences.cjs');
@@ -47,6 +51,7 @@ const { createFirstRunLicense } = require('./first-run-license.cjs');
 const { createTaskCache, cleanRenderCaches } = require('./task-cache.cjs');
 const { createWindowClosePolicy } = require('./window-close-policy.cjs');
 const { createModelClipboard } = require('./model-clipboard.cjs');
+const { createImageClipboard } = require('./image-clipboard.cjs');
 const { installWorkbenchMenu, refreshWorkbenchMenu, workbenchFileActionRoute, FILE_ACTION_CHANNEL } = require('./workbench-menu.cjs');
 const { createForcedShutdown } = require('./forced-shutdown.cjs');
 const { createCloseDiagnostics } = require('./close-diagnostics.cjs');
@@ -68,7 +73,8 @@ const { checkNativeRuntime } = require('./native-runtime-diagnostics.cjs');
 const { createNativeCapabilities } = require('./native-capabilities.cjs');
 const { createWorkspaceDocuments } = require('./workspace-documents.cjs');
 const { createAnalysisWindowHost } = require('./analysis-window-host.cjs');
-const { createMcpLiveHost } = require('./mcp/live-bridge.cjs');
+const { createMcpLiveHost, createMcpLiveClient } = require('./mcp/live-bridge.cjs');
+const { buildMcpLaunchSpec, buildMcpClientConfigs, buildMcpHttpClientConfigs, createMcpPreferencesStore } = require('./mcp/connection-config.cjs');
 const { assert, plain, string, boundedJSON, within, validateClipboard, validateChemistry, validateSaveRequest, formatForPath, allowedURL, createNavigationGuard } = security;
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true } }]);
@@ -274,11 +280,12 @@ const crystalModeling = createCrystalModelingHost({
 let maintenanceBusy = false, fileOperations = 0;
 const pendingFileOperations = new Set(), runtimeChecks = new Map();
 function exportRoots() { return { root: portableProfile?.layout?.distributionRoot ?? portableProfile?.root ?? appPath, layout: portableProfile?.layout, managedRoots: [app.getPath('userData')], applicationRoots: [path.join(appPath, 'desktop'), path.join(appPath, 'dist')] }; }
+const gxtbBackend = createGxtbBackendStore(app.getPath('userData'),{spawn:nativeProcesses.spawn});
 const dynamics = createDynamicsHost({
   spawn: nativeProcesses.spawn,
   admit:(owner,request,options)=>localAdmission(request.method?'xtb':'forcefield')(owner,request,options),
   resolveResources:(owner,request)=>localResources(request.method?'xtb':'forcefield',owner,request),
-  resolveXtbRuntime:()=>xtbRuntime({packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath}),
+  resolveXtbRuntime:request=>xtbRuntime({externalGxtb:gxtbBackend,signal:request.signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:request.method,operation:request.operation,periodic:Boolean(request.structure?.cell)}),
   jobRoot:path.join(taskCache.root,'dynamics'),
   sendToWindow(owner, event) {
     const window = windows.get(owner);
@@ -296,7 +303,23 @@ const launchImports = createLaunchImportQueue({ sources: launchSources, notify(o
   if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:launch-import-available');
 } });
 function enqueueLaunch(window, request) {
-  try { const ordinary=[];for(const selected of request.paths){if(['.es','.sy'].includes(path.extname(selected).toLowerCase()))projectIPC.enqueue(window,selected);else ordinary.push(selected);}if(ordinary.length||request.error)launchImports.enqueue(window.webContents.id, ordinary, request.error); }
+  try {
+    const ordinary = [];
+    let retiredProject = false;
+    for (const selected of request.paths) {
+      if (isProjectIndexPath(selected)) {
+        projectIPC.enqueue(window, selected);
+      } else if (path.extname(selected).toLowerCase() === '.sy') {
+        retiredProject = true;
+      } else {
+        ordinary.push(selected);
+      }
+    }
+    const owner = window.webContents.id;
+    if (ordinary.length) launchImports.enqueue(owner, ordinary);
+    if (request.error) launchImports.enqueue(owner, [], request.error);
+    if (retiredProject) launchImports.enqueue(owner, [], '请选择 .es 项目入口。');
+  }
   catch (error) { if (!headless) dialog.showErrorBox?.('启动文件导入失败', error.message); }
 }
 const syProjectStore=createSyProjectStore({appVersion:appDisplayVersion});
@@ -309,7 +332,9 @@ const xtb = createXtbHost({
   resolveResources:(owner,request)=>computeResources.resolveForRun(owner,request),
   jobRoot: path.join(taskCache.root, 'xtb'),
   retainElectronicArtifacts: (owner, value) => xtbElectronicSources.retain(owner, value),
-  resolveRuntime: () => xtbRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }),
+  prepareElectronicArtifacts: createGxtbElectronicArtifactPreparation({spawn:nativeProcesses.spawn,
+    resolveRuntime(){const runtime=chemistryRuntime({packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath});return {...runtime,args:[...runtime.args,'--orbitals']};}}),
+  resolveRuntime: request => xtbRuntime({externalGxtb:gxtbBackend, signal:request.signal, packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath, method:request.method, operation:request.calculation, periodic:Boolean(request.structure?.cell) }),
   resolvePeriodicRuntime() { const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }); return { ...runtime, args: [...runtime.args, '--xtb-periodic'] }; },
   sendToWindow(owner, event) {
     if(event.event==='error')logEvent('error',/^[A-Z0-9_-]{1,80}$/.test(event.error?.code??'')?event.error.code:'XTB_TASK_FAILED');
@@ -321,16 +346,25 @@ const advancedPath = createAdvancedPathHost({
   spawn: nativeProcesses.spawn, admit: localAdmission('path'), fs,
   resolveResources:(owner,request)=>computeResources.resolveForRun(owner,request),
   jobRoot: path.join(taskCache.root, 'advanced-path'),
-  resolveXtbRuntime: () => xtbRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }),
+  resolveXtbRuntime: () => xtbRuntime({externalGxtb:gxtbBackend, packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }),
   resolveRuntime() { const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }); return { ...runtime, args: [...runtime.args, '--advanced-path'] }; },
   sendToWindow(owner, event) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:advanced-path-event', event); },
+});
+const pes = createPesHost({
+  spawn:nativeProcesses.spawn,fs,jobRoot:path.join(taskCache.root,'pes'),
+  resultRoot:path.join(app.getPath('userData'),'pes-path-records'),
+  admit:(owner,request,options)=>localAdmission('path')(owner,{...request,stamp:{documentId:request.sourceDocumentId}},options),
+  resolveResources:async(owner,request)=>{await readCpuResources();return computeResources.resolveForRun(owner,request);},
+  resolveRuntime:request=>resolvePesRuntime({packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,request}),
+  resolveXtbRuntime:request=>xtbRuntime({externalGxtb:gxtbBackend,signal:request.signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:request.method,operation:'singlepoint',periodic:false}),
+  sendToWindow(owner,event){const window=windows.get(owner);if(window&&!window.isDestroyed()&&!window.webContents.isDestroyed())window.webContents.send('sciyue:pes-event',event);},
 });
 const conformerSampling = createConformerSamplingHost({
   spawn: nativeProcesses.spawn, admit: localAdmission('sampling'), fs,
   resolveResources:(owner,request)=>computeResources.resolveForRun(owner,request),
   jobRoot: path.join(taskCache.root, 'sampling'),
   resultRoot: path.join(app.getPath('userData'), 'conformer-results', 'sampling'),
-  resolveXtbRuntime: () => xtbRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }),
+  resolveXtbRuntime: request => xtbRuntime({externalGxtb:gxtbBackend, signal:request.signal, packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath, method:request.method, operation:request.operation, periodic:false }),
   resolveRuntime() { const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }); return { ...runtime, args: [...runtime.args, '--conformer-sampling'] }; },
   sendToWindow(owner, event) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:conformer-sampling-event', event); },
 });
@@ -341,6 +375,7 @@ const conformerBatch = createConformerOptimizationBatch({
   resolveCapacity(_owner, request) { const value=request.resources; return Math.min(cpuResourceSnapshot().logicalCpuCount,value.configured?.threads??value.threads,Math.max(1,Math.floor((value.memoryBudgetBytes-(value.retainedMemoryEstimateBytes??0))/(256*1024**2)))); },
   onRunStart: (owner, request) => candidatePoolAdmission.hold(owner,request.identity,request.resources),
   sendToOwner(owner,event) { const window=windows.get(owner); if(window&&!window.isDestroyed()&&!window.webContents.isDestroyed())window.webContents.send('sciyue:conformer-batch-progress',event); },
+  captureRuntime:(_owner,request,options)=>request.method?.backend==='xtb'&&request.method.options.method==='gxtb'?xtbRuntime({externalGxtb:gxtbBackend,signal:options.signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:'gxtb',periodic:false}):undefined,
   launchCandidate: createConformerBatchAdapter({xtb,
     assertCurrent(owner,source) { ownerWindow(owner); assert(!maintenanceBusy&&!quitting,'NATIVE_CANCELLED: 构象后台任务已取消'); workspaceDocuments.assertRuntimeOwner(owner,source.stamp.documentId); },
     runChemistry: (owner,request,id,lifecycle) => runChemistry(ownerWindow(owner),request,id,lifecycle),
@@ -358,7 +393,7 @@ const aiss = createAissHost({
   spawn: nativeProcesses.spawn, admit: localAdmission('aiss'),
   resolveResources:(owner,request)=>{const cpu=cpuResourceSnapshot();return computeResources.resolveForRun(owner,request,{maxThreads:Math.min(2,cpu.physicalCoreCount??cpu.logicalCpuCount),reason:'既有aISS接口上限2线程'});},
   jobRoot: path.join(taskCache.root, 'aiss'),
-  resolveRuntime: () => xtbRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }),
+  resolveRuntime: () => xtbRuntime({externalGxtb:gxtbBackend, packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }),
   sendToWindow(owner, event) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:aiss-event', event); },
 });
 const advancedOutputs = createAdvancedOutputStore({
@@ -393,7 +428,7 @@ const orbitals = createOrbitalHost({
   scheduler: multiwfnScheduler,
   resolveResources:(owner,request)=>computeResources.resolveForRun(owner,request),
   spawn: nativeProcesses.spawnRetainedAnalysis,
-  jobRoot: path.join(taskCache.root, 'orbital'),
+  jobRoot: path.join(taskCache.root, 'o'),
   resolveBackend: () => orbitalBackend.info(),
   resolveRuntime() {
     const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath });
@@ -408,62 +443,70 @@ const surfaceSources = createSurfaceSourceFiles({ snapshotSource:(owner,token,op
 const interactionSources = createSurfaceSourceFiles({ snapshotSource:(owner,token,options)=>launchSources.snapshotSource(owner,token,options), root: path.join(app.getPath('userData'), 'interaction-sources') });
 const excitationSources = createSurfaceSourceFiles({ snapshotSource:(owner,token,options)=>launchSources.snapshotSource(owner,token,options), root: path.join(app.getPath('userData'), 'excitation-sources') });
 const reactivitySources = createSurfaceSourceFiles({ snapshotSource:(owner,token,options)=>launchSources.snapshotSource(owner,token,options), root: path.join(app.getPath('userData'), 'reactivity-sources') });
-let surfaceService = null;
-let interactionService = null;
-let electronicService = null;
 const surfaceCloseTasks = new Set();
+const multiwfnOpenings = new Map();
 const xtbSourceCloseTasks = new Set();
-function surfaces() {
-  if (!surfaceService) surfaceService = require('./surface-analysis.cjs').createSurfaceAnalysisHost({
-    scheduler: multiwfnScheduler,
-    spawn(...args) { return nativeProcesses.spawnRetainedAnalysis(...args); },
-    jobRoot: path.join(taskCache.root, 'surface'),
-    resolveBackend: () => orbitalBackend.info(),
-    captureResources:owner=>computeResources.resolveForRun(owner),
-    resolveResources: (owner, overrides,captured) => orbitals.resources(owner, overrides,captured),
-    resolveRuntime() { const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }); return { ...runtime, args: [...runtime.args, '--surface'] }; },
-    sendToWindow(owner, event) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:surface-event', event); },
-    sendProgress(owner, snapshot) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:multiwfn-progress', snapshot); },
-  });
-  return surfaceService;
+function sendAnalysisEvent(owner, channel, value) {
+  const window = windows.get(owner);
+  if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send(channel, value);
 }
-function interactions() {
-  if (!interactionService) interactionService = require('./interaction-analysis.cjs').createInteractionAnalysisHost({
-    scheduler: multiwfnScheduler,
-    spawn(...args) { return nativeProcesses.spawnRetainedAnalysis(...args); },
-    jobRoot: path.join(taskCache.root, 'interaction'),
-    resolveBackend: () => orbitalBackend.info(),
-    captureResources:owner=>computeResources.resolveForRun(owner),
-    resolveResources: (owner,_overrides,captured) => orbitals.resources(owner,undefined,captured),
-    resolveRuntime() { const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }); return { ...runtime, args: [...runtime.args, '--interactions'] }; },
-    sendProgress(owner, snapshot) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:multiwfn-progress', snapshot); },
-  });
-  return interactionService;
+function lazyMultiwfnAnalysis({ label, reservation, directory, flag, create, ports }) {
+  let service;
+  return {
+    label,
+    reservation,
+    current: () => service,
+    get() {
+      service ??= create({
+        scheduler: multiwfnScheduler,
+        spawn(...args) { return nativeProcesses.spawnRetainedAnalysis(...args); },
+        jobRoot: path.join(taskCache.root, directory),
+        resolveBackend: () => orbitalBackend.info(),
+        captureResources: owner => computeResources.resolveForRun(owner),
+        resolveResources: (owner, _overrides, captured, backend) => orbitals.resources(owner, undefined, captured, backend),
+        resolveRuntime() {
+          const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath });
+          return { ...runtime, args: [...runtime.args, flag] };
+        },
+        sendProgress: (owner, snapshot) => sendAnalysisEvent(owner, 'sciyue:multiwfn-progress', snapshot),
+        ...ports,
+      });
+      return service;
+    },
+  };
 }
-function electronicAnalyses() {
-  if (!electronicService) electronicService = require('./electronic-analysis.cjs').createElectronicAnalysisHost({
-    snapshotSource: (owner,token,options) => launchSources.snapshotSource(owner,token,options),
-    scheduler: multiwfnScheduler,
-    spawn(...args) { return nativeProcesses.spawnRetainedAnalysis(...args); },
-    jobRoot: path.join(taskCache.root, 'electronic'),
-    resolveBackend: () => orbitalBackend.info(),
-    captureResources:owner=>computeResources.resolveForRun(owner),
-    resolveResources: (owner,_overrides,captured) => orbitals.resources(owner,undefined,captured),
-    resolveRuntime() { const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }); return { ...runtime, args: [...runtime.args, '--electronic-analysis'] }; },
+const surfaceHost = lazyMultiwfnAnalysis({
+  label: 'SURFACE', reservation: 'surface', directory: 's', flag: '--surface',
+  create: ports => require('./surface-analysis.cjs').createSurfaceAnalysisHost(ports),
+  ports: {
+    resolveResources: (owner, overrides, captured, backend) => orbitals.resources(owner, overrides, captured, backend),
+    sendToWindow: (owner, event) => sendAnalysisEvent(owner, 'sciyue:surface-event', event),
+  },
+});
+const interactionHost = lazyMultiwfnAnalysis({
+  label: 'INTERACTION', reservation: 'interactions', directory: 'i', flag: '--interactions',
+  create: ports => require('./interaction-analysis.cjs').createInteractionAnalysisHost(ports),
+});
+const electronicHost = lazyMultiwfnAnalysis({
+  label: 'ELECTRONIC', reservation: 'electronic', directory: 'e', flag: '--electronic-analysis',
+  create: ports => require('./electronic-analysis.cjs').createElectronicAnalysisHost(ports),
+  ports: {
+    snapshotSource: (owner, token, options) => launchSources.snapshotSource(owner, token, options),
     resolveCompanions: (owner, token, request) => launchSources.snapshotCompanions(owner, token, request),
     verifyCompanionSource: (owner, token, request) => launchSources.verifyCompanionSource(owner, token, request),
-    sendProgress(owner, snapshot) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:multiwfn-progress', snapshot); },
-  });
-  return electronicService;
-}
+  },
+});
+const surfaces = surfaceHost.get, interactions = interactionHost.get, electronicAnalyses = electronicHost.get;
+const multiwfnAnalysisHosts = [surfaceHost, interactionHost, electronicHost];
 multiwfnScheduler.addReservationProvider('orbital', context => orbitals.reservedMemoryBytes?.(context) ?? 0);
-multiwfnScheduler.addReservationProvider('surface', context => surfaceService?.reservedMemoryBytes?.(context) ?? 0);
-multiwfnScheduler.addReservationProvider('interactions', context => interactionService?.reservedMemoryBytes?.(context) ?? 0);
-multiwfnScheduler.addReservationProvider('electronic', context => electronicService?.reservedMemoryBytes?.(context) ?? 0);
+for (const host of multiwfnAnalysisHosts) multiwfnScheduler.addReservationProvider(host.reservation, context => host.current()?.reservedMemoryBytes?.(context) ?? 0);
+const hasUnretainedNativeProcesses = () => nativeProcesses.count() > orbitals.workerCount() + empiricalChemistry.workerCount() +
+  multiwfnAnalysisHosts.reduce((count, host) => count + (host.current()?.workerCount() ?? 0), 0) + crystalModeling.workerCount();
+const hasActiveAnalysis = () => orbitals.activeCount() > 0 || multiwfnAnalysisHosts.some(host => (host.current()?.activeCount() ?? 0) > 0);
 const portableLog = portableProfile && ownsProfile ? createPortableLog({ profile: portableProfile }) : null;
 const closeDiagnostics = createCloseDiagnostics({ directory: portableProfile?.paths.logs ?? app.getPath('userData'), identity: portableProfile?.identities.logs });
 const logEvent = (level, code) => { void portableLog?.append({ level, code }).catch(() => {}); };
-const hostBusy = () => nativeProcesses.count() > orbitals.workerCount() + empiricalChemistry.workerCount() + (surfaceService?.workerCount() ?? 0) + (interactionService?.workerCount() ?? 0) + (electronicService?.workerCount() ?? 0) + crystalModeling.workerCount() || crystalModeling.activeCount() > 0 || orbitals.sessionCount() > 0 || orbitals.activeCount() > 0 || (surfaceService?.activeCount() ?? 0) > 0 || (interactionService?.activeCount() ?? 0) > 0 || (electronicService?.activeCount() ?? 0) > 0 || surfaceCloseTasks.size > 0 || xtbSourceCloseTasks.size > 0 || jobs.size > 0 || dynamics.workerCount() > 0 || xtb.activeCount() > 0 || conformerBatch.activeCount() > 0 || advancedPath.activeCount() > 0 || conformerSampling.activeCount() > 0 || ocr.activeCount() > 0 || aiss.activeCount() > 0 || fileOperations > 0 || fileReader.activeCount() > 0;
+const hostBusy = () => hasUnretainedNativeProcesses() || crystalModeling.activeCount() > 0 || orbitals.sessionCount() > 0 || hasActiveAnalysis() || surfaceCloseTasks.size > 0 || xtbSourceCloseTasks.size > 0 || jobs.size > 0 || dynamics.workerCount() > 0 || xtb.activeCount() > 0 || conformerBatch.activeCount() > 0 || advancedPath.activeCount() > 0 || pes.activeCount() > 0 || conformerSampling.activeCount() > 0 || ocr.activeCount() > 0 || aiss.activeCount() > 0 || fileOperations > 0 || fileReader.activeCount() > 0;
 function ownerWindow(owner) { const window = windows.get(owner); assert(window && !window.isDestroyed() && !window.webContents.isDestroyed(), 'Owned window closed'); return window; }
 function resolveMcpTargetWindow(requestedWindowId) {
   if (Number.isInteger(requestedWindowId)) {
@@ -482,11 +525,16 @@ function resolveMcpTargetWindow(requestedWindowId) {
   }
   return null;
 }
+const mcpSessionFilePath = process.env.ESTER_MCP_SESSION_FILE
+  ? path.resolve(process.env.ESTER_MCP_SESSION_FILE)
+  : path.join(app.getPath('userData'), 'mcp-session.json');
+const mcpPreferences = createMcpPreferencesStore(path.dirname(mcpSessionFilePath));
+const initialMcpPreferences = mcpPreferences.read();
 const mcpLiveHost = createMcpLiveHost({
-  sessionFilePath: process.env.ESTER_MCP_SESSION_FILE
-    ? path.resolve(process.env.ESTER_MCP_SESSION_FILE)
-    : path.join(app.getPath('userData'), 'mcp-session.json'),
+  sessionFilePath: mcpSessionFilePath,
   serverVersion: appVersion,
+  initialToken: initialMcpPreferences.token,
+  preferredPort: initialMcpPreferences.port,
   getTargetWindow: resolveMcpTargetWindow,
   focusTargetWindow: targetWindow => {
     if (!targetWindow || targetWindow.isDestroyed()) return;
@@ -508,6 +556,74 @@ const mcpLiveHost = createMcpLiveHost({
     detachedWindowCount: detachedWorkspaceWindows.size,
   }),
 });
+let mcpToggleQueue = Promise.resolve();
+function mcpConnectionInfo() {
+  const session = mcpLiveHost.getSessionInfo();
+  const pref = mcpPreferences.read();
+  const port = session?.port ?? mcpLiveHost.getPort() ?? pref.port ?? null;
+  const host = session?.host ?? (port ? '127.0.0.1' : null);
+  const token = mcpLiveHost.getToken();
+  const launch = buildMcpLaunchSpec({ packaged: app.isPackaged, execPath: process.execPath, appPath, sessionFilePath: mcpLiveHost.sessionFilePath, platform: process.platform });
+  const configs = buildMcpClientConfigs(launch, { platform: process.platform });
+  const httpConfigs = port && token
+    ? buildMcpHttpClientConfigs({ host: host || '127.0.0.1', port, token, platform: process.platform })
+    : null;
+  return {
+    enabled: pref.enabled,
+    running: mcpLiveHost.isRunning(),
+    host,
+    port,
+    pid: process.pid,
+    startedAt: session?.startedAt ?? null,
+    version: appVersion,
+    sessionFilePath: mcpLiveHost.sessionFilePath,
+    packaged: app.isPackaged,
+    platform: process.platform,
+    token,
+    httpUrl: httpConfigs?.httpUrl ?? null,
+    sseUrl: httpConfigs?.sseUrl ?? null,
+    httpUrlWithToken: httpConfigs?.httpUrlWithToken ?? null,
+    sseUrlWithToken: httpConfigs?.sseUrlWithToken ?? null,
+    launch,
+    configs: { serverName: configs.serverName, mcpServersJson: configs.mcpServersJson, claudeCodeCommand: configs.claudeCodeCommand, codexToml: configs.codexToml },
+    httpConfigs: httpConfigs ? { serverName: httpConfigs.serverName, mcpServersJson: httpConfigs.mcpServersJson, claudeCodeCommand: httpConfigs.claudeCodeCommand, codexToml: httpConfigs.codexToml } : null,
+  };
+}
+function setMcpConnectionEnabled(enabled) {
+  assert(typeof enabled === 'boolean', 'MCP enabled flag must be a boolean');
+  const run = async () => {
+    if (enabled) {
+      const session = await mcpLiveHost.start();
+      await mcpPreferences.write({ enabled: true, port: session.port, token: session.token });
+    } else {
+      await mcpLiveHost.stop({ rotateToken: false });
+      await mcpPreferences.write({ enabled: false, port: mcpLiveHost.getPort(), token: mcpLiveHost.getToken() });
+    }
+    return mcpConnectionInfo();
+  };
+  const next = mcpToggleQueue.then(run, run);
+  mcpToggleQueue = next.catch(() => {});
+  return next;
+}
+function rotateMcpConnectionToken() {
+  const run = async () => {
+    const newToken = await mcpLiveHost.rotateToken();
+    await mcpPreferences.write({ token: newToken, port: mcpLiveHost.getPort() });
+    return mcpConnectionInfo();
+  };
+  const next = mcpToggleQueue.then(run, run);
+  mcpToggleQueue = next.catch(() => {});
+  return next;
+}
+async function testMcpConnection() {
+  if (!mcpLiveHost.isRunning()) return { ok: false, reason: 'MCP 服务未启用', info: mcpConnectionInfo() };
+  try {
+    const result = await createMcpLiveClient({ sessionFilePath: mcpLiveHost.sessionFilePath, timeoutMs: 8000 }).dispatch('ping', {});
+    return { ok: result?.desktopConnected === true, workbenchOnline: result?.frontend?.workbenchOnline === true, ...(result?.desktopConnected === true ? {} : { reason: result?.reason ?? '无法连接 MCP 服务' }), info: mcpConnectionInfo() };
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : String(error), info: mcpConnectionInfo() };
+  }
+}
 const analysisWindows = createAnalysisWindowHost({headless,icon:path.join(appPath,'dist','brand-icon.png'),sendToOwner(owner,event){ownerWindow(owner).webContents.send('sciyue:analysis-window-event',event);}});
 async function portableSaveSelection(owner, kind) {
   const window = ownerWindow(owner);
@@ -546,6 +662,19 @@ expireFileStreams.unref();
 let isolatedClipboard = null, isolatedClipboardText = '';
 let modelClipboardVersion = 0;
 const modelClipboard = createModelClipboard({ clipboard, ClipboardItem });
+const imageClipboard = createImageClipboard({
+  writePng(bytes, expected) {
+    const image = nativeImage.createFromBuffer(bytes);
+    assert(!image.isEmpty(), 'CLIPBOARD_IMAGE: PNG 无法解码。');
+    const size = image.getSize();
+    assert(size.width === expected.width && size.height === expected.height, 'CLIPBOARD_IMAGE: PNG 解码尺寸不符。');
+    if (!isolatedIO) clipboard.writeImage(image);
+  },
+  onSuperseded(owner, token) {
+    try { sendAnalysisEvent(owner, 'sciyue:image-clipboard-copy-superseded', token); }
+    catch { /* A closing previous owner cannot invalidate the new copy. */ }
+  },
+});
 function taskGlobalDirectory(){
   if(!isolatedIO)return path.join(app.getPath('appData'),'EsterStudio','task-system');
   const selected=path.resolve(process.env.SCIYUE_TEST_TASK_GLOBAL_DIR||path.join(isolatedRoot,'task-system-global'));
@@ -613,7 +742,7 @@ function senderWindow(event) {
   assert(window && !window.isDestroyed() && event.senderFrame === event.sender.mainFrame && allowedURL(event.senderFrame.url, development), 'Untrusted desktop IPC sender');
   return window;
 }
-const fileChannels = new Set(['export-citations', 'sy-project', 'describe-excitation-project-companions', 'read-excitation-project-companion', 'release-excitation-project-companions', 'begin-project-companion-bundle', 'append-project-companion-bundle', 'commit-project-companion-bundle', 'abort-project-companion-bundle', 'close-project-companion-bundle', 'open-files', 'claim-launch-import', 'read-launch-source', 'register-selected-output-source', 'pick-reference-file', 'read-file-chunk', 'choose-save-path', 'write-chosen-file', 'choose-orbital-backend', 'import-personal-fragments', 'export-personal-fragments', 'open-surface-session', 'import-surface-cube', 'register-surface-cube', 'read-registered-surface-cube', 'release-surface-cube', 'export-surface-cube', 'export-registered-surface-cube', 'open-interaction-session', 'export-interaction-cube', 'open-excitation-session', 'open-reactivity-session', 'export-excitation-cube', 'choose-advanced-output', 'write-advanced-output', 'abandon-advanced-output', 'open-hirshfeld-session', 'export-hirshfeld-cube', 'open-xtb-orbital-session']);
+const fileChannels = new Set(['export-citations', 'sy-project', 'describe-excitation-project-companions', 'read-excitation-project-companion', 'release-excitation-project-companions', 'begin-project-companion-bundle', 'append-project-companion-bundle', 'commit-project-companion-bundle', 'abort-project-companion-bundle', 'close-project-companion-bundle', 'open-files', 'claim-launch-import', 'read-launch-source', 'register-selected-output-source', 'pick-reference-file', 'read-file-chunk', 'choose-save-path', 'write-chosen-file', 'choose-gxtb-backend', 'set-gxtb-backend-path', 'detect-gxtb-backend', 'choose-orbital-backend', 'choose-multiwfn-work-directory', 'reset-multiwfn-work-directory', 'import-personal-fragments', 'export-personal-fragments', 'open-surface-session', 'import-surface-cube', 'register-surface-cube', 'read-registered-surface-cube', 'release-surface-cube', 'export-surface-cube', 'export-registered-surface-cube', 'open-interaction-session', 'export-interaction-cube', 'open-excitation-session', 'open-reactivity-session', 'export-excitation-cube', 'choose-advanced-output', 'write-advanced-output', 'abandon-advanced-output', 'open-hirshfeld-session', 'export-hirshfeld-cube', 'open-xtb-orbital-session']);
 function handle(channel, listener) {
   ipcMain.handle(`sciyue:${channel}`, (event, ...args) => {
     const window = senderWindow(event); assert(!quitting, 'APPLICATION_CLOSING: 应用正在关闭');
@@ -635,6 +764,11 @@ managedResultChannels.add('task-system-request');
 handle('task-system-request',(window,request)=>taskSystem.request(window.webContents.id,request));
 handle('task-system-cancel',(window,requestId)=>taskSystem.cancel(window.webContents.id,requestId));
 handle('mcp-frontend-reply',(window,response)=>mcpLiveHost.handleFrontendReply(window.webContents.id,response));
+handle('mcp-connection-info',()=>mcpConnectionInfo());
+handle('mcp-connection-set-enabled',(_window,enabled)=>setMcpConnectionEnabled(enabled));
+handle('mcp-connection-rotate-token',()=>rotateMcpConnectionToken());
+handle('mcp-connection-test',()=>testMcpConnection());
+handle('two-d-pointer-settings',()=>readTwoDPointerSettings());
 for(const channel of ['begin-binary-export','append-binary-export','commit-binary-export','abort-binary-export','describe-launch-source'])fileChannels.add(channel);
 handle('managed-result-transfer',(window,request)=>{assert(plain(request)&&['read','release'].includes(request.action),'Invalid managed result action');return request.action==='read'?managedResults.read(window.webContents.id,request.token,request.start):managedResults.release(window.webContents.id,request.token);});
 handle('acquire-worker-resources',(window,request)=>frontendWorkAdmission.acquire(window.webContents.id,request));
@@ -696,6 +830,7 @@ handle('commit-project-companion-bundle',(window,id)=>projectCompanionSources.co
 handle('abort-project-companion-bundle',(window,id)=>projectCompanionSources.abort(window.webContents.id,id));
 handle('close-project-companion-bundle',(window,id)=>projectCompanionSources.close(window.webContents.id,id));
 function cancelWindowJobs(webContentsId) {
+  imageClipboard.cancel(webContentsId);
   // Forced exit preserves incomplete transactions and source directories.
   if (forcingExit) return;
   mcpLiveHost.disposeOwner(webContentsId);
@@ -706,6 +841,8 @@ function cancelWindowJobs(webContentsId) {
   const exportsClosing=binaryExports.disposeOwner(webContentsId);pendingFileOperations.add(exportsClosing);exportsClosing.catch(error=>logEvent('warning','EXPORT_CLOSE_FAILED',error.message)).finally(()=>pendingFileOperations.delete(exportsClosing));
   void projectIPC.disposeOwner(webContentsId).catch(error=>console.warn('PROJECT_CLOSE',error.message));
   runtimeModelDisplay.disposeOwner(webContentsId);
+  const openings = [...multiwfnOpenings.values()].filter(value => value.owner === webContentsId);
+  for (const opening of openings) opening.controller.abort(new Error('MULTIWFN_OPEN_CANCELLED: 模型窗口已关闭'));
   multiwfnScheduler.cancelOwner(webContentsId);
   runtimeChecks.get(webContentsId)?.abort();
   // During application shutdown, already accepted publications must finish
@@ -730,6 +867,7 @@ function cancelWindowJobs(webContentsId) {
   const batchOwnerClosing=conformerBatch.closeOwner(webContentsId);
   xtb.closeOwner(webContentsId);
   advancedPath.closeOwner(webContentsId);
+  pes.closeOwner(webContentsId);
   conformerSampling.closeOwner(webContentsId);
   ocr.closeOwner(webContentsId);
   aiss.closeOwner(webContentsId); advancedOutputs.closeOwner(webContentsId);
@@ -737,7 +875,10 @@ function cancelWindowJobs(webContentsId) {
   xtbSourceCloseTasks.add(xtbSourcesClosing);
   xtbSourcesClosing.catch(() => logEvent('warning', 'XTB_SOURCE_CLOSE_FAILED')).finally(() => xtbSourceCloseTasks.delete(xtbSourcesClosing));
   orbitals.closeOwner(webContentsId);
-  const surfaceClosing = Promise.resolve().then(() => Promise.all([surfaceService?.closeOwner(webContentsId), interactionService?.closeOwner(webContentsId), electronicService?.closeOwner(webContentsId)])).then(() => Promise.all([surfaceSources.closeOwner(webContentsId), interactionSources.closeOwner(webContentsId), excitationSources.closeOwner(webContentsId), reactivitySources.closeOwner(webContentsId)]));
+  const surfaceClosing = Promise.resolve()
+    .then(() => Promise.all(multiwfnAnalysisHosts.map(host => host.current()?.closeOwner(webContentsId))))
+    .then(() => Promise.allSettled(openings.map(opening => opening.task)))
+    .then(() => Promise.all([surfaceSources.closeOwner(webContentsId), interactionSources.closeOwner(webContentsId), excitationSources.closeOwner(webContentsId), reactivitySources.closeOwner(webContentsId)]));
   surfaceCloseTasks.add(surfaceClosing); surfaceClosing.catch(() => logEvent('warning', 'SURFACE_SOURCE_CLOSE_FAILED')).finally(() => surfaceCloseTasks.delete(surfaceClosing));
   for (const job of jobs.values()) if (job.owner === webContentsId) job.abort('CHEMISTRY_CANCELLED: 模型窗口已关闭');
   for (const [token, value] of tokens) if (value.owner === webContentsId) tokens.delete(token);
@@ -749,7 +890,7 @@ const windowClosePolicy = createWindowClosePolicy({
   // A separate full workspace/project is independent even when the first
   // window closes. Shared views of the same owner keep application-X semantics.
   isApplicationWindow: owner => owner === primaryWorkbenchWindowId && ![...windows.keys()].some(other => other !== owner && workspaceDocuments.hasOwnedDocuments(other)),
-  hasRunningTasks: () => nativeProcesses.count() > orbitals.workerCount() + empiricalChemistry.workerCount() + (surfaceService?.workerCount() ?? 0) + (interactionService?.workerCount() ?? 0) + (electronicService?.workerCount() ?? 0) + crystalModeling.workerCount() || crystalModeling.activeCount() > 0 || orbitals.activeCount() > 0 || (surfaceService?.activeCount() ?? 0) > 0 || (interactionService?.activeCount() ?? 0) > 0 || (electronicService?.activeCount() ?? 0) > 0 || jobs.size > 0 || dynamics.activeCount() > 0 || xtb.activeCount() > 0 || conformerBatch.activeCount() > 0 || advancedPath.activeCount() > 0 || conformerSampling.activeCount() > 0 || ocr.activeCount() > 0 || aiss.activeCount() > 0,
+  hasRunningTasks: () => hasUnretainedNativeProcesses() || crystalModeling.activeCount() > 0 || hasActiveAnalysis() || jobs.size > 0 || dynamics.activeCount() > 0 || xtb.activeCount() > 0 || conformerBatch.activeCount() > 0 || advancedPath.activeCount() > 0 || pes.activeCount() > 0 || conformerSampling.activeCount() > 0 || ocr.activeCount() > 0 || aiss.activeCount() > 0,
   isRetainedOwner: owner => hiddenWorkspaceOwners.has(owner),
   canDestroyWindows: () => quitFinalized,
   isQuitting: () => quitting, quit: () => app.quit(),
@@ -789,11 +930,12 @@ const windowClosePolicy = createWindowClosePolicy({
 });
 function createModelWindow(workspaceOpen) {
   const detached = workspaceOpen?.detached === true;
-  const window = new BrowserWindow({ icon:path.join(appPath,'dist','brand-icon.png'), width: detached ? 1000 : 1500, height: detached ? 760 : 940, minWidth: detached ? 640 : 800, minHeight: detached ? 480 : 600, ...workspaceOpen?.placement, show: !headless, title: `${appMetadata.productName || 'Lactone Studio'} v${appVersionLabel}${appBuildRevision ? ' (' + appBuildRevision + ')' : ''}（非官方修改版） · 分子建模`,
+  const window = new BrowserWindow({ icon:path.join(appPath,'dist','brand-icon.png'), width: detached ? 1000 : 1500, height: detached ? 760 : 940, minWidth: detached ? 640 : 800, minHeight: detached ? 480 : 600, ...workspaceOpen?.placement, show: !headless && workspaceOpen?.restorePlacement !== true, title: `${appMetadata.productName || 'Lactone Studio'} v${appVersionLabel}${appBuildRevision ? ' (' + appBuildRevision + ')' : ''}（非官方修改版） · 分子建模`,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, allowRunningInsecureContent: false, spellcheck: false, devTools: !app.isPackaged },
   });
   const id = window.webContents.id;
   windows.set(id, window);
+  attachTwoDPointerActivation(window);
   if (!workspaceOpen && primaryWorkbenchWindowId === null) primaryWorkbenchWindowId = id;
   workspaceDocuments.attachWindow(id);
   if (workspaceOpen) workspaceDocuments.join(workspaceOpen.requester, id, workspaceOpen.request);
@@ -827,6 +969,7 @@ function createModelWindow(workspaceOpen) {
   window.webContents.on('did-fail-load', (_event, code, description, _url, mainFrame) => { if (mainFrame !== false) { workbenchFileStates.delete(id); refreshNativeMenu(); windowClosePolicy.rendererUnavailable(id, 'renderer-load-failed'); void closeDiagnostics.record('renderer-load-failed', { owner: id, error: description, exitCode: code }); } });
   window.webContents.on('render-process-gone', (_event, details) => { workbenchFileStates.delete(id); refreshNativeMenu(); windowClosePolicy.rendererUnavailable(id, 'renderer-gone'); void closeDiagnostics.record('renderer-gone', { owner: id, reason: details?.reason, exitCode: details?.exitCode }); if (!forcingExit) { workspaceDocuments.detachWindow(id); cancelWindowJobs(id); } });
   window.on('closed', () => { workbenchFileStates.delete(id); if (!forcingExit) workspaceDocuments.detachWindow(id); detachedWorkspaceWindows.delete(id); approvedShellCloses.delete(id); hiddenWorkspaceOwners.delete(id); cancelWindowJobs(id); windows.delete(id); refreshNativeMenu(); });
+  if(!headless&&workspaceOpen?.restorePlacement===true)window.once('ready-to-show',()=>{if(!window.isDestroyed())window.showInactive();});
   void window.loadURL(entryURL);
   return window;
 }
@@ -910,7 +1053,7 @@ handle('open-model-window', (window, request) => {
 handle('prepare-analysis-window', (window, request) => analysisWindows.prepare(window.webContents.id, request));
 handle('release-analysis-window', (window, request) => analysisWindows.release(window.webContents.id, request));
 handle('detach-workspace-document', (window, raw) => {
-  assert(plain(raw) && Object.keys(raw).every(key => ['documentId', 'membershipNonce', 'placement'].includes(key)), 'Invalid workspace detach fields');
+  assert(plain(raw) && Object.keys(raw).every(key => ['documentId', 'membershipNonce', 'placement','restorePlacement'].includes(key)) && (raw.restorePlacement===undefined||raw.restorePlacement===true), 'Invalid workspace detach fields');
   let placement;
   if (raw.placement !== undefined) {
     const value = raw.placement;
@@ -919,8 +1062,8 @@ handle('detach-workspace-document', (window, raw) => {
     placement = { ...value };
   }
   const request = workspaceDocuments.authorizeDetach(window.webContents.id, { documentId: raw.documentId, membershipNonce: raw.membershipNonce });
-  const floating = createModelWindow({ requester: window.webContents.id, request, detached: true, placement });
-  try { return workspaceDocuments.markDetached(window.webContents.id, floating.webContents.id, request); }
+  const floating = createModelWindow({ requester: window.webContents.id, request, detached: true, placement,restorePlacement:raw.restorePlacement===true });
+  try { return workspaceDocuments.markDetached(window.webContents.id, floating.webContents.id, request,{activate:raw.restorePlacement!==true}); }
   catch (error) { closeDetachedShell(floating.webContents.id); throw error; }
 });
 handle('dock-workspace-document', (window, request) => {
@@ -965,7 +1108,7 @@ handle('confirm-workspace-scientific-edit', async (window, request) => {
   } else {
     const copyOnly=request.copyOnly===true,fileImport=request.purpose==='file-import';
     const answer = await dialog.showMessageBox(requester, { type: 'question', title: copyOnly?'在新标签页继续':'修改来源结构', message: fileImport?'在新标签页载入文件，原构象帧保留。':copyOnly?'当前帧属于构象搜索，原始帧将保留。':'此修改会使当前结构的后处理结果暂不可用。',
-      detail: authorized.label + (fileImport?'':copyOnly?'\n将复制当前帧，在新标签页继续本次操作。':'\n撤销相关修改后可恢复。'), buttons: copyOnly?[fileImport?'在新标签页载入文件':'在新标签页继续','取消']:['在新标签页建模', '在当前标签页建模', '取消'], defaultId: 0, cancelId: copyOnly?1:2, noLink: true });
+        detail: authorized.label + (fileImport?'':copyOnly?'\n将复制当前帧，在新标签页继续本次操作。':'\n撤销相关修改后可恢复。') + (request.problem?'\n上次操作未完成：'+request.problem+'\n可重试或取消返回，原数据仍保留。':''), buttons: copyOnly?[fileImport?'在新标签页载入文件':'在新标签页继续','取消']:['在新标签页建模', '在当前标签页建模', '取消'], defaultId: 0, cancelId: copyOnly?1:2, noLink: true });
     decision = (copyOnly?['copy','cancel']:['copy', 'current', 'cancel'])[answer.response] || 'cancel';
   }
   try {
@@ -1055,6 +1198,15 @@ handle('write-clipboard-text', async (_window,text) => {
   clipboard.writeText(text);
   assert(clipboard.readText()===text,'CLIPBOARD_TEXT: 剪贴板写入未能确认，请重试或下载文件。');
 });
+handle('begin-image-clipboard-copy', window => imageClipboard.begin(window.webContents.id));
+handle('write-image-clipboard', (window, token, png) => {
+  assert(Number.isSafeInteger(token) && token > 0, 'Invalid image clipboard token');
+  return imageClipboard.write(window.webContents.id, token, png);
+});
+handle('cancel-image-clipboard-copy', (window, token) => {
+  assert(Number.isSafeInteger(token) && token > 0, 'Invalid image clipboard token');
+  imageClipboard.cancel(window.webContents.id, token);
+});
 handle('open-files', async window => {
   let paths;
   if (isolatedIO) {
@@ -1135,15 +1287,25 @@ async function runChemistry(window, request, jobId, lifecycle) {
   assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 维护操作尚未结束，请稍后启动计算');
   validateChemistry(request);
   const resourceManaged=['optimize','generate3d'].includes(request.operation);
-  legacyScienceAdmission(request,resourceManaged);
+  const displayAuthorization=pes.authorizeEmpiricalDisplay(window.webContents.id,request);
+  if(!displayAuthorization)legacyScienceAdmission(request,resourceManaged);
   workspaceDocuments.assertRuntimeOwner(window.webContents.id, request.stamp.documentId);
   assert(string(jobId, 100) && /^[a-zA-Z0-9_-]+$/.test(jobId), 'Invalid chemistry job identity');
   const owner = window.webContents.id;
   const key = `${owner}:${jobId}`;
   assert(!jobs.has(key), 'Duplicate chemistry job identity');
   if (request.operation === 'perceive-bonds') {
-    const promise = empiricalChemistry.start(owner, request, jobId);
-    jobs.set(key, { owner, abort: reason => empiricalChemistry.cancel(owner, jobId, reason) });
+    const beforeEmpirical=()=>{
+      assert(!maintenanceBusy&&!quitting,'PORTABLE_BUSY: 维护或退出操作尚未结束');
+      ownerWindow(owner);workspaceDocuments.assertRuntimeOwner(owner,request.stamp.documentId);
+      const current=pes.authorizeEmpiricalDisplay(owner,request);
+      if(displayAuthorization&&current&&JSON.stringify(current.runIdentity)===JSON.stringify(displayAuthorization.runIdentity)){
+        workspaceDocuments.assertRuntimeOwner(owner,current.sourceDocumentId);
+      }else legacyScienceAdmission(request);
+    };
+    beforeEmpirical();
+    const promise = empiricalChemistry.start(owner, request, jobId,beforeEmpirical);
+    jobs.set(key, { owner, advanced:Boolean(displayAuthorization), abort: reason => empiricalChemistry.cancel(owner, jobId, reason) });
     return promise.finally(() => jobs.delete(key));
   }
   const pending = new AbortController();
@@ -1204,6 +1366,10 @@ handle('start-dynamics', async (window, request, sessionId) => {
 handle('command-dynamics', (window, sessionId, command) => {
   dynamics.command(window.webContents.id, sessionId, command);
 });
+handle('wait-dynamics-close', (window, documentId, sessionId) => {
+  workspaceDocuments.assertRuntimeOwner(window.webContents.id, documentId);
+  return dynamics.waitForClosed(window.webContents.id, documentId, sessionId);
+});
 handle('start-xtb', async (window, request, sessionId) => {
   const beforeStart = () => {
     assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 维护或退出操作尚未结束');
@@ -1211,8 +1377,6 @@ handle('start-xtb', async (window, request, sessionId) => {
     assert(plain(request) && plain(request.stamp), 'Invalid xTB document identity');
     workspaceDocuments.assertRuntimeOwner(window.webContents.id, request.stamp.documentId);
   };
-  beforeStart();
-  await readCpuResources();
   beforeStart();
   return xtb.start(window.webContents.id, request, sessionId, beforeStart);
 });
@@ -1229,6 +1393,13 @@ handle('conformer-batch-command',async(window,command,payload)=>{
 });
 handle('read-conformer-sampling-result',(window,id,offset,limit)=>conformerSampling.readResult(window.webContents.id,id,offset,limit));
 handle('release-conformer-sampling-result',(window,id)=>conformerSampling.releaseResult(window.webContents.id,id));
+handle('start-pes',async(window,request)=>{
+  const beforeStart=()=>{assert(!maintenanceBusy&&!quitting,'PORTABLE_BUSY: 维护或退出操作尚未结束');assert(plain(request)&&typeof request.sourceDocumentId==='string','Invalid PES source identity');workspaceDocuments.assertRuntimeOwner(window.webContents.id,request.sourceDocumentId);};
+  beforeStart();return pes.start(window.webContents.id,request,beforeStart);
+});
+handle('stop-pes',(window,identity)=>pes.stop(window.webContents.id,identity));
+handle('read-pes-path-record',(window,request)=>pes.readPathRecord(window.webContents.id,request));
+handle('release-pes-path-records',(window,identity)=>pes.releasePathRecords(window.webContents.id,identity));
 for (const [channel, host] of [['advanced-path', advancedPath], ['conformer-sampling', conformerSampling], ['aiss', aiss]]) {
   handle(`start-${channel}`, async (window, request, sessionId) => {
     const beforeStart = () => {
@@ -1244,15 +1415,60 @@ for (const [channel, host] of [['advanced-path', advancedPath], ['conformer-samp
 }
 handle('read-xtb-electronic-artifacts', (window, artifactId) => xtbElectronicSources.read(window.webContents.id, artifactId));
 handle('release-xtb-electronic-artifacts', (window, artifactId) => xtbElectronicSources.release(window.webContents.id, artifactId));
-handle('orbital-backend-info', () => orbitalBackend.info());
-handle('choose-orbital-backend', async window => {
-  assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 应用正在维护或关闭');
-  const choice = await dialog.showOpenDialog(window, { title: '选择 Multiwfn 所在文件夹', properties: ['openDirectory'] });
-  ownerWindow(window.webContents.id); assert(!quitting && !maintenanceBusy, 'APPLICATION_CLOSING: 应用正在关闭');
-  if (choice.canceled || choice.filePaths.length !== 1) return orbitalBackend.info();
-  const info=await orbitalBackend.select(choice.filePaths[0]);
-  for(const target of windows.values())try{if(!target.isDestroyed()&&!target.webContents.isDestroyed())target.webContents.send('sciyue:multiwfn-configuration-changed',info);}catch{/* Closing subscribers do not invalidate a published path. */}
+function publicMultiwfnBackend({configured,path,workDirectory,status,message,details}) {
+  return {configured,path,workDirectory,status,message,details};
+}
+function broadcastMultiwfnBackend(snapshot) {
+  const info=publicMultiwfnBackend(snapshot);
+  for(const owner of windows.keys())try{sendAnalysisEvent(owner,'sciyue:multiwfn-configuration-changed',info);}catch{/* A closing subscriber cannot invalidate a saved setting. */}
   return info;
+}
+function assertMultiwfnSettingsOwner(owner) {
+  ownerWindow(owner);
+  assert(!maintenanceBusy && !quitting,'PORTABLE_BUSY: 应用正在维护或关闭');
+}
+function broadcastGxtbBackend(info) {
+  for(const owner of windows.keys())try{sendAnalysisEvent(owner,'sciyue:gxtb-configuration-changed',info);}catch{}
+  return info;
+}
+handle('gxtb-backend-info',()=>gxtbBackend.info());
+handle('set-gxtb-backend-path',async(window,value)=>{assertMultiwfnSettingsOwner(window.webContents.id);return broadcastGxtbBackend(await gxtbBackend.select(value));});
+handle('choose-gxtb-backend',async window=>{
+  assertMultiwfnSettingsOwner(window.webContents.id);
+  const choice=await dialog.showOpenDialog(window,{title:'选择用户自备的 g-xTB 程序',properties:['openFile'],...(process.platform==='win32'?{filters:[{name:'g-xTB 程序',extensions:['exe']}]}:{})});
+  assertMultiwfnSettingsOwner(window.webContents.id);
+  if(choice.canceled||choice.filePaths.length!==1)return gxtbBackend.info();
+  return broadcastGxtbBackend(await gxtbBackend.select(choice.filePaths[0]));
+});
+handle('detect-gxtb-backend',async window=>{assertMultiwfnSettingsOwner(window.webContents.id);return broadcastGxtbBackend(await gxtbBackend.detect());});
+handle('open-gxtb-download',async window=>{assertMultiwfnSettingsOwner(window.webContents.id);await shell.openExternal(GXTB_DOWNLOAD_URL);return {opened:true};});
+handle('orbital-backend-info', async () => publicMultiwfnBackend(await orbitalBackend.info()));
+handle('choose-orbital-backend', async window => {
+  const owner=window.webContents.id;
+  assertMultiwfnSettingsOwner(owner);
+  const choice=await dialog.showOpenDialog(window,{title:'选择 Multiwfn 所在文件夹',properties:['openDirectory']});
+  assertMultiwfnSettingsOwner(owner);
+  if(choice.canceled||choice.filePaths.length!==1)return publicMultiwfnBackend(await orbitalBackend.info());
+  return broadcastMultiwfnBackend(await orbitalBackend.select(choice.filePaths[0]));
+});
+handle('choose-multiwfn-work-directory', async window => {
+  const owner=window.webContents.id;
+  assertMultiwfnSettingsOwner(owner);
+  let selected;
+  if(isolatedIO){
+    const configured=(await readTestDialogConfig()).multiwfnWorkDirectory;
+    if(configured)selected=await testPath(configured,true);
+  }else{
+    const choice=await dialog.showOpenDialog(window,{title:'选择 Multiwfn 临时运行目录',properties:['openDirectory']});
+    if(!choice.canceled&&choice.filePaths.length===1)selected=choice.filePaths[0];
+  }
+  assertMultiwfnSettingsOwner(owner);
+  if(!selected)return publicMultiwfnBackend(await orbitalBackend.info());
+  return broadcastMultiwfnBackend(await orbitalBackend.selectWorkDirectory(selected));
+});
+handle('reset-multiwfn-work-directory', async window => {
+  assertMultiwfnSettingsOwner(window.webContents.id);
+  return broadcastMultiwfnBackend(await orbitalBackend.selectWorkDirectory(null));
 });
 handle('open-orbital-session', (window, request) => {
   assert(!maintenanceBusy, 'PORTABLE_BUSY: 请等待本机任务结束');
@@ -1266,13 +1482,14 @@ handle('open-xtb-orbital-session', async (window, artifactId, sessionId) => {
   // Only the host-owned retained artifact supplies bytes and electronic state.
   // The renderer cannot replace its text, expected charge, or source digest.
   const bundle = await xtbElectronicSources.read(owner, artifactId); current();
-  const source = bundle.files.find(file => file.role === 'molden'), info = bundle.metadata;
-  assert(source && source.name === 'molden.input' && info.engine === 'xtb' && info.method === 'gfn2' && info.calculation === 'singlepoint' && info.converged === true && info.periodic === undefined, 'Invalid managed GFN2 orbital source');
-  assert(Number.isSafeInteger(info.charge) && Number.isSafeInteger(info.uhf) && info.uhf >= 0 && Array.isArray(info.orderedAtoms) && info.orderedAtoms.length > 0, 'Invalid managed GFN2 electronic state');
+  const info = bundle.metadata, gxtb=info.method==='gxtb',source = bundle.files.find(file => file.role === (gxtb?'analysis-molden':'molden'));
+  assert(source && info.engine === 'xtb' && ['gfn2','gxtb'].includes(info.method) && info.calculation === 'singlepoint' && info.converged === true && info.periodic === undefined, 'Invalid managed XTB orbital source');
+  assert(Number.isSafeInteger(info.charge) && Number.isSafeInteger(info.uhf) && info.uhf >= 0 && Array.isArray(info.orderedAtoms) && info.orderedAtoms.length > 0, 'Invalid managed XTB electronic state');
+  if(gxtb)assert(info.moldenConversion?.derivedSha256===source.sha256&&Array.isArray(info.moldenConversion.effectiveNuclearCharges),'Managed g-xTB conversion identity is missing');
   let opened = false;
   try {
     const metadata = await orbitals.open(owner, { sessionId, sourceId: `xtb-${bundle.artifactId}:molden`, name: source.name, text: source.text }); opened = true; current();
-    const binding = await orbitals.bindTrustedSourceExpectation(owner, sessionId, { kind: 'generated-gfn2-sp', artifactId: bundle.artifactId, sourceSha256: source.sha256, charge: info.charge, uhf: info.uhf, atomElements: info.orderedAtoms.map(atom => atom.element) });
+    const binding = await orbitals.bindTrustedSourceExpectation(owner, sessionId, { kind: gxtb?'generated-gxtb-sp':'generated-gfn2-sp', artifactId: bundle.artifactId, sourceSha256: source.sha256, charge: info.charge, uhf: info.uhf, atomElements: info.orderedAtoms.map(atom => atom.element),...(gxtb?{effectiveNuclearCharges:info.moldenConversion.effectiveNuclearCharges}:{}) });
     assert(binding.metadata.sourceId === metadata.sourceId && binding.metadata.sourceRevision === metadata.sourceRevision, 'Managed analysis binding changed the source identity');
     current(); return binding.metadata;
   } catch (error) {
@@ -1296,50 +1513,110 @@ function assertSurfaceOperation(owner, request) {
   assert(plain(request) && plain(request.stamp), 'Invalid surface request stamp');
   if (request.stamp.documentId !== undefined) workspaceDocuments.assertRuntimeOwner(owner, request.stamp.documentId);
 }
+const multiwfnOpenKey=(owner,family,id)=>JSON.stringify([owner,family,id]);
+function openMultiwfnSession(owner,family,id,{sources,sourceRequest,host,openHost}) {
+  assert(string(id,200),'Invalid Multiwfn opening session identity');
+  const key=multiwfnOpenKey(owner,family,id);
+  assert(!multiwfnOpenings.has(key),'Multiwfn session already opening');
+  const controller=new AbortController(),opening={owner,family,controller};
+  multiwfnOpenings.set(key,opening);
+  return opening.task=(async()=>{
+    let sourceReady=false, opened=false;
+    try{
+      const trusted=sources?await sources.open(owner,sourceRequest,{signal:controller.signal}):sourceRequest;
+      sourceReady=Boolean(sources);
+      controller.signal.throwIfAborted();
+      ownerWindow(owner);
+      assert(!maintenanceBusy&&!quitting,'MULTIWFN_OPEN_CANCELLED: 应用正在维护或关闭');
+      opening.host=host();
+      const result=await openHost(opening.host,trusted);
+      opened=true;
+      controller.signal.throwIfAborted();
+      ownerWindow(owner);
+      return result;
+    }catch(error){
+      if(error?.cleanupError)opening.cleanupError=error.cleanupError;
+      try{
+        if(opened)await opening.host.closeSession(owner,id);
+        if(sourceReady)await sources.closeSession(owner,id);
+      }catch(cleanupError){
+        opening.cleanupError=cleanupError;
+        if(error instanceof Error)error.message+='\n清理：'+cleanupError.message;
+      }
+      throw error;
+    }finally{multiwfnOpenings.delete(key);}
+  })();
+}
+async function cancelMultiwfnOpening(opening,id) {
+  opening.controller.abort(new Error('MULTIWFN_OPEN_CANCELLED: 已取消准备分析来源'));
+  try{
+    if(opening.host){
+      if(opening.family==='excitation'||opening.family==='reactivity')opening.host.assertFamily(opening.owner,id,opening.family,true);
+      await opening.host.cancel(opening.owner,id);
+    }
+  }
+  finally{await opening.task.catch(()=>{});}
+  if(opening.cleanupError)throw opening.cleanupError;
+  return {cancelled:true,nativeSettled:true,activeOperationPending:false,settlement:'cancelled-before-start'};
+}
 handle('surface-capabilities', (window, sessionId) => surfaces().capabilities(window.webContents.id, sessionId));
 handle('open-surface-session', async (window, request) => {
   const owner = window.webContents.id; assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 请等待本机任务结束');
   if (request?.source?.context?.documentId !== undefined) workspaceDocuments.assertRuntimeOwner(owner, request.source.context.documentId);
-  const trusted = await surfaceSources.open(owner, request);
-  try { ownerWindow(owner); const result = await surfaces().open(owner, trusted); ownerWindow(owner); return result; }
-  catch (error) { await surfaceService?.closeSession(owner, request.sessionId); await surfaceSources.closeSession(owner, request.sessionId); throw error; }
+  return openMultiwfnSession(owner,'surface',request?.sessionId,{
+    sources:surfaceSources,sourceRequest:request,host:surfaces,openHost:(service,trusted)=>service.open(owner,trusted),
+  });
 });
 handle('open-hirshfeld-session', async (window, request) => {
   const owner = window.webContents.id;
   assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 请等待本机任务结束');
   assert(plain(request) && Object.keys(request).every(key => ['sessionId', 'source', 'resources'].includes(key)) && plain(request.source) && request.source.kind === 'hirshfeld-cluster', 'Invalid Hirshfeld cluster source');
   if (request.source.context?.documentId !== undefined) workspaceDocuments.assertRuntimeOwner(owner, request.source.context.documentId);
-  let opened = false;
-  try { const result = await surfaces().open(owner, { ...request.source, sessionId: request.sessionId }, request.resources); opened = true; ownerWindow(owner); return result; }
-  catch (error) { if (opened) await surfaceService?.closeSession(owner, request.sessionId); throw error; }
+  return openMultiwfnSession(owner,'surface',request.sessionId,{
+    sourceRequest:{...request.source,sessionId:request.sessionId},host:surfaces,
+    openHost:(service,trusted)=>service.open(owner,trusted,request.resources),
+  });
 });
 for (const [channel, operation] of [['analyze-hirshfeld', 'hirshfeldAnalyze'], ['restore-hirshfeld-fields', 'hirshfeldRestore']]) handle(channel, (window, sessionId, request) => { assertSurfaceOperation(window.webContents.id, request); return surfaces()[operation](window.webContents.id, sessionId, request); });
 for (const [channel, operation] of [['analyze-surface', 'analyze'], ['surface-region', 'region'], ['generate-surface', 'generate'], ['surface-distribution', 'distribution']]) handle(channel, (window, sessionId, request) => { assertSurfaceOperation(window.webContents.id, request); return surfaces()[operation](window.webContents.id, sessionId, request); });
 handle('surface-restore-fields', (window, sessionId, request) => { assertSurfaceOperation(window.webContents.id, request); assert(string(request.generationId, 256), 'Invalid generated surface artifact identity'); return surfaces().restoreFields(window.webContents.id, sessionId, request); });
-handle('cancel-surface', async (window, sessionId) => { await surfaces().cancel(window.webContents.id, sessionId); return { cancelled: true }; });
-handle('close-surface-session', async (window, sessionId) => { await surfaces().closeSession(window.webContents.id, sessionId); await surfaceSources.closeSession(window.webContents.id, sessionId); return { closed: true }; });
+handle('cancel-surface', async (window,sessionId) => {
+  const owner=window.webContents.id,opening=multiwfnOpenings.get(multiwfnOpenKey(owner,'surface',sessionId));
+  if(opening)return cancelMultiwfnOpening(opening,sessionId);
+  await surfaceHost.current()?.cancel(owner,sessionId);
+  return {cancelled:true};
+});
+handle('close-surface-session', async (window,sessionId) => {
+  const owner=window.webContents.id,opening=multiwfnOpenings.get(multiwfnOpenKey(owner,'surface',sessionId));
+  if(opening)await cancelMultiwfnOpening(opening,sessionId);
+  await surfaceHost.current()?.closeSession(owner,sessionId);
+  await surfaceSources.closeSession(owner,sessionId);
+  return {closed:true};
+});
 handle('open-interaction-session', async (window, request) => {
   const owner = window.webContents.id;
   assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 请等待本机任务结束');
   assert(plain(request) && plain(request.source) && ['wavefunction', 'structure'].includes(request.source.kind), 'Invalid interaction source');
   if (request.source.context?.documentId !== undefined) workspaceDocuments.assertRuntimeOwner(owner, request.source.context.documentId);
-  const trusted = request.source.kind === 'wavefunction'
-    ? await interactionSources.open(owner, request)
-    : { sessionId: request.sessionId, kind: 'structure', structure: request.source.structure, context: request.source.context };
-  let opened = false;
-  try { ownerWindow(owner); const result = await interactions().open(owner, trusted); opened = true; ownerWindow(owner); return result; }
-  catch (error) {
-    // A rejected duplicate open must never close the pre-existing session.
-    if (opened) await interactionService?.closeSession(owner, request.sessionId);
-    if (request.source.kind === 'wavefunction') await interactionSources.closeSession(owner, request.sessionId);
-    throw error;
-  }
+  const wavefunction=request.source.kind==='wavefunction';
+  return openMultiwfnSession(owner,'interaction',request.sessionId,{
+    sources:wavefunction?interactionSources:undefined,
+    sourceRequest:wavefunction?request:{sessionId:request.sessionId,kind:'structure',structure:request.source.structure,context:request.source.context},
+    host:interactions,openHost:(service,trusted)=>service.open(owner,trusted),
+  });
 });
 for (const [channel, operation] of [['generate-interaction', 'generate'], ['interaction-contributions', 'contributions'], ['restore-interaction-fields', 'restoreFields']]) handle(channel, (window, sessionId, request) => { assertSurfaceOperation(window.webContents.id, request); return interactions()[operation](window.webContents.id, sessionId, request); });
-handle('cancel-interaction', (window, sessionId) => interactions().cancel(window.webContents.id, sessionId));
-handle('close-interaction-session', async (window, sessionId) => {
-  const result = await interactions().closeSession(window.webContents.id, sessionId);
-  await interactionSources.closeSession(window.webContents.id, sessionId); return result;
+handle('cancel-interaction', (window,sessionId) => {
+  const owner=window.webContents.id,opening=multiwfnOpenings.get(multiwfnOpenKey(owner,'interaction',sessionId));
+  return opening?cancelMultiwfnOpening(opening,sessionId):
+    interactionHost.current()?.cancel(owner,sessionId)??{cancelled:true,nativeSettled:true,activeOperationPending:false};
+});
+handle('close-interaction-session', async (window,sessionId) => {
+  const owner=window.webContents.id,opening=multiwfnOpenings.get(multiwfnOpenKey(owner,'interaction',sessionId));
+  if(opening)await cancelMultiwfnOpening(opening,sessionId);
+  const result=await interactionHost.current()?.closeSession(owner,sessionId);
+  await interactionSources.closeSession(owner,sessionId);
+  return result??{sessionId,status:'closed'};
 });
 for (const family of ['excitation', 'reactivity']) {
   const sources = family === 'excitation' ? excitationSources : reactivitySources;
@@ -1351,26 +1628,28 @@ for (const family of ['excitation', 'reactivity']) {
     assert(family === 'reactivity' || orbitalRepresentation === undefined && orbitalRepresentationEvidence === undefined, 'Invalid excitation source metadata');
     if (orbitalRepresentation !== undefined) assert(['canonical', 'natural', 'localized', 'nto', 'unknown'].includes(orbitalRepresentation) && (orbitalRepresentationEvidence === undefined || string(orbitalRepresentationEvidence, 4096)), 'Invalid orbital representation evidence');
     if (source.context?.documentId !== undefined) workspaceDocuments.assertRuntimeOwner(owner, source.context.documentId);
-    const trusted = await sources.open(owner, { sessionId: request.sessionId, source });
-    let opened = false;
-    try {
-      ownerWindow(owner);
-      const result = await electronicAnalyses().open(owner, { ...trusted, family, name: source.name, output: request.output, orbitalRepresentation, orbitalRepresentationEvidence });
-      opened = true; ownerWindow(owner); return result;
-    } catch (error) {
-      // A rejected duplicate never acquires source ownership and cannot close
-      // the earlier family/session. The host cleans any newly failed open.
-      try { if (opened) await electronicService?.closeSession(owner, request.sessionId); }
-      finally { await sources.closeSession(owner, request.sessionId); } throw error;
-    }
+    return openMultiwfnSession(owner,family,request.sessionId,{
+      sources,sourceRequest:{sessionId:request.sessionId,source},host:electronicAnalyses,
+      openHost:(service,trusted)=>service.open(owner,{...trusted,family,name:source.name,output:request.output,orbitalRepresentation,orbitalRepresentationEvidence}),
+    });
   });
   const checked = (window, sessionId, request) => { assertSurfaceOperation(window.webContents.id, request); electronicAnalyses().assertFamily(window.webContents.id, sessionId, family); };
   handle(family === 'excitation' ? 'run-excitation' : 'analyze-reactivity', (window, sessionId, request) => { checked(window, sessionId, request); return electronicAnalyses().run(window.webContents.id, sessionId, request); });
-  handle('cancel-' + family, (window, sessionId) => { electronicAnalyses().assertFamily(window.webContents.id, sessionId, family); return electronicAnalyses().cancel(window.webContents.id, sessionId); });
-  handle('close-' + family + '-session', async (window, sessionId) => {
-    const owner = window.webContents.id; electronicAnalyses().assertFamily(owner, sessionId, family, true);
-    try { return await electronicAnalyses().closeSession(owner, sessionId); }
-    finally { await sources.closeSession(owner, sessionId); }
+  handle('cancel-' + family, (window,sessionId) => {
+    const owner=window.webContents.id,opening=multiwfnOpenings.get(multiwfnOpenKey(owner,family,sessionId));
+    if(opening)return cancelMultiwfnOpening(opening,sessionId);
+    const service=electronicHost.current();
+    service?.assertFamily(owner,sessionId,family,true);
+    return service?.cancel(owner,sessionId)??{cancelled:true,nativeSettled:true,activeOperationPending:false,settlement:'not-started'};
+  });
+  handle('close-' + family + '-session', async (window,sessionId) => {
+    const owner=window.webContents.id,opening=multiwfnOpenings.get(multiwfnOpenKey(owner,family,sessionId));
+    if(opening)await cancelMultiwfnOpening(opening,sessionId);
+    const service=electronicHost.current();
+    service?.assertFamily(owner,sessionId,family,true);
+    const result=await service?.closeSession(owner,sessionId);
+    await sources.closeSession(owner,sessionId);
+    return result??{sessionId,status:'closed'};
   });
 }
 handle('restore-excitation-fields', (window, sessionId, request) => { assertSurfaceOperation(window.webContents.id, request); electronicAnalyses().assertFamily(window.webContents.id, sessionId, 'excitation'); return electronicAnalyses().restoreFields(window.webContents.id, sessionId, request); });
@@ -1455,7 +1734,13 @@ if (ownsProfile) app.whenReady().then(async () => {
   });
   const initialWindow = createModelWindow();
   hostWindowsReady = true;
-  await mcpLiveHost.start().catch(error => console.warn('MCP_LIVE_HOST_START_FAILED', error.message));
+  if (mcpPreferences.read().enabled) {
+    await mcpLiveHost.start()
+      .then(session => mcpPreferences.write({ enabled: true, port: session.port, token: session.token }))
+      .catch(error => console.warn('MCP_LIVE_HOST_START_FAILED', error.message));
+  } else if (!mcpPreferences.read().token) {
+    await mcpPreferences.write({ token: mcpLiveHost.getToken() }).catch(() => {});
+  }
   const initialLaunch = readLaunchRequest(process.argv, process.cwd?.() || appPath);
   if (initialLaunch.paths.length || initialLaunch.error) enqueueLaunch(initialWindow, initialLaunch);
   logEvent('info', 'PORTABLE_HOST_READY');
@@ -1475,7 +1760,9 @@ app.on('before-quit', event => {
   refreshNativeMenu(); windowClosePolicy.beginShutdown();
   for (const controller of runtimeChecks.values()) controller.abort();
   conformerBatchDisposal=conformerBatch.dispose();void conformerBatchDisposal.catch(()=>{});
-  nativeCapabilities.dispose(); multiwfnScheduler.dispose(); dynamics.dispose(); xtb.dispose(); advancedPath.dispose(); conformerSampling.dispose(); ocr.dispose(); aiss.dispose(); orbitals.dispose(); empiricalChemistry.dispose(); crystalModeling.dispose(); surfaceService?.dispose(); interactionService?.dispose(); electronicService?.dispose(); for (const job of jobs.values()) job.abort('CHEMISTRY_CANCELLED: 应用退出');
+  nativeCapabilities.dispose(); multiwfnScheduler.dispose(); dynamics.dispose(); xtb.dispose(); advancedPath.dispose(); pes.dispose(); conformerSampling.dispose(); ocr.dispose(); aiss.dispose(); orbitals.dispose(); empiricalChemistry.dispose(); crystalModeling.dispose();
+  for (const host of multiwfnAnalysisHosts) host.current()?.dispose();
+  for (const job of jobs.values()) job.abort('CHEMISTRY_CANCELLED: 应用退出');
   closingTask = (async () => {
     const graceful = () => { assert(!forcingExit, 'APPLICATION_FORCE_EXIT: unfinished source and storage material retained'); };
     // Independent drains start together. A failed component still joins every
@@ -1491,11 +1778,11 @@ app.on('before-quit', event => {
       assert(results.every(result => result.status === 'fulfilled'), 'OWNER_SOURCE_CLOSE_UNCONFIRMED');
     };
     const hostEntries = [
-      ['ORBITAL', () => orbitals.settle()], ['XTB', () => xtb.settle()], ['ADVANCED_PATH', () => advancedPath.settle()],
+      ['ORBITAL', () => orbitals.settle()], ['XTB', () => xtb.settle()], ['ADVANCED_PATH', () => advancedPath.settle()], ['PES', () => pes.settle()],
       ['CONFORMER_BATCH', () => conformerBatchDisposal??conformerBatch.settle()],
       ['SAMPLING', () => conformerSampling.settle()], ['OCR', () => ocr.settle()], ['AISS', () => aiss.settle()], ['EMPIRICAL', () => empiricalChemistry.settle()],
       ['CRYSTAL', () => crystalModeling.settle()], ['CAPABILITY', () => nativeCapabilities.settle()],
-      ['SURFACE', () => surfaceService?.settle()], ['INTERACTION', () => interactionService?.settle()], ['ELECTRONIC', () => electronicService?.settle()],
+      ...multiwfnAnalysisHosts.map(host => [host.label, () => host.current()?.settle()]),
       ['MULTIWFN', () => multiwfnScheduler.whenIdle()], ['XTB_OWNER', () => settleOwnerCloses(xtbSourceCloseTasks)], ['SURFACE_OWNER', () => settleOwnerCloses(surfaceCloseTasks)],
     ];
     windowClosePolicy.shutdownPhase('native-and-storage');

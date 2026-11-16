@@ -1,17 +1,20 @@
 import type { Structure } from '../../core/types';
 import { effectiveModelCoordinates } from '../constraints';
-import type { DocumentStamp, ForcefieldChoice, ModelDocument, ModelStore, NativeMDPolicy } from '../contracts';
+import type { DocumentStamp, ForcefieldChoice, ModelDocument, ModelStore, NativeMDPolicy, ScientificModelOperation } from '../contracts';
 import { coordinatesFingerprint, getMovableAtomIds } from '../../core/modeling/graph';
 import type { DynamicsCommand, DynamicsEvent, DynamicsFrame, DynamicsMethod, MDMethod, DynamicsOperation, DynamicsRequest, DynamicsTerminalFailure, DynamicsTermination, GeometryDistanceTarget, GeometryTargetStatus } from './contracts';
 import type { DynamicsCapabilities, DynamicsPort } from './port';
-import { validateDynamicsAdmission, validateDynamicsConfig, validateDynamicsStructure, validateDynamicsError } from './validation';
+import { acceptTransportedDynamicsStructure, validateDynamicsAdmission, validateDynamicsConfig, validateDynamicsStructure, validateDynamicsError } from './validation';
 import { validateHybridMetadata } from './hybrid-metadata';
 import { createRuntimeModelStore } from '../../core/modeling/model-store';
 import {runtimePreviewSourceCurrent} from '../../core/modeling/runtime-source-lineage';
+import { builderCoordinateValue } from '../../core/builder-geometry';
+import { isXtbMethod, supportsXtbAlpb, XTB_METHOD_LABELS } from '../../core/xtb-capabilities';
+import type { XtbSolvation } from '../xtb/contracts';
 import { BoundedDisplayQueue, createDisplayScheduler, DISPLAY_BYTE_LIMIT, DISPLAY_FRAME_LIMIT, DISPLAY_INTERVAL_MS, DISPLAY_MAX_WAIT_MS, serializedFrameBytes, type DisplayScheduler } from './display-queue';
 
 export type DynamicsStatus = 'idle' | 'starting' | 'running' | 'pausing' | 'paused' | 'stopping' | 'stopped' | 'completed' | 'error';
-export interface DynamicsConfig { temperatureK?: number; maxSteps?: number; maxWallTimeSeconds?: number; forcefield?: ForcefieldChoice; method?: MDMethod; movableAtomIds?: string[]; seed?: number; frictionPerFs?: number; geometryMode?: 'hybrid-local'; hybridScalePolicy?: 'uff-bond-stiffness-v1'; allowPureGeometryFallback?: true; geometryDistanceTargets?: GeometryDistanceTarget[] }
+export interface DynamicsConfig { temperatureK?: number; maxSteps?: number; maxWallTimeSeconds?: number; forcefield?: ForcefieldChoice; method?: MDMethod; movableAtomIds?: string[]; seed?: number; solvation?:XtbSolvation; frictionPerFs?: number; geometryMode?: 'hybrid-local'; hybridScalePolicy?: 'uff-bond-stiffness-v1'; allowPureGeometryFallback?: true; geometryDistanceTargets?: GeometryDistanceTarget[] }
 export interface DisplayDynamicsFrame extends DynamicsFrame { physicalTimeFs: number; instantTemperatureK?: number }
 export interface DynamicsSnapshotObservation { step:number; timeFs:number; energyEV?:number; temperatureK?:number; targetTemperatureK?:number; forcefield?:string; nativeMD?:DynamicsEvent['nativeMD']; engine?:string; engineVersion?:string; aseVersion?:string }
 export interface DynamicsSnapshot { structure: Structure; seq: number; sessionId?: string; detached?: true; workingSource?: {documentId:string;revision:number}; modelDocument?:ModelDocument; observation?:DynamicsSnapshotObservation }
@@ -21,15 +24,17 @@ export interface DynamicsControllerState {
   terminalFailure?: DynamicsTerminalFailure;
   termination?: DynamicsTermination;
   workingSource?: { documentId: string; revision: number };
+  resultAdoption?: ReturnType<ScientificModelOperation['apply']>;
 }
 export interface DynamicsDependencies {
   getSnapshot(): ModelDocument;
   getWorkingSnapshot?(): ModelDocument;
-  getStamp(movableAtomIds?: string[], nativeMDPolicy?: NativeMDPolicy): DocumentStamp;
+  prepareSource?(): ScientificModelOperation;
+  getStamp(movableAtomIds?: string[], nativeMDPolicy?: NativeMDPolicy, sourceOperation?: ScientificModelOperation): DocumentStamp;
   beginRun(): void;
   acceptFrame(frame: DynamicsFrame): void;
   commitRun(): void;
-  finishRun(): void;
+  finishRun(adopt?: boolean, onAccepted?: () => void): DynamicsControllerState['resultAdoption'] | void;
   hasRuntimeLock?(): boolean;
   allowsWorkingEdits?(): boolean;
 }
@@ -40,7 +45,14 @@ function validateMDMetadata(event:DynamicsEvent,request:DynamicsRequest):void {
   if(!request.method || !event.structure)return;
   const metadata=event.nativeMD;
   if(!metadata || metadata.method!==request.method || metadata.dtFs!==2 || metadata.thermostat!=='Berendsen' || metadata.hydrogenMassAmu!==(request.method==='gfnff'?4:null) || metadata.shakeHydrogenBonds!==(request.method!=='gfnff') || JSON.stringify(metadata.protectedAtomIds)!==JSON.stringify(request.protectedAtomIds??[]) || metadata.protection!==((request.protectedAtomIds??[]).length?'pairwise-distance':'none') || metadata.forceConstantKJMolNm2!==500000 || !Number.isSafeInteger(metadata.segment) || metadata.segment<0 || metadata.velocityInitialization!==(metadata.segment===0?'fresh':'restart') || typeof metadata.nativeClosed!=='boolean')throw new Error('原生MD方法或保护元数据不符。');
-  if(metadata.rawPotential){const p=metadata.rawPotential,protectedRun=(request.protectedAtomIds??[]).length>0;if(!Number.isFinite(p.value)||p.unit!=='hartree'||p.definition!==(protectedRun?'native-total-including-protection':'native-physical-potential')||p.includesProtection!==protectedRun||p.sourceArtifact!=='xtb.trj'||!Number.isSafeInteger(p.sourceStep)||p.sourceStep<0||p.sourceStep>event.step!||p.sourceTimeFs!==p.sourceStep*2||!Number.isSafeInteger(p.segment)||p.segment<0||p.segment>metadata.segment)throw new Error('原生MD总势能来源或含保护项定义不符。');}
+  const periodic=Boolean(request.structure.cell), constraints=periodic?[]:request.constraints??[];
+  if(Boolean(metadata.periodic)!==periodic)throw new Error('原生MD固定晶胞回执与运行请求不符。');
+  if(metadata.effectiveSeed!==undefined&&(metadata.effectiveSeed!==request.seed||metadata.seedTreatment!=='verified'||request.method==='gxtb'))throw new Error('原生MD实际种子回执不匹配。');
+  if(metadata.seedTreatment!==undefined&&(request.method==='gxtb'?metadata.seedTreatment!=='program-random':event.engineVersion==='6.8.0'?metadata.seedTreatment!=='verified':metadata.seedTreatment!=='native-internal-initialization'))throw new Error('原生MD随机初始化回执不匹配。');
+  if(metadata.solvation!==undefined&&(!request.solvation||metadata.solvation.model!=='alpb'||metadata.solvation.solvent!==request.solvation.solvent||metadata.solvation.parameterSet!==`internal ${XTB_METHOD_LABELS[request.method]}/ALPB`)
+    ||event.step!>0&&request.solvation&&!metadata.solvation)throw new Error('原生MD溶剂回执不匹配。');
+  if(event.step!>0&&(metadata.internalConstraints??[]).length!==constraints.length)throw new Error('原生MD内坐标回执与运行请求不符。');
+  if(metadata.rawPotential){const p=metadata.rawPotential,protectedRun=(request.protectedAtomIds??[]).length>0||constraints.length>0;if(!Number.isFinite(p.value)||p.unit!=='hartree'||p.definition!==(protectedRun?'native-total-including-protection':'native-physical-potential')||p.includesProtection!==protectedRun||p.sourceArtifact!=='xtb.trj'||!Number.isSafeInteger(p.sourceStep)||p.sourceStep<0||p.sourceStep>event.step!||p.sourceTimeFs!==p.sourceStep*2||!Number.isSafeInteger(p.segment)||p.segment<0||p.segment>metadata.segment)throw new Error('原生MD总势能来源或含保护项定义不符。');}
 }
 const active = (status: DynamicsStatus) => ['starting', 'running', 'pausing', 'paused', 'stopping'].includes(status);
 const targetKey = (atomIds: string[], image: number[] = [0,0,0]) => {
@@ -93,6 +105,8 @@ function validateTargetStatus(value: GeometryTargetStatus, request: DynamicsRequ
 export class DynamicsController {
   private workingSourceDocument?:ModelDocument;
   getWorkingSourceDocument=()=>this.workingSourceDocument;
+  private workingOwnerDocument?:ModelDocument;
+  getWorkingOwnerDocument=()=>this.workingOwnerDocument;
   private state: DynamicsControllerState = { status: 'idle', capabilities: { available: false, reason: '正在检查原生动态引擎。' } };
   private listeners = new Set<() => void>();
   private unsubscribe: (() => void) | undefined;
@@ -105,6 +119,8 @@ export class DynamicsController {
   private generation = 0;
   private pendingCommand = false;
   private coordinatesAccepted = false;
+  private preparing?: { cancelled: boolean };
+  private startIssued = false;
   private terminationTask?: { sessionId: string; promise: Promise<DynamicsTermination & { status: 'settled' }> };
   private readonly windowId = crypto.randomUUID();
   private pausedWaiters: { resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }[] = [];
@@ -125,11 +141,13 @@ export class DynamicsController {
   }
   disconnect(): void { this.invalidateSession('模型窗口已断开'); this.unsubscribe?.(); this.unsubscribe = undefined; }
   getSnapshot = (): DynamicsControllerState => this.state;
+  /** Immutable observation only; the runtime retains request ownership. */
+  getRequestSnapshot = () => this.request ? structuredClone(this.request) : undefined;
   subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
   private update(patch: Partial<DynamicsControllerState>) { if (this.disposed) return; this.state = { ...this.state, ...patch }; this.listeners.forEach(listener => listener()); }
   private begin() { if (!this.transaction) { this.deps.beginRun(); this.transaction = true; } }
   private commit() { if (this.transaction) { this.transaction = false; this.deps.commitRun(); } }
-  private finish() { this.clearDisplayQueue();this.commit(); this.deps.finishRun(); }
+  private finish(adopt=false, onAccepted?:()=>void) { this.clearDisplayQueue();this.commit(); return this.deps.finishRun(adopt,onAccepted); }
   private clearDisplayQueue():void {this.cancelDisplay?.();this.cancelDisplay=undefined;this.displayQueue.clear();}
   private scheduleDisplay():void {
     if(this.cancelDisplay || this.state.mode!=='md' || !active(this.state.status))return;
@@ -154,16 +172,16 @@ export class DynamicsController {
     this.scheduleDisplay();
   }
   private validateDisplayBatch(event:DynamicsEvent,request:DynamicsRequest):DisplayDynamicsFrame[] {
-    if(event.displayFrames===undefined)return event.event==='frame'&&request.operation==='md'&&serializedFrameBytes(event)<=DISPLAY_BYTE_LIMIT?[{...clone(event),event:'frame',physicalTimeFs:event.timeFs!,instantTemperatureK:event.temperatureK} as DisplayDynamicsFrame]:[];
+    if(event.displayFrames===undefined)return [];
     if(request.operation!=='md' || event.event!=='frame' || !Array.isArray(event.displayFrames) || event.displayFrames.length>DISPLAY_FRAME_LIMIT)throw new Error('动态显示批次类型或数量无效。');
     let bytes=0,lastSeq=this.nextSeq,lastStep=this.state.lastFrame?.step??-1;const frames:DisplayDynamicsFrame[]=[];
     for(const item of event.displayFrames){
       if(!item || item.displayFrames!==undefined || item.schema!==1 || item.event!=='frame' || item.operation!=='md' || item.sessionId!==event.sessionId || !item.stamp || !sameStamp(item.stamp,request.stamp) || !Number.isSafeInteger(item.seq) || item.seq<=lastSeq || item.seq>event.seq || !Number.isSafeInteger(item.step) || item.step<0 || item.step<lastStep || item.step>event.step! || !Number.isFinite(item.timeFs) || item.timeFs!==item.step*(request.dtFs??1) || !item.structure)throw new Error('动态显示帧身份、顺序或时间无效。');
       bytes+=serializedFrameBytes(item);if(bytes>DISPLAY_BYTE_LIMIT)throw new Error('动态显示批次超过载荷上限。');
-      validateDynamicsStructure(request.structure,item.structure,request.movableAtomIds);validateMDMetadata(item,request);
+      const structure=acceptTransportedDynamicsStructure(request.structure,item.structure,request.movableAtomIds,request.operation);validateMDMetadata(item,request);
       for(const value of [item.energyEV,item.kineticEnergyEV,item.temperatureK,item.targetTemperatureK])if(value!==undefined&&!Number.isFinite(value))throw new Error('动态显示帧物理数值无效。');
       if(item.temperatureK!==undefined&&item.temperatureK<0 || item.targetTemperatureK!==undefined&&item.targetTemperatureK!==request.temperatureK || item.geometryObjective!==undefined || item.hybridGeometry!==undefined || item.geometryTargetStatus!==undefined)throw new Error('动态显示帧物理定义无效。');
-      frames.push({...clone(item),physicalTimeFs:item.timeFs,instantTemperatureK:item.temperatureK});lastSeq=item.seq;lastStep=item.step;
+      frames.push({...clone({...item,structure}),physicalTimeFs:item.timeFs,instantTemperatureK:item.temperatureK});lastSeq=item.seq;lastStep=item.step;
     }
     return frames;
   }
@@ -224,56 +242,94 @@ export class DynamicsController {
     if (this.disposed) throw new Error('动态控制器已关闭。');
     this.connect();
     if (active(this.state.status)) throw new Error('请先停止当前动态会话。');
+    const owner=this.deps.getWorkingSnapshot?.();
+    const operation=this.deps.prepareSource?.();
+    const preparation=operation?{cancelled:false}:undefined;
+    this.preparing=preparation;
+    if(preparation)this.update({status:'starting',mode,sessionId:undefined,lastFrame:undefined,displayFrame:undefined,error:undefined,resultAdoption:undefined});
+    try{await this.startRun(mode,config,owner,operation,preparation);}
+    catch(cause){
+      if(preparation?.cancelled)return;
+      if(preparation&&this.preparing===preparation){
+        this.request=undefined;this.expectedStamp=undefined;
+        this.update({status:'idle'});
+        const error=cause instanceof Error?cause:new Error(String(cause));
+        this.settleWaiters(error);this.settleStarted(error);
+      }
+      throw cause;
+    }finally{if(this.preparing===preparation)this.preparing=undefined;}
+  }
+
+  private async startRun(mode:DynamicsOperation,config:DynamicsConfig,owner?:ModelDocument,operation?:ScientificModelOperation,preparation?:{cancelled:boolean}):Promise<void> {
     if (this.state.termination?.status === 'pending') await this.waitForTermination();
+    if(preparation?.cancelled)return;
     // A new preflight must never borrow an earlier native failure for AUTO fallback.
     this.terminationTask = undefined; this.update({ terminalFailure: undefined, termination: undefined });
     const temperatureK = config.temperatureK ?? 300, maxSteps = config.maxSteps ?? (mode === 'md' ? 100000 : 500);
     validateDynamicsConfig(mode, temperatureK, maxSteps);
     const pendingGeneration = this.generation;
     const capabilities = await this.port.capabilities(); this.update({ capabilities });
+    if(preparation?.cancelled)return;
     if (this.disposed) throw new Error('动态控制器已关闭。');
     if (pendingGeneration !== this.generation) throw new Error('启动期间模型或窗口已变化，动态请求已取消。');
     if (!capabilities.available) throw new Error(capabilities.reason || '动态引擎不可用。');
-    if (active(this.state.status)) throw new Error('当前动态会话已启动。');
-    const document = this.deps.getSnapshot(), structure = document.draft.structure;
+    if (!preparation&&active(this.state.status)) throw new Error('当前动态会话已启动。');
+    if(operation&&!operation.isCurrent())throw new Error('启动期间模型或来源已变化，动态请求已取消。');
+    const document = operation?.source??this.deps.getSnapshot(), structure = document.draft.structure;
     const constraints = effectiveModelCoordinates(document);
     validateDynamicsAdmission(structure, mode, { ...config, constraints, attachmentPorts: document.attachmentPorts });
     validateDistanceTargets(config.geometryDistanceTargets, { operation:mode, geometryMode:config.geometryMode, structure });
     if (!structure.atoms.length) throw new Error('动态整理需要非空显式原子结构。');
     if (mode === 'md' && document.attachmentPorts?.length) throw new Error('当前模型含未完成的悬空端口，属于编辑状态；完成连接或移除端口后才能运行真实MD。');
-    const nativeMD = mode === 'md' && ['gfnff','gfn0','gfn1','gfn2'].includes(config.method ?? '');
+    const nativeMD = mode === 'md' && isXtbMethod(config.method ?? ''), periodicMD=nativeMD&&Boolean(structure.cell);
     if(nativeMD && temperatureK<=0) throw new Error('GFN原生MD需要大于0 K的目标温度。');
     if (config.method !== undefined && mode !== 'md') throw new Error('MD计算级别仅适用于MD。');
     const editorMovable = config.movableAtomIds ?? getMovableAtomIds(document, 'all');
-    const protectedAtomIds = structure.atoms.map(atom=>atom.id!).filter(id=>!editorMovable.includes(id));
+    if(config.solvation&&(config.solvation.model!=='alpb'||!nativeMD||!supportsXtbAlpb(config.method!,config.solvation.solvent,periodicMD)))throw new Error('所选MD方法或周期条件不支持此溶剂，请明确改选。');
+    if(nativeMD&&!periodicMD&&constraints.some(row=>row.action!=='freeze'||row.images?.some(image=>image.some(Boolean))))throw new Error('原生MD只应用非周期B/A/D保护，不能执行内坐标扫描。');
+    const nativeConstraints=nativeMD&&!periodicMD?constraints.map(row=>({...row,value:row.value??builderCoordinateValue(structure,row.type,row.atomIds)})):[];
+    const protectedAtomIds = periodicMD?[]:structure.atoms.map(atom=>atom.id!).filter(id=>!editorMovable.includes(id));
     if (nativeMD && protectedAtomIds.length === 1) throw new Error('GFN相对距离保护至少需要2个冻结原子；请增加冻结原子，或改用MMFF/UFF。');
     const movableAtomIds = nativeMD ? structure.atoms.map(atom=>atom.id!) : editorMovable;
     if (!movableAtomIds.length) throw new Error('没有可动原子。');
     const allowedMovable = new Set(getMovableAtomIds(document, 'all'));
     if (editorMovable.some(id => !allowedMovable.has(id))) throw new Error('动态可动原子包含冻结或不存在的原子。');
-    validateDynamicsStructure(structure, structure, movableAtomIds);
-    this.nativeMDPolicy = nativeMD ? {kind:'native-gfn-md',method:config.method as DynamicsMethod,dtFs:2,protectedAtomIds:[...protectedAtomIds],forceConstantKJMolNm2:500000} : undefined;
-    const stamp = this.deps.getStamp(movableAtomIds,this.nativeMDPolicy), sessionId = `${this.windowId}-${crypto.randomUUID()}`;
-    const seed = config.seed ?? (mode === 'md' ? crypto.getRandomValues(new Uint32Array(1))[0] : undefined);
+    validateDynamicsStructure(structure, structure, movableAtomIds, mode);
+    this.nativeMDPolicy = nativeMD ? {kind:'native-gfn-md',method:config.method as DynamicsMethod,dtFs:2,protectedAtomIds:[...protectedAtomIds],forceConstantKJMolNm2:500000,
+      ...(periodicMD?{periodic:true as const}:{}),...(nativeConstraints.length?{internalConstraintMode:'native-harmonic' as const}:{})} : undefined;
+    const stamp = this.deps.getStamp(movableAtomIds,this.nativeMDPolicy,operation), sessionId = `${this.windowId}-${crypto.randomUUID()}`;
+    const seed = config.method==='gxtb'?undefined:config.seed ?? (mode === 'md' ? crypto.getRandomValues(new Uint32Array(1))[0] % (nativeMD?2**31:2**32) : undefined);
+    if(nativeMD&&seed!==undefined&&(!Number.isSafeInteger(seed)||seed<0||seed>2147483647))throw new Error('原生GFN MD的种子必须在0–2147483647之间。');
     this.request = { stamp, operation: mode, structure: clone(structure), movableAtomIds: [...movableAtomIds],
-      constraints: clone(constraints),
+      constraints: clone(nativeMD?nativeConstraints:constraints),
       maxSteps, ...(config.maxWallTimeSeconds === undefined ? {} : {maxWallTimeSeconds: config.maxWallTimeSeconds}),
       ...(mode === 'geometry' ? { attachmentPorts: clone(document.attachmentPorts ?? []), ...(config.geometryDistanceTargets === undefined ? {} : { geometryDistanceTargets:clone(config.geometryDistanceTargets) }), ...(config.geometryMode ? { geometryMode: config.geometryMode, hybridScalePolicy: config.hybridScalePolicy, ...(config.allowPureGeometryFallback === true ? { allowPureGeometryFallback: true } : {}) } : {}) }
-        : { ...(nativeMD ? {method:config.method as DynamicsMethod, protectedAtomIds} : {forcefield: (config.method as ForcefieldChoice | undefined) ?? config.forcefield ?? 'auto'}), ...(mode === 'md' ? {untilStopped:true as const} : {}), dtFs: nativeMD ? 2 : 1, reportEvery: 10, temperatureK, seed, frictionPerFs: config.frictionPerFs }) };
-    this.expectedStamp = clone(stamp); this.nextSeq = -1; this.coordinatesAccepted = false; this.terminationTask = undefined; this.begin();
+        : { ...(nativeMD ? {method:config.method as DynamicsMethod, protectedAtomIds,...(config.solvation?{solvation:clone(config.solvation)}:{})} : {forcefield: (config.method as ForcefieldChoice | undefined) ?? config.forcefield ?? 'auto',frictionPerFs:config.frictionPerFs}), ...(mode === 'md' ? {untilStopped:true as const} : {}), dtFs: nativeMD ? 2 : 1, reportEvery: 10, temperatureK, seed }) };
+    this.expectedStamp=clone(stamp);this.nextSeq=-1;this.coordinatesAccepted=false;this.terminationTask=undefined;this.startIssued=false;
+    this.begin();this.preparing=undefined;
     const generation = ++this.generation;
     this.clearDisplayQueue();
     this.workingSourceDocument=document;
-    this.update({ status: 'starting', mode, sessionId, referenceStructure: clone(structure), workingSource:{documentId:document.id,revision:document.revision}, lastFrame: undefined,displayFrame:undefined, error: undefined, terminalFailure: undefined, termination: undefined, seed });
-    try { await this.port.start(this.request, sessionId); }
-    catch (cause) { if (generation === this.generation) this.fail(cause, { origin: 'transport', code: 'transport-start-failed' }); throw cause; }
+    this.workingOwnerDocument=owner??document;
+    this.update({ status: 'starting', mode, sessionId, referenceStructure: clone(structure), workingSource:{documentId:this.workingOwnerDocument.id,revision:this.workingOwnerDocument.revision}, lastFrame: undefined,displayFrame:undefined, error: undefined, terminalFailure: undefined, termination: undefined, resultAdoption:undefined,seed });
+    if(this.request===undefined||generation!==this.generation)return;
+    try { this.startIssued=true;await this.port.start(this.request, sessionId); }
+    catch (cause) {
+      if(generation===this.generation&&this.state.status==='stopping'&&String(cause).includes('DYNAMICS_CANCELLED:')){this.complete('stopped');return;}
+      if (generation === this.generation) this.fail(cause, { origin: 'transport', code: 'transport-start-failed' }); throw cause;
+    }
   }
 
   async command(command: DynamicsUICommand): Promise<void> {
+    if(command.type==='stop'&&this.preparing){
+      this.preparing.cancelled=true;this.preparing=undefined;this.update({status:'stopped'});
+      const error=new Error('动态会话已停止。');this.settleWaiters(error);this.settleStarted(error);return;
+    }
     if (this.state.mode === 'md' && command.type !== 'stop') throw new Error('MD持续运行直到停止；运行中不能暂停、恢复或修改温度。');
     if (command.type === 'pause' && this.state.status === 'starting') await this.waitForStarted();
     const sessionId = this.state.sessionId;
     if (!sessionId || !this.request || !active(this.state.status)) throw new Error('当前没有活动动态会话。');
+    if(command.type==='stop'&&!this.startIssued){this.complete('stopped');return;}
     if (this.pendingCommand) throw new Error('上一条动态控制指令尚未完成。');
     if (command.type === 'pause' && this.state.status !== 'running' && this.state.status !== 'starting') throw new Error('当前会话不能暂停。');
     if (command.type === 'resume' && this.state.status !== 'paused') throw new Error('只有已暂停会话可继续。');
@@ -313,6 +369,7 @@ export class DynamicsController {
   private invalidateSession(reason: string): void {
     this.clearDisplayQueue();
     this.generation++;
+    if(this.preparing){this.preparing.cancelled=true;this.preparing=undefined;}
     this.terminationTask = undefined;
     if (!active(this.state.status)) { this.update({ terminalFailure: undefined, termination: undefined }); return; }
     const sessionId = this.state.sessionId;
@@ -349,6 +406,18 @@ export class DynamicsController {
       return { structure:clone(modelDocument.draft.structure),modelDocument,...(observation?{observation}:{}),seq:frame?.seq ?? 0,sessionId:this.state.sessionId,detached:true,workingSource:clone(source) };
     }
     return { structure:clone(working.draft.structure),seq:this.state.lastFrame?.seq ?? 0,sessionId:this.state.sessionId };
+  }
+
+  private complete(status:'stopped'|'completed'){
+    const sessionId=this.state.sessionId;
+    let resultAdoption:DynamicsControllerState['resultAdoption'],error:string|undefined;
+    try{resultAdoption=this.finish(true,()=>{
+      if(this.state.sessionId===sessionId&&this.state.resultAdoption==='pending')this.update({resultAdoption:'applied'});
+    })??undefined;}
+    catch(cause){if(!this.deps.prepareSource)throw cause;resultAdoption='retained';error=cause instanceof Error?cause.message:String(cause);}
+    this.request=undefined;this.expectedStamp=undefined;
+    this.update({status,resultAdoption,error,displayFrame:this.state.mode==='md'?this.state.lastFrame:this.state.displayFrame});
+    this.settleWaiters();this.settleStarted(new Error('动态会话已结束。'));
   }
 
   private receive(event: DynamicsEvent): void {
@@ -390,14 +459,17 @@ export class DynamicsController {
       this.nextSeq = event.seq;
       if (event.structure) {
         if (this.state.status === 'paused' && event.event === 'frame') throw new Error('暂停期间收到未恢复的动态坐标帧。');
-        validateDynamicsStructure(request.structure, event.structure, request.movableAtomIds);
+        const structure=acceptTransportedDynamicsStructure(request.structure,event.structure,request.movableAtomIds,request.operation);
         // Native status/heartbeat events also carry the last validated snapshot.
         // Capture a pause's exact final step before ending its undo transaction.
         const {displayFrames: _displayBatch,...scientificEvent}=event;
-        const frame = { ...scientificEvent, event: 'frame' } as DynamicsFrame;
-        const changed = coordinatesFingerprint(event.structure) !== coordinatesFingerprint(this.deps.getSnapshot().draft.structure);
-        if (changed) {
-          if (this.state.status === 'paused' && event.event !== 'resumed') throw new Error('暂停期间动态坐标发生改变。');
+        const frame = { ...scientificEvent, structure, event: 'frame' } as DynamicsFrame;
+        const changed = coordinatesFingerprint(structure) !== coordinatesFingerprint(this.deps.getSnapshot().draft.structure);
+        // A terminal event can repeat the last coordinates but supply the
+        // final energy and convergence record for the same accepted run.
+        const terminalReceipt=this.deps.prepareSource&&this.coordinatesAccepted&&(event.event==='stopped'||event.event==='completed');
+        if (changed||terminalReceipt) {
+          if (changed && this.state.status === 'paused' && event.event !== 'resumed') throw new Error('暂停期间动态坐标发生改变。');
           if (!this.transaction) this.begin();
           this.deps.acceptFrame(frame);
           this.coordinatesAccepted = true;
@@ -405,14 +477,13 @@ export class DynamicsController {
         }
         const latest={ ...clone(frame), physicalTimeFs: frame.timeFs, instantTemperatureK: frame.temperatureK };
         this.update({ lastFrame:latest });
-        if(request.operation==='md')this.presentMD(latest,displayFrames);
+        if(request.operation==='md')this.presentMD(latest,event.displayFrames===undefined&&event.event==='frame'?[latest]:displayFrames);
       } else if (event.event === 'frame') throw new Error('动态帧缺少结构。');
       if (event.event === 'started' || event.event === 'resumed') { this.update({ status: 'running' }); this.settleStarted(); }
       if (event.event === 'paused') { this.commit(); this.update({ status: 'paused' }); this.settleWaiters(); }
       if (event.event === 'stopped' || event.event === 'completed') {
         if (!event.structure && this.state.lastFrame) this.update({ lastFrame: { ...this.state.lastFrame, ...(event.reason === undefined ? {} : { reason:event.reason }), ...(event.converged === undefined ? {} : { converged:event.converged }), ...(event.geometryTargetStatus === undefined ? {} : { geometryTargetStatus:clone(event.geometryTargetStatus) }) } });
-        this.finish(); this.request = undefined; this.expectedStamp = undefined;
-        this.update({ status: event.event,displayFrame:request.operation==='md'?this.state.lastFrame:this.state.displayFrame }); this.settleWaiters(); this.settleStarted(new Error('动态会话已结束。'));
+        this.complete(event.event);
       }
       if (terminalError) {
         const error = terminalError;
@@ -425,28 +496,37 @@ export class DynamicsController {
   dispose(): void { if (this.disposed) return; this.disconnect(); this.disposed = true; this.listeners.clear(); this.settleWaiters(new Error('动态控制器已关闭。')); }
 }
 
-export function createStoreDynamicsDependencies(store: ModelStore, options?: { isolated: true }): DynamicsDependencies {
+export function createStoreDynamicsDependencies(store: ModelStore, options?: { isolated: true; captureSource?(): ModelDocument; deferApplication?():boolean }): DynamicsDependencies {
   if (!options?.isolated) return { getSnapshot: store.getSnapshot, getStamp: (ids,policy) => policy?store.stampNativeMD(policy):store.stamp(ids), hasRuntimeLock: () => store.isRuntimeSessionActive?.() ?? false, beginRun: () => { store.beginRuntimeSession(); store.beginTransaction('dynamics'); }, acceptFrame: frame => { store.acceptRuntimeFrame(frame); }, commitRun: () => store.endTransaction(), finishRun: () => store.finishRuntimeSession() };
-  let runStore: ModelStore | undefined, source: ModelDocument | undefined, lastFrame: DynamicsFrame | undefined, begun = false;
+  let runStore: ModelStore | undefined, source: ModelDocument | undefined, lastFrame: DynamicsFrame | undefined, operation:ScientificModelOperation|undefined,begun=false,deferred=false;
   return {
     getSnapshot: () => begun && runStore ? runStore.getSnapshot() : store.getSnapshot(),
     getWorkingSnapshot:store.getSnapshot,
-    getStamp: (ids,policy) => {
-      if (!begun) { source = store.getSnapshot(); runStore = createRuntimeModelStore(source); if(policy)store.stampNativeMD(policy);else store.stamp(ids); }
+    ...(options.captureSource&&store.createScientificOperation?{prepareSource:()=>{deferred=options.deferApplication?.()===true;return store.createScientificOperation!(options.captureSource!());}}:{}),
+    getStamp: (ids,policy,preparedOperation) => {
+      if (!begun) {
+        if(!options.captureSource)deferred=options.deferApplication?.()===true;
+        operation=preparedOperation;source=operation?.source??store.getSnapshot();runStore=operation?.store??createRuntimeModelStore(source);
+        if(!operation){if(policy)store.stampNativeMD(policy);else store.stamp(ids);}
+      }
       return policy?runStore!.stampNativeMD(policy):runStore!.stamp(ids);
     },
     hasRuntimeLock: () => !!store.isRuntimeSessionActive?.() && !store.isRuntimeEditingAllowed?.(),
     allowsWorkingEdits: () => begun && store.isRuntimeEditingAllowed?.() === true,
     beginRun: () => {
+      if(operation&&!begun&&(store.hasTransaction?.()||store.isRuntimeSessionActive?.()))throw new Error('请先结束当前模型编辑或优化。');
       if (!runStore) { source = store.getSnapshot(); runStore = createRuntimeModelStore(source); }
       begun = true; store.beginRuntimeSession({ isolated: true });
       runStore.beginRuntimeSession(); runStore.beginTransaction('dynamics');
     },
     acceptFrame: frame => { runStore!.acceptRuntimeFrame(frame); lastFrame = clone(frame); },
     commitRun: () => { runStore?.endTransaction(); },
-    finishRun: () => {
+    finishRun: (adopt,onAccepted) => {
+      if(!begun)return;
       try {
         runStore?.endTransaction(); runStore?.finishRuntimeSession();
+        if(deferred)return 'retained';
+        if(operation)return adopt&&lastFrame?operation.apply('dynamics',onAccepted):undefined;
         // Exact monotonically increasing revision prevents edit -> Undo from
         // allowing an old run to overwrite the working document again.
         const current = store.getSnapshot();
@@ -455,7 +535,7 @@ export function createStoreDynamicsDependencies(store: ModelStore, options?: { i
           try { store.acceptRuntimeFrame(lastFrame,source); store.endTransaction(); }
           catch (error) { store.cancelTransaction(); throw error; }
         }
-      } finally { store.finishRuntimeSession(); runStore = undefined; source = undefined; lastFrame = undefined; begun = false; }
+      } finally { store.finishRuntimeSession(); runStore = undefined; source = undefined; lastFrame = undefined; operation=undefined;begun=false;deferred=false; }
     },
   };
 }

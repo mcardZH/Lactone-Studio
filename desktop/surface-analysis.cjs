@@ -2,6 +2,7 @@
 const { readManagedResult } = require('./analysis-result-wire.cjs');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { requireBackend, requireSameBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
 const { assert, plain, string } = require('./security.cjs');
 const { createMultiwfnScheduler } = require('./multiwfn-scheduler.cjs');
 const SCIENTIFIC = new Set(['analyze','region','distribution','generate','hirshfeld-analyze']);
@@ -60,12 +61,6 @@ function wireValue(value) {
   if (plain(value)) return Object.fromEntries(Object.entries(value).map(([key,entry]) => [key,wireValue(entry)]));
   return value;
 }
-function retainedJsBytes(value,seen=new Set()) {
-  if(typeof value==='string')return value.length*2;
-  if(!value||typeof value!=='object'||seen.has(value))return 0;seen.add(value);
-  if(ArrayBuffer.isView(value))return value.byteLength+128;
-  return 64+Object.entries(value).reduce((bytes,[key,entry])=>bytes+key.length*2+24+retainedJsBytes(entry,seen),0);
-}
 function hydrate(value) {
   if (Array.isArray(value)) return value.map(hydrate);
   if (!plain(value)) return value;
@@ -91,7 +86,7 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
   const sessions=new Map(),pending=new Map(),tasks=new Set(),closedOwners=new Set();
   let worker=null,disposed=false,sequence=0,active=0;
   function track(task) {tasks.add(task);task.then(()=>tasks.delete(task),()=>tasks.delete(task));return task;}
-  function owned(owner,id,expected) {const s=sessions.get(id);assert(s&&s.owner===owner&&!s.closed&&(!expected||s===expected),'Surface session is not owned or is closed');return s;}
+  function owned(owner,id,expected) {const s=sessions.get(id);assert(s&&s.owner===owner&&!s.closed&&!s.failed&&(!expected||s===expected),'Surface session is not owned or is closed');return s;}
   function emit(s,status,operation,request) {if(s.closed||closedOwners.has(s.owner))return;try{sendToWindow(s.owner,{sessionId:s.sessionId,stamp:request?.stamp,operation,status});}catch{void closeOwner(s.owner);}}
   function failWorker(error,w=worker) {
     if(!w||worker!==w)return;
@@ -119,25 +114,29 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
       if(!packet.ok)assert(plain(packet.error)&&string(packet.error.code,128)&&string(packet.error.message,16384),'Invalid surface worker error');
       pending.delete(packet.id);clearTimeout(entry.timer);
       const s=sessions.get(packet.sessionId);if(s&&packet.retainedMemoryBytes!==undefined)s.retainedBytes=packet.retainedMemoryBytes;
+      if(s&&packet.ok&&entry.operation==='open')s.registered=true;
       if(!packet.ok){entry.reject(new Error(`${packet.error.code}: ${packet.error.message}`));}
       else entry.resolve(packet.result);
     }
     child.stdout.on('data',chunk=>{if(w.terminating)return;try{let bytes=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);while(bytes.length){const index=bytes.indexOf(10),part=index<0?bytes:bytes.subarray(0,index);w.parts.push(part);w.bytes+=part.length;if(index<0)break;const line=Buffer.concat(w.parts,w.bytes).toString('utf8');w.parts=[];w.bytes=0;message(JSON.parse(line));bytes=bytes.subarray(index+1);}}catch(error){failWorker(error,w);}});
     child.stderr.on('data',chunk=>{w.stderr=(w.stderr+chunk.toString('utf8')).slice(-8192);});
     child.stdin.on('error',error=>failWorker(error,w));child.on('error',error=>failWorker(error,w));
-    child.on('close',(code,signal)=>{w.closed=true;clearTimeout(w.timer);if(worker===w){if(!w.terminating)failWorker(new Error(`Surface worker exited (code=${code}, signal=${signal??'none'}): ${w.stderr}`),w);worker=null;}w.finish(code);});
+    child.on('close',(code,signal)=>{w.closed=true;clearTimeout(w.timer);if(worker===w){for(const s of sessions.values())if(s.worker===w)s.failed=true;if(!w.terminating)failWorker(new Error(`Surface worker exited (code=${code}, signal=${signal??'none'}): ${w.stderr}`),w);worker=null;}w.finish(code);});
     return w;
   }
   function request(operation,s,extra={}) {
-    const w=ensureWorker();const id=`surface-${++sequence}`;
+    const w=operation==='open'||operation==='resources'?ensureWorker():s.worker;
+    assert(w && w===worker && !w.closed && !w.terminating && (operation==='open'||operation==='resources'||s.registered),'SURFACE_WORKER_UNAVAILABLE: 原分析会话已结束');
+    if(operation==='open')s.worker=w;
+    const id=`surface-${++sequence}`;
     return new Promise((resolve,reject)=>{
       const timer=policy.requestMs>0?setTimeout(()=>{failWorker(new Error('SURFACE_TIMEOUT: Surface worker response exceeded its explicit deadline'),w);},policy.requestMs):undefined;timer?.unref?.();
       pending.set(id,{resolve,reject,timer,sessionId:s.sessionId,operation,taskProgress:s.taskProgress});
       try{w.child.stdin.write(JSON.stringify(wireValue({id,operation,sessionId:s.sessionId,...extra}))+'\n');}catch(error){failWorker(error,w);}
     }).then(value=>readManagedResult(value,s.directory));
   }
-  async function currentResources(owner,s,captured) {
-    const resources=resolveResources?await resolveResources(owner,s.resourceOverrides,captured):await request('resources',s,{executable:s.backendPath,...s.resourceOverrides});
+  async function currentResources(owner,s,captured,backend) {
+    const resources=resolveResources?await resolveResources(owner,s.resourceOverrides,captured,backend):await request('resources',s,{executable:backend.path,...s.resourceOverrides});
     assert(plain(resources)&&Number.isSafeInteger(resources.threads)&&resources.threads>0&&Number.isSafeInteger(resources.memoryBudgetBytes)&&resources.memoryBudgetBytes>0,'Current Multiwfn resources are unavailable');
     if(s.resourceOverrides)assert(Number.isSafeInteger(resources.logicalCpuCount)&&resources.logicalCpuCount>0&&Number.isSafeInteger(resources.totalPhysicalMemoryBytes)&&resources.totalPhysicalMemoryBytes>0&&s.resourceOverrides.threads<=resources.logicalCpuCount&&s.resourceOverrides.memoryBudgetBytes<=resources.totalPhysicalMemoryBytes,'Explicit HS resource overrides exceed available logical CPUs or physical RAM');
     return resources;
@@ -153,7 +152,7 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
       assert(Object.keys(source).every(key=>['sessionId','kind','cluster','context'].includes(key)),'Invalid HS source snapshot');
       source={sessionId:source.sessionId,kind:source.kind,context:sourceContext,cluster:hirshfeldCluster(source.cluster,sourceContext)};
     }
-    const s={owner,sessionId:source.sessionId,context:sourceContext,family:source.kind==='hirshfeld-cluster'?'hirshfeld':'surface',resourceOverrides,closed:false,inflight:new Set(),source,openAbort:new AbortController(),retainedBytes:0};sessions.set(s.sessionId,s);
+    const s={owner,sessionId:source.sessionId,context:sourceContext,family:source.kind==='hirshfeld-cluster'?'hirshfeld':'surface',resourceOverrides,closed:false,inflight:new Set(),source,openingPending:true,openAbort:new AbortController(),retainedBytes:0};sessions.set(s.sessionId,s);
     let lease;
     try{
       const trusted={...source,context:s.context};delete trusted.sessionId;
@@ -161,13 +160,18 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
       else if(source.kind!=='hirshfeld-cluster'){assert(source.kind==='cube-pair'&&plain(source.shape)&&plain(source.shape.fieldMetadata),'Invalid surface Cube source');trusted.shape={...source.shape,path:await checkedPath(source.shape.path)};trusted.mapping=source.mapping?{...source.mapping,path:await checkedPath(source.mapping.path)}:null;}
       lease=await scheduler.acquire({owner,key:'surface:open:'+s.sessionId,signal:s.openAbort.signal});
       const captured=captureResources?await require('./compute-resources.cjs').captureComputeResources(captureResources,owner,s.openAbort.signal):undefined;owned(owner,s.sessionId,s);assert(!s.openAbort.signal.aborted,'SURFACE_CANCELLED');
-      const backend=await resolveBackend();assert(backend.configured&&string(backend.path,4096),'SURFACE_BACKEND_MISSING: 请先选择本机 Multiwfn');
-      s.backendPath=backend.path;
-      const configured=await currentResources(owner,s,captured),budget=lease.budget(configured.memoryBudgetBytes,{domain:'surface',sessionId:s.sessionId});
+      const backend=requireBackend(await resolveBackend(),'SURFACE');
+      owned(owner,s.sessionId,s);assert(!s.openAbort.signal.aborted,'SURFACE_CANCELLED');
+      s.backend=backend;
+      const configured=await currentResources(owner,s,captured,backend),budget=lease.budget(configured.memoryBudgetBytes,{domain:'surface',sessionId:s.sessionId});
       const resources={...configured,memoryBudgetBytes:budget.availableBytes,sharedReservedBytes:budget.reservedBytes,configuredMemoryBudgetBytes:budget.memoryBudgetBytes};
-      owned(owner,s.sessionId,s);await fs.mkdir(jobRoot,{recursive:true});s.directory=await fs.mkdtemp(path.join(jobRoot,'surface-'));
+      if(worker?.terminating)await worker.finished;
+      owned(owner,s.sessionId,s);assert(!s.openAbort.signal.aborted,'SURFACE_CANCELLED');
+      const directory=await createRunDirectory(backend,jobRoot,'s-');
+      s.directory=directory.directory;s.runDirectory=directory;
+      owned(owner,s.sessionId,s);assert(!s.openAbort.signal.aborted,'SURFACE_CANCELLED');
       const result=await request('open',s,{source:trusted,workspacePath:s.directory,executable:backend.path,...(resources?{resources}:{})});
-      owned(owner,s.sessionId,s);assert(result.sessionId===s.sessionId&&sameContext(result.context,s.context)&&Array.isArray(result.capabilities),'Surface open identity changed');
+      owned(owner,s.sessionId,s);assert(!s.openAbort.signal.aborted,'SURFACE_CANCELLED');assert(result.sessionId===s.sessionId&&sameContext(result.context,s.context)&&Array.isArray(result.capabilities),'Surface open identity changed');
       if(s.family==='hirshfeld')assert(result.family==='hirshfeld'&&result.atomCount===s.source.cluster.atoms.length&&result.capabilities.length===1&&result.capabilities[0]?.function==='hirshfeld','HS open returned another scientific family');
       assert(Number.isSafeInteger(result.retainedMemoryBytes)&&result.retainedMemoryBytes>=0,'Invalid surface source reservation');s.retainedBytes=result.retainedMemoryBytes;
       s.info=s.family==='hirshfeld'?{...result,resources:{...resources,...result.resources,configured:true,configuredMemoryBudgetBytes:budget.memoryBudgetBytes,sharedReservedBytes:budget.reservedBytes},resourceSnapshot:'open-grant'}:result;return s.family==='hirshfeld'?structuredClone(s.info):s.info;
@@ -175,12 +179,15 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
       s.closed=true;
       // An open reply can arrive after its owner closes. Settle the worker's
       // actual session before deleting files or releasing source references.
-      if(worker&&!worker.closed&&!worker.terminating)await request('close',s).catch(()=>{});
-      if(worker?.terminating)await worker.finished;
-      sessions.delete(s.sessionId);await clean(s.directory);
-      if(!sessions.size&&worker&&!worker.closed&&!worker.terminating){const w=worker;w.terminating=true;w.child.stdin.end();w.timer=setTimeout(()=>{if(!w.closed)w.child.kill();},policy.stopMs);w.timer.unref?.();await w.finished;}
+      if(s.registered&&s.worker&&!s.worker.closed&&!s.worker.terminating){
+        try{await request('close',s);s.registered=false;}catch(failure){failWorker(failure,s.worker);}
+      }
+      if(s.worker?.terminating)await s.worker.finished;
+      try{await cleanSession(s);if(sessions.get(s.sessionId)===s)sessions.delete(s.sessionId);}
+      catch(cleanupError){error.message+='\n清理：'+cleanupError.message;}
+      if(!sessions.size)await stopIdleWorker();
       throw error;
-    }finally{lease?.release();}
+    }finally{s.openingPending=false;lease?.release();}
   }
   async function operate(owner,id,operation,raw) {
     const s=owned(owner,id);assert(plain(raw),'Invalid surface operation request');const identity=stamp(raw.stamp,s.context);
@@ -189,7 +196,7 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
     assert(!s.busy,'SURFACE_BUSY: 此表面实例已有任务');
     const {progressIdentity,createMultiwfnProgress}=require('./multiwfn-progress.cjs');
     const taskProgress=SCIENTIFIC.has(operation)?createMultiwfnProgress(progressIdentity({ownerId:identity.analysisId,analysisId:identity.analysisId,runId:identity.requestId,sessionId:s.sessionId,sourceId:s.context.sourceId,sourceRevision:s.context.sourceRevision,jobIndex:s.context.jobIndex,sourceFrameIndex:s.context.sourceFrameIndex,generation:s.context.generation,operation},{sessionId:s.sessionId,sourceId:s.context.sourceId,sourceRevision:s.context.sourceRevision}),snapshot=>sendProgress(owner,snapshot)):null;
-    s.taskProgress=taskProgress;s.busy=true;active++;emit(s,'queued',operation,raw);taskProgress?.report('queued');
+    s.taskProgress=taskProgress;s.busy=true;s.submitted=false;active++;emit(s,'queued',operation,raw);taskProgress?.report('queued');
     const controller=new AbortController();s.operationAbort=controller;let lease,submitted=false,successful=false;
     try{
       let resources;
@@ -198,12 +205,14 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
         const captured=captureResources?await require('./compute-resources.cjs').captureComputeResources(captureResources,owner,controller.signal):undefined;owned(owner,id,s);
         owned(owner,id,s);assert(!controller.signal.aborted,'SURFACE_CANCELLED: 已取消等待中的分析');
         const backend=await resolveBackend();owned(owner,id,s);assert(!controller.signal.aborted,'SURFACE_CANCELLED');
-        assert(backend.configured&&string(backend.path,4096)&&path.resolve(backend.path).toLowerCase()===path.resolve(s.backendPath).toLowerCase(),'SURFACE_BACKEND_CHANGED: Multiwfn 路径已变化或不可用，请重新打开此分析来源；已有结果保留。');
-        const configured=await currentResources(owner,s,captured),budget=lease.budget(configured.memoryBudgetBytes,{domain:'surface',sessionId:id});
+        requireSameBackend(backend,s.backend,'SURFACE');
+        await verifyRunDirectory(s.runDirectory);
+        const configured=await currentResources(owner,s,captured,backend),budget=lease.budget(configured.memoryBudgetBytes,{domain:'surface',sessionId:id});
         resources={...configured,memoryBudgetBytes:budget.availableBytes,sharedReservedBytes:budget.reservedBytes,configuredMemoryBudgetBytes:budget.memoryBudgetBytes};
         if(s.family==='hirshfeld')s.info={...s.info,resources,resourceSnapshot:'analysis-grant'};
       }
-      taskProgress?.report('running');const pendingResult=request(operation,s,{request:{...raw,stamp:identity},...(resources?{resources}:{})});submitted=true;const result=await pendingResult;owned(owner,id,s);taskProgress?.report('parse');
+      owned(owner,id,s);assert(!controller.signal.aborted,'SURFACE_CANCELLED');
+      taskProgress?.report('running');const pendingResult=request(operation,s,{request:{...raw,stamp:identity},...(resources?{resources}:{})});submitted=true;s.submitted=true;const result=await pendingResult;owned(owner,id,s);taskProgress?.report('parse');
       assert(plain(result),'Invalid surface operation result');
       const actual=result.stamp;
       if(!EXPORTS.has(operation))assert(plain(actual)&&actual.requestId===identity.requestId&&actual.analysisId===identity.analysisId&&sameContext(actual,s.context),'Surface result stamp changed');
@@ -239,19 +248,61 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
   }
   function sessionOperation(owner,id,operation,raw) {const s=owned(owner,id);const task=operate(owner,id,operation,raw);s.inflight.add(task);task.then(()=>s.inflight.delete(task),()=>s.inflight.delete(task));return track(task);}
   async function cancel(owner,id) {
-    const s=owned(owner,id);s.taskProgress?.report('stopping');s.operationAbort?.abort();const inflight=[...s.inflight];const result=await request('cancel',s);await Promise.allSettled(inflight);return {...result,activeOperationPending:false};
+    const s=sessions.get(id), settled={sessionId:id,status:'cancelled',nativeSettled:true,activeOperationPending:false};
+    if(!s)return settled;
+    assert(s.owner===owner,'Surface source belongs to another owner');
+    s.taskProgress?.report('stopping');s.operationAbort?.abort();
+    if(!s.info){s.openAbort.abort();await s.openTask?.catch(()=>{});}
+    if(s.info&&s.busy&&s.submitted&&s.worker&&!s.worker.closed&&!s.worker.terminating){
+      try{const result=await request('cancel',s);if(result?.nativeSettled!==true){failWorker(new Error('SURFACE_NATIVE_UNSETTLED'),s.worker);await s.worker.finished;return settled;}return {...result,activeOperationPending:false};}
+      catch(error){failWorker(error,s.worker);await s.worker.finished;throw error;}
+      finally{await Promise.allSettled([...s.inflight]);}
+    }
+    await Promise.allSettled([...s.inflight]);
+    return settled;
   }
-  async function clean(directory) {
+  async function cleanSession(s){
+    await verifyRunDirectory(s.runDirectory);
+    return clean(s.directory,s.runDirectory?.root);
+  }
+  async function clean(directory,root=jobRoot) {
     if(!directory)return;
-    assert(path.resolve(directory).startsWith(path.resolve(jobRoot)+path.sep),'Surface cleanup target escapes its owned job root');
-    const entries=await fs.readdir(directory,{withFileTypes:true}).catch(()=>[]);
-    for(const entry of entries){const target=path.join(directory,entry.name);if(entry.isFile()&&!entry.isSymbolicLink())await fs.unlink(target).catch(()=>{});else if(entry.isDirectory()&&!entry.isSymbolicLink())await clean(target);}
-    await fs.rmdir(directory).catch(()=>{});
+    assert(path.resolve(directory).startsWith(path.resolve(root)+path.sep),'Surface cleanup target escapes its owned job root');
+    const stat=await fs.lstat(directory).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+    if(!stat)return;
+    assert(stat.isDirectory()&&!stat.isSymbolicLink()&&path.resolve(await fs.realpath(directory)).toLowerCase()===path.resolve(directory).toLowerCase(),'Surface cleanup directory identity changed');
+    for(const entry of await fs.readdir(directory,{withFileTypes:true})){
+      const target=path.join(directory,entry.name),current=await fs.lstat(target);
+      assert(!current.isSymbolicLink(),'Surface cleanup preserves unexpected links');
+      if(current.isDirectory())await clean(target,root);
+      else{assert(current.isFile()&&current.nlink===1,'Surface cleanup preserves shared/unknown files');await fs.unlink(target);}
+    }
+    await fs.rmdir(directory);
+  }
+  async function stopIdleWorker(){
+    const w=worker;if(!w)return;
+    if(!w.terminating){w.terminating=true;try{w.child.stdin.end();}catch{}w.timer=setTimeout(()=>{if(!w.closed)w.child.kill();},policy.stopMs);w.timer.unref?.();}
+    await w.finished;
   }
   async function closeSession(owner,id) {
     const s=sessions.get(id);if(!s)return {sessionId:id,status:'closed'};assert(s.owner===owner,'Surface source belongs to another owner');if(s.closeTask)return s.closeTask;
     s.closed=true;s.openAbort.abort();s.operationAbort?.abort();
-    return s.closeTask=(async()=>{try{if(worker&&!worker.closed&&!worker.terminating)await request('close',s);await Promise.allSettled([...s.inflight]);if(worker?.terminating)await worker.finished;}finally{sessions.delete(id);await clean(s.directory);if(!sessions.size&&worker&&!worker.closed&&!worker.terminating){const w=worker;w.terminating=true;w.child.stdin.end();w.timer=setTimeout(()=>{if(!w.closed)w.child.kill();},policy.stopMs);w.timer.unref?.();await w.finished;}}return {sessionId:id,status:'closed'};})();
+    s.closeTask=(async()=>{
+      await s.openTask?.catch(()=>{});
+      if(sessions.get(id)!==s)return {sessionId:id,status:'closed'};
+      let failure;
+      if(s.registered&&s.worker&&!s.worker.closed&&!s.worker.terminating){
+        try{await request('close',s);s.registered=false;}catch(error){failure=error;failWorker(error,s.worker);}
+      }
+      await Promise.allSettled([...s.inflight]);
+      if(s.worker?.terminating)await s.worker.finished;
+      try{await cleanSession(s);sessions.delete(id);}
+      finally{if(![...sessions.values()].some(session=>!session.closed))await stopIdleWorker();}
+      if(failure)throw failure;
+      return {sessionId:id,status:'closed'};
+    })();
+    void s.closeTask.catch(()=>{s.closeTask=null;});
+    return s.closeTask;
   }
   async function closeOwner(owner) {closedOwners.add(owner);await Promise.all([...sessions.values()].filter(s=>s.owner===owner).map(s=>closeSession(owner,s.sessionId)));}
   function dispose() {
@@ -259,10 +310,13 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
     for(const s of sessions.values()){s.closed=true;s.openAbort.abort();s.operationAbort?.abort();}
     const w=worker;if(w&&!w.terminating){w.terminating=true;w.child.stdin.end();w.timer=setTimeout(()=>{if(!w.closed)w.child.kill();},policy.stopMs);w.timer.unref?.();}
     const inflight=[...tasks];
-    track((async()=>{if(w)await w.finished;for(const entry of pending.values()){clearTimeout(entry.timer);entry.reject(new Error('Surface host disposed'));}pending.clear();await Promise.allSettled(inflight);for(const s of sessions.values())await clean(s.directory);sessions.clear();})());
+    track((async()=>{if(w)await w.finished;for(const entry of pending.values()){clearTimeout(entry.timer);entry.reject(new Error('Surface host disposed'));}pending.clear();await Promise.allSettled(inflight);for(const s of sessions.values())await cleanSession(s);sessions.clear();})());
   }
   return {
-    open:(...args)=>track(open(...args)),capabilities:async(owner,id)=>{if(id)return owned(owner,id).info.capabilities;assert(Number.isSafeInteger(owner)&&owner>=0&&!closedOwners.has(owner)&&!disposed,'Surface owner is closed');const backend=await resolveBackend();return ['esp','alie'].map(function_=>({function:function_,wavefunctionDirect:!!backend.configured,cubeInterpolation:!!backend.configured,atomRegions:!!backend.configured,fragmentRegions:!!backend.configured,extrema:!!backend.configured,distribution:!!backend.configured,generation:!!backend.configured,valueUnit:'a.u.',...(!backend.configured?{reason:'请先选择本机 Multiwfn；具体来源能力在打开后单独核对。'}:{})}));},
+    open:(...args)=>{const task=open(...args),s=sessions.get(args[1]?.sessionId);if(s&&!s.openTask)s.openTask=task;return track(task);},capabilities:async(owner,id)=>{if(id)return owned(owner,id).info.capabilities;assert(Number.isSafeInteger(owner)&&owner>=0&&!closedOwners.has(owner)&&!disposed,'Surface owner is closed');const backend=await resolveBackend();let reason;
+      try{requireBackend(backend,'SURFACE');}catch(error){reason=error.message;}
+      const available=!reason;
+      return ['esp','alie'].map(function_=>({function:function_,wavefunctionDirect:available,cubeInterpolation:available,atomRegions:available,fragmentRegions:available,extrema:available,distribution:available,generation:available,valueUnit:'a.u.',...(reason?{reason}:{})}));},
     analyze:(owner,id,raw)=>sessionOperation(owner,id,'analyze',raw),region:(owner,id,raw)=>sessionOperation(owner,id,'region',raw),
     distribution:(owner,id,raw)=>sessionOperation(owner,id,'distribution',raw),generate:(owner,id,raw)=>sessionOperation(owner,id,'generate',raw),
     restoreFields:(owner,id,raw)=>sessionOperation(owner,id,'restore-fields',raw),
@@ -273,8 +327,8 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
     evidence:(owner,id)=>request('evidence',owned(owner,id)),
     cancel:(...args)=>track(cancel(...args)),closeSession:(...args)=>track(closeSession(...args)),closeOwner:(...args)=>track(closeOwner(...args)),dispose,
     settle:async()=>{while(tasks.size)await Promise.allSettled([...tasks]);},
-    workerCount:()=>worker&&!worker.closed?1:0,sessionCount:()=>sessions.size,activeCount:()=>active,
-    reservedMemoryBytes:()=>[...sessions.values()].reduce((bytes,s)=>bytes+(s.retainedBytes||0)+retainedJsBytes(s.source),0),
+    workerCount:()=>worker&&!worker.closed?1:0,sessionCount:()=>sessions.size,activeCount:()=>active+[...sessions.values()].filter(s=>s.openingPending).length,
+    reservedMemoryBytes:()=>[...sessions.values()].reduce((bytes,s)=>bytes+(s.registered&&!s.worker.closed?s.retainedBytes:0),0),
   };
 }
 module.exports={createSurfaceAnalysisHost,hydrate,stamp,context};

@@ -1,4 +1,5 @@
 import { atomicNumber } from './elements';
+import { automaticStem } from './naming';
 import type { Structure } from './types';
 
 export function withAtomIds(structure: Structure): Structure {
@@ -28,7 +29,7 @@ export function extractSelection(structure: Structure, indices: number[]): Struc
   if (!selected.length || selected.some(index => !Number.isInteger(index) || index < 0 || index >= structure.atoms.length)) throw new Error('请选择有效原子，不能提取空结构。');
   const map = new Map(selected.map((index, current) => [index, current]));
   const severed = structure.bonds?.filter(bond => map.has(bond.a) !== map.has(bond.b)).length ?? 0;
-  return { ...structure, id: structure.id + '-fragment', name: structure.name.replace(/\.[^.]+$/, '') + '_fragment.xyz', atoms: selected.map(index => ({ ...structure.atoms[index] })), bonds: structure.bonds?.filter(bond => map.has(bond.a) && map.has(bond.b)).map(bond => ({ ...bond, a: map.get(bond.a)!, b: map.get(bond.b)! })), charge: null, multiplicity: null, sourceRoute: undefined, molfile: undefined, groups: [], preparation: undefined, mapping: selected.map((index, current) => ({ original: structure.atoms[index].sourceIndex ?? index+1, current: current+1 })), notes: ['已提取所选原子，保留原顺序；电荷/多重度须重新核对。', severed ? '截断了' + severed + '根已知共价键，尚未自动封端；请按需要加氢或编辑。' : '未自动加氢/封端；未知成键信息时请自行核对边界。'] };
+  return { ...structure, id: structure.id + '-fragment', name: automaticStem(structure.name) + '_fragment.xyz', atoms: selected.map(index => ({ ...structure.atoms[index] })), bonds: structure.bonds?.filter(bond => map.has(bond.a) && map.has(bond.b)).map(bond => ({ ...bond, a: map.get(bond.a)!, b: map.get(bond.b)! })), charge: null, multiplicity: null, sourceRoute: undefined, molfile: undefined, groups: [], preparation: undefined, mapping: selected.map((index, current) => ({ original: structure.atoms[index].sourceIndex ?? index+1, current: current+1 })), notes: ['已提取所选原子，保留原顺序；电荷/多重度须重新核对。', severed ? '截断了' + severed + '根已知共价键，尚未自动封端；请按需要加氢或编辑。' : '未自动加氢/封端；未知成键信息时请自行核对边界。'] };
 }
 export function toXyz(structure: Structure): string { return structure.atoms.length + '\nGenerated structure\n' + structure.atoms.map(atom => `${atom.element} ${atom.x} ${atom.y} ${atom.z}`).join('\n') + '\n'; }
 export function toMolfile(structure: Structure): string {

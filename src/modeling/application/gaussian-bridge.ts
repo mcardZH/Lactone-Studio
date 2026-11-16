@@ -13,6 +13,7 @@ import { inheritedSharedFreezes } from './shared-freeze-inheritance';
 import { restoreGaussianBasisState, type GaussianBasisState } from './gaussian-basis-transition';
 import { projectCanonicalGaussianFreezes } from './canonical-freezes';
 import { builderCoordinateValue } from '../../core/builder-geometry';
+import {electronicInventorySignature} from '../../core/modeling/electronic-state-policy';
 
 export type DesktopBuilderApplyResult = BuilderApplyResult & { internalCoordinates?: ModelCoordinate[]; gaussianBoundCoordinates?:GaussianBoundCoordinateDefinition[]; coordinateObjects?:ModelCoordinateObject[]; gaussianBasisState?:GaussianBasisState };
 export type DesktopBuilderIntegration = BuilderIntegrationResult & { constraintsChanged: boolean };
@@ -145,9 +146,28 @@ function coordinateSignature(settings: GaussianSettings, structure: Structure | 
     resolved.coordinates.map(coordinate => ({ ...coordinate, action: coordinateAction(coordinate, settings.task), atoms: coordinate.atoms.map(identity) })), resolved.errors]);
 }
 
+function discardRetiredGaussianFreezes(original: Structure | null, next: Structure, previous: GaussianSettings): GaussianSettings {
+  const options = previous.taskOptions;
+  if (!original || !options) return previous;
+  const elements = new Map(next.atoms.map(atom => [atom.id, atom.element]));
+  const retiredNumbers = new Set(original.atoms.flatMap((atom, index) => atom.id && elements.get(atom.id) !== atom.element ? [index + 1] : []));
+  if (!retiredNumbers.size) return previous;
+  const retained = (number: number) => !retiredNumbers.has(number);
+  return { ...previous, taskOptions: { ...options,
+    frozenAtoms: options.frozenAtoms.filter(retained), inactiveFrozenAtoms: options.inactiveFrozenAtoms?.filter(retained),
+    coordinates: options.coordinates.filter(row => coordinateAction(row, previous.task) !== 'freeze' || row.atoms.every(retained)),
+    // Preserve empty drafts and incomplete entries without a known old target.
+    // A valid number in a partly filled row still names that old atom.
+    coordinateDrafts: options.coordinateDrafts?.filter(row => row.action !== 'freeze' ||
+      row.atomText.trim().split(/[\s,，]+/).every(token => !/^\d+$/.test(token) || retained(Number(token)))),
+  } };
+}
+
 /** Commit model identities through the existing stale-base checks, then map once to current centers. */
 export function integrateDesktopBuilderResult(original: Structure | null, result: DesktopBuilderApplyResult, previous: GaussianSettings): DesktopBuilderIntegration {
   if (result.gaussianBasisState) previous = restoreGaussianBasisState(previous, result.gaussianBasisState);
+  const previousConstraintSignature = coordinateSignature(previous, original);
+  previous = discardRetiredGaussianFreezes(original, result.structure, previous);
   if (previous.oniom?.enabled) result = { ...result, assignments: { ...result.assignments,
     layers: result.assignments.layers.filter(layer => layer.atomIds.length || ![GAUSSIAN_ONIOM_HIGH_REGION, GAUSSIAN_ONIOM_LOW_REGION].includes(layer.id)) } };
   const integrated = integrateBuilderResult(original, result, previous);
@@ -232,13 +252,14 @@ export function integrateDesktopBuilderResult(original: Structure | null, result
     integrated.settings.taskOptions = options;
   }
   const oniomChanged = mergeOniomAssignments(result.assignments, previous, integrated);
-  const constraintsChanged = oniomChanged || coordinateSignature(previous, original) !== coordinateSignature(integrated.settings, integrated.structure);
+  const constraintsChanged = oniomChanged || previousConstraintSignature !== coordinateSignature(integrated.settings, integrated.structure);
   if (constraintsChanged) {
     const options = integrated.settings.taskOptions!;
     options.irc = { ...options.irc, confirmed: false };
     options.stable = { ...options.stable, confirmed: false };
-    options.fragmentStatesConfirmed = false;
   }
+  const fragmentState=(structure:Structure|null,settings:GaussianSettings)=>JSON.stringify(settings.taskOptions?.fragments.map(fragment=>[electronicInventorySignature({atoms:fragment.atoms.flatMap(n=>structure?.atoms[n-1]?[structure.atoms[n-1]]:[])}),fragment.charge,fragment.multiplicity]));
+  integrated.settings.taskOptions!.fragmentStatesConfirmed=previous.taskOptions?.fragmentStatesConfirmed===true&&fragmentState(original,previous)===fragmentState(integrated.structure,integrated.settings);
   return { ...integrated, constraintsChanged };
 }
 
@@ -289,7 +310,6 @@ function mergeDesktopAssignments(assignments: BuilderAssignments, previous: Gaus
         owners.set(id, entry.id);
       }
       if (kind === 'basis' && (!entry.basis || !isMixedBuiltin(entry.basis))) conflicts.push({ kind, regionId: entry.id, message: `基组区域${entry.id}缺少受支持的明确基组。` });
-      if (kind === 'fragments' && (!Number.isInteger(entry.charge) || !Number.isInteger(entry.multiplicity) || entry.multiplicity! < 1)) conflicts.push({ kind, regionId: entry.id, message: `片段${entry.id}缺少明确的整数电荷或正整数多重度。` });
       if (kind === 'layers' && !['qm', 'middle', 'mm'].includes(entry.kind ?? '')) conflicts.push({ kind, regionId: entry.id, message: `层${entry.id}缺少明确QM/MM层类型。` });
     }
   }
@@ -304,14 +324,20 @@ function mergeDesktopAssignments(assignments: BuilderAssignments, previous: Gaus
     regions: [...assignments.basis.map(entry => ({ id: entry.id, name: entry.label ?? entry.id, basis: entry.basis!, atoms: toNumbers(entry.atomIds) })),
       ...(previous.mixedBasis?.regions.filter(region => !region.atoms.length && !assignments.basis.some(entry => entry.id === region.id)) ?? [])],
   };
-  if (assignments.fragments.length) options.fragments = assignments.fragments.map(entry => ({ id: entry.id, ...(entry.label !== undefined ? { label: entry.label } : {}), atoms: toNumbers(entry.atomIds), charge: entry.charge!, multiplicity: entry.multiplicity! }));
+  if (assignments.fragments.length) options.fragments = assignments.fragments.map(entry => {
+    const atoms=toNumbers(entry.atomIds),previousFragment=options.fragments.find((fragment,index)=>(fragment.id??`fragment-${index}`)===entry.id);
+    const mapped={ id: entry.id, ...(entry.label !== undefined ? { label: entry.label } : {}), atoms, charge: entry.charge??previousFragment?.charge??NaN, multiplicity: entry.multiplicity??previousFragment?.multiplicity??NaN };
+    // Keep the pair already reconciled against the previous member inventory.
+    if(previousFragment){mapped.charge=previousFragment.charge;mapped.multiplicity=previousFragment.multiplicity;}
+    return mapped;
+  });
   else options.fragments = (previous.taskOptions?.fragments ?? defaultTaskOptions().fragments).filter(fragment => !fragment.atoms.length);
   if (!options.fragments.length) options.fragments = defaultTaskOptions().fragments;
   const science = (value: GaussianSettings) => JSON.stringify([value.mixedBasis && [value.mixedBasis.enabled, value.mixedBasis.dForm, value.mixedBasis.regions.map(region => [region.basis, region.atoms])],
     value.taskOptions?.fragments.map(fragment => [fragment.atoms, fragment.charge, fragment.multiplicity])]);
   const scientificRegionsChanged = science(previous) !== science(settings);
   if (scientificRegionsChanged) {
-    options.fragmentStatesConfirmed = false; options.irc = { ...options.irc, confirmed: false }; options.stable = { ...options.stable, confirmed: false };
+    options.irc = { ...options.irc, confirmed: false }; options.stable = { ...options.stable, confirmed: false };
   }
 }
 

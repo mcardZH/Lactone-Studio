@@ -18,11 +18,28 @@ import {
 	isMacClientPlatform,
 	isSshOnlyClientPlatform
 } from "./environment-assistant";
+import {
+	defaultEnvironmentDisplayName,
+	environmentFieldInvalid,
+	environmentMode,
+	isDefaultEnvironmentDisplayName,
+	isValidEnvironmentPath,
+	newEnvironment,
+	type EnvironmentMode,
+	type EnvironmentPathField as PathField
+} from "./environment-draft";
 import TaskFieldHelp from "./TaskFieldHelp";
 import DialogShell from "../DialogShell";
 import TaskErrorNotice from "./TaskErrorNotice";
 import { useTaskErrorScope } from "./task-error-scope";
 import "./environment-submit.css";
+export {
+	environmentMode,
+	isDefaultEnvironmentDisplayName,
+	isValidEnvironmentPath,
+	newEnvironment,
+	type EnvironmentMode
+};
 const siteKeys = [
 	"connectionKind",
 	"host",
@@ -38,28 +55,6 @@ const siteKeys = [
 	"authentication",
 	"privateKeyPath"
 ] as const;
-type PathField = "executable" | "workingRoot" | "privateKeyPath";
-export type EnvironmentMode = "local" | "wsl" | "ssh" | "slurm";
-const DEFAULT_MODE_LABELS: Record<EnvironmentMode, string> = {
-	local: "Windows 本机",
-	wsl: "WSL2",
-	ssh: "SSH服务器",
-	slurm: "SSH + Slurm"
-};
-export function isDefaultEnvironmentDisplayName(displayName: string): boolean {
-	return ["Gaussian", "ORCA"].some((engineLabel) =>
-		Object.values(DEFAULT_MODE_LABELS).some(
-			(modeLabel) => displayName === `${engineLabel} · ${modeLabel}`
-		)
-	);
-}
-export function environmentMode(
-	value: Pick<EnvironmentView, "connectionKind" | "schedulerKind">
-): EnvironmentMode {
-	return value.connectionKind === "ssh" && value.schedulerKind === "slurm"
-		? "slurm"
-		: value.connectionKind;
-}
 export function environmentDraftForMode(
 	current: EnvironmentView,
 	mode: EnvironmentMode,
@@ -84,9 +79,7 @@ export function environmentDraftForMode(
 		...(mode === "slurm" ? next : nonSlurm),
 		environmentId: current.environmentId,
 		revision: current.revision,
-		displayName: customName
-			? current.displayName
-			: `${engine === "gaussian" ? "Gaussian" : "ORCA"} · ${{ local: "Windows 本机", wsl: "WSL2", ssh: "SSH服务器", slurm: "SSH + Slurm" }[mode]}`
+		displayName: customName ? current.displayName : defaultEnvironmentDisplayName(engine, mode)
 	};
 }
 type TextField =
@@ -105,49 +98,6 @@ export interface EnvironmentSettingsProps {
 	canManage: boolean;
 	onChanged(): void | Promise<void>;
 	onClose(): void;
-}
-export function newEnvironment(platform?: string): EnvironmentView {
-	const sshOnly = isSshOnlyClientPlatform(platform);
-	return {
-		environmentId: "",
-		revision: 0,
-		displayName: sshOnly ? "Gaussian · SSH服务器" : "Gaussian · Windows 本机",
-		engineId: "gaussian",
-		connectionKind: sshOnly ? "ssh" : "local",
-		schedulerKind: "none",
-		host: "",
-		port: 22,
-		user: "",
-		distribution: "",
-		executable: "",
-		workingRoot: "",
-		scratchRoot: "",
-		partition: "",
-		account: "",
-		qos: "",
-		timeLimit: "",
-		initialization: "",
-		scriptTemplate: "",
-		calculationTemplate: "",
-		submitCommandTemplate: "",
-		authentication: "agent",
-		privateKeyPath: ""
-	};
-}
-/** Compatibility projection for historical callers; new forms have no external scratch control. */
-export function isValidEnvironmentPath(
-	key: PathField,
-	value: string,
-	connectionKind: EnvironmentView["connectionKind"],
-	platform?: string
-): boolean {
-	const isPosixTarget =
-		key === "privateKeyPath"
-			? detectClientPlatform(platform) !== "win32"
-			: connectionKind !== "local";
-	return isPosixTarget
-		? value.startsWith("/") && !value.includes("\0")
-		: /^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/.test(value);
 }
 export function environmentScratchState(
 	draft: Pick<EnvironmentView, "engineId" | "connectionKind" | "scratchRoot">
@@ -279,28 +229,9 @@ export default function EnvironmentSettings({
 		otherModeDirty ||
 		siteDraftDirty;
 	const validPort = /^\d+$/.test(port) && Number(port) >= 1 && Number(port) <= 65535;
-	function validPath(key: PathField, value: string) {
-		return isValidEnvironmentPath(key, value, draft.connectionKind);
-	}
 	function invalid(key: TextField | "port") {
 		if (key === "port") return !validPort;
-		const value = draft[key];
-		if (["partition", "account", "qos", "timeLimit"].includes(key) && value)
-			return (
-				value !== value.trim() ||
-				(key === "timeLimit"
-					? !/^(?:\d+(?:-\d+)?(?::\d{1,2}){0,2}|UNLIMITED|INFINITE)$/i.test(value)
-					: !/^[A-Za-z0-9_.@,+:-]+$/.test(value))
-			);
-		if (
-			["displayName", "executable", "workingRoot", "host", "user", "distribution"].includes(key) &&
-			!value.trim()
-		)
-			return true;
-		return (
-			["executable", "workingRoot", "privateKeyPath"].includes(key) &&
-			!validPath(key as PathField, value)
-		);
+		return environmentFieldInvalid(draft, key);
 	}
 	const valid =
 		(!isSshOnlyClientPlatform() || draft.connectionKind === "ssh") &&
@@ -1504,6 +1435,7 @@ export default function EnvironmentSettings({
 						draft.slurmMemoryPolicy === "site-managed" &&
 						" · 调度内存未核实"}
 				</span>
+				<div className="ui-action-row">
 				<button
 					type="button"
 					className={checked?.state === "passed" ? "task-check-passed" : "task-check-pending"}
@@ -1540,6 +1472,7 @@ export default function EnvironmentSettings({
 				<button type="button" disabled={pending} onClick={() => guard(onClose)}>
 					关闭
 				</button>
+				</div>
 			</footer>
 		</DialogShell>
 	);

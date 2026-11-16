@@ -10,14 +10,24 @@ function createMultiwfnScheduler({ maxPending } = {}) {
     const entry = queue.shift(); if (!entry) { idle(); return; }
     entry.signal?.removeEventListener('abort', entry.abort); active = entry;
     let released = false;
+    function reservedBytes(context = {}) {
+      assert(active === entry && !released && !entry.signal?.aborted, 'Multiwfn lease is not active');
+      let total = 0;
+      for (const provider of providers.values()) {
+        const bytes = provider(context);
+        assert(Number.isSafeInteger(bytes) && bytes >= 0, 'Invalid shared native memory reservation');
+        total += bytes;
+        assert(Number.isSafeInteger(total), 'Native memory reservation overflow');
+      }
+      return total;
+    }
     entry.resolve({
-      budget(ceiling, context = {}) {
-        assert(active === entry && !released && !entry.signal?.aborted, 'Multiwfn lease is not active');
+      reservedBytes,
+      budget(ceiling, context) {
         assert(Number.isSafeInteger(ceiling) && ceiling > 0, 'Invalid shared native memory ceiling');
-        let reservedBytes = 0;
-        for (const provider of providers.values()) { const bytes = provider(context); assert(Number.isSafeInteger(bytes) && bytes >= 0, 'Invalid shared native memory reservation'); reservedBytes += bytes; assert(Number.isSafeInteger(reservedBytes), 'Native memory reservation overflow'); }
-        assert(reservedBytes < ceiling, 'MULTIWFN_MEMORY_BUDGET: 已保留缓存与显示资源达到本机内存预算');
-        return { memoryBudgetBytes: ceiling, reservedBytes, availableBytes: ceiling - reservedBytes };
+        const reserved = reservedBytes(context);
+        assert(reserved < ceiling, 'MULTIWFN_MEMORY_BUDGET: 实际保留的分析资源达到本次内存预算');
+        return { memoryBudgetBytes: ceiling, reservedBytes: reserved, availableBytes: ceiling - reserved };
       },
       release() { if (released) return; assert(active === entry, 'Multiwfn lease identity changed'); released = true; active = null; next(); },
     });

@@ -9,11 +9,11 @@ export function WorkflowNavigation({step,busy=false,onBack,onNext,onGenerate,eng
 }
 
 // Presentation only: each engine owns navigation, validation and scientific state.
-export function WorkflowHeader({ engine, disabled = false, onEngine, children, title = '输入文件生成器' }: {
-  engine: 'gaussian' | 'orca' | null; disabled?: boolean; title?: ReactNode;
+export function WorkflowHeader({ engine, disabled = false, onEngine, children, title = '输入文件生成器', showTitle = true }: {
+  engine: 'gaussian' | 'orca' | null; disabled?: boolean; title?: ReactNode; showTitle?: boolean;
   onEngine: (engine: 'gaussian' | 'orca') => void; children?: ReactNode;
 }) {
-  return <header className="topbar input-workflow-header workflow-header"><div className="breadcrumb"><span>工具中心</span><ChevronRight size={13} /><strong>{title}</strong><div className="engine-switch" aria-label="计算引擎">{(['gaussian', 'orca'] as const).map(value => <button type="button" key={value} aria-pressed={engine === value} disabled={disabled} onClick={() => onEngine(value)}>{value === 'gaussian' ? 'Gaussian' : 'ORCA'}</button>)}</div></div><div className="topbar-actions">{children}</div></header>;
+  return <header className="topbar input-workflow-header workflow-header"><div className="breadcrumb">{showTitle&&<><span>工具中心</span><ChevronRight size={13} /><strong>{title}</strong></>}<div className="engine-switch" aria-label="计算引擎">{(['gaussian', 'orca'] as const).map(value => <button type="button" key={value} aria-pressed={engine === value} disabled={disabled} onClick={() => onEngine(value)}>{value === 'gaussian' ? 'Gaussian' : 'ORCA'}</button>)}</div></div><div className="topbar-actions">{children}</div></header>;
 }
 
 export function WorkflowSteps({ step, onStep, label = '生成步骤', steps = WORKFLOW_STEPS, disabled = false }: { step: number; onStep: (step: number) => void; label?: string; steps?: readonly string[]; disabled?: boolean }) {
@@ -22,14 +22,14 @@ export function WorkflowSteps({ step, onStep, label = '生成步骤', steps = WO
 
 export interface WorkflowContentCardProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {
   title: ReactNode; description?: ReactNode; step?: number; total?: number;
-  actions?: ReactNode; footer?: ReactNode; heading?:boolean;
+  actions?: ReactNode; footer?: ReactNode; heading?:boolean; fitContent?:boolean;
 }
 /** The shared card owns presentation and scroll placement; its caller owns all state. */
-export function WorkflowContentCard({ title, description, step, total = WORKFLOW_STEPS.length, actions, footer, children, className = '', heading=true, ...sectionProps }: WorkflowContentCardProps) {
-  return <section {...sectionProps} className={`work-card form-card workflow-content-card ${className}`.trim()}><div className="engine-parameter-scroll">{heading&&<div className="card-heading"><div className="heading-with-number">{step != null && <span className="section-number">{String(step + 1).padStart(2, '0')}</span>}<div><h2>{title}</h2>{description && <p>{description}</p>}</div></div>{step != null && <span className="small-step">{step + 1} / {total}</span>}{actions && <div className="workflow-card-actions">{actions}</div>}</div>}{children}</div>{footer}</section>;
+export function WorkflowContentCard({ title, description, step, total = WORKFLOW_STEPS.length, actions, footer, children, className = '', heading=true, fitContent=false, ...sectionProps }: WorkflowContentCardProps) {
+  return <section {...sectionProps} className={`work-card form-card workflow-content-card ${className}`.trim()} data-workflow-content={fitContent?'choice':undefined}><div className="engine-parameter-scroll">{heading&&<div className="card-heading"><div className="heading-with-number">{step != null && <span className="section-number">{String(step + 1).padStart(2, '0')}</span>}<div><h2>{title}</h2>{description && <p>{description}</p>}</div></div>{step != null && <span className="small-step">{step + 1} / {total}</span>}{actions && <div className="workflow-card-actions">{actions}</div>}</div>}{children}</div>{footer}</section>;
 }
 export function WorkflowSessionBar({ label, actions }: { label: ReactNode; actions?: ReactNode }) {
-  return <header className="workflow-session-bar"><span>{label}</span>{actions && <div className="workflow-session-actions">{actions}</div>}</header>;
+  return <header className="workflow-session-bar"><span>{label}</span>{actions && <div className="workflow-session-actions ui-control-surface">{actions}</div>}</header>;
 }
 
 export function ElectronicStatePanel({ confirmed, error, children }: { confirmed: boolean; error: string | null; children: ReactNode }) {

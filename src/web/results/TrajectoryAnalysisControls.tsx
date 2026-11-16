@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,useProjectUiRestored,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
 import {useAnalysisProjectSnapshot,loadAnalysisProjectSnapshot} from '../../projects/analysis-state';
 import type { Structure } from '../../core/types';
+import type {MeasurementRecord} from '../../core/modeling/contracts';
+import {coordinateAnnotation} from '../modeling/coordinate-annotations';
 import { inputSelectionIndices } from '../../core/input-selection';
 import { confirmCoordinateSelection } from '../../modeling/application/coordinate-selection';
 import type { TrajectoryResult } from '../../results/contracts';
@@ -10,13 +12,17 @@ import { traceInternalCoordinate, type CoordinateTrace } from '../../results/sci
 import InteractiveSelectionField, { SelectionAddButton, SelectionRemoveButton } from '../InteractiveSelectionField';
 import { assertAnalysisSelectionPort, type AnalysisSelectionPort } from '../analysis-selection-intent';
 import CoordinatePlot from './CoordinatePlot';
-import { OptimizationPlot } from './OptimizationPlot';
+import { OptimizationPlot,type OptimizationPlotExtension } from './OptimizationPlot';
 import { AnalysisTaskLayout, AnalysisTaskSection } from './AnalysisTaskLayout';
 import './TrajectoryAnalysisControls.css';
 
 export interface TrajectoryAnalysisControlsProps {
   result: TrajectoryResult; currentIndex: number; structure: Structure | null; active: boolean;
+  /** Native workflow content stays inside the shared trajectory panel. */
+  extension?: { controls?:ReactNode; energyPlot?:ReactNode; plot?:OptimizationPlotExtension; details?:ReactNode };
   capturePort?: AnalysisSelectionPort;
+  /** Confirmed display definitions only; parent scopes these to its current ready frame. */
+  onCoordinateAnnotations?(records:readonly MeasurementRecord[]):void;
   onSeek(index: number): void; onPause(): void; onError(message: string): void;
 }
 interface TraceEntry { id: string; trace: CoordinateTrace }
@@ -68,6 +74,14 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
     return () => { controller.abort(); if (defaultController.current === controller) defaultController.current = null; };
   }, [p.result, p.active, defaultTrace, traceOwner,restoring]);
   const visibleEntries = traceOwner === p.result ? entries : [];
+  useEffect(()=>{
+    p.onCoordinateAnnotations?.(traceOwner===p.result?entries.flatMap((entry,index)=>{
+      const atomIds=entry.trace.atomIndices.map(atomIndex=>p.result.initialStructure.atoms[atomIndex]?.id);
+      return atomIds.every((id):id is string=>typeof id==='string')
+        ?[coordinateAnnotation({type:entry.trace.kind,atomIds},`trajectory:${p.result.id}:${entry.id}`,`内坐标${index+1}`,p.result.id)]:[];
+    }):[]);
+    return()=>p.onCoordinateAnnotations?.([]);
+  },[p.result,traceOwner,entries,p.onCoordinateAnnotations]);
   const scan = trajectoryPlotKind(p.result) === 'scan';
   const override = scan && traceOwner === p.result ? scanX === 'source' ? defaultTrace : visibleEntries.find(entry => entry.id === scanX)?.trace ?? null : null;
   const seek = (index: number) => { if (!latest.current.active) return; latest.current.onPause(); latest.current.onSeek(index); };
@@ -104,7 +118,9 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
       : <InteractiveSelectionField {...base} engine={p.result.engine === 'orca' ? 'orca' : 'gaussian'} purpose="coordinate" taskId={`analysis:${p.result.id}`} contextKey={p.result.id}/>;
   };
   return <div className="trajectory-analysis-controls" data-testid="trajectory-analysis-controls">
-    <OptimizationPlot result={p.result} currentIndex={p.currentIndex} onSelectFrame={seek} coordinateTrace={override} responsive/>
+    {p.extension?.controls}
+    {p.extension?.energyPlot??<OptimizationPlot result={p.result} currentIndex={p.currentIndex} onSelectFrame={seek} coordinateTrace={override} extension={p.extension?.plot} responsive/>}
+    {p.extension?.details}
     <AnalysisTaskLayout variant="card" title="内坐标变化" className="trajectory-coordinate-task"
       headerActions={<SelectionAddButton label="添加内坐标" disabled={!p.active || !p.structure || tracing || editor} onClick={() => { p.onPause(); setEditor(true); }}/>}
       progress={tracing ? <div className="trajectory-read-progress"><span role="status">读取来源结构…</span><button type="button" onClick={() => { traceController.current?.abort(); setTracing(false); }}>取消统计</button></div> : null}

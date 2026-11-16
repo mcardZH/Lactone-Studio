@@ -13,6 +13,7 @@ import subprocess
 import threading
 import time
 from orbitals import OrbitalError, _number
+from multiwfn_resources import start_multiwfn
 
 NUMBER = r'[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[EeDd][-+]?\d+)?'
 BOHR_ANGSTROM = .529177210903
@@ -167,13 +168,13 @@ class BaderDialogue:
         self.state = next_state; self.pending = ''; return [answer]
 
 
-def run_bader_native(executable, work, plan, atom_count, budget, env, progress=None, timeout=None, telemetry=None):
+def run_bader_native(executable, work, plan, atom_count, budget, env, progress=None, timeout=None, telemetry=None, resources=None):
     """One owned native process. Unknown prompts cannot consume guessed answers."""
     from orbitals import _windows_owned_job, MultiwfnSession
     from multiwfn_progress import NativeProgressScanner, native_output_chunks
     assert_budget(plan, budget)
     dialogue = BaderDialogue(plan, atom_count); pending = queue.Queue(); output = bytearray()
-    process = subprocess.Popen([str(executable), 'source.fchk'], cwd=work, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    process = start_multiwfn([str(executable), 'source.fchk'], resources=resources, cwd=work, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     job = _windows_owned_job(process, budget); scanner = NativeProgressScanner(progress)
     usage=dict(pid=process.pid,hardBudgetBytes=budget,windowsJobAttached=job is not None,limitType='JOB_OBJECT_LIMIT_PROCESS_MEMORY',killOnJobClose=job is not None)
     def sample_memory():

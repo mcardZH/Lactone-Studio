@@ -19,7 +19,7 @@ export interface InteractionDesktopBridgeOptions {
   structure: Structure; coordinateRoundingAngstrom: number | null; active: boolean; onCleanupError?(message: string): void;
 }
 type Session = { id: string; kind: InteractionSource['kind']; methods: readonly InteractionMethod[] };
-type Operation = { requestId: string; epoch: number; abort: AbortController; sessionId?: string; cancelling?: Promise<unknown>; readOnly: boolean };
+type Operation = { requestId: string; epoch: number; abort: AbortController; sessionId?: string; cancelling?: Promise<unknown>; settlement?: Promise<unknown>; readOnly: boolean };
 type Artifact = { session: Session; method: InteractionMethod; fragments: InteractionGeneratedFields['fragments']; quality: InteractionGeneratedFields['quality']; signatures: readonly string[] };
 type Imported = { token: string; metadata: SurfaceCubeSourceRef['fieldMetadata']; signature: string; projectDomain?: {sourceRevision:string;validDomain:SurfaceScalarField['validDomain']} };
 const MAX_SOURCE = Number.MAX_SAFE_INTEGER;
@@ -46,13 +46,13 @@ export function createInteractionDesktopBridge(options: InteractionDesktopBridge
   const checkedContext = (value: SurfaceContext) => assert(sameSurfaceContext(value, context), '相互作用请求不属于当前来源/作业/原帧/代际。');
   const stamp = (requestId: string): SurfaceStamp => ({ ...context, analysisId: options.analysisId, requestId });
   const current = (op: Operation) => { if (disposed || !active && !op.readOnly || op.epoch !== epoch || op.abort.signal.aborted || operation !== op) throw aborted(); };
-  async function cancelOperation(op: Operation) { op.abort.abort(); if (op.sessionId && !op.cancelling) { assert(desktop.cancelInteraction, '当前环境缺少相互作用停止入口。'); op.cancelling = desktop.cancelInteraction(op.sessionId); } await op.cancelling; }
+  async function cancelOperation(op: Operation) { op.abort.abort(); if (op.sessionId && !op.cancelling) { assert(desktop.cancelInteraction, '当前环境缺少相互作用停止入口。'); op.cancelling = desktop.cancelInteraction(op.sessionId); } try{await op.cancelling;}finally{await op.settlement?.catch(()=>{});} }
   function run<T>(id: string, signal: AbortSignal, execute: (op: Operation) => Promise<T>, readOnly = false): Promise<T> {
     if (disposed || !active && !readOnly || signal.aborted) return Promise.reject(aborted());
     if (operation) return Promise.reject(new Error('此相互作用实例已有操作，请先完成或停止。'));
     assert(id, '相互作用操作缺少请求身份。'); const op: Operation = { requestId: id, epoch, abort: new AbortController(), readOnly }; operation = op;
     const abort = () => { void cancelOperation(op).catch(report); }; signal.addEventListener('abort', abort, { once: true });
-    const task = Promise.resolve().then(async () => { current(op); const value = await execute(op); current(op); if(!op.readOnly)notifyAnalysisProjectStateChanged(); return value; }).finally(() => { signal.removeEventListener('abort', abort); if (operation === op) operation = null; tasks.delete(task); }); tasks.add(task); return task;
+    const task = Promise.resolve().then(async () => { current(op); const value = await execute(op); current(op); if(!op.readOnly)notifyAnalysisProjectStateChanged(); return value; }).finally(async () => { await op.cancelling?.catch(()=>{}); signal.removeEventListener('abort', abort); if (operation === op) operation = null; tasks.delete(task); }); op.settlement=task; tasks.add(task); return task;
   }
   async function releaseToken(token: string) { assert(desktop.releaseSurfaceCube, '当前环境缺少Cube来源释放入口。'); const result = await desktop.releaseSurfaceCube(token); assert(result.released, 'Cube来源尚未释放。'); tokens.delete(token); }
   async function restoreImported(fieldId: string): Promise<Imported | undefined> {

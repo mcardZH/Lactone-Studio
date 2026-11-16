@@ -10,11 +10,11 @@ const FILE_ACTION_CHANNEL = 'sciyue:workbench-file-action';
 const CITATIONS_OPEN_ID = 'sciyue.citations.open';
 const CITATIONS_OPEN_CHANNEL = 'sciyue:citations-open';
 const refreshers = new WeakMap();
-/** Image export belongs to the focused viewport, including a shared member's
- * local camera. Structural file operations still belong to its document owner. */
+/** Exports belong to the focused viewport and seal its received frame. Imports
+ * still change the real document through its owner. */
 function workbenchFileActionRoute(window, action, member, resolveOwner) {
   assert(['import', 'export-structure', 'export-image'].includes(action), 'Invalid workbench file action');
-  const target = action === 'export-image' || !member ? window : resolveOwner(Number(member.ownerWindowId));
+  const target = action !== 'import' || !member ? window : resolveOwner(Number(member.ownerWindowId));
   return { target, request: { action, ...(member ? { documentId: member.documentId } : {}) } };
 }
 function ownedLayoutWindow(focusedWindow, { BrowserWindow, windows, development = false }) {

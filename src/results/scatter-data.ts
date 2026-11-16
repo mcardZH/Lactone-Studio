@@ -1,4 +1,5 @@
-import { formatResultValue, fullPrecisionValue } from './numeric-format';
+import { decimalEnergyValue, formatResultValue, fullPrecisionValue } from './numeric-format';
+import { isEnergyUnit } from './energy';
 import type { ScientificPlotViewport } from './scientific-plot';
 
 /** Paired source columns. A supplied domain mask is explicit, never inferred from zeros. */
@@ -51,7 +52,8 @@ export function nearestScatterPoint(data: ScientificScatterData, position: { x: 
 export function scatterDataText(data: ScientificScatterData, labels: { x: string; y: string }, decimals: number | 'raw' = 2): string {
   scatterDataSummary(data);
   const format = decimals === 'raw' ? fullPrecisionValue : (value: number) => formatResultValue(value, decimals);
+  const axisValue=(value:number,label:string)=>isEnergyUnit(label.split(' / ').at(-1))?decimalEnergyValue(format(value)):format(value);
   const lines = [`${labels.x.replace(/[\r\n\t]/g, ' ')}\t${labels.y.replace(/[\r\n\t]/g, ' ')}`];
-  for (let i = 0; i < data.x.length; i++) if (scatterPointValid(data, i)) lines.push(`${format(data.x[i])}\t${format(data.y[i])}`);
+  for (let i = 0; i < data.x.length; i++) if (scatterPointValid(data, i)) lines.push(`${axisValue(data.x[i],labels.x)}\t${axisValue(data.y[i],labels.y)}`);
   return lines.join('\n') + '\n';
 }

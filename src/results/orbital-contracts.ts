@@ -26,6 +26,8 @@ export interface WavefunctionMetadata {
   /** Canonical structure coordinates are Å, as in every other model document. */
   structure: Structure;
   basisCount: number;
+  /** Per-atom effective nuclear charge, in immutable source order. */
+  effectiveNuclearCharges?: readonly number[];
   orbitals: readonly WavefunctionOrbital[];
   messages: readonly string[];
   /** Trusted host applicability metadata, not a property measured in the file. */
@@ -83,7 +85,12 @@ export interface OrbitalGenerationProgress {
   mode?: 'all' | 'selected';
   requestedKeys?: readonly string[];
 }
-export interface OrbitalBackendInfo { configured: boolean; path?: string; message?: string }
+export interface OrbitalBackendInfo {
+  configured: boolean; path?: string; message?: string;
+  workDirectory?: string;
+  status?: 'ready' | 'unconfigured' | 'configuration-invalid' | 'program-unavailable' | 'work-directory-unavailable';
+  details?: string;
+}
 /** Effective per-job resource settings; the memory figure is a budget, not a reservation. */
 export interface OrbitalResourceInfo {
   threads: number;

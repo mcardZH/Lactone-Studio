@@ -1,5 +1,5 @@
-.cell-editor-cards { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.cell-editor-card { background: #edf6ec; border: 1px solid #c9dfc7; border-radius: var(--ui-control-radius); padding: 12px; min-width: 0; }
+.cell-editor-cards { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cell-editor-card { background: var(--ui-control-bg); border: 1px solid var(--ui-surface-border); border-radius: var(--ui-subcard-radius); padding: 10px 12px; min-width: 0; }
 .structure-transform-tool .cell-editor-card h3 { margin: 0 0 8px; }
 .cell-editor-card-toggle { display: flex; align-items: center; gap: 12px; width: 100%; padding: 0 !important; border: 0 !important; background: transparent !important; color: inherit; font: inherit; font-weight: 600; text-align: left; }
 .cell-editor-card-toggle span { margin-left: auto; color: var(--ui-control-muted); font-weight: 400; font-size: var(--ui-control-small-font); }

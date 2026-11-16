@@ -7,6 +7,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import {
   CANONICAL_LOCKED_PREFIX,
+  OFFICIAL_DARWIN_XTB_ARCHIVES,
+  XTB_OPTIONAL_PARAMS,
   XTB_REQUIRED_DYLIBS,
   XTB_REQUIRED_PARAMS,
   acquireStagingLock,
@@ -299,8 +301,10 @@ function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
   }
   fs.chmodSync(xtbBin, 0o755);
 
+  fs.mkdirSync(path.join(condaDir, 'lib'), { recursive: true });
   for (const dylibName of XTB_REQUIRED_DYLIBS) {
     const srcDylib = path.join(depDir, 'xtb/lib', dylibName);
+    if (!fs.existsSync(srcDylib)) continue;
     const dstDylib = path.join(condaDir, 'lib', dylibName);
     fs.copyFileSync(fs.realpathSync(srcDylib), dstDylib, copyFlag);
     fs.chmodSync(dstDylib, 0o755);
@@ -311,6 +315,13 @@ function buildMockCondaPrefix(condaDir, tcPythonDir, depDir, options = {}) {
   for (const paramName of XTB_REQUIRED_PARAMS) {
     const srcParam = path.join(depDir, 'xtb/share/xtb', paramName);
     const dstParam = path.join(xtbShare, paramName);
+    fs.copyFileSync(fs.realpathSync(srcParam), dstParam, copyFlag);
+    fs.chmodSync(dstParam, 0o644);
+  }
+  for (const optParam of XTB_OPTIONAL_PARAMS) {
+    const srcParam = path.join(depDir, 'xtb/share/xtb', optParam);
+    if (!fs.existsSync(srcParam)) continue;
+    const dstParam = path.join(xtbShare, optParam);
     fs.copyFileSync(fs.realpathSync(srcParam), dstParam, copyFlag);
     fs.chmodSync(dstParam, 0o644);
   }
@@ -757,6 +768,54 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
         }),
       /STAGE_XTB_VERSION_MISMATCH/
     );
+
+    const badArchivePath = path.join(tmpRoot, 'tampered-xtb-6.8.0.tar.xz');
+    fs.writeFileSync(badArchivePath, 'not-an-official-xtb-archive\n', 'utf8');
+    assert.throws(
+      () =>
+        stageDarwinRuntime({
+          appPath: checkoutDir,
+          platformId: 'darwin-arm64',
+          condaPrefix: condaShortDir,
+          xtbArchive: badArchivePath,
+          updateLocks: true
+        }),
+      /STAGE_XTB_ARCHIVE_HASH_MISMATCH/
+    );
+
+    const cachedArm64Archive = path.join(
+      REPO_ROOT,
+      '.cache/upstream',
+      OFFICIAL_DARWIN_XTB_ARCHIVES['darwin-arm64'].filename
+    );
+    if (fs.existsSync(cachedArm64Archive)) {
+      const stagedFromArchive = stageDarwinRuntime({
+        appPath: checkoutDir,
+        platformId: 'darwin-arm64',
+        condaPrefix: badCondaDir,
+        xtbArchive: cachedArm64Archive,
+        updateLocks: true,
+        lockReadOnly: true
+      });
+      assert.equal(
+        fs.existsSync(path.join(stagedFromArchive.dependencyRoot, 'xtb/lib')),
+        false,
+        'Statically linked 6.8.0 Darwin archive runtime must not materialize empty lib/'
+      );
+      assert.equal(
+        fs.existsSync(
+          path.join(stagedFromArchive.dependencyRoot, 'xtb/share/xtb/param_ipea-xtb.txt')
+        ),
+        true
+      );
+      stageDarwinRuntime({
+        appPath: checkoutDir,
+        platformId: 'darwin-arm64',
+        condaPrefix: condaShortDir,
+        updateLocks: true,
+        lockReadOnly: true
+      });
+    }
 
     // 3c. Missing required scientific module (scipy omitted), missing submodule (scipy.linalg), or missing .dist-info metadata
     fs.rmSync(badCondaDir, { recursive: true, force: true });

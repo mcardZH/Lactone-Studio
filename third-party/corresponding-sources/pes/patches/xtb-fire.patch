@@ -1,0 +1,24 @@
+--- a/src/relaxation_engine.f90
++++ b/src/relaxation_engine.f90
+@@ -344,7 +344,7 @@
+    xyz0 = molopt%xyz
+ 
+    call inertial_relax &
+-      &   (env,iter,thisstep,opt,molopt, &
++      &   (env,iter,min(thisstep,maxcycle-iter),opt,molopt, &
+       &    chk,calc,energy,egap,gradient,sigma,hessp,velocities, &
+       &    lat_velocities,optcell,converged,fail,timer)
+ 
+--- a/meson.build
++++ b/meson.build
+@@ -65,8 +65,8 @@
+   'version': meson.project_version(),
+   'commit': commit,
+   'date': run_command(python, '-c', 'import datetime; print(datetime.date.today().strftime("%Y-%m-%d"))').stdout().strip(),
+-  'author': run_command(python, '-c', 'import getpass; print(getpass.getuser())').stdout().strip(),
+-  'origin': run_command(python, '-c', 'import socket; print(socket.gethostname())').stdout().strip(),
++  'author': run_command(python, '-c', 'print("Ester Studio")').stdout().strip(),
++  'origin': run_command(python, '-c', 'print("local locked build")').stdout().strip(),
+   'prefix': get_option('prefix'),
+   'mandir': get_option('mandir'),
+   'bindir': get_option('bindir'),

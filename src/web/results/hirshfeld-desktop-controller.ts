@@ -39,16 +39,15 @@ export interface HirshfeldCompletedSession { sessionId: string; result: Hirshfel
 export function createHirshfeldRun(desktop: HirshfeldDesktopApi, cluster: HirshfeldCluster, context: SurfaceContext,
   analysisId: string, sessionId: string, request: HirshfeldAnalyzeRequest,
   options?: { resources?: { threads: number; memoryBudgetBytes: number }; onSessionInfo?(info: HirshfeldSessionInfo): void }) {
-  let stopped = false, opened = false, settled = false, closePromise: Promise<void> | null = null;
-  const close = () => closePromise ??= (async () => { if (opened) { await desktop.closeSurfaceSession?.(sessionId); opened = false; } })();
-  return {
-    sessionId,
-    async run(): Promise<HirshfeldCompletedSession> {
+  let stopped = false, opening = false, opened = false, settled = false, running:Promise<HirshfeldCompletedSession>|undefined, closePromise: Promise<void> | null = null;
+  const close = () => closePromise ??= (async () => { if (opened) { await desktop.closeSurfaceSession?.(sessionId); opened = false; } })().catch(error=>{closePromise=null;throw error;});
+  async function run(): Promise<HirshfeldCompletedSession> {
       validateHirshfeldCluster(cluster, request);
       if (!desktop.openHirshfeldSession || !desktop.analyzeHirshfeld || !desktop.closeSurfaceSession || !desktop.cancelSurface) throw new Error('当前环境没有Hirshfeld分析入口。');
       try {
         if (stopped) throw aborted();
-        const info = await desktop.openHirshfeldSession({ sessionId, source: { kind: 'hirshfeld-cluster', context, cluster }, ...(options?.resources ? { resources: { ...options.resources } } : {}) }); opened = true;
+        opening=true;
+        const info = await desktop.openHirshfeldSession({ sessionId, source: { kind: 'hirshfeld-cluster', context, cluster }, ...(options?.resources ? { resources: { ...options.resources } } : {}) }); opening=false; opened = true;
         if (stopped) throw aborted();
         if (info.sessionId !== sessionId || info.family !== 'hirshfeld' || info.atomCount !== cluster.atoms.length || !sameSurfaceContext(info.context, context)) throw new Error('Hirshfeld会话来源不匹配。');
         assertHirshfeldResourceInfo(info, 'open-grant'); options?.onSessionInfo?.(info);
@@ -62,8 +61,18 @@ export function createHirshfeldRun(desktop: HirshfeldDesktopApi, cluster: Hirshf
             if (!opened || !desktop.exportHirshfeldCube) throw new Error('当前Hirshfeld原始Cube会话已不可用。');
             await desktop.exportHirshfeldCube(sessionId, { stamp: { ...context, analysisId, requestId: `${request.stamp.requestId}-export-${role}` }, fieldId: result.pair[role].id });
           } };
-      } catch (error) { await close(); throw error; }
+      } catch (error) {
+        try{await close();}catch(cleanupError){if(error instanceof Error)error.message+='\n清理：'+String(cleanupError);}
+        throw error;
+      }finally{opening=false;}
+  }
+  return {
+    sessionId,
+    run:()=>running??=run(),
+    async cancel() {
+      stopped=true;
+      try{if((opening||opened)&&!settled)await desktop.cancelSurface?.(sessionId);}
+      finally{await running?.catch(()=>{});if(opened)await close();}
     },
-    async cancel() { stopped = true; if (opened && !settled) await desktop.cancelSurface?.(sessionId); if (opened) await close(); },
   };
 }

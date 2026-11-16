@@ -12,17 +12,20 @@
 	min-width: 0;
 	touch-action: none;
 	cursor: col-resize;
-	background: #e2ede7;
+	background: transparent;
+	position:relative;
 }
 .workspace-three-columns > .workspace-column-divider {
 	display: block;
-}
-.workspace-column-divider:hover,
-.workspace-column-divider:focus-visible {
-	background: #a5cdbb;
 }
 .workspace-three-columns > aside {
 	min-width: 0;
 	min-height: 0;
 	overflow: auto;
 }
+
+.workspace-column-divider::before {
+  content:""; position:absolute; inset-block:0; inset-inline-start:50%; inline-size:3px;
+  transform:translateX(-50%); background:#e5e8e6; pointer-events:none;
+}
+.workspace-column-divider[data-divider-dragging=true]::before { background:#76a399; }

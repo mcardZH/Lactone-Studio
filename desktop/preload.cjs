@@ -90,6 +90,12 @@ const invoke=async(channel,...args)=>hydrateManagedResult(await ipcRenderer.invo
 // about:blank inherits opener preferences in Chromium. It is a UI-only portal
 // surface: do not expose a second desktop bridge in that child document.
 if (typeof location === 'undefined' || location.href !== 'about:blank') contextBridge.exposeInMainWorld('sciyueDesktop', Object.freeze({
+  twoDPointerSettings:()=>invoke('sciyue:two-d-pointer-settings'),
+  onTwoDPointerActivation:listener=>{
+    if(typeof listener!=='function')throw new TypeError('Pointer activation listener must be a function');
+    const receive=()=>listener();ipcRenderer.on('sciyue:two-d-pointer-activation',receive);
+    return()=>ipcRenderer.removeListener('sciyue:two-d-pointer-activation',receive);
+  },
   taskSystemRequest:request=>invoke('sciyue:task-system-request',request),
   cancelTaskSystemRequest:requestId=>invoke('sciyue:task-system-cancel',requestId),
   syProject: request => invoke('sciyue:sy-project', request),
@@ -219,6 +225,15 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   readClipboard: () => invoke('sciyue:read-clipboard'),
   writeClipboard: payload => invoke('sciyue:write-clipboard', payload),
   writeClipboardText: text => invoke('sciyue:write-clipboard-text', text),
+  beginImageClipboardCopy: () => invoke('sciyue:begin-image-clipboard-copy'),
+  writeImageClipboard: (token, png) => invoke('sciyue:write-image-clipboard', token, png),
+  cancelImageClipboardCopy: token => invoke('sciyue:cancel-image-clipboard-copy', token),
+  onImageClipboardCopySuperseded: callback => {
+    if (typeof callback !== 'function') throw new TypeError('Image clipboard listener must be a function');
+    const listener = (_event, token) => { if (Number.isSafeInteger(token) && token > 0) callback(token); };
+    ipcRenderer.on('sciyue:image-clipboard-copy-superseded', listener);
+    return () => ipcRenderer.removeListener('sciyue:image-clipboard-copy-superseded', listener);
+  },
   acquireWorkerResources: request => invoke('sciyue:acquire-worker-resources', request),
   cancelWorkerResources: id => invoke('sciyue:cancel-worker-resources', id),
   releaseWorkerResources: id => invoke('sciyue:release-worker-resources', id),
@@ -281,6 +296,16 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
     ipcRenderer.on('sciyue:surface-event', listener);
     return () => ipcRenderer.removeListener('sciyue:surface-event', listener);
   },
+  gxtbBackendInfo: () => invoke('sciyue:gxtb-backend-info'),
+  chooseGxtbBackend: () => invoke('sciyue:choose-gxtb-backend'),
+  setGxtbBackendPath: value => invoke('sciyue:set-gxtb-backend-path',value),
+  detectGxtbBackend: () => invoke('sciyue:detect-gxtb-backend'),
+  openGxtbDownload: () => invoke('sciyue:open-gxtb-download'),
+  onGxtbConfigurationChanged: callback => {
+    if(typeof callback !== 'function')throw new TypeError('g-xTB configuration listener must be a function');
+    const listener=(_event,value)=>callback(value);ipcRenderer.on('sciyue:gxtb-configuration-changed',listener);
+    return ()=>ipcRenderer.removeListener('sciyue:gxtb-configuration-changed',listener);
+  },
   orbitalBackendInfo: () => invoke('sciyue:orbital-backend-info'),
   openInteractionSession: request => invoke('sciyue:open-interaction-session', request),
   generateInteraction: (sessionId, request) => invoke('sciyue:generate-interaction', sessionId, request),
@@ -306,6 +331,8 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
     return () => ipcRenderer.removeListener('sciyue:multiwfn-progress', listener);
   },
   chooseOrbitalBackend: () => invoke('sciyue:choose-orbital-backend'),
+  chooseMultiwfnWorkDirectory: () => invoke('sciyue:choose-multiwfn-work-directory'),
+  resetMultiwfnWorkDirectory: () => invoke('sciyue:reset-multiwfn-work-directory'),
   analyzeWavefunction: (sessionId, request, progressIdentity) => invoke('sciyue:analyze-wavefunction', sessionId, request, progressIdentity),
   cancelWavefunctionAnalysis: sessionId => invoke('sciyue:cancel-wavefunction-analysis', sessionId),
   openOrbitalSession: request => invoke('sciyue:open-orbital-session', request),
@@ -338,6 +365,15 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   },
   startDynamics: (request, sessionId) => invoke('sciyue:start-dynamics', request, sessionId),
   startAdvancedPath: (request, sessionId) => invoke('sciyue:start-advanced-path', request, sessionId),
+  startPes:request=>invoke('sciyue:start-pes',request),
+  stopPes:identity=>invoke('sciyue:stop-pes',identity),
+  readPesPathRecord:request=>invoke('sciyue:read-pes-path-record',request),
+  releasePesPathRecords:identity=>invoke('sciyue:release-pes-path-records',identity),
+  onPesEvent:callback=>{
+    if(typeof callback!=='function')throw new TypeError('PES listener must be a function');
+    const listener=(_event,value)=>callback(value);ipcRenderer.on('sciyue:pes-event',listener);
+    return()=>ipcRenderer.removeListener('sciyue:pes-event',listener);
+  },
   startAiss: (request, sessionId) => invoke('sciyue:start-aiss', request, sessionId),
   commandAiss: (sessionId, command) => invoke('sciyue:command-aiss', sessionId, command),
   onAissEvent: callback => {
@@ -373,6 +409,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
     return () => ipcRenderer.removeListener('sciyue:conformer-sampling-event', listener);
   },
   commandDynamics: (sessionId, command) => invoke('sciyue:command-dynamics', sessionId, command),
+  waitForDynamicsClose: (documentId, sessionId) => invoke('sciyue:wait-dynamics-close', documentId, sessionId),
   onDynamicsEvent: callback => {
     if (typeof callback !== 'function') throw new TypeError('Dynamics listener must be a function');
     const listener = (_event, value) => callback(value);
@@ -386,4 +423,11 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
     return () => ipcRenderer.removeListener('sciyue:mcp-frontend-request', listener);
   },
   replyMcpFrontendRequest: response => invoke('sciyue:mcp-frontend-reply', response),
+  mcpConnectionInfo: () => invoke('sciyue:mcp-connection-info'),
+  setMcpConnectionEnabled: enabled => {
+    if (typeof enabled !== 'boolean') throw new TypeError('MCP enabled flag must be a boolean');
+    return invoke('sciyue:mcp-connection-set-enabled', enabled);
+  },
+  rotateMcpConnectionToken: () => invoke('sciyue:mcp-connection-rotate-token'),
+  testMcpConnection: () => invoke('sciyue:mcp-connection-test'),
 }));

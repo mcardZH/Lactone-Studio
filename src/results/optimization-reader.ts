@@ -3,7 +3,11 @@ import type { Atom, Structure } from '../core/types';
 import { parseGaussianSource } from '../core/gaussian-source';
 import { assertResultNotAborted, UnsupportedResultKindError, type ResultConvergence, type ResultFrameSummary, type ResultInputFile, type ResultReadOptions, type ResultStatus, type TrajectoryResult } from './contracts';
 import { abortableResultRead } from './xyz-reader';
-import { GaussianOutputArchive } from './gaussian-output-archive';
+import { outputLines } from './output-lines';
+export { outputLines } from './output-lines';
+import { GaussianOutputSections, gaussianEntry, gaussianErrorTermination, gaussianExplicitLink, gaussianJobLink, gaussianNormalTermination, type GaussianOutputSection } from './gaussian-output-archive';
+import { assertOutputSoftware, orcaOutputComment, orcaOutputEcho, orcaNormalTermination, orcaPrintedState, outputSoftwareOnLine } from './output-sections';
+import { orcaSourceLine } from '../core/orca/input-source';
 
 const NUMBER = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[dDeE][+-]?\\d+)?';
 const numeric = new RegExp(`^${NUMBER}$`);
@@ -42,45 +46,6 @@ function row(line: string, engine: Engine, index: number): Atom | null {
   return { element, x: xyz[0]!, y: xyz[1]!, z: xyz[2]!, sourceIndex: index + 1, id: `a${index + 1}` };
 }
 
-/** Streaming line splitter retaining byte offsets, including UTF-8 and CRLF across chunks. */
-export async function* outputLines(file: ResultInputFile, options: ResultReadOptions, onNulTail?: (sourceLine: number) => void): AsyncGenerator<Line> {
-  const reader = file.stream().getReader();
-  const abort = () => { void reader.cancel().catch(() => undefined); };
-  options.signal?.addEventListener('abort', abort, { once: true });
-  let pending = new Uint8Array(0), offset = 0, lineNumber = 0, bytes = 0, nextYield = performance.now() + 16;
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-  try {
-    while (true) {
-      assertResultNotAborted(options.signal);
-      const { done, value } = await reader.read();
-      assertResultNotAborted(options.signal);
-      if (done) break;
-      bytes += value.length;
-      let chunk: Uint8Array;
-      if (pending.length) { chunk = new Uint8Array(pending.length + value.length); chunk.set(pending); chunk.set(value, pending.length); }
-      else chunk = value;
-      let start = 0;
-      for (let index = 0; index < chunk.length; index++) {
-        if(onNulTail&&chunk[index]===0){onNulTail(lineNumber+1);return;}
-        if(chunk[index]!==10)continue;
-        const end = index > start && chunk[index - 1] === 13 ? index - 1 : index;
-        yield { text: decoder.decode(chunk.subarray(start, end)).replace(/^\uFEFF/, ''), start: offset + start, end: offset + index + 1, number: ++lineNumber };
-        start = index + 1;
-        if (lineNumber % 1024 === 0 && performance.now() >= nextYield) { await new Promise<void>(resolve => setTimeout(resolve, 0)); assertResultNotAborted(options.signal); nextYield = performance.now() + 16; }
-      }
-      pending = chunk.slice(start); offset += start;
-      options.onProgress?.(bytes, file.size);
-    }
-    if(onNulTail&&pending.includes(0)){onNulTail(lineNumber+1);return;}
-    if (pending.length) yield { text: decoder.decode(pending).replace(/\r$/, ''), start: offset, end: offset + pending.length, number: ++lineNumber };
-    if (bytes !== file.size) throw new Error('输出来源读取长度发生变化。');
-  } finally {
-    options.signal?.removeEventListener('abort', abort);
-    try { await reader.cancel(); } catch { /* The source may already be closed. */ }
-    reader.releaseLock();
-  }
-}
-
 /** These routes have an unambiguous SCF target. Other methods keep null energies. */
 const simpleMethod = /(?:^|[\s!#])(?:[ru]?hf|rohf|[ru]?(?:b3lyp|b3pw91|blyp|bp86|pbe0|pbe1pbe|pbepbe|pbe|m062x|m06-2x|m06|m06l|m06-l|m052x|m05-2x|tpss|tpssh|camb3lyp|cam-b3lyp|wb97xd|wb97x-d|wb97x|wb97m-v|b97d|b97-d|b97-3c|r2scan-3c|pbeh-3c|hf-3c|r2scan|scan|svwn|lsda))(?=\s|\/|$)/i;
 function targetFor(route: string, engine: Engine): Target {
@@ -103,8 +68,7 @@ class OptimizationIndex {
   private jobIndex = 0;
   private segmentIndex = 0;
   private route = '';
-  private routeCapture = false;
-  private outputArchive = new GaussianOutputArchive();
+  private outputSections = new GaussianOutputSections<Line>();
   private allowed = false;
   private target: Target = 'unknown';
   private expected: number | null = null;
@@ -119,6 +83,8 @@ class OptimizationIndex {
   private optimized = false;
   private finalEvaluation = false;
   private finalEvaluationPending = false;
+  private dipoleProperty = false;
+  private dipoleMagnitude = false;
   private compoundArchiveStart: number | null = null;
   private terminated = false;
   private failed = false;
@@ -173,8 +139,9 @@ class OptimizationIndex {
     this.finalEvaluation = false; this.finalEvaluationPending = false;
   }
   private newJob(jobIndex = this.jobIndex + 1) {
-    this.archive(); this.jobIndex = jobIndex; this.route = ''; this.routeCapture = false; this.allowed = false; this.target = 'unknown';
+    this.archive(); this.jobIndex = jobIndex; this.route = ''; this.allowed = false; this.target = 'unknown';
     this.expected = null; this.charge = null; this.multiplicity = null;
+    this.dipoleProperty = false; this.dipoleMagnitude = false;
   }
   private acceptBlock() {
     const b = this.block; this.block = null;
@@ -226,55 +193,69 @@ class OptimizationIndex {
   }
 
   consume(line: Line) {
-    const text = line.text;
     if (!this.engine) {
-      if (/Entering Gaussian System|Gaussian\s+(?:09|16)\b|Gaussian,\s*Inc\./i.test(text)) this.engine = 'gaussian';
-      else if (/\bORCA\b|O\s+R\s+C\s+A/.test(text)) this.engine = 'orca';
-      else { return; }
+      const engine = outputSoftwareOnLine(line.text);
+      if (engine !== 'gaussian' && engine !== 'orca') return;
+      this.engine = engine;
     }
+    if (this.engine === 'gaussian') this.outputSections.consume(line, this.consumeGaussianSection);
+    else this.consumeBody(line);
+  }
+  private consumeGaussianSection = (section: GaussianOutputSection<Line>) => {
+    if (section.kind === 'body') this.consumeBody(section.line);
+    else if (section.kind === 'route-start' && this.route && this.terminated) this.newJob();
+    else if (section.kind === 'route' && section.text !== null && !this.route) {
+      this.route = section.text.replace(/\n/g, ' ');
+      this.configure();
+    }
+  };
+  private consumeBody(line: Line) {
+    const text = line.text;
     const g = this.engine === 'gaussian';
-    if (g && this.outputArchive.consume(text)) return;
+    if (!g && orcaOutputComment(text)) return;
+    const echoPayload = g ? undefined : orcaOutputEcho(text);
+    if (echoPayload === undefined) assertOutputSoftware(text, this.engine!);
+    if (!g) {
+      const echo = orcaSourceLine(echoPayload ?? text).trim();
+      if (echo.startsWith('!') || /^%tddft\b|\biroot\s+\d+|^%casscf\b|^%md\b|^%neb\b|\bnumgrad\b/i.test(echo)) {
+        this.route += ' ' + echo;
+        this.configure();
+      }
+      if (echoPayload !== undefined) return;
+    }
     const compound = !g ? text.match(/\bCOMPOUND JOB\s+(MainJOB|\d+)\s*$/i) : null;
     if (compound) {
       if (/MainJOB/i.test(compound[1])) this.compoundArchiveStart = this.segments.length;
       else this.newJob(Math.max(0, Number(compound[1]) - 1));
       return;
     }
-    if ((g && /Link1:.*Proceeding to internal job step|--Link1--/.test(text)) || (!g && /\bJOB\s+NUMBER\s+\d+/i.test(text))) {
+    if ((g && (gaussianJobLink.test(text) || gaussianExplicitLink.test(text))) || (!g && /\bJOB\s+NUMBER\s+\d+/i.test(text))) {
       if (this.route || this.frames.length || this.pending || this.block) this.newJob();
       return;
     }
-    if ((g && /Entering Gaussian System/.test(text)) || (!g && /^\s*\*?\s*O\s+R\s+C\s+A\s*\*?\s*$/.test(text))) {
+    if ((g && gaussianEntry.test(text)) || (!g && /^\s*\*?\s*O\s+R\s+C\s+A\s*\*?\s*$/.test(text))) {
       if (this.frames.length || this.pending || this.route) this.newJob();
       if (!g) this.compoundArchiveStart = null;
     }
     if (this.coordinateLine(line)) return;
-    if (g && this.route && this.terminated && /^\s*#[pnt]?(?:\s|$)/i.test(text)) this.newJob();
-    if (g && !this.route && /^\s*#[pnt]?(?:\s|$)/i.test(text)) { this.route = text.trim(); this.routeCapture = true; this.configure(); return; }
-    if (this.routeCapture) {
-      if (!text.trim() || separator.test(text)) { this.routeCapture = false; this.configure(); }
-      else { this.route += ' ' + text.trim(); this.configure(); return; }
-    }
-    if (!g) {
-      const echo = text.replace(/^\s*\|\s*\d+>\s?/, '').trim();
-      if (echo.startsWith('!')) { this.route += ' ' + echo; this.configure(); }
-      if (/^%tddft\b|\biroot\s+\d+|^%casscf\b|^%md\b|^%neb\b|\bnumgrad\b/i.test(echo)) { this.route += ' ' + echo; this.configure(); }
-    }
-    const state = g ? text.match(/Charge\s*=\s*([+-]?\d+)\s+Multiplicity\s*=\s*(\d+)/) : null;
-    const charge = !g ? text.match(/Total Charge\s*[.:]*\s*([+-]?\d+)/i) : null;
-    const multiplicity = !g ? text.match(/Multiplicity\s*[.:]*\s*(\d+)/i) : null;
+    const state = g ? text.match(/^\s*Charge\s*=\s*([+-]?\d+)\s+Multiplicity\s*=\s*(\d+)/) : null;
+    if (!g && /^\s*DIPOLE MOMENT\s*$/i.test(text)) { this.dipoleProperty = true; this.dipoleMagnitude = false; }
+    if (this.dipoleProperty && /^\s*Magnitude\s*\(/i.test(text)) this.dipoleMagnitude = true;
+    if (this.dipoleProperty && this.dipoleMagnitude && !text.trim()) this.dipoleProperty = false;
+    const printedState = g || this.dipoleProperty ? null : orcaPrintedState(text);
+    const charge = printedState?.charge, multiplicity = printedState?.multiplicity;
     if (state || charge || multiplicity) {
       const q = state ? Number(state[1]) : charge ? Number(charge[1]) : this.charge;
       const m = state ? Number(state[2]) : multiplicity ? Number(multiplicity[1]) : this.multiplicity;
-      if ((q !== this.charge || m !== this.multiplicity) && (this.pending || this.frames.length)) {
+      if ((this.charge !== null && q !== this.charge || this.multiplicity !== null && m !== this.multiplicity) && (this.pending || this.frames.length)) {
         this.messages.add('电荷或自旋多重度改变，已分成独立结果段。'); this.archive(); this.expected = null;
       }
       this.charge = q; this.multiplicity = m;
     }
     const count = g ? text.match(/\bNAtoms\s*=\s*(\d+)/) : text.match(/(?:Number of atoms|# of atoms)\s*[.:]*\s*(\d+)/i);
     if (count) { this.expected = Number(count[1]); if (!Number.isSafeInteger(this.expected) || this.expected < 1) throw new Error('OPT原子数须为正安全整数。'); }
-    if (/Error termination|ORCA finished by error termination|ORCA TERMINATED ABNORMALLY|SCF NOT CONVERGED|optimization (?:has )?(?:not converged|failed)|maximum number of (?:optimization )?cycles reached|Number of steps exceeded/i.test(text)) this.failed = true;
-    if (/Normal termination of Gaussian|ORCA TERMINATED NORMALLY/.test(text)) {
+    if (gaussianErrorTermination.test(text) || /^\s*\**\s*(?:ORCA finished by error termination|ORCA TERMINATED ABNORMALLY|SCF NOT CONVERGED|optimization (?:has )?(?:not converged|failed)|maximum number of (?:optimization )?cycles reached|Number of steps exceeded)\b/i.test(text)) this.failed = true;
+    if (g ? gaussianNormalTermination.test(text) : orcaNormalTermination.test(text)) {
       this.terminated = true;
       // ORCA compound emits one normal-termination marker for its entire sequence.
       // Apply it only to previously completed optimizer segments in this compound.
@@ -335,7 +316,7 @@ class OptimizationIndex {
     const convergence = text.match(new RegExp(`^\\s*(Maximum Force|RMS Force|Maximum Displacement|RMS Displacement|Energy change|RMS gradient|MAX gradient|RMS step|MAX step)\\s+(${NUMBER})\\s+(${NUMBER})\\s+(YES|NO)\\b`, 'i'));
     if (convergence && number(convergence[2]) !== null && number(convergence[3]) !== null) this.pending.convergence.push({ label: convergence[1], value: number(convergence[2])!, threshold: number(convergence[3]), converged: convergence[4].toUpperCase() === 'YES', unit: /energy/i.test(convergence[1]) ? 'hartree' : /force|gradient/i.test(convergence[1]) ? 'hartree/bohr' : 'bohr' });
   }
-  finish() { this.archive(); return this.segments; }
+  finish() { this.outputSections.finish(this.consumeGaussianSection); this.archive(); return this.segments; }
 }
 
 /** OPT-only result reader. Retains a byte index and three geometries per result, never the complete output text. */

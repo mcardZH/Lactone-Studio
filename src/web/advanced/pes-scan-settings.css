@@ -1,0 +1,21 @@
+.pes-scan-coordinate-line { display:flex; flex-wrap:wrap; align-items:center; gap:var(--input-gap,8px); min-inline-size:0; }
+.pes-scan-coordinate-data { display:flex; flex:1 1 auto; flex-wrap:wrap; align-items:center; gap:6px 8px; min-inline-size:0; }
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-data>.shared-input-field { flex:0 0 auto; flex-wrap:nowrap; }
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-data>.shared-input-field .shared-input-field-control { flex:0 0 auto; inline-size:auto; }
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-data>.shared-input-field input { inline-size:calc(64px * var(--ui-font-scale,1)); min-inline-size:0; }
+.pes-scan-coordinate-numbers { display:inline-flex; flex:0 1 auto; min-inline-size:0; }
+.pes-scan-coordinate-numbers>.field,
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-numbers>.field { display:inline-flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:6px; white-space:nowrap; margin:0; }
+.pes-scan-coordinate-numbers>.field>input,
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-numbers>.field>input:not([type=checkbox]):not([type=radio]):not([type=color]) { flex:0 1 auto; inline-size:calc(96px * var(--ui-font-scale,1)); min-inline-size:4ch; }
+.pes-scan-coordinate-type { flex:none; }
+.pes-scan-coordinate-value { overflow-wrap:anywhere; }
+.interactive-selection-field .pes-scan-coordinate-actions { flex:0 0 auto; flex-wrap:nowrap; margin-inline-start:auto; }
+.pes-scan-coordinate-row>.interactive-selection-field { margin-block:0; }
+.input-settings-layout.input-settings-surface .pes-scan-coordinate-actions>button.shared-coordinate-row-delete { align-self:stretch; flex:0 0 var(--selection-control-height); inline-size:var(--selection-control-height); min-inline-size:var(--selection-control-height); block-size:var(--selection-control-height); min-block-size:var(--selection-control-height); padding:0; }
+.pes-scan-range-row,.pes-scan-range-pair { display:flex; flex-wrap:wrap; align-items:center; gap:var(--input-gap,8px); min-inline-size:0; }
+.pes-scan-range-pair { flex:0 0 auto; flex-wrap:nowrap; max-inline-size:100%; }
+.input-settings-layout.input-settings-surface .pes-scan-range-pair>.shared-input-field { flex:0 0 auto; flex-wrap:nowrap; min-inline-size:0; }
+.input-settings-layout.input-settings-surface .pes-scan-range-pair .shared-input-field-control { flex:0 0 auto; inline-size:auto; min-inline-size:0; }
+.input-settings-layout.input-settings-surface .pes-scan-range-number input:not([type=checkbox]):not([type=radio]):not([type=color]) { inline-size:calc(64px * var(--ui-font-scale,1)); min-inline-size:0; }
+.input-settings-layout.input-settings-surface .pes-scan-range-count input:not([type=checkbox]):not([type=radio]):not([type=color]) { inline-size:calc(56px * var(--ui-font-scale,1)); min-inline-size:0; }

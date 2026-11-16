@@ -236,6 +236,7 @@ function parseCif(text:string,name:string):Structure[] {
     if(!ops.length)ops.push(...standardCifOperations(tags,s));
     const loop=loops.find(l=>l.headers.includes('_atom_site_fract_x')||l.headers.includes('_atom_site_cartn_x'));if(!loop)throw new Error('CIF缺少原子坐标loop。');const col=(key:string)=>loop.headers.indexOf(`_atom_site_${key}`),get=(row:string[],key:string)=>row[col(key)];
     const fractional=col('fract_x')>=0;if(fractional&&!s.cell)throw new Error('CIF分数坐标需要真实晶胞。');if(!s.cell&&ops.some(op=>op.replace(/\s/g,'')!=='x,y,z'))throw new Error('无晶胞CIF不能展开对称操作。');const useExact=!!tags._builder_cell_vectors&&col('cartn_x')>=0;
+    const coordinateNotices=new Set<string>();
     const operations:{op:string;matrix:[Vector3,Vector3,Vector3];sourceOperation:number}[]=[],operationKeys=new Set<string>(),images:CifImage[]=[],positions=new CifPositionIndex(s),explicitIds=col('builder_source_index')>=0&&ops.length===1;
     for(let opIndex=0;opIndex<ops.length;opIndex++){
       const op=ops[opIndex],matrix=cifImageMatrix(op),offset=symmetry(op,[0,0,0]).map((x,i)=>s.cell?.pbc[i]?x-Math.floor(x):x),key=JSON.stringify([matrix,offset]);
@@ -244,10 +245,32 @@ function parseCif(text:string,name:string):Structure[] {
     }
     if(!explicitIds)s.notes.push('CIF原始位点标签以可逆编码保留在原行/对称像稳定ID中；sourceIndex保留原始位点行号。');
     loop.rows.forEach((row,sourceIndex)=>{const occupancy=get(row,'occupancy');if(occupancy&&(['.','?'].includes(occupancy)||Math.abs(num(occupancy)-1)>1e-8))throw new Error('CIF含未知/部分占位或无序，需先明确选定完整构型。');for(const key of ['disorder_group','disorder_assembly']){const d=get(row,key);if(d&&!['.','?','0'].includes(d))throw new Error('CIF含无序组，不能自动选择或合并构型。');}
-      const label=get(row,'label')??`site${sourceIndex+1}`,raw=get(row,'type_symbol')??label.match(/^[A-Z][a-z]?/)?.[0];if(!raw)throw new Error('CIF原子缺少可靠元素。');const element=cifElement(raw),prefix=fractional?'fract':'cartn',coordinateTokens=['x','y','z'].map(k=>get(row,`${prefix}_${k}`)),coords=vec(coordinateTokens);
-      const f=fractional?coords:s.cell?cartesianToFractional(s.cell,coords):coords;
-      const halfUnit=coordinateTokens.map(cifPrintedHalfUnit) as Vector3,coordinateBasis:[Vector3,Vector3,Vector3]=fractional||!s.cell?[[1,0,0],[0,1,0],[0,0,1]]:cellInverse(s.cell);
-      const orbit=operations.map(({op,matrix,sourceOperation})=>{let p:Vector3;if(useExact&&ops.length===1)p=vec(['x','y','z'].map(k=>get(row,`cartn_${k}`)));else if(ops.length===1&&op.replace(/\s/g,'').toLowerCase()==='x,y,z')p=fractional?fractionalToCartesian(s.cell!,coords):coords;else if(s.cell){const transformed=symmetry(op,f).map((x,i)=>s.cell!.pbc[i]?x-Math.floor(x):x) as Vector3;p=fractionalToCartesian(s.cell,transformed);}else p=coords;
+      const label=get(row,'label')??`site${sourceIndex+1}`,raw=get(row,'type_symbol')??label.match(/^[A-Z][a-z]?/)?.[0];if(!raw)throw new Error('CIF原子缺少可靠元素。');const element=cifElement(raw);
+      let rowFractional=fractional,coordinateTokens=['x','y','z'].map(k=>get(row,`${fractional?'fract':'cartn'}_${k}`)),coords:Vector3;
+      let exactCartesian:Vector3|undefined;
+      try{coords=vec(coordinateTokens);}catch(error){
+        if(!useExact||ops.length!==1)throw error;
+        coordinateTokens=['x','y','z'].map(k=>get(row,`cartn_${k}`));coords=vec(coordinateTokens);rowFractional=false;
+        coordinateNotices.add('分数坐标不可读的原子采用了完整的Cartesian坐标');
+      }
+      if(useExact&&ops.length===1){
+        const cartesianTokens=['x','y','z'].map(k=>get(row,`cartn_${k}`));
+        try{const exact=vec(cartesianTokens);
+          if(rowFractional){
+            const expected=fractionalToCartesian(s.cell!,coords),fractionHalf=coordinateTokens.map(cifPrintedHalfUnit),cartesianHalf=cartesianTokens.map(cifPrintedHalfUnit);
+            const agrees=exact.every((value,axis)=>{
+              const rounding=cartesianHalf[axis]+fractionHalf.reduce((sum,half,i)=>sum+half*Math.abs(s.cell!.vectors[i][axis]),0);
+              const arithmetic=64*Number.EPSILON*Math.max(1,Math.abs(value),Math.abs(expected[axis]),Math.abs(s.cell!.origin?.[axis]??0),...s.cell!.vectors.map((v,i)=>Math.abs(v[axis]*coords[i])));
+              return Math.abs(value-expected[axis])<=rounding+arithmetic;
+            });
+            if(agrees)exactCartesian=exact;
+            else coordinateNotices.add('分数坐标与精确Cartesian坐标不一致，已采用公开分数坐标恢复当前几何');
+          }else exactCartesian=exact;
+        }catch{coordinateNotices.add('精确Cartesian坐标不可读，已采用完整的公开分数坐标');}
+      }
+      const f=rowFractional?coords:s.cell?cartesianToFractional(s.cell,coords):coords;
+      const halfUnit=coordinateTokens.map(cifPrintedHalfUnit) as Vector3,coordinateBasis:[Vector3,Vector3,Vector3]=rowFractional||!s.cell?[[1,0,0],[0,1,0],[0,0,1]]:cellInverse(s.cell);
+      const orbit=operations.map(({op,matrix,sourceOperation})=>{let p:Vector3;if(exactCartesian)p=exactCartesian;else if(ops.length===1&&op.replace(/\s/g,'').toLowerCase()==='x,y,z')p=rowFractional?fractionalToCartesian(s.cell!,coords):coords;else if(s.cell){const transformed=symmetry(op,f).map((x,i)=>s.cell!.pbc[i]?x-Math.floor(x):x) as Vector3;p=fractionalToCartesian(s.cell,transformed);}else p=coords;
         const rowMatrix=matrix.map(matrixRow=>([0,1,2] as const).map(j=>matrixRow.reduce((sum,value,k)=>sum+value*coordinateBasis[k][j],0)) as Vector3) as [Vector3,Vector3,Vector3];
         return {point:p,sourceOperation,image:{fraction:s.cell?cartesianToFractional(s.cell,p):p,matrix:rowMatrix,element,sourceRow:sourceIndex} satisfies CifImage};
       });
@@ -259,7 +282,7 @@ function parseCif(text:string,name:string):Structure[] {
         const provenance=get(row,'builder_source_index');const sourceNumber=provenance?num(provenance):sourceIndex+1;if(!Number.isSafeInteger(sourceNumber)||sourceNumber<1)throw new Error('CIF来源原子序号无效。');
         add(s,element,p,explicitIds?label:`${s.id}:site:${sourceIndex+1}:${encodeURIComponent(label)}:sym:${sourceOperation+1}`,sourceNumber);positions.add(image,images.length);images.push(image);
       }
-    });if(ops.length>1)s.notes.push(`已按${ops.length}个对称操作展开并去重；sourceIndex保留原始位点，ID区分映像。`);return finish(s);
+    });if(coordinateNotices.size)s.notes.push(`${name}：CIF坐标来源说明：${[...coordinateNotices].join('；')}。原始坐标声明仍保留在来源文件中。`);if(ops.length>1)s.notes.push(`已按${ops.length}个对称操作展开并去重；sourceIndex保留原始位点，ID区分映像。`);return finish(s);
   });
 }
 
@@ -270,7 +293,59 @@ function parsePoscar(text:string,name:string):Structure[] {const lines=text.spli
   const metadata=lines.slice(i).find(line=>line.startsWith('# builder_metadata '));if(metadata){let m:{origin?:Vector3;pbc?:[boolean,boolean,boolean];sourceIndices?:number[];periodicMetadata?:string};try{m=JSON.parse(metadata.slice(19));}catch{throw new Error('POSCAR builder元数据损坏。');}if(m.origin)s.cell.origin=vec(m.origin.map(String));if(m.pbc)s.cell.pbc=pbc(m.pbc.map(x=>x?'T':'F').join(' '));restorePeriodicity(s,m.periodicMetadata);if(m.sourceIndices){if(m.sourceIndices.length!==s.atoms.length||m.sourceIndices.some(x=>!Number.isSafeInteger(x)))throw new Error('POSCAR来源序号元数据损坏。');s.atoms.forEach((a,k)=>a.sourceIndex=m.sourceIndices![k]);}}
   return [finish(s)];}
 
-function parsePdb(text:string,name:string):Structure[] {const crystal=text.split('\n').find(l=>l.startsWith('CRYST1'));if(!crystal)throw new Error('PDB周期结构缺少CRYST1。');const cell=cellFromParameters(...([crystal.slice(6,15),crystal.slice(15,24),crystal.slice(24,33),crystal.slice(33,40),crystal.slice(40,47),crystal.slice(47,54)].map(v=>num(v.trim())) as [number,number,number,number,number,number]),name);cell.pbcProvenance={kind:'unconfirmed',evidence:'PDB CRYST1仅保存晶胞参数，未保存独立周期轴掩码；当前轴为预览候选，运行前须确认。'};const models:string[][]=[];let current:string[]=[];for(const line of text.split('\n')){if(/^MODEL |^ENDMDL/.test(line)){if(current.length){models.push(current);current=[];}}else if(/^(ATOM  |HETATM)/.test(line))current.push(line);}if(current.length)models.push(current);return models.flatMap((rows,model)=>{const alts=[...new Set(rows.map(l=>l[16]?.trim()).filter(Boolean))];return (alts.length?alts:['']).map((alt,index)=>{const s=base(name,`PDB CRYST1 model ${model+1}${alt?` alt ${alt}`:''}`,model*100+index);s.cell=structuredClone(cell);s.notes.push('PDB坐标按原固定列打印精度读取，不补原文件未记录的小数；CRYST1不证明二维周期轴。');for(const line of rows.filter(l=>!l[16]?.trim()||l[16]===alt)){const label=line.slice(12,16),letters=label.trim().replace(/^\d+/,'');let element=line.slice(76,78).trim();if(!element){element=/^\s|^\d/.test(label)?letters[0]:letters.slice(0,2);try{elementSymbol(element);}catch{element=letters[0];}}add(s,element,vec([line.slice(30,38),line.slice(38,46),line.slice(46,54)].map(x=>x.trim())),`${s.id}:serial:${line.slice(6,11).trim()}`,num(line.slice(6,11).trim()));}if(alt)s.notes.push(`使用替代位置${alt}及公共原子。`);return finish(s);});});}
+function parsePdb(text:string,name:string):Structure[] {
+  const lines=text.split('\n'),crystal=lines.find(line=>line.startsWith('CRYST1')),notes:string[]=[];
+  let cell:PeriodicCell|undefined,parameters:[number,number,number,number,number,number]|undefined;
+  if(crystal){try{
+    parameters=[crystal.slice(6,15),crystal.slice(15,24),crystal.slice(24,33),crystal.slice(33,40),crystal.slice(40,47),crystal.slice(47,54)].map(value=>num(value.trim())) as typeof parameters;
+    cell=cellFromParameters(...parameters!,name);
+  }catch{notes.push('PDB CRYST1不完整或无效；已保留可读Cartesian原子，未补造晶胞。原文：'+crystal);}}
+  const scaleLines=lines.filter(line=>/^SCALE[123](?:\s|$)/.test(line));
+  let scaleRows:[Vector3,Vector3,Vector3]|undefined,translation:Vector3=[0,0,0],recoveredScale=false;
+  if(scaleLines.length){try{
+    const rows:(Vector3|undefined)[]=[],offsets:(number|undefined)[]=[];
+    for(const line of scaleLines){const index=Number(line[5])-1;if(rows[index])throw Error('重复SCALE行');
+      rows[index]=[line.slice(10,20),line.slice(20,30),line.slice(30,40)].map(value=>num(value.trim())) as Vector3;
+      offsets[index]=line.slice(45,55).trim()?num(line.slice(45,55).trim()):0;
+    }
+    if(rows.filter(Boolean).length!==3)throw Error('SCALE行不完整');
+    scaleRows=rows as [Vector3,Vector3,Vector3];translation=offsets as Vector3;
+  }catch{notes.push('PDB SCALE变换不完整或不可读；原子坐标仍保留，CRYST1默认晶胞方向仅作未确认候选。');}}
+  const method=lines.filter(line=>line.startsWith('EXPDTA')).map(line=>line.slice(6)).join(' ');
+  const nonCrystalMethod=/\bNMR\b|\bELECTRON MICROSCOPY\b/i.test(method);
+  const unitary=!!parameters&&parameters.every((value,i)=>value===(i<3?1:90))&&crystal!.slice(55,66).replace(/\s/g,'').toUpperCase()==='P1'&&Number(crystal!.slice(66,70).trim())===1;
+  const identityScale=!scaleLines.length||!!scaleRows&&scaleRows.every((row,i)=>row.every((value,j)=>value===(i===j?1:0)))&&translation.every(value=>value===0);
+  if(nonCrystalMethod&&unitary&&identityScale){
+    cell=undefined;
+    notes.push(`PDB来源 ${method.trim()} 的CRYST1为非晶体单位占位值，未建立周期晶胞；原始声明仍保留。原文：${crystal}`);
+  }else if(scaleRows){try{
+    // SCALE maps Cartesian coordinates to fractions: f=S*r+u. Inverting its
+    // rows gives the cell vectors; the box origin is -S^-1*u. Normalize first
+    // so a large but valid cell is not rejected by a threshold on reciprocal units.
+    const magnitude=Math.max(...scaleRows.flat().map(Math.abs));if(!magnitude)throw Error('零SCALE矩阵');
+    const rows=scaleRows.map(row=>row.map(value=>value/magnitude) as Vector3) as [Vector3,Vector3,Vector3],determinant=dot3(rows[0],cross3(rows[1],rows[2]));
+    if(!Number.isFinite(determinant)||determinant===0)throw Error('SCALE矩阵不可逆');
+    const vectors=[cross3(rows[1],rows[2]),cross3(rows[2],rows[0]),cross3(rows[0],rows[1])].map(row=>row.map(value=>value/determinant/magnitude) as Vector3) as [Vector3,Vector3,Vector3];
+    const transformed:PeriodicCell={vectors,pbc:[true,true,true],source:name};cellInverse(transformed);
+    if(translation.some(value=>value!==0))transformed.origin=fractionalToCartesian(transformed,translation.map(value=>-value) as Vector3,false);
+    cell=transformed;recoveredScale=true;
+  }catch{notes.push('PDB SCALE矩阵无法恢复可靠晶胞；原子坐标仍保留，CRYST1默认晶胞方向仅作未确认候选。');}}
+  if(cell)cell.pbcProvenance={kind:'unconfirmed',evidence:recoveredScale?'PDB晶胞方向及原点按SCALE变换恢复；SCALE/CRYST1未声明独立周期轴掩码，当前轴仅作预览，运行前须确认。':'PDB CRYST1仅保存晶胞参数，未保存独立周期轴掩码；当前轴为预览候选，运行前须确认。'};
+  const models:string[][]=[];let current:string[]=[];
+  for(const line of lines){if(/^MODEL |^ENDMDL/.test(line)){if(current.length){models.push(current);current=[];}}else if(/^(ATOM  |HETATM)/.test(line))current.push(line);}
+  if(current.length)models.push(current);
+  return models.flatMap((rows,model)=>{const alts=[...new Set(rows.map(line=>line[16]?.trim()).filter(Boolean))];return (alts.length?alts:['']).map((alt,index)=>{
+    const s=base(name,`PDB${crystal?' CRYST1':''} model ${model+1}${alt?` alt ${alt}`:''}`,model*100+index);
+    if(cell)s.cell=structuredClone(cell);s.notes.push(...notes,'PDB坐标按原固定列打印精度读取，不补原文件未记录的小数；CRYST1不证明二维周期轴。');
+    for(const line of rows.filter(line=>!line[16]?.trim()||line[16]===alt)){
+      const label=line.slice(12,16),letters=label.trim().replace(/^\d+/,'');let element=line.slice(76,78).trim();
+      if(!element){element=/^\s|^\d/.test(label)?letters[0]:letters.slice(0,2);try{elementSymbol(element);}catch{element=letters[0];}}
+      add(s,element,vec([line.slice(30,38),line.slice(38,46),line.slice(46,54)].map(value=>value.trim())),`${s.id}:serial:${line.slice(6,11).trim()}`,num(line.slice(6,11).trim()));
+    }
+    if(alt)s.notes.push(`使用替代位置${alt}及公共原子。`);return finish(s);
+  });});
+}
+
 interface Section {name:string;args:string[];lines:string[][];children:Section[]}
 function cpComment(line:string):string {let quote='';for(let i=0;i<line.length;i++){if((line[i]==="'"||line[i]==='"')&&line[i-1]!=='\\'){if(quote===line[i])quote='';else if(!quote)quote=line[i];}else if(!quote&&/[!#]/.test(line[i]))return line.slice(0,i);}return line;}
 function cpSections(text:string):Section {const root:Section={name:'ROOT',args:[],lines:[],children:[]},stack=[root];for(const raw of text.split('\n')){const line=cpComment(raw).trim();if(!line)continue;if(line.startsWith('@'))throw new Error('CP2K含未解析预处理指令；请提供展开后的坐标与晶胞。');const row=line.match(/"[^"]*"|'[^']*'|\S+/g)!.map(x=>x.replace(/^['"]|['"]$/g,''));if(/^&END$/i.test(row[0])){if(stack.length===1||row[1]&&row[1].toUpperCase()!==stack.at(-1)!.name)throw new Error('CP2K section结束不匹配。');stack.pop();}else if(row[0].startsWith('&')){const node:Section={name:row[0].slice(1).toUpperCase(),args:row.slice(1),lines:[],children:[]};stack.at(-1)!.children.push(node);stack.push(node);}else stack.at(-1)!.lines.push(row);}if(stack.length!==1)throw new Error('CP2K section未闭合。');return root;}
@@ -343,7 +418,7 @@ export function parsePeriodicStructures(raw:string,name:string,external:Record<s
   if(ext==='cif'||/^\s*data_/im.test(text)&&/_atom_site_/i.test(text))return parseCif(text,name);
   if(/^(?:POSCAR|CONTCAR)(?:\.|$)/i.test(name.split(/[\\/]/).at(-1)??'')||ext==='vasp'||ext==='poscar')return parsePoscar(text,name);
   if(/^\s*&(?:SUBSYS|FORCE_EVAL)\b/im.test(text)&&(/^\s*&(?:CELL|COORD|TOPOLOGY)\b/im.test(text)||/^\s*@INCLUDE\b/im.test(text)))return parseCp2k(expandCp2kIncludes(text,external),name,external);
-  if(/^CRYST1/m.test(text)&&/^(ATOM  |HETATM)/m.test(text))return parsePdb(text,name);
+  if(/^(?:CRYST1|SCALE[123](?:\s|$))/m.test(text)&&/^(ATOM  |HETATM)/m.test(text))return parsePdb(text,name);
   if(/^\s*\d+\s*\n/.test(text)&&/\b(?:Lattice|Properties|pbc|builder_atoms)\s*=/i.test(text.split('\n')[1]??''))return parseXyz(text,name);
   return null;
 }

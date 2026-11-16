@@ -1,8 +1,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Structure } from '../../core/types';
+import type { Structure,Vector3 } from '../../core/types';
 import { pickerStructureIdentity } from '../../core/geometry-guides';
 import { inputSelectionIndices } from '../../core/input-selection';
-import type { AnalysisSelectionIntent, AnalysisSelectionPort } from '../analysis-selection-intent';
+import type { AnalysisSelectionHandle, AnalysisSelectionIntent, AnalysisSelectionPort } from '../analysis-selection-intent';
 import type { AnalysisAtomCapture } from '../modeling/ModelViewport';
 
 export interface AnalysisAtomCaptureOptions {
@@ -12,11 +12,27 @@ export interface AnalysisAtomCaptureOptions {
   purpose?: AnalysisSelectionIntent['purpose'];
   onError?(message: string): void;
 }
-interface Session { id: string; key: string; generation: number; intent: AnalysisSelectionIntent; ids: string[] }
+export interface AnalysisCaptureTarget {
+  contextKey: string;
+  structure: Structure;
+  label?: string;
+  /** Exact optional PES origin for display annotations during a capture preview. */
+  displayGeometry?:import('../../modeling/pes/contracts').PesGeometry;
+  assertCurrent(): void;
+}
+interface Session { id: string; key: string; generation: number; intent: AnalysisSelectionIntent; ids: string[]; images?:Vector3[]; target?: AnalysisCaptureTarget }
+
+function notifyDraft(target:Session){
+  if(target.images)target.intent.onDraftChange?.([...target.ids],structuredClone(target.images));
+  else target.intent.onDraftChange?.([...target.ids]);
+}
 
 /** Ephemeral analysis draft only: deliberately has no Store or input-task port. */
 export function useAnalysisAtomCapture(options: AnalysisAtomCaptureOptions): {
-  selectionPort: AnalysisSelectionPort; viewportCapture: AnalysisAtomCapture | undefined; cancel(): void;
+  selectionPort: AnalysisSelectionPort; viewportCapture: AnalysisAtomCapture | undefined;
+  target?: AnalysisCaptureTarget;
+  requestSelection(intent:AnalysisSelectionIntent,target?:AnalysisCaptureTarget):AnalysisSelectionHandle;
+  cancel(): void;
 } {
   const identity = useRef<{ structure: Structure; value: string } | null>(null);
   // Ordinary frame playback has no capture capability and must not serialize
@@ -44,37 +60,43 @@ export function useAnalysisAtomCapture(options: AnalysisAtomCaptureOptions): {
   }
   const cancel = useMemo(() => () => end(session.current, 'cancelled'), []);
   const generation = latest.current.generation;
+  const requestSelection=useMemo(()=>(intent:AnalysisSelectionIntent,targetSource?:AnalysisCaptureTarget):AnalysisSelectionHandle=>{
+      assertContext(key, generation);
+      targetSource?.assertCurrent();
+      const expectedPurpose=latest.current.options.purpose??'surface-region';
+      const kindAllowed=expectedPurpose==='advanced-region'?(intent.kind==='atoms'||intent.kind==='coordinate'):intent.kind===(expectedPurpose==='advanced-coordinate'?'coordinate':'atoms');
+      if (intent.owner.kind !== 'analysis' || intent.owner.id !== latest.current.options.ownerId || intent.contextKey !== (targetSource?.contextKey??key) || intent.purpose !== expectedPurpose || !kindAllowed)
+        throw new Error('分析选择请求与当前分析实例不匹配。');
+      const structure=targetSource?.structure??latest.current.options.structure;
+      inputSelectionIndices(structure,intent.initialAtomIds);
+      cancel();
+      const target:Session={id:`analysis-capture-${++serial.current}`,key,generation,intent,ids:[...intent.initialAtomIds],target:targetSource};
+      session.current=target;
+      const assertCurrent=()=>{assertContext(key,generation);if(session.current!==target)throw Error('分析选择已结束或被替换，请重新选择。');targetSource?.assertCurrent();};
+      if(!targetSource||intent.origin==='interactive')setSnapshot({session:target,ids:[...target.ids]});
+      try{notifyDraft(target);}catch(error){end(target,'cancelled');throw error;}
+      return {assertCurrent,cancel:()=>end(target,'cancelled'),setAtomIds(ids){
+        assertCurrent();inputSelectionIndices(structure,ids);
+        if(ids.length!==target.ids.length||ids.some((id,index)=>id!==target.ids[index]))target.images=undefined;
+        target.ids=[...ids];if(!targetSource||intent.origin==='interactive')setSnapshot({session:target,ids:[...ids]});notifyDraft(target);
+      },confirm(){
+        assertCurrent();inputSelectionIndices(structure,target.ids);
+        if(!target.ids.length)throw Error('请至少选择一个原子。');
+        if(intent.kind==='coordinate'&&(target.ids.length<2||target.ids.length>4))throw Error('请按顺序选择2、3或4个不同原子。');
+        const confirmed=target.images?intent.onConfirm([...target.ids],structuredClone(target.images)):intent.onConfirm([...target.ids]);
+        if(confirmed!==false)end(target,'confirmed');
+      }};
+  },[key,generation,cancel]);
   const selectionPort = useMemo<AnalysisSelectionPort>(() => ({
     owner: { kind: 'analysis', id: options.ownerId }, contextKey: key,
     assertCurrent: () => assertContext(key, generation),
-    requestSelection(intent) {
-      assertContext(key, generation);
-      const expectedPurpose=latest.current.options.purpose??'surface-region';
-      const kindAllowed=expectedPurpose==='advanced-region'?(intent.kind==='atoms'||intent.kind==='coordinate'):intent.kind===(expectedPurpose==='advanced-coordinate'?'coordinate':'atoms');
-      if (intent.owner.kind !== 'analysis' || intent.owner.id !== latest.current.options.ownerId || intent.contextKey !== key || intent.purpose !== expectedPurpose || !kindAllowed)
-        throw new Error('分析选择请求与当前分析实例不匹配。');
-      inputSelectionIndices(latest.current.options.structure, intent.initialAtomIds);
-      cancel();
-      const target: Session = { id: `analysis-capture-${++serial.current}`, key, generation, intent, ids: [...intent.initialAtomIds] };
-      session.current = target;
-      const assertCurrent = () => { assertContext(key, generation); if (session.current !== target) throw new Error('分析选择已结束或被替换，请重新选择。'); };
-      setSnapshot({ session: target, ids: [...target.ids] });
-      try { intent.onDraftChange?.([...target.ids]); } catch (error) { end(target, 'cancelled'); throw error; }
-      return {
-        assertCurrent, cancel: () => end(target, 'cancelled'),
-        confirm() {
-          assertCurrent(); inputSelectionIndices(latest.current.options.structure, target.ids);
-          if (!target.ids.length) throw new Error('请至少选择一个原子。');
-          if(target.intent.kind==='coordinate'&&(target.ids.length<2||target.ids.length>4))throw new Error('请按顺序选择2、3或4个不同原子。');
-          if (intent.onConfirm([...target.ids]) !== false) end(target, 'confirmed');
-        },
-      };
-    },
-  }), [key, generation, options.active]);
+    requestSelection:intent=>requestSelection(intent),
+  }), [key, generation, requestSelection]);
   useLayoutEffect(() => {
     const current=latest.current;
     if (session.current && (session.current.key !== current.key || session.current.generation !== current.generation || !current.options.active)) cancel();
-  }, [key, options.active, generation]);
+    try{session.current?.target?.assertCurrent();}catch{cancel();}
+  });
   useLayoutEffect(() => {
     alive.current = true;
     return () => { alive.current = false; cancel(); };
@@ -82,17 +104,18 @@ export function useAnalysisAtomCapture(options: AnalysisAtomCaptureOptions): {
   const viewportCapture = useMemo<AnalysisAtomCapture | undefined>(() => {
     const target = snapshot?.session;
     if (!target || session.current !== target || target.key !== key || target.generation !== generation || !options.active) return undefined;
-    const assertCurrent = () => { assertContext(key, generation); if (session.current !== target) throw new Error('分析选择已结束或被替换，请重新选择。'); };
-    const draft = (ids: string[]) => {
-      assertCurrent(); inputSelectionIndices(latest.current.options.structure, ids);
-      target.ids = [...ids]; setSnapshot({ session: target, ids: [...ids] }); target.intent.onDraftChange?.([...ids]);
+    const assertCurrent = () => { assertContext(key, generation); if (session.current !== target) throw new Error('分析选择已结束或被替换，请重新选择。');target.target?.assertCurrent(); };
+    const draft = (ids: string[],images?:Vector3[]) => {
+      assertCurrent(); inputSelectionIndices(target.target?.structure??latest.current.options.structure, ids);
+      target.ids = [...ids];target.images=images&&structuredClone(images);setSnapshot({session:target,ids:[...ids]});notifyDraft(target);
     };
-    return { requestId: target.id, ownerId: latest.current.options.ownerId, contextKey: key, atomIds: snapshot.ids,kind:target.intent.kind,
+    return { requestId: target.id, ownerId: latest.current.options.ownerId, contextKey: target.intent.contextKey, atomIds: snapshot.ids,kind:target.intent.kind,
       assertCurrent, onCancel: () => end(target, 'cancelled'),
       onPick(id) { draft(id === null ? [] : target.ids.includes(id) ? target.ids.filter(value => value !== id) : [...target.ids, id]); },
       onBox(ids) { if(target.intent.kind==='atoms')draft([...new Set([...target.ids, ...ids])]); },
-      onCoordinate(ids) { if(target.intent.kind==='coordinate')draft(ids); },
+      onCoordinate(ids,images) { if(target.intent.kind==='coordinate')draft(ids,images); },
     };
   }, [key, generation, snapshot, options.active]);
-  return useMemo(() => ({ selectionPort, viewportCapture, cancel }), [selectionPort, viewportCapture, cancel]);
+  const target=viewportCapture?snapshot?.session.target:undefined;
+  return useMemo(() => ({ selectionPort, viewportCapture, requestSelection, target, cancel }), [selectionPort, viewportCapture, requestSelection, target, cancel]);
 }

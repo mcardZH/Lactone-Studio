@@ -1,5 +1,5 @@
 import type { FileSettings, GaussianSettings, JobRequest, MethodId, TaskId } from './types';
-import { atomicNumber, electronicStateError } from './elements';
+import { atomicNumber, electronicStateParameterError } from './elements';
 import { BASES, canonicalBasis, METHODS } from './catalog';
 import { defaultAdvanced } from './advanced';
 import { angularBasisPlan, externalMaBasis, unsupportedElements } from './basis';
@@ -200,7 +200,7 @@ export function validateJob(request: JobRequest): string[] {
   if (explicit && request.structure?.dimension === 2) errors.push('当前是二维结构，请先生成真实三维，再导出量化坐标。');
   if (explicit && request.structure?.cell?.pbc.some(Boolean)) errors.push('当前为周期模型；本版Gaussian输入仅支持有限分子。请明确导出无盒模型并重新载入后生成，晶胞不会静默省略。');
   if (explicit && request.structure?.atoms.length) {
-    const stateError = electronicStateError(request.structure.atoms, request.charge, request.multiplicity);
+    const stateError = electronicStateParameterError(request.charge, request.multiplicity);
     if (stateError) errors.push(stateError);
     if (request.structure.atoms.some(atom => ![atom.x, atom.y, atom.z].every(Number.isFinite))) errors.push('结构包含非有限坐标。');
   } else if (files.geometry === 'check') {

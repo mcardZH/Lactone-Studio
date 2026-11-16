@@ -2,6 +2,7 @@
 const { readManagedResult } = require('./analysis-result-wire.cjs');
 const nativeFS=require('node:fs/promises');
 const path=require('node:path');
+const { requireBackend, requireSameBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
 const {createHash,randomUUID}=require('node:crypto');
 const {createWavefunctionAnalysisRunner,baderGridPlan,occupationPrintEvidence,createGeneratedAnalysisPolicy}=require('./wavefunction-analysis.cjs');
 const {progressIdentity,createMultiwfnProgress}=require('./multiwfn-progress.cjs');
@@ -24,7 +25,10 @@ function metadata(raw,session) {
   const atoms=raw.atoms.map((atom,i)=>{assert(plain(atom)&&Number.isInteger(atom.atomicNumber)&&atom.atomicNumber>0&&atom.atomicNumber<SYMBOLS.length&&Array.isArray(atom.positionBohr)&&atom.positionBohr.length===3&&atom.positionBohr.every(Number.isFinite),'Invalid wavefunction atom'); const p=atom.positionBohr.map(n=>n*0.529177210903);return {id:`a${i+1}`,sourceIndex:i+1,element:SYMBOLS[atom.atomicNumber],x:p[0],y:p[1],z:p[2]};});
   assert(Array.isArray(raw.orbitals)&&raw.orbitals.length>0&&raw.orbitals.length<=100000,'Invalid source orbital count');
   const keys=new Set();const orbitals=raw.orbitals.map(o=>{assert(plain(o)&&string(o.id,100)&&!keys.has(o.id)&&['restricted','alpha','beta'].includes(o.spin)&&['index','sourceIndex','displayIndex','sourceLine'].every(k=>Number.isSafeInteger(o[k])&&o[k]>0)&&Number.isFinite(o.energyHartree)&&Number.isFinite(o.occupation)&&o.occupation>=0&&o.occupation<=2&&string(o.sourceField,256),'Invalid source orbital');keys.add(o.id);return {key:o.id,spin:o.spin,ordinal:o.index,sourceIndex:o.sourceIndex,displayIndex:o.displayIndex,energy:o.energyHartree,energyUnit:'hartree',occupation:o.occupation,sourceLine:o.sourceLine,sourceField:o.sourceField};});
-  return {sourceId:session.sourceId,sourceRevision:session.sourceRevision,name:session.name,format:raw.format,structure:{id:session.sourceId,name:session.name,format:raw.format,atoms,charge:Number.isSafeInteger(raw.charge)?raw.charge:null,multiplicity:Number.isSafeInteger(raw.multiplicity)&&raw.multiplicity>0?raw.multiplicity:null,notes:['Wavefunction source geometry; no bond inference.'],dimension:3},basisCount:raw.basisCount,orbitals,messages:[raw.basisConvention].filter(v=>typeof v==='string')};
+  const effectiveNuclearCharges=raw.atoms.some(atom=>atom.effectiveNuclearCharge!==undefined)?raw.atoms.map(atom=>{
+    assert(Number.isSafeInteger(atom.effectiveNuclearCharge)&&atom.effectiveNuclearCharge>0&&atom.effectiveNuclearCharge<=atom.atomicNumber,'Invalid wavefunction effective nuclear charge');return atom.effectiveNuclearCharge;
+  }):undefined;
+  return {sourceId:session.sourceId,sourceRevision:session.sourceRevision,name:session.name,format:raw.format,structure:{id:session.sourceId,name:session.name,format:raw.format,atoms,charge:Number.isSafeInteger(raw.charge)?raw.charge:null,multiplicity:Number.isSafeInteger(raw.multiplicity)&&raw.multiplicity>0?raw.multiplicity:null,notes:['Wavefunction source geometry; no bond inference.'],dimension:3},basisCount:raw.basisCount,orbitals,messages:[raw.basisConvention].filter(v=>typeof v==='string'),...(effectiveNuclearCharges?{effectiveNuclearCharges}:{})};
 }
 /** One shared scientific worker; each opening metadata inspection owns its child. */
 function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBackend,resolveResources,snapshotSource,jobRoot,sendToWindow,sendProgress=()=>{},onAnalysisEvidence,analysisResourceOverrides,fs=nativeFS,limits={},scheduler,timers={setTimeout,clearTimeout}}) {
@@ -37,7 +41,11 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
   function cancelIdle(){if(idleTimer!==undefined){timers.clearTimeout(idleTimer);idleTimer=undefined;}}
   function canIdle(w){return !disposed&&worker===w&&!w.closed&&!w.terminating&&!sessions.size&&!pending.size&&!starting&&!analyses.activeCount()&&!operationTasks.size&&!cleanupTasks.size&&!cleanupAfterClose.size;}
   function scheduleIdle(){const w=worker;if(!w||!canIdle(w)||idleTimer!==undefined)return;idleTimer=timers.setTimeout(()=>{idleTimer=undefined;if(!canIdle(w))return;w.terminating=true;w.idleClosing=true;try{w.child.stdin.end();}catch{/* Actual close remains required. */}w.killTimer=setTimeout(()=>{if(!w.closed)w.child.kill();},policy.stopMs);w.killTimer.unref?.();},policy.idleMs);idleTimer.unref?.();}
-  function reservedMemoryBytes(context={}) { return [...sessions.values()].filter(s=>!s.closed&&s.nativeOpen&&!(context.domain==='orbital'&&context.sessionId===s.sessionId)).reduce((sum,s)=>sum+(s.plan?.fieldBytes??0)*s.completed.size,0)+(context.domain==='analysis'?0:analyses.reservedMemoryBytes()); }
+  function reservedMemoryBytes(context={}) {
+    // The worker owns the completed arrays until its session acknowledges close.
+    // Its current orbital session already includes its own cache in the native plan.
+    return [...sessions.values()].filter(s=>s.nativeOpen&&!(context.domain==='orbital'&&context.sessionId===s.sessionId)).reduce((sum,s)=>sum+(s.plan?.fieldBytes??0)*s.completed.size,0);
+  }
   function captureResources(s,controller){return require('./compute-resources.cjs').captureComputeResources(resolveResources?owner=>resolveResources(owner,{domain:'orbital'}):undefined,s.owner,controller.signal);}
   async function allocation(owner,key,operation,sessionId) {const s=owned(owner,sessionId),controller=new AbortController();s.allocationControllers??=new Set();s.allocationControllers.add(controller);let lease;try{if(scheduler)lease=await scheduler.acquire({owner,key,signal:controller.signal});const resources=await captureResources(s,controller);owned(owner,sessionId,s);assert(!controller.signal.aborted,'ORBITAL_CANCELLED: 资源读取已取消');return await operation(lease,resources);}finally{lease?.release();s.allocationControllers.delete(controller);} }
   function nativeIdle(s,generation) { s.nativeIdleGeneration=Math.max(s.nativeIdleGeneration??-1,generation);for(const waiter of [...(s.nativeIdleWaiters??[])])if(waiter.generation<=s.nativeIdleGeneration){s.nativeIdleWaiters.delete(waiter);waiter.resolve();} }
@@ -53,11 +61,13 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
   }
   function refreshRendererBudgets(){for(const s of sessions.values()){if(s.parent){if(s.plan)s.plan.rendererBytes=0;}else{let size=s.plan?.rendererBytesPerView??0;for(const child of s.children??[])if(!child.closed)size=Math.max(size,child.plan?.rendererBytesPerView??0);s.canvasReserve=size*s.viewCount;if(s.plan)s.plan.rendererBytes=s.canvasReserve;}}}
   async function configuredResources(backend,overrides={},captured){if(worker?.idleClosing)await worker.finished;const effective=captured??overrides,value=await request('resources',null,{...(backend.configured?{executable:backend.path}:{}),...(effective.threads===undefined?{}:{threads:effective.threads}),...(effective.memoryBudgetBytes===undefined?{}:{memoryBudgetBytes:effective.memoryBudgetBytes})});return {...resourceInfo(value.resources),configured:backend.configured,...(captured?{computeResourceVersion:captured.version,computeResourceSource:captured.source}:{} )};}
-  async function resources(owner,overrides,resourceSnapshot){
+  async function resources(owner,overrides,resourceSnapshot,backendSnapshot){
     assert(Number.isSafeInteger(owner)&&owner>=0&&!closedOwners.has(owner)&&!disposed,'Resource owner closed');
     assert(overrides===undefined||(plain(overrides)&&Object.keys(overrides).length===2&&Object.keys(overrides).every(k=>['threads','memoryBudgetBytes'].includes(k))&&Number.isSafeInteger(overrides.threads)&&overrides.threads>0&&overrides.threads<=2147483647&&Number.isSafeInteger(overrides.memoryBudgetBytes)&&overrides.memoryBudgetBytes>0),'Invalid explicit Multiwfn resource overrides');
     const snapshot=overrides===undefined?undefined:{...overrides};
-    const captured=resourceSnapshot??(resolveResources?await resolveResources(owner,snapshot??{}):undefined),resolved=await configuredResources(await resolveBackend(),snapshot,captured);
+    const captured=resourceSnapshot??(resolveResources?await resolveResources(owner,snapshot??{}):undefined);
+    const granted=backendSnapshot&&captured&&snapshot?{...captured,...snapshot}:captured;
+    const resolved=await configuredResources(backendSnapshot??await resolveBackend(),snapshot,granted);
     if(snapshot)assert(snapshot.threads<=resolved.logicalCpuCount&&snapshot.memoryBudgetBytes<=resolved.totalPhysicalMemoryBytes,'Explicit Multiwfn resource overrides exceed available logical CPUs or physical RAM');
     return resolved;
   }
@@ -83,7 +93,16 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
   }
   function updateSelectedReserve(s){if(s.plan?.mode!=='selected')return;const target=s.requestedKeys?.[0],count=Math.max(1,s.completed.size+(target&&!s.completed.has(target)?1:0));s.plan.nativeBytes=s.plan.nativeWorkingBytes+s.plan.fieldBytes*count;}
   function progress(s,event) {return {event:event.event,seq:event.seq,sessionId:s.sessionId,sourceRevision:s.sourceRevision,gridKey:s.plan?.gridKey??'',status:s.state,completedKeys:[...s.completed],total:s.metadata?.orbitals.length??0,currentKey:event.orbital?.id??s.requestedKeys?.[0]??null,cacheBytes:(s.plan?.fieldBytes??0)*s.completed.size,mode:s.plan?.mode??'all',...(s.runResources?{resources:s.runResources}:{}),requestedKeys:s.requestedKeys??[],...(event.error?{message:event.error.message,error:event.error}:{} )};}
-  function failAll(error,w=worker) {if(!w||worker!==w)return;for(const p of pending.values()){clearTimeout(p.timer);p.reject(error);}pending.clear();for(const s of sessions.values()){s.state='failed';send(s,progress(s,{event:'error',seq:++s.seq,error:{code:'ORBITAL_WORKER_FAILED',message:error.message}}));}if(!w.terminating){w.terminating=true;try{w.child.stdin.end();}catch{}w.killTimer=setTimeout(()=>{if(!w.closed)w.child.kill();},policy.stopMs);w.killTimer.unref?.();}}
+  function failAll(error,w=worker) {
+    if(!w||worker!==w||w.firstError)return;
+    w.firstError=error;
+    const failed=[...pending.values()];
+    for(const entry of failed)clearTimeout(entry.timer);
+    pending.clear();
+    for(const s of sessions.values())if(s.worker===w){s.state='failed';send(s,progress(s,{event:'error',seq:++s.seq,error:{code:'ORBITAL_WORKER_FAILED',message:error.message}}));}
+    if(!w.terminating&&!w.closed){w.terminating=true;try{w.child.stdin.end();}catch{}w.killTimer=setTimeout(()=>{if(!w.closed)w.child.kill();},policy.stopMs);w.killTimer.unref?.();}
+    void w.finished.then(()=>{for(const entry of failed)entry.reject(error);});
+  }
   function ensureWorker() {
     cancelIdle();assert(!disposed,'Orbital host disposed');if(worker){assert(!worker.terminating,'Orbital worker is closing');return worker;}
     const runtime=resolveRuntime();const child=spawn(runtime.executable,runtime.args,{cwd:runtime.cwd,windowsHide:true,shell:false,stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONUTF8:'1',PYTHONDONTWRITEBYTECODE:'1',OMP_NUM_THREADS:'1',OPENBLAS_NUM_THREADS:'1',MKL_NUM_THREADS:'1'}});
@@ -93,7 +112,7 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
     function message(value) {
       assert(plain(value),'Invalid orbital worker packet');
       if(value.id!==undefined&&value.id!==null){const p=pending.get(value.id);assert(p,'Unknown orbital reply');if(p.session){assert(value.sessionId===p.session.sessionId&&value.sourceRevision===p.session.sourceRevision&&value.gridKey===(p.gridKey??p.session.plan?.gridKey??'')&&value.generation===p.generation,'Orbital reply identity changed');}assert(typeof value.ok==='boolean','Invalid orbital reply status');if(!value.ok)assert(plain(value.error)&&string(value.error.code,128)&&string(value.error.message,8192),'Invalid orbital error');pending.delete(value.id);clearTimeout(p.timer);if(!value.ok)p.reject(new Error(`${value.error.code}: ${value.error.message}`));else p.resolve(value);return;}
-      assert(['progress','state','error','native-idle','task-progress'].includes(value.event)&&string(value.sessionId,128),'Invalid orbital worker event');const s=sessions.get(value.sessionId);if(!s)return;
+      assert(['progress','state','error','native-idle','task-progress'].includes(value.event)&&string(value.sessionId,128),'Invalid orbital worker event');const s=sessions.get(value.sessionId);if(!s||s.worker!==w)return;
       if(value.event==='task-progress'){if(!s.closed&&value.sourceRevision===s.sourceRevision&&value.gridKey===s.plan?.gridKey&&value.generation===s.generation&&Number.isSafeInteger(value.seq)&&value.seq>s.seq){s.seq=value.seq;if(plain(value.progress))s.taskProgress?.report(value.progress.phase,value.progress);}return;}
       if(value.event==='native-idle'){assert(value.sourceRevision===s.sourceRevision&&value.gridKey===s.plan?.gridKey&&Number.isSafeInteger(value.generation)&&value.generation<=s.generation&&value.nativeSettled===true,'Invalid orbital native settle identity');nativeIdle(s,value.generation);return;}if(s.closed)return;
       assert(value.sourceRevision===s.sourceRevision&&value.gridKey===s.plan?.gridKey&&Number.isSafeInteger(value.seq)&&value.seq>s.seq,'Orbital event identity/sequence changed');s.seq=value.seq;
@@ -106,10 +125,14 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
     }
     child.stdout.on('data',chunk=>{if(w.terminating)return;try{let bytes=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);while(bytes.length){const index=bytes.indexOf(10),part=index<0?bytes:bytes.subarray(0,index);w.parts.push(part);w.bytes+=part.length;if(index<0)break;const line=Buffer.concat(w.parts,w.bytes).toString('utf8');w.parts=[];w.bytes=0;assert(line.length>0,'Empty orbital worker packet');message(JSON.parse(line));bytes=bytes.subarray(index+1);}}catch(error){failAll(error,w);}});
     child.stderr.on('data',chunk=>{w.stderr=(w.stderr+chunk.toString('utf8')).slice(-8192);});child.stdin.on('error',error=>failAll(error,w));child.on('error',error=>failAll(error,w));
-    child.on('close',code=>{w.closed=true;w.finish();clearTimeout(w.killTimer);if(worker!==w)return;if(!w.terminating)failAll(new Error(`Orbital worker exited (${code}): ${w.stderr}`),w);worker=null;for(const s of sessions.values()){s.nativeOpen=false;s.state='failed';nativeIdle(s,s.generation);}for(const s of cleanupAfterClose){void clean(s);cleanupAfterClose.delete(s);} });
+    child.on('close',code=>{w.closed=true;w.finish();clearTimeout(w.killTimer);if(worker!==w)return;if(!w.terminating)failAll(new Error(`Orbital worker exited (${code}): ${w.stderr}`),w);worker=null;for(const s of sessions.values())if(s.worker===w){s.nativeOpen=false;s.state='failed';nativeIdle(s,s.generation);}for(const s of cleanupAfterClose){void clean(s);cleanupAfterClose.delete(s);} });
     return w;
   }
-  function request(operation,s,extra={},gridKey) {const w=ensureWorker();const id=`orb-${++requestSequence}`,generation=s?.generation??0;return new Promise((resolve,reject)=>{const waitMs=['field','export-cube'].includes(operation)?policy.fieldMs:policy.requestMs;const timer=waitMs>0?setTimeout(()=>{pending.delete(id);reject(new Error('ORBITAL_TIMEOUT: 轨道引擎响应超时'));failAll(new Error('Orbital worker response timeout'),w);},waitMs):undefined;pending.set(id,{resolve,reject,timer,session:s,gridKey,generation});try{w.child.stdin.write(JSON.stringify({id,operation,...(s?{sessionId:s.sessionId,sourceRevision:s.sourceRevision,gridKey:gridKey??s.plan?.gridKey??'',generation}:{}),...extra})+'\n');}catch(error){pending.delete(id);clearTimeout(timer);reject(error);}}).then(value=>readManagedResult(value,s?.directory));}
+  function request(operation,s,extra={},gridKey) {const createsBinding=operation==='open', readsMetadata=operation==='plan'||operation==='resources';
+    const w=createsBinding||readsMetadata?ensureWorker():s.worker;
+    assert(w && w===worker && !w.closed && !w.terminating,'ORBITAL_WORKER_UNAVAILABLE: 原分析会话已结束');
+    if(createsBinding)s.worker=w;
+    const id=`orb-${++requestSequence}`,generation=s?.generation??0;return new Promise((resolve,reject)=>{const waitMs=['field','export-cube'].includes(operation)?policy.fieldMs:policy.requestMs;const timer=waitMs>0?setTimeout(()=>failAll(new Error('ORBITAL_TIMEOUT: 轨道引擎响应超时'),w),waitMs):undefined;pending.set(id,{resolve,reject,timer,session:s,gridKey,generation});try{w.child.stdin.write(JSON.stringify({id,operation,...(s?{sessionId:s.sessionId,sourceRevision:s.sourceRevision,gridKey:gridKey??s.plan?.gridKey??'',generation}:{}),...extra})+'\n');}catch(error){failAll(error,w);}}).then(value=>readManagedResult(value,s?.scienceDirectory??s?.directory));}
   function cancelledOpen(){return new Error('ORBITAL_CANCELLED: 波函数读取已取消');}
   function rememberClosed(owner,id){let ids=closedSessions.get(owner);if(!ids)closedSessions.set(owner,ids=new Set());ids.add(id);}
   function stopInspect(w,error,force=false){
@@ -165,7 +188,7 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
     }catch(error){stopInspect(w,error,true);await w.finished;throw error;}
     finally{s.openController.signal.removeEventListener('abort',abort);if(s.inspectOwner===w)delete s.inspectOwner;}
   }
-  function clean(s){if(s.cleanupTask)return s.cleanupTask;const task=s.cleanupTask=(async()=>{await s.creation?.catch(()=>{});await s.inspectOwner?.finished;await Promise.all([...(s.children??[])].map(clean));await analyses.cancel(s.sessionId);const root=s.sourceRoot??s;root.sourceUsers?.delete(s.sessionId);if(root===s&&(!root.sourceUsers||root.sourceUsers.size===0)&&s.sourcePath)await fs.unlink(s.sourcePath).catch(()=>{});if(s.directory)await fs.rmdir(s.directory).catch(()=>{});s.parent?.children.delete(s);refreshRendererBudgets();})();cleanupTasks.add(task);task.finally(()=>cleanupTasks.delete(task));return task;}
+  function clean(s){if(s.cleanupTask)return s.cleanupTask;const task=s.cleanupTask=(async()=>{await s.creation?.catch(()=>{});await s.inspectOwner?.finished;await Promise.all([...(s.children??[])].map(clean));await analyses.cancel(s.sessionId);const root=s.sourceRoot??s;root.sourceUsers?.delete(s.sessionId);if(root===s&&(!root.sourceUsers||root.sourceUsers.size===0)&&s.sourcePath)await fs.unlink(s.sourcePath).catch(()=>{});if(s.scratch){await verifyRunDirectory(s.scratch,fs);await fs.rmdir(s.scratch.directory);}if(s.directory)await fs.rmdir(s.directory).catch(()=>{});s.parent?.children.delete(s);refreshRendererBudgets();})();cleanupTasks.add(task);task.then(()=>cleanupTasks.delete(task),()=>cleanupTasks.delete(task));return task;}
   function closeSession(s){
     if(s.closeTask)return s.closeTask;rememberClosed(s.owner,s.sessionId);s.closed=true;s.state='closed';s.openController?.abort(cancelledOpen());s.leaseCycle?.controller.abort();for(const controller of s.allocationControllers??[])controller.abort();
     const childClosures=[...(s.children??[])].map(closeSession);
@@ -173,7 +196,7 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
       await s.creation?.catch(()=>{});await Promise.all(childClosures);
       try{
         await analyses.cancel(s.sessionId);
-        if(s.nativeOpen&&!disposed){try{await request('close',s);nativeIdle(s,s.generation);}catch(error){const w=worker;if(w){failAll(error,w);await w.finished;}nativeIdle(s,s.generation);throw error;}}
+        if(s.nativeOpen&&!disposed){try{await request('close',s);s.nativeOpen=false;nativeIdle(s,s.generation);}catch(error){const w=worker;if(w){failAll(error,w);await w.finished;}nativeIdle(s,s.generation);throw error;}}
         await Promise.allSettled([...(s.inflight??[])]);
       }finally{
         if(disposed&&worker){await worker.finished;nativeIdle(s,s.generation);}
@@ -205,19 +228,30 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
   // completed generated artifact. No renderer request can invoke this binding.
   function bindTrustedSourceExpectation(owner,rootSessionId,expectation){
     const s=owned(owner,rootSessionId);assert(!s.parent&&s.sourceRoot===s&&s.metadata&&s.metadata.format==='molden','TRUSTED_SOURCE_BINDING: inspected Molden root session required');
-    const fields=['kind','artifactId','sourceSha256','charge','uhf','atomElements'];
-    assert(plain(expectation)&&Object.keys(expectation).length===fields.length&&Object.keys(expectation).every(k=>fields.includes(k))&&expectation.kind==='generated-gfn2-sp'&&string(expectation.artifactId,256)&&/^[a-f0-9]{64}$/.test(expectation.sourceSha256),'TRUSTED_SOURCE_BINDING: invalid generated expectation');
+    const gxtb=expectation?.kind==='generated-gxtb-sp';
+    const fields=['kind','artifactId','sourceSha256','charge','uhf','atomElements',...(gxtb?['effectiveNuclearCharges']:[])];
+    assert(plain(expectation)&&Object.keys(expectation).length===fields.length&&Object.keys(expectation).every(k=>fields.includes(k))&&['generated-gfn2-sp','generated-gxtb-sp'].includes(expectation.kind)&&string(expectation.artifactId,256)&&/^[a-f0-9]{64}$/.test(expectation.sourceSha256),'TRUSTED_SOURCE_BINDING: invalid generated expectation');
     assert(expectation.sourceSha256===s.sourceRevision,'TRUSTED_SOURCE_BINDING: artifact digest differs from immutable source');
     const atoms=s.metadata.structure.atoms;
     assert(Array.isArray(expectation.atomElements)&&expectation.atomElements.length===atoms.length&&expectation.atomElements.every((e,i)=>typeof e==='string'&&e===atoms[i].element),'TRUSTED_SOURCE_BINDING: source atom order differs from artifact');
     assert(Number.isSafeInteger(expectation.charge)&&Number.isSafeInteger(expectation.uhf)&&expectation.uhf>=0,'TRUSTED_SOURCE_BINDING: invalid charge/UHF');
     const physicalElectronCount=atoms.reduce((sum,a)=>{const z=SYMBOLS.indexOf(a.element);assert(z>0,'Invalid generated source element');return sum+z;},0)-expectation.charge;
     const representedElectronCount=s.metadata.orbitals.reduce((sum,o)=>sum+o.occupation,0);
+    const independentAlphaBeta=gxtb&&s.metadata.orbitals.some(o=>o.spin==='beta');
+    const sourceSpinResolution=gxtb?(independentAlphaBeta?'alpha-beta':'restricted'):'spin-summed';
+    if(gxtb){
+      const effective=s.metadata.effectiveNuclearCharges;
+      const spin=independentAlphaBeta?s.metadata.orbitals.reduce((sum,o)=>sum+(o.spin==='alpha'?1:-1)*o.occupation,0):0;
+      assert(Array.isArray(effective)&&JSON.stringify(effective)===JSON.stringify(expectation.effectiveNuclearCharges)
+        &&Math.abs(effective.reduce((sum,z)=>sum+z,0)-representedElectronCount-expectation.charge)<1e-6&&Math.abs(spin-expectation.uhf)<1e-6,
+      'TRUSTED_SOURCE_BINDING: g-xTB represented electrons, effective nuclei or spin differ from the artifact');
+    }
     // A spin-summed occupation list has no independent alpha/beta populations.
     // Fractional thermal occupations do not reveal the requested spin count.
     assert(Number.isSafeInteger(physicalElectronCount)&&physicalElectronCount>0&&expectation.uhf<=physicalElectronCount&&(physicalElectronCount-expectation.uhf)%2===0&&Number.isFinite(representedElectronCount)&&representedElectronCount>0&&Math.abs(representedElectronCount-Math.round(representedElectronCount))<1e-6&&representedElectronCount<=physicalElectronCount+1e-6,'TRUSTED_SOURCE_BINDING: physical/represented electron count or requested UHF parity is invalid');
     assert((s.metadata.structure.charge===null||s.metadata.structure.charge===expectation.charge)&&(s.metadata.structure.multiplicity===null||s.metadata.structure.multiplicity===expectation.uhf+1),'TRUSTED_SOURCE_BINDING: explicit source charge/multiplicity conflicts with artifact');
-    const bound=Object.freeze({kind:expectation.kind,artifactId:expectation.artifactId,sourceSha256:expectation.sourceSha256,charge:expectation.charge,requestedUhf:expectation.uhf,atomElements:Object.freeze([...expectation.atomElements]),representedElectronCount,physicalElectronCount,sourceSpinResolution:'spin-summed',independentAlphaBeta:false});
+    const bound=Object.freeze({kind:expectation.kind,artifactId:expectation.artifactId,sourceSha256:expectation.sourceSha256,charge:expectation.charge,requestedUhf:expectation.uhf,atomElements:Object.freeze([...expectation.atomElements]),representedElectronCount,physicalElectronCount,sourceSpinResolution,independentAlphaBeta,
+      ...(gxtb?{effectiveNuclearCharges:Object.freeze([...expectation.effectiveNuclearCharges])}:{})});
     const previous=s.trustedSourceExpectation;
     if(previous)assert(JSON.stringify(previous)===JSON.stringify(bound),'TRUSTED_SOURCE_BINDING: conflicting immutable source expectation');
     else{assert(!s.sourceExpectationUsed,'TRUSTED_SOURCE_BINDING: bind before the first numerical analysis');Object.defineProperty(s,'trustedSourceExpectation',{value:bound,writable:false,configurable:false});Object.defineProperty(s,'analysisPolicy',{value:createGeneratedAnalysisPolicy(s,bound),writable:false,configurable:false});s.metadata.analysisPolicy=s.analysisPolicy;}
@@ -234,7 +268,7 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
   async function plan(owner,sessionId,raw,lease,captured) {
     const s=owned(owner,sessionId),p=planRequest(raw);assert(!s.planning&&!['running','queued'].includes(s.state),'Orbital generation or planning is active');s.planning=true;
     const previous=planningTail;let releasePlan;planningTail=new Promise(resolve=>{releasePlan=resolve;});
-    try{await previous;owned(owner,sessionId,s);const backend=await resolveBackend(),effective=await configuredResources(backend,p,captured);p.threads=effective.threads;p.memoryBudgetBytes=effective.memoryBudgetBytes;p.resources=effective;owned(owner,sessionId,s);const grid={originBohr:p.grid.origin,axesBohr:p.grid.axes,dimensions:p.grid.dimensions};const value=await request('plan',s,{sourcePath:s.sourcePath,...(backend.configured?{executable:backend.path}:{}),grid,memoryBudgetBytes:p.memoryBudgetBytes,mode:p.mode},s.plan?.gridKey??'');owned(owner,sessionId,s);const native=value.plan;assert(plain(native)&&['points','orbitalCount','fieldBytes','cacheBytes','workingBytes','estimatedPeakBytes'].every(k=>Number.isSafeInteger(native[k])&&native[k]>=0)&&native.points===grid.dimensions.reduce((a,b)=>a*b,1)&&native.orbitalCount===s.keys.size&&native.fieldBytes===native.points*8&&(native.mode??'all')===p.mode,'Invalid orbital resource plan');
+    try{await previous;owned(owner,sessionId,s);const backend=requireBackend(await resolveBackend(),'ORBITAL');if(s.backend)requireSameBackend(backend,s.backend,'ORBITAL');const effective=await configuredResources(backend,p,captured);p.threads=effective.threads;p.memoryBudgetBytes=effective.memoryBudgetBytes;p.resources=effective;owned(owner,sessionId,s);const grid={originBohr:p.grid.origin,axesBohr:p.grid.axes,dimensions:p.grid.dimensions};const value=await request('plan',s,{sourcePath:s.sourcePath,...(backend.configured?{executable:backend.path}:{}),grid,memoryBudgetBytes:p.memoryBudgetBytes,mode:p.mode},s.plan?.gridKey??'');owned(owner,sessionId,s);const native=value.plan;assert(plain(native)&&['points','orbitalCount','fieldBytes','cacheBytes','workingBytes','estimatedPeakBytes'].every(k=>Number.isSafeInteger(native[k])&&native[k]>=0)&&native.points===grid.dimensions.reduce((a,b)=>a*b,1)&&native.orbitalCount===s.keys.size&&native.fieldBytes===native.points*8&&(native.mode??'all')===p.mode,'Invalid orbital resource plan');
       assert(typeof native.requiresMemoryConfirmation==='boolean','Invalid orbital budget result');
       const nativeTotalBytes=native.combinedEstimatedPeakBytes??native.estimatedPeakBytes;
       assert(Number.isSafeInteger(nativeTotalBytes)&&nativeTotalBytes>=native.estimatedPeakBytes,'Invalid combined orbital budget');
@@ -243,16 +277,19 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
       const sharedExtra=lease?lease.budget(p.memoryBudgetBytes,{domain:'orbital',sessionId}).reservedBytes-reservedMemoryBytes({domain:'orbital',sessionId}):0;
       const totalBytes=nativeTotalBytes+allRendererBytes+numericBytes+sharedExtra;
       const output={gridKey:p.gridKey,pointCount:native.points,orbitalCount:native.orbitalCount,cacheBytes:native.cacheBytes,workingBytes:native.workingBytes+rendererBytes,totalBytes,withinBudget:true,mode:p.mode,resources:effective};
-      if(!output.withinBudget)return output;
+      if(s.nativeOpen)assert(s.plan.resources?.settingsRevision===effective.settingsRevision,'ORBITAL_BACKEND_CHANGED: Multiwfn 设置已变化，请重新打开此分析来源；已有格点保留。');
       if(s.nativeOpen&&p.mode==='selected'&&s.plan?.mode==='selected'&&s.plan.gridKey===p.gridKey&&s.plan.threads===p.threads&&s.plan.memoryBudgetBytes===p.memoryBudgetBytes&&s.plan.resources?.settingsRevision===effective.settingsRevision){s.plan={...s.plan,...p,rendererBytes,rendererBytesPerView,nativeBytes:native.estimatedPeakBytes,nativeWorkingBytes:native.workingBytes};updateSelectedReserve(s);refreshRendererBudgets();return output;}
       if(s.nativeOpen){await request('close',s);s.nativeOpen=false;s.completed.clear();s.seq=0;}
-      assert(backend.configured&&string(backend.path,4096),'ORBITAL_BACKEND_MISSING: 请先选择本机 Multiwfn');
+      if(!s.scienceDirectory && backend.workDirectoryIdentity){
+        const scratch=await createRunDirectory(backend,jobRoot,'o-',fs);
+        s.scienceDirectory=scratch.directory;s.scratch=scratch;
+      }
       owned(owner,sessionId,s);
       // A native reopen starts generation numbering again. Settlement from the
       // closed grid/session cannot release the new run's scientific lease.
       s.plan={...p,fieldBytes:native.fieldBytes,rendererBytes,rendererBytesPerView,nativeBytes:native.estimatedPeakBytes,nativeWorkingBytes:native.workingBytes};s.generation=0;s.nativeIdleGeneration=-1;s.requestedKeys=[];
-      s.nativeBudgetCeiling=p.memoryBudgetBytes-reservedMemoryBytes({domain:'orbital',sessionId})-Math.max(0,sharedExtra);
-      refreshRendererBudgets();await request('open',s,{sourcePath:s.sourcePath,executable:backend.path,grid,threads:p.threads,memoryBudgetBytes:s.nativeBudgetCeiling,workspacePath:s.directory,mode:p.mode,settingsRevision:effective.settingsRevision});s.nativeOpen=true;
+      const nativeBudget=p.memoryBudgetBytes-reservedMemoryBytes({domain:'orbital',sessionId})-Math.max(0,sharedExtra);
+      refreshRendererBudgets();await request('open',s,{sourcePath:s.sourcePath,executable:backend.path,grid,threads:p.threads,memoryBudgetBytes:nativeBudget,workspacePath:s.scienceDirectory??s.directory,mode:p.mode,settingsRevision:effective.settingsRevision,nativeBinaryIdentity:effective.nativeBinaryIdentity});assert(!s.worker.closed,'ORBITAL_WORKER_UNAVAILABLE: 原分析会话已结束');s.nativeOpen=true;s.backend=backend;
       if(s.closed||disposed){await request('close',s).catch(()=>{});s.nativeOpen=false;await clean(s);throw new Error('Orbital owner closed during planning');}
       owned(owner,sessionId,s);s.state='idle';return output;
     }finally{s.planning=false;releasePlan();}
@@ -263,13 +300,12 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
     const previous=planningTail;let releasePlan;planningTail=new Promise(resolve=>{releasePlan=resolve;});
     try{
       await previous;owned(owner,sessionId,s);
-      const previousCount=s.viewCount;s.viewCount=viewCount;
+      const context={domain:'orbital-views',sessionId};
+      const extra=lease?lease.reservedBytes(context)-reservedMemoryBytes(context):0;
+      s.viewCount=viewCount;
       const totalBytes=rendererTotal()+analyses.reservedMemoryBytes()+[...sessions.values()].filter(other=>!other.closed).reduce((total,other)=>total+(other.nativeOpen?other.plan?.nativeBytes??0:0),0);
-      const budget=s.plan?.memoryBudgetBytes??[...(s.children??[])].find(child=>child.plan)?.plan.memoryBudgetBytes;
-      let extra;try{extra=budget!==undefined&&lease?lease.budget(budget,{domain:'orbital-views',sessionId}).reservedBytes-reservedMemoryBytes({domain:'orbital-views',sessionId}):0;}catch(error){s.viewCount=previousCount;throw error;}
-      const withinBudget=true; // View estimates remain advisory; opening a view performs no science.
-      if(!withinBudget)s.viewCount=previousCount;refreshRendererBudgets();
-      return {viewCount:s.viewCount,totalBytes:totalBytes+extra,withinBudget};
+      refreshRendererBudgets();
+      return {viewCount:s.viewCount,totalBytes:totalBytes+Math.max(0,extra),withinBudget:true};
     }finally{releasePlan();}
   }
   async function commandDirect(owner,sessionId,raw,nativeMemoryBudgetBytes,resourceGrant) {
@@ -280,9 +316,6 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
     assert(value.operation!=='generate-one'||selected,'generate-one requires a selected-mode resource plan');
     assert(!selected||!['generate','continue','prioritize'].includes(value.operation),'Selected mode requires generate-one, not legacy all-orbital commands');
     if(value.operation==='generate-one'){
-      const count=Math.max(1,s.completed.size+(s.completed.has(value.orbitalId)?0:1));
-      const nextNative=s.plan.nativeWorkingBytes+s.plan.fieldBytes*count;
-      const total=rendererTotal()+analyses.reservedMemoryBytes()+[...sessions.values()].filter(other=>!other.closed).reduce((sum,other)=>sum+(other===s?nextNative:other.nativeOpen?other.plan?.nativeBytes??0:0),0);
       s.requestedKeys=[value.orbitalId];updateSelectedReserve(s);
     }
     if(['generate','continue','generate-one','stop'].includes(value.operation))s.generation++;
@@ -302,7 +335,13 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
       const s=sessions.get(sessionId);if(s){assert(s.owner===owner,'Orbital session not owned or closed');return closeSession(s);}
       rememberClosed(owner,sessionId);return {sessionId,status:'closed'};
     }
-    if(!scheduler)return commandDirect(owner,sessionId,raw);
+    if(!scheduler){
+      if(['generate','continue','generate-one'].includes(raw?.operation)){
+        const s=owned(owner,sessionId);
+        if(s.nativeOpen)requireSameBackend(await resolveBackend(),s.backend,'ORBITAL');
+      }
+      return commandDirect(owner,sessionId,raw);
+    }
     const s=owned(owner,sessionId),value=commandRequest(raw,s.keys);
     if(value.operation==='close')return closeSession(s);
     // Replanning also sends stop to an already settled session. Only a live
@@ -319,16 +358,19 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
         cycle.lease=await scheduler.acquire({owner,key:`orbital:${sessionId}`,signal:cycle.controller.signal});owned(owner,sessionId,s);
         const captured=resolveResources?await captureResources(s,cycle.controller):undefined;owned(owner,sessionId,s);assert(!cycle.controller.signal.aborted,'ORBITAL_CANCELLED');
         assert(s.plan,'Plan the orbital grid before generation');
-        let admittedBackend;
-        if(captured){admittedBackend=await resolveBackend();const effective=await configuredResources(admittedBackend,{},captured);owned(owner,sessionId,s);assert(!cycle.controller.signal.aborted,'ORBITAL_CANCELLED');s.plan={...s.plan,threads:effective.threads,memoryBudgetBytes:effective.memoryBudgetBytes,resources:effective};}
+        const admittedBackend=await resolveBackend();owned(owner,sessionId,s);assert(!cycle.controller.signal.aborted,'ORBITAL_CANCELLED');
+        requireSameBackend(admittedBackend,s.backend,'ORBITAL');
+        await verifyRunDirectory(s.scratch,fs);
+        owned(owner,sessionId,s);assert(!cycle.controller.signal.aborted,'ORBITAL_CANCELLED');
+        if(captured){const effective=await configuredResources(admittedBackend,{},captured);owned(owner,sessionId,s);assert(!cycle.controller.signal.aborted,'ORBITAL_CANCELLED');assert(s.plan.resources.settingsRevision===effective.settingsRevision,'ORBITAL_BACKEND_CHANGED: Multiwfn 设置已变化，请重新打开此分析来源；已有格点保留。');s.plan={...s.plan,threads:effective.threads,memoryBudgetBytes:effective.memoryBudgetBytes,resources:effective};}
         const budget=cycle.lease.budget(s.plan?.memoryBudgetBytes,{domain:'orbital',sessionId});
         const ownCeiling=s.plan.memoryBudgetBytes-reservedMemoryBytes({domain:'orbital',sessionId});
-        const nativeBudget=Math.min(budget.availableBytes,captured?ownCeiling:s.nativeBudgetCeiling??ownCeiling);assert(Number.isSafeInteger(nativeBudget)&&nativeBudget>0,'ORBITAL_MEMORY_BUDGET: 已实际保留的缓存达到当前可用内存预算');s.runResources={...s.plan.resources,nativeMemoryBudgetBytes:nativeBudget,...(captured?{computeResourceVersion:captured.version,computeResourceSource:captured.source}:{})};
-        const grant=captured?{threads:s.plan.threads,memoryBudgetBytes:nativeBudget,settingsRevision:s.plan.resources.settingsRevision,executable:admittedBackend.path}:undefined;
-        taskProgress.report('running');const result=await commandDirect(owner,sessionId,raw,nativeBudget,grant);generation=s.generation;resolveAck(result);
+        const nativeBudget=Math.min(budget.availableBytes,ownCeiling);assert(Number.isSafeInteger(nativeBudget)&&nativeBudget>0,'ORBITAL_MEMORY_BUDGET: 已实际保留的缓存达到当前可用内存预算');s.runResources={...s.plan.resources,nativeMemoryBudgetBytes:nativeBudget,...(captured?{computeResourceVersion:captured.version,computeResourceSource:captured.source}:{})};
+        const grant={threads:s.plan.threads,memoryBudgetBytes:nativeBudget,settingsRevision:s.plan.resources.settingsRevision,nativeBinaryIdentity:s.plan.resources.nativeBinaryIdentity,executable:admittedBackend.path};
+        taskProgress.report('running');cycle.submitted=true;const result=await commandDirect(owner,sessionId,raw,nativeBudget,grant);generation=s.generation;resolveAck(result);
         await waitNativeIdle(s,generation);
-      }catch(error){failure=error;rejectAck(error);if(cycle.lease){const w=worker;if(w?.terminating||disposed){if(w)await w.finished;}else if(s.closed){await waitNativeIdle(s,s.generation);}else if(s.nativeOpen){try{await commandDirect(owner,sessionId,{operation:'stop'});nativeIdle(s,s.generation);}catch{const failed=worker;if(failed){failAll(error);await failed.finished;}}}}}
-      finally{cycle.lease?.release();if(cycle.controller.signal.aborted)taskProgress.report('stopped',{settlement:cycle.lease?'native-settled':'cancelled-before-start'});else if(failure||s.state==='failed')taskProgress.report('failed',{settlement:cycle.lease?'native-settled':'not-started',message:(failure?.message??(s.lastNativeError?.generation===generation?s.lastNativeError.message:undefined))?.slice(0,2048)});else taskProgress.report('parse',{stageLabel:'等待轨道格点接受',settlement:'native-settled',validated:true});if(s.leaseCycle===cycle)delete s.leaseCycle;}
+      }catch(error){failure=error;rejectAck(error);if(cycle.submitted){const w=worker;if(w?.terminating||disposed){if(w)await w.finished;}else if(s.closed){await waitNativeIdle(s,s.generation);}else if(s.nativeOpen){try{await commandDirect(owner,sessionId,{operation:'stop'});nativeIdle(s,s.generation);}catch{const failed=worker;if(failed){failAll(error);await failed.finished;}}}}}
+      finally{cycle.lease?.release();if(cycle.controller.signal.aborted)taskProgress.report('stopped',{settlement:cycle.submitted?'native-settled':'cancelled-before-start'});else if(failure||s.state==='failed')taskProgress.report('failed',{settlement:cycle.submitted?'native-settled':'not-started',message:(failure?.message??(s.lastNativeError?.generation===generation?s.lastNativeError.message:undefined))?.slice(0,2048)});else taskProgress.report('parse',{stageLabel:'等待轨道格点接受',settlement:'native-settled',validated:true});if(s.leaseCycle===cycle)delete s.leaseCycle;}
     })());return receipt;
   }
   async function field(owner,sessionId,key){const s=owned(owner,sessionId);assert(s.nativeOpen&&s.keys.has(key)&&s.completed.has(key),'Orbital field is absent or pending');const value=await request('field',s,{orbitalId:key});owned(owner,sessionId);return decodeField(value,s,key);}

@@ -13,6 +13,7 @@ import type { TaskSelectionHandle, TaskSelectionIntent } from '../modeling/contr
 import { inputSelectionIds, inputSelectionIndices } from '../core/input-selection';
 import { confirmCoordinateSelection, gaussianScanRange, recommendedScan } from '../modeling/application/coordinate-selection';
 import InteractiveSelectionField, { SelectionGroupHeader, SelectionAddButton, SelectionRemoveButton } from './InteractiveSelectionField';
+import { CoordinateDraftStatus } from './CoordinateDraftStatus';
 import { InputSettingsField, InputSettingsRow } from './InputSettingsFields';
 import './geometry-controls.css';
 
@@ -64,7 +65,9 @@ export default function GeometryControls({ settings, files, structure, selected:
     const rows = [...drafts,...(pendingRow?[pendingRow]:[])].filter(row => row.action === action), activeGroup = action === 'scan' ? scan : enabled;
     return <>
       <div className="coordinate-list coordinate-draft-list">{rows.map((row, index) => {
-        const ids = rowIds(row), active = row.enabled && activeGroup;
+        const ids = rowIds(row), isPending = pendingRow?.id === row.id;
+        // A local draft is editable before the first scientific definition exists.
+        const active = isPending ? usable : row.enabled && activeGroup;
         let measurement: ReturnType<typeof confirmCoordinateSelection> | undefined;
         let measurementError = '';
         try { const currentIds=liveIds[row.id]??ids;if (structure && currentIds.length) measurement = confirmCoordinateSelection(coordinateImagePreview(structure,currentIds,liveImages[row.id]),currentIds); } catch (reason) { measurementError = reason instanceof Error ? reason.message : '内坐标无效。'; }
@@ -74,8 +77,8 @@ export default function GeometryControls({ settings, files, structure, selected:
         const range = confirmed && measurement && actualIncrement.trim() ? gaussianScanRange(measurement.value, Number(row.stepsText), Number(actualIncrement)) : null;
         const digits = row.type === 'B' ? 3 : 2, unit = row.type === 'B' ? 'Å' : '°';
         const expectedIdentity = identity, expectedTask = settings.task;
-        return <article key={row.id} data-coordinate-id={row.id} data-field={`coordinate-${row.id}`} tabIndex={-1} className={`coordinate-draft${active ? '' : ' inactive-coordinate'}`}>
-          <header className="shared-coordinate-row-header"><SelectionGroupHeader title={<label className="check-line"><input aria-label={`启用${action === 'scan' ? '扫描' : '冻结'}行${index + 1}`} type="checkbox" checked={row.enabled} onChange={event => updateRow(row.id, { enabled: event.target.checked })} /><span className="shared-coordinate-row-title">{action === 'scan' ? '扫描' : '冻结'}坐标 {index + 1}{confirmed ? ` · ${{ B: '键长', A: '键角', D: '二面角' }[previewType]}` : ''}</span></label>} actions={<SelectionRemoveButton label={`删除${action === 'scan' ? '扫描' : '冻结'}行${index + 1}`} onClick={() => {if(pendingRow?.id===row.id)setPendingRow(null);else change({ coordinateDrafts: latest.current.drafts.filter(item => item.id !== row.id) });}}/>}/></header>
+        return <article key={row.id} data-coordinate-id={row.id} data-coordinate-draft={isPending} data-field={`coordinate-${row.id}`} tabIndex={-1} className={`coordinate-draft${active ? '' : ' inactive-coordinate'}`}>
+          <header className="shared-coordinate-row-header"><SelectionGroupHeader title={<><label className="check-line"><input aria-label={`启用${action === 'scan' ? '扫描' : '冻结'}行${index + 1}`} type="checkbox" checked={row.enabled} onChange={event => updateRow(row.id, { enabled: event.target.checked })} /><span className="shared-coordinate-row-title">{action === 'scan' ? '扫描' : '冻结'}坐标 {index + 1}{confirmed ? ` · ${{ B: '键长', A: '键角', D: '二面角' }[previewType]}` : ''}</span></label><CoordinateDraftStatus/></>} actions={<SelectionRemoveButton label={`删除${action === 'scan' ? '扫描' : '冻结'}行${index + 1}`} onClick={() => {if(pendingRow?.id===row.id)setPendingRow(null);else change({ coordinateDrafts: latest.current.drafts.filter(item => item.id !== row.id) });}}/>}/></header>
           <InteractiveSelectionField structure={structure} label={`${action === 'scan' ? '扫描' : '冻结'}坐标 ${index + 1}`} engine="gaussian" purpose="coordinate" rowId={row.id} taskId={settings.task} kind="coordinate" atomIds={ids} disabled={!usable} contextKey={`${identity}:${settings.task}:${row.type}:${row.atomText}:${row.action}`} onRequestSelection={onRequestSelection} onPick={onPick} onDraftChange={(atomIds,images)=>{setLiveIds(current=>({...current,[row.id]:atomIds}));setLiveImages(current=>({...current,[row.id]:images}));}} onEnd={result=>{if(result==='cancelled'&&pendingRow?.id===row.id)setPendingRow(null);}} onConfirm={(atomIds, assertCurrent, _overwrite, images) => {
             assertCurrent(); const current = latest.current;
             if (!mounted.current || current.identity !== expectedIdentity || current.settings.task !== expectedTask || !current.structure || !current.drafts.some(value => value.id === row.id)&&pendingRow?.id!==row.id) throw new Error('内坐标选择已失效，请重新选择。');
@@ -94,23 +97,24 @@ export default function GeometryControls({ settings, files, structure, selected:
         </article>;
       })}</div></>;
   }
-  const freezeDisabled=internalCoordinatesDisabled||settings.task==='sp';
+  const atomFreezeDisabled=settings.task==='sp';
+  const coordinateFreezeDisabled=internalCoordinatesDisabled||atomFreezeDisabled;
   const frozenIds = (() => { try { return structure ? inputSelectionIds(structure, options.frozenAtoms.map(index => index - 1)) : []; } catch { return []; } })();
   return <section className="geometry-controls" data-field="coordinates" tabIndex={-1}>
     {!usable && <p className="muted-note">请先提供真实三维显式结构；参考CHK几何或二维画布不能代替实际原子编号。</p>}
     {mode !== 'freeze' && scan && <details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" data-testid="scan-coordinates" open={drafts.some(row => row.action === 'scan') || !!pendingRow || undefined}><summary><SelectionGroupHeader title={`扫描内坐标（${drafts.filter(row=>row.action==='scan').length}）`} actions={<SelectionAddButton label="添加内坐标" disabled={!usable||!!pendingRow} onClick={()=>addRow('scan')}/>}/></summary>{renderRows('scan')}</details>}
     {mode !== 'scan' && <>
     {!supportsConstraints(settings.task) && <p className="muted-note">当前任务不支持输出模型冻结；请选择支持约束的任务或解除对应冻结。</p>}
-    <fieldset className="shared-freeze-records"><details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" data-testid="freeze-atoms" open={freezeDisabled?false:undefined} style={freezeDisabled?{opacity:.5}:undefined}><summary aria-disabled={freezeDisabled||undefined} onClick={event=>{if(freezeDisabled)event.preventDefault();}}><SelectionGroupHeader title={`冻结原子（${sharedFreezeCounts?.atoms??frozenIds.length}）`} actions={<button type="button" disabled={!usable||freezeDisabled||!frozenIds.length} onClick={()=>change({frozenAtoms:[]})}>清空定义</button>}/></summary>
-      {!freezeDisabled && <InteractiveSelectionField structure={structure} label="冻结原子" engine="gaussian" purpose="frozen-atoms" rowId="gaussian-frozen-atoms" taskId={settings.task} atomIds={frozenIds} contextKey={`${identity}:${settings.task}`} disabled={!usable} onPick={onPick} onRequestSelection={onRequestSelection} remainingAtomIds={atoms.map(atom => atom.id!).filter(id => id && !frozenIds.includes(id))} draftChoices={[...new Set(atoms.map(atom => atom.element))].map(element => ({ label: `按元素 ${element}`, atomIds: atoms.filter(atom => atom.element === element).map(atom => atom.id!).filter(Boolean) }))} onConfirm={(atomIds, assertCurrent) => {
+    <fieldset className="shared-freeze-records input-freeze-subcards"><details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" data-testid="freeze-atoms" open={atomFreezeDisabled?false:undefined} style={atomFreezeDisabled?{opacity:.5}:undefined}><summary aria-disabled={atomFreezeDisabled||undefined} onClick={event=>{if(atomFreezeDisabled)event.preventDefault();}}><SelectionGroupHeader title={`冻结原子（${sharedFreezeCounts?.atoms??frozenIds.length}）`} actions={<SelectionRemoveButton label="清空冻结原子定义" disabled={!usable||atomFreezeDisabled||!frozenIds.length} onClick={()=>change({frozenAtoms:[]})}/>}/></summary>
+      {!atomFreezeDisabled && <InteractiveSelectionField structure={structure} label="冻结原子" engine="gaussian" purpose="frozen-atoms" rowId="gaussian-frozen-atoms" taskId={settings.task} atomIds={frozenIds} contextKey={`${identity}:${settings.task}`} disabled={!usable} onPick={onPick} onRequestSelection={onRequestSelection} remainingAtomIds={atoms.map(atom => atom.id!).filter(id => id && !frozenIds.includes(id))} draftChoices={[...new Set(atoms.map(atom => atom.element))].map(element => ({ label: `按元素 ${element}`, atomIds: atoms.filter(atom => atom.element === element).map(atom => atom.id!).filter(Boolean) }))} onConfirm={(atomIds, assertCurrent) => {
         assertCurrent(); const current = latest.current;
         if (!current.structure || !mounted.current || current.identity !== identity || current.settings.task !== settings.task) throw new Error('冻结原子选择已失效。');
         const indices = inputSelectionIndices(current.structure, atomIds);
         change({ frozenAtoms: indices.map(index => index + 1), constraintsEnabled: true }); setError('');
       }} />}
-      <p className="muted-note" data-testid="frozen-atoms-summary">模型冻结原子：{formatAtomSelection(options.frozenAtoms.map(index => index - 1)) || '无'}。</p>
+      <p className="muted-note freeze-atoms-summary" data-testid="frozen-atoms-summary">模型冻结原子：{formatAtomSelection(options.frozenAtoms.map(index => index - 1)) || '无'}。</p>
     </details>
-    <details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" data-testid="freeze-coordinates" open={freezeDisabled?false:pendingRow?.action==='freeze'||undefined} style={freezeDisabled?{opacity:.5}:undefined}><summary aria-disabled={freezeDisabled||undefined} onClick={event=>{if(freezeDisabled)event.preventDefault();}}><SelectionGroupHeader title={`冻结内坐标（${sharedFreezeCounts?.coordinates??drafts.filter(row=>row.action==='freeze').length}）`} actions={<SelectionAddButton label="添加内坐标" disabled={freezeDisabled||!usable||!!pendingRow} onClick={()=>addRow('freeze')}/>}/></summary>{!freezeDisabled&&renderRows('freeze')}</details>
+    <details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" data-testid="freeze-coordinates" open={coordinateFreezeDisabled?false:pendingRow?.action==='freeze'||undefined} style={coordinateFreezeDisabled?{opacity:.5}:undefined}><summary aria-disabled={coordinateFreezeDisabled||undefined} onClick={event=>{if(coordinateFreezeDisabled)event.preventDefault();}}><SelectionGroupHeader title={`冻结内坐标（${sharedFreezeCounts?.coordinates??drafts.filter(row=>row.action==='freeze').length}）`} actions={!coordinateFreezeDisabled&&<SelectionAddButton label="添加内坐标" disabled={!usable||!!pendingRow} onClick={()=>addRow('freeze')}/>}/></summary>{!coordinateFreezeDisabled&&renderRows('freeze')}</details>
     {internalCoordinatesDisabled&&<details className="coordinate-module progressive-coordinate-section shared-input-subsection shared-input-card shared-input-subcard" data-testid="scan-coordinates" open={false} style={{opacity:.5}}><summary aria-disabled="true" onClick={event=>event.preventDefault()}>扫描内坐标</summary></details>}</fieldset>
     {enabled && ['freq', 'irc'].includes(settings.task) && <p className="muted-note">这里生成所请求的冻结标志与内坐标定义，不执行Gaussian；频率/路径结果仍需按实际输出核验约束与计算条件。</p>}
     </>}

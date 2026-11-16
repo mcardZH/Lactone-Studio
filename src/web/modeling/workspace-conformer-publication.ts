@@ -43,6 +43,20 @@ export function restoredConformerPublicationResult(candidate:ConformerTrajectory
 }
 
 type FrameIndex={revision:string;frames:ReadonlyMap<string,AdvancedResultFrame>};
+const publishedMembership=new WeakMap<readonly string[],WeakMap<readonly AdvancedResultFrame[],boolean>>();
+/** A late task projection is not the already published reader. In particular,
+ * an older saved all-converged set may share a collection ID with today's
+ * cluster representatives. Bind metadata only after that exact membership is
+ * published; immutable arrays make this check independent of playback ticks. */
+export function conformerCollectionMatchesPublished(collection:ConformerResultCollection,entry:Pick<WorkspaceDocumentEntry,'trajectory'|'legacyResult'>):boolean{
+ const binding=entry.trajectory,result=entry.legacyResult;if(!binding||!result||result.frames.length!==binding.frameIds.length)return false;
+ const identity=binding.identity,expected=collection.identity;
+ if(identity.taskId!==expected.taskId||identity.runId!==expected.runId||identity.stageId!==expected.stageId||identity.collectionId!==expected.collectionId)return false;
+ let byCollection=publishedMembership.get(binding.frameIds);if(!byCollection){byCollection=new WeakMap();publishedMembership.set(binding.frameIds,byCollection);}
+ const cached=byCollection.get(collection.frames);if(cached!==undefined)return cached;
+ const matches=binding.frameIds.length===collection.frames.length&&binding.frameIds.every((id,index)=>id===collection.frames[index].id);
+ byCollection.set(collection.frames,matches);return matches;
+}
 const taskFrames=new Map<string,WeakRef<FrameIndex>>();
 const snapshotFrames=new WeakMap<AdvancedTaskRecord,FrameIndex>();
 const trajectoryMembers=new WeakMap<readonly string[],ReadonlySet<string>>();

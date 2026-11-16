@@ -1,5 +1,5 @@
 import type { ChemistryResult } from '../../modeling/contracts';
-import { fullPrecisionValue } from '../../results/numeric-format';
+import { decimalEnergyValue } from '../../results/numeric-format';
 
 export type ChemistryReceipt = Omit<ChemistryResult, 'structure' | 'text'> & { resultDocumentId: string; resultRevision: number };
 export function chemistryReceipt(result: ChemistryResult, documentId: string, revision: number): ChemistryReceipt {
@@ -9,7 +9,7 @@ export function chemistryReceipt(result: ChemistryResult, documentId: string, re
 export function chemistrySummary(receipt: ChemistryReceipt): string {
   const engine = `${receipt.engine}${receipt.engineVersion ? ' ' + receipt.engineVersion : ''}`;
   const energy = Number.isFinite(receipt.before) && Number.isFinite(receipt.after)
-    ? ` · ${fullPrecisionValue(receipt.before)} → ${fullPrecisionValue(receipt.after)}${receipt.unit ? ' ' + receipt.unit : ''}` : '';
+    ? ` · ${decimalEnergyValue(receipt.before)} → ${decimalEnergyValue(receipt.after)}${receipt.unit ? ' ' + receipt.unit : ''}` : '';
   const convergence = receipt.converged === true ? '达到收敛阈值' : receipt.converged === false ? '未达到收敛阈值' : '完成（未提供收敛判据）';
   return `${engine}${receipt.forcefield ? ' · ' + receipt.forcefield : ''}${energy} · ${convergence}`;
 }

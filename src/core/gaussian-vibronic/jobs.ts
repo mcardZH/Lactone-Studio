@@ -1,27 +1,45 @@
 import { GaussianOutputReader } from '../gaussian-reader';
-import { gaussianRouteTokens } from '../gaussian-source';
+import { GaussianOutputSections, gaussianEntry, gaussianErrorTermination, gaussianExplicitLink, gaussianJobLink, gaussianNormalTermination, gaussianOutputBodyText, type GaussianOutputSection } from '../../results/gaussian-output-archive';
+import { normalizeGaussianRouteEcho, gaussianRouteTokens } from '../gaussian-source';
 import type { VibronicLogJob } from './types';
 
 const key=(token:string)=>token.match(/^[a-z][\w-]*/i)?.[0].toLowerCase()??'';
 const norm=(token:string)=>token.toLowerCase().replace(/\s+/g,'');
-function readRoute(lines:string[]):string {
-  const first=lines.findIndex(line=>/^\s*#[pnt]?(?:\s+|$)/i.test(line));if(first<0)return '';
-  const route=[lines[first].trim()];
-  for(let i=first+1;i<lines.length&&lines[i].trim()&&!/^\s*-{5,}\s*$/.test(lines[i]);i++)route.push(lines[i].trim());
-  return route.join(' ');
-}
-/** Boundaries are Gaussian execution markers, never arbitrary orientation/frequency tables. */
+/** Boundaries are classified Gaussian records; raw line ranges still bind the original source. */
 export function inspectVibronicLogJobs(text:string):VibronicLogJob[] {
-  const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/),starts:Array<{at:number;boundary:VibronicLogJob['boundary']}>= [{at:0,boundary:'first'}];
-  let seenInvocation=false;
-  for(let i=0;i<lines.length;i++) {
-    if(/^\s*Entering Gaussian System\b/.test(lines[i])){if(seenInvocation&&i>0)starts.push({at:i,boundary:'new-invocation'});seenInvocation=true;}
-    else if(/^\s*Link1:\s+Proceeding to internal job step number\s+\d+/.test(lines[i]))starts.push({at:i,boundary:'internal-link'});
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
+  type Row = { text: string; number: number };
+  const sections = new GaussianOutputSections<Row>();
+  const jobs: VibronicLogJob[] = [];
+  let current = newJob(1, 'first'), seenInvocation = false, normalCount = 0, failed = false;
+  function newJob(startLine: number, boundary: VibronicLogJob['boundary']): VibronicLogJob {
+    return { index: jobs.length, startLine, endLine: lines.length, route: '', hasFrequencyData: false, normalTermination: false, boundary };
   }
-  return starts.map((start,index)=>{
-    const end=starts[index+1]?.at??lines.length,body=lines.slice(start.at,end),segment=body.join('\n');
-    return {index,startLine:start.at+1,endLine:end,route:readRoute(body),hasFrequencyData:/^\s*Frequencies\s+--/m.test(segment),normalTermination:(segment.match(/Normal termination of Gaussian/g)??[]).length===1&&!/Error termination/.test(segment),boundary:start.boundary};
-  });
+  function close(endLine: number) {
+    current.endLine = endLine;
+    current.normalTermination = normalCount === 1 && !failed;
+    jobs.push(current);
+  }
+  const consume = (section: GaussianOutputSection<Row>) => {
+    if (section.kind === 'route' && !current.route && section.text !== null) current.route = normalizeGaussianRouteEcho(section.text);
+    if (section.kind !== 'body') return;
+    const { text, number } = section.line;
+    const entering = gaussianEntry.test(text);
+    const internal = gaussianJobLink.test(text);
+    if (internal || gaussianExplicitLink.test(text) || entering && seenInvocation) {
+      close(number - 1);
+      current = newJob(number, internal ? 'internal-link' : 'new-invocation');
+      normalCount = 0; failed = false;
+    }
+    if (entering) seenInvocation = true;
+    if (gaussianNormalTermination.test(text)) normalCount++;
+    if (gaussianErrorTermination.test(text)) failed = true;
+    if (/^\s*Frequencies\s+--/.test(text)) current.hasFrequencyData = true;
+  };
+  lines.forEach((text, index) => sections.consume({ text, number: index + 1 }, consume));
+  sections.finish(consume);
+  close(lines.length);
+  return jobs;
 }
 function segmentLines(lines:string[],job:VibronicLogJob):string[] {return lines.slice(job.startLine-1+(job.boundary==='internal-link'?1:0),job.endLine);}
 function geometry(lines:string[]) {
@@ -43,11 +61,11 @@ export function selectVibronicLogJob(text:string,selectedIndex?:number):{text:st
   const previous=jobs[job.index-1];
   const bridge=tokens.some(t=>/^genchk$/i.test(t))&&tokens.some(t=>/^geom=allcheck$/i.test(t))&&tokens.some(t=>/^guess=tcheck$/i.test(t));
   if(!previous||job.boundary!=='internal-link'||!bridge){errors.push('自动Freq继承缺少相邻Opt作业及GenChk/Geom=AllCheck/Guess=TCheck完整桥；不能猜测SCRF或电子态。');return result;}
-  const priorLines=segmentLines(lines,previous),priorText=priorLines.join('\n'),prior=gaussianRouteTokens(previous.route);
+  const priorLines=segmentLines(lines,previous),priorText=gaussianOutputBodyText(priorLines).join('\n'),prior=gaussianRouteTokens(previous.route);
   if(!previous.normalTermination||previous.hasFrequencyData||!prior.some(t=>key(t)==='opt')||!prior.some(t=>key(t)==='freq')||!/Optimization completed/.test(priorText)){errors.push('自动Freq前一段未证明正常完成的Opt Freq优化；不跨段拼接科学证据。');return result;}
   if(prior.some(t=>key(t)==='opt'&&/\b(?:ts|qst2|qst3|modredundant|modfreeze|readopt|addredundant)\b/i.test(t))){errors.push('相邻优化带TS、扫描或约束定义；本入口不能将其自动当作完整极小点频率来源。');return result;}
   const declared=priorText.match(/^\s*%chk\s*=\s*(.+)$/im)?.[1];
-  const actual=result.text.match(/Structure from the checkpoint file:\s*"([^"]+)"/i)?.[1];
+  const actual=gaussianOutputBodyText(body).join('\n').match(/Structure from the checkpoint file:\s*"([^"]+)"/i)?.[1];
   if(!declared||!actual||checkpointName(declared)!==checkpointName(actual)){errors.push('自动Freq读取的CHK与相邻Opt实际%chk未能唯一对应。');return result;}
   try {
     const a=geometry(priorLines),b=geometry(body);

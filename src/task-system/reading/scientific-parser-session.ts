@@ -1,25 +1,22 @@
 import { GaussianScientificParser } from '../../results/gaussian-scientific-parser';
 import { OrcaScientificParser } from '../../results/orca-scientific-parser';
 import type { ScientificParserSnapshot } from '../../results/scientific-contracts';
-import { outputSoftwareOnLine } from '../../results/source-recognition';
+import { outputSoftwareOnLine } from '../../results/output-sections';
 import type { IncrementalParserSession, MonitorLine, ParserProjection } from './contracts';
 
 /** Header recognition and G/O selection only; all scientific grammar stays in results/. */
 export class ScientificMonitoringSession implements IncrementalParserSession<ScientificParserSnapshot> {
   private parser: GaussianScientificParser | OrcaScientificParser | null = null;
-  private engine: 'gaussian' | 'orca' | null = null;
   private header: MonitorLine[] = [];
   private ended = false;
   private disposed = false;
   consume(line: MonitorLine): void {
     if (this.disposed || this.ended) throw new Error('持续科学会话已关闭或终结。');
-    const engine = outputSoftwareOnLine(line.text);
-    if (engine && engine !== 'gaussian' && engine !== 'orca') throw new Error('此来源不是已支持的Gaussian/ORCA输出。');
-    if (engine && this.engine && engine !== this.engine) throw new Error('来源后续出现不同软件身份；未混接科学作业。');
     if (!this.parser) {
+      const engine = outputSoftwareOnLine(line.text);
+      if (engine === 'cp2k') throw new Error('此来源不是已支持的Gaussian/ORCA输出。');
       this.header.push(line);
       if (engine) {
-        this.engine = engine;
         this.parser = engine === 'gaussian' ? new GaussianScientificParser(undefined, true) : new OrcaScientificParser(undefined, true);
         for (const row of this.header) this.parser.consume(row);
         this.header = [];

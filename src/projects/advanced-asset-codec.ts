@@ -6,6 +6,11 @@ import {PROJECT_ASSET_BATCH_COUNT,PROJECT_CHUNK_BYTES,type ProjectAssetWrite} fr
 type Value=null|boolean|number|string|{ref:number};
 type Node={kind:'object';entries:[string,Value][]}|{kind:'array';values:Value[]}|{kind:'structure';assetId:string;bytes:number};
 export interface AdvancedAssetSnapshot {schema:'ester-advanced-assets/v1';version:1;root:Value;nodes:Node[];assetReferences:string[]}
+export interface RetainedAdvancedTasks {
+ graph:AdvancedAssetSnapshot;
+ originalOrder:string[];
+ unavailable:string[];
+}
 const text=new TextEncoder(),decoder=new TextDecoder('utf-8',{fatal:true});
 const invalid=()=>new Error('项目高级任务共享引用或科学资产无效。');
 const digest=async(bytes:Uint8Array)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes as Uint8Array<ArrayBuffer>))].map(v=>v.toString(16).padStart(2,'0')).join('');
@@ -58,9 +63,62 @@ export async function encodeAdvancedAsset(snapshot:AdvancedProjectSnapshot,write
  };
  const root=await visit(snapshot);await flush();return{schema:'ester-advanced-assets/v1',version:1,root,nodes,assetReferences:[...references]};
 }
+interface TaskNode {id:string;graph:AdvancedAssetSnapshot;value:{ref:number}}
+
+function taskNodes(graph:AdvancedAssetSnapshot):{schema:1|2;tasks:TaskNode[]} {
+ const object=(part:Value|undefined)=>{
+  const node=part&&typeof part==='object'?graph.nodes[part.ref]:undefined;
+  if(node?.kind!=='object')throw invalid();
+  return Object.fromEntries(node.entries) as Record<string,Value>;
+ };
+ const root=object(graph.root),array=root.tasks&&typeof root.tasks==='object'?graph.nodes[root.tasks.ref]:undefined;
+ if(Object.keys(root).length!==2||(root.schema!==1&&root.schema!==2)||array?.kind!=='array')throw invalid();
+ const ids=new Set<string>();
+ const tasks=array.values.map(value=>{
+  const id=object(value).id;
+  if(!value||typeof value!=='object'||typeof id!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(id)||ids.has(id))throw invalid();
+  ids.add(id);return {id,graph,value};
+ });
+ return {schema:root.schema,tasks};
+}
+
+/** Copy only the reachable metadata nodes. Coordinate blobs keep their original
+ * content addresses, including the addresses of unavailable sources. */
+function collectTaskGraph(schema:1|2,tasks:TaskNode[]):AdvancedAssetSnapshot {
+ const values:Value[]=[],nodes:Node[]=[{kind:'object',entries:[['schema',schema],['tasks',{ref:1}]]},{kind:'array',values}];
+ const maps=new Map<AdvancedAssetSnapshot,Map<number,number>>(),references=new Set<string>();
+ const copy=(graph:AdvancedAssetSnapshot,part:Value,map:Map<number,number>):Value=>{
+  if(part===null||typeof part!=='object')return part;
+  const known=map.get(part.ref);if(known!==undefined)return {ref:known};
+  const ref=nodes.length,source=graph.nodes[part.ref];
+  map.set(part.ref,ref);nodes.push(source);
+  if(source.kind==='structure')references.add(source.assetId);
+  else if(source.kind==='array')nodes[ref]={kind:'array',values:source.values.map(v=>copy(graph,v,map))};
+  else nodes[ref]={kind:'object',entries:source.entries.map(([key,v])=>[key,copy(graph,v,map)])};
+  return {ref};
+ };
+ for(const task of tasks){
+  let map=maps.get(task.graph);if(!map)maps.set(task.graph,map=new Map());
+  values.push(copy(task.graph,task.value,map));
+ }
+ return {schema:'ester-advanced-assets/v1',version:1,root:{ref:0},nodes,assetReferences:[...references]};
+}
+
+export function mergeRetainedAdvancedTasks(current:AdvancedAssetSnapshot,retained:RetainedAdvancedTasks):AdvancedAssetSnapshot {
+ const {schema,tasks}=taskNodes(current),old=taskNodes(retained.graph).tasks;
+ const byId=new Map(tasks.map(row=>[row.id,row]));
+ for(const row of old){
+  if(byId.has(row.id))throw Error('高级任务身份与保留的受损任务冲突，原始记录仍保留。');
+  byId.set(row.id,row);
+ }
+ const ordered:TaskNode[]=[];
+ for(const id of retained.originalOrder){const row=byId.get(id);if(row){ordered.push(row);byId.delete(id);}}
+ return collectTaskGraph(schema,[...ordered,...byId.values()]);
+}
+
 /** Accept old self-contained schema1 assets; new graph assets are fully checked
  * before they become a controller snapshot. Missing refs never synthesize data. */
-export async function decodeAdvancedAsset(value:unknown,reader:ProjectAssetReader):Promise<AdvancedProjectSnapshot>{
+export async function decodeAdvancedAsset(value:unknown,reader:ProjectAssetReader,onPartial?:(retained:RetainedAdvancedTasks)=>void):Promise<AdvancedProjectSnapshot>{
  if(value&&typeof value==='object'&&[1,2].includes((value as {schema:number}).schema)){const old=value as AdvancedProjectSnapshot;assertSnapshot(old);return old;}
  const data=value as AdvancedAssetSnapshot;if(!data||data.schema!=='ester-advanced-assets/v1'||data.version!==1||!Array.isArray(data.nodes)||!Array.isArray(data.assetReferences)||new Set(data.assetReferences).size!==data.assetReferences.length||data.assetReferences.some(id=>typeof id!=='string'||!/^[a-f0-9]{64}$/.test(id)))throw invalid();
  const references=new Set(data.assetReferences),structures=new Map<string,Structure>(),sizes=new Map<string,number>();
@@ -77,10 +135,49 @@ export async function decodeAdvancedAsset(value:unknown,reader:ProjectAssetReade
  if(sizes.size!==references.size)throw invalid();
  let batch:string[]=[],batchBytes=0;
  const accept=async(id:string,bytes:Uint8Array)=>{if(bytes.length!==sizes.get(id)||await digest(bytes)!==id)throw invalid();const parsed=JSON.parse(decoder.decode(bytes));if(!structure(parsed))throw invalid();structures.set(id,parsed);};
- const flush=async()=>{if(!batch.length)return;const ids=batch;batch=[];batchBytes=0;const parts=reader.readMany?await reader.readMany(ids):await Promise.all(ids.map(id=>reader.read(id)));if(parts.length!==ids.length)throw invalid();for(let i=0;i<ids.length;i++)await accept(ids[i],parts[i]);};
- for(const[id,bytes]of sizes){if(bytes>PROJECT_CHUNK_BYTES){await flush();await accept(id,await reader.read(id));continue;}if(batch.length===PROJECT_ASSET_BATCH_COUNT||batchBytes+bytes>PROJECT_CHUNK_BYTES)await flush();batch.push(id);batchBytes+=bytes;if(batch.length===PROJECT_ASSET_BATCH_COUNT)await flush();}await flush();
+ const unavailable=new Set<string>();
+ const single=async(id:string)=>{
+  try{await accept(id,await reader.read(id));}
+  catch(error){if(!onPartial)throw error;unavailable.add(id);}
+ };
+ const flush=async()=>{
+  if(!batch.length)return;
+  const ids=batch;batch=[];batchBytes=0;
+  if(!reader.readMany){await Promise.all(ids.map(single));return;}
+  try{
+   const parts=await reader.readMany(ids);if(parts.length!==ids.length)throw invalid();
+   for(let i=0;i<ids.length;i++)await accept(ids[i],parts[i]);
+  }catch(error){
+   if(!onPartial)throw error;
+   // A group read is atomic. Verify each unresolved member on its own before
+   // attributing the failure to a task, never accept an incomplete group reply.
+   for(const id of ids)if(!structures.has(id))await single(id);
+  }
+ };
+ for(const[id,bytes]of sizes){if(bytes>PROJECT_CHUNK_BYTES){await flush();await single(id);continue;}if(batch.length===PROJECT_ASSET_BATCH_COUNT||batchBytes+bytes>PROJECT_CHUNK_BYTES)await flush();batch.push(id);batchBytes+=bytes;if(batch.length===PROJECT_ASSET_BATCH_COUNT)await flush();}await flush();
  const decoded:unknown[]=[],states:number[]=[];
  const read=(part:Value):unknown=>{if(part===null||typeof part!=='object')return part;const index=part.ref;if(states[index]===1)throw invalid();if(states[index]===2)return decoded[index];states[index]=1;const node=data.nodes[index];
   const item=node.kind==='structure'?structuredClone(structures.get(node.assetId)):node.kind==='array'?node.values.map(read):Object.fromEntries(node.entries.map(([key,value])=>[key,read(value)]));decoded[index]=item;states[index]=2;return item;};
+ if(unavailable.size&&onPartial){
+  const {schema,tasks}=taskNodes(data),blockedMemo=new Map<number,boolean>(),visiting=new Set<number>();
+  const blocked=(part:Value):boolean=>{
+   if(part===null||typeof part!=='object')return false;
+   const ref=part.ref,prior=blockedMemo.get(ref);if(prior!==undefined)return prior;
+   if(visiting.has(ref))throw invalid();visiting.add(ref);
+   const node=data.nodes[ref];
+   let damaged=false;
+   if(node.kind==='structure')damaged=unavailable.has(node.assetId);
+   else if(node.kind==='array'){for(const v of node.values)if(blocked(v))damaged=true;}
+   else {for(const [,v] of node.entries)if(blocked(v))damaged=true;}
+   visiting.delete(ref);blockedMemo.set(ref,damaged);return damaged;
+  };
+  const bad=tasks.filter(t=>blocked(t.value));
+  if(!bad.length)throw invalid();
+  const badIds=new Set(bad.map(t=>t.id));
+  const snapshot:AdvancedProjectSnapshot={schema,tasks:tasks.filter(t=>!badIds.has(t.id)).map(t=>read(t.value) as AdvancedProjectSnapshot['tasks'][number])};
+  assertSnapshot(snapshot);
+  onPartial({graph:collectTaskGraph(schema,bad),originalOrder:tasks.map(t=>t.id),unavailable:[...badIds]});
+  return snapshot;
+ }
  const snapshot=read(data.root) as AdvancedProjectSnapshot;assertSnapshot(snapshot);return snapshot;
 }

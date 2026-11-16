@@ -51,7 +51,7 @@ export default function PostprocessPlotDeck({ snapshots, onClose, active = true,
     setMinimized(before => { const next = new Set(before); if (value) next.add(id); else next.delete(id); return next; });
     if (!value) setActiveId(id);
   }
-  return <div className="postprocess-plot-deck" aria-label="后处理内部图窗" hidden={!active || !visible.length}>
+  return <div className="postprocess-plot-deck ui-control-surface" aria-label="后处理内部图窗" hidden={!active || !visible.length}>
     <ModelDocumentDeck activeId={currentId} mode={mode} onActivate={setActiveId} onReorder={setOrder} arrangeRequest={arrangeRequest} layoutKey={scope}
       documents={ordered.map(snapshot => ({ id: snapshot.id, label: snapshot.title, handleContent: snapshot.title,
         headerActions: <><button type="button" aria-label={`最小化${snapshot.title}`} onClick={() => minimize(snapshot.id, true)}>−</button><button type="button" aria-label={`关闭${snapshot.title}`} onClick={() => onClose(snapshot.id)}>×</button></>,

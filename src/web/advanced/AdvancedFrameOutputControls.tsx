@@ -1,5 +1,7 @@
 import {DismissibleNotice} from '../DismissibleNotice';
-import NumericInput from '../NumericInput';
+import {electronicStateIntegerInput} from '../BaseElectronicStateFields';
+import ElectronicStateWarning from '../ElectronicStateWarning';
+import {electronicStateWarning} from '../../core/elements';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AdvancedInputTemplate, AdvancedFrameOutputPlan } from '../../modeling/application/advanced-frame-output';
 import { headerLines } from '../../core/gaussian';
@@ -12,7 +14,7 @@ import DialogShell from '../DialogShell';
 import { advancedOutputDraftKey, advancedOutputPartialLines, assertAdvancedOutputManifest, editAdvancedOutputFrame,
   initialAdvancedFrameOutputDraft, moveAdvancedOutputFrame, prepareAdvancedOutputDraft, reconcileAdvancedFrameOutput, selectAdvancedOutputFrame,
   createAdvancedOutputTokenOwner,
-  advancedOutputCandidateLabel,
+  advancedOutputCandidateLabel,commitAdvancedOutputFrame,
   type AdvancedFrameOutputCandidate, type AdvancedFrameOutputDraft } from './AdvancedFrameOutputControls-state';
 
 export type { AdvancedFrameOutputCandidate } from './AdvancedFrameOutputControls-state';
@@ -45,6 +47,7 @@ export default function AdvancedFrameOutputControls(p: AdvancedFrameOutputContro
   const [open,setOpen]=useState(false);
   const [draft, setDraft] = useState(initialAdvancedFrameOutputDraft);
   const normalized = reconcileAdvancedFrameOutput(p.candidates, draft);
+  const currentDraft=useRef(normalized);currentDraft.current=normalized;
   const key = advancedOutputDraftKey(p.candidates, normalized), [busy, setBusy] = useState<'choose' | 'write' | null>(null);
   const [prepared, setPrepared] = useState<{ key: string; template: AdvancedInputTemplate | null | undefined; plan: AdvancedFrameOutputPlan | null; errors: readonly string[] } | null>(null);
   const [selected, setSelected] = useState<{ key: string; template: AdvancedInputTemplate | null | undefined; destination: SelectedDestination } | null>(null);
@@ -71,7 +74,7 @@ export default function AdvancedFrameOutputControls(p: AdvancedFrameOutputContro
   useEffect(() => { if (!destination) return; const timer = setTimeout(() => { discardSelection(); setMessages(['目录确认已过期，请重新选择。']); }, Math.max(0, destination.expiresAt - Date.now()));
     return () => clearTimeout(timer); }, [destination]);
   const locked = p.disabled || busy !== null;
-  const change = (value: AdvancedFrameOutputDraft) => { discardSelection(); setDraft(value); setMessages([]); };
+  const change = (value: AdvancedFrameOutputDraft) => { currentDraft.current=value;discardSelection(); setDraft(value); setMessages([]); };
   const ordered = [...normalized.selectedIds.flatMap(id => p.candidates.find(candidate => candidate.id === id) ?? []),
     ...p.candidates.filter(candidate => !normalized.selectedIds.includes(candidate.id))];
   const preflightTable = useMemo<ScientificTableProjection>(() => ({ columns: [
@@ -82,7 +85,9 @@ export default function AdvancedFrameOutputControls(p: AdvancedFrameOutputContro
   const destinationTable: ScientificTableProjection = { columns: [{ key: 'file', label: '待写入文件' }, { key: 'bytes', label: 'UTF-8字节数 / B' }],
     rows: (destination?.manifest.files ?? []).map(file => ({ key: file.name, cells: [file.name, String(file.bytes)] })) };
   function preflight() {
-    discardSelection(); const result = prepareAdvancedOutputDraft(p.candidates, normalized, p.template); setPrepared({ key, template: p.template, ...result }); setMessages([]);
+    const submitted=currentDraft.current.selectedIds.reduce((next,id)=>commitAdvancedOutputFrame(p.candidates,next,id),currentDraft.current);
+    if(submitted!==currentDraft.current)change(submitted);
+    discardSelection(); const result = prepareAdvancedOutputDraft(p.candidates, submitted, p.template); setPrepared({ key:advancedOutputDraftKey(p.candidates,submitted), template: p.template, ...result }); setMessages([]);
   }
   const current = (token: number, snapshotKey: string, template: typeof p.template) => alive.current && epoch.current === token
     && latest.current.key === snapshotKey && latest.current.template === template;
@@ -134,9 +139,10 @@ export default function AdvancedFrameOutputControls(p: AdvancedFrameOutputContro
           {checked && <><InputSettingsAction disabled={locked || index === 0} ariaLabel={`上移 ${label}`} onClick={() => change(moveAdvancedOutputFrame(normalized, candidate.id, -1))}>上移</InputSettingsAction>
           <InputSettingsAction disabled={locked || index === normalized.selectedIds.length - 1} ariaLabel={`下移 ${label}`} onClick={() => change(moveAdvancedOutputFrame(normalized, candidate.id, 1))}>下移</InputSettingsAction></>}</InputSettingsRow>
           {checked && normalized.mode === 'inputs' && <InputSettingsRow><InputSettingsField label="文件名称"><input aria-label={`${label} 文件名称`} value={row.stem} disabled={locked} onChange={event => change(editAdvancedOutputFrame(normalized, candidate.id, { stem: event.currentTarget.value }))}/></InputSettingsField>
-            <InputSettingsField label="电荷"><NumericInput aria-label={`${label} 电荷`} stepper step={1} value={row.charge} disabled={locked} onChange={event => change(editAdvancedOutputFrame(normalized, candidate.id, { charge: event.currentTarget.value }))}/></InputSettingsField>
-            <InputSettingsField label="多重度"><NumericInput aria-label={`${label} 多重度`} stepper min={1} step={1} value={row.multiplicity} disabled={locked} onChange={event => change(editAdvancedOutputFrame(normalized, candidate.id, { multiplicity: event.currentTarget.value }))}/></InputSettingsField>
-            <InputSettingsCheckbox label="确认本帧名称、电荷与多重度" ariaLabel={`${label} 确认本帧名称、电荷与多重度`} checked={row.confirmed} disabled={locked} onChange={confirmed => change(editAdvancedOutputFrame(normalized, candidate.id, { confirmed }))}/></InputSettingsRow>}
+            <InputSettingsField label="电荷">{electronicStateIntegerInput({label:`${label} 电荷`,text:row.charge,field:'charge',onChange:text=>change(editAdvancedOutputFrame(currentDraft.current,candidate.id,{charge:text})),onCommit:text=>change(commitAdvancedOutputFrame(p.candidates,currentDraft.current,candidate.id,'charge',text))})}</InputSettingsField>
+            <InputSettingsField label="多重度">{electronicStateIntegerInput({label:`${label} 多重度`,text:row.multiplicity,field:'multiplicity',onChange:text=>change(editAdvancedOutputFrame(currentDraft.current,candidate.id,{multiplicity:text})),onCommit:text=>change(commitAdvancedOutputFrame(p.candidates,currentDraft.current,candidate.id,'multiplicity',text))})}</InputSettingsField>
+            <ElectronicStateWarning message={row.pairingIssue||electronicStateWarning(candidate.source.structure.atoms,Number(row.charge),Number(row.multiplicity))}/>
+            <InputSettingsCheckbox label="确认本帧名称、电荷与多重度" ariaLabel={`${label} 确认本帧名称、电荷与多重度`} checked={row.confirmed} disabled={locked} onChange={confirmed => change(editAdvancedOutputFrame(confirmed?commitAdvancedOutputFrame(p.candidates,currentDraft.current,candidate.id):currentDraft.current, candidate.id, { confirmed }))}/></InputSettingsRow>}
         </div>; })}
     </InputSettingsSection>
     <InputSettingsSection level="subcard" title="整批预检"><InputSettingsRow><InputSettingsAction disabled={locked || !normalized.selectedIds.length} onClick={preflight}>预检全部已选帧</InputSettingsAction>

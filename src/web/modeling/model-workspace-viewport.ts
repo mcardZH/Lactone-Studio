@@ -1,7 +1,7 @@
 import type { ModelDocument } from '../../modeling/contracts';
 import { displayedCoordinateObjects } from './coordinate-objects';
 import type { ViewportStateMarker } from './viewport-overlays';
-import type { WorkspaceViewportEvent } from './workspace-viewport';
+import {isFrameBondViewportEdit,type WorkspaceViewportEvent} from './workspace-viewport';
 
 interface DispatchContext {
   current: ModelDocument;
@@ -20,6 +20,7 @@ interface ViewportDispatchOptions {
   markers: readonly ViewportStateMarker[];
   handlers: ViewportHandlers;
   onError(cause: unknown): void;
+  frameBondKey?():string|undefined;
 }
 
 /** Resolve IPC marker identities against the current owner, never trust atom
@@ -51,6 +52,8 @@ export function createModelWorkspaceViewportDispatcher(options: ViewportDispatch
     try {
       const { document: current, alive, active } = options.read();
       const releasing = event.type === 'key' && event.release;
+      const frameKey=options.frameBondKey?.();
+      if(event.frameBondTarget&&event.frameBondTarget.frameKey!==frameKey||frameKey&&isFrameBondViewportEdit(event)&&!event.frameBondTarget)throw Error('当前科学帧已变化，旧显示键操作未应用。');
       if (!alive || current.id !== options.documentId || (!releasing && (active === false || current.revision !== options.revision))) {
         throw new Error('视口所属文档或修订已变化，请重新操作。');
       }

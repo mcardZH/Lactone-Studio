@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react';
 import { Check, RotateCcw } from 'lucide-react';
-import { InputSettingsCard, InputSettingsRow, inputSettingsCardClass, type InputSettingsCardProps } from './InputSettingsFields';
+import { InputSettingsCard, InputSettingsRow, InputSettingsStack, inputSettingsCardClass, type InputSettingsCardProps } from './InputSettingsFields';
 
 /** Shared presentation only. Callers keep engine-specific state and writer rules. */
-export function InputSettingsLayout({ children, className='' }: { children:ReactNode; className?:string }) {
-  return <div className={'input-settings-layout input-settings-surface '+className}>{children}</div>;
+export function InputSettingsLayout({ children, className='', variant='standard' }: { children:ReactNode; className?:string; variant?:'standard'|'legacy' }) {
+  return <div className={'input-settings-layout input-settings-surface '+className} data-input-layout={variant==='standard'?variant:undefined}>{children}</div>;
 }
 export function InputSettingsSection({ collapsible=false, defaultOpen=false, ...props }: InputSettingsCardProps & { collapsible?:boolean; defaultOpen?:boolean }) {
   if(!collapsible)return <InputSettingsCard {...props}/>;
   return <details className={inputSettingsCardClass(props.level,'shared-input-section '+(props.className??''))} data-input-section={props.sectionKey} aria-label={props.ariaLabel} data-state={props.status} data-testid={props.testId} data-field={props.field} tabIndex={props.tabIndex} open={defaultOpen||undefined}>
-    <summary className="shared-input-card-title"><span>{props.title}</span>{props.actions&&<div className="shared-input-card-actions">{props.actions}</div>}</summary>
-    {props.children}
+    <summary className={props.stack?'shared-input-section-toggle':'shared-input-card-title'} data-input-section-actions={props.actions?true:undefined}><span className="shared-input-section-label">{props.title}</span>{props.actions&&<span className="shared-input-card-actions">{props.actions}</span>}</summary>
+    {props.stack?<InputSettingsStack>{props.children}</InputSettingsStack>:props.children}
   </details>;
 }
 export function InputSettingsAction({ children, onClick, disabled=false, ariaLabel, reset=false, variant }: { children:ReactNode; onClick():void; disabled?:boolean; ariaLabel?:string; reset?:boolean; variant?:'primary'|'surface' }) {
@@ -20,7 +20,7 @@ export function InputSettingsAction({ children, onClick, disabled=false, ariaLab
 export function InputSettingsEnableCard({ enabled, onEnabledChange, disabled=false, switchLabel, children, title, className='', actions, ...props }: InputSettingsCardProps & { enabled:boolean; onEnabledChange(enabled:boolean):void; disabled?:boolean; switchLabel?:string }) {
   return <section className={inputSettingsCardClass(props.level,'shared-input-enable-card '+className)} data-input-section={props.sectionKey} aria-label={props.ariaLabel} data-testid={props.testId} data-field={props.field} tabIndex={props.tabIndex} data-enabled={enabled}>
     <header className="shared-input-card-header"><button type="button" className="shared-input-enable-toggle" role="switch" aria-label={switchLabel} aria-checked={enabled} disabled={disabled} onClick={()=>onEnabledChange(!enabled)}><span className="shared-input-switch-track" aria-hidden="true"><span/></span><span className="shared-input-card-title">{title}</span></button>{actions&&<div className="shared-input-card-actions">{actions}</div>}</header>
-    {enabled&&<div className="shared-input-enable-content">{children}</div>}
+    {enabled&&<div className="shared-input-enable-content">{props.stack?<InputSettingsStack>{children}</InputSettingsStack>:children}</div>}
   </section>;
 }
 export function InputSettingsReferenceRow({children}:{children:ReactNode}) {

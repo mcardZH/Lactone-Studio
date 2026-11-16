@@ -2,6 +2,7 @@
   position: static;
   width: 100%;
   min-width: 0;
+  container: xtb-optimization / inline-size;
   margin-top: 6px;
   box-sizing: border-box;
   padding: 7px 8px;
@@ -14,13 +15,11 @@
 }
 .xtb-optimization-panel .optimization-panel-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;min-width:0}
 .xtb-optimization-panel .optimization-panel-header>strong{font-size:12px}
-.xtb-optimization-panel .optimization-primary-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:4px}
-.xtb-optimization-panel .xtb-electronic-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:4px;margin-top:5px}
-.xtb-optimization-panel .xtb-electronic-fields.has-core-count{grid-template-columns:repeat(3,minmax(0,1fr))}
-.xtb-optimization-panel :is(.optimization-primary-row,.xtb-electronic-fields)>label{display:flex;flex-direction:column;align-items:stretch;min-width:0;gap:2px}
-.xtb-optimization-panel :is(.optimization-primary-row,.xtb-electronic-fields)>label>span{font-size:11px}
-.xtb-optimization-panel :is(.optimization-primary-row,.xtb-electronic-fields) :is(select,input[type=number]){width:100%;min-width:0;padding-inline:3px}
-.xtb-optimization-panel .optimization-primary-row>button{width:100%;min-width:0;min-height:27px;padding:2px 3px;font-size:12px;font-weight:600}
+.xtb-run-settings-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%, 8rem),1fr)); gap:4px 8px; margin-top:4px; }
+:is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields)>label{display:flex;flex-direction:column;align-items:stretch;min-width:0;gap:2px}
+:is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields)>label>span{font-size:var(--ui-small-size,12px)}
+:is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields) :is(select,input[type=number]){width:100%;min-width:0;padding-inline:3px}
+.xtb-electronic-fields :is(select,input[type=number]) { min-height:26px; box-sizing:border-box; border:1px solid #c4d7cb; border-radius:5px; background:#fff; color:inherit; font:inherit; }
 .xtb-optimization-panel .optimization-stop:not(:disabled){color:#923c35;border-color:#c89c96}
 .xtb-optimization-panel label { display: inline-flex; align-items: center; gap: 4px; margin: 0; white-space: nowrap; }
 .xtb-optimization-panel :is(select, input[type=number], button) {
@@ -69,3 +68,120 @@
 .model-bond-perception-notice p { margin: 6px 0; line-height: 1.5; }
 .model-bond-perception-notice > div { display: grid; gap: 4px; max-height: 160px; overflow: auto; }
 .model-bond-perception-notice button { text-align: left; font-size: 12px; }
+.model-preoptimization-cards { display:grid; gap:6px; min-width:0; }
+.model-simulation-card {
+  --ui-control-font:calc(12px * var(--ui-font-scale,1));
+  --ui-control-line:calc(18px * var(--ui-font-scale,1));
+  --ui-control-primary-height:calc(32px * var(--ui-font-scale,1));
+  --ui-control-primary-width:calc(54px * var(--ui-font-scale,1));
+  box-sizing:border-box;
+  min-width:0;
+  padding:6px 8px;
+  border:1px solid var(--ui-surface-border);
+  border-radius:var(--ui-surface-radius);
+  background:var(--ui-surface-bg);
+  color:var(--ui-control-ink);
+  font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family);
+  container:model-simulation / inline-size;
+}
+.model-simulation-card,.model-simulation-card.xtb-optimization-panel { box-shadow:var(--ui-card-stroke-inset); }
+.model-simulation-card.xtb-optimization-panel { margin:0; }
+.model-simulation-card .model-simulation-heading {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:4px; min-width:0; margin:0 0 4px;
+}
+.model-simulation-card .model-simulation-heading > strong {
+  font:600 calc(13px * var(--ui-font-scale,1))/var(--ui-control-line) var(--ui-font-family);
+  color:var(--ui-section-ink);
+}
+.model-simulation-card.xtb-optimization-panel :is(label, select, input, button, summary, p),
+.model-simulation-card.xtb-optimization-panel label > span,
+.model-simulation-card.xtb-optimization-panel .shared-input-field-label {
+  font-size:var(--ui-control-font); line-height:var(--ui-control-line);
+}
+.model-simulation-card.xtb-optimization-panel .model-simulation-actions > button {
+  font-size:var(--ui-control-font); line-height:var(--ui-control-line);
+}
+.model-simulation-card:is(.xtb-optimization-panel,.dynamics-panel) :is(button,input,select):disabled {
+  opacity:1;
+  color:var(--ui-action-disabled-ink);
+  background:var(--ui-action-disabled-bg);
+  border-color:var(--ui-action-disabled-border);
+}
+.dynamics-panel .model-simulation-heading { margin-bottom:0; }
+.model-simulation-footer { margin-top:12px; }
+.model-simulation-card.xtb-optimization-panel :is(select,input:not([type=checkbox]),.model-space-default) {
+  min-height:var(--ui-control-height);
+  border-color:var(--ui-control-border);
+  border-radius:var(--ui-control-radius);
+  padding:var(--ui-control-padding);
+  background:#fff;
+}
+.model-simulation-card .optimization-primary-row {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,.84fr) auto;
+  align-items:end; gap:4px; min-width:0;
+}
+.model-simulation-card .optimization-primary-row>label {
+  display:grid; grid-template-columns:minmax(0,1fr); align-items:stretch; gap:3px; min-width:0;
+}
+.model-simulation-card .optimization-primary-row>label>span:first-child {
+  font:inherit;
+}
+.model-simulation-card .optimization-primary-row>label>select,
+.model-simulation-card .optimization-primary-row .model-temperature-control input {
+  width:100%; min-width:0; height:var(--ui-control-primary-height); min-height:var(--ui-control-primary-height);
+  border:1px solid var(--ui-control-border); border-radius:var(--ui-control-radius);
+  background:var(--ui-control-bg); color:inherit; padding:var(--ui-control-padding); font:inherit;
+}
+.model-simulation-card .model-simulation-actions {
+  display:flex; flex-wrap:nowrap; align-items:stretch; justify-self:end; gap:4px;
+}
+.model-simulation-card:is(.xtb-optimization-panel,.dynamics-panel) .optimization-primary-row .model-simulation-actions>button {
+  width:auto; min-inline-size:var(--ui-control-primary-width); height:var(--ui-control-primary-height);
+  min-height:var(--ui-control-primary-height); padding:4px 8px; align-self:end;
+  font-family:var(--ui-font-family); font-size:var(--ui-control-font); line-height:var(--ui-control-line);
+}
+.model-simulation-card.xtb-optimization-panel .xtb-optimization-buttons>button {
+  min-height:var(--ui-control-primary-height); height:auto; padding:5px 12px;
+}
+.model-simulation-card.xtb-optimization-panel .xtb-run-settings-fields,
+.model-simulation-card.xtb-optimization-panel .xtb-optimization-actions { margin-top:4px; gap:4px; }
+.model-simulation-card.xtb-optimization-panel .model-space-default { font-size:var(--ui-control-font); }
+.model-simulation-card .xtb-electronic-fields {
+  display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; margin-top:4px; min-width:0;
+}
+.model-simulation-card .xtb-electronic-fields .model-electronic-pair {
+  display:flex; flex-wrap:nowrap; align-items:center; flex:0 1 auto; gap:4px; min-width:0; max-width:100%;
+}
+.model-simulation-card .xtb-electronic-fields.input-settings-surface[data-input-layout=standard] .model-electronic-pair>.shared-input-field {
+  display:inline-flex; flex:0 1 auto; flex-wrap:nowrap; align-items:center; gap:4px; min-width:0;
+}
+.model-simulation-card .xtb-electronic-fields.input-settings-surface[data-input-layout=standard] .model-electronic-pair .shared-input-field-control,
+.model-simulation-card .xtb-electronic-fields.input-settings-surface[data-input-layout=standard] .model-electronic-pair .numeric-adaptive {
+  flex:0 1 auto; inline-size:calc(60px * var(--ui-font-scale,1)); min-width:0; max-inline-size:100%;
+}
+.model-simulation-card .xtb-electronic-fields.input-settings-layout.input-settings-surface[data-input-layout=standard] .model-electronic-pair .numeric-adaptive>input {
+  inline-size:100%; min-height:var(--ui-control-primary-height); height:var(--ui-control-primary-height);
+}
+.model-simulation-card .xtb-electronic-fields>.conformer-solvent-field {
+  flex:0 1 auto; display:block; min-width:0; max-width:100%;
+}
+.model-simulation-card .xtb-electronic-fields>.conformer-solvent-field>.shared-input-field {
+  display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:4px; min-width:0;
+}
+.model-simulation-card .xtb-electronic-fields .conformer-solvent-field .shared-input-field-control {
+  flex:0 1 auto; min-width:0; max-width:100%;
+}
+.model-simulation-card .xtb-electronic-fields.input-settings-layout.input-settings-surface[data-input-layout=standard] .conformer-solvent-field .shared-input-field select {
+  field-sizing:content; inline-size:auto; width:auto; min-inline-size:calc(3ch + 30px * var(--ui-font-scale,1));
+  max-inline-size:100%; height:var(--ui-control-primary-height); min-height:var(--ui-control-primary-height);
+}
+@container model-simulation (max-width:28.75em) {
+  .model-simulation-card .optimization-primary-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .model-simulation-card .optimization-primary-row>.model-simulation-actions { grid-column:1 / -1; }
+}
+@container model-simulation (max-width:20em) {
+  .model-simulation-card .xtb-electronic-fields.input-settings-surface[data-input-layout=standard] .model-electronic-pair>.shared-input-field {
+    flex-direction:column; align-items:flex-start;
+  }
+}

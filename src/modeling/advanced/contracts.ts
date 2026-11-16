@@ -10,7 +10,10 @@ import type { AissBridge, AissRequest, AissEvent, AissScreenedPose, AissRefinedC
 import type { ComputeResourceEvidence, ComputeResourceSnapshot } from '../resource-preferences';
 type WithoutOwner<T> = T extends unknown ? Omit<T, 'schema' | 'stamp' | 'runIdentity' | 'structure' | 'charge' | 'uhf' | 'frozenAtomIds' | 'constraints'> : never;
 export type AdvancedPathTaskOptions = WithoutOwner<AdvancedPathRequest> & { threads: number; maxSteps: number; maxEvaluations: number };
-export type AdvancedSamplingTaskOptions = WithoutOwner<ConformerSamplingRequest> & { threads: number; maxSteps: number; maxEvaluations: number };
+export type AdvancedSamplingTaskOptions = WithoutOwner<ConformerSamplingRequest> & { threads: number; maxSteps: number; maxEvaluations: number;
+  /** Only the resolved seed is sent to the numerical worker. */
+  seedMode?: 'auto'|'explicit'; seedDraft?: number;
+};
 export type AdvancedDockingTaskOptions = Omit<AissRequest, 'schema' | 'operation' | 'stamp' | 'runIdentity' | 'sources'> & { threads: number };
 
 export interface AdvancedRunBudget {
@@ -26,7 +29,8 @@ export const DEFAULT_ADVANCED_RUN_BUDGET: Readonly<AdvancedRunBudget> = Object.f
   maxProcessStages: 512, maxBiasHistoryEntries: 4096,
 });
 export interface AdvancedXtbOptions {
-  method: XtbMethod; threads: number; maxSteps: number; solvent: string;
+  method: XtbMethod; threads: number; maxSteps?: number; solvent: string;
+  optimizationStepPolicy?: 'native-default';
   maxSccIterations?: number;
   internalConstraintsConfirmed: boolean;
   solvation?: XtbSolvation;
@@ -34,14 +38,14 @@ export interface AdvancedXtbOptions {
 }
 export type AdvancedOptimizationMethod =
   | { backend: 'xtb'; options: AdvancedXtbOptions }
-  | { backend: 'forcefield'; forcefield: ForcefieldChoice; threads: number; maxSteps: number; solvent: string };
+  | { backend: 'forcefield'; forcefield: ForcefieldChoice; threads: number; maxSteps?: number; solvent: string; optimizationStepPolicy?: 'native-default' };
 export interface AdvancedOptimizationStageConfig {
   id: string; method: AdvancedOptimizationMethod; clustering?: Partial<ConformerClusteringPolicy>;
   /** Legacy producer-side selection, retained only for historical/non-conformer runs. */
   advanceCount?: number;
   /** Receiving conformer stage only. The first stage has no upstream count. */
   inputClusterCount?: number;
-  /** Stable source order, starting with the first input; positive integer. */
+  /** Current first-stage stride, or a legacy value in an executed snapshot. */
   inputStride?: number; checkpointAfter: boolean;
 }
 interface AdvancedTaskBase {
@@ -110,7 +114,7 @@ export interface AdvancedSamplingBatch {
   id:string;initialGuessId:string;source:AdvancedFrameSource;definition:AdvancedMixedSamplingDefinition;
   createdAt:number;sealed:boolean;sealedReason?:'append'|'optimization'|'legacy';cards:AdvancedSamplingCardState[];mergedFrameIds:string[];
 }
-export interface AdvancedCandidateInput {candidateId:string;source:AdvancedFrameSource}
+export interface AdvancedCandidateInput {candidateId:string;source:AdvancedFrameSource;preparationError?:string}
 export interface AdvancedStageInputSelection {
   schema:1;mode:'sampling-all'|'previous-clusters';collectionId:string;collectionRevision:number;
   collectionSignature:string;requestedCount?:number;actualCount:number;inputStride?:number;
@@ -166,17 +170,28 @@ export interface AdvancedResultFrame {
 }
 export interface AdvancedCalculationResult {
   originalInput?:AdvancedFrameSource;
-  candidateId: string; stageId: string; status: 'completed' | 'failed' | 'stopped';
+  candidateId: string; stageId: string; status: 'completed' | 'unconverged' | 'failed' | 'stopped';
   input: AdvancedFrameSource; frameId?: string; energyHartree?: number;
-  identity?: ConformerCalculationIdentity; metadata?: XtbMetadata; error?: string;
+  identity?: ConformerCalculationIdentity; metadata?: XtbMetadata; forcefieldOptimization?: AdvancedForcefieldOptimization; error?: string;
   sessionId?: string; electronic?: { artifactId: string; status: 'retained' | 'transferred' | 'release-failed'; error?: string };
   reusedFromRunId?: string;
   /** Original native input, stdout and optimization trajectory remain on disk. */
   diagnosticDirectory?: string;
 }
 export interface AdvancedStageRun {
+  /** Historical execution mapping, retained to verify already registered batches. */
+  resumeFrameIds?:Record<string,string>;
+  /** Latest verified batch accounting, independent of UI result adoption. */
+  batchProgress?: import('./batch-contracts').ConformerBatchProgress;
+  /** Exact registered candidate order; retained for idempotent result reload. */
+  batchCandidateIds?: string[];
   inputSelection?: AdvancedStageInputSelection;
-  adoptionError?:{code:'BATCH_RESULT_ADOPTION_FAILED';batchId:string;message:string};
+  adoptionError?:{code:'BATCH_RESULT_ADOPTION_FAILED';batchId:string;message:string;kind?:'read'|'integrity'};
+  /** Explicit continuation from verified project assets; the original batch
+   * error and external owner remain unchanged. No external record is adopted. */
+  projectResultContinuation?: { runId: string; signature: string; completedCandidateIds: string[]; discardedCandidateIds: string[]; recalculateCandidateIds: string[] };
+  /** Scientific results were adopted; only cleanup of their former batch files remains. */
+  batchCleanupWarning?: { batchId: string; code: 'CONFORMER_BATCH_CLEANUP_FAILED'; message: string };
   progress?:AdvancedStageProgress; resultRevision?:number; batchId?:string;
   inputs?:AdvancedCandidateInput[];inputCollectionRevision?:number;
   id: string; index: number; status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped';
@@ -292,12 +307,16 @@ export interface AdvancedControllerDependencies {
 }
 /** A future resource-aware ChemistryPort adapter must use this explicit contract;
  * a plain ChemistryPort cannot attest per-job threads, wall budget or native close. */
+export interface AdvancedForcefieldOptimization {
+  optimizer: 'rdkit-minimize' | 'scipy-slsqp';
+  maxSteps: number;
+}
 export interface AdvancedForcefieldAdapter {
   optimize(input: { source: AdvancedFrameSource; method: Extract<AdvancedOptimizationMethod, { backend: 'forcefield' }>;
     taskId: string; runId: string; maxWallTimeSeconds?: number; memoryBudgetBytes?: number;
     optimizationPool?: { stageId: string; candidateId: string } }): {
     promise: Promise<{ structure: Structure; energyHartree: number; converged: boolean; engine: string; version: string; forcefield: string;
-      energyKind: 'forcefield-potential'; resourceGrant?: ComputeResourceEvidence;
+      energyKind: 'forcefield-potential'; resourceGrant?: ComputeResourceEvidence; optimization?: AdvancedForcefieldOptimization;
       effectiveResources: { threads: number; maxWallTimeSeconds?: number; memoryBudgetBytes?: number } }>;
     stop(): Promise<void>;
   };

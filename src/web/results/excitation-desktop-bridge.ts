@@ -20,7 +20,7 @@ export interface ExcitationDesktopBridgeOptions {
   onCleanupError?(message: string): void; onProgress?(snapshot: MultiwfnProgressSnapshot): void;
 }
 type Tracker = ReturnType<typeof createMultiwfnProgressTracker>;
-type Operation = { requestId: string; epoch: number; abort: AbortController; submitted?: boolean; cancelling?: Promise<unknown> };
+type Operation = { requestId: string; epoch: number; abort: AbortController; submitted?: boolean; cancelling?: Promise<unknown>; settlement?: Promise<unknown> };
 const assert: (value: unknown, message: string) => asserts value = (value, message) => { if (!value) throw new Error(message); };
 const abortError = () => new DOMException('激发态分析已取消或来源已改变。', 'AbortError');
 function hasSourcePayload(source: PostprocessSourceText): boolean {
@@ -58,14 +58,14 @@ export function createExcitationDesktopBridge(options: ExcitationDesktopBridgeOp
       && document.pair.frameIndex === binding.pairFrameIndex && !document.pair.conflicts.length, 'OUT与波函数配对未知或存在身份冲突。');
     return { output: document.output, wavefunction: document.wavefunction };
   }
-  async function open(): Promise<ExcitationSessionInfo> {
+  async function open(op?:Operation): Promise<ExcitationSessionInfo> {
     if (disposed || !active) throw abortError();
     if (info) { const attachment = bound(); await Promise.all([attachment.output.readSourceText!(), attachment.wavefunction.readSourceText!()]); if (disposed) throw abortError(); bound(); return info; }
     if (opening) return opening;
     const attachment = bound(), id = 'excitation-' + crypto.randomUUID();
     assert(desktop.openExcitationSession && desktop.closeExcitationSession, '当前环境缺少激发态分析入口。');
     opening = (async () => {
-      const [wave, output] = await Promise.all([attachment.wavefunction.readSourceText!(), attachment.output.readSourceText!()]);
+      const [wave, output] = await Promise.all([attachment.wavefunction.readSourceText!(op?.abort.signal), attachment.output.readSourceText!(op?.abort.signal)]);
       if (disposed) throw abortError(); bound();
       const outputSHA256 = attachment.output.source.result.source.sha256;
       assert(wave.sourceId === attachment.wavefunction.source.metadata!.sourceId && wave.sourceRevision === attachment.wavefunction.source.metadata!.sourceRevision
@@ -74,7 +74,7 @@ export function createExcitationDesktopBridge(options: ExcitationDesktopBridgeOp
         && hasSourcePayload(wave) && hasSourcePayload(output), '原始波函数/OUT快照身份不符。');
       const savedCompanions=attachment.output.source.kind==='orca-output'?await projectCompanionSourceToken(attachment.output,context,desktop,{sourceId:output.sourceId,revision:output.sourceRevision}):{restored:false};
       const companionSourceToken = attachment.output.source.kind === 'orca-output' ? savedCompanions.restored?savedCompanions.token:await attachment.output.readCompanionSourceToken?.() : undefined;
-      if (disposed) throw abortError(); bound();
+      if (op)current(op); if (disposed) throw abortError(); bound();
       sessionId = id;
       outputRevision = output.sourceRevision;
       try {
@@ -95,7 +95,7 @@ export function createExcitationDesktopBridge(options: ExcitationDesktopBridgeOp
       if (settlement === 'native-settled' || settlement === 'cancelled-before-start') trackers.get(op.requestId)?.stopped(settlement);
       else if (!op.submitted) trackers.get(op.requestId)?.stopped('cancelled-before-start');
     }); }
-    await op.cancelling;
+    try{await op.cancelling;}finally{await op.settlement?.catch(()=>{});}
   }
   function execute<T>(requestId: string, signal: AbortSignal, operationName: string, action: (op: Operation) => Promise<T>): Promise<T> {
     if (disposed || !active || signal.aborted) return Promise.reject(abortError());
@@ -103,12 +103,12 @@ export function createExcitationDesktopBridge(options: ExcitationDesktopBridgeOp
     const op: Operation = { requestId, epoch, abort: new AbortController() }; operation = op;
     const abort = () => { void cancelOperation(op).catch(report); }; signal.addEventListener('abort', abort, { once: true });
     let task!: Promise<T>;
-    task = (async () => { try { current(op); await open(); current(op);
+    task = (async () => { try { current(op); await open(op); current(op);
       trackers.set(requestId, createMultiwfnProgressTracker({ sourceId: context.sourceId, sourceRevision: context.sourceRevision, jobIndex: context.jobIndex, sourceFrameIndex: context.sourceFrameIndex, generation: context.generation, ownerId: options.analysisId, analysisId: options.analysisId, sessionId: sessionId!, runId: requestId, operation: operationName }, publish));
       const value = await action(op); current(op); return value;
     } catch (error) { if (!op.abort.signal.aborted) { const tracker = trackers.get(requestId), settlement = op.submitted ? tracker?.getSnapshot().settlement : 'not-started'; if (settlement) tracker?.failed(settlement, error instanceof Error ? error.message : String(error)); } throw error; }
-    finally { signal.removeEventListener('abort', abort); if (operation === op) operation = null; tasks.delete(task); } })();
-    tasks.add(task); return task;
+    finally { await op.cancelling?.catch(()=>{}); signal.removeEventListener('abort', abort); if (operation === op) operation = null; tasks.delete(task); } })();
+    op.settlement=task; tasks.add(task); return task;
   }
   function accept(result: ExcitationResult, expected: SurfaceStamp) {
     validateExcitationResult(result);

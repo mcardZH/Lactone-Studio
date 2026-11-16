@@ -10,7 +10,8 @@ import { displacedVibrationStructure } from '../../results/vibrations';
 import { atomicScalars, traceInternalCoordinate, type CoordinateTrace } from '../../results/scientific-analysis';
 import { playbackRange, trajectoryViewDocument, type PlaybackDirection, type PlaybackMode } from '../../results/playback';
 import {playbackOwners,playbackScopeIdentity} from '../../results/playback-owner';
-import {createPlaybackCollection,playbackCollectionRestriction,type PlaybackCollection} from '../../results/playback-collection';
+import {createPlaybackCollection,initialPlaybackFrame,playbackCollectionKey,playbackCollectionRestriction,playbackCollectionVersion,type PlaybackCollection} from '../../results/playback-collection';
+import {playbackCapabilities,type OptPlaybackSession} from '../../results/opt-playback';
 import type {CenterResourcePort} from '../../results/trajectory-center';
 import { useProjectUiSnapshot,useProjectUiScope } from '../../projects/ui-state';
 import {PlaybackOverlayControls} from '../MultiframeDisplayControls';
@@ -30,11 +31,16 @@ import type {AnalysisCanvas} from './analysis-canvas';
 import { signedVibrationStructure } from '../../results/spectroscopy';
 import './trajectory.css';
 import {trajectoryControlCallbacks,trajectoryFrameOrder,trajectoryPlaybackExport,playbackOverlayPresentation,type TrajectoryPlaybackBridge,type TrajectoryPlaybackCommand} from './trajectory-playback-bridge';
-import {usePreparedTrajectory} from './usePreparedTrajectory';
+import {usePreparedTrajectory,empiricalFramePreparationState} from './usePreparedTrajectory';
 import type {PreparedTrajectoryView} from '../../results/prepared-trajectory';
 import {DismissibleNotice} from '../DismissibleNotice';
 import {conformerPlaybackDisplay,conformerVisualTrajectory,conformerDisplayRestorationRequiresFormat5} from '../../modeling/conformers/playback-display';
 import type {ConformerTrajectoryResult} from '../../modeling/conformers/trajectory';
+import { ScientificImageCopyButton } from '../ScientificImageCopyButton';
+import { captureTrajectoryViewportPng, type OffscreenCaptureSnapshot } from './export-image';
+import {captureViewportLegend} from './viewport-legend-export';
+import {applyFrameBondOverride,type FrameBondIdentity} from '../../core/modeling/frame-bond-overrides';
+import {trajectoryFrameBondIdentity} from '../../results/frame-bond-identity';
 
 export type TrajectoryExportFormat = 'xyz' | 'extxyz' | 'txt' | 'txt-json' | 'png' | 'gif' | 'png-sequence';
 export interface TrajectoryExportRequest {
@@ -51,6 +57,7 @@ export interface TrajectoryExportRequest {
   vibrationVectors?: readonly { atomIndex: number; vector: [number, number, number]; appearance?: import('../../results/surface-appearance-presets').VibrationVectorAppearance }[];
   atomScalarValues?: readonly { atomIndex: number; value: number }[];
   atomProperty?: AtomicProperty;
+  currentViewportImage?: { snapshot: OffscreenCaptureSnapshot; ownerDocument: Document };
 }
 export interface TrajectoryWorkspaceProps {
   playbackCollection?:PlaybackCollection;centerResources?:CenterResourcePort;
@@ -100,9 +107,22 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const orderKey=props.frameOrder?.join(',')??'';
   const frameOrder=useMemo(()=>trajectoryFrameOrder(result.frames.length,props.frameOrder),[result.frames.length,orderKey]);
   const uiScope=useProjectUiScope();
-  const collection=useMemo(()=>props.playbackCollection??createPlaybackCollection(result,{ownerId:playbackScopeIdentity(uiScope?.store??result,props.modelDocument?.id??result.id),revision:JSON.stringify([result.id,result.source.sha256??result.source.size,orderKey]),frames:frameOrder.map(index=>({frameId:(result as Partial<ConformerTrajectoryResult>).frameIds?.[index]??JSON.stringify([result.source.id,result.jobIndex,result.frames[index].sourceFrameIndex??index]),sourceFrameIndex:index,sourceResultId:result.id}))}),[props.playbackCollection,result,uiScope?.store,props.modelDocument?.id,orderKey]);
-  const lease=useMemo(()=>playbackOwners.acquire(collection,result,{prepared:props.prepared,autoPreview:false,notifyPreparation:false,initialFrameIndex:props.selectedFrameIndex??initialScientificFrame(result)??0,frameOrder,restored:restored?.playback}),[result,props.prepared,collection]);
+  const proposedCollection=useMemo(()=>props.playbackCollection??createPlaybackCollection(result,{ownerId:playbackScopeIdentity(uiScope?.store??result,props.modelDocument?.id??result.id),revision:JSON.stringify([result.id,result.source.sha256??result.source.size,orderKey]),frames:frameOrder.map(index=>({frameId:(result as Partial<ConformerTrajectoryResult>).frameIds?.[index]??JSON.stringify([result.source.id,result.jobIndex,result.frames[index].sourceFrameIndex??index]),sourceFrameIndex:index,sourceResultId:result.id}))}),[props.playbackCollection,result,uiScope?.store,props.modelDocument?.id,orderKey]);
+  // Background optimization republishes an unchanged sampling projection.
+  // Retain its object for every consumer/effect, so neither lease cleanup nor
+  // repeated environment setup can pause/restart the same playback timer.
+  const collectionVersion=playbackCollectionVersion(proposedCollection),retainedCollection=useRef({version:collectionVersion,value:proposedCollection});
+  if(retainedCollection.current.version!==collectionVersion)retainedCollection.current={version:collectionVersion,value:proposedCollection};
+  const collection=retainedCollection.current.value;
+  const committedPlayback=useRef<{session:OptPlaybackSession;collection:PlaybackCollection;active:boolean}|null>(null);
+  const lease=useMemo(()=>{
+    const previous=committedPlayback.current,same=previous&&playbackCollectionKey(previous.collection)===playbackCollectionKey(collection);
+    const retained=same?previous.session.captureViewState():undefined;
+    const extendsFrames=same&&collection.frames.length>previous.collection.frames.length&&previous.collection.frames.every((entry,index)=>collection.frames[index]?.frameId===entry.frameId);
+    return playbackOwners.acquire(collection,result,{prepared:props.prepared,autoPreview:false,notifyPreparation:false,initialFrameIndex:props.selectedFrameIndex??initialScientificFrame(result)??initialPlaybackFrame(result,collection),frameOrder,restored:retained??restored?.playback,...(retained&&extendsFrames&&active&&previous.active?{liveContinuation:{playing:retained.playing,silentLoading:retained.silentLoading}}:{})});
+  },[result,props.prepared,collection]);
   const session=lease.session;
+  useLayoutEffect(()=>{committedPlayback.current={session,collection,active};},[session,collection,active]);
   const snapshot=useSyncExternalStore(session.subscribe,session.getSnapshot,session.getSnapshot);
   const {frame,playing,busy,fps,direction,mode,range,endpointPauseMs}=snapshot;
   const [initialFrameResolved,setInitialFrameResolved]=useState(false);
@@ -137,9 +157,10 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const [exportFormat, setExportFormat] = useState<TrajectoryExportFormat>(restored?.exportFormat??'xyz'), [exporting, setExporting] = useState(false), [viewReady, setViewReady] = useState(false);
   const [energySeries, setEnergySeries] = useState<EnergySeries>();
   const [exportSize, setExportSize] = useState(restored?.exportSize??{ width: 1200, height: 900 });
-  persisted.current={resultId:result.id,playback:{frameIndex:initialFrameResolved?frame.index:restored?.playback.frameIndex??frame.index,frameDelayMs:snapshot.frameDelayMs,fps,direction,mode,range,endpointPauseMs},localDisplay,showAxes,measurement,exportFormat,exportSize};
+  persisted.current={resultId:result.id,playback:session.captureViewState(),localDisplay,showAxes,measurement,exportFormat,exportSize};
   const [bondCache] = useState(() => new ResultViewBonds(result));
   const [bondEpoch, setBondEpoch] = useState(0);
+  const [bondRetrying,setBondRetrying]=useState(false),[bondAttempts,setBondAttempts]=useState<ReadonlyMap<string,number>>(()=>new Map()),[dismissedBondWarnings,setDismissedBondWarnings]=useState<ReadonlySet<string>>(()=>new Set());
   const mounted = useRef(true), activeRef = useRef(active);
   const viewport = useRef<HTMLDivElement>(null), getView = useRef<(() => number[]) | null>(null), exportController = useRef<AbortController | null>(null),rebuildController=useRef<AbortController|null>(null);
   const onError = useRef(props.onError); onError.current = props.onError; activeRef.current = active;
@@ -159,7 +180,11 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     } catch (cause) { return { structure: frame.structure, vectors: undefined, error: cause instanceof Error ? cause.message : String(cause) }; }
   }, [frame, vibration, vibrationProjection, result,playbackDisplay]);
   const view = useMemo(() => frame.structure.bonds!==undefined||bondCache.has(frame.structure,frame.index)?bondCache.resolve(frame.structure, frame.index):{structure:{...frame.structure,bonds:[]},source:'unavailable' as const,message:'显示连接尚未准备；当前仅显示原子。'}, [bondCache, frame.structure, frame.index, bondEpoch]);
-  const viewDocument = useMemo(() => {const document=trajectoryViewDocument(result, {...view.structure,atoms:playbackDisplay.structure.atoms}, frame.index);return props.modelDocument?{...document,id:props.modelDocument.id}:document;}, [result, view, frame.index,props.modelDocument?.id,playbackDisplay.structure]);
+  const frameBondIdentity=useMemo<FrameBondIdentity>(()=>trajectoryFrameBondIdentity(result,frame.index),[result,frame.index]);
+  const viewDocument = useMemo(() => {
+    const raw=trajectoryViewDocument(result,view.structure,frame.index),document=props.modelDocument?applyFrameBondOverride(props.modelDocument,{...raw,id:props.modelDocument.id},frameBondIdentity):raw;
+    return{...document,draft:{...document.draft,structure:{...document.draft.structure,atoms:playbackDisplay.structure.atoms}}};
+  }, [result, view, frame.index,props.modelDocument,frameBondIdentity,playbackDisplay.structure]);
   const staticDocument=useMemo(()=>{const document=trajectoryViewDocument(result,{...frame.structure,bonds:frame.structure.bonds??[]},frame.index);return props.modelDocument?{...document,id:props.modelDocument.id}:document;},[result,frame,props.modelDocument?.id]);
   const frameListener=useRef(props.onScientificFrame);frameListener.current=props.onScientificFrame;
   const notifiedFrame=useRef<number|undefined>(undefined);
@@ -194,6 +219,13 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     catch(error){if(!controller.signal.aborted&&mounted.current)setError(error instanceof Error?error.message:String(error));}
     finally{if(rebuildController.current===controller)rebuildController.current=null;}
   }
+  async function retryEmpiricalConnections(){
+    if(bondRetrying||playing||busy||!active)return;
+    const own=frame,controller=new AbortController(),identity=JSON.stringify(frameBondIdentity);rebuildController.current?.abort();rebuildController.current=controller;setBondRetrying(true);setBondAttempts(value=>new Map(value).set(identity,(value.get(identity)??0)+1));pause();
+    try{await props.prepared.retryFrame(own.index,controller.signal);if(!controller.signal.aborted&&mounted.current&&currentFrame.current===own){session.refreshPreparedFrame(own.index);setBondEpoch(value=>value+1);}}
+    catch(cause){if(!controller.signal.aborted&&mounted.current)setError(cause instanceof Error?cause.message:String(cause));}
+    finally{if(rebuildController.current===controller)rebuildController.current=null;if(mounted.current)setBondRetrying(false);}
+  }
   async function traceMeasurement() {
     if (!active || tracing || measurement.atomIds.length < 2 || measurement.atomIds.length > 4) return;
     pause(); const controller = new AbortController(); traceController.current?.abort(); traceController.current = controller; setTracing(true);
@@ -215,12 +247,14 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
       const format = vibrationRequest ? 'gif' : exportFormat;
       const visual = format === 'png' || format === 'gif' || format === 'png-sequence';
       if (visual && !getView.current) throw new Error('三维视口尚未就绪。');
+      const currentViewportImage = format === 'png' && !props.onCanvas && viewport.current
+        ? trajectoryImageSnapshot(viewport.current.ownerDocument) : undefined;
       const bounds = viewport.current?.querySelector('.model-viewport-canvas')?.getBoundingClientRect();
       const limits = playbackRange(range, result.frames.length);
-      await props.onExport({ result:await trajectoryPlaybackExport(visual?conformerVisualTrajectory(result):result,frameOrder,controller.signal), range: direction === 1 ? { ...range } : { start: limits.last, end: limits.first, stride: range.stride }, fps, currentIndex: playbackIndex, direction, mode, format,
+      await props.onExport({ result: currentViewportImage ? result : await trajectoryPlaybackExport(visual?conformerVisualTrajectory(result):result,frameOrder,controller.signal), range: direction === 1 ? { ...range } : { start: limits.last, end: limits.first, stride: range.stride }, fps, currentIndex: playbackIndex, direction, mode, format, currentViewportImage,
         width: exportSize.width, height: exportSize.height,
         viewportWidth: Math.max(1, Math.round(bounds?.width ?? 800)), viewportHeight: Math.max(1, Math.round(bounds?.height ?? 600)), document: structuredClone(viewDocument),
-        viewBonds: structuredClone(bondCache.snapshot(view.structure, frame.index)), resultKind: result.kind,
+        viewBonds: structuredClone(bondCache.snapshot(viewDocument.draft.structure, frame.index)), resultKind: result.kind,
         cameraView: getView.current ? [...getView.current()] : [], display: structuredClone(display), showAxes,
         measurement: structuredClone(measurement), energySeries, signal: controller.signal,
         displayedStructure: vibration || visual&&playbackDisplay.aligned ? structuredClone(displacement.structure) : undefined,
@@ -235,8 +269,40 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     } finally { vibrationRequest?.signal?.removeEventListener('abort', abort); if (exportController.current === controller) exportController.current = null; if (mounted.current) setExporting(false); }
   }
   const collectionRestriction=playbackCollectionRestriction(collection);
-  const summary = result.frames[frame.index], disabled = !!collectionRestriction||!active || exporting || snapshot.loading || snapshot.loadCancelled;
+  const empiricalState=empiricalFramePreparationState(props.prepared,frame.index),bondWarning=empiricalState&&empiricalState.status!=='inferred'?empiricalState.warnings.join('；')||'当前帧经验成键未完成，已保留原几何。':'';
+  const bondWarningIdentity=JSON.stringify([frameBondIdentity,bondWarning,bondAttempts.get(JSON.stringify(frameBondIdentity))??0]);
+  const bondWarningControl=useMemo(()=>bondWarning&&!dismissedBondWarnings.has(bondWarningIdentity)?<details className="trajectory-bond-warning"><summary title="当前帧显示连接提示" aria-label="当前帧显示连接提示">⚠</summary><DismissibleNotice role="status" identity={bondWarningIdentity} onDismiss={()=>setDismissedBondWarnings(value=>new Set([...value,bondWarningIdentity]))}>{bondWarning}<button disabled={bondRetrying||playing||busy||!active} onClick={()=>void retryEmpiricalConnections()}>{bondRetrying?'重试中':'重试当前帧成键'}</button></DismissibleNotice></details>:null,[bondWarningIdentity,bondRetrying,playing,busy,active,dismissedBondWarnings,frame,session,props.prepared]);
+  const summary = result.frames[frame.index], disabled = !!collectionRestriction||exporting||!playbackCapabilities(snapshot,result.frames.length,active).navigation;
+  const sourceRevision=collection.identity.revision;
+  const scientificFrameReady=initialFrameResolved&&!collectionRestriction&&!busy&&!snapshot.loading&&!snapshot.loadCancelled
+    &&props.prepared.get(frame.index)?.structure===frame.structure;
   const multiframe=usePostprocessMultiframe({result,prepared:props.prepared,documentId:props.modelDocument?.id??result.id,sourceRevision:collection.identity.revision,stageId:collection.identity.stageId,currentIndex:frame.index,active:active&&!vibration&&!vibrationProjection,collection,centerResources:props.centerResources,...(fixedCoreDisplay?{projectDisplayFrame:finalDisplayFrame}: {})});
+  function trajectoryImageSnapshot(ownerDocument: Document) {
+    const node = viewport.current?.querySelector('.model-viewport-stage');
+    const bounds = node?.getBoundingClientRect(), camera = getView.current;
+    if (!active || !scientificFrameReady || node?.ownerDocument !== ownerDocument ||
+        !bounds || bounds.width <= 0 || bounds.height <= 0 || !camera)
+      throw new Error('当前轨迹视口尚未准备好。');
+    const modeDisplay = vibrationProjection?.frameIndex === frame.index && vibrationProjection.sourceId === result.source.id
+      ? vibrationProjection : vibration?.frameIndex === frame.index ? vibration : undefined;
+    const structure = { ...viewDocument.draft.structure, atoms: displacement.structure.atoms };
+    const annotation = modeDisplay
+      ? `Mode ${modeDisplay.mode.index} | ${modeDisplay.mode.frequency} cm^-1 | display amplitude ${modeDisplay.amplitude} A | phase ${modeDisplay.phase.toFixed(4)} | source line ${modeDisplay.mode.sourceLine}${atomProperty ? ` | parent frame ${frame.index + 1} ${atomProperty.scheme} ${atomProperty.kind}` : ''}`
+      : undefined;
+    const image: OffscreenCaptureSnapshot = {
+      ...exportSize, viewportWidth: Math.max(1, Math.round(bounds.width)), viewportHeight: Math.max(1, Math.round(bounds.height)),
+      document: { ...viewDocument, draft: { ...viewDocument.draft, structure } },
+      display, showAxes, cameraView: [...camera()], measurement, legend:captureViewportLegend(node,viewDocument.id),
+      multiframeDisplay: multiframe.plan, viewTransform: playbackDisplay.aligned ? DISPLAY_IDENTITY : undefined,
+      displayGeometry: modeDisplay ? 'vibration' : undefined, vibrationBaseStructure: modeDisplay ? view.structure : undefined,
+      vibrationVectors: displacement.vectors, atomScalarValues, annotation
+    };
+    return { snapshot: image, ownerDocument };
+  }
+  const capturePng = (owner: Document, signal: AbortSignal) => {
+    const image = trajectoryImageSnapshot(owner);
+    return captureTrajectoryViewportPng(image.snapshot, image.ownerDocument, signal);
+  };
   const overlayKey=JSON.stringify(playbackOverlayPresentation(multiframe));
   const overlayControls=useMemo(()=><>{fixedCoreDisplay&&<small>运行快照核心固定；参考选择不改变显示坐标。</small>}<PlaybackOverlayControls {...multiframe} disabled={disabled||!!vibration||!!vibrationProjection}/></>,[overlayKey,fixedCoreDisplay,disabled,!!vibration,!!vibrationProjection,multiframe.onToggle,multiframe.onFitAtoms,multiframe.onReference,multiframe.onReferenceIndex,multiframe.onCurrentReference,multiframe.onCancelCenter]);
   const editObservation=useRef({frame:staticDocument.draft.structure,vibration:vibrationProjection,pause});editObservation.current={frame:staticDocument.draft.structure,vibration:vibrationProjection,pause};
@@ -244,6 +310,7 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const playbackCommand=useRef<(command:TrajectoryPlaybackCommand)=>void>(()=>undefined);
   playbackCommand.current=command=>{
     if(!active||exporting||collectionRestriction)return;
+    if(disabled&&!['prepare','cancel-preparation','silent-loading','pause'].includes(command.action))return;
     if(command.action==='prepare')session.prepare();else if(command.action==='cancel-preparation')session.cancelPreparation();else if(command.action==='silent-loading')session.setSilentLoading(command.value);
     else if(command.action==='play')play();else if(command.action==='pause')pause();
     else if(command.action==='seek'){if(!Number.isSafeInteger(command.index)||command.index<0||command.index>=result.frames.length)throw new Error('帧号超出范围。');seek(frameOrder[command.index]);}
@@ -256,13 +323,14 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     else if(command.action==='overlay-toggle')multiframe.onToggle();else if(command.action==='overlay-atoms')multiframe.onFitAtoms(command.value);else if(command.action==='overlay-reference')multiframe.onReference(command.kind);else if(command.action==='overlay-reference-index')multiframe.onReferenceIndex(command.index);else if(command.action==='overlay-current-reference')multiframe.onCurrentReference();else if(command.action==='center-cancel')multiframe.onCancelCenter();
   };
   const dispatchPlayback=useCallback((command:TrajectoryPlaybackCommand)=>playbackCommand.current(command),[]);
-  const trajectoryPlayback=useMemo<TrajectoryPlaybackBridge>(()=>({state:{resultId:result.id,projectionKey:frameOrder.join(','),collectionIdentity:collection.identity,frameId:collection.frames.find(entry=>entry.sourceFrameIndex===frame.index)?.frameId,targets:collection.targets,overlay:playbackOverlayPresentation({...multiframe,disabled}),count:collection.frames.length,index:collection.frames.findIndex(entry=>entry.sourceFrameIndex===frame.index),playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,preparation:snapshot.preparation,loading:snapshot.loading,loadCancelled:snapshot.loadCancelled,silentLoading:snapshot.silentLoading},dispatch:dispatchPlayback}),[result.id,collection,frame.index,overlayKey,frameOrder,playbackIndex,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,snapshot.preparation,snapshot.loading,snapshot.loadCancelled,snapshot.silentLoading,dispatchPlayback]);
-  const playbackControls=useMemo(()=><div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...trajectoryPlayback.state} {...trajectoryControlCallbacks(dispatchPlayback)} detailsContent={overlayControls}/>{playbackDisplay.restored&&<small role="status">显示已恢复运行快照核心；能量来自原始MD。</small>}{playbackDisplay.restriction&&<small role="status">{playbackDisplay.restriction}</small>}</div>,[trajectoryPlayback,dispatchPlayback,overlayControls,playbackDisplay.restored,playbackDisplay.restriction]);
+  const trajectoryPlayback=useMemo<TrajectoryPlaybackBridge>(()=>({state:{resultId:result.id,projectionKey:frameOrder.join(','),collectionIdentity:collection.identity,frameId:collection.frames.find(entry=>entry.sourceFrameIndex===frame.index)?.frameId,targets:collection.targets,overlay:playbackOverlayPresentation({...multiframe,disabled}),count:collection.frames.length,index:playbackIndex,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,preparation:snapshot.preparation,loading:snapshot.loading,loadCancelled:snapshot.loadCancelled,loadFailed:snapshot.loadFailed,silentLoading:snapshot.silentLoading},dispatch:dispatchPlayback}),[result.id,collection,frame.index,overlayKey,frameOrder,playbackIndex,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,snapshot.preparation,snapshot.loading,snapshot.loadCancelled,snapshot.loadFailed,snapshot.silentLoading,dispatchPlayback]);
+  const playbackControls=useMemo(()=><div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...trajectoryPlayback.state} {...trajectoryControlCallbacks(dispatchPlayback)} detailsContent={overlayControls}/>{bondWarningControl}{playbackDisplay.restored&&<small role="status">显示已恢复运行快照核心；能量来自原始MD。</small>}{playbackDisplay.restriction&&<small role="status">{playbackDisplay.restriction}</small>}</div>,[trajectoryPlayback,dispatchPlayback,overlayControls,bondWarningControl,playbackDisplay.restored,playbackDisplay.restriction]);
   const exportOwner=useRef(exportResult);exportOwner.current=exportResult;
   const exportCanvas=useCallback(()=>void exportOwner.current(),[]);
-  const modelEditingBlocked=playing||Boolean(vibration?.playing)||Boolean(vibrationProjection?.playing);
+  const modelEditingBlocked=!scientificFrameReady||playing||snapshot.previewing||Boolean(vibration?.playing)||Boolean(vibrationProjection?.playing);
   const onCipLabelsUsed=useCurrentCipUsage(viewDocument,active&&initialFrameResolved,props.onCipLabelsUsed);
-  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,prepareModelEdit,modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{...(playbackDisplay.aligned?{viewTransform:DISPLAY_IDENTITY}:{}),displayAtoms:displacement.structure.atoms,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&!busy,exporting}),[viewDocument,staticDocument,prepareModelEdit,modelEditingBlocked,result,frame.index,playbackControls,props.canvasOnly,trajectoryPlayback,displacement.structure.atoms,displacement.vectors,atomScalarValues,multiframe.plan,playbackDisplay.aligned,onViewReady,exportCanvas,active,busy,exporting]);
+  const exportStructure=scientificFrameReady?(vibrationProjection?.sourceId===result.source.id&&vibrationProjection.frameIndex===frame.index||vibration?.frameIndex===frame.index?displacement.structure:frame.structure):undefined;
+  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,exportStructure,prepareModelEdit,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,bondEditingBlocked:modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{...(playbackDisplay.aligned?{viewTransform:DISPLAY_IDENTITY}:{}),displayAtoms:displacement.structure.atoms,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&scientificFrameReady,exporting}),[viewDocument,staticDocument,exportStructure,prepareModelEdit,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,result,frame.index,playbackControls,props.canvasOnly,trajectoryPlayback,displacement.structure.atoms,displacement.vectors,atomScalarValues,multiframe.plan,playbackDisplay.aligned,onViewReady,exportCanvas,active,exporting]);
   useLayoutEffect(()=>{props.onCanvas?.(active&&initialFrameResolved?canvas:null);},[props.onCanvas,active,initialFrameResolved,canvas]);
   const canvasOwner=useRef(props.onCanvas);canvasOwner.current=props.onCanvas;
   useEffect(()=>()=>canvasOwner.current?.(null),[]);
@@ -281,6 +349,8 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
         <button disabled={disabled || busy || frame.structure.bonds !== undefined} onClick={() => void rebuildDisplayConnections()}>当前帧重新识别显示键</button>
         <small>{view.message}；显示推断不改变原始数据。</small>
       </div></details>}
+      {!props.onCanvas && <ScientificImageCopyButton resetKey={active ? sourceRevision : null}
+        disabled={!active || exporting || !viewReady || !scientificFrameReady} capture={capturePng}/>}
       {props.onExport && <><select aria-label="轨迹导出格式" value={exportFormat} disabled={exporting} onChange={e => setExportFormat(e.target.value as TrajectoryExportFormat)}><option value="xyz">XYZ</option><option value="extxyz">扩展 XYZ（晶胞）</option><option value="txt">数据 TXT</option><option value="png">当前帧 PNG</option><option value="gif">GIF 动画</option><option value="png-sequence">PNG 帧序列</option></select>
         {(exportFormat === 'png' || exportFormat === 'gif' || exportFormat === 'png-sequence') && <details className="trajectory-view-options"><summary>尺寸</summary><div>{(['width', 'height'] as const).map(key => <label key={key}>{key === 'width' ? '宽' : '高'}<NumericInput  aria-label={key === 'width' ? '导出宽度' : '导出高度'} min={1} value={exportSize[key]} disabled={exporting} onChange={e => { const value = Number(e.target.value); if (Number.isSafeInteger(value) && value >= 1) setExportSize(size => ({ ...size, [key]: value })); }}/></label>)}</div></details>}
         <button disabled={disabled || busy || ((exportFormat === 'png' || exportFormat === 'gif' || exportFormat === 'png-sequence') && !viewReady)} onClick={() => void exportResult()}>{vibration ? (exportFormat === 'gif' || exportFormat === 'png-sequence' ? '导出振动显示周期' : '导出当前位移帧') : '导出'}</button>{exporting && <button onClick={() => exportController.current?.abort()}>取消导出</button>}</>}

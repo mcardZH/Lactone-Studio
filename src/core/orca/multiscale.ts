@@ -1,4 +1,4 @@
-import { atomicNumber, electronicStateError } from '../elements';
+import { atomicNumber, electronicStateInputError } from '../elements';
 import { sha256Utf8 } from '../file-identity';
 import { hasSolvation } from '../solvents';
 import type { Atom } from '../types';
@@ -125,10 +125,10 @@ export function renderOrcaMultiscale(req: OrcaJobRequest, ctx: OrcaRenderContext
   if (cuts.some(cut => !confirmedCuts.has(`${cut.qmAtomId}\0${cut.lowAtomId}`))) error('multiscale.boundaries', '每条跨层键都需要独立确认原生H-link与高层电子态，不能静默丢失切口。');
   const qmModel: Atom[] = [...atoms.filter((_, i) => qm.has(actualIds[i])), ...cuts.map(() => ({ element: 'H', x: 0, y: 0, z: 0 }))];
   if (qmModel.length) {
-    const state = electronicStateError(qmModel, m.qmCharge, m.qmMultiplicity);
+    const state = electronicStateInputError(qmModel, m.qmCharge, m.qmMultiplicity);
     if (state) error('multiscale.qmMultiplicity', `含原生link H的高层模型电子态：${state}`);
   }
-  const totalState = electronicStateError(atoms, req.charge, req.multiplicity);
+  const totalState = electronicStateInputError(atoms, req.charge, req.multiplicity);
   if (totalState) error('electronicState', `总体系电子态：${totalState}`);
 
   // Product convention (shared with MD): [] and undefined both mean all. Apply

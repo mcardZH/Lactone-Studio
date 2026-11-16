@@ -14,7 +14,7 @@ import type { ViewerHighlights } from '../../core/display-highlights';
 import { createRenderAdapter,requiresCooperativeDisplay, type RenderAdapter, type RenderFeedbackOptions, type ViewportVibrationVector, type ViewportAtomScalarValue, type ViewportDipoleVector } from './render/adapter';
 import {cameraRotationDrag} from './render/display-settings';
 import {viewportSamplingSphere} from './render/sampling-sphere-preview';
-import {preparedCarbonCipUsage,type CipDisplayUsage,type CipLabelWarning} from './render/stereochemistry';
+import type {CipDisplayUsage,CipLabelWarning} from './render/stereochemistry';
 import './stereochemistry-warning.css';
 import { modelHighlights } from './render/display';
 import { atomHoverLabel, captureViewportDisplay, dispatchMeasurementPick, measurementConnectionPair, createFragmentPreviewSource, fragmentFramePresentation, fragmentPointerStep, gestureLeaseCurrent, hoverBondLength, hoverBondLabel, indexHoverBondOrders, useBoxGesture, type FragmentPreviewSource, type PointerMode } from './modeling-interaction-policy';
@@ -70,12 +70,16 @@ export interface AnalysisAtomCapture {
   assertCurrent(): void;
   onPick(atomId: string | null): void;
   onBox(atomIds: string[]): void;
-  onCoordinate?(atomIds: string[]): void;
+  onCoordinate?(atomIds: string[],images?:Vector3[]): void;
   onCancel(): void;
 }
 export function analysisCaptureCurrent(captured: Pick<AnalysisAtomCapture, 'requestId' | 'ownerId' | 'contextKey'>, current?: AnalysisAtomCapture): boolean {
   if (!current || captured.requestId !== current.requestId || captured.ownerId !== current.ownerId || captured.contextKey !== current.contextKey) return false;
   try { current.assertCurrent(); return true; } catch { return false; }
+}
+function captureCoordinate(capture:AnalysisAtomCapture,atomIds:readonly string[],images?:readonly Vector3[]){
+  if(images?.some(image=>image.some(Boolean)))capture.onCoordinate?.([...atomIds],images.map(image=>[...image]));
+  else capture.onCoordinate?.([...atomIds]);
 }
 /** Input capture has its own draft callbacks and never falls into Store edits. */
 export function finishInputCaptureGesture(document:ModelDocument,request:SelectionCaptureRequest|undefined,atomIds:readonly string[],gesture:{documentId:string;revision:number;captureRequestId?:string;kind:'box'|'camera'|'fragment';button:number;moved:boolean;start:ScreenPoint;end:ScreenPoint;pick:PickResult},project:(position:Vector3)=>ScreenPoint,callbacks:{onCapturePick?:(id:string|null)=>void;onCaptureBox?:(ids:string[],images?:Vector3[])=>void},releasePick:PickResult,hiddenAtomIds:readonly string[]=[]){
@@ -102,7 +106,7 @@ export function finishAnalysisAtomCapture(
   current: AnalysisAtomCapture | undefined,
   gesture: { kind: 'box' | 'camera' | 'fragment'; button: number; moved: boolean; start: ScreenPoint; end: ScreenPoint; pick: PickResult },
   atoms: Atom[], project: (position: Vector3) => ScreenPoint, releasePick: PickResult,
-  coordinateAtoms?: (id:string) => readonly string[] | undefined,
+  coordinateAtoms?: (id:string) => readonly string[] | {atomIds:readonly string[];images?:readonly Vector3[]} | undefined,
 ): void {
   if (!analysisCaptureCurrent(captured, current) || gesture.button !== 0) return;
   if (gesture.kind === 'box' && gesture.moved) {
@@ -112,8 +116,12 @@ export function finishAnalysisAtomCapture(
   } else if (!gesture.moved && (sameViewportPick(gesture.pick, releasePick) || (gesture.pick.kind === 'none' && releasePick.kind === 'none'))) {
     if (gesture.pick.kind === 'atom') current!.onPick(gesture.pick.atomId);
     else if (gesture.pick.kind === 'none') current!.onPick(null);
-    else if (current!.kind === 'coordinate' && gesture.pick.kind === 'bond') current!.onCoordinate?.([...gesture.pick.atomIds]);
-    else if (current!.kind === 'coordinate' && gesture.pick.kind === 'coordinate') { const ids=coordinateAtoms?.(gesture.pick.coordinateId);if(ids)current!.onCoordinate?.([...ids]); }
+    else if (current!.kind === 'coordinate' && gesture.pick.kind === 'bond') captureCoordinate(current!,gesture.pick.atomIds,gesture.pick.image?[[0,0,0],gesture.pick.image]:undefined);
+    else if (current!.kind === 'coordinate' && gesture.pick.kind === 'coordinate') {
+      const object=coordinateAtoms?.(gesture.pick.coordinateId);
+      if(object&&'atomIds' in object)captureCoordinate(current!,object.atomIds,object.images);
+      else if(object)captureCoordinate(current!,object);
+    }
   }
 }
 
@@ -199,12 +207,16 @@ export interface ModelViewportProps extends CalculationRangeFeedback {
   /** Owner-computed observation pose, shared with images and detached views. */
   observationTransform?: RigidTransform;
   measurement?: MeasurementState;
+  /** The active geometry editor owns this temporary label highlight. */
+  measurementEditorRecordId?: string;
   onMeasurementPick?: (atomId: string | null,image?:Vector3) => void;
   onMeasurementBondPick?: (pick:Extract<PickResult,{kind:'bond'}>) => void;
   structureLocked?: boolean;
   observationTool?: 'rotate' | 'pan' | 'select' | 'box';
   /** Only observation selection callbacks are enabled; source editing stays blocked. */
   observationSelection?: boolean;
+  /** Select current drawing objects without granting atom/geometry editing. */
+  readonlyDrawing?:boolean;
   resetViewRequest?: number;
   persistentTool?: 'hydrogen' | 'delete' | 'fragment' | null;
   fragmentTool?: { templateId: string; activeAtomIndex?: number };
@@ -298,6 +310,12 @@ export function viewportEditingBlocked(props: Pick<ModelViewportProps,'readOnly'
 export function observationSelectionGesture(props:Pick<ModelViewportProps,'readOnly'|'observationSelection'|'interaction'>,mode:'select'|'freeze'|null,button:number):boolean {
   return Boolean(props.readOnly&&props.observationSelection&&(mode==='select'||props.interaction.box)&&[0,2].includes(button));
 }
+/** A prepared observation may remove its yellow selection decoration without
+ * obtaining permission to edit atoms, coordinates or scientific constraints. */
+export function observationSelectionMarkerRemoval(props:Pick<ModelViewportProps,'active'|'readOnly'|'observationSelection'|'captureRequest'|'analysisAtomCapture'>,marker:ViewportStateMarker|undefined,button:number,mode:'select'|'freeze'|null):boolean {
+  return Boolean(props.active!==false&&props.readOnly&&props.observationSelection&&!props.captureRequest&&!props.analysisAtomCapture&&
+    marker?.kind==='selection'&&marker.removable!==false&&button===2&&mode!=='freeze');
+}
 export function recoverViewportProjectionFailure(failure: ViewportFailure | null, projectionHealthy: boolean): ViewportFailure | null {
   return projectionHealthy && failure?.kind === 'projection' ? null : failure;
 }
@@ -384,7 +402,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   const alignment = useRef(emptyObservationView());
   const hoverScreen = useRef<ScreenPoint | null>(null);
   const [ready, setReady] = useState(false), [failure, setFailure] = useState<ViewportFailure | null>(null);
-  const [cipWarning,setCipWarning]=useState<(CipLabelWarning&{documentId:string;atoms:Atom[]})|null>(null),dismissedCipWarnings=useRef(new Set<string>());
+  const [cipWarning,setCipWarning]=useState<(CipLabelWarning&{documentId:string;structure:ModelDocument['draft']['structure']})|null>(null),dismissedCipWarnings=useRef(new Set<string>());
   const [overlayTick,setOverlayTick]=useState(0);
   const failureRef = useRef<ViewportFailure | null>(null);
   const [initializationRequested, setInitializationRequested] = useState(() => viewportInitializationRequested(false, props.active));
@@ -594,9 +612,8 @@ export default function ModelViewport(props: ModelViewportProps) {
     else if(!objects.coordinateIds.length)applyAtomState(objects.atomIds,action);
     else throw new Error('内坐标对象冻结操作未连接；未改变原子或内坐标状态。');
   }
-  /** Absolute screen anchors; rendering below uses the same projection minus
-   * surface offset. Only persistent/task objects may participate, never auto. */
-  function selectableCoordinateLabels():MeasurementLabel[]{
+  /** F box uses absolute screen anchors of persistent/task coordinates. */
+  function coordinateLabelsForFreeze():MeasurementLabel[]{
     const p=latest.current;if(!adapter.current||!p.display.measurementMarks)return [];
     const known=new Set(coordinateSelectionObjects(p.document).map(object=>object.id));
     return projectMeasurementLabels(p.document.draft.structure.atoms,(p.measurement?.records??[]).filter(record=>known.has(record.id)),adapter.current.project,{x:0,y:0},p.document.draft.structure);
@@ -617,7 +634,7 @@ export default function ModelViewport(props: ModelViewportProps) {
     overlayClick.current = null;
     if (event.button !== 0 && event.button !== 2) return;
     const p = latest.current;
-    overlayPress.current = { id, pointerId: event.pointerId, button: event.button, start: { x: event.clientX, y: event.clientY }, documentId: p.document.id, revision: p.document.revision, moved: false, pointerMode: p.captureRequest?null:pointerMode(p) ?? (p.interaction.box ? 'select' : null), freezeRemoval: p.freezeRemovalMode, marker: marker && { ...marker, atomIds: [...marker.atomIds] } };
+    overlayPress.current = { id, pointerId: event.pointerId, button: event.button, start: { x: event.clientX, y: event.clientY }, documentId: p.document.id, revision: p.document.revision, moved: false, pointerMode: p.captureRequest?null:pointerMode(p) ?? (p.interaction.box||p.observationTool==='box' ? 'select' : null), freezeRemoval: p.freezeRemovalMode, marker: marker && { ...marker, atomIds: [...marker.atomIds] } };
     event.currentTarget.setPointerCapture(event.pointerId);
     if (overlayPress.current.pointerMode && !viewportEditingBlocked(p) && !p.structureLocked && p.active !== false) { overlayPress.current.modeGestureStarted = true; p.onGestureStart('box'); }
   }
@@ -637,9 +654,17 @@ export default function ModelViewport(props: ModelViewportProps) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     const p = latest.current;
     if (press?.modeGestureStarted) p.onGestureEnd(false);
-    const valid = Boolean(press && press.id === id && press.pointerId === event.pointerId && press.documentId === p.document.id && press.revision === p.document.revision && p.active !== false && !viewportEditingBlocked(p) && !p.analysisAtomCapture && !p.structureLocked && !bondRope.current && !gesture.current);
+    const ownerCurrent = Boolean(press && press.id === id && press.pointerId === event.pointerId && press.documentId === p.document.id && press.revision === p.document.revision && p.active !== false && !p.analysisAtomCapture && !bondRope.current && !gesture.current);
+    const valid = ownerCurrent&&!viewportEditingBlocked(p)&&!p.structureLocked;
     const moved = Boolean(press && (press.moved || Math.hypot(event.clientX - press.start.x, event.clientY - press.start.y) >= DRAG_THRESHOLD));
-    overlayClick.current = { id, allowed: overlayClickAllowed(press ? { pointerMode: press.pointerMode, moved, valid } : { pointerMode: null, moved: false, valid: false }, 1) && !p.temporaryPointerMode && !p.interaction.box };
+    const selectionMode = p.temporaryPointerMode || p.interaction.box || (!p.captureRequest && (pointerMode(p) || p.observationTool==='box'));
+    overlayClick.current = { id, allowed: overlayClickAllowed(press ? { pointerMode: press.pointerMode, moved, valid } : { pointerMode: null, moved: false, valid: false }, 1) && !selectionMode };
+    if(press&&ownerCurrent&&!moved&&observationSelectionMarkerRemoval(p,press.marker,press.button,press.pointerMode)){
+      overlayClick.current={id,allowed:false};
+      try { if(press.marker!.coordinateId!==undefined)applyObjectState(stateMarkerObjects(press.marker!),'select-remove');else applyAtomState([...press.marker!.atomIds],'select-remove'); }
+      catch(error){report(error);}
+      return;
+    }
     if (!press || !valid || moved) return;
     const state = resolveKnownCoordinateMarkerAction(p.document, press.marker, press.pointerMode, press.button, press.freezeRemoval);
     if (state.consumed) {
@@ -650,7 +675,7 @@ export default function ModelViewport(props: ModelViewportProps) {
       else if (press.pointerMode === 'freeze' && press.marker && 'coordinateId' in press.marker && (press.button === 0 || press.button === 2)) report('该内坐标标记没有当前模型中的有效对象身份；请先建立或重新选择 B/A/D 对象。');
       return;
     }
-    if (p.temporaryPointerMode || p.interaction.box) return;
+    if (selectionMode) return;
     if (press.button === 2 || (press.button === 0 && p.persistentTool === 'delete')) try { remove(); } catch (error) { report(error); }
   }
   function redraw(atoms?: Atom[], documentOverride?: ModelDocument) {
@@ -685,21 +710,26 @@ export default function ModelViewport(props: ModelViewportProps) {
     if(lastDraw.current===signature&&lastProjectionView.current===view&&sameResultProjectionInputs(lastResultProjectionInputs.current,resultInputs))return;
     if(lastDraw.current!==signature){
       const feedback:RenderFeedbackOptions={...viewportCaptureFeedback(document,p.captureRequest,p.problemAtomIds,p),sceneOwnerEpoch:p.sceneOwnerEpoch?JSON.stringify([p.sceneOwnerEpoch,p.observationEpoch??null,p.renderIdentity?.sourceId??null,p.renderIdentity?.sourceRevision??null,p.renderIdentity?.generation??null]):undefined,displayFrozenAtomIds:p.displayFrozenAtomIds,hiddenAtomIds:p.hiddenAtomIds,multiframeDisplay:p.multiframeDisplay,samplingSphere,calculationRanges:p.calculationRanges,displayCaptureAtomIds:capture.active?capture.atomIds:undefined,previewGuides:p.previewGuides,previewCell:p.previewCell,cellGuides:p.cellGuides,displayHighlightAtomIds:analysis.atomIds,displayMeasurementRecords:analysis.records,renderIdentity:p.renderIdentity,onRenderComplete:p.onRenderComplete};
-      feedback.onCipWarning=warning=>{
-        if(latest.current.active===false||latest.current.document.id!==p.document.id||latest.current.document.draft.structure.atoms!==p.document.draft.structure.atoms)return;
-        const identity=warning?JSON.stringify([p.document.id,warning.identity]):'';
-        setCipWarning(old=>!warning||dismissedCipWarnings.current.has(identity)?null:old?.identity===identity&&old.atoms===p.document.draft.structure.atoms?old:{...warning,identity,documentId:p.document.id,atoms:p.document.draft.structure.atoms});
-      };
       const instance=adapter.current,renderDocument=captureRenderDocument(document,p.captureRequest,p.captureAtomIds),renderDisplay=viewportRenderDisplay(captureViewportDisplay(p.display,p.captureRequest));
+      const activation=assignmentActivation.current.epoch,structure=renderDocument.draft.structure;
+      feedback.liveCip=true;
+      feedback.cipGeometryPreview=Boolean(atoms&&atoms===preview.current&&gesture.current?.kind==='fragment');
+      feedback.isCipCurrent=()=>{
+        const live=latest.current,source=live.document.draft.structure;
+        return adapter.current===instance&&assignmentActivation.current.epoch===activation&&live.active!==false&&live.document.id===document.id&&live.document.revision===document.revision&&source.atoms===structure.atoms&&source.bonds===structure.bonds&&live.sceneOwnerEpoch===p.sceneOwnerEpoch&&live.observationEpoch===p.observationEpoch&&Boolean(live.display.stereochemistry)===Boolean(p.display.stereochemistry);
+      };
+      feedback.onCipWarning=warning=>{
+        const identity=warning?JSON.stringify([document.id,warning.identity]):'';
+        setCipWarning(old=>!warning||dismissedCipWarnings.current.has(identity)?null:old?.identity===identity&&old.structure===structure?old:{...warning,identity,documentId:document.id,structure});
+      };
+      feedback.onCipLabelsUsed=usage=>latest.current.onCipLabelsUsed?.({...usage,documentId:document.id,sourceRevision:String(document.revision)});
       if(instance?.drawAsync&&(asynchronousDraw.current||instance.cooperativeDisplay?.()||requiresCooperativeDisplay(renderDocument,renderDisplay,feedback))){
         if(asynchronousDraw.current?.signature===signature)return;asynchronousDraw.current?.controller.abort();
         const own={signature,controller:new AbortController()};asynchronousDraw.current=own;container.current?.setAttribute('data-render-preparing','true');
-        const activation=assignmentActivation.current.epoch;
         feedback.isCurrent=()=>!own.controller.signal.aborted&&asynchronousDraw.current===own&&adapter.current===instance&&assignmentActivation.current.epoch===activation&&latest.current.active!==false&&latest.current.document.id===p.document.id&&latest.current.document.revision===p.document.revision&&latest.current.document.draft.structure.atoms===p.document.draft.structure.atoms&&latest.current.displayAtoms===p.displayAtoms&&latest.current.sceneOwnerEpoch===p.sceneOwnerEpoch&&latest.current.observationEpoch===p.observationEpoch;
         void instance.drawAsync(renderDocument,renderDisplay,p.highlights,atoms,drawTransform,p.measurement,feedback,own.controller.signal).then(()=>{
           if(!feedback.isCurrent?.())return;
           instance.updateSamplingSphere?.(viewportSamplingSphere(latest.current.document,latest.current.samplingSphereDraft,latest.current.samplingSphere),latest.current.document);
-          if(renderDisplay.stereochemistry){const usage=preparedCarbonCipUsage(renderDocument.draft.structure,p.hiddenAtomIds);if(usage)p.onCipLabelsUsed?.({...usage,documentId:p.document.id,sourceRevision:String(p.document.revision)});}
           lastDraw.current=signature;observeSurfaceMesh(true);refreshProjection(atoms,atoms?{...document,draft:{...document.draft,structure:{...document.draft.structure,atoms}}}:document);
           lastResultProjectionInputs.current=resultInputs;lastProjectionView.current=viewportProjectionSignature(instance.getView(),latest.current);
         }).catch(error=>{if(!own.controller.signal.aborted&&asynchronousDraw.current===own&&error?.name!=='AbortError')report(error);}).finally(()=>{if(asynchronousDraw.current===own){asynchronousDraw.current=null;container.current?.removeAttribute('data-render-preparing');}});return;
@@ -738,7 +768,7 @@ export default function ModelViewport(props: ModelViewportProps) {
             { ...current, end: event ? { x: event.clientX, y: event.clientY } : current.end },
             p.document.draft.structure.atoms.filter(a=>!p.hiddenAtomIds?.includes(a.id!)), adapter.current.project,
             event ? adapter.current.hitTest({ x: event.clientX, y: event.clientY }) : { kind: 'none' },
-            id => coordinateSelectionObjects(p.document).find(object=>object.id===id)?.atomIds);
+            id => coordinateSelectionObjects(p.document).find(object=>object.id===id));
           return;
         }
         if(current.captureRequestId){
@@ -754,6 +784,11 @@ export default function ModelViewport(props: ModelViewportProps) {
           return;
         }
         if (viewportEditingBlocked(p) && !(p.observationSelection && current.stateAction && ['select-add','select-remove'].includes(current.stateAction))) {
+          if(p.readonlyDrawing&&!current.moved&&current.button===0&&!p.measurement?.mode&&current.pick.kind!=='none'){
+            if(current.pick.kind==='port')p.onSelection({atomIds:[],bonds:[],auxiliaryIds:[],portIds:[current.pick.portId]});
+            else p.onSelection(selectionAfterPick(p.document.selection,current.pick));
+            return;
+          }
           if (p.readOnly && !p.viewTransform && !current.moved && current.button === 0 && p.measurement?.mode) {
             dispatchMeasurementPick(current.pick,p.measurement.mode,p,{periodic:!!live.draft.structure.cell?.pbc.some(Boolean),document:live});
           }
@@ -764,7 +799,8 @@ export default function ModelViewport(props: ModelViewportProps) {
           const end = event ? { x: event.clientX, y: event.clientY } : current.end;
           const rect={left:Math.min(current.start.x,end.x),right:Math.max(current.start.x,end.x),top:Math.min(current.start.y,end.y),bottom:Math.max(current.start.y,end.y)};
           const ids = current.moved ? captureBoxAtomIds(p.document.draft.structure.atoms.filter(a=>!p.hiddenAtomIds?.includes(a.id!)), adapter.current.project, rect) : current.pick.kind === 'atom' ? [current.pick.atomId] : [];
-          const coordinateIds=current.moved?captureBoxCoordinateIds(selectableCoordinateLabels(),rect):current.pick.kind==='coordinate'?[current.pick.coordinateId]:[];
+          const freeze=current.stateAction==='freeze'||current.stateAction==='unfreeze';
+          const coordinateIds=!freeze?[]:current.moved?captureBoxCoordinateIds(coordinateLabelsForFreeze(),rect):current.pick.kind==='coordinate'?[current.pick.coordinateId]:[];
           if(coordinateIds.length)applyObjectState({atomIds:ids,coordinateIds},current.stateAction);else if(ids.length)applyAtomState(ids,current.stateAction);
         } else if (current.contextDelete) {
           if (!p.structureLocked && !current.moved && adapter.current && event && sameViewportPick(current.pick, adapter.current.hitTest({ x: event.clientX, y: event.clientY })) && current.pick.kind !== 'none') {
@@ -775,7 +811,7 @@ export default function ModelViewport(props: ModelViewportProps) {
         } else if (current.kind === 'box' && adapter.current) {
           const end = event ? { x: event.clientX, y: event.clientY } : current.end;
           const rect = { left: Math.min(current.start.x, end.x), right: Math.max(current.start.x, end.x), top: Math.min(current.start.y, end.y), bottom: Math.max(current.start.y, end.y) };
-          p.onSelection(selectionWithCoordinateState(unionBox(p.document.selection, p.document.draft.structure.atoms.filter(a=>!p.hiddenAtomIds?.includes(a.id!)), adapter.current.project, rect),captureBoxCoordinateIds(selectableCoordinateLabels(),rect),'select-add'));
+          p.onSelection(unionBox(p.document.selection, p.document.draft.structure.atoms.filter(a=>!p.hiddenAtomIds?.includes(a.id!)), adapter.current.project, rect));
         } else if (current.kind === 'fragment') {
           if (current.moved && current.command) {
             const accepted = p.onGestureCommand ? p.onGestureCommand(current.command) : p.onCommand(current.command);
@@ -914,7 +950,7 @@ export default function ModelViewport(props: ModelViewportProps) {
       const target = event.target instanceof Element ? event.target.closest('[data-measurement-record-id]') : null;
       if (target) {
         const record = latest.current.measurement?.records?.find(item => item.id === target.getAttribute('data-measurement-record-id'));
-        if (record && !gesture.current && !bondRope.current && !viewportEditingBlocked(latest.current) && !latest.current.analysisAtomCapture && !latest.current.structureLocked && !pointerMode(latest.current) && !latest.current.interaction.box) {
+        if (record && !record.readOnly && !gesture.current && !bondRope.current && !viewportEditingBlocked(latest.current) && !latest.current.analysisAtomCapture && !latest.current.structureLocked && !pointerMode(latest.current) && !latest.current.interaction.box) {
           try { latest.current.onMeasurementRecordWheel?.(record, event.deltaY); } catch (error) { report(error); }
         }
         return;
@@ -941,7 +977,7 @@ export default function ModelViewport(props: ModelViewportProps) {
       bondRope.current = rope; setRopeDrawing(rope); updateHover(null); event.currentTarget.setPointerCapture(event.pointerId); p.onGestureStart('box'); return;
     }
     if (![0, 1, 2].includes(event.button)) return;
-    if (event.button === 2 && viewportEditingBlocked(latest.current)) { event.preventDefault(); return; }
+    if (event.button === 2 && viewportEditingBlocked(latest.current)&&!observationSelectionGesture(latest.current,pointerMode(latest.current),event.button)) { event.preventDefault(); return; }
     if (event.button !== 1 && latest.current.structureLocked && !latest.current.readOnly && !latest.current.viewTransform && (event.shiftKey || event.altKey || latest.current.interaction.alt)) { event.preventDefault(); return; }
     event.preventDefault();
     const shown = latest.current,p=shown.allowModelEditing&&shown.editingDocument?{...shown,document:shown.editingDocument}:shown, screen = { x: event.clientX, y: event.clientY }, hit = adapter.current.hitTest(screen);
@@ -1129,9 +1165,11 @@ export default function ModelViewport(props: ModelViewportProps) {
         {props.readOnly&&props.resultColorbar&&<AnalysisColorbarOverlay colorbar={props.resultColorbar} onLayoutChange={props.onResultColorbarLayoutChange} contextKey={`${model.id}:${model.revision}:${props.resultColorbarOwnerKey??''}`}/>}
         <AssignmentBadges badges={currentAssignmentBadges} onRegionSelect={selectAssignmentRegion} contextKey={`${model.id}:${assignmentActivation.current.epoch}:${model.revision}`} selectedRegionKey={selectedAssignment && assignmentDisplayKey(selectedAssignment)} disabled={assignmentInteractionDisabled} fontSize={display.fontSize} />
         {problemMarkers.filter(marker => props.problemAtomIds?.includes(marker.atomId) && model.draft.structure.atoms.some(atom => atom.id === marker.atomId)).map(marker => <span key={marker.atomId} className="model-problem-atom-marker" data-testid="model-problem-atom-marker" data-atom-id={marker.atomId} role="img" aria-label={props.problemDiagnostic ? `问题原子：${props.problemDiagnostic}` : '问题原子'} style={{ left: marker.x, top: marker.y }}>?</span>)}
-        {stateMarkerLabels.filter(marker=>!marker.id.startsWith('result-')||resultProjectionCurrent&&resultPresentation.markers.some(current=>current.id===marker.id)).map(marker => <button key={marker.id} type="button" className="model-state-marker" data-testid={marker.id.startsWith('result-atom:')?'result-highlight-atom':marker.id.startsWith('result-coordinate:')?'result-highlight-bond':'model-state-marker'} data-analysis-marker={marker.id.startsWith('result-')?true:undefined} data-state-marker-id={marker.id} data-state-kind={marker.kind} data-freeze-state={marker.kind==='freeze'?marker.inactive?'inactive':'applied':undefined} data-coordinate-id={marker.coordinateId} data-removable={marker.removable !== false} aria-disabled={marker.removable === false} aria-label={marker.label ?? marker.kind} title={marker.label} style={{ left: marker.x, top: marker.y }} onPointerDown={event => beginOverlayPress(event, marker.id, marker)} onPointerMove={moveOverlayPress} onPointerUp={event => endOverlayPress(event, marker.id, () => removeStateMarker(marker))} onPointerCancel={cancelOverlayPress} onLostPointerCapture={cancelOverlayPress} onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }} onClick={event => event.stopPropagation()} onPointerEnter={() => { updateHover(null); latest.current.onStateMarkerHover?.(marker); }} onPointerLeave={() => latest.current.onStateMarkerHover?.(null)} onFocus={() => latest.current.onStateMarkerHover?.(marker)} onBlur={() => latest.current.onStateMarkerHover?.(null)}>{marker.kind === 'freeze' ? <FreezeStateIcon inactive={marker.inactive}/> : <span aria-hidden="true">{marker.kind === 'selection' ? '✓' : 'S'}</span>}<span className="model-state-marker-detail">{marker.label ?? (marker.kind === 'selection' ? '选区' : marker.kind === 'freeze' ? '冻结' : '扫描')}</span></button>)}
-        {recordLabels.filter(row=>!row.analysis).map(({ record, valueLabel:renderedValueLabel, detail, x, y }) => {
-          const selected=!props.captureRequest&&!props.analysisAtomCapture&&model.selection.coordinateIds?.includes(record.id);
+        {stateMarkerLabels.filter(marker=>!marker.id.startsWith('result-')||resultProjectionCurrent&&resultPresentation.markers.some(current=>current.id===marker.id)).map(marker => <button key={marker.id} type="button" className="model-state-marker" data-testid={marker.id.startsWith('result-atom:')?'result-highlight-atom':marker.id.startsWith('result-coordinate:')?'result-highlight-bond':'model-state-marker'} data-analysis-marker={marker.id.startsWith('result-')?true:undefined} data-state-marker-id={marker.id} data-state-kind={marker.kind} data-freeze-state={marker.kind==='freeze'?marker.inactive?'inactive':'applied':undefined} data-coordinate-id={marker.coordinateId} data-removable={marker.removable !== false} aria-disabled={marker.removable === false&&!(props.analysisAtomCapture?.kind==='coordinate'&&marker.atomIds.length>1)} aria-label={marker.label ?? marker.kind} title={marker.label} style={{ left: marker.x, top: marker.y,pointerEvents:props.analysisAtomCapture&&(props.analysisAtomCapture.kind!=='coordinate'||marker.atomIds.length<2)?'none':undefined }} onPointerDown={event => beginOverlayPress(event, marker.id, marker)} onPointerMove={moveOverlayPress} onPointerUp={event => endOverlayPress(event, marker.id, () => removeStateMarker(marker))} onPointerCancel={cancelOverlayPress} onLostPointerCapture={cancelOverlayPress} onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }} onClick={event=>{event.stopPropagation();const p=latest.current,capture=p.analysisAtomCapture;if(p.active!==false&&capture?.kind==='coordinate'&&marker.atomIds.length>1)try{capture.assertCurrent();captureCoordinate(capture,marker.atomIds,marker.images);}catch(cause){report(cause);}}} onPointerEnter={() => { updateHover(null); latest.current.onStateMarkerHover?.(marker); }} onPointerLeave={() => latest.current.onStateMarkerHover?.(null)} onFocus={() => latest.current.onStateMarkerHover?.(marker)} onBlur={() => latest.current.onStateMarkerHover?.(null)}>{marker.kind === 'freeze' ? <FreezeStateIcon inactive={marker.inactive}/> : <span aria-hidden="true">{marker.kind === 'selection' ? '✓' : 'S'}</span>}<span className="model-state-marker-detail">{marker.label ?? (marker.kind === 'selection' ? '选区' : marker.kind === 'freeze' ? '冻结' : '扫描')}</span></button>)}
+        {recordLabels.filter(row=>!row.analysis).map(({ record, valueLabel, displayLabel, detail, x, y }) => {
+          if(record.readOnly)return <output key={record.id} className="model-measurement-record model-coordinate-annotation" data-testid="model-measurement-record" data-measurement-record-id={record.id} data-coordinate-readonly="true" data-mode={record.mode}
+            title={detail} aria-label={detail} style={{left:x,top:y,color:record.color,fontSize:display.fontSize}}>{displayLabel??valueLabel}</output>;
+          const selected=!props.captureRequest&&!props.analysisAtomCapture&&(props.measurementEditorRecordId===record.id||model.selection.coordinateIds?.includes(record.id));
           return <button key={record.id} type="button"
           className={`model-measurement-record${selected?' model-coordinate-selected':''}`}
           data-testid="model-measurement-record" data-measurement-record-id={record.id} data-coordinate-id={record.id}
@@ -1148,22 +1186,22 @@ export default function ModelViewport(props: ModelViewportProps) {
           onBlur={() => {updateHover(null);latest.current.onMeasurementRecordHover?.(null);}}
           onClick={event => {
             event.stopPropagation();const p=latest.current;
-            if(p.analysisAtomCapture){if(p.active!==false&&p.analysisAtomCapture.kind==='coordinate')try{p.analysisAtomCapture.assertCurrent();p.analysisAtomCapture.onCoordinate?.([...record.atomIds]);}catch(error){report(error);}return;}
+            if(p.analysisAtomCapture){if(p.active!==false&&p.analysisAtomCapture.kind==='coordinate')try{p.analysisAtomCapture.assertCurrent();captureCoordinate(p.analysisAtomCapture,record.atomIds,record.images);}catch(error){report(error);}return;}
             if(!consumeOverlayClick(`measurement:${record.id}`,event.detail))return;
-            if(p.active===false||viewportEditingBlocked(p)||p.analysisAtomCapture||p.structureLocked||p.temporaryPointerMode||p.interaction.box||bondRope.current||p.persistentTool==='delete')return;
+            if(p.active===false||viewportEditingBlocked(p)||p.analysisAtomCapture||p.structureLocked||p.temporaryPointerMode||p.interaction.box||(!p.captureRequest&&(pointerMode(p)||p.observationTool==='box'))||bondRope.current||p.persistentTool==='delete')return;
             try{
               if(p.captureRequest&&p.captureRequest.kind!=='atoms'&&(p.captureRequest.kind==='coordinate'||p.captureRequest.kind===(record.mode==='distance'?'B':record.mode==='angle'?'A':'D'))){p.onCaptureBox?.([...record.atomIds],record.images?structuredClone(record.images):undefined);return;}
-              if(!p.captureRequest&&coordinateSelectionObjects(p.document).some(object=>object.id===record.id))p.onSelection(selectionWithCoordinateState(p.document.selection,[record.id],p.document.selection.coordinateIds?.includes(record.id)?'select-remove':'select-add'));
-              p.onMeasurementRecordSelect?.(record);
+              if(p.onMeasurementRecordSelect)p.onMeasurementRecordSelect(record);
+              else if(!p.captureRequest&&coordinateSelectionObjects(p.document).some(object=>object.id===record.id))p.onSelection(selectionWithCoordinateState(p.document.selection,[record.id],p.document.selection.coordinateIds?.includes(record.id)?'select-remove':'select-add'));
             }catch(error){report(error);}
-          }}>{renderedValueLabel}</button>;})}
+          }}>{displayLabel??valueLabel}</button>;})}
         {transientLabel && <output className="model-measurement model-measurement-scalar" data-testid="model-measurement" title={transientLabel.detail} aria-label={transientLabel.detail} style={{ left: transientLabel.x, top: transientLabel.y, fontSize:display.fontSize }}><span className="model-visually-hidden">{transientLabel.label}</span>{transientLabel.valueLabel}</output>}
         {captureMarkers.map(marker => <span key={marker.atomId} data-testid="model-capture-marker" data-atom-id={marker.atomId} aria-label={`选取顺序 ${marker.ordinal}`} style={{position:'absolute',pointerEvents:'none',zIndex:5,left:marker.x+12,top:marker.y+8,color:'#946b00',font:`600 ${display.fontSize}px system-ui`}}>{marker.ordinal}</span>)}
       </div>
       {!model.draft.structure.atoms.length && ready && <div className="model-empty-hint">{viewportEmptyHint(props.readOnly)}</div>}
       {!ready && !failure && <div className="model-empty-hint">正在载入三维视口…</div>}
       <DismissibleNotice identity={failure} className="model-viewport-error" data-error-kind={failure?.kind}>{failure?.message}</DismissibleNotice>
-      {display.stereochemistry&&cipWarning&&cipWarning.documentId===model.id&&cipWarning.atoms===model.draft.structure.atoms&&<div className="model-stereochemistry-warning" data-testid="model-stereochemistry-warning"><details><summary aria-label="立体化学标注不可用" title="立体化学标注不可用">⚠</summary><div><strong>立体化学标注不可用</strong><pre>{cipWarning.reason}</pre></div></details><button type="button" aria-label="关闭立体化学标注警告" onClick={()=>{dismissedCipWarnings.current.add(cipWarning.identity);setCipWarning(null);}}>×</button></div>}
+      {display.stereochemistry&&cipWarning&&cipWarning.documentId===model.id&&cipWarning.structure.atoms===model.draft.structure.atoms&&cipWarning.structure.bonds===model.draft.structure.bonds&&<div className="model-stereochemistry-warning" data-testid="model-stereochemistry-warning"><details><summary aria-label="立体化学标注不可用" title="立体化学标注不可用">⚠</summary><div><strong>立体化学标注不可用</strong><pre>{cipWarning.reason}</pre></div></details><button type="button" aria-label="关闭立体化学标注警告" onClick={()=>{dismissedCipWarnings.current.add(cipWarning.identity);setCipWarning(null);}}>×</button></div>}
       {props.captureRequest && <output className="model-capture-status" data-testid="model-capture-status">输入选择 · {props.captureRequest.kind} · {(props.captureAtomIds ?? []).length} 个原子</output>}
       {props.analysisAtomCapture && <output className="model-capture-status" data-testid="analysis-atom-capture-status">{props.analysisAtomCapture.kind === 'coordinate' ? '有序内坐标选择' : '原子区域选择'} · {props.analysisAtomCapture.atomIds.length} 个原子</output>}
       {props.multiframeDisplay && !props.analysisAtomCapture && <output className="model-capture-status" data-testid="multiframe-display-status">叠合 {props.multiframeDisplay.frameCount} 帧 · {props.multiframeDisplay.atomInstances} 原子实例{multiframeDisplayDiagnostics(props.multiframeDisplay).map(text => ' · '+text)}</output>}

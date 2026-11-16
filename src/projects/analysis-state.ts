@@ -322,33 +322,40 @@ export async function captureAnalysisProjectState(writer: ProjectAssetWriter, op
 }
 /** Call before mounting restored documents. This only reads saved data; no
  * native session, worker, mesh or scientific command is created. */
-export async function restoreAnalysisProjectState(dto: AnalysisProjectState, reader: ProjectAssetReader, options: { additive?: boolean; scope?: AnalysisProjectScope; transform?(value: unknown): unknown; transformCitation?(value: unknown): unknown; onInvalidEntry?(key: string, error: unknown): void } = {}): Promise<void> {
-  if (dto.schema !== 1 || !Array.isArray(dto.entries)) throw new Error('不支持的项目分析结果版本。');
+type AnalysisRestoreOptions = { additive?: boolean; scope?: AnalysisProjectScope; transform?(value: unknown): unknown; transformCitation?(value: unknown): unknown; onInvalidEntry?(key: string, error: unknown): void };
+export function prepareAnalysisProjectRestore(dto: AnalysisProjectState, reader: ProjectAssetReader, options: AnalysisRestoreOptions = {}) {
+  if (dto?.schema !== 1 || !Array.isArray(dto.entries)) throw new Error('不支持的项目分析结果版本。');
   const next = new Map<string, { assetId: string; citationMetadata?:unknown; assetReferences?: string[]; reader: ProjectAssetReader }>();
   const conflicting = new Set<string>();
   for (const entry of dto.entries) {
     try {
-    if (options.scope && !analysisProjectEntryInScope(entry.key, options.scope)) continue;
-    if (typeof entry.key !== 'string' || next.has(entry.key) || conflicting.has(entry.key)) { if(typeof entry.key==='string'){next.delete(entry.key);conflicting.add(entry.key);}throw new Error('项目分析结果身份重复或无效。'); }
-    if (typeof entry.assetId !== 'string' || !entry.assetId) throw new Error('项目分析结果资产身份无效。');
-    if (entry.assetReferences !== undefined && (!Array.isArray(entry.assetReferences) || entry.assetReferences.some(id => typeof id !== 'string' || !id))) throw new Error('项目分析资产依赖索引无效。');
-    next.set(entry.key, { assetId: entry.assetId, reader,...(entry.citationMetadata!==undefined?{citationMetadata:entry.citationMetadata}:{}), ...(entry.assetReferences ? { assetReferences: [...new Set([...entry.assetReferences, entry.assetId])] } : {}) });
-    } catch (error) { if(!options.additive)throw error;options.onInvalidEntry?.(entry.key,error); }
+      if (typeof entry?.key !== 'string' || !entry.key) throw new Error('项目分析结果身份无效。');
+      if (options.scope && !analysisProjectEntryInScope(entry.key, options.scope)) continue;
+      if (next.has(entry.key) || conflicting.has(entry.key)) { next.delete(entry.key);conflicting.add(entry.key);throw new Error('项目分析结果身份重复。'); }
+      if (typeof entry.assetId !== 'string' || !entry.assetId) throw new Error('项目分析结果资产身份无效。');
+      if (entry.assetReferences !== undefined && (!Array.isArray(entry.assetReferences) || entry.assetReferences.some(id => typeof id !== 'string' || !id))) throw new Error('项目分析资产依赖索引无效。');
+      next.set(entry.key, { assetId: entry.assetId, reader,...(entry.citationMetadata!==undefined?{citationMetadata:entry.citationMetadata}:{}), ...(entry.assetReferences ? { assetReferences: [...new Set([...entry.assetReferences, entry.assetId])] } : {}) });
+    } catch (error) { if(!options.additive)throw error;options.onInvalidEntry?.(entry?.key,error); }
   }
-  if (!options.additive) { retained.clear();retainedCitationMetadata.clear(); lazy.clear(); loading.clear(); }
-  for (const [key, value] of next) {
-    if (options.additive) {
-      try { const decoded = await decode(JSON.parse(text.decode(await value.reader.read(value.assetId))) as Encoded, value.reader); const restored = options.transform ? options.transform(decoded) : decoded; markRestored(restored); retained.set(key, restored); }
-      catch (error) { options.onInvalidEntry?.(key, error); next.delete(key); continue; }
-      retainedCitationMetadata.delete(key);if(value.citationMetadata!==undefined){const citation=decodeCitationMetadata(value.citationMetadata as Encoded);retainedCitationMetadata.set(key,options.transformCitation?options.transformCitation(citation):citation);}loading.delete(key); lazy.delete(key); continue;
+  return async function publishAnalysisProjectRestore() {
+    if (!options.additive) { retained.clear();retainedCitationMetadata.clear(); lazy.clear(); loading.clear(); }
+    for (const [key, value] of next) {
+      if (options.additive) {
+        try { const decoded = await decode(JSON.parse(text.decode(await value.reader.read(value.assetId))) as Encoded, value.reader); const restored = options.transform ? options.transform(decoded) : decoded; markRestored(restored); retained.set(key, restored); }
+        catch (error) { options.onInvalidEntry?.(key, error); next.delete(key); continue; }
+        retainedCitationMetadata.delete(key);if(value.citationMetadata!==undefined){const citation=decodeCitationMetadata(value.citationMetadata as Encoded);retainedCitationMetadata.set(key,options.transformCitation?options.transformCitation(citation):citation);}loading.delete(key); lazy.delete(key); continue;
+      }
+      lazy.set(key, value);
     }
-    lazy.set(key, value);
-  }
-  for (const [key, owner] of owners) if (next.has(key)) {
-    const pending = load(key).then(value => { if (owners.get(key) === owner) owner.restore?.(value); }); loading.set(key, pending);
-    void pending.then(() => { if (loading.get(key) === pending) loading.delete(key); }, error => owner.onError?.(error instanceof Error ? error.message : String(error)));
-  }
-  notifyAnalysisProjectStateChanged();
+    for (const [key, owner] of owners) if (next.has(key)) {
+      const pending = load(key).then(value => { if (owners.get(key) === owner) owner.restore?.(value); }); loading.set(key, pending);
+      void pending.then(() => { if (loading.get(key) === pending) loading.delete(key); }, error => owner.onError?.(error instanceof Error ? error.message : String(error)));
+    }
+    notifyAnalysisProjectStateChanged();
+  };
+}
+export async function restoreAnalysisProjectState(dto: AnalysisProjectState, reader: ProjectAssetReader, options: AnalysisRestoreOptions = {}): Promise<void> {
+  await prepareAnalysisProjectRestore(dto, reader, options)();
 }
 
 /** Export saved scientific grids directly. The companion records physical

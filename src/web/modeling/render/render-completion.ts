@@ -4,7 +4,7 @@ export interface ViewportRenderIdentity {
   sourceId: string; sourceRevision: string; frameIndex: number;
   jobIndex?: number | null; generation?: number; requestId?: string;
 }
-export type ViewportRenderReason = 'draw' | 'camera-pan' | 'camera-rotate' | 'zoom' | 'set-view' | 'step' | 'orient' | 'resize' | 'orbital-layer' | 'nto-layer' | 'surface-layer' | 'surface-layers' | 'surface-extrema' | 'reset-view';
+export type ViewportRenderReason = 'draw' | 'camera-pan' | 'camera-rotate' | 'zoom' | 'set-view' | 'step' | 'orient' | 'resize' | 'orbital-layer' | 'nto-layer' | 'surface-layer' | 'surface-layers' | 'surface-extrema' | 'reset-view' | 'interface-background';
 export interface ViewportRenderSubmission {
   renderReason: ViewportRenderReason;
   /** Actual renderer.render invocations, not pointer/RAF/API call counts. */

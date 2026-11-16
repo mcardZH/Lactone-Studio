@@ -68,7 +68,7 @@ const LOCAL_ONLY_CORRESPONDING_INPUTS=new Map([
 ]);
 export function validateCorrespondingSourceIndex(index){
   const fields=(value,allowed)=>{assert(value&&typeof value==='object'&&!Array.isArray(value));assert(Object.keys(value).every(key=>allowed.includes(key)),'Unexpected corresponding-source index field');};
-  fields(index,['schema','publicDistributionApproved','status','components','unresolved','files','componentClosureReport']);
+  fields(index,['schema','publicDistributionApproved','status','components','unresolved','files','componentClosureReport','supplementalSourceIndexes']);
   const closed=index.schema==='sy-corresponding-sources/v2';
   assert(closed||index.schema==='sy-corresponding-sources/v1');assert.equal(index.publicDistributionApproved,false,'Source provision cannot approve public distribution');
   fields(index.status,closed?['sourceAcquiredAndIncluded','recursiveBuildClosure','modifiedLibraryRebuildOrReplacement','wholeProductRebuild']:['sourceAcquiredAndIncluded','recursiveBuildClosure','modifiedLibraryRebuildOrReplacement']);
@@ -127,6 +127,15 @@ export function validateComponentClosureReport(index,report){
 export function verifyCorrespondingSourceMember(row,bytes){assert.equal(bytes.length,row.bytes,'Corresponding-source size changed: '+row.path);assert.equal(sha(bytes),row.sha256,'Corresponding-source SHA256 changed: '+row.path);return bytes;}
 export async function correspondingSourceMaterials(root=ROOT){
   const indexPath=join(root,CORRESPONDING_INDEX),bytes=await checked(indexPath),index=validateCorrespondingSourceIndex(JSON.parse(bytes)),expected=new Map(index.files.map(row=>[row.path,row]));
+  const supplemental=[];
+  for(const ref of index.supplementalSourceIndexes??[]){
+    cleanMember(ref.path);assert(ref.path==='third-party/pes-corresponding-source-index.json');
+    const data=verifyCorrespondingSourceMember(ref,await checked(join(root,ref.path))),extra=JSON.parse(data);
+    assert.equal(extra.schema,'ester-pes-corresponding-sources/v1');assert.equal(extra.publicDistributionApproved,false);
+    assert.equal(extra.sourceStatus,'provided-and-identity-verified');
+    for(const row of extra.files){cleanMember(row.path);assert(row.path.startsWith(CORRESPONDING_PREFIX+'pes/'));assert(!expected.has(row.path));expected.set(row.path,row);}
+    supplemental.push({name:ref.path,bytes:data,source:join(root,ref.path)});
+  }
   const actual=[];
   for(const row of await filesBelow(join(root,CORRESPONDING_PREFIX))){
     const name=CORRESPONDING_PREFIX+row.path,local=LOCAL_ONLY_CORRESPONDING_INPUTS.get(name);
@@ -134,14 +143,14 @@ export async function correspondingSourceMaterials(root=ROOT){
     actual.push(row);
   }
   assert.equal(actual.length,expected.size,'Unindexed or missing corresponding-source members');
-  const planned=[{name:CORRESPONDING_INDEX,bytes,source:indexPath}];
+  const planned=[{name:CORRESPONDING_INDEX,bytes,source:indexPath},...supplemental];
   for(const row of actual){const name=CORRESPONDING_PREFIX+row.path,reference=expected.get(name);assert(reference,'Unindexed corresponding-source member: '+name);planned.push({name,bytes:verifyCorrespondingSourceMember(reference,row.bytes),source:join(root,name)});}
   if(index.schema==='sy-corresponding-sources/v2'){
     const report=planned.find(row=>row.name===index.componentClosureReport.path);assert(report,'Closure report was not read');validateComponentClosureReport(index,JSON.parse(report.bytes));
   }
   return planned;
 }
-export async function sourcePlan({root=ROOT,sourceCommit,licenseDirectory}){
+export async function sourcePlan({root=ROOT,sourceCommit,licenseDirectory,runtimeLockOverrides={}}){
   root=resolve(root);assert(/^[a-f0-9]{40}$/.test(sourceCommit??''),'Main supplies exact frozen source commit');assert(licenseDirectory&&isAbsolute(licenseDirectory),'Explicit reviewed material directory required');
   const pkg=JSON.parse(await checked(join(root,'package.json'))),c=createPortableContract({root}),planned=new Map(),guards=[],transforms=[];
   async function add(name,bytes,source,reason){cleanMember(name);assert(!planned.has(name.toLowerCase()),'Duplicate public member '+name);planned.set(name.toLowerCase(),{name,bytes});const input=source?await checked(source):null;if(input&&!reason)assert(bytes.equals(input),'Source changed during selection');if(input)guards.push({path:source,bytes:input.length,sha256:sha(input)});if(reason)transforms.push({path:name,reason,input:input?{bytes:input.length,sha256:sha(input)}:null,output:{bytes:bytes.length,sha256:sha(bytes)}});}
@@ -154,6 +163,13 @@ export async function sourcePlan({root=ROOT,sourceCommit,licenseDirectory}){
   const profile=JSON.parse(await checked(join(root,'desktop/packaging/native-profile.json')));delete profile.preparation;
   await add('desktop/packaging/native-profile.json',encoded(profile),join(root,'desktop/packaging/native-profile.json'),'Remove machine-bound preparation reference; public local builder requires a fresh actual preparation');
   for(const name of profile.nativeSources)await add(name,await checked(join(root,name)),join(root,name));
+  // PES runs from preferred Python source, independently of the frozen native engine.
+  const pesLock=JSON.parse(await checked(join(root,'desktop/packaging/pes-runtime.lock.json')));
+  for(const name of [...pesLock.productModules,'desktop/packaging/pes-runtime-bootstrap.py']){
+    cleanMember(name);assert(name.startsWith('desktop/chemistry/')||name==='desktop/packaging/pes-runtime-bootstrap.py');
+    if(!planned.has(name.toLowerCase()))await add(name,await checked(join(root,name)),join(root,name));
+  }
+  for(const name of ['scripts/native/assemble-xtb-v208.py','scripts/native/build-xtb-v208-fire.py','scripts/portable/pes-libxtb-runtime.mjs','scripts/portable/refresh-pes-product-runtime.mjs','scripts/portable/externalize-gxtb-runtime.mjs','scripts/prepare-pes-libxtb.mjs','scripts/relink-pes-libxtb.mjs'])await add(name,await checked(join(root,name)),join(root,name));
   for(const name of ['scripts/prepare-preload.mjs','scripts/prepare-conformer-batch-runtime.mjs','scripts/prepare-task-system.mjs','desktop/preload-managed-results.cjs'])await add(name,await checked(join(root,name)),join(root,name));
   for(const name of [...NATIVE_BUILDERS.filter(name=>name!=='src/data/conformer-solvation.json'),...XTB_PATCH_BUILDERS,'desktop/launcher/sciyue-launcher.c','desktop/launcher/version.rc','scripts/portable/launcher.mjs','scripts/portable/io.mjs','scripts/portable-package-layout.mjs','scripts/3dmol-bond-primitives.cjs','scripts/prepare-chemistry.mjs','scripts/prepare-runtime-assets.mjs','scripts/prepare-workbench-preferences.mjs','scripts/prepare-structure-provenance.mjs','scripts/desktop-start.mjs','scripts/desktop-dev.mjs','scripts/portable/assets/sciyue.ico','index.html','vite.config.ts','package-lock.json','LICENSE.txt'])await add(name,await checked(join(root,name)),join(root,name));
   const artifactHelpers=join(root,'scripts/portable-artifact-identity.mjs');
@@ -167,7 +183,12 @@ export async function sourcePlan({root=ROOT,sourceCommit,licenseDirectory}){
   for(const name of ['native-runtime','native-toolchain','xtb-runtime']){
     const activePath=join(root,'desktop/packaging/'+name+'.lock.json');
     let bytes=await checked(join(root,'third-party/build-inputs/declarations',name+'.lock.json'));
-    if(name==='xtb-runtime'){
+    if(runtimeLockOverrides[name]){
+      const override=runtimeLockOverrides[name];assert.equal(name,'xtb-runtime','Only the public external-provider xTB source lock is overrideable');
+      assert.equal(override.schema,'sciyue-xtb-lock-v1');assert.equal(override.sourceBuildRequired,true);assert.equal(override.localUseReady,false);
+      assert.equal(override.externalProviders?.gxtb,'user-supplied-cli');assert(!override.variantIdentities?.gxtb);
+      assert(!/\b[A-Za-z]:[\\/]|\/(?:home|Users)\//i.test(JSON.stringify(override)));bytes=encoded(override);
+    }else if(name==='xtb-runtime'){
       const active=JSON.parse(await checked(activePath));
       if(active.localModification?.algorithm==='xtb-h-only-initial-cap-v1'){
         const receipt=planned.get(XTB_PUBLIC_SOURCE_RECEIPT.toLowerCase());
@@ -179,7 +200,10 @@ export async function sourcePlan({root=ROOT,sourceCommit,licenseDirectory}){
   }
   const ts=JSON.parse(await checked(join(root,'tsconfig.json')));ts.include=['src','vite.config.ts'];delete ts.exclude;await add('tsconfig.json',encoded(ts),join(root,'tsconfig.json'),'Product-only TypeScript build; private test corpus is not exported');
   const commands=['prepare:chemistry','prepare:runtime','predev','prebuild','dev','build','preview','prepare:desktop','desktop:start','desktop:dev'];pkg.scripts=Object.fromEntries(commands.map(k=>[k,pkg.scripts[k]]));await add('package.json',encoded(pkg),join(root,'package.json'),'Expose supported standalone source commands; locked dependencies/version unchanged');
-  for(const row of await filesBelow(licenseDirectory))await add('licenses/'+row.path,row.bytes,join(licenseDirectory,row.path));
+  const licenseIndexBytes=await checked(join(licenseDirectory,'SOURCE_INDEX.json')),licenseIndex=JSON.parse(licenseIndexBytes);
+  assert.equal(licenseIndex.schema,'ester-public-license-materials/v2');assert.equal(licenseIndex.version,pkg.version);
+  for(const row of licenseIndex.files){cleanMember('licenses/'+row.path);await add('licenses/'+row.path,verifyCorrespondingSourceMember(row,await checked(join(licenseDirectory,row.path))),join(licenseDirectory,row.path));}
+  await add('licenses/SOURCE_INDEX.json',licenseIndexBytes,join(licenseDirectory,'SOURCE_INDEX.json'));
   for(const name of ['README.md','BUILDING.md'])await add(name,await checked(join(root,'scripts/release/templates',name)),null,'Public build documentation template');
   const native={schema:'sy-source-native-identity/v1',sourceFiles:[],builderSources:[],xtbPatchSources:[]};
   for(const name of profile.nativeSources){const bytes=await checked(join(root,name));native.sourceFiles.push({path:name,bytes:bytes.length,sha256:sha(bytes)});}

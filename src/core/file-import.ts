@@ -2,17 +2,34 @@ import { parseStructures } from './parsers';
 import { parseOrcaInput, referencedXyz } from './orca-readers';
 import { QuantumOutputReader } from './gaussian-reader';
 import type { Structure } from './types';
-import { FchkReader } from './fchk-reader';
-import { looksLikeFchk,streamFchkRecords } from './fchk-records';
+import { FchkReader, fchkGeometryFields } from './fchk-reader';
+import { looksLikeFchk,streamFchkRecords,type FchkByteSource,type FchkRecordOptions } from './fchk-records';
 import { gaussianRouteTokens } from './gaussian-source';
 import { parsePeriodicStructures } from './periodic-parsers';
+import { outputLines } from '../results/output-lines';
 export type StructureImportFile = Pick<File, 'name' | 'size' | 'text' | 'stream'>;
-async function consumeLines(file:StructureImportFile,consume:(line:string)=>boolean|void):Promise<void>{
-  const reader=file.stream().getReader();const decoder=new TextDecoder('utf-8',{fatal:true});let pending='';
-  try{while(true){const {value,done}=await reader.read();pending+=decoder.decode(value,{stream:!done});if(pending.includes('\0'))throw new Error('文件含二进制/UTF-16内容，请另存UTF-8文本。');const lines=pending.split('\n');pending=lines.pop()??'';for(const line of lines){if(consume(line.replace(/\r$/,''))===true){await reader.cancel();return;}}if(done){if(pending)consume(pending);return;}}}finally{try{await reader.cancel();}finally{reader.releaseLock();}}
+async function readOutputStructures(file: StructureImportFile): Promise<Structure[]> {
+  const reader = new QuantumOutputReader();
+  let damage: string | undefined;
+  for await (const line of outputLines(file, {}, (sourceLine, reason) => {
+    damage = `源行${sourceLine}含${reason}损坏；仅保留此前完整文本。`;
+  })) reader.consume(line.text);
+  try {
+    const structures = reader.finishAll(file.name);
+    if (damage) for (const structure of structures) structure.notes.push(damage);
+    return structures;
+  } catch (error) {
+    if (!damage) throw error;
+    throw new Error(damage + (error instanceof Error ? error.message : String(error)), { cause: error });
+  }
 }
-async function readFchk(file:StructureImportFile):Promise<Structure[]>{
-  const reader=new FchkReader();for await(const record of streamFchkRecords(file))reader.consume(record.text,{sourceLine:record.sourceLine,byteProven:true});return reader.finish(file.name);
+export async function readFchkStructure(file:FchkByteSource & {name:string},options:FchkRecordOptions={}):Promise<Structure>{
+  const reader=new FchkReader(fchkGeometryFields);
+  for await(const record of streamFchkRecords(file,options)){
+    reader.consume(record.text,{sourceLine:record.sourceLine,byteProven:true});
+    if(reader.diagnostics.at(-1)?.boundaryReliable===false)break;
+  }
+  return reader.finish(file.name)[0];
 }
 async function isFchkFile(file:StructureImportFile):Promise<boolean>{
  const reader=file.stream().getReader(),parts:Uint8Array[]=[];let length=0;
@@ -20,8 +37,8 @@ async function isFchkFile(file:StructureImportFile):Promise<boolean>{
  finally{try{await reader.cancel();}finally{reader.releaseLock();}}
 }
 async function readGaussianFile(file:StructureImportFile):Promise<Structure[]>{
-  if(/\.fch(?:k)?$/i.test(file.name)||await isFchkFile(file))return readFchk(file);
-  if(/\.(out|log)$/i.test(file.name)){const reader=new QuantumOutputReader();await consumeLines(file,line=>reader.consume(line));return reader.finishAll(file.name);}
+  if(/\.fch(?:k)?$/i.test(file.name)||await isFchkFile(file))return [await readFchkStructure(file)];
+  if(/\.(out|log)$/i.test(file.name))return readOutputStructures(file);
   return parseStructures(await file.text(),file.name);
 }
 const stem=(name:string)=>name.replace(/\.[^.]+$/,'').toLowerCase();
@@ -61,8 +78,8 @@ export async function importStructureFiles(files:StructureImportFile[]):Promise<
   for(const file of files)if(!Number.isSafeInteger(file.size)||file.size<0)throw new Error('来源文件字节数无效。');
   if(files.length>1&&files.every(file=>/\.(gjf|com|fch|fchk|out|log)$/i.test(file.name))){const structures:Structure[]=[];for(const file of files)structures.push(...await readGaussianFile(file));return reconcileGaussianSources(structures);}
   const main=files.find(file=>/\.(?:inp|restart)(?:-\d+)?$/i.test(file.name))??files[0];
-  if(/\.fch(?:k)?$/i.test(main.name)||await isFchkFile(main))return readFchk(main);
-  if(/\.(out|log)$/i.test(main.name)){const reader=new QuantumOutputReader();await consumeLines(main,line=>reader.consume(line));return reader.finishAll(main.name);}
+  if(/\.fch(?:k)?$/i.test(main.name)||await isFchkFile(main))return [await readFchkStructure(main)];
+  if(/\.(out|log)$/i.test(main.name))return readOutputStructures(main);
   const text=await main.text();
   if (/\.(?:inp|restart)(?:-\d+)?$/i.test(main.name) && /^\s*&(?:SUBSYS|FORCE_EVAL)\b/im.test(text)) {
     const external:Record<string,string>={};

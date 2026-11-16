@@ -151,8 +151,13 @@ export function prepareStructureTransform(document: ModelDocument, edit: Structu
     structure.bonds = structure.bonds?.map(bond => ({ ...bond, image: edit.order.map((axis, i) => (bond.image?.[axis] ?? 0) * signs[i] || 0) as Vector3 }));
   } else if (edit.type === 'supercell') {
     if (!structure.cell || !validVector(edit.repeat) || edit.repeat.some((value, axis) => !Number.isSafeInteger(value) || value < 1 || value > 1 && !structure.cell!.pbc[axis])) throw new Error('扩胞需要有效周期轴上的正整数重复数。');
-    const count = edit.repeat.reduce((a, b) => a * b, 1); if (!Number.isSafeInteger(count * original.atoms.length)) throw new Error('扩胞原子数超出可精确表示的整数范围。');
-    const cell = structure.cell, atoms: Atom[] = [], copies: Vector3[] = [], index = new Map<string, number>(), usedIds = new Set<string>(); mapping = [];
+    const count = edit.repeat.reduce((a, b) => a * b, 1);
+    const maxArrayLength = 2 ** 32 - 1;
+    if (count > maxArrayLength || count * original.atoms.length > maxArrayLength) throw new Error('扩胞的副本或原子数超出模型数组可表示的长度。');
+    const cell = structure.cell;
+    const expandedCell = { ...cell, vectors: cell.vectors.map((vector, axis) => checkVector(scale(vector, edit.repeat[axis]))) as Matrix3 };
+    cellInverse(expandedCell);
+    const atoms: Atom[] = [], copies: Vector3[] = [], index = new Map<string, number>(), usedIds = new Set<string>(); mapping = [];
     const key = (source: string, image: Vector3) => JSON.stringify([source, image]);
     for (let a = 0; a < edit.repeat[0]; a++) for (let b = 0; b < edit.repeat[1]; b++) for (let c = 0; c < edit.repeat[2]; c++) {
       const image: Vector3 = [a, b, c]; copies.push(image); const shift = fractionalToCartesian(cell, image, false);
@@ -160,7 +165,8 @@ export function prepareStructureTransform(document: ModelDocument, edit: Structu
         const id = image.some(Boolean) ? `${atom.id}@${a},${b},${c}` : atom.id!;
         if (usedIds.has(id)) throw new Error('扩胞派生原子ID与现有身份冲突。');
         usedIds.add(id);
-        index.set(key(atom.id!, image), atoms.length); atoms.push({ ...atom, id, x: atom.x + shift[0], y: atom.y + shift[1], z: atom.z + shift[2] }); mapping.push({ atomId: id, sourceAtomId: atom.id!, image });
+        const [x, y, z] = checkVector(add(builderPosition(atom), shift));
+        index.set(key(atom.id!, image), atoms.length); atoms.push({ ...atom, id, x, y, z }); mapping.push({ atomId: id, sourceAtomId: atom.id!, image });
       }
     }
     const bonds = [], seen = new Set<string>();
@@ -172,7 +178,7 @@ export function prepareStructureTransform(document: ModelDocument, edit: Structu
       if (!seen.has(canonical.key)) { seen.add(canonical.key); bonds.push({ ...bond, a: canonical.a, b: canonical.b, image: canonical.image }); }
     }
     structure.atoms = atoms; structure.bonds = bonds;
-    structure.cell = { ...cell, vectors: cell.vectors.map((vector, axis) => scale(vector, edit.repeat[axis])) as Matrix3 };
+    structure.cell = expandedCell;
     latticeImageBasis = IDENTITY.map((vector, axis) => scale(vector, 1 / edit.repeat[axis])) as Matrix3;
     // Electron counts of a copied unrestricted cell are not inferred.
     if (count > 1) { structure.charge = null; structure.multiplicity = null; }

@@ -20,7 +20,7 @@ export interface CellEditorViewportDraft {
   onDragEnd(cancel?: boolean): void;
   onLengthCommit(axis: CellAxis, length: number): void;
 }
-export interface CellEditorPanelProps extends Omit<StructureTransformPanelProps<CellEditorRequest>, 'onPrepare'> {
+export interface CellEditorPanelProps extends StructureTransformPanelProps<CellEditorRequest> {
   onCellEditorChange?(draft: CellEditorViewportDraft | null): void;
   previewActive?: boolean;
   onCommitEdit?(candidate: StructureTransformCandidate): void | Promise<void>;
@@ -60,8 +60,7 @@ export default function CellEditorPanel(props: CellEditorPanelProps) {
   const editRequest: CellEditorRequest = { type: 'edit-cell', lengths: editTexts.map(value => value.trim() ? Number(value) : NaN) as Vector3, handling };
   const request = hasCell ? editRequest : assignRequest;
   const key = JSON.stringify([request, dragging]);
-  const preview = useStructureTransformPreview<CellEditorRequest>({ ...props, open: props.open && props.previewActive !== false && !hasCell,
-    onPrepare: next => prepareCellEditorCandidate(props.document, next) }, key, () => request);
+  const preview = useStructureTransformPreview<CellEditorRequest>({ ...props, open: props.open && props.previewActive !== false && !hasCell }, key, () => request);
   const commitEdit = async (values: LengthTexts) => {
     if (!props.onCommitEdit || props.disabled || !frame || commitPending.current) return;
     try {

@@ -2,8 +2,10 @@
 const { readManagedResult } = require('./analysis-result-wire.cjs');
 const {assert,plain,string}=require('./security.cjs');
 const fs=require('node:fs/promises');const path=require('node:path');
+const { requireBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
 const {progressIdentity,createMultiwfnProgress,createNativeProgressReader}=require('./multiwfn-progress.cjs');
 const GENERATED_POLICY_VERSION='generated-gfn2-prerequisites-20261023-2';
+const GENERATED_GXTB_POLICY_VERSION='generated-gxtb-valence-20261111-1';
 function occupationPrintEvidence(text){
   const entries=[];let mo=false;
   for(const line of text.replace(/\r\n?/g,'\n').split('\n')){
@@ -18,28 +20,30 @@ function occupationPrintEvidence(text){
 }
 function createGeneratedAnalysisPolicy(session,expectation){
   const orbitals=session.metadata.orbitals,evidence=session.occupationPrintEvidence;
+  const gxtb=expectation.kind==='generated-gxtb-sp';
   const density=Number.isSafeInteger(session.metadata.basisCount)&&session.metadata.basisCount>0&&orbitals.length>0&&orbitals.every(o=>Number.isFinite(o.occupation)&&o.occupation>=0&&o.occupation<=2);
   const energies=density&&orbitals.every(o=>Number.isFinite(o.energy));
   const zeroOrTwo=Array.isArray(evidence)&&evidence.length===orbitals.length&&orbitals.length>0&&orbitals.every((o,i)=>{
     const row=evidence[i],ulp=4*Number.EPSILON*Math.max(1,Math.abs(o.occupation));
     return row&&Number.isFinite(o.occupation)&&Math.abs(row.value-o.occupation)<=row.tolerance+ulp&&Math.min(Math.abs(o.occupation),Math.abs(o.occupation-2))<=row.tolerance+ulp;
   });
-  return Object.freeze({schema:'sciyue-generated-analysis-policy/v1',policyVersion:GENERATED_POLICY_VERSION,sourceRevision:session.sourceRevision,requestedUhf:expectation.requestedUhf,sourceSpinResolution:'spin-summed',
+  return Object.freeze({schema:'sciyue-generated-analysis-policy/v1',policyVersion:gxtb?GENERATED_GXTB_POLICY_VERSION:GENERATED_POLICY_VERSION,sourceRevision:session.sourceRevision,requestedUhf:expectation.requestedUhf,sourceSpinResolution:gxtb?expectation.sourceSpinResolution:'spin-summed',
     chargeMethods:Object.freeze(density?['mulliken','lowdin','adch','hirshfeld','hirshfeld-i','cm5','resp','scpa']:[]),compositionMethods:Object.freeze(density?['mulliken','scpa']:[]),
-    bondOrderMethods:Object.freeze(density?(expectation.requestedUhf===0&&zeroOrTwo?['mayer','wiberg-lowdin','mulliken','laplacian','fuzzy']:['laplacian']):[]),
-    spinPopulation:false,spinDensity:false,independentAlphaBeta:false,realSpaceMethods:Object.freeze(density?['esp',...(energies?['alie']:[]),'iri','rdg','igmh']:[])});
+    bondOrderMethods:Object.freeze(density?(gxtb||expectation.requestedUhf===0&&zeroOrTwo?['mayer','wiberg-lowdin','mulliken','laplacian','fuzzy']:['laplacian']):[]),
+    spinPopulation:gxtb&&expectation.independentAlphaBeta,spinDensity:false,independentAlphaBeta:gxtb&&expectation.independentAlphaBeta,realSpaceMethods:Object.freeze(density?['esp',...(energies?['alie']:[]),'iri','rdg','igmh']:[])});
 }
 function assertGeneratedAnalysisPolicy(session,request){
   const root=session.sourceRoot??session;if(!root.trustedSourceExpectation)return;
   const policy=root.analysisPolicy;
-  assert(plain(policy)&&policy.schema==='sciyue-generated-analysis-policy/v1'&&policy.policyVersion===GENERATED_POLICY_VERSION&&policy.sourceRevision===session.sourceRevision,'GENERATED_ANALYSIS_POLICY: 自产来源的方法适用性身份缺失或已变化');
+  const version=root.trustedSourceExpectation.kind==='generated-gxtb-sp'?GENERATED_GXTB_POLICY_VERSION:GENERATED_POLICY_VERSION;
+  assert(plain(policy)&&policy.schema==='sciyue-generated-analysis-policy/v1'&&policy.policyVersion===version&&policy.sourceRevision===session.sourceRevision,'GENERATED_ANALYSIS_POLICY: 自产来源的方法适用性身份缺失或已变化');
   const methods={charges:policy.chargeMethods,composition:policy.compositionMethods,'bond-orders':policy.bondOrderMethods};
-  assert(Array.isArray(methods[request.kind])&&methods[request.kind].includes(request.method),'GENERATED_ANALYSIS_POLICY: 此自产GFN2来源尚未开放该分析方法');
+  assert(Array.isArray(methods[request.kind])&&methods[request.kind].includes(request.method),'GENERATED_ANALYSIS_POLICY: 此自产XTB来源尚未开放该分析方法');
 }
 async function unlinkOwned(target){
   const deadline=Date.now()+2000;
   while(true){
-    const stat=await fs.lstat(target).catch(()=>null);if(!stat||!stat.isFile()||stat.isSymbolicLink())return;
+    const stat=await fs.lstat(target).catch(()=>null);if(!stat||!stat.isFile()||stat.isSymbolicLink()||stat.nlink!==1)return;
     try{await fs.unlink(target);return;}catch(error){if(!['EPERM','EACCES','EBUSY'].includes(error.code)||Date.now()>=deadline)return;await new Promise(resolve=>setTimeout(resolve,25));}
   }
 }
@@ -123,7 +127,7 @@ function validateResult(value,session,request,expectedResources,trustedExpectati
   if(expectedResources)assert(plain(value.resources)&&value.backend.threads===expectedResources.threads&&value.resources.settingsRevision===expectedResources.settingsRevision,'Numerical resources changed after planning');
   const expectationFields=['chargeExpectationSource','chargeExpectationArtifactId','chargeExpectationSourceSha256','expectedCharge','requestedUhf','sourceSpinResolution','independentAlphaBeta','representedElectronCount','physicalElectronCount'];
   if(trustedExpectation){
-    const expected={chargeExpectationSource:'owned-generated-gfn2-sp',chargeExpectationArtifactId:trustedExpectation.artifactId,chargeExpectationSourceSha256:trustedExpectation.sourceSha256,expectedCharge:trustedExpectation.charge,requestedUhf:trustedExpectation.requestedUhf,sourceSpinResolution:'spin-summed',independentAlphaBeta:false,representedElectronCount:trustedExpectation.representedElectronCount,physicalElectronCount:trustedExpectation.physicalElectronCount};
+    const expected={chargeExpectationSource:'owned-'+(trustedExpectation.kind??'generated-gfn2-sp'),chargeExpectationArtifactId:trustedExpectation.artifactId,chargeExpectationSourceSha256:trustedExpectation.sourceSha256,expectedCharge:trustedExpectation.charge,requestedUhf:trustedExpectation.requestedUhf,sourceSpinResolution:trustedExpectation.sourceSpinResolution??'spin-summed',independentAlphaBeta:trustedExpectation.independentAlphaBeta??false,representedElectronCount:trustedExpectation.representedElectronCount,physicalElectronCount:trustedExpectation.physicalElectronCount};
     assert(trustedExpectation.sourceSha256===session.sourceRevision&&expectationFields.every(k=>value.parameters[k]===expected[k]),'Trusted generated-source expectation provenance changed');
     if(request.kind==='charges')assert(Number.isFinite(value.sum)&&Math.abs(value.sum-trustedExpectation.charge)<=Math.max(.002,session.metadata.structure.atoms.length*2e-6),'TRUSTED_CHARGE_SUM: 原子电荷和不符合已认证受管请求；未归一化或推断有效核参考');
   }else {
@@ -142,7 +146,7 @@ function validateResult(value,session,request,expectedResources,trustedExpectati
     if(request.kind==='composition')assert(value.unit==='percent'&&value.orbitalKey===request.orbitalKey&&plain(value.angular)&&['s','p','d','f','other'].every(k=>Number.isFinite(value.angular[k])),'Invalid orbital composition units/angular values');
     else assert(value.unit==='e'&&value.quantity==='net-charge'&&typeof value.spinAvailable==='boolean'&&(!value.spinAvailable||value.atoms.every(a=>Number.isFinite(a.spinPopulation))),'Invalid charge/spin units');
     if(request.kind==='charges'&&request.method==='bader')validateBader(value,session,request,expectedResources);
-    if(trustedExpectation&&request.kind==='charges')assert(value.spinAvailable===false&&value.atoms.every(a=>a.spinPopulation===undefined),'SPIN_SUMMED_SOURCE: 该自产Molden不含独立α/β数据，不能发布自旋布居');
+    if(trustedExpectation&&!trustedExpectation.independentAlphaBeta&&request.kind==='charges')assert(value.spinAvailable===false&&value.atoms.every(a=>a.spinPopulation===undefined),'SPIN_SUMMED_SOURCE: 该自产Molden不含独立α/β数据，不能发布自旋布居');
   }
   return value;
 }
@@ -165,7 +169,8 @@ function createWavefunctionAnalysisRunner({spawn,resolveRuntime,resolveBackend,r
     const trustedExpectation=(session.sourceRoot??session).trustedSourceExpectation??null;
     const id=progressIdentity(progressContext,{sessionId:session.sessionId,sourceId:session.sourceId,sourceRevision:session.sourceRevision,analysisId:session.instanceId,operation:request.kind});
     const job={child:null,cancelled:false,done:null,controller:new AbortController()};job.finished=new Promise(resolve=>{job.finish=resolve;});jobs.set(session.sessionId,job);
-    job.progress=createMultiwfnProgress(id,snapshot=>sendProgress(session.owner,snapshot));job.progress.report('queued');let successful=false;
+    job.progress=createMultiwfnProgress(id,snapshot=>sendProgress(session.owner,snapshot));job.progress.report('queued');
+    let result,firstFailure,cleanupFailure;
     try {
       assert(!job.cancelled&&!disposed&&!session.closed,'ANALYSIS_CANCELLED: 数值分析已取消');
       const ready=new Promise(resolve=>{job.start=resolve;});queue.push(job);startNext();await ready;
@@ -185,11 +190,11 @@ function createWavefunctionAnalysisRunner({spawn,resolveRuntime,resolveBackend,r
       assert(!job.cancelled&&!disposed&&!session.closed,'ANALYSIS_CANCELLED: 数值分析已取消');
       job.progress.report('reading');
       job.reservedBytes=64*1024**2+(session.metadata.basisCount??0)**2*64+(session.sourceBytes??0)*5;
-      const backend=await resolveBackend();assert(!job.cancelled&&!disposed&&!session.closed,'ANALYSIS_CANCELLED: 数值分析已取消');assert(backend.configured&&string(backend.path,4096),'ANALYSIS_BACKEND_MISSING: 请先选择本机 Multiwfn');
+      const backend=requireBackend(await resolveBackend(),'ANALYSIS');assert(!job.cancelled&&!disposed&&!session.closed,'ANALYSIS_CANCELLED: 数值分析已取消');
       let resources=resolveResources?await resolveResources(session,backend,request,job.resourceSnapshot):null;
       if(job.lease&&resources){const grant=job.lease.budget(resources.memoryBudgetBytes,{domain:'analysis',sessionId:session.sessionId});resources={...resources,nativeMemoryBudgetBytes:Math.min(resources.nativeMemoryBudgetBytes??grant.availableBytes,grant.availableBytes)};}
       assert(!job.cancelled&&!disposed&&!session.closed,'ANALYSIS_CANCELLED: 数值分析已取消');job.reservedBytes=resources?.estimatedMemoryBytes??0;
-      job.directory=await fs.mkdtemp(path.join(session.directory,'analysis-'));assert(!job.cancelled&&!disposed&&!session.closed,'ANALYSIS_CANCELLED: 数值分析已取消');
+      job.runDirectory=await createRunDirectory(backend,session.directory,'a-');job.directory=job.runDirectory.directory;assert(!job.cancelled&&!disposed&&!session.closed,'ANALYSIS_CANCELLED: 数值分析已取消');
       const runtime=resolveRuntime(),args=runtime.args.filter(a=>a!=='--orbitals');args.push('--analysis');
       const resourceEnv=resources?{OMP_NUM_THREADS:String(resources.threads),OPENBLAS_NUM_THREADS:String(resources.threads),MKL_NUM_THREADS:String(resources.threads)}:{};
       const child=job.child=spawn(runtime.executable,args,{cwd:runtime.cwd,windowsHide:true,shell:false,stdio:['pipe','pipe','pipe'],env:{...process.env,...resourceEnv,PYTHONUTF8:'1',PYTHONDONTWRITEBYTECODE:'1'}});
@@ -209,8 +214,30 @@ function createWavefunctionAnalysisRunner({spawn,resolveRuntime,resolveBackend,r
         }catch(error){finish(error);}})();});
         child.stdin.end(JSON.stringify({sessionId:session.sessionId,sourceRevision:session.sourceRevision,sourcePath:session.sourcePath,workspacePath:job.directory,executable:backend.path,request,...(trustedExpectation?{trustedSourceExpectation:trustedExpectation}:{}),...(onAnalysisEvidence?{captureEvidence:true}:{}),...(resources?{resources,nativeMemoryBudgetBytes:resources.nativeMemoryBudgetBytes,...(resources.baderGridPlan?{baderGridPlan:resources.baderGridPlan}:{})}:{})})+'\n');
       });
-      const result=await job.done;successful=true;return result;
-    } finally {try{if(job.childClosed)await job.childClosed;await cleanupJob(job.directory);}finally{job.lease?.release();if(job.cancelled)job.progress.report('stopped',{settlement:job.child?'native-settled':'cancelled-before-start'});else if(successful)job.progress.report('parse',{stageLabel:'等待结果接受',settlement:'native-settled',validated:true});else job.progress.report('failed',{settlement:job.child?'native-settled':'not-started'});if(jobs.get(session.sessionId)===job)jobs.delete(session.sessionId);if(active===job)active=null;job.finish();startNext();}}
+      result=await job.done;
+    } catch(error) {
+      firstFailure=error;
+      throw error;
+    } finally {
+      try {
+        if(job.childClosed)await job.childClosed;
+        await verifyRunDirectory(job.runDirectory);
+        await cleanupJob(job.directory);
+      } catch(error) {
+        cleanupFailure={error};
+        if(firstFailure instanceof Error)firstFailure.message+='\n清理：'+String(error?.message??error);
+      } finally {
+        job.lease?.release();
+        if(job.cancelled)job.progress.report('stopped',{settlement:job.child?'native-settled':'cancelled-before-start'});
+        else if(result&&!cleanupFailure)job.progress.report('parse',{stageLabel:'等待结果接受',settlement:'native-settled',validated:true});
+        else job.progress.report('failed',{settlement:job.child?'native-settled':'not-started'});
+        if(jobs.get(session.sessionId)===job)jobs.delete(session.sessionId);
+        if(active===job)active=null;
+        job.finish();startNext();
+      }
+    }
+    if(cleanupFailure)throw cleanupFailure.error;
+    return result;
   }
   async function cancel(sessionId){const job=jobs.get(sessionId);if(!job)return;job.progress.report('stopping');job.cancelled=true;job.controller.abort();job.start?.();if(job.child)job.child.kill();await job.finished;}
   function dispose(){disposed=true;for(const job of jobs.values()){job.cancelled=true;job.controller.abort();job.start?.();job.child?.kill();}}

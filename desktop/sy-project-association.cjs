@@ -9,7 +9,7 @@ const CAPABILITIES = 'Software\\SciYue\\SY-Studio\\Capabilities';
 const JOURNAL = { key: 'HKCU\\Software\\SciYue\\SY-Studio\\FileAssociationState', name: 'State' };
 // Suffixes nominate an application; the existing content recognizer still owns
 // scientific format, source role and any analysis/structure choice.
-const SUPPORTED_EXTENSIONS = Object.freeze(['.es', '.sy', '.sciyue', '.gjf', '.com', '.inp', '.restart', '.log', '.out', '.fch', '.fchk', '.xyz', '.extxyz', '.mol', '.sdf', '.pdb', '.cif', '.vasp', '.poscar', '.hess', '.molden', '.input']);
+const SUPPORTED_EXTENSIONS = Object.freeze(['.es', '.sciyue', '.gjf', '.com', '.inp', '.restart', '.log', '.out', '.fch', '.fchk', '.xyz', '.extxyz', '.mol', '.sdf', '.pdb', '.cif', '.vasp', '.poscar', '.hess', '.molden', '.input']);
 const value = data => ({ type: 'String', data });
 const same = (a, b) => a == null || b == null ? a == null && b == null : a.type === b.type && JSON.stringify(a.data) === JSON.stringify(b.data);
 const failure = (code, message) => Object.assign(new Error(message), { code });
@@ -30,17 +30,18 @@ function associationEntries(executablePath) {
   add(application + '\\shell\\open', 'MultiSelectModel', 'Document', { core: true });
   add('HKCU\\' + CAPABILITIES, 'ApplicationName', 'Ester Studio', { core: true });
   add('HKCU\\' + CAPABILITIES, 'ApplicationDescription', '本地计算化学建模、输入与已保存结果读取', { core: true });
-  for (const extension of SUPPORTED_EXTENSIONS) {
-    const programId = extension === '.es' || extension === '.sy' ? PROGRAM_ID : SCIENTIFIC_ID;
-    add(`${CLASSES}${extension}\\OpenWithProgids`, programId, '');
-    add(application + '\\SupportedTypes', extension, '');
+  function addExtension(extension, programId, options) {
+    add(`${CLASSES}${extension}\\OpenWithProgids`, programId, '', options);
+    add(application + '\\SupportedTypes', extension, '', options);
     // Command/script suffixes remain explicit Open With candidates only.
-    if (extension !== '.com' && extension !== '.input') add('HKCU\\' + CAPABILITIES + '\\FileAssociations', extension, programId);
+    if (extension !== '.com' && extension !== '.input') add('HKCU\\' + CAPABILITIES + '\\FileAssociations', extension, programId, options);
   }
+  for (const extension of SUPPORTED_EXTENSIONS) addExtension(extension, extension === '.es' ? PROGRAM_ID : SCIENTIFIC_ID);
   add('HKCU\\Software\\RegisteredApplications', 'SY-Studio', CAPABILITIES);
-  // Read/retire the old four-key registration only. Never create an extension
-  // default: an absent HKCU value can still have an effective HKLM default.
-  add(CLASSES + '.sy', '', PROGRAM_ID, { legacyDefault: true });
+  // Read the former targets to restore only values proven to be ours. They
+  // are absent from SupportedExtensions and never written as registrations.
+  addExtension('.sy', PROGRAM_ID, { retired: true });
+  add(CLASSES + '.sy', '', PROGRAM_ID, { retired: true, legacyDefault: true });
   return rows;
 }
 const ALLOWED_PORTABLE_EXECUTABLES = Object.freeze([
@@ -111,9 +112,10 @@ function createSyProjectAssociation({ executablePath = process.execPath, platfor
       const current = snapshot.values[entry.id] ?? null, record = state.records[entry.id];
       if (record && !same(current, record.written)) issues.push({ code: 'user-change', target: entry.key + (entry.name ? ` [${entry.name}]` : ''), message: '此值已由用户或其他程序修改，予以保留。' });
     }
-    const needed = entries.filter(entry => !entry.legacyDefault), matching = needed.filter(entry => same(snapshot.values[entry.id], entry.value)).length;
+    const needed = entries.filter(entry => !entry.retired), matching = needed.filter(entry => same(snapshot.values[entry.id], entry.value)).length;
+    const hasRetiredOwnership = entries.some(entry => entry.retired && (state.records[entry.id] || legacy.has(entry.id)));
     const oldCommand = state.records[idFor(CLASSES + PROGRAM_ID + '\\shell\\open\\command')]?.written?.data;
-    let status = matching === needed.length && !issues.length ? 'registered' : ownedCount || legacy.size ? 'partial' : 'unregistered';
+    let status = matching === needed.length && !issues.length && !hasRetiredOwnership ? 'registered' : ownedCount || legacy.size ? 'partial' : 'unregistered';
     if (status === 'partial' && !issues.length && oldCommand && oldCommand !== `"${absolute}" "%1"`) status = 'update-needed';
     return { supported: true, state: status, executablePath: absolute, registeredExecutablePath: oldCommand?.match(/^"([^"]+)"/)?.[1], extensions: [...SUPPORTED_EXTENSIONS], issues, ownedCount, requiresWindowsDefaultChoice: true,
       _entries: entries, _snapshot: snapshot, _state: state, _legacy: legacy };
@@ -145,14 +147,12 @@ function createSyProjectAssociation({ executablePath = process.execPath, platfor
     for (const id of legacy) if (!state.records[id]) state.records[id] = { before: null, written: snapshot.values[id] };
     for (const entry of entries) {
       const current = snapshot.values[entry.id] ?? null;
-      let record = state.records[entry.id];
-      if (!record && legacy.has(entry.id)) record = { before: null, written: current };
-      if (action === 'remove') {
+      const record = state.records[entry.id];
+      if (action === 'remove' || entry.retired) {
         if (!record) continue;
         if (!same(current, record.written)) { retained.push(entry.id); continue; }
         steps.push({ target: entry, expected: current, value: record.before, recordAfter: null });
       } else {
-        if (entry.legacyDefault) continue;
         if (record && !same(current, record.written)) { retained.push(entry.id); continue; }
         if (!record && current) {
           if (!same(current, entry.value)) issues.push({ code: 'registration-conflict', target: entry.key, message: '已有注册值保留；此项未注册。' });

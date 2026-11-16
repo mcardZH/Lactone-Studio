@@ -1,11 +1,12 @@
 import type { GaussianSettings, Structure } from '../../core/types';
 import type { OrcaSettings } from '../../core/orca/types';
+import {electronicInventorySignature} from '../../core/modeling/electronic-state-policy';
 
 export interface ElectronicStateContext {
   structure: Structure | null; charge:number; multiplicity:number; electronicStateConfirmed:boolean;
   settings?: GaussianSettings | OrcaSettings;
 }
-export const electronicInventory=(structure:Structure|null)=>JSON.stringify(structure?.atoms.map(atom=>[atom.id,atom.element,atom.formalCharge??0])??null);
+export const electronicInventory=electronicInventorySignature;
 
 /** An excited-state task has the same save gate as every other task. */
 export function requiresElectronicStateConfirmation(structure:Structure,request?:ElectronicStateContext):boolean {

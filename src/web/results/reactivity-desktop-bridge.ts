@@ -18,7 +18,7 @@ export interface ReactivityDesktopBridgeOptions {
   active: boolean; onCleanupError?(message: string): void; onProgress?(snapshot: MultiwfnProgressSnapshot): void;
 }
 type Opened = { info: ReactivitySessionInfo; metadata: WavefunctionMetadata; orbitalSessionId: string };
-type Operation = { requestId: string; epoch: number; abort: AbortController; submitted?: boolean; cancelling?: Promise<unknown> };
+type Operation = { requestId: string; epoch: number; abort: AbortController; submitted?: boolean; cancelling?: Promise<unknown>; settlement?: Promise<unknown> };
 const assert: (value: unknown, message: string) => asserts value = (value, message) => { if (!value) throw new Error(message); };
 const abortError = () => new DOMException('反应性分析已取消或来源已改变。', 'AbortError');
 const sameScience = (a: SurfaceContext, b: SurfaceContext) => sameSurfaceContext({ ...a, activationEpoch: undefined }, { ...b, activationEpoch: undefined });
@@ -44,12 +44,12 @@ export function createReactivityDesktopBridge(options: ReactivityDesktopBridgeOp
     return attachment;
   }
   async function closeFork(id: string) { assert(desktop.closeOrbitalSession,'当前环境缺少轨道会话关闭入口。');await desktop.closeOrbitalSession(id);releaseOrbitalSession(desktop,id);orphanForks.delete(id); }
-  async function open(): Promise<Opened> {
+  async function open(op?:Operation): Promise<Opened> {
     if (disposed || !active) throw abortError(); bound(); if (opened) return opened; if (opening) return opening;
     assert(desktop.openReactivitySession && desktop.closeReactivitySession && desktop.closeOrbitalSession && (desktop.forkOrbitalSession || desktop.openOrbitalSession), '当前环境缺少独立反应性/轨道会话入口。');
     const attachment = bound(), id = 'reactivity-' + crypto.randomUUID();
     opening = (async () => {
-      const source = await attachment.readSourceText!(); if (disposed) throw abortError(); bound();
+      const source = await attachment.readSourceText!(op?.abort.signal); if(op)current(op); if (disposed) throw abortError(); bound();
       assert(source.sourceId === attachment.source.metadata!.sourceId && source.sourceRevision === attachment.source.metadata!.sourceRevision && (source.text || source.sourceToken), '原始波函数快照身份不符。');
       let fork: Awaited<ReturnType<NonNullable<DesktopBridge['forkOrbitalSession']>>> | undefined;
       sessionId = id;
@@ -81,7 +81,7 @@ export function createReactivityDesktopBridge(options: ReactivityDesktopBridgeOp
       if (settlement === 'native-settled' || settlement === 'cancelled-before-start') trackers.get(op.requestId)?.stopped(settlement);
       else if (!op.submitted) trackers.get(op.requestId)?.stopped('cancelled-before-start');
     }); }
-    await op.cancelling;
+    try{await op.cancelling;}finally{await op.settlement?.catch(()=>{});}
   }
   const bridge: ReactivityControlsBridge = {
     analyze(request, signal) {
@@ -93,7 +93,7 @@ export function createReactivityDesktopBridge(options: ReactivityDesktopBridgeOp
       let task!: Promise<Awaited<ReturnType<NonNullable<ReactivityControlsBridge['analyze']>>>>;
       task = (async () => {
         try {
-          current(op); const value = await open(); current(op); assert(desktop.analyzeReactivity, '反应性分析入口不可用。');
+          current(op); const value = await open(op); current(op); assert(desktop.analyzeReactivity, '反应性分析入口不可用。');
           trackers.set(op.requestId, createMultiwfnProgressTracker({ sourceId: context.sourceId, sourceRevision: context.sourceRevision, jobIndex: context.jobIndex, sourceFrameIndex: context.sourceFrameIndex, generation: context.generation, ownerId: options.analysisId, analysisId: options.analysisId, sessionId: sessionId!, runId: op.requestId, operation: 'reactivity-run' }, publish));
           op.submitted = true; const raw = await desktop.analyzeReactivity(sessionId!, request); current(op);
           const result = validateReactivityAnalysisResult(raw, request.stamp, options.structure.atoms.length, value.metadata.sourceId);
@@ -103,8 +103,8 @@ export function createReactivityDesktopBridge(options: ReactivityDesktopBridgeOp
           for (const [index, atom] of result.atoms.entries()) assert(atom.sourceIndex === index + 1 && atom.element === value.metadata.structure.atoms[index]?.element && atom.element === options.structure.atoms[index]?.element, '反应性原子对应/顺序不符。');
           notifyAnalysisProjectStateChanged(); return { ...result, atoms: result.atoms.map((atom, index) => ({ ...atom, atomId: options.structure.atoms[index].id })) };
         } catch (error) { if (!op.abort.signal.aborted) { const tracker = trackers.get(op.requestId), settlement = op.submitted ? tracker?.getSnapshot().settlement : 'not-started'; if (settlement) tracker?.failed(settlement, error instanceof Error ? error.message : String(error)); } throw error; }
-        finally { signal.removeEventListener('abort', abort); if (operation === op) operation = null; tasks.delete(task); }
-      })(); tasks.add(task); return task;
+        finally { await op.cancelling?.catch(()=>{}); signal.removeEventListener('abort', abort); if (operation === op) operation = null; tasks.delete(task); }
+      })(); op.settlement=task; tasks.add(task); return task;
     },
     async cancel(requestId) { if (operation?.requestId === requestId) await cancelOperation(operation); },
   };

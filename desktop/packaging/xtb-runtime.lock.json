@@ -1,91 +1,96 @@
 {
   "schema": "sciyue-xtb-lock-v1",
   "platform": "win32-x64",
-  "lockId": "xtb-source-build-required",
-  "root": ".local/dependencies/win-x64/xtb-source-build-required",
+  "lockId": "xtb-public-v4-2.1.1",
+  "root": ".local/dependencies/win-x64/xtb-public-v4-2.1.1",
   "contentDirectories": [
     "xtb"
   ],
-  "status": "source-build-required",
-  "sourceBuildRequired": true,
+  "version": "6.8.0",
+  "entry": "xtb/bin/xtb.exe",
+  "dataDirectory": "xtb/share/xtb",
+  "methods": [
+    "gfn0",
+    "gfn1",
+    "gfn2",
+    "gfnff"
+  ],
   "scope": "local-experimental",
   "localUseReady": false,
+  "sourceBuildRequired": true,
   "publicRedistributionReviewed": false,
   "distributionLicenseReady": false,
-  "publicDistribution": false,
-  "officialAcceptance": false,
-  "scientificAccepted": false,
-  "source": {
-    "commit": "5071a8869720fb0ecd788af977159869b64a277c",
-    "defaultScientificPins": {
-      "path": "third-party/build-inputs/gnu-xtb/default-scientific-pins.json",
-      "bytes": 5616,
-      "sha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b"
-    }
+  "runtimeManifest": {
+    "path": "runtime.json",
+    "bytes": 2633,
+    "sha256": "e64dfa34737c397acf2f4205ae7d73f11a68a3eefa5c63737a5247b0e14bae8f"
   },
-  "bootstrap": {
-    "materializeSelection": "--skip-xtb",
-    "runtimeGuide": "third-party/corresponding-sources/GNU-RUNTIME-REBUILD.md",
-    "scientificGuide": "third-party/corresponding-sources/XTB-GNU-REBUILD.md",
-    "admission": "scripts/release/admit-built-xtb.py --raw-output ... --local-modified --apply --activate"
-  },
-  "notice": "Blueprint only. No files or inventory are declared. Build and explicitly admit a complete GNU runtime before prepare; no legacy binary fallback.",
-  "localModification": {
-    "kind": "es-h-only-initial-velocity-cap",
-    "algorithm": "xtb-h-only-initial-cap-v1",
-    "sourceReceipt": {
-      "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json",
-      "bytes": 13500,
-      "sha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a"
-    },
-    "originalEngineIdentity": {
+  "variantIdentities": {
+    "official": {
       "schema": "sciyue-xtb-engine-identity/v1",
       "engine": "xtb",
-      "kind": "bundled-independent-rebuild",
-      "version": "6.7.0",
-      "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
-      "buildId": "5071a886-gnu132-r2-openblas033-a01",
-      "compiler": {
-        "name": "gfortran",
-        "version": "13.2.0"
-      },
-      "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
-      "sourceReceiptSha256": "b8ce3a40717eb518ed78f16a7a0481e5af1b602e06cfe9ca4910e10c30fe6bc6",
-      "scientificPinsSha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b",
-      "runtimeMemberDigest": "503ec84fc190195e442570e517a5034468c28e63257433624be51b5ef1fbb279",
-      "parameterDigest": "0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2",
-      "sha256": "b40033dc620944f87e520d54d0a3cf69f7df73a9f82955d34dfa1a3464924a1c"
+      "kind": "official-release",
+      "runtimeVariant": "official",
+      "runtimeManifestSha256": "e64dfa34737c397acf2f4205ae7d73f11a68a3eefa5c63737a5247b0e14bae8f",
+      "compiler": null,
+      "toolchainArchiveSha256": null,
+      "scientificPinsSha256": null,
+      "version": "6.8.0",
+      "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "archiveSha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+      "buildId": "xtb-v6.8.0-windows-x86_64-openblas-official",
+      "executableSha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+      "sourceReceiptSha256": "e4101f28ae510f49e5298d121149261a7b765bcd614220434254761b66b7d18c",
+      "runtimeMemberDigest": "6adc932cad15ab63d6ce9b89ac8b2a4a0af99b34956a026963ee2586547a6592",
+      "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+      "sha256": "897bb62048e705d7f739021e68c78e719f15078e7fc7708c226cba60a23786bf"
     },
-    "scientificAccepted": false
-  },
-  "publishedRuntime": {
-    "version": "6.7.0",
-    "build": {
-      "id": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
-      "compiler": {
-        "name": "gfortran",
-        "version": "13.2.0"
-      },
-      "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
-      "sourceReceiptSha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a"
-    },
-    "engineIdentity": {
+    "gfn0-stack64": {
       "schema": "sciyue-xtb-engine-identity/v1",
       "engine": "xtb",
-      "kind": "bundled-independent-rebuild",
-      "version": "6.7.0",
-      "sourceCommit": "5071a8869720fb0ecd788af977159869b64a277c",
-      "buildId": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
+      "kind": "pe-stack-derivative",
+      "runtimeVariant": "gfn0-stack64",
+      "runtimeManifestSha256": "e64dfa34737c397acf2f4205ae7d73f11a68a3eefa5c63737a5247b0e14bae8f",
+      "compiler": null,
+      "toolchainArchiveSha256": null,
+      "scientificPinsSha256": null,
+      "version": "6.8.0",
+      "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "archiveSha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+      "buildId": "xtb-v6.8.0-official-win64-pe-stack64",
+      "stackReserveBytes": 67108864,
+      "parentExecutableSha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+      "executableSha256": "c30aab875e388f77b04dedb58dd3a746ae7d3ea46b4f9852680925bf64a0eb98",
+      "sourceReceiptSha256": "391cdf82cba8b7035c8685b6cc1cc777dacc537d9b43655152b3c6dbecaa0e4b",
+      "runtimeMemberDigest": "43ba5a270f1e3f67c5eefbb729af578c3a8099191d1b45fbc2848310619dd1fc",
+      "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+      "sha256": "667ec0b176ef61a5d72be5cc7ed1ade75949cc5e01f041a8ef50e4e62778f159"
+    },
+    "fire": {
+      "schema": "sciyue-xtb-engine-identity/v1",
+      "engine": "xtb",
+      "kind": "fire-step-limit-rebuild",
+      "runtimeVariant": "fire",
+      "runtimeManifestSha256": "e64dfa34737c397acf2f4205ae7d73f11a68a3eefa5c63737a5247b0e14bae8f",
       "compiler": {
         "name": "gfortran",
         "version": "13.2.0"
       },
       "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
-      "sourceReceiptSha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a",
-      "scientificPinsSha256": "c74161d40083f5acb15ca57a7cbb9c337e21f85c866055c875c04aad63255f6b",
-      "runtimeMemberDigest": "8a92bb2fd39c569f46a83512b797f85fba211fd1b64ee3a60bc3449636a3b32b",
-      "parameterDigest": "0233b838d5ec57437c70d65c26ba369d6ce6a5226f790912cdbbf3ebc6239ed2",
-      "sha256": "585693866b1d9619d312237f82cf1e3684566b5886c7dd7849cdb2b1195656fb"
+      "scientificPinsSha256": "b22f21f13be8933b653d56e65819cab2d271a72e2a2cf68b40c2bfe6c5e2ee7b",
+      "version": "6.8.0",
+      "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "buildId": "4b8c987-ester-fire-limit-gnu132-openblas033",
+      "stackReserveBytes": 67108864,
+      "fireStepLimit": "remaining-microcycles-v1",
+      "executableSha256": "f417fad161cfb35c09bf4b681b04b398c95f9597140cd9c1d8d6f2ac319eb666",
+      "sourceReceiptSha256": "78428bd41ee15a452579651896e1f81739a1a586a1c47631047dcb89126996db",
+      "runtimeMemberDigest": "6df29e49f7d3cbc469f614f395d0216444f3a1c27f990869cdcfe80809c3b728",
+      "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+      "sha256": "3301589a6586150d375654d5ce2bae13897134f265b112596cfded4a520c9eb8"
     }
+  },
+  "externalProviders": {
+    "gxtb": "user-supplied-cli"
   }
 }

@@ -1,5 +1,6 @@
 'use strict';
 const { assert, plain, string, boundedJSON, validateChemistry, validateStructure, validateAttachmentPorts } = require('./security.cjs');
+const { isXtbMethod, supportsXtbOperation, supportsXtbAlpb, XTB_METHOD_LABELS } = require('./xtb-capabilities.cjs');
 
 const MAX_EVENT_BYTES = 16 * 1024 * 1024;
 const EVENTS = new Set(['ready', 'started', 'heartbeat', 'frame', 'paused', 'resumed', 'temperature', 'stopped', 'completed', 'error']);
@@ -78,12 +79,12 @@ function validateGeometryTargetStatus(value, request) {
 function validateStart(value) {
   boundedJSON(value);
   assert(plain(value), 'Invalid dynamics request');
-  const allowed = new Set(['stamp', 'operation', 'structure', 'movableAtomIds', 'constraints', 'forcefield', 'method', 'untilStopped', 'protectedAtomIds', 'maxSteps', 'maxWallTimeSeconds', 'temperatureK', 'seed', 'frictionPerFs', 'dtFs', 'reportEvery', 'attachmentPorts', 'geometryMode', 'hybridScalePolicy', 'allowPureGeometryFallback', 'geometryDistanceTargets']);
+  const allowed = new Set(['stamp', 'operation', 'structure', 'movableAtomIds', 'constraints', 'forcefield', 'method', 'untilStopped', 'protectedAtomIds', 'solvation', 'maxSteps', 'maxWallTimeSeconds', 'temperatureK', 'seed', 'frictionPerFs', 'dtFs', 'reportEvery', 'attachmentPorts', 'geometryMode', 'hybridScalePolicy', 'allowPureGeometryFallback', 'geometryDistanceTargets']);
   assert(Object.keys(value).every(key => allowed.has(key)), 'Unknown dynamics request field');
   assert(['md', 'optimize', 'geometry'].includes(value.operation), 'Invalid dynamics operation');
   assert(value.untilStopped === undefined || value.operation === 'md' && value.untilStopped === true, 'Continuous execution requires MD');
   const nativeMD = value.method !== undefined;
-  assert(!nativeMD || value.operation === 'md' && value.untilStopped === true && ['gfnff','gfn0','gfn1','gfn2'].includes(value.method) && value.forcefield === undefined, 'Invalid native MD method');
+  assert(!nativeMD || value.operation === 'md' && value.untilStopped === true && isXtbMethod(value.method) && value.forcefield === undefined, 'Invalid native MD method');
   assert(value.protectedAtomIds === undefined || nativeMD && Array.isArray(value.protectedAtomIds) && new Set(value.protectedAtomIds).size === value.protectedAtomIds.length && value.protectedAtomIds.length !== 1 && value.protectedAtomIds.every(id=>value.structure.atoms.some(atom=>atom.id===id)), 'Relative-distance protection needs at least two distinct atoms');
   if(nativeMD) assert(value.movableAtomIds.length === value.structure.atoms.length, 'Native soft protection does not impose XYZ freezes');
   if (value.geometryMode !== undefined || value.hybridScalePolicy !== undefined) assert(value.operation === 'geometry' && value.geometryMode === 'hybrid-local' && value.hybridScalePolicy === 'uff-bond-stiffness-v1', 'Invalid local hybrid mode or scale policy');
@@ -102,13 +103,16 @@ function validateStart(value) {
   assert(value.structure.atoms.length > 0, 'Dynamics requires a nonempty molecule');
   assert(value.structure.periodicSource?.completeness !== 'partial', 'Incomplete periodic cell cannot run dynamics');
   const periodic = value.structure.cell?.pbc.some(Boolean) === true;
+  const periodicMD=nativeMD&&Boolean(value.structure.cell);
   if (value.structure.cell !== undefined) {
     const cell = value.structure.cell;
     // The shared structure validator already checks vectors, invertibility,
     // legal image identities and axis provenance syntax.
     assert(cell.pbcProvenance?.kind !== 'unconfirmed', 'Periodic source axes are unconfirmed');
   }
-  if (periodic) {
+  if(periodicMD){
+    assert(supportsXtbOperation(value.method,'md',true)&&!value.protectedAtomIds?.length&&!value.constraints?.length,'Periodic native MD requires a supported method and excludes user protection or constraints');
+  }else if (periodic) {
     assert(value.operation === 'geometry' && value.geometryMode === undefined && value.hybridScalePolicy === undefined && value.allowPureGeometryFallback === undefined, 'Dynamics requires a nonperiodic molecule except for pure fixed-cell mechanical geometry');
     assert(!(value.constraints ?? []).length, 'Periodic mechanical geometry supports atomic freezes only, not B/A/D constraints');
     assert(!value.attachmentPorts?.length, 'Periodic mechanical geometry does not support attachment ports');
@@ -118,7 +122,10 @@ function validateStart(value) {
   assert(periodic || !value.structure.bonds?.some(bond => bond.image?.some(number => number !== 0)), 'Dynamics does not support periodic bonds without a periodic cell');
   assert(value.movableAtomIds.length > 0, 'Dynamics requires movable atoms');
   assert(!(value.constraints ?? []).some(coordinate => coordinate.action === 'scan'), 'Dynamics cannot run a potential-energy scan');
-  assert(value.operation !== 'md' || !(value.constraints ?? []).length, 'B/A/D momentum constraints have not been validated for MD; use XYZ freezes');
+  if(value.operation==='md'&&value.constraints?.length){
+    assert(nativeMD&&!periodicMD&&value.constraints.every(row=>row.action==='freeze'&&Number.isFinite(row.value)&&!row.images?.some(image=>image.some(Boolean))),'MD B/A/D protection requires a nonperiodic native method and finite targets');
+  }
+  if(value.solvation!==undefined)assert(nativeMD&&plain(value.solvation)&&Object.keys(value.solvation).length===2&&value.solvation.model==='alpb'&&supportsXtbAlpb(value.method,value.solvation.solvent,periodicMD),'Invalid native MD solvation');
   assert(value.dtFs === undefined || value.dtFs === (nativeMD ? 2 : 1), 'Dynamics timestep differs from selected driver');
   assert(value.reportEvery === undefined || value.reportEvery === 10, 'Dynamics report interval must be 10 steps');
   const maxSteps = value.maxSteps ?? (value.operation === 'md' ? 100000 : 500);
@@ -127,7 +134,7 @@ function validateStart(value) {
   assert((maxWallTimeSeconds === undefined || Number.isFinite(maxWallTimeSeconds) && maxWallTimeSeconds > 0), 'Invalid dynamics wall budget');
   assert(value.temperatureK === undefined || Number.isFinite(value.temperatureK) && value.temperatureK >= 0 && value.temperatureK <= 5000, 'Invalid dynamics temperature');
   assert(!nativeMD || (value.temperatureK ?? 300)>0, 'Native MD requires a positive temperature');
-  assert(value.seed === undefined || Number.isInteger(value.seed) && value.seed >= 0 && value.seed <= 0xffffffff, 'Invalid dynamics RNG seed');
+  assert(value.seed === undefined || value.method!=='gxtb'&&Number.isInteger(value.seed) && value.seed >= 0 && value.seed <= (nativeMD?0x7fffffff:0xffffffff), 'Invalid dynamics RNG seed');
   assert(value.frictionPerFs === undefined || Number.isFinite(value.frictionPerFs) && value.frictionPerFs >= 0 && value.frictionPerFs <= 1, 'Invalid dynamics friction');
   // Detached copies prevent a caller mutating the identity while a worker runs.
   return JSON.parse(boundedJSON({ ...value, maxSteps, maxWallTimeSeconds, ...(nativeMD?{temperatureK:value.temperatureK??300}:{}), ...(value.operation === 'geometry' ? {} : { dtFs: nativeMD ? 2 : 1, reportEvery: 10 }) }));
@@ -149,9 +156,23 @@ function validateEvent(value, session) {
   assert(Number.isFinite(value.timeFs) && value.timeFs >= session.lastTimeFs, 'Invalid dynamics physical time');
   if (value.operation === 'md') assert(value.timeFs === value.step*(session.request.dtFs ?? 1), 'Dynamics physical time must equal step times actual timestep');
   if(session.request.untilStopped){assert(!['paused','resumed','temperature'].includes(value.event),'Continuous MD cannot pause or change temperature');assert(value.targetTemperatureK===undefined||value.targetTemperatureK===(session.request.temperatureK??300),'Continuous MD target temperature changed');}
-  if(session.request.method&&value.structure){const m=value.nativeMD;assert(plain(m)&&m.method===session.request.method&&m.dtFs===2&&m.thermostat==='Berendsen'&&m.hydrogenMassAmu===(m.method==='gfnff'?4:null)&&m.shakeHydrogenBonds===(m.method!=='gfnff')&&canonical(m.protectedAtomIds)===canonical(session.request.protectedAtomIds??[])&&m.protection===(m.protectedAtomIds.length?'pairwise-distance':'none')&&m.forceConstantKJMolNm2===500000&&Number.isSafeInteger(m.segment)&&m.segment>=0&&m.velocityInitialization===(m.segment===0?'fresh':'restart')&&typeof m.nativeClosed==='boolean','Native MD method or protection evidence differs');}
+  if(session.request.method&&value.structure){
+    const r=session.request,m=value.nativeMD;
+    assert(plain(m)&&m.method===r.method&&m.dtFs===2&&m.thermostat==='Berendsen'&&m.hydrogenMassAmu===(m.method==='gfnff'?4:null)&&m.shakeHydrogenBonds===(m.method!=='gfnff')&&canonical(m.protectedAtomIds)===canonical(r.protectedAtomIds??[])&&m.protection===(m.protectedAtomIds.length?'pairwise-distance':'none')&&m.forceConstantKJMolNm2===500000&&Number.isSafeInteger(m.segment)&&m.segment>=0&&m.velocityInitialization===(m.segment===0?'fresh':'restart')&&typeof m.nativeClosed==='boolean','Native MD method or protection evidence differs');
+    assert(Boolean(m.periodic)===Boolean(r.structure.cell),'Native MD fixed-cell mode differs');
+    assert(m.effectiveSeed===undefined||m.method!=='gxtb'&&m.seedTreatment==='verified'&&m.effectiveSeed===r.seed,'Native MD effective seed differs');
+    assert(m.seedTreatment===undefined||(m.method==='gxtb'?m.seedTreatment==='program-random':value.engineVersion==='6.8.0'?m.seedTreatment==='verified':m.seedTreatment==='native-internal-initialization'),'Native MD seed treatment differs');
+    if(m.solvation!==undefined)assert(r.solvation&&m.solvation.model==='alpb'&&m.solvation.solvent===r.solvation.solvent&&m.solvation.kernel==='p16'&&m.solvation.referenceState==='gsolv'&&m.solvation.temperatureKelvin===Number(r.temperatureK.toExponential(4))&&m.solvation.parameterSet===`internal ${XTB_METHOD_LABELS[m.method]}/ALPB`,'Native MD solvation differs');
+    if(value.step>0&&r.solvation)assert(m.solvation,'Native MD solvation readback is missing');
+    if(m.degreesOfFreedom!==undefined)assert(Number.isSafeInteger(m.degreesOfFreedom)&&m.degreesOfFreedom>=0&&m.degreesOfFreedom<=3*r.structure.atoms.length,'Native MD degrees of freedom are invalid');
+    if(m.restartInputSha256!==undefined)assert(m.segment>0&&/^[a-f0-9]{64}$/.test(m.restartInputSha256),'Native MD restart identity differs');
+    if(m.internalConstraints!==undefined||value.step>0){
+      const expected=r.constraints??[],rows=m.internalConstraints??[];
+      assert(Array.isArray(rows)&&rows.length===expected.length&&rows.every((row,i)=>plain(row)&&row.type===expected[i].type&&row.id===expected[i].id&&canonical(row.atomIds)===canonical(expected[i].atomIds)&&row.target===expected[i].value&&Number.isFinite(row.actual)&&Number.isFinite(row.residual)&&row.unit===(row.type==='B'?'angstrom':'degree')&&row.mode==='native-harmonic'),'Native MD constraint observations differ');
+    }
+  }
   if(session.request.method&&value.event==='stopped')assert(value.nativeMD?.nativeClosed===true,'Native MD Stop requires actual native process closure');
-  if(session.request.method&&value.nativeMD?.rawPotential!==undefined){const p=value.nativeMD.rawPotential,protectedRun=(session.request.protectedAtomIds??[]).length>0;assert(plain(p)&&Number.isFinite(p.value)&&p.unit==='hartree'&&p.definition===(protectedRun?'native-total-including-protection':'native-physical-potential')&&p.includesProtection===protectedRun&&p.sourceArtifact==='xtb.trj'&&Number.isSafeInteger(p.sourceStep)&&p.sourceStep>=0&&p.sourceStep<=value.step&&p.sourceTimeFs===p.sourceStep*2&&Number.isSafeInteger(p.segment)&&p.segment>=0&&p.segment<=value.nativeMD.segment,'Native MD raw potential source or definition differs');}
+  if(session.request.method&&value.nativeMD?.rawPotential!==undefined){const p=value.nativeMD.rawPotential,protectedRun=Boolean(session.request.protectedAtomIds?.length||session.request.constraints?.length);assert(plain(p)&&Number.isFinite(p.value)&&p.unit==='hartree'&&p.definition===(protectedRun?'native-total-including-protection':'native-physical-potential')&&p.includesProtection===protectedRun&&p.sourceArtifact==='xtb.trj'&&Number.isSafeInteger(p.sourceStep)&&p.sourceStep>=0&&p.sourceStep<=value.step&&p.sourceTimeFs===p.sourceStep*2&&Number.isSafeInteger(p.segment)&&p.segment>=0&&p.segment<=value.nativeMD.segment,'Native MD raw potential source or definition differs');}
   if (value.operation === 'geometry') {
     assert(value.timeFs === 0, 'Geometry has no elapsed physical time');
     assert(value.event !== 'temperature' && ['energyEV', 'kineticEnergyEV', 'temperatureK', 'targetTemperatureK', 'forcefield'].every(key => value[key] === undefined), 'Geometry cannot report physical energy, temperature or force field');

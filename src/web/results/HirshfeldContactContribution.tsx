@@ -4,9 +4,11 @@ import type { HirshfeldContactRow } from '../../results/hirshfeld-contracts';
 import { hirshfeldContactKey, hirshfeldContactLabel, type HirshfeldContactFocus } from '../../results/hirshfeld-presentation';
 import { useScientificPlotSize } from './ScientificPlotSize';
 import { ScientificPlotExportMenu } from './ScientificPlotExportMenu';
+import { ScientificImageCopyButton } from '../ScientificImageCopyButton';
 import { exportBlob } from './export-image';
-import { optimizationSvgPng, serializeOptimizationSvg } from './optimization-export';
+import { captureScientificSvgPng, serializeOptimizationSvg } from './optimization-export';
 import { ScientificPlotSettings, plotFontFamily, plotPt, usePlotAppearance, usePlotFont } from './ScientificPlotSettings';
+import './OptimizationPlot.css';
 
 // fig-272's Spectral sequence, including both endpoint colors.
 const colors = ['#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#e6f598', '#abdda4', '#66c2a5', '#3288bd', '#5e4fa2'];
@@ -24,7 +26,7 @@ const wrapLabel = (text: string, width: number, fontSize: number) => {
 export default function HirshfeldContactContribution({ rows, merged, decimals, onContact, appearanceKey }: {
   rows: readonly HirshfeldContactRow[]; merged: boolean; decimals: number; onContact(value: HirshfeldContactFocus): void; appearanceKey?: string;
 }) {
-  const plot = useScientificPlotSize(), svg = useRef<SVGSVGElement>(null), [error, setError] = useState('');
+  const plot = useScientificPlotSize(appearanceKey), svg = useRef<SVGSVGElement>(null), [error, setError] = useState('');
   usePlotFont(svg.current?.ownerDocument);
   const appearance = usePlotAppearance(appearanceKey), a = appearance.value;
   const positive = rows.filter(row => row.area > 0 && Number.isFinite(row.area) && Number.isFinite(row.nativePercent)), width = plot.width;
@@ -45,12 +47,12 @@ export default function HirshfeldContactContribution({ rows, merged, decimals, o
   let angle = -Math.PI / 2, legendY = Math.max(54, cy - legendHeight / 2);
   const slices = entries.map((entry, index) => { const start = angle; angle += entry.row.nativePercent / 100 * Math.PI * 2;
     const result = { ...entry, start, end: angle, mid: (start + angle) / 2, legendY }; legendY += entryHeights[index]; return result; });
-  const exportChart = async (kind: 'svg' | 'png') => { const node = svg.current; if (!node) return; try { const text = serializeOptimizationSvg(node);
-    exportBlob(kind === 'png' ? await optimizationSvgPng(text, node.ownerDocument) : new Blob([text], { type: 'image/svg+xml;charset=utf-8' }), `Ester-Studio-hirshfeld-contributions.${kind}`, node.ownerDocument); setError('');
+  const capturePng = (owner: Document, signal?: AbortSignal) => captureScientificSvgPng(svg.current, owner, signal);
+  const exportChart = async (kind: 'svg' | 'png') => { const node = svg.current; if (!node) return; try {
+    exportBlob(kind === 'png' ? await capturePng(node.ownerDocument) : new Blob([serializeOptimizationSvg(node)], { type: 'image/svg+xml;charset=utf-8' }), `Ester-Studio-hirshfeld-contributions.${kind}`, node.ownerDocument); setError('');
   } catch (value) { setError(String(value instanceof Error ? value.message : value)); } };
-  return <div className="scientific-plot hirshfeld-contribution-plot"><div className="scientific-plot-toolbar">{plot.controls(height)}
-    <ScientificPlotExportMenu options={['svg', 'png'].map(kind => ({ key: kind, label: kind.toUpperCase(), run: () => { void exportChart(kind as 'svg' | 'png'); } }))}/></div>
-    <ScientificPlotSettings appearance={appearance} title={title} names={names}/>
+  return <div className="scientific-plot hirshfeld-contribution-plot">
+    <ScientificPlotSettings appearance={{...appearance,reset:()=>{appearance.reset();plot.reset();}}} title={title} names={names}>{plot.controls(height)}</ScientificPlotSettings>
     {error && <DismissibleNotice>{error}</DismissibleNotice>}<div ref={plot.stageRef} className="scientific-plot-stage" style={plot.style(height)}>{plot.handles}
       <svg ref={svg} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="原生接触面积贡献图" fontFamily={plotFontFamily(a.font)}>
         <rect width={width} height={height} fill="white"/>
@@ -70,5 +72,7 @@ export default function HirshfeldContactContribution({ rows, merged, decimals, o
           </g>;
         })}
         <text x={cx} y={cy - legendSize * .2} textAnchor="middle" fontSize={legendSize * 1.15} fill="black"><tspan x={cx}>合计</tspan><tspan x={cx} dy={legendSize * 1.5}>{totalPercent.toFixed(decimals)}%</tspan></text>
-      </svg></div></div>;
+      </svg></div><div className="optimization-plot-options scientific-plot-tools scientific-plot-actions" aria-label="图像操作">
+    <ScientificImageCopyButton resetKey={appearanceKey} disabled={!positive.length} capture={capturePng}/>
+    <ScientificPlotExportMenu options={['svg', 'png'].map(kind => ({ key: kind, label: kind.toUpperCase(), run: () => { void exportChart(kind as 'svg' | 'png'); } }))}/></div></div>;
 }

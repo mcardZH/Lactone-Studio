@@ -1,6 +1,7 @@
 import type { AdvancedFrameSource } from "../../modeling/advanced/frame-source";
 import type {
 	AdvancedMixedSamplingDefinition,
+	AdvancedOptimizationMethod,
 	AdvancedOptimizationStageConfig,
 	AdvancedTaskRecord,
 	AdvancedTaskSpec
@@ -15,14 +16,14 @@ import {
 	type TorsionAtoms
 } from "../../modeling/conformers";
 import { convertEnergy } from "../../results/energy";
+import { automaticStem } from "../../core/naming";
 import {
 	changeSamplingOperation,
 	compileSampling,
 	initialSamplingDraft,
 	type SamplingDraft
 } from "./process-config";
-import { initialAdvancedMethod, compileAdvancedMethod } from "./AdvancedMethodControls";
-import { restoreConformerStages, restoreConformerTaskDraft } from "./conformer-draft-hydration";
+import { initialConformerStageMethod, restoreConformerTaskDraft } from "./conformer-draft-hydration";
 import type { ConformerOptimizationDraft } from "./ConformerOptimizationStages";
 import type { ConformerTorsionDraft } from "./ConformerTorsionControls";
 import {conformerSolvationDraftIssue} from './conformer-solvation-draft';
@@ -52,7 +53,7 @@ export interface MixedConformerDraft {
 export const defaultMixedStages = (): ConformerOptimizationDraft[] => [
 	{
 		id: "stage-1",
-		method: { ...initialAdvancedMethod, maxSteps: 500 },
+		method: { ...initialConformerStageMethod },
 		energyThresholdKcalMol: 0.25,
 		rmsdThresholdAngstrom: 0.1,
 		rmsdMatching: 'fixed',
@@ -95,20 +96,31 @@ export function createMixedSamplingCard(
 		activeTorsionId: torsions[0]?.id ?? ""
 	};
 }
+export function compileConformerStageMethod(draft: ConformerOptimizationDraft["method"], threads: number): AdvancedOptimizationMethod {
+	const solventIssue = conformerSolvationDraftIssue(draft.method, draft);
+	if (solventIssue) throw Error(solventIssue);
+	if (draft.method === "MMFF94" || draft.method === "MMFF94s" || draft.method === "UFF")
+		return { backend: "forcefield", forcefield: draft.method, threads: 1, solvent: "none", optimizationStepPolicy: "native-default" };
+	if (!Number.isSafeInteger(threads) || threads < 1) throw Error("线程数须为正整数。");
+	return { backend: "xtb", options: {
+		method: draft.method, threads, optimizationStepPolicy: "native-default",
+		solvent: draft.solvationModel === "none" ? "none" : draft.solvent,
+		internalConstraintsConfirmed: draft.internalConstraintsConfirmed,
+		...(draft.solvationModel === "none" ? {} : { solvation: { model: draft.solvationModel, solvent: draft.solvent } })
+	} };
+}
 export function compileMixedStages(
 	stages: readonly ConformerOptimizationDraft[],
 	threads: number
 ): AdvancedOptimizationStageConfig[] {
 	return stages.map((stage,index) => {
-		const solventIssue=conformerSolvationDraftIssue(stage.method.method,stage.method);if(solventIssue)throw Error(solventIssue);
 		if(index&&(!Number.isSafeInteger(stage.inputClusterCount??10)||(stage.inputClusterCount??10)<1))throw Error('选取上一级簇数须为正整数。');
-		if(!Number.isSafeInteger(stage.inputStride??1)||(stage.inputStride??1)<1)throw Error('抽帧间隔须为正整数。');
+		if(!index&&(!Number.isSafeInteger(stage.inputStride??1)||(stage.inputStride??1)<1))throw Error('抽帧间隔须为正整数。');
 		if (!Number.isFinite(stage.rmsdThresholdAngstrom) || stage.rmsdThresholdAngstrom <= 0)
 			throw Error("各级归簇 RMSD 须为正数。");
 		return {
 			id: stage.id,
-			inputStride: stage.inputStride??1,
-			...(index?{inputClusterCount:stage.inputClusterCount??10}:{}),
+			...(index?{inputClusterCount:stage.inputClusterCount??10}:{inputStride:stage.inputStride??1}),
 			checkpointAfter: true,
 			clustering: {
 				rmsdMatching: 'fixed',
@@ -119,11 +131,7 @@ export function compileMixedStages(
 					"hartree"
 				)!
 			},
-			method: compileAdvancedMethod({
-				...stage.method,
-				maxSteps: stage.method.maxSteps,
-				threads: ["MMFF94", "MMFF94s", "UFF"].includes(stage.method.method) ? 1 : threads
-			})
+			method: compileConformerStageMethod(stage.method, threads)
 		};
 	});
 }
@@ -245,14 +253,19 @@ export function createMixedTaskSpec(
 	draft: MixedConformerDraft,
 	resources: { threads: number; memoryBudgetBytes: number }
 ): AdvancedTaskSpec {
+	const mixedSampling = compileMixedDefinition(draft, source, resources);
+	const {seedMode:_seedMode,seedDraft:_seedDraft,...historicalSamplingSlot}=compileSampling(
+		{ ...structuredClone(initialSamplingDraft), ...resources, coreIds: [], sphereEnabled: false },
+		{ ...source, constraints: { frozenAtomIds: [], coordinates: [] } }
+	);
 	return {
 		kind: "sampling",
+		label: `sampling-${automaticStem(source.label)}`,
 		source,
-		sampling: compileSampling(
-			{ ...structuredClone(initialSamplingDraft), ...resources, coreIds: [], sphereEnabled: false },
-			source
-		),
-		mixedSampling: compileMixedDefinition(draft, source, resources),
+		// The top-level slot is retained for reading historical single-card tasks.
+		// A mixed task validates and runs its own cards against the captured source.
+		sampling: historicalSamplingSlot,
+		mixedSampling,
 		optimizationStages: compileMixedStages(draft.stages, resources.threads),
 		checkpointAfterSampling: true
 	};

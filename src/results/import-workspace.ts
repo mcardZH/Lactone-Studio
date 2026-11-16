@@ -19,7 +19,7 @@ import { readIrcOutputContext, type IrcOutputContext } from './irc-companion-ass
 
 export type WorkspaceImportItem = { kind: 'model'; fragment: FragmentSnapshot; restoredModel?: RestoredWorkspaceModel } | { kind: 'result'; result: TrajectoryResult } | { kind: 'diagnostic'; diagnostic: ResultDiagnostic };
 /** Route complete result files without stealing explicitly paired input dependencies. */
-export async function importWorkspaceItems(files: ScientificSourceFile[], options: ResultReadOptions = {}): Promise<WorkspaceImportItem[]> {
+export async function importWorkspaceItems(files: ScientificSourceFile[], options: ResultReadOptions & { onSourceError?(file: ScientificSourceFile, error: unknown): void } = {}): Promise<WorkspaceImportItem[]> {
   const items: WorkspaceImportItem[] = [], fallback: ScientificSourceFile[] = [];
   const protectedNames = new Set<string>();
   const fallbackNotes = new Map<string,string>();
@@ -28,10 +28,18 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
   const mdAuxiliaries: MdAuxiliarySource[] = [];
   const ircContexts: IrcOutputContext[] = [];
   let retainedAuxiliaryBytes = 0;
+  const sourceFailures: unknown[] = [];
+  const failedFiles = new Set<ScientificSourceFile>();
+  const failed = (file: ScientificSourceFile, error: unknown) => {
+    assertResultNotAborted(options.signal);
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    failedFiles.add(file); sourceFailures.push(error); options.onSourceError?.(file, error);
+  };
   try {
   // Input+dependencies retain the existing scientific dependency grouping.
   const inputs = files.filter(file => /\.(?:inp|restart)(?:-\d+)?$/i.test(file.name));
   for (const file of inputs) {
+    try {
     const preview = resultFile(file);
     try { if ((await recognizeResultSource(preview, options)).format !== 'unknown') continue; }
     finally { await preview.close?.(); }
@@ -70,8 +78,11 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
     // CP2K includes may themselves reference coordinates: let its existing
     // parser resolve the whole selected dependency set without competing reads.
     if (/^\s*&(?:SUBSYS|FORCE_EVAL)\b/im.test(text)) for (const other of files) protectedNames.add(other.name.toLowerCase());
+    } catch (error) { failed(file, error); }
   }
     for (const file of files) {
+      if (failedFiles.has(file)) continue;
+      try {
       if (options.signal?.aborted && items.length) return items;
       assertResultNotAborted(options.signal);
       if (diagnosticInputs.has(file)) continue;
@@ -112,9 +123,11 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
           ].sort((a, b) => { const left = a.kind === 'result' ? a.result.jobIndex : a.diagnostic.jobIndex, right = b.kind === 'result' ? b.result.jobIndex : b.diagnostic.jobIndex; return left === null || right === null ? 0 : left - right; });
           items.push(...imported);
           if (options.signal?.aborted) return items;
+          try {
           const neb = [...read.results, ...read.diagnostics].filter(result => result.engine === 'orca' && result.scientific?.tasks.includes('neb'));
           if (neb.length === 1) { const context = await readNebOutputContext(source, neb[0], options); if (context) nebContexts.push(context); }
           for (const job of [...read.results, ...read.diagnostics]) { const context = await readIrcOutputContext(source, job, options); if (context) ircContexts.push(context); }
+          } catch (error) { failed(file, error); }
           assertResultNotAborted(options.signal);
           continue;
         } else results = await (isXyz ? readXyzTrajectory(source,options) : isFchk ? readFchkScientificResult(source,options) : isHess ? readHessScientificResult(source,options) : readStructureCollection(source,options));
@@ -126,6 +139,7 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
         try { items.push(...modelFragmentsFromStructures([await results[0].getFrame(0,options.signal)]).map(fragment => ({kind:'model' as const,fragment}))); }
         finally { await results[0].dispose(); }
       } else items.push(...results.map(result => ({kind:'result' as const,result})));
+      } catch (error) { failed(file, error); }
     }
     // A declared auxiliary with an unrecognisable damaged header is still a
     // source diagnostic. The declaration proves a role, not a producer or job.
@@ -136,14 +150,24 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
       const source = resultFile(file), role = [...roles][0] === 'md-log' ? 'log' : 'statistics';
       let auxiliary;
       try { auxiliary = await readMdAuxiliary(source, options, undefined, role); }
-      catch (cause) { await source.close?.(); throw cause; }
+      catch (cause) { await source.close?.(); fallback.splice(index, 1); failed(file, cause); continue; }
       if (auxiliary) { fallback.splice(index, 1); retainedAuxiliaryBytes += auxiliary.retainedBytes; mdAuxiliaries.push(auxiliary); items.push({ kind: 'diagnostic', diagnostic: auxiliary.diagnostic }); }
     }
     if (fallback.length) {
       const restoredModels = new WeakMap<FragmentSnapshot, RestoredWorkspaceModel>();
-      items.push(...(await importWorkspaceSources(fallback,undefined,options.signal,restoredModels)).map(fragment=>{const note=fallbackNotes.get(fragment.structure.name);if(note)fragment.structure.notes.push(note);const restoredModel=restoredModels.get(fragment);return {kind:'model' as const,fragment,...(restoredModel?{restoredModel}:{})};}));
+      const dependencies = fallback.filter(file => protectedNames.has(file.name.toLowerCase()));
+      const groups = [...(dependencies.length ? [dependencies] : []), ...fallback.filter(file => !protectedNames.has(file.name.toLowerCase())).map(file => [file])];
+      for (const group of groups) {
+        try {
+          items.push(...(await importWorkspaceSources(group,undefined,options.signal,restoredModels,{onSourceError(file,error){failed(file as ScientificSourceFile,error);}})).map(fragment=>{const note=fallbackNotes.get(fragment.structure.name);if(note)fragment.structure.notes.push(note);const restoredModel=restoredModels.get(fragment);return {kind:'model' as const,fragment,...(restoredModel?{restoredModel}:{})};}));
+        } catch (error) { failed(group[0], error); }
+      }
     }
-    const grouped = await bindTrajectoryCompanions(items.flatMap(item => item.kind === 'result' ? [item.result] : []), options.signal, { contexts: nebContexts, auxiliaries: nebAuxiliaries }, { auxiliaries: mdAuxiliaries }, { contexts: ircContexts });
+    if (!items.length && sourceFailures.length) throw new AggregateError(sourceFailures, sourceFailures.map(error => error instanceof Error ? error.message : String(error)).join('；'));
+    const grouped = await bindTrajectoryCompanions(items.flatMap(item => item.kind === 'result' ? [item.result] : []), options.signal, { contexts: nebContexts, auxiliaries: nebAuxiliaries }, { auxiliaries: mdAuxiliaries }, { contexts: ircContexts }, { onPairingError(source, error) {
+      const file = files.find(file => file.name === source.source.name);
+      if (file) options.onSourceError?.(file, error);
+    } });
     let resultIndex = 0;
     for (let index = 0; index < items.length; index++) if (items[index].kind === 'result') items[index] = { kind: 'result', result: grouped[resultIndex++] };
     assertResultNotAborted(options.signal); return items;

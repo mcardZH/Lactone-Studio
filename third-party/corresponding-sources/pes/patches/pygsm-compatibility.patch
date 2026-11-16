@@ -1,0 +1,195 @@
+--- a/pyGSM/coordinate_systems/internal_coordinates.py
++++ b/pyGSM/coordinate_systems/internal_coordinates.py
+@@ -140,7 +140,7 @@
+         """
+         global CacheWarning
+         t0 = time.time()
+-        xhash = hash(xyz.tostring())
++        xhash = hash(xyz.tobytes())
+         ht = time.time() - t0
+         if xhash in self.stored_wilsonB:
+             ans = self.stored_wilsonB[xhash]
+--- a/pyGSM/coordinate_systems/primitive_internals.py
++++ b/pyGSM/coordinate_systems/primitive_internals.py
+@@ -342,7 +342,7 @@
+         """
+         global CacheWarning
+         t0 = time.time()
+-        xhash = hash(xyz.tostring())
++        xhash = hash(xyz.tobytes())
+         ht = time.time() - t0
+         if xhash in self.stored_wilsonB:
+             # print(" returning stored")
+--- a/pyGSM/coordinate_systems/topology.py
++++ b/pyGSM/coordinate_systems/topology.py
+@@ -1,7 +1,7 @@
+ from __future__ import print_function
+ from utilities import manage_xyz, nifty
+ from collections import OrderedDict
+-from pkg_resources import parse_version
++from packaging.version import parse as parse_version
+ import itertools
+ import numpy as np
+ 
+--- a/pyGSM/growing_string_methods/gsm.py
++++ b/pyGSM/growing_string_methods/gsm.py
+@@ -205,7 +205,7 @@
+         """ Constructor """
+         self.options = options
+ 
+-        os.system('mkdir -p scratch')
++        os.makedirs('scratch', exist_ok=True)
+ 
+         # Cache attributes
+         self.nnodes = self.options['nnodes']
+--- a/pyGSM/growing_string_methods/main_gsm.py
++++ b/pyGSM/growing_string_methods/main_gsm.py
+@@ -177,12 +177,14 @@
+             # TODO special SSM criteria if first opt'd node is too high?
+             if self.TSnode == self.nnodes-2 and (self.climb or self.find):
+                 printcool("WARNING\n: TS node shouldn't be second to last node for tangent reasons")
++                prior_nodes = self.nnodes
+                 self.add_node_after_TS()
+-                added = True
++                added = self.nnodes > prior_nodes
+             elif self.TSnode == 1 and (self.climb or self.find):
+                 printcool("WARNING\n: TS node shouldn't be first  node for tangent reasons")
++                prior_nodes = self.nnodes
+                 self.add_node_before_TS()
+-                added = True
++                added = self.nnodes > prior_nodes
+             else:
+                 added = False
+ 
+--- a/pyGSM/growing_string_methods/se_gsm.py
++++ b/pyGSM/growing_string_methods/se_gsm.py
+@@ -330,7 +330,7 @@
+         constraints = self.nodes[self.nR-1].constraints[:, 0]
+         gradient = self.nodes[self.nR-1].gradient
+ 
+-        overlap = np.dot(gradient.T, constraints)
++        overlap = np.asarray(np.dot(gradient.T, constraints)).item()
+         cgrad = overlap*constraints
+ 
+         cgrad = np.linalg.norm(cgrad)*np.sign(overlap)
+--- a/pyGSM/level_of_theories/base_lot.py
++++ b/pyGSM/level_of_theories/base_lot.py
+@@ -278,7 +278,7 @@
+         self.options['job_data']['lot'] = self.options['job_data'].get('lot', None)
+ 
+         print(" making folder scratch/{:03}/{}".format(self.ID, self.node_id))
+-        os.system('mkdir -p scratch/{:03}/{}'.format(self.ID, self.node_id))
++        os.makedirs('scratch/{:03}/{}'.format(self.ID, self.node_id), exist_ok=True)
+ 
+     @classmethod
+     def from_options(cls, **kwargs):
+--- a/pyGSM/molecule/molecule.py
++++ b/pyGSM/molecule/molecule.py
+@@ -384,7 +384,7 @@
+         M = self.total_mass_au
+         xyz1 = self.xyz.copy()
+         xyz1 -= com
+-        return np.sum(self.atomic_mass[i]*np.dot(x, x) for i, x in enumerate(xyz1))/M
++        return sum(self.atomic_mass[i]*np.dot(x, x) for i, x in enumerate(xyz1))/M
+ 
+     @property
+     def geometry(self):
+--- a/pyGSM/optimizers/base_optimizer.py
++++ b/pyGSM/optimizers/base_optimizer.py
+@@ -365,7 +365,7 @@
+         # 6/5 climb works with block matrix distributed constraints
+         # => ictan climb
+         if opt_type == "CLIMB":
+-            gts = np.dot(g.T, molecule.constraints[:, 0])
++            gts = np.asarray(np.dot(g.T, molecule.constraints[:, 0])).item()
+             # stepsize=np.linalg.norm(constraint_steps)
+             max_step = 0.05/self.SCALE_CLIMB
+             if gts > np.abs(max_step):
+@@ -384,7 +384,7 @@
+             constraint_steps[:, 0] = dq*molecule.constraints[:, 1]
+         # => seam climb
+         elif opt_type == 'TS-SEAM':
+-            gts = np.dot(g.T, molecule.constraints[:, 0])
++            gts = np.asarray(np.dot(g.T, molecule.constraints[:, 0])).item()
+ 
+             # climbing step
+             max_step = 0.05/self.SCALE_CLIMB
+--- a/pyGSM/optimizers/eigenvector_follow.py
++++ b/pyGSM/optimizers/eigenvector_follow.py
+@@ -85,7 +85,7 @@
+             self.x_prim = np.zeros((molecule.num_primitives, 1), dtype=float)
+             self.g_prim = np.zeros((molecule.num_primitives, 1), dtype=float)
+ 
+-        molecule.gradrms = np.sqrt(np.dot(gc.T, gc)/n)
++        molecule.gradrms = np.asarray(np.sqrt(np.dot(gc.T, gc)/n)).item()
+         dE = molecule.difference_energy
+         update_hess = False
+ 
+@@ -179,6 +179,7 @@
+             constraint_energy = np.dot(gp.T, constraint_steps)*units.KCAL_MOL_PER_AU
+             # print("constraint_energy: %1.4f" % constraint_energy)
+             dEpre += constraint_energy
++            dEpre = np.asarray(dEpre).reshape(())[()]
+             # if abs(dEpre)<0.01:
+             #    dEpre = np.sign(dEpre)*0.01
+ 
+@@ -191,7 +192,7 @@
+             dEstep = fx - fxp
+             print(" dEstep=%5.4f" % dEstep)
+             ratio = dEstep/dEpre
+-            molecule.gradrms = np.sqrt(np.dot(gc.T, gc)/n)
++            molecule.gradrms = np.asarray(np.sqrt(np.dot(gc.T, gc)/n)).item()
+             if ls['status'] != -2:
+                 self.step_controller(actual_step, ratio, molecule.gradrms, pgradrms, dEpre, opt_type, dEstep)
+ 
+--- a/pyGSM/utilities/manage_xyz.py
++++ b/pyGSM/utilities/manage_xyz.py
+@@ -304,17 +304,17 @@
+ 
+     """
+ 
+-    fh = open(filename, 'w')
+-    for geom, comment in zip(geoms, comments):
+-        fh.write('%d\n' % len(geom))
+-        fh.write('%s\n' % comment)
+-        for atom in geom:
+-            fh.write('%-2s %14.6f %14.6f %14.6f\n' % (
+-                atom[0],
+-                scale*atom[1],
+-                scale*atom[2],
+-                scale*atom[3],
+-            ))
++    with open(filename, 'w') as fh:
++        for geom, comment in zip(geoms, comments):
++            fh.write('%d\n' % len(geom))
++            fh.write('%s\n' % comment)
++            for atom in geom:
++                fh.write('%-2s %14.6f %14.6f %14.6f\n' % (
++                    atom[0],
++                    scale*atom[1],
++                    scale*atom[2],
++                    scale*atom[3],
++                ))
+ 
+ 
+ def xyz_to_np(
+--- a/pyGSM/utilities/math_utils.py
++++ b/pyGSM/utilities/math_utils.py
+@@ -158,7 +158,7 @@
+     count = numCvecs
+     for v in vecs[:, numCvecs:].T:
+         # w = v - np.sum( np.dot(v,b)*b  for b in basis.T)
+-        w = v - np.sum(ov(v, b)*b/ov(b, b) for b in basis[:, :count].T)
++        w = v - sum(ov(v, b)*b/ov(b, b) for b in basis[:, :count].T)
+         # A =np.linalg.multi_dot([w[:,np.newaxis].T,G,w[:,np.newaxis]])
+         # wnorm = np.sqrt(ov(w[:,np.newaxis],w[:,np.newaxis]))
+         wnorm = np.sqrt(ov(w, w))
+@@ -196,7 +196,7 @@
+     # count=numCvecs-1
+     count = 0
+     for v in vecs.T:
+-        w = v - np.sum(np.dot(v, b)*b for b in basis.T)
++        w = v - sum(np.dot(v, b)*b for b in basis.T)
+         wnorm = np.linalg.norm(w)
+         # print("wnorm {} count {}".format(wnorm,count))
+         if wnorm > 1e-3 and (abs(w) > 1e-6).any():

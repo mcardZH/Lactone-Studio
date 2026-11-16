@@ -4,6 +4,7 @@ import { getSolventEntries, isCommonSolvent, searchSolvents, sortSolvents } from
 import type { SolventEngine, SolventEntry, SolventModel, SolventSort } from '../core/solvents';
 import './solvents.css';
 import DialogShell from './DialogShell';
+import {solventEntryDielectricText,solventEntryLabel} from './solvent-presentation';
 
 export interface SolventLibraryDialogProps {
   engine: SolventEngine; model: SolventModel; version?: '5' | '6.0' | '6.1' | 'common';
@@ -13,8 +14,7 @@ export interface SolventLibraryDialogProps {
 }
 
 export function solventDielectricLabel(entry: SolventEntry): string {
-  return entry.dielectric !== null ? `ε ${entry.dielectric}` : entry.dielectricReference
-    ? `参考 ε ${entry.dielectricReference.value}（${entry.dielectricReference.temperatureK} K）` : 'ε 未收录';
+  return solventEntryDielectricText(entry);
 }
 
 /** Browsing stays local until the user selects an exact reviewed entry. */
@@ -43,9 +43,9 @@ export default function SolventLibraryDialog({ engine, model, version, currentId
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? cards.length - 1 : (current + (['ArrowUp', 'ArrowLeft'].includes(event.key) ? -1 : 1) + cards.length) % cards.length;
         event.preventDefault(); cards[next]?.focus();
       }}>
-        {visible.map(entry => <button type="button" className={`solvent-library-card${entry.id === currentId ? ' selected' : ''}`} role="option" aria-selected={entry.id === currentId} key={entry.id} data-value={entry.id}
+        {visible.map(entry => <button type="button" className={`solvent-library-card${entry.id === currentId ? ' selected' : ''}`} role="option" aria-label={solventEntryLabel(entry,model)} aria-selected={entry.id === currentId} key={entry.id} data-value={entry.id}
           onClick={() => { const reviewed = available.find(value => value.id === entry.id); if (reviewed) { onSelect(reviewed); onClose(); } }}>
-          <span className="solvent-library-card-heading"><strong>{entry.chineseName}</strong>{entry.id === currentId ? <Check size={16} aria-hidden="true" /> : isCommonSolvent(entry) ? <small>常用</small> : null}</span>
+          <span className="solvent-library-card-heading"><strong>{entry.chineseName}({model.toUpperCase()})</strong>{entry.id === currentId ? <Check size={16} aria-hidden="true" /> : isCommonSolvent(entry) ? <small>常用</small> : null}</span>
           <span className="solvent-library-english">{entry.englishName}</span>
           <span className="solvent-library-epsilon" title={entry.dielectricReference?.source}>{solventDielectricLabel(entry)}</span>
           {version === 'common' && /^orca6\./.test(entry.id) && <small className="solvent-library-profile">来源 ORCA {entry.id.split(':')[0].slice(4)}</small>}

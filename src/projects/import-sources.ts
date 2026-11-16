@@ -85,21 +85,23 @@ export async function captureImportedModelSources(writer: ProjectAssetWriter, op
 
 /** Validate the complete object graph before replacing the current source
  * owner. Large source assets remain unopened until a save/export needs them. */
-export async function restoreImportedModelSources(snapshot: ImportedModelSourcesSnapshot, reader: ProjectAssetReader): Promise<void> {
-  if (snapshot.schema !== 1 || !Array.isArray(snapshot.sources) || !Array.isArray(snapshot.bundles)) throw new Error('不支持的模型原始来源快照。');
+export function prepareImportedModelSourcesRestore(snapshot: ImportedModelSourcesSnapshot, reader: ProjectAssetReader) {
+  if (snapshot?.schema !== 1 || !Array.isArray(snapshot.sources) || !Array.isArray(snapshot.bundles)) throw new Error('不支持的模型原始来源快照。');
   const data = structuredClone(snapshot), ids = new Set<string>(), bundleIds = new Set<string>();
   for (const source of data.sources) {
-    if (!source.sourceId || ids.has(source.sourceId) || typeof source.name !== 'string' || !source.name || !Number.isSafeInteger(source.size) || source.size < 0
-      || !Array.isArray(source.chunks) || source.chunks.some(chunk => !chunk.assetId || !Number.isSafeInteger(chunk.bytes) || chunk.bytes <= 0 || chunk.bytes > CHUNK_BYTES)
+    if (typeof source?.sourceId !== 'string' || !source.sourceId || ids.has(source.sourceId) || typeof source.name !== 'string' || !source.name || !Number.isSafeInteger(source.size) || source.size < 0
+      || !Array.isArray(source.chunks) || source.chunks.some(chunk => typeof chunk?.assetId !== 'string' || !chunk.assetId || !Number.isSafeInteger(chunk.bytes) || chunk.bytes <= 0 || chunk.bytes > CHUNK_BYTES)
       || source.chunks.reduce((sum, chunk) => sum + chunk.bytes, 0) !== source.size) throw new Error('模型原始来源身份或分块无效。');
     ids.add(source.sourceId);
   }
   for (const bundle of data.bundles) {
-    if (!bundle.bundleId || bundleIds.has(bundle.bundleId) || !bundle.documentIds.length || new Set(bundle.documentIds).size !== bundle.documentIds.length
-      || bundle.documentIds.some(id => typeof id !== 'string' || !id) || !bundle.sourceIds.length || new Set(bundle.sourceIds).size !== bundle.sourceIds.length || bundle.sourceIds.some(id => !ids.has(id))) throw new Error('模型来源bundle或文档归属无效。');
+    if (typeof bundle?.bundleId !== 'string' || !bundle.bundleId || bundleIds.has(bundle.bundleId) || !Array.isArray(bundle.documentIds) || !bundle.documentIds.length || new Set(bundle.documentIds).size !== bundle.documentIds.length
+      || bundle.documentIds.some(id => typeof id !== 'string' || !id) || !Array.isArray(bundle.sourceIds) || !bundle.sourceIds.length || new Set(bundle.sourceIds).size !== bundle.sourceIds.length || bundle.sourceIds.some(id => !ids.has(id))) throw new Error('模型来源bundle或文档归属无效。');
     bundleIds.add(bundle.bundleId);
   }
-  await clearImportedModelSources();
+  return async function publishImportedModelSources(onRetireError?: (error: unknown) => void) {
+  try { await clearImportedModelSources(); }
+  catch (error) { if (!onRetireError) throw error; onRetireError(error); }
   for (const source of data.sources) {
     let closed = false;
     const readRange = async (start: number, end: number, signal?: AbortSignal) => {
@@ -124,6 +126,10 @@ export async function restoreImportedModelSources(snapshot: ImportedModelSources
     sources.set(source.sourceId, { input, identity: { sourceId: source.sourceId, name: source.name, size: source.size }, closed: false });
   }
   for (const bundle of data.bundles) bundles.set(bundle.bundleId, { ...bundle, documentIds: new Set(bundle.documentIds) });
+  };
+}
+export async function restoreImportedModelSources(snapshot: ImportedModelSourcesSnapshot, reader: ProjectAssetReader): Promise<void> {
+  await prepareImportedModelSourcesRestore(snapshot, reader)();
 }
 
 export async function forgetImportedModelSources(documentId: string): Promise<void> {

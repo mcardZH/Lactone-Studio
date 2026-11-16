@@ -5,6 +5,7 @@ const {StringDecoder}=require('node:string_decoder');
 const {assert}=require('./security.cjs');
 const {TERMINAL,sessionIdentity,validateStart,validateEvent}=require('./advanced-path-security.cjs');
 const {DEFAULT_OUTPUT_BUDGET_BYTES,outputBudget}=require('./output-budget.cjs');
+const {armWallDeadline}=require('./wall-deadline.cjs');
 
 /** The injected admit hook must join Main's shared resource accounting.
  * No independent process pool or claim of a connected shared lease is made. */
@@ -14,7 +15,7 @@ function createAdvancedPathHost({spawn,resolveRuntime,resolveXtbRuntime,jobRoot,
   const key=(owner,id)=>`${owner}:${id}`;
   function emit(s,value){if(s.ownerClosed)return;try{const {kind,seq,...rest}=value;sendToWindow(s.owner,{...rest,...(s.effectiveResources?{effectiveResources:s.effectiveResources}:{}),event:kind,seq:s.emitSeq++});}catch{closeOwner(s.owner);}}
   function stop(s,reason='cancelled'){
-    if(s.closed||s.stopReason)return;s.stopReason=reason;
+    if(s.closed||s.stopReason)return;s.stopReason=reason;s.cancelWallDeadline?.();
     // A queued lease/runtime lookup can be abandoned without a child. Once a
     // child exists, only its real close may release the granted resource.
     if(!s.child)s.abort.abort();
@@ -43,7 +44,7 @@ function createAdvancedPathHost({spawn,resolveRuntime,resolveXtbRuntime,jobRoot,
   }
   function terminal(s,kind,data){return{schema:1,sessionId:s.id,runIdentity:s.request.runIdentity,stamp:s.request.stamp,operation:s.request.operation,method:s.request.method,kind,...data};}
   async function finish(s,code,signal){
-    if(s.closed)return;s.closed=true;clearTimeout(s.wallTimer);clearTimeout(s.killTimer);
+    if(s.closed)return;s.closed=true;s.cancelWallDeadline?.();clearTimeout(s.killTimer);
     try{
       if(s.stopReason){emit(s,terminal(s,s.stopReason==='cancelled'?'stopped':'error',s.stopReason==='cancelled'?{reason:'cancelled',lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal}}:{error:{code:'PATH_HOST_STOPPED',message:s.stopReason},lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal}}));}
       else if(s.failure||s.tail.trim()||!s.result||code!==0&&s.result.kind!=='error'||signal!==null){emit(s,terminal(s,'error',{error:{code:'PATH_WORKER_REJECTED',message:String(s.failure?.message??'Worker closed without a complete valid terminal result').slice(0,8192)},lastFrame:s.lastFrame,workerSettled:true,exit:{code,signal}}));}
@@ -59,7 +60,7 @@ function createAdvancedPathHost({spawn,resolveRuntime,resolveXtbRuntime,jobRoot,
       if(resolveResources){s.configuredResources=await pending(s,resolveResources(owner,{...structuredClone(request),threads:raw.threads,memoryBudgetBytes:raw.memoryBudgetBytes}));beforeStart();Object.assign(request,validateStart({...request,threads:s.configuredResources.threads}));}
       await pending(s,admission(s,owner,request));
       s.outputBudgetBytes=outputBudget(s.effectiveResources??s.configuredResources,policy.maxOutputBytes);
-      s.started=performance.now();if(request.maxWallTimeSeconds!==undefined){s.wallTimer=setTimeout(()=>stop(s,'Advanced path wall-time budget exceeded'),request.maxWallTimeSeconds*1000);s.wallTimer.unref?.();}
+      s.started=performance.now();s.cancelWallDeadline=armWallDeadline(request.maxWallTimeSeconds,()=>stop(s,'Advanced path wall-time budget exceeded'));
       const runtime=await pending(s,resolveRuntime());assert(runtime&&path.isAbsolute(runtime.executable)&&Array.isArray(runtime.args)&&runtime.args.includes('--advanced-path')&&path.isAbsolute(runtime.cwd),'Trusted fixed advanced path runtime required');
       beforeStart();if(s.stopReason||s.ownerClosed||disposed){stop(s);await finish(s,null,null);return{sessionId:id,status:'stopped'};}
       let initialPath;

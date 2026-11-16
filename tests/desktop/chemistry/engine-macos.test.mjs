@@ -13,6 +13,11 @@ const require = createRequire(import.meta.url);
 const { chemistryRuntime } = require('../../../desktop/runtime.cjs');
 const { currentRuntimeEnvironment } = require('../../../desktop/current-runtime.cjs');
 const { xtbRuntime } = require('../../../desktop/xtb-runtime.cjs');
+const {
+  graph: dynamicsGraph,
+  validateStart: validateDynamicsStart,
+  validateEvent: validateDynamicsEvent
+} = require('../../../desktop/dynamics-security.cjs');
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const IS_DARWIN_ARM64_HOST = process.platform === 'darwin' && process.arch === 'arm64';
@@ -113,8 +118,8 @@ test.describe(
       if (IS_DARWIN_ARM64_HOST) {
         assert.equal(
           executedScenarios,
-          7,
-          'Expected all 7 live darwin-arm64 scientific engine scenarios to execute'
+          8,
+          'Expected all 8 live darwin-arm64 scientific engine scenarios to execute'
         );
       }
     });
@@ -458,6 +463,7 @@ print(json.dumps(res))
     test('conformer_native_md.NativeMDSession admits darwin xtbRuntime and executes GFN2 MD with ALPB water solvation on macOS', async () => {
       const runtime = resolveActiveRuntime();
       const xtb = await xtbRuntime({ packaged: false, appPath: ROOT });
+      assert.equal(xtb.version, '6.8.0');
       const sitePackagesDirs = runtime.runtimeRoot
         ? [
             path.join(runtime.runtimeRoot, 'python/lib/python3.12/site-packages'),
@@ -615,7 +621,7 @@ ctx = {
     "cancelled": threading.Event()
 }
 res = NativeMDSession(request, ctx).run()
-print(json.dumps({"kind": res["kind"], "frameCount": res["frameCount"], "nativeSolvation": res.get("nativeSolvation")}))
+print(json.dumps({"kind": res["kind"], "frameCount": res["frameCount"], "effectiveSeed": res.get("effectiveSeed"), "nativeSolvation": res.get("nativeSolvation")}))
 `;
         const stdout = execFileSync(runtime.executable, ['-I', '-S', '-B', '-c', mdScript], {
           cwd: path.join(ROOT, 'desktop/chemistry'),
@@ -626,9 +632,262 @@ print(json.dumps({"kind": res["kind"], "frameCount": res["frameCount"], "nativeS
         const res = JSON.parse(stdout.trim());
         assert.equal(res.kind, 'completed');
         assert.equal(res.frameCount, 2);
+        assert.equal(res.effectiveSeed, 42);
         assert.equal(res.nativeSolvation?.model, 'alpb');
         assert.equal(res.nativeSolvation?.solvent, 'water');
         assert.equal(res.nativeSolvation?.dielectricConstant, 80.2);
+        executedScenarios += 1;
+      } finally {
+        fs.rmSync(tmpWorkspace, { recursive: true, force: true });
+      }
+    });
+
+    test('dynamics_native_md.Session executes isolated constrained and periodic GFN2 native MD on darwin-arm64 xtb 6.8.0 and honors dynamics-security contracts', async () => {
+      const runtime = resolveActiveRuntime();
+      const xtb = await xtbRuntime({ packaged: false, appPath: ROOT });
+      assert.equal(xtb.version, '6.8.0');
+      const sitePackagesDirs = runtime.runtimeRoot
+        ? [
+            path.join(runtime.runtimeRoot, 'python/lib/python3.12/site-packages'),
+            path.join(runtime.runtimeRoot, 'python/Lib/site-packages')
+          ].filter((p) => fs.existsSync(p))
+        : [];
+
+      const isoReq = validateDynamicsStart({
+        stamp: {
+          documentId: 'dyn-iso-1',
+          revision: 1,
+          graphFingerprint: 'g1',
+          coordinatesFingerprint: 'c1',
+          constraintsFingerprint: 'k1'
+        },
+        operation: 'md',
+        untilStopped: true,
+        method: 'gfn2',
+        temperatureK: 300,
+        seed: 12345,
+        movableAtomIds: ['a1', 'a2', 'a3'],
+        constraints: [
+          { id: 'c-b1', type: 'B', atomIds: ['a1', 'a2'], action: 'freeze', steps: 0, increment: null, value: 0.96 },
+          { id: 'c-a1', type: 'A', atomIds: ['a2', 'a1', 'a3'], action: 'freeze', steps: 0, increment: null, value: 104.47751218592992 }
+        ],
+        structure: {
+          id: 'iso-h2o',
+          name: 'water',
+          dimension: 3,
+          charge: 0,
+          multiplicity: 1,
+          atoms: [
+            { id: 'a1', element: 'O', x: 0.0, y: 0.0, z: 0.0, formalCharge: 0 },
+            { id: 'a2', element: 'H', x: 0.96, y: 0.0, z: 0.0, formalCharge: 0 },
+            { id: 'a3', element: 'H', x: -0.24, y: 0.93, z: 0.0, formalCharge: 0 }
+          ],
+          bonds: [
+            { a: 0, b: 1, order: 1 },
+            { a: 0, b: 2, order: 1 }
+          ]
+        }
+      });
+
+      const pbcReq = validateDynamicsStart({
+        stamp: {
+          documentId: 'dyn-pbc-1',
+          revision: 1,
+          graphFingerprint: 'g2',
+          coordinatesFingerprint: 'c2',
+          constraintsFingerprint: 'k2'
+        },
+        operation: 'md',
+        untilStopped: true,
+        method: 'gfn2',
+        temperatureK: 300,
+        seed: 54321,
+        movableAtomIds: ['si1', 'si2'],
+        constraints: [],
+        structure: {
+          id: 'pbc-si',
+          name: 'silicon',
+          dimension: 3,
+          charge: 0,
+          multiplicity: 1,
+          atoms: [
+            { id: 'si1', element: 'Si', x: 0.0, y: 0.0, z: 0.0, formalCharge: 0 },
+            { id: 'si2', element: 'Si', x: 1.3575, y: 1.3575, z: 1.3575, formalCharge: 0 }
+          ],
+          bonds: [],
+          cell: {
+            vectors: [[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]],
+            pbc: [true, true, true],
+            origin: [0.0, 0.0, 0.0]
+          }
+        }
+      });
+
+      const pbcH2oReq = validateDynamicsStart({
+        stamp: {
+          documentId: 'dyn-pbc-h2o-1',
+          revision: 1,
+          graphFingerprint: 'g3',
+          coordinatesFingerprint: 'c3',
+          constraintsFingerprint: 'k3'
+        },
+        operation: 'md',
+        untilStopped: true,
+        method: 'gfn2',
+        temperatureK: 300,
+        seed: 9876,
+        movableAtomIds: ['o1', 'h1', 'h2'],
+        constraints: [],
+        structure: {
+          id: 'pbc-h2o',
+          name: 'water-box',
+          dimension: 3,
+          charge: 0,
+          multiplicity: 1,
+          atoms: [
+            { id: 'o1', element: 'O', x: 1.0, y: 1.0, z: 1.0, formalCharge: 0 },
+            { id: 'h1', element: 'H', x: 1.96, y: 1.0, z: 1.0, formalCharge: 0 },
+            { id: 'h2', element: 'H', x: 0.76, y: 1.93, z: 1.0, formalCharge: 0 }
+          ],
+          bonds: [
+            { a: 0, b: 1, order: 1 },
+            { a: 0, b: 2, order: 1 }
+          ],
+          cell: {
+            vectors: [[8.0, 0.0, 0.0], [0.0, 8.0, 0.0], [0.0, 0.0, 8.0]],
+            pbc: [true, true, true],
+            origin: [0.0, 0.0, 0.0]
+          }
+        }
+      });
+
+      const tmpWorkspace = fs.mkdtempSync(
+        path.join(fs.realpathSync(os.tmpdir()), 'es-dynamics-native-md-')
+      );
+      try {
+        const dynScript = `
+import json, pathlib, sys
+for sp in ${JSON.stringify(sitePackagesDirs)}:
+    if sp not in sys.path:
+        sys.path.insert(0, sp)
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from dynamics_native_md import Session
+
+class DoneSegment(Exception):
+    pass
+
+def run_one(req, subdir):
+    ws = pathlib.Path(${JSON.stringify(tmpWorkspace)}) / subdir
+    ws.mkdir()
+    sess = Session(req, {'runtime': json.loads(${JSON.stringify(JSON.stringify(xtb))}), 'workspacePath': str(ws), 'threads': 1}, checkpoint_steps=10)
+    frames = []
+    def emit(kind):
+        frames.append((kind, json.loads(json.dumps(sess.last_validated))))
+    def controls():
+        if sess.step >= 10:
+            sess.stopped = True
+            raise DoneSegment()
+    try:
+        sess.run(emit, controls)
+    except DoneSegment:
+        pass
+    return frames[-1][1]
+
+iso = run_one(json.loads(${JSON.stringify(JSON.stringify(isoReq))}), 'iso')
+pbc = run_one(json.loads(${JSON.stringify(JSON.stringify(pbcReq))}), 'pbc')
+pbc_h2o = run_one(json.loads(${JSON.stringify(JSON.stringify(pbcH2oReq))}), 'pbc_h2o')
+print(json.dumps({'iso': iso, 'pbc': pbc, 'pbc_h2o': pbc_h2o}))
+`;
+        const stdout = execFileSync(runtime.executable, ['-I', '-S', '-B', '-c', dynScript], {
+          cwd: path.join(ROOT, 'desktop/chemistry'),
+          env: runtime.env || process.env,
+          encoding: 'utf8',
+          timeout: 60000
+        });
+        const { iso: isoSnap, pbc: pbcSnap, pbc_h2o: pbcH2oSnap } = JSON.parse(stdout.trim());
+
+        assert.equal(isoSnap.step, 10);
+        assert.equal(isoSnap.engineVersion, '6.8.0');
+        assert.equal(isoSnap.nativeMD.seedTreatment, 'verified');
+        assert.equal(isoSnap.nativeMD.effectiveSeed, 12345);
+        assert.equal(isoSnap.nativeMD.internalConstraints.length, 2);
+        const isoSessionBase = {
+          request: isoReq,
+          lastSeq: 0,
+          lastStep: 0,
+          lastTimeFs: 0,
+          graph: dynamicsGraph(isoReq.structure),
+          movable: new Set(isoReq.movableAtomIds)
+        };
+        validateDynamicsEvent(
+          { schema: 1, sessionId: 'sess-iso', event: 'frame', seq: 1, ...isoSnap },
+          { sessionId: 'sess-iso', ...isoSessionBase }
+        );
+
+        assert.equal(pbcSnap.step, 10);
+        assert.equal(pbcSnap.engineVersion, '6.8.0');
+        assert.equal(pbcSnap.nativeMD.periodic, true);
+        assert.equal(pbcSnap.nativeMD.seedTreatment, 'verified');
+        assert.equal(pbcSnap.nativeMD.effectiveSeed, 54321);
+        assert.equal(pbcSnap.nativeMD.degreesOfFreedom, 6);
+        validateDynamicsEvent(
+          { schema: 1, sessionId: 'sess-pbc', event: 'frame', seq: 1, ...pbcSnap },
+          {
+            sessionId: 'sess-pbc',
+            request: pbcReq,
+            lastSeq: 0,
+            lastStep: 0,
+            lastTimeFs: 0,
+            graph: dynamicsGraph(pbcReq.structure),
+            movable: new Set(pbcReq.movableAtomIds)
+          }
+        );
+
+        assert.equal(pbcH2oSnap.step, 10);
+        assert.equal(pbcH2oSnap.engineVersion, '6.8.0');
+        assert.equal(pbcH2oSnap.nativeMD.periodic, true);
+        assert.equal(pbcH2oSnap.nativeMD.seedTreatment, 'verified');
+        assert.equal(pbcH2oSnap.nativeMD.effectiveSeed, 9876);
+        assert.equal(pbcH2oSnap.nativeMD.degreesOfFreedom, 7);
+        validateDynamicsEvent(
+          { schema: 1, sessionId: 'sess-pbc-h2o', event: 'frame', seq: 1, ...pbcH2oSnap },
+          {
+            sessionId: 'sess-pbc-h2o',
+            request: pbcH2oReq,
+            lastSeq: 0,
+            lastStep: 0,
+            lastTimeFs: 0,
+            graph: dynamicsGraph(pbcH2oReq.structure),
+            movable: new Set(pbcH2oReq.movableAtomIds)
+          }
+        );
+
+        // Verify < 6.8.0 fallback vs 6.8.0 strictness in desktop/dynamics-security.cjs
+        const legacyFallbackEvent = {
+          schema: 1,
+          sessionId: 'sess-legacy',
+          event: 'frame',
+          seq: 1,
+          ...isoSnap,
+          engineVersion: '6.7.1',
+          nativeMD: {
+            ...isoSnap.nativeMD,
+            seedTreatment: 'native-internal-initialization',
+            effectiveSeed: undefined
+          }
+        };
+        validateDynamicsEvent(legacyFallbackEvent, {
+          sessionId: 'sess-legacy',
+          ...isoSessionBase
+        });
+        assert.throws(
+          () =>
+            validateDynamicsEvent(
+              { ...legacyFallbackEvent, engineVersion: '6.8.0' },
+              { sessionId: 'sess-legacy', ...isoSessionBase }
+            ),
+          /Native MD seed treatment differs/
+        );
         executedScenarios += 1;
       } finally {
         fs.rmSync(tmpWorkspace, { recursive: true, force: true });

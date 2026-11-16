@@ -1,26 +1,29 @@
-import { useRef, useState } from 'react';
-import { Atom, FlaskConical, Gauge, Layers, Waves } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import type {FchkFieldDiagnostic} from '../../core/fchk-records';
 import type { TrajectoryResult } from '../../results/contracts';
+import type { ScientificDiagnostics } from '../../results/scientific-contracts';
 import {isScientificFileDocument,type PostprocessFileDocument,type PostprocessScientificFileDocument} from '../../results/postprocess-document';
 import {postprocessFileJob,isScientificFileSource} from '../../results/postprocess-sources';
 import {postprocessExcitationSlots} from './postprocess-excitation-slots';
 import {postprocessSourceExtras} from '../../projects/postprocess-extra-sources';
-import { TASK_GROUPS } from '../../core/tasks';
 import SoftwareChooser from '../SoftwareChooser';
 import InputTaskPicker from '../InputTaskPicker';
 import { InputSettingsLayout } from '../InputSettingsLayout';
+import { WORKFLOW_TASK_GROUPS, workflowTaskDisplay } from '../task-choice-presentation';
 import { WorkflowContentCard, WorkflowHeader, WorkflowSteps } from '../WorkflowPresentation';
 import { type PostprocessNumericBookProps, type PostprocessMetadata } from './PostprocessNumericBook';
 import {PostprocessSourceCard,PostprocessSourceInformation,PostprocessSourceFeedback} from './PostprocessSourcePanels';
+import {PostprocessReadWarning,scientificReadWarningFields} from './PostprocessSourceFeedback';
 import './Postprocess.css';
 
 export type PostprocessEngine = 'gaussian' | 'orca' | 'cp2k' | 'xtb' | 'unknown';
 export type PostprocessTask = 'trajectory' | 'sp' | 'opt' | 'freq' | 'optfreq' | 'ts' | 'irc' | 'scan' | 'neb' | 'td' | 'nmr' | 'stability' | 'bsse';
 export type PostprocessFileRole = 'output' | 'wavefunction' | 'companions';
 export type PostprocessSlotKey = 'output'|'wavefunction'|'optimization-trajectory'|'hess'|'irc-full'|'irc-forward'|'irc-reverse'|'scan-point-set'|'neb-path'|'neb-iterations'|'neb-log'|'neb-interpolation'|'ts-optimization-trajectory'|'md-trajectory'|'md-log'|'excitation-json'|'excitation-cis'|'unassigned';
-export interface PostprocessFileSlot { role: PostprocessFileRole; slotKey?:PostprocessSlotKey; sourceId?:string; name?: string; format?:'molden'|'xyz'|'hess'; software?:PostprocessEngine; status?: 'ready' | 'reading' | 'error' | 'unverified'; message?: string }
+export interface PostprocessFileSlot { role: PostprocessFileRole; slotKey?:PostprocessSlotKey; sourceId?:string; name?: string; format?:'molden'|'xyz'|'hess'; software?:PostprocessEngine; status?: 'ready' | 'reading' | 'error' | 'unverified'; message?: string; diagnostics?:readonly FchkFieldDiagnostic[]; fieldEvidence?:{jobId:string;hasStructure:boolean;fields:readonly ScientificDiagnostics['fields'][number][]} }
 export interface PostprocessSidebarProps {
   engine: PostprocessEngine; task: PostprocessTask; stage: 'software' | 'tasks' | 'files';
+  showTitle?: boolean;
   slots: readonly PostprocessFileSlot[]; result: TrajectoryResult | null; currentIndex: number; busy?: boolean;
   fileDocument?:PostprocessScientificFileDocument|null;onFileJob?(id:string):void;
   message?: string; sourceDifferences?: PostprocessNumericBookProps['sourceDifferences']; metadata?: PostprocessMetadata;
@@ -28,23 +31,26 @@ export interface PostprocessSidebarProps {
   onFiles(role: PostprocessFileRole, files: File[], explicitReplace?:boolean, slotKey?:PostprocessSlotKey,sourceId?:string): void; onRemove(role: PostprocessFileRole,slotKey?:PostprocessSlotKey,sourceId?:string): void;
   onClose?(): void; onExtract?(): void; onPrepareInput?(): void; onPrepareIrc?(): void; onOpenLegacy?(): void;
 }
-export const POSTPROCESS_TASK_CHOICES: readonly { id: PostprocessTask; group: string; label: string; code: string }[] = [
-  {id:'trajectory',group:'structure',label:'结构 / 轨迹',code:'XYZ'},
-  { id: 'sp', group: 'structure', label: '单点能', code: 'SP' }, { id: 'opt', group: 'structure', label: '结构优化', code: 'Opt' }, { id: 'freq', group: 'structure', label: '频率 / 热化学', code: 'Freq' }, { id: 'optfreq', group: 'structure', label: '优化与频率', code: 'Opt + Freq' },
-  { id: 'ts', group: 'path', label: '过渡态', code: 'TS' }, { id: 'irc', group: 'path', label: '反应路径', code: 'IRC' }, { id: 'scan', group: 'path', label: '扫描', code: 'Scan' },{id:'neb',group:'path',label:'NEB路径',code:'NEB'}, { id: 'td', group: 'excited', label: '激发态', code: 'TD' }, { id: 'nmr', group: 'properties', label: 'NMR', code: 'NMR' }, { id: 'stability', group: 'properties', label: '稳定性', code: 'Stable' }, { id: 'bsse', group: 'properties', label: 'BSSE', code: 'BSSE' },
+const resultTasks: readonly { id:PostprocessTask; group:string }[] = [
+  {id:'trajectory',group:'structure'},{id:'sp',group:'structure'},{id:'opt',group:'structure'},{id:'freq',group:'structure'},{id:'optfreq',group:'structure'},
+  {id:'scan',group:'path'},{id:'ts',group:'path'},{id:'irc',group:'path'},{id:'neb',group:'path'},{id:'td',group:'excited'},
+  {id:'nmr',group:'properties'},{id:'stability',group:'properties'},{id:'bsse',group:'properties'},
 ];
+export const POSTPROCESS_TASK_CHOICES = resultTasks.map(task=>({id:task.id,...workflowTaskDisplay({...task,label:task.id,code:''},'results')}));
 const unifiedTasks = new Set<PostprocessTask>(['trajectory', 'sp', 'opt', 'optfreq', 'ts', 'scan', 'irc', 'neb', 'freq', 'td']);
 const stages = ['software', 'tasks', 'files'] as const;
 const steps = ['选择软件', '选择任务', '计算文件'] as const;
-const taskIcons = { sp: Gauge, opt: Atom, freq: Waves, optfreq: Layers };
 /** Describe retained content and native role references, without reading a path
  * named by OUT. Empty conditional cards represent references, not loaded files. */
 export function postprocessDocumentFileSlots(document:PostprocessFileDocument|null|undefined):PostprocessFileSlot[]{
  if(!document)return[];
  const source=document.output?.source,wave=document.wavefunction?.source;
  const identity=source?(isScientificFileSource(source)?source.identity:source.result.source):undefined;
+ const outputJob=source?(isScientificFileSource(source)?postprocessFileJob(source):source.result):undefined;
+ const fields=outputJob?.scientific?.diagnostics?.fields;
+ const fieldEvidence=outputJob&&fields?.length?{jobId:outputJob.id,hasStructure:outputJob.kind!=='diagnostic'&&outputJob.frames.length>0,fields}:undefined;
  const waveWarning=isScientificFileDocument(document)?document.sourceWarnings?.filter(item=>item.sourceId===wave?.result.source.id).map(item=>item.message).filter((message,index,all)=>all.indexOf(message)===index).join('；'):undefined;
- const slots:PostprocessFileSlot[]=[{role:'output',slotKey:'output',sourceId:identity?.id,name:identity?.name,software:source?.software,format:source&&!isScientificFileSource(source)&&['xyz','hess'].includes(source.kind)?source.kind as 'xyz'|'hess':undefined,status:source?'ready':undefined},{role:'wavefunction',slotKey:'wavefunction',sourceId:wave?.result.source.id,name:wave?.result.source.name,software:wave?.software,format:wave?.kind==='molden'?'molden':undefined,status:wave?waveWarning?'unverified':'ready':undefined,message:waveWarning}];
+ const slots:PostprocessFileSlot[]=[{role:'output',slotKey:'output',sourceId:identity?.id,name:identity?.name,software:source?.software,format:source&&!isScientificFileSource(source)&&['xyz','hess'].includes(source.kind)?source.kind as 'xyz'|'hess':undefined,status:source?'ready':undefined,...(fieldEvidence?{fieldEvidence}:{})},{role:'wavefunction',slotKey:'wavefunction',sourceId:wave?.result.source.id,name:wave?.result.source.name,software:wave?.software,format:wave?.kind==='molden'?'molden':undefined,status:wave?waveWarning?'unverified':'ready':undefined,message:waveWarning,diagnostics:wave?.fchkDiagnostics}];
  const roles=new Set(Object.keys(companionDescriptions));
  for(const attachment of document.companions??[]){
   const result=attachment.source.result,role=attachment.role??result.scientific?.ircEvidence?.role??(attachment.source.kind==='hess'?'hess':result.role),slotKey=role&&roles.has(role)?role as PostprocessSlotKey:'unassigned';
@@ -121,11 +127,13 @@ export function postprocessFileDescription(engine: PostprocessEngine, role: Post
 function FileSlot({ engine, slot, busy, onFiles, onRemove }: { engine: PostprocessEngine; slot: PostprocessFileSlot; busy?: boolean; onFiles(files: File[],explicitReplace?:boolean): void; onRemove(): void }) {
   const input = useRef<HTMLInputElement>(null), [over, setOver] = useState(false);
   const info = postprocessFileDescription(slot.role==='wavefunction'&&slot.format==='molden'?slot.software??engine:engine, slot.role,slot.format,slot.slotKey);
-  return <PostprocessSourceCard title={info.label} status={slot.status} statusLabel={slot.status === 'ready' ? slot.role==='companions'?'已配对':'已读取' : slot.status === 'reading' ? '读取中' : slot.status === 'error' ? '未接入' : slot.name ? '待核对' : slot.role==='output'?'待补入':'可选 · 待补入'} dragover={over}
+  const evidence=slot.status==='ready'?slot.fieldEvidence:undefined;
+  const warnings=useMemo(()=>scientificReadWarningFields(evidence?.fields),[evidence?.fields]);
+  return <PostprocessSourceCard title={info.label} status={slot.status} availability={warnings.length?'partial':undefined} statusLabel={slot.status === 'ready' ? warnings.length?'部分可用':slot.role==='companions'?'已配对':'已读取' : slot.status === 'reading' ? '读取中' : slot.status === 'error' ? '未接入' : slot.name ? '待核对' : slot.role==='output'?'待补入':'可选 · 待补入'} dragover={over}
     onDragOver={event => { event.preventDefault(); if (!busy) { event.dataTransfer.dropEffect = 'copy'; setOver(true); } }}
     onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false); }}
     onDrop={event => { event.preventDefault(); event.stopPropagation(); setOver(false); if (!busy && event.dataTransfer.files.length) onFiles(Array.from(event.dataTransfer.files)); }}>
-    <p className="postprocess-note">{info.extensions}</p>{slot.name ? <p className="postprocess-source-name">{slot.name}</p> : <p className="postprocess-note postprocess-source-drop-hint"><span>拖入文件，</span><span>或选择文件</span></p>}
+    <p className="postprocess-note">{info.extensions}</p>{slot.name ? <div className="postprocess-source-name">{slot.name}{evidence&&<PostprocessReadWarning key={evidence.jobId} fields={warnings} hasStructure={evidence.hasStructure}/>} {!!slot.diagnostics?.length&&<PostprocessSourceFeedback key={slot.sourceId} label="辅助字段警告" message={slot.diagnostics.map(item=>item.message).join('；')+' 结构、基组与轨道字段已通过读取校验。'}/>}</div> : <p className="postprocess-note postprocess-source-drop-hint"><span>拖入文件，</span><span>或选择文件</span></p>}
     <input ref={input} type="file" hidden aria-label={`选择${info.label}`} accept={info.accept} multiple disabled={busy} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; if (!busy && files.length) onFiles(files,Boolean(slot.name)); }}/>
     <div className="postprocess-actions"><button type="button" disabled={busy} onClick={() => input.current?.click()}>{slot.name ? '替换文件' : '选择文件'}</button>{slot.name && <button type="button" disabled={busy} onClick={onRemove}>移除</button>}</div>
     {slot.message && (slot.name||slot.status==='error'?<PostprocessSourceFeedback key={`${slot.sourceId??slot.slotKey}:${slot.message}`} message={slot.message} error={slot.status==='error'}/>:<p className="postprocess-note">{slot.message}</p>)}
@@ -141,11 +149,17 @@ export default function PostprocessSidebar(p: PostprocessSidebarProps) {
   const tasks = scientific?.tasks.filter(id=>id!=='unknown').map(id => {const choice=POSTPROCESS_TASK_CHOICES.find(task=>task.id===id);return choice?`${choice.label} ${choice.code}`:id==='md'?'分子动力学 MD':id.toUpperCase();});
   const sourceDescription = waveOnly && p.engine!=='xtb' ? `${p.engine==='unknown'?'Molden（生产软件未确认）':engineName} / 已保存波函数` : `${engineName} / ${tasks?.length ? tasks.join(' + ') : '任务未确认'}`;
   return <aside className="postprocess-sidebar workflow-panel-content" aria-label="后处理文件与数值" data-testid="postprocess-sidebar">
-    <WorkflowHeader title="后处理" engine={p.engine === 'gaussian' || p.engine === 'orca' ? p.engine : null} disabled={p.busy} onEngine={p.onEngine}>{p.onClose && <button type="button" className="icon-button" onClick={p.onClose} aria-label="收起后处理侧栏">×</button>}</WorkflowHeader>
+    <WorkflowHeader title="后处理" showTitle={p.showTitle} engine={p.engine === 'gaussian' || p.engine === 'orca' ? p.engine : null} disabled={p.busy} onEngine={p.onEngine}>{p.onClose && <button type="button" className="icon-button" onClick={p.onClose} aria-label="收起后处理侧栏">×</button>}</WorkflowHeader>
     <WorkflowSteps label="后处理步骤" steps={steps} step={step} disabled={p.busy} onStep={index => p.onStage(stages[index])}/>
-    <WorkflowContentCard title={p.stage === 'software' ? '选择软件' : p.stage === 'tasks' ? `${engineName} · 选择任务` : '计算文件'} description={p.stage === 'files' ? hasSource ? sourceDescription : `${engineName} / ${selectedTask?.label ?? ''} ${selectedTask?.code ?? ''}` : undefined} step={step} total={steps.length}>
+    <WorkflowContentCard fitContent={p.stage!=='files'} title={p.stage === 'software' ? '选择软件' : p.stage === 'tasks' ? `${engineName} · 选择任务` : '计算文件'} description={p.stage === 'files' ? hasSource ? sourceDescription : `${engineName} / ${selectedTask?.label ?? ''} ${selectedTask?.code ?? ''}` : undefined} step={step} total={steps.length}>
     {p.stage === 'software' && <SoftwareChooser disabled={p.busy} onChoose={p.onEngine} description="选择已有结果所属的软件。" content={{ gaussian: { description: 'Gaussian 输出与 FCHK / FCH 波函数。' }, orca: { description: 'ORCA 输出与 Molden 波函数。' } }}/>}
-    {p.stage === 'tasks' && <div className="step-content task-step engine-step-content"><InputSettingsLayout><InputTaskPicker groups={TASK_GROUPS} value={p.task} onChange={p.onTask} disabled={p.busy || p.engine === 'cp2k'} ariaLabel="后处理任务" tasks={POSTPROCESS_TASK_CHOICES.map(task => { const Icon = taskIcons[task.id as keyof typeof taskIcons] ?? FlaskConical; return { ...task, disabled: !unifiedTasks.has(task.id), icon: <Icon size={22} strokeWidth={1.6}/> }; })}/></InputSettingsLayout></div>}
+    {p.stage === 'tasks' && <div className="step-content task-step engine-step-content"><InputSettingsLayout>
+      <InputTaskPicker groups={WORKFLOW_TASK_GROUPS} value={p.task} onChange={p.onTask} disabled={p.busy || p.engine === 'cp2k'} ariaLabel="后处理任务"
+        tasks={POSTPROCESS_TASK_CHOICES.filter(task=>p.engine!=='gaussian'||task.id!=='neb').map(task=>{
+          const available=unifiedTasks.has(task.id);
+          return {...task,testId:'postprocess-task-'+task.id,disabled:!available,code:available?task.code:task.code+' · 待支持'};
+        })}/>
+    </InputSettingsLayout></div>}
     {p.stage === 'files' && <div className="postprocess-file-content engine-step-content">
       <div className="postprocess-files-grid">{fileSlots.map((slot,index) => {
         const role=slot.role;

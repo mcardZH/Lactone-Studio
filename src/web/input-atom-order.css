@@ -1,0 +1,4 @@
+.input-source-order-row { display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; max-width:100%; }
+.input-source-order-row > .multi-structure-source { flex:0 1 auto; min-width:0; max-width:100%; }
+.input-source-order-row .multi-structure-source > .field { width:fit-content; max-width:100%; }
+.input-source-order-row .multi-structure-source > .field > select { flex:0 1 auto; width:auto; max-width:min(25em,100%); }

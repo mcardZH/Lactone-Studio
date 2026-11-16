@@ -1,5 +1,5 @@
 import type { Structure } from "../core/types";
-import { elementSymbol } from "../core/elements";
+import { atomicNumber, elementSymbol } from "../core/elements";
 import { scientificNumber, scientificRoundingInterval } from "./scientific-contracts";
 import { outputLines } from "./optimization-reader";
 import { assertResultNotAborted, type ResultInputFile, type ResultReadOptions } from "./contracts";
@@ -11,6 +11,7 @@ export interface MoldenStructureRead {
 	coordinateRoundingByAxisAngstrom: [number, number, number][];
 	sourceLines: number[];
 	sourceLabels: string[];
+	effectiveNuclearCharges?: number[];
 }
 const BOHR_ANGSTROM = 0.529177210903;
 /** Shared Atoms-only portion of the existing Molden contract. This does not
@@ -26,10 +27,12 @@ class MoldenAtoms {
 	private axisRounding: [number, number, number][] = [];
 	private lines: number[] = [];
 	private labels: string[] = [];
+	private effectiveCharges: number[] = [];
 	private damagedTail = false;
 	constructor(
 		private readonly name: string,
-		private readonly id: string
+		private readonly id: string,
+		private readonly effectiveNuclei = false
 	) {}
 	consume(text: string, line: number) {
 		if (/^\s*\[\s*Cell\s*\]\s*$/i.test(text))
@@ -72,14 +75,18 @@ class MoldenAtoms {
 			nuclear! < 1
 		)
 			throw new Error("Molden原子序号、元素或核电荷不一致。");
-		const element = elementSymbol(String(nuclear));
+		let element = elementSymbol(String(nuclear));
 		let labelElement: string | undefined;
 		try {
 			labelElement = elementSymbol(row[0]);
 		} catch {
 			/* Atom names may be labels, e.g. C1. Nuclear Z stays explicit. */
 		}
-		if (labelElement && labelElement !== element) throw new Error("Molden元素标签与核电荷冲突。");
+		if (this.effectiveNuclei) {
+			if (!labelElement || labelElement !== row[0] || Number(nuclear)>Number(atomicNumber(labelElement))) throw new Error("g-xTB Molden元素与有效核电荷无效。");
+			element = labelElement;
+			this.effectiveCharges.push(nuclear!);
+		} else if (labelElement && labelElement !== element) throw new Error("Molden元素标签与核电荷冲突。");
 		const coordinates = row.slice(3).map(scientificNumber),
 			rounding = row.slice(3).map(scientificRoundingInterval);
 		if (
@@ -125,16 +132,18 @@ class MoldenAtoms {
 			coordinateRoundingAngstrom: this.rounding,
 			coordinateRoundingByAxisAngstrom: this.axisRounding,
 			sourceLines: this.lines,
-			sourceLabels: this.labels
+			sourceLabels: this.labels,
+			...(this.effectiveNuclei ? { effectiveNuclearCharges: this.effectiveCharges } : {})
 		};
 	}
 }
 export function parseMoldenStructure(
 	text: string,
 	name: string,
-	sourceId = name
+	sourceId = name,
+	options?: { effectiveNuclei: true }
 ): MoldenStructureRead {
-	const reader = new MoldenAtoms(name, sourceId);
+	const reader = new MoldenAtoms(name, sourceId, options?.effectiveNuclei);
 	text
 		.replace(/^\uFEFF/, "")
 		.replace(/\r\n?/g, "\n")

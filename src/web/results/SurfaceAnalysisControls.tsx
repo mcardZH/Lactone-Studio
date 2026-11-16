@@ -1,4 +1,6 @@
 import {DismissibleNotice} from '../DismissibleNotice';
+import MultiwfnErrorNotice from './MultiwfnErrorNotice';
+import { isMultiwfnBackendFailure } from './multiwfn-errors';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
 import {useAnalysisProjectSnapshot,rebindAnalysisContext,isRestoredAnalysisData,analysisProjectCubeArtifacts} from '../../projects/analysis-state';
 import {matchingSliderRange} from '../numeric-step';
@@ -292,15 +294,19 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
     // An asynchronous progress subscription, not this call stack, installs the tracker.
     const currentProgress=():ReturnType<typeof createMultiwfnProgressTracker>|null=>progressRun.current;
     try { await action(own.controller.signal, requestId, accepts);const progress=currentProgress();if(accepts()&&progress?.identity.runId===own.id)progress.committed(); }
-    catch (reason) { if (accepts()) { const message = reasonText(reason),progress=currentProgress();if(progress?.identity.runId===own.id)progress.failed(progress.getSnapshot().settlement??'native-settled',message); setError(message); latest.current.onError?.(message); } }
+    catch (reason) { if (accepts()) { const message = reasonText(reason),progress=currentProgress();if(progress?.identity.runId===own.id)progress.failed(progress.getSnapshot().settlement??'native-settled',message); setError(message); } }
     finally { if (running.current === own) { running.current = null; if (lifetime.current.alive) setBusy(null); } }
   }
   const disabled = !!busy ||visibleTaskProgress?.phase==='stopping'|| p.available === false;
   const analysisUnavailable = !p.bridge.analyze ? '当前环境缺少分子表面分析接口。' : inputKind === 'wavefunction' ? !p.wavefunctionAvailable ? '当前帧缺少匹配波函数。' : capabilityPending?'正在核对当前来源能力。':!capability?.wavefunctionDirect ? capability?.reason ?? '当前函数不具备波函数直接分析能力。' : quantitativeGrid.mode === 'spacing' && (!Number.isFinite(quantitativeGrid.spacingBohr) || quantitativeGrid.spacingBohr! <= 0) ? '请输入正的自定义定量格距。' : ''
     : !pair ? '请载入电子密度 Cube。' : !mapping.field ? '请载入当前函数的映射 Cube。' : !pairValidation?.compatible ? pairValidation?.reasons.join('；') ?? 'Cube 尚未核对。' : capabilityPending?'正在核对当前来源能力。':!capability?.cubeInterpolation ? capability?.reason ?? '当前函数尚无 Cube 插值分析能力。' : '';
+  function showUnavailable(reason:string){
+    if(isMultiwfnBackendFailure(reason))void run('核对分析环境…',async()=>{throw new Error(reason);});
+    else notify(reason);
+  }
   function analyze() {
     if(inputKind==='cubes'){notify('当前不再支持外部 Cube 输入，原文件保留。');return;}
-    if (analysisUnavailable) { notify(analysisUnavailable); return; }
+    if (analysisUnavailable) { showUnavailable(analysisUnavailable); return; }
     const context = p.context, selectedFunction = fn, key = analysisKey;
     void run('分析中…', async (signal, requestId, accepts) => {
       const id = requestId(), result = await p.bridge.analyze!({ context, requestId: id, function: selectedFunction, isovalue, quantitativeGrid: invocationGrid, input: { kind: 'wavefunction' } }, signal);
@@ -314,7 +320,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   }
   function analyzeRegion() {
     if (!analysis || !record) { notify('请先分析全分子表面。'); return; }
-    if (!p.bridge.analyzeRegion || scope === 'atoms' && !capability?.atomRegions || scope === 'fragment' && !capability?.fragmentRegions) { notify(capability?.reason ?? '当前来源未开放所选区域分析。'); return; }
+    if (!p.bridge.analyzeRegion || scope === 'atoms' && !capability?.atomRegions || scope === 'fragment' && !capability?.fragmentRegions) { showUnavailable(capability?.reason ?? '当前来源未开放所选区域分析。'); return; }
     if (!selectedSourceIndices.length || selectedSourceIndices.length !== atomIds.length || selectedSourceIndices.some(index => !Number.isSafeInteger(index) || index < 1) || new Set(selectedSourceIndices).size !== selectedSourceIndices.length) { notify('请确认与来源对应的原子集合。'); return; }
     const selections: SurfaceRegionSelection[] = scope === 'atoms' ? selectedSourceIndices.map(index => ({ id: `atom:${index}`, kind: 'atoms', atomIndices: [index], label: `原子 ${index}` })) : [{ id: selectionIdentity, kind: 'fragment', atomIndices: [...selectedSourceIndices], label: `片段 ${selectedSourceIndices.join(', ')}` }];
     const selectedFunction = fn;
@@ -332,7 +338,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   function generate() {
     if (inputKind === 'cubes') { notify('当前不再支持外部 Cube 输入，原文件保留。'); return; }
     if (!analysis || !record) { notify('请先完成当前表面分析。'); return; }
-    if (!p.bridge.generate || !capability?.generation) { notify(capability?.reason ?? '当前来源未开放表面格点生成。'); return; }
+    if (!p.bridge.generate || !capability?.generation) { showUnavailable(capability?.reason ?? '当前来源未开放表面格点生成。'); return; }
     try { validateSurfaceCubeQuality(quality); } catch { notify('请填写有效的 Cube 自定义格距或三方向点数。'); return; }
     const budgetIssue = surfaceCubeBudgetIssue(quality, p.resourceBudgetBytes);
     if (budgetIssue) { notify(budgetIssue); return; }
@@ -385,14 +391,14 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   const quantitativeSpacing = quantitativeGrid.mode === 'native-default' ? analysis?.quantitativeGrid.actualSpacingBohr ?? SURFACE_ANALYSIS_DEFAULT_SPACING : quantitativeGrid.spacingBohr;
   const cubePreview=surfaceGridPreview(quality,p.structure,6,generated?.pair.shape.grid);
   const mappingProgress = busy === '生成表面中…' || !busy && ['generate', 'generate-fields'].includes(visibleTaskProgress?.identity.operation ?? '');
-  const progress = <>{busy && !visibleTaskProgress && <InputSettingsRow><output role="status">{busy}</output><InputSettingsAction onClick={cancel}>停止</InputSettingsAction></InputSettingsRow>}<MultiwfnProgress progress={visibleTaskProgress} operationLabel={mappingProgress ? '映射格点' : '分子表面'} onStop={cancel}/></>;
+  const progress = <>{busy && !visibleTaskProgress && <InputSettingsRow><output role="status">{busy}</output><InputSettingsAction onClick={cancel}>停止</InputSettingsAction></InputSettingsRow>}<MultiwfnProgress progress={visibleTaskProgress} showFailureReason={!error} operationLabel={mappingProgress ? '映射格点' : '分子表面'} onStop={cancel}/></>;
   const quantitativeQuality = inputKind === 'wavefunction' ? <CalculationQualityControl ariaLabel="表面定量精度" value={analysisPreset} options={SURFACE_ANALYSIS_QUALITY_OPTIONS} disabled={disabled}
     onChange={preset => { setAnalysisPreset(preset); setQuantitativeGrid(surfaceQuantitativePreset(preset, quantitativeGrid)); }}>
     <InputSettingsField label="格点间距 / Bohr"><NumericInput aria-label="表面定量格距"  min={0} step="any" value={Number.isFinite(quantitativeSpacing) ? quantitativeSpacing : ''} disabled={disabled} onChange={event => { const spacingBohr = event.currentTarget.valueAsNumber; setAnalysisPreset(surfaceQuantitativePresetFor(spacingBohr)); setQuantitativeGrid({ mode: 'spacing', spacingBohr }); }}/></InputSettingsField>
   </CalculationQualityControl> : <output>使用外部 Cube 原有网格，不重采样。</output>;
   const extremaPlotting = analysis && <><InputSettingsRow><InputSettingsCheckbox label="显示极值标记" checked={display.markersVisible} onChange={markersVisible => patchDisplay({ markersVisible })}/><InputSettingsCheckbox label="显示极值数值" checked={display.valuesVisible !== false} onChange={valuesVisible => patchDisplay({ valuesVisible })}/><InputSettingsCheckbox label="显示极值 XYZ 坐标" checked={display.coordinatesVisible === true} onChange={coordinatesVisible => patchDisplay({ coordinatesVisible })}/><InputSettingsAction disabled={!display.pinnedExtremumIds.length} onClick={() => patchDisplay({ pinnedExtremumIds: [] })}>清除固定</InputSettingsAction></InputSettingsRow>
     <InputSettingsRow><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: extrema.map(row => row.id) })}>隐藏全部</InputSettingsAction><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: [] })}>显示全部</InputSettingsAction><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: extrema.filter(row => row.scope !== 'global').map(row => row.id) })}>仅显示全局最大／最小</InputSettingsAction></InputSettingsRow></>;
-  return <section className="analysis-controls" aria-label="分子表面分析" data-testid="surface-analysis-controls" data-surface-function={fn} data-surface-state={busy ? 'running' : visiblePair?.mapping ? 'fields-ready' : analysis ? 'analysis-ready' : 'idle'} data-analysis-id={analysis?.stamp.analysisId ?? ''} data-request-id={running.current?.id ?? ''} data-source-id={p.context.sourceId} data-source-revision={p.context.sourceRevision} data-source-frame={p.context.sourceFrameIndex ?? ''} data-surface-colored={!!projection?.surfaceLayer?.color}><InputSettingsLayout>{feedback}{error && <DismissibleNotice role="alert">{error}</DismissibleNotice>}{restoreMessage && <div className="postprocess-actions"><output role="status">{restoreMessage}</output><InputSettingsAction disabled={!!busy} onClick={() => setRestoreRetry(value => value + 1)}>恢复已有显示格点</InputSettingsAction></div>}{presentation.unitWarning && <p className="postprocess-warning">部分来源单位不能换算，相关数值保留来源单位。</p>}
+  return <section className="analysis-controls" aria-label="分子表面分析" data-testid="surface-analysis-controls" data-surface-function={fn} data-surface-state={busy ? 'running' : visiblePair?.mapping ? 'fields-ready' : analysis ? 'analysis-ready' : 'idle'} data-analysis-id={analysis?.stamp.analysisId ?? ''} data-request-id={running.current?.id ?? ''} data-source-id={p.context.sourceId} data-source-revision={p.context.sourceRevision} data-source-frame={p.context.sourceFrameIndex ?? ''} data-surface-colored={!!projection?.surfaceLayer?.color}><InputSettingsLayout>{feedback}{error && <MultiwfnErrorNotice message={error} identity={lifetime.current.serial}/>}{restoreMessage && <div className="postprocess-actions"><output role="status">{restoreMessage}</output><InputSettingsAction disabled={!!busy} onClick={() => setRestoreRetry(value => value + 1)}>恢复已有显示格点</InputSettingsAction></div>}{presentation.unitWarning && <p className="postprocess-warning">部分来源单位不能换算，相关数值保留来源单位。</p>}
     <AnalysisTaskLayout variant="card" methodDetails title="分子表面定量分析" className="surface-preparation" testId="surface-quantitative-task" onRestoreQuality={inputKind === 'wavefunction' ? ()=>{setAnalysisPreset('native-default');setQuantitativeGrid({mode:'spacing',spacingBohr:SURFACE_ANALYSIS_DEFAULT_SPACING});}:undefined} qualityDisabled={disabled} setup={<><InputSettingsRow className="surface-preparation-row surface-identity-row"><InputSettingsField label="映射函数"><select aria-label="表面映射函数" value={fn} disabled={disabled} onChange={event => { setFunction(event.target.value as SurfaceFunction); setRegionId(''); setError(''); }}>{(['esp','alie'] as const).map(method=><option key={method} value={method} disabled={inputKind==='wavefunction'&&p.allowedWavefunctionMethods!==undefined&&!p.allowedWavefunctionMethods.includes(method)}>{method.toUpperCase()}</option>)}</select></InputSettingsField>
       <InputSettingsField label="ρ 等值 / a.u."><NumericInput stepper adaptiveStep={0.01} aria-label="密度表面等值"  min={0} step={.0001} value={isovalue} disabled={disabled} onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value > 0) setIsovalue(value); }}/></InputSettingsField></InputSettingsRow>
       {inputKind === 'cubes' && <DismissibleNotice role="alert">旧记录引用了外部 Cube；当前不再支持此输入。请重新选择支持的波函数来源，原文件保留。</DismissibleNotice>}

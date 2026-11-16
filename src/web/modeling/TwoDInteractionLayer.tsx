@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eraser } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ import {
 } from "ketcher-core";
 import {
 	applyGroup,
+	localDrawingBondLength,
 	graphToKet,
 	placeRing,
 	readKetGraph,
@@ -47,8 +48,10 @@ import {
 	zoomTwoDViewport,
 	bindTwoDNativeKeyboardScope
 } from "./two-d-ketcher-api";
+import { renderedTwoDChargeAt, renderedTwoDChargeBounds, renderedTwoDChargeGlyph, TWO_D_VALENCE_WARNING_SIZE, twoDValenceWarningPosition } from "./two-d-board-display";
+import TwoDGroupLibrary from "./TwoDGroupLibrary";
 
-type Hit = { atom?: number; bond?: number };
+type Hit = { charge?: number; atom?: number; bond?: number };
 type Tool =
 	| "move"
 	| "select"
@@ -116,6 +119,7 @@ interface Props {
 	sourceEpoch?: number;
 	editor: Ketcher;
 	active: boolean;
+	visible: boolean;
 	revision(): number;
 	onError(message: string): void;
 	onCancelReady(cancel: (() => void) | null): void;
@@ -137,6 +141,11 @@ interface Gesture {
 	selection: EditorSelection;
 	graph?: EditGraph;
 	graphPromise?: Promise<EditGraph>;
+	candidate?: { x:number;y:number;moved:boolean; result:ReturnType<typeof placeRing> | null };
+	button?: number;
+	client?: Point2;
+	startedAt?: number;
+	doubleNode?: number;
 	moved: boolean;
 	shift?: boolean;
 	immediateSelection?: boolean;
@@ -157,12 +166,13 @@ export default function TwoDInteractionLayer({
 	sourceEpoch = 0,
 	editor,
 	active,
+	visible,
 	revision,
 	onError,
 	onCancelReady,
 	onHistoryChange
 }: Props) {
-	const [tool, setTool] = useState<Tool>("select"),
+	const [tool, setTool] = useState<Tool>("bond"),
 		[bond, setBond] = useState(0),
 		[element, setElement] = useState("C");
 	const [ring, setRing] = useState<Ring>("benzene"),
@@ -188,6 +198,9 @@ export default function TwoDInteractionLayer({
 	);
 	const gesture = useRef<Gesture | null>(null),
 		held = useRef(new HeldElement());
+	const pendingSingle = useRef<{gesture:Gesture;timer:ReturnType<typeof setTimeout>} | null>(null);
+	const previewGraph = useRef<{revision:number;promise:Promise<EditGraph>} | null>(null);
+	const hoverPreview = useRef<Gesture | null>(null);
 	const heldTarget = useRef<{ hit: Hit; revision: number } | null>(null),
 		hoverRef = useRef(hover);
 	hoverRef.current = hover;
@@ -195,10 +208,12 @@ export default function TwoDInteractionLayer({
 	state.current = { tool, bond, element, ring, group };
 	const host = useRef<HTMLDivElement>(null),
 		serial = useRef(0);
-	const current = useRef({ active, revision, onError, onHistoryChange });
-	current.current = { active, revision, onError, onHistoryChange };
+	const current = useRef({ active, revision, onError, onHistoryChange, dialogOpen:groupOpen||Boolean(label) });
+	current.current = { active, revision, onError, onHistoryChange, dialogOpen:groupOpen||Boolean(label) };
 	function cancel(includeLabel = true) {
 		serial.current++;
+		clearSingle();
+		hoverPreview.current=null;
 		gesture.current = null;
 		pan.current = null;
 		held.current.clear();
@@ -209,26 +224,36 @@ export default function TwoDInteractionLayer({
 			setLabelError("");
 		}
 	}
+	function clearSingle() {
+		const pending = pendingSingle.current;
+		if (pending) clearTimeout(pending.timer);
+		pendingSingle.current = null;
+		return pending;
+	}
 	function fail(error: unknown) {
 		current.current.onError(error instanceof Error ? error.message : String(error));
 	}
-	function hitAt(point: Point2): Hit {
-		const view = CoordinateTransformation.modelToView(
-			new Vec2(point.x, point.y),
-			editor.editor.render
-		);
-		const rect = editor.editor.render.clientArea.getBoundingClientRect();
-		const hit = nativeEditorApi(editor).findItem(
-			{ clientX: rect.left + view.x, clientY: rect.top + view.y },
-			["atoms", "bonds"]
-		);
+	function stagedGraph(expected:number) {
+		if (previewGraph.current?.revision===expected) return previewGraph.current.promise;
+		const promise=editor.getKet().then(readKetGraph);
+		previewGraph.current={revision:expected,promise};
+		void promise.catch(()=>{if(previewGraph.current?.promise===promise)previewGraph.current=null;});
+		return promise;
+	}
+	function hitAt(event: { clientX: number; clientY: number }): Hit {
+		const charge = renderedTwoDChargeAt(editor, event.clientX, event.clientY);
+		if (charge !== undefined) return { charge };
+		const hit = nativeEditorApi(editor).findItem(event, ["atoms", "bonds"]);
 		return hit?.map === "atoms" ? { atom: hit.id } : hit?.map === "bonds" ? { bond: hit.id } : {};
 	}
 	function point(event: { clientX: number; clientY: number }) {
 		return CoordinateTransformation.pageToModel(event, editor.editor.render);
 	}
-	function length() {
-		return 1; /* Ketcher model standard bond length (not render pixels). */
+	function length(g?:Gesture) {
+		const standard = 1; /* Ketcher model units, never screen pixels. */
+		if (g?.graph && g.hit.atom !== undefined)
+			return localDrawingBondLength(g.graph, graphAtom(g.graph,g.hit.atom).id,standard);
+		return standard;
 	}
 	function atomPoint(id: number) {
 		const p = editor.editor.struct().atoms.get(id)!.pp;
@@ -236,7 +261,7 @@ export default function TwoDInteractionLayer({
 	}
 	function nextBondEnd(g: Gesture) {
 		const start = g.hit.atom === undefined ? g.start : atomPoint(g.hit.atom);
-		if (g.moved) return fixedBondEnd(start, g.cursor, length());
+		if (g.moved) return fixedBondEnd(start, g.cursor, length(g));
 		const neighbors: Point2[] = [],
 			nearby: Point2[] = [];
 		editor.editor.struct().atoms.forEach((a, id) => {
@@ -246,7 +271,7 @@ export default function TwoDInteractionLayer({
 			if (b.begin === g.hit.atom) neighbors.push(atomPoint(b.end));
 			if (b.end === g.hit.atom) neighbors.push(atomPoint(b.begin));
 		});
-		return continuedBondEnd(start, neighbors, nearby, length());
+		return continuedBondEnd(start, neighbors, nearby, length(g));
 	}
 	function selectionBounds(selection = editor.editor.explicitSelected()) {
 		const points = (selection.atoms ?? []).map(atomPoint);
@@ -383,7 +408,7 @@ export default function TwoDInteractionLayer({
 		const count = Math.max(
 			1,
 			Math.round(
-				Math.hypot(g.cursor.x - start.x, g.cursor.y - start.y) / ((length() * Math.sqrt(3)) / 2)
+				Math.hypot(g.cursor.x - start.x, g.cursor.y - start.y) / ((length(g) * Math.sqrt(3)) / 2)
 			)
 		);
 		let axis = g.cursor;
@@ -396,7 +421,7 @@ export default function TwoDInteractionLayer({
 				y: start.y + dx * Math.sin(-Math.PI / 6) + dy * Math.cos(-Math.PI / 6)
 			};
 		}
-		return zigzagChain(start, axis, length(), count);
+		return zigzagChain(start, axis, length(g), count);
 	}
 	function bondAction(g: Gesture, oxygen = false) {
 		const re = editor.editor.render.ctab,
@@ -438,19 +463,24 @@ export default function TwoDInteractionLayer({
 	}
 	function graphResult(g: Gesture) {
 		if (!g.graph) return null;
+		if (g.candidate && g.candidate.x===g.cursor.x && g.candidate.y===g.cursor.y && g.candidate.moved===g.moved) return g.candidate.result;
+		if (g.hit.charge !== undefined || g.tool === 'group' && g.hit.bond !== undefined) return null;
 		const atomId = g.hit.atom === undefined ? undefined : graphAtom(g.graph, g.hit.atom).id;
 		const bondId = g.hit.bond === undefined ? undefined : graphBond(g.graph, g.hit.bond).id;
 		const graphStart = { x: g.start.x, y: -g.start.y };
-		const origin = atomId ? g.graph.atoms.find((a) => a.id === atomId)! : graphStart;
-		const direction = g.moved ? { x: g.cursor.x - origin.x, y: -g.cursor.y - origin.y } : undefined;
-		const sharedPhenyl =
-			g.tool === "group" && g.group.trim().toLowerCase() === "ph" && bondId !== undefined;
-		return g.tool === "ring" || sharedPhenyl
+		let origin = atomId ? g.graph.atoms.find((a) => a.id === atomId)! : graphStart;
+		if (bondId) {
+			const edge = g.graph.bonds.find(b => b.id===bondId)!;
+			const a=g.graph.atoms.find(a=>a.id===edge.begin)!,b=g.graph.atoms.find(a=>a.id===edge.end)!;
+			origin={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+		}
+		const direction = g.moved || bondId ? { x: g.cursor.x - origin.x, y: -g.cursor.y - origin.y } : undefined;
+		const result = g.tool === "ring"
 			? placeRing(g.graph, {
-					template: sharedPhenyl ? "benzene" : g.ring,
+					template: g.ring,
 					anchor: atomId ? { atomId } : bondId ? { bondId } : { position: graphStart },
 					direction,
-					bondLength: length(),
+					bondLength: length(g),
 					allowHypervalence: true
 				})
 			: applyGroup(g.graph, {
@@ -459,9 +489,11 @@ export default function TwoDInteractionLayer({
 					atomId,
 					position: graphStart,
 					direction,
-					bondLength: length(),
+					bondLength: length(g),
 					allowHypervalence: true
 				});
+		g.candidate={x:g.cursor.x,y:g.cursor.y,moved:g.moved,result};
+		return result;
 	}
 	function movedPoint(p: Point2, g: Gesture, dx: number, dy: number) {
 		return g.transform
@@ -469,6 +501,7 @@ export default function TwoDInteractionLayer({
 			: { x: p.x + dx, y: p.y + dy };
 	}
 	function draw(g: Gesture) {
+		if(g.hit.charge!==undefined){setPreview(null);return;}
 		if (g.tool === "ring" || g.tool === "group") {
 			const result = graphResult(g);
 			if (!result) return;
@@ -562,8 +595,16 @@ export default function TwoDInteractionLayer({
 		)
 			return;
 		const re = editor.editor.render.ctab;
+		if (g.hit.charge !== undefined) {
+			const atom = editor.editor.struct().atoms.get(g.hit.charge);
+			if (!atom || !atom.charge) return;
+			const delta = g.tool === 'charge+' ? 1 : g.tool === 'charge-' ? -1 : 0;
+			if (g.button === 2 || delta) doAction(fromAtomsAttrs(re,g.hit.charge,{charge:g.button === 2 ? 0 : atom.charge + delta},false));
+			return;
+		}
 		if (g.tool === "bond") await checkedBond(g);
 		else if (g.tool === "element") {
+			if (g.hit.bond !== undefined) return;
 			if (g.hit.atom !== undefined)
 				doAction(fromAtomsAttrs(re, g.hit.atom, { label: g.element }, false));
 			else
@@ -597,7 +638,7 @@ export default function TwoDInteractionLayer({
 				)
 					atoms.push(id);
 			});
-			if (!g.moved && g.hit.atom !== undefined) atoms.push(g.hit.atom);
+			if (!g.moved && g.hit.atom !== undefined && !atoms.includes(g.hit.atom)) atoms.push(g.hit.atom);
 			if (!g.moved && g.hit.bond !== undefined) bonds.push(g.hit.bond);
 			if (g.shift) {
 				const toggle = (before: number[] = [], found: number[]) => [
@@ -610,6 +651,8 @@ export default function TwoDInteractionLayer({
 				});
 			} else editor.editor.selection({ atoms, bonds });
 			setSelectionEpoch((value) => value + 1);
+		} else if (g.tool === "move" && !g.moved) {
+			if (g.hit.atom!==undefined) {editor.editor.selection(g.selection);setSelectionEpoch(value=>value+1);}
 		} else if (g.tool === "move" && g.moved) {
 			if (g.transform) {
 				const action = new Action();
@@ -630,6 +673,7 @@ export default function TwoDInteractionLayer({
 			setSelectionEpoch((value) => value + 1);
 		} else if (g.tool === "ring" || g.tool === "group") {
 			if (!g.graph && g.graphPromise) g.graph = await g.graphPromise;
+			if (g.revision!==current.current.revision() || g.epoch!==serial.current || !current.current.active) return;
 			const result = graphResult(g);
 			if (!result) return;
 			if (!result.ok) throw new Error(result.reason);
@@ -692,8 +736,11 @@ export default function TwoDInteractionLayer({
 	}, [active]);
 	useEffect(() => {
 		cancel();
-		setTool("select");
+		previewGraph.current=null;
 	}, [sourceEpoch]);
+	useLayoutEffect(() => {
+		if (visible) { cancel(); setTool('bond'); setBond(0); }
+	}, [visible]);
 	useEffect(() => {
 		let alive = true,
 			sequence = 0;
@@ -746,6 +793,26 @@ export default function TwoDInteractionLayer({
 	}, [editor]);
 	useEffect(() => {
 		if (!canvas) return;
+		const ownerDocument=canvas.ownerDocument, owner=ownerDocument.defaultView;
+		if(!owner)return;
+		// The editing gesture window is an ES rule; native settings only supply
+		// pointer distance. Do not inherit a slower OS double-click timeout.
+		const doubleClickMs=300;
+		let clickSettings={doubleClickMs,doubleClickWidth:8,doubleClickHeight:8};
+		let activationPending=false, activationPointer:number|undefined, activationExpiry:number|undefined;
+		const clearActivation=()=>{if(activationExpiry!==undefined)owner.clearTimeout(activationExpiry);activationExpiry=undefined;activationPending=false;};
+		const bridge=owner.sciyueDesktop;
+		const unsubscribeActivation=bridge?.onTwoDPointerActivation?.(()=>{
+			clearActivation();activationPending=true;cancel(false);
+			// Title-bar activation may not deliver a DOM pointer event. The token
+			// belongs to the activating click, not the next intentional action.
+			activationExpiry=owner.setTimeout(clearActivation,180);
+		});
+		void bridge?.twoDPointerSettings?.().then(value=>{
+			if (value.doubleClickWidth>0&&value.doubleClickHeight>0) clickSettings={...value,doubleClickMs};
+		}).catch(()=>{});
+		const clearOutsideActivation=(e:PointerEvent)=>{if (!canvas.contains(e.target as Node)) clearActivation();};
+		ownerDocument.addEventListener('pointerdown',clearOutsideActivation,true);
 		canvas.tabIndex = 0;
 		canvas.setAttribute("data-testid", "two-d-controlled-canvas");
 		canvas.setAttribute("aria-label", "二维绘图画布");
@@ -756,6 +823,14 @@ export default function TwoDInteractionLayer({
 		const down = (e: PointerEvent) => {
 			if (!current.current.active) return;
 			stop(e);
+			if (activationPending || !ownerDocument.hasFocus()) {
+				clearActivation();activationPointer=e.pointerId;
+				cancel(false);
+				canvas.focus({preventScroll:true});
+				canvas.setPointerCapture(e.pointerId);
+				return;
+			}
+			if(current.current.dialogOpen)return;
 			canvas.focus({ preventScroll: true });
 			if (e.button === 1) {
 				const box = editor.editor.render.viewBox;
@@ -771,8 +846,16 @@ export default function TwoDInteractionLayer({
 			}
 			if (e.button !== 0 && e.button !== 2) return;
 			const start = point(e),
-				hit = hitAt(start),
+				hit = hitAt(e),
 				s = state.current;
+			const last=clearSingle(), client={x:e.clientX,y:e.clientY};
+			const doubleNode = last && e.button===0 && hit.atom!==undefined && last.gesture.hit.atom===hit.atom &&
+				last.gesture.revision===current.current.revision() && last.gesture.epoch===serial.current &&
+				e.timeStamp-last.gesture.startedAt! <= clickSettings.doubleClickMs &&
+				Math.abs(client.x-last.gesture.client!.x)<=clickSettings.doubleClickWidth/2 &&
+				Math.abs(client.y-last.gesture.client!.y)<=clickSettings.doubleClickHeight/2 ? hit.atom : undefined;
+			if (last && doubleNode===undefined) void commit(last.gesture).catch(fail);
+			hoverPreview.current=null;
 			const selecting = held.current.keys.has("r") && held.current.symbol === "R";
 			if (selecting) held.current.consumed = true;
 			let selection = editor.editor.explicitSelected();
@@ -798,7 +881,7 @@ export default function TwoDInteractionLayer({
 				)
 					transform = { kind: "scale", center, scale: 1, angle: 0 };
 			}
-			if (selectingTool && !transform && (hit.atom !== undefined || hit.bond !== undefined)) {
+			if (selectingTool && !transform && doubleNode===undefined && hit.bond !== undefined) {
 				// Use Ketcher's mature immediate click/Shift selection without ever
 				// entering its live move, automatic fusion, or leave-to-commit path.
 				const native = nativeEditorApi(editor).tool();
@@ -808,6 +891,8 @@ export default function TwoDInteractionLayer({
 				selection = editor.editor.explicitSelected();
 				setSelectionEpoch((value) => value + 1);
 			}
+			if (selectingTool && !transform && hit.atom!==undefined && !e.shiftKey && !selection.atoms?.includes(hit.atom))
+				selection={atoms:[hit.atom]};
 			const inBounds =
 				bounds &&
 				start.x >= bounds.min.x &&
@@ -817,9 +902,9 @@ export default function TwoDInteractionLayer({
 			const moveSelection =
 				selectingTool &&
 				!e.shiftKey &&
-				(transform || inBounds || hit.atom !== undefined || hit.bond !== undefined);
+					(transform || inBounds || hit.atom !== undefined || hit.bond !== undefined);
 			const g: Gesture = {
-				epoch: ++serial.current,
+				epoch: serial.current,
 				pointer: e.pointerId,
 				revision: current.current.revision(),
 				start,
@@ -828,21 +913,25 @@ export default function TwoDInteractionLayer({
 				target: hit,
 				tool:
 					e.button === 2 ? "delete" : moveSelection ? "move" : selectingTool ? "select" : s.tool,
+				button:e.button,
+				client,
+				startedAt:e.timeStamp,
+				doubleNode,
 				bond: s.bond,
 				element: s.element,
 				ring: s.ring,
 				group: s.group,
 				selection,
 				shift: e.shiftKey,
-				immediateSelection: selectingTool && (hit.atom !== undefined || hit.bond !== undefined),
+				immediateSelection: selectingTool && hit.bond !== undefined,
 				transform,
 				moved: false
 			};
 			gesture.current = g;
 			canvas.setPointerCapture(e.pointerId);
-			if (g.tool === "ring" || g.tool === "group" || g.tool === "bond") {
+			if (g.tool === "ring" || g.tool === "group" || g.tool === "bond" || g.tool==='chain') {
 				const token = g.epoch;
-				g.graphPromise = editor.getKet().then(readKetGraph);
+				g.graphPromise = stagedGraph(g.revision);
 				void g.graphPromise
 					.then((graph) => {
 						if (token !== serial.current || gesture.current !== g) return;
@@ -855,6 +944,7 @@ export default function TwoDInteractionLayer({
 		const move = (e: PointerEvent) => {
 			if (!current.current.active) return;
 			stop(e);
+			if (activationPointer===e.pointerId) return;
 			if (pan.current?.pointer === e.pointerId) {
 				const p = pan.current,
 					render = editor.editor.render,
@@ -869,7 +959,7 @@ export default function TwoDInteractionLayer({
 				return;
 			}
 			const p = point(e),
-				hit = hitAt(p);
+				hit = hitAt(e);
 			const nextHover = { point: p, hit };
 			hoverRef.current = nextHover;
 			setHover(nextHover);
@@ -884,11 +974,19 @@ export default function TwoDInteractionLayer({
 					undefined,
 					e
 				);
+				if (!pendingSingle.current && state.current.tool==='ring' && hit.bond!==undefined) {
+					const next:Gesture={epoch:serial.current,pointer:e.pointerId,revision:current.current.revision(),start:p,cursor:p,hit,target:hit,...state.current,selection:{},moved:false};
+					hoverPreview.current=next;
+					void stagedGraph(next.revision).then(graph=>{
+						if(hoverPreview.current!==next || current.current.revision()!==next.revision || next.epoch!==serial.current)return;
+						next.graph=graph;safeDraw(next);
+					}).catch(()=>{});
+				} else if(hoverPreview.current){hoverPreview.current=null;setPreview(null);}
 				return;
 			}
 			g.cursor = p;
 			g.target = hit;
-			g.moved ||= Math.hypot(p.x - g.start.x, p.y - g.start.y) > 0.08;
+			g.moved ||= Math.hypot(e.clientX-g.client!.x,e.clientY-g.client!.y)>3;
 			if (g.transform) {
 				const t = g.transform,
 					center = t.center;
@@ -908,6 +1006,7 @@ export default function TwoDInteractionLayer({
 		const up = (e: PointerEvent) => {
 			if (!current.current.active) return;
 			stop(e);
+			if(activationPointer===e.pointerId){activationPointer=undefined;return;}
 			if (pan.current?.pointer === e.pointerId) {
 				pan.current = null;
 				return;
@@ -927,19 +1026,30 @@ export default function TwoDInteractionLayer({
 				return;
 			}
 			g.cursor = point(e);
-			g.target = hitAt(g.cursor);
+			g.target = hitAt(e);
+			if (g.button===0 && !g.moved && g.hit.atom!==undefined && g.target.atom===g.hit.atom) {
+				if (g.doubleNode===g.hit.atom) {
+					cancel();
+					const atom=editor.editor.struct().atoms.get(g.hit.atom);
+					if (atom) setLabel({atom:g.hit.atom,text:atom.label,charge:String(atom.charge??0)});
+					return;
+				}
+				const pending={gesture:g,timer:setTimeout(()=>{
+					if(pendingSingle.current!==pending)return;
+					pendingSingle.current=null;
+					void commit(g).catch(fail);
+				},Math.max(0,clickSettings.doubleClickMs-(e.timeStamp-g.startedAt!)))};
+				pendingSingle.current=pending;
+				return;
+			}
 			void commit(g).catch(fail);
 		};
 		const dbl = (e: MouseEvent) => {
 			stop(e);
 			if (state.current.tool !== "select") return;
-			cancel();
-			const h = hitAt(point(e));
-			if (h.atom !== undefined) {
-				const a = editor.editor.struct().atoms.get(h.atom)!;
-				setLabel({ atom: h.atom, text: a.label, charge: String(a.charge ?? 0) });
-				setLabelError("");
-			} else if (h.bond !== undefined) {
+			const h = hitAt(e);
+			if (h.bond !== undefined) {
+				cancel();
 				const struct = editor.editor.struct(),
 					seed = struct.bonds.get(h.bond)!,
 					atoms = new Set([seed.begin, seed.end]);
@@ -969,12 +1079,14 @@ export default function TwoDInteractionLayer({
 			setHover(null);
 			nativeEditorApi(editor).hover(null);
 			heldTarget.current = null;
+			if(hoverPreview.current){hoverPreview.current=null;if(!gesture.current)setPreview(null);}
 		};
 		const blur = () => {
 			clearHover();
 			cancel(false);
 		};
 		const lostCapture = () => {
+			activationPointer=undefined;
 			if (gesture.current || pan.current) cancel();
 		};
 		const wheel = (e: WheelEvent) => {
@@ -997,11 +1109,12 @@ export default function TwoDInteractionLayer({
 		canvas.addEventListener("pointerleave", clearHover);
 		for (const name of ["mousedown", "mousemove", "mouseup", "click", "contextmenu"])
 			canvas.addEventListener(name, compatibility, true);
-		window.addEventListener("blur", abort);
+		const blurWindow=()=>{clearActivation();activationPointer=undefined;abort();};
+		owner.addEventListener("blur", blurWindow);
 		const visibility = () => {
-			if (document.hidden) cancel();
+			if (ownerDocument.hidden) cancel();
 		};
-		document.addEventListener("visibilitychange", visibility);
+		ownerDocument.addEventListener("visibilitychange", visibility);
 		return () => {
 			canvas.removeEventListener("pointerdown", down, true);
 			canvas.removeEventListener("pointermove", move, true);
@@ -1014,19 +1127,24 @@ export default function TwoDInteractionLayer({
 			canvas.removeEventListener("pointerleave", clearHover);
 			for (const name of ["mousedown", "mousemove", "mouseup", "click", "contextmenu"])
 				canvas.removeEventListener(name, compatibility, true);
-			window.removeEventListener("blur", abort);
-			document.removeEventListener("visibilitychange", visibility);
+			unsubscribeActivation?.();
+			clearActivation();
+			owner.removeEventListener("blur", blurWindow);
+			ownerDocument.removeEventListener("pointerdown",clearOutsideActivation,true);
+			ownerDocument.removeEventListener("visibilitychange", visibility);
 			cancel();
 		};
 	}, [canvas, editor]);
 	useEffect(() => {
 		const scope = (e: KeyboardEvent) =>
 			current.current.active &&
+			!(e.target as HTMLElement)?.closest('[data-two-d-readonly-preview],[data-two-d-window-resize]') &&
 			!!host.current?.closest(".two-d-editor-window")?.contains(e.target as Node);
 		const isInput = (e: KeyboardEvent) =>
 			(e.target as HTMLElement)?.matches('input,textarea,select,[contenteditable="true"]');
 		const key = (e: KeyboardEvent) => {
 			if (!scope(e)) return;
+			if((e.target as HTMLElement)?.closest('.two-d-group-library,.two-d-label-editor'))return;
 			if ((e.target as HTMLElement)?.closest(".two-d-valence-warning,.two-d-valence-detail")) {
 				e.stopImmediatePropagation();
 				return;
@@ -1044,7 +1162,7 @@ export default function TwoDInteractionLayer({
 					editor.editor.selection("all");
 					editor.editor.rotateController.clean();
 					setSelectionEpoch((value) => value + 1);
-				} else if (gesture.current) cancel();
+				} else if (gesture.current || pendingSingle.current) cancel();
 				else {
 					const counts = performTwoDHistory(editor, k === "y" || e.shiftKey ? "redo" : "undo");
 					current.current.onHistoryChange?.(counts);
@@ -1068,25 +1186,22 @@ export default function TwoDInteractionLayer({
 			}
 			if (gesture.current) return;
 			if (/^[1-6]$/.test(k)) {
-				if (k === "4") return;
+				clearSingle();
+				hoverPreview.current=null;
+				setPreview(null);
 				const h = hoverRef.current?.hit ?? {};
-				if (k === "5" || k === "6") {
-					if (h.bond === undefined) return;
-					const position = hoverRef.current!.point,
-						token = ++serial.current;
-					const g = {
-						epoch: token,
-						revision: current.current.revision(),
-						start: position,
-						cursor: position,
-						hit: h,
-						target: h,
-						tool: "ring",
-						ring: k === "5" ? "cyclopentane" : "cyclohexane",
-						moved: false
-					} as Gesture;
-					g.graphPromise = editor.getKet().then(readKetGraph);
-					void commit(g).catch(fail);
+				if (k === "4" || k === "5" || k === "6") {
+					setRing(k==='4'?'cyclobutane':k==='5'?'cyclopentane':'cyclohexane');
+					setTool('ring');
+					return;
+				}
+				if (k === '1') {
+					const selected=editor.editor.explicitSelected().bonds;
+					const id=h.bond??(selected?.length===1?selected[0]:undefined);
+					const target=id===undefined?undefined:editor.editor.struct().bonds.get(id);
+					const next=target?.type===1?((target.stereo??0)===0?3:target.stereo===1?4:0):0;
+					setBond(next);setTool('bond');
+					if(id!==undefined&&target)doAction(fromBondsAttrs(editor.editor.render.ctab,id,{type:1,stereo:bonds[next].stereo}));
 					return;
 				}
 				setBond(Number(k) - 1);
@@ -1171,20 +1286,23 @@ export default function TwoDInteractionLayer({
 		}
 		try {
 			const expected = revision(),
+				expectedEpoch=serial.current,
 				ket = await editor.getKet(),
 				graph = readKetGraph(ket);
+			if(expected!==revision()||expectedEpoch!==serial.current)return;
 			const atomId = graphAtom(graph, label.atom).id;
 			if (!atomId) throw new Error("目标原子已变化。");
 			const result = applyGroup(graph, {
 				label: label.text,
 				mode: "replace",
 				atomId,
-				bondLength: length(),
+				bondLength: localDrawingBondLength(graph,atomId,length()),
 				formalCharge: label.chargeEdited ? Number(label.charge) : undefined,
 				allowHypervalence: true
 			});
 			if (!result.ok) throw new Error(result.reason);
-			await commitKet(graphToKet(result.graph), expected);
+			const next=graphToKet(result.graph);
+			if(next!==ket)await commitKet(next, expected, expectedEpoch);
 			setLabel(null);
 		} catch (e) {
 			setLabelError(e instanceof Error ? e.message : String(e));
@@ -1216,10 +1334,10 @@ export default function TwoDInteractionLayer({
 		: null;
 	const outer = host.current?.parentElement?.getBoundingClientRect(),
 		inner = canvas?.getBoundingClientRect();
-	const warningOrigin = {
-		x: (inner?.left ?? 0) - (outer?.left ?? 0),
-		y: (inner?.top ?? 0) - (outer?.top ?? 0)
-	};
+	const warningChargeBounds = useMemo(() => warnings.length && inner ? renderedTwoDChargeBounds(editor) : [],
+		[editor,warnings,selectionEpoch,inner?.left,inner?.top,inner?.width,inner?.height]);
+	const chargeGlyph=hover?.hit.charge===undefined?undefined:renderedTwoDChargeGlyph(editor,hover.hit.charge);
+	const chargeBox=chargeGlyph?.getBoundingClientRect();
 	const toolName =
 		tool === "bond"
 			? `${bonds[bond].name} · C`
@@ -1405,7 +1523,7 @@ export default function TwoDInteractionLayer({
 						</svg>
 					</button>
 				))}
-				<button title="基团" aria-label="基团…" onClick={() => setGroupOpen(!groupOpen)}>
+				<button title="基团库" aria-label="基团库…" aria-expanded={groupOpen} onClick={() => {cancel();setGroupOpen(!groupOpen);}}>
 					<TwoDIcon name="group" />
 				</button>
 				<button
@@ -1432,23 +1550,13 @@ export default function TwoDInteractionLayer({
 						))}
 					</select>
 				)}
-				{groupOpen && (
-					<>
-						<input aria-label="基团" value={group} onChange={(e) => setGroup(e.target.value)} />
-						<button
-							onClick={() => {
-								choose("group");
-								setGroupOpen(false);
-							}}
-						>
-							使用
-						</button>
-					</>
-				)}
+				{tool==='group'&&<span aria-label="当前基团">{group}</span>}
 			</div>
+			{groupOpen&&<TwoDGroupLibrary current={group} onClose={()=>setGroupOpen(false)} onUse={name=>{setGroup(name);setGroupOpen(false);choose('group');}}/>}
 			{canvas &&
 				createPortal(
 					<svg className="two-d-gesture-preview" aria-hidden="true">
+						{inner&&chargeBox&&<rect data-testid="two-d-charge-hover" x={chargeBox.left-inner.left-1} y={chargeBox.top-inner.top-1} width={chargeBox.width+2} height={chargeBox.height+2} rx={2} fill="#ffdf5c55"/>}
 						{selectedView && (
 							<g className="two-d-selection-handles">
 								<rect
@@ -1538,13 +1646,16 @@ export default function TwoDInteractionLayer({
 			{preview?.error && <div className="two-d-gesture-error">{preview.error}</div>}
 			{warnings.map((w) => {
 				const p = view(w.point);
+				const preferred = {x:(inner?.left ?? 0) + p.x + 9,y:(inner?.top ?? 0) + p.y - TWO_D_VALENCE_WARNING_SIZE};
+				const position = inner ? twoDValenceWarningPosition(preferred,inner,warningChargeBounds) : preferred;
 				return (
 					<button
 						key={w.id}
 						className="two-d-valence-warning"
 						title="二维价态警告"
 						aria-label={`原子${w.id}价态警告`}
-						style={{ left: warningOrigin.x + p.x + 9, top: warningOrigin.y + p.y - 17 }}
+						style={{ left: position.x - (outer?.left ?? 0), top: position.y - (outer?.top ?? 0),
+							width:TWO_D_VALENCE_WARNING_SIZE,height:TWO_D_VALENCE_WARNING_SIZE,boxSizing:'border-box' }}
 						onClick={() => setWarningDetail((current) => (current === w.id ? null : w.id))}
 					>
 						!

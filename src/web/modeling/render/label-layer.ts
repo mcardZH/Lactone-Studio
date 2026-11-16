@@ -3,17 +3,20 @@
 export function createLabelLayer(viewer:any){
  const labels=new Map<any,any>();
  const context=()=>viewer.getRenderer?.()?.getContext?.()??viewer.getRenderer?.()?._gl;
- return{
-  add(...args:any[]){const label=viewer.addLabel(...args);if(label)labels.set(label,context());return label;},
-  move(label:any,position:{x:number;y:number;z:number}){if(!labels.has(label)||!label.sprite?.position?.set)return;label.stylespec.position={...position};label.sprite.position.set(position.x,position.y,position.z);},
-  clear(){
+ function remove(handles:Iterable<any>){
+   const owned=new Set([...handles].filter(label=>labels.has(label)));
+   if(!owned.size)return;
    // Compatibility with alternate viewers lacking the locked inventory.
-   if(!Array.isArray(viewer.labels)||!viewer.modelGroup){labels.clear();viewer.removeAllLabels();return;}
-   const owned=new Set(labels.keys()),foreign=viewer.labels.filter((label:any)=>!owned.has(label));
+   if(!Array.isArray(viewer.labels)||!viewer.modelGroup){
+    if(owned.size===labels.size){labels.clear();viewer.removeAllLabels();return;}
+    for(const label of owned){viewer.removeLabel(label);labels.delete(label);}return;
+   }
+   const foreign=viewer.labels.filter((label:any)=>!owned.has(label));
    const sharedMaterials=new Set(foreign.map((label:any)=>label.sprite?.material));
    const sharedMaps=new Set(foreign.map((label:any)=>label.sprite?.material?.map));
    let failure:unknown;
-   for(const [label,sourceContext] of labels){
+   for(const label of owned){
+    const sourceContext=labels.get(label);labels.delete(label);
     try{
      const index=viewer.labels.indexOf(label);if(index>=0)viewer.labels.splice(index,1);
      viewer.modelGroup.remove(label.sprite);
@@ -25,7 +28,12 @@ export function createLabelLayer(viewer:any){
      try{if(material&&!sharedMaterials.has(material))material.dispose();}catch(error){failure??=error;}
     }
    }
-   labels.clear();if(failure)throw failure;
-  }
+   if(failure)throw failure;
+ }
+ return{
+  add(...args:any[]){const label=viewer.addLabel(...args);if(label)labels.set(label,context());return label;},
+  move(label:any,position:{x:number;y:number;z:number}){if(!labels.has(label)||!label.sprite?.position?.set)return;label.stylespec.position={...position};label.sprite.position.set(position.x,position.y,position.z);},
+  remove,
+  clear(){if(labels.size)remove(labels.keys());}
  };
 }

@@ -1,0 +1,356 @@
+{
+  "schema": "ester-pes-runtime/v1",
+  "platform": "win32-x64",
+  "subdirectory": "pes",
+  "developmentRoot": ".local/dependencies/win-x64/pes-v209",
+  "entrypoints": {
+    "python": "python/python.exe",
+    "bootstrap": "bootstrap.py",
+    "worker": "chemistry/pes_worker.py"
+  },
+  "residentLibrary": {
+    "subdirectory": "libxtb",
+    "manifestPath": "runtime.json",
+    "schema": "ester-pes-libxtb-runtime/v1",
+    "manifestSha256": "223428a76070a2d4b04a1680a724353e1ff66d6fe937de1f8545d2fecf2c400b",
+    "lockPath": "desktop/packaging/pes-libxtb-runtime.lock.json"
+  },
+  "baseRuntime": {
+    "lockSha256": "22761e1bc2aa8dddff4300d30032d358b2372c66df0b54af18de99ecbe7d036f",
+    "runtimeManifest": {
+      "path": "runtime.json",
+      "bytes": 3386767,
+      "sha256": "6b7980a443735bb14ec6d0dcf0c5a0e9353fc09a5360ac1ee5561ca3b125dcc6"
+    }
+  },
+  "pythonVersion": "3.12.13",
+  "pythonSha256": "0d84b0acc6a5a3e7906d07c63a364e19b76410fa726c4412c74d3af7408b08d5",
+  "bootstrapSha256": "5f6eb573d7f7f73f59cd7b5e989bcab0fb9f1ab3771731f4d221e2aae14f6049",
+  "pythonToolchain": {
+    "path": "desktop/packaging/native-toolchain.lock.json",
+    "bytes": 5843,
+    "sha256": "d10c05a2e895bfc4b49f4290d04b5c359e336130dc36c36f780cd69cfe3672bd"
+  },
+  "baseScientificRuntime": {
+    "path": "desktop/packaging/native-runtime.lock.json",
+    "bytes": 57707,
+    "sha256": "48601822386484339346c1f88294046f9d93ba102892df30aaab2d918c3549a3"
+  },
+  "baseSitePackages": [
+    "ase",
+    "cffi",
+    "numpy",
+    "psutil",
+    "pycparser",
+    "pyyaml",
+    "scipy",
+    "threadpoolctl",
+    "typing_extensions"
+  ],
+  "baseSupportLibraries": [
+    "bzip2",
+    "libexpat",
+    "libffi",
+    "libzlib",
+    "openssl",
+    "sqlite",
+    "vc14_runtime",
+    "xz",
+    "zstd"
+  ],
+  "primaryWheels": [
+    {
+      "project": "sella",
+      "version": "2.6.0",
+      "metadataUrl": "https://pypi.org/pypi/sella/2.6.0/json",
+      "filename": "sella-2.6.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/20/86/f06e254ea018baf0bf584369c0f25b5e3693f0b57242ed44bb3cbc39bada/sella-2.6.0-py3-none-any.whl",
+      "bytes": 127109,
+      "sha256": "cce6594830cd6afb5d0f4c934a6dd8111ad422882477fdc9cfd04ce65ee544f9"
+    },
+    {
+      "project": "jax",
+      "version": "0.12.0.1",
+      "metadataUrl": "https://pypi.org/pypi/jax/0.12.0.1/json",
+      "filename": "jax-0.12.0.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f9/5d/be6a4b67161462d1a0a97c7405459c2f76a4c23c66b39ad496527f68a17d/jax-0.12.0.1-py3-none-any.whl",
+      "bytes": 3466959,
+      "sha256": "e9dfd256ba090259b10f97f0755d4fc92535b8cb38c0a40df6488a8c8a7dd8ae"
+    },
+    {
+      "project": "jaxlib",
+      "version": "0.12.0.1",
+      "metadataUrl": "https://pypi.org/pypi/jaxlib/0.12.0.1/json",
+      "filename": "jaxlib-0.12.0.1-cp312-cp312-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/de/45/e87c51650ccaba0c08dea0206e132db3093b4e5265ebbb5449f664a955b6/jaxlib-0.12.0.1-cp312-cp312-win_amd64.whl",
+      "bytes": 71385367,
+      "sha256": "aa24baf4aafd78bbf7104a81f01eadc40332b8b90098634d14d585cd0477eeaf"
+    },
+    {
+      "project": "ml-dtypes",
+      "version": "0.6.0",
+      "metadataUrl": "https://pypi.org/pypi/ml-dtypes/0.6.0/json",
+      "filename": "ml_dtypes-0.6.0-cp312-cp312-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/ba/db/9c61ec2760b5cbfb1c6558d5c991a6d8fd3271053c32db20506a9a90272b/ml_dtypes-0.6.0-cp312-cp312-win_amd64.whl",
+      "bytes": 439333,
+      "sha256": "2a3e9d53925597fbffafd2a37048dadeddd0bdaba58058f6ae0869ed709a184d"
+    },
+    {
+      "project": "opt-einsum",
+      "version": "3.4.0",
+      "metadataUrl": "https://pypi.org/pypi/opt-einsum/3.4.0/json",
+      "filename": "opt_einsum-3.4.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/23/cd/066e86230ae37ed0be70aae89aabf03ca8d9f39c8aea0dec8029455b5540/opt_einsum-3.4.0-py3-none-any.whl",
+      "bytes": 71932,
+      "sha256": "69bb92469f86a1565195ece4ac0323943e83477171b91d24c35afe028a90d7cd"
+    },
+    {
+      "project": "networkx",
+      "version": "3.7",
+      "metadataUrl": "https://pypi.org/pypi/networkx/3.7/json",
+      "filename": "networkx-3.7-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/7e/cd/fe58041e9011f307c490e3e17dd48cc516448f7c698a3f2d9d9d65d7e6a8/networkx-3.7-py3-none-any.whl",
+      "bytes": 2142205,
+      "sha256": "e3fd2c13a7814cee3746340d8d7f8598a67f16a58bf47fb7f8793fab6efca1b0"
+    },
+    {
+      "project": "six",
+      "version": "1.17.0",
+      "metadataUrl": "https://pypi.org/pypi/six/1.17.0/json",
+      "filename": "six-1.17.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+      "bytes": 11050,
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
+    },
+    {
+      "project": "packaging",
+      "version": "26.3",
+      "metadataUrl": "https://pypi.org/pypi/packaging/26.3/json",
+      "filename": "packaging-26.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+      "bytes": 129956,
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+    }
+  ],
+  "upstreamSources": [
+    {
+      "project": "ZimmermanGroup/pyGSM",
+      "ref": "1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "commit": "1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "metadataUrl": "https://api.github.com/repos/ZimmermanGroup/pyGSM/commits/1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "filename": "ZimmermanGroup-pyGSM-1b4d5a5557a6.tar.gz",
+      "url": "https://codeload.github.com/ZimmermanGroup/pyGSM/tar.gz/1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "bytes": 307561,
+      "sha256": "067db513d7545a551d9e3b80e5f33075117f750066960feb007cd65955242371"
+    },
+    {
+      "project": "sella",
+      "version": "2.6.0",
+      "filename": "sella-2.6.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/d5/e8/4ee9960010ca9156ed794efe249ba071d161411c59e61aa7378ebe11d292/sella-2.6.0.tar.gz",
+      "bytes": 182652,
+      "sha256": "7effc2a10f6d43c0bbdff11acb1fe36e16424cd9f01746660e87985662713384"
+    }
+  ],
+  "pygsmAdaptations": [
+    {
+      "path": "pyGSM/coordinate_systems/internal_coordinates.py",
+      "upstreamSha256": "ac16b996e8fdc6f95c86488b5fe3b5da802edbebdf1bf12cdb26b4cde300f152",
+      "adaptedSha256": "6a2c7835ba4229a8c3222c15b7daefc0a1036c00bf952bfbbaf90158807e9b5e",
+      "replacements": [
+        {
+          "before": "hash(xyz.tostring())",
+          "after": "hash(xyz.tobytes())",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/coordinate_systems/primitive_internals.py",
+      "upstreamSha256": "971ce45cfcc819d8d136cfeb63a2e9081dd5cfa3aa9525e2461b496a51384d40",
+      "adaptedSha256": "ed461099ada1d1512ed0af333d7dffdebc8541d3d417aea8e0480eba8a2f3594",
+      "replacements": [
+        {
+          "before": "hash(xyz.tostring())",
+          "after": "hash(xyz.tobytes())",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/coordinate_systems/topology.py",
+      "upstreamSha256": "864b26693133828ec6325a06ae26e2e4fb102fd828bd591de3fa28511f3fa9de",
+      "adaptedSha256": "bd8019204de9ac808cababc492793544e817bee9ebffcd5bcfbf3b5253ebeb47",
+      "replacements": [
+        {
+          "before": "from pkg_resources import parse_version",
+          "after": "from packaging.version import parse as parse_version",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/growing_string_methods/gsm.py",
+      "upstreamSha256": "be7868aa6b5cb93fc0fb8d1903f9c00e0c61f2793c22a4140400e2e3896fc595",
+      "adaptedSha256": "4903a69f52112ebfe22f119a99f4c85eddfc84aa41479500a7354703721f6f82",
+      "replacements": [
+        {
+          "before": "os.system('mkdir -p scratch')",
+          "after": "os.makedirs('scratch', exist_ok=True)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/growing_string_methods/main_gsm.py",
+      "upstreamSha256": "968c20ddd37044dff8311b510bdb259dc5e68b1e952da9a409a265044f9bbe01",
+      "adaptedSha256": "0620129f988866f22eb126ccb7a0406050d290497ef67b9433ce90f420dd57b7",
+      "replacements": [
+        {
+          "before": "                self.add_node_after_TS()\n                added = True",
+          "after": "                prior_nodes = self.nnodes\n                self.add_node_after_TS()\n                added = self.nnodes > prior_nodes",
+          "count": 1
+        },
+        {
+          "before": "                self.add_node_before_TS()\n                added = True",
+          "after": "                prior_nodes = self.nnodes\n                self.add_node_before_TS()\n                added = self.nnodes > prior_nodes",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/growing_string_methods/se_gsm.py",
+      "upstreamSha256": "cd03f14bcc1b67d05bc649b9adb8d3b7361a167c3e6d1cb16e51598010a07e9e",
+      "adaptedSha256": "3411549fde8adf7537b961abe2ea49b20d237f92601c5118d9f03f5293933f61",
+      "replacements": [
+        {
+          "before": "overlap = np.dot(gradient.T, constraints)",
+          "after": "overlap = np.asarray(np.dot(gradient.T, constraints)).item()",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/level_of_theories/base_lot.py",
+      "upstreamSha256": "28fb6e64b518fc97b99d714d63115f53c10b0d42fbdee273d44d6485c9462d6f",
+      "adaptedSha256": "3b6fc02b92064ca54b47f0c0fd2d807ad78a6619b897e2790ed6420a9fa31eb8",
+      "replacements": [
+        {
+          "before": "os.system('mkdir -p scratch/{:03}/{}'.format(self.ID, self.node_id))",
+          "after": "os.makedirs('scratch/{:03}/{}'.format(self.ID, self.node_id), exist_ok=True)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/molecule/molecule.py",
+      "upstreamSha256": "f79a7644f76051ed92156cb9647c1f274a3cdea3a7b809559a56b38afd579e71",
+      "adaptedSha256": "294618e4e91c488128654d0a750f8aa77aa9d561f728ce68a11760339c7506c9",
+      "replacements": [
+        {
+          "before": "np.sum(self.atomic_mass[i]*np.dot(x, x) for i, x in enumerate(xyz1))",
+          "after": "sum(self.atomic_mass[i]*np.dot(x, x) for i, x in enumerate(xyz1))",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/optimizers/base_optimizer.py",
+      "upstreamSha256": "e1b91becd3a4bebd0d1b3c1dd0b84e7180c2215b53f0d15c77d0d9015b752a14",
+      "adaptedSha256": "fd254711a5e2213c3ea5ca1b11372604c1db96e66a719e20f3960665764a91a2",
+      "replacements": [
+        {
+          "before": "gts = np.dot(g.T, molecule.constraints[:, 0])",
+          "after": "gts = np.asarray(np.dot(g.T, molecule.constraints[:, 0])).item()",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/optimizers/eigenvector_follow.py",
+      "upstreamSha256": "7bce3bacc68dda807640db1019fb61aa4c4d7a770497673c25970ffd8c2c588c",
+      "adaptedSha256": "5c30a05e83a0ccda081a3c7f3b2e33682ed1c6cd66dad1e87b3d90ed0d82542a",
+      "replacements": [
+        {
+          "before": "molecule.gradrms = np.sqrt(np.dot(gc.T, gc)/n)",
+          "after": "molecule.gradrms = np.asarray(np.sqrt(np.dot(gc.T, gc)/n)).item()",
+          "count": 2
+        },
+        {
+          "before": "            dEpre += constraint_energy",
+          "after": "            dEpre += constraint_energy\n            dEpre = np.asarray(dEpre).reshape(())[()]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/utilities/manage_xyz.py",
+      "upstreamSha256": "04509e6069c9e0a18ec37f7c33e36f35061a268687fce0c9653640df518f8c79",
+      "adaptedSha256": "9f4df4331ec32a1cfee00e350c4541bea29808dcce59afe2e3c304e8cf4a13aa",
+      "replacements": [
+        {
+          "before": "    fh = open(filename, 'w')\n    for geom, comment in zip(geoms, comments):\n        fh.write('%d\\n' % len(geom))\n        fh.write('%s\\n' % comment)\n        for atom in geom:\n            fh.write('%-2s %14.6f %14.6f %14.6f\\n' % (\n                atom[0],\n                scale*atom[1],\n                scale*atom[2],\n                scale*atom[3],\n            ))",
+          "after": "    with open(filename, 'w') as fh:\n        for geom, comment in zip(geoms, comments):\n            fh.write('%d\\n' % len(geom))\n            fh.write('%s\\n' % comment)\n            for atom in geom:\n                fh.write('%-2s %14.6f %14.6f %14.6f\\n' % (\n                    atom[0],\n                    scale*atom[1],\n                    scale*atom[2],\n                    scale*atom[3],\n                ))",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "pyGSM/utilities/math_utils.py",
+      "upstreamSha256": "d3883d046a3f924a083c8906d1c937f87fa979984194c80d021e97e3fbe25eef",
+      "adaptedSha256": "35a62ca302a4296dcb0eab02a6a0260a3814a77658cf7a99bc564b210dcb1e88",
+      "replacements": [
+        {
+          "before": "np.sum(ov(v, b)*b/ov(b, b) for b in basis[:, :count].T)",
+          "after": "sum(ov(v, b)*b/ov(b, b) for b in basis[:, :count].T)",
+          "count": 1
+        },
+        {
+          "before": "np.sum(np.dot(v, b)*b for b in basis.T)",
+          "after": "sum(np.dot(v, b)*b for b in basis.T)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "primaryLicenses": {
+    "sella": "LGPL-3.0",
+    "pyGSM": "MIT",
+    "jax": "Apache-2.0",
+    "jaxlib": "Apache-2.0 with bundled notices",
+    "ml-dtypes": "Apache-2.0 with bundled Eigen notice",
+    "opt-einsum": "MIT",
+    "networkx": "BSD-3-Clause",
+    "six": "MIT",
+    "packaging": "Apache-2.0 OR BSD-2-Clause"
+  },
+  "productModules": [
+    "desktop/chemistry/pes_worker.py",
+    "desktop/chemistry/native_stdin.py",
+    "desktop/chemistry/pes_core.py",
+    "desktop/chemistry/pes_libxtb.py",
+    "desktop/chemistry/pes_coordinates.py",
+    "desktop/chemistry/pes_scan_ts.py",
+    "desktop/chemistry/pes_paths.py",
+    "desktop/chemistry/pes_neb.py",
+    "desktop/chemistry/pes_strings.py",
+    "desktop/chemistry/advanced_path.py",
+    "desktop/chemistry/conformer_gfnff.py",
+    "desktop/chemistry/gfnff_topology.py",
+    "desktop/chemistry/task_files.py",
+    "desktop/chemistry/xtb_periodic.py",
+    "desktop/chemistry/orbitals.py",
+    "desktop/chemistry/multiwfn_resources.py"
+  ],
+  "retiredRuntime": {
+    "reason": "Single-ended exploration execution retired; historical result loading and citations remain supported.",
+    "memberPrefixes": [
+      "third-party/pysisyphus/"
+    ],
+    "members": [
+      "third-party/pysisyphus.ini",
+      "third-party/sources/pysisyphus-1.0.0.tar.gz",
+      "chemistry/pes_single_end.py"
+    ]
+  }
+}

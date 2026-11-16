@@ -1,5 +1,8 @@
 import { assertResultNotAborted, type ResultInputFile, type ResultReadOptions } from './contracts';
 import { looksLikeFchk } from '../core/fchk-records';
+import { gaussianErrorTermination } from './gaussian-output-archive';
+import { orcaOutputEcho, outputSoftwareOnLine, visitOutputBody, type OutputSoftware } from './output-sections';
+export { outputSoftwareOnLine } from './output-sections';
 
 export const SOURCE_RECOGNITION_BYTES = 1024 * 1024;
 export type SourceSoftware = 'gaussian' | 'orca' | 'cp2k' | 'xtb' | 'unknown';
@@ -12,26 +15,18 @@ export interface SourceRecognition {
   message?: string;
 }
 
-/** Run identity requires a native header, never a filename or a passing brand mention. */
-export function outputSoftwareOnLine(raw: string): Exclude<SourceSoftware, 'unknown'> | null {
-  const line = raw.replace(/^\uFEFF/, '');
-  if (/^\s*Entering Gaussian System\b|^\s*Gaussian\s+(?:03|09|16)(?:\s*:|\s*$)/i.test(line)) return 'gaussian';
-  if (/^\s*(?:\*\s*)?O\s+R\s+C\s+A\s*\*?\s*$|^\s*ORCA\b[^\n]*\bProgram Version\s+\d+\.\d+/i.test(line)) return 'orca';
-  if (/^\s*CP2K\||^\s*CP2K\s+(?:version|VERSION|[0-9]+\.[0-9]+)\b/.test(line)) return 'cp2k';
-  return null;
-}
-
 /** Admission of damaged text requires a native identity and complete scientific
  * evidence before the first NUL. Binary/UTF-16 and header-only content
  * still fail; the scientific reader must independently validate every atom. */
 function completeOutputPrefix(text: string, software: SourceSoftware): boolean {
-  const lines=text.split('\n');
+  const rows = text.split('\n').map(text => ({ text }));
+  const lines: string[] = [];
+  visitOutputBody(rows, line => lines.push(line.text));
   // Early native failures can precede every geometry. A publisher citation or
   // a header followed by binary bytes is insufficient; retain only an explicit
   // engine termination record in the complete text prefix.
-  const completeLines = text.endsWith('\n') ? lines : lines.slice(0, -1);
-  if (completeLines.some(line => software === 'gaussian'
-    ? /^\s*Error termination (?:via Lnk1e|request processed by link)\b/i.test(line)
+  if (lines.some(line => software === 'gaussian'
+    ? gaussianErrorTermination.test(line) && /^\s*Error termination (?:via Lnk1e|request processed by link)\b/i.test(line)
     : /^\s*ORCA finished by error termination\b/i.test(line))) return true;
   // MiniPrint IRC may omit every output geometry. A closed plain-atom input
   // echo plus a separate executed scientific record can still identify text;
@@ -40,14 +35,14 @@ function completeOutputPrefix(text: string, software: SourceSoftware): boolean {
     let atoms = 0, open = false, complete = false;
     const numeric = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[EeDd][+-]?\\d+)?';
     const row = new RegExp(`^[A-Z][a-z]?\\s+${numeric}\\s+${numeric}\\s+${numeric}\\s*$`);
-    for (const line of completeLines) {
-      const echo = line.match(/^\s*\|\s*\d+>\s?(.*)$/)?.[1].trim();
+    for (const line of rows) {
+      const echo = orcaOutputEcho(line.text)?.split('#', 1)[0].trim();
       if (echo === undefined) continue;
       if (/^\*\s*xyz\s+[+-]?\d+\s+[1-9]\d*\s*$/i.test(echo)) { open = true; atoms = 0; }
       else if (open && echo === '*') { complete ||= atoms > 0; open = false; }
       else if (open && echo && !/^#/.test(echo)) { if (row.test(echo)) atoms++; else open = false; }
     }
-    if (complete && completeLines.some(line => /^\s*(?:FINAL SINGLE POINT ENERGY\s+[+-]?(?:\d|\.)|Intrinsic Reaction Coordinate Calculation\s*$|SCF NOT CONVERGED\b)/i.test(line))) return true;
+    if (complete && lines.some(line => /^\s*(?:FINAL SINGLE POINT ENERGY\s+[+-]?(?:\d|\.)|Intrinsic Reaction Coordinate Calculation\s*$|SCF NOT CONVERGED\b)/i.test(line))) return true;
   }
   for(let index=0;index<lines.length;index++){
     if(!(software==='gaussian'?/\b(?:Standard|Input|Z-Matrix) orientation:/.test(lines[index]):/CARTESIAN COORDINATES\s*\((?:ANGSTROEM|ANGSTROM)\)/i.test(lines[index])))continue;
@@ -60,7 +55,7 @@ function completeOutputPrefix(text: string, software: SourceSoftware): boolean {
 }
 
 /** Format and producer are independent: Molden/FCHK syntax does not prove its producer. */
-export function recognizeSourceText(raw: string): SourceRecognition {
+export function recognizeSourceText(raw: string, final = true): SourceRecognition {
   const text = raw.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   // FCHK format does not prove a producer. Its declared H records may contain
   // any bytes, NUL included: only the fixed-record reader can validate those
@@ -80,13 +75,19 @@ export function recognizeSourceText(raw: string): SourceRecognition {
     return { format: 'unknown', software: 'unknown', status: 'unknown', evidence: [], message: '检测到二进制或UTF-16内容，未作为科学文本解析。' };
   }
   const lines = text.split('\n'), evidence: SourceRecognition['evidence'] = [];
-  const software = new Set<Exclude<SourceSoftware, 'unknown'>>();
-  for (let index = 0; index < lines.length; index++) {
-    const identity = outputSoftwareOnLine(lines[index]);
-    if (identity) { software.add(identity); if (evidence.length < 32) evidence.push({ kind: `${identity}-header`, line: index + 1 }); }
-  }
+  if (!final) lines.pop();
+  const software = new Set<OutputSoftware>();
+  const body: { text: string; number: number }[] = [];
+  visitOutputBody(lines.map((text, index) => ({ text, number: index + 1 })), line => {
+    body.push(line);
+    const identity = outputSoftwareOnLine(line.text);
+    if (identity) {
+      software.add(identity);
+      if (evidence.length < 32) evidence.push({ kind: `${identity}-header`, line: line.number });
+    }
+  }, final);
   let format: SourceFormat = 'unknown', formatLine = 1;
-  const markerLine = (pattern: RegExp) => lines.findIndex(line => pattern.test(line)) + 1;
+  const markerLine = (pattern: RegExp) => body.find(line => pattern.test(line.text))?.number ?? 0;
   const moldenLine = markerLine(/^\s*\[Molden Format\]\s*$/i), hessLine = markerLine(/^\s*\$orca_hessian_file\s*$/i);
   const cifLine = markerLine(/^\s*data_\S*/i);
   // A producer/version inside CIF audit metadata does not change its role to
@@ -115,15 +116,38 @@ export function recognizeSourceText(raw: string): SourceRecognition {
 
 export async function recognizeResultSource(file: ResultInputFile, options: ResultReadOptions = {}): Promise<SourceRecognition> {
   assertResultNotAborted(options.signal);
-  const decoder = new TextDecoder(); let text = '', result: SourceRecognition = { format: 'unknown', software: 'unknown', status: 'unknown', evidence: [] };
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const scanned: Uint8Array[] = [];
+  let text = '', result: SourceRecognition = { format: 'unknown', software: 'unknown', status: 'unknown', evidence: [] };
   for (let start = 0; start < file.size; start += SOURCE_RECOGNITION_BYTES) {
     assertResultNotAborted(options.signal);
     const end = Math.min(file.size, start + SOURCE_RECOGNITION_BYTES);
     const bytes = await file.readRange(start, end, options.signal);
     assertResultNotAborted(options.signal);
     if (bytes.length !== end - start) throw new Error('识别来源时文件长度发生变化。');
-    text += decoder.decode(bytes, { stream: end < file.size });
-    result = recognizeSourceText(text);
+    scanned.push(bytes);
+    try { text += decoder.decode(bytes, { stream: end < file.size }); }
+    catch {
+      // Decode only complete physical lines up to the first bad record. Keep
+      // their byte order and never use a later header or footer for admission.
+      const joined = new Uint8Array(end);
+      let offset = 0;
+      for (const chunk of scanned) { joined.set(chunk, offset); offset += chunk.length; }
+      const prefixDecoder = new TextDecoder('utf-8', { fatal: true });
+      const prefix: string[] = [];
+      let lineStart = 0;
+      for (let index = 0; index < joined.length; index++) {
+        if (joined[index] === 0) break;
+        if (joined[index] !== 10) continue;
+        try { prefix.push(prefixDecoder.decode(joined.subarray(lineStart, index + 1))); }
+        catch { break; }
+        lineStart = index + 1;
+      }
+      const recognized = recognizeSourceText(prefix.join('') + '\0');
+      return { ...recognized, message: recognized.status === 'recognized'
+        ? '来源含非法UTF-8损坏；仅读取其前可靠完整文本。' : '来源不是具有可靠科学前缀的UTF-8输出。' };
+    }
+    result = recognizeSourceText(text, end === file.size);
     if (result.status !== 'unknown' || text.includes('\0')) return result;
     options.onProgress?.(end, file.size);
     await new Promise<void>(resolve => setTimeout(resolve, 0));

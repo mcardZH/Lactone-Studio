@@ -52,12 +52,25 @@ export async function createTwoDProvenanceFiles(input:CreateTwoDProvenanceFilesI
   const format=source.format??commit.source.format;
   if(!['cdx','cdxml','mol','ket'].includes(format)||source.format&&source.format!==commit.source.format)fail('提交与原始格式不一致。');
   requireText(commit.selectedComponentId,'所选组分ID');requireText(commit.originalKet,'原始候选KET');requireText(commit.finalKet,'最终KET');
+  const selectedComponentIds=commit.selectedComponentIds===undefined?undefined:copyJSON(commit.selectedComponentIds,'组分列表') as string[];
+  if(selectedComponentIds&&(!Array.isArray(selectedComponentIds)||!selectedComponentIds.length||selectedComponentIds.some(id=>typeof id!=='string'||!id.trim())||new Set(selectedComponentIds).size!==selectedComponentIds.length))fail('组分列表须包含唯一、非空的来源ID。');
+  const assembly=commit.assembly===undefined?undefined:copyJSON(commit.assembly,'组装布局') as NonNullable<TwoDCommitData['assembly']>;
+  if(assembly&&(assembly.schema!=='es-2d-assembly/v1'||!Number.isFinite(assembly.layoutScale)||assembly.layoutScale<=0||!Array.isArray(assembly.components)||!assembly.components.length))fail('组装布局结构或尺度无效。');
   if(typeof commit.edited!=='boolean')fail('缺少明确的编辑标记。');
   const graph=copyJSON(commit.finalGraph,'最终二维图') as TwoDCommitData['finalGraph'];
   if(!Array.isArray(graph.atoms)||!Array.isArray(graph.bonds))fail('最终二维图缺少明确原子和连接列表。');
   const atomIds=new Set<string>();
   const atomMapping=graph.atoms.map(atom=>{const atomId=requireText(atom.id,'稳定原子ID');if(atomIds.has(atomId))fail('最终二维图存在重复稳定原子ID。');atomIds.add(atomId);const sourceAtomKey=(atom as typeof atom&{sourceAtomKey?:unknown}).sourceAtomKey;if(sourceAtomKey!==undefined)requireText(sourceAtomKey,'原始原子键');return{atomId,...(sourceAtomKey!==undefined?{sourceAtomKey}:{}),...(atom.sourceIndex!==undefined?{sourceIndex:atom.sourceIndex}:{})};});
   if(!atomIds.size)fail('最终二维图不能为空。');
+  if(assembly){
+    const ids=new Set<string>(),members=new Set<string>();
+    for(const part of assembly.components){
+      requireText(part.id,'组装组分ID');requireText(part.label,'组装组分名称');
+      if(ids.has(part.id)||!Array.isArray(part.atomIds)||!part.atomIds.length)fail('组装组分重复或没有原子。');ids.add(part.id);
+      for(const id of part.atomIds){if(!atomIds.has(id)||members.has(id))fail('组装原子对应遗漏、重复或不属于最终图。');members.add(id);}
+    }
+    if(members.size!==atomIds.size||!selectedComponentIds||ids.size!==selectedComponentIds.length||selectedComponentIds.some(id=>!ids.has(id)))fail('组装范围与最终二维图或所选组分不一致。');
+  }
   for(const bond of graph.bonds)if(!Number.isSafeInteger(bond.a)||!Number.isSafeInteger(bond.b)||bond.a<0||bond.b<0||bond.a>=graph.atoms.length||bond.b>=graph.atoms.length)fail('最终二维图连接端点失效。');
   const recognition=copyJSON(input.recognition,'识别记录') as TwoDRecognitionProvenance|undefined;
   const engines=copyJSON(input.engines,'处理引擎') as CreateTwoDProvenanceFilesInput['engines'];
@@ -83,7 +96,7 @@ export async function createTwoDProvenanceFiles(input:CreateTwoDProvenanceFilesI
   }
   const sourceRecord={id:source.id,format,customerName:source.name??commit.source.name,
     sourceKind:recognition?'image-recognition':format==='ket'&&!source.name&&!commit.source.name?'draw':'file-import',payloadRole:'original'};
-  const manifestBase={schema:'ester-two-d-provenance',version:1,source:sourceRecord,selectedComponentId:commit.selectedComponentId,edited:commit.edited,
+  const manifestBase={schema:'ester-two-d-provenance',version:1,source:sourceRecord,selectedComponentId:commit.selectedComponentId,...(selectedComponentIds?{selectedComponentIds}:{}),...(assembly?{assembly}:{}),edited:commit.edited,
     issues:copyJSON(commit.issues,'来源问题'),atomMapping,engines,recognition:recognition?{...recognition,...(recognition.crop?{crop:{...recognition.crop,coordinateSpace:'original-image-pixels'}}:{})}:undefined,
     relationships:{originalRole:'original',initialKetRole:'initial-ket',finalKetRole:'final-ket',finalGraphRole:'final-graph',...(recognition?{recognitionImageRoles:payloads.filter(isImage).map(artifact=>artifact.role)}:{})}};
   // Everything above is a synchronous copy. Caller edits after this point can

@@ -1,6 +1,7 @@
 import { atomicNumber, elementSymbol } from '../core/elements';
 import {gaussianMethodEnergyKind,gaussianRouteTokens,normalizeGaussianRouteEcho} from '../core/gaussian-source';
-import { GaussianOutputArchive,GaussianOutputTitle } from './gaussian-output-archive';
+import { GaussianOutputSections, gaussianEntry, gaussianErrorTermination, gaussianExplicitLink, gaussianInitialCommand, gaussianJobLink, gaussianNormalTermination, type GaussianOutputSection } from './gaussian-output-archive';
+import { assertOutputSoftware } from './output-sections';
 import { ScientificSnapshotState } from './scientific-snapshot';
 import {
   emptyScientificData, emptyScientificDiagnostics, createNmrCouplingBlock,SCIENTIFIC_NUMBER, scientificNumber,
@@ -138,9 +139,7 @@ export class GaussianScientificParser implements ScientificParser {
   private calculationEpoch = 0;
   private block: GeometryBlock | null = null;
   private orientation = '';
-  private routeCapture = false;
-  private outputArchive = new GaussianOutputArchive();
-  private outputTitle = new GaussianOutputTitle<ScientificLine>();
+  private outputSections = new GaussianOutputSections<ScientificLine>();
   private terminated = false;
   private failed = false;
   private pendingNativeTermination: { sourceLine:number; text:string } | null = null;
@@ -152,6 +151,7 @@ export class GaussianScientificParser implements ScientificParser {
   private scfChannel: 'restricted' | 'unrestricted' | 'restricted-open' | 'unknown' = 'unknown';
   private targetSource: { sourceLine: number; frameIndex: number;rawValue?:string } | null = null;
   private routeSourceLine = 0;
+  private routeTasks: ScientificTask[] = ['unknown'];
   private selectedFrequencyState: { state: ExcitedState; sourceLine: number } | null = null;
   private optimizationGeometrySourceLine: number | null = null;
   private messages = new Set<string>();
@@ -443,11 +443,12 @@ export class GaussianScientificParser implements ScientificParser {
     if(atomCounts){for(const [i,label] of ['NAtoms','NActive','NUniq'].entries()){const field=this.field(this.data.bsse,this.cpPrefix()+'native-'+label.toLowerCase(),this.cpLabel()+' · '+label+' (native center count, not asserted real nuclei)',Number(atomCounts[i+1]),line.number,'center',atomCounts[i+1]);if(field)field.origin='program-adopted';}if(this.cpNonfull())return true;}
     return false;
   }
-  private configure(): void {
+  private configureRoute(printedRoute: string): void {
     // Gaussian wraps route text at physical columns, including inside keywords.
     // Only known lexical tokens are rejoined; scientific source spelling is retained.
-    this.data.route = normalizeGaussianRouteEcho(this.data.printedRoute??this.data.route).replace(new RegExp(`\\b${'EmpiricalDispersion'.split('').join('\\s*')}\\b`, 'gi'), 'EmpiricalDispersion');
-    this.data.tasks = gaussianScientificTasks(this.data.route); this.target = energyTarget(this.data.route);
+    this.data.route = normalizeGaussianRouteEcho(printedRoute).replace(new RegExp(`\\b${'EmpiricalDispersion'.split('').join('\\s*')}\\b`, 'gi'), 'EmpiricalDispersion');
+    this.routeTasks = gaussianScientificTasks(this.data.route);
+    this.data.tasks = [...this.routeTasks]; this.target = energyTarget(this.data.route);
   }
   private task(task: ScientificTask): void {
     if (!this.data.tasks.includes(task)) this.data.tasks.push(task);
@@ -586,7 +587,7 @@ export class GaussianScientificParser implements ScientificParser {
     }
     const route = this.data.route, printedRoute = this.data.printedRoute, version = this.data.version;
     this.data = emptyScientificData();
-    if (!newJob) { this.data.route = route; this.data.printedRoute = printedRoute; this.data.version = version; this.configure(); }
+    if (!newJob) { this.data.route = route; this.data.printedRoute = printedRoute; this.data.version = version; this.data.tasks = [...this.routeTasks]; }
     this.frames = []; this.current = null; this.inventory = null; this.messages.clear();
     this.lastOrientations.clear();
     this.calculationEpoch = 0;
@@ -596,7 +597,7 @@ export class GaussianScientificParser implements ScientificParser {
     this.ordinaryIrc=false;this.ircPathLimited=false;this.ircBranch=null;this.ircSummary=null;this.snapshotIrcSummaryLine=null;this.ircSummaryReference=undefined;
     this.printedModeIndices = null; this.orientation = '';
     this.scfChannel = 'unknown'; this.targetSource = null; this.scfAttemptFailed = false;
-    this.selectedFrequencyState=null;this.optimizationGeometrySourceLine=null;if(newJob)this.routeSourceLine=0;
+    this.selectedFrequencyState=null;this.optimizationGeometrySourceLine=null;if(newJob){this.routeSourceLine=0;this.routeTasks=['unknown'];}
     this.segmentObserved = 0; this.segmentRetained = 0; this.segmentOmitted = 0; this.firstOmittedLine = 0; this.lastOmittedLine = 0;
     this.segmentMetadataObserved=0;this.segmentMetadataRetained=0;this.segmentMetadataOmitted=0;this.firstOmittedMetadataLine=0;this.lastOmittedMetadataLine=0;
     this.frequencyScale = undefined;
@@ -604,7 +605,7 @@ export class GaussianScientificParser implements ScientificParser {
     this.thermalTable = false; this.dipoleNext = false;
     this.coupling=null;this.couplingPartial=false;this.isotopeSection=false;this.isotopeColumns=[];this.isotopes.clear();this.invalidIsotopes.clear();
     this.cpComponent=null;this.cpOrdinal=0;this.cpFinished=false;this.cpCandidateFrame=null;this.cpFullFrame=null;this.cpInputEcho=false;this.cpInputOrdinal=0;this.cpInputAtoms.clear();this.cpStates.clear();this.cpOrbitalTokens.clear();this.shieldingHeader=null;this.shieldingTensor=null;this.frozenUnitsLine=null;this.solventTableLine=null;this.pcmInput=false;
-    if (newJob) { this.jobIndex++; this.segmentIndex = 0; this.charge = null; this.multiplicity = null; this.expectedAtoms = null; this.target = 'unknown'; this.routeCapture = false; }
+    if (newJob) { this.jobIndex++; this.segmentIndex = 0; this.charge = null; this.multiplicity = null; this.expectedAtoms = null; this.target = 'unknown'; }
   }
 
   private acceptGeometry(): void {
@@ -881,13 +882,42 @@ export class GaussianScientificParser implements ScientificParser {
   consume(line: ScientificLine): void {
     if (this.finished) throw new Error('Gaussian读取器已经finish。');
     this.snapshotState?.observe(line);
-    const filtered=this.outputTitle.consume(line);
-    if(filtered.title?.length){
-      const value=filtered.title.map(row=>row.text).join('\n'),sourceLine=filtered.title[0].number;
-      if(this.metadata(value.length,sourceLine))this.data.summary.push({key:'input-title',label:'输入标题（原文回显）',value,sourceLine,frameIndex:null});
-    }
-    for(const row of filtered.lines)this.consumeOutput(row);
+    this.outputSections.consume(line, this.consumeSection);
   }
+
+  private consumeSection = (section: GaussianOutputSection<ScientificLine>): void => {
+    const { line } = section;
+    switch (section.kind) {
+      case 'body':
+        this.consumeOutput(line);
+        return;
+      case 'route-start':
+        if (this.data.route || this.frames.length) { this.archive(true); this.runVersion = null; this.runVersionConflict = null; }
+        this.lastLine = line.number;
+        return;
+      case 'route':
+        this.lastLine = section.end.number;
+        if (section.text !== null) {
+          this.data.printedRoute = section.text;
+          this.routeSourceLine = line.number;
+          this.configureRoute(section.text);
+        } else {
+          const message = `Gaussian 路由回显未完整闭合（源行${line.number}–${section.end.number}）；可浏览已读取结构，继承计算设置前请核对原文件。`;
+          this.diagnostics().fields.push({ field: 'route', status: 'partial', sourceLine: line.number, message });
+          this.notice(message);
+        }
+        return;
+      case 'title':
+      case 'title-limited':
+        if (section.text !== null) {
+          if (this.metadata(section.text.length, line.number)) this.data.summary.push({ key: 'input-title', label: '输入标题（原文回显）', value: section.text, sourceLine: line.number, frameIndex: null });
+        } else {
+          const message = `Gaussian 标题候选从源行${line.number}起超出保留范围；未作为正文读取。`;
+          this.diagnostics().fields.push({ field: 'title', status: 'partial', sourceLine: line.number, message });
+          this.notice(message);
+        }
+    }
+  };
 
   private consumeOutput(line:ScientificLine):void {
     if (this.finished) throw new Error('Gaussian读取器已经finish。');
@@ -897,11 +927,11 @@ export class GaussianScientificParser implements ScientificParser {
     if (this.current) this.snapshotState?.cache.invalidateSpine(this.current);
     const text = line.text;
     this.lastLine = line.number;
-    if (this.outputArchive.consume(text)) return;
-    const nativeEntry=/^\s*Entering Gaussian System\b/.test(text);
-    if(/^\s*Link1:.*Proceeding to internal job step/.test(text)){this.archive(true);this.applyRunVersion();this.seenIdentity=true;return;}
-    if(/^\s*--Link1--\s*$/.test(text)){this.archive(true);this.runVersion=null;this.runVersionConflict=null;this.seenIdentity=true;return;}
-    if(nativeEntry||/^\s*Initial command\s*:/i.test(text)){
+    assertOutputSoftware(text, 'gaussian');
+    const nativeEntry = gaussianEntry.test(text);
+    if(gaussianJobLink.test(text)){this.archive(true);this.applyRunVersion();this.seenIdentity=true;return;}
+    if(gaussianExplicitLink.test(text)){this.archive(true);this.runVersion=null;this.runVersionConflict=null;this.seenIdentity=true;return;}
+    if(nativeEntry || gaussianInitialCommand.test(text)){
       if(this.frames.length||this.data.route||this.data.version||this.failed||this.terminated)this.archive(true);
       this.runVersion=null;this.runVersionConflict=null;this.seenIdentity=true;return;
     }
@@ -919,22 +949,10 @@ export class GaussianScientificParser implements ScientificParser {
     }
     // A truncated orientation header must not swallow a subsequent native
     // termination marker. Discard only that open block, then read the marker.
-    if(this.block&&/^\s*(?:Error termination\b|Normal termination of Gaussian\b|(?:Standard|Input|Z-Matrix) orientation:)/.test(text)){
+    if(this.block && (gaussianErrorTermination.test(text) || gaussianNormalTermination.test(text) || /^\s*(?:Standard|Input|Z-Matrix) orientation:/.test(text))){
       this.block.invalid=true;this.acceptGeometry();
     }
     if (this.geometryLine(line)) return;
-    if (/^\s*#[pnt]?(?:\s|$)/i.test(text) && !/^\s*#\s+OF\b/i.test(text)) {
-      if (this.data.route || this.frames.length) {this.archive(true);this.runVersion=null;this.runVersionConflict=null;}
-      this.data.route = text.trim(); this.data.printedRoute = text.trim(); this.routeSourceLine=line.number; this.routeCapture = true; this.configure(); return;
-    }
-    if (this.routeCapture) {
-      if (!text.trim() || separator.test(text)||/^\s*(?:Error termination\b|Normal termination of Gaussian\b|QPErr\s+---)/.test(text)) { this.routeCapture = false; this.configure(); }
-      else {
-        const printedRoute=`${this.data.printedRoute}\n${text.trim()}`;
-        this.data.printedRoute=printedRoute;
-this.configure(); return;
-      }
-    }
     if(this.readCounterpoise(line))return;
     this.readPrintedSettings(line);
     const basis=text.match(/^\s*(\d+) basis functions\b/i);
@@ -1137,9 +1155,9 @@ this.configure(); return;
     // and the immediately following native dump before declaring failure.
     if(this.current&&/^\s*Error:\s+(?:software termination|hangup)\s*$/i.test(text))this.pendingNativeTermination={sourceLine:line.number,text:text.trim()};
     if(/^\s*QPErr\s+---/i.test(text))this.error('input-syntax',line);
-    if (/^\s*(?:Error termination\b|Convergence failure\b|Optimization stopped\b|Number of steps exceeded\b)/i.test(text)) {
+    if (gaussianErrorTermination.test(text) || /^\s*(?:Convergence failure\b|Optimization stopped\b|Number of steps exceeded\b)/i.test(text)) {
       this.failed = true; this.messages.add(text.trim());
-      const nativeTermination=/^\s*Error termination\b/i.test(text);
+      const nativeTermination = gaussianErrorTermination.test(text);
       this.error(nativeTermination?'native-termination':/^\s*Convergence failure\b/i.test(text)?'scf-convergence':'optimization-convergence',line);
       if(nativeTermination)this.diagnostics().termination={status:'error',sourceLine:line.number,raw:text.trim()};
       if(/^\s*Convergence failure\b/i.test(text)){this.scfAttemptFailed=true;this.scfDiagnostic('not-converged',line);}
@@ -1148,7 +1166,7 @@ this.configure(); return;
         this.diagnostics().tasks.push({task,status:'not-converged',sourceLine:line.number,frameIndex:this.current?.index??null,raw:text.trim()});
       }
     }
-    if (/^\s*Normal termination of Gaussian\b/.test(text)) { this.flushTables(); this.terminated = true;
+    if (gaussianNormalTermination.test(text)) { this.flushTables(); this.terminated = true;
       // Contradictory native termination remains explicit error evidence.
       if(this.diagnostics().termination.status!=='error')this.diagnostics().termination={status:'normal',sourceLine:line.number,raw:text.trim()};return; }
     const dispersion=text.match(new RegExp(`^\\s*R6Disp:\\s*(Grimme-D[23](?:\\(BJ\\))?)\\s+Dispersion energy\\s*=\\s*(${N})\\s+Hartrees?\\.?\\s*$`,'i'));
@@ -1374,7 +1392,7 @@ this.configure(); return;
       this.shieldingTensor?.sourceLine, this.coupling?.line.number, this.cycle?.sourceLine,
       this.excited?.sourceLine, this.orbitalSet?.alpha?.sourceLine, this.orbitalSet?.beta?.sourceLine,
       this.modeBlock?.modes[0]?.sourceLine, this.pendingFinalReprint?.line,this.snapshotIrcSummaryLine??undefined,
-      ...(this.routeCapture ? [this.routeSourceLine] : [])].filter((line): line is number => typeof line === 'number' && line > 0);
+      this.outputSections.openRoute?.number].filter((line): line is number => typeof line === 'number' && line > 0);
     const beforeLine = opened.length ? Math.min(...opened) : undefined;
     // A final reprint can withhold a prefix that ends before the already
     // observed footer. Publish completion only with its normal-termination
@@ -1386,7 +1404,7 @@ this.configure(); return;
     const active: ScientificJob | null = !this.finished && hasEvidence ? {
       engine: 'gaussian', jobIndex: this.jobIndex, segmentIndex: this.segmentIndex, charge: this.charge, multiplicity: this.multiplicity,
       status: this.failed ? 'failed' : this.terminated && publishedTermination && !this.ircPathLimited && !this.damaged && !this.unsupportedGeometry && (!needsOpt || this.optimized) ? 'completed' : 'incomplete',
-      frames: this.frames, data: this.routeCapture ? { ...this.data, route: '', printedRoute: '', tasks: [] } : this.data, messages: [...this.messages]
+      frames: this.frames, data: this.data, messages: [...this.messages]
     } : null;
     return this.snapshotState.snapshot(this.jobs, active, this.lastLine, {
       ...(beforeLine === undefined ? {} : { beforeLine }),
@@ -1395,7 +1413,7 @@ this.configure(); return;
     });
   }
   finish(): ScientificJob[] {
-    if (!this.finished) { for(const line of this.outputTitle.finish())this.consumeOutput(line);this.archive(false); this.finished = true; }
+    if (!this.finished) { this.outputSections.finish(this.consumeSection);this.archive(false); this.finished = true; }
     return this.jobs;
   }
 }

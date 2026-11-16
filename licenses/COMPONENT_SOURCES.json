@@ -1,6 +1,6 @@
 {
   "schema": "ester-v201-public-component-sources/v1",
-  "version": "2.0.3",
+  "version": "2.1.1",
   "publicDistributionApproved": false,
   "scope": "Exact component source and notice provision; whole-product native clean rebuild and final release identity are separate",
   "native": {
@@ -27,20 +27,75 @@
     }
   },
   "xtb": {
-    "version": "6.7.0",
-    "sourceIndex": "../third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json",
-    "modification": {
-      "algorithm": "xtb-h-only-initial-cap-v1",
-      "buildId": "5071a886-gnu132-r2-es-hcap-openblas033-v1",
-      "sourceLinkage": "../third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/source-linkage.json",
-      "sourceReceipt": {
-        "path": "../third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/provenance/es-initial-velocity-build.json",
-        "bytes": 13500,
-        "sha256": "cc4a318390ec628f0fc3daebced29e2a7247a7eba3d9b9b649c9a91a44fe713a"
+    "version": "6.8.0",
+    "variants": {
+      "official": {
+        "schema": "sciyue-xtb-engine-identity/v1",
+        "engine": "xtb",
+        "kind": "official-release",
+        "runtimeVariant": "official",
+        "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+        "compiler": null,
+        "toolchainArchiveSha256": null,
+        "scientificPinsSha256": null,
+        "version": "6.8.0",
+        "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+        "archiveSha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+        "buildId": "xtb-v6.8.0-windows-x86_64-openblas-official",
+        "executableSha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+        "sourceReceiptSha256": "e4101f28ae510f49e5298d121149261a7b765bcd614220434254761b66b7d18c",
+        "runtimeMemberDigest": "6adc932cad15ab63d6ce9b89ac8b2a4a0af99b34956a026963ee2586547a6592",
+        "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+        "sha256": "0044b880da3806369eedd912d97c4b307dc471653732bd9303f8ceea0117f7e2"
       },
-      "notice": "xtb/ES-H-INITIAL-VELOCITY.md",
-      "runtimeLibraries": "Unchanged published 2.0.2 OpenBLAS 0.3.33 composition"
-    }
+      "gfn0-stack64": {
+        "schema": "sciyue-xtb-engine-identity/v1",
+        "engine": "xtb",
+        "kind": "pe-stack-derivative",
+        "runtimeVariant": "gfn0-stack64",
+        "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+        "compiler": null,
+        "toolchainArchiveSha256": null,
+        "scientificPinsSha256": null,
+        "version": "6.8.0",
+        "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+        "archiveSha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+        "buildId": "xtb-v6.8.0-official-win64-pe-stack64",
+        "stackReserveBytes": 67108864,
+        "parentExecutableSha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+        "executableSha256": "c30aab875e388f77b04dedb58dd3a746ae7d3ea46b4f9852680925bf64a0eb98",
+        "sourceReceiptSha256": "391cdf82cba8b7035c8685b6cc1cc777dacc537d9b43655152b3c6dbecaa0e4b",
+        "runtimeMemberDigest": "43ba5a270f1e3f67c5eefbb729af578c3a8099191d1b45fbc2848310619dd1fc",
+        "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+        "sha256": "4462ab204bc679fffdd33c097b8039a36881eeb715f2f1257872ce6af251dc4d"
+      },
+      "fire": {
+        "schema": "sciyue-xtb-engine-identity/v1",
+        "engine": "xtb",
+        "kind": "fire-step-limit-rebuild",
+        "runtimeVariant": "fire",
+        "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+        "compiler": {
+          "name": "gfortran",
+          "version": "13.2.0"
+        },
+        "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+        "scientificPinsSha256": "b22f21f13be8933b653d56e65819cab2d271a72e2a2cf68b40c2bfe6c5e2ee7b",
+        "version": "6.8.0",
+        "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+        "buildId": "4b8c987-ester-fire-limit-gnu132-openblas033",
+        "stackReserveBytes": 67108864,
+        "fireStepLimit": "remaining-microcycles-v1",
+        "executableSha256": "f417fad161cfb35c09bf4b681b04b398c95f9597140cd9c1d8d6f2ac319eb666",
+        "sourceReceiptSha256": "78428bd41ee15a452579651896e1f81739a1a586a1c47631047dcb89126996db",
+        "runtimeMemberDigest": "6df29e49f7d3cbc469f614f395d0216444f3a1c27f990869cdcfe80809c3b728",
+        "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+        "sha256": "f786e9dba78ee4987bd65badc4b5607a6d2b41c177155002f13a0398d850a14d"
+      }
+    },
+    "notices": "xtb-current/",
+    "sourceMaterialIndex": "../third-party/corresponding-sources/pes/SOURCE-MATERIALS.json",
+    "historicalNoticeDirectories": "xtb/ and older supplemental sources are retained as historical references; do not identify them as current 6.8 source"
   },
   "electron": {
     "version": "44.7.0",
@@ -120,8 +175,8 @@
   },
   "correspondingSourceIndex": {
     "path": "../third-party/corresponding-source-index.json",
-    "bytes": 388183,
-    "sha256": "bfceddd404b141208a3b565838343b792803d63483894460a54c1ebad6175c7a",
+    "bytes": 388410,
+    "sha256": "fd64c9be17a7197412365df0b48699793017297a127dbeac901846458307d490",
     "schema": "sy-corresponding-sources/v2",
     "componentScope": {
       "sourceAcquiredAndIncluded": "completed",
@@ -171,5 +226,36 @@
         "version": "GCC16.2.0"
       }
     ]
-  }
+  },
+  "preparationStatus": "Proposed material set, not final candidate approval",
+  "pes": {
+    "pythonVersion": "3.12.13",
+    "coreNotices": "pes-core/",
+    "libxtbNotices": "pes-libxtb-6.8.0/",
+    "sourceMaterialIndex": "../third-party/corresponding-sources/pes/SOURCE-MATERIALS.json",
+    "libxtbReplacementInputs": "../third-party/corresponding-sources/pes/libxtb-relink/",
+    "pygsmPatch": "../third-party/corresponding-sources/pes/patches/pygsm-compatibility.patch",
+    "excludedFromNextPublicPayload": "AFIR/pysisyphus exclusive closure",
+    "finalPayloadBindingRequired": true
+  },
+  "fonts": {
+    "DejaVuSans": "fonts/DejaVu-LICENSE.txt",
+    "embeddedAsset": "src/web/results/fonts/DejaVuSans.woff2.txt"
+  },
+  "externalGxtb": {
+    "distributionRole": "external-user-supplied",
+    "bundled": false,
+    "downloadUrl": "https://github.com/grimme-lab/g-xtb/releases",
+    "referenceValidatedRelease": "2.0.1",
+    "runtimeIdentity": "Actual user-selected executable identity/version must be recorded; never infer g-xTB release from host version",
+    "implementationPendingMain": true
+  },
+  "pesCorrespondingSourceIndex": {
+    "path": "../third-party/pes-corresponding-source-index.json",
+    "bytes": 23156,
+    "sha256": "453a5cb0868423d214ddc794fe72051080a0e988491aec18c2a3ce39f41a4f70",
+    "scope": "PES libraries, static dependencies, exact patches and re-link/build materials",
+    "desktopModifiedLibraryAdmission": "pending-actual-candidate-check"
+  },
+  "sourceMaterialLocation": "References to ../third-party/ and ../scripts/ resolve in companion Ester-Studio-v2.1.1-source-code.zip; these are not bundled portable-local paths."
 }

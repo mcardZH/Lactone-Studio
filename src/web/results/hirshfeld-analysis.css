@@ -7,5 +7,5 @@
 .hirshfeld-resource-record { flex: 1 1 100%; overflow-wrap: anywhere; }
 .hirshfeld-resource-record > output { display: block; margin-top: 5px; }
 .hirshfeld-target-selection { display: grid; flex: 1 1 100%; min-width: 0; gap: 4px; }
-.hirshfeld-target-selection .interactive-selection-actions { padding-inline-start: calc(4em + 6px); }
-.hirshfeld-target-summary { display: block; }
+.hirshfeld-target-selection>.interactive-selection-field { padding:8px 10px;border:1px solid var(--ui-surface-border);border-radius:var(--ui-subcard-radius);background:#fff; }
+.hirshfeld-target-summary { display:block;color:var(--ui-note-ink,#5a707a); }

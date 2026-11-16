@@ -63,6 +63,22 @@ flowchart LR
 
 ---
 
+### 客户端连接方式（设置 → AI 协作 (MCP)）
+- 在 Lactone Studio「全局设置 → AI 协作 (MCP)」页面查看服务状态、启用/停用 MCP 服务、查看/复制/重置连接密钥（Bearer Token），并支持 **HTTP 协议（推荐）** 与 **Stdio 协议** 两种连接模式一键复制客户端配置：
+  1. **HTTP 协议（标准 MCP Streamable HTTP / Legacy SSE，默认推荐）**：
+     - 主进程 HTTP 服务直接支持标准 **MCP Streamable HTTP**（`POST /mcp`、`POST /`、`GET /mcp`、`DELETE /mcp`）以及兼容旧版的 **MCP HTTP+SSE**（`GET /sse`、`POST /messages`）；
+     - 鉴权方式支持 **`Authorization: Bearer <token>` 请求头**、`X-MCP-Token: <token>` 请求头，或直接拼接在 URL 上的 **`?token=<token>` 查询参数**（适配不支持自定义 Header 的客户端）；
+     - 端口号与连接密钥持久化保存在用户目录 `mcp-preferences.json`（权限 `0o600`）中，应用重启后自动复用相同端口与密钥（若端口被占用则自动回退至随机空闲端口），也可在界面点击「重置密钥」立即轮换。
+  2. **Stdio 协议（免配置密钥）**：
+     - 打包版启动命令为应用自身可执行文件 + `ELECTRON_RUN_AS_NODE=1` + `Resources/app/desktop/mcp/stdio-server.cjs`，无需另装 Node.js；开发版为 `node <repo>/desktop/mcp/stdio-server.cjs`。两者均自动注入 `ESTER_MCP_SESSION_FILE` 读取会话端口与密钥。
+  3. **三类主流客户端一键复制配置**（支持在「HTTP 协议」与「Stdio 协议」标签页之间切换）：
+     - **通用 `mcpServers` JSON**：Antigravity / Claude Desktop / Cursor / Cherry Studio；
+     - **Claude Code**：`claude mcp add --transport http lactone-studio ...` 或 `claude mcp add lactone-studio ...`；
+     - **Codex**：`~/.codex/config.toml` 中的 `[mcp_servers.lactone-studio]`。
+- 生成逻辑见 `desktop/mcp/connection-config.cjs`。
+
+---
+
 ## 3. 核心人机同屏交互 6 步闭环
 
 1. **步骤 1（窗口就绪与文件导入）**：
@@ -127,6 +143,7 @@ flowchart LR
 | `ester_run_local_xtb` | `{ documentId?: string, calculation: 'singlepoint' \| 'optimize' \| 'conformer-search', method?: 'gfn2' \| 'gfn0' \| 'gfnff', solvent?: string, maxSteps?: number }` | 在前端触发本机 `xTB` 单点能、几何优化或可旋转键构象搜索。前端实时播放优化帧轨迹与能量收敛过程，完成后返回收敛结构、能量与 Wiberg 键级。 | `desktop/xtb-host.cjs`、`desktop/conformer-sampling-host.cjs` |
 | `ester_submit_task` | `{ documentId?: string, mode?: 'auto-submit' \| 'open-dialog', environmentId?: string, taskName?: string, cores?: number, memoryGB?: number }` | 将当前配置好的 Gaussian / ORCA 任务提交至「任务中心」（`open-dialog` 模式在前端弹出预填好的提交窗口供用户点确认；`auto-submit` 模式直接提交至指定的本地或远程 SSH/Slurm 环境并在前端刷新任务中心）。返回 `taskId` 与运行状态。 | `desktop/task-system/host.cjs`、`useTaskWorkspace.tsx` |
 | `ester_task_manage` | `{ action: 'list-tasks' \| 'task-detail' \| 'read-log' \| 'stop-task' \| 'list-environments', taskId?: string, tailLines?: number }` | 查询「任务中心」中的任务列表、实时运行状态（排队/运行中/已完成/失败）、SCF 能量与优化步数监控、读取输出日志尾部，或停止正在运行的任务。 | `desktop/task-system/host.cjs` |
+| `ester_environment_manage` | `{ action: 'list' \| 'get' \| 'create' \| 'update' \| 'delete' \| 'check' \| 'trust-host-key' \| 'browse', environmentId?: string, expectedRevision?: number, environment?: { displayName?, mode?: 'local' \| 'wsl' \| 'ssh' \| 'slurm', engineId?, host?, port?, user?, distribution?, executable?, workingRoot?, partition?, account?, qos?, timeLimit?, slurmMemoryPolicy?, initialization?, calculationTemplate?, submitCommandTemplate?, authentication?, privateKeyPath? }, secret?: { password?, privateKeyPassphrase?, remember? }, challengeId?, fingerprint?, browsePurpose?, browsePath?, confirm?: boolean, openTaskCenter?: boolean }` | 配置「任务中心」执行环境（本机 / WSL2 / SSH / SSH+Slurm）：列出与读取完整配置、按字段增量创建/修改（沿用环境设置对话框相同的默认值与校验）、检测连接/入口/软件版本（SSH 首次连接返回主机指纹挑战）、信任指纹与删除（须 `confirm: true`）、浏览本机/远程目录定位可执行文件。密码仅作单次凭据传给主进程（`remember: true` 存入系统凭据库），任何返回值不回显。任务中心界面每 2 秒刷新即时同步。 | `desktop/task-system/host.cjs` (`environment.*`)、`src/web/mcp/environment-manage.ts`、`src/web/task-system/environment-draft.ts` |
 
 ### 6. 第六类工具：结果可视化分析与数据导出（Analysis & Export Tools）
 | 工具名 | 参数概览 | 返回值与前端同步行为 | 复用底层模块 |

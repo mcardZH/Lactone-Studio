@@ -71,9 +71,9 @@ export default function AdvancedModelingNavigation({ route, onChange, disabled =
         </section>;
       })}
     </div> : !route.task ? <WorkflowContentCard title={categoryLabel} heading={false}>
-      {route.category==='geometry'?[...new Set(geometryTransformTasks.map(task=>task.group))].map(group=><SoftwareChooser key={group}
+      {route.category==='geometry'?<div className="software-choice-collection workflow-choice-region">{[...new Set(geometryTransformTasks.map(task=>task.group))].map(group=><SoftwareChooser key={group} layoutScope="parent"
         choices={choices.filter(choice=>geometryTransformTasks.find(task=>task.id===choice.id)?.group===group)} title={group} description="" ariaLabel={group} testId="advanced-modeling-task-group" disabled={disabled}
-        onChoose={task=>onChange({category:'geometry',task:task as GeometryTransformTask})}/>):<SoftwareChooser choices={choices} title={categoryLabel} description="" ariaLabel={`${categoryLabel}任务`} testId="advanced-modeling-tasks"
+        onChoose={task=>onChange({category:'geometry',task:task as GeometryTransformTask})}/>)}</div>:<SoftwareChooser choices={choices} title={categoryLabel} description="" ariaLabel={`${categoryLabel}任务`} testId="advanced-modeling-tasks"
         disabled={disabled} onChoose={task => onChange(route.category === 'periodic'
           ? { category: 'periodic', task: task as PeriodicModelingTask }
           : { category: 'geometry', task: task as GeometryTransformTask })}/>}

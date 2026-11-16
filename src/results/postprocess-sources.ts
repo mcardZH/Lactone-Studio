@@ -1,21 +1,26 @@
 import type { Structure, Vector3 } from '../core/types';
 import { canonicalBasis } from '../core/catalog';
 import { normalizedFchkNumber } from '../core/fchk-reader';
+import { readFchkStructure } from '../core/file-import';
 import { gaussianRouteTokens } from '../core/gaussian-source';
 import { getOrcaMethods, ORCA_BASES } from '../core/orca/catalog';
-import { orcaSourceKeywords, parseOrcaInputSource } from '../core/orca/input-source';
+import { orcaSourceKeywords, orcaSourceLine, parseOrcaInputSource } from '../core/orca/input-source';
 import { superposeViewAtoms, type ViewRigidTransform } from '../modeling/view-superposition';
 import { assertResultNotAborted, type ResultDiagnostic, type ResultInputFile, type ResultReadOptions, type TrajectoryResult } from './contracts';
-import { appendGaussianRouteSummary, readFchkScientificResult } from './fchk-scientific-reader';
-import { streamFchkRecords } from '../core/fchk-records';
+import { appendGaussianRouteSummary, readFchkSavedResult } from './fchk-scientific-reader';
+import { fchkWavefunctionBlocker } from './fchk-wavefunction-capability';
+import { streamFchkRecords, type FchkFieldDiagnostic } from '../core/fchk-records';
 import type { WavefunctionMetadata } from './orbital-contracts';
-import { outputLines } from './optimization-reader';
+import { gaussianOutputLines, outputLines } from './output-lines';
+import { gaussianEntry, gaussianExplicitLink, gaussianJobLink, gaussianNormalTermination } from './gaussian-output-archive';
+import { orcaOutputComment, orcaOutputEcho, orcaNormalTermination } from './output-sections';
 import { emptyScientificData, SCIENTIFIC_NUMBER, scientificNumber, type ScfCycle, type ScientificField, type ScientificLine, type ScientificTask } from './scientific-contracts';
 import { readScientificFileResults, readScientificResults } from './scientific-reader';
 import { readIrcOutputContext, type IrcOutputContext } from './irc-companion-association';
 import { recognizeResultSource, type SourceSoftware } from './source-recognition';
 import { readXyzTrajectory } from './xyz-reader';
 import { readHessScientificResult } from './hess-scientific-reader';
+import { readMoldenStructure } from './molden-structure-reader';
 import type { GeneratedXtbProvenance } from './xtb-generated-source';
 import { bindNmrCouplingSource } from './nmr-coupling-projection';
 import { bindMdStepSources } from './md-observations';
@@ -54,6 +59,7 @@ export interface PostprocessSource {
   /** Explicit final IRC density/population reprint, not the last array element. */
   savedDensityFrameIndex?: number;
   metadata?: WavefunctionMetadata;
+  fchkDiagnostics?: readonly FchkFieldDiagnostic[];
   observations: readonly PrintedObservation[];
   /** Maximum per-coordinate rounding interval established from this source. */
   coordinateRoundingAngstrom: number | null;
@@ -234,10 +240,6 @@ export function enrichSinglePointLine(result: TrajectoryResult, line: Scientific
     if ((match = text.match(/^Your calculation utilizes the (.+?) dispersion correction\.?$/i))) put(dispersionKey(match[1]), 'Dispersion (printed)', match[1]);
     if ((match = text.match(/^Your calculation utilizes the (.+?) solvation module\.?$/i))) put('solvent-model', 'Solvent model (printed)', match[1]);
     if ((match = text.match(/^Solvent:\s*\.{3}\s*(.+)$/i))) put('solvent', 'Solvent (printed)', match[1]);
-    const methodKeywords = orcaSourceKeywords(data.route).filter(keyword => getOrcaMethods('6.1').some(method => method.keywords[0].toLowerCase() === keyword.toLowerCase()));
-    const method = methodKeywords.length === 1 ? methodKeywords[0] : undefined;
-    const echo = text.replace(/^\|\s*\d+>\s*/, '');
-    if (method && echo.startsWith('!') && echo.slice(1).split(/\s+/).some(token => token.toLowerCase() === method.toLowerCase())) put('method', 'Method (input echo)', method);
     if ((match = text.match(new RegExp(String.raw`^Expectation value of <S\*\*2>\s*[:=.]*(?:\s+)(${SCIENTIFIC_NUMBER})`, 'i')))) put('spin-squared', 'S² (printed)', scientificNumber(match[1])!, 'dimensionless');
     if ((match = text.match(new RegExp(String.raw`^Total Dipole Moment\s*:\s*(${SCIENTIFIC_NUMBER})\s+(${SCIENTIFIC_NUMBER})\s+(${SCIENTIFIC_NUMBER})$`, 'i')))) {
       ['x', 'y', 'z'].forEach((axis, index) => put(`dipole-${axis}-au`, `Total dipole ${axis} (printed)`, scientificNumber(match![index + 1])!, 'e·bohr'));
@@ -258,6 +260,13 @@ function appendOrcaEchoSettings(result: TrajectoryResult, line: ScientificLine):
   const text = line.text.replace(/^\s*\|\s*\d+>\s*/, '').trim();
   const put = (key: string, label: string, value: string) => appendOutputSetting(result, line, key, `${label} (input echo)`, value);
   if (text.startsWith('!')) {
+    const data = result.scientific!;
+    const requested = orcaSourceKeywords(data.route).filter(keyword => getOrcaMethods('6.1').some(method => method.keywords[0].toLowerCase() === keyword.toLowerCase()));
+    const method = requested.length === 1 ? requested[0] : undefined;
+    if (method && text.slice(1).split(/\s+/).some(token => token.toLowerCase() === method.toLowerCase())
+      && !data.properties.some(field => field.key === 'method' && field.sourceLine === line.number && field.frameIndex === null)) {
+      data.properties.push({ key: 'method', label: 'Method (input echo)', value: method, sourceLine: line.number, frameIndex: null, origin: 'input-request' });
+    }
     for (const token of orcaSourceKeywords(text)) {
       if (getOrcaMethods('6.1').some(method => method.keywords[0].toLowerCase() === token.toLowerCase()) || /^(?:[RU]?HF|ROHF|BLYP|BP86|PBE|MP2|CCSD(?:\(T\))?)$/i.test(token)) put('method', '方法', token);
       if (ORCA_BASES.some(basis => basis.toLowerCase() === token.toLowerCase()) || /^(?:aug-)?cc-pV[DTQ56]Z(?:-PP)?$|^STO-\dG$|^\d-\d+G[+*()\w,-]*$/i.test(token)) put('basis', '基组', token);
@@ -363,9 +372,13 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
   let detachedStart: number | null = null;
   const detachedRanges: {start:number;end:number}[] = [];
   async function* savedLines(){for await(const record of streamFchkRecords(file,options))if(!record.character)yield{text:record.text,number:record.sourceLine,start:record.start,end:record.end};}
-  for await (const line of kind==='fchk'?savedLines():outputLines(file, options, ()=>undefined)) {
+  const sourceLines = kind === 'fchk' ? savedLines() : kind === 'gaussian-output'
+    ? gaussianOutputLines(file, options, true) : outputLines(file, options, () => undefined);
+  for await (const line of sourceLines) {
     if (bounds && line.number < bounds.start) continue;
     if (bounds && line.number >= bounds.end) break;
+    if (kind === 'orca-output' && orcaOutputComment(line.text)) continue;
+    const echoPayload = kind === 'orca-output' ? orcaOutputEcho(line.text) : undefined;
     if (kind === 'gaussian-output' && /^\s*(?:Standard|Input|Z-Matrix) orientation\s*:/i.test(line.text) || kind === 'orca-output' && /^\s*CARTESIAN COORDINATES\s*\((?:ANGSTROEM|ANGSTROM)\)/i.test(line.text)) detachedStart ??= line.number;
     while (framePosition + 1 < result.frames.length && result.frames[framePosition + 1].sourceLine <= line.number) framePosition++;
     const start = result.frames[framePosition]?.sourceLine ?? -1;
@@ -376,7 +389,7 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
     if (kind === 'gaussian-output' && result.scientific?.tasks.includes('irc')) {
       if (/Summary of reaction path following/i.test(line.text)) ircSummarySeen = true;
       if (ircSummarySeen && frameIndex !== null && /Copying SCF densities to generalized density/i.test(line.text)) savedDensityFrameIndex = frameIndex;
-      if (/Normal termination of Gaussian/i.test(line.text)) normalTermination = true;
+      if (gaussianNormalTermination.test(line.text)) normalTermination = true;
     }
     if (kind.endsWith('-output')) {
       const text = line.text.trim();
@@ -388,8 +401,9 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
       }
       if (settingsActive&&ordinaryResponse) {
         if (kind === 'orca-output') {
-          appendOrcaEchoSettings(result, line);
-          const echo = line.text.replace(/^\s*\|\s*\d+>\s*/, '').trim(), isEcho = /^\s*\|\s*\d+>/.test(line.text) || echo.startsWith('%');
+          const echo = orcaSourceLine(echoPayload ?? line.text).trim();
+          appendOrcaEchoSettings(result, { ...line, text: echo });
+          const isEcho = echoPayload !== undefined || echo.startsWith('%');
           const block = echo.match(/^%(scf|geom|cpcm|method|basis|rel)\b/i)?.[1]?.toLowerCase();
           if (block && isEcho) echoBlock = block;
           if (isEcho && echoBlock) {
@@ -404,9 +418,12 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
           else if (/^COSX GRID GENERATION\s*$/.test(text)) gridContext = 'COSX';
           else if (/^GRIDX\s+\d+/.test(text)) gridContext = `COSX ${text}`;
         }
-        appendPrintedSettings(result, line, gridContext);
+        if (echoPayload === undefined) appendPrintedSettings(result, line, gridContext);
       }
-      if (kind === 'gaussian-output' && /Normal termination of Gaussian/i.test(text) || kind === 'orca-output' && /ORCA TERMINATED NORMALLY/i.test(text)) appendOutputSetting(result, line, 'source-normal-termination', '文件正常结束标记', 'yes');
+      // The primary ORCA parser owns the requested/printed state fields and
+      // conflict diagnostics. Keep the adopted state on the computed geometry.
+      if (echoPayload !== undefined) continue;
+      if (kind === 'gaussian-output' ? gaussianNormalTermination.test(text) : orcaNormalTermination.test(text)) appendOutputSetting(result, line, 'source-normal-termination', '文件正常结束标记', 'yes');
       if(ordinaryResponse)enrichSinglePointLine(result, line, frameIndex);
       if (needsOrcaScf) {
         const trimmed = line.text.trim();
@@ -422,15 +439,6 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
             else finishScfTable();
           } else if (trimmed && !/^-+|^\*/.test(trimmed)) finishScfTable();
           if (/SCF (?:CONVERGED|NOT CONVERGED)/i.test(trimmed)) finishScfTable();
-        }
-      }
-      if (kind === 'orca-output' && isUnifiedPostprocessSource({ tasks: result.scientific?.tasks ?? [], result })) {
-        const explicitState = line.text.replace(/^\s*\|\s*\d+>\s*/, '').match(/^\s*\*\s*xyz(?:file)?\s+([+-]?\d+)\s+(\d+)(?:\s|$)/i);
-        if (explicitState) {
-          const charge = Number(explicitState[1]), multiplicity = Number(explicitState[2]);
-          if (!Number.isSafeInteger(charge) || !Number.isSafeInteger(multiplicity) || multiplicity < 1) throw new PostprocessSourceError('invalid-electronic-state', 'ORCA输入回显的电荷/多重度无效。');
-          if (result.initialStructure.charge !== null && result.initialStructure.charge !== charge || result.initialStructure.multiplicity !== null && result.initialStructure.multiplicity !== multiplicity) throw new PostprocessSourceError('electronic-state-conflict', 'ORCA输入回显与输出电荷/多重度冲突。');
-          result.initialStructure.charge = charge; result.initialStructure.multiplicity = multiplicity;
         }
       }
       const gaussianOrbital = line.text.match(/^\s*(Alpha|Beta)\s+(occ\.|virt\.)\s+eigenvalues\s*--\s*(.+)$/i);
@@ -490,7 +498,9 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
       const header = line.text.match(/^(.+?)\s+[IR]\s+(?:N=\s*(\d+)\s*|([+-]?[\d.EeDd+-]+)\s*)$/);
       if (header) {
         arrayField = header[1].trim(); arrayRemaining = Number(header[2] ?? 0); arrayOffset = 0;
-        if (['SCF Energy', 'MP2 Energy'].includes(arrayField) && header[3]) { const value = observation(`gaussian:${arrayField}`, 'hartree', header[3], line.number,true); if (value) observations.push(value); }
+        if (['SCF Energy', 'MP2 Energy'].includes(arrayField) && header[3] && fieldsByLine.get(line.number)?.some(field => field.key===arrayField)) {
+          const value = observation(`gaussian:${arrayField}`, 'hartree', header[3], line.number,true); if (value) observations.push(value);
+        }
       } else if (arrayRemaining > 0) {
         const tokens = line.text.trim().split(/\s+/); arrayRemaining -= tokens.length;
         if (arrayField === 'Current cartesian coordinates') for (const token of tokens) coordinateRounding = Math.max(coordinateRounding ?? 0, (printedRoundingInterval(normalizedFchkNumber(token)??'') ?? 0) * BOHR_ANGSTROM);
@@ -579,13 +589,13 @@ async function gaussianCombinedOptFreqContinuationLine(file: ResultInputFile, re
   if (final.charge !== second.charge || final.multiplicity !== second.multiplicity
     || final.atoms.some((atom, index) => atom.element !== second.atoms[index].element || atom.x !== second.atoms[index].x || atom.y !== second.atoms[index].y || atom.z !== second.atoms[index].z)) return null;
   let nativeBoundary: number | null = null;
-  for await (const line of outputLines(file, options, ()=>undefined)) {
+  for await (const line of gaussianOutputLines(file, options)) {
     if (line.number >= frequency.frames[0].sourceLine) break;
-    const native = line.text.match(/^\s*Link1:\s*Proceeding to internal job step number\s+(\d+)\.\s*$/i);
+    const native = line.text.match(gaussianJobLink);
     // Parser job indices may include a geometry-less internal segment; the
     // native Link1 ordinal, not an inferred array/index increment, is authoritative.
     if (native) nativeBoundary = Number(native[1]) === 2 ? line.number : null;
-    else if (/^\s*--Link1--\s*$|^\s*Entering Gaussian System\b/i.test(line.text)) nativeBoundary = null;
+    else if (gaussianExplicitLink.test(line.text) || gaussianEntry.test(line.text)) nativeBoundary = null;
   }
   return nativeBoundary !== null && nativeBoundary > optimization.frames.at(-1)!.sourceLine ? nativeBoundary : null;
 }
@@ -670,19 +680,38 @@ export async function readPostprocessFileOutput(file: ResultInputFile, options: 
   } catch (error) { await Promise.all(jobs.map(job => job.dispose())); throw error; }
 }
 
+/** Structure import requires no orbital session. The caller owns the source. */
+export async function readPostprocessWavefunctionStructure(file: ResultInputFile, kind: 'fchk' | 'molden', options: ResultReadOptions = {}): Promise<Structure> {
+  const structure = kind === 'fchk' ? await readFchkStructure(file, options) : (await readMoldenStructure(file, options)).structure;
+  assertResultNotAborted(options.signal);
+  if (kind === 'fchk') {
+    const id = `${file.id}:fchk:0`;
+    structure.id = `${id}:frame:0`;
+    structure.atoms.forEach((atom, index) => { atom.id = `${id}:atom:${index + 1}`; atom.sourceIndex = index + 1; });
+    structure.sourceAtomIds = structure.atoms.map(atom => atom.id!);
+  }
+  structure.notes.push(`仅载入保存的原子结构，来源 ${file.name}。`);
+  return structure;
+}
+
 /** Metadata is supplied by the native wavefunction reader, never reconstructed here. */
 export async function readPostprocessWavefunction(file: ResultInputFile, metadata: WavefunctionMetadata, options: ResultReadOptions = {}): Promise<PostprocessSource> {
   const identity = await identifyPostprocessSource(file, options);
   if (identity.kind !== 'fchk' && identity.kind !== 'molden') throw new PostprocessSourceError('wrong-source-kind', identity.message ?? '请选择FCHK或Molden。');
   if (identity.kind !== metadata.format || metadata.sourceId !== file.id) throw new PostprocessSourceError('metadata-source-mismatch', '波函数元数据与所选来源身份不一致。');
   let result: TrajectoryResult;
+  let fchkDiagnostics: readonly FchkFieldDiagnostic[] | undefined;
   if (identity.kind === 'fchk') {
-    const results = await readFchkScientificResult(file, options);
-    if (results.length !== 1) { await Promise.all(results.map(row => row.dispose())); throw new PostprocessSourceError('multiple-jobs', 'FCHK须只包含一个已保存结果。'); }
-    result = results[0];
-    if(result.status==='incomplete'){
+    const saved = await readFchkSavedResult(file, options);
+    result = saved.result;
+    try {
+      assertResultNotAborted(options.signal);
+      const blocker = fchkWavefunctionBlocker(saved.validatedFields, saved.diagnostics);
+      if (blocker) throw new PostprocessSourceError('incomplete-wavefunction', blocker);
+      if (saved.diagnostics.length) fchkDiagnostics = saved.diagnostics;
+    } catch (error) {
       await result.dispose();
-      throw new PostprocessSourceError('incomplete-wavefunction','FCHK含损坏或截断字段；完整保存结构和已有数值可通过普通导入查看，但此来源未作为可计算波函数绑定。');
+      throw error;
     }
   } else {
     const structure = structuredClone(metadata.structure), science = emptyScientificData();
@@ -697,7 +726,7 @@ export async function readPostprocessWavefunction(file: ResultInputFile, metadat
       async getFrame(index, signal) { assertResultNotAborted(signal); if (closed) throw new Error('Molden来源已关闭。'); if (index !== 0) throw new Error('Molden只含一个已保存结构。'); return structuredClone(structure); },
       async dispose() { if (!closed) { closed = true; await file.close?.(); } } };
   }
-  try { const evidence = await sourceEvidence(file, result, identity.kind, options); bindSourceProvenance(result, file); return { kind: identity.kind, software: identity.software, result, results: [result], tasks: result.scientific?.tasks ?? [], metadata, ...evidence }; }
+  try { const evidence = await sourceEvidence(file, result, identity.kind, options); bindSourceProvenance(result, file); return { kind: identity.kind, software: identity.software, result, results: [result], tasks: result.scientific?.tasks ?? [], metadata, ...(fchkDiagnostics?{fchkDiagnostics}:{}), ...evidence }; }
   catch (error) { await result.dispose(); throw error; }
 }
 

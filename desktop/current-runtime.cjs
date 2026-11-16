@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createHash } = require('node:crypto');
 const assert = require('node:assert/strict');
-const { verifyMemberInventory } = require('./xtb-runtime-contract.cjs');
+const { verifyMemberInventory, verifyRuntimeSet, verifyRuntimeVariant } = require('./xtb-runtime-contract.cjs');
 
 const hashes = new Map(), documents = new Map(), inventorySnapshots = new Map();
 const SHA = /^[a-f0-9]{64}$/;
@@ -657,9 +657,11 @@ function developmentNative(appPath, options = {}) {
     }
   };
 }
-
 function developmentXtb(appPath, options = {}) {
-  const expectedPlatform = options.platformId || defaultPlatformId(options.platform, options.arch);
+  const normalizedOptions = typeof options === 'string' ? { variantId: options } : (options ?? {});
+  const rawVariantId = normalizedOptions.variantId;
+  const variantId = rawVariantId ?? 'official';
+  const expectedPlatform = normalizedOptions.platformId || defaultPlatformId(normalizedOptions.platform, normalizedOptions.arch);
   const layout = resolvePlatformLayout(expectedPlatform);
   assert(
     !hasUnsafePathDelimiter(path.resolve(appPath), expectedPlatform),
@@ -705,9 +707,36 @@ function developmentXtb(appPath, options = {}) {
   for (const name of [layout.xtbEntry, 'xtb/runtime.json', 'xtb/share/xtb/param_gfn0-xtb.txt', 'xtb/share/xtb/param_gfn1-xtb.txt', 'xtb/share/xtb/param_gfn2-xtb.txt', 'xtb/share/xtb/.param_gfnff.xtb']) {
     assert(selected.files.some(row => row.path === name), 'Required current runtime member absent: ' + name);
   }
-  verifyMemberInventory(path.join(appPath, selected.value.root), selected.files, xtbContentDirs);
   const descriptor = selected.files.find(row => row.path === 'xtb/runtime.json');
-  return { root: xtbRootAbs, lock: selected.reference, manifestIdentity: { ...descriptor, path: 'runtime.json' } };
+  const manifestIdentity = { ...descriptor, path: 'runtime.json' };
+  let runtimeSet;
+  if (selected.value.runtimeManifest) {
+    if (rawVariantId === undefined) {
+      verifyMemberInventory(path.join(appPath, selected.value.root), selected.files, xtbContentDirs);
+    }
+    assert.deepEqual(manifestIdentity, selected.value.runtimeManifest, 'Current xTB descriptor does not match its source lock');
+    runtimeSet = rawVariantId === undefined
+      ? verifyRuntimeSet(xtbRootAbs, manifestIdentity)
+      : verifyRuntimeVariant(xtbRootAbs, manifestIdentity, variantId);
+    const { variants } = runtimeSet;
+    if (rawVariantId === undefined) {
+      assert.deepEqual(
+        Object.fromEntries(Object.entries(variants).map(([id, variant]) => [id, variant.engineIdentity])),
+        selected.value.variantIdentities,
+        'Current xTB variants do not match their source lock'
+      );
+    } else {
+      assert.deepEqual(
+        variants[variantId].engineIdentity,
+        selected.value.variantIdentities?.[variantId],
+        'Current xTB variant does not match its source lock'
+      );
+    }
+  } else {
+    assert(variantId !== 'gxtb', 'XTB_RUNTIME_INCOMPLETE: requested runtime variant absent');
+    verifyMemberInventory(path.join(appPath, selected.value.root), selected.files, xtbContentDirs);
+  }
+  return { root: xtbRootAbs, lock: selected.reference, manifestIdentity, ...(runtimeSet ? { runtimeSet } : {}) };
 }
 
 function currentRuntimeEnvironment({

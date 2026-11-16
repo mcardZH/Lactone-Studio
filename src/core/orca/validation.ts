@@ -1,6 +1,6 @@
-import { ELEMENTS, electronicStateError } from '../elements';
+import { ELEMENTS, electronicStateParameterError } from '../elements';
 import { getOrcaMethodProfile, ORCA_BASES, ORCA_CORRELATION_BASES, ORCA_VERSIONS } from './catalog';
-import { referencedOrcaAssets } from './assets';
+import { orcaAssetsForInputValidation, referencedOrcaAssets } from './assets';
 import { orcaScfGridCapabilities } from './header';
 import type { OrcaIssue, OrcaJobRequest, OrcaVersion } from './types';
 
@@ -39,7 +39,7 @@ export function validateOrca(req: OrcaJobRequest, assetTargetVersion: OrcaVersio
     if (structure.cell?.pbc.some(Boolean)) error('structure', '当前 ORCA 输入模块只生成有限分子，周期边界需另定模型。');
     if (structure.atoms.some(atom => !ELEMENTS.includes(atom.element) || ![atom.x, atom.y, atom.z].every(Number.isFinite))) error('structure', '结构包含未知元素或非有限坐标，不能丢弃原子修复。');
     else {
-      const state = electronicStateError(structure.atoms, req.charge, req.multiplicity);
+      const state = electronicStateParameterError(req.charge, req.multiplicity);
       if (state) error('multiplicity', state);
     }
     const ids = structure.atoms.map((atom, index) => atom.id ?? `atom-${index + 1}`);
@@ -71,7 +71,7 @@ export function validateOrca(req: OrcaJobRequest, assetTargetVersion: OrcaVersio
   if (!['normal', 'tight', 'loose'].includes(s.pno)) error('pno', '未知 PNO 等级。');
   const assetIds = new Set<string>();
   const assetNames = new Set<string>();
-  for (const asset of req.assets) {
+  for (const asset of orcaAssetsForInputValidation(req)) {
     if (!asset.id || assetIds.has(asset.id)) error('assets', '依赖文件身份缺失或重复。');
     assetIds.add(asset.id);
     if (!safeOrcaFilename(asset.name) || assetNames.has(asset.name.toLowerCase()) || asset.name.toLowerCase().startsWith(`${req.name}.`.toLowerCase())) error('assets', '依赖文件名不安全、重复或与本作业输出同名，可能被覆盖。');

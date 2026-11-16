@@ -5657,6 +5657,570 @@
         }
       ],
       "methodSummaryZh": "实际采用UFF力场的结构准备或优化。"
+    },
+    {
+      "id": "gxtb-method-2025",
+      "kind": "preprint",
+      "title": "g-xTB: A General-Purpose Extended Tight-Binding Electronic Structure Method For the Elements H to Lr (Z=1–103)",
+      "authors": [
+        {
+          "family": "Froitzheim",
+          "given": "Thomas"
+        },
+        {
+          "family": "Müller",
+          "given": "Marcel"
+        },
+        {
+          "family": "Hansen",
+          "given": "Andreas"
+        },
+        {
+          "family": "Grimme",
+          "given": "Stefan"
+        }
+      ],
+      "year": 2025,
+      "publisher": "ChemRxiv",
+      "doi": "10.26434/chemrxiv-2025-bjxvt",
+      "url": "https://doi.org/10.26434/chemrxiv-2025-bjxvt",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://github.com/grimme-lab/g-xtb",
+          "checkedAt": "2026-11-11",
+          "note": "Official method reference, independently checked by Terra."
+        },
+        {
+          "kind": "publisher",
+          "url": "https://chemrxiv.org/engage/api-gateway/chemrxiv/assets/orp/resource/item/685434533ba0887c335fc974/original/gx-tb-a-general-purpose-extended-tight-binding-electronic-structure-method-for-the-elements-h-to-lr-z-1-103.pdf",
+          "checkedAt": "2026-11-11",
+          "note": "Original preprint title, authors and DOI checked; landing-page access returned 403."
+        }
+      ],
+      "methodSummaryZh": "g-xTB方法初版预印本；仅从实际使用的g-xTB来源收集。",
+      "note": "预印本，无同行评审期刊卷页。官方说明当前程序相较初版已有改进；实际软件发行和宿主版本由运行来源另记。"
+    },
+    {
+      "id": "gxtb-software",
+      "kind": "software",
+      "title": "g-xTB",
+      "authors": [
+        {
+          "literal": "Grimme lab"
+        }
+      ],
+      "url": "https://github.com/grimme-lab/g-xtb",
+      "identity": "https://github.com/grimme-lab/g-xtb",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://github.com/grimme-lab/g-xtb",
+          "checkedAt": "2026-11-11",
+          "note": "Official repository; no independent software DOI specified."
+        }
+      ],
+      "methodSummaryZh": "独立g-xTB程序；运行版本取实际发行回执，不用xTB宿主版本替代。",
+      "note": "软件资源合法无独立DOI；方法论文另列。"
+    },
+    {
+      "id": "xtb-software-2025",
+      "kind": "article",
+      "title": "Overview on Building Blocks and Applications of Efficient and Robust Extended Tight Binding",
+      "authors": [
+        {
+          "family": "Katbashev",
+          "given": "Abylay"
+        },
+        {
+          "family": "Stahn",
+          "given": "Marcel"
+        },
+        {
+          "family": "Rose",
+          "given": "Thomas"
+        },
+        {
+          "family": "Alizadeh",
+          "given": "Vahideh"
+        },
+        {
+          "family": "Friede",
+          "given": "Marvin"
+        },
+        {
+          "family": "Plett",
+          "given": "Christoph"
+        },
+        {
+          "family": "Steinbach",
+          "given": "Pit"
+        },
+        {
+          "family": "Ehlert",
+          "given": "Sebastian"
+        }
+      ],
+      "year": 2025,
+      "journal": "The Journal of Physical Chemistry A",
+      "journalAbbreviation": "J. Phys. Chem. A",
+      "volume": "129",
+      "issue": "10",
+      "pages": "2667–2682",
+      "doi": "10.1021/acs.jpca.4c08263",
+      "url": "https://doi.org/10.1021/acs.jpca.4c08263",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://github.com/grimme-lab/xtb",
+          "checkedAt": "2026-11-11",
+          "note": "Official recommended xTB software reference, independently checked by Terra."
+        },
+        {
+          "kind": "publisher",
+          "url": "https://pubs.acs.org/doi/10.1021/acs.jpca.4c08263",
+          "checkedAt": "2026-11-11",
+          "note": "Publisher bibliographic fields checked by Terra."
+        }
+      ],
+      "methodSummaryZh": "xTB程序构件和应用；按实际运行软件事实收集，方法论文独立。"
+    },
+    {
+      "id": "tblite-software",
+      "kind": "software",
+      "title": "tblite: Light-weight tight-binding framework",
+      "authors": [
+        {
+          "literal": "tblite contributors"
+        }
+      ],
+      "identity": "https://github.com/tblite/tblite",
+      "url": "https://github.com/tblite/tblite",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://github.com/tblite/tblite",
+          "checkedAt": "2026-11-11",
+          "note": "Official project identity checked by Terra; no independent DOI recommendation found in the reviewed entry points."
+        },
+        {
+          "kind": "official",
+          "url": "https://tblite.readthedocs.io/en/latest/",
+          "checkedAt": "2026-11-11",
+          "note": "Project documentation; actual version is collected from the retained execution, not this website."
+        }
+      ],
+      "methodSummaryZh": "实际使用的tblite科学运行依赖；版本按实际来源记录。",
+      "note": "合法无独立DOI的软件项目引用。团体作者为项目贡献者描述，不声称官方指定作者列表；各GFN方法文献另列。修改版g-xTB包的身份独立保留。"
+    },
+    {
+      "id": "sella-optimizer-2022",
+      "kind": "article",
+      "title": "Sella, an Open-Source Automation-Friendly Molecular Saddle Point Optimizer",
+      "authors": [
+        {
+          "family": "Hermes",
+          "given": "Eric D."
+        },
+        {
+          "family": "Sargsyan",
+          "given": "Khachik"
+        },
+        {
+          "family": "Najm",
+          "given": "Habib N."
+        },
+        {
+          "family": "Zádor",
+          "given": "Judit"
+        }
+      ],
+      "journal": "Journal of Chemical Theory and Computation",
+      "year": 2022,
+      "volume": "18",
+      "pages": "6974–6988",
+      "doi": "10.1021/acs.jctc.2c00395",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1021/acs.jctc.2c00395",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pysisyphus-2021",
+      "kind": "article",
+      "title": "pysisyphus: Exploring potential energy surfaces in ground and excited states",
+      "authors": [
+        {
+          "family": "Steinmetzer",
+          "given": "Johannes"
+        },
+        {
+          "family": "Kupfer",
+          "given": "Stephan"
+        },
+        {
+          "family": "Gräfe",
+          "given": "Stefanie"
+        }
+      ],
+      "journal": "International Journal of Quantum Chemistry",
+      "year": 2021,
+      "volume": "121",
+      "articleNumber": "e26390",
+      "doi": "10.1002/qua.26390",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1002/qua.26390",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pygsm-software",
+      "kind": "software",
+      "title": "pyGSM",
+      "authors": [
+        {
+          "literal": "Zimmerman Group and pyGSM contributors"
+        }
+      ],
+      "identity": "pygsm",
+      "url": "https://github.com/ZimmermanGroup/pyGSM",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://github.com/ZimmermanGroup/pyGSM",
+          "checkedAt": "2026-11-11"
+        },
+        {
+          "kind": "official",
+          "url": "https://zimmermangroup.github.io/pyGSM/",
+          "checkedAt": "2026-11-11"
+        }
+      ],
+      "note": "项目仓库引用，运行版本以实际保留的后端报告为准。"
+    },
+    {
+      "id": "pes-ci-neb-2000",
+      "kind": "article",
+      "title": "A climbing image nudged elastic band method for finding saddle points and minimum energy paths",
+      "authors": [
+        {
+          "family": "Henkelman",
+          "given": "Graeme"
+        },
+        {
+          "family": "Uberuaga",
+          "given": "Blas P."
+        },
+        {
+          "family": "Jónsson",
+          "given": "Hannes"
+        }
+      ],
+      "journal": "The Journal of Chemical Physics",
+      "year": 2000,
+      "volume": "113",
+      "pages": "9901–9904",
+      "doi": "10.1063/1.1329672",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1063/1.1329672",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pes-neb-improved-tangent-2000",
+      "kind": "article",
+      "title": "Improved tangent estimate in the nudged elastic band method for finding minimum energy paths and saddle points",
+      "authors": [
+        {
+          "family": "Henkelman",
+          "given": "Graeme"
+        },
+        {
+          "family": "Jónsson",
+          "given": "Hannes"
+        }
+      ],
+      "journal": "The Journal of Chemical Physics",
+      "year": 2000,
+      "volume": "113",
+      "pages": "9978–9985",
+      "doi": "10.1063/1.1323224",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1063/1.1323224",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pes-s-idpp-2024",
+      "kind": "article",
+      "title": "Improved Initialization of Optimal Path Calculations Using Sequential Traversal over the Image-Dependent Pair Potential Surface",
+      "authors": [
+        {
+          "family": "Schmerwitz",
+          "given": "Yorick L. A."
+        },
+        {
+          "family": "Ásgeirsson",
+          "given": "Vilhjálmur"
+        },
+        {
+          "family": "Jónsson",
+          "given": "Hannes"
+        }
+      ],
+      "journal": "Journal of Chemical Theory and Computation",
+      "year": 2024,
+      "volume": "20",
+      "issue": "1",
+      "pages": "155–163",
+      "doi": "10.1021/acs.jctc.3c01111",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1021/acs.jctc.3c01111",
+          "checkedAt": "2026-11-11"
+        },
+        {
+          "kind": "official",
+          "url": "https://arxiv.org/abs/2310.04531",
+          "checkedAt": "2026-11-11",
+          "note": "作者预印本注明 S-IDPP 与最终 DOI。"
+        }
+      ]
+    },
+    {
+      "id": "pes-dimer-1999",
+      "kind": "article",
+      "title": "A dimer method for finding saddle points on high dimensional potential surfaces using only first derivatives",
+      "authors": [
+        {
+          "family": "Henkelman",
+          "given": "Graeme"
+        },
+        {
+          "family": "Jónsson",
+          "given": "Hannes"
+        }
+      ],
+      "journal": "The Journal of Chemical Physics",
+      "year": 1999,
+      "volume": "111",
+      "pages": "7010–7022",
+      "doi": "10.1063/1.480097",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1063/1.480097",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pes-fire-2006",
+      "kind": "article",
+      "title": "Structural Relaxation Made Simple",
+      "authors": [
+        {
+          "family": "Bitzek",
+          "given": "Erik"
+        },
+        {
+          "family": "Koskinen",
+          "given": "Pekka"
+        },
+        {
+          "family": "Gähler",
+          "given": "Franz"
+        },
+        {
+          "family": "Moseler",
+          "given": "Michael"
+        },
+        {
+          "family": "Gumbsch",
+          "given": "Peter"
+        }
+      ],
+      "journal": "Physical Review Letters",
+      "year": 2006,
+      "volume": "97",
+      "articleNumber": "170201",
+      "doi": "10.1103/PhysRevLett.97.170201",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "publisher",
+          "url": "https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.97.170201",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pes-fire2-2020",
+      "kind": "article",
+      "title": "Assessment and optimization of the fast inertial relaxation engine (FIRE) for energy minimization in atomistic simulations and its implementation in LAMMPS",
+      "authors": [
+        { "family": "Guénolé", "given": "Julien" },
+        { "family": "Nöhring", "given": "Wolfram G." },
+        { "family": "Vaid", "given": "Aviral" },
+        { "family": "Houllé", "given": "Frédéric" },
+        { "family": "Xie", "given": "Zhuocheng" },
+        { "family": "Prakash", "given": "Aruna" },
+        { "family": "Bitzek", "given": "Erik" }
+      ],
+      "journal": "Computational Materials Science",
+      "year": 2020,
+      "volume": "175",
+      "articleNumber": "109584",
+      "doi": "10.1016/j.commatsci.2020.109584",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1016%2Fj.commatsci.2020.109584",
+          "checkedAt": "2026-11-13"
+        },
+        {
+          "kind": "official",
+          "url": "https://arxiv.org/abs/1908.02038",
+          "checkedAt": "2026-11-13"
+        }
+      ]
+    },
+    {
+      "id": "pes-de-gsm-2013",
+      "kind": "article",
+      "title": "Growing string method with interpolation and optimization in internal coordinates: Method and examples",
+      "authors": [
+        {
+          "family": "Zimmerman",
+          "given": "Paul M."
+        }
+      ],
+      "journal": "The Journal of Chemical Physics",
+      "year": 2013,
+      "volume": "138",
+      "articleNumber": "184102",
+      "doi": "10.1063/1.4804162",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1063/1.4804162",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pes-se-gsm-2015",
+      "kind": "article",
+      "title": "Single-ended transition state finding with the growing string method",
+      "authors": [
+        {
+          "family": "Zimmerman",
+          "given": "Paul M."
+        }
+      ],
+      "journal": "Journal of Computational Chemistry",
+      "year": 2015,
+      "volume": "36",
+      "pages": "601–611",
+      "doi": "10.1002/jcc.23833",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1002/jcc.23833",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pes-fsm-2011",
+      "kind": "article",
+      "title": "Efficient exploration of reaction paths via a freezing string method",
+      "authors": [
+        {
+          "family": "Behn",
+          "given": "Andrew"
+        },
+        {
+          "family": "Zimmerman",
+          "given": "Paul M."
+        },
+        {
+          "family": "Bell",
+          "given": "Alexis T."
+        },
+        {
+          "family": "Head-Gordon",
+          "given": "Martin"
+        }
+      ],
+      "journal": "The Journal of Chemical Physics",
+      "year": 2011,
+      "volume": "135",
+      "articleNumber": "224108",
+      "doi": "10.1063/1.3664901",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1063/1.3664901",
+          "checkedAt": "2026-11-11"
+        }
+      ]
+    },
+    {
+      "id": "pes-afir-2011",
+      "kind": "article",
+      "title": "Finding Reaction Pathways of Type A + B → X: Toward Systematic Prediction of Reaction Mechanisms",
+      "authors": [
+        {
+          "family": "Maeda",
+          "given": "Satoshi"
+        },
+        {
+          "family": "Morokuma",
+          "given": "Keiji"
+        }
+      ],
+      "journal": "Journal of Chemical Theory and Computation",
+      "year": 2011,
+      "volume": "7",
+      "pages": "2335–2345",
+      "doi": "10.1021/ct200290m",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "doi",
+          "url": "https://api.crossref.org/works/10.1021/ct200290m",
+          "checkedAt": "2026-11-11"
+        }
+      ]
     }
   ],
   "mappings": [
@@ -5835,7 +6399,8 @@
       "feature": "software",
       "method": "xTB",
       "citationIds": [
-        "xtb-review"
+        "xtb-review",
+        "xtb-software-2025"
       ],
       "role": "scientific",
       "reasonZh": "实际保留的software事实：xTB",
@@ -5883,7 +6448,8 @@
       "feature": "runtime-dependency",
       "method": "xTB",
       "citationIds": [
-        "xtb-review"
+        "xtb-review",
+        "xtb-software-2025"
       ],
       "role": "runtime",
       "reasonZh": "实际保留的runtime-dependency事实：xTB",
@@ -7094,6 +7660,198 @@
       "role": "scientific",
       "reasonZh": "实际保留的力场操作记录uff",
       "methodSummaryZh": "仅从实际执行回执中的最终力场选择收集；auto选项本身不算使用。"
+    },
+    {
+      "id": "method-gxtb",
+      "feature": "method",
+      "method": "g-xtb",
+      "citationIds": [
+        "gxtb-method-2025"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际保留来源明确使用g-xTB方法",
+      "methodSummaryZh": "g-xTB方法；初版预印本与实际程序发行身份分别记录。"
+    },
+    {
+      "id": "software-gxtb",
+      "feature": "software",
+      "method": "g-xTB",
+      "software": "g-xTB",
+      "citationIds": [
+        "gxtb-software"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际运行的独立g-xTB程序身份",
+      "methodSummaryZh": "实际发行版本与修改版xTB宿主身份分别保留。"
+    },
+    {
+      "id": "runtime-dependency-gxtb",
+      "feature": "runtime-dependency",
+      "method": "g-xTB",
+      "software": "g-xTB",
+      "citationIds": [
+        "gxtb-software"
+      ],
+      "role": "runtime",
+      "reasonZh": "实际运行的独立g-xTB程序身份",
+      "methodSummaryZh": "实际发行版本与修改版xTB宿主身份分别保留。"
+    },
+    {
+      "id": "software-tblite",
+      "feature": "software",
+      "method": "tblite",
+      "software": "tblite",
+      "citationIds": [
+        "tblite-software"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际保留来源明确使用tblite",
+      "methodSummaryZh": "使用实际程序/库版本，不从其他xTB发行或可选菜单推断。"
+    },
+    {
+      "id": "runtime-dependency-tblite",
+      "feature": "runtime-dependency",
+      "method": "tblite",
+      "software": "tblite",
+      "citationIds": [
+        "tblite-software"
+      ],
+      "role": "runtime",
+      "reasonZh": "实际保留来源明确使用tblite",
+      "methodSummaryZh": "使用实际程序/库版本，不从其他xTB发行或可选菜单推断。"
+    },
+    {
+      "id": "pes-method-ci-neb",
+      "feature": "pes-method",
+      "method": "ci-neb",
+      "citationIds": [
+        "pes-ci-neb-2000"
+      ],
+      "role": "scientific",
+      "reasonZh": "保留路径帧证明实际评估爬坡图像。"
+    },
+    {
+      "id": "pes-method-neb-improved-tangent",
+      "feature": "pes-method",
+      "method": "neb-improved-tangent",
+      "citationIds": [
+        "pes-neb-improved-tangent-2000"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际路径力使用改进 NEB 切向量。"
+    },
+    {
+      "id": "pes-method-s-idpp",
+      "feature": "pes-method",
+      "method": "s-idpp",
+      "citationIds": [
+        "pes-s-idpp-2024"
+      ],
+      "role": "scientific",
+      "reasonZh": "保留内珠子及已完成分段证明实际使用 S-IDPP 初始几何。"
+    },
+    {
+      "id": "pes-method-dimer",
+      "feature": "pes-method",
+      "method": "dimer",
+      "citationIds": [
+        "pes-dimer-1999"
+      ],
+      "role": "scientific",
+      "reasonZh": "保留实际 Dimer 优化几何步，引用 Dimer 方法原文。"
+    },
+    {
+      "id": "pes-method-fire",
+      "feature": "pes-method",
+      "method": "fire",
+      "citationIds": [
+        "pes-fire-2006"
+      ],
+      "role": "scientific",
+      "reasonZh": "保留帧及实际优化步证明 FIRE 更新了路径几何。"
+    },
+    {
+      "id": "pes-method-fire2",
+      "feature": "pes-method",
+      "method": "fire2",
+      "citationIds": [
+        "pes-fire2-2020"
+      ],
+      "role": "scientific",
+      "reasonZh": "保留物理路径轮及真实优化步证明 FIRE2 更新了 NEB 路径几何。"
+    },
+    {
+      "id": "pes-method-de-gsm",
+      "feature": "pes-method",
+      "method": "de-gsm",
+      "citationIds": [
+        "pes-de-gsm-2013"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际双端生长弦内节点与物理能量。"
+    },
+    {
+      "id": "pes-method-se-gsm",
+      "feature": "pes-method",
+      "method": "se-gsm",
+      "citationIds": [
+        "pes-se-gsm-2015"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际单端生长弦内节点与物理能量。"
+    },
+    {
+      "id": "pes-method-fsm",
+      "feature": "pes-method",
+      "method": "fsm",
+      "citationIds": [
+        "pes-fsm-2011"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际冻结弦局部节点及局部优化调用。"
+    },
+    {
+      "id": "pes-method-afir",
+      "feature": "pes-method",
+      "method": "afir",
+      "citationIds": [
+        "pes-afir-2011"
+      ],
+      "role": "scientific",
+      "reasonZh": "实际 AFIR 人工力和物理能量评估，引用 AFIR 方法原文。"
+    },
+    {
+      "id": "pes-runtime-sella",
+      "feature": "runtime-dependency",
+      "method": "Sella",
+      "software": "Sella",
+      "citationIds": [
+        "sella-optimizer-2022"
+      ],
+      "role": "runtime",
+      "reasonZh": "实际使用 Sella 的过渡态优化或曲率接管。"
+    },
+    {
+      "id": "pes-runtime-pygsm",
+      "feature": "runtime-dependency",
+      "method": "pyGSM",
+      "software": "pyGSM",
+      "citationIds": [
+        "pygsm-software"
+      ],
+      "role": "runtime",
+      "reasonZh": "实际使用 pyGSM 生成单端或双端反应路径。"
+    },
+    {
+      "id": "pes-runtime-pysisyphus",
+      "feature": "runtime-dependency",
+      "method": "pysisyphus",
+      "software": "pysisyphus",
+      "citationIds": [
+        "pysisyphus-2021"
+      ],
+      "role": "runtime",
+      "reasonZh": "实际使用 pysisyphus 的 AFIR 人工力实现。"
     }
   ]
 }

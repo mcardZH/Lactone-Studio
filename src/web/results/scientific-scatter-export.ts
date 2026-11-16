@@ -38,7 +38,9 @@ export function scatterSvgSnapshot(source: SVGSVGElement, pixels: HTMLCanvasElem
     appendScatterVectorPoints(points, data, range, layout, colorForX, size, alpha, colorForPoint);
     copy.insertBefore(points, defs.nextSibling);
   } else {
-    const image = doc.createElementNS('http://www.w3.org/2000/svg', 'image'); image.setAttribute('width', String(layout.width)); image.setAttribute('height', String(layout.height)); image.setAttribute('href', pixels.toDataURL('image/png'));
+    const png = pixels.toDataURL('image/png');
+    if (!png.startsWith('data:image/png;base64,')) throw new Error('散点图点层 PNG 编码失败。');
+    const image = doc.createElementNS('http://www.w3.org/2000/svg', 'image'); image.setAttribute('width', String(layout.width)); image.setAttribute('height', String(layout.height)); image.setAttribute('href', png);
     copy.insertBefore(image, background.nextSibling);
   }
   return serializeOptimizationSvg(copy);

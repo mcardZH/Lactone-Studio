@@ -4,10 +4,10 @@
 
 > [!IMPORTANT]
 > **非官方修改版声明（Unofficial Modified Version Notice — 遵循 `LICENSE.txt` 第七条）**
-> - **本项目性质**：**Lactone Studio (LS)** 是基于 **Ester Studio (ES) v2.0.3** 源码改造的**非官方修改版（Unofficial Modified Version）**。
-> - **修改者与版本标识**：修改者 [`mcardZH`](https://github.com/mcardZH) · 当前修改版本 `v2.0.3-lactone.1`（基线版本 `v2.0.3`）。
+> - **本项目性质**：**Lactone Studio (LS)** 是基于 **Ester Studio (ES) v2.1.1** 源码改造的**非官方修改版（Unofficial Modified Version）**。
+> - **修改者与版本标识**：修改者 [`mcardZH`](https://github.com/mcardZH) · 当前修改版本 `v2.1.1-lactone.1`（基线版本 `v2.1.1`）。
 > - **对应源码获取地址**：https://github.com/mcardZH/Lactone-Studio
-> - **上游官方项目与原始作者**：上游软件 **Ester Studio (ES)**（历史名称 SY-Studio / SciYue）由原始作者兼著作权人 **Zixuan Zhang**（许可联系渠道：`ddwz@sciyue.cn`）开发并发布于官方仓库 https://github.com/Ahey1/Ester-Studio（基线版本对应发布页：https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.3）。
+> - **上游官方项目与原始作者**：上游软件 **Ester Studio (ES)**（历史名称 SY-Studio / SciYue）由原始作者兼著作权人 **Zixuan Zhang**（许可联系渠道：`ddwz@sciyue.cn`）开发并发布于官方仓库 https://github.com/Ahey1/Ester-Studio（基线版本对应发布页：https://github.com/Ahey1/Ester-Studio/releases/tag/v2.1.1）。
 > - **官方身份免责声明**：本修改版由社区独立维护，**未获得原始作者审核、科学验证、支持或商业认可**；修改者不代表原始作者或官方发布渠道。使用者须自行核验计算输入、参数、单位与科学结论。
 
 ---
@@ -25,7 +25,7 @@
 2. **人机同屏协作 MCP 服务底座 (`desktop/mcp/`)**：
    - 内置零第三方依赖的标准 **Model Context Protocol (`stdio` JSON-RPC 2.0)** 服务端与 Electron 主进程↔React 渲染进程安全回环通信桥接层，支持 AI 客户端实时探活与读取工作台状态。
 3. **100% 保持原版工程文件与科学工作流兼容**：
-   - 完整保留 `.es` 默认新建工程扩展名及 `.sy` 历史工程文件读写兼容；
+   - 采用 `.es` 工程格式（替代原 `.sy` 作为工程索引标准），同时完整保留历史 `.sy` 工程文件导入兼容；
    - 内置无 Git 历史的上游源码包三方增量同步工具（`npm run upstream:*`）与多子代理独立盲审工作流（`npm run review:*`）。
 
 ---
@@ -34,9 +34,9 @@
 
 | 模块 | 核心能力 |
 | :--- | :--- |
-| **2D / 3D 分子与周期性晶体建模** (`src/modeling/`, `desktop/chemistry/`) | 集成 Ketcher / Indigo 2D 结构绘制与 3D 实时互转、MolVec 离线文献结构图 OCR 识别；支持 CIF / POSCAR / CP2K / PDB / XYZ 等格式解析、空间群对称性识别、超胞构建、晶面切取（Slab）、键长/键角/二面角精确测量与坐标移动、冻结与柔性扫描约束设置。 |
+| **2D / 3D 分子与周期性晶体建模** (`src/modeling/`, `desktop/chemistry/`) | 内置类 ChemDraw 风格的 2D 化学结构编辑器、Ketcher / Indigo 2D↔3D 实时互转、MolVec 离线文献结构图 OCR 识别；支持 CIF / POSCAR / CP2K / PDB / XYZ 等格式解析、空间群对称性识别、超胞构建、晶面切取（Slab）、键长/键角/二面角精确测量与坐标移动、冻结与柔性扫描约束设置。 |
 | **Gaussian & ORCA 量化输入工作台** (`src/core/`, `src/web/`) | 涵盖单点能、几何优化、过渡态（TS/QST2/QST3）、频率、内禀反应坐标（IRC）、激发态（TDDFT/TDA/UKS）、弱相互作用（BSSE）等 12 类任务；内置方法与基组推荐、混合基组分配、ONIOM 多层建模、隐式溶剂模型及来源 `.chk`/输出文件级别继承。 |
-| **半经验计算、构象搜索与反应路径** (`desktop/xtb-host.cjs`, `desktop/aiss-host.cjs`) | 内置 GNU xTB（GFN2-xTB / GFN1-xTB / GFN0-xTB / GFN-FF）快速预优化、分子动力学采样、混合构象搜索、aISS 双分子立体取向对接及 BPP 反应路径插值。 |
+| **半经验计算、PES 势能面、构象搜索与反应路径** (`desktop/xtb-host.cjs`, `desktop/pes-host.cjs`, `desktop/aiss-host.cjs`) | 内置 GNU xTB（GFN2-xTB / GFN1-xTB / GFN0-xTB / GFN-FF）快速预优化，支持刚性/柔性势能面（PES）扫描工作流、外部自备 `g-xTB` 接入、分子动力学采样、混合构象搜索、aISS 双分子立体取向对接及 BPP 反应路径插值。 |
 | **波函数、等值面与光谱后处理** (`src/results/`, `desktop/orbital-runtime.cjs`) | 解析 Gaussian / ORCA / xTB 输出与轨迹；联动外部 Multiwfn 实时渲染分子轨道（HOMO/LUMO/NTO）、电子密度、静电势（ESP）、IGM/mIGM 弱相互作用等值面及 Hirshfeld/Bader 电荷；支持 IR、Raman、UV-Vis、ECD、NMR 谱图展宽绘制与高清图像/数据导出。 |
 | **任务中心与远程 Linux 超算调度** (`desktop/task-system/`) | 支持通过 SSH 直连远程 Linux 服务器或提交 Slurm 作业队列运行 Gaussian / ORCA 计算任务（Windows 下另支持本机与 WSL 环境）；支持实时日志监控、收敛曲线预览、异常诊断与结果文件一键取回后处理。 |
 | **方法学文献引用自动收集** (`src/citations/`) | 根据当前工程实际使用的软件、泛函、基组、色散校正、溶剂模型与分析算法，自动追踪并导出可核查的 BibTeX / RIS / 文本参考文献列表。 |
@@ -92,7 +92,7 @@ npm run package:linux
 
 打包产物默认输出至 `release/darwin-arm64/`（或 `release/darwin-x64/`），包含：
 - `Lactone Studio.app`（已自动嵌入 `scripts/portable/assets/lactone.icns` 专属内酯环应用图标及自包含 Python 3.12 + GNU xTB 运行时）；
-- `Lactone-Studio-2.0.3-darwin-<arch>.dmg`（内置 `Lactone Studio.app`、`Applications` 拖拽快捷方式及 `安装说明 (INSTALL).txt`）；
+- `Lactone-Studio-2.1.1-darwin-<arch>.dmg`（内置 `Lactone Studio.app`、`Applications` 拖拽快捷方式及 `安装说明 (INSTALL).txt`）；
 - `安装说明 (INSTALL).txt`（独立输出的 macOS 安装与使用指南）。
 
 > **macOS 首次安装与解除安全隔离提示**：
@@ -121,7 +121,7 @@ brew install --HEAD multiwfn --with-openmp
 
 仓库内置了统一的跨平台自动化构建与发布流水线 [.github/workflows/release.yml](.github/workflows/release.yml)：
 - **触发方式**：
-  1. 推送 `v*` 版本标签（如 `git tag v2.0.3-lactone.1 && git push origin v2.0.3-lactone.1`），自动并行构建 **macOS (`arm64` + `x64`) + Windows (`x64`) + Linux (`x64`)** 全平台安装包并汇总至同一 GitHub Release；
+  1. 推送 `v*` 版本标签（如 `git tag v2.1.1-lactone.1 && git push origin v2.1.1-lactone.1`），自动并行构建 **macOS (`arm64` + `x64`) + Windows (`x64`) + Linux (`x64`)** 全平台安装包并汇总至同一 GitHub Release；
   2. 在 GitHub 仓库 **Actions -> Build & Release Cross-Platform Apps -> Run workflow** 手动触发（支持通过 `target_platform` 选择 `all` 或单独构建 `macos-arm64` / `macos-x64` / `windows-x64` / `linux-x64`，可选填写 `release_tag` 发布到 GitHub Releases）。
 - **自动化产物**：
   - **macOS (`darwin-arm64` / `darwin-x64`)**：`Lactone-Studio-<ver>-darwin-<arch>.dmg`、`*.app.zip` 与 `INSTALL-macos-<arch>.txt`；
@@ -130,6 +130,17 @@ brew install --HEAD multiwfn --with-openmp
   - 统一汇总校验清单 `SHA256SUMS.txt`。
 
 关于原版源码快照的完整离线重构建流程，请同时参阅 [BUILDING.md](BUILDING.md)。
+
+### 3.6 人机同屏协作 MCP 服务（MCP Collaboration）
+
+Lactone Studio 在 `desktop/mcp/` 中内置标准 `stdio` MCP 服务端与安全回环桥接层（支持桌面端运行状态探测、鉴权令牌轮换与连接控制，可在全局设置中启用或禁用）：
+
+```bash
+# 以标准 stdio 模式启动本地 MCP 服务（供 Claude Desktop / Cursor / Codex 等客户端接入）
+npm run mcp:server
+```
+
+详细协议设计与后续协作能力规划请参阅 [docs/MCP_COLLABORATION_ROADMAP.md](docs/MCP_COLLABORATION_ROADMAP.md)。
 
 ---
 
@@ -150,13 +161,13 @@ brew install --HEAD multiwfn --with-openmp
 
 1. **原版软件必引条目（Ester Studio）**：
    - 若论文首次正式投稿时，Ester Studio 官方软件论文尚未正式发表，请引用官方 GitHub 项目页面：
-     > Zixuan Zhang. *Ester Studio* (v2.0.3), computer software, https://github.com/Ahey1/Ester-Studio (contact: ddwz@sciyue.cn).
+     > Zixuan Zhang. *Ester Studio* (v2.1.1), computer software, https://github.com/Ahey1/Ester-Studio (contact: ddwz@sciyue.cn).
    - 若投稿时官方软件论文已正式发表，请采用其正式出版引文。
 2. **本修改版附加说明（可选，推荐在正文或方法学部分补充）**：
    - 如使用了本项目的 macOS 原生移植或扩展特性，可在引用上述原版软件的同时补充说明：
-     > macOS adaptation via *Lactone Studio* (`v2.0.3-lactone.1`, unofficial modified version of Ester Studio maintained by mcardZH, https://github.com/mcardZH/Lactone-Studio).
+     > macOS adaptation via *Lactone Studio* (`v2.1.1-lactone.1`, unofficial modified version of Ester Studio maintained by mcardZH, https://github.com/mcardZH/Lactone-Studio).
 3. **第三方科学程序与方法学引用**：
-   - 引用 Ester Studio / Lactone Studio **不替代**实际使用的第三方计算程序（如 Gaussian、ORCA、xTB、Multiwfn、RDKit、ASE、Spglib）、泛函、基组及分析方法各自要求的文献引用。您可使用软件工作台右上角的 **「导出文献」** 功能一键生成当前工程涉及的完整方法学参考文献。
+   - 引用 Ester Studio / Lactone Studio **不替代**实际使用的第三方计算程序（如 Gaussian、ORCA、xTB、g-xTB、Multiwfn、RDKit、ASE、Spglib）、泛函、基组及分析方法各自要求的文献引用。您可使用软件工作台右上角的 **「导出文献」** 功能一键生成当前工程涉及的完整方法学参考文献。
 
 ---
 
@@ -169,6 +180,7 @@ brew install --HEAD multiwfn --with-openmp
      - **严禁未经原作者（Zixuan Zhang）事先书面同意销售本软件或修改版**（包括源码、可执行程序或以付费下载/会员/包装外壳等名义实质销售软件副本，详见第四条）；
      - 分发修改版或对外提供修改版在线软件功能时，必须随附或免费提供对应源码，并显著标注“非官方修改版”（详见第五条、第七条）；
      - 发表相关研究论文须履行科研引用义务（详见第八条）。
-2. **第三方组件许可与源码索引**：
-   - 软件所集成或调用的第三方开源组件（包括但不限于 Electron、Chromium、React、3Dmol.js、Ketcher、Indigo、RDKit、ASE、Spglib、SciPy、OpenBLAS、GNU xTB、MolVec 等）各自保留其原始许可证、版权声明与例外条款，完整声明与对应源码索引集中于 [licenses/](licenses/) 目录（详见 [licenses/README.md](licenses/README.md) 与 [licenses/THIRD_PARTY_RUNTIME_TERMS.md](licenses/THIRD_PARTY_RUNTIME_TERMS.md)）。
-   - Multiwfn、Gaussian 与 ORCA 属于用户自行获取并配置的外部程序，不包含在本仓库分发物内。
+2. **第三方组件许可、外部程序与 PES 源码索引**：
+   - 软件所集成或调用的第三方开源组件（包括但不限于 Electron、Chromium、React、3Dmol.js、Ketcher、Indigo、RDKit、ASE、Spglib、SciPy、OpenBLAS、GNU xTB、MolVec 等）各自保留其原始许可证、版权声明与例外条款；上游源码导出绑定信息见 `source-export-manifest.json`，完整声明、第三方获取契约与源码索引集中于 [licenses/](licenses/) 目录（详见 [licenses/README.md](licenses/README.md) 与 [licenses/THIRD_PARTY_RUNTIME_TERMS.md](licenses/THIRD_PARTY_RUNTIME_TERMS.md)）。
+   - **外部自备科学程序（Gaussian、ORCA、Multiwfn、g-xTB）**：上述程序由用户自行获取并在设置中指定路径，不包含在本仓库及分发包内。其中外部 `g-xTB` 可从官方 [发布页](https://github.com/grimme-lab/g-xtb/releases) 下载，保留同一压缩包中的动态库文件（Windows `DLL`、macOS `.dylib`、Linux `.so`），并在设置中选择其 `bin/xtb.exe` 或 `bin/xtb`。未配置外部程序时仅对应功能不可用，已有计算结果仍可正常读取。
+   - **PES 对应源码与重链接说明**：当前势能面（PES）工作流涉及的第三方对应源码、构建与重链接材料索引位于 `third-party/pes-corresponding-source-index.json`（及 `third-party/corresponding-sources/pes`）。根目录应用许可协议不替代第三方库权利或 `licenses/THIRD_PARTY_RUNTIME_TERMS.md` 所述的修改/调试例外条款。

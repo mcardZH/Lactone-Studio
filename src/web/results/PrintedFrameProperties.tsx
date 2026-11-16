@@ -4,7 +4,7 @@ import type {Structure} from '../../core/types';
 import type {AnalysisHighlightProps} from './AnalysisControls';
 import {ScientificDataTable} from './ScientificDataTable';
 import type {ScientificTableProjection} from './scientific-table';
-import {formatResultValue} from '../../results/numeric-format';
+import {formatEnergyValue,formatResultValue} from '../../results/numeric-format';
 import {activeAnalysisRows,toggleAnalysisRow} from './analysis-display';
 import type {WavefunctionOrbital} from '../../results/orbital-contracts';
 import type {OrbitalListProps} from './OrbitalList';
@@ -72,7 +72,7 @@ export function PrintedFrameProperties(p:{result:TrajectoryResult|null;structure
  }
  const channels=data?.orbitals.filter(row=>row.frameIndex===currentIndex)??[];
  return <>{channels.map((channel,index)=>{
-  const projection:ScientificTableProjection={columns:[{key:'orbital',label:'轨道'},{key:'energy',label:`能量 / ${channel.unit}`},{key:'occupation',label:'占据数'}],rows:channel.orbitals.map(row=>({key:String(row.index),cells:[String(row.index+(p.result?.engine==='orca'?1:0)),number(row.energy),Number.isInteger(row.occupation)?String(row.occupation):number(row.occupation)]}))};
+  const projection:ScientificTableProjection={columns:[{key:'orbital',label:'轨道'},{key:'energy',label:`能量 / ${channel.unit}`},{key:'occupation',label:'占据数'}],rows:channel.orbitals.map(row=>({key:String(row.index),cells:[String(row.index+(p.result?.engine==='orca'?1:0)),formatEnergyValue(row.energy,decimals),Number.isInteger(row.occupation)?String(row.occupation):number(row.occupation)]}))};
   return <details key={`${currentIndex}:${index}`} className="postprocess-display-fold" open><summary>来源轨道 · {channel.spin}</summary><ScientificDataTable variant="legacy" projection={projection} selectionScope={JSON.stringify([identity,'orbitals',channel.spin,index])}/></details>;
  })}</>;
 }

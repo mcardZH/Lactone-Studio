@@ -2,7 +2,7 @@
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { createSyProjectAssociation } = require('./sy-project-association.cjs');
-const { ASSET_BATCH_ITEMS, ASSET_BATCH_BYTES } = require('./sy-project-store.cjs');
+const { isProjectIndexPath, ASSET_BATCH_ITEMS, ASSET_BATCH_BYTES } = require('./sy-project-store.cjs');
 const CHUNK_BYTES = ASSET_BATCH_BYTES;
 const invalid = message => { throw Object.assign(new Error(message), { code: 'SY_INVALID_REQUEST' }); };
 function createSyProjectIPC({ store, dialog, ownerWindow, createWindow, executablePath, association = createSyProjectAssociation({ executablePath }) } = {}) {
@@ -24,7 +24,7 @@ function createSyProjectIPC({ store, dialog, ownerWindow, createWindow, executab
   }
   function enqueue(window, indexPath) {
     const id = ownerId(window);
-    if (typeof indexPath !== 'string' || !path.isAbsolute(indexPath) || !['.es', '.sy'].includes(path.extname(indexPath).toLowerCase())) invalid('A trusted absolute .es or legacy .sy path is required.');
+    if (!isProjectIndexPath(indexPath) || !path.isAbsolute(indexPath)) invalid('请选择 .es 项目入口。');
     if (pending.has(id)) throw Object.assign(new Error('A project is already pending for this window.'), { code: 'SY_PENDING_PROJECT' });
     pending.set(id, path.resolve(indexPath));
   }
@@ -91,10 +91,10 @@ function createSyProjectIPC({ store, dialog, ownerWindow, createWindow, executab
           break;
         }
         case 'open-new': {
-          const selected = await dialog.showOpenDialog(current, { title: '打开 Ester Studio 项目', properties: ['openFile'], filters: [{ name: 'Ester Studio 项目（.es；兼容 .sy）', extensions: ['es', 'sy'] }] });
+          const selected = await dialog.showOpenDialog(current, { title: '打开 Ester Studio 项目', properties: ['openFile'], filters: [{ name: 'Ester Studio 项目（.es）', extensions: ['es'] }] });
           if (selected.canceled || !selected.filePaths?.length) { value = { cancelled: true }; break; }
           const indexPath = selected.filePaths[0];
-          if (!['.es', '.sy'].includes(path.extname(indexPath).toLowerCase())) invalid('请选择 .es 项目入口（兼容旧 .sy 项目）。');
+          if (!isProjectIndexPath(indexPath) || !path.isAbsolute(indexPath)) invalid('请选择 .es 项目入口。');
           const next = await createWindow(); enqueue(next, indexPath); value = { opened: true, windowId: next.id ?? next.webContents.id }; break;
         }
         case 'claim': value = await claim(current); break;

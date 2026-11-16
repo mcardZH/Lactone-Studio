@@ -23,9 +23,9 @@ from ase.data import atomic_numbers
 from ase.md.langevin import Langevin
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from native_stdin import control_blocks
-from conformer_solvation import native_alpb_supported
+from conformer_solvation import CAPABILITY, PRESETS, legacy_gbsa_supported, native_alpb_supported
 
-METHODS = ('MMFF94', 'MMFF94s', 'UFF', 'gfn0', 'gfn1', 'gfn2', 'gfnff')
+METHODS = ('MMFF94', 'MMFF94s', 'UFF', *CAPABILITY['methodDefinitions'])
 OPERATIONS = ('md', 'metadynamics', 'spherical-md')
 DEFAULTS = dict(threads=2, maxSteps=100000, maxEvaluations=200001,
                 maxFrames=2000, seed=731,
@@ -36,8 +36,6 @@ META_DEFAULTS = dict(temperatureK=300, durationFs=50000, sampleEveryFs=100,
 SPHERE_DEFAULTS = dict(temperatureK=300, durationFs=50000, sampleEveryFs=100)
 MD_DEFAULTS = dict(temperatureK=600, durationFs=50000, sampleEveryFs=100)
 MAX_LINE = 16 * 1024 * 1024
-ALPB_SOLVENTS = ('acetone', 'acetonitrile', 'aniline', 'benzaldehyde', 'benzene', 'ch2cl2', 'chcl3', 'cs2', 'dioxane', 'dmf', 'dmso', 'ethanol', 'ether', 'ethylacetate', 'furane', 'hexadecane', 'hexane', 'methanol', 'nitromethane', 'octanol', 'woctanol', 'phenol', 'toluene', 'thf', 'water')
-GBSA_SOLVENTS = ('acetone', 'acetonitrile', 'benzene', 'ch2cl2', 'chcl3', 'cs2', 'dmso', 'ether', 'water', 'methanol', 'thf', 'toluene')
 
 
 class SamplingError(ValueError):
@@ -98,7 +96,7 @@ def step_count(duration, dt, allow_zero=False):
 
 
 def sampling_driver(request):
-    if request['operation'] in ('md', 'metadynamics') and request['method'] in ('gfnff', 'gfn0', 'gfn1', 'gfn2'):
+    if request['operation'] in ('md', 'metadynamics') and request['method'] in CAPABILITY['methodDefinitions']:
         return 'native-xtb-md', 'native-rmsd-metadynamics' if request['operation'] == 'metadynamics' else 'native-ordinary-md'
     return 'ase-langevin', 'ase-forcefield-or-temperature-bias-route'
 
@@ -122,10 +120,17 @@ def validate_request(raw):
     require(isinstance(raw, dict), 'Sampling request object required')
     keys(raw, {'schema', 'stamp', 'runIdentity', 'segment', 'operation', 'structure', 'method', 'charge', 'uhf',
                'frozenAtomIds', 'constraints', 'calculator', 'solvation', 'annealing', 'metadynamics',
-               'molecularMD', 'sphericalMD', 'sphere', 'coreProtection', 'nativeProtection', 'memoryBudgetBytes', 'driver', 'driverReason', 'hydrogenMassAmu', 'maxWallTimeSeconds', *DEFAULTS})
+               'molecularMD', 'sphericalMD', 'sphere', 'coreProtection', 'nativeProtection', 'memoryBudgetBytes', 'driver', 'driverReason', 'hydrogenMassAmu', 'maxWallTimeSeconds', 'seedMode', *DEFAULTS})
     require(raw.get('schema') == 1 and raw.get('operation') in OPERATIONS and raw.get('method') in METHODS,
             'Unsupported sampling operation/method')
     request = copy.deepcopy({**DEFAULTS, **raw})
+    native = sampling_driver(request)[0] == 'native-xtb-md'
+    require(request['method'] != 'gxtb' or native, 'g-xTB sampling requires native MD/MTD')
+    if native:
+        if 'seed' not in raw or request['method'] == 'gxtb':
+            request.pop('seed', None)
+        if request['method'] == 'gxtb':
+            request.pop('seedMode', None)
     if 'segment' in request:
         segment = request['segment']; keys(segment, {'id', 'previousSegmentId', 'completedStepsBefore'})
         require(request['operation'] in ('md', 'metadynamics') and identity(segment.get('id'))
@@ -150,7 +155,7 @@ def validate_request(raw):
             and not any(any(b.get('image', [0, 0, 0])) for b in structure.get('bonds', [])), 'Sampling requires an isolated structure')
     atoms = structure['atoms']; ids = [a.get('id') for a in atoms]
     require(all(isinstance(i, str) and i for i in ids) and len(set(ids)) == len(ids), 'Unique stable atom IDs required')
-    require(all(a.get('element') in atomic_numbers and 1 <= atomic_numbers[a['element']] <= 86
+    require(all(a.get('element') in atomic_numbers and 1 <= atomic_numbers[a['element']] <= (103 if request['method'] == 'gxtb' else 86)
                 and integer(a.get('formalCharge', 0), -100, 100)
                 and all(finite(a.get(k), -1e6, 1e6) for k in ('x', 'y', 'z')) for a in atoms), 'Invalid atom or coordinates')
     neighbours = [set() for _ in atoms]; edges = set()
@@ -169,11 +174,14 @@ def validate_request(raw):
         require(fragments >= 2, 'Spherical multi-molecule sampling requires at least two explicit connected components')
     require(integer(request.get('charge'), -100, 100), 'Explicit integer charge required')
     electrons = sum(atomic_numbers[a['element']] for a in atoms) - request['charge']
-    require(electrons > 0 and integer(request.get('uhf'), 0, electrons) and (electrons-request['uhf']) % 2 == 0, 'Charge/UHF parity mismatch')
+    require(electrons > 0 and integer(request.get('uhf'), 0, electrons), 'Charge/UHF settings are invalid')
     if request['method'] == 'gfnff':
         require(request['uhf'] == 0, 'GFN-FF has no spin Hamiltonian')
+    else:
+        require((electrons-request['uhf']) % 2 == 0, 'Charge/UHF parity mismatch')
     require(('charge' not in structure or structure['charge'] == request['charge'])
-            and ('multiplicity' not in structure or structure['multiplicity'] == request['uhf']+1), 'Source charge/multiplicity differ from sampling request')
+            and (request['method'] == 'gfnff' or 'multiplicity' not in structure or structure['multiplicity'] == request['uhf']+1),
+            'Source charge/multiplicity differ from sampling request')
     request.setdefault('frozenAtomIds', []); request.setdefault('constraints', [])
     if 'nativeProtection' in request:
         require(sampling_driver(request)[0]=='native-xtb-md','Native protection belongs only to ordinary native xTB MD')
@@ -185,7 +193,7 @@ def validate_request(raw):
         if 'sphere' in protection:
             sphere=protection['sphere'];keys(sphere,['kind','centerAngstrom','radiusAngstrom','exponent']);center=sphere.get('centerAngstrom')
             require(sphere.get('kind')=='polynomial' and sphere.get('exponent')==30 and isinstance(center,list) and len(center)==3 and all(finite(v,-1e6,1e6)for v in center) and finite(sphere.get('radiusAngstrom'),.01,10000),'Invalid native polynomial sphere definition')
-    if sampling_driver(request)[0] == 'native-xtb-md':
+    if native:
         if request['method'] == 'gfnff':
             if 'shakeHydrogenBonds' not in raw: request['shakeHydrogenBonds'] = False
             require(request['shakeHydrogenBonds'] is False, 'Locked native GFN-FF MD does not apply SHAKE; explicitly enable only a supported method')
@@ -198,16 +206,29 @@ def validate_request(raw):
             'Fixed hydrogen mass is supported only as 4 amu for GFN-FF sampling')
     frozen = request['frozenAtomIds']
     require(isinstance(frozen, list) and len(set(frozen)) == len(frozen) and set(frozen) < set(ids), 'Invalid or fully frozen sampling atoms')
-    require(request['constraints'] == [], 'Internal-coordinate momentum constraints are not validated for sampling')
+    if native:
+        if request['constraints']:
+            from conformer_native_md import NativeMDError, native_protection_settings
+            try:
+                native_protection_settings(dict(request, nativeProtection=None))
+            except NativeMDError as exc:
+                raise SamplingError(exc.code, str(exc)) from exc
+        if request['method'] != 'gxtb':
+            mode = request.get('seedMode', 'specified' if 'seed' in request else 'auto')
+            require(mode in ('auto', 'specified') and (mode == 'auto' or integer(request.get('seed'), 0, 2**31-1)),
+                    'Native MD seed must be within 0..2147483647')
+    else:
+        require(request['constraints'] == [], 'Internal-coordinate momentum constraints are not validated for ASE sampling')
+        require('seedMode' not in request and integer(request['seed'], 0, 2**32-1), 'Invalid ASE sampling seed')
     require(type(request['shakeHydrogenBonds']) is bool and ('memoryBudgetBytes' not in request or integer(request['memoryBudgetBytes'], 1, 2**53-1)), 'Invalid SHAKE/host memory budget')
     if request['shakeHydrogenBonds']:
         pairs = hydrogen_bond_pairs(request); fixed_indices = {ids.index(id) for id in frozen}
         require(all(sum((atoms[a][k]-atoms[b][k])**2 for k in ('x','y','z')) > 1e-16 for a,b in pairs), 'SHAKE requires nonzero source X-H bond lengths')
         active_pairs = [(a,b) for a,b in pairs if a not in fixed_indices or b not in fixed_indices]
         require(3*(len(atoms)-len(frozen)) > len(active_pairs), 'SHAKE leaves no free physical degrees of freedom')
-    require(integer(request['threads'], 1, 2**53-1) and integer(request['seed'], 0, 2**32-1)
+    require(integer(request['threads'], 1, 2**53-1)
             and integer(request['maxSteps'], 1, 2**53-1) and integer(request['maxEvaluations'], 1, 2**53-1)
-            and ('maxWallTimeSeconds' not in request or finite(request['maxWallTimeSeconds'], .01, 7200)) and integer(request['maxFrames'], 1, 2**53-1)
+            and ('maxWallTimeSeconds' not in request or finite(request['maxWallTimeSeconds'], .01, sys.float_info.max)) and integer(request['maxFrames'], 1, 2**53-1)
             and integer(request['reportEvery'], 1, 2**53-1) and finite(request['dtFs'], .01, 2)
             and finite(request['frictionPerFs'], 1e-6, 1), 'Invalid sampling integration/resource budget')
     calc = dict(accuracy=1, maxIterations=250, electronicTemperatureK=300)
@@ -219,12 +240,13 @@ def validate_request(raw):
         keys(request['solvation'], ['model', 'solvent']); sol = request['solvation']
         require(set(sol) == {'model', 'solvent'}
                 and sol['model'] in ('alpb', 'gbsa') and isinstance(sol['solvent'], str)
-                and re.fullmatch(r'[a-z0-9]{1,40}', sol['solvent']), 'Invalid or unsupported sampling solvation')
-        if sampling_driver(request)[0] == 'native-xtb-md' and sol['model'] == 'alpb':
-            require(native_alpb_supported(request['method'], request['operation'], sol['solvent']), 'Solvent is not supported for this native MD/MTD method')
+                and re.fullmatch(r'[a-z0-9-]{1,40}', sol['solvent']), 'Invalid or unsupported sampling solvation')
+        if native:
+            require(sol['model'] == 'alpb' and native_alpb_supported(request['method'], request['operation'], sol['solvent']),
+                    'Solvent is not supported for this native MD/MTD method')
         else:
-            supported = ALPB_SOLVENTS if sol['model'] == 'alpb' else GBSA_SOLVENTS + (('dmf', 'hexane') if request['method'] == 'gfn2' else ())
-            require(request['method'] in ('gfn1', 'gfn2') and sol['solvent'] in supported, 'Solvent is not parametrized for the selected method/model')
+            require(request['method'] in ('gfn1', 'gfn2') and (sol['solvent'] in PRESETS if sol['model'] == 'alpb'
+                    else legacy_gbsa_supported(request['method'], sol['solvent'])), 'Solvent is not parametrized for the selected method/model')
     if request['method'] in ('MMFF94', 'MMFF94s', 'UFF'):
         require(sum(a.get('formalCharge', 0) for a in atoms) == request['charge'],
                 'Force-field graph formal charges differ from requested total charge')
@@ -656,6 +678,8 @@ def main():
                             if session is not None and hasattr(session, 'native_temperature_observations') else {})
             if session is not None and hasattr(session, 'initial_velocity_correction'):
                 observations['initialVelocityCorrection'] = copy.deepcopy(session.initial_velocity_correction)
+            if session is not None and getattr(session, 'optional_diagnostics', None):
+                observations['optionalDiagnostics'] = copy.deepcopy(session.optional_diagnostics)
             if session is not None and getattr(session, 'native_solvation', None) is not None:
                 observations['nativeSolvation'] = copy.deepcopy(session.native_solvation)
             if isinstance(exc, Cancelled) or getattr(exc,'code',None)=='SAMPLING_CANCELLED': emit(dict(kind='stopped', workerSettled=True, reason='cancelled', lastFrame=session.last_frame if session else None, nativeClosed=session.native_closed() if session else True, **observations))

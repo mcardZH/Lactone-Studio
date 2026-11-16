@@ -164,12 +164,16 @@ export function mapStructureTransformDocument(document: ModelDocument, candidate
   // Cartesian freezes are physical coordinates, not labels. New replicas use
   // their explicitly declared source translation; existing IDs stay exact.
   const frozen = new Set(getFrozenAtomIds(document));
+  const cellEdit = ['assign-cell', 'edit-cell', 'cell'].includes(candidate.operation);
   for (const sourceId of frozen) {
     const entries = bySource.get(sourceId); if (!entries?.length) throw new Error('几何候选删除了明确冻结原子。');
     for (const entry of entries) {
       const before = sourceAtoms.get(sourceId)!, atom = targetAtoms.get(entry.atomId)!;
       const shift = entry.atomId === sourceId ? zero() : original.cell ? fractionalToCartesian(original.cell, entry.image, false) : zero();
-      const expected = [before.x + shift[0], before.y + shift[1], before.z + shift[2]];
+      // A cell edit can leave the Cartesian position untouched. Do not add a
+      // synthetic +0 to an original coordinate in that case.
+      const expected = cellEdit && entry.atomId === sourceId ? [before.x, before.y, before.z]
+        : [before.x + shift[0], before.y + shift[1], before.z + shift[2]];
       if ([atom.x, atom.y, atom.z].some((value, axis) => !Object.is(value, expected[axis]))) throw new Error('几何变换不能移动、合并或隐式解除明确冻结原子。');
     }
   }

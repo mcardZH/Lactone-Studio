@@ -18,6 +18,9 @@
 .unified-workbench-grid .wizard-footer>div{min-width:0}
 .shared-orca-form .orca-workbench-embedded{height:100%;min-height:0;overflow:hidden;background:transparent}
 .shared-orca-form .orca-workbench-embedded>.orca-layout{display:flex!important;flex:1;min-height:0;padding:0;overflow:hidden}
+.workspace-input-panel .orca-workbench-embedded > .orca-layout:has(> .workflow-content-card[data-workflow-content=choice]) {
+  flex-direction:column;
+}
 .shared-orca-form .orca-form-panel{display:grid;grid-template-rows:minmax(0,1fr) auto auto;width:100%;height:auto;min-width:0;min-height:0;overflow:hidden;box-shadow:0 2px 8px #244f4210}
 .shared-orca-form .orca-step-content{min-height:0;overflow:visible;flex:none;padding:12px 13px}
 .shared-orca-form .orca-step-content>section>h1:first-child{display:none}

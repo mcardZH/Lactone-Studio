@@ -1,6 +1,7 @@
 'use strict';
 
 const SUPPORTED_PROTOCOL_VERSIONS = Object.freeze([
+  '2025-06-18',
   '2025-03-26',
   '2024-11-05'
 ]);
@@ -1996,8 +1997,7 @@ const VALID_LOCAL_XTB_METHODS = Object.freeze([
 ]);
 
 const VALID_XTB_SOLVATION_MODELS = Object.freeze([
-  'alpb',
-  'gbsa'
+  'alpb'
 ]);
 
 const VALID_SUBMIT_TASK_MODES = Object.freeze([
@@ -2068,6 +2068,244 @@ function assertNoControlChars(value, fieldName, maxLength = 200) {
   return value.trim();
 }
 
+const VALID_ENVIRONMENT_MANAGE_ACTIONS = Object.freeze([
+  'list',
+  'get',
+  'create',
+  'update',
+  'delete',
+  'check',
+  'trust-host-key',
+  'browse'
+]);
+
+const ALLOWED_ENVIRONMENT_MANAGE_KEYS = Object.freeze([
+  'windowId',
+  'action',
+  'environmentId',
+  'expectedRevision',
+  'environment',
+  'secret',
+  'challengeId',
+  'fingerprint',
+  'browsePurpose',
+  'browsePath',
+  'confirm',
+  'openTaskCenter'
+]);
+
+const ENVIRONMENT_STRING_FIELDS = Object.freeze({
+  displayName: 120,
+  host: 255,
+  user: 128,
+  distribution: 128,
+  executable: 4096,
+  workingRoot: 4096,
+  partition: 128,
+  account: 128,
+  qos: 128,
+  timeLimit: 64,
+  privateKeyPath: 4096
+});
+
+const ENVIRONMENT_MULTILINE_FIELDS = Object.freeze({
+  initialization: 64 * 1024,
+  calculationTemplate: 64 * 1024,
+  submitCommandTemplate: 16 * 1024
+});
+
+const ENVIRONMENT_ENUM_FIELDS = Object.freeze({
+  mode: ['local', 'wsl', 'ssh', 'slurm'],
+  engineId: ['gaussian', 'orca'],
+  connectionKind: ['local', 'wsl', 'ssh'],
+  schedulerKind: ['none', 'slurm'],
+  authentication: ['agent', 'password', 'private-key'],
+  slurmMemoryPolicy: ['input-request', 'site-managed']
+});
+
+const VALID_ENVIRONMENT_BROWSE_PURPOSES = Object.freeze(['executable', 'working-root', 'private-key']);
+
+function environmentArgumentError(message, code = 'INVALID_ENVIRONMENT_ARGUMENT') {
+  return Object.assign(new Error(message), { code });
+}
+
+/** Validates and copies an environment patch; unknown fields are rejected. */
+function normalizeEnvironmentPatchArgument(value) {
+  if (!isPlainObject(value)) {
+    throw environmentArgumentError('environment must be an object of environment fields');
+  }
+  const allowed = new Set([
+    ...Object.keys(ENVIRONMENT_STRING_FIELDS),
+    ...Object.keys(ENVIRONMENT_MULTILINE_FIELDS),
+    ...Object.keys(ENVIRONMENT_ENUM_FIELDS),
+    'port'
+  ]);
+  const patch = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (!allowed.has(key)) {
+      throw environmentArgumentError(`Unknown environment field "${key}"`, 'UNKNOWN_ENVIRONMENT_FIELD');
+    }
+    if (key === 'port') {
+      if (!Number.isInteger(raw) || raw < 1 || raw > 65535) {
+        throw environmentArgumentError('environment.port must be an integer between 1 and 65535');
+      }
+      patch.port = raw;
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(ENVIRONMENT_ENUM_FIELDS, key)) {
+      if (!ENVIRONMENT_ENUM_FIELDS[key].includes(raw)) {
+        throw environmentArgumentError(`environment.${key} must be one of: ${ENVIRONMENT_ENUM_FIELDS[key].join(', ')}`);
+      }
+      patch[key] = raw;
+      continue;
+    }
+    if (typeof raw !== 'string') {
+      throw environmentArgumentError(`environment.${key} must be a string`);
+    }
+    if (Object.prototype.hasOwnProperty.call(ENVIRONMENT_STRING_FIELDS, key)) {
+      if (raw.length > ENVIRONMENT_STRING_FIELDS[key] || /[\r\n\0]/.test(raw)) {
+        throw environmentArgumentError(`environment.${key} must be a single-line string up to ${ENVIRONMENT_STRING_FIELDS[key]} characters`);
+      }
+    } else if (raw.length > ENVIRONMENT_MULTILINE_FIELDS[key] || raw.includes('\0')) {
+      throw environmentArgumentError(`environment.${key} must be a string up to ${ENVIRONMENT_MULTILINE_FIELDS[key]} characters`);
+    }
+    patch[key] = raw;
+  }
+  if (patch.mode !== undefined && (patch.connectionKind !== undefined || patch.schedulerKind !== undefined)) {
+    throw environmentArgumentError('environment.mode cannot be combined with connectionKind/schedulerKind');
+  }
+  return patch;
+}
+
+function normalizeEnvironmentSecretArgument(value) {
+  if (!isPlainObject(value)) {
+    throw environmentArgumentError('secret must be an object');
+  }
+  const secret = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (key === 'remember') {
+      if (typeof raw !== 'boolean') throw environmentArgumentError('secret.remember must be a boolean');
+      secret.remember = raw;
+    } else if (key === 'password' || key === 'privateKeyPassphrase') {
+      if (typeof raw !== 'string' || !raw || raw.length > 4096 || raw.includes('\0')) {
+        throw environmentArgumentError(`secret.${key} must be a non-empty string up to 4096 characters`);
+      }
+      secret[key] = raw;
+    } else {
+      throw environmentArgumentError(`Unknown secret field "${key}"`, 'UNKNOWN_ENVIRONMENT_FIELD');
+    }
+  }
+  if (secret.password !== undefined && secret.privateKeyPassphrase !== undefined) {
+    throw environmentArgumentError('secret accepts either password or privateKeyPassphrase, not both');
+  }
+  if (secret.password === undefined && secret.privateKeyPassphrase === undefined) {
+    throw environmentArgumentError('secret requires password or privateKeyPassphrase');
+  }
+  return { ...secret, remember: secret.remember === true };
+}
+
+/** Shared validation for ester_environment_manage (exported for tests). */
+function normalizeEnvironmentManageArguments(args) {
+  if (!isPlainObject(args)) {
+    throw environmentArgumentError('Arguments must be an object');
+  }
+  for (const key of Object.keys(args)) {
+    if (!ALLOWED_ENVIRONMENT_MANAGE_KEYS.includes(key)) {
+      throw environmentArgumentError(`Unknown argument "${key}" for ester_environment_manage`, 'UNKNOWN_ENVIRONMENT_MANAGE_ARGUMENT');
+    }
+  }
+  if (args.windowId !== undefined && (!Number.isInteger(args.windowId) || args.windowId <= 0)) {
+    throw Object.assign(new Error('windowId must be a positive integer'), { code: 'INVALID_WINDOW_ID' });
+  }
+  if (!VALID_ENVIRONMENT_MANAGE_ACTIONS.includes(args.action)) {
+    throw environmentArgumentError(
+      `action must be one of: ${VALID_ENVIRONMENT_MANAGE_ACTIONS.join(', ')}`,
+      'INVALID_ENVIRONMENT_MANAGE_ACTION'
+    );
+  }
+  const action = args.action;
+  const payload = { action };
+  if (args.windowId !== undefined) payload.windowId = args.windowId;
+
+  if (args.environmentId !== undefined) {
+    payload.environmentId = assertNoControlChars(args.environmentId, 'environmentId', 200);
+  }
+  if (['get', 'update', 'delete'].includes(action) && payload.environmentId === undefined) {
+    throw environmentArgumentError(`environmentId is required when action is "${action}"`, 'MISSING_ENVIRONMENT_ID');
+  }
+  if (args.expectedRevision !== undefined) {
+    if (!Number.isInteger(args.expectedRevision) || args.expectedRevision < 0) {
+      throw environmentArgumentError('expectedRevision must be a non-negative integer');
+    }
+    payload.expectedRevision = args.expectedRevision;
+  }
+  if (args.environment !== undefined) {
+    if (!['create', 'update', 'check', 'browse'].includes(action)) {
+      throw environmentArgumentError(`environment is not accepted when action is "${action}"`);
+    }
+    payload.environment = normalizeEnvironmentPatchArgument(args.environment);
+  }
+  if (action === 'create' && payload.environment === undefined) {
+    throw environmentArgumentError('environment is required when action is "create"', 'MISSING_ENVIRONMENT');
+  }
+  if (action === 'update' && payload.environment === undefined && args.secret === undefined) {
+    throw environmentArgumentError('update requires environment fields and/or secret', 'MISSING_ENVIRONMENT');
+  }
+  if (['check', 'browse'].includes(action) && payload.environmentId === undefined && payload.environment === undefined) {
+    throw environmentArgumentError(`${action} requires environmentId (saved environment) or environment (unsaved draft)`, 'MISSING_ENVIRONMENT');
+  }
+  if (args.secret !== undefined) {
+    if (!['create', 'update', 'check', 'browse'].includes(action)) {
+      throw environmentArgumentError(`secret is not accepted when action is "${action}"`);
+    }
+    payload.secret = normalizeEnvironmentSecretArgument(args.secret);
+    const explicitAuth = payload.environment?.authentication;
+    if (explicitAuth === 'agent') {
+      throw environmentArgumentError('secret cannot be used when environment.authentication is "agent"');
+    }
+    if (explicitAuth === 'password' && payload.secret.privateKeyPassphrase !== undefined) {
+      throw environmentArgumentError('secret.privateKeyPassphrase cannot be used when environment.authentication is "password"');
+    }
+    if (explicitAuth === 'private-key' && payload.secret.password !== undefined) {
+      throw environmentArgumentError('secret.password cannot be used when environment.authentication is "private-key"');
+    }
+  }
+  if (action === 'trust-host-key') {
+    payload.challengeId = assertNoControlChars(args.challengeId, 'challengeId', 200);
+    payload.fingerprint = assertNoControlChars(args.fingerprint, 'fingerprint', 512);
+  } else if (args.challengeId !== undefined || args.fingerprint !== undefined) {
+    throw environmentArgumentError('challengeId/fingerprint are only accepted when action is "trust-host-key"');
+  }
+  if (action === 'browse') {
+    if (!VALID_ENVIRONMENT_BROWSE_PURPOSES.includes(args.browsePurpose)) {
+      throw environmentArgumentError(`browsePurpose must be one of: ${VALID_ENVIRONMENT_BROWSE_PURPOSES.join(', ')}`);
+    }
+    payload.browsePurpose = args.browsePurpose;
+    if (args.browsePath !== undefined) {
+      payload.browsePath = assertNoControlChars(args.browsePath, 'browsePath', 4096);
+    }
+  } else if (args.browsePurpose !== undefined || args.browsePath !== undefined) {
+    throw environmentArgumentError('browsePurpose/browsePath are only accepted when action is "browse"');
+  }
+  if (args.confirm !== undefined && typeof args.confirm !== 'boolean') {
+    throw environmentArgumentError('confirm must be a boolean');
+  }
+  if (['delete', 'trust-host-key'].includes(action) && args.confirm !== true) {
+    throw environmentArgumentError(
+      `action "${action}" is destructive or security-sensitive; pass confirm: true after the user has agreed`,
+      'ENVIRONMENT_CONFIRMATION_REQUIRED'
+    );
+  }
+  if (args.confirm !== undefined) payload.confirm = args.confirm;
+  if (args.openTaskCenter !== undefined) {
+    if (typeof args.openTaskCenter !== 'boolean') {
+      throw environmentArgumentError('openTaskCenter must be a boolean');
+    }
+    payload.openTaskCenter = args.openTaskCenter;
+  }
+  return payload;
+}
+
 function registerTaskExecutionTools(registry, { dispatchToHost }) {
   if (typeof dispatchToHost !== 'function') {
     throw new Error('registerTaskExecutionTools requires a dispatchToHost function');
@@ -2104,11 +2342,11 @@ function registerTaskExecutionTools(registry, { dispatchToHost }) {
         solvationModel: {
           type: 'string',
           enum: VALID_XTB_SOLVATION_MODELS,
-          description: 'Implicit solvation model when solvent is provided: "alpb" (default) or "gbsa".'
+          description: 'Implicit solvation model when solvent is provided: "alpb" (default; "gbsa" is not supported).'
         },
         maxSteps: {
           type: 'integer',
-          description: 'Maximum geometry optimization cycles (1..5000, default: 500).'
+          description: 'Maximum geometry optimization cycles for "optimize" (1..5000, default: 500). Not supported for "conformer-search", which uses xTB native-default step limits.'
         },
         rebuildBonds: {
           type: 'boolean',
@@ -2178,6 +2416,12 @@ function registerTaskExecutionTools(registry, { dispatchToHost }) {
         throw Object.assign(
           new Error(`solvationModel must be one of: ${VALID_XTB_SOLVATION_MODELS.join(', ')}`),
           { code: 'INVALID_XTB_SOLVATION' }
+        );
+      }
+      if (args.calculation === 'conformer-search' && args.maxSteps !== undefined) {
+        throw Object.assign(
+          new Error('maxSteps is not supported for calculation "conformer-search" (uses xTB native-default optimization step limit)'),
+          { code: 'INVALID_XTB_MAX_STEPS' }
         );
       }
       if (args.maxSteps !== undefined && (!Number.isInteger(args.maxSteps) || args.maxSteps < 1 || args.maxSteps > 5000)) {
@@ -2435,6 +2679,105 @@ function registerTaskExecutionTools(registry, { dispatchToHost }) {
         ...(args.category !== undefined ? { category: args.category } : {}),
         ...(artifactId !== undefined ? { artifactId } : {})
       });
+      return {
+        ok: true,
+        ...result
+      };
+    }
+  });
+  registry.registerTool({
+    name: 'ester_environment_manage',
+    description: 'Configure Task Center execution environments (Gaussian/ORCA on local machine, WSL2, SSH server, or SSH + Slurm) used by ester_submit_task. Actions: "list" summaries, "get" full configuration, "create"/"update" (partial fields merged onto saved values or platform defaults), "check" connectivity + executable + software version (may return an SSH hostKey challenge), "trust-host-key" (confirm: true), "browse" local/remote directories to locate executables or working roots, "delete" (confirm: true). Passwords/passphrases go in "secret" and are never echoed back.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        windowId: {
+          type: 'integer',
+          description: 'Optional target Electron window ID.'
+        },
+        action: {
+          type: 'string',
+          enum: VALID_ENVIRONMENT_MANAGE_ACTIONS,
+          description: 'Environment action to perform.'
+        },
+        environmentId: {
+          type: 'string',
+          description: 'Saved environmentId (required for get/update/delete; optional for check/browse to target a saved environment).'
+        },
+        expectedRevision: {
+          type: 'integer',
+          description: 'Optional optimistic-concurrency guard for update/delete: fail if the saved revision differs.'
+        },
+        environment: {
+          type: 'object',
+          description: 'Environment fields for create/update, or an unsaved draft (merged onto environmentId when given) for check/browse. Use "mode" as a shorthand for connectionKind+schedulerKind.',
+          properties: {
+            displayName: { type: 'string' },
+            mode: { type: 'string', enum: ENVIRONMENT_ENUM_FIELDS.mode, description: 'local | wsl | ssh | slurm (SSH + Slurm). local/wsl are only available on Windows hosts.' },
+            engineId: { type: 'string', enum: ENVIRONMENT_ENUM_FIELDS.engineId },
+            connectionKind: { type: 'string', enum: ENVIRONMENT_ENUM_FIELDS.connectionKind },
+            schedulerKind: { type: 'string', enum: ENVIRONMENT_ENUM_FIELDS.schedulerKind },
+            host: { type: 'string', description: 'SSH host name or IP.' },
+            port: { type: 'integer', description: 'SSH port (default 22).' },
+            user: { type: 'string', description: 'SSH user, or WSL execution user.' },
+            distribution: { type: 'string', description: 'WSL distribution name.' },
+            executable: { type: 'string', description: 'Absolute path of g16/g09 or orca executable on the execution target.' },
+            workingRoot: { type: 'string', description: 'Absolute working root directory on the execution target.' },
+            partition: { type: 'string' },
+            account: { type: 'string' },
+            qos: { type: 'string' },
+            timeLimit: { type: 'string', description: 'Slurm time limit, e.g. 24:00:00 or 2-00:00:00.' },
+            slurmMemoryPolicy: { type: 'string', enum: ENVIRONMENT_ENUM_FIELDS.slurmMemoryPolicy },
+            initialization: { type: 'string', description: 'Shell initialization lines (module load, source env, export ...).' },
+            calculationTemplate: { type: 'string', description: 'Custom calculation command template; empty string restores the default template.' },
+            submitCommandTemplate: { type: 'string', description: 'SSH + Slurm only: custom submit command template; empty keeps managed sbatch.' },
+            authentication: { type: 'string', enum: ENVIRONMENT_ENUM_FIELDS.authentication },
+            privateKeyPath: { type: 'string', description: 'Absolute local path of the SSH private key (authentication = private-key).' }
+          },
+          additionalProperties: false
+        },
+        secret: {
+          type: 'object',
+          description: 'One-shot credential for create/update/check/browse. remember: true stores it in the OS credential vault.',
+          properties: {
+            password: { type: 'string' },
+            privateKeyPassphrase: { type: 'string' },
+            remember: { type: 'boolean' }
+          },
+          additionalProperties: false
+        },
+        challengeId: {
+          type: 'string',
+          description: 'hostKey.challengeId returned by "check" (trust-host-key only).'
+        },
+        fingerprint: {
+          type: 'string',
+          description: 'hostKey.fingerprint returned by "check" (trust-host-key only).'
+        },
+        browsePurpose: {
+          type: 'string',
+          enum: VALID_ENVIRONMENT_BROWSE_PURPOSES,
+          description: 'browse only: what is being located.'
+        },
+        browsePath: {
+          type: 'string',
+          description: 'browse only: absolute directory to list (defaults to the environment-specific starting directory).'
+        },
+        confirm: {
+          type: 'boolean',
+          description: 'Must be true for delete and trust-host-key.'
+        },
+        openTaskCenter: {
+          type: 'boolean',
+          description: 'Open the Task Center drawer in the UI after a successful change so the user can see it.'
+        }
+      },
+      required: ['action'],
+      additionalProperties: false
+    },
+    async handler(args) {
+      const payload = normalizeEnvironmentManageArguments(args);
+      const result = await dispatchToHost('environment-manage', payload);
       return {
         ok: true,
         ...result
@@ -3101,6 +3444,20 @@ function createMcpProtocolProcessor({ registry, serverName = 'ester-studio-mcp',
   });
 }
 
+function registerAllMcpTools(registry, { dispatchToHost, serverVersion = '2.0.3', registerExtraTools } = {}) {
+  registerFoundationTools(registry, { dispatchToHost, serverVersion });
+  registerWindowAndFileTools(registry, { dispatchToHost, serverVersion });
+  registerViewportAndVisionTools(registry, { dispatchToHost, serverVersion });
+  registerStructureAndGeometryTools(registry, { dispatchToHost, serverVersion });
+  registerInputConfigTools(registry, { dispatchToHost, serverVersion });
+  registerTaskExecutionTools(registry, { dispatchToHost, serverVersion });
+  registerAnalysisAndExportTools(registry, { dispatchToHost, serverVersion });
+  if (typeof registerExtraTools === 'function') {
+    registerExtraTools(registry, { dispatchToHost, serverVersion });
+  }
+  return registry;
+}
+
 module.exports = {
   SUPPORTED_PROTOCOL_VERSIONS,
   DEFAULT_PROTOCOL_VERSION,
@@ -3146,5 +3503,8 @@ module.exports = {
   registerInputConfigTools,
   registerTaskExecutionTools,
   registerAnalysisAndExportTools,
-  createMcpProtocolProcessor
+  registerAllMcpTools,
+  createMcpProtocolProcessor,
+  normalizeEnvironmentManageArguments,
+  VALID_ENVIRONMENT_MANAGE_ACTIONS
 };

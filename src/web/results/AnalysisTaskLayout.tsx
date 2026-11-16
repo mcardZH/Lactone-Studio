@@ -37,7 +37,7 @@ export function AnalysisTaskLayout({
   const qualityBlock=quality!=null&&quality!==false?<AnalysisQualitySettings onRestore={onRestoreQuality} disabled={qualityDisabled}>{quality}</AnalysisQualitySettings>:null;
   return <section className={`analysis-task-layout ${variant === 'card' ? 'analysis-task-card' : ''} ${className}`.trim()}
     aria-label={ariaLabel ?? title} data-testid={testId}>
-    {title && <h3 className="analysis-task-title"><button type="button" className="analysis-card-toggle" aria-expanded={!collapsed} aria-controls={bodyId} onClick={()=>setCollapsed(value=>!value)}><span aria-hidden="true">{collapsed?'▸':'▾'}</span>{title}</button>{headerActions&&<span className="analysis-task-heading-actions">{headerActions}</span>}</h3>}
+    {title && <h3 className="analysis-task-title"><button type="button" className="analysis-card-toggle" aria-expanded={!collapsed} aria-controls={bodyId} onClick={()=>setCollapsed(value=>!value)}><span aria-hidden="true">{collapsed?'▸':'▾'}</span><span className="analysis-card-toggle-text">{title}</span></button>{headerActions&&<span className="analysis-task-heading-actions">{headerActions}</span>}</h3>}
     <div className="analysis-task-body" id={bodyId} hidden={Boolean(title&&collapsed)}>
     {variant === 'card' && progress != null && <div className="analysis-task-progress">{progress}</div>}
     {variant === 'card' ? <div className="analysis-task-configuration">
@@ -63,7 +63,7 @@ export function AnalysisQualitySettings({children,onRestore,disabled=false}:{chi
 }
 
 export function AnalysisMethodDetails() {
-  return <details className="analysis-method-details" aria-label="来源与方法详情"><summary>来源与方法详情</summary><p>暂无补充说明。</p></details>;
+  return null;
 }
 
 export interface AnalysisTaskSectionProps {
@@ -82,7 +82,7 @@ export function AnalysisTaskSection({
   return <section className={`analysis-task-section ${className}`.trim()}
     aria-label={title} data-testid={testId}>
     <header className="analysis-task-section-heading">
-      <h4><button type="button" className="analysis-card-toggle" aria-expanded={!collapsed} aria-controls={bodyId} onClick={()=>setCollapsed(value=>!value)}><span aria-hidden="true">{collapsed?'▸':'▾'}</span>{title}</button></h4>
+      <h4><button type="button" className="analysis-card-toggle" aria-expanded={!collapsed} aria-controls={bodyId} onClick={()=>setCollapsed(value=>!value)}><span aria-hidden="true">{collapsed?'▸':'▾'}</span><span className="analysis-card-toggle-text">{title}</span></button></h4>
       {(controls != null || onRestore) && <div className="analysis-task-controls">{controls}{onRestore&&<button type="button" className="analysis-quality-reset" title={`恢复${title}默认`} aria-label={`恢复${title}默认`} onClick={onRestore}><RotateCcw size={16} strokeWidth={1.75}/></button>}</div>}
     </header>
     <div className="analysis-task-section-body" id={bodyId} hidden={collapsed}>{children}</div>

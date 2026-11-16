@@ -8,6 +8,13 @@ export function workspaceSourceGeometryKey(structure:Structure):string{
  return JSON.stringify({atoms:structure.atoms.map(atom=>[atom.id,atom.element,atom.x,atom.y,atom.z]),bonds:structure.bonds?.map(bond=>[bond.a,bond.b,bond.order,bond.image]),cell:structure.cell,dimension:structure.dimension,periodicSource:structure.periodicSource});
 }
 
+/** Confirmation follows scientific geometry, electronic state and frame identity,
+ * never camera/style or the selection of an older analysis task in the sidebar. */
+export function workspaceXtbScientificFrameIdentity(value:{projectEpoch:number;documentId:string;documentEpoch:string;sourceEpoch:number;structure:Structure;frameKey:string}):string{
+ return JSON.stringify([value.projectEpoch,value.documentId,value.documentEpoch,value.sourceEpoch,
+  workspaceSourceGeometryKey(value.structure),value.structure.charge,value.structure.multiplicity,value.frameKey]);
+}
+
 export function workspaceRetainedSourceGeometryMatches(original:AdvancedFrameSource|undefined,source:AdvancedFrameSource):boolean{
  return Boolean(original&&JSON.stringify(original.ref)===JSON.stringify(source.ref)&&original.coordinateUnit===source.coordinateUnit&&workspaceSourceGeometryKey(original.structure)===workspaceSourceGeometryKey(source.structure));
 }

@@ -1,0 +1,75 @@
+.conformer-solvent-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+  gap: 5px 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.conformer-solvent-field select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--input-control-height, 36px);
+  padding: 5px 9px;
+  border: 1px solid var(--input-border, #cadfd1);
+  border-radius: var(--input-control-radius, 7px);
+  background: var(--input-control-bg, #fff);
+  color: inherit;
+  font: inherit;
+}
+.conformer-solvent-field select[aria-invalid=true] {
+  border-color: var(--ui-error, #b53436);
+}
+.conformer-solvent-field .dismissible-notice {
+  flex-basis: 100%;
+  margin-block: 6px;
+}
+
+/* Native select remains the only value, focus, keyboard and popup owner. Its
+   selected label sizes this grid and wraps independently of the native single
+   line text renderer, leaving the existing arrow/control surface visible. */
+.conformer-solvent-field .conformer-solvent-select,
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .conformer-solvent-field .shared-input-field-control > .conformer-solvent-select {
+  position:relative;
+  display:inline-grid;
+  flex:0 1 auto;
+  inline-size:max-content;
+  min-inline-size:0;
+  max-inline-size:100%;
+  white-space:normal;
+}
+.conformer-solvent-field .conformer-solvent-select > select,
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .conformer-solvent-field .conformer-solvent-select > select {
+  position:absolute;
+  inset:0;
+  inline-size:100%;
+  block-size:100%;
+  max-inline-size:100%;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
+}
+.conformer-solvent-field .conformer-solvent-select > select > option {
+  color:var(--input-color,var(--ui-control-ink));
+  -webkit-text-fill-color:var(--input-color,var(--ui-control-ink));
+}
+.conformer-solvent-field .conformer-solvent-selected-label {
+  position:relative;
+  z-index:1;
+  pointer-events:none;
+  box-sizing:border-box;
+  min-inline-size:0;
+  min-block-size:var(--input-control-height,var(--ui-control-height,36px));
+  padding:var(--ui-control-padding,5px 9px);
+  padding-inline-end:calc(26px * var(--ui-font-scale,1));
+  border:1px solid transparent;
+  color:var(--input-color,var(--ui-control-ink));
+  font:inherit;
+  line-height:inherit;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.conformer-solvent-field .conformer-solvent-select > select:disabled + .conformer-solvent-selected-label {
+  color:var(--ui-action-disabled-ink);
+}

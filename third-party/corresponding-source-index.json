@@ -6219,5 +6219,12 @@
     "path": "third-party/corresponding-sources/build-support/xtb-gnu/es-initial-velocity/component-closure-report.json",
     "bytes": 15308,
     "sha256": "87c4257bbdd283acfec7533d6226f84ffd0032e6106c2cfb49c893259e41d706"
-  }
+  },
+  "supplementalSourceIndexes": [
+    {
+      "path": "third-party/pes-corresponding-source-index.json",
+      "bytes": 23156,
+      "sha256": "453a5cb0868423d214ddc794fe72051080a0e988491aec18c2a3ce39f41a4f70"
+    }
+  ]
 }

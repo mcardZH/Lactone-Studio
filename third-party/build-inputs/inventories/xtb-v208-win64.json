@@ -1,0 +1,542 @@
+{
+  "schema": "sciyue-xtb-lock-v1",
+  "platform": "win32-x64",
+  "lockId": "xtb-v208-4b8c987-f417fad161cf",
+  "root": ".local/dependencies/win-x64/xtb-v208-4b8c987-f417fad161cf",
+  "contentDirectories": [
+    "xtb"
+  ],
+  "version": "6.8.0",
+  "entry": "xtb/bin/xtb.exe",
+  "dataDirectory": "xtb/share/xtb",
+  "methods": [
+    "gfn0",
+    "gfn1",
+    "gfn2",
+    "gfnff",
+    "gxtb"
+  ],
+  "scope": "local-experimental",
+  "localUseReady": true,
+  "publicRedistributionReviewed": false,
+  "distributionLicenseReady": false,
+  "publicDistribution": false,
+  "runtimeManifest": {
+    "path": "runtime.json",
+    "bytes": 3192,
+    "sha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e"
+  },
+  "variantIdentities": {
+    "official": {
+      "schema": "sciyue-xtb-engine-identity/v1",
+      "engine": "xtb",
+      "kind": "official-release",
+      "runtimeVariant": "official",
+      "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+      "compiler": null,
+      "toolchainArchiveSha256": null,
+      "scientificPinsSha256": null,
+      "version": "6.8.0",
+      "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "archiveSha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+      "buildId": "xtb-v6.8.0-windows-x86_64-openblas-official",
+      "executableSha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+      "sourceReceiptSha256": "e4101f28ae510f49e5298d121149261a7b765bcd614220434254761b66b7d18c",
+      "runtimeMemberDigest": "6adc932cad15ab63d6ce9b89ac8b2a4a0af99b34956a026963ee2586547a6592",
+      "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+      "sha256": "0044b880da3806369eedd912d97c4b307dc471653732bd9303f8ceea0117f7e2"
+    },
+    "gfn0-stack64": {
+      "schema": "sciyue-xtb-engine-identity/v1",
+      "engine": "xtb",
+      "kind": "pe-stack-derivative",
+      "runtimeVariant": "gfn0-stack64",
+      "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+      "compiler": null,
+      "toolchainArchiveSha256": null,
+      "scientificPinsSha256": null,
+      "version": "6.8.0",
+      "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "archiveSha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+      "buildId": "xtb-v6.8.0-official-win64-pe-stack64",
+      "stackReserveBytes": 67108864,
+      "parentExecutableSha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+      "executableSha256": "c30aab875e388f77b04dedb58dd3a746ae7d3ea46b4f9852680925bf64a0eb98",
+      "sourceReceiptSha256": "391cdf82cba8b7035c8685b6cc1cc777dacc537d9b43655152b3c6dbecaa0e4b",
+      "runtimeMemberDigest": "43ba5a270f1e3f67c5eefbb729af578c3a8099191d1b45fbc2848310619dd1fc",
+      "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+      "sha256": "4462ab204bc679fffdd33c097b8039a36881eeb715f2f1257872ce6af251dc4d"
+    },
+    "gxtb": {
+      "schema": "sciyue-xtb-engine-identity/v1",
+      "engine": "xtb",
+      "kind": "official-gxtb-release",
+      "runtimeVariant": "gxtb",
+      "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+      "compiler": null,
+      "toolchainArchiveSha256": null,
+      "scientificPinsSha256": null,
+      "buildId": "gxtb-v2.0.1-win64-host-6.7.1-30c6303",
+      "version": "6.7.1",
+      "sourceCommit": "30c6303",
+      "gxtbRelease": "2.0.1",
+      "hostVersion": "6.7.1",
+      "hostCommit": "30c6303",
+      "archiveSha256": "fa6d6491b38d895196e2312c6ce34b74e60cd974f9c01da6c3ee567b3ca41830",
+      "executableSha256": "c2af5f3db91794cc40b5e38712f28f0d24acb9af040abb0bfb627313e926cff6",
+      "sourceReceiptSha256": "c9e30a86f21ce44bf4f8a0b11696901fda77897c0ae8fe8dfbd02fecf9a23d63",
+      "runtimeMemberDigest": "9301c69c252d1560473e142cfa82003189e32a12bcf2c49e6cbf2d0a6c834231",
+      "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+      "sha256": "53efc1d4e600c5e4cc1a29bcfe33a48f197d6331809e50626d3f008cc788d753"
+    },
+    "fire": {
+      "schema": "sciyue-xtb-engine-identity/v1",
+      "engine": "xtb",
+      "kind": "fire-step-limit-rebuild",
+      "runtimeVariant": "fire",
+      "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+      "compiler": {
+        "name": "gfortran",
+        "version": "13.2.0"
+      },
+      "toolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+      "scientificPinsSha256": "b22f21f13be8933b653d56e65819cab2d271a72e2a2cf68b40c2bfe6c5e2ee7b",
+      "version": "6.8.0",
+      "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "buildId": "4b8c987-ester-fire-limit-gnu132-openblas033",
+      "stackReserveBytes": 67108864,
+      "fireStepLimit": "remaining-microcycles-v1",
+      "executableSha256": "f417fad161cfb35c09bf4b681b04b398c95f9597140cd9c1d8d6f2ac319eb666",
+      "sourceReceiptSha256": "78428bd41ee15a452579651896e1f81739a1a586a1c47631047dcb89126996db",
+      "runtimeMemberDigest": "6df29e49f7d3cbc469f614f395d0216444f3a1c27f990869cdcfe80809c3b728",
+      "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+      "sha256": "f786e9dba78ee4987bd65badc4b5607a6d2b41c177155002f13a0398d850a14d"
+    }
+  },
+  "engineIdentity": {
+    "schema": "sciyue-xtb-engine-identity/v1",
+    "engine": "xtb",
+    "kind": "official-release",
+    "runtimeVariant": "official",
+    "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+    "compiler": null,
+    "toolchainArchiveSha256": null,
+    "scientificPinsSha256": null,
+    "version": "6.8.0",
+    "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+    "archiveSha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+    "buildId": "xtb-v6.8.0-windows-x86_64-openblas-official",
+    "executableSha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+    "sourceReceiptSha256": "e4101f28ae510f49e5298d121149261a7b765bcd614220434254761b66b7d18c",
+    "runtimeMemberDigest": "6adc932cad15ab63d6ce9b89ac8b2a4a0af99b34956a026963ee2586547a6592",
+    "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
+    "sha256": "0044b880da3806369eedd912d97c4b307dc471653732bd9303f8ceea0117f7e2"
+  },
+  "files": [
+    {
+      "path": "xtb/bin/xtb.exe",
+      "bytes": 53892078,
+      "sha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1"
+    },
+    {
+      "path": "xtb/bin/xtb680-stack64.exe",
+      "bytes": 53892078,
+      "sha256": "c30aab875e388f77b04dedb58dd3a746ae7d3ea46b4f9852680925bf64a0eb98"
+    },
+    {
+      "path": "xtb/inventory.json",
+      "bytes": 13786,
+      "sha256": "4e97a20857c5c60f5ebed451bfc31361fda4dd737dd63c8429a644ac8ca65ab1"
+    },
+    {
+      "path": "xtb/licenses/fire/Microsoft-VC-runtime-license.rtf",
+      "bytes": 9235,
+      "sha256": "8099dc3cf9502c335da829e5c755948a12e3e6de490eb492a99deb673d883d8b"
+    },
+    {
+      "path": "xtb/licenses/fire/dlfcn-win32/COPYING",
+      "bytes": 1040,
+      "sha256": "4cc7ac997b9293db5919baf630100cc09b3508efdfe6a6611c95511fb863b3c7"
+    },
+    {
+      "path": "xtb/licenses/fire/dlfcn-win32/source-copyright-and-grant.c",
+      "bytes": 29461,
+      "sha256": "0b7a7e71d4beeef7df6ad9422da7b311bb15edd05ac7016d2d93fa8f90a4944e"
+    },
+    {
+      "path": "xtb/licenses/fire/gcc13.2/COPYING.RUNTIME",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "xtb/licenses/fire/gcc13.2/COPYING3",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "xtb/licenses/fire/gcc13.2/libquadmath-COPYING.LIB",
+      "bytes": 26440,
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b"
+    },
+    {
+      "path": "xtb/licenses/fire/openblas/LICENSE",
+      "bytes": 1548,
+      "sha256": "190b5a9c8d9723fe958ad33916bd7346d96fab3c5ea90832bb02d854f620fcff"
+    },
+    {
+      "path": "xtb/licenses/fire/openblas/lapack-netlib/LICENSE",
+      "bytes": 2266,
+      "sha256": "978539245c405775bf347b1256c36df4daf8b69a64b099e94b1d53742201621e"
+    },
+    {
+      "path": "xtb/licenses/fire/winpthreads/COPYING",
+      "bytes": 2883,
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177"
+    },
+    {
+      "path": "xtb/licenses/gxtb-2.0.1/GPL-3.0.txt",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/cpx/LICENSE",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/ddcosmo/LICENSE",
+      "bytes": 2767,
+      "sha256": "1ba106426af238225536de97d3c7ce96b76c09fb0c5061d5a839138ef4f87cf1"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/ddx/LICENSE.txt",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/dftd4/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/dftd4/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/crt-COPYING",
+      "bytes": 2326,
+      "sha256": "99a69660981156c21336fdb5661f89341b013c94e4bf9e1c7467b4745718397f"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/crt-COPYING.MinGW-w64-runtime.txt",
+      "bytes": 12155,
+      "sha256": "1db8da07b436c68833c0673ffee3d9fcb2526047f3820b81661865dfedc79a1f"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/crt-COPYING.MinGW-w64.txt",
+      "bytes": 5905,
+      "sha256": "f38e6194bd3bfa1b654f118e5acefe0aead437bbe669eee43957ccc65a7127f1"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/gcc-COPYING.RUNTIME",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/gcc-COPYING3",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/gcc-fortran-COPYING.RUNTIME",
+      "bytes": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/gcc-fortran-COPYING3",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/libwinpthread-COPYING",
+      "bytes": 2883,
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/gcc-runtime/winpthreads-COPYING",
+      "bytes": 2883,
+      "sha256": "63263614cdd29f2f93cba85e992f041b31f9fc7b4033692f31269489a8a1b177"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/jonquil/LICENSE-Apache",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/jonquil/LICENSE-MIT",
+      "bytes": 1056,
+      "sha256": "9693cda85401b57d709731599690e025e3e8b0fdf8fe71d39dee5ca40c784279"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/mctc-lib/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/multicharge/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/numsa/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/numsa/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/openblas/LICENSE",
+      "bytes": 1548,
+      "sha256": "190b5a9c8d9723fe958ad33916bd7346d96fab3c5ea90832bb02d854f620fcff"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/s-dftd3/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/s-dftd3/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/tblite/COPYING",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/tblite/COPYING.LESSER",
+      "bytes": 7652,
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/toml-f/LICENSE-Apache",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/toml-f/LICENSE-MIT",
+      "bytes": 1061,
+      "sha256": "aae148780b8012a964c33894d1414ff183b0b67a76fcc63f8893d3f816909e39"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/xtb/COPYING",
+      "bytes": 35823,
+      "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+    },
+    {
+      "path": "xtb/licenses/official-6.8/xtb/COPYING.LESSER",
+      "bytes": 7817,
+      "sha256": "7d3a95e5e06978064ed3f8e2b7c8f845e7fd8a405294727cc708f94cb83b8059"
+    },
+    {
+      "path": "xtb/provenance/fire.json",
+      "bytes": 12595,
+      "sha256": "78428bd41ee15a452579651896e1f81739a1a586a1c47631047dcb89126996db"
+    },
+    {
+      "path": "xtb/provenance/gfn0-stack64.json",
+      "bytes": 532,
+      "sha256": "391cdf82cba8b7035c8685b6cc1cc777dacc537d9b43655152b3c6dbecaa0e4b"
+    },
+    {
+      "path": "xtb/provenance/gxtb.json",
+      "bytes": 2461,
+      "sha256": "c9e30a86f21ce44bf4f8a0b11696901fda77897c0ae8fe8dfbd02fecf9a23d63"
+    },
+    {
+      "path": "xtb/provenance/official.json",
+      "bytes": 1055,
+      "sha256": "e4101f28ae510f49e5298d121149261a7b765bcd614220434254761b66b7d18c"
+    },
+    {
+      "path": "xtb/runtime.json",
+      "bytes": 3192,
+      "sha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e"
+    },
+    {
+      "path": "xtb/share/xtb/.param_gfnff.xtb",
+      "bytes": 12978,
+      "sha256": "5aaa4a62eecb9e0cf5bb8962ba1ada02b188c5118d9b067c1732da42c41d23e8"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn0-xtb.txt",
+      "bytes": 41019,
+      "sha256": "b2ab25c8ef4eb9f47eaf8993c6c2ebeb9f4999069f3777dc8f2c5a7f064a938c"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn1-si-xtb.txt",
+      "bytes": 29191,
+      "sha256": "15ed1195c87ee2127ecebed74811517efe59875f20f68acda1e09172c5fb8fed"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn1-xtb.txt",
+      "bytes": 28980,
+      "sha256": "42a438eb4939300363fde0bfcf95571d3335bf5cc6ba3df51bef0280174cfde5"
+    },
+    {
+      "path": "xtb/share/xtb/param_gfn2-xtb.txt",
+      "bytes": 37450,
+      "sha256": "5694f387f02a5d9c233cbf4cedabe8d4a7a863970afa05e4e07c0b4944223cb3"
+    },
+    {
+      "path": "xtb/share/xtb/param_ipea-xtb.txt",
+      "bytes": 28978,
+      "sha256": "635fd167e3d7f766bc2e09495c929357ec7c2d65d81296c2f713eba52b70152c"
+    },
+    {
+      "path": "xtb/variants/fire/bin/VCRUNTIME140.dll",
+      "bytes": 124496,
+      "sha256": "0205071c36c17f1efbd70178c852cb7d49985c484202752b8704b7ac6b184e60"
+    },
+    {
+      "path": "xtb/variants/fire/bin/libdl.dll",
+      "bytes": 23566,
+      "sha256": "2d7d94bc427cac1b2b0aaf0a36b7a0b13289c89ee3ed6afa16b666861b324c1a"
+    },
+    {
+      "path": "xtb/variants/fire/bin/libgcc_s_seh-1.dll",
+      "bytes": 740183,
+      "sha256": "d9de4402dc244bdf896068e8e45c8687f965006ebf39ddf36f4067582235e85f"
+    },
+    {
+      "path": "xtb/variants/fire/bin/libgfortran-5.dll",
+      "bytes": 3224337,
+      "sha256": "c68798c73830387250af0220071e4b38449aa455e8d5e5f6fa0bf7c706489c7f"
+    },
+    {
+      "path": "xtb/variants/fire/bin/libgomp-1.dll",
+      "bytes": 309881,
+      "sha256": "91ddfebc4a3204b18d3432e433f43c24a9cd991e23cf9b27b4eb63737c330fa4"
+    },
+    {
+      "path": "xtb/variants/fire/bin/libquadmath-0.dll",
+      "bytes": 383483,
+      "sha256": "15f394ddf8357594e5f714ed8ed22f45ec5ae5baae6b280ca63132549f8ad5eb"
+    },
+    {
+      "path": "xtb/variants/fire/bin/libwinpthread-1.dll",
+      "bytes": 94355,
+      "sha256": "f7c3c93b2ea8c78fe2c514602662bf479b0fe90989815989e5d6b3f52c2c485a"
+    },
+    {
+      "path": "xtb/variants/fire/bin/openblas.dll",
+      "bytes": 28357632,
+      "sha256": "ea5706aaa7e88ea76f350faf4181c5e3393817a1ce1cd800501bf3ee21f205e8"
+    },
+    {
+      "path": "xtb/variants/fire/bin/xtb.exe",
+      "bytes": 18930680,
+      "sha256": "f417fad161cfb35c09bf4b681b04b398c95f9597140cd9c1d8d6f2ac319eb666"
+    },
+    {
+      "path": "xtb/variants/fire/share/xtb/.param_gfnff.xtb",
+      "bytes": 12978,
+      "sha256": "5aaa4a62eecb9e0cf5bb8962ba1ada02b188c5118d9b067c1732da42c41d23e8"
+    },
+    {
+      "path": "xtb/variants/fire/share/xtb/param_gfn0-xtb.txt",
+      "bytes": 41019,
+      "sha256": "b2ab25c8ef4eb9f47eaf8993c6c2ebeb9f4999069f3777dc8f2c5a7f064a938c"
+    },
+    {
+      "path": "xtb/variants/fire/share/xtb/param_gfn1-si-xtb.txt",
+      "bytes": 29191,
+      "sha256": "15ed1195c87ee2127ecebed74811517efe59875f20f68acda1e09172c5fb8fed"
+    },
+    {
+      "path": "xtb/variants/fire/share/xtb/param_gfn1-xtb.txt",
+      "bytes": 28980,
+      "sha256": "42a438eb4939300363fde0bfcf95571d3335bf5cc6ba3df51bef0280174cfde5"
+    },
+    {
+      "path": "xtb/variants/fire/share/xtb/param_gfn2-xtb.txt",
+      "bytes": 37450,
+      "sha256": "5694f387f02a5d9c233cbf4cedabe8d4a7a863970afa05e4e07c0b4944223cb3"
+    },
+    {
+      "path": "xtb/variants/fire/share/xtb/param_ipea-xtb.txt",
+      "bytes": 28978,
+      "sha256": "635fd167e3d7f766bc2e09495c929357ec7c2d65d81296c2f713eba52b70152c"
+    },
+    {
+      "path": "xtb/variants/gxtb/bin/libblas.dll",
+      "bytes": 926664,
+      "sha256": "a77453546754b637f3eef74a64d45bcdbd3c487bd2cdce30f81d7c09e0566b14"
+    },
+    {
+      "path": "xtb/variants/gxtb/bin/libgcc_s_seh-1.dll",
+      "bytes": 150196,
+      "sha256": "eeda86410a82012a22b47f73d63c9e93667b7ed19e0b4aa22bcd02aed2215c66"
+    },
+    {
+      "path": "xtb/variants/gxtb/bin/libgfortran-5.dll",
+      "bytes": 3769650,
+      "sha256": "0f1d41564b04dc2c8f911a244048d0911af311bf1723892490feaf5e8e927cb5"
+    },
+    {
+      "path": "xtb/variants/gxtb/bin/liblapack.dll",
+      "bytes": 15566494,
+      "sha256": "d3af8da61d176534d9f618938ff9165e643cc3c1b5a30867fd83329c8cb46b7d"
+    },
+    {
+      "path": "xtb/variants/gxtb/bin/libquadmath-0.dll",
+      "bytes": 399279,
+      "sha256": "b27fba37dc5a5aa1c9aa00c3b72467ad3dc27de090c72a6b79525bcc8b9ac6aa"
+    },
+    {
+      "path": "xtb/variants/gxtb/bin/libwinpthread-1.dll",
+      "bytes": 65442,
+      "sha256": "5c978176fd66590dad8cbf76c161a01872d6bf2f956c47a04bdde983a7ec0627"
+    },
+    {
+      "path": "xtb/variants/gxtb/bin/xtb.exe",
+      "bytes": 20142365,
+      "sha256": "c2af5f3db91794cc40b5e38712f28f0d24acb9af040abb0bfb627313e926cff6"
+    },
+    {
+      "path": "xtb/variants/gxtb/share/xtb/.param_gfnff.xtb",
+      "bytes": 12978,
+      "sha256": "5aaa4a62eecb9e0cf5bb8962ba1ada02b188c5118d9b067c1732da42c41d23e8"
+    },
+    {
+      "path": "xtb/variants/gxtb/share/xtb/param_gfn0-xtb.txt",
+      "bytes": 41019,
+      "sha256": "b2ab25c8ef4eb9f47eaf8993c6c2ebeb9f4999069f3777dc8f2c5a7f064a938c"
+    },
+    {
+      "path": "xtb/variants/gxtb/share/xtb/param_gfn1-si-xtb.txt",
+      "bytes": 29191,
+      "sha256": "15ed1195c87ee2127ecebed74811517efe59875f20f68acda1e09172c5fb8fed"
+    },
+    {
+      "path": "xtb/variants/gxtb/share/xtb/param_gfn1-xtb.txt",
+      "bytes": 28980,
+      "sha256": "42a438eb4939300363fde0bfcf95571d3335bf5cc6ba3df51bef0280174cfde5"
+    },
+    {
+      "path": "xtb/variants/gxtb/share/xtb/param_gfn2-xtb.txt",
+      "bytes": 37450,
+      "sha256": "5694f387f02a5d9c233cbf4cedabe8d4a7a863970afa05e4e07c0b4944223cb3"
+    },
+    {
+      "path": "xtb/variants/gxtb/share/xtb/param_ipea-xtb.txt",
+      "bytes": 28978,
+      "sha256": "635fd167e3d7f766bc2e09495c929357ec7c2d65d81296c2f713eba52b70152c"
+    }
+  ]
+}

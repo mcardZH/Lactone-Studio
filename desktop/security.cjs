@@ -228,6 +228,8 @@ function validateChemistry(value) {
   if (value.runIdentity !== undefined) {
     assert(value.operation === 'optimize' && plain(value.runIdentity) && Object.keys(value.runIdentity).length === 2 && ['taskId', 'runId'].every(key => string(value.runIdentity[key], 100) && /^[A-Za-z0-9_-]+$/.test(value.runIdentity[key])), 'Invalid advanced chemistry run identity');
   }
+  assert(value.optimizationStepPolicy === undefined || value.optimizationStepPolicy === 'native-default'
+    && value.operation === 'optimize' && value.runIdentity && value.steps === undefined, 'Native default steps require an advanced force-field optimization without an explicit step count');
   if (value.optimizationPool !== undefined) {
     const pool = value.optimizationPool;
     assert(value.operation === 'optimize' && value.runIdentity && plain(pool) && Object.keys(pool).length === 2

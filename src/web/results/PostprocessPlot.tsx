@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { postprocessPlotData, postprocessPlotText, postprocessUnitLabel, type PostprocessEnergyUnit, type PostprocessPlotSnapshot } from './PostprocessPresentation';
 import type { OrbitalChannel } from '../../results/scientific-contracts';
 import ScientificPlot, { type ScientificPlotSeries } from './ScientificPlot';
-import { formatResultValue } from '../../results/numeric-format';
+import {formatEnergyValue, formatResultValue } from '../../results/numeric-format';
 import './Postprocess.css';
 import './PostprocessPlot.css';
 
@@ -23,7 +23,7 @@ export default function PostprocessPlot({ snapshot, compact = false, onSelectOrb
     return channel.orbitals.slice(Math.max(0, frontierPosition - span + 1), frontierPosition + span + 1).filter(orbital => orbital.energy != null && Number.isFinite(orbital.energy)).map((orbital, ordinal) => {
       const frontier = orbital.index === channel.frontier.homo?.index ? 'HOMO' : orbital.index === channel.frontier.lumo?.index ? 'LUMO' : '';
       const x = ordinal % 2 ? 1.6 : .1;
-      const tooltip = `${orbital.index} ${frontier} · ${adjustable(orbital.energy)} ${postprocessUnitLabel(unit)} · 占据数 ${Number.isInteger(orbital.occupation) ? String(orbital.occupation) : adjustable(orbital.occupation)}`;
+      const tooltip = `${orbital.index} ${frontier} · ${formatEnergyValue(orbital.energy,snapshot.decimals??2)} ${postprocessUnitLabel(unit)} · 占据数 ${Number.isInteger(orbital.occupation) ? String(orbital.occupation) : adjustable(orbital.occupation)}`;
       return { id: `orbital-${orbital.index}`, color: frontier ? '#c07c36' : orbital.occupation > 1e-8 ? '#2b7c83' : '#728ca8', pointLabels: true,
         points: [{ x, y: orbital.energy, index: orbital.index, tooltip }, { x: x + .85, y: orbital.energy, index: orbital.index, label: frontier || undefined, tooltip }] };
     });

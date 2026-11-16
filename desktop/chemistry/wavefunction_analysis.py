@@ -16,13 +16,13 @@ import subprocess
 import sys
 import tempfile
 import time
-from orbitals import OrbitalError, inspect_wavefunction, _number, _windows_owned_job, MultiwfnSession
-from multiwfn_resources import resolve_resources, total_physical_memory, _override
+from orbitals import OrbitalError, inspect_wavefunction, _number, _windows_owned_job, MultiwfnSession, SYMBOLS
+from multiwfn_resources import (resolve_resources, total_physical_memory, _override, require_native_binary_grant, start_multiwfn,
+                                gxtb_valence_settings, native_output_has_edf)
 
-SYMBOLS='X H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og'.split()
 NUMBER=r'[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[EeDd][-+]?\d+)?'
 
-def prepare_hirshfeld_densities(executable,metadata,work):
+def prepare_hirshfeld_densities(executable,metadata,work,required=True):
     """Copy existing radial densities only; missing data must never invoke Gaussian.
 
     Required charge states follow Multiwfn manual 3.9.13. Extra supplied states
@@ -35,33 +35,55 @@ def prepare_hirshfeld_densities(executable,metadata,work):
     for element in sorted(elements):
         states=(-1,0,1) if element in group1 else (-2,-1,0,1,2) if element in main else (-1,0,1,2)
         names.extend(element+('_0' if charge==0 else f'{charge:+d}')+'.rad' for charge in states)
-    # A user supplied atmrad beside the selected executable takes precedence.
-    directory=next((p for p in (executable.parent/'atmrad',executable.parent/'examples'/'atmrad') if p.is_dir()),executable.parent/'examples'/'atmrad')
-    missing=[name for name in names if not (directory/name).is_file()]
-    if missing:
-        raise OrbitalError('analysis-atomic-density','Hirshfeld-I 缺少原子径向密度文件：'+', '.join(missing)+f'。请将已有的完整 atmrad 放在 Multiwfn 目录或其 examples 目录中（当前检查：{directory}）；Ester Studio 不会调用 Gaussian 生成这些文件。')
-    files=sorted(p for p in directory.iterdir() if p.is_file() and re.fullmatch(r'([A-Z][a-z]?)(?:_0|[+-]\d+)\.rad',p.name) and re.match(r'[A-Z][a-z]?',p.name)[0] in elements)
-    payloads=[];digest=hashlib.sha256()
-    for file in files:
-        if file.stat().st_size>4*1024*1024: raise OrbitalError('analysis-atomic-density',f'Hirshfeld-I 原子径向密度文件过大：{file.name}')
-        raw=file.read_bytes()
-        try:
-            lines=raw.decode('ascii').splitlines();count=int(lines[0]);previous=-1.
-            element=re.match(r'[A-Z][a-z]?',file.name)[0]
-            stripped=file.name==f'{element}+{SYMBOLS.index(element)}.rad'
-            if (count<2 and not (count==0 and stripped)) or len(lines)!=count+1: raise ValueError('point count')
-            for line in lines[1:]:
-                parts=line.split()
-                if len(parts)!=2: raise ValueError('columns')
-                radius,density=map(_number,parts)
-                if radius<=previous or density<0: raise ValueError('radial data')
-                previous=radius
-        except (ValueError,IndexError,UnicodeError) as exc:
-            raise OrbitalError('analysis-atomic-density',f'Hirshfeld-I 原子径向密度文件无效：{file.name}；请恢复完整的原始 .rad 文件。') from exc
-        digest.update(file.name.encode('ascii')+b'\0'+raw);payloads.append((file.name,raw))
-    target=work/'atmrad';target.mkdir()
-    for name,raw in payloads: (target/name).write_bytes(raw)
-    return dict(atomicDensity='supplied spherical radial densities',atomicDensityFiles=len(payloads),atomicDensityRevision=digest.hexdigest())
+    # Resolve each state independently, preferring a valid reference beside the executable.
+    directories=(executable.parent/'atmrad',executable.parent/'examples'/'atmrad')
+    payloads={};invalid=set();digest=hashlib.sha256()
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for file in sorted(directory.iterdir()):
+            match=re.fullmatch(r'([A-Z][a-z]?)(?:_0|[+-]\d+)\.rad',file.name)
+            if not match or match[1] not in elements or file.name in payloads:
+                continue
+            try:
+                if not file.is_file(): raise ValueError('file type')
+                raw=file.read_bytes()
+                lines=raw.decode('ascii').splitlines();count=int(lines[0]);previous=-1.
+                stripped=file.name==f'{match[1]}+{SYMBOLS.index(match[1])}.rad'
+                if (count<2 and not (count==0 and stripped)) or len(lines)!=count+1: raise ValueError('point count')
+                for line in lines[1:]:
+                    parts=line.split()
+                    if len(parts)!=2: raise ValueError('columns')
+                    radius,density=map(_number,parts)
+                    if not all(map(math.isfinite,(radius,density))) or radius<=previous or density<0: raise ValueError('radial data')
+                    previous=radius
+            except (ValueError,IndexError,OSError):
+                invalid.add(file.name)
+                continue
+            payloads[file.name]=raw
+            invalid.discard(file.name)
+    missing=[name for name in names if name not in payloads]
+    if missing and required:
+        raise OrbitalError('analysis-atomic-density','Hirshfeld-I 缺少有效原子径向密度文件：'+', '.join(missing)+'。')
+    if payloads:
+        target=work/'atmrad';target.mkdir()
+        for name,raw in sorted(payloads.items()):
+            digest.update(name.encode('ascii')+b'\0'+raw)
+            (target/name).write_bytes(raw)
+        parameters=dict(atomicDensity='supplied spherical radial densities',atomicDensityFiles=len(payloads),atomicDensityRevision=digest.hexdigest())
+    else:
+        parameters=dict(atomicDensity='Multiwfn native reference handling')
+    if invalid:
+        parameters['unusableAtomicDensityFiles']=', '.join(sorted(invalid))
+    return parameters if required else (parameters,missing)
+
+def hirshfeld_missing_reference(output):
+    missing_reference=re.compile(r'upstream-disabled|(?:radial|atomic density).*(?:not found|missing)|(?:invoke|running|calling|launching) Gaussian|(?:not found|cannot open|does not exist).*\.rad|\.rad.*(?:not found|cannot open|does not exist)',re.I)
+    lines=[line for line in output.splitlines() if missing_reference.search(line)]
+    if not lines:
+        return None
+    detail='、'.join(sorted(set(re.findall(r'\b[A-Z][a-z]?(?:_0|[+-]\d+)\.rad\b','\n'.join(lines)))))
+    return 'Hirshfeld-I 本次需要额外原子径向密度参考'+('：'+detail if detail else '')+'。可提供已有 atmrad 数据，或另行确认参考补算。'
 
 def hirshfeld_convergence(output):
     converged=re.search(r'All atomic charges have converged to criterion of\s*('+NUMBER+r')',output)
@@ -81,19 +103,28 @@ def trusted_source_expectation(value,metadata):
     """
     if value is None:return None
     fields={'kind','artifactId','sourceSha256','charge','requestedUhf','atomElements','representedElectronCount','physicalElectronCount','sourceSpinResolution','independentAlphaBeta'}
-    if not isinstance(value,dict) or set(value)!=fields or value.get('kind')!='generated-gfn2-sp' or not isinstance(value.get('artifactId'),str) or not 0<len(value['artifactId'])<=256 or '\x00' in value['artifactId']:
+    gxtb=isinstance(value,dict) and value.get('kind')=='generated-gxtb-sp'
+    if gxtb: fields.add('effectiveNuclearCharges')
+    if not isinstance(value,dict) or set(value)!=fields or value.get('kind') not in ('generated-gfn2-sp','generated-gxtb-sp') or not isinstance(value.get('artifactId'),str) or not 0<len(value['artifactId'])<=256 or '\x00' in value['artifactId']:
         raise OrbitalError('trusted-source-expectation','Invalid internal generated-source expectation schema.')
     if metadata.get('format')!='molden' or value['sourceSha256']!=metadata['sourceSha256'] or not isinstance(value['sourceSha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',value['sourceSha256']):
         raise OrbitalError('trusted-source-expectation','Generated-source expectation does not match the immutable Molden digest.')
     if value['atomElements']!=[SYMBOLS[a['atomicNumber']] for a in metadata['atoms']]:
         raise OrbitalError('trusted-source-expectation','Generated-source atom order differs from its authenticated artifact.')
-    if value['sourceSpinResolution']!='spin-summed' or value['independentAlphaBeta'] is not False:
-        raise OrbitalError('trusted-source-expectation','Generated GFN2 Molden does not provide independent alpha/beta source data.')
+    independent=gxtb and any(o['spin']=='beta' for o in metadata['orbitals'])
+    resolution=('alpha-beta' if independent else 'restricted') if gxtb else 'spin-summed'
+    if value['sourceSpinResolution']!=resolution or value['independentAlphaBeta'] is not independent:
+        raise OrbitalError('trusted-source-expectation','Generated Molden spin resolution differs from the authenticated source.')
     charge=value['charge'];uhf=value['requestedUhf']
     if any(isinstance(v,bool) or not isinstance(v,int) or abs(v)>2**53-1 for v in (charge,uhf)) or uhf<0:
         raise OrbitalError('trusted-source-expectation','Generated-source charge/UHF must be bounded integers.')
     physical=sum(a['atomicNumber'] for a in metadata['atoms'])-charge
     represented=sum(o['occupation'] for o in metadata['orbitals'])
+    if gxtb:
+        effective=[a.get('effectiveNuclearCharge') for a in metadata['atoms']]
+        spin=sum(o['occupation']*(1 if o['spin']=='alpha' else -1) for o in metadata['orbitals']) if independent else 0
+        if not all(isinstance(z,int) for z in effective) or effective!=value['effectiveNuclearCharges'] or abs(sum(effective)-represented-charge)>1e-6 or abs(spin-uhf)>1e-6:
+            raise OrbitalError('trusted-source-expectation','g-xTB effective nuclei, represented electrons or spin differ from the authenticated request.')
     if physical<=0 or uhf>physical or (physical-uhf)%2 or represented<=0 or abs(represented-round(represented))>=1e-6 or represented>physical+1e-6:
         raise OrbitalError('trusted-source-expectation','Generated-source electron counts or requested charge/UHF parity are invalid.')
     for key,actual in [('representedElectronCount',represented),('physicalElectronCount',physical)]:
@@ -109,6 +140,11 @@ def verify_trusted_native_electrons(output,trusted):
     counts=re.search(r'Total/Alpha/Beta electrons:\s*('+NUMBER+r')',output)
     if not counts or abs(_number(counts[1])-trusted['representedElectronCount'])>1e-3:
         raise OrbitalError('analysis-trusted-electrons','Native total electron readback differs from authenticated MO occupations; no spin-channel or core reconstruction was inferred.')
+    if trusted['kind']=='generated-gxtb-sp':
+        net_charge=re.search(r'Net charge:\s*('+NUMBER+r')',output)
+        channels=re.search(r'Total/Alpha/Beta electrons:\s*('+NUMBER+r')\s*('+NUMBER+r')\s*('+NUMBER+r')',output)
+        if not net_charge or abs(_number(net_charge[1])-trusted['charge'])>1e-3 or not channels or abs(_number(channels[2])-_number(channels[3])-trusted['requestedUhf'])>1e-3:
+            raise OrbitalError('analysis-trusted-electrons','Native g-xTB valence charge or spin differs from the authenticated source.')
 
 def parse_charge(work, metadata, output, trusted_expectation=None):
     trusted=trusted_source_expectation(trusted_expectation,metadata)
@@ -125,7 +161,8 @@ def parse_charge(work, metadata, output, trusted_expectation=None):
     # spin, charge. Other methods do not inherit this spin definition.
     # Native alpha/beta/spin columns can be generated from a spin-summed source.
     # They are not independent source evidence and are retained only in raw logs.
-    spin_block=re.search(r'Atom\s+Alpha pop\.\s+Beta pop\.\s+Spin pop\.\s+(?:Atomic charge|Charge)(.*?)Total net charge',output,re.S) if trusted is None and not re.search(r'This file is found to be generated by xtb!',output,re.I) else None
+    spin_allowed=trusted['independentAlphaBeta'] if trusted else not re.search(r'This file is found to be generated by xtb!',output,re.I)
+    spin_block=re.search(r'Atom\s+Alpha pop\.\s+Beta pop\.\s+Spin pop\.\s+(?:Atomic charge|Charge)(.*?)Total net charge',output,re.S) if spin_allowed else None
     if spin_block:
         spins=re.findall(r'^\s*(\d+)\(\s*([A-Za-z]+)\s*\)\s+('+NUMBER+r')\s+('+NUMBER+r')\s+('+NUMBER+r')\s+('+NUMBER+r')\s*$',spin_block[1],re.M)
         if len(spins)!=len(rows): raise OrbitalError('analysis-spin','Incomplete native spin population table.')
@@ -138,6 +175,8 @@ def parse_charge(work, metadata, output, trusted_expectation=None):
         if abs(sum(r['spinPopulation'] for r in rows)-expected_spin)>max(.002,len(rows)*1e-5): raise OrbitalError('analysis-spin-sum','Native spin populations do not sum to source alpha-minus-beta occupations.')
     total=sum(r['value'] for r in rows)
     expected=trusted['charge'] if trusted is not None else metadata.get('charge')
+    if expected is None and all('effectiveNuclearCharge' in atom for atom in metadata['atoms']):
+        expected=sum(atom['effectiveNuclearCharge'] for atom in metadata['atoms'])-sum(orbital['occupation'] for orbital in metadata['orbitals'])
     if expected is None and re.search(r'This file is found to be generated by xtb!',output,re.I):
         from wavefunction_prerequisites import xtb_native_prerequisites
         expected=xtb_native_prerequisites(metadata,output,require_total_density=False)['nativeNetCharge']
@@ -182,34 +221,88 @@ def parse_composition(metadata,output,key):
     if abs(total-100)>max(.01,len(rows)*1e-5): raise OrbitalError('analysis-composition-sum','Full orbital atom compositions do not sum to 100 percent.')
     return dict(unit='percent',orbitalKey=key,atoms=rows,angular=angular,sum=total)
 
-def run_native(arguments,answers,work,timeout=None,env=None,memory_budget_bytes=None,progress=None):
+class RespDialogue:
+    """Reply to native missing-radius and result prompts in their own states."""
+    def __init__(self):
+        self.state='fit'; self.partial=''; self.pending=None; self.prompt_started=None; self.radii={}
+
+    def feed(self,text,reply):
+        lines=(self.partial+text).split('\n'); self.partial=lines.pop()
+        for line in lines:
+            if self.state=='fit':
+                default=re.search(r'Element:\s*([A-Z][a-z]?)\s+vdW radius \(Angstrom\):\s*('+NUMBER+r')',line)
+                if default:
+                    self.radii[default[1]]=('native automatic',default[2])
+                missing=re.search(r'vdW radius used in fitting for\s+([A-Z][a-z]?)\s+is missing',line)
+                if missing:
+                    if self.pending: raise OrbitalError('analysis-resp-radius','The previous RESP radius did not receive a native assignment.')
+                    self.pending=missing[1]; self.prompt_started=time.monotonic()
+                if self.pending and re.search(r'pressing ENTER button directly.*UFF radii scaled by 1/1\.2',line,re.I):
+                    self.prompt_started=None
+                    reply('\n')
+                assigned=re.search(r'Radius of\s+([A-Z][a-z]?)\s+has been set to\s*('+NUMBER+r')\s+Angstrom',line)
+                if assigned and self.pending==assigned[1]:
+                    if self.prompt_started is not None or _number(assigned[2])<=0:
+                        raise OrbitalError('analysis-resp-radius',f'Native RESP did not provide a valid UFF/1.2 radius for {assigned[1]}.')
+                    self.radii[assigned[1]]=('native UFF/1.2',assigned[2]); self.pending=None
+                if 'If outputting atom coordinates with charges to source.chg' in line:
+                    if self.pending: raise OrbitalError('analysis-resp-radius',f'Native RESP did not confirm a radius for {self.pending}.')
+                    reply('y\n'); self.state='resp-menu'
+            elif self.state=='resp-menu' and 'Calculation of RESP charges' in line:
+                reply('0\n'); self.state='charge-menu'
+            elif self.state=='charge-menu' and 'Population analysis and atomic charges' in line:
+                reply('0\n'); self.state='main-menu'
+            elif self.state=='main-menu' and 'Main function menu' in line:
+                reply('q\n'); self.state='done'
+
+    def check_prompt(self):
+        if self.prompt_started is not None and time.monotonic()-self.prompt_started>10:
+            raise OrbitalError('analysis-resp-radius',f'原生 RESP 缺少 {self.pending} 的半径，且未提供可用的 UFF/1.2 替代。')
+
+
+def run_native(arguments,answers,work,timeout=None,env=None,memory_budget_bytes=None,progress=None,resources=None,dialogue=None):
     from multiwfn_progress import NativeProgressScanner, report_progress
     log=work/'native-output.txt'
     scanner=NativeProgressScanner(progress);offset=0
+    def reply(text):
+        process.stdin.write(text.encode('ascii')); process.stdin.flush()
     def observe():
         nonlocal offset
-        if progress is None: return False
+        if progress is None and dialogue is None: return False
         try:
             with log.open('rb') as stream:
                 stream.seek(offset); chunk=stream.read(65536)
-            offset+=len(chunk);scanner.feed(chunk.decode('utf-8',errors='replace'));return bool(chunk)
+            offset+=len(chunk)
+            text=chunk.decode('utf-8',errors='replace').replace('\r','')
+            scanner.feed(text)
+            if dialogue is not None: dialogue.feed(text,reply)
+            return bool(chunk)
         except OSError:
             return False
     with log.open('wb') as output:
-        process=subprocess.Popen(arguments,cwd=work,env=env,stdin=subprocess.PIPE,stdout=output,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        interactive_env=dict(env or os.environ,GFORTRAN_UNBUFFERED_ALL='1',FOR_DISABLE_BUFFERING='TRUE') if dialogue is not None else env
+        process=start_multiwfn(arguments,resources=resources,cwd=work,env=interactive_env,stdin=subprocess.PIPE,stdout=output,stderr=subprocess.STDOUT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         job=_windows_owned_job(process,total_physical_memory() if memory_budget_bytes is None else memory_budget_bytes)
         try:
-            process.stdin.write(answers.encode('ascii')); process.stdin.close(); deadline=None if timeout is None else time.monotonic()+timeout
+            reply(answers)
+            if dialogue is None: process.stdin.close()
+            deadline=None if timeout is None else time.monotonic()+timeout
             while process.poll() is None:
                 if deadline is not None and time.monotonic()>deadline: raise OrbitalError('analysis-timeout','Native analysis exceeded its bounded deadline.')
                 observe()
+                if dialogue is not None: dialogue.check_prompt()
                 time.sleep(.05)
             text=log.read_text(encoding='utf-8',errors='replace').replace('\r','')
-            while progress is not None and offset<log.stat().st_size:
+            while (progress is not None or dialogue is not None) and offset<log.stat().st_size:
                 if not observe(): break
             if process.returncode!=0: raise OrbitalError('analysis-native','Native analysis failed: '+text[-1800:])
+            if dialogue is not None and dialogue.state!='done': raise OrbitalError('analysis-menu','Native RESP did not complete its result and menu sequence.')
             return text
-        finally: MultiwfnSession._terminate(process,job)
+        finally:
+            if process.stdin and not process.stdin.closed:
+                try: process.stdin.close()
+                except OSError: pass
+            MultiwfnSession._terminate(process,job)
 
 def capture_analysis_evidence(work,request):
     """Bounded exact UTF-8 snapshots for an explicitly enabled internal harness."""
@@ -247,6 +340,7 @@ def analyze(request,progress=None,evidence_callback=None):
     executable=Path(request['executable']).resolve()
     requested=request.get('resources') or {}
     resources,settings=resolve_resources(executable,requested.get('threads'),requested.get('memoryBudgetBytes'))
+    settings, gxtb_density = gxtb_valence_settings(settings, metadata)
     if bader_reference is not None:
         bader_plan=grid_plan(metadata['atoms'],metadata['basisCount'],metadata['sourceBytes'],params.get('bader'),resources['threads'])
         supplied=request.get('baderGridPlan')
@@ -254,6 +348,7 @@ def analyze(request,progress=None,evidence_callback=None):
             scalar_mismatch=any(supplied.get(k)!=bader_plan[k] for k in ('dimensions','estimatedMemoryBytes','threads','threadStackBytes'))
             vector_mismatch=any(not isinstance(supplied.get(k),list) or len(supplied[k])!=3 or any(isinstance(n,bool) or not isinstance(n,(int,float)) or not math.isfinite(n) or abs(n-v)>1e-10 for n,v in zip(supplied[k],bader_plan[k])) for k in ('originBohr','spacingBohr'))
             if scalar_mismatch or vector_mismatch: raise OrbitalError('bader-grid-plan','Host and worker Bader grid/resource plans disagree.')
+    require_native_binary_grant(resources, requested)
     if requested.get('settingsRevision') is not None and requested['settingsRevision']!=resources['settingsRevision']: raise OrbitalError('resource-changed','Multiwfn settings changed after resource planning; refresh the configuration.')
     memory_budget=request.get('nativeMemoryBudgetBytes',resources['memoryBudgetBytes'])
     if isinstance(memory_budget,bool) or not isinstance(memory_budget,int) or not 0<memory_budget<=resources['memoryBudgetBytes']: raise OrbitalError('analysis-memory','Invalid available native memory budget.')
@@ -266,13 +361,14 @@ def analyze(request,progress=None,evidence_callback=None):
             # than nuclear maxima. Scope the scientific override to this job.
             settings=_override(settings,'ibasinlocmin',0)
         (work/'settings.ini').write_bytes(settings)
-        density_parameters={}
+        density_parameters={}; dialogue=None
         if kind=='charges':
-            menus={'mulliken':['7','5','1','y','0','0','q'],'lowdin':['7','6','','y','0','q'],'adch':['7','11','1','y','0','q'],'hirshfeld':['7','1','1','y','0','q'],'hirshfeld-i':['7','15','1','y','0','q'],'cm5':['7','16','1','y','0','q'],'resp':['7','18','1','y','0','0','q'],'scpa':['7','7','y','0','q']}
+            menus={'mulliken':['7','5','1','y','0','0','q'],'lowdin':['7','6','','y','0','q'],'adch':['7','11','1','y','0','q'],'hirshfeld':['7','1','1','y','0','q'],'hirshfeld-i':['7','15','1','y','0','q'],'cm5':['7','16','1','y','0','q'],'resp':['7','18','1'],'scpa':['7','7','y','0','q']}
             if method!='bader' and method not in menus: raise OrbitalError('analysis-method','Unsupported atomic charge method.')
             answers=menus.get(method,[])
+            if method=='resp': dialogue=RespDialogue()
             if method=='hirshfeld-i':
-                density_parameters=prepare_hirshfeld_densities(executable,metadata,work)
+                density_parameters,_=prepare_hirshfeld_densities(executable,metadata,work,required=False)
                 # Even if a future native version requests an unexpected state,
                 # the job must not launch the user's configured upstream engine.
                 disabled_gaussian='"'+str(work/'upstream-disabled.exe')+'"'
@@ -293,25 +389,41 @@ def analyze(request,progress=None,evidence_callback=None):
         bader_usage={}
         if bader_plan is not None:
             from bader_analysis import run_bader_native
-            output=run_bader_native(executable,work,bader_plan,len(metadata['atoms']),memory_budget,env,progress,telemetry=bader_usage.update)
-        else: output=run_native([str(executable),'source.molden' if metadata['format']=='molden' else 'source.fchk'],'\n'.join(answers)+'\n',work,env=env,memory_budget_bytes=memory_budget,**(dict(progress=progress) if progress is not None else {}))
+            output=run_bader_native(executable,work,bader_plan,len(metadata['atoms']),memory_budget,env,progress,telemetry=bader_usage.update,**({'resources':resources} if 'nativeBinaryIdentity' in resources else {}))
+        else:
+            try:
+                output=run_native([str(executable),'source.molden' if metadata['format']=='molden' else 'source.fchk'],'\n'.join(answers)+'\n',work,env=env,memory_budget_bytes=memory_budget,**({'resources':resources} if 'nativeBinaryIdentity' in resources else {}),**(dict(progress=progress) if progress is not None else {}),**({'dialogue':dialogue} if dialogue is not None else {}))
+            except OrbitalError:
+                if kind=='charges' and method=='hirshfeld-i' and (work/'native-output.txt').is_file():
+                    log=(work/'native-output.txt').read_text(encoding='utf-8',errors='replace')
+                    issue=hirshfeld_missing_reference(log)
+                    if issue: raise OrbitalError('analysis-atomic-density',issue)
+                raise
         report_progress(progress,'parse',stageId='analysis-result')
+        if kind=='charges' and method=='hirshfeld-i' and 'All atomic charges have converged' not in output:
+            issue=hirshfeld_missing_reference(output)
+            if issue: raise OrbitalError('analysis-atomic-density',issue)
         version=re.search(r'Version\s+([^\n]+)',output); threads=re.search(r'Number of parallel threads:\s*(\d+)',output)
         if not version or not threads or int(threads[1])!=resources['threads']: raise OrbitalError('analysis-backend','Native version/actual thread count could not be verified.')
         if output.count('************ Main function menu')<2: raise OrbitalError('analysis-menu','Native analysis did not return to its main menu.')
         verify_trusted_native_electrons(output,trusted_expectation)
         from wavefunction_prerequisites import xtb_native_prerequisites
-        total_density = kind=='charges' and method not in ('mulliken','lowdin','scpa') or kind=='bond-orders' and method in ('laplacian','fuzzy')
-        native_source = xtb_native_prerequisites(metadata,output,trusted_expectation,require_total_density=total_density)
-        if native_source and kind=='bond-orders' and method!='laplacian' and any(min(abs(o['occupation']),abs(o['occupation']-2))>1e-7 for o in metadata['orbitals']):
+        total_density = kind=='bond-orders' and method in ('laplacian','fuzzy')
+        if gxtb_density:
+            if native_output_has_edf(output):
+                raise OrbitalError('analysis-gxtb-density', 'Multiwfn added EDF to this g-xTB source despite the job-local isupplyEDF=0 setting.')
+            native_source = gxtb_density
+        else:
+            native_source=xtb_native_prerequisites(metadata,output,trusted_expectation,require_total_density=total_density)
+        if native_source and not gxtb_density and kind=='bond-orders' and method!='laplacian' and any(min(abs(o['occupation']),abs(o['occupation']-2))>1e-7 for o in metadata['orbitals']):
             raise OrbitalError('analysis-xtb-spin', 'This spin-summed xTB source lacks the independent spin matrices required by this bond-order route; Laplacian total-density analysis remains available.')
         if bader_plan is not None:
             from bader_analysis import parse_bader
             result=parse_bader(output,metadata,bader_reference,bader_plan)
         else: result=parse_charge(work,metadata,output,trusted_expectation) if kind=='charges' else parse_bonds(work,metadata) if kind=='bond-orders' else parse_composition(metadata,output,params['orbitalKey'])
-        parameters=dict(nativeMenu=' → '.join(a if a else '(Enter)' for a in answers[:-1]),printThresholdPercent=0,memoryBudgetBytes=memory_budget,**density_parameters)
+        parameters=dict(nativeMenu=' → '.join(a if a else '(Enter)' for a in (answers if dialogue is not None else answers[:-1])),printThresholdPercent=0,memoryBudgetBytes=memory_budget,**density_parameters)
         if native_source: parameters.update(native_source)
-        if trusted_expectation is not None:parameters.update(chargeExpectationSource='owned-generated-gfn2-sp',chargeExpectationArtifactId=trusted_expectation['artifactId'],chargeExpectationSourceSha256=trusted_expectation['sourceSha256'],expectedCharge=trusted_expectation['charge'],requestedUhf=trusted_expectation['requestedUhf'],sourceSpinResolution='spin-summed',independentAlphaBeta=False,representedElectronCount=trusted_expectation['representedElectronCount'],physicalElectronCount=trusted_expectation['physicalElectronCount'])
+        if trusted_expectation is not None:parameters.update(chargeExpectationSource='owned-'+trusted_expectation['kind'],chargeExpectationArtifactId=trusted_expectation['artifactId'],chargeExpectationSourceSha256=trusted_expectation['sourceSha256'],expectedCharge=trusted_expectation['charge'],requestedUhf=trusted_expectation['requestedUhf'],sourceSpinResolution=trusted_expectation['sourceSpinResolution'],independentAlphaBeta=trusted_expectation['independentAlphaBeta'],representedElectronCount=trusted_expectation['representedElectronCount'],physicalElectronCount=trusted_expectation['physicalElectronCount'])
         if bader_plan is not None: parameters.update(nativeMenu='17 → 1 → 1 → 7 (explicit grid) → 7 → 2 → 1',integration='mixed-exact',basinExtrema='maxima (job-local ibasinlocmin=0)',spacingBohr=bader_plan['spacingBohr'],dimensions=bader_plan['dimensions'],paddingBohr=bader_plan['paddingBohr'],scientificAcceptance='pending-native-calibration')
         for source_key,target_key in [('peakCommitBytes','nativePeakCommitBytes'),('peakWorkingSetBytes','nativePeakWorkingSetBytes'),('hardBudgetBytes','nativeHardMemoryBudgetBytes'),('closed','nativeProcessClosed'),('returncode','nativeExitCode'),('windowsJobAttached','nativeJobAttached')]:
             if source_key in bader_usage:parameters[target_key]=bader_usage[source_key]
@@ -324,8 +436,9 @@ def analyze(request,progress=None,evidence_callback=None):
             fit=re.search(r'RMSE:\s*('+NUMBER+r')\s+RRMSE:\s*('+NUMBER+r')',output)
             if not points or not fit: raise OrbitalError('analysis-convergence','RESP fitting point/error evidence is incomplete.')
             parameters.update(protocol='standard two-stage RESP',fittingPoints='MK',fittingPointCount=int(points[1]),rmse=_number(fit[1]),rrmse=_number(fit[2]),secondStage='skipped: no fitted atoms' if 'Stage 2 of standard RESP fitting is skipped' in output else 'performed')
+            parameters['fittingRadiiAngstromReadback']='; '.join(f'{element}: {radius} ({source})' for element,(source,radius) in dialogue.radii.items())
         if kind=='charges' and method in ('adch','hirshfeld','cm5'): parameters['atomicDensity']='built-in spherical free atoms'
-        warnings=[]
+        warnings=[line.strip() for line in output.splitlines() if re.search(r'^\s*(?:Warning:|NOTE:.*(?:EDF|inner-core))',line,re.I)]
         if bader_plan is not None:
             nna=sum(b['role']=='non-nuclear' for b in result['bader']['basins'])
             if nna: warnings.append(f'检测到 {nna} 个非核电子盆；原子电荷和不包含这些盆的电子数，不能当作分子总净电荷。')

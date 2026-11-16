@@ -29,13 +29,31 @@ export function suggestedMultiplicity(atoms: Atom[], charge: number): number {
 }
 
 export function electronicStateError(atoms: Atom[], charge: number, multiplicity: number): string | null {
-  if (!Number.isInteger(charge)) return '总电荷必须是整数。';
-  if (!Number.isInteger(multiplicity) || multiplicity < 1) return '自旋多重度必须是正整数。';
+  const parameters=electronicStateParameterError(charge,multiplicity);
+  if(parameters)return parameters;
   const count = electronCount(atoms, charge);
   if (count < 1) return '当前原型需要至少一个电子，请核对结构和总电荷。';
   if (multiplicity - 1 > count) return '自旋多重度超出了当前电子数允许的范围。';
   if ((count - (multiplicity - 1)) % 2 !== 0) return `${count} 个电子与多重度 ${multiplicity} 奇偶不相容，请合理选择电荷和自旋。`;
   return null;
+}
+
+/** Parameters which cannot be represented in an input request. Electron-count
+ * compatibility is a separate advisory while the user edits q/M in sequence. */
+export function electronicStateParameterError(charge:number,multiplicity:number):string|null {
+  if(!Number.isSafeInteger(charge))return '总电荷必须是整数。';
+  if(!Number.isSafeInteger(multiplicity)||multiplicity<1)return '自旋多重度必须是正整数。';
+  return null;
+}
+export function electronicStateWarning(atoms:Atom[],charge:number,multiplicity:number):string|null {
+  if(!atoms.length)return null;
+  try{return electronicStateError(atoms,charge,multiplicity);}
+  catch(cause){return cause instanceof Error?cause.message:'无法确定电子数，请核对结构和电子态。';}
+}
+/** Input serialization retains representable user parameters. The target
+ * engine owns execution admission; editing compatibility is shown separately. */
+export function electronicStateInputError(_atoms:Atom[],charge:number,multiplicity:number):string|null {
+  return electronicStateParameterError(charge,multiplicity);
 }
 
 export function molecularFormula(atoms: Atom[]): string {

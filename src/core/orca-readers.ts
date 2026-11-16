@@ -1,7 +1,7 @@
 import { atomicNumber, elementSymbol } from './elements';
 import type { Atom, Structure } from './types';
 import { orcaNativeJobNumber, orcaSourceKeywords, orcaSourceLine, parseOrcaInputSource } from './orca/input-source';
-import { outputSoftwareOnLine } from '../results/source-recognition';
+import { assertOutputSoftware, orcaOutputComment, orcaOutputEcho, orcaNormalTermination, orcaPrintedState, outputSoftwareOnLine } from '../results/output-sections';
 import { OrcaAuTableReader, pairOrcaCenterTables, readOrcaAngCenter, type OrcaAngCenter, type OrcaAuTable } from './orca/output-centers';
 const bohr = 0.529177210903;
 /** Source centers are not display Atoms. A ghost has a basis center but no real nucleus. */
@@ -102,6 +102,8 @@ export class OrcaOutputReader {
   private expected: number | null = null; private last: Atom[] | null = null; private seenOrca = false; private truncated = false;
   private frequencySection = false; private optimized = false; private terminated = false; private charge: number | null = null; private mult: number | null = null;
   private dipoleProperty = false; private dipoleMagnitude = false;
+  private priorJob: { structure: Structure; jobIndex: number } | undefined;
+  private jobIndex = 0;
   private lineNumber = 0; private auReader = new OrcaAuTableReader();
   private currentAng: OrcaAngCenter[] = [];
   private auCandidate: { rows: OrcaAngCenter[]; previous: Atom[] | null } | null = null;
@@ -109,7 +111,14 @@ export class OrcaOutputReader {
   private nuclearIssue: string | null = null;
   private coordinateIssue: string | null = null;
   private nextJob() {
-    this.finishBlock(); this.last = null; this.expected = null; this.frequencySection = false;
+    this.finishBlock();
+    if (this.last) {
+      // Finalize the coordinate/A.U. pairing before retaining this independent job.
+      try { this.priorJob = { structure: this.finish('')[0], jobIndex: this.jobIndex }; }
+      catch { /* No complete ordinary structure belongs to this job. */ }
+    }
+    this.jobIndex++;
+    this.last = null; this.expected = null; this.frequencySection = false;
     this.optimized = false; this.terminated = false; this.charge = null; this.mult = null; this.truncated = false;
     this.dipoleProperty = false; this.dipoleMagnitude = false;
     this.auReader.reset(); this.auCandidate = null; this.currentAng = []; this.previousAng = null; this.nuclearIssue = null; this.coordinateIssue = null;
@@ -124,19 +133,29 @@ export class OrcaOutputReader {
   }
   consume(line: string) {
     this.lineNumber++;
-    if (/^\s*(?:\|\s*\d+>|#)/.test(line)) return;
-    const software = outputSoftwareOnLine(line);
-    if (software && software !== 'orca') throw new Error('来源身份不是ORCA，未作为ORCA结构解析。');
-    if (software === 'orca') { if (this.seenOrca) this.nextJob(); this.seenOrca = true; }
+    if (orcaOutputComment(line)) return;
+    if (orcaOutputEcho(line) !== undefined) return;
+    assertOutputSoftware(line, 'orca');
+    if (outputSoftwareOnLine(line) === 'orca') {
+      if (this.seenOrca) this.nextJob();
+      this.seenOrca = true;
+    }
     if (orcaNativeJobNumber(line) !== null || /^\s*COMPOUND JOB\s+\d+\s*$/i.test(line)) this.nextJob();
     if (/^\s*DIPOLE MOMENT\s*$/i.test(line)) { this.dipoleProperty = true; this.dipoleMagnitude = false; }
     if (this.dipoleProperty && /^\s*Magnitude\s*\(/i.test(line)) this.dipoleMagnitude = true;
     if (this.dipoleProperty && this.dipoleMagnitude && !line.trim()) this.dipoleProperty = false;
     const count = line.match(/^\s*(?:Number of atoms|# of atoms)\s*[.:=]*\s*(\d+)\s*$/i); if (count) {this.expected = Number(count[1]);if(!Number.isSafeInteger(this.expected)||this.expected<1)throw new Error('ORCA原子数须为正安全整数。');}
-    const charge = this.dipoleProperty ? null : line.match(/^\s*Total Charge(?:\s+Charge)?\s*[.:=]*\s*([+-]?\d+)\s*$/i); if (charge) this.charge=Number(charge[1]);
-    const mult = this.dipoleProperty ? null : line.match(/^\s*Multiplicity(?:\s+Mult)?\s*[.:=]*\s*(\d+)\s*$/i); if (mult) this.mult=Number(mult[1]);
+    const printed = this.dipoleProperty || this.frequencySection ? null : orcaPrintedState(line);
+    if (printed?.charge) {
+      this.charge = Number(printed.charge[1]);
+      if (!Number.isSafeInteger(this.charge)) throw new Error('ORCA电荷无效。');
+    }
+    if (printed?.multiplicity) {
+      this.mult = Number(printed.multiplicity[1]);
+      if (!Number.isSafeInteger(this.mult) || this.mult < 1) throw new Error('ORCA多重度无效。');
+    }
     if (/^\s*\**\s*THE OPTIMIZATION HAS CONVERGED\b/i.test(line)) this.optimized=true;
-    if (/^\s*\**\s*ORCA TERMINATED NORMALLY\s*\**\s*$/i.test(line)) this.terminated=true;
+    if (orcaNormalTermination.test(line)) this.terminated=true;
     if (/NUMERICAL FREQUENCIES|VIBRATIONAL FREQUENCIES|NUMERICAL HESSIAN/i.test(line)) { this.finishBlock(); this.frequencySection=true; this.auCandidate = null; this.auReader.reset(); }
     if (/^\s*GEOMETRY OPTIMIZATION CYCLE\s+\d+\b|^\s*FINAL ENERGY EVALUATION AT THE STATIONARY POINT\b/i.test(line)) this.frequencySection = false;
     if (!this.frequencySection) {
@@ -170,6 +189,15 @@ export class OrcaOutputReader {
     const au = this.auReader.finish(); if (au) this.applyNuclearTable(au);
     if (!this.seenOrca || !this.last) throw new Error('没有找到当前ORCA作业可用于普通原子模型的完整Å坐标，未跨作业借用旧结构。' + (this.nuclearIssue ?? ''));
     return [{ id:name+'-last',name,format:'ORCA OUT',atoms:this.last,charge:this.charge,multiplicity:this.mult,dimension:3,notes:['提取当前作业最后完整几何；'+(this.optimized?'检测到优化收敛标记。':'未认证结构优化收敛。'),this.terminated?'检测到ORCA正常终止。':'未观察到正常终止；静态文件不能据此判断程序是否仍在运行。',...(this.truncated?['尾部坐标不完整，已回退同一作业较早完整帧。']:[]),...(this.nuclearIssue ? [this.nuclearIssue + '仅保较早完整普通结构。'] : []),...(this.coordinateIssue ? [this.coordinateIssue] : []),'只读几何及元数据，不执行后处理或继承ORCA关键词。'] }];
+  }
+  finishAll(name: string): Structure[] {
+    try { return this.finish(name); }
+    catch (error) {
+      if (!this.priorJob) throw error;
+      const { structure, jobIndex } = this.priorJob;
+      return [{ ...structure, id: `${name}-job-${jobIndex}`, name, notes: [...structure.notes,
+        `尾部ORCA作业无完整普通结构；仅列较早完整作业${jobIndex + 1}，未跨作业借帧。`] }];
+    }
   }
 }
 export function parseOrcaOutput(text: string, name: string): Structure[] { const reader = new OrcaOutputReader(); const lines=text.replace(/\r\n?/g,'\n').split('\n'); if(lines.at(-1)==='')lines.pop(); for (const line of lines) reader.consume(line); return reader.finish(name); }

@@ -2,11 +2,12 @@
 import type { BuilderAssignments, BuilderCommand } from '../core/builder-draft';
 import type { AtomId, AtomRef, BondRef, ObjectRef, AttachmentPort, MeasurementRecord, MeasurementState, MeasurementSession, AuxiliaryRelation, DeletedBond, ModelCoordinate, ModelCoordinateObject, SharedModelConstraints, GaussianBoundCoordinateDefinition, ModelSelection, ModelDocument, DocumentStamp, NativeMDPolicy, FragmentSnapshot, ClipboardPayload, PastePolicy, PasteConflict, ScientificEditRequest, ScientificEditGuard, GaussianBasisState, XtbBondOrders, BondOrderObservation } from '../core/modeling/contracts';
 export type { AtomId, AtomRef, BondRef, ObjectRef, AttachmentPort, MeasurementRecord, MeasurementState, MeasurementSession, AuxiliaryRelation, DeletedBond, ModelCoordinate, ModelCoordinateObject, SharedModelConstraints, GaussianBoundCoordinateDefinition, ModelSelection, ModelDocument, DocumentStamp, NativeMDPolicy, FragmentSnapshot, ClipboardPayload, PastePolicy, PasteConflict, ScientificEditRequest, ScientificEditGuard, GaussianBasisState, BondOrderEntry, XtbBondOrders, BondOrderObservation } from '../core/modeling/contracts';
-import type { Bond, JobRequest, Structure, Vector3 } from '../core/types';
+import type { Bond, JobRequest, Structure, TwoDStereoSource, Vector3 } from '../core/types';
 import type { OrcaJobRequest } from '../core/orca/types';
 import type { DynamicsCommand, DynamicsEvent, DynamicsFrame, DynamicsRequest } from './dynamics/contracts';
 import type { XtbRequest, XtbEvent, XtbCoordinateResult, XtbStoppedCoordinateResult, XtbElectronicArtifactBundle } from './xtb/contracts';
 import type { AdvancedPathBridge } from './advanced/path-contracts';
+import type { PesBridge } from './pes/contracts';
 import type { ConformerSamplingBridge } from './advanced/sampling-contracts';
 import type { AissBridge } from './advanced/docking-contracts';
 import type { OcrBridge } from './ocr/contracts';
@@ -75,7 +76,7 @@ export type ModelCommand =
   | { type: 'manual-coordinates'; atoms: { id: AtomId; position: Vector3 }[]; documentId: string; expectedRevision: number }
   | { type: 'infer-bonds'; mode: BondPerceptionMode; aggression: BondAggression; perceivedBonds?: Bond[]; perceivedIssues?: Structure['bondPerceptionIssues']; stamp?: DocumentStamp }
   | { type: 'replace-structure'; structure: Structure; assignments?: Partial<BuilderAssignments> }
-  | { type: 'replace-document'; fragment: FragmentSnapshot }
+  | { type: 'replace-document'; fragment: FragmentSnapshot; electronicState?: 'new-source' }
   | { type: 'set-assignments'; assignments: BuilderAssignments }
   | { type: 'set-gaussian-basis-state'; state: GaussianBasisState; assignments: BuilderAssignments['basis'] }
   | { type: 'set-internal-coordinates'; coordinates: ModelCoordinate[] }
@@ -89,7 +90,16 @@ export type ModelCommand =
   | { type:'delete-coordinate-object'; objectId:string }
   | { type:'delete-source-constraint'; scope:'shared'|'gaussian'|'orca'; kind:'atom'|'coordinate'; id:string }
   | { type: 'legacy'; command: BuilderCommand };
+/** A source-owned validation store and an owner-bound result acceptance capability.
+ * Native requests keep the source identity; applying to a copy never rewrites them. */
+export interface ScientificModelOperation {
+  readonly source: ModelDocument;
+  readonly store: ModelStore;
+  isCurrent(): boolean;
+  apply(label: string, onAccepted?: (target: ModelStore) => void): 'applied' | 'pending' | 'retained';
+}
 export interface ModelStore {
+  createScientificOperation?(source: ModelDocument): ScientificModelOperation;
   /** Owner-side guard; replicas cannot begin a canonical edit transaction. */
   hasTransaction?():boolean;
   getSnapshot(): ModelDocument;
@@ -101,21 +111,25 @@ export interface ModelStore {
   /** Attach a completed structure-analysis context without replacing geometry,
    * resetting history, or superseding an existing imported-source binding. */
   bindAnalysisContext?(bindingId: string, documentId: string, expectedRevision: number): boolean;
+  /** Source-owned exact handoff frame, never the last frame a view happened to browse. */
+  bindAnalysisFrameBondOrigin?(bindingId:string,identity:import('../core/modeling/frame-bond-overrides').FrameBondIdentity):boolean;
   /** One-shot preflight for a gesture/native start. Approval changes no model
    * state and is valid only for this document, binding and exact revision. */
   requestScientificEditApproval?(): boolean;
   clearScientificEditApproval?(): void;
   /** One-shot static observed-frame basis; never changes the document by itself. */
-  setScientificEditBase?(structure: Structure | null, selection?: ModelSelection): void;
+  setScientificEditBase?(structure: Structure | null, selection?: ModelSelection, frame?: {identity:import('../core/modeling/frame-bond-overrides').FrameBondIdentity; document:ModelDocument}): void;
+  /** Replay only this exact result frame's display graph history. No model or other-frame history is substituted. */
+  replayFrameBondHistory?(identity:import('../core/modeling/frame-bond-overrides').FrameBondIdentity, document:ModelDocument, direction:'undo'|'redo'):ModelDocument;
   /** A rejected synchronous edit retains its immutable method arguments for the application dialog. */
   getPendingScientificEdit?(): Readonly<ScientificEditRequest> | null;
   /** Static observed source for an independent copy's initial Undo baseline. */
   getPendingScientificEditBase?(): Structure | null;
-  /** Copy requires an already opened, independent Store; stale intents never replay. */
-  resolvePendingScientificEdit?(choice: 'current' | 'copy' | 'cancel', targetStore?: ModelStore): ModelDocument;
+  /** A copy uses an independent Store and can validate it before consuming the source intent. */
+  resolvePendingScientificEdit?(choice: 'current' | 'copy' | 'cancel', targetStore?: ModelStore, validateCopy?: (document: ModelDocument) => void): ModelDocument;
   /** Explicit source replacement: same Store/document identity, new clean
    * baseline and empty history. Not a user geometry-edit command. */
-  replaceAnalysisSource?(structure: Structure, bindingId: string): void;
+  replaceAnalysisSource?(structure: Structure, bindingId: string,frameBondIdentity?:import('../core/modeling/frame-bond-overrides').FrameBondIdentity): void;
   subscribe(listener: () => void): () => void;
   execute(command: ModelCommand): ModelDocument;
   /** One atomic owner transaction, including linked metadata propagation. */
@@ -134,7 +148,7 @@ export interface ModelStore {
   /** Register an MD-only snapshot permission without changing editor freezes. */
   stampNativeMD(policy: NativeMDPolicy): DocumentStamp;
   acceptCoordinates(result: ChemistryResult): ModelDocument;
-  acceptXtbCoordinates(result:XtbCoordinateResult,sourceDocument?:ModelDocument):ModelDocument;
+  acceptXtbCoordinates(result:XtbCoordinateResult,sourceDocument?:ModelDocument,optimizedBonds?:ChemistryResult):ModelDocument;
   acceptXtbStoppedCoordinates(result:XtbStoppedCoordinateResult,sourceDocument?:ModelDocument):ModelDocument;
   publishBondOrders(result:XtbCoordinateResult,stamp:DocumentStamp,runId:string):ModelDocument;
   clearBondOrders():void;
@@ -242,11 +256,15 @@ export interface ModelInteractionPort {
 export type ForcefieldChoice = 'auto' | 'MMFF94' | 'MMFF94s' | 'UFF';
 export type ChemistryOperation = 'generate3d' | 'optimize' | 'perceive-bonds' | 'convert';
 export interface ChemistryRequest {
+  /** Original 2D stereo source for this generation, independent of the staged H coordinates. */
+  sourceStereo?: TwoDStereoSource;
   optimizationPool?: { stageId: string; candidateId: string };
+  /** Conformer invocation only: use the selected backend's actual default. */
+  optimizationStepPolicy?: 'native-default';
   stamp: DocumentStamp; operation: ChemistryOperation; structure: Structure;
   runIdentity?: { taskId: string; runId: string };
   movableAtomIds: AtomId[]; forcefield?: ForcefieldChoice; steps?: number;
-  /** Optional narrower deadline; the native desktop hard cap remains 60 seconds. */
+  /** Explicit user deadline; omission does not impose a scientific total cutoff. */
   maxWallTimeSeconds?: number;
   /** Requested runtime budget; the trusted host returns the actual grant. */
   threads?: number;
@@ -262,6 +280,9 @@ export interface ChemistryResult {
   stamp: DocumentStamp; operation: ChemistryOperation; structure: Structure;
   movableAtomIds: AtomId[]; engine: string; engineVersion: string;
   forcefield?: string; before?: number; after?: number; unit?: string;
+  optimizer?: 'rdkit-minimize' | 'scipy-slsqp';
+  /** The actual native bound, when reported; not a customer override. */
+  maxSteps?: number;
   converged?: boolean; warnings: string[]; text?: string; format?: ModelFormat;
   resourceGrant?: ComputeResourceEvidence;
   /** Explicit acknowledgement: old native implementations cannot silently satisfy import inference. */
@@ -300,7 +321,9 @@ export interface RuntimeDisplayBridge {
   updateRuntimeModelDisplay(request: { baseRevision: number; display: DisplaySettings }): Promise<RuntimeModelDisplayUpdate>;
   onRuntimeModelDisplay(listener: (snapshot: RuntimeModelDisplaySnapshot) => void): () => void;
 }
-export interface DesktopBridge extends Partial<WorkspaceDesktopBridge>, Partial<PortableDesktopBridge>, Partial<RuntimeDisplayBridge>, Partial<AdvancedPathBridge>, Partial<ConformerSamplingBridge>, Partial<AissBridge>, Partial<OcrBridge>, Partial<AdvancedOutputBridge>, Partial<SurfaceDisplayPreferencesBridge>, Partial<ComputeResourcePreferencesBridge>, Partial<FirstRunLicenseBridge>, ProjectCompanionBridge {
+export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesktopBridge>, Partial<PortableDesktopBridge>, Partial<RuntimeDisplayBridge>, Partial<AdvancedPathBridge>, Partial<ConformerSamplingBridge>, Partial<AissBridge>, Partial<OcrBridge>, Partial<AdvancedOutputBridge>, Partial<SurfaceDisplayPreferencesBridge>, Partial<ComputeResourcePreferencesBridge>, Partial<FirstRunLicenseBridge>, ProjectCompanionBridge {
+  onTwoDPointerActivation?(listener: () => void): () => void;
+  twoDPointerSettings?(): Promise<{ doubleClickMs: number; doubleClickWidth: number; doubleClickHeight: number; source: 'win32' | 'platform-default' }>;
   taskSystemRequest?(request:{requestId:string;command:string;input:unknown}):Promise<unknown>;
   cancelTaskSystemRequest?(requestId:string):Promise<void>;
   conformerBatchCommand?(command:string,payload:unknown):Promise<unknown>;
@@ -324,6 +347,10 @@ export interface DesktopBridge extends Partial<WorkspaceDesktopBridge>, Partial<
   readClipboard(): Promise<ClipboardPayload | null>;
   writeClipboard(payload: ClipboardPayload): Promise<void>;
   writeClipboardText?(text: string): Promise<void>;
+  beginImageClipboardCopy?(): Promise<number>;
+  writeImageClipboard?(token: number, png: Uint8Array): Promise<boolean>;
+  cancelImageClipboardCopy?(token: number): Promise<void>;
+  onImageClipboardCopySuperseded?(listener: (token: number) => void): () => void;
   acquireWorkerResources?(request:{id:string;stamp:DocumentStamp}):Promise<import('./resource-preferences').ComputeResourceEvidence>;
   cancelWorkerResources?(id:string):Promise<void>;
   releaseWorkerResources?(id:string):Promise<void>;
@@ -357,6 +384,7 @@ export interface DesktopBridge extends Partial<WorkspaceDesktopBridge>, Partial<
   cancelChemistry(jobId: string): Promise<void>;
   startDynamics?(request: DynamicsRequest, sessionId: string): Promise<void>;
   commandDynamics?(sessionId: string, command: DynamicsCommand): Promise<void>;
+  waitForDynamicsClose?(documentId: string, sessionId: string): Promise<void>;
   onDynamicsEvent?(listener: (event: DynamicsEvent) => void): () => void;
   startXtb?(request:XtbRequest,sessionId:string):Promise<unknown>;
   releaseXtbOptimizationCaches?(sessionIds:string[]):Promise<{released:string[]}>;
@@ -364,8 +392,16 @@ export interface DesktopBridge extends Partial<WorkspaceDesktopBridge>, Partial<
   releaseXtbElectronicArtifacts?(artifactId:string):Promise<{released:boolean}>;
   commandXtb?(sessionId:string,request:{command:'stop'}):Promise<unknown>;
   onXtbEvent?(listener:(event:XtbEvent)=>void):()=>void;
+  gxtbBackendInfo?():Promise<import('./xtb/contracts').GxtbBackendInfo>;
+  chooseGxtbBackend?():Promise<import('./xtb/contracts').GxtbBackendInfo>;
+  setGxtbBackendPath?(path:string):Promise<import('./xtb/contracts').GxtbBackendInfo>;
+  detectGxtbBackend?():Promise<import('./xtb/contracts').GxtbBackendInfo>;
+  openGxtbDownload?():Promise<{opened:boolean}>;
+  onGxtbConfigurationChanged?(listener:(value:import('./xtb/contracts').GxtbBackendInfo)=>void):()=>void;
   orbitalBackendInfo?():Promise<OrbitalBackendInfo>;
   chooseOrbitalBackend?():Promise<OrbitalBackendInfo>;
+  chooseMultiwfnWorkDirectory?(): Promise<OrbitalBackendInfo>;
+  resetMultiwfnWorkDirectory?(): Promise<OrbitalBackendInfo>;
   analyzeWavefunction?(sessionId:string,request:WavefunctionAnalysisRequest,progressIdentity?:MultiwfnProgressIdentity):Promise<WavefunctionAnalysisResult>;
   cancelWavefunctionAnalysis?(sessionId:string):Promise<void>;
   openOrbitalSession?(request:OrbitalOpenRequest):Promise<WavefunctionMetadata>;
@@ -427,7 +463,38 @@ export interface DesktopBridge extends Partial<WorkspaceDesktopBridge>, Partial<
   exportPersonalFragments?(library: PersonalFragmentLibraryData): Promise<{ cancelled: boolean; path?: string }>;
   onMcpFrontendRequest?(listener: (request: { requestId: string; action: string; payload?: Record<string, unknown> }) => void): () => void;
   replyMcpFrontendRequest?(response: { requestId: string; ok: boolean; result?: unknown; error?: { code: string; message: string } }): Promise<{ accepted: boolean }>;
+  mcpConnectionInfo?(): Promise<McpConnectionInfo>;
+  setMcpConnectionEnabled?(enabled: boolean): Promise<McpConnectionInfo>;
+  rotateMcpConnectionToken?(): Promise<McpConnectionInfo>;
+  testMcpConnection?(): Promise<McpConnectionTestResult>;
 }
+export interface McpClientConfigBundle {
+  serverName: string;
+  mcpServersJson: string;
+  claudeCodeCommand: string;
+  codexToml: string;
+}
+export interface McpConnectionInfo {
+  enabled: boolean;
+  running: boolean;
+  host: string | null;
+  port: number | null;
+  pid: number;
+  startedAt: string | null;
+  version: string;
+  sessionFilePath: string;
+  packaged: boolean;
+  platform: string;
+  token?: string | null;
+  httpUrl?: string | null;
+  sseUrl?: string | null;
+  httpUrlWithToken?: string | null;
+  sseUrlWithToken?: string | null;
+  launch: { command: string; args: string[]; env: Record<string, string> };
+  configs: McpClientConfigBundle;
+  httpConfigs?: McpClientConfigBundle | null;
+}
+export interface McpConnectionTestResult { ok: boolean; workbenchOnline?: boolean; reason?: string; info: McpConnectionInfo }
 export interface SaveContext { jobRequest?: JobRequest; orcaJobRequest?: OrcaJobRequest; withCell?: boolean; purpose?:'structure'|'task' }
 declare global { interface Window { sciyueDesktop?: DesktopBridge } }
 import type { ProjectCompanionBridge } from '../projects/companion-sources';

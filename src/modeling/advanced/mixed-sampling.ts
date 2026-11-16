@@ -2,8 +2,10 @@ import type { Structure } from '../../core/types';
 import { compareConformerGeometry } from '../conformers/clustering';
 import { captureAdvancedFrame, assertAdvancedIsolated, type AdvancedFrameSource } from './frame-source';
 import { graphFingerprint, coordinatesFingerprint } from '../../core/modeling/graph';
+import { reindexStructureAtoms } from '../../core/modeling/graph-reindex';
 
-/** Stable element order is the admission contract, never an element permutation fit. */
+/** Stable IDs from the same document take priority; other sources retain the
+ * explicit element-order contract, never an inferred element permutation fit. */
 export function captureMixedInitial(source: AdvancedFrameSource, parent: AdvancedFrameSource, editableCanonical = false) {
   assertAdvancedIsolated(source);
   if(editableCanonical){
@@ -12,12 +14,17 @@ export function captureMixedInitial(source: AdvancedFrameSource, parent: Advance
       {...source.stamp,graphFingerprint:graphFingerprint(structure)},source.label,source.constraints)};
   }
   const canonical = parent.structure.atoms;
-  if (source.structure.atoms.length !== canonical.length || source.structure.atoms.some((atom, index) => atom.element !== canonical[index].element))
+  const original = source.structure.atoms;
+  const byId = new Map(original.map((atom,index)=>[atom.id!,index]));
+  const sameDocument = source.ref.documentId === parent.ref.documentId && source.ref.documentEpoch === parent.ref.documentEpoch;
+  const stableIdentity = sameDocument && original.length === canonical.length && canonical.every(atom=>byId.has(atom.id!));
+  const order = canonical.map((atom,index)=>stableIdentity?byId.get(atom.id!)!:index);
+  if (original.length !== canonical.length || order.some((sourceIndex,index) => original[sourceIndex].element !== canonical[index].element))
     throw new Error('当前帧的原子数或逐序元素与搜索初猜不兼容。');
-  const atomMapping = source.structure.atoms.map((atom, index) => ({ sourceAtomId: atom.id!, taskAtomId: canonical[index].id! }));
+  const atomMapping = order.map((sourceIndex,index) => ({ sourceAtomId: original[sourceIndex].id!, taskAtomId: canonical[index].id! }));
   const mapping = new Map(atomMapping.map(pair => [pair.sourceAtomId, pair.taskAtomId]));
-  const structure = structuredClone(source.structure);
-  structure.atoms = structure.atoms.map((atom, index) => ({ ...atom, id: canonical[index].id, sourceIndex: canonical[index].sourceIndex }));
+  const structure = stableIdentity?reindexStructureAtoms(source.structure,canonical.map(atom=>atom.id!)):structuredClone(source.structure);
+  structure.atoms = structure.atoms.map((atom,index) => ({ ...atom, id: canonical[index].id, sourceIndex: canonical[index].sourceIndex }));
   structure.charge = parent.structure.charge; structure.multiplicity = parent.structure.multiplicity;
   if (structure.modelLayers) structure.modelLayers = structure.modelLayers.map(layer => ({ ...layer,
     atomIds: layer.atomIds?.map(id => mapping.get(id)!) }));

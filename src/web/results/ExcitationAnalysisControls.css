@@ -8,4 +8,4 @@
 .excitation-analysis .postprocess-metadata-details[open] > summary { margin-bottom:8px; }
 .excitation-analysis .nto-pair-list .scientific-table-actions > .scientific-table-parameters { width:auto; flex:0 0 auto; }
 .excitation-analysis .nto-pair-list .scientific-table-actions > .scientific-table-layout-actions { width:auto; flex:1 1 auto; }
-.excitation-analysis .excitation-nto-side[aria-pressed=true] { background:#e1f1e7!important; border-color:#76ad94!important; color:#214b35!important; font-weight:600; }
+.excitation-analysis .excitation-nto-side[aria-pressed=true] { background:var(--ui-control-selected-bg)!important;border-color:var(--ui-action-primary-bg)!important;color:var(--ui-action-primary-bg)!important;font-weight:600; }

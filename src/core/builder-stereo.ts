@@ -64,9 +64,9 @@ export function builderDoubleBondGeometry(structure:Structure, atomIds:[string,s
 /** E/Z is assigned only when explicit substituent priorities can be resolved.
  * First atomic-number/attached-neighbour priorities include multiple-bond
  * duplicate atoms; deeper ties (and isotope distinctions) remain undefined. */
-export function builderDoubleBondConfiguration(s:Structure,aId:string,bId:string):'E'|'Z'|'undefined'{
-  const a=s.atoms.findIndex(a=>a.id===aId),b=s.atoms.findIndex(a=>a.id===bId);if(a<0||b<0)return 'undefined';
-  if(!(s.bonds??[]).some(edge=>edge.order===2&&((edge.a===a&&edge.b===b)||(edge.a===b&&edge.b===a))))return 'undefined';
+export function builderDoubleBondStereoReference(s:Structure,aId:string,bId:string):[string,string,string,string]|undefined{
+  const a=s.atoms.findIndex(a=>a.id===aId),b=s.atoms.findIndex(a=>a.id===bId);if(a<0||b<0)return;
+  if(!(s.bonds??[]).some(edge=>edge.order===2&&((edge.a===a&&edge.b===b)||(edge.a===b&&edge.b===a))))return;
   const signature=(root:number,excluded:number,depth:number):number[]=>{
     let layer:{index:number;parent:number;visited:Set<number>;duplicate?:boolean}[]=[{index:root,parent:excluded,visited:new Set([excluded])}],out:number[]=[];
     for(let d=0;d<=depth;d++){
@@ -94,8 +94,12 @@ export function builderDoubleBondConfiguration(s:Structure,aId:string,bId:string
     }
     return undefined;
   };
-  const left=priority(a,b),right=priority(b,a);if(left===undefined||right===undefined)return 'undefined';
-  const geometry=builderDoubleBondGeometry(s,[s.atoms[left].id!,aId,bId,s.atoms[right].id!]);return geometry==='same'?'Z':geometry==='opposite'?'E':'undefined';
+  const left=priority(a,b),right=priority(b,a);if(left===undefined||right===undefined)return;
+  return [s.atoms[left].id!,aId,bId,s.atoms[right].id!];
+}
+export function builderDoubleBondConfiguration(s:Structure,aId:string,bId:string):'E'|'Z'|'undefined'{
+  const reference=builderDoubleBondStereoReference(s,aId,bId);if(!reference)return 'undefined';
+  const geometry=builderDoubleBondGeometry(s,reference);return geometry==='same'?'Z':geometry==='opposite'?'E':'undefined';
 }
 export function updateBuilderStereo(structure:Structure, affectedAtomIds?: readonly string[]): {structure:Structure;touchedIds:string[]} {
   const affected=affectedAtomIds ? new Set(affectedAtomIds) : undefined;
@@ -144,12 +148,47 @@ export function assertBuilderStereoPreserved(before:Structure,after:Structure,pr
   }
 }
 /** Decode a native 2D wedge drawing into the same stable-neighbour parity. */
-export function requestedBuilder2DParity(structure:Structure,atomId:string):-1|0|1{
+export function requestedBuilder2DParity(structure:Structure,atomId:string,source?:{implicitHydrogenIds?:readonly string[]}):-1|0|1{
   const center=structure.atoms.findIndex(a=>a.id===atomId);if(center<0)return 0;
   const explicit=structure.atoms[center].stereoParity;
-  const wedges=(structure.bonds??[]).filter(b=>(b.a===center||b.b===center)&&(b.stereo===1||b.stereo===6));
+  if(structure.dimension!==2&&!source){
+    // Existing 3D projection editing owns its complete explicit-neighbour
+    // diagram. Source-only implicit-H rules must not alter that contract.
+    const wedges=(structure.bonds??[]).filter(b=>(b.a===center||b.b===center)&&(b.stereo===1||b.stereo===6));
+    if(!wedges.length)return explicit??0;
+    const atoms=structure.atoms.map(a=>{const p=a.id?structure.layout2D?.[a.id]:undefined;return {...a,x:p?.x??a.x,y:p?.y??a.y,z:0};});
+    for(const b of wedges){const other=b.a===center?b.b:b.a;atoms[other].z=(b.stereo===1?1:-1)*(b.a===center?1:-1);}
+    return builderTetrahedralParity({...structure,atoms,cell:undefined},atomId);
+  }
+  // MOL/KET wedges are narrow at begin. An incident wedge whose narrow end is
+  // elsewhere does not declare another tetrahedron at this endpoint.
+  const edges=(structure.bonds??[]).filter(b=>b.kind!=='coordination');
+  const wedges=edges.filter(b=>b.a===center&&(b.stereo===1||b.stereo===6));
   if(!wedges.length)return explicit??0;
-  const atoms=structure.atoms.map(a=>{const p=a.id?structure.layout2D?.[a.id]:undefined;return {...a,x:p?.x??a.x,y:p?.y??a.y,z:0};});
-  for(const b of wedges){const other=b.a===center?b.b:b.a;atoms[other].z=(b.stereo===1?1:-1)*(b.a===center?1:-1);}
-  return builderTetrahedralParity({...structure,atoms,cell:undefined},atomId);
+  const neighbours=edges.filter(b=>b.a===center||b.b===center).map(b=>b.a===center?b.b:b.a)
+    .sort((a,b)=>(structure.atoms[a].id??String(a))<(structure.atoms[b].id??String(b))?-1:1);
+  if(neighbours.length!==4)return 0;
+  const terminals=new Set<string>();
+  for(const index of neighbours){
+    if(edges.some(b=>(b.a===index||b.b===index)&&b.a!==center&&b.b!==center))continue;
+    const atom=structure.atoms[index],key=JSON.stringify([atom.element,atom.formalCharge??0]);
+    if(terminals.has(key))return 0;terminals.add(key);
+  }
+  const location=(index:number)=>{const atom=structure.atoms[index],point=atom.id?structure.layout2D?.[atom.id]:undefined;return [point?.x??atom.x,point?.y??atom.y] as const;};
+  const origin=location(center),points=neighbours.map(index=>{const p=location(index);return [p[0]-origin[0],p[1]-origin[1],0] as Vector3;});
+  const scale=Math.max(...points.map(p=>Math.hypot(p[0],p[1])));if(!Number.isFinite(scale)||scale===0)return 0;
+  for(const point of points){point[0]/=scale;point[1]/=scale;}
+  for(const bond of wedges){const position=neighbours.indexOf(bond.b);if(position>=0)points[position][2]=bond.stereo===1?1:-1;}
+  const implicit=source?.implicitHydrogenIds??[];
+  if(implicit.length){
+    if(implicit.length!==1)return 0;
+    const position=neighbours.findIndex(index=>structure.atoms[index].id===implicit[0]);
+    if(position<0||structure.atoms[neighbours[position]].element!=='H')return 0;
+    // A source implicit fourth ligand is defined from the original three
+    // directed bonds, never by its temporary display-H XY placement.
+    const others=points.filter((_,index)=>index!==position);
+    points[position]=[0,1,2].map(axis=>-others.reduce((sum,p)=>sum+p[axis],0)) as Vector3;
+  }
+  const value=dot(sub(points[0],points[3]),cross(sub(points[1],points[3]),sub(points[2],points[3])));
+  return !Number.isFinite(value)||Math.abs(value)<1e-10?0:value>0?1:-1;
 }

@@ -14,6 +14,7 @@ import type {CipViewportUsage} from './use-cip-usage';
  * remain in the main workspace; no history or executable callbacks cross IPC. */
 type DataKeys = {[K in keyof ModelViewportProps]: NonNullable<ModelViewportProps[K]> extends (...args:any[])=>any ? never : K}[keyof ModelViewportProps];
 export type WorkspaceViewportState = Partial<Pick<ModelViewportProps,Exclude<DataKeys,undefined|'document'>>> & {
+  frameBondEditing?:FrameBondEditingState;
   documentId:string;revision:number;interaction:InteractionState;
   selectShortcut:string;freezeShortcut:string;
   dockTarget?:{x:number;y:number;width:number;height:number};error?:string;
@@ -25,7 +26,16 @@ export type WorkspaceViewportState = Partial<Pick<ModelViewportProps,Exclude<Dat
   trajectoryPlayback?:TrajectoryPlaybackState;
   workspaceInputRoles?:{taskId:string;role:'reactant'|'product'|'tsGuess';label:string}[];
 };
-export type WorkspaceViewportEvent =
+export interface FrameBondEditingState {frameKey:string;blocked:boolean;canUndo:boolean;canRedo:boolean}
+export interface FrameBondTarget {frameKey:string;projectionSerial:number}
+export function checkedFrameBondEditing(value:FrameBondEditingState):FrameBondEditingState {
+ const tuple=JSON.parse(value.frameKey);
+ if(!value||Object.keys(value).some(key=>!['frameKey','blocked','canUndo','canRedo'].includes(key))||!Array.isArray(tuple)||tuple.length!==5
+  ||![tuple[0],tuple[1],tuple[3],tuple[4]].every(part=>typeof part==='string'&&part.length>0)||!Number.isSafeInteger(tuple[2])||tuple[2]<0
+  ||![value.blocked,value.canUndo,value.canRedo].every(part=>typeof part==='boolean'))throw Error('帧显示键编辑能力身份无效。');
+ return value;
+}
+export type WorkspaceViewportEvent = ({frameBondTarget?:FrameBondTarget}&(
  | {type:'cip-used';documentEpoch:string;projectionSerial:number|null;receipt:CipViewportUsage}
  | {type:'sampling-sphere';sourceDocumentId:string;sourceRevision:number;radiusAngstrom:number}
  | {type:'trajectory-playback';resultId:string;projectionKey?:string;collectionIdentity?:PlaybackCollectionIdentity;command:TrajectoryPlaybackCommand}
@@ -50,8 +60,23 @@ export type WorkspaceViewportEvent =
  | {type:'file-action';action:'import'|'export-structure'|'export-image'}
  | {type:'display-settings';display:DisplaySettings}
  | {type:'axes-visible';visible:boolean}
- | {type:'display-subscribe';channelToken:string};
-export interface WorkspaceViewportController { dispatch(event:WorkspaceViewportEvent):void|Promise<void>;isBusy():boolean;cancelInteraction?():void;getCameraView?():number[]|undefined }
+ | {type:'display-subscribe';channelToken:string}));
+/** Requires a source-bound intent whenever the owner presents a scientific frame.
+ * Camera, ordinary observation, save and Space playback retain their own scopes. */
+export function isFrameBondViewportEdit(event:WorkspaceViewportEvent):boolean {
+ if(event.type==='object-delete')return ['bond','auxiliary','port'].includes(event.pick.kind);
+ if(event.type==='command'){
+  const command=event.command;return ['set-bond-order','break-bond','infer-bonds','delete-objects'].includes(command.type)
+    ||command.type==='legacy'&&['set-bond','delete-bond'].includes(command.command.type);
+ }
+ return event.type==='key'&&(['Delete','Backspace'].includes(event.key)||/^[1-5]$/.test(event.key)
+  ||Boolean((event.ctrlKey||event.metaKey)&&['z','y'].includes(event.key.toLowerCase())));
+}
+export function frameBondTargetCurrent(state:FrameBondEditingState|undefined,projectionSerial:number|undefined,event:WorkspaceViewportEvent):boolean {
+ const target=event.frameBondTarget;if(!target)return !state||!isFrameBondViewportEdit(event);
+ return Boolean(state&&target.frameKey===state.frameKey&&Number.isSafeInteger(target.projectionSerial)&&target.projectionSerial>=0&&target.projectionSerial===projectionSerial);
+}
+export interface WorkspaceViewportController { dispatch(event:WorkspaceViewportEvent):void|Promise<void>;isBusy():boolean;cancelInteraction?():void;getCameraView?():number[]|undefined;preoptimize?():Promise<void> }
 /** An independent window can hold a valid result ID after its collection was
  * replaced. Check the complete publication identity before consuming a command. */
 export function trajectoryPlaybackEventCurrent(state:TrajectoryPlaybackState,event:Extract<WorkspaceViewportEvent,{type:'trajectory-playback'}>):boolean {

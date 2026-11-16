@@ -21,7 +21,7 @@ export function mixedCardScienceKey(card:AdvancedMixedSamplingCard,definition:Ad
   const torsions=rest.torsions.map(row=>{if(quantity.mode==='total-effective'&&quantity.automaticPointAllocation&&row.pointCountMode!=='manual'){const {pointCount,...axis}=row;return axis;}return row;});
   configuration={kind:card.kind,...rest,torsions,quantity:policy,limits};
  } else {
-  const {threads,memoryBudgetBytes,maxSteps,maxEvaluations,maxFrames,maxWallTimeSeconds,...sampling}=card.sampling;
+  const {threads,memoryBudgetBytes,maxSteps,maxEvaluations,maxFrames,maxWallTimeSeconds,seedDraft:_seedDraft,seedMode:_seedMode,...sampling}=card.sampling;
   for(const key of ['molecularMD','metadynamics','sphericalMD'] as const)if(sampling[key]){const {durationFs,...settings}=sampling[key]!;sampling[key]=settings as never;}
   configuration={kind:card.kind,sampling};
  }

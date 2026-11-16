@@ -1,4 +1,5 @@
 import {DismissibleNotice} from '../DismissibleNotice';
+import MultiwfnErrorNotice from './MultiwfnErrorNotice';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity} from '../../projects/ui-state';
 import {useAnalysisProjectSnapshot,rebindAnalysisContext} from '../../projects/analysis-state';
@@ -47,6 +48,9 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
   const selected = frontier.find(row => row.orbital.key === card.selected)?.orbital;
   const selectedNativeKey = reactivityNativeOrbitalKey(selected, p.metadata);
   const permitted = p.active && p.available !== false && p.wavefunctionAvailable;
+  const capabilities = card.result?.capabilities ?? p.sessionInfo?.capabilities;
+  const scalarAvailable = !!(capabilities?.global || capabilities?.condensed);
+  const scalarReason = capabilities?.reasons.join('；');
   const canDraw = permitted && p.sessionInfo?.capabilities.orbitalDisplay !== false && !!p.metadata && !!p.orbitalSessionId && !!p.orbitalBridge;
   const spacing = orbitalQualitySpacing(card.quality,card.spacing);
   const resources = p.sessionInfo?.resources;
@@ -62,7 +66,7 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
   const orbital = useOrbitalField({ bridge: p.orbitalBridge ?? null, metadata: canDraw ? p.metadata ?? null : null,
     sessionId: canDraw ? p.orbitalSessionId ?? null : null, selectedKey: selectedNativeKey, active: permitted,
     computeIntent: intent?.key === key ? intent.token : null, sampling,
-    onError: error => { card.error = error; refresh(); latest.current.onError?.(error); } });
+    onError: error => { card.error = error; refresh(); } });
   const orbitalBusy = orbital.state.planning || orbital.state.progress?.status === 'queued' || orbital.state.progress?.status === 'running';
   useEffect(() => {
     mounted.current = true;
@@ -105,7 +109,7 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
   useEffect(() => () => latest.current.onProjection(null), []);
   async function calculate() {
     const analyze = p.bridge.analyze;
-    if (!permitted || !analyze || card.busy || orbitalBusy) return;
+    if (!permitted || !scalarAvailable || !analyze || card.busy || orbitalBusy) return;
     const id = crypto.randomUUID(), abort = new AbortController(), context = { ...p.context }, bridge = p.bridge;
     update({ busy: true, stopping: false, error: '', request: { id, abort, cancel: () => bridge.cancel?.(id) } });
     try {
@@ -114,7 +118,7 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
       if (!sameSurfaceStamp(result.stamp, { ...context, analysisId: p.analysisId, requestId: id })) throw Error('反应性结果与当前分析、来源或帧不一致。');
       card.result = result; latest.current.onResultAccepted?.(id);
     } catch (error) {
-      if (!abort.signal.aborted && mounted.current && card.request?.id === id) { card.error = message(error); latest.current.onError?.(card.error); }
+      if (!abort.signal.aborted && mounted.current && card.request?.id === id) { card.error = message(error); }
     } finally { if (card.request?.id === id) { card.busy = false; card.stopping = false; card.request = null; refresh(); } }
   }
   function stop() { const request = card.request; if (request) { update({ stopping: true }); cancel(request); } }
@@ -123,19 +127,19 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
   const notices = [...new Set([...(card.result?.notices ?? p.sessionInfo?.notices ?? []), ...(card.result?.capabilities.reasons ?? p.sessionInfo?.capabilities.reasons ?? [])])];
   return <InputSettingsLayout><section className="orbital-controls" data-testid="reactivity-controls" aria-label="FMO 反应性">
     <AnalysisTaskLayout variant="card" title="FMO 反应性" setup={<span>冻结轨道近似 · Hirshfeld 分区</span>} actions={<>
-      <button type="button" className="button button-primary" disabled={!permitted || !p.bridge.analyze || card.busy || orbitalBusy} onClick={() => void calculate()}>{card.result ? '重新计算反应性' : '计算反应性'}</button>
+      <button type="button" className="button button-primary" title={!scalarAvailable ? scalarReason : undefined} disabled={!permitted || !scalarAvailable || !p.bridge.analyze || card.busy || orbitalBusy} onClick={() => void calculate()}>{card.result ? '重新计算反应性' : '计算反应性'}</button>
       {card.result && <button type="button" onClick={() => card.result && exportBlob(new Blob([reactivityText(card.result, card.decimals, card.globalDecimals)], { type: 'text/plain;charset=utf-8' }), 'Ester-Studio-fmo-reactivity.txt')}>导出完整报告 TXT</button>}
     </>} progress={<>
-      <MultiwfnProgress progress={p.progress ?? null} operationLabel="FMO 原子反应性" onStop={stop}/>
+      <MultiwfnProgress progress={p.progress ?? null} showFailureReason={!card.error} operationLabel="FMO 原子反应性" onStop={stop}/>
       {card.busy && !p.progress && <div className="orbital-draw-row"><span role="status">{card.stopping ? '正在等待计算停止…' : '正在计算反应性…'}</span><button type="button" disabled={card.stopping} onClick={stop}>{card.stopping ? '正在停止…' : '停止反应性计算'}</button></div>}
     </>}>
     {unavailable && <p role="status">当前帧没有匹配波函数；请补入来源或匹配波函数。</p>}
-    {card.error && <DismissibleNotice role="alert">{card.error}</DismissibleNotice>}
+    {card.error && <MultiwfnErrorNotice message={card.error} identity={p.progress?.identity.runId}/>}
     <AnalysisTaskSection title="全局反应性">
       {card.result ? <>
       <ScientificDataTable exportFileName="Ester-Studio-fmo-global.txt" expansion={{expanded:card.globalExpanded,onToggle:()=>update({globalExpanded:!card.globalExpanded})}} projection={reactivityGlobalTable(card.result, card.globalDecimals, card.globalExpanded)} selectionScope={`${key}:global`} layout="metrics" format={{decimals:card.globalDecimals,onDecimalsChange:globalDecimals=>update({globalDecimals}),ariaLabel:'反应性全局量'}} rowBindings={row => ({ title: card.result!.globalMetrics[row.key as keyof typeof card.result.globalMetrics]?.reason })}/>
       {!!reasons.length && <details><summary>缺失量说明</summary>{reasons.map(reason => <p key={reason}>{reason}</p>)}</details>}
-      </> : <p role="status">尚未计算。</p>}
+      </> : <p role="status">{capabilities?.global === false ? scalarReason || '当前来源不满足全局 FMO 反应性条件。' : '尚未计算。'}</p>}
     </AnalysisTaskSection>
     <AnalysisTaskSection title="原子反应性 · Hirshfeld 分区">
       {card.result?.atoms.length ? <>
@@ -144,7 +148,7 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
           rowAction={{kind:'pin',label:row=>`${card.pinned.includes(row.key)?'取消固定':'固定'} ${row.cells[0]}`,active:row=>card.pinned.includes(row.key),onActivate:row=>update({pinned:toggleAnalysisRow(card.pinned,row.key)})}}/>
         <div className="orbital-draw-row"><label>显示量 <select aria-label="反应性原子显示量" value={card.metric} onChange={event => update({ metric: event.target.value as ReactivityAtomMetric })}>{REACTIVITY_ATOM_ALL.map(metric => <option key={metric} value={metric}>{REACTIVITY_ATOM_LABELS[metric]}</option>)}</select></label><InputSettingsCheckbox label="原子着色" checked={card.color} onChange={color => update({ color })}/></div>
         {card.color&&<AnalysisColorbarLayoutControls layout={card.colorbarLayout} onChange={colorbarLayout=>update({colorbarLayout})}/>}
-      </> : <p role="status">{card.result ? card.result.capabilities.reasons.join('；') || '当前来源未提供可用的原子反应性。' : '尚未计算。'}</p>}
+      </> : <p role="status">{capabilities?.condensed === false ? scalarReason || '当前来源未提供可用的原子反应性。' : '尚未计算。'}</p>}
     </AnalysisTaskSection>
     </AnalysisTaskLayout>
     {frontier.length ? <>
@@ -158,7 +162,7 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
         actions={qualityPending ? <><span role="status">网格参数待应用</span><button type="button" disabled={!canDraw || !selectedNativeKey || card.busy || !!gridError} onClick={() => {
           update({ appliedSpacing: spacing }); setIntent({ key, token: {} });
         }}>应用质量</button></> : null}
-        progress={<MultiwfnProgress progress={orbital.state.taskProgress ?? null} operationLabel="前线轨道格点" onStop={() => void orbital.controller?.stop().catch(error => update({ error: message(error) }))}/>}
+        progress={<MultiwfnProgress progress={orbital.state.taskProgress ?? null} showFailureReason={!card.error} operationLabel="前线轨道格点" onStop={() => void orbital.controller?.stop().catch(error => update({ error: message(error) }))}/>}
         plotting={canDraw && orbital.field ? <OrbitalDrawOptions embedded value={card.layer} onChange={layer => update({ layer })}/> : null}>
       {card.selected && !selectedNativeKey && <p role="status">所选前线轨道缺少匹配的波函数系数。</p>}
       {!card.selected && <p role="status">选择前线轨道后显示其轨道格点。</p>}

@@ -1047,3 +1047,227 @@ test('security contracts: dev-runtime.py admission, dangling profile symlink, em
     fs.rmSync(extDir, { recursive: true, force: true });
   }
 });
+
+test('developmentXtb verifies v4 runtimeManifest/variantId/variantIdentities and rejects v1 gxtb or tampered variantIdentities', () => {
+  const { canonical, EXTERNAL_GXTB_RUNTIME_SET, verifyRuntimeSet } = require('../../desktop/xtb-runtime-contract.cjs');
+
+  // 1. Legacy v1 lock without runtimeManifest rejects variantId: 'gxtb'
+  const v1Dir = makeRealTempDir('es-dev-xtb-v1-');
+  try {
+    buildMockNativeProject(v1Dir, 'win32-x64');
+    assert.throws(
+      () => developmentXtb(v1Dir, { platformId: 'win32-x64', variantId: 'gxtb' }),
+      /XTB_RUNTIME_INCOMPLETE: requested runtime variant absent/
+    );
+  } finally {
+    fs.rmSync(v1Dir, { recursive: true, force: true });
+  }
+
+  // 2. v4 runtime-set lock with runtimeManifest + variantIdentities
+  const v4Dir = makeRealTempDir('es-dev-xtb-v4-');
+  try {
+    buildMockNativeProject(v4Dir, 'win32-x64');
+
+    const lockRel = 'desktop/packaging/xtb-runtime.lock.json';
+    const profilePath = path.join(v4Dir, 'desktop/packaging/native-profile.json');
+    const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+
+    const writeV4ProfileLock = lockDoc => {
+      const lockEntry = writeOwnedFile(v4Dir, lockRel, JSON.stringify(lockDoc, null, 2) + '\n');
+      profile.xtbLock = lockRel;
+      if (profile.preparation) {
+        const prepDoc = JSON.parse(fs.readFileSync(path.join(v4Dir, profile.preparation.path), 'utf8'));
+        prepDoc.xtbLock = lockEntry;
+        if (prepDoc.importProbe) {
+          const probeDoc = JSON.parse(fs.readFileSync(path.join(v4Dir, prepDoc.importProbe.path), 'utf8'));
+          probeDoc.xtbLock = lockEntry;
+          prepDoc.importProbe = writeOwnedFile(
+            v4Dir,
+            prepDoc.importProbe.path,
+            JSON.stringify(probeDoc, null, 2) + '\n'
+          );
+        }
+        profile.preparation = writeOwnedFile(
+          v4Dir,
+          profile.preparation.path,
+          JSON.stringify(prepDoc, null, 2) + '\n'
+        );
+      }
+      fs.writeFileSync(profilePath, JSON.stringify(profile, null, 2) + '\n');
+    };
+
+    const xtbRelRoot = '.local/dependencies/win-x64/xtb-v4-lock';
+    const xtbPayloadRoot = path.join(v4Dir, xtbRelRoot, 'xtb');
+    const sharedParams = [
+      ['param_gfn0-xtb.txt', 'gfn0-param\n'],
+      ['param_gfn1-xtb.txt', 'gfn1-param\n'],
+      ['param_gfn2-xtb.txt', 'gfn2-param\n'],
+      ['.param_gfnff.xtb', 'gfnff-param\n']
+    ];
+
+    const officialExe = writeOwnedFile(xtbPayloadRoot, 'bin/xtb.exe', 'official-xtb-exe');
+    const stack64Exe = writeOwnedFile(xtbPayloadRoot, 'bin/xtb680-stack64.exe', 'stack64-xtb-exe');
+    const dllEntry = writeOwnedFile(xtbPayloadRoot, 'bin/libiomp5md.dll', 'mock-iomp5');
+    const fireExe = writeOwnedFile(xtbPayloadRoot, 'variants/fire/bin/xtb.exe', 'fire-xtb-exe');
+    const fireDll = writeOwnedFile(xtbPayloadRoot, 'variants/fire/bin/libiomp5md.dll', 'mock-iomp5');
+    const licenseEntry = writeOwnedFile(xtbPayloadRoot, 'licenses/NOTICE.txt', 'xtb notice\n');
+
+    const officialReceipt = writeOwnedFile(xtbPayloadRoot, 'provenance/official.json', '{"variant":"official"}\n');
+    const stack64Receipt = writeOwnedFile(xtbPayloadRoot, 'provenance/gfn0-stack64.json', '{"variant":"gfn0-stack64"}\n');
+    const fireReceipt = writeOwnedFile(xtbPayloadRoot, 'provenance/fire.json', '{"variant":"fire"}\n');
+
+    const paramEntries = [];
+    for (const [name, content] of sharedParams) {
+      paramEntries.push(writeOwnedFile(xtbPayloadRoot, `share/xtb/${name}`, content));
+      paramEntries.push(writeOwnedFile(xtbPayloadRoot, `variants/fire/share/xtb/${name}`, content));
+    }
+
+    const inventoryFiles = [
+      officialExe,
+      stack64Exe,
+      dllEntry,
+      fireExe,
+      fireDll,
+      licenseEntry,
+      officialReceipt,
+      stack64Receipt,
+      fireReceipt,
+      ...paramEntries
+    ].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+
+    const inventoryEntry = writeOwnedFile(
+      xtbPayloadRoot,
+      'inventory.json',
+      JSON.stringify({ schema: 'sciyue-xtb-runtime-inventory/v1', files: inventoryFiles }, null, 2) + '\n'
+    );
+
+    const runtimeManifestDoc = {
+      schema: EXTERNAL_GXTB_RUNTIME_SET,
+      platform: 'win32-x64',
+      version: '6.8.0',
+      entry: 'bin/xtb.exe',
+      dataDirectory: 'share/xtb',
+      methods: ['gfn0', 'gfn1', 'gfn2', 'gfnff'],
+      scope: 'local-experimental',
+      localUseReady: true,
+      publicRedistributionReviewed: false,
+      inventory: inventoryEntry,
+      externalProviders: { gxtb: 'user-supplied-cli' },
+      variants: {
+        official: {
+          root: '',
+          entry: 'bin/xtb.exe',
+          kind: 'official-release',
+          version: '6.8.0',
+          sourceCommit: '4b8c987066c7e9bd0c2b727ce026fb9a581c273a',
+          archiveSha256: 'a'.repeat(64),
+          buildId: 'xtb-v6.8.0-official',
+          executableSha256: officialExe.sha256,
+          sourceReceiptSha256: officialReceipt.sha256
+        },
+        'gfn0-stack64': {
+          root: '',
+          entry: 'bin/xtb680-stack64.exe',
+          kind: 'pe-stack-derivative',
+          version: '6.8.0',
+          sourceCommit: '4b8c987066c7e9bd0c2b727ce026fb9a581c273a',
+          archiveSha256: 'a'.repeat(64),
+          buildId: 'xtb-v6.8.0-stack64',
+          stackReserveBytes: 67108864,
+          parentExecutableSha256: officialExe.sha256,
+          executableSha256: stack64Exe.sha256,
+          sourceReceiptSha256: stack64Receipt.sha256
+        },
+        fire: {
+          root: 'variants/fire',
+          entry: 'bin/xtb.exe',
+          kind: 'fire-step-limit-rebuild',
+          version: '6.8.0',
+          sourceCommit: '4b8c987066c7e9bd0c2b727ce026fb9a581c273a',
+          buildId: 'xtb-v6.8.0-fire',
+          compiler: { name: 'gfortran', version: '13.2.0' },
+          toolchainArchiveSha256: 'b'.repeat(64),
+          scientificPinsSha256: 'c'.repeat(64),
+          stackReserveBytes: 67108864,
+          fireStepLimit: 'remaining-microcycles-v1',
+          executableSha256: fireExe.sha256,
+          sourceReceiptSha256: fireReceipt.sha256
+        }
+      }
+    };
+
+    const runtimeManifestEntry = writeOwnedFile(
+      xtbPayloadRoot,
+      'runtime.json',
+      canonical(runtimeManifestDoc) + '\n'
+    );
+
+    const verifiedSet = verifyRuntimeSet(xtbPayloadRoot, runtimeManifestEntry);
+    const variantIdentities = Object.fromEntries(
+      Object.entries(verifiedSet.variants).map(([id, value]) => [id, value.engineIdentity])
+    );
+
+    const xtbAllFiles = [...inventoryFiles, inventoryEntry, runtimeManifestEntry]
+      .map(row => ({ ...row, path: `xtb/${row.path}` }))
+      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+
+    const xtbLockDoc = {
+      schema: 'sciyue-xtb-lock-v1',
+      platform: 'win32-x64',
+      lockId: 'xtb-v4-test',
+      root: xtbRelRoot,
+      contentDirectories: ['xtb'],
+      version: '6.8.0',
+      entry: 'xtb/bin/xtb.exe',
+      dataDirectory: 'xtb/share/xtb',
+      methods: ['gfn0', 'gfn1', 'gfn2', 'gfnff'],
+      scope: 'local-experimental',
+      localUseReady: true,
+      sourceBuildRequired: false,
+      publicRedistributionReviewed: true,
+      distributionLicenseReady: true,
+      runtimeManifest: runtimeManifestEntry,
+      variantIdentities,
+      externalProviders: { gxtb: 'user-supplied-cli' },
+      files: xtbAllFiles
+    };
+
+    writeV4ProfileLock(xtbLockDoc);
+
+    // Full runtimeManifest + variantIdentities verification (variantId undefined)
+    const fullRes = developmentXtb(v4Dir, { platformId: 'win32-x64' });
+    assert.equal(fullRes.root, xtbPayloadRoot);
+    assert.deepEqual(Object.keys(fullRes.runtimeSet.variants).sort(), ['fire', 'gfn0-stack64', 'official']);
+    assert.deepEqual(fullRes.runtimeSet.variants.official.engineIdentity, variantIdentities.official);
+
+    // Single variantId verification ('fire')
+    const fireRes = developmentXtb(v4Dir, { platformId: 'win32-x64', variantId: 'fire' });
+    assert.equal(fireRes.root, xtbPayloadRoot);
+    assert.deepEqual(Object.keys(fireRes.runtimeSet.variants), ['fire']);
+    assert.deepEqual(fireRes.runtimeSet.variants.fire.engineIdentity, variantIdentities.fire);
+
+    // Tampered variantIdentities.fire MUST fail
+    const tamperedLockDoc = {
+      ...xtbLockDoc,
+      variantIdentities: {
+        ...variantIdentities,
+        fire: {
+          ...variantIdentities.fire,
+          buildId: 'tampered-fire-build-id'
+        }
+      }
+    };
+    writeV4ProfileLock(tamperedLockDoc);
+
+    assert.throws(
+      () => developmentXtb(v4Dir, { platformId: 'win32-x64' }),
+      /Current xTB variants do not match their source lock/
+    );
+    assert.throws(
+      () => developmentXtb(v4Dir, { platformId: 'win32-x64', variantId: 'fire' }),
+      /Current xTB variant does not match its source lock/
+    );
+  } finally {
+    fs.rmSync(v4Dir, { recursive: true, force: true });
+  }
+});

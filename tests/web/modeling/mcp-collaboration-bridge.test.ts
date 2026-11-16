@@ -41,7 +41,7 @@ import {
   summarizeAnalysisTarget,
   type McpAnalysisViewportOverlay
 } from '../../../src/web/mcp/analysis-export';
-import { GENERATED_XTB_POLICY_VERSION } from '../../../src/results/generated-xtb-policy';
+import { GENERATED_GXTB_POLICY_VERSION, GENERATED_XTB_POLICY_VERSION } from '../../../src/results/generated-xtb-policy';
 import type { WavefunctionMetadata } from '../../../src/results/orbital-contracts';
 import { convertEnergy } from '../../../src/results/energy';
 
@@ -2146,6 +2146,11 @@ describe('Frontend MCP Collaboration Bridge (Phase 1 & Phase 2)', () => {
       engine: 'gaussian',
       kind: 'optimization',
       status: 'completed',
+      source: {
+        id: 'res-traj-src-1',
+        name: 'ReadOnlyOpt.log',
+        size: 128
+      },
       initialStructure: {
         id: 'ro-s1',
         name: 'RO',
@@ -2259,6 +2264,7 @@ describe('Frontend MCP Collaboration Bridge (Phase 1 & Phase 2)', () => {
     registry.setDraft(cleanWater.id, 'gaussian', waterEntry.drafts.gaussian!, false);
     const copiedChild = registry.copyForModeling(registry.stamp());
     const childView = registry.getSnapshot().views.find(v => v.documentId === copiedChild.id)!;
+    registry.setModule('modeling');
     registry.activate(childView.id);
     expect(registry.getSnapshot().inputTask).toBeNull();
     const childEntry = registry.getSnapshot().documents.find(d => d.id === copiedChild.id)!;
@@ -2442,10 +2448,36 @@ describe('Frontend MCP Collaboration Bridge — Phase 6 (Local xTB, Conformer Se
         calculation: 'optimize',
         method: 'gfn1',
         solvent: 'dcm',
+        solvationModel: 'ALPB' as 'alpb',
+        isPeriodic: false
+      })
+    ).toEqual({ model: 'alpb', solvent: 'ch2cl2' });
+    expect(() =>
+      resolveXtbSolvation({
+        calculation: 'optimize',
+        method: 'gfn1',
+        solvent: 'dcm',
         solvationModel: 'gbsa',
         isPeriodic: false
       })
-    ).toEqual({ model: 'gbsa', solvent: 'ch2cl2' });
+    ).toThrow(/ALPB/);
+    expect(() =>
+      resolveXtbSolvation({
+        calculation: 'singlepoint',
+        method: 'gfn2',
+        solvent: 'water',
+        solvationModel: 'gbsa',
+        isPeriodic: false
+      })
+    ).toThrow(/ALPB/);
+    expect(() =>
+      resolveXtbSolvation({
+        calculation: 'singlepoint',
+        method: 'gxtb',
+        solvent: 'water',
+        isPeriodic: false
+      })
+    ).toThrow(/g-xTB/);
     expect(
       resolveXtbSolvation({
         calculation: 'singlepoint',
@@ -2601,7 +2633,24 @@ describe('Frontend MCP Collaboration Bridge — Phase 6 (Local xTB, Conformer Se
     expect(spOut.workbench.module).toBe('modeling');
     expect(waterEntry.store.getSnapshot().draft.structure.atoms[0].x).toBe(0);
 
-    // 4. MCP optimize via frontend.runLocalXtb updates coordinates & clears runtime lock
+    // 4a. MCP pre-optimization rejects legacy GBSA and accepts/normalizes ALPB
+    const gbsaOptReject = await dispatcher.handleRequest({
+      requestId: 'p6-xtb-opt-gbsa-reject',
+      action: 'frontend.runLocalXtb',
+      payload: {
+        documentId: waterDoc.id,
+        calculation: 'optimize',
+        method: 'gfn2',
+        solvent: 'dcm',
+        solvationModel: 'gbsa',
+        maxSteps: 120,
+        rebuildBonds: false
+      }
+    });
+    expect(gbsaOptReject.ok).toBe(false);
+    expect(gbsaOptReject.error?.code).toBe('INVALID_XTB_SOLVATION');
+
+    // 4b. MCP optimize via frontend.runLocalXtb updates coordinates & clears runtime lock
     const optReply = await dispatcher.handleRequest({
       requestId: 'p6-xtb-opt',
       action: 'frontend.runLocalXtb',
@@ -2610,7 +2659,7 @@ describe('Frontend MCP Collaboration Bridge — Phase 6 (Local xTB, Conformer Se
         calculation: 'optimize',
         method: 'gfn2',
         solvent: 'dcm',
-        solvationModel: 'gbsa',
+        solvationModel: 'ALPB',
         maxSteps: 120,
         rebuildBonds: false
       }
@@ -2623,7 +2672,7 @@ describe('Frontend MCP Collaboration Bridge — Phase 6 (Local xTB, Conformer Se
     };
     expect(optOut.converged).toBe(true);
     expect(optOut.iterations).toBe(6);
-    expect(optOut.solvation).toMatchObject({ model: 'gbsa', solvent: 'ch2cl2', kernel: 'still' });
+    expect(optOut.solvation).toMatchObject({ model: 'alpb', solvent: 'ch2cl2', kernel: 'p16' });
     expect(waterEntry.store.getSnapshot().draft.structure.atoms[0].x).toBeCloseTo(0.05, 5);
     expect(waterEntry.store.isRuntimeSessionActive?.()).toBe(false);
 
@@ -2684,8 +2733,8 @@ describe('Frontend MCP Collaboration Bridge — Phase 6 (Local xTB, Conformer Se
       'Butane-P6'
     );
 
-    const confReply = await dispatcher.handleRequest({
-      requestId: 'p6-xtb-conf-butane',
+    const confStepsReject = await dispatcher.handleRequest({
+      requestId: 'p6-xtb-conf-steps-reject',
       action: 'frontend.runLocalXtb',
       payload: {
         documentId: butaneDoc.id,
@@ -2696,6 +2745,22 @@ describe('Frontend MCP Collaboration Bridge — Phase 6 (Local xTB, Conformer Se
         maxCandidates: 6,
         pointsPerTorsion: 3,
         maxSteps: 80
+      }
+    });
+    expect(confStepsReject.ok).toBe(false);
+    expect(confStepsReject.error?.code).toBe('INVALID_XTB_MAX_STEPS');
+
+    const confReply = await dispatcher.handleRequest({
+      requestId: 'p6-xtb-conf-butane',
+      action: 'frontend.runLocalXtb',
+      payload: {
+        documentId: butaneDoc.id,
+        calculation: 'conformer-search',
+        method: 'gfn2',
+        solvent: 'water',
+        solvationModel: 'alpb',
+        maxCandidates: 6,
+        pointsPerTorsion: 3
       }
     });
     expect(confReply.ok).toBe(true);
@@ -3994,6 +4059,14 @@ describe('Frontend MCP Collaboration Bridge — Phase 7 (Result Analysis, Multiw
   const zH = (-0.4692 / BOHR).toExponential(8);
   const yH2 = (-0.7572 / BOHR).toExponential(8);
 
+  const formatFchkChunked = (tokens: readonly string[], perLine: number): string[] => {
+    const lines: string[] = [];
+    for (let i = 0; i < tokens.length; i += perLine) {
+      lines.push(tokens.slice(i, i + perLine).join(' '));
+    }
+    return lines;
+  };
+
   const SAMPLE_WATER_FCHK = [
     'water_ts_sp',
     'SP        RB3LYP                                                      def2SVP',
@@ -4004,7 +4077,9 @@ describe('Frontend MCP Collaboration Bridge — Phase 7 (Result Analysis, Multiw
     'Number of alpha electrons                  I                5',
     'Number of beta electrons                   I                5',
     'Number of basis functions                  I               24',
-    'Number of independent functions            I               24',
+    'Number of independent functions            I                8',
+    'Number of contracted shells                I                8',
+    'Number of primitive shells                 I                8',
     'Atomic numbers                             I   N=           3',
     '           8           1           1',
     'Nuclear charges                            R   N=           3',
@@ -4012,11 +4087,31 @@ describe('Frontend MCP Collaboration Bridge — Phase 7 (Result Analysis, Multiw
     'Current cartesian coordinates              R   N=           9',
     `  0.00000000E+00  0.00000000E+00  ${zO}  0.00000000E+00  ${yH1}`,
     ` ${zH}  0.00000000E+00 ${yH2} ${zH}`,
+    'Shell types                                I   N=           8',
+    '           1           1           1           1           1           1',
+    '           1           1',
+    'Number of primitives per shell             I   N=           8',
+    '           1           1           1           1           1           1',
+    '           1           1',
+    'Shell to atom map                          I   N=           8',
+    '           1           1           1           1           2           2',
+    '           3           3',
+    'Primitive exponents                        R   N=           8',
+    '  1.00000000E+00  1.00000000E+00  1.00000000E+00  1.00000000E+00  1.00000000E+00',
+    '  1.00000000E+00  1.00000000E+00  1.00000000E+00',
+    'Contraction coefficients                   R   N=           8',
+    '  1.00000000E+00  1.00000000E+00  1.00000000E+00  1.00000000E+00  1.00000000E+00',
+    '  1.00000000E+00  1.00000000E+00  1.00000000E+00',
     'SCF Energy                                 R     -7.638491250000000E+01',
     'Total Energy                               R     -7.638491250000000E+01',
     'Alpha Orbital Energies                     R   N=           8',
     ' -1.91420000E+01 -1.01200000E+00 -5.28000000E-01 -3.82000000E-01 -2.95000000E-01',
-    '  4.20000000E-02  1.28000000E-01  4.51000000E-01'
+    '  4.20000000E-02  1.28000000E-01  4.51000000E-01',
+    'Alpha MO coefficients                      R   N=         192',
+    ...formatFchkChunked(
+      Array.from({ length: 192 }, (_, idx) => (idx % 25 === 0 ? ' 1.00000000E+00' : ' 0.00000000E+00')),
+      5
+    )
   ].join('\n') + '\n';
 
   const SAMPLE_WATER_MOLDEN = [
@@ -5285,6 +5380,100 @@ describe('Frontend MCP Collaboration Bridge — Phase 7 (Result Analysis, Multiw
     expect((xtbCharges.response.atoms as any[])[0].spinPopulation).toBeUndefined();
     expect(activeSessions.size).toBe(1);
 
+    // 1b. Open-shell g-xTB policy preserves spinPopulation when analysisPolicy.spinPopulation === true & allows mayer bond orders
+    const gxtbRev = 'c'.repeat(64);
+    const gxtbPolicy = {
+      schema: 'sciyue-generated-analysis-policy/v1' as const,
+      policyVersion: GENERATED_GXTB_POLICY_VERSION,
+      sourceRevision: gxtbRev,
+      requestedUhf: 1,
+      sourceSpinResolution: 'alpha-beta' as const,
+      chargeMethods: ['mulliken', 'cm5', 'hirshfeld'] as const,
+      compositionMethods: ['mulliken', 'scpa'] as const,
+      bondOrderMethods: ['mayer', 'wiberg-lowdin', 'mulliken', 'laplacian', 'fuzzy'] as const,
+      spinPopulation: true as const,
+      spinDensity: false as const,
+      independentAlphaBeta: true as const,
+      realSpaceMethods: ['esp', 'alie', 'iri', 'rdg', 'igmh'] as const
+    };
+    const gxtbMeta: WavefunctionMetadata = {
+      ...makeWaterMetadata('gxtb-src-1', 'gxtb.molden', SAMPLE_WATER_MOLDEN, 'molden'),
+      sourceRevision: gxtbRev,
+      analysisPolicy: gxtbPolicy
+    };
+    const gxtbDoc: any = {
+      ...xtbDoc,
+      id: 'doc-gxtb-gen',
+      wavefunction: {
+        readSourceText: async () => ({
+          name: 'gxtb.molden',
+          text: SAMPLE_WATER_MOLDEN,
+          sourceId: 'gxtb-src-1',
+          sourceRevision: gxtbRev
+        }),
+        source: {
+          ...xtbDoc.wavefunction.source,
+          metadata: gxtbMeta,
+          generatedXtb: {
+            ...xtbDoc.wavefunction.source.generatedXtb,
+            kind: 'trusted-generated-gxtb-sp',
+            analysisPolicy: gxtbPolicy
+          }
+        }
+      }
+    };
+    const mockGxtbDesktop: DesktopBridge = {
+      ...mockXtbDesktop,
+      async openOrbitalSession(req) {
+        activeSessions.add(req.sessionId);
+        return { ...gxtbMeta, sourceId: req.sourceId, sourceRevision: gxtbRev };
+      },
+      async analyzeWavefunction(sessionId, req) {
+        const res = await mockXtbDesktop.analyzeWavefunction!(sessionId, req);
+        if (res.kind === 'bond-orders' && req.kind === 'bond-orders') {
+          return { ...res, sourceRevision: gxtbRev, method: req.method };
+        }
+        return { ...res, sourceRevision: gxtbRev };
+      }
+    };
+    const gxtbCharges = await executeWavefunctionAnalysis({
+      documentId: 'doc-gxtb-gen',
+      document: gxtbDoc,
+      structure: gxtbMeta.structure,
+      frameIndex: 0,
+      desktop: mockGxtbDesktop,
+      tableStore,
+      overlaySerial: 50,
+      params: { kind: 'charges', method: 'cm5', renderInViewport: true }
+    });
+    expect(gxtbCharges.response.spinAvailable).toBe(true);
+    expect((gxtbCharges.response.atoms as any[])[0].spinPopulation).toBeCloseTo(0.42, 4);
+
+    const gxtbMayer = await executeWavefunctionAnalysis({
+      documentId: 'doc-gxtb-gen',
+      document: gxtbDoc,
+      structure: gxtbMeta.structure,
+      frameIndex: 0,
+      desktop: mockGxtbDesktop,
+      tableStore,
+      overlaySerial: 51,
+      params: { kind: 'bond-orders', method: 'mayer', renderInViewport: true }
+    });
+    expect(gxtbMayer.response.method).toBe('mayer');
+
+    await expect(
+      executeWavefunctionAnalysis({
+        documentId: 'doc-gxtb-gen',
+        document: gxtbDoc,
+        structure: gxtbMeta.structure,
+        frameIndex: 0,
+        desktop: mockGxtbDesktop,
+        tableStore,
+        overlaySerial: 52,
+        params: { kind: 'reactivity', renderInViewport: true }
+      })
+    ).rejects.toMatchObject({ code: 'MCP_METHOD_NOT_AVAILABLE', message: /g-xTB/ });
+
     // 2. Timeout during late forkOrbitalSession, orbitals waitForCompletion, and reactivity openReactivitySession leaves ZERO leaked sessions or listeners
     delayForkMs = 90;
     await expect(
@@ -5578,5 +5767,658 @@ describe('Frontend MCP Collaboration Bridge — Phase 7 (Result Analysis, Multiw
     });
     expect(closeStandaloneFchk.ok).toBe(true);
     expect(standaloneOpenedSessions.size).toBe(0);
+  });
+
+  it('keeps DEFAULT_MCP_BOND_DISPLAY reference-stable so PostprocessFrameView canvas memoization does not loop when uiBond is null', async () => {
+    const { DEFAULT_MCP_BOND_DISPLAY } = await import('../../../src/web/results/PostprocessResultView');
+    expect(DEFAULT_MCP_BOND_DISPLAY).toEqual({
+      color: true,
+      labels: true,
+      spin: false,
+      decimals: 2
+    });
+    expect(Object.isFrozen(DEFAULT_MCP_BOND_DISPLAY)).toBe(true);
+
+    const resolveFallbackBondDisplay = (uiBond: { display: typeof DEFAULT_MCP_BOND_DISPLAY } | null) =>
+      uiBond ? uiBond.display : DEFAULT_MCP_BOND_DISPLAY;
+    const render1 = resolveFallbackBondDisplay(null);
+    const render2 = resolveFallbackBondDisplay(null);
+    expect(render1).toBe(render2);
+  });
+
+  it('rejects mutating locked PES snapshot/result or active-PES observation documents while permitting editable PES workbenches', async () => {
+    const registry = createWorkspaceRegistry();
+    const makeH2Structure = (id: string) => ({
+      id,
+      name: `${id}.xyz`,
+      format: 'xyz' as const,
+      charge: 0,
+      multiplicity: 1,
+      dimension: 3 as const,
+      notes: [],
+      atoms: [
+        { id: `${id}-h1`, element: 'H', x: 0, y: 0, z: 0 },
+        { id: `${id}-h2`, element: 'H', x: 0.74, y: 0, z: 0 }
+      ],
+      bonds: [{ a: 0, b: 1, order: 1 }]
+    });
+
+    const editableWorkbench = registry.addPesDocument(makeH2Structure('pes-wb-edit'), 'pes-wb-edit', {
+      groupId: 'pes-group-1',
+      nodeId: 'node-wb-edit',
+      kind: 'workbench'
+    });
+    const observedWorkbench = registry.addPesDocument(makeH2Structure('pes-wb-obs'), 'pes-wb-obs', {
+      groupId: 'pes-group-1',
+      nodeId: 'node-wb-obs',
+      kind: 'workbench'
+    });
+    const snapshotDoc = registry.addPesDocument(makeH2Structure('pes-snap'), 'pes-snap', {
+      groupId: 'pes-group-1',
+      nodeId: 'node-snap',
+      kind: 'snapshot'
+    });
+    const resultDoc = registry.addPesDocument(makeH2Structure('pes-res'), 'pes-res', {
+      groupId: 'pes-group-1',
+      nodeId: 'node-res',
+      kind: 'result'
+    });
+
+    const dispatcher = createMcpFrontendDispatcher({
+      getRegistry: () => registry,
+      isTaskCenterOpen: () => false,
+      getCallbacks: () => ({
+        isPesObservation: documentId => documentId === observedWorkbench.id
+      })
+    });
+
+    for (const [doc, expectedLocked] of [
+      [editableWorkbench, false],
+      [observedWorkbench, true],
+      [snapshotDoc, true],
+      [resultDoc, true]
+    ] as const) {
+      const infoRes = await dispatcher.handleRequest({
+        requestId: `pes-info-${doc.id}`,
+        action: 'frontend.getStructureInfo',
+        payload: { documentId: doc.id }
+      });
+      expect(infoRes.ok).toBe(true);
+      expect(infoRes.result).toMatchObject({
+        readOnly: expectedLocked,
+        freezeEditingAllowed: !expectedLocked
+      });
+    }
+
+    for (const lockedDoc of [observedWorkbench, snapshotDoc, resultDoc]) {
+      const editReply = await dispatcher.handleRequest({
+        requestId: `pes-edit-${lockedDoc.id}`,
+        action: 'frontend.editStructure',
+        payload: {
+          documentId: lockedDoc.id,
+          operation: 'set-geometry',
+          coordinate: 'B',
+          atoms: [1, 2],
+          value: 0.9
+        }
+      });
+      expect(editReply.ok).toBe(false);
+      expect(editReply.error?.code).toBe('MCP_READ_ONLY_RESULT');
+
+      const constraintReply = await dispatcher.handleRequest({
+        requestId: `pes-const-${lockedDoc.id}`,
+        action: 'frontend.setConstraints',
+        payload: {
+          documentId: lockedDoc.id,
+          frozenAtoms: [1]
+        }
+      });
+      expect(constraintReply.ok).toBe(false);
+      expect(constraintReply.error?.code).toBe('MCP_READ_ONLY_RESULT');
+
+      const cfgReply = await dispatcher.handleRequest({
+        requestId: `pes-cfg-${lockedDoc.id}`,
+        action: 'frontend.configureCalculation',
+        payload: {
+          documentId: lockedDoc.id,
+          engine: 'orca',
+          settings: { task: 'opt', method: 'r2SCAN-3c' }
+        }
+      });
+      expect(cfgReply.ok).toBe(false);
+      expect(cfgReply.error?.code).toBe('MCP_READ_ONLY_RESULT');
+
+      const xtbReply = await dispatcher.handleRequest({
+        requestId: `pes-xtb-${lockedDoc.id}`,
+        action: 'frontend.runLocalXtb',
+        payload: {
+          documentId: lockedDoc.id,
+          calculation: 'singlepoint',
+          method: 'gfn2'
+        }
+      });
+      expect(xtbReply.ok).toBe(false);
+      expect(xtbReply.error?.code).toBe('MCP_READ_ONLY_RESULT');
+
+      const submitReply = await dispatcher.handleRequest({
+        requestId: `pes-sub-${lockedDoc.id}`,
+        action: 'frontend.submitTask',
+        payload: { documentId: lockedDoc.id }
+      });
+      expect(submitReply.ok).toBe(false);
+      expect(submitReply.error?.code).toBe('MCP_READ_ONLY_RESULT');
+    }
+
+    const editableConstraintReply = await dispatcher.handleRequest({
+      requestId: 'pes-const-editable',
+      action: 'frontend.setConstraints',
+      payload: {
+        documentId: editableWorkbench.id,
+        frozenAtoms: [1]
+      }
+    });
+    expect(editableConstraintReply.ok).toBe(true);
+  });
+
+  it('allows frontend.exportArtifact input-script and structure exports when PES snapshot and result tabs are open', async () => {
+    const registry = createWorkspaceRegistry();
+    const waterStructure = {
+      id: 'mol-pes-export-h2o',
+      name: 'water',
+      format: 'xyz' as const,
+      charge: 0,
+      multiplicity: 1,
+      notes: [],
+      atoms: [
+        { id: 'o1', element: 'O' as const, x: 0, y: 0, z: 0.1173 },
+        { id: 'h1', element: 'H' as const, x: 0, y: 0.7572, z: -0.4692 },
+        { id: 'h2', element: 'H' as const, x: 0, y: -0.7572, z: -0.4692 }
+      ],
+      bonds: []
+    };
+    const molDoc = registry.addDocument(waterStructure, 'Water-PES-Coexist');
+    const pesSnap = registry.addPesDocument(
+      { ...waterStructure, id: 'pes-snap-h2o' },
+      'PES-Snap',
+      { groupId: 'pes-g-export', nodeId: 'node-snap', kind: 'snapshot' }
+    );
+    const pesResult = registry.addPesDocument(
+      { ...waterStructure, id: 'pes-res-h2o' },
+      'PES-Result',
+      { groupId: 'pes-g-export', nodeId: 'node-res', kind: 'result' }
+    );
+    expect(() => registry.source(pesSnap.id)).toThrow('请先提取结果帧为新模型，再选择为输入来源。');
+    expect(() => registry.source(pesResult.id)).toThrow('请先提取结果帧为新模型，再选择为输入来源。');
+
+    const dispatcher = createMcpFrontendDispatcher({
+      getRegistry: () => registry,
+      isTaskCenterOpen: () => false
+    });
+
+    const cfgReply = await dispatcher.handleRequest({
+      requestId: 'pes-export-cfg',
+      action: 'frontend.configureCalculation',
+      payload: {
+        documentId: molDoc.id,
+        engine: 'gaussian',
+        settings: {
+          task: 'opt',
+          method: 'b3lyp',
+          basis: 'def2SVP',
+          charge: 0,
+          multiplicity: 1,
+          cores: 8,
+          memoryGB: 16
+        }
+      }
+    });
+    expect(cfgReply.ok).toBe(true);
+
+    const exportGjf = await dispatcher.handleRequest({
+      requestId: 'pes-export-gjf',
+      action: 'frontend.exportArtifact',
+      payload: {
+        documentId: molDoc.id,
+        kind: 'input-script',
+        outputPath: '/tmp/water_pes_coexist.gjf'
+      }
+    });
+    expect(exportGjf.ok).toBe(true);
+    expect((exportGjf.result as any).format).toBe('gjf');
+    expect((exportGjf.result as any).content).toContain('b3lyp/def2SVP');
+    expect((exportGjf.result as any).content).toContain('#p opt');
+
+    const exportXyz = await dispatcher.handleRequest({
+      requestId: 'pes-export-xyz',
+      action: 'frontend.exportArtifact',
+      payload: {
+        documentId: molDoc.id,
+        kind: 'structure',
+        outputPath: '/tmp/water_pes_coexist.xyz'
+      }
+    });
+    expect(exportXyz.ok).toBe(true);
+    expect((exportXyz.result as any).format).toBe('xyz');
+    expect((exportXyz.result as any).atomCount).toBe(3);
+  });
+
+  it('guards frontend.windowManage close-document for pesGroup tabs across headless, busy, dirty-sibling, and cascading teardown flows', async () => {
+    const { pesRunActive } = await import('../../../src/web/modeling/usePesWorkspaceIntegration');
+    const waterStructure = {
+      id: 'pes-close-water',
+      name: 'water',
+      format: 'xyz' as const,
+      charge: 0,
+      multiplicity: 1,
+      notes: [],
+      atoms: [
+        { id: 'o1', element: 'O' as const, x: 0, y: 0, z: 0.1173 },
+        { id: 'h1', element: 'H' as const, x: 0, y: 0.7572, z: -0.4692 },
+        { id: 'h2', element: 'H' as const, x: 0, y: -0.7572, z: -0.4692 }
+      ],
+      bonds: []
+    };
+
+    // 1. Headless dispatcher (without callbacks.closeDocument) must fail closed on pesGroup tabs
+    const headlessReg = createWorkspaceRegistry();
+    const headlessInit = headlessReg.addPesDocument(
+      { ...waterStructure, id: 'headless-pes-init' },
+      'Headless-PES-Initial',
+      { groupId: 'pes-headless', nodeId: 'n-init', kind: 'initial' }
+    );
+    const headlessSnap = headlessReg.addPesDocument(
+      { ...waterStructure, id: 'headless-pes-snap' },
+      'Headless-PES-Snap',
+      { groupId: 'pes-headless', nodeId: 'n-snap', kind: 'snapshot' }
+    );
+    const headlessDispatcher = createMcpFrontendDispatcher({
+      getRegistry: () => headlessReg,
+      isTaskCenterOpen: () => false
+    });
+
+    const headlessSnapClose = await headlessDispatcher.handleRequest({
+      requestId: 'pes-close-headless-snap',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: headlessSnap.id, discardUnsaved: true }
+    });
+    expect(headlessSnapClose.ok).toBe(false);
+    expect(headlessSnapClose.error?.code).toBe('MCP_DOCUMENT_CLOSE_FAILED');
+
+    const headlessInitClose = await headlessDispatcher.handleRequest({
+      requestId: 'pes-close-headless-init',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: headlessInit.id, discardUnsaved: true }
+    });
+    expect(headlessInitClose.ok).toBe(false);
+    expect(headlessInitClose.error?.code).toBe('MCP_DOCUMENT_CLOSE_FAILED');
+    expect(headlessReg.getSnapshot().documents).toHaveLength(2);
+
+    // 2. Real closeWorkspaceDocumentForMcp + plan/prepareWorkspaceDiscard lifecycle:
+    //    busy checks, concurrent delete lock, failed discard guard, protected snapshot dirty bypass,
+    //    dirty cascading sibling refusal, node vs group removal & standalone session cascade cleanup
+    const { closeWorkspaceDocumentForMcp } = await import('../../../src/web/modeling/usePesWorkspaceIntegration');
+    const { planWorkspaceDiscard, prepareWorkspaceDiscard } = await import(
+      '../../../src/modeling/application/conformer-lifecycle'
+    );
+    const registry = createWorkspaceRegistry();
+    const initDoc = registry.addPesDocument(
+      { ...waterStructure, id: 'pes-ctrl-init' },
+      'PES-Initial',
+      { groupId: 'pes-g1', nodeId: 'n-init', kind: 'initial' }
+    );
+    const snapDoc = registry.addPesDocument(
+      { ...waterStructure, id: 'pes-ctrl-snap' },
+      'PES-Snap',
+      { groupId: 'pes-g1', nodeId: 'n-snap', kind: 'snapshot' }
+    );
+    const dirtySnapDoc = registry.addPesDocument(
+      { ...waterStructure, id: 'pes-ctrl-snap-dirty' },
+      'PES-Snap-Dirty',
+      { groupId: 'pes-g1', nodeId: 'n-snap-dirty', kind: 'snapshot' }
+    );
+    dirtySnapDoc.store.execute({ type: 'place-element', element: 'C', position: [1, 0, 0] });
+    expect(dirtySnapDoc.store.getSnapshot().draft.dirty).toBe(true);
+
+    const wbDoc = registry.addPesDocument(
+      { ...waterStructure, id: 'pes-ctrl-wb' },
+      'PES-Workbench',
+      { groupId: 'pes-g1', nodeId: 'n-wb', kind: 'workbench' }
+    );
+    wbDoc.store.execute({ type: 'place-element', element: 'C', position: [2, 0, 0] });
+    expect(initDoc.store.getSnapshot().draft.dirty).toBe(false);
+    expect(wbDoc.store.getSnapshot().draft.dirty).toBe(true);
+
+    const openedSessions = new Set<string>();
+    const standaloneDesktop: DesktopBridge = {
+      async openOrbitalSession(req) {
+        openedSessions.add(req.sessionId);
+        return makeWaterMetadata(req.sourceId, req.name, req.text ?? SAMPLE_WATER_FCHK, 'fchk');
+      },
+      async closeOrbitalSession(sessionId) {
+        openedSessions.delete(sessionId);
+        return { sessionId, status: 'closed' } as any;
+      }
+    };
+
+    const pesGroupState: any = {
+      id: 'pes-g1',
+      name: 'PES-Group',
+      initialNodeId: 'n-init',
+      activeNodeId: 'n-init',
+      nodes: [
+        { id: 'n-init', name: 'Initial', kind: 'initial' },
+        { id: 'n-snap', name: 'Snap', kind: 'snapshot' },
+        { id: 'n-snap-dirty', name: 'Snap-Dirty', kind: 'snapshot' },
+        { id: 'n-wb', name: 'Workbench', kind: 'workbench' }
+      ],
+      runs: {
+        'run-1': {
+          nodeId: 'n-snap',
+          status: 'running'
+        }
+      }
+    };
+    const removedNodes: string[] = [];
+    const removedGroups: string[] = [];
+    const onGroupRemovedCalls: string[] = [];
+    const onCloseSettledCalls: Array<{ groupId: string; nodeId?: string }> = [];
+    let deleting = false;
+    let simulateSilentDiscardFailure = false;
+    let simulatePlainSilentError: string | null = null;
+    let simulateImpactBusy = false;
+    const closingIds = new Set<string>();
+    let latestError = '';
+    let cascadeAnalysisDocId = '';
+
+    const guardClose = (docId: string, force = false) => {
+      const entry = registry.document(docId);
+      if (['starting', 'running', 'pausing', 'paused', 'stopping'].includes(entry.runtime.phase)) {
+        throw new Error('文档仍在运行或暂停，请先停止并取得结束回执。');
+      }
+      if (!force && (entry.store.getSnapshot().draft.dirty || entry.inputDirty.gaussian || entry.inputDirty.orca)) {
+        throw new Error('模型或输入草稿有未保存修改。');
+      }
+    };
+
+    const buildPorts = () => ({
+      registry,
+      guardClose,
+      isClosing: (docId: string) => closingIds.has(docId),
+      closePlainDocument: async (docId: string, force: boolean) => {
+        if (simulatePlainSilentError !== null) {
+          latestError = simulatePlainSilentError;
+          return;
+        }
+        await registry.closeDocument(docId, force);
+        if (registry.getSnapshot().documents.length === 0) {
+          registry.addDocument();
+        }
+      },
+      readLatestError: () => latestError,
+      pes: {
+        controller: {
+          getSnapshot: () => ({ groups: [pesGroupState] }),
+          removeNode: async (groupId: string, nodeId: string) => {
+            removedNodes.push(`${groupId}:${nodeId}`);
+          },
+          removeGroup: async (groupId: string) => {
+            removedGroups.push(groupId);
+          }
+        },
+        ensure: async () => {},
+        isDeleting: () => deleting,
+        setDeleting: (value: boolean) => {
+          deleting = value;
+        },
+        buildDiscardImpact: async (docId: string, wholeGroup: boolean) => {
+          if (simulateImpactBusy) {
+            throw new Error('轨道来源仍在计算或准备，请先停止并等待实际结束。');
+          }
+          const entry = registry.document(docId);
+          const groupId = entry.pesGroup?.groupId;
+          const additionalDocumentIds = wholeGroup && groupId
+            ? registry.getSnapshot().documents
+                .filter(row => row.pesGroup?.groupId === groupId)
+                .map(row => row.id)
+            : [];
+          const dependencies = wholeGroup && cascadeAnalysisDocId
+            ? [{ parentDocumentId: docId, childDocumentId: cascadeAnalysisDocId }]
+            : [];
+          return planWorkspaceDiscard(registry, docId, { additionalDocumentIds, dependencies });
+        },
+        executeDiscard: async (impact: ReturnType<typeof planWorkspaceDiscard>) => {
+          if (simulateSilentDiscardFailure) {
+            latestError = '模拟丢弃失败：文档仍在工作区';
+            return;
+          }
+          const execution = await prepareWorkspaceDiscard(impact, { registry });
+          execution.commit();
+          await execution.release();
+          if (registry.getSnapshot().documents.length === 0) {
+            registry.addDocument();
+          }
+        },
+        onGroupRemoved: (groupId: string) => {
+          onGroupRemovedCalls.push(groupId);
+        },
+        onCloseSettled: (groupId: string, nodeId?: string) => {
+          onCloseSettledCalls.push({ groupId, nodeId });
+        }
+      }
+    });
+
+    const dispatcher = createMcpFrontendDispatcher({
+      getRegistry: () => registry,
+      isTaskCenterOpen: () => false,
+      getDesktop: () => standaloneDesktop,
+      getCallbacks: () => ({
+        closeDocument: (id, discard) => {
+          latestError = '';
+          return closeWorkspaceDocumentForMcp(id, discard, buildPorts());
+        }
+      })
+    });
+
+    const openLog = await dispatcher.handleRequest({
+      requestId: 'pes-close-open-log',
+      action: 'frontend.openResultAnalysis',
+      payload: {
+        source: { name: 'water_ts_freq.log', text: SAMPLE_GAUSSIAN_FREQ_LOG },
+        panel: 'vibrations'
+      }
+    });
+    expect(openLog.ok).toBe(true);
+    cascadeAnalysisDocId = (openLog.result as any).documentId as string;
+
+    const pairFchk = await dispatcher.handleRequest({
+      requestId: 'pes-close-pair-fchk',
+      action: 'frontend.openResultAnalysis',
+      payload: {
+        documentId: cascadeAnalysisDocId,
+        source: { name: 'water.fchk', text: SAMPLE_WATER_FCHK },
+        panel: 'charges'
+      }
+    });
+    expect(pairFchk.ok).toBe(true);
+    expect(openedSessions.size).toBe(1);
+
+    // Concurrent PES close lock must fail closed with MCP_DOCUMENT_BUSY without mutating state
+    deleting = true;
+    const concurrentBusyClose = await dispatcher.handleRequest({
+      requestId: 'pes-close-concurrent-busy',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: dirtySnapDoc.id, discardUnsaved: false }
+    });
+    expect(concurrentBusyClose.ok).toBe(false);
+    expect(concurrentBusyClose.error?.code).toBe('MCP_DOCUMENT_BUSY');
+    deleting = false;
+
+    // Busy run blocks closing either the active snapshot node or the whole initial group
+    expect(pesRunActive(pesGroupState, 'n-snap')).toBe(true);
+    expect(pesRunActive(pesGroupState, undefined)).toBe(true);
+    const busySnapClose = await dispatcher.handleRequest({
+      requestId: 'pes-close-busy-snap',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: snapDoc.id, discardUnsaved: true }
+    });
+    expect(busySnapClose.ok).toBe(false);
+    expect(busySnapClose.error?.code).toBe('MCP_DOCUMENT_BUSY');
+
+    const busyGroupClose = await dispatcher.handleRequest({
+      requestId: 'pes-close-busy-group',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: initDoc.id, discardUnsaved: true }
+    });
+    expect(busyGroupClose.ok).toBe(false);
+    expect(busyGroupClose.error?.code).toBe('MCP_DOCUMENT_BUSY');
+    expect(removedNodes).toEqual([]);
+    expect(removedGroups).toEqual([]);
+
+    // Settle active run so subsequent close checks exercise discard guards & teardown
+    pesGroupState.runs['run-1'].status = 'completed';
+    expect(pesRunActive(pesGroupState, 'n-snap')).toBe(false);
+
+    // Protected PES snapshot tab with draft.dirty === true still closes cleanly end-to-end via windowManage(..., discardUnsaved: false)
+    const dirtyProtectedSnapClose = await dispatcher.handleRequest({
+      requestId: 'pes-close-dirty-protected-snap',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: dirtySnapDoc.id, discardUnsaved: false }
+    });
+    expect(dirtyProtectedSnapClose.ok).toBe(true);
+    expect(deleting).toBe(false);
+    expect(removedNodes).toEqual(['pes-g1:n-snap-dirty']);
+    expect(registry.getSnapshot().documents.some(d => d.id === dirtySnapDoc.id)).toBe(false);
+
+    // Silent executeDiscard failure must surface MCP_DOCUMENT_CLOSE_FAILED and skip removeNode/removeGroup
+    simulateSilentDiscardFailure = true;
+    const failedDiscardSnap = await dispatcher.handleRequest({
+      requestId: 'pes-close-silent-fail',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: snapDoc.id, discardUnsaved: false }
+    });
+    expect(failedDiscardSnap.ok).toBe(false);
+    expect(failedDiscardSnap.error?.code).toBe('MCP_DOCUMENT_CLOSE_FAILED');
+    expect(failedDiscardSnap.error?.message).toContain('模拟丢弃失败');
+    expect(deleting).toBe(false);
+    expect(removedNodes).toEqual(['pes-g1:n-snap-dirty']);
+    expect(registry.getSnapshot().documents.some(d => d.id === snapDoc.id)).toBe(true);
+    simulateSilentDiscardFailure = false;
+    latestError = '';
+
+    // Closing settled clean snapshot via windowManage removes only that node without tearing down the group
+    const snapCloseOk = await dispatcher.handleRequest({
+      requestId: 'pes-close-snap-ok',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: snapDoc.id, discardUnsaved: false }
+    });
+    expect(snapCloseOk.ok).toBe(true);
+    expect(removedNodes).toEqual(['pes-g1:n-snap-dirty', 'pes-g1:n-snap']);
+    expect(removedGroups).toEqual([]);
+    expect(onCloseSettledCalls).toContainEqual({ groupId: 'pes-g1', nodeId: 'n-snap' });
+    expect(registry.getSnapshot().documents.some(d => d.id === snapDoc.id)).toBe(false);
+    expect(registry.getSnapshot().documents.some(d => d.id === initDoc.id)).toBe(true);
+    expect(registry.getSnapshot().documents.some(d => d.id === wbDoc.id)).toBe(true);
+
+    // Closing clean initial tab without discardUnsaved must refuse with MCP_DOCUMENT_UNSAVED due to dirty cascading workbench sibling
+    const dirtySiblingBlocked = await dispatcher.handleRequest({
+      requestId: 'pes-close-dirty-sibling',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: initDoc.id, discardUnsaved: false }
+    });
+    expect(dirtySiblingBlocked.ok).toBe(false);
+    expect(dirtySiblingBlocked.error?.code).toBe('MCP_DOCUMENT_UNSAVED');
+    expect(deleting).toBe(false);
+    expect(removedGroups).toEqual([]);
+    expect(openedSessions.size).toBe(1);
+
+    // Closing initial tab with discardUnsaved: true tears down the whole group and disposes cascading standalone analysis sessions
+    const groupCloseOk = await dispatcher.handleRequest({
+      requestId: 'pes-close-group-ok',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: initDoc.id, discardUnsaved: true }
+    });
+    expect(groupCloseOk.ok).toBe(true);
+    expect(deleting).toBe(false);
+    expect(removedGroups).toEqual(['pes-g1']);
+    expect(onGroupRemovedCalls).toEqual(['pes-g1']);
+    expect(onCloseSettledCalls).toContainEqual({ groupId: 'pes-g1', nodeId: undefined });
+    expect(registry.getSnapshot().documents.some(d => d.id === initDoc.id)).toBe(false);
+    expect(registry.getSnapshot().documents.some(d => d.id === wbDoc.id)).toBe(false);
+    expect(registry.getSnapshot().documents.some(d => d.id === cascadeAnalysisDocId)).toBe(false);
+    expect(openedSessions.size).toBe(0);
+
+    // Additional guards for Issue #4 & Issue #5 on remaining standalone document & PES impact:
+    // 1. Plain document in closingTransactions (isClosing === true) fails closed with MCP_DOCUMENT_BUSY
+    registry.addDocument();
+    const plainDoc = registry.getSnapshot().documents.at(-1)!;
+    closingIds.add(plainDoc.id);
+    const plainClosingBusy = await dispatcher.handleRequest({
+      requestId: 'plain-close-closing-tx',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: plainDoc.id, discardUnsaved: false }
+    });
+    expect(plainClosingBusy.ok).toBe(false);
+    expect(plainClosingBusy.error?.code).toBe('MCP_DOCUMENT_BUSY');
+    closingIds.delete(plainDoc.id);
+
+    // 2. Plain document silent failure setting orbital busy error maps via mapMcpCloseError to MCP_DOCUMENT_BUSY
+    simulatePlainSilentError = '轨道来源仍在计算或准备，请先停止并等待实际结束。';
+    const plainOrbitalBusy = await dispatcher.handleRequest({
+      requestId: 'plain-close-orbital-busy',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: plainDoc.id, discardUnsaved: false }
+    });
+    expect(plainOrbitalBusy.ok).toBe(false);
+    expect(plainOrbitalBusy.error?.code).toBe('MCP_DOCUMENT_BUSY');
+
+    // 3. Plain document silent failure setting generic error maps to MCP_DOCUMENT_CLOSE_FAILED with its error text
+    simulatePlainSilentError = '文件句柄释放失败';
+    const plainGenericFail = await dispatcher.handleRequest({
+      requestId: 'plain-close-generic-fail',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: plainDoc.id, discardUnsaved: false }
+    });
+    expect(plainGenericFail.ok).toBe(false);
+    expect(plainGenericFail.error?.code).toBe('MCP_DOCUMENT_CLOSE_FAILED');
+    expect(plainGenericFail.error?.message).toContain('文件句柄释放失败');
+
+    // 4. Stale latestError before closeDocument entry is cleared so silent failure without setError does not leak it
+    latestError = '旧的无关错误';
+    simulatePlainSilentError = '';
+    const plainNoStaleLeak = await dispatcher.handleRequest({
+      requestId: 'plain-close-no-stale-leak',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: plainDoc.id, discardUnsaved: false }
+    });
+    expect(plainNoStaleLeak.ok).toBe(false);
+    expect(plainNoStaleLeak.error?.code).toBe('MCP_DOCUMENT_CLOSE_FAILED');
+    expect(plainNoStaleLeak.error?.message).toContain('Failed to close document');
+    expect(plainNoStaleLeak.error?.message).not.toContain('旧的无关错误');
+    simulatePlainSilentError = null;
+
+    // 5. PES buildDiscardImpact throwing assertOrbitalSourcesIdle ('仍在计算') maps to MCP_DOCUMENT_BUSY,
+    // and isClosing on a PES entry maps to MCP_DOCUMENT_BUSY
+    registry.addDocument();
+    const extraPesDoc = registry.getSnapshot().documents.at(-1)!;
+    registry.bindPesDocument(extraPesDoc.id, { groupId: 'pes-g1', nodeId: 'n-init', kind: 'initial', groupName: 'PES-Group' });
+    closingIds.add(extraPesDoc.id);
+    const pesClosingBusy = await dispatcher.handleRequest({
+      requestId: 'pes-close-closing-tx',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: extraPesDoc.id, discardUnsaved: true }
+    });
+    expect(pesClosingBusy.ok).toBe(false);
+    expect(pesClosingBusy.error?.code).toBe('MCP_DOCUMENT_BUSY');
+    closingIds.delete(extraPesDoc.id);
+
+    simulateImpactBusy = true;
+    const pesImpactOrbitalBusy = await dispatcher.handleRequest({
+      requestId: 'pes-close-impact-orbital-busy',
+      action: 'frontend.windowManage',
+      payload: { action: 'close-document', documentId: extraPesDoc.id, discardUnsaved: true }
+    });
+    expect(pesImpactOrbitalBusy.ok).toBe(false);
+    expect(pesImpactOrbitalBusy.error?.code).toBe('MCP_DOCUMENT_BUSY');
+    simulateImpactBusy = false;
   });
 });

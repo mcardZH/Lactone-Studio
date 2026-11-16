@@ -1,11 +1,12 @@
 import type { Structure } from '../core/types';
+import { asciiJson, automaticStem } from '../core/naming';
 import { assertResultNotAborted, trajectoryIndices, type TrajectoryRange, type TrajectoryResult } from './contracts';
 import type { EnergySeries } from './energy';
 import {getPreparedTrajectoryFrame} from './prepared-trajectory';
 
 export interface ResultByteSink { write(bytes: Uint8Array | Blob): Promise<void>; close(): Promise<void>; abort(): Promise<void> }
 export interface ResultExportOptions { signal?: AbortSignal; sink?: ResultByteSink; comment?:string; onProgress?(completed: number, total: number): void }
-const quote = (value: string) => JSON.stringify(value.replace(/[\r\n]/g, ' '));
+const quote = (value: string) => asciiJson(value.replace(/[\r\n]/g, ' '));
 function numeric(value: number): string {
   if (!Number.isFinite(value)) throw new Error('导出包含非有限数值。');
   return String(value);
@@ -28,12 +29,17 @@ function geometry(structure: Structure, extended: boolean): string {
 export async function exportTrajectoryXYZ(result: TrajectoryResult, range: TrajectoryRange,
   options: ResultExportOptions & { format?: 'xyz' | 'extxyz' } = {}): Promise<Blob> {
   const indices = trajectoryIndices(range, result.frames.length), chunks: BlobPart[] = []; let completed=0;
+  const sourceName = result.source.name;
+  const source = /^[A-Za-z0-9_.-]+$/.test(sourceName) ? sourceName : automaticStem(sourceName, { fallback: 'trajectory' });
+  // Whitespace and quotes inside source names must not be interpreted as new
+  // XYZ attributes. The URI field retains the exact name separately.
+  const sourceFields = [`source=${quote(source)}`, ...(source === sourceName ? [] : [`source_name_uri=${encodeURIComponent(sourceName)}`])];
   for (const index of indices) {
     assertResultNotAborted(options.signal);
     const structure = getPreparedTrajectoryFrame(result,index)?.raw ?? await result.getFrame(index, options.signal);
     assertResultNotAborted(options.signal);
     const frame = result.frames[index];
-    const fields = [`source=${quote(result.source.name)}`, `frame=${index + 1}`, `job=${result.jobIndex}`, 'coordinate_unit="angstrom"'];
+    const fields = [...sourceFields, `frame=${index + 1}`, `job=${result.jobIndex}`, 'coordinate_unit="angstrom"'];
     if (structure.charge !== null) {
       if (!Number.isSafeInteger(structure.charge)) throw new Error('导出电荷必须为整数。');
       fields.push(`charge=${structure.charge}`);
@@ -77,8 +83,8 @@ export function exportResultData(result: TrajectoryResult, range: TrajectoryRang
   const rows = frames.map(frame => [frame.frameNumber, frame.sourceStep, frame.time?.value, frame.time?.unit,
     frame.energy?.value, frame.energy?.unit, frame.displayEnergy?.value, frame.displayEnergy?.unit,
     frame.sourceLine, JSON.stringify(frame.convergence)].map(cell).join('\t'));
-  const txt = [`# Ester Studio result data v1`, `# source: ${JSON.stringify(result.source)}`,
-    `# result: ${JSON.stringify({ id: result.id, kind: result.kind, engine: result.engine, jobIndex: result.jobIndex, status: result.status })}`,
+  const txt = [`# Ester Studio result data v1`, `# source: ${asciiJson(result.source)}`,
+    `# result: ${asciiJson({ id: result.id, kind: result.kind, engine: result.engine, jobIndex: result.jobIndex, status: result.status })}`,
     `# range (zero-based inclusive): ${JSON.stringify(range)}`, `# energy_display: ${JSON.stringify(energyDisplay)}`,
     '# Missing values are empty; frame is one-based; source units are retained.',
     ...(result.scientific ? [`# scientific metadata and printed properties: see paired JSON; original source units and frame associations retained.`] : []),

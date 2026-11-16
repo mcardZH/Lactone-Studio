@@ -1,12 +1,13 @@
 import type { Structure } from '../../core/types';
+import { sha256Utf8 } from '../../core/file-identity';
 import { captureAdvancedProjectSnapshot, restoreAdvancedProjectSnapshot, type AdvancedProjectSnapshot } from '../../projects/advanced-snapshot';
 import { effectiveSharedFreezes } from '../constraints';
 import type { DocumentStamp } from '../../core/modeling/contracts';
 import { builderCoordinateValue } from '../../core/builder-geometry';
 import { assertBuilderStereoPreserved } from '../../core/builder-stereo';
-import { XTB_INTERNAL_CONSTRAINT_POLICY } from '../xtb/accept-result';
+import { automaticStem } from '../../core/naming';
 import { coordinatesFingerprint, graphFingerprint } from '../../core/modeling/graph';
-import {baseElectronicStateError} from '../../core/base-electronic-state';
+import {baseElectronicStateParameterError as baseElectronicStateError} from '../../core/base-electronic-state';
 import { XTB_METHOD_LABELS, type XtbEvent, type XtbRequest, type XtbElectronicArtifactReceipt,
   type XtbElectronicArtifactBundle } from '../xtb/contracts';
 import { createConformerSnapshot, generateConformerGuesses, selectConformerRepresentatives,
@@ -23,24 +24,28 @@ import { captureMixedInitial } from './mixed-sampling';
 import { applyNativeTemperatureObservations } from './native-temperature-observations';
 import { assertConformerGeometryProtected } from '../conformers/geometry';
 import { advancedXtbCoordinates, validateAdvancedXtbResult } from './xtb-result';
+import { assertAdvancedForcefieldConstraints } from './forcefield-adapter';
+import type { ConformerBatchIdentity, ConformerBatchInput, ConformerBatchProgress } from './batch-contracts';
+import { ConformerBatchIntegrityError, isConformerBatchTerminal, matchesConformerBatch, readConformerBatch, validateConformerBatchEntry } from './batch-adoption';
 import type { AdvancedPathRequest, AdvancedPathFrameData, AdvancedPathEvent } from './path-contracts';
-import { CONFORMER_SAMPLING_CAPABILITIES, getConformerSamplingCapability, type ConformerSamplingRequest, type ConformerSamplingFramePayload, type ConformerSamplingEvent } from './sampling-contracts';
+import { CONFORMER_SAMPLING_CAPABILITIES, getConformerSamplingCapability, NATIVE_CONFORMER_SEED_MAX, type ConformerSamplingRequest, type ConformerSamplingFramePayload, type ConformerSamplingEvent } from './sampling-contracts';
 import {conformerSamplingBudgetPlan, conformerSamplingSchedule} from './sampling-progress';
 import { startOwnedPath, startOwnedSampling } from './route-session';
 import { startOwnedDocking } from './route-session';
 import type { AissRequest, AissEvent } from './docking-contracts';
 import type { ComputeResourceEvidence } from '../resource-preferences';
-import {prepareSamplingOptimization} from '../conformers/sampling-preparation';
+import {prepareSamplingOptimization,SamplingCandidatePreparationError} from '../conformers/sampling-preparation';
 import { startSamplingWork, type SamplingWorkRequest, type SamplingDeduplicationResult } from './sampling-work';
-import { advancedElectronicSourceConfirmationKey } from './electronic-confirmation';
+import { advancedElectronicConfirmationMatches,advancedElectronicInputIdentity,advancedElectronicSourceConfirmationKey } from './electronic-confirmation';
 import {normalizeConformerStageConfigs,selectAdvancedClusterInputs,selectConformerInputsByStride} from './conformer-cluster-collection';
 import {resolveConformerProtection,conformerProtectionKey,conformerSamplingProtectionOptions,sharedFreezeRunDefinition,type ConformerProtectionSnapshot} from './conformer-protection';
 import type {AdvancedStageInputSelection} from './contracts';
 import { routePayload, validatePathFrame, validatePathCompletion, validateSamplingFrame, validateSamplingCompletion, pathScanPointCount,
   dockingSettings, validateDockingCompletion, validateDockingSearchCheckpoint, routeStructure } from './route-data';
 
-interface CandidateInput { candidateId: string; source: AdvancedFrameSource }
+interface CandidateInput { candidateId: string; source: AdvancedFrameSource; preparationError?: string }
 interface RunPlan { stageIndex: number; inputs?: CandidateInput[]; reuse?: AdvancedCalculationResult[]; electronic?: ElectronicPending; samplingFromRunId?: string; dockingFromRunId?: string;
+  projectRecovery?: { stageIds: string[]; reuse: { result: AdvancedCalculationResult; runId: string }[] };
   protection?:ConformerProtectionSnapshot;
   inputSelection?:AdvancedStageInputSelection;
   reclusterOnly?:boolean;reclusterCompleted?:boolean;
@@ -97,7 +102,9 @@ export class AdvancedController {
   private pathFrameIndex = new Map<string, Map<number, AdvancedResultFrame>>();
   private progressTimer?: ReturnType<typeof setTimeout>;
   private assetSnapshots = new WeakMap<object, unknown>();
-  private activeBatch?:{runId:string;batchId:string};
+  private activeBatch?:{runId:string;batchId:string;stop?:()=>Promise<ConformerBatchProgress>};
+  private batchReloads = new Map<string, { stageId: string; completion: Promise<void> }>();
+  private projectContinuationChecks = new WeakMap<AdvancedStageRun, { receipt: NonNullable<AdvancedStageRun['projectResultContinuation']>; valid: boolean }>();
   /** Sources, result frames and generated structures are immutable assets. Only
    * small lifecycle metadata is copied when a progress counter changes. */
   private snapshot<T>(value:T,key=''):T {
@@ -232,9 +239,9 @@ export class AdvancedController {
     else if(scope==='stage'){const ids=new Set(stageRecords.filter(stage=>stage.index>=index).map(stage=>stage.id));for(const frame of frames)if(ids.has(frame.stageId))removed.add(frame.id);}
     else for(const frame of frames)if(frame.samplingOrigin&&initialIds.includes(frame.samplingOrigin.initialGuessId))removed.add(frame.id);
     let changed=true;while(changed){changed=false;for(const frame of frames)if(!removed.has(frame.id)&&!frame.samplingOrigin&&frame.parentRef.frameId&&removed.has(frame.parentRef.frameId)){removed.add(frame.id);changed=true;}
-      for(const stage of stageRecords)for(const result of stage.results){const input=result.originalInput??result.input;if(input.ref.frameId&&removed.has(input.ref.frameId)&&result.frameId&&!removed.has(result.frameId)){removed.add(result.frameId);changed=true;}}
+      for(const stage of stageRecords)for(const result of stage.results){const inputs=[result.originalInput?.ref.frameId,result.input.ref.frameId];if(inputs.some(id=>id&&removed.has(id))&&result.frameId&&!removed.has(result.frameId)){removed.add(result.frameId);changed=true;}}
     }
-    const affected=scope==='task'||scope==='sampling'?stageRecords:scope==='stage'?stageRecords.filter(stage=>stage.index>=index):stageRecords.filter(stage=>(stage.inputs??[]).some(input=>input.source.ref.frameId&&removed.has(input.source.ref.frameId))||stage.results.some(result=>result.frameId&&removed.has(result.frameId)));
+    const affected=scope==='task'||scope==='sampling'?stageRecords:scope==='stage'?stageRecords.filter(stage=>stage.index>=index):stageRecords.filter(stage=>(stage.inputs??[]).some(input=>input.source.ref.frameId&&removed.has(input.source.ref.frameId))||Object.values(stage.resumeFrameIds??{}).some(id=>removed.has(id))||stage.results.some(result=>result.frameId&&removed.has(result.frameId)));
     const collectionIds=new Set<string>();if(scope!=='stage'&&task.conformerWorkflow?.candidateSet)collectionIds.add(task.conformerWorkflow.candidateSet.id);
     for(const stage of affected)if(stage.collectionId){collectionIds.add(stage.collectionId);collectionIds.add(`${stage.collectionId}:interrupted`);}
     // Removing an initial changes the shared global ranking, although unrelated
@@ -271,7 +278,13 @@ export class AdvancedController {
         if(!state.batches.some(batch=>batch.id===state.currentBatchId))state.currentBatchId=state.batches.at(-1)?.id;
         for(const run of task.runs){run.frames=run.frames.filter(frame=>!removed.has(frame.id));run.results=run.results.filter(result=>!result.frameId||!removed.has(result.frameId));
           if(run.sampling)run.sampling.candidateFrameIds=run.sampling.candidateFrameIds.filter(id=>!removed.has(id));
-          for(const stage of run.stages){const discarded=new Set((stage.inputs??[]).filter(input=>input.source.ref.frameId&&removed.has(input.source.ref.frameId)).map(input=>input.candidateId));stage.inputs=stage.inputs?.filter(input=>!discarded.has(input.candidateId));stage.inputCandidateIds=stage.inputCandidateIds.filter(id=>!discarded.has(id));stage.results=stage.results.filter(result=>!discarded.has(result.candidateId)&&(!result.frameId||!removed.has(result.frameId)));if(discarded.size){stage.clustering=undefined;stage.promotedCandidateIds=[];stage.status='stopped';}}
+          for(const stage of run.stages){
+            const discarded=new Set((stage.inputs??[]).filter(input=>input.source.ref.frameId&&removed.has(input.source.ref.frameId)).map(input=>input.candidateId));
+            for(const [candidateId,frameId] of Object.entries(stage.resumeFrameIds??{}))if(removed.has(frameId))discarded.add(candidateId);
+            stage.inputs=stage.inputs?.filter(input=>!discarded.has(input.candidateId));stage.inputCandidateIds=stage.inputCandidateIds.filter(id=>!discarded.has(id));
+            stage.results=stage.results.filter(result=>!discarded.has(result.candidateId)&&(!result.frameId||!removed.has(result.frameId)));
+            if(discarded.size){for(const id of discarded)if(stage.resumeFrameIds)delete stage.resumeFrameIds[id];stage.clustering=undefined;stage.promotedCandidateIds=[];stage.status='stopped';}
+          }
         }
         task.runs=task.runs.filter(run=>!run.mixedSampling||!plan.initialIds.includes(run.mixedSampling.initialGuessId));
         const workflow=task.conformerWorkflow!;workflow.revision++;workflow.candidateSet={id:workflow.candidateSet?.id??`${task.id}-candidates`,revision:workflow.revision,frameIds:remainingCandidates,valid:remainingCandidates.length>0};
@@ -315,7 +328,7 @@ export class AdvancedController {
     if (this.disposed) throw new Error('高级任务控制器已关闭。');
     if (this.deletingTasks.has(_task.id)) throw new Error('高级任务正在删除。');
   }
-  private busy(task: AdvancedTaskRecord) { return task.runs.some(r => !terminalStatuses.has(r.status)); }
+  private busy(task: AdvancedTaskRecord) { return this.batchReloads.has(task.id) || task.runs.some(r => !terminalStatuses.has(r.status)); }
   private budget(input: Partial<AdvancedRunBudget> | undefined): AdvancedRunBudget {
     const budget = { ...DEFAULT_ADVANCED_RUN_BUDGET, ...input };
     if (![budget.maxCandidates, budget.maxStages, budget.maxNativeJobs, budget.maxRetainedFrames, budget.maxRetainedCoordinates, budget.maxProcessStages, budget.maxBiasHistoryEntries]
@@ -366,19 +379,24 @@ export class AdvancedController {
       maxProcessStages: Math.max(budget.maxProcessStages, (usage?.processStages ?? 0) + processStages),
       maxBiasHistoryEntries: Math.max(budget.maxBiasHistoryEntries, (usage?.biasHistoryEntries ?? 0) + biasCount) };
   }
-  private validateOptions(options: AdvancedXtbOptions) {
-    if (!['gfn0', 'gfn1', 'gfn2', 'gfnff'].includes(options.method) || !Number.isSafeInteger(options.threads) || options.threads < 1
-      || !Number.isSafeInteger(options.maxSteps) || options.maxSteps < 1 || !options.solvent
+  private validateOptions(options: AdvancedXtbOptions, conformer = false) {
+    const validSteps = options.optimizationStepPolicy === 'native-default'
+      ? conformer && options.maxSteps === undefined
+      : options.optimizationStepPolicy === undefined && Number.isSafeInteger(options.maxSteps) && options.maxSteps! >= 1;
+    if (!['gfn0', 'gfn1', 'gfn2', 'gfnff','gxtb'].includes(options.method) || !Number.isSafeInteger(options.threads) || options.threads < 1
+      || !validSteps || !options.solvent
       || typeof options.internalConstraintsConfirmed !== 'boolean') throw new Error('高级xTB方法、核数、步数或约束确认无效。');
     if (options.solvation && (!['alpb', 'gbsa'].includes(options.solvation.model) || !options.solvation.solvent
-      || options.method === 'gfn0' || options.method === 'gfnff' && options.solvation.model !== 'alpb')) throw new Error('所选xTB方法没有该隐式溶剂模型，未更换方法或回退气相。');
+      || ['gfn0','gxtb'].includes(options.method) || options.method === 'gfnff' && options.solvation.model !== 'alpb')) throw new Error('所选xTB方法没有该隐式溶剂模型，未更换方法或回退气相。');
     if (options.solvation && !['none', 'gas', '', options.solvation.solvent, `${options.solvation.model}:${options.solvation.solvent}`].includes(options.solvent)) throw new Error('溶剂名称与显式模型配置冲突。');
   }
-  private validateMethod(method: AdvancedOptimizationMethod) {
-    if (method.backend === 'xtb') this.validateOptions(method.options);
-    else if (method.backend !== 'forcefield' || !['auto', 'MMFF94', 'MMFF94s', 'UFF'].includes(method.forcefield)
-      || !Number.isSafeInteger(method.threads) || method.threads < 1 || !Number.isSafeInteger(method.maxSteps)
-      || method.maxSteps < 1 || !method.solvent) throw new Error('高级优化方法无效。');
+  private validateMethod(method: AdvancedOptimizationMethod, conformer = false) {
+    if (method.backend === 'xtb') return this.validateOptions(method.options, conformer);
+    const validSteps = method.optimizationStepPolicy === 'native-default'
+      ? conformer && method.maxSteps === undefined
+      : method.optimizationStepPolicy === undefined && Number.isInteger(method.maxSteps) && method.maxSteps! >= 1 && method.maxSteps! <= 2147483647;
+    if (method.backend !== 'forcefield' || !['auto', 'MMFF94', 'MMFF94s', 'UFF'].includes(method.forcefield)
+      || method.threads !== 1 || !validSteps || !method.solvent) throw new Error('高级力场优化采用单线程，显式步数须在 1–2147483647 内。');
   }
   createTask(spec: AdvancedTaskSpec): string {
     if(spec.kind==='sampling')spec={...spec,optimizationStages:normalizeConformerStageConfigs(spec.optimizationStages)};
@@ -394,7 +412,7 @@ export class AdvancedController {
     const source = captureAdvancedFrame(spec.source.structure, spec.source.ref, spec.source.stamp, spec.source.label, normalizedConstraints);
     const budget = this.workflowCapacity(spec, this.budget(spec.kind === 'path' ? { maxCandidates: 128, ...spec.budget } : spec.budget)), id = this.id('task');
     if (this.tasks.has(id)) throw new Error('高级任务身份重复。');
-    if (spec.kind === 'singlepoint') { this.validateOptions(spec.options); if (spec.options.method !== 'gfn2') throw new Error('电子来源单点目前要求GFN2。'); }
+    if (spec.kind === 'singlepoint') { this.validateOptions(spec.options); if (!['gfn2','gxtb'].includes(spec.options.method)) throw new Error('电子来源单点要求 GFN2-xTB 或 g-xTB。'); }
     else if (spec.kind === 'optimization') this.validateMethod(spec.method);
     else if (spec.kind === 'path') {
       this.validateRouteOptions(spec.path);
@@ -418,16 +436,15 @@ export class AdvancedController {
         }
         if (pair.reduce((n, s) => n + s.structure.atoms.length, 0) > 500 || settings.refinement.candidateCount > budget.maxCandidates) throw new Error('aISS合并原子或候选数超过本任务有界预算。');
       }
-      if (spec.kind === 'sampling') {
-        this.validateRouteOptions(spec.sampling, 7200);
+      if (spec.kind === 'sampling' && !spec.mixedSampling) {
+        this.validateRouteOptions(spec.sampling);
         conformerSamplingBudgetPlan(spec.sampling,source.structure.atoms.length,budget);
         if (!CONFORMER_SAMPLING_CAPABILITIES.implementedMethods.includes(spec.sampling.method)) throw new Error('采样方法尚无该路线适配，没有自动更换计算方法。');
-        if (!spec.mixedSampling && effectiveSharedFreezes(source.constraints).coordinates.length) throw new Error('MD采样尚未验证B/A/D动量约束，不能静默丢弃来源冻结；XYZ冻结与核心软保护另行保留。');
       }
       if (stages.length > budget.maxStages) throw new Error('构象优化级数超出本任务预算。');
       const ids = new Set<string>();
       for (const [index,stage] of stages.entries()) {
-        this.validateMethod(stage.method);
+        this.validateMethod(stage.method, spec.kind !== 'docking');
         const count=spec.kind==='docking'?stage.advanceCount:index?stage.inputClusterCount:1;
         if (!stage.id || ids.has(stage.id) || !Number.isSafeInteger(count) || count! < 1) throw new Error('构象级次身份或输入簇数无效。');
         if(!Number.isSafeInteger(stage.inputStride??1)||(stage.inputStride??1)<1)throw Error('抽帧间隔须为正整数。');
@@ -446,7 +463,7 @@ export class AdvancedController {
       usage: { elapsedMs: 0, nativeJobs: 0, retainedFrames: 0, retainedCoordinates: 0, processStages: 0, biasHistoryEntries: 0 } });
     if (spec.kind === 'sampling' && spec.mixedSampling) {
       const task = this.task(id), initialId = `${id}-initial-1`;
-      task.mixedSampling = { initialGuesses: [{ id: initialId, label: '初猜帧1', source,
+      task.mixedSampling = { initialGuesses: [{ id: initialId, label: 'initial', source,
         atomMapping: source.structure.atoms.map(atom => ({ sourceAtomId: atom.id!, taskAtomId: atom.id! })) }],
       selectedInitialGuessId: initialId, draft: structuredClone(spec.mixedSampling),batches:[] };
     }
@@ -486,7 +503,7 @@ export class AdvancedController {
       }
     }
     if (task.spec.kind === 'singlepoint' && (!this.deps.bridge?.readXtbElectronicArtifacts
-      || !this.deps.bridge.releaseXtbElectronicArtifacts || !this.deps.onElectronicResult)) throw new Error('GFN2单点尚缺受管电子来源交接入口。');
+      || !this.deps.bridge.releaseXtbElectronicArtifacts || !this.deps.onElectronicResult)) throw new Error('xTB 单点尚缺受管电子来源交接入口。');
   }
   private conformerTask(taskId: string) {
     const task = this.task(taskId); this.explicit(task);
@@ -505,9 +522,21 @@ export class AdvancedController {
   private calculationMethodKey(method:AdvancedOptimizationMethod):string {
     return JSON.stringify(method.backend==='xtb'?{backend:'xtb',method:method.options.method,solvent:method.options.solvent,solvation:method.options.solvation,internalConstraintsConfirmed:method.options.internalConstraintsConfirmed}:{backend:'forcefield',forcefield:method.forcefield,solvent:method.solvent});
   }
+  private comparableStageKey(task: AdvancedTaskRecord, config: AdvancedOptimizationStageConfig, index: number): string {
+    const receivingStage = task.conformerWorkflow?.inputSemantics === 2;
+    // Exact persisted keys identify their original run. Comparisons use the
+    // settings the current workflow would consume, including legacy defaults.
+    return this.stageConfigKey({
+      ...config,
+      clustering: { ...config.clustering, eliminateEquivalent: config.clustering?.eliminateEquivalent ?? false },
+      ...(receivingStage ? { advanceCount: undefined } : {}),
+      ...(receivingStage && index > 0 ? { inputStride: undefined } : {}),
+    });
+  }
   private sameInput(a:CandidateInput,b:CandidateInput):boolean {
     return a.candidateId===b.candidateId&&a.source.ref.frameId===b.source.ref.frameId&&coordinatesFingerprint(a.source.structure)===coordinatesFingerprint(b.source.structure)
-      &&graphFingerprint(a.source.structure)===graphFingerprint(b.source.structure)&&same(a.source.constraints,b.source.constraints);
+      &&graphFingerprint(a.source.structure)===graphFingerprint(b.source.structure)&&same(a.source.constraints,b.source.constraints)
+      &&a.preparationError===b.preparationError;
   }
   previewStageConfiguration(taskId:string,configs:AdvancedOptimizationStageConfig[]) {
     const task=this.task(taskId),old=this.stageConfigs(task);
@@ -515,7 +544,7 @@ export class AdvancedController {
     for(const [index,config]of configs.entries()){
       const previous=old[index];if(!previous)continue;
       if(config.id!==previous.id||this.calculationMethodKey(config.method)!==this.calculationMethodKey(previous.method))boundary=Math.min(boundary,index);
-      else if(this.stageConfigKey(config)!==this.stageConfigKey(previous)){
+      else if(this.comparableStageKey(task,config,index)!==this.comparableStageKey(task,previous,index)){
         // Retained calculations at this level can be reorganized/reselected.
         // Changing their resulting collection invalidates downstream results.
         boundary=Math.min(boundary,index+1);
@@ -556,7 +585,7 @@ export class AdvancedController {
     if (configs.length > task.budget.maxStages || new Set(configs.map(config => config.id)).size !== configs.length) throw new Error('优化级数或级次身份无效。');
     const normalized = configs.map((config,index) => {
       const method = structuredClone(config.method);
-      this.validateMethod(method);
+      this.validateMethod(method, task.conformerWorkflow?.inputSemantics === 2);
       const count=task.conformerWorkflow?.inputSemantics===2?index?config.inputClusterCount:1:config.advanceCount;
       if (!config.id || !Number.isSafeInteger(count) || count! < 1) throw new Error('选取上一级簇数须为正整数。');
       if(!Number.isSafeInteger(config.inputStride??1)||(config.inputStride??1)<1)throw Error('抽帧间隔须为正整数。');
@@ -566,7 +595,7 @@ export class AdvancedController {
         || clustering.maxDeltaEnergyHartree !== undefined && (!Number.isFinite(clustering.maxDeltaEnergyHartree) || clustering.maxDeltaEnergyHartree < 0)) throw new Error('归簇双阈值无效。');
       return { ...structuredClone(config), method, clustering };
     });
-    const old = this.stageConfigs(task), firstChanged = normalized.findIndex((config, index) => config.id !== old[index]?.id || this.stageConfigKey(config) !== this.stageConfigKey(old[index]));
+    const old = this.stageConfigs(task), firstChanged = normalized.findIndex((config, index) => config.id !== old[index]?.id || this.comparableStageKey(task,config,index) !== this.comparableStageKey(task,old[index],index));
     const methodChanged=normalized.findIndex((config,index)=>!old[index]||config.id!==old[index].id||this.calculationMethodKey(config.method)!==this.calculationMethodKey(old[index].method));
     const clearFrom=methodChanged>=0?methodChanged:normalized.length<old.length?normalized.length:undefined;
     if(clearFrom!==undefined)this.clearWorkflowResults(task,clearFrom);
@@ -699,14 +728,14 @@ export class AdvancedController {
     // An empty search owns an editable canonical source. Never reuse an old
     // index mapping after atoms were added/deleted/replaced; atom-bound drafts
     // stay intact and are validated against the new IDs before use.
-    const captured=captureMixedInitial(source,task.spec.source,!hasResults&&!this.busy(task)),initial=state.initialGuesses.find(row=>row.id===state.selectedInitialGuessId)!;
+    const editableCanonical=!hasResults&&!this.busy(task);
+    const parent=editableCanonical?{...task.spec.source,structure:{...task.spec.source.structure,charge:source.structure.charge,multiplicity:source.structure.multiplicity}}:task.spec.source;
+    const captured=captureMixedInitial(source,parent,editableCanonical),initial=state.initialGuesses.find(row=>row.id===state.selectedInitialGuessId)!;
     if(same(initial.source,captured.source))return;
     const previous=initial.source,qm={charge:previous.structure.charge!,multiplicity:previous.structure.multiplicity!};
-    const sameScience=same([previous.ref.documentId,previous.ref.documentEpoch,previous.ref.sourceId,previous.ref.frameId],[captured.source.ref.documentId,captured.source.ref.documentEpoch,captured.source.ref.sourceId,captured.source.ref.frameId])
-      &&source.structure.charge===previous.structure.charge&&source.structure.multiplicity===previous.structure.multiplicity
-      &&graphFingerprint(previous.structure)===graphFingerprint(captured.source.structure)&&coordinatesFingerprint(previous.structure)===coordinatesFingerprint(captured.source.structure)
-      &&same(effectiveSharedFreezes(previous.constraints).coordinates,effectiveSharedFreezes(captured.source.constraints).coordinates);
-    const confirmed=sameScience&&(state.electronicConfirmation===advancedElectronicSourceConfirmationKey(previous,qm)||state.electronicConfirmation===advancedElectronicSourceConfirmationKey(captured.source,qm));
+    const sameScience=source.structure.charge===previous.structure.charge&&source.structure.multiplicity===previous.structure.multiplicity
+      &&advancedElectronicInputIdentity(previous)===advancedElectronicInputIdentity(captured.source);
+    const confirmed=sameScience&&(advancedElectronicConfirmationMatches(state.electronicConfirmation,previous,qm)||advancedElectronicConfirmationMatches(state.electronicConfirmation,captured.source,qm));
     initial.source=captured.source;initial.atomMapping=captured.atomMapping;initial.revision=(initial.revision??1)+1;
     task.spec.source=captured.source;state.electronicConfirmation=confirmed?advancedElectronicSourceConfirmationKey(captured.source,qm):undefined;task.revision=(task.revision??0)+1;if(publish)this.publish();
   }
@@ -825,7 +854,7 @@ export class AdvancedController {
     const task = this.conformerTask(taskId);
     if (configuration.kind !== task.spec.kind) throw new Error('切换采样方式请建立新任务，不重绑旧任务身份。');
     if (configuration.kind === 'sampling' && task.spec.kind === 'sampling') {
-      this.validateRouteOptions(configuration.sampling, 7200);
+      this.validateRouteOptions(configuration.sampling);
       const capacity = this.workflowCapacity({ ...task.spec, sampling: configuration.sampling }, task.budget, task.usage);
       conformerSamplingBudgetPlan(configuration.sampling,task.spec.source.structure.atoms.length,capacity);
       if (!CONFORMER_SAMPLING_CAPABILITIES.implementedMethods.includes(configuration.sampling.method)) throw new Error('采样方法不可用。');
@@ -853,7 +882,7 @@ export class AdvancedController {
     if (!candidates?.valid) throw new Error('缺少当前配置的有效采样候选。');
     const previous = index ? workflow.stages.find(stage => stage.stageId === this.stageConfigs(task)[index - 1].id && stage.valid) : undefined;
     if (index && !previous) throw new Error('本级上游尚未完成或已失效。');
-    if(index&&task.conformerWorkflow?.inputSemantics===2){const selected=selectAdvancedClusterInputs(task,this.stageConfigs(task)[index-1].id,this.stageConfigs(task)[index].inputClusterCount!,this.stageConfigs(task)[index].inputStride);
+    if(index&&task.conformerWorkflow?.inputSemantics===2){const selected=selectAdvancedClusterInputs(task,this.stageConfigs(task)[index-1].id,this.stageConfigs(task)[index].inputClusterCount!);
       const inputs=freshInitial&&task.mixedSampling?selected.inputs.map(input=>this.nextOptimizationInput(task,input,freshInitial)):selected.inputs;
       const selection=inputs===selected.inputs?selected.selection:{...selected.selection,collectionSignature:JSON.stringify([selected.selection.collectionSignature,inputs.map(input=>[input.source.stamp,input.source.constraints])])};
       return {inputs,collectionId:selected.selection.collectionId,revision:selected.selection.collectionRevision,selection};}
@@ -867,21 +896,105 @@ export class AdvancedController {
     const collectionId=previous?.collectionId??candidates.id,revision=previous?.revision??candidates.revision;
     return { inputs, collectionId,revision,...(!index&&task.conformerWorkflow?.inputSemantics===2?{selection:{schema:1 as const,mode:'sampling-all' as const,collectionId,collectionRevision:revision,inputStride,collectionSignature:JSON.stringify(inputs.map(input=>[input.candidateId,input.source.ref,input.source.stamp,input.source.constraints,input.source.structure.charge,input.source.structure.multiplicity])),actualCount:inputs.length,clusterIds:[],representativeFrameIds:inputs.flatMap(input=>input.source.ref.frameId?[input.source.ref.frameId]:[])}}:{}) };
   }
-  private submitStage(taskId:string,stageId:string,force=false,batch=false):string {
+  private submitStage(taskId:string,stageId:string,force=false,batch=false,retryFromRunId?:string,projectRecovery?:RunPlan['projectRecovery']):string {
     const task=this.conformerTask(taskId);const configs=this.stageConfigs(task),index=configs.findIndex(config=>config.id===stageId);
     if(index<0)throw new Error('优化级不存在。');
     if((batch?configs.slice(index):[configs[index]]).some(config=>config.clustering?.rmsdMatching==='symmetry'))throw Error('此级保留旧图同构归簇结果；请确认当前固定对应与等价消除设置后显式重新整理，再开始或继续。');
-    if(!force&&task.runs.some(run=>run.stages.some(stage=>stage.configurationId===stageId&&stage.adoptionError)))throw Error('本级存在后台结果接管异常；请先处理保留的规范结果，或显式重新开始，未重新提交候选。');
+    const submitted = new Set((batch ? configs.slice(index) : [configs[index]]).map(config => config.id));
+    if(!force&&task.runs.some(run=>run.stages.some(stage=>stage.configurationId&&submitted.has(stage.configurationId)&&stage.adoptionError
+      && !projectRecovery?.stageIds.includes(stage.id) && !this.hasProjectResultContinuation(task,stage))))throw Error('所选优化级存在后台结果接管异常；请先处理保留的规范结果，或显式重新开始，未重新提交候选。');
     this.preflight(task,batch?configs.slice(index).map(config=>config.method):[configs[index].method],true);
     const fresh=task.mixedSampling?this.deps.resolveInitialSource?.(task.id,task.spec.source)??task.spec.source:undefined;
     const input=this.workflowStageInput(task,index,fresh);
     this.sealSamplingBatches(task,'optimization');
     if(force)this.clearWorkflowResults(task,index);
-    return this.enqueue(task,force?'start':'resume',{stageIndex:index,endStageIndex:batch?undefined:index,intent:batch?'batch':'stage',inputs:structuredClone(input.inputs),inputSelection:input.selection,inputCollectionId:input.collectionId,inputCollectionRevision:input.revision,forceRecalculate:force,
-      ...(fresh?{protection:resolveConformerProtection(fresh,sharedFreezeRunDefinition(task.mixedSampling!.draft))}:{})});
+    return this.enqueue(task,retryFromRunId?'retry':force?'start':'resume',{stageIndex:index,endStageIndex:batch?undefined:index,intent:batch?'batch':'stage',inputs:structuredClone(input.inputs),inputSelection:input.selection,inputCollectionId:input.collectionId,inputCollectionRevision:input.revision,forceRecalculate:force,
+      ...(projectRecovery?{projectRecovery}:{}),...(fresh?{protection:resolveConformerProtection(fresh,sharedFreezeRunDefinition(task.mixedSampling!.draft))}:{})},retryFromRunId);
   }
   startStage(taskId:string,stageId:string):string{return this.submitStage(taskId,stageId);}
   continueStage(taskId:string,stageId:string):string{return this.submitStage(taskId,stageId);}
+  private projectResultSignature(stage:AdvancedStageRun):string {
+    return sha256Utf8(JSON.stringify([stage.id,stage.configuration,stage.inputCollectionId,stage.inputCollectionRevision,
+      stage.inputs,stage.inputCandidateIds,stage.results,stage.adoptionError,stage.batchProgress]));
+  }
+  private hasProjectResultContinuation(task:AdvancedTaskRecord,stage:AdvancedStageRun):boolean {
+    const receipt=stage.projectResultContinuation;
+    if(!receipt)return false;
+    // Historical stage assets stay immutable after explicit continuation.
+    // Avoid rehashing the entire fixed input set for every candidate/render.
+    const cached=this.projectContinuationChecks.get(stage);
+    if(cached?.receipt===receipt)return cached.valid;
+    const valid=receipt.signature===this.projectResultSignature(stage)
+      && task.runs.some(run=>run.id===receipt.runId && run.stages.some(next=>next.configurationId===stage.configurationId));
+    this.projectContinuationChecks.set(stage,{receipt,valid});return valid;
+  }
+  /** Only project-owned, already accepted members are considered. This does
+   * not restore, read, transfer, stop or destroy the former host batch. */
+  private projectConformerRecovery(taskId:string,runId:string,stageId:string) {
+    const task=this.conformerTask(taskId),run=this.run(task,runId),stage=run.stages.find(row=>row.id===stageId);
+    if(this.disposed||this.busy(task)||!stage?.adoptionError||!stage.configurationId||this.hasProjectResultContinuation(task,stage))
+      throw Error('当前级没有可从项目内结果继续的历史批。');
+    const config=this.stageConfigs(task).find(config=>config.id===stage.configurationId),index=this.stageConfigs(task).findIndex(config=>config.id===stage.configurationId);
+    if(!config||config.method.backend!=='xtb'||!same(config.method,stage.configuration?.method))throw Error('当前方法配置与历史批不符。');
+    const fresh=task.mixedSampling?this.deps.resolveInitialSource?.(task.id,task.spec.source)??task.spec.source:undefined;
+    const current=this.workflowStageInput(task,index,fresh),blockers=task.runs.flatMap(prior=>prior.stages
+      .filter(row=>row.configurationId===config.id&&row.adoptionError&&!this.hasProjectResultContinuation(task,row)).map(row=>({run:prior,stage:row})));
+    const reuse=new Map<string,{result:AdvancedCalculationResult;runId:string}>();
+    for(const prior of blockers){
+      const old=prior.stage,progress=old.batchProgress,error=progress?.error;
+      const registered=this.retainedBatchInputs(old);
+      const uncommitted=/^(?:Error invoking remote method ['"]sciyue:conformer-batch-command['"]: (?:Error: )?)?(?:CONFORMER_BATCH_RECORD\[(\d+)\]: )?CONFORMER_BATCH_UNCOMMITTED:/.exec(old.adoptionError?.message??'');
+      const uncommittedIndex=uncommitted?.[1]===undefined?undefined:Number(uncommitted[1]);
+      const localCause=error?.code==='XTB_NATIVE_STEP_OVERRUN'||['XTB_CANDIDATE_SCC','XTB_CANDIDATE_GEOMETRY','XTB_CANDIDATE_OPTIMIZER','XTB_CANDIDATE_RESULT'].includes(error?.code??'')
+        || error?.code==='XTB_RESULT_REJECTED'&&/^xTB process did not exit successfully \(\d+, (?:null|[^)]+)\)$/.test(error.message);
+      if(!terminalStatuses.has(prior.run.status)||!['failed','stopped'].includes(old.status)||!progress||progress.phase!=='error'||!localCause
+        ||old.adoptionError?.kind==='integrity'||!uncommitted
+        ||uncommittedIndex!==undefined&&(!Number.isSafeInteger(uncommittedIndex)||uncommittedIndex<0||uncommittedIndex>=registered.length
+          ||old.results.some(result=>result.candidateId===registered[uncommittedIndex].candidateId))
+        ||!same(config.method,old.configuration?.method)||!old.inputs||old.inputs.length!==current.inputs.length
+        ||!same(old.inputCandidateIds,current.inputs.map(input=>input.candidateId))||!old.inputs.every((input,i)=>same(input,current.inputs[i]))
+        ||!matchesConformerBatch(progress,old.adoptionError!.batchId,this.batchIdentity(task,prior.run,old),registered.length)||progress.running!==0)
+        throw new ConformerBatchIntegrityError('历史批的终态、来源、输入配置或未提交原因无法核对；未重新提交。');
+      const ids=new Set(old.inputCandidateIds),seen=new Set<string>();
+      for(const result of old.results){
+        if(!ids.has(result.candidateId)||seen.has(result.candidateId)||result.stageId!==old.id)throw new ConformerBatchIntegrityError('项目内已接管成员的身份或顺序不符。');
+        seen.add(result.candidateId);
+        const input=old.inputs.find(input=>input.candidateId===result.candidateId)!;
+        if(!same(result.originalInput??result.input,input.source))throw new ConformerBatchIntegrityError('项目内已接管成员的原始来源不符。');
+        // Old CANCELLED rows were collateral cancellation. They and every
+        // member without a reliable native terminal must be run again.
+        const stepLimit=result.status==='unconverged'&&result.metadata?.converged===false&&result.metadata.convergenceStatus==='step-limit';
+        const localDiscard=result.status==='failed'&&/^(?:XTB_CANDIDATE_(?:SCC|GEOMETRY|OPTIMIZER|RESULT):|ANC generation failed, not enough modes!)/.test(result.error??'');
+        if(result.status!=='completed'&&!stepLimit&&!localDiscard)continue;
+        const execution=this.executionCandidate(task,old,input);
+        if(localDiscard){reuse.set(input.candidateId,{result,runId:prior.run.id});continue;}
+        const frame=result.frameId?this.findFrame(task,result.frameId):undefined;
+        if(!frame||frame.taskId!==task.id||frame.candidateId!==result.candidateId||frame.energyHartree!==result.energyHartree
+          ||frame.source.ref.taskId!==frame.taskId||frame.source.ref.runId!==frame.runId||frame.source.ref.stageId!==frame.stageId||frame.source.ref.frameId!==frame.id
+          ||!same(frame.parentRef,execution.source.ref))throw new ConformerBatchIntegrityError('项目内已接管结果缺少匹配的完整帧。');
+        const request=this.batchXtbRequest(task,prior.run,old,execution,config.method.options,result.metadata?.resourceGrant?.requested.memoryBudgetBytes);
+        const validated=validateConformerBatchEntry({index:old.inputCandidateIds.indexOf(result.candidateId),candidateId:result.candidateId,source:execution.source,originalInput:input.source,
+          status:stepLimit?'discarded':'succeeded',...(stepLimit?{reason:{code:'XTB_STEP_LIMIT',message:result.error??'Step limit'}}:{}),request:{backend:'xtb',request},
+          result:{structure:frame.source.structure,energyHartree:result.energyHartree!,metadata:result.metadata,identity:result.identity,sessionId:result.sessionId}},execution.source,old.id,config.method,request,false,input.source);
+        if(!validated||validated.status!==result.status||!same(validated.identity,result.identity))throw new ConformerBatchIntegrityError('项目内结果的方法、收敛或计算身份无法核对。');
+        reuse.set(input.candidateId,{result,runId:prior.run.id});
+      }
+    }
+    const completed=[...reuse.values()].filter(row=>row.result.status==='completed').map(row=>row.result.candidateId),discarded=[...reuse.values()].filter(row=>row.result.status!=='completed').map(row=>row.result.candidateId);
+    return {task,stage,config,blockers,reuse:[...reuse.values()],completedCandidateIds:completed,discardedCandidateIds:discarded,
+      recalculateCandidateIds:current.inputs.filter(input=>!reuse.has(input.candidateId)).map(input=>input.candidateId)};
+  }
+  projectConformerRecoveryPreview(taskId:string,runId:string,stageId:string) {
+    try {const value=this.projectConformerRecovery(taskId,runId,stageId);return {method:value.config.method.backend==='xtb'?value.config.method.options.method:value.config.method.forcefield,completed:value.completedCandidateIds.length,discarded:value.discardedCandidateIds.length,recalculate:value.recalculateCandidateIds.length};}
+    catch{return undefined;}
+  }
+  continueConformerFromProject(taskId:string,runId:string,stageId:string):string {
+    const value=this.projectConformerRecovery(taskId,runId,stageId);
+    const next=this.submitStage(taskId,value.config.id,false,false,undefined,{stageIds:value.blockers.map(prior=>prior.stage.id),reuse:value.reuse});
+    for(const prior of value.blockers)prior.stage.projectResultContinuation={runId:next,signature:this.projectResultSignature(prior.stage),
+      completedCandidateIds:value.completedCandidateIds,discardedCandidateIds:value.discardedCandidateIds,recalculateCandidateIds:value.recalculateCandidateIds};
+    this.publish();return next;
+  }
   /** Explicit organization of retained optimized assets; never submits a native
    * candidate or treats an interrupted stage as formally completed. */
   organizeStage(taskId:string,stageId:string):string {
@@ -916,7 +1029,12 @@ export class AdvancedController {
     if (task.conformerWorkflow?.candidateSet && !task.conformerWorkflow.candidateSet.valid) throw new Error('上游采样配置已变，旧停点不可作为新来源。');
     if (previous.checkpoint.kind === 'stage' && task.conformerWorkflow) {
       const priorConfig = this.stageConfigs(task)[previous.checkpoint.nextStageIndex - 1];
-      if (!priorConfig || !task.conformerWorkflow.stages.some(stage => stage.stageId === priorConfig.id && stage.valid && stage.configKey === this.stageConfigKey(priorConfig))) throw new Error('上游级次配置已变，旧晋级停点不可继续。');
+      const priorIndex = previous.checkpoint.nextStageIndex - 1;
+      const priorStage = previous.stages.find(stage => stage.index === priorIndex);
+      if (!priorConfig || !priorStage?.configuration || !task.conformerWorkflow.stages.some(stage => stage.stageId === priorConfig.id
+        && stage.valid && stage.configKey === this.stageConfigKey(priorStage.configuration!))
+        || this.comparableStageKey(task, priorStage.configuration, priorIndex) !== this.comparableStageKey(task, priorConfig, priorIndex))
+        throw new Error('上游级次配置已变，旧晋级停点不可继续。');
     }
     const index = previous.checkpoint.nextStageIndex;
     const inputs = index === 0 ? task.spec.kind === 'docking' ? this.dockedInputs(task, previous) : task.spec.kind === 'sampling' ? this.sampledInputs(task, previous) : task.guessFrames.map(f => ({ candidateId: f.candidateId, source: f.source }))
@@ -928,7 +1046,7 @@ export class AdvancedController {
     const config = this.stageConfigs(task)[index];
     return [...task.runs].reverse().find(run => ['stopped', 'failed'].includes(run.status) && run.stages.some(stage => stage.index === index
       && stage.status !== 'completed' && stage.inputCollectionId === collectionId && stage.configuration
-      && this.stageConfigKey(stage.configuration) === this.stageConfigKey(config)));
+      && this.comparableStageKey(task,stage.configuration,index) === this.comparableStageKey(task,config,index)));
   }
   retry(taskId: string, runId: string, intent?: 'stage' | 'batch'): string {
     const task = this.task(taskId), previous = this.run(task, runId); this.explicit(task); this.preflight(task);
@@ -957,7 +1075,7 @@ export class AdvancedController {
         &&task.conformerWorkflow!.stages.some(state=>state.stageRunId===stage.id&&state.valid&&state.completed));
       if(completed){
         const config=this.stageConfigs(task)[completed.index];
-        if(!config||!completed.configuration||this.stageConfigKey(config)!==this.stageConfigKey(completed.configuration))throw Error('优化级科学配置已变，请从当前有效上游开始该级。');
+        if(!config||!completed.configuration||this.comparableStageKey(task,config,completed.index)!==this.comparableStageKey(task,completed.configuration,completed.index))throw Error('优化级科学配置已变，请从当前有效上游开始该级。');
         return this.submitStage(taskId,completed.configurationId!,false,(intent??previous.intent)!=='stage');
       }
     }
@@ -965,9 +1083,13 @@ export class AdvancedController {
     if (!stage) throw new Error('该运行没有可重试失败项。');
     if(stage.adoptionError)throw Error('后台结果接管异常尚未处理；未按普通失败重新提交候选。');
     const currentConfig = this.stageConfigs(task)[stage.index];
-    if (!currentConfig || stage.configuration && this.stageConfigKey(stage.configuration) !== this.stageConfigKey(currentConfig)) throw new Error('优化级科学配置已变，请从当前有效上游开始该级。');
+    if (!currentConfig || stage.configuration && this.comparableStageKey(task,stage.configuration,stage.index) !== this.comparableStageKey(task,currentConfig,stage.index)) throw new Error('优化级科学配置已变，请从当前有效上游开始该级。');
+    if(task.conformerWorkflow?.inputSemantics===2)
+      return this.submitStage(taskId,currentConfig.id,false,(intent??previous.intent)==='batch',runId);
+    const independentCandidates = task.spec.kind === 'sampling' || task.spec.kind === 'conformer-search';
     const inputs = stage.results.map(r => ({ candidateId: r.candidateId,
-      source: r.status === 'completed' ? r.input : [...previous.frames].reverse().find(frame => frame.stageId === stage.id && frame.candidateId === r.candidateId && frame.kind === 'intermediate')?.source ?? r.input }));
+      source: independentCandidates ? r.originalInput ?? r.input : r.status === 'completed' ? r.input
+        : [...previous.frames].reverse().find(frame => frame.stageId === stage.id && frame.candidateId === r.candidateId && frame.kind === 'intermediate')?.source ?? r.input }));
     // If stop occurred before some candidates were submitted, recover their original input identity too.
     const all = this.inputsForStage(task, previous, stage.index);
     for (const item of all) if (!inputs.some(i => i.candidateId === item.candidateId)) inputs.push(item);
@@ -1031,7 +1153,7 @@ export class AdvancedController {
     }
     run.status = 'stopping'; this.publish();
     if (this.activeSamplingWork?.runId === runId) this.activeSamplingWork.stop();
-    if(this.activeBatch?.runId===runId)await this.deps.conformerBatchBridge!.stop(this.activeBatch.batchId);
+    if(this.activeBatch?.runId===runId)await this.activeBatch.stop?.();
     await Promise.all([...this.activeJobs.values()].filter(job => job.run === run).map(job => this.requestStop(job))
       .concat([...this.activeForcefields.values()].filter(job => job.info.runId === runId).map(job => job.stop())));
     if (this.activeRoute?.info.runId === runId) await this.activeRoute.stop();
@@ -1077,7 +1199,7 @@ export class AdvancedController {
   private reusableCalculation(task: AdvancedTaskRecord, config: AdvancedOptimizationStageConfig, input: CandidateInput) {
     for (const prior of [...task.runs].reverse()) for (const stage of [...prior.stages].reverse()) {
       if (stage.configurationId !== config.id || !stage.configuration || this.calculationMethodKey(stage.configuration.method) !== this.calculationMethodKey(config.method)) continue;
-      const result = stage.results.find(row => row.candidateId === input.candidateId && row.status === 'completed' && row.frameId
+      const result = stage.results.find(row => (!stage.adoptionError || this.hasProjectResultContinuation(task,stage)&&stage.projectResultContinuation!.completedCandidateIds.includes(row.candidateId)) && row.candidateId === input.candidateId && row.status === 'completed' && row.frameId
         && this.findFrame(task, row.frameId) && this.sameInput({candidateId:row.candidateId,source:row.originalInput??row.input},input));
       if (result) return { result, runId: prior.id };
     }
@@ -1085,7 +1207,7 @@ export class AdvancedController {
   private interruptedCalculation(task:AdvancedTaskRecord,config:AdvancedOptimizationStageConfig,input:CandidateInput,excludeRunId:string) {
     for(const prior of [...task.runs].reverse())for(const stage of [...prior.stages].reverse()){
       if(prior.id===excludeRunId||stage.configurationId!==config.id||!stage.configuration||this.calculationMethodKey(stage.configuration.method)!==this.calculationMethodKey(config.method))continue;
-      const result=stage.results.find(result=>result.status!=='completed'&&this.sameInput({candidateId:result.candidateId,source:result.originalInput??result.input},input));
+      const result=stage.results.find(result=>(!stage.adoptionError||this.hasProjectResultContinuation(task,stage)&&stage.projectResultContinuation!.discardedCandidateIds.includes(result.candidateId))&&result.status!=='completed'&&this.sameInput({candidateId:result.candidateId,source:result.originalInput??result.input},input));
       if(!result)continue;
       const last=[...prior.frames].reverse().find(frame=>frame.stageId===stage.id&&frame.candidateId===input.candidateId&&frame.kind==='intermediate'&&(!result.sessionId||frame.sessionId===result.sessionId));
       return{result,source:last?.source??result.input,runId:prior.id};
@@ -1093,17 +1215,19 @@ export class AdvancedController {
   }
   private completedWorkflowStage(task:AdvancedTaskRecord,config:AdvancedOptimizationStageConfig,inputs:CandidateInput[],collectionId:string,revision:number) {
     const state=task.conformerWorkflow?.stages.find(state=>state.stageId===config.id&&state.valid&&state.completed
-      &&state.configKey===this.stageConfigKey(config)&&state.inputCollectionId===collectionId&&state.inputCollectionRevision===revision);
+      &&state.inputCollectionId===collectionId&&state.inputCollectionRevision===revision);
     if(!state)return;
     const run=task.runs.find(run=>run.id===state.producerRunId),stage=run?.stages.find(stage=>stage.id===state.stageRunId);
     if(!run||!stage||stage.status!=='completed'||stage.adoptionError||!stage.clustering||!stage.configuration
       ||stage.inputCollectionId!==collectionId||stage.inputCollectionRevision!==revision||this.stageConfigKey(stage.configuration)!==state.configKey
+      ||this.comparableStageKey(task,stage.configuration,stage.index)!==this.comparableStageKey(task,config,stage.index)
       ||stage.inputs?.length!==inputs.length||stage.results.length!==inputs.length||new Set(stage.results.map(result=>result.candidateId)).size!==inputs.length
       ||!same(stage.inputCandidateIds,inputs.map(input=>input.candidateId)))return;
     if(!inputs.every((input,index)=>{const old=stage.inputs![index];return this.sameInput(old,input)&&same(old.source.ref,input.source.ref)
       &&same(old.source.stamp,input.source.stamp)&&old.source.structure.charge===input.source.structure.charge&&old.source.structure.multiplicity===input.source.structure.multiplicity;}))return;
     const inputById=new Map(inputs.map(input=>[input.candidateId,input]));
-    if(!stage.results.every(result=>{const input=inputById.get(result.candidateId);return input&&this.sameInput(input,{candidateId:result.candidateId,source:result.originalInput??result.input});}))return;
+    if(!stage.results.every(result=>{const input=inputById.get(result.candidateId);return input&&this.sameInput(input,{candidateId:result.candidateId,
+      source:result.originalInput??result.input, ...(input.preparationError&&result.status==='failed'?{preparationError:result.error}:{})});}))return;
     const results=stage.results.filter(result=>result.status==='completed'),resultById=new Map(results.map(result=>[result.candidateId,result]));
     const frameIds=new Set([...task.guessFrames,...task.runs.flatMap(run=>run.frames)].map(frame=>frame.id));
     if(!results.every(result=>result.frameId&&frameIds.has(result.frameId))
@@ -1119,7 +1243,7 @@ export class AdvancedController {
     workflow.revision++;
     const frameId=(candidateId:string)=>valid.find(result=>result.candidateId===candidateId)?.frameId;
     const currentConfiguration=this.stageConfigs(task).find(config=>config.id===stage.configurationId);
-    const state={stageId:stage.configurationId??stage.configuration.id,configKey:this.stageConfigKey(stage.configuration),inputCollectionId:stage.inputCollectionId??'source',collectionId:stage.collectionId??`${task.id}:stage-${stage.configuration.id}:representatives`,producerRunId:run.id,stageRunId:stage.id,valid:completed&&!!currentConfiguration&&this.stageConfigKey(currentConfiguration)===this.stageConfigKey(stage.configuration),completed,revision:workflow.revision,
+    const state={stageId:stage.configurationId??stage.configuration.id,configKey:this.stageConfigKey(stage.configuration),inputCollectionId:stage.inputCollectionId??'source',collectionId:stage.collectionId??`${task.id}:stage-${stage.configuration.id}:representatives`,producerRunId:run.id,stageRunId:stage.id,valid:completed&&!!currentConfiguration&&this.comparableStageKey(task,currentConfiguration,stage.index)===this.comparableStageKey(task,stage.configuration,stage.index),completed,revision:workflow.revision,
       inputFrameIds:(stage.inputs??[]).flatMap(input=>input.source.ref.frameId?[input.source.ref.frameId]:[]),inputCollectionRevision:stage.inputCollectionRevision,resultFrameIds:valid.map(result=>result.frameId!),
       representativeFrameIds:completed?stage.clustering?.groups.flatMap(group=>group.clusters.flatMap(cluster=>frameId(cluster.representative.candidateId)?[frameId(cluster.representative.candidateId)!]:[]))??valid.map(result=>result.frameId!):[],
       promotedFrameIds:completed?stage.promotedCandidateIds.flatMap(id=>frameId(id)?[frameId(id)!]:[]):[],progress:stage.progress??{total:stage.inputCandidateIds.length,completed:valid.length,interrupted:0,failed:stage.results.filter(result=>result.status!=='completed').length,succeeded:valid.length,discarded:stage.results.filter(result=>result.status!=='completed').length,pending:Math.max(0,stage.inputCandidateIds.length-stage.results.length)}};
@@ -1246,7 +1370,12 @@ export class AdvancedController {
     await this.rebuildMixedCandidates(task,run);
     await this.conformerResultsReady(task);
     this.checkRun(task,run);
-    if(failure)throw failure;
+    if(failure){
+      const candidates=task.conformerWorkflow?.candidateSet;
+      if(!candidates?.valid||!candidates.frameIds.length)throw failure;
+      const summary=`部分采样卡失败；已保留 ${candidates.frameIds.length} 个有效候选，可继续优化。${message(failure)}`;
+      run.error=run.error?`${run.error}\n${summary}`:summary;
+    }
     run.status='checkpoint';run.checkpoint={kind:'sampling',nextStageIndex:0};
   }
   private async execute(task: AdvancedTaskRecord, run: AdvancedTaskRun, plan: RunPlan) {
@@ -1328,7 +1457,7 @@ export class AdvancedController {
       this.checkRun(task, run);
       let inputSelection=index===plan.stageIndex?plan.inputSelection:undefined;
       if(index>plan.stageIndex&&task.conformerWorkflow?.inputSemantics===2){
-        const selected=selectAdvancedClusterInputs(task,configs[index-1].id,configs[index].inputClusterCount!,configs[index].inputStride);
+        const selected=selectAdvancedClusterInputs(task,configs[index-1].id,configs[index].inputClusterCount!);
         inputs=selected.inputs;inputCollectionId=selected.selection.collectionId;inputCollectionRevision=selected.selection.collectionRevision;inputSelection=selected.selection;
       }
       if (!inputs.length || inputs.length > task.budget.maxCandidates) throw new Error('没有有效级次输入或输入数量超过候选预算。');
@@ -1337,10 +1466,13 @@ export class AdvancedController {
         // Keep the scientific collection's original owner/revision and frame
         // IDs. This new run is only a receipt for explicit preparation/reuse.
         const id=`${run.id}-stage-${index+1}`,succeeded=completed.stage.results.filter(result=>result.status==='completed').length;
-        const stage:AdvancedStageRun={...completed.stage,id,results:completed.stage.results.map(result=>({...result,stageId:id,reusedFromRunId:completed.run.id})),
+        const { batchId: _batchId, batchProgress: _batchProgress, batchCandidateIds: _batchCandidateIds, ...completedStage } = completed.stage;
+        const stage:AdvancedStageRun={...completedStage,id,results:completed.stage.results.map(result=>({...result,stageId:id,reusedFromRunId:completed.run.id})),
           progress:completed.stage.progress?{...completed.stage.progress,startedAt:this.now(),baselineSucceeded:succeeded,baselineDiscarded:completed.stage.results.length-succeeded,elapsedMs:0,etaMs:0}:undefined};
         const pendingIndex=run.stages.findIndex(item=>item.index===index);if(pendingIndex>=0)run.stages[pendingIndex]=stage;else run.stages.push(stage);
-        run.results.push(...stage.results);await this.conformerResultsReady(task,stage.id);this.checkRun(task,run);
+        run.results.push(...stage.results);await this.conformerResultsReady(task,stage.id);
+        await this.releaseAdoptedBatch(completed.stage);
+        this.checkRun(task,run);
         inputs=this.promotedInputs(task,stage);inputCollectionId=completed.state.collectionId;inputCollectionRevision=completed.state.revision??inputCollectionRevision;
         if(!inputs.length)return;
         if(!plan.intent&&config.checkpointAfter&&index+1<configs.length){run.status='checkpoint';run.checkpoint={kind:'stage',nextStageIndex:index+1};return;}
@@ -1355,10 +1487,20 @@ export class AdvancedController {
       const stageInputs = inputs, ordered = new Map(stageInputs.map((input, ordinal) => [input.candidateId, ordinal]));
       const pendingInputs:CandidateInput[]=[];
       for(const input of stageInputs){
-        const cached=!plan.forceRecalculate?this.reusableCalculation(task,config,input):undefined;
+        if (input.preparationError) {
+          stage.results.push({candidateId:input.candidateId,stageId:stage.id,input:input.source,originalInput:input.source,status:'failed',error:input.preparationError});
+          continue;
+        }
+        const recovery=plan.projectRecovery&&index===plan.stageIndex;
+        const recovered=recovery?plan.projectRecovery!.reuse.find(row=>row.result.candidateId===input.candidateId):undefined;
+        const cached=recovery?recovered?.result.status==='completed'?recovered:undefined:!plan.forceRecalculate?this.reusableCalculation(task,config,input):undefined;
         if(cached)stage.results.push({...cached.result,stageId:stage.id,reusedFromRunId:cached.runId,originalInput:input.source});
-        else{const discarded=!plan.forceRecalculate?this.interruptedCalculation(task,config,input,run.id):undefined;
-          if(discarded&&(task.spec.kind==='sampling'||task.spec.kind==='conformer-search'))stage.results.push({...discarded.result,status:'failed',stageId:stage.id,reusedFromRunId:discarded.runId,originalInput:input.source});else pendingInputs.push(input);}
+        else{
+          const discarded=recovery?recovered:!plan.forceRecalculate?this.interruptedCalculation(task,config,input,run.id):undefined;
+          if(discarded&&(task.spec.kind==='sampling'||task.spec.kind==='conformer-search')){
+            stage.results.push({...discarded.result,stageId:stage.id,reusedFromRunId:discarded.runId,originalInput:input.source});
+          }else pendingInputs.push(input);
+        }
       }
       run.results=[...run.results.filter(result=>result.stageId!==stage.id),...stage.results];
       this.updateStageProgress(task,stage);this.publishStageResults(task,run,stage,false);this.publish();
@@ -1374,7 +1516,7 @@ export class AdvancedController {
             this.checkRun(task, run);
             const conformer=task.spec.kind==='sampling'||task.spec.kind==='conformer-search';
             const interrupted=!conformer&&!plan.forceRecalculate?this.interruptedCalculation(task,config,input,run.id):undefined;
-            const result=await this.calculate(task,run,stage,interrupted?{...input,source:interrupted.source}:input,config.method,pooled);
+            const result=await this.calculate(task,run,stage,interrupted?{...input,source:interrupted.source}:this.executionCandidate(task,stage,input),config.method,pooled);
             if(conformer&&result.status==='stopped')result.status='failed';
             result.originalInput=input.source;
             stage.results=stage.results.filter(row=>row.candidateId!==input.candidateId);stage.results.push(result);stage.results.sort((a,b)=>ordered.get(a.candidateId)!-ordered.get(b.candidateId)!);
@@ -1395,48 +1537,72 @@ export class AdvancedController {
       }
       stage.results.sort((a,b)=>ordered.get(a.candidateId)!-ordered.get(b.candidateId)!);
       run.results=[...run.results.filter(result=>result.stageId!==stage.id),...stage.results];
-      if(failure||isStopping(run)){stage.status='stopped';this.publishStageResults(task,run,stage,false);await this.conformerResultsReady(task,stage.id);if(failure)throw failure;this.checkRun(task,run);}
+      if (failure || isStopping(run)) {
+        stage.status = 'stopped';
+        this.publishStageResults(task, run, stage, false);
+        await this.prepareAdoptedStage(task, stage);
+        if (failure) throw failure;
+        this.checkRun(task, run);
+      }
       this.checkRun(task, run);
-      if (task.spec.kind === 'conformer-search' || task.spec.kind === 'sampling' || task.spec.kind === 'docking') {
-        const records: ConformerOptimizationResult[] = stage.results.map(result => {
-          const frame = result.frameId ? this.findFrame(task, result.frameId) : undefined;
-          return { candidateId: result.candidateId, source: { documentId: result.input.ref.documentId, revision: result.input.ref.revision,
-            frameId: result.input.ref.frameId, sourceId: result.input.ref.sourceId }, structure: frame?.source.structure ?? result.input.structure,
-            identity: result.identity ?? { method: this.methodLabel(config.method), solvent: 'none', charge: task.spec.source.structure.charge!, multiplicity: task.spec.source.structure.multiplicity! },
-            constraints:result.input.constraints,converged: result.status === 'completed', energyHartree: result.energyHartree ?? null, failureReason: result.error };
-        });
-        try{
-          stage.clustering = await this.background<NonNullable<AdvancedStageRun['clustering']>>(run, { kind: 'cluster', records, policy: { ...config.clustering, maxRecords: Math.max(task.budget.maxCandidates, records.length) } },true,stage.id);
-        }
-        catch(error){this.publishStageResults(task,run,stage,false);throw error;}
-        if (!stage.clustering.groups.length&&stage.results.every(result=>result.status!=='completed')){
-          stage.status='completed';stage.outcome={processed:stage.results.length,valid:0,failed:stage.results.length,target:config.advanceCount??stage.inputs?.length??0,actual:0,reason:'全部候选已丢弃。'};
-          this.publishStageResults(task,run,stage,true);await this.conformerResultsReady(task,stage.id);this.publish();return;
-        }
-        if (stage.clustering.groups.length !== 1) { stage.status = 'failed'; throw new Error('级次产生多个不可比科学身份，未混排晋级。'); }
-        const selected = selectConformerRepresentatives(stage.clustering.groups[0], task.conformerWorkflow?.inputSemantics===2?stage.clustering.groups[0].clusters.length:config.advanceCount??1);
-        stage.promotedCandidateIds = selected.map(p => p.representativeCandidateId); inputs = this.promotedInputs(task, stage);
+      const conformer = ['conformer-search', 'sampling', 'docking'].includes(task.spec.kind);
+      if (conformer) {
+        try { await this.clusterStage(task, run, stage, config); }
+        catch (error) { this.publishStageResults(task, run, stage, false); throw error; }
+        inputs = this.promotedInputs(task, stage);
       } else {
         if (stage.results[0]?.status !== 'completed') { stage.status = 'failed'; throw new Error(stage.results[0]?.error ?? '高级任务没有有效完成结果。'); }
         if (stage.results[0].electronic?.status === 'retained' && stage.results[0].error) { stage.status = 'failed'; throw new Error(stage.results[0].error); }
         stage.promotedCandidateIds = [stage.results[0].candidateId];
       }
-      const formallyCompleted=!plan.reclusterOnly||!!plan.reclusterCompleted&&stage.results.length===stage.inputCandidateIds.length;
-      stage.status = formallyCompleted?'completed':'stopped';
-      stage.outcome = { processed: stage.results.length, valid: stage.results.filter(row => row.status === 'completed').length,
-        failed: stage.results.filter(row => row.status !== 'completed').length, target: config.advanceCount??stage.inputs?.length??0, actual: stage.promotedCandidateIds.length,
-        ...(config.advanceCount!==undefined&&stage.promotedCandidateIds.length < config.advanceCount ? { reason: '有效收敛结果归簇后的不同代表少于目标晋级数。' } : {}) };
+      const formallyCompleted = !plan.reclusterOnly || !!plan.reclusterCompleted && stage.results.length === stage.inputCandidateIds.length;
+      this.settleStage(task, run, stage, config, formallyCompleted);
       if (task.conformerWorkflow && stage.clustering) {
-        this.publishStageResults(task,run,stage,formallyCompleted);
-        const state=task.conformerWorkflow.stages.find(state=>state.stageId===config.id)!;inputCollectionId=state.collectionId;inputCollectionRevision=state.revision??inputCollectionRevision;
+        const state = task.conformerWorkflow.stages.find(state => state.stageId === config.id)!;
+        inputCollectionId = state.collectionId;
+        inputCollectionRevision = state.revision ?? inputCollectionRevision;
       }
-      await this.conformerResultsReady(task,stage.id);
+      await this.prepareAdoptedStage(task, stage);
       this.publish();
+      if (conformer && !stage.clustering?.groups.length) return;
       if(plan.reclusterOnly){if(!formallyCompleted)run.status='stopped';return;}
       if (!plan.intent && config.checkpointAfter && index + 1 < configs.length) { run.status = 'checkpoint'; run.checkpoint = { kind: 'stage', nextStageIndex: index + 1 }; return; }
     }
   }
   private methodLabel(method: AdvancedOptimizationMethod) { return method.backend === 'xtb' ? XTB_METHOD_LABELS[method.options.method] : method.forcefield; }
+  private async clusterStage(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun,
+    config: AdvancedOptimizationStageConfig): Promise<void> {
+    const frames = new Map(run.frames.map(frame => [frame.id, frame]));
+    const records: ConformerOptimizationResult[] = stage.results.map(result => {
+      const frame = result.frameId ? frames.get(result.frameId) ?? this.findFrame(task, result.frameId) : undefined;
+      return { candidateId: result.candidateId, source: { documentId: result.input.ref.documentId, revision: result.input.ref.revision,
+        frameId: result.input.ref.frameId, sourceId: result.input.ref.sourceId }, structure: frame?.source.structure ?? result.input.structure,
+        identity: result.identity ?? { method: this.methodLabel(config.method), solvent: 'none', charge: task.spec.source.structure.charge!, multiplicity: task.spec.source.structure.multiplicity! },
+        constraints: result.input.constraints, converged: result.status === 'completed', energyHartree: result.energyHartree ?? null, failureReason: result.error };
+    });
+    stage.clustering = await this.background<NonNullable<AdvancedStageRun['clustering']>>(run,
+      { kind: 'cluster', records, policy: { ...config.clustering, maxRecords: Math.max(task.budget.maxCandidates, records.length) } }, true, stage.id);
+    if (!stage.clustering.groups.length && stage.results.every(result => result.status !== 'completed')) return;
+    if (stage.clustering.groups.length !== 1) throw Error('级次产生多个不可比科学身份，未混排晋级。');
+    const group = stage.clustering.groups[0];
+    const selected = selectConformerRepresentatives(group, task.conformerWorkflow?.inputSemantics === 2 ? group.clusters.length : config.advanceCount ?? 1);
+    stage.promotedCandidateIds = selected.map(result => result.representativeCandidateId);
+  }
+  private settleStage(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun,
+    config: AdvancedOptimizationStageConfig, completed: boolean): void {
+    stage.status = completed ? 'completed' : 'stopped';
+    const valid = stage.results.filter(result => result.status === 'completed').length;
+    const actual = stage.promotedCandidateIds.length;
+    const reason = completed && stage.clustering && !valid ? '全部候选已丢弃。'
+      : config.advanceCount !== undefined && actual < config.advanceCount ? '有效收敛结果归簇后的不同代表少于目标晋级数。' : undefined;
+    stage.outcome = { processed: stage.results.length, valid, failed: stage.results.length - valid,
+      target: config.advanceCount ?? stage.inputs?.length ?? 0, actual, ...(reason ? { reason } : {}) };
+    if (stage.clustering) this.publishStageResults(task, run, stage, completed);
+  }
+  private async prepareAdoptedStage(task: AdvancedTaskRecord, stage: AdvancedStageRun): Promise<void> {
+    await this.conformerResultsReady(task, stage.id);
+    await this.releaseAdoptedBatch(stage);
+  }
   private async conformerResultsReady(task:AdvancedTaskRecord,stageId?:string):Promise<void> {
     if(task.conformerWorkflow&&this.deps.onConformerResultsReady){
       // Preparation checks the public task/source/collection identity again
@@ -1457,69 +1623,288 @@ export class AdvancedController {
       startedAt,baselineSucceeded,baselineDiscarded,elapsedMs,etaMs:delta>0?elapsedMs/delta*(stage.inputCandidateIds.length-succeeded-discarded):null,...values};
     const state=task.conformerWorkflow?.stages.find(state=>state.stageRunId===stage.id);if(state)state.progress={...stage.progress};
   }
-  private async executeBatchStage(task:AdvancedTaskRecord,run:AdvancedTaskRun,stage:AdvancedStageRun,inputs:CandidateInput[],method:AdvancedOptimizationMethod):Promise<void> {
-    const bridge=this.deps.conformerBatchBridge!,resources=this.deps.resolveResources?.(),baselineSucceeded=stage.results.filter(row=>row.status==='completed').length,baselineDiscarded=stage.results.length-baselineSucceeded;
-    if(!inputs.length)return;
-    const identity={taskId:task.id,runId:run.id,stageId:stage.id,revision:stage.inputCollectionRevision??0};
-    const {batchId}=await bridge.begin({identity,total:inputs.length,method,resources});stage.batchId=batchId;this.activeBatch={runId:run.id,batchId};
-    const requests=new Map<string,XtbRequest>();let terminalResolve!:(value:import('./batch-contracts').ConformerBatchProgress)=>void;
-    const terminal=new Promise<import('./batch-contracts').ConformerBatchProgress>(resolve=>terminalResolve=resolve);
-    let sequence=-1,adopting=false;
-    const accept=(event:import('./batch-contracts').ConformerBatchProgress)=>{
-      if(event.batchId!==batchId||!same(event.identity,identity)||event.seq<=sequence)return;sequence=event.seq;
-      this.updateStageProgress(task,stage,{succeeded:baselineSucceeded+event.succeeded,discarded:baselineDiscarded+event.discarded,completed:baselineSucceeded+event.succeeded,failed:baselineDiscarded+event.discarded,
-        pending:event.pending,running:event.running,elapsedMs:event.elapsedMs,etaMs:event.etaMs});this.publishProgress();
-      if(event.phase==='stopped')run.status='stopping';
-      if(['completed','stopped','error'].includes(event.phase))terminalResolve(event);
+  private batchIdentity(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun): ConformerBatchIdentity {
+    return { taskId: task.id, runId: run.id, stageId: stage.id, revision: stage.inputCollectionRevision ?? 0 };
+  }
+  private executionCandidate(task:AdvancedTaskRecord,stage:AdvancedStageRun,input:CandidateInput):CandidateInput {
+    const resumeId=stage.resumeFrameIds?.[input.candidateId];
+    if(!resumeId)return input;
+    const frame=this.findFrame(task,resumeId);
+    if(!frame||frame.candidateId!==input.candidateId||frame.kind!=='intermediate')throw Error('继续优化所需的未收敛来源帧已不可用。');
+    return {...input,source:frame.source};
+  }
+  private batchXtbRequest(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun,
+    input: CandidateInput, options: AdvancedXtbOptions, memoryBudgetBytes?: number): XtbRequest {
+    const request = this.request(task, run, input, { ...options, threads: 1, ...(memoryBudgetBytes === undefined ? {} : { memoryBudgetBytes }) });
+    request.optimizationPool = { stageId: stage.id, candidateId: input.candidateId };
+    return request;
+  }
+  private async executeBatchStage(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun,
+    inputs: CandidateInput[], method: AdvancedOptimizationMethod): Promise<void> {
+    if (!inputs.length) return;
+    this.checkRun(task, run);
+    const bridge = this.deps.conformerBatchBridge!, resources = this.deps.resolveResources?.();
+    const identity = this.batchIdentity(task, run, stage);
+    const baselineSucceeded = stage.results.filter(row => row.status === 'completed').length;
+    const baselineDiscarded = stage.results.length - baselineSucceeded;
+    stage.batchCandidateIds = inputs.map(input => input.candidateId);
+    const { batchId } = await bridge.begin({ identity, total: inputs.length, method, resources });
+    stage.batchId = batchId;
+    const active: NonNullable<AdvancedController['activeBatch']> = { runId: run.id, batchId };
+    this.activeBatch = active;
+    let sequence = -1, settled: ConformerBatchProgress | undefined, cleaningUp = false;
+    let finish!: (progress: ConformerBatchProgress) => void;
+    const terminal = new Promise<ConformerBatchProgress>(resolve => { finish = resolve; });
+    const accept = (event: ConformerBatchProgress) => {
+      if (!matchesConformerBatch(event, batchId, identity, inputs.length) || event.seq <= sequence) return;
+      sequence = event.seq;
+      this.updateStageProgress(task, stage, {
+        succeeded: baselineSucceeded + event.succeeded, discarded: baselineDiscarded + event.discarded,
+        completed: baselineSucceeded + event.succeeded, failed: baselineDiscarded + event.discarded,
+        pending: event.pending, running: event.running, elapsedMs: event.elapsedMs, etaMs: event.etaMs,
+      });
+      this.publishProgress();
+      if (event.phase === 'stopped' && !cleaningUp) run.status = 'stopping';
+      if (isConformerBatchTerminal(event)) finish(event);
     };
-    const unsubscribe=bridge.onProgress(accept);
-    try{
-      for(let offset=0;offset<inputs.length;){
-        const packet:import('./batch-contracts').ConformerBatchInput[]=[];let bytes=0;
-        while(offset+packet.length<inputs.length&&packet.length<32){const input=inputs[offset+packet.length];
-          let request:import('./batch-contracts').ConformerBatchInput['request'];
-          if(method.backend==='xtb'){const native=this.request(task,run,input,{...method.options,threads:1,...(resources?{memoryBudgetBytes:resources.effective.memoryBudgetBytes}:{})});native.optimizationPool={stageId:stage.id,candidateId:input.candidateId};requests.set(input.candidateId,native);request={backend:'xtb',request:native};}
-          const entry={...input,originalInput:input.source,...(request?{request}:{})},size=new TextEncoder().encode(JSON.stringify(entry)).length;
-          if(size>8*1024*1024)throw Error('单候选超过后台批注册大小上限。');if(packet.length&&bytes+size>8*1024*1024)break;bytes+=size;packet.push(entry);
+    const commandReceipt = (event: ConformerBatchProgress) => {
+      if (!matchesConformerBatch(event, batchId, identity, inputs.length)) throw new ConformerBatchIntegrityError('后台批回执归属或统计不符。');
+      accept(event);
+      return event;
+    };
+    const unsubscribe = bridge.onProgress(accept);
+    try {
+      const encoder = new TextEncoder(), packetBytes = 8 * 1024 * 1024;
+      for (let offset = 0; offset < inputs.length && !isStopping(run);) {
+        const packet: ConformerBatchInput[] = [];
+        let bytes = 2;
+        while (offset + packet.length < inputs.length && packet.length < 32) {
+          const input = inputs[offset + packet.length];
+          const execution=this.executionCandidate(task,stage,input);
+          // Use the exact representation that the host will execute from
+          // its JSON store. The captured source remains an independent asset.
+          const request = method.backend === 'xtb'
+            ? { backend: 'xtb' as const, request: JSON.parse(JSON.stringify(this.batchXtbRequest(task, run, stage, execution, method.options, resources?.effective.memoryBudgetBytes))) as XtbRequest }
+            : undefined;
+          const entry = { ...execution, originalInput: input.source, ...(request ? { request } : {}) };
+          const size = encoder.encode(JSON.stringify(entry)).length;
+          if (packet.length && bytes + size + 1 > packetBytes) break;
+          bytes += size + (packet.length ? 1 : 0);
+          packet.push(entry);
         }
-        await bridge.upload(batchId,{offset,inputs:packet});offset+=packet.length;
+        const receipt = await bridge.upload(batchId, { offset, inputs: packet });
+        offset += packet.length;
+        if (receipt.received !== offset) throw new ConformerBatchIntegrityError('后台批注册候选数量不符。');
       }
-      await bridge.seal(batchId);accept(isStopping(run)?await bridge.stop(batchId):await bridge.start(batchId));
-      const settled=await terminal;
-      task.usage.nativeJobs+=settled.succeeded+settled.discarded;run.subjobCount+=settled.succeeded+settled.discarded;adopting=true;
-      for(let offset=0;offset<inputs.length;){const page=await bridge.read(batchId,{offset,limit:64});
-        if(page.total!==inputs.length||!page.entries.length||page.entries.length>64||offset+page.entries.length>inputs.length)throw Error('后台批终态分页不完整。');
-        for(const [position,entry] of page.entries.entries()){
-          if(entry.index!==offset+position||entry.candidateId!==inputs[entry.index]?.candidateId||!this.sameInput(inputs[entry.index],{candidateId:entry.candidateId,source:entry.source}))throw Error('后台批终态候选顺序或原始来源不符。');
-          if(entry.status==='pending')continue;
-          if(entry.status!=='succeeded'&&entry.status!=='discarded')throw Error('后台批终态候选状态无效。');
-          const result:AdvancedCalculationResult={candidateId:entry.candidateId,stageId:stage.id,input:entry.source,originalInput:entry.originalInput??entry.source,status:'failed',error:entry.reason?.message??'未收敛候选已丢弃。'};
-          if(entry.status==='succeeded'){
-            if(!entry.result)throw Error('后台成功结果缺少规范终态。');
-            const raw=entry.result,native=requests.get(entry.candidateId);
-            if(raw.resourceGrant&&resources)(run.resourceRequests??=[]).push({stageId:stage.id,candidateId:entry.candidateId,configured:structuredClone(resources),requested:structuredClone(raw.resourceGrant.requested),actualThreads:raw.resourceGrant.threads,actualGrant:structuredClone(raw.resourceGrant)});
-            const structure=native?validateAdvancedXtbResult(native,raw.structure.atoms.map(atom=>({...atom,id:atom.id!})),raw.metadata!,raw.resourceGrant):raw.structure;
-            if(!Number.isFinite(raw.energyHartree)||structure.atoms.length!==entry.source.structure.atoms.length||structure.atoms.some((atom,index)=>atom.id!==entry.source.structure.atoms[index]?.id||atom.element!==entry.source.structure.atoms[index]?.element||![atom.x,atom.y,atom.z].every(Number.isFinite)))throw Error('后台结果缺少有限能量或稳定原子对应。');
-            const frame=this.makeFrame(task,run,stage.id,entry.candidateId,structure,'optimized',entry.source,raw.sessionId,undefined,raw.energyHartree);run.frames.push(frame);
-            Object.assign(result,{status:'completed',error:undefined,frameId:frame.id,energyHartree:raw.energyHartree,metadata:raw.metadata,sessionId:raw.sessionId,
-              identity:raw.identity??{method:native?`${XTB_METHOD_LABELS[native.method]}:${raw.metadata!.version}`:this.methodLabel(method),solvent:native?.solvation?`${native.solvation.model}:${native.solvation.solvent}`:'none',energyKind:native?.method==='gfnff'||method.backend==='forcefield'?'forcefield-potential':'electronic',charge:structure.charge!,multiplicity:structure.multiplicity!,settingsKey:native?JSON.stringify({constraints:native.constraints,frozenAtomIds:native.frozenAtomIds}):undefined}});
+      if (!isStopping(run)) commandReceipt(await bridge.seal(batchId));
+      if (isStopping(run)) {
+        const stopped = commandReceipt(await bridge.stop(batchId));
+        if (stopped.phase !== 'stopped' || stopped.succeeded || stopped.discarded || stopped.running)
+          throw new ConformerBatchIntegrityError('后台批未能确认原生提交前停止。');
+        return;
+      }
+      // Register Stop only after start has been invoked. Before this point the
+      // registration loop owns cancellation, including an outstanding begin.
+      const starting = bridge.start(batchId);
+      let stopping: Promise<ConformerBatchProgress> | undefined;
+      active.stop = () => stopping ??= bridge.stop(batchId).then(commandReceipt);
+      commandReceipt(await starting);
+      settled = await terminal;
+      this.recordBatchTerminal(task, run, stage, settled);
+      await this.adoptBatchResults(task, run, stage, inputs, settled, resources);
+    } catch (error) {
+      if (!settled) {
+        cleaningUp = true;
+        try {
+          const stopped = commandReceipt(await (active.stop?.() ?? bridge.stop(batchId)));
+          if (isConformerBatchTerminal(stopped) && stopped.succeeded + stopped.discarded + stopped.running > 0) {
+            settled = stopped;
+            this.recordBatchTerminal(task, run, stage, settled);
           }
-          stage.results.push(result);run.results.push(result);
+        } catch (stopError) {
+          throw Error(`${message(error)}；后台批停止尚未确认：${message(stopError)}`);
         }
-        offset+=page.entries.length;
       }
-      stage.resultRevision=(stage.resultRevision??0)+1;this.updateStageProgress(task,stage,{running:0,pending:settled.pending,etaMs:settled.pending?null:0});
-      if(settled.phase==='error')throw Error(settled.error?.message??'后台批任务失败。');
-      adopting=false;
-      if(!(await bridge.destroy(batchId)).destroyed)throw Error('规范结果已接管，后台批句柄尚未确认释放。');
-    }catch(error){
-      if(adopting){const reason=`后台规范结果接管失败，已保留规范结果 ${batchId}：${message(error)}`;
-        stage.adoptionError={code:'BATCH_RESULT_ADOPTION_FAILED',batchId,message:reason};stage.resultRevision=(stage.resultRevision??0)+1;
-        stage.status='failed';run.status='running';this.updateStageProgress(task,stage,{running:0,etaMs:null});this.publishStageResults(task,run,stage,false);
-        throw Error(reason);
+      if (!settled) throw error;
+      this.retainBatchAdoptionError(task, run, stage, error);
+      await this.conformerResultsReady(task, stage.id);
+      throw Error(`后台规范结果接管失败，已保留规范结果 ${batchId}：${message(error)}`);
+    } finally {
+      unsubscribe();
+      if (this.activeBatch === active) this.activeBatch = undefined;
+    }
+    if (settled.phase === 'error') {
+      // All readable results are already accepted. Keep the underlying
+      // execution failure and its canonical records as separate evidence.
+      this.publishStageResults(task, run, stage, false);
+      await this.conformerResultsReady(task, stage.id);
+      throw Error(settled.error?.message ?? '后台批任务失败。');
+    }
+  }
+  private recordBatchTerminal(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun, settled: ConformerBatchProgress): void {
+    // Legacy snapshots with an adoption error have already charged their
+    // terminal native jobs. A reload only verifies and adopts their records.
+    if (!stage.batchProgress && !stage.adoptionError) {
+      task.usage.nativeJobs += settled.succeeded + settled.discarded;
+      run.subjobCount += settled.succeeded + settled.discarded;
+    }
+    stage.batchProgress = settled;
+  }
+  private async adoptBatchResults(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun,
+    inputs: readonly CandidateInput[], settled: ConformerBatchProgress, resources = settled.requestedResources): Promise<void> {
+    const inputsById = new Map(inputs.map(input => [input.candidateId, input]));
+    const resultsById = new Map(stage.results.map(result => [result.candidateId, result]));
+    const framesById = new Map(run.frames.map(frame => [frame.id, frame]));
+    const resourceCandidates = new Set(run.resourceRequests?.filter(row => row.stageId === stage.id).map(row => row.candidateId));
+    const method = stage.configuration!.method;
+    let changed = false;
+    try {
+      await readConformerBatch(this.deps.conformerBatchBridge!, settled, inputs.map(input => input.candidateId), entry => {
+        const input = inputsById.get(entry.candidateId)!;
+        const execution=this.executionCandidate(task,stage,input);
+        const existing = resultsById.get(entry.candidateId);
+        const recordedRequest = entry.request?.backend === 'xtb' ? entry.request.request : undefined;
+        const expectedRequest = method.backend === 'xtb' && entry.status !== 'pending'
+          ? this.batchXtbRequest(task, run, stage, execution, method.options, resources?.effective.memoryBudgetBytes ?? recordedRequest?.memoryBudgetBytes)
+          : undefined;
+        const result = validateConformerBatchEntry(entry, execution.source, stage.id, method, expectedRequest, !!resources,input.source);
+        if (existing) {
+          const frame = existing.frameId ? framesById.get(existing.frameId) : undefined;
+          if (!result || existing.status !== result.status || !same(existing.originalInput ?? existing.input, input.source)
+            || (result.structure && (!frame || frame.candidateId !== entry.candidateId || frame.stageId !== stage.id
+              || !same(frame.source.structure.atoms, result.structure!.atoms) || graphFingerprint(frame.source.structure) !== graphFingerprint(result.structure!)
+              || existing.energyHartree !== result.energyHartree || !same(existing.identity, result.identity) || !same(existing.metadata, result.metadata)
+              || !same(existing.forcefieldOptimization,result.forcefieldOptimization))))
+            throw new ConformerBatchIntegrityError('已接管的候选与保留终态不一致。');
+          return;
+        }
+        if (!result) return;
+        const { structure, ...record } = result;
+        if (structure) {
+          const frame = this.makeFrame(task, run, stage.id, entry.candidateId, structure, record.status==='unconverged'?'intermediate':'optimized', execution.source, record.sessionId, undefined, record.energyHartree);
+          run.frames.push(frame);
+          record.frameId = frame.id;
+          const grant = entry.result?.resourceGrant;
+          if (grant && resources && !resourceCandidates.has(entry.candidateId)) {
+            (run.resourceRequests ??= []).push({ stageId: stage.id, candidateId: entry.candidateId,
+              configured: structuredClone(resources), requested: structuredClone(grant.requested), actualThreads: grant.threads, actualGrant: structuredClone(grant) });
+            resourceCandidates.add(entry.candidateId);
+          }
+        }
+        stage.results.push(record);
+        resultsById.set(entry.candidateId, record);
+        changed = true;
+      });
+    } finally {
+      if (changed) {
+        const order = new Map(stage.inputCandidateIds.map((id, ordinal) => [id, ordinal]));
+        stage.results.sort((a, b) => order.get(a.candidateId)! - order.get(b.candidateId)!);
+        const stageFrames = run.frames.filter(frame => frame.stageId === stage.id).sort((a, b) => order.get(a.candidateId)! - order.get(b.candidateId)!);
+        run.frames = [...run.frames.filter(frame => frame.stageId !== stage.id), ...stageFrames];
+        run.results = [...run.results.filter(result => result.stageId !== stage.id), ...stage.results];
+        stage.resultRevision = (stage.resultRevision ?? 0) + 1;
       }
-      throw error;
-    }finally{unsubscribe();if(this.activeBatch?.batchId===batchId)this.activeBatch=undefined;}
+      this.updateStageProgress(task, stage, {
+        running: 0, pending: settled.pending, elapsedMs: settled.elapsedMs, etaMs: settled.pending ? null : 0,
+      });
+    }
+  }
+  private retainBatchAdoptionError(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun, error: unknown): void {
+    const batchId = stage.batchProgress!.batchId;
+    stage.adoptionError = { code: 'BATCH_RESULT_ADOPTION_FAILED', batchId,
+      kind: error instanceof ConformerBatchIntegrityError ? 'integrity' : 'read', message: message(error) };
+    if (stage.status !== 'completed') {
+      stage.status = 'failed';
+      this.publishStageResults(task, run, stage, false);
+    }
+  }
+  private async releaseAdoptedBatch(stage: AdvancedStageRun): Promise<void> {
+    if (!stage.batchId) return;
+    const batchId = stage.batchId;
+    const receipt = await this.deps.conformerBatchBridge!.destroy(batchId);
+    if (!receipt.destroyed) {
+      if (!receipt.retained || receipt.cleanupWarning?.code !== 'CONFORMER_BATCH_CLEANUP_FAILED')
+        throw Error('规范结果已接管，后台批句柄尚未确认释放。');
+      stage.batchCleanupWarning = { batchId, code: 'CONFORMER_BATCH_CLEANUP_FAILED', message: receipt.cleanupWarning.message };
+    } else {
+      delete stage.batchCleanupWarning;
+    }
+    delete stage.batchId;
+    delete stage.batchProgress;
+    delete stage.batchCandidateIds;
+  }
+  private retainedBatchInputs(stage: AdvancedStageRun): CandidateInput[] {
+    const stageInputs = stage.inputs ?? [];
+    const reused = new Set(stage.results.filter(result => result.reusedFromRunId).map(result => result.candidateId));
+    const ids = stage.batchCandidateIds ?? stageInputs.filter(input => !reused.has(input.candidateId)).map(input => input.candidateId);
+    const inputById = new Map(stageInputs.map(input => [input.candidateId, input]));
+    if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => !inputById.has(id) || reused.has(id)))
+      throw new ConformerBatchIntegrityError('当前级缺少可验证的原始注册候选。');
+    return ids.map(id => inputById.get(id)!);
+  }
+  private async ownedRetainedBatch(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun,
+    inputs: readonly CandidateInput[]): Promise<ConformerBatchProgress> {
+    const bridge = this.deps.conformerBatchBridge, batchId = stage.adoptionError?.batchId;
+    if (!bridge || !batchId || !stage.configuration || !terminalStatuses.has(run.status)
+      || task.conformerWorkflow?.stages.find(state => state.stageId === stage.configurationId)?.stageRunId !== stage.id)
+      throw Error('当前级没有归属已确认的保留批。');
+    const progress = await bridge.restore(batchId);
+    const previous = stage.batchProgress;
+    if (!matchesConformerBatch(progress, batchId, this.batchIdentity(task, run, stage), inputs.length)
+      || !isConformerBatchTerminal(progress) || progress.running !== 0
+      || previous && (progress.phase !== previous.phase || progress.succeeded !== previous.succeeded
+        || progress.discarded !== previous.discarded || progress.pending !== previous.pending))
+      throw new ConformerBatchIntegrityError('保留批的来源、归属或终态统计无法核对。');
+    return progress;
+  }
+  async canReloadConformerBatch(taskId: string, runId: string, stageId: string): Promise<boolean> {
+    try {
+      const task = this.task(taskId), run = this.run(task, runId), stage = run.stages.find(row => row.id === stageId);
+      if (this.disposed || !stage || this.busy(task) || this.hasProjectResultContinuation(task,stage)) return false;
+      await this.ownedRetainedBatch(task, run, stage, this.retainedBatchInputs(stage));
+      return !this.disposed && this.tasks.get(taskId) === task && !this.busy(task);
+    } catch { return false; }
+  }
+  isConformerBatchReloading(taskId?: string): boolean { return !!taskId && this.batchReloads.has(taskId); }
+  reloadConformerBatch(taskId: string, runId: string, stageId: string): Promise<void> {
+    const active = this.batchReloads.get(taskId);
+    if (active?.stageId === stageId) return active.completion;
+    const task = this.conformerTask(taskId), run = this.run(task, runId), stage = run.stages.find(row => row.id === stageId);
+    if (!stage) throw Error('保留批所属优化级不存在。');
+    if(this.hasProjectResultContinuation(task,stage))throw Error('本级已显式从项目内结果继续；旧批报错与原始记录保留。');
+    if (!stage.adoptionError) return Promise.resolve();
+    const completion = Promise.resolve().then(async () => {
+      try {
+        const inputs = this.retainedBatchInputs(stage);
+        const progress = await this.ownedRetainedBatch(task, run, stage, inputs);
+        this.recordBatchTerminal(task, run, stage, progress);
+        await this.adoptBatchResults(task, run, stage, inputs, progress);
+        const config = stage.configuration!;
+        if (progress.phase === 'completed') {
+          if (!stage.clustering) await this.clusterStage(task, run, stage, config);
+          this.settleStage(task, run, stage, config, true);
+        } else {
+          stage.status = progress.phase === 'stopped' ? 'stopped' : 'failed';
+          this.publishStageResults(task, run, stage, false);
+        }
+        if (progress.phase === 'error') {
+          await this.conformerResultsReady(task, stage.id);
+        } else {
+          stage.batchId = progress.batchId;
+          await this.prepareAdoptedStage(task, stage);
+        }
+        delete stage.adoptionError;
+        run.error = progress.error?.message;
+        run.status = progress.phase === 'error' ? 'failed' : run.stages.every(row => row.status === 'completed') ? 'completed' : 'stopped';
+      } catch (error) {
+        if (stage.batchProgress) this.retainBatchAdoptionError(task, run, stage, error);
+        else stage.adoptionError = { ...stage.adoptionError!, message: message(error) };
+        throw error;
+      }
+    }).finally(() => { this.batchReloads.delete(taskId); this.publish(); });
+    this.batchReloads.set(taskId, { stageId, completion });
+    this.publish();
+    return completion;
   }
   private promotedInputs(task: AdvancedTaskRecord, stage: AdvancedStageRun): CandidateInput[] {
     return stage.promotedCandidateIds.map(candidateId => {
@@ -1539,7 +1924,7 @@ export class AdvancedController {
     throw new Error('不能恢复缺少谱系的级次输入。');
   }
   private findFrame(task: AdvancedTaskRecord, id: string) { return task.guessFrames.find(f => f.id === id) ?? task.runs.flatMap(r => r.frames).find(f => f.id === id); }
-  private validateRouteOptions(options: { threads: number; maxSteps: number; maxEvaluations: number; maxWallTimeSeconds?: number }, _legacyWallLimit?: number) {
+  private validateRouteOptions(options: { threads: number; maxSteps: number; maxEvaluations: number }) {
     if (![options.threads, options.maxSteps, options.maxEvaluations].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('路径/采样资源必须显式、有限且为有效正值。');
   }
   private reserveRoute(task: AdvancedTaskRecord, run: AdvancedTaskRun, _legacyConfiguredSeconds?: number) {
@@ -1626,7 +2011,7 @@ export class AdvancedController {
       };
       const scienceCombined = scientificStructure(combined);
       const parent = captureAdvancedFrame(scienceCombined, { ...spec.source.ref, taskId: task.id, runId: run.id, stageId: 'aiss', collectionId: `${run.id}:source-pair`, frameId: `${run.id}-source-pair` },
-        { ...spec.source.stamp, graphFingerprint: graphFingerprint(scienceCombined), coordinatesFingerprint: coordinatesFingerprint(scienceCombined), constraintsFingerprint: JSON.stringify({ frozenAtomIds: [], coordinates: [] }) }, `${sourcePair[0].label} + ${sourcePair[1].label}`);
+        { ...spec.source.stamp, graphFingerprint: graphFingerprint(scienceCombined), coordinatesFingerprint: coordinatesFingerprint(scienceCombined), constraintsFingerprint: JSON.stringify({ frozenAtomIds: [], coordinates: [] }) }, `${automaticStem(sourcePair[0].label)}-${automaticStem(sourcePair[1].label)}-model`);
       const retain = (kind: 'docking-screened' | 'docking-refined', data: import('./docking-contracts').AissScreenedPose | import('./docking-contracts').AissRefinedCandidate, index: number) => {
         const structure = scientificStructure(routeStructure(combined, data.coordinates, []));
         assertBuilderStereoPreserved(scienceCombined, structure);
@@ -1727,11 +2112,16 @@ export class AdvancedController {
         const source=captureAdvancedFrame(frame.source.structure,frame.source.ref,{...frame.source.stamp,constraintsFingerprint:JSON.stringify(constraints)},frame.source.label,constraints);
         return{candidateId:frame.candidateId,source:frozen({...source,protection})};
       }
-      const prepared=prepareSamplingOptimization(frame.source.structure,initial.structure,protectedIds);
+      let prepared: ReturnType<typeof prepareSamplingOptimization>;
+      try { prepared=prepareSamplingOptimization(frame.source.structure,initial.structure,protectedIds); }
+      catch (error) {
+        if (!(error instanceof SamplingCandidatePreparationError)) throw error;
+        return { candidateId:frame.candidateId, source:frame.source, preparationError:error.message };
+      }
       const constraints={...structuredClone(frame.source.constraints),enabled:true,frozenAtomIds:protectedIds};
       const source=captureAdvancedFrame(prepared.structure,{...frame.source.ref,stageId:'sampling-initial-restored'},
         {...frame.source.stamp,coordinatesFingerprint:coordinatesFingerprint(prepared.structure),constraintsFingerprint:JSON.stringify(constraints)},
-        frame.source.label+' · 恢复初始核心',constraints);
+        `${automaticStem(frame.source.label)}-initial`,constraints);
       return{candidateId:frame.candidateId,source:frozen({...source,...(protection?{protection}:{}),samplingPreparation:{kind:'rigid-fit-then-exact-core-restore' as const,...(protection?{protection}:{}),
         rawFrame:frame.source.ref,referenceFrame:initial.ref,protectedAtomIds:protectedIds,fitRmsdAngstrom:prepared.fitRmsdAngstrom,
         maxResidualAngstrom:prepared.maxResidualAngstrom,rotationAmbiguous:prepared.rotationAmbiguous}})};
@@ -1740,26 +2130,35 @@ export class AdvancedController {
     options?: AdvancedSamplingTaskOptions): Promise<CandidateInput[]> {
     if (task.spec.kind !== 'sampling') throw new Error('采样任务身份不符。');
     const sampling = options ?? task.spec.sampling;
-    if (effectiveSharedFreezes(source.constraints).coordinates.length) throw new Error('MD采样尚未验证B/A/D动量约束；此卡未执行。');
+    const shared = effectiveSharedFreezes(source.constraints);
+    const nativeMD = getConformerSamplingCapability(sampling).driver === 'native-xtb-md';
+    if (!nativeMD && shared.coordinates.length) throw new Error('所选采样方法不支持 B/A/D 内坐标保护。');
+    const constraints = shared.coordinates.map(row => ({id:row.id,...(row.objectId?{objectId:row.objectId}:{}),type:row.type,
+      atomIds:[...row.atomIds],value:row.value ?? builderCoordinateValue(source.structure,row.type,row.atomIds)}));
+    const {seedMode,seedDraft:_seedDraft,seed:savedSeed,...integration}=withoutDeadline(structuredClone(sampling));
+    if(nativeMD&&sampling.method!=='gxtb'&&seedMode==='explicit'&&(!Number.isInteger(savedSeed)||savedSeed!<0||savedSeed!>NATIVE_CONFORMER_SEED_MAX))
+      throw Error(`随机种子须为 0–${NATIVE_CONFORMER_SEED_MAX} 的整数。`);
+    const seed = sampling.method==='gxtb' ? undefined : nativeMD && (seedMode==='auto'||savedSeed===undefined)
+      ? crypto.getRandomValues(new Uint32Array(1))[0] & NATIVE_CONFORMER_SEED_MAX : savedSeed;
     conformerSamplingBudgetPlan(sampling,source.structure.atoms.length,{
       maxCandidates:task.budget.maxCandidates,maxRetainedFrames:task.budget.maxRetainedFrames-task.usage.retainedFrames,
       maxRetainedCoordinates:task.budget.maxRetainedCoordinates-task.usage.retainedCoordinates});
-    const resources = this.captureResources(run, 'sampling', 'source');
-    const owned = this.reserveRoute(task, run, sampling.maxWallTimeSeconds);
-    if (resources) resources.sessionId = owned.sessionId;
     const frameSpace = Math.min(task.budget.maxRetainedFrames - task.usage.retainedFrames,
       Math.floor((task.budget.maxRetainedCoordinates - task.usage.retainedCoordinates) / source.structure.atoms.length));
     if (frameSpace < 1) throw new Error('本任务没有剩余完整帧保留空间。');
-    const nativeMD = getConformerSamplingCapability(sampling).driver === 'native-xtb-md';
-    const protectedIds = effectiveSharedFreezes(source.constraints).frozenAtomIds;
+    const protectedIds = shared.frozenAtomIds;
     const nativeProtection = sampling.nativeProtection;
+    if(nativeMD&&protectedIds.length===1&&!nativeProtection?.core?.atomIds.includes(protectedIds[0]))throw Error('原生 MD／MTD 的原子组保护至少需要两个不同原子。');
     if (nativeMD && protectedIds.length>1&&protectedIds.some(id => !nativeProtection?.core?.atomIds.includes(id))) throw new Error('原生MD的保护原子需要明确的原子对约束定义，未静默丢弃坐标保护。');
     if(!run.protection)run.protection=resolveConformerProtection(source,{nativeProtection:sampling.nativeProtection,coreProtection:sampling.coreProtection});
-    const request = { ...withoutDeadline(structuredClone(sampling)), schema: 1, stamp: structuredClone(source.stamp), runIdentity: { taskId: task.id, runId: run.id },
+    const resources = this.captureResources(run, 'sampling', 'source');
+    const request = { ...integration, ...(seed===undefined?{}:{seed}), schema: 1, stamp: structuredClone(source.stamp), runIdentity: { taskId: task.id, runId: run.id },
       ...(resources ? resources.requested : {}),
       structure: advancedFrameWorkingCopy(source), charge: source.structure.charge!, uhf: source.structure.multiplicity! - 1,
-      frozenAtomIds: nativeMD ? [] : [...protectedIds], constraints: [],
+      frozenAtomIds: nativeMD ? [] : [...protectedIds], constraints,
       maxFrames: conformerSamplingSchedule(sampling)!.recordCount } as ConformerSamplingRequest;
+    const owned = this.reserveRoute(task, run, sampling.maxWallTimeSeconds);
+    if (resources) resources.sessionId = owned.sessionId;
     run.sampling = { stageEvents: [], biasEvents: [], candidateFrameIds: [], acceptedCompletion: false,
       startedAt: this.now() };
     // OwnedRouteSession checks session/stamp/run/sequence before this callback.
@@ -1825,6 +2224,8 @@ export class AdvancedController {
       }
       if (event.lastFrame) this.retainSamplingFrame(task, run, request, owned.sessionId, event.lastFrame, source);
       if (!protocolError) {
+        if (Array.isArray(event.optionalDiagnostics) && event.optionalDiagnostics.every(item => typeof item === 'string'))
+          (run.sampling.optionalDiagnostics ??= []).push(...event.optionalDiagnostics);
         const observation = applyNativeTemperatureObservations(run.frames, owned.sessionId, request, event.nativeTemperatureObservations);
         if(observation.applied)for(const frame of run.frames)if(frame.sessionId===owned.sessionId)this.assetSnapshots.delete(frame);
         if (observation.diagnostic) (run.sampling.optionalDiagnostics ??= []).push(observation.diagnostic);
@@ -1836,7 +2237,9 @@ export class AdvancedController {
       validateSamplingCompletion(request, event, frames, run.sampling.candidateFrameIds.length);
       if (!same(event.biasHistory, run.sampling.biasEvents.map(e => e.historyEntry))) throw new Error('完成事件与实际偏置历史不一致。');
       run.sampling.acceptedCompletion = true;
-      return this.sampledInputs(task, run);
+      // Mixed cards publish raw candidates here. Core restoration is deferred
+      // until the user starts an optimization stage with its own input policy.
+      return run.mixedSampling?[]:this.sampledInputs(task, run);
     } finally { this.samplingFrameIndex.delete(owned.sessionId); this.activeRoute = undefined; this.publish(); }
   }
   private retainSamplingBias(task:AdvancedTaskRecord,run:AdvancedTaskRun,request:ConformerSamplingRequest,event:Extract<ConformerSamplingEvent,{event:'bias'}>):void {
@@ -1857,7 +2260,7 @@ export class AdvancedController {
     const id = `${task.id}-frame-${++this.frameSerial}`;
     const stamp: DocumentStamp = { ...structuredClone(parent.stamp), graphFingerprint: graphFingerprint(structure), coordinatesFingerprint: coordinatesFingerprint(structure) };
     const capturedSource = captureAdvancedFrame(structure, { ...parent.ref, taskId: task.id, runId: run?.id, stageId,
-      collectionId: `${run?.id ?? task.id}-${stageId}-${kind === 'intermediate' ? candidateId : 'results'}`, frameId: id, ...refPatch }, stamp, parent.label, parent.constraints);
+      collectionId: `${run?.id ?? task.id}-${stageId}-${kind === 'intermediate' ? candidateId : 'results'}`, frameId: id, ...refPatch }, stamp, `${automaticStem(parent.label)}-frame-${this.frameSerial}`, parent.constraints);
     const protection=['sampled-candidate','sampling-trajectory'].includes(kind)?run?.protection??parent.protection:parent.protection;
     const source=parent.samplingPreparation||protection?frozen({...capturedSource,...(parent.samplingPreparation?{samplingPreparation:parent.samplingPreparation}:{}),...(protection?{protection}:{})}):capturedSource;
     const frame: AdvancedResultFrame = { id, taskId: task.id, runId: run?.id, stageId, candidateId, kind, source,
@@ -1877,9 +2280,10 @@ export class AdvancedController {
       runIdentity: { taskId: task.id, runId: run.id }, electronicProperties: singlepoint,
       ...(options.solvation ? { solvation: structuredClone(options.solvation) } : {}),
       ...(options.memoryBudgetBytes !== undefined ? { memoryBudgetBytes: options.memoryBudgetBytes } : {}),
-      charge: structure.charge!, ...(options.method === 'gfnff' ? {} : { uhf: structure.multiplicity! - 1 }),
+      charge: structure.charge!, ...(options.method === 'gfnff' || options.method==='gxtb'&&structure.multiplicity===1 ? {} : { uhf: structure.multiplicity! - 1 }),
       frozenAtomIds, constraints, internalConstraintsConfirmed: !singlepoint && !!constraints.length && options.internalConstraintsConfirmed,
-      threads: options.threads, maxSteps: options.maxSteps, ...(options.maxSccIterations===undefined?{}:{maxSccIterations:options.maxSccIterations}) };
+      threads: options.threads, ...(options.optimizationStepPolicy==='native-default'?{optimizationStepPolicy:options.optimizationStepPolicy}:{maxSteps:options.maxSteps}),
+      ...(options.maxSccIterations===undefined?{}:{maxSccIterations:options.maxSccIterations}) };
   }
   private async calculate(task: AdvancedTaskRecord, run: AdvancedTaskRun, stage: AdvancedStageRun, input: CandidateInput,
     method: AdvancedOptimizationMethod, pooled = false): Promise<AdvancedCalculationResult> {
@@ -1914,19 +2318,20 @@ export class AdvancedController {
         error: job.protocolError ?? event.error?.message ?? event.reason ?? '原生任务没有有效完成。' };
       const structure = validateAdvancedXtbResult(request, event.coordinates!, event.metadata!, event.effectiveResources);
       if (resources) { resources.actualThreads = event.metadata!.threads; resources.actualGrant = structuredClone(event.metadata!.resourceGrant!); }
+      const converged=event.metadata!.converged;
       const frame = this.makeFrame(task, run, stage.id, input.candidateId, structure,
-        request.calculation === 'singlepoint' ? 'singlepoint' : 'optimized', input.source, sessionId, undefined, event.metadata!.energyHartree);
+        request.calculation === 'singlepoint' ? 'singlepoint' : converged?'optimized':'intermediate', input.source, sessionId, undefined, event.metadata!.energyHartree);
       run.frames.push(frame);
-      const result: AdvancedCalculationResult = { candidateId: input.candidateId, stageId: stage.id, status: 'completed',
+      const result: AdvancedCalculationResult = { candidateId: input.candidateId, stageId: stage.id, status: converged?'completed':'unconverged',
         input: input.source, frameId: frame.id, energyHartree: event.metadata!.energyHartree, metadata: structuredClone(event.metadata), sessionId,
-        diagnosticDirectory: event.diagnosticDirectory,
+        diagnosticDirectory: event.diagnosticDirectory,...(converged?{}:{error:'达到最大优化步数，保留未收敛结构与能量。'}),
         identity: { method: `${XTB_METHOD_LABELS[request.method]}:${event.metadata!.version}`, solvent: request.solvation ? `${request.solvation.model}:${request.solvation.solvent}` : 'none',
           energyKind: request.method === 'gfnff' ? 'forcefield-potential' : 'electronic',
-          charge: request.charge, multiplicity: structure.multiplicity!, settingsKey: JSON.stringify({ constraints: request.constraints, frozenAtomIds: request.frozenAtomIds }) } };
-      if (job.observedFrames > 1 && !diagnosticDirectory?.trim()) return { ...result, status: 'failed',
-        error: '优化显示缓存已更新，但完成事件缺少完整原始轨迹目录；最终帧仍保留，未接受为可追溯完成结果。' };
+          charge: request.charge, multiplicity: structure.multiplicity!, settingsKey: JSON.stringify({ constraints: request.constraints, frozenAtomIds: request.frozenAtomIds, runtime:event.metadata!.engineIdentity }) } };
+      if (job.observedFrames > 1 && !diagnosticDirectory?.trim() && !result.metadata!.trajectoryWarning)
+        result.metadata!.trajectoryWarning = { code:'XTB_OPTIMIZATION_CACHE_UNAVAILABLE', message:'已保留最终结构和能量，未取得完整原生优化轨迹。' };
       if (request.calculation === 'singlepoint') {
-        if (!event.electronicArtifacts) { result.error = 'GFN2单点未返回受管电子来源回执。'; result.electronic = undefined; return { ...result, status: 'failed' }; }
+        if (!event.electronicArtifacts) { result.error = 'xTB 单点未返回受管电子来源回执。'; result.electronic = undefined; return { ...result, status: 'failed' }; }
         const pending = { receipt: event.electronicArtifacts, request, sessionId, result };
         this.electronicPending.set(run.id, pending);
         try { await this.deliverElectronic(task, run, pending); }
@@ -1958,10 +2363,10 @@ export class AdvancedController {
         || result.resourceGrant.requested.memoryBudgetBytes !== resources.requested.memoryBudgetBytes
         || result.resourceGrant.threads !== result.effectiveResources?.threads
         || result.resourceGrant.memoryBudgetBytes !== result.effectiveResources?.memoryBudgetBytes)) throw new Error('力场缺少与本次资源请求对应的实际host grant。');
-      if (!result.converged || !Number.isFinite(result.energyHartree) || result.energyKind !== 'forcefield-potential'
+      if (typeof result.converged !== 'boolean' || !Number.isFinite(result.energyHartree) || result.energyKind !== 'forcefield-potential'
         || !result.engine || !result.version || !['MMFF94', 'MMFF94s', 'UFF'].includes(result.forcefield)
         || result.effectiveResources?.threads !== method.threads
-        || method.forcefield !== 'auto' && result.forcefield !== method.forcefield) throw new Error('力场缺少真实收敛、势能或实际方法回执。');
+        || method.forcefield !== 'auto' && result.forcefield !== method.forcefield) throw new Error('力场缺少有限势能或实际方法回执。');
       if (resources) { resources.actualThreads = result.effectiveResources.threads; resources.actualGrant = structuredClone(result.resourceGrant!); }
       const structure = structuredClone(result.structure), original = input.source.structure;
       if (graphFingerprint(structure) !== graphFingerprint(original) || structure.atoms.length !== original.atoms.length
@@ -1971,17 +2376,13 @@ export class AdvancedController {
       for (let i = 0; i < original.atoms.length; i++) if (fixed.has(original.atoms[i].id!)) {
         if (!(['x', 'y', 'z'] as const).every(key => Object.is(original.atoms[i][key], structure.atoms[i][key]))) throw new Error('力场结果改变了固定原子。');
       }
-      for (const row of effectiveSharedFreezes(input.source.constraints).coordinates) {
-        const target = row.value!, actual = builderCoordinateValue(structure, row.type, row.atomIds);
-        const residual = row.type === 'D' ? ((actual - target + 180) % 360 + 360) % 360 - 180 : actual - target;
-        const tolerance = row.type === 'B' ? XTB_INTERNAL_CONSTRAINT_POLICY.bondToleranceAngstrom : XTB_INTERNAL_CONSTRAINT_POLICY.angleToleranceDegree;
-        if (!Number.isFinite(residual) || Math.abs(residual) > tolerance) throw new Error('力场结果冻结内坐标残差未达标。');
-      }
-      assertBuilderStereoPreserved(original, structure);
+      assertAdvancedForcefieldConstraints(original, structure, effectiveSharedFreezes(input.source.constraints).coordinates);
       structure.preparation = undefined;
-      const frame = this.makeFrame(task, run, stage.id, input.candidateId, structure, 'optimized', input.source, sessionId, undefined, result.energyHartree);
+      const frame = this.makeFrame(task, run, stage.id, input.candidateId, structure, result.converged?'optimized':'intermediate', input.source, sessionId, undefined, result.energyHartree);
       run.frames.push(frame);
-      const accepted: AdvancedCalculationResult = { candidateId: input.candidateId, stageId: stage.id, status: 'completed', input: input.source, frameId: frame.id,
+      const accepted: AdvancedCalculationResult = { candidateId: input.candidateId, stageId: stage.id, status: result.converged?'completed':'unconverged', input: input.source, frameId: frame.id,
+        ...(result.optimization ? {forcefieldOptimization:result.optimization} : {}),
+        ...(!result.converged ? {error:'力场优化未收敛，保留实际结构与势能。'} : {}),
         sessionId, energyHartree: result.energyHartree, identity: { method: `${result.engine}:${result.version}:${result.forcefield}`,
           solvent: 'none', energyKind: 'forcefield-potential', charge: structure.charge!, multiplicity: structure.multiplicity!, settingsKey: JSON.stringify({
             energyKind: 'forcefield-potential', actualForcefield: result.forcefield, constraints: effectiveSharedFreezes(input.source.constraints).coordinates, frozenAtomIds: [...fixed],
@@ -2089,6 +2490,7 @@ export class AdvancedController {
     if (this.disposed) return; this.disposed = true;
     for (const item of [...this.queue]) await this.stop(item.taskId, item.runId);
     if (this.activeRun) await this.stop(this.activeRun.task.id, this.activeRun.run.id);
+    await Promise.allSettled([...this.batchReloads.values()].map(reload => reload.completion));
     this.releaseOptimizationCaches([...this.tasks.values()].flatMap(task => task.runs.flatMap(run => run.results.filter(result => result.diagnosticDirectory).flatMap(result => result.sessionId ? [result.sessionId] : []))));
     await this.settleCacheReleases();
     this.unsubscribe?.(); this.unsubscribe = undefined; this.publish();

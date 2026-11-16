@@ -7,6 +7,33 @@ export function fullPrecisionValue(value: number | string | null | undefined): s
   if (value == null || typeof value === 'number' && !Number.isFinite(value)) return '未输出';
   return typeof value === 'number' && value === 0 ? '0' : String(value);
 }
+/** Expand a source decimal token without passing its significant digits through Number. */
+export function decimalEnergyValue(value: number | string | null | undefined): string {
+  const text = fullPrecisionValue(value);
+  const match = text.match(/^([+-]?)((?:\d+(?:\.\d*)?|\.\d+))[eEdD]([+-]?\d+)$/);
+  if (!match) return text;
+  const exponent = Number(match[3]);
+  if (!Number.isSafeInteger(exponent)) return text;
+  const point = match[2].indexOf('.');
+  const digits = match[2].replace('.', '');
+  const position = (point < 0 ? digits.length : point) + exponent;
+  const decimal = position <= 0 ? '0.' + '0'.repeat(-position) + digits
+    : position >= digits.length ? digits + '0'.repeat(position - digits.length)
+    : digits.slice(0, position) + '.' + digits.slice(position);
+  return match[1] + decimal;
+}
+/** Compact status only; plotted coordinates, source tokens and exports retain full precision. */
+export function energySummaryValue(value: number | null | undefined, unit: string): string {
+  if (value == null || !Number.isFinite(value)) return '未输出';
+  const digits = unit === 'hartree' || unit === 'Eh' ? 8 : unit === 'eV' ? 6 : 4;
+  const rounded = value.toFixed(digits);
+  // Preserve tiny nonzero differences in decimal notation instead of displaying a false zero.
+  return decimalEnergyValue(value !== 0 && Number(rounded) === 0 ? value.toPrecision(4) : rounded);
+}
+/** Keep the existing display precision while using calculator-friendly energy notation. */
+export function formatEnergyValue(value: number | string | null | undefined, decimals = DEFAULT_RESULT_DECIMALS): string {
+  return decimalEnergyValue(formatResultValue(value, decimals));
+}
 export function formatResultValue(value: number | string | null | undefined, decimals = DEFAULT_RESULT_DECIMALS): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fullPrecisionValue(value);
   const digits = resultDecimals(decimals), magnitude = Math.abs(value);

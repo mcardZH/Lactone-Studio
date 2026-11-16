@@ -37,7 +37,10 @@ import {
 } from '../../modeling/platform/launch-import';
 import { modelFragmentsFromStructures } from '../../modeling/platform/files';
 import type { WorkspaceModule } from '../../modeling/workspace-contracts';
-import type { createWorkspaceRegistry } from '../../modeling/workspace-registry';
+import {
+  protectedPesDocument,
+  type createWorkspaceRegistry
+} from '../../modeling/workspace-registry';
 import { importWorkspaceItems } from '../../results/import-workspace';
 import { resultFile, type ScientificSourceFile } from '../../results/input-file';
 import type { TrajectoryResult } from '../../results/contracts';
@@ -116,6 +119,10 @@ import {
   type SubmitTaskMode,
   type TaskManageAction
 } from './task-execution';
+import {
+  executeEnvironmentManageAction,
+  normalizeEnvironmentManageParams
+} from './environment-manage';
 import {
   buildExportArtifactPayload,
   executeWavefunctionAnalysis,
@@ -277,7 +284,6 @@ export interface McpCollaborationCallbacks {
     params: {
       method: XtbMethod;
       solvation?: XtbSolvation;
-      maxSteps: number;
       maxCandidates: number;
       pointsPerTorsion: number;
       timeoutSeconds?: number;
@@ -310,6 +316,7 @@ export interface McpCollaborationCallbacks {
       overlay?: McpAnalysisViewportOverlay | null;
     }
   ) => void;
+  isPesObservation?: (documentId: string) => boolean;
 }
 
 export type McpFrontendActionHandler = (
@@ -1056,6 +1063,7 @@ export function createMcpFrontendDispatcher(options: {
 
     if (manageAction === 'close-document') {
       const snapshot = registry.getSnapshot();
+      const beforeDocIds = snapshot.documents.map(doc => doc.id);
       const activeView = snapshot.views.find(view => view.id === snapshot.activeViewId);
       const requestedId = typeof payload.documentId === 'string' ? payload.documentId.trim() : '';
       const requestedLabel = typeof payload.label === 'string' ? payload.label.trim() : '';
@@ -1079,9 +1087,13 @@ export function createMcpFrontendDispatcher(options: {
         const discardUnsaved = payload.discardUnsaved === true;
         const modelDoc = entry.store.getSnapshot();
         const isDirty = Boolean(
-          modelDoc.draft.dirty ||
-          entry.inputDirty?.gaussian ||
-          entry.inputDirty?.orca
+          !entry.result &&
+          !protectedPesDocument(entry) &&
+          (
+            modelDoc.draft.dirty ||
+            entry.inputDirty?.gaussian ||
+            entry.inputDirty?.orca
+          )
         );
         if (isDirty && !discardUnsaved) {
           throw Object.assign(
@@ -1092,13 +1104,28 @@ export function createMcpFrontendDispatcher(options: {
         if (callbacks?.closeDocument) {
           await callbacks.closeDocument(targetId, discardUnsaved);
         } else {
+          if (entry.pesGroup) {
+            throw Object.assign(
+              new Error(`PES document "${entry.label}" (${targetId}) requires the interactive workspace controller to close cleanly`),
+              { code: 'MCP_DOCUMENT_CLOSE_FAILED' }
+            );
+          }
           await registry.closeDocument(targetId, discardUnsaved);
           if (registry.getSnapshot().documents.length === 0) {
             registry.addDocument();
           }
         }
       }
-      await disposeStandaloneAnalysisDoc(targetId);
+      const afterDocIdSet = new Set(registry.getSnapshot().documents.map(doc => doc.id));
+      const closedIds = new Set<string>([targetId]);
+      for (const closedId of beforeDocIds) {
+        if (!afterDocIdSet.has(closedId)) {
+          closedIds.add(closedId);
+        }
+      }
+      for (const closedId of closedIds) {
+        await disposeStandaloneAnalysisDoc(closedId);
+      }
       return {
         action: 'close-document',
         closedDocumentId: targetId,
@@ -1489,6 +1516,14 @@ export function createMcpFrontendDispatcher(options: {
         { code: 'MCP_READ_ONLY_RESULT' }
       );
     }
+    if (protectedPesDocument(entry) || options.getCallbacks?.()?.isPesObservation?.(entry.id)) {
+      throw Object.assign(
+        new Error(
+          `Document "${entry.label}" is a read-only PES observation document (${entry.pesGroup?.kind ?? 'observation'}); continue editing from the active PES workbench or extract a frame before mutating`
+        ),
+        { code: 'MCP_READ_ONLY_RESULT' }
+      );
+    }
     if (access === 'constraints' && !workspaceFreezeEditingAllowed(entry)) {
       throw Object.assign(
         new Error(`Document "${entry.label}" does not allow constraint editing in its current role`),
@@ -1827,12 +1862,16 @@ export function createMcpFrontendDispatcher(options: {
       .map(id => atomIdToIndex.get(id) ?? 0)
       .filter(idx => idx > 0);
 
+    const pesObservation =
+      protectedPesDocument(entry) ||
+      Boolean(options.getCallbacks?.()?.isPesObservation?.(entry.id));
+
     return {
       documentId: entry.id,
       label: entry.label,
       revision: modelDoc.revision,
-      readOnly: Boolean(entry.result || isConformerWorkspaceResult(entry) || modelDoc.analysisBindingId),
-      freezeEditingAllowed: !entry.result && workspaceFreezeEditingAllowed(entry),
+      readOnly: Boolean(entry.result || isConformerWorkspaceResult(entry) || modelDoc.analysisBindingId || pesObservation),
+      freezeEditingAllowed: !entry.result && !pesObservation && workspaceFreezeEditingAllowed(entry),
       formula: computeHillFormula(structure.atoms),
       atomCount: structure.atoms.length,
       bondCount: formattedBonds.length,
@@ -2722,7 +2761,7 @@ export function createMcpFrontendDispatcher(options: {
 
     const snapBefore = registry.getSnapshot();
     const sources = snapBefore.documents
-      .filter(doc => !doc.result && !isConformerWorkspaceResult(doc))
+      .filter(doc => !doc.result && !isConformerWorkspaceResult(doc) && !protectedPesDocument(doc))
       .flatMap(doc => {
         try {
           return [registry.source(doc.id)];
@@ -2834,6 +2873,13 @@ export function createMcpFrontendDispatcher(options: {
       );
     }
 
+    if (calculation === 'conformer-search' && payload.maxSteps !== undefined) {
+      throw Object.assign(
+        new Error('maxSteps is not supported for calculation "conformer-search" (uses xTB native-default optimization step limit)'),
+        { code: 'INVALID_XTB_MAX_STEPS' }
+      );
+    }
+
     const maxSteps = payload.maxSteps === undefined ? 500 : Number(payload.maxSteps);
     if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 5000) {
       throw Object.assign(
@@ -2868,10 +2914,14 @@ export function createMcpFrontendDispatcher(options: {
 
     const solvationModelRaw = payload.solvationModel === undefined
       ? undefined
-      : String(payload.solvationModel).trim();
-    if (solvationModelRaw !== undefined && solvationModelRaw !== 'alpb' && solvationModelRaw !== 'gbsa') {
+      : String(payload.solvationModel).trim().toLowerCase();
+    if (solvationModelRaw !== undefined && solvationModelRaw !== 'alpb') {
       throw Object.assign(
-        new Error('solvationModel must be "alpb" or "gbsa"'),
+        new Error(
+          solvationModelRaw === 'gbsa'
+            ? '当前xTB预优化方法不支持所选溶剂，请选择有效介质（仅支持气相或 ALPB 隐式溶剂模型，不支持 GBSA）。'
+            : 'solvationModel must be "alpb"'
+        ),
         { code: 'INVALID_XTB_SOLVATION' }
       );
     }
@@ -2905,7 +2955,6 @@ export function createMcpFrontendDispatcher(options: {
         ? await liveCallbacks.runConformerSearch(entry.id, {
             method,
             solvation,
-            maxSteps,
             maxCandidates,
             pointsPerTorsion,
             timeoutSeconds
@@ -2918,7 +2967,6 @@ export function createMcpFrontendDispatcher(options: {
             {
               method,
               solvation,
-              maxSteps,
               maxCandidates,
               pointsPerTorsion,
               timeoutSeconds
@@ -3070,7 +3118,7 @@ export function createMcpFrontendDispatcher(options: {
 
     const sources = registry
       .getSnapshot()
-      .documents.filter(doc => !doc.result && !isConformerWorkspaceResult(doc))
+      .documents.filter(doc => !doc.result && !isConformerWorkspaceResult(doc) && !protectedPesDocument(doc))
       .flatMap(doc => {
         try {
           return [registry.source(doc.id)];
@@ -3197,6 +3245,22 @@ export function createMcpFrontendDispatcher(options: {
       trackOperation: options.getCallbacks?.()?.trackTaskOperation
     });
 
+    return {
+      ...outcome,
+      workbench: currentStatusSnapshot(false)
+    };
+  }
+
+  async function handleEnvironmentManage(payload: Record<string, unknown>) {
+    const params = normalizeEnvironmentManageParams(payload);
+    const outcome = await executeEnvironmentManageAction({
+      bridge: resolveTaskBridge(),
+      params
+    });
+    const mutating = ['create', 'update', 'delete', 'check', 'trust-host-key'].includes(params.action);
+    if (mutating && params.openTaskCenter && !resolveEffectiveTaskCenterOpen()) {
+      setTaskCenterOpenSync(true);
+    }
     return {
       ...outcome,
       workbench: currentStatusSnapshot(false)
@@ -4045,8 +4109,14 @@ export function createMcpFrontendDispatcher(options: {
 
     const snapshot = registry.getSnapshot();
     const workspaceInputSources = snapshot.documents
-      .filter(doc => !doc.result)
-      .map(doc => registry.source(doc.id));
+      .filter(doc => !doc.result && !isConformerWorkspaceResult(doc) && !protectedPesDocument(doc))
+      .flatMap(doc => {
+        try {
+          return [registry.source(doc.id)];
+        } catch {
+          return [];
+        }
+      });
 
     if (kind === 'input-script') {
       const { entry } = resolveTargetOrActiveDocument(requestedDocId);
@@ -4302,6 +4372,15 @@ export function createMcpFrontendDispatcher(options: {
 
       if (action === 'frontend.taskManage') {
         const result = await handleTaskManage(payload);
+        return {
+          requestId,
+          ok: true,
+          result
+        };
+      }
+
+      if (action === 'frontend.environmentManage') {
+        const result = await handleEnvironmentManage(payload);
         return {
           requestId,
           ok: true,

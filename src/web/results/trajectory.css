@@ -1,7 +1,7 @@
 .trajectory-workspace { display: flex; flex-direction: column; min-width: 0; min-height: 360px; height: 100%; color: var(--text, #243349); background: var(--panel, #fff); }
 .trajectory-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 8px 12px; border-bottom: 1px solid #dae2eb; font-size: 12px; }
 .trajectory-heading > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28vw; }
-.trajectory-heading > span { color: #67768a; margin-right: auto; }
+.trajectory-heading > span:not(.scientific-image-copy) { color: #67768a; margin-right: auto; }
 .trajectory-workspace button, .trajectory-workspace select { font: inherit; }
 .trajectory-workspace button { cursor: pointer; }
 .trajectory-workspace button:disabled { cursor: default; opacity: .5; }

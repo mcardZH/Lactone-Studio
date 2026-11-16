@@ -5,8 +5,6 @@ const { copyWorkspaceSnapshotJSON, copyWorkspaceCommandJSON } = require('./works
 
 const SCHEMA = 'sciyue-workspace-document';
 const VERSION = 1;
-const MAX_DOCUMENTS = 64;
-const MAX_MEMBERS = 32;
 const COMMAND_TYPES = new Set([
   'model.execute', 'model.select', 'model.undo', 'model.redo', 'model.context', 'model.electronic-state',
   'chemistry.start', 'chemistry.cancel', 'dynamics.start', 'dynamics.command', 'input.draft-update', 'workspace.close-view', 'workspace.viewport-event',
@@ -57,7 +55,7 @@ function validateSnapshot(snapshot, documentId, currentRevision) {
   keys(snapshot, ['schema', 'version', 'document', 'documentEpoch', 'publicationSerial'], ['contexts', 'ui', 'runtime', 'metadata', 'viewport']);
   assert(snapshot.schema === SCHEMA && snapshot.version === VERSION && identity(snapshot.documentEpoch) && revision(snapshot.publicationSerial) && plain(snapshot.document), 'Unsupported workspace snapshot schema');
   const document = snapshot.document;
-  if(snapshot.metadata!==undefined){const metadata=snapshot.metadata;keys(metadata,['label','electronicStateConfirmed','sourceEpoch','inputDirty']);assert(typeof metadata.label==='string'&&metadata.label.length<=512&&typeof metadata.electronicStateConfirmed==='boolean'&&revision(metadata.sourceEpoch),'Invalid workspace document metadata');keys(metadata.inputDirty,['gaussian','orca']);assert(typeof metadata.inputDirty.gaussian==='boolean'&&typeof metadata.inputDirty.orca==='boolean','Invalid workspace input dirty state');}
+  if(snapshot.metadata!==undefined){const metadata=snapshot.metadata;keys(metadata,['label','electronicStateConfirmed','sourceEpoch','inputDirty'],['labelOrigin']);assert(metadata.labelOrigin===undefined||['automatic','manual'].includes(metadata.labelOrigin),'Invalid workspace label origin');assert(typeof metadata.label==='string'&&metadata.label.length<=512&&typeof metadata.electronicStateConfirmed==='boolean'&&revision(metadata.sourceEpoch),'Invalid workspace document metadata');keys(metadata.inputDirty,['gaussian','orca']);assert(typeof metadata.inputDirty.gaussian==='boolean'&&typeof metadata.inputDirty.orca==='boolean','Invalid workspace input dirty state');}
   assert(document.id === documentId && document.revision === currentRevision && plain(document.draft), 'Workspace snapshot identity mismatch');
   // A document replica transports the complete already-authored model. These
   // observed counts validate its records without adding a collection-size cap;
@@ -191,7 +189,7 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
     register(owner, raw) {
       windowActive(owner); const request = snapshotCopy(raw);
       keys(request, ['documentId', 'revision', 'snapshot']);
-      assert(documents.size < MAX_DOCUMENTS && !membershipDocument(owner, request.documentId), 'Workspace document already registered or document limit reached');
+      assert(!membershipDocument(owner, request.documentId), 'Workspace document already registered');
       const snapshot = checkedSnapshot(request);
       const document = { id: request.documentId, owner, revision: request.revision, snapshot, members: new Map([[owner, nonce()]]), pending: null, uncertain: false };
       documents.set(documentKey(owner, document.id), document); return envelope(document, owner);
@@ -200,21 +198,21 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
     join(requester, target, raw) {
       const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce']);
       const document = member(requester, request); windowActive(target);
-      assert(!membershipDocument(target, document.id) && document.members.size < MAX_MEMBERS, 'Workspace membership already exists or limit reached');
+      assert(!membershipDocument(target, document.id), 'Workspace membership already exists');
       document.members.set(target, nonce()); return envelope(document, target);
     },
-    markDetached(owner, target, raw) {
+    markDetached(owner, target, raw, options) {
       const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce']); const document = ownerOnly(owner, request);
       assert(!document.closePending, 'WORKSPACE_CLOSING: 模型正在关闭，请先完成关闭确认。');
       assert(document.detached == null && target !== owner && document.members.has(target), 'Workspace document already detached');
       assertInternalDocumentRemains(document);
-      document.detached = target; placement(document); activate(document);
+      document.detached = target; placement(document); if(options?.activate!==false)activate(document);
       return { windowId: String(target) };
     },
     authorizeDetach(owner, raw) {
       const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce']); const document = ownerOnly(owner, request);
       assert(!document.closePending, 'WORKSPACE_CLOSING: 模型正在关闭，请先完成关闭确认。');
-      assert(document.detached == null && document.members.size < MAX_MEMBERS, 'Workspace document already detached or member limit reached');
+      assert(document.detached == null, 'Workspace document already detached');
       assertInternalDocumentRemains(document);
       return request;
     },
@@ -254,9 +252,10 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
       return { requesterWindowId: String(pending.requester), label: (document.snapshot.metadata?.label || document.snapshot.document.draft.structure.name || '未命名模型').slice(0, 512) };
     },
     authorizeScientificEditConfirmation(owner, raw) {
-      const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce', 'expectedRevision'], ['copyOnly','purpose']);
+      const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce', 'expectedRevision'], ['copyOnly','purpose','problem']);
       assert(request.copyOnly === undefined || typeof request.copyOnly === 'boolean', 'Invalid scientific edit copy-only mode');
       assert(request.purpose === undefined || request.copyOnly === true && request.purpose === 'file-import', 'Invalid scientific edit purpose');
+      assert(request.problem === undefined || string(request.problem, 2048), 'Invalid scientific edit problem');
       const document = ownerOnly(owner, request);
       assert(revision(request.expectedRevision) && request.expectedRevision === document.revision && !document.closePending, 'WORKSPACE_EDIT_STALE: 模型已变化或正在关闭。');
       return { requesterWindowId: String(document.detached ?? document.owner), label: (document.snapshot.metadata?.label || document.snapshot.document.draft.structure.name || '未命名模型').slice(0, 512) };
@@ -344,8 +343,7 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
     },
     authorizeOpen(owner, raw) {
       const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce']);
-      const document = member(owner, request);
-      assert(document.members.size < MAX_MEMBERS, 'Workspace member limit reached');
+      member(owner, request);
       return request;
     },
     detachWindow(owner) {

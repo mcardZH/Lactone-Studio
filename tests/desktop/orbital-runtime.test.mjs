@@ -4,12 +4,18 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { ensureDarwinRuntimeReady } from '../../scripts/native/stage-darwin-runtime.mjs';
 
 const require = createRequire(import.meta.url);
-const { createOrbitalBackendStore, LINUX_DEFAULT_CANDIDATES } = require('../../desktop/orbital-runtime.cjs');
+const {
+  createOrbitalBackendStore,
+  requireBackend,
+  requireSameBackend,
+  LINUX_DEFAULT_CANDIDATES
+} = require('../../desktop/orbital-runtime.cjs');
 const { chemistryRuntime } = require('../../desktop/runtime.cjs');
 const { currentRuntimeEnvironment } = require('../../desktop/current-runtime.cjs');
 
@@ -71,22 +77,28 @@ function createPortablePosixFs() {
     async realpath(target) {
       return resolveVirtualRealpath(target);
     },
-    async lstat(target) {
+    async lstat(target, lstatOptions) {
       const resolved = path.resolve(target);
       if (process.platform === 'win32' && links.has(resolved)) {
         return {
           isDirectory: () => false,
           isFile: () => false,
           isSymbolicLink: () => true,
-          mode: 0o120777,
-          size: 16,
+          mode: lstatOptions?.bigint ? 0o120777n : 0o120777,
+          size: lstatOptions?.bigint ? 16n : 16,
+          dev: lstatOptions?.bigint ? 0n : 0,
+          ino: lstatOptions?.bigint ? 0n : 0,
         };
       }
-      const stat = await fs.lstat(target);
+      const stat = await fs.lstat(target, lstatOptions);
       const overrideMode = modes.get(resolved);
       if (overrideMode !== undefined) {
+        const nextMode =
+          typeof stat.mode === 'bigint'
+            ? (stat.mode & ~0o777n) | BigInt(overrideMode)
+            : (stat.mode & ~0o777) | overrideMode;
         return Object.create(stat, {
-          mode: { value: (stat.mode & ~0o777) | overrideMode, enumerable: true },
+          mode: { value: nextMode, enumerable: true },
         });
       }
       return stat;
@@ -282,8 +294,90 @@ test('createOrbitalBackendStore resolves lowercase multiwfn, skips non-executabl
     assert.equal(fromOptPrefix.configured, true);
     assert.equal(fromOptPrefix.path, canonicalBinary);
 
+    const canonicalStat = await posixFs.lstat(canonicalBinary, { bigint: true });
+    const expectedWorkPrefix =
+      'es-' +
+      createHash('sha256').update(path.resolve(storeRoot)).digest('hex').slice(0, 8) +
+      '-';
+    const expectedProgramIdentity = [
+      canonicalStat.dev ?? 0,
+      canonicalStat.ino ?? 0,
+      canonicalStat.size ?? 0,
+      canonicalStat.mtimeNs ?? BigInt(Math.trunc((canonicalStat.mtimeMs ?? 0) * 1e6)),
+    ].map(String);
+
     const persisted = await store.info();
-    assert.deepEqual(persisted, { configured: true, path: canonicalBinary });
+    assert.deepEqual(persisted, {
+      configured: true,
+      path: canonicalBinary,
+      status: 'ready',
+      workPrefix: expectedWorkPrefix,
+      programIdentity: expectedProgramIdentity,
+    });
+  });
+});
+
+test('createOrbitalBackendStore supports selectWorkDirectory, requireBackend, and requireSameBackend on POSIX', async () => {
+  await withTempDir(async (rawRoot) => {
+    const root = await fs.realpath(rawRoot);
+    const posixFs = createPortablePosixFs();
+    const storeRoot = path.join(root, 'userData');
+    const binDir = path.join(root, 'multiwfn-bin');
+    const workDir = path.join(root, 'work-dir');
+    const altWorkDir = path.join(root, 'work-dir-alt');
+    const altBinDir = path.join(root, 'multiwfn-bin-alt');
+    await fs.mkdir(storeRoot, { recursive: true });
+    await fs.mkdir(binDir, { recursive: true });
+    await fs.mkdir(workDir, { recursive: true });
+    await fs.mkdir(altWorkDir, { recursive: true });
+    await fs.mkdir(altBinDir, { recursive: true });
+
+    const binaryPath = path.join(binDir, 'multiwfn');
+    const altBinaryPath = path.join(altBinDir, 'multiwfn');
+    await posixFs.writeExecutable(binaryPath, '#!/bin/sh\necho Multiwfn\n', 0o755);
+    await posixFs.writeExecutable(altBinaryPath, '#!/bin/sh\necho Multiwfn alt\n', 0o755);
+
+    const store = createOrbitalBackendStore(storeRoot, {
+      platform: 'darwin',
+      env: {},
+      defaultCandidates: [],
+      fs: posixFs,
+    });
+
+    const missingInfo = await store.info();
+    assert.throws(() => requireBackend(missingInfo, 'ORBITAL'), /ORBITAL_BACKEND_MISSING/);
+
+    await store.select(binaryPath);
+    const configured = await store.selectWorkDirectory(workDir);
+    assert.equal(configured.configured, true);
+    assert.equal(configured.status, 'ready');
+    assert.equal(configured.workDirectory, await posixFs.realpath(workDir));
+    assert.equal(configured.workDirectoryIdentity.path, await posixFs.realpath(workDir));
+
+    const readyInfo = requireBackend(configured, 'ORBITAL');
+    assert.equal(readyInfo.path, await posixFs.realpath(binaryPath));
+    const refreshedReadyInfo = await store.info();
+    assert.doesNotThrow(() => requireSameBackend(refreshedReadyInfo, readyInfo, 'ORBITAL'));
+
+    // Switching work directory invalidates requireSameBackend
+    const switchedWork = await store.selectWorkDirectory(altWorkDir);
+    assert.throws(() => requireSameBackend(switchedWork, readyInfo, 'ORBITAL'), /ORBITAL_BACKEND_CHANGED/);
+
+    // Resetting work directory to null succeeds cleanly, and switching binary invalidates requireSameBackend
+    const clearedWork = await store.selectWorkDirectory(null);
+    assert.equal(clearedWork.workDirectory, undefined);
+    assert.equal(clearedWork.workDirectoryIdentity, undefined);
+    const baselineNoWork = requireBackend(clearedWork, 'ORBITAL');
+    const switchedBin = await store.select(altBinaryPath);
+    assert.throws(() => requireSameBackend(switchedBin, baselineNoWork, 'ORBITAL'), /ORBITAL_BACKEND_CHANGED/);
+
+    // Missing work directory marks workDirectoryError and fails requireBackend
+    await store.selectWorkDirectory(workDir);
+    await fs.rm(workDir, { recursive: true, force: true });
+    const brokenWorkInfo = await store.info();
+    assert.equal(brokenWorkInfo.status, 'work-directory-unavailable');
+    assert.ok(brokenWorkInfo.workDirectoryError);
+    assert.throws(() => requireBackend(brokenWorkInfo, 'ORBITAL'), /ORBITAL_WORK_DIRECTORY_UNAVAILABLE/);
   });
 });
 
@@ -399,18 +493,29 @@ test('createOrbitalBackendStore rejects empty/missing paths, non-Multiwfn binari
     await fs.writeFile(winExe, 'MZ-fake', { mode: 0o755 });
     const fakeWinLink = path.join(root, 'Multiwfn.exe');
 
+    const normalizeMockWinPath = target =>
+      process.platform !== 'win32' && typeof target === 'string' && target.startsWith('\\')
+        ? target.replace(/\\/g, '/')
+        : target;
+
     const mockWinFs = {
       ...fs,
-      async lstat(target) {
-        if (path.resolve(target) === path.resolve(fakeWinLink)) {
+      async realpath(target) {
+        return fs.realpath(normalizeMockWinPath(target));
+      },
+      async lstat(target, lstatOptions) {
+        const normalized = normalizeMockWinPath(target);
+        if (path.resolve(normalized) === path.resolve(fakeWinLink)) {
           return {
             isDirectory: () => false,
             isFile: () => false,
             isSymbolicLink: () => true,
-            size: 10,
+            size: lstatOptions?.bigint ? 10n : 10,
+            dev: lstatOptions?.bigint ? 0n : 0,
+            ino: lstatOptions?.bigint ? 0n : 0,
           };
         }
-        return fs.lstat(target);
+        return fs.lstat(normalized, lstatOptions);
       },
     };
 

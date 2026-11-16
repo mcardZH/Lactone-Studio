@@ -1,5 +1,5 @@
-.base-electronic-state-card { padding: 10px 12px; border: 1px solid var(--border, #e1e5e3); border-radius: 9px; }
-.base-electronic-state-card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.base-electronic-state-card.shared-input-card { padding:10px 12px; border:1px solid var(--input-card-border,var(--ui-surface-border,#d8e4db)); border-radius:var(--ui-surface-radius,12px); background:var(--input-card-bg,var(--ui-surface-bg,#fcfdfc)); }
+.base-electronic-state-card .shared-input-card-title { margin:0; font:600 var(--ui-primary-size,16px)/var(--ui-title-line,24px) var(--ui-font-family); }
 .base-electronic-state-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .base-electronic-state-fields .field { margin: 0; font-size: 12px; }
 .base-electronic-state-fields input { min-width: 0; width: 100%; box-sizing: border-box; }

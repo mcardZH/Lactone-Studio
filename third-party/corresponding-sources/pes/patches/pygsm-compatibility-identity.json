@@ -1,0 +1,86 @@
+[
+  {
+    "path": "pyGSM/coordinate_systems/internal_coordinates.py",
+    "upstreamSha256": "ac16b996e8fdc6f95c86488b5fe3b5da802edbebdf1bf12cdb26b4cde300f152",
+    "adaptedSha256": "6a2c7835ba4229a8c3222c15b7daefc0a1036c00bf952bfbbaf90158807e9b5e",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/coordinate_systems/primitive_internals.py",
+    "upstreamSha256": "971ce45cfcc819d8d136cfeb63a2e9081dd5cfa3aa9525e2461b496a51384d40",
+    "adaptedSha256": "ed461099ada1d1512ed0af333d7dffdebc8541d3d417aea8e0480eba8a2f3594",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/coordinate_systems/topology.py",
+    "upstreamSha256": "864b26693133828ec6325a06ae26e2e4fb102fd828bd591de3fa28511f3fa9de",
+    "adaptedSha256": "bd8019204de9ac808cababc492793544e817bee9ebffcd5bcfbf3b5253ebeb47",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/growing_string_methods/gsm.py",
+    "upstreamSha256": "be7868aa6b5cb93fc0fb8d1903f9c00e0c61f2793c22a4140400e2e3896fc595",
+    "adaptedSha256": "4903a69f52112ebfe22f119a99f4c85eddfc84aa41479500a7354703721f6f82",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/growing_string_methods/main_gsm.py",
+    "upstreamSha256": "968c20ddd37044dff8311b510bdb259dc5e68b1e952da9a409a265044f9bbe01",
+    "adaptedSha256": "0620129f988866f22eb126ccb7a0406050d290497ef67b9433ce90f420dd57b7",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/growing_string_methods/se_gsm.py",
+    "upstreamSha256": "cd03f14bcc1b67d05bc649b9adb8d3b7361a167c3e6d1cb16e51598010a07e9e",
+    "adaptedSha256": "3411549fde8adf7537b961abe2ea49b20d237f92601c5118d9f03f5293933f61",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/level_of_theories/base_lot.py",
+    "upstreamSha256": "28fb6e64b518fc97b99d714d63115f53c10b0d42fbdee273d44d6485c9462d6f",
+    "adaptedSha256": "3b6fc02b92064ca54b47f0c0fd2d807ad78a6619b897e2790ed6420a9fa31eb8",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/molecule/molecule.py",
+    "upstreamSha256": "f79a7644f76051ed92156cb9647c1f274a3cdea3a7b809559a56b38afd579e71",
+    "adaptedSha256": "294618e4e91c488128654d0a750f8aa77aa9d561f728ce68a11760339c7506c9",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/optimizers/base_optimizer.py",
+    "upstreamSha256": "e1b91becd3a4bebd0d1b3c1dd0b84e7180c2215b53f0d15c77d0d9015b752a14",
+    "adaptedSha256": "fd254711a5e2213c3ea5ca1b11372604c1db96e66a719e20f3960665764a91a2",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/optimizers/eigenvector_follow.py",
+    "upstreamSha256": "7bce3bacc68dda807640db1019fb61aa4c4d7a770497673c25970ffd8c2c588c",
+    "adaptedSha256": "5c30a05e83a0ccda081a3c7f3b2e33682ed1c6cd66dad1e87b3d90ed0d82542a",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/utilities/manage_xyz.py",
+    "upstreamSha256": "04509e6069c9e0a18ec37f7c33e36f35061a268687fce0c9653640df518f8c79",
+    "adaptedSha256": "9f4df4331ec32a1cfee00e350c4541bea29808dcce59afe2e3c304e8cf4a13aa",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  },
+  {
+    "path": "pyGSM/utilities/math_utils.py",
+    "upstreamSha256": "d3883d046a3f924a083c8906d1c937f87fa979984194c80d021e97e3fbe25eef",
+    "adaptedSha256": "35a62ca302a4296dcb0eab02a6a0260a3814a77658cf7a99bc564b210dcb1e88",
+    "reconstructedFromDeclaredChanges": true,
+    "matchesBaselinePayload": true
+  }
+]

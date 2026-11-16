@@ -2,6 +2,7 @@ import type { BuilderApplyResult, BuilderAssignments } from './builder-draft';
 import type { GaussianSettings, Structure } from './types';
 import { coordinateAtoms, defaultTaskOptions } from './tasks';
 import { isInputLayerDraftForEngine, migrateInputLayerDraft } from './input-layer-capability';
+import {electronicInventorySignature,reconcileElectronicStateAfterInventoryEdit} from './modeling/electronic-state-policy';
 
 const unique = <T,>(values: T[]) => [...new Set(values)];
 const idsFromNumbers = (structure: Structure, numbers: number[]) => unique(numbers.flatMap(number => structure.atoms[number - 1]?.id ? [structure.atoms[number - 1].id!] : []));
@@ -31,7 +32,7 @@ export function captureBuilderAssignments(structure: Structure | null, settings:
   return {
     layers: layers.filter(layer => layer.atomIds.length > 0 || isInputLayerDraftForEngine(layer,'gaussian')).map(migrateInputLayerDraft),
     basis: (settings.mixedBasis?.regions ?? []).filter(region => region.atoms.length > 0).map(region => ({ id: region.id, label: region.name, basis: region.basis, atomIds: idsFromNumbers(structure, region.atoms) })),
-    fragments: options.fragments.flatMap((fragment, index) => fragment.atoms.length ? [{ id: `fragment-${index}`, label: `Fragment ${index + 1}`, charge: fragment.charge, multiplicity: fragment.multiplicity, atomIds: idsFromNumbers(structure, fragment.atoms) }] : []),
+    fragments: options.fragments.flatMap((fragment, index) => fragment.atoms.length ? [{ id: fragment.id??`fragment-${index}`, label: `Fragment ${index + 1}`, charge: fragment.charge, multiplicity: fragment.multiplicity, atomIds: idsFromNumbers(structure, fragment.atoms) }] : []),
     frozenAtomIds: idsFromNumbers(structure, options.frozenAtoms),
   };
 }
@@ -63,10 +64,9 @@ export function builderJobStructure(structure: Structure | null): unknown {
   };
 }
 
-/** Preserve the user's total charge, applying only an explicit formal-charge edit. */
+/** Atom formal charge is independent of the existing model's chosen total q. */
 export function builderCommittedCharge(original: Structure | null, next: Structure, currentCharge: number): number {
-  const total = (structure: Structure | null) => structure?.atoms.reduce((sum, atom) => sum + (atom.formalCharge ?? 0), 0) ?? 0;
-  return currentCharge + total(next) - total(original);
+  return original?currentCharge:next.charge??currentCharge;
 }
 
 /** Numeric Gaussian centers are rebuilt once at commit from the stable editing identities. */
@@ -99,12 +99,20 @@ export function integrateBuilderResult(original: Structure | null, result: Build
   });
   options.frozenAtoms = fromIds(result.assignments.frozenAtomIds);
   options.fragments = options.fragments.map((fragment, index) => {
-    const assignment = result.assignments.fragments.find(entry => entry.id === `fragment-${index}`);
-    return { ...fragment, atoms: assignment ? fromIds(assignment.atomIds) : fragment.atoms.flatMap(number => remap(number) === undefined ? [] : [remap(number)!]),
+    const assignment = result.assignments.fragments.find(entry => entry.id === (fragment.id??`fragment-${index}`));
+    const mapped={ ...fragment, atoms: assignment ? fromIds(assignment.atomIds) : fragment.atoms.flatMap(number => remap(number) === undefined ? [] : [remap(number)!]),
       charge: assignment?.charge ?? fragment.charge, multiplicity: assignment?.multiplicity ?? fragment.multiplicity };
+    const before={atoms:fragment.atoms.flatMap(n=>original?.atoms[n-1]?[original.atoms[n-1]]:[])};
+    const after={atoms:mapped.atoms.map(n=>next.atoms[n-1])};
+    if(electronicInventorySignature(before)!==electronicInventorySignature(after)){
+      const paired=reconcileElectronicStateAfterInventoryEdit(after.atoms,fragment);
+      mapped.charge=paired.charge;mapped.multiplicity=paired.multiplicity;
+    }
+    return mapped;
   });
+  const fragmentState=(structure:Structure|null,fragments:typeof options.fragments)=>JSON.stringify(fragments.map(fragment=>[electronicInventorySignature({atoms:fragment.atoms.flatMap(n=>structure?.atoms[n-1]?[structure.atoms[n-1]]:[])}),fragment.charge,fragment.multiplicity]));
+  if(fragmentState(original,previous.taskOptions?.fragments??[])!==fragmentState(next,options.fragments))options.fragmentStatesConfirmed=false;
   if (materialChanged) {
-    options.fragmentStatesConfirmed = false;
     options.irc = { ...options.irc, confirmed: false };
     options.stable = { ...options.stable, confirmed: false };
   }

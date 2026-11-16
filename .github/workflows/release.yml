@@ -80,7 +80,7 @@ jobs:
           force_no_cache=true \
           node node_modules/electron/install.js
 
-      - name: Install Python 3.12 Scientific Stack & GNU xTB via Micromamba
+      - name: Install Python 3.12 Scientific Stack via Micromamba
         run: |
           HOST_MACHINE="$(uname -m)"
           if [ "${HOST_MACHINE}" = "arm64" ]; then
@@ -108,14 +108,26 @@ jobs:
             spglib \
             tblite \
             tblite-python \
-            threadpoolctl \
-            xtb=6.4.1
+            threadpoolctl
 
-      - name: Stage macOS native Python & xTB runtime into .local
+      - name: Download Official macOS xTB 6.8.0 & Stage Native Runtime into .local
         run: |
+          if [ "${TARGET_ARCH}" = "arm64" ]; then
+            XTB_ARCHIVE_NAME="xtb-6.8.0-macos-arm64-openblas.tar.xz"
+            XTB_ARCHIVE_SHA256="fdbbf60abdc3fdd8bde24bfecba2cb12d23ad4e1c59ba283037f0212ca4a3cc9"
+          else
+            XTB_ARCHIVE_NAME="xtb-6.8.0-macos-x86_64-openblas.tar.xz"
+            XTB_ARCHIVE_SHA256="247c9a58e3c01174dbd4cf905c708b6bf9ed24abcd2cb58b49022951f8ea01d9"
+          fi
+          XTB_ARCHIVE_PATH="${RUNNER_TEMP}/${XTB_ARCHIVE_NAME}"
+          curl -fsSL --retry 5 \
+            "https://github.com/grimme-lab/xtb/releases/download/v6.8.0/${XTB_ARCHIVE_NAME}" \
+            -o "${XTB_ARCHIVE_PATH}"
+          echo "${XTB_ARCHIVE_SHA256}  ${XTB_ARCHIVE_PATH}" | shasum -a 256 -c -
           CONDA_ENV_PATH="${HOME}/lactone-studio-conda-runtime-env"
           node scripts/native/stage-darwin-runtime.mjs \
             --conda-prefix "${CONDA_ENV_PATH}" \
+            --xtb-archive "${XTB_ARCHIVE_PATH}" \
             --platform "darwin-${TARGET_ARCH}" \
             --update-locks
 

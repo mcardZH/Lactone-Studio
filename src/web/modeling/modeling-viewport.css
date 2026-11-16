@@ -1,4 +1,4 @@
-.model-viewport{display:grid;position:relative;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(300px,1fr) auto;min-height:340px;height:100%;width:100%;min-width:0;overflow:hidden;background:#f8fafb;border:1px solid #dce7e1;border-radius:9px;box-sizing:border-box}
+.model-viewport{display:grid;position:relative;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(300px,1fr) auto;min-height:340px;height:100%;width:100%;min-width:0;overflow:hidden;background:var(--ui-workspace-canvas-bg,#f8fafb);border:1px solid var(--ui-surface-border,#dce7e1);border-radius:9px;box-sizing:border-box}
 .model-viewport-stage{position:relative;grid-column:1;grid-row:1;min-width:0;min-height:300px;width:100%;height:100%}
 .model-viewport-canvas,.model-viewport-interaction{position:absolute;inset:0;overflow:hidden}
 .model-viewport-canvas>canvas{width:100%;height:100%}
@@ -18,6 +18,7 @@
 .model-measurement{position:absolute;pointer-events:none;background:transparent;color:#226aca;border:0;padding:1px 2px;font-size:var(--ui-small-size,13px);z-index:3;transform:translate(-50%,-50%);white-space:nowrap}
 .model-measurement-record,.model-workspace button.model-measurement-record,.model-workspace button.model-measurement-record[aria-pressed=true]{position:absolute;z-index:4;transform:translate(-50%,-50%);min-height:0;border:1px solid transparent;border-radius:4px;padding:2px 4px;background:transparent;box-shadow:none;line-height:1.35;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;touch-action:none;text-shadow:0 1px 2px #fff,0 -1px 2px #fff}
 .model-measurement-record:is(:hover,:focus-visible),.model-workspace button.model-measurement-record:is(:hover,:focus-visible):not(:disabled){background:#ffffffe8;border-color:currentColor;outline:1px solid currentColor;outline-offset:1px}.model-measurement-record:disabled{opacity:.55;pointer-events:none}
+.model-coordinate-annotation{pointer-events:none;cursor:default}
 .model-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .model-bond-rope{position:absolute;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;overflow:visible}.model-bond-rope line{stroke:#168bd2;stroke-width:2;stroke-dasharray:6 4;stroke-linecap:round}.model-viewport-interaction[data-gesture=bond-rope]{cursor:crosshair}
 .model-hover-atom,.model-workspace button.model-hover-atom,.model-workspace button.model-hover-atom:is(:hover,:focus-visible){position:absolute;z-index:6;pointer-events:none;min-height:0;padding:2px 5px;border-radius:4px;background:#fffffff0;color:#153846;font:600 13px/1.4 system-ui;border:1px solid #9fb6c1;box-shadow:none;white-space:nowrap}

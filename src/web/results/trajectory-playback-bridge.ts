@@ -11,7 +11,7 @@ export interface TrajectoryPlaybackState {
   fps:number;direction:PlaybackDirection;mode:PlaybackMode;range:TrajectoryRange;endpointPauseMs:number;
   projectionKey?:string;
   collectionIdentity?:PlaybackCollectionIdentity;frameId?:string;targets?:PlaybackCollection['targets'];overlay?:PlaybackOverlayPresentation;
-  preparation?:PreparationSnapshot|null;loading?:boolean;loadCancelled?:boolean;silentLoading?:boolean;
+  preparation?:PreparationSnapshot|null;loading?:boolean;loadCancelled?:boolean;loadFailed?:boolean;silentLoading?:boolean;
 }
 type BaseTrajectoryPlaybackCommand =
   | {action:'play'|'pause'}
@@ -24,7 +24,7 @@ type BaseTrajectoryPlaybackCommand =
 export type PlaybackDisplayCommand={action:'seek-target';kind:'ts'|'ci'}|{action:'overlay-toggle'|'overlay-current-reference'|'center-cancel'}|{action:'overlay-atoms';value:'heavy'|'all'}|{action:'overlay-reference';kind:string}|{action:'overlay-reference-index';index:number};
 export type TrajectoryPlaybackCommand=BaseTrajectoryPlaybackCommand|PlaybackDisplayCommand;
 export type PublicTrajectoryPlaybackCommand=TrajectoryPlaybackCommand;
-export interface TrajectoryPlaybackBridge {state:TrajectoryPlaybackState;dispatch(command:PublicTrajectoryPlaybackCommand):void}
+export interface TrajectoryPlaybackBridge {state:TrajectoryPlaybackState;dispatch(command:PublicTrajectoryPlaybackCommand,intent?:'workflow'):void}
 /** A playback projection maps visible positions to immutable source ordinals. */
 export function trajectoryFrameOrder(count:number,order?:readonly number[]):readonly number[]{
   if(!order)return Array.from({length:count},(_,index)=>index);
@@ -58,6 +58,6 @@ export function playbackOverlayPresentation(value:PlaybackOverlayControlsProps):
 }
 /** IPC snapshots contain data only; callbacks belong to the owning view. */
 export function trajectoryPlaybackState(value:import('./TrajectoryControls').TrajectoryControlsProps):Omit<TrajectoryPlaybackState,'resultId'>{
- const {count,index,playing,busy,disabled=false,fps,direction,mode,range,endpointPauseMs=0,preparation,loading,loadCancelled,silentLoading,targets}=value;
- return{count,index,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,preparation,loading,loadCancelled,silentLoading,targets};
+ const {count,index,playing,busy,disabled=false,fps,direction,mode,range,endpointPauseMs=0,preparation,loading,loadCancelled,loadFailed,silentLoading,targets}=value;
+ return{count,index,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,preparation,loading,loadCancelled,loadFailed,silentLoading,targets};
 }

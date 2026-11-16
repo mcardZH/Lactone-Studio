@@ -47,6 +47,7 @@ export function applyTwoDDisplayOptions(ketcher: Ketcher) {
 			showHydrogenLabels: "Hetero",
 			carbonExplicitly: false,
 			showValenceWarnings: false,
+			absFlagLabel: "",
 			selectionStyle: { fill: "#ffdf5c", stroke: "#d5aa20" },
 			hoverStyle: { fill: "#fff1ac", stroke: "#d5aa20", "stroke-width": 1 },
 			innerHoverStyle: { fill: "none", stroke: "#d5aa20", "stroke-width": 4 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import './shared-input-settings.css';
 import './software-chooser.css';
 
 type SoftwareEngine = 'gaussian' | 'orca';
@@ -9,6 +10,8 @@ export interface SoftwareChoice<Id extends string = string> {
 interface ChoicePresentationProps {
   disabled?: boolean; title?: ReactNode; description?: ReactNode;
   ariaLabel?: string; testId?: string;
+  /** Several categories can share one enclosing width decision. */
+  layoutScope?: 'self' | 'parent';
 }
 export interface SoftwareChooserProps extends ChoicePresentationProps {
   onChoose(engine: SoftwareEngine): void;
@@ -36,9 +39,9 @@ export default function SoftwareChooser<Id extends string>(props: SoftwareChoose
     { id: 'gaussian', symbol: 'G', label: 'Gaussian', description: props.content?.gaussian?.description ?? '分子量子化学输入准备：结构优化、频率、激发态、反应路径与分区设置。', action: props.content?.gaussian?.action, disabled: props.capabilities?.gaussian === false },
     { id: 'orca', symbol: 'O', label: 'ORCA', description: props.content?.orca?.description ?? '分子与反应路径输入准备：优化、光谱相关任务、CI-NEB 与已有多尺度方法。', action: props.content?.orca?.action, disabled: props.capabilities?.orca === false },
   ], props.onChoose);
-  return <section className="software-chooser" aria-label={ariaLabel} data-testid={testId}>
+  return <section className={'software-chooser workflow-choice-picker'+(props.layoutScope==='parent'?'':' workflow-choice-region')} data-choice-kind={'choices' in props?'function':'software'} aria-label={ariaLabel} data-testid={testId}>
     <div className="software-chooser-heading"><h2>{title}</h2><p>{description}</p></div>
-    <div className="software-choice-grid">
+    <div className="software-choice-grid workflow-choice-grid">
       {cards}
       {!('choices' in props) && <><div className="software-choice-card software-choice-pending" aria-label="CP2K 待开发"><span className="software-choice-symbol" aria-hidden="true">C</span><strong>CP2K</strong><span className="software-choice-action">待开发</span></div>
       <div className="software-choice-card software-choice-pending" aria-label="Quantum ESPRESSO 待开发"><span className="software-choice-symbol" aria-hidden="true">Q</span><strong>Quantum ESPRESSO</strong><span className="software-choice-action">待开发</span></div></>}

@@ -63,11 +63,14 @@ export function empiricalFrameBondDisplayStructure(value: EmpiricalFrameBondProj
   const structure = { ...value.structure, bonds: value.sourceBonds.bonds, bondSource: value.sourceBonds.bondSource,
     ...(value.sourceBonds.bondPerceptionIssues?{bondPerceptionIssues:value.sourceBonds.bondPerceptionIssues}:{}) };
   try {
+    const seen=new Set<string>();
     for (const bond of structure.bonds) {
       if (!Number.isSafeInteger(bond.a) || !Number.isSafeInteger(bond.b) || !structure.atoms[bond.a] || !structure.atoms[bond.b]
         || bond.a === bond.b && !bond.image?.some(Boolean)
         || bond.image !== undefined && (!Array.isArray(bond.image) || bond.image.length !== 3 || bond.image.some((n, axis) => !Number.isSafeInteger(n) || n !== 0 && !structure.cell?.pbc[axis]))) return empty();
       validateBondSemantics(bond, structure);
+      const key=JSON.stringify(bond.a<bond.b?[bond.a,bond.b,bond.image??[0,0,0]]:[bond.b,bond.a,(bond.image??[0,0,0]).map(n=>-n)]);
+      if(seen.has(key))return empty();seen.add(key);
     }
     validateBondPerceptionIssues(structure);
     return structure;
@@ -188,7 +191,7 @@ export class EmpiricalFrameBonds {
           stale = current(); if (stale) return projection(stale);
         }
         if (!capabilities?.native || !capabilities.operations.includes('perceive-bonds'))
-          return projection('unavailable', ['当前环境没有原生经验判断能力；当前仅显示原子。']);
+          return projection('unavailable', ['当前环境没有原生经验判断能力；保留当前帧可靠原始连接，缺少时仅显示原子。']);
         // Composite perception derives its graph from coordinates; retain the
         // original graph separately rather than submitting stale file evidence.
         const structure = atomOnly(reference);

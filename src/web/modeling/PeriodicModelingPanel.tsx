@@ -12,10 +12,13 @@ import {
 import { resolveFinitePeriodicFragments } from "../../core/modeling/periodic-modeling";
 import { ScientificDataTable } from "../results/ScientificDataTable";
 import NumericInput from "../NumericInput";
+import { InputSettingsCard, InputSettingsStack } from "../InputSettingsFields";
+import { InputSettingsLayout } from "../InputSettingsLayout";
 import CellEditorPanel, { type CellEditorViewportDraft, type CellEditorPanelState } from "./CellEditorPanel";
 import { candidateSlabGuides } from './slab-preview-presentation';
 import type { StructureTransformEdit } from "../../core/modeling/structure-transform";
 import type { StructureTransformCandidate } from "../../core/modeling/contracts";
+import type { CellEditorRequest } from "../../core/modeling/cell-editor";
 import type {
 	CrystalInspectOperation,
 	CrystalParameters,
@@ -50,6 +53,7 @@ export const periodicModelingTasks: { id: PeriodicModelingTask; title: string }[
 	{ id: "axes", title: "晶胞轴重排" }
 ];
 export interface PeriodicModelingPanelProps extends StructureTransformPanelProps<PeriodicModelingRequest> {
+	onPrepareCell(request: CellEditorRequest): StructureTransformCandidate | Promise<StructureTransformCandidate>;
 	draft?: PeriodicModelingDraft;
 	onDraftChange?(draft: PeriodicModelingDraft): void;
 	onCommitEdit?(candidate: StructureTransformCandidate): void | Promise<void>;
@@ -150,8 +154,6 @@ export function buildPeriodicModelingRequest(
 		const repeat = vector(draft.repeat, "扩胞倍数");
 		if (repeat.some((value) => !Number.isSafeInteger(value) || value < 1))
 			throw new Error("扩胞倍数须为三个正整数。");
-		if (structure.atoms.length * repeat.reduce((a, b) => a * b, 1) > 10000)
-			throw new Error("扩胞原子数超过10000安全上限。");
 		return { type: "supercell", repeat };
 	}
 	if (draft.tab === "slab")
@@ -500,7 +502,7 @@ export default function PeriodicModelingPanel(props: PeriodicModelingPanelProps)
 				</div>
 			) : operation === "cell-editor" ? (
 				<CellEditorPanel key={props.document.id} document={props.document} open={props.open} disabled={props.disabled} embedded={props.embedded}
-					onApply={props.onApply} onClose={props.onClose} onPreviewChange={props.onPreviewChange}
+					onPrepare={props.onPrepareCell} onApply={props.onApply} onClose={props.onClose} onPreviewChange={props.onPreviewChange}
 					onPreviewPresentationChange={props.onPreviewPresentationChange} onCellEditorChange={props.onCellEditorChange}
 					previewActive={props.previewActive} onCommitEdit={props.onCommitEdit} onSaveCheckpoint={props.onSaveCheckpoint} onRestoreCheckpoint={props.onRestoreCheckpoint}
 					draft={props.cellEditorDraft} onDraftChange={props.onCellEditorDraftChange}/>
@@ -631,7 +633,8 @@ export default function PeriodicModelingPanel(props: PeriodicModelingPanelProps)
 							</>
 						)}
 						{operation === "slab" && (
-							<>
+							<InputSettingsLayout className="slab-settings"><InputSettingsStack>
+								<InputSettingsCard title="切面" level="subcard" stack>
 								<div className="structure-transform-row slab-miller-row">
 									{fields("miller", "Miller指数", ["h", "k", "l"])}
 								</div>
@@ -691,7 +694,8 @@ export default function PeriodicModelingPanel(props: PeriodicModelingPanelProps)
 										组原子层 / 周期
 									</p>
 								)}
-								<hr />
+								</InputSettingsCard>
+								<InputSettingsCard title="真空与位置" level="subcard" stack>
 								<div className="structure-transform-row slab-vacuum-row">
 									{input("slabVacuum", "真空层厚度 / Å")}
 								</div>
@@ -727,7 +731,8 @@ export default function PeriodicModelingPanel(props: PeriodicModelingPanelProps)
 									</p>
 								)}
 								{preview.displayCandidate?.structure.cell && <p className="structure-transform-muted">{previewStatus}预览晶胞：{cellParameters(preview.displayCandidate.structure.cell).map((value, index) => `${["a", "b", "c", "α", "β", "γ"][index]} ${value.toFixed(3)}${index < 3 ? " Å" : "°"}`).join(" · ")}</p>}
-							</>
+								</InputSettingsCard>
+							</InputSettingsStack></InputSettingsLayout>
 						)}
 						{operation === "finite-cluster" && (
 							<>

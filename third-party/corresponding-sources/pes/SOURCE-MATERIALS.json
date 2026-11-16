@@ -1,0 +1,224 @@
+{
+  "schema": "ester-release-source-preparation/v1",
+  "version": "2.1.1",
+  "preparedAt": "2026-11-14",
+  "publicDistributionApproved": false,
+  "archives": [
+    {
+      "path": "third-party/corresponding-sources/pes/archives/ZimmermanGroup-pyGSM-1b4d5a5557a6.tar.gz",
+      "bytes": 307561,
+      "sha256": "067db513d7545a551d9e3b80e5f33075117f750066960feb007cd65955242371",
+      "url": "https://codeload.github.com/ZimmermanGroup/pyGSM/tar.gz/1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "originalArchiveUnchanged": true,
+      "component": "ZimmermanGroup/pyGSM",
+      "version": null,
+      "commit": "1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "scope": "current PES dependency"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/sella-2.6.0.tar.gz",
+      "bytes": 182652,
+      "sha256": "7effc2a10f6d43c0bbdff11acb1fe36e16424cd9f01746660e87985662713384",
+      "url": "https://files.pythonhosted.org/packages/d5/e8/4ee9960010ca9156ed794efe249ba071d161411c59e61aa7378ebe11d292/sella-2.6.0.tar.gz",
+      "originalArchiveUnchanged": true,
+      "component": "sella",
+      "version": "2.6.0",
+      "commit": null,
+      "scope": "current PES dependency"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/xtb-v680-source.tar.gz",
+      "bytes": 2035876,
+      "sha256": "d2a2cadf9708b229654e35bec269ecc2120f6e5f0121eb00035661b83eb10a98",
+      "url": "https://codeload.github.com/grimme-lab/xtb/tar.gz/4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "commit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "sourceLayout": "",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/xtb-v680-source/COPYING",
+        "xtb-source-licenses/xtb-v680-source/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/cpx-git.tar.gz",
+      "bytes": 16812719,
+      "sha256": "bd0ee95a0517afc09e5015746bcf38488bf129ac6853eb045428318e11d0dbdd",
+      "url": "https://github.com/grimme-lab/CPCM-X.git",
+      "commit": "e7f894c76d41ee1f703cf6f03e931cbcf046bc7f",
+      "sourceLayout": "subprojects/cpx",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/cpx-git/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/ddx.tar.gz",
+      "bytes": 393644,
+      "sha256": "53840800e9d00aad8d679b059e28892bb81637c313d67d30a55857d09bff6aa3",
+      "url": "https://codeload.github.com/ddsolvation/ddX/tar.gz/4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "commit": "4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "sourceLayout": "subprojects/ddx",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/ddx/LICENSE.txt"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/dftd4-git.tar.gz",
+      "bytes": 505310,
+      "sha256": "4fc76909c5f4a4690e22141e6a9512d70ec2843becb07ccca182e3ea0fb9054e",
+      "url": "https://github.com/dftd4/dftd4.git",
+      "commit": "1107ea7c7c2131719e306fd57a5f4a1579e2577e",
+      "sourceLayout": "subprojects/dftd4",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/dftd4-git/COPYING",
+        "xtb-source-licenses/dftd4-git/COPYING.LESSER",
+        "xtb-source-licenses/dftd4-git/python/COPYING",
+        "xtb-source-licenses/dftd4-git/python/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/jonquil.tar.gz",
+      "bytes": 55494,
+      "sha256": "ebca219d40bd96d61e109f0bfe45b479ddecdc2fcebcd4ea73f772b403af42c0",
+      "url": "https://codeload.github.com/toml-f/jonquil/tar.gz/refs/tags/v0.3.1",
+      "commit": "297fb2c2f7344ce4575e5b61b59da071044149bf",
+      "sourceLayout": "subprojects/jonquil",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/jonquil/LICENSE-Apache",
+        "xtb-source-licenses/jonquil/LICENSE-MIT"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/mctc-lib-git.tar.gz",
+      "bytes": 245901,
+      "sha256": "d284674bc944b2b01832cfa7015e65d089045312b6ec57b84c0ee966c6aae1d6",
+      "url": "https://github.com/grimme-lab/mctc-lib.git",
+      "commit": "aec7f40ccf1b0dceb9156ae6dc6667fd61206916",
+      "sourceLayout": "subprojects/mctc-lib",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/mctc-lib-git/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/mstore.tar.gz",
+      "bytes": 603158,
+      "sha256": "c6743437baedfa900fc23220a00ea308750365262b998c73c3de65f7938bb282",
+      "url": "https://codeload.github.com/grimme-lab/mstore/tar.gz/refs/tags/v0.4.0",
+      "commit": "6a166125738dd2f0edd62afd22c3479d7b8efbeb",
+      "sourceLayout": "subprojects/mstore",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/mstore/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/multicharge-git.tar.gz",
+      "bytes": 80410,
+      "sha256": "933ac2eba580350eb64d627a1a10d76aa27413119396ff81445079fc6fd98e57",
+      "url": "https://github.com/grimme-lab/multicharge.git",
+      "commit": "576f499b49eb57f8c2dc1ba6f7017800f1e332d9",
+      "sourceLayout": "subprojects/multicharge",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/multicharge-git/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/numsa.tar.gz",
+      "bytes": 85343,
+      "sha256": "3257a18a7f98c9cae2bc8e0cbb4f0171d2f94c4592ac0673b7932e0220f31d99",
+      "url": "https://codeload.github.com/grimme-lab/numsa/tar.gz/refs/tags/v0.2.0",
+      "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+      "sourceLayout": "subprojects/numsa",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/numsa/COPYING",
+        "xtb-source-licenses/numsa/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/s-dftd3.tar.gz",
+      "bytes": 764252,
+      "sha256": "4d733eb6dbe8266fcfad67cef31de932a079f7c911f24f4b6efc594cd3d28803",
+      "url": "https://codeload.github.com/dftd3/simple-dftd3/tar.gz/refs/tags/v1.7.0",
+      "commit": "84cb7cddd8d6669c4ecd59b06d53e0d373656239",
+      "sourceLayout": "subprojects/s-dftd3",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/s-dftd3/COPYING",
+        "xtb-source-licenses/s-dftd3/COPYING.LESSER",
+        "xtb-source-licenses/s-dftd3/python/COPYING",
+        "xtb-source-licenses/s-dftd3/python/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/tblite-git.tar.gz",
+      "bytes": 957658,
+      "sha256": "94b3737600a7cf35551baa31b0782c707d5d3202b605b9fdb39b5ea07f786348",
+      "url": "https://github.com/tblite/tblite.git",
+      "commit": "e14351bfafb38a78715d5fb8f18654a149cfbecf",
+      "sourceLayout": "subprojects/tblite",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/tblite-git/COPYING",
+        "xtb-source-licenses/tblite-git/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/test-drive-git.tar.gz",
+      "bytes": 31445,
+      "sha256": "fef4b4e2ef885f2fcbb9e5852f2a23219bdc8290dfce616383c21d92bfc21e7a",
+      "url": "https://github.com/fortran-lang/test-drive.git",
+      "commit": "c506771aefd594e7e372240a8027b3fd06d61264",
+      "sourceLayout": "subprojects/test-drive",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/test-drive-git/LICENSE-Apache",
+        "xtb-source-licenses/test-drive-git/LICENSE-MIT"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/toml-f.tar.gz",
+      "bytes": 453520,
+      "sha256": "faad67f45912e92641c1daa3c5267482df243ee96be916c8b703a5034afe1885",
+      "url": "https://codeload.github.com/toml-f/toml-f/tar.gz/refs/tags/v0.5.1",
+      "commit": "51a26158c6d52bbc59cb482bdd13f00d7fd032a3",
+      "sourceLayout": "subprojects/toml-f",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/toml-f/LICENSE-Apache",
+        "xtb-source-licenses/toml-f/LICENSE-MIT"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/OpenBLAS-0.3.30-source.tar.gz",
+      "bytes": 24699801,
+      "sha256": "27342cff518646afb4c2b976d809102e368957974c250a25ccc965e53063c95d",
+      "url": "https://codeload.github.com/OpenMathLib/OpenBLAS/tar.gz/refs/tags/v0.3.30",
+      "component": "OpenBLAS",
+      "version": "0.3.30",
+      "scope": "source of resident libxtb BLAS dependency",
+      "originalArchiveUnchanged": true
+    }
+  ],
+  "gxtbCorrespondingSource": "Not provided or represented as complete. The next ES public artifacts will not bundle g-xTB; obtaining its corresponding source is no longer a prerequisite of that external-user-supplied route.",
+  "existingReleaseSourceSetToRetain": "Unchanged third-party/corresponding-source-index.json and its referenced archives/build support from the reviewed baseline; validate again against final payload.",
+  "libxtbSourceEvidence": "third-party/corresponding-sources/pes/LIBXTB-SOURCE-AND-RELINK-EVIDENCE.json"
+}

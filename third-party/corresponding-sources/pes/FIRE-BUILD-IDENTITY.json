@@ -1,0 +1,182 @@
+{
+  "schema": "ester-xtb-fire-source-build/v1",
+  "buildId": "4b8c987-ester-fire-limit-gnu132-openblas033",
+  "sourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+  "sources": [
+    {
+      "name": "xtb-v680-source.tar.gz",
+      "destination": "",
+      "source": "https://codeload.github.com/grimme-lab/xtb/tar.gz/4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "commit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "format": "codeload",
+      "sha256": "d2a2cadf9708b229654e35bec269ecc2120f6e5f0121eb00035661b83eb10a98",
+      "bytes": 2035876
+    },
+    {
+      "name": "cpx-git.tar.gz",
+      "destination": "subprojects/cpx",
+      "source": "https://github.com/grimme-lab/CPCM-X.git",
+      "commit": "e7f894c76d41ee1f703cf6f03e931cbcf046bc7f",
+      "format": "git-archive",
+      "sha256": "bd0ee95a0517afc09e5015746bcf38488bf129ac6853eb045428318e11d0dbdd",
+      "bytes": 16812719
+    },
+    {
+      "name": "ddx.tar.gz",
+      "destination": "subprojects/ddx",
+      "source": "https://codeload.github.com/ddsolvation/ddX/tar.gz/4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "commit": "4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "format": "codeload",
+      "sha256": "53840800e9d00aad8d679b059e28892bb81637c313d67d30a55857d09bff6aa3",
+      "bytes": 393644
+    },
+    {
+      "name": "dftd4-git.tar.gz",
+      "destination": "subprojects/dftd4",
+      "source": "https://github.com/dftd4/dftd4.git",
+      "commit": "1107ea7c7c2131719e306fd57a5f4a1579e2577e",
+      "format": "git-archive",
+      "sha256": "4fc76909c5f4a4690e22141e6a9512d70ec2843becb07ccca182e3ea0fb9054e",
+      "bytes": 505310
+    },
+    {
+      "name": "jonquil.tar.gz",
+      "destination": "subprojects/jonquil",
+      "source": "https://codeload.github.com/toml-f/jonquil/tar.gz/refs/tags/v0.3.1",
+      "commit": "297fb2c2f7344ce4575e5b61b59da071044149bf",
+      "format": "codeload",
+      "sha256": "ebca219d40bd96d61e109f0bfe45b479ddecdc2fcebcd4ea73f772b403af42c0",
+      "bytes": 55494
+    },
+    {
+      "name": "mctc-lib-git.tar.gz",
+      "destination": "subprojects/mctc-lib",
+      "source": "https://github.com/grimme-lab/mctc-lib.git",
+      "commit": "aec7f40ccf1b0dceb9156ae6dc6667fd61206916",
+      "format": "git-archive",
+      "sha256": "d284674bc944b2b01832cfa7015e65d089045312b6ec57b84c0ee966c6aae1d6",
+      "bytes": 245901
+    },
+    {
+      "name": "mstore.tar.gz",
+      "destination": "subprojects/mstore",
+      "source": "https://codeload.github.com/grimme-lab/mstore/tar.gz/refs/tags/v0.4.0",
+      "commit": "6a166125738dd2f0edd62afd22c3479d7b8efbeb",
+      "format": "codeload",
+      "sha256": "c6743437baedfa900fc23220a00ea308750365262b998c73c3de65f7938bb282",
+      "bytes": 603158
+    },
+    {
+      "name": "multicharge-git.tar.gz",
+      "destination": "subprojects/multicharge",
+      "source": "https://github.com/grimme-lab/multicharge.git",
+      "commit": "576f499b49eb57f8c2dc1ba6f7017800f1e332d9",
+      "format": "git-archive",
+      "sha256": "933ac2eba580350eb64d627a1a10d76aa27413119396ff81445079fc6fd98e57",
+      "bytes": 80410
+    },
+    {
+      "name": "numsa.tar.gz",
+      "destination": "subprojects/numsa",
+      "source": "https://codeload.github.com/grimme-lab/numsa/tar.gz/refs/tags/v0.2.0",
+      "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+      "format": "codeload",
+      "sha256": "3257a18a7f98c9cae2bc8e0cbb4f0171d2f94c4592ac0673b7932e0220f31d99",
+      "bytes": 85343
+    },
+    {
+      "name": "s-dftd3.tar.gz",
+      "destination": "subprojects/s-dftd3",
+      "source": "https://codeload.github.com/dftd3/simple-dftd3/tar.gz/refs/tags/v1.7.0",
+      "commit": "84cb7cddd8d6669c4ecd59b06d53e0d373656239",
+      "format": "codeload",
+      "sha256": "4d733eb6dbe8266fcfad67cef31de932a079f7c911f24f4b6efc594cd3d28803",
+      "bytes": 764252
+    },
+    {
+      "name": "tblite-git.tar.gz",
+      "destination": "subprojects/tblite",
+      "source": "https://github.com/tblite/tblite.git",
+      "commit": "e14351bfafb38a78715d5fb8f18654a149cfbecf",
+      "format": "git-archive",
+      "sha256": "94b3737600a7cf35551baa31b0782c707d5d3202b605b9fdb39b5ea07f786348",
+      "bytes": 957658
+    },
+    {
+      "name": "test-drive-git.tar.gz",
+      "destination": "subprojects/test-drive",
+      "source": "https://github.com/fortran-lang/test-drive.git",
+      "commit": "c506771aefd594e7e372240a8027b3fd06d61264",
+      "format": "git-archive",
+      "sha256": "fef4b4e2ef885f2fcbb9e5852f2a23219bdc8290dfce616383c21d92bfc21e7a",
+      "bytes": 31445
+    },
+    {
+      "name": "toml-f.tar.gz",
+      "destination": "subprojects/toml-f",
+      "source": "https://codeload.github.com/toml-f/toml-f/tar.gz/refs/tags/v0.5.1",
+      "commit": "51a26158c6d52bbc59cb482bdd13f00d7fd032a3",
+      "format": "codeload",
+      "sha256": "faad67f45912e92641c1daa3c5267482df243ee96be916c8b703a5034afe1885",
+      "bytes": 453520
+    }
+  ],
+  "compiler": {
+    "name": "gfortran",
+    "version": "13.2.0"
+  },
+  "openblas": {
+    "version": "0.3.33",
+    "bytes": 28357632,
+    "name": "openblas.dll",
+    "source": "conda-forge upstream prebuilt runtime previously verified for Ester Studio",
+    "sha256": "ea5706aaa7e88ea76f350faf4181c5e3393817a1ce1cd800501bf3ee21f205e8",
+    "abi": "LP64"
+  },
+  "options": [
+    "--buildtype=release",
+    "--optimization=2",
+    "--default-library=static",
+    "--wrap-mode=nodownload",
+    "-Dlapack=openblas",
+    "-Dtblite=enabled",
+    "-Dtblite:ddx=true",
+    "-Dcpcmx=enabled",
+    "-Dcpx:lapack=openblas",
+    "-Dtblite:lapack=openblas",
+    "-Dddx:lapack=openblas",
+    "-Dbuild_name=4b8c987-ester-fire-limit-gnu132-openblas033"
+  ],
+  "sourceEdits": [
+    {
+      "path": "src/relaxation_engine.f90",
+      "before": {
+        "bytes": 55602,
+        "sha256": "6d7b982b20a1dbc1ac499338b28bf7bc5b4e58afe5c66985d87c03105dea384a"
+      },
+      "after": {
+        "bytes": 55621,
+        "sha256": "7f94adc5938ffe6452bcddbab304f669353f8113126bd41862ed09810e68e1cd"
+      },
+      "kind": "fire-remaining-step-limit"
+    },
+    {
+      "path": "meson.build",
+      "before": {
+        "bytes": 6316,
+        "sha256": "0682906d741dd91eccecf9d48ac1947c4c59a9772ba5d76d39ce979a5c67821f"
+      },
+      "after": {
+        "bytes": 6282,
+        "sha256": "11fb25717b399d2fbaffe85203fb231c467ce52c4a34e5ab0be7ab7efdc7dcfc"
+      },
+      "kind": "build-metadata-only"
+    }
+  ],
+  "executable": {
+    "bytes": 18930680,
+    "sha256": "f417fad161cfb35c09bf4b681b04b398c95f9597140cd9c1d8d6f2ac319eb666"
+  },
+  "peStackReserveBytes": 67108864,
+  "peStackCommitBytes": 4096
+}

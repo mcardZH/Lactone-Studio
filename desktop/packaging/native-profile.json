@@ -18,6 +18,7 @@
     "desktop/chemistry/hybrid_geometry.py",
     "desktop/chemistry/bond_perception.py",
     "desktop/chemistry/orbitals.py",
+    "desktop/chemistry/gxtb_molden.py",
     "desktop/chemistry/orbitals_worker.py",
     "desktop/chemistry/analysis_result_wire.py",
     "desktop/chemistry/wavefunction_analysis.py",

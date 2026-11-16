@@ -1,4 +1,4 @@
-import {fullPrecisionValue} from '../../results/numeric-format';
+import {decimalEnergyValue} from '../../results/numeric-format';
 import type {PostprocessScientificFileDocument} from '../../results/postprocess-document';
 import type {ScientificData} from '../../results/scientific-contracts';
 import {postprocessFileJob} from '../../results/postprocess-sources';
@@ -69,7 +69,7 @@ export function createFilePathPlotSnapshot(document:PostprocessScientificFileDoc
 }
 
 export function filePathPlotProjection(snapshot:FilePathPlotSnapshot) {
-  const energyToken=(row:FilePathPlotSnapshot['nodes'][number])=>row.rawEnergy??fullPrecisionValue(row.energy);
+  const energyToken=(row:FilePathPlotSnapshot['nodes'][number])=>decimalEnergyValue(row.rawEnergy??row.energy);
   const series=[{id:snapshot.reference,label:snapshot.title,points:snapshot.nodes.map(row=>({
     x:row.sourceNode,y:row.energy,
     tooltip:`源节点 ${row.sourceNode}${row.isTs?' · TS':''} · ${energyToken(row)} Eh · 第 ${row.sourceLine} 行`,

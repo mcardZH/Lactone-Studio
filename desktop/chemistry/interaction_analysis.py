@@ -16,7 +16,7 @@ import time
 
 import numpy as np
 from multiwfn_progress import report_progress
-from multiwfn_resources import resolve_resources, _values
+from multiwfn_resources import resolve_resources, _values, require_native_binary_grant
 from orbitals import inspect_wavefunction
 from surface_analysis import (SurfaceError, NativeSurfaceProcess, read_scalar_cube,
                               require_cube_pair, retained_size, number, half_last_digit, NUMBER, MAIN_MENU, BOHR_TO_ANGSTROM, target_grid_dimensions)
@@ -237,6 +237,7 @@ class InteractionAnalysisSession:
             reject('session', 'A bounded session identity is required.')
         self.executable = Path(request['executable']).resolve()
         self.resources, self.settings = resolve_resources(self.executable, **self._resource_args(request.get('resources', {})))
+        require_native_binary_grant(self.resources, request.get('resources', {}))
         self.open_settings_revision = self.resources['settingsRevision']
         if request.get('resources', {}).get('settingsRevision', self.open_settings_revision) != self.open_settings_revision:
             reject('resource-changed', 'The configured settings changed after planning.')
@@ -291,6 +292,8 @@ class InteractionAnalysisSession:
         if not isinstance(grant, dict) or any(type(grant.get(k)) is not int or grant[k] <= 0 for k in ('threads', 'memoryBudgetBytes')):
             reject('resources', 'A current explicit shared Multiwfn resource grant is required.')
         resources, settings = resolve_resources(self.executable, **self._resource_args(grant))
+        require_native_binary_grant(resources, self.resources)
+        require_native_binary_grant(resources, grant)
         if resources['settingsRevision'] != self.open_settings_revision or grant.get('settingsRevision', self.open_settings_revision) != self.open_settings_revision:
             reject('resource-changed', 'Global Multiwfn settings changed after opening; no native work was started.')
         for key in ('sharedReservedBytes', 'configuredMemoryBudgetBytes'):
@@ -327,10 +330,10 @@ class InteractionAnalysisSession:
     def _spawn(self, purpose):
         self._current(); self.stop_native()
         self.work_count += 1
-        work = Path(tempfile.mkdtemp(prefix=purpose + '-', dir=self.root))
+        work = Path(tempfile.mkdtemp(prefix='i-', dir=self.root))
         source = work / ('source.molden' if self.metadata['format'] == 'molden' else 'source.fchk' if self.source['kind'] == 'wavefunction' else 'source.xyz')
         if len(str(source)) >= 240:
-            reject('path', 'The owned native workspace is too long; choose a short owned workspace without changing the scientific source.')
+            reject('path', f'The owned native input path is too long (length={len(str(source))}; native profile requires <240).')
         if self.source['kind'] == 'wavefunction':
             shutil.copyfile(self.source_path, source)
             if hashlib.sha256(source.read_bytes()).hexdigest() != self.metadata['sourceSha256']:

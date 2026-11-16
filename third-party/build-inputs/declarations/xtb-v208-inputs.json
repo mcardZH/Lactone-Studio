@@ -1,0 +1,210 @@
+{
+  "schema": "ester-xtb-v208-inputs/v1",
+  "xtbSourceCommit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+  "official": {
+    "executable": {
+      "sha256": "9e825df458f43e2bb4b48a58a269cc6c40d2228ecc127eb23bd7b87373c8c0a1",
+      "bytes": 53892078
+    },
+    "asset": "https://github.com/grimme-lab/xtb/releases/download/v6.8.0/xtb-6.8.0-windows-x86_64-openblas.zip",
+    "archive": {
+      "sha256": "abd7f74d60908925a7e88a030f83d448253ff4e087451f9b13aeda755eb7b98d",
+      "bytes": 37581809
+    },
+    "release": "6.8.0"
+  },
+  "gxtb": {
+    "archive": {
+      "sha256": "fa6d6491b38d895196e2312c6ce34b74e60cd974f9c01da6c3ee567b3ca41830",
+      "bytes": 35676249
+    },
+    "hostVersion": "6.7.1",
+    "hostCommit": "30c6303",
+    "asset": "https://github.com/grimme-lab/g-xtb/releases/download/v2.0.1/xtb-6.7.1-gxtb-140526-windows-x86_64.zip",
+    "executable": {
+      "sha256": "c2af5f3db91794cc40b5e38712f28f0d24acb9af040abb0bfb627313e926cff6",
+      "bytes": 20142365
+    },
+    "release": "2.0.1",
+    "releaseRepoCommit": "23f81c2db64fa4272c25b86f8776ce862aeb59e2"
+  },
+  "stack64": {
+    "sha256": "c30aab875e388f77b04dedb58dd3a746ae7d3ea46b4f9852680925bf64a0eb98",
+    "bytes": 53892078
+  },
+  "fireSources": [
+    {
+      "name": "xtb-v680-source.tar.gz",
+      "destination": "",
+      "source": "https://codeload.github.com/grimme-lab/xtb/tar.gz/4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "commit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "format": "codeload",
+      "sha256": "d2a2cadf9708b229654e35bec269ecc2120f6e5f0121eb00035661b83eb10a98",
+      "bytes": 2035876
+    },
+    {
+      "name": "cpx-git.tar.gz",
+      "destination": "subprojects/cpx",
+      "source": "https://github.com/grimme-lab/CPCM-X.git",
+      "commit": "e7f894c76d41ee1f703cf6f03e931cbcf046bc7f",
+      "format": "git-archive",
+      "sha256": "bd0ee95a0517afc09e5015746bcf38488bf129ac6853eb045428318e11d0dbdd",
+      "bytes": 16812719
+    },
+    {
+      "name": "ddx.tar.gz",
+      "destination": "subprojects/ddx",
+      "source": "https://codeload.github.com/ddsolvation/ddX/tar.gz/4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "commit": "4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "format": "codeload",
+      "sha256": "53840800e9d00aad8d679b059e28892bb81637c313d67d30a55857d09bff6aa3",
+      "bytes": 393644
+    },
+    {
+      "name": "dftd4-git.tar.gz",
+      "destination": "subprojects/dftd4",
+      "source": "https://github.com/dftd4/dftd4.git",
+      "commit": "1107ea7c7c2131719e306fd57a5f4a1579e2577e",
+      "format": "git-archive",
+      "sha256": "4fc76909c5f4a4690e22141e6a9512d70ec2843becb07ccca182e3ea0fb9054e",
+      "bytes": 505310
+    },
+    {
+      "name": "jonquil.tar.gz",
+      "destination": "subprojects/jonquil",
+      "source": "https://codeload.github.com/toml-f/jonquil/tar.gz/refs/tags/v0.3.1",
+      "commit": "297fb2c2f7344ce4575e5b61b59da071044149bf",
+      "format": "codeload",
+      "sha256": "ebca219d40bd96d61e109f0bfe45b479ddecdc2fcebcd4ea73f772b403af42c0",
+      "bytes": 55494
+    },
+    {
+      "name": "mctc-lib-git.tar.gz",
+      "destination": "subprojects/mctc-lib",
+      "source": "https://github.com/grimme-lab/mctc-lib.git",
+      "commit": "aec7f40ccf1b0dceb9156ae6dc6667fd61206916",
+      "format": "git-archive",
+      "sha256": "d284674bc944b2b01832cfa7015e65d089045312b6ec57b84c0ee966c6aae1d6",
+      "bytes": 245901
+    },
+    {
+      "name": "mstore.tar.gz",
+      "destination": "subprojects/mstore",
+      "source": "https://codeload.github.com/grimme-lab/mstore/tar.gz/refs/tags/v0.4.0",
+      "commit": "6a166125738dd2f0edd62afd22c3479d7b8efbeb",
+      "format": "codeload",
+      "sha256": "c6743437baedfa900fc23220a00ea308750365262b998c73c3de65f7938bb282",
+      "bytes": 603158
+    },
+    {
+      "name": "multicharge-git.tar.gz",
+      "destination": "subprojects/multicharge",
+      "source": "https://github.com/grimme-lab/multicharge.git",
+      "commit": "576f499b49eb57f8c2dc1ba6f7017800f1e332d9",
+      "format": "git-archive",
+      "sha256": "933ac2eba580350eb64d627a1a10d76aa27413119396ff81445079fc6fd98e57",
+      "bytes": 80410
+    },
+    {
+      "name": "numsa.tar.gz",
+      "destination": "subprojects/numsa",
+      "source": "https://codeload.github.com/grimme-lab/numsa/tar.gz/refs/tags/v0.2.0",
+      "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+      "format": "codeload",
+      "sha256": "3257a18a7f98c9cae2bc8e0cbb4f0171d2f94c4592ac0673b7932e0220f31d99",
+      "bytes": 85343
+    },
+    {
+      "name": "s-dftd3.tar.gz",
+      "destination": "subprojects/s-dftd3",
+      "source": "https://codeload.github.com/dftd3/simple-dftd3/tar.gz/refs/tags/v1.7.0",
+      "commit": "84cb7cddd8d6669c4ecd59b06d53e0d373656239",
+      "format": "codeload",
+      "sha256": "4d733eb6dbe8266fcfad67cef31de932a079f7c911f24f4b6efc594cd3d28803",
+      "bytes": 764252
+    },
+    {
+      "name": "tblite-git.tar.gz",
+      "destination": "subprojects/tblite",
+      "source": "https://github.com/tblite/tblite.git",
+      "commit": "e14351bfafb38a78715d5fb8f18654a149cfbecf",
+      "format": "git-archive",
+      "sha256": "94b3737600a7cf35551baa31b0782c707d5d3202b605b9fdb39b5ea07f786348",
+      "bytes": 957658
+    },
+    {
+      "name": "test-drive-git.tar.gz",
+      "destination": "subprojects/test-drive",
+      "source": "https://github.com/fortran-lang/test-drive.git",
+      "commit": "c506771aefd594e7e372240a8027b3fd06d61264",
+      "format": "git-archive",
+      "sha256": "fef4b4e2ef885f2fcbb9e5852f2a23219bdc8290dfce616383c21d92bfc21e7a",
+      "bytes": 31445
+    },
+    {
+      "name": "toml-f.tar.gz",
+      "destination": "subprojects/toml-f",
+      "source": "https://codeload.github.com/toml-f/toml-f/tar.gz/refs/tags/v0.5.1",
+      "commit": "51a26158c6d52bbc59cb482bdd13f00d7fd032a3",
+      "format": "codeload",
+      "sha256": "faad67f45912e92641c1daa3c5267482df243ee96be916c8b703a5034afe1885",
+      "bytes": 453520
+    }
+  ],
+  "fireTools": [
+    {
+      "path": "mingw64/bin/gfortran.exe",
+      "sha256": "9e2d70c5a2f0a9cc13110f5d74c5ef85d82ea7bb071e883d4dc19b0a86537e25",
+      "bytes": 1712654
+    },
+    {
+      "path": "mingw64/bin/gcc.exe",
+      "sha256": "e787d06596871cac79b0caaa443393b0cdc1b7f1e80b43cbc82efcd772b0a5df",
+      "bytes": 1710094
+    },
+    {
+      "path": "mingw64/bin/ninja.exe",
+      "sha256": "558095509b0fbdd81f0f74252b76964603d453ae03222ca3fc5b4baf27bc681a",
+      "bytes": 359438
+    },
+    {
+      "path": "mingw64/bin/ar.exe",
+      "sha256": "98dee1a4bd1572c720f540fa8ee64112d17cddf1f930aaedf2664eb327e7481b",
+      "bytes": 1224206
+    },
+    {
+      "path": "mingw64/bin/strip.exe",
+      "sha256": "8ae6a7d5fc45824b2fd7f806d912acf76e01b0b8d145eaa82607d028a3b53085",
+      "bytes": 1334286
+    },
+    {
+      "path": "mingw64/bin/gendef.exe",
+      "sha256": "a2359845995e4c0f4dc3059c1ef496b2211fa05dfdb07576bff22b9582dd990b",
+      "bytes": 41486
+    },
+    {
+      "path": "mingw64/bin/dlltool.exe",
+      "sha256": "b9c6d44f659372c22a760c58470a5e4da1248e4f923cff4dcf4c975b3feed22e",
+      "bytes": 1255438
+    },
+    {
+      "path": "mingw64/bin/objdump.exe",
+      "sha256": "5f2762fe77b684451ed6467ec7c7584cf24c5148e2ca084d34ff9f07e759461b",
+      "bytes": 2481166
+    },
+    {
+      "path": "meson-1.4.1/mesonbuild/mesonmain.py",
+      "sha256": "f3bbcecb52c426019c73e20693039eb4a7a01268b3abe9edc1200d11c1d34705",
+      "bytes": 13376
+    }
+  ],
+  "fireToolchainArchiveSha256": "87962f039c303764376b6a031edb7d4afab08abc89805c7055fa9dce5e764c9a",
+  "fireOpenblas": {
+    "version": "0.3.33",
+    "bytes": 28357632,
+    "name": "openblas.dll",
+    "source": "conda-forge upstream prebuilt runtime previously verified for Ester Studio",
+    "sha256": "ea5706aaa7e88ea76f350faf4181c5e3393817a1ce1cd800501bf3ee21f205e8",
+    "abi": "LP64"
+  }
+}

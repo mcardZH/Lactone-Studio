@@ -1,4 +1,5 @@
 import type { Structure } from '../../core/types';
+import {builderCoordinateValue} from '../../core/builder-geometry';
 import type { AdvancedPathFrameData, AdvancedPathRequest, AdvancedPathEvent, AdvancedPathScanSettings } from './path-contracts';
 import type { ConformerSamplingFramePayload, ConformerSamplingRequest, ConformerSamplingEvent } from './sampling-contracts';
 import { getConformerSamplingCapability, selectConformerSamplingDriver } from './sampling-contracts';
@@ -90,18 +91,37 @@ export function validatePathCompletion(request: AdvancedPathRequest, event: Extr
   if (event.resultKind === 'ts-candidate' && (!finite(event.curvatureEVPerAngstrom2) || event.lastFrame.role !== 'candidate')) throw new Error('TS搜索缺少候选曲率或候选来源，仍未作鞍点验证。');
   validatePathFrame(request, event.lastFrame);
 }
-function validateNativeSamplingProtection(request: ConformerSamplingRequest,data:ConformerSamplingFramePayload):void {
-  const wanted=request.nativeProtection,evidence=data.nativeMD?.nativeProtection;
-  if(!wanted&&evidence===undefined)return;
+function validateNativeSamplingProtection(request: ConformerSamplingRequest,data:ConformerSamplingFramePayload,structure:Structure):void {
+  const wanted=request.nativeProtection,evidence=data.nativeMD?.nativeProtection,constraints=request.constraints??[];
+  if(!wanted&&!constraints.length&&evidence===undefined)return;
   if(!evidence)throw new Error('原生保护缺少实际定义/单位/原子对应。');
   const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b),near=(a:unknown,b:number)=>finite(a)&&Math.abs(a-b)<=1e-9*Math.max(1,Math.abs(b)),atoms=request.structure.atoms;
   if(wanted?.core){const c=evidence.core,w=wanted.core,indices=w.atomIds.map(id=>atoms.findIndex(a=>a.id===id)+1);
-    if(!c||c.kind!=='pairwise-distance'||!same(c.atomIds,w.atomIds)||!same(c.nativeAtomIndices,indices)||c.forceConstantEVPerAngstrom2!==w.forceConstantEVPerAngstrom2||!near(c.inputForceConstantHartreePerBohr2,w.forceConstantEVPerAngstrom2*.529177210903**2/27.211386024367243)||!near(c.actualPairForceConstantEVPerAngstrom2,w.forceConstantEVPerAngstrom2/(indices.length-1))||c.pairs.length!==indices.length*(indices.length-1)/2)throw new Error('原生核心对距势参数或原子对应不符。');
+    const factor=.529177210903**2/27.211386024367243;
+    if(!c||c.kind!=='pairwise-distance'||!same(c.atomIds,w.atomIds)||!same(c.nativeAtomIndices,indices)||c.forceConstantEVPerAngstrom2!==w.forceConstantEVPerAngstrom2
+      ||!finite(c.inputForceConstantHartreePerBohr2)||Math.abs(c.inputForceConstantHartreePerBohr2-w.forceConstantEVPerAngstrom2*factor)>1e-8
+      ||!near(c.actualPairForceConstantEVPerAngstrom2,c.inputForceConstantHartreePerBohr2/factor/(indices.length-1))||c.pairs.length!==indices.length*(indices.length-1)/2)throw new Error('原生核心对距势参数或原子对应不符。');
     let index=0;for(let i=0;i<indices.length;i++)for(let j=0;j<i;j++){const p=c.pairs[index++],a=atoms[indices[i]-1],b=atoms[indices[j]-1];if(!p||!same(p.atomIds,[w.atomIds[i],w.atomIds[j]])||!same(p.nativeAtomIndices,[indices[i],indices[j]])||!near(p.referenceDistanceAngstrom,Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)))throw new Error('原生核心参考对距与源结构不符。');}
   }else if(evidence.core!==null)throw new Error('未请求原生核心势。');
   if(wanted?.sphere){const s=evidence.sphere,w=wanted.sphere;if(!s||s.kind!=='polynomial'||!same(s.centerAngstrom,w.centerAngstrom)||s.radiusAngstrom!==w.radiusAngstrom||s.exponent!==30||!same(s.nativeCenterBohr,[0,0,0])||!near(s.nativeRadiusBohr,w.radiusAngstrom/.529177210903)||s.energyScaleHartree!==1||s.appliesTo!=='all-atoms')throw new Error('原生30次幂球势的实际定义或单位不符。');
     const penetration=Math.max(0,...data.coordinates.map(a=>Math.hypot(a.x-w.centerAngstrom[0],a.y-w.centerAngstrom[1],a.z-w.centerAngstrom[2])-w.radiusAngstrom));if(!near(data.diagnostics.maxWallPenetrationAngstrom,penetration))throw new Error('原生球势穿透与源坐标不符。');
   }else if(evidence.sphere!==null)throw new Error('未请求原生球势。');
+  const rows=evidence.constraints??[],residuals=data.diagnostics.nativeConstraintResiduals??[];
+  if(rows.length!==constraints.length||residuals.length!==constraints.length)throw new Error('原生 B/A/D 目标或帧残差数量不符。');
+  const delta=(type:string,value:number)=>type==='D'?((value+180)%360+360)%360-180:value;
+  for(const [index,wanted] of constraints.entries()){
+    const row=rows[index],residual=residuals[index],unit=wanted.type==='B'?'angstrom':'degree';
+    const indices=wanted.atomIds.map(id=>atoms.findIndex(atom=>atom.id===id)+1);
+    const actual=builderCoordinateValue(structure,wanted.type,wanted.atomIds);
+    if(!row||!residual||row.id!==wanted.id||residual.id!==wanted.id||row.type!==wanted.type||residual.type!==wanted.type
+      ||row.value!==wanted.value||residual.value!==wanted.value||row.unit!==unit||residual.unit!==unit
+      ||!same(row.atomIds,wanted.atomIds)||!same(row.nativeAtomIndices,indices)||!finite(residual.actual)||!finite(residual.residual)
+      ||Math.abs(delta(wanted.type,residual.actual-actual))>1e-6||Math.abs(residual.residual-Math.abs(delta(wanted.type,actual-wanted.value)))>1e-6)throw new Error('原生 B/A/D 目标、原子对应或帧实际残差不符。');
+  }
+  if(constraints.length||evidence.sharedForceConstantHartreePerBohr2!==undefined){
+    const expected=evidence.core?.inputForceConstantHartreePerBohr2??.5332861530968455;
+    if(!finite(evidence.sharedForceConstantHartreePerBohr2)||Math.abs(evidence.sharedForceConstantHartreePerBohr2-expected)>1e-8)throw new Error('原子组和 B/A/D 缺少共同的原生力常数。');
+  }
   const offset=wanted?.sphere?wanted.sphere.centerAngstrom.map(v=>-v):[0,0,0],transform=evidence.coordinateTransform;if(!transform||transform.kind!==(wanted?.sphere?'translation':'identity')||transform.offsetAngstrom.length!==3||!transform.offsetAngstrom.every((v,i)=>v===offset[i]))throw new Error('原生保护坐标平移及逆变换身份不符。');
 }
 export function validateSamplingFrame(request: ConformerSamplingRequest, data: ConformerSamplingFramePayload): Structure {
@@ -138,15 +158,18 @@ export function validateSamplingFrame(request: ConformerSamplingRequest, data: C
     if (!core || !finite(core.rmsdAngstrom) || core.rmsdAngstrom < 0 || !finite(core.maxResidualAngstrom) || core.maxResidualAngstrom < 0
       || ![0, 1, 2, 3].includes(core.rank) || core.orientationUnique !== (core.rank >= 2)) throw new Error('核心软保护缺少相对几何和旋转退化诊断。');
   }
+  const structure=routeStructure(request.structure, data.coordinates, request.frozenAtomIds ?? []);
   if(native){const evidence=data.nativeMD;
     validateConformerNativeSolvation(request,evidence?.nativeSolvation);
     if(!evidence||evidence.method!==request.method||!evidence.version||!/^[a-f0-9]{64}$/.test(evidence.inputSha256)||evidence.shakeHydrogenBonds!==(request.shakeHydrogenBonds??capability.shakeDefaultEnabled)||!ordinal(evidence.rawIndex)
       ||!['xtb.trj','mdrestart'].includes(evidence.sourceArtifact)||!['pre-step','restart-final'].includes(evidence.frameTiming)||!['half-step','restart','unavailable'].includes(evidence.velocityPhase)||typeof evidence.nativeClosed!=='boolean')throw new Error('原生MD帧缺少真实SHAKE/质量/时间相位及产物来源。');
+    if(request.method==='gxtb'&&(evidence.seedTreatment!=='native-program-random'||evidence.requestedSeed!==undefined||evidence.effectiveSeed!==null)
+      ||evidence.seedTreatment==='native-controlled'&&(evidence.requestedSeed!==request.seed||evidence.effectiveSeed!==request.seed))throw Error('原生采样帧的种子来源不一致。');
     if(request.hydrogenMassAmu===4?evidence.hydrogenMassAmu!==4||evidence.hydrogenMassMode!=='fixed-amu'||evidence.hydrogenMassScaling!==undefined:evidence.hydrogenMassScaling!==1||evidence.hydrogenMassAmu!=null||(evidence.hydrogenMassMode!==undefined&&evidence.hydrogenMassMode!=='natural'))throw new Error('原生MD实际氢质量与请求不一致。');
     if((evidence.sourceArtifact==='mdrestart')!==(evidence.frameTiming==='restart-final'))throw new Error('原生MD产物与时间相位不一致。');
-    if(request.nativeProtection||request.operation==='metadynamics'){if(evidence.energyDefinition!=='native-total-including-sampling-potentials'||data.physicalEnergyEV!==null||data.coreBiasEV!==(request.nativeProtection?.core?null:0)||data.sphereBiasEV!==(request.nativeProtection?.sphere?null:0))throw new Error('原生含势总能不能冒物理能或伪造分项为零。');}
+    if(request.nativeProtection||request.constraints?.length||request.operation==='metadynamics'){if(evidence.energyDefinition!=='native-total-including-sampling-potentials'||data.physicalEnergyEV!==null||data.coreBiasEV!==(request.nativeProtection?.core?null:0)||data.sphereBiasEV!==(request.nativeProtection?.sphere?null:0))throw new Error('原生含势总能不能冒物理能或伪造分项为零。');}
     else if(evidence.energyDefinition!==undefined&&evidence.energyDefinition!=='native-physical-potential')throw new Error('未启用原生保护却声明含势总能。');
-    validateNativeSamplingProtection(request,data);
+    validateNativeSamplingProtection(request,data,structure);
     const finalStep=['md','metadynamics'].includes(request.operation)?Math.round(((request.operation==='metadynamics'?request.metadynamics:request.molecularMD)?.durationFs??50000)/(request.dtFs??2)):0;
     if(evidence.sourceArtifact==='mdrestart'&&(data.step!==finalStep||evidence.nativeClosed!==true||data.physicalEnergyEV!==null||data.sampledPotentialEV!==null||data.kineticEnergyEV!==null||data.temperatureK!==null))throw new Error('原生MD末restart不得挪用另一帧的步数、能量或温度。');
   }
@@ -157,7 +180,6 @@ export function validateSamplingFrame(request: ConformerSamplingRequest, data: C
       || typeof evidence.forceFieldTopologySha256 !== 'string' || !/^[a-f0-9]{64}$/.test(evidence.forceFieldTopologySha256) || evidence.spinTreatment !== 'not-supported'
       || evidence.lastEvaluation?.nativeClosed !== true || !ordinal(evidence.evaluations) || evidence.evaluations < 1) throw new Error('GFN-FF采样缺少实际关闭的原生梯度和固定拓扑证据。');
   }
-  const structure=routeStructure(request.structure, data.coordinates, request.frozenAtomIds ?? []);
   if(!native&&request.shakeHydrogenBonds===true){
     const pairs=(request.structure.bonds??[]).filter(bond=>request.structure.atoms[bond.a].element==='H'||request.structure.atoms[bond.b].element==='H');
     const distance=(atoms:Structure['atoms'],a:number,b:number)=>Math.hypot(atoms[a].x-atoms[b].x,atoms[a].y-atoms[b].y,atoms[a].z-atoms[b].z);
@@ -174,6 +196,8 @@ export function validateSamplingCompletion(request: ConformerSamplingRequest, ev
     || JSON.stringify(event.postSamplingPotentials) !== JSON.stringify({ core: false, metadynamics: false, sphere: false })
     || event.exit?.code !== 0 || event.exit.signal !== null) throw new Error('采样完成数量或后续撤势合同不匹配；候选没有被冒充优化结果。');
   validateSamplingFrame(request, event.lastFrame);
+  if(request.method==='gxtb'&&(event.seed!==undefined||event.seedTreatment!=='native-program-random'||event.effectiveSeed!==null)
+    ||event.seedTreatment==='native-controlled'&&(event.seed!==request.seed||event.effectiveSeed!==request.seed))throw new Error('原生 MD/MTD 有效随机种子与运行请求不一致。');
   if(event.nativeSolvation!==undefined){validateConformerNativeSolvation(request,event.nativeSolvation);if(JSON.stringify(event.nativeSolvation)!==JSON.stringify(event.lastFrame.nativeMD?.nativeSolvation))throw Error('采样终态与末帧原生溶剂回执不一致。');}
   const w=event.thermostatWarning;
   if(w){const target=request.operation==='metadynamics'?request.metadynamics?.temperatureK??300:request.molecularMD?.temperatureK??600;

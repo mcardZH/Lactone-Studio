@@ -1,19 +1,19 @@
-.scientific-table-actions{--scientific-table-font-size:var(--ui-secondary-size,14px);display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px;padding:0;margin:0 0 6px;flex:none;min-width:0;border:0;font:400 var(--scientific-table-font-size)/1.4286 "Segoe UI","Microsoft YaHei",sans-serif;color:var(--ui-control-text,#294454)}
-.scientific-table-actions :is(button,input,select){box-sizing:border-box;font:inherit;min-height:30px;height:max(30px,calc(var(--scientific-table-font-size)*2.1429));border:1px solid var(--ui-control-border,#cadfd1);border-radius:7px;background:var(--ui-control-bg,#fff);color:inherit;padding:3px 8px}
+.scientific-table-actions{--scientific-table-font-size:var(--ui-control-font);display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px;padding:0;margin:0 0 8px;flex:none;min-width:0;border:0;font:400 var(--scientific-table-font-size)/var(--ui-control-line) var(--ui-font-family);color:var(--ui-control-ink)}
+.scientific-table-actions :is(button,input,select){box-sizing:border-box;font:inherit;min-height:var(--ui-control-height);height:auto;border:1px solid var(--ui-control-border);border-radius:var(--ui-control-radius);background:var(--ui-control-bg);color:inherit;padding:var(--ui-control-padding)}
 .scientific-table-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;cursor:pointer}
 .scientific-table-actions .scientific-table-tool{width:max(66px,calc(var(--scientific-table-font-size)*4.7143));padding:3px 6px;white-space:nowrap}
 .scientific-table-actions :is(.scientific-table-format,.scientific-table-sort){display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.scientific-table-actions .scientific-table-sort{flex-wrap:nowrap;min-width:0;max-width:100%}
+.scientific-table-actions .scientific-table-sort{min-width:0;max-width:100%}
 .scientific-table-actions .scientific-table-sort label{flex:1 1 auto;min-width:0}
 .scientific-table-actions .scientific-table-sort select{min-width:0;max-width:100%;width:auto}
 .scientific-table-actions .scientific-table-sort label select{flex:1 1 auto;min-width:3em}
 .scientific-table-actions .scientific-table-sort>select{flex:0 0 auto;width:4.5em}
-.scientific-table-actions label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.scientific-table-actions .scientific-table-format input[type=number]{width:64px;min-width:64px}
-.scientific-table-actions .scientific-table-format input:disabled{width:88px;min-width:88px}
-.scientific-table-actions .scientific-table-format select{min-width:64px;width:auto}
-.scientific-table-actions :disabled{opacity:1;color:var(--ui-control-muted,#72857c);background:#f4f7f5;cursor:default}
-.scientific-table-actions :is(button,input,select):focus-visible{outline:2px solid #76ad94;outline-offset:1px}
+.scientific-table-actions label{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:100%;min-width:0;color:var(--ui-label-ink,#506b75)}
+.scientific-table-actions :is(button,input,select){color:var(--ui-field-ink,#3c5763)}
+.scientific-table-actions .scientific-table-format input[type=number]{width:calc(5ch + 18px);min-width:0;max-width:100%}
+.scientific-table-actions .scientific-table-format select{min-width:min(100%,calc(8ch + 18px + 24px * var(--ui-font-scale,1)));width:auto}
+.scientific-table-actions :disabled{opacity:1;color:var(--ui-action-disabled-ink);background:var(--ui-action-disabled-bg);border-color:var(--ui-action-disabled-border);cursor:default}
+.scientific-table-actions :is(button,input,select):focus-visible{outline:2px solid var(--ui-control-focus);outline-offset:2px}
 .scientific-table-actions>.scientific-table-parameters,.scientific-table-actions>.scientific-table-layout-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;min-width:0}
 .scientific-table-actions>.scientific-table-parameters:empty{display:none}
 .scientific-table-actions .scientific-table-tool{width:auto;min-width:66px}
@@ -21,10 +21,10 @@
 /* Real, permanently occupied tracks on each actual scroll host. The fixed
    Chromium rail size also keeps a fitted numeric table from acquiring a false
    horizontal range solely because its vertical rail was added. */
-:is(.scientific-table-viewport,.orbital-channel-scroll)::-webkit-scrollbar{width:12px;height:12px}
-:is(.scientific-table-viewport,.orbital-channel-scroll)::-webkit-scrollbar-track{background:#eef3ef;border-radius:6px}
-:is(.scientific-table-viewport,.orbital-channel-scroll)::-webkit-scrollbar-thumb{background:#b4c8bb;border:3px solid #eef3ef;border-radius:6px}
-:is(.scientific-table-viewport,.orbital-channel-scroll)::-webkit-scrollbar-corner{background:#eef3ef}
+:is(.scientific-table-viewport,.orbital-channel-scroll,.orbital-shared-scroll)::-webkit-scrollbar{width:12px;height:12px}
+:is(.scientific-table-viewport,.orbital-channel-scroll,.orbital-shared-scroll)::-webkit-scrollbar-track{background:#f5f7f6;border-radius:6px}
+:is(.scientific-table-viewport,.orbital-channel-scroll,.orbital-shared-scroll)::-webkit-scrollbar-thumb{background:#a9b9b0;border:3px solid #f5f7f6;border-radius:6px}
+:is(.scientific-table-viewport,.orbital-channel-scroll,.orbital-shared-scroll)::-webkit-scrollbar-corner{background:#f5f7f6}
 .scientific-table-resizer{position:absolute;display:block;touch-action:none;z-index:2}
 .scientific-table-resizer-left,.scientific-table-resizer-right{width:6px;top:3px;bottom:3px;cursor:ew-resize}
 .scientific-table-resizer-left{left:0}.scientific-table-resizer-right{right:0}
@@ -32,3 +32,9 @@
 .scientific-table-resizer-top{top:0}.scientific-table-resizer-bottom{bottom:0}
 .scientific-table-resizer-corner{right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize}
 .scientific-table-resizer-corner::before{content:'';position:absolute;inset:3px;border-right:2px solid #61967c;border-bottom:2px solid #61967c;opacity:.75}
+.scientific-data-table thead {
+  background-color:var(--ui-table-header-bg);
+}
+.scientific-data-table tbody tr:where(:not(:hover, [aria-selected=true])) {
+  background-color:var(--ui-table-body-bg);
+}

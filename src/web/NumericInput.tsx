@@ -32,21 +32,28 @@ const NumericInput = forwardRef<HTMLInputElement, NumericInputProps>(function Nu
   }, [stepper]);
   const adaptive=stepper&&adaptiveStep!==undefined;
   const increment=(direction:1|-1)=>{
-    const input=inputRef.current;if(!input||props.disabled||props.readOnly||adaptiveStep===undefined)return;
-    const next=adaptiveNumericStep(input.value,direction,adaptiveStep,props.min,props.max);if(next===null||Number(next)===Number(input.value)&&input.value!=='')return;
+    const input=inputRef.current;if(!input||props.disabled||props.readOnly)return;
+    const previous=input.value;
+    let next:string|null;
+    if(adaptiveStep!==undefined)next=adaptiveNumericStep(previous,direction,adaptiveStep,props.min,props.max);
+    else{
+      try{if(direction>0)input.stepUp();else input.stepDown();next=input.value;input.value=previous;}
+      catch{return;}
+    }
+    if(next===null||next===previous)return;
     const win=input.ownerDocument.defaultView as (Window & typeof globalThis)|null;if(!win)return;
     Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,'value')?.set?.call(input,next);
     input.dispatchEvent(new win.Event('input',{bubbles:true}));
   };
   const control=<input {...props} ref={ref} type="number" data-numeric-stepper={stepper ? 'enabled' : 'disabled'}
     step={adaptive?'any':props.step}
-    className={[className, (!stepper||adaptive) && 'numeric-input-direct'].filter(Boolean).join(' ') || undefined}
+    className={[className, 'numeric-input-direct'].filter(Boolean).join(' ')}
     onKeyDown={event => {
       onKeyDown?.(event);
       if(adaptive&&!event.defaultPrevented&&!event.nativeEvent.isComposing&&(event.key==='ArrowUp'||event.key==='ArrowDown')){event.preventDefault();increment(event.key==='ArrowUp'?1:-1);return;}
       if (!stepper && !event.nativeEvent.isComposing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) event.preventDefault();
     }}/>;
-  if(!adaptive)return control;
+  if(!stepper)return control;
   return <span className="numeric-adaptive">{control}<span className="numeric-adaptive-arrows"><button type="button" tabIndex={-1} aria-label={`增大${props['aria-label']??'数值'}`} disabled={props.disabled||props.readOnly} onPointerDown={event=>{event.preventDefault();event.stopPropagation();}} onClick={event=>{event.stopPropagation();increment(1);}}>▴</button><button type="button" tabIndex={-1} aria-label={`减小${props['aria-label']??'数值'}`} disabled={props.disabled||props.readOnly} onPointerDown={event=>{event.preventDefault();event.stopPropagation();}} onClick={event=>{event.stopPropagation();increment(-1);}}>▾</button></span></span>;
 });
 

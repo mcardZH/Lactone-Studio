@@ -6,7 +6,7 @@ const idPattern = /^cb-[a-f0-9]{32}$/;
 
 /** Private canonical records. No renderer path is accepted and every operation
  * checks directory/file identity before touching an owned record. */
-function createConformerBatchStore({ root, io = fs, maxRecordBytes = 32 * 1024 ** 2 }) {
+function createConformerBatchStore({ root, io = fs }) {
   assert(path.isAbsolute(root), 'Absolute private conformer batch root required');
   root = path.resolve(root);
   const same = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -18,7 +18,7 @@ function createConformerBatchStore({ root, io = fs, maxRecordBytes = 32 * 1024 *
   function recordName(name) { assert(/^(?:manifest|input-\d+|result-\d+)\.json$/.test(name), 'Invalid batch record'); return name; }
   async function write(id, name, value) {
     const dir = location(id); await directory(root); await directory(dir); recordName(name);
-    const bytes = Buffer.from(JSON.stringify(value) + '\n'); assert(bytes.length <= maxRecordBytes, 'Conformer batch record exceeds bound');
+    const bytes = Buffer.from(JSON.stringify(value) + '\n');
     const file = path.join(dir, name), temp = file + '.next';
     // Fresh temporary files make an interrupted atomic publication recoverable.
     const handle = await io.open(temp, 'wx');
@@ -30,7 +30,7 @@ function createConformerBatchStore({ root, io = fs, maxRecordBytes = 32 * 1024 *
   async function read(id, name) {
     const dir = location(id); await directory(root); await directory(dir); recordName(name);
     const file = path.join(dir, name), before = await io.lstat(file);
-    assert(before.isFile() && !before.isSymbolicLink() && before.nlink === 1 && before.size <= maxRecordBytes, 'Invalid batch record identity');
+    assert(before.isFile() && !before.isSymbolicLink() && before.nlink === 1, 'Invalid batch record identity');
     const handle = await io.open(file, 'r');
     try {
       const opened = await handle.stat(); assert(opened.dev === before.dev && opened.ino === before.ino && opened.size === before.size, 'Batch record changed during open');
@@ -47,8 +47,21 @@ function createConformerBatchStore({ root, io = fs, maxRecordBytes = 32 * 1024 *
     assert(names.every(name => /^(?:manifest|input-\d+|result-\d+)\.json(?:\.next)?$/.test(name)), 'Unexpected batch member; retained');
     const files = [];
     for (const name of names) { const file = path.join(dir, name), stat = await io.lstat(file); assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'Batch member identity changed; retained'); files.push(file); }
-    for (const file of files) { await directory(dir); await io.unlink(file); }
-    await io.rmdir(dir);
+    for (const file of files) {
+      await directory(dir);
+      try { await io.unlink(file); }
+      catch (error) {
+        throw Object.assign(Error('已接管结果的后台批文件暂未清理：' + String(error.message)), {
+          code: 'CONFORMER_BATCH_CLEANUP_FAILED', cause: error,
+        });
+      }
+    }
+    try { await io.rmdir(dir); }
+    catch (error) {
+      throw Object.assign(Error('已接管结果的后台批目录暂未清理：' + String(error.message)), {
+        code: 'CONFORMER_BATCH_CLEANUP_FAILED', cause: error,
+      });
+    }
   }
   return { create, read, write, destroy };
 }

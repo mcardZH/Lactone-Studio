@@ -5,7 +5,8 @@ import { gaussianRouteTokens } from '../core/gaussian-source';
 import { assertResultNotAborted, type ResultInputFile, type ResultReadOptions, type TrajectoryResult } from './contracts';
 import { emptyScientificData, type ScientificData } from './scientific-contracts';
 import { gaussianScientificTasks } from './gaussian-scientific-parser';
-import { fchkCharacterRecord,streamFchkRecords } from '../core/fchk-records';
+import { fchkCharacterRecord,fchkNumericRecordTokens,streamFchkRecords,type FchkFieldDiagnostic } from '../core/fchk-records';
+import { fchkWavefunctionFields } from './fchk-wavefunction-capability';
 
 interface Field { values: number[]; sourceLine: number;rawValue?:string }
 const arrays = new Set(['Nuclear charges', 'Shell types', 'Alpha Orbital Energies', 'Beta Orbital Energies', 'Alpha Orbital Occupation Numbers', 'Beta Orbital Occupation Numbers',
@@ -26,15 +27,20 @@ class SavedFields {
   readonly numeric = new Map<string, Field>();
   readonly characters = new Map<string, { value: string; sourceLine: number }>();
   readonly notices: string[] = [];
+  readonly diagnostics: FchkFieldDiagnostic[] = [];
   incomplete = false;
   header = '';
   geometryLine = 1;
   private number = 0;
-  private fieldCount = 0;
-  private retained = 0;
   private invalid = new Set<string>();
   private seen = new Set<string>();
   private active: { label: string; type: string; remaining: number; capture: boolean; values: number[]; text: string; sourceLine: number } | null = null;
+  private fieldIssue(field:string,code:'duplicate'|'invalid-type',message:string):void{
+    this.diagnostics.push({field,code,message,sourceLine:this.number,boundaryReliable:true,
+      affectedCapabilities:[field==='Real atomic weights'?'atomic-masses':'saved-field']});
+    this.notices.push(message);
+    this.incomplete=true;
+  }
   consume(raw: string,context?:{sourceLine:number;byteProven?:boolean}): void {
     this.number=context?.sourceLine??this.number+1;
     if(this.active&&(this.active.type==='C'||this.active.type==='H')&&this.active.remaining){
@@ -46,27 +52,29 @@ class SavedFields {
     const match = raw.match(fieldPattern);
     if (match) {
       if (this.active?.remaining) this.truncated();
-      this.fieldCount++;
       const label = match[1].trim(), type = match[2], wanted = arrays.has(label) || scalars.has(label) || characters.has(label)
         || ['Atomic numbers', 'Number of atoms', 'Current cartesian coordinates', 'Route', 'Full Title'].includes(label);
       if (label === 'Current cartesian coordinates') this.geometryLine = this.number;
       if (this.seen.has(label) && wanted) {
         if (['Atomic numbers','Number of atoms','Current cartesian coordinates'].includes(label)) throw new Error(`FCHK科学字段 ${label} 重复，不能静默选值。`);
-        this.incomplete=true; this.invalid.add(label); this.numeric.delete(label); this.characters.delete(label);
-        this.notices.push(`FCHK ${label} 重复；未采用该歧义字段（源行${this.number}）。`);
+        this.invalid.add(label); this.numeric.delete(label); this.characters.delete(label);
+        this.fieldIssue(label,'duplicate',`FCHK ${label} 重复；未采用该歧义字段（源行 ${this.number}）。`);
       }
       this.seen.add(label);
       if (match[3] !== undefined) {
         const count = Number(match[3]);
         if (!Number.isSafeInteger(count) || count < 0) throw new Error('FCHK数组长度声明无效。');
         const capture = characters.has(label) && ['C', 'H'].includes(type) || arrays.has(label) && ['I', 'R'].includes(type);
-        if (arrays.has(label) && !capture) this.notices.push(`${label}字段类型不属于已支持的科学读取格式；未保留该字段。`);
-        if(arrays.has(label)&&!['I','R'].includes(type))this.incomplete=true;
-        if (capture) this.retained += count;
+        if ((arrays.has(label)||characters.has(label))&&!capture||scalars.has(label)) {
+          this.fieldIssue(label,'invalid-type',`FCHK ${label} 字段类型或记录形状无效（源行 ${this.number}）。`);
+        }
         this.active = { label, type, remaining: count, capture, values: [], text: '', sourceLine: this.number };
         if (count === 0) this.complete();
       } else {
         this.active = null;
+        if (arrays.has(label)||characters.has(label)||scalars.has(label)&&!['I','R'].includes(type)) {
+          this.fieldIssue(label,'invalid-type',`FCHK ${label} 字段类型或记录形状无效（源行 ${this.number}）。`);
+        }
         if (scalars.has(label)) {
           const value = fchkNumber(match[4]);
           if (!['I', 'R'].includes(type) || value === null || ((type === 'I'||['Charge','Multiplicity'].includes(label)) && !Number.isSafeInteger(value)) || label==='Multiplicity'&&value<1) { this.incomplete=true; this.notices.push(`FCHK科学标量 ${label} 无效（源行${this.number}）；未采用。`); return; }
@@ -78,7 +86,7 @@ class SavedFields {
     const active = this.active;
     if (!active) return;
     {
-      const parts = raw.trim().split(/\s+/).filter(Boolean);
+      const parts = fchkNumericRecordTokens(raw,active.type);
       if (parts.length > active.remaining) {
         this.incomplete=true;this.notices.push(`FCHK ${active.label} 超过声明长度；未使用该损坏字段。`);this.active=null;return;
       }
@@ -262,19 +270,33 @@ function savedScience(saved: SavedFields, structure: TrajectoryResult['initialSt
   return data;
 }
 
-/** One read-only saved calculation, not an invented optimization trajectory or binary CHK conversion. */
-export async function readFchkScientificResult(file: ResultInputFile, options: ResultReadOptions = {}): Promise<TrajectoryResult[]> {
+/** One read-only saved calculation and the record evidence needed for wavefunction admission. */
+export async function readFchkSavedResult(file: ResultInputFile, options: ResultReadOptions = {}) {
   let closed = false;
   const close = async () => { if (!closed) { closed = true; await file.close?.(); } };
   try {
     assertResultNotAborted(options.signal);
     if (!Number.isSafeInteger(file.size) || file.size < 1) throw new Error('FCHK字节数须为正安全整数。');
-    const geometry = new FchkReader(), saved = new SavedFields();
+    const geometry = new FchkReader(fchkWavefunctionFields), saved = new SavedFields();
     let interruption: unknown, consuming = false;
-    try { for await (const record of streamFchkRecords(file,options)) { consuming = true; const context={sourceLine:record.sourceLine,byteProven:true};saved.consume(record.text,context);geometry.consume(record.text,context); consuming = false; } }
+    let sourceLine = 1;
+    try {
+      for await (const record of streamFchkRecords(file,options)) {
+        consuming = true;
+        sourceLine = record.sourceLine;
+        const context={sourceLine,byteProven:true}, count=geometry.diagnostics.length;
+        geometry.consume(record.text,context);
+        if (geometry.diagnostics.length!==count && !geometry.diagnostics.at(-1)!.boundaryReliable) break;
+        saved.consume(record.text,context);
+        consuming = false;
+      }
+    }
     catch (error) { if (consuming && !(error instanceof RangeError)) throw error; interruption = error; }
     saved.finish();
-    const initial = (() => { try { return geometry.finish(file.name)[0]; } catch (error) { throw interruption ?? error; } })(), id = `${file.id}:fchk:0`;
+    const initial = (() => { try { return geometry.finish(file.name,!!interruption)[0]; } catch (error) { throw interruption ?? error; } })(), id = `${file.id}:fchk:0`;
+    for (const issue of geometry.diagnostics) {
+      if (issue.affectedCapabilities.includes('wavefunction') && !geometry.validatedFields.has(issue.field)) saved.numeric.delete(issue.field);
+    }
     if (initial.charge !== null && !Number.isSafeInteger(initial.charge)) throw new Error('FCHK电荷须为整数。');
     if (initial.multiplicity !== null && (!Number.isSafeInteger(initial.multiplicity) || initial.multiplicity < 1)) throw new Error('FCHK多重度须为正整数。');
     initial.id = `${id}:frame:0`;
@@ -283,8 +305,17 @@ export async function readFchkScientificResult(file: ResultInputFile, options: R
     initial.notes.push(`来源 ${file.name}，job 1，源行 ${saved.geometryLine}；仅保存的当前几何。`);
     const scientific = savedScience(saved, initial), energy = frameEnergy(saved, initial, scientific);
     const incomplete=geometry.incomplete||saved.incomplete||!!interruption;
+    const diagnostics = [...geometry.diagnostics, ...saved.diagnostics.filter(issue =>
+      !geometry.diagnostics.some(previous => previous.field===issue.field&&previous.code===issue.code&&previous.sourceLine===issue.sourceLine))];
+    const masses = saved.numeric.get('Real atomic weights');
+    if (masses && (masses.values.length !== initial.atoms.length || masses.values.some(value => value <= 0))) {
+      diagnostics.push({ field:'Real atomic weights',sourceLine:masses.sourceLine,code:'unavailable-mass',boundaryReliable:true,
+        affectedCapabilities:['atomic-masses'],message:`FCHK Real atomic weights 缺少有效的逐原子正质量（源行 ${masses.sourceLine}）。` });
+    }
+    if (interruption) diagnostics.push({ field:'来源',sourceLine,code:'source-read',boundaryReliable:false,
+      affectedCapabilities:['wavefunction'],message:`FCHK 来源读取停止：${interruption instanceof Error ? interruption.message : String(interruption)}` });
     if (interruption) scientific.notices.push(options.signal?.aborted ? '读取已取消；保留此前完整有效的保存结构与科学字段。' : `来源读取停止；仅保留此前完整有效字段：${interruption instanceof Error ? interruption.message : String(interruption)}`);
-    if (incomplete) scientific.notices.push('来源含损坏或截断的未使用字段；仅展示可靠完整的保存结构和已读数值，未确认完整波函数可用于派生计算。');
+    if (incomplete) scientific.notices.push('来源含损坏或截断字段；保存结果仅采用已验证的完整字段。');
     const result: TrajectoryResult = {
       id, label: `${file.name} · FCHK 已保存结果`, kind: 'calculation', engine: 'gaussian', jobIndex: 0, status: incomplete ? 'incomplete' : 'unknown',
       source: { id: file.id, name: file.name, size: file.size }, messages: [...scientific.notices], scientific,
@@ -292,6 +323,10 @@ export async function readFchkScientificResult(file: ResultInputFile, options: R
       async getFrame(index, signal) { assertResultNotAborted(signal); if (closed) throw new Error('FCHK结果已关闭。'); if (index !== 0) throw new Error('FCHK只含一个已保存结构。'); return structuredClone(initial); },
       dispose: close,
     };
-    return [result];
+    return {result, diagnostics, validatedFields:geometry.validatedFields};
   } catch (error) { await close(); throw error; }
+}
+
+export async function readFchkScientificResult(file: ResultInputFile, options: ResultReadOptions = {}): Promise<TrajectoryResult[]> {
+  return [(await readFchkSavedResult(file,options)).result];
 }

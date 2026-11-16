@@ -3,7 +3,9 @@ import { Children, type ReactNode } from 'react';
 import type { FileSettings,GaussianSettings,Structure,TaskOptions,FragmentDefinition,GaussianQstSettings,InputStructureSource,JobRequest } from '../core/types';
 import { defaultTaskOptions,spectrumStates,ircPoints,supportsConstraints,isOptimizationTask,TASKS } from '../core/tasks';
 import { formatAtomSelection } from '../core/structures';
-import { suggestedMultiplicity } from '../core/elements';
+import { electronicStateWarning } from '../core/elements';
+import {reconcileElectronicStateAfterInventoryEdit} from '../core/modeling/electronic-state-policy';
+import BaseElectronicStateFields from './BaseElectronicStateFields';
 import { isXtb,xtbNeedsFrequency } from '../core/xtb';
 import { isUksOptimization,excitedOptimizationFrequency,excitedFrequencyOnly } from '../core/excited-state';
 import { CoreParameterGroup, FrequencyCoreControls, GaussianOptimizationControls } from './TaskCoreControls';
@@ -46,7 +48,8 @@ export default function TaskParameters({sharedFreezeCounts,settings,updateSettin
     change({fragmentStatesConfirmed:false,fragments:options.fragments.map((item,i)=>{
       const indices=inputSelectionIndices(structure,next[i].atomIds).map(n=>n+1);
       const multiplicityMode=spinMode(item);
-      return {...item,atoms:indices,multiplicityMode,multiplicity:i===index&&multiplicityMode==='auto'?suggestedMultiplicity(indices.map(n=>atoms[n-1]),item.charge):item.multiplicity};
+      const paired=reconcileElectronicStateAfterInventoryEdit(indices.map(n=>atoms[n-1]),item);
+      return {...item,atoms:indices,multiplicityMode,charge:paired.charge,multiplicity:paired.multiplicity};
     })});
   }
   if(task==='sp')return null;
@@ -75,7 +78,7 @@ export default function TaskParameters({sharedFreezeCounts,settings,updateSettin
       <p className="fragment-assignment-status" aria-live="polite">{unassigned.length?'未分配原子：'+formatAtomSelection(unassigned)+'。':'全部原子已分配。'}{overlapping.length?' 片段重叠原子：'+formatAtomSelection(overlapping)+'；请修正归属。':' 没有片段重叠。'}</p>
       {options.fragments.map((item,i)=><article className="fragment-editor shared-input-card shared-input-subcard" data-state={options.fragmentStatesConfirmed?'confirmed':'pending'} key={fragmentId(item,i)} data-fragment-index={i}>
         <InteractiveSelectionField renderHeader={actions=><header className="interactive-selection-header"><strong className="shared-input-card-title"><i className="fragment-color-dot" style={{background:fragmentColor(i)}} aria-hidden="true"/>片段{i+1}</strong>{actions}<SelectionRemoveButton label={'删除片段'+(i+1)} onClick={()=>change({fragmentStatesConfirmed:false,fragments:options.fragments.filter((_,index)=>index!==i)})}/></header>} structure={structure} label={'片段'+(i+1)} rowId={fragmentId(item,i)} engine="gaussian" purpose="fragment" taskId={task} atomIds={fragmentRows[i].atomIds} contextKey={JSON.stringify([settings,multiplicity])} disabled={files.geometry!=='explicit'||structure?.dimension===2} onRequestSelection={onRequestSelection} onPick={onPick} onConfirm={(ids,guard,overwrite)=>commitFragment(i,ids,guard,overwrite)} remainingAtomIds={structure&&!regionSelectionIdentityError(structure)?remainingRegionAtomIds(structure,fragmentRows,fragmentId(item,i)):[]}/>
-        {!item.atoms.length?<p className="interactive-selection-empty">空片段草稿：确认成员后设置电子态；被覆盖移空的片段和原参数仍保留。</p>:<div className="fragment-electronic-state"><div className="two-fields"><label className="field">电荷<NumericInput aria-label={'片段'+(i+1)+'电荷'} stepper={true} step="1" value={item.charge} onChange={event=>{const charge=event.target.value===''?Number.NaN:Number(event.target.value);fragment(i,{charge,multiplicityMode:spinMode(item),...(spinMode(item)==='auto'?{multiplicity:suggestedMultiplicity(item.atoms.map(n=>atoms[n-1]),charge)}:{})});}}/></label><label className="field">多重度<NumericInput aria-label={'片段'+(i+1)+'多重度'} stepper={true} min="1" step="1" value={item.multiplicity} onChange={event=>{fragment(i,{multiplicity:event.target.value===''?Number.NaN:Number(event.target.value),multiplicityMode:'manual'});}}/></label></div></div>}
+        {!item.atoms.length?<p className="interactive-selection-empty">空片段草稿：确认成员后设置电子态；被覆盖移空的片段和原参数仍保留。</p>:<BaseElectronicStateFields embedded preserveNumericDraft chargeFieldLabel="电荷" chargeLabel={'片段'+(i+1)+'电荷'} multiplicityLabel={'片段'+(i+1)+'多重度'} charge={item.charge} multiplicity={item.multiplicity} confirmed={options.fragmentStatesConfirmed} warning={electronicStateWarning(item.atoms.map(n=>atoms[n-1]),item.charge,item.multiplicity)} atoms={item.atoms.map(n=>atoms[n-1])} onElectronicStateChange={values=>fragment(i,{...values,multiplicityMode:'manual'})} onChargeChange={charge=>fragment(i,{charge,multiplicityMode:'manual'})} onMultiplicityChange={multiplicity=>fragment(i,{multiplicity,multiplicityMode:'manual'})}/>}
       </article>)}
       {!options.fragments.length&&<p className="interactive-selection-empty">尚未添加片段；生成BSSE仍需要至少两个完整片段。</p>}
       {options.fragments.length>=2&&options.fragments.every(item=>item.atoms.length>0)&&<label className="check-line"><input data-field="fragment-confirmation" type="checkbox" checked={options.fragmentStatesConfirmed} onChange={event=>change({fragmentStatesConfirmed:event.target.checked})}/><span>确认片段电子态</span></label>}</details>}

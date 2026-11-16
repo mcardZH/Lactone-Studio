@@ -3,7 +3,7 @@ import { Atom, Link2, Orbit, Waves, Zap, Layers, Magnet, Ruler, FlaskConical, Ch
 import type { TrajectoryResult } from '../../results/contracts';
 import type {Structure} from '../../core/types';
 import type {GeneratedXtbProvenance} from '../../results/xtb-generated-source';
-import {generatedXtbMethodAllowed} from '../../results/generated-xtb-policy';
+import {generatedXtbAnalysisRevision,generatedXtbMethodAllowed} from '../../results/generated-xtb-policy';
 import type { AtomicProperty } from '../../results/scientific-contracts';
 import { InputTaskChoice, InputSettingsLayout, InputSettingsCheckbox } from '../InputSettingsLayout';
 import { InputSettingsCard } from '../InputSettingsFields';
@@ -23,17 +23,19 @@ import './Postprocess.css';
 export interface PostprocessAtomicDisplay { property: AtomicProperty | null; color: boolean; labels: boolean }
 export type AnalysisPage = 'energy' | 'charges' | 'bonds' | 'orbitals' | 'trajectory' | 'excited' | 'vibrations'|'surface'|'interaction'|'reactivity';
 /** Trusted generation establishes only the individually accepted capabilities. */
-export function generatedXtbAnalysisReason(source:GeneratedXtbProvenance|undefined,page:AnalysisPage):string|undefined {
+export function generatedXtbAnalysisReason(source:GeneratedXtbProvenance|undefined,page:AnalysisPage,context?:{analysisRevision?:string;structureAvailable?:boolean}):string|undefined {
   if(!source)return undefined;
   if((page==='energy'||page==='charges')&&source.capabilities.includes('native-properties'))return undefined;
-  if(page==='orbitals'&&source.capabilities.includes('orbitals'))return undefined;
+  if((page==='orbitals'||page==='reactivity')&&source.capabilities.includes('orbitals'))return undefined;
   if(page==='surface')return undefined;
-  const revision=source.files.find(file=>file.role==='molden')?.sha256??'';
+  // g-xTB policies belong to the converted analysis asset, never the raw Molden.
+  const revision=context&&!context.analysisRevision?'':generatedXtbAnalysisRevision(source,context?.analysisRevision);
   if(page==='bonds'&&['mayer','laplacian'].some(method=>generatedXtbMethodAllowed(source.analysisPolicy,revision,'bond-orders',method)))return undefined;
+  if(page==='interaction'&&context?.structureAvailable)return undefined;
   if(page==='interaction'&&['iri','rdg','igmh'].some(method=>generatedXtbMethodAllowed(source.analysisPolicy,revision,'interaction',method)))return undefined;
   if(page==='excited')return '基态 Molden 不含激发态、跃迁或 NTO 数据。';
   if(page==='vibrations')return '当前来源不含 Hessian 或振动模式。';
-  if(page==='reactivity')return '现有反应性方法要求已确认的闭壳层 canonical SCF 来源；GFN2 Molden 不满足此来源前提。';
+  if(page==='reactivity')return '当前来源没有可用的前线轨道数据。';
   return '当前来源缺少此分析所需的数据。';
 }
 export interface AnalysisCardDeckProps {
@@ -119,7 +121,7 @@ export default function PostprocessDisplayPanel(p: PostprocessDisplayPanelProps)
   const pageLabel=ANALYSIS_ENTRIES.find(item=>item.id===active)?.label??'分析';
   const empty=(message:string)=><p role="status" className="postprocess-note">{message}</p>;
   if(unavailable&&p.hideEntries)return <aside className="postprocess-display postprocess-analysis-instance" aria-label="后处理显示与绘图" data-testid="postprocess-display" data-active-analysis={active} data-analysis-page={active}><button disabled title={unavailable}>{pageLabel}暂不可用</button>{empty(unavailable)}</aside>;
-  return <aside className={`postprocess-display${p.hideEntries?' postprocess-analysis-instance':''}`} aria-label="后处理显示与绘图" data-testid="postprocess-display" data-active-analysis={active} data-source-id={p.result?.source.id} data-frame-index={p.currentIndex}>
+  return <aside className={`postprocess-display ui-control-surface${p.hideEntries?' postprocess-analysis-instance':''}`} aria-label="后处理显示与绘图" data-testid="postprocess-display" data-active-analysis={active} data-source-id={p.result?.source.id} data-frame-index={p.currentIndex}>
     {!p.hideEntries && <AnalysisCardDeck activeId={active} disabled={p.disabled} unavailableReason={page=>p.unavailableReason?.(page)??(!p.result?'请先载入当前分子的计算来源。':page==='bonds'&&!p.analysis?'请补入与当前结构匹配的 FCHK / Molden 波函数。':undefined)} onSelect={setActive} onAdd={p.onAdd} onCardDrag={p.onCardDrag}/>}
     {(!p.hideEntries || active==='energy') && <div hidden={active !== 'energy'} data-analysis-page="energy"><InputSettingsLayout><InputSettingsCard title="能量与偶极矩">{p.result ? <PostprocessEnergyPanel result={p.result} currentIndex={p.currentIndex} dipoleControl={<InputSettingsCheckbox label="显示偶极方向箭头" disabled={!p.dipoleAvailable || p.disabled} checked={p.dipoleAvailable && p.dipoleVisible} onChange={p.onDipoleVisible}/>}/> : <p className="postprocess-note">请先补入计算来源。</p>}</InputSettingsCard><PlotFold kind="scf" result={p.result} currentIndex={p.currentIndex} onOpenPlot={p.onOpenPlot}/></InputSettingsLayout></div>}
     {(!p.hideEntries || active==='charges') && <div hidden={active !== 'charges'} data-analysis-page="charges"><AnalysisControls kind="charges" ownerId={p.analysisOwnerId} active={p.active!==false&&active==='charges'} cancelOnInactive={p.cancelOnInactive} context={p.analysis} sourceContext={source} onColorbarLayoutReady={active==='charges'?p.onColorbarLayoutReady:undefined} onProfessionalCharges={p.onProfessionalCharges} onSourceAtomHighlight={p.onPrintedAtomHighlight} onChargeAnalysis={p.onChargeAnalysis} onAtomHighlight={p.onAtomHighlight}/></div>}

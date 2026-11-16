@@ -1,18 +1,59 @@
 import type { Structure } from './types';
 import { cartesianToFractional, cellInverse, cellParameters } from './periodic';
 import { validatePeriodicSourceMetadata } from './periodic-parsers';
+import { atomicNumber } from './elements';
+import { automaticStem } from './naming';
 
 const f=(n:number):string=>{if(!Number.isFinite(n))throw new Error('不能导出非有限坐标。');return Object.is(n,-0)?'0':Number(n.toPrecision(15)).toString();};
 const quote=(s:string):string=>{if(!s.includes("'"))return `'${s}'`;if(!s.includes('"'))return `"${s}"`;throw new Error('CIF标签含两种引号，不能安全导出。');};
+
+export function validateGeometryAtoms(atoms: Structure['atoms']): void {
+  if (!atoms.length) throw new Error('没有可导出的原子。');
+  for (const atom of atoms) {
+    atomicNumber(atom.element);
+    if (![atom.x, atom.y, atom.z].every(Number.isFinite)) throw new Error('不能导出非有限坐标。');
+  }
+}
+
+export function validateGeometryAtomIdentity(atoms: Structure['atoms'], fallbackId: (index: number) => string): void {
+  const ids = new Set<string>();
+  atoms.forEach((atom, index) => {
+    const id = atom.id ?? fallbackId(index);
+    if (typeof id !== 'string' || !id || ids.has(id)) throw new Error('导出文件的原子ID缺失或重复。');
+    if (atom.sourceIndex !== undefined && !Number.isSafeInteger(atom.sourceIndex)) throw new Error('导出文件的来源原子序号必须为整数。');
+    ids.add(id);
+  });
+}
+
+export function validateGeometryCell(cell: NonNullable<Structure['cell']>): void {
+  if (!Array.isArray(cell.vectors) || cell.vectors.length !== 3 || cell.vectors.some(vector => !Array.isArray(vector) || vector.length !== 3)
+    || !Array.isArray(cell.pbc) || cell.pbc.length !== 3 || cell.pbc.some(axis => typeof axis !== 'boolean')
+    || cell.origin !== undefined && (!Array.isArray(cell.origin) || cell.origin.length !== 3 || !cell.origin.every(Number.isFinite))) throw new Error('导出晶胞的向量、原点或周期轴无效。');
+  cellInverse(cell);
+}
+
+/** These are the only period fields exported by the geometry writers. */
+export function geometryPeriodicity(s: Structure, withCell: boolean): Pick<Structure, 'cell' | 'periodicSource' | 'periodicWorkingSource'> {
+  const cell = withCell ? s.cell : undefined;
+  const periodicSource = s.cell ? undefined : s.periodicSource;
+  if (cell) validateGeometryCell(cell);
+  const source = cell ? s.periodicWorkingSource : undefined;
+  const fields = { cell, periodicSource, periodicWorkingSource: source };
+  validatePeriodicSourceMetadata({ ...s, ...fields });
+  if (!source) return fields;
+  const { structureId, name, format, coordinateUnit } = source;
+  return { ...fields, periodicWorkingSource: { structureId, name, format, coordinateUnit, cell: source.cell,
+    atoms: source.atoms.map(({ element, id, sourceIndex, x, y, z }) => ({ element, id, sourceIndex, x, y, z })) } };
+}
+
 /** Structure-only export. POSCAR requires a real cell; no artificial bounding box is ever created. */
 export function exportStructure(s:Structure,format:'xyz'|'extxyz'|'cif'|'poscar',withCell:boolean):string {
-  if(!s.atoms.length)throw new Error('没有可导出的原子。');s.atoms.forEach(a=>[a.x,a.y,a.z].forEach(f));
-  validatePeriodicSourceMetadata(s);
-  const cell=withCell?s.cell:undefined;if(cell)cellInverse(cell);
-  if(s.periodicSource&&s.cell)throw new Error('部分平移来源与完整晶胞同时存在，不能明确保存周期来源。');
-  const periodicMetadata=cell?.pbcProvenance||s.periodicSource||s.periodicWorkingSource?encodeURIComponent(JSON.stringify({version:1,coordinateUnit:'angstrom',...(cell?.pbcProvenance?{pbcProvenance:cell.pbcProvenance}:{}),...(s.periodicSource?{periodicSource:s.periodicSource}:{}),...(s.periodicWorkingSource?{periodicWorkingSource:s.periodicWorkingSource}:{})})).replace(/'/g,'%27'):undefined;
+  validateGeometryAtoms(s.atoms);
+  validateGeometryAtomIdentity(s.atoms, i => format === 'cif' ? `${s.atoms[i].element}${i + 1}` : `${s.id}:atom:${i + 1}`);
+  const {cell,periodicSource,periodicWorkingSource}=geometryPeriodicity(s,withCell);
+  const periodicMetadata=cell?.pbcProvenance||periodicSource||periodicWorkingSource?encodeURIComponent(JSON.stringify({version:1,coordinateUnit:'angstrom',pbcProvenance:cell?.pbcProvenance,periodicSource,periodicWorkingSource})).replace(/'/g,'%27'):undefined;
   const periodicComment=periodicMetadata?` builder_periodic=${periodicMetadata}`:'';
-  const name=s.name.replace(/[\r\n"]/g,' '),electronic=`${s.charge!==null?` charge=${s.charge}`:''}${s.multiplicity!==null?` multiplicity=${s.multiplicity}`:''}`;
+  const name=automaticStem(s.name),electronic=`${Number.isSafeInteger(s.charge)?` charge=${s.charge}`:''}${Number.isSafeInteger(s.multiplicity)&&s.multiplicity!>0?` multiplicity=${s.multiplicity}`:''}`;
   if(format==='xyz'){
     const lattice=cell?` Lattice="${cell.vectors.flat().map(f).join(' ')}" pbc="${cell.pbc.map(v=>v?'T':'F').join(' ')}"${cell.origin?` Origin="${cell.origin.map(f).join(' ')}"`:''}`:'';
     const provenance=encodeURIComponent(JSON.stringify(s.atoms.map((a,i)=>({id:a.id??`${s.id}:atom:${i+1}`,sourceIndex:a.sourceIndex??i+1}))));

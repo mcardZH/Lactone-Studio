@@ -1,9 +1,10 @@
 import { ELEMENTS } from '../../core/elements';
 import { builderDoubleBondConfiguration, requestedBuilder2DParity } from '../../core/builder-stereo';
 import { builderCovalentValence, builderDefaultValence, validateBuilderValence } from '../../core/builder-geometry';
-import type { Structure, Bond } from '../../core/types';
+import type { Structure, Bond, TwoDStereoSource } from '../../core/types';
 import type { ParseKetDraftOptions, ParseTwoDOptions, RemainingTwoDSourceIssuesInput, TwoDAtom, TwoDComponent, TwoDConversionAssessment, TwoDDraft, TwoDFormat, TwoDIssue, TwoDSourceInput } from './types';
-import { auditSourceFacts, readCdxmlFacts, readCdxFacts, TWO_D_SOURCE_LOCAL_CODES } from './source-audit';
+import { auditSourceFacts, hasExplicitTwoDStereoEdit, readCdxmlFacts, readCdxFacts, restoreMappedSourceStereo, TWO_D_SOURCE_LOCAL_CODES } from './source-audit';
+import { parseTwoDStereoLabel, twoDStereoGroups } from './stereo-groups';
 export type * from './types';
 export { readCdxFacts, readCdxmlFacts } from './source-audit';
 
@@ -15,6 +16,28 @@ const number = (value: unknown): value is number => typeof value === 'number' &&
 const cancelled = (signal?: AbortSignal) => { if (signal?.aborted) throw new DOMException('二维读取已取消。', 'AbortError'); };
 const atomId = (sourceId: string, key: string) => `2d:${encodeURIComponent(sourceId)}:${encodeURIComponent(key)}`;
 const asText = (input: string | Uint8Array) => typeof input === 'string' ? input : new TextDecoder('utf-8', { fatal: true }).decode(input);
+
+export function twoDFormalCharge(atoms: readonly { formalCharge?: number }[]): number | null {
+  let charge = 0;
+  for (const atom of atoms) {
+    const value = atom.formalCharge ?? 0;
+    if (!Number.isSafeInteger(value)) return null;
+    charge += value;
+    if (!Number.isSafeInteger(charge)) return null;
+  }
+  return charge;
+}
+
+/** Ordinary KET atoms with no charge field are neutral; query/alias atoms and
+ * source conversion losses cannot establish the total of the displayed graph. */
+export function twoDComponentFormalCharge(component: TwoDComponent): number | null {
+  if (!component.atoms.length || component.atoms.some(atom => !ELEMENTS.includes(atom.element)) ||
+    component.issues.some(issue => issue.severity === 'blocking' && (
+      ['query-atom', 'unexpanded-alias', 'attachment', 'polymer-group', 'cross-component-group'].includes(issue.code) ||
+      issue.code.startsWith('source-') && /charge|atom|query|group|fragment/.test(issue.code)
+    ))) return null;
+  return twoDFormalCharge(component.atoms);
+}
 
 /** Content is authoritative. A renamed image or arbitrary JSON is not a chemical drawing. */
 export function detectTwoDFormat(input: string | Uint8Array): TwoDFormat | null {
@@ -31,8 +54,8 @@ function makeStructure(component: TwoDComponent, identity: { id?: string; name?:
   const atoms = component.atoms.map(({ sourceAtomKey: _key, sourceProperties: _props, implicitHydrogens: _hydrogens, ...atom }) => ({ ...atom }));
   const layout2D = Object.fromEntries(atoms.map(atom => [atom.id!, { x: atom.x, y: atom.y }]));
   return { id: identity.id ?? component.id, name: identity.name ?? component.label, format: 'builder', atoms,
-    bonds: component.bonds.map(bond => ({ ...bond })), dimension: 2, charge: null, multiplicity: null,
-    sourceAtomIds: atoms.map(atom => atom.id!), layout2D, bondSource: 'drawn', notes: ['二维图生成请求；逐原子形式电荷不代表已确认总电荷与自旋。'] };
+    bonds: component.bonds.map(bond => ({ ...bond })), dimension: 2, charge: twoDComponentFormalCharge(component), multiplicity: null,
+    sourceAtomIds: atoms.map(atom => atom.id!), layout2D, bondSource: 'drawn', notes: ['净电荷由选定二维组分的原子形式电荷合计；未确认计算电子态。'] };
 }
 
 export function selectTwoDComponent(draft: TwoDDraft, id: string): TwoDComponent {
@@ -71,6 +94,19 @@ export function componentToStructure(component: TwoDComponent, identity: { id?: 
   return makeStructure(component, identity);
 }
 
+/** Temporary input reference: the selected diagram before any generated H.
+ * Derived parity/CIP and generated coordinates never become this authority. */
+export function componentSourceStereo(component:TwoDComponent):TwoDStereoSource{
+  const document=JSON.parse(component.ket) as Obj,node=document[component.sourceNodeKey];
+  if(!Array.isArray(node?.atoms))throw new Error('所选二维源图缺少原始原子列表。');
+  const original=component.atoms.slice(0,node.atoms.length);
+  return {schema:'es-2d-stereo/v1',atoms:original.map((atom,index)=>{const raw=node.atoms[index];return {id:atom.id,element:raw.label,x:raw.location[0],y:raw.location[1],
+    ...(raw.charge!==undefined?{formalCharge:raw.charge}:{}),...(raw.implicitHCount!==undefined?{hydrogenCount:raw.implicitHCount}:{})};}),
+    bonds:(node.bonds??[]).map((bond:Obj)=>({a:original[bond.atoms[0]].id,b:original[bond.atoms[1]].id,order:bond.type===4?1.5:bond.type,
+      ...(bond.stereo!==undefined?{stereo:bond.stereo}:{})})),
+    stereoGroups:twoDStereoGroups(original)};
+}
+
 /** Source loss cannot be repaired by an arbitrary edit. A representational
  * limitation can be resolved only after that same kind survived the first
  * editor roundtrip and then disappeared from an explicitly edited target. */
@@ -93,7 +129,26 @@ export function remainingTwoDSourceIssues({sourceDraft,editorBaselineDraft,curre
   }
   const currentCodes=new Set(assessTwoDConversion(currentComponent).issues.map(value=>value.code));
   const baselineCodes=baseline?new Set(assessTwoDConversion(baseline).issues.map(value=>value.code)):new Set<string>();
+  const stereoRisks=[...unique.values()].some(issue=>issue.severity==='blocking'&&['source-stereo-change','source-stereo-loss'].includes(issue.code));
+  let stereoRecheck:{matchesOriginal:boolean}|undefined;
+  if(edited&&stereoRisks&&baseline&&originalComponent&&hasExplicitTwoDStereoEdit(baseline,currentComponent)){
+    try{
+      const facts=sourceDraft.source.format==='cdxml'?readCdxmlFacts(asText(sourceDraft.raw)):
+        sourceDraft.source.format==='cdx'&&sourceDraft.raw instanceof Uint8Array?readCdxFacts(sourceDraft.raw):undefined;
+      const validTarget=assessTwoDConversion({...currentComponent,issues:currentComponent.issues.filter(issue=>!issue.code.startsWith('source-'))}).allowed;
+      if(facts?.wedges&&validTarget){
+        const reviewed=auditSourceFacts(facts,{...sourceDraft,components:sourceDraft.components.map(component=>component===originalComponent?currentComponent:component)});
+        stereoRecheck={matchesOriginal:!reviewed.some(issue=>['source-stereo-change','source-stereo-loss'].includes(issue.code))};
+      }
+    }catch{/* Missing source facts cannot certify a source repair. Keep that risk. */}
+  }
   return [...unique.values()].map(original=>{
+    if(stereoRecheck&&original.severity==='blocking'&&['source-stereo-change','source-stereo-loss'].includes(original.code)){
+      return {...structuredClone(original),severity:'warning',
+        message:stereoRecheck.matchesOriginal?`${original.message}（用户已明确修改立体定义，原源重核通过；原始转换问题保留。）`:
+          `${original.message}（用户已在二维编辑器明确修改立体定义，本次按当前图作为新目标生成；原始转换问题保留。）`,
+        resolution:{kind:'explicit-editor-change',originalSeverity:'blocking',originalMessage:original.message,baselineComponentId:baseline!.id,currentComponentId:currentComponent.id}};
+    }
     const codes=TWO_D_SOURCE_LOCAL_CODES[original.code];
     const located=original.scope==='component'&&originalComponent&&original.componentIds?.includes(originalComponent.id);
     const resolved=edited&&original.severity==='blocking'&&located&&baseline&&codes?.some(code=>baselineCodes.has(code))&&!codes.some(code=>currentCodes.has(code));
@@ -111,7 +166,7 @@ function atomIssues(raw: Obj, atom: TwoDAtom, issues: TwoDIssue[]) {
   if (raw.type && !['atom'].includes(raw.type) || raw.queryProperties || raw.atomList || raw.rglabel) fail('query-atom', 'R基、原子列表和查询原子尚未具体化。');
   if (raw.attachmentPoints || raw.attachmentOrder || raw.attpnt) fail('attachment', '可变连接点尚未具体化。');
   if (raw.explicitValence !== undefined && raw.explicitValence !== -1) fail('explicit-valence', '显式价态约束尚不能由当前三维公共模型完整表达。');
-  if (raw.stereoLabel && raw.stereoLabel !== 'abs') fail('enhanced-stereo', '相对或增强立体组尚不能由当前三维模型表达。');
+  if (raw.stereoLabel && !parseTwoDStereoLabel(raw.stereoLabel)) fail('enhanced-stereo', '无法识别该立体组标签；请核对原始立体定义。');
   if (raw.stereoParity !== undefined || raw.stereo !== undefined) fail('unsupported-atom-stereo', '未知原子立体字段不能直接当作ES有序邻居手性。');
   if (raw.alias) fail('unexpanded-alias', '原子别名尚未核实展开映射；请先在二维编辑器明确结构。');
   if (['ringBondCount','substitutionCount','hCount','unsaturatedAtom'].some(key => raw[key] !== undefined)) fail('query-atom-constraint','查询原子的环、取代或氢计数约束尚未具体化。');
@@ -191,16 +246,17 @@ function splitNode(node: Obj, nodeKey: string, sourceId: string, offset: number,
       const edges=component.bonds.filter(bond=>bond.a===index||bond.b===index);
       if(atom.implicitHydrogens===undefined && ['C','Si'].includes(atom.element) && edges.length===3 && edges.every(edge=>edge.order===1) && edges.some(edge=>edge.a===index&&[1,6].includes(edge.stereo??0)) && builderDefaultValence(atom)-builderCovalentValence(component,index)===1) atom.implicitHydrogens=1;
     }
-    materializeHydrogens(component);
+    const materialized=materializeHydrogens(component);
     const plane = makeStructure(component);
     for (const atom of component.atoms) {
       const index = component.atoms.indexOf(atom);
       const rawAtom=node.atoms[indices[index]];
-      if ((rawAtom?.stereoLabel === 'abs'||rawAtom?.cip) && !component.bonds.some(bond => bond.a === index && [1, 6].includes(bond.stereo ?? 0))) component.issues.push(blocked('stereo-without-wedge', '原子手性标签没有可核验的楔线定义。', [atom.id]));
+      if ((parseTwoDStereoLabel(rawAtom?.stereoLabel)||rawAtom?.cip) && !component.bonds.some(bond => bond.a === index && [1, 6].includes(bond.stereo ?? 0))) component.issues.push(blocked('stereo-without-wedge', '原子手性标签没有可核验的楔线定义。', [atom.id]));
       if (!component.bonds.some(bond => bond.a === index && [1, 6].includes(bond.stereo ?? 0))) continue;
-      const parity = requestedBuilder2DParity(plane, atom.id);
-      if (!parity) component.issues.push(blocked('unresolved-tetrahedral', '楔线中心缺少可确定的四面体邻居或二维投影。', [atom.id]));
-      else atom.stereoParity = parity;
+      const parity = requestedBuilder2DParity(plane, atom.id,{implicitHydrogenIds:materialized.get(atom.id)});
+      // A local 2D projection is not an admission oracle. Native decoding of
+      // the independently retained source decides ambiguous/non-stereo cases.
+      if(parity)atom.stereoParity=parity;
     }
     // E/Z is retained through actual diagram coordinates; a crossed double bond is rejected above.
     for (const bond of component.bonds) if (bond.order === 2 && !bond.stereo) {
@@ -214,6 +270,10 @@ function splitNode(node: Obj, nodeKey: string, sourceId: string, offset: number,
         component.issues.push(warning('unassigned-double-bond', '此双键未获得唯一E/Z标签；三维生成仍须保留可判定的实际构型。'));
       }
     }
+    const relativeGroups=twoDStereoGroups(component.atoms).filter(group=>group.type!=='ABS');
+    if(relativeGroups.length) component.issues.push({...warning('relative-stereo-representative',
+      `三维坐标为符合原图的一个代表构型，保留组内相对关系；${relativeGroups.some(group=>group.type==='AND')?'AND 表示含相关构型的混合物；':''}${relativeGroups.some(group=>group.type==='OR')?'OR 表示绝对构型未定的单一物质；':''}原始立体组随二维来源保留。`),
+      stereoRepresentation:{schema:'es-2d-stereo-representative/v1',selection:'source-compatible-member',groups:relativeGroups}});
     components.push(component);
   }
   return components;
@@ -221,22 +281,28 @@ function splitNode(node: Obj, nodeKey: string, sourceId: string, offset: number,
 
 /** Explicit source H counts become actual H atoms, never a valence guess. */
 function materializeHydrogens(component: TwoDComponent) {
+  const materialized=new Map<string,string[]>();
   const originals = [...component.atoms];
   originals.forEach((atom, index) => {
     const count = atom.implicitHydrogens; if (count === undefined) return;
     const aromatic = component.bonds.some(bond => (bond.a === index || bond.b === index) && bond.aromatic);
     if (atom.element === 'N' && aromatic && count === 1) atom.aromaticHydrogen = true;
     const existing = component.bonds.filter(bond => bond.a === index || bond.b === index).map(bond => component.atoms[bond.a === index ? bond.b : bond.a]);
+    const angles=existing.map(other=>({angle:Math.atan2(other.y-atom.y,other.x-atom.x),id:other.id})).sort((a,b)=>a.angle-b.angle);
+    const gaps=angles.map((left,i)=>{const right=angles[(i+1)%angles.length],gap=(i===angles.length-1?right.angle+2*Math.PI:right.angle)-left.angle;return {angle:left.angle+gap/2,gap,key:JSON.stringify([left.id,right.id])};});
+    const gap=gaps.reduce<typeof gaps[number]|undefined>((best,next)=>!best||next.gap>best.gap+1e-10||Math.abs(next.gap-best.gap)<=1e-10&&next.key<best.key?next:best,undefined);
     for (let h = 0; h < count; h++) {
-      // Place diagram H away from current neighbours. Position is display-only; native ETKDG supplies XYZ.
-      const angles = existing.map(other => Math.atan2(other.y-atom.y, other.x-atom.x)).sort((a, b) => a-b);
-      const angle = angles.length ? angles[0] + Math.PI + (h-(count-1)/2)*0.8 : h*2*Math.PI/Math.max(1,count);
+      // The largest cyclic gap rotates with the drawing. Equal gaps use stable
+      // neighbour IDs, not the world-axis branch cut of atan2. Display only.
+      const angle = gap ? gap.angle+(h-(count-1)/2)*.8 : h*2*Math.PI/Math.max(1,count);
       const key = `${atom.sourceAtomKey}/implicitH/${h}`;
       const id = atomId(component.sourceId, key);
       component.atoms.push({ id, sourceAtomKey: key, element: 'H', x: atom.x+Math.cos(angle), y: atom.y+Math.sin(angle), z: 0, formalCharge: 0, hydrogenMode: 'explicit', sourceProperties: { generatedFromImplicitH: atom.sourceAtomKey } });
       component.bonds.push({ a: index, b: component.atoms.length-1, order: 1 });
+      materialized.set(atom.id,[...(materialized.get(atom.id)??[]),id]);
     }
   });
+  return materialized;
 }
 
 export function parseKetDraft(input: string, options: ParseKetDraftOptions): TwoDDraft {
@@ -290,6 +356,11 @@ export async function parseTwoDDraft(input: string | Uint8Array | TwoDSourceInpu
     const sourceFacts=format==='cdxml'?readCdxmlFacts(asText(data)):format==='cdx'?(data instanceof Uint8Array?readCdxFacts(data):(()=>{throw new Error('CDX二进制必须以原始字节读取，不能从文本还原。');})()):null;
     const ket = await opts.indigo.convert(data,{inputFormat:format,outputFormat:'ket',signal:opts.signal}); cancelled(opts.signal);
     draft=parseKetDraft(ket,{sourceId:opts.sourceId,filename:opts.filename});
+    const restored=sourceFacts&&restoreMappedSourceStereo(sourceFacts,draft);
+    if(restored){
+      draft=parseKetDraft(restored.ket,{sourceId:opts.sourceId,filename:opts.filename});
+      draft.issues.push(warning('source-stereo-restored','已依据原文件恢复二维转换中改变的指定楔线构型。'));
+    }
     if(sourceFacts) {
       const sourceIssues=auditSourceFacts(sourceFacts,draft); draft.issues.push(...sourceIssues);
       draft.components.forEach(component=>component.issues.push(...sourceIssues.filter(issue=>issue.scope==='document'||issue.componentIds?.includes(component.id))));

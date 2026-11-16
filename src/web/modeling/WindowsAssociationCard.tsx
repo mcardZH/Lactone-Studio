@@ -25,7 +25,7 @@ export default function WindowsAssociationCard({invoke,active}:{invoke:SyProject
     <div className="sy-settings-fields"><button type="button" disabled={busy||!status?.supported} onClick={()=>void change('association-register')}>注册 / 更新当前路径</button><button type="button" disabled={busy||!status?.supported||status.state==='unregistered'} onClick={()=>void change('association-remove')}>移除本程序关联</button></div>
     {status?.supported&&<>
       <p>{`支持：${status.extensions.join('、')}。文件内容仍由原有导入入口识别。`}</p>
-      <p>添加 Windows“打开方式”及支持格式信息；保留已有默认程序。包括 .es 项目及兼容的旧 .sy 项目在内，默认打开程序均由您在 Windows 中选择。</p>
+      <p>添加 .es 项目和受支持科学文件的 Windows“打开方式”。默认打开程序由您在 Windows 中选择。</p>
       <p>.com 是 Windows 命令文件，请右键“打开方式”明确选择 Ester Studio 读取；不改变默认执行行为。无扩展名 POSCAR 请在程序内打开。</p>
       <p>需要配套文件时，请在程序内一起选择 / 拖入。</p>
       {status.state==='update-needed'&&<p>便携目录已变更，请更新到当前程序路径。</p>}

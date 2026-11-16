@@ -38,11 +38,31 @@ export function optimizationActionView(task:AdvancedTaskRecord|undefined,stageId
   const phase=ownsBackground&&(background!.phase==='cluster'||background!.phase==='eliminate-equivalent'||background!.phase==='prepare-results')?background!.phase:'optimization' as const;
   const hasWork=Boolean(stage?.progress?.total||latestStage?.results.length||latestStage&&latestStage.status!=='pending');
   const errorStage=latest?.stages.find(row=>row.status==='failed')??latest?.stages.at(-1);
+  const retainedStage=latestStage?.adoptionError?latestStage:undefined;
+  const progress=retainedStage?retainedBatchProgress(retainedStage):stage?.progress??latestStage?.progress;
+  const stageStatus=latestStage?.status;
+  const status=ownsBackground?latest?.status:stageStatus==='pending'
+    ? latest?.status==='queued'&&latestStage===latest.stages[0]?'queued' as const:undefined
+    : stageStatus==='running'&&latest?.status==='stopping'?'stopping' as const:stageStatus;
   return {kind:hasWork?'continue' as const:'start' as const,
-    hasHistory:Boolean(stage||latest),progress:stage?.progress??latestStage?.progress,
-    phase,backgroundProgress:ownsBackground?background:undefined,status:latest?.status,hasRunError:Boolean(latest?.error&&errorStage===latestStage),
+    hasHistory:Boolean(stage||latest),progress,
+    phase,backgroundProgress:ownsBackground?background:undefined,
+    status,
+    hasRunError:Boolean(latest?.error&&errorStage===latestStage&&!retainedStage),
+    retainedStage, blockedByRetainedBatch:Boolean(retainedStage),
+    adoptionErrorKind:retainedStage?retainedStage.adoptionError?.kind??'read' as const:undefined,
+    cleanupWarning:latestStage?.batchCleanupWarning,
     finalClusterCount:latestStage?.status==='completed'&&!ownsBackground?latestStage.clustering?.groups.reduce((count,group)=>count+group.clusters.length,0):undefined,
     equivalence:latestStage?.status==='completed'&&!ownsBackground?latestStage.clustering?.equivalence:undefined,
     partialFrames:stage?.resultFrameIds?.length??0,
+    unconvergedCount:latestStage?.results.filter(result=>result.status==='unconverged').length??0,
     running:Boolean(activeRun&&(ownsBackground||latestStage?.status==='running'||latest?.status==='queued'&&latestStage===latest.stages[0])),stopping:latest?.status==='stopping',run:latest};
+}
+
+function retainedBatchProgress(stage:import('../../modeling/advanced/contracts').AdvancedStageRun) {
+  const host=stage.batchProgress, progress=stage.progress;
+  if(!host||!progress)return undefined;
+  const reused=stage.results.filter(result=>result.reusedFromRunId),succeeded=reused.filter(result=>result.status==='completed').length;
+  const completed=host.succeeded+succeeded,failed=host.discarded+reused.length-succeeded;
+  return {...progress,completed,failed,succeeded:completed,discarded:failed,pending:host.pending};
 }

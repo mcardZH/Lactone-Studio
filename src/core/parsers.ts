@@ -184,8 +184,10 @@ function parsePdb(text: string, name: string): Structure[] {
 
 function parseMolRecord(record: string, name: string, index: number): Structure {
   const sourceLines = record.split('\n');
+  const tableEnd = sourceLines.findIndex((line, i) => i >= 3 && /^M\s+END\s*$/.test(line));
+  if (tableEnd < 0) throw new Error('MOL/SDF缺少M END，文件可能截断。');
   const lines: string[] = [];
-  for (let i = 0; i < sourceLines.length; i++) {
+  for (let i = 0; i <= tableEnd; i++) {
     let line = sourceLines[i];
     while (/^M\s+V30\b.*-\s*$/.test(line)) {
       const next = sourceLines[++i];
@@ -194,17 +196,19 @@ function parseMolRecord(record: string, name: string, index: number): Structure 
     }
     lines.push(line);
   }
-  record = lines.join('\n');
-  if (!/^M\s+END\s*$/m.test(record)) throw new Error('MOL/SDF缺少M END，文件可能截断。');
-  if (/^M\s+ISO\b/m.test(record) || /\bMASS=\d+/.test(record)) throw new Error('文件含指定同位素，当前输入生成器尚未保留同位素质量；请勿将其当普通元素静默导出。');
-  const structure = base(name, /V3000/.test(record) ? 'MOL / SDF V3000' : 'MOL / SDF V2000', index);
+  const countIndex = lines.findIndex(line => /^\s*\d.*\bV(?:2000|3000)\s*$/.test(line));
+  if (countIndex < 0) throw new Error('未找到MOL/SDF的V2000/V3000计数行。');
+  const v3000 = /\bV3000\s*$/.test(lines[countIndex]);
+  const table = lines.slice(countIndex + 1).join('\n');
+  if (/^M\s+ISO\b/m.test(table)) throw new Error('文件含指定同位素，当前输入生成器尚未保留同位素质量；请勿将其当普通元素静默导出。');
+  const structure = base(name, v3000 ? 'MOL / SDF V3000' : 'MOL / SDF V2000', index);
   structure.dimension = /\b2D\b|2D\s*$/i.test(lines[1] ?? '') ? 2 : 3;
-  structure.molfile = record;
+  structure.molfile = [...lines, ...sourceLines.slice(tableEnd + 1)].join('\n');
   structure.bonds = []; structure.bondSource = 'file';
   const charges = new Map<number, number>();
   const atomIds = new Map<number, number>();
-  if (/V3000/.test(record)) {
-    const n = Number(record.match(/M\s+V30\s+COUNTS\s+(\d+)/)?.[1]); checkCount(n);
+  if (v3000) {
+    const n = Number(table.match(/^M\s+V30\s+COUNTS\s+(\d+)/m)?.[1]); checkCount(n);
     const start = lines.findIndex(line => /M\s+V30\s+BEGIN ATOM/.test(line));
     const end = lines.findIndex(line => /M\s+V30\s+END ATOM/.test(line));
     if (start < 0 || end <= start) throw new Error('V3000原子段不完整。');
@@ -212,6 +216,7 @@ function parseMolRecord(record: string, name: string, index: number): Structure 
     for (const line of lines.slice(start + 1, end)) {
       const row = line.trim().split(/\s+/);
       if (row[0] !== 'M' || row[1] !== 'V30' || row.length < 8) throw new Error('V3000原子行不完整。');
+      if (/\bMASS=\d+/.test(line)) throw new Error('文件含指定同位素，当前输入生成器尚未保留同位素质量；请勿将其当普通元素静默导出。');
       const id = Number(row[2]);
       if (!Number.isSafeInteger(id) || id < 1 || charges.has(id)) throw new Error('V3000原子编号重复或无效。');
       structure.atoms.push({ ...atom(row[3], row[4], row[5], row[6]), sourceIndex: id });
@@ -221,7 +226,7 @@ function parseMolRecord(record: string, name: string, index: number): Structure 
     }
     if (hasUnconvertedAtomCfg) structure.notes.push('来源原子CFG立体标签未转换，当前保留坐标与已支持键标签；原始标签保留在连接表中。');
     if (structure.atoms.length !== n) throw new Error('V3000原子数与声明不一致。');
-    const bonds = Number(record.match(/M\s+V30\s+COUNTS\s+\d+\s+(\d+)/)?.[1]);
+    const bonds = Number(table.match(/^M\s+V30\s+COUNTS\s+\d+\s+(\d+)/m)?.[1]);
     if (!Number.isInteger(bonds) || bonds < 0) throw new Error('V3000键数无效。');
     const bondStart = lines.findIndex(line => /M\s+V30\s+BEGIN BOND/.test(line));
     const bondEnd = lines.findIndex(line => /M\s+V30\s+END BOND/.test(line));
@@ -246,8 +251,6 @@ function parseMolRecord(record: string, name: string, index: number): Structure 
       structure.bonds.push({ a: atomIds.get(Number(row[4]))!, b: atomIds.get(Number(row[5]))!, order: order === 4 ? 1 : order, aromatic: order === 4, ...(stereo ? { stereo } : {}) });
     }
   } else {
-    const countIndex = lines.findIndex(line => /V2000/.test(line));
-    if (countIndex < 0) throw new Error('未找到MOL/SDF的V2000/V3000计数行。');
     const n = Number(lines[countIndex].slice(0, 3).trim()); checkCount(n);
     const bondCount = Number(lines[countIndex].slice(3, 6).trim());
     if (!Number.isInteger(bondCount) || bondCount < 0) throw new Error('MOL/SDF键数声明无效。');
@@ -268,7 +271,7 @@ function parseMolRecord(record: string, name: string, index: number): Structure 
       if (![1,2,3,4].includes(order)) throw new Error('MOL含查询键/未指定键级，暂不作为普通分子拓扑导入。');
       structure.bonds.push({ a: ends[0]-1, b: ends[1]-1, order: order === 4 ? 1 : order, aromatic: order === 4, stereo: Number(row.slice(9,12)) || undefined });
     }
-    for (const line of lines) {
+    for (const line of lines.slice(countIndex + 1 + n + bondCount)) {
       if (!/^M\s+CHG\b/.test(line)) continue;
       const row = line.trim().split(/\s+/);
       const entries = Number(row[2]);
@@ -282,7 +285,7 @@ function parseMolRecord(record: string, name: string, index: number): Structure 
     }
   }
   structure.charge = [...charges.values()].reduce((total, value) => total + value, 0);
-  for (const [id, charge] of charges) if (charge) structure.atoms[/V3000/.test(record) ? atomIds.get(id)! : id-1].formalCharge = charge;
+  for (const [id, charge] of charges) if (charge) structure.atoms[v3000 ? atomIds.get(id)! : id-1].formalCharge = charge;
   if (structure.dimension === 2) structure.notes.push('来源为二维连接表，需在编辑器生成三维后才能导出量化坐标。');
   structure.notes.push('读取形式电荷；自旋仍需确认。只保留文件中的显式原子，不自动补氢或把二维坐标变成三维。');
   return structure;

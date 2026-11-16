@@ -1,14 +1,17 @@
 import type { TaskSelectionHandle } from '../modeling/contracts';
+import type {Vector3} from '../core/types';
 
 /** Analysis owns its capture independently from input engine/task ownership. */
 export interface AnalysisSelectionOwner { kind: 'analysis'; id: string }
-export type AnalysisSelectionHandle = TaskSelectionHandle;
+export interface AnalysisSelectionHandle extends TaskSelectionHandle {
+  setAtomIds?(atomIds: readonly string[]): void;
+}
 export interface AnalysisSelectionIntent {
   owner: AnalysisSelectionOwner; purpose: 'surface-region' | 'interaction-fragment' | 'advanced-region' | 'advanced-coordinate' | 'hirshfeld-target'; kind: 'atoms' | 'coordinate';
   rowId: string; contextKey: string; origin: 'interactive' | 'text'; initialAtomIds: string[];
-  onDraftChange?(atomIds: string[]): void;
+  onDraftChange?(atomIds: string[],images?:Vector3[]): void;
   onEnd?(result: 'confirmed' | 'cancelled'): void;
-  onConfirm(atomIds: string[]): boolean | void;
+  onConfirm(atomIds: string[],images?:Vector3[]): boolean | void;
 }
 /** The enclosing analysis supplies an actual document/revision/activation seal.
  * The broker previews in its own capture state and never writes model selection. */

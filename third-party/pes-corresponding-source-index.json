@@ -1,0 +1,511 @@
+{
+  "schema": "ester-pes-corresponding-sources/v1",
+  "version": "2.1.1",
+  "publicDistributionApproved": false,
+  "sourceStatus": "provided-and-identity-verified",
+  "desktopModifiedLibraryAdmission": "pending-actual-candidate-check",
+  "scope": "PES libraries, static dependencies, exact patches and re-link/build materials",
+  "preparedProjectionSha256": "ec71df54c37d613f63def4c91e3deb0a65cc7971e704f824d8732727398678d2",
+  "archives": [
+    {
+      "path": "third-party/corresponding-sources/pes/archives/ZimmermanGroup-pyGSM-1b4d5a5557a6.tar.gz",
+      "bytes": 307561,
+      "sha256": "067db513d7545a551d9e3b80e5f33075117f750066960feb007cd65955242371",
+      "url": "https://codeload.github.com/ZimmermanGroup/pyGSM/tar.gz/1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "originalArchiveUnchanged": true,
+      "component": "ZimmermanGroup/pyGSM",
+      "version": null,
+      "commit": "1b4d5a5557a61adc6a3df7405d6b7255b1fa4865",
+      "scope": "current PES dependency"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/sella-2.6.0.tar.gz",
+      "bytes": 182652,
+      "sha256": "7effc2a10f6d43c0bbdff11acb1fe36e16424cd9f01746660e87985662713384",
+      "url": "https://files.pythonhosted.org/packages/d5/e8/4ee9960010ca9156ed794efe249ba071d161411c59e61aa7378ebe11d292/sella-2.6.0.tar.gz",
+      "originalArchiveUnchanged": true,
+      "component": "sella",
+      "version": "2.6.0",
+      "commit": null,
+      "scope": "current PES dependency"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/xtb-v680-source.tar.gz",
+      "bytes": 2035876,
+      "sha256": "d2a2cadf9708b229654e35bec269ecc2120f6e5f0121eb00035661b83eb10a98",
+      "url": "https://codeload.github.com/grimme-lab/xtb/tar.gz/4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "commit": "4b8c987066c7e9bd0c2b727ce026fb9a581c273a",
+      "sourceLayout": "",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/xtb-v680-source/COPYING",
+        "xtb-source-licenses/xtb-v680-source/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/cpx-git.tar.gz",
+      "bytes": 16812719,
+      "sha256": "bd0ee95a0517afc09e5015746bcf38488bf129ac6853eb045428318e11d0dbdd",
+      "url": "https://github.com/grimme-lab/CPCM-X.git",
+      "commit": "e7f894c76d41ee1f703cf6f03e931cbcf046bc7f",
+      "sourceLayout": "subprojects/cpx",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/cpx-git/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/ddx.tar.gz",
+      "bytes": 393644,
+      "sha256": "53840800e9d00aad8d679b059e28892bb81637c313d67d30a55857d09bff6aa3",
+      "url": "https://codeload.github.com/ddsolvation/ddX/tar.gz/4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "commit": "4cf6dd6ea9c36108641ee9bbd0dd4e7da8477f1a",
+      "sourceLayout": "subprojects/ddx",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/ddx/LICENSE.txt"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/dftd4-git.tar.gz",
+      "bytes": 505310,
+      "sha256": "4fc76909c5f4a4690e22141e6a9512d70ec2843becb07ccca182e3ea0fb9054e",
+      "url": "https://github.com/dftd4/dftd4.git",
+      "commit": "1107ea7c7c2131719e306fd57a5f4a1579e2577e",
+      "sourceLayout": "subprojects/dftd4",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/dftd4-git/COPYING",
+        "xtb-source-licenses/dftd4-git/COPYING.LESSER",
+        "xtb-source-licenses/dftd4-git/python/COPYING",
+        "xtb-source-licenses/dftd4-git/python/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/jonquil.tar.gz",
+      "bytes": 55494,
+      "sha256": "ebca219d40bd96d61e109f0bfe45b479ddecdc2fcebcd4ea73f772b403af42c0",
+      "url": "https://codeload.github.com/toml-f/jonquil/tar.gz/refs/tags/v0.3.1",
+      "commit": "297fb2c2f7344ce4575e5b61b59da071044149bf",
+      "sourceLayout": "subprojects/jonquil",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/jonquil/LICENSE-Apache",
+        "xtb-source-licenses/jonquil/LICENSE-MIT"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/mctc-lib-git.tar.gz",
+      "bytes": 245901,
+      "sha256": "d284674bc944b2b01832cfa7015e65d089045312b6ec57b84c0ee966c6aae1d6",
+      "url": "https://github.com/grimme-lab/mctc-lib.git",
+      "commit": "aec7f40ccf1b0dceb9156ae6dc6667fd61206916",
+      "sourceLayout": "subprojects/mctc-lib",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/mctc-lib-git/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/mstore.tar.gz",
+      "bytes": 603158,
+      "sha256": "c6743437baedfa900fc23220a00ea308750365262b998c73c3de65f7938bb282",
+      "url": "https://codeload.github.com/grimme-lab/mstore/tar.gz/refs/tags/v0.4.0",
+      "commit": "6a166125738dd2f0edd62afd22c3479d7b8efbeb",
+      "sourceLayout": "subprojects/mstore",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/mstore/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/multicharge-git.tar.gz",
+      "bytes": 80410,
+      "sha256": "933ac2eba580350eb64d627a1a10d76aa27413119396ff81445079fc6fd98e57",
+      "url": "https://github.com/grimme-lab/multicharge.git",
+      "commit": "576f499b49eb57f8c2dc1ba6f7017800f1e332d9",
+      "sourceLayout": "subprojects/multicharge",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/multicharge-git/LICENSE"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/numsa.tar.gz",
+      "bytes": 85343,
+      "sha256": "3257a18a7f98c9cae2bc8e0cbb4f0171d2f94c4592ac0673b7932e0220f31d99",
+      "url": "https://codeload.github.com/grimme-lab/numsa/tar.gz/refs/tags/v0.2.0",
+      "commit": "3145b756c05883cec9698142b436c057546e2ac7",
+      "sourceLayout": "subprojects/numsa",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/numsa/COPYING",
+        "xtb-source-licenses/numsa/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/s-dftd3.tar.gz",
+      "bytes": 764252,
+      "sha256": "4d733eb6dbe8266fcfad67cef31de932a079f7c911f24f4b6efc594cd3d28803",
+      "url": "https://codeload.github.com/dftd3/simple-dftd3/tar.gz/refs/tags/v1.7.0",
+      "commit": "84cb7cddd8d6669c4ecd59b06d53e0d373656239",
+      "sourceLayout": "subprojects/s-dftd3",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/s-dftd3/COPYING",
+        "xtb-source-licenses/s-dftd3/COPYING.LESSER",
+        "xtb-source-licenses/s-dftd3/python/COPYING",
+        "xtb-source-licenses/s-dftd3/python/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/tblite-git.tar.gz",
+      "bytes": 957658,
+      "sha256": "94b3737600a7cf35551baa31b0782c707d5d3202b605b9fdb39b5ea07f786348",
+      "url": "https://github.com/tblite/tblite.git",
+      "commit": "e14351bfafb38a78715d5fb8f18654a149cfbecf",
+      "sourceLayout": "subprojects/tblite",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/tblite-git/COPYING",
+        "xtb-source-licenses/tblite-git/COPYING.LESSER"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/test-drive-git.tar.gz",
+      "bytes": 31445,
+      "sha256": "fef4b4e2ef885f2fcbb9e5852f2a23219bdc8290dfce616383c21d92bfc21e7a",
+      "url": "https://github.com/fortran-lang/test-drive.git",
+      "commit": "c506771aefd594e7e372240a8027b3fd06d61264",
+      "sourceLayout": "subprojects/test-drive",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/test-drive-git/LICENSE-Apache",
+        "xtb-source-licenses/test-drive-git/LICENSE-MIT"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/toml-f.tar.gz",
+      "bytes": 453520,
+      "sha256": "faad67f45912e92641c1daa3c5267482df243ee96be916c8b703a5034afe1885",
+      "url": "https://codeload.github.com/toml-f/toml-f/tar.gz/refs/tags/v0.5.1",
+      "commit": "51a26158c6d52bbc59cb482bdd13f00d7fd032a3",
+      "sourceLayout": "subprojects/toml-f",
+      "scope": "Exact FIRE inputs; official xTB 6.8 declared dependency source binding and full static-object source coverage also verified",
+      "originalArchiveUnchanged": true,
+      "licenses": [
+        "xtb-source-licenses/toml-f/LICENSE-Apache",
+        "xtb-source-licenses/toml-f/LICENSE-MIT"
+      ]
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/OpenBLAS-0.3.30-source.tar.gz",
+      "bytes": 24699801,
+      "sha256": "27342cff518646afb4c2b976d809102e368957974c250a25ccc965e53063c95d",
+      "url": "https://codeload.github.com/OpenMathLib/OpenBLAS/tar.gz/refs/tags/v0.3.30",
+      "component": "OpenBLAS",
+      "version": "0.3.30",
+      "scope": "source of resident libxtb BLAS dependency",
+      "originalArchiveUnchanged": true
+    }
+  ],
+  "files": [
+    {
+      "path": "third-party/corresponding-sources/pes/BUILD-AND-REPLACE.md",
+      "bytes": 5378,
+      "sha256": "74bac89d2a257e54d7838aff369f81b04ab378cb8b70ef31c5fdc0ffd0d662e8"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/FIRE-BUILD-IDENTITY.json",
+      "bytes": 6579,
+      "sha256": "f28633689fe67e0e2b8103ab72200e1365025d15511057149186b0a8a3f6f01a"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/LIBXTB-SOURCE-AND-RELINK-EVIDENCE.json",
+      "bytes": 5390,
+      "sha256": "13aac49c1481c1724352eab3c43a424620bdb2dda71a35c7c3202c3a8b9bd24d"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/OFFICIAL-XTB-DEPENDENCY-BINDING.json",
+      "bytes": 3114,
+      "sha256": "7c8bbbab8b72dce97843cc1696b82cce34478b44e52782227ec98132dc6b878e"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/SOURCE-MATERIALS.json",
+      "bytes": 11193,
+      "sha256": "e767f46d572703b621495260c89012f4d5424252c89cde8611502af322cce38a"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/STATIC-OBJECT-SOURCE-MAP.json",
+      "bytes": 342789,
+      "sha256": "572e1273690fd05f1bbcbd8137c0405c4b6eeffbb614aeffed2e962a83849dae"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/OpenBLAS-0.3.30-source.tar.gz",
+      "bytes": 24699801,
+      "sha256": "27342cff518646afb4c2b976d809102e368957974c250a25ccc965e53063c95d"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/ZimmermanGroup-pyGSM-1b4d5a5557a6.tar.gz",
+      "bytes": 307561,
+      "sha256": "067db513d7545a551d9e3b80e5f33075117f750066960feb007cd65955242371"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/cpx-git.tar.gz",
+      "bytes": 16812719,
+      "sha256": "bd0ee95a0517afc09e5015746bcf38488bf129ac6853eb045428318e11d0dbdd"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/ddx.tar.gz",
+      "bytes": 393644,
+      "sha256": "53840800e9d00aad8d679b059e28892bb81637c313d67d30a55857d09bff6aa3"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/dftd4-git.tar.gz",
+      "bytes": 505310,
+      "sha256": "4fc76909c5f4a4690e22141e6a9512d70ec2843becb07ccca182e3ea0fb9054e"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/jonquil.tar.gz",
+      "bytes": 55494,
+      "sha256": "ebca219d40bd96d61e109f0bfe45b479ddecdc2fcebcd4ea73f772b403af42c0"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/mctc-lib-git.tar.gz",
+      "bytes": 245901,
+      "sha256": "d284674bc944b2b01832cfa7015e65d089045312b6ec57b84c0ee966c6aae1d6"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/mstore.tar.gz",
+      "bytes": 603158,
+      "sha256": "c6743437baedfa900fc23220a00ea308750365262b998c73c3de65f7938bb282"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/multicharge-git.tar.gz",
+      "bytes": 80410,
+      "sha256": "933ac2eba580350eb64d627a1a10d76aa27413119396ff81445079fc6fd98e57"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/numsa.tar.gz",
+      "bytes": 85343,
+      "sha256": "3257a18a7f98c9cae2bc8e0cbb4f0171d2f94c4592ac0673b7932e0220f31d99"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/s-dftd3.tar.gz",
+      "bytes": 764252,
+      "sha256": "4d733eb6dbe8266fcfad67cef31de932a079f7c911f24f4b6efc594cd3d28803"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/sella-2.6.0.tar.gz",
+      "bytes": 182652,
+      "sha256": "7effc2a10f6d43c0bbdff11acb1fe36e16424cd9f01746660e87985662713384"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/tblite-git.tar.gz",
+      "bytes": 957658,
+      "sha256": "94b3737600a7cf35551baa31b0782c707d5d3202b605b9fdb39b5ea07f786348"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/test-drive-git.tar.gz",
+      "bytes": 31445,
+      "sha256": "fef4b4e2ef885f2fcbb9e5852f2a23219bdc8290dfce616383c21d92bfc21e7a"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/toml-f.tar.gz",
+      "bytes": 453520,
+      "sha256": "faad67f45912e92641c1daa3c5267482df243ee96be916c8b703a5034afe1885"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/archives/xtb-v680-source.tar.gz",
+      "bytes": 2035876,
+      "sha256": "d2a2cadf9708b229654e35bec269ecc2120f6e5f0121eb00035661b83eb10a98"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/fire-build-controls/IDENTITY.json",
+      "bytes": 839,
+      "sha256": "0ff01dc5ccd8592ca73167587bc9f938783c17171d17ccdfd3333846ac5c072d"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/fire-build-controls/project/scripts/native/build-xtb-v208-fire.py",
+      "bytes": 9005,
+      "sha256": "69767ac59212a7fc4d9e24db7d9ac48926a0f67d783a30badc2c30e022402fb2"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/fire-build-controls/project/third-party/build-inputs/declarations/xtb-v208-inputs.json",
+      "bytes": 8014,
+      "sha256": "b22f21f13be8933b653d56e65819cab2d271a72e2a2cf68b40c2bfe6c5e2ee7b"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/fire-build-controls/project/third-party/corresponding-sources/build-support/xtb-gnu/bounded-command.py",
+      "bytes": 12383,
+      "sha256": "bcbde69d27437735cef263c74dd0cbdcb83c8fcc23cee0473cefacd949ed8876"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/LOCK-REFERENCE.json",
+      "bytes": 7044,
+      "sha256": "34f09752980034cc2608c4b19b7215eb959e615993b27fb77d048d3969798d0f"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/PUBLIC-RELINK.md",
+      "bytes": 1746,
+      "sha256": "c1c6810f6a3400053055d6b43950e9b744a6ab3564d5778f65b0308e49f54954"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/desktop/packaging/pes-libxtb-runtime.lock.json",
+      "bytes": 7044,
+      "sha256": "34f09752980034cc2608c4b19b7215eb959e615993b27fb77d048d3969798d0f"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/gnu/lib/libgfortran.dll.a",
+      "bytes": 1210512,
+      "sha256": "59ba409a9023edaa3a848fd79fb90cb382be94311fc5aeeb9f91c8997eab4e49"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/gnu/lib/libgomp.dll.a",
+      "bytes": 334888,
+      "sha256": "3dc15bc7cc3f2a9ce2dd508ae02f4c300b2aa61f9132c1d7ac55875faa2b11d3"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/gnu/lib/libquadmath.dll.a",
+      "bytes": 57510,
+      "sha256": "d42581d0c944de19313a2de54db9b2d20d0dceaab0a95e1db85f31c9176128e9"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/link/libopenblas.a",
+      "bytes": 1704282,
+      "sha256": "1f56b54dca680239bd27bf1970ab9ea6d52a46d36665b5c22a5c7291120a51e0"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/link/libxtb.def",
+      "bytes": 824,
+      "sha256": "20902037418198e9bb1787cdd6c8d2de33e0f82bd0c309bcdff6b2c5e03521d1"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/xtb/include/xtb.h",
+      "bytes": 13343,
+      "sha256": "0b4d8a499679ca15e54c82d1c362c5a7453eaf608c26153958f9c68be21df957"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/xtb/lib/libcpx.a",
+      "bytes": 6264172,
+      "sha256": "3319a4714ddc466515450a33d0a58f3544d6e99069263f8a5c6b15e7f128c4a4"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/project/inputs/xtb/lib/libxtb.a",
+      "bytes": 19526502,
+      "sha256": "a5a53af2f9e88d80eb4f910d35d29305b24cd6bf15fbfa9e57486bd6471dad0c"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/libxtb-relink/relink.py",
+      "bytes": 2539,
+      "sha256": "810f0d4b304e09905d059b182d20e137dacb5bd8021d69c268910fdc17e0df55"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/coordinate_systems/internal_coordinates.py",
+      "bytes": 17124,
+      "sha256": "6a2c7835ba4229a8c3222c15b7daefc0a1036c00bf952bfbbaf90158807e9b5e"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/coordinate_systems/primitive_internals.py",
+      "bytes": 69860,
+      "sha256": "ed461099ada1d1512ed0af333d7dffdebc8541d3d417aea8e0480eba8a2f3594"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/coordinate_systems/topology.py",
+      "bytes": 27124,
+      "sha256": "bd8019204de9ac808cababc492793544e817bee9ebffcd5bcfbf3b5253ebeb47"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/growing_string_methods/gsm.py",
+      "bytes": 43064,
+      "sha256": "4903a69f52112ebfe22f119a99f4c85eddfc84aa41479500a7354703721f6f82"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/growing_string_methods/main_gsm.py",
+      "bytes": 58712,
+      "sha256": "0620129f988866f22eb126ccb7a0406050d290497ef67b9433ce90f420dd57b7"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/growing_string_methods/se_gsm.py",
+      "bytes": 21397,
+      "sha256": "3411549fde8adf7537b961abe2ea49b20d237f92601c5118d9f03f5293933f61"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/level_of_theories/base_lot.py",
+      "bytes": 18269,
+      "sha256": "3b6fc02b92064ca54b47f0c0fd2d807ad78a6619b897e2790ed6420a9fa31eb8"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/molecule/molecule.py",
+      "bytes": 20488,
+      "sha256": "294618e4e91c488128654d0a750f8aa77aa9d561f728ce68a11760339c7506c9"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/optimizers/base_optimizer.py",
+      "bytes": 25493,
+      "sha256": "fd254711a5e2213c3ea5ca1b11372604c1db96e66a719e20f3960665764a91a2"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/optimizers/eigenvector_follow.py",
+      "bytes": 12662,
+      "sha256": "5c30a05e83a0ccda081a3c7f3b2e33682ed1c6cd66dad1e87b3d90ed0d82542a"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/utilities/manage_xyz.py",
+      "bytes": 10460,
+      "sha256": "9f4df4331ec32a1cfee00e350c4541bea29808dcce59afe2e3c304e8cf4a13aa"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/pygsm/pyGSM/utilities/math_utils.py",
+      "bytes": 6197,
+      "sha256": "35a62ca302a4296dcb0eab02a6a0260a3814a77658cf7a99bc564b210dcb1e88"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/xtb-fire/meson.build",
+      "bytes": 6282,
+      "sha256": "11fb25717b399d2fbaffe85203fb231c467ce52c4a34e5ab0be7ab7efdc7dcfc"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/modified/xtb-fire/src/relaxation_engine.f90",
+      "bytes": 55621,
+      "sha256": "7f94adc5938ffe6452bcddbab304f669353f8113126bd41862ed09810e68e1cd"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/official-xtb/fortran-build.yml",
+      "bytes": 44372,
+      "sha256": "ea4dc4926867263e57f1115c78e374b8d73aeace736fd4a34e25b1bb6ed520dc"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/patches/pygsm-compatibility-identity.json",
+      "bytes": 3858,
+      "sha256": "731b656d3f241787468b4c449e4104976374f1ceac5bf8716dcc5d1437fedf56"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/patches/pygsm-compatibility.patch",
+      "bytes": 7591,
+      "sha256": "07733e8e8004b09770d7b11bf29ce15b5b6df556ad4df7c5d609cc165344f6e5"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/patches/xtb-fire-identity.json",
+      "bytes": 727,
+      "sha256": "5871a36c12d937dacb21e32d15036c1034c32fd94dd05a8216be584554837798"
+    },
+    {
+      "path": "third-party/corresponding-sources/pes/patches/xtb-fire.patch",
+      "bytes": 1086,
+      "sha256": "b56026b05c432a56a9d13bc344292b70a4342230a9f245c2b1d31be849306dd3"
+    }
+  ]
+}

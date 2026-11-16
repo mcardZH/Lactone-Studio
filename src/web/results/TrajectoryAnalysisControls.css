@@ -1,5 +1,10 @@
 .trajectory-analysis-controls { display: grid; gap: 12px; min-width: 0; }
 .trajectory-current-energy { flex: 1 1 100%; margin: 0; text-align: left; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.trajectory-energy-readout { display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;min-width:0; }
+.trajectory-energy-readout>.trajectory-current-energy { flex:0 1 auto; }
+.trajectory-energy-full-value { min-width:0;max-width:100%;overflow-wrap:anywhere; }
+.trajectory-energy-full-value>summary { cursor:pointer;color:var(--ui-section-ink); }
+.trajectory-energy-copy-value { user-select:all;font-variant-numeric:tabular-nums; }
 .trajectory-energy-task .optimization-plot-note,
 .trajectory-energy-task .optimization-plot-empty,
 .trajectory-empty { flex: 1 1 100%; margin: 0; color: var(--ui-control-muted, #607a6e); }
@@ -8,5 +13,5 @@
 .trajectory-energy-task .optimization-convergence :is(th, td) { text-align: center; }
 .trajectory-read-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .trajectory-coordinate-task .analysis-task-section-body > .interactive-selection-field { flex: 1 1 100%; }
-.trajectory-coordinate-current { display: block; font-variant-numeric: tabular-nums; }
+.trajectory-coordinate-current { display:block;color:var(--ui-note-ink,#5a707a);font-variant-numeric:tabular-nums; }
 .trajectory-coordinate-task .analysis-task-configuration:empty { display: none; }

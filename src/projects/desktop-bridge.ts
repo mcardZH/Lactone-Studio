@@ -1,6 +1,7 @@
 export type ProjectAssetCategory = 'models' | 'sources' | 'trajectories' | 'results';
 export type ProjectOpaqueState = unknown;
-export type ProjectFormatVersion = 1 | 2 | 3 | 4 | 5 | 6;
+const PROJECT_FORMAT_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const;
+export type ProjectFormatVersion = typeof PROJECT_FORMAT_VERSIONS[number];
 export interface ProjectAsset { assetId: string; sha256: string; bytes: number; relativePath: string; category: ProjectAssetCategory; originalName?: string }
 export interface ProjectManifest {
   schema: 'sciyue-project/v1'; formatVersion: ProjectFormatVersion; projectId: string; generation: number;
@@ -62,7 +63,7 @@ export const PROJECT_ASSET_BATCH_COUNT=32;
 /** A new destination must retain the compatibility floor of its source project. */
 export function projectFormatFloor(...versions:readonly unknown[]):ProjectFormatVersion {
   const present=versions.filter(version=>version!==undefined);
-  if(present.some(version=>![1,2,3,4,5,6].includes(version as number)))throw Object.assign(new Error('项目保存格式要求不受支持，未覆盖原项目。'),{code:'SY_SCHEMA_UNSUPPORTED'});
+  if(present.some(version=>!PROJECT_FORMAT_VERSIONS.includes(version as ProjectFormatVersion)))throw Object.assign(new Error('项目保存格式要求不受支持，未覆盖原项目。'),{code:'SY_SCHEMA_UNSUPPORTED'});
   return Math.max(1,...present as number[]) as ProjectFormatVersion;
 }
 export function projectSaveFormatVersion(state:unknown, prior:ProjectFormatVersion=1):ProjectFormatVersion {
@@ -80,19 +81,23 @@ export interface ProjectAssetWriter {
   assetIds(): string[];
   forEachAsset(callback: (assetId: string) => void): void;
   retainAsset(assetId: string): void;
+  hasAsset?(assetId: string): boolean;
 }
 export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]> }
+export async function projectAssetSha256(bytes:Uint8Array):Promise<string>{
+  const digest=await crypto.subtle.digest('SHA-256',bytes as Uint8Array<ArrayBuffer>);
+  return [...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,'0')).join('');
+}
 export function createProjectAssetIO(sessionId: string, transactionId: string, invoke: SyProjectInvoke, initialAssetIds: Iterable<string> = [], reusableAssetIds: Iterable<string> = []): { writer: ProjectAssetWriter; reader: ProjectAssetReader; assetIds: () => string[]; forEachAsset: (callback: (assetId: string) => void) => void; retainAsset: (assetId: string) => void } {
   const assets = new Set<string>(initialAssetIds); let nextUpload = 0;
   const reusable = new Set(reusableAssetIds);
   const assetIds = () => [...assets];
   const forEachAsset = (callback: (assetId: string) => void) => assets.forEach(callback);
   const retainAsset = (assetId: string) => { assets.add(assetId); };
-  const hash=async(bytes:Uint8Array)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes as Uint8Array<ArrayBuffer>))].map(value=>value.toString(16).padStart(2,'0')).join('');
   const writer: ProjectAssetWriter = {
     async write(category, name, supplied) {
       const bytes = typeof supplied === 'string' ? new TextEncoder().encode(supplied) : supplied;
-      const sha256 = await hash(bytes);
+      const sha256 = await projectAssetSha256(bytes);
       if (reusable.has(sha256)) { assets.add(sha256); return { assetId: sha256 }; }
       const uploadId = `asset-${Date.now()}-${nextUpload++}`; let asset: ProjectAsset | undefined;
       for (let offset = 0; offset < bytes.byteLength || offset === 0; offset += PROJECT_CHUNK_BYTES) {
@@ -110,7 +115,7 @@ export function createProjectAssetIO(sessionId: string, transactionId: string, i
       const flush=async()=>{
         if(!batch.length)return;
         const current=batch;batch=[];batchBytes=0;
-        const hashes=await Promise.all(current.map(value=>hash(value.bytes))),uploads:ProjectAssetUpload[]=[],seen=new Set<string>();
+        const hashes=await Promise.all(current.map(value=>projectAssetSha256(value.bytes))),uploads:ProjectAssetUpload[]=[],seen=new Set<string>();
         current.forEach((value,index)=>{const sha256=hashes[index];if(reusable.has(sha256)||seen.has(sha256))return;seen.add(sha256);uploads.push({uploadId:`asset-${Date.now()}-${nextUpload++}`,category:value.category,originalName:value.name,bytes:value.bytes,expectedBytes:value.bytes.byteLength,expectedSha256:sha256});});
         if(uploads.length){
           const {receipts}=await invokeProject(invoke,{action:'assets',sessionId,transactionId,assets:uploads});
@@ -127,7 +132,7 @@ export function createProjectAssetIO(sessionId: string, transactionId: string, i
         batch.push({...value,bytes});batchBytes+=bytes.byteLength;
       }
       await flush();return output;
-    }, assetIds, forEachAsset, retainAsset,
+    }, assetIds, forEachAsset, retainAsset, hasAsset: assetId=>reusable.has(assetId),
   };
   const reader: ProjectAssetReader = {
     async readMany(assetIds){
@@ -137,7 +142,7 @@ export function createProjectAssetIO(sessionId: string, transactionId: string, i
       if(!Array.isArray(reply.assets)||reply.assets.length!==assetIds.length)throw Error('Project read batch receipts are incomplete.');
       const values:Uint8Array[]=[];let total=0;
       for(let index=0;index<assetIds.length;index++){const part=reply.assets[index],bytes=part.bytes instanceof Uint8Array?part.bytes:new Uint8Array(part.bytes);total+=bytes.length;
-        if(part.assetId!==assetIds[index]||part.asset?.assetId!==part.assetId||part.asset.sha256!==part.assetId||part.asset.bytes!==bytes.length||total>PROJECT_CHUNK_BYTES||await hash(bytes)!==part.assetId)throw Error('Project read batch bytes or identity did not match.');values.push(bytes);
+        if(part.assetId!==assetIds[index]||part.asset?.assetId!==part.assetId||part.asset.sha256!==part.assetId||part.asset.bytes!==bytes.length||total>PROJECT_CHUNK_BYTES||await projectAssetSha256(bytes)!==part.assetId)throw Error('Project read batch bytes or identity did not match.');values.push(bytes);
       }
       for(const id of assetIds)assets.add(id);return values;
     },

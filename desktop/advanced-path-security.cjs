@@ -25,7 +25,7 @@ function validateStart(raw,cpu=cpuResourceSnapshot()){
   assert(electrons>0&&integer(raw.uhf,0,electrons)&&(electrons-raw.uhf)%2===0,'Explicit UHF/electron parity required');
   const value={...DEFAULTS,...raw,frozenAtomIds:raw.frozenAtomIds??[],constraints:raw.constraints??[]};
   assert(Array.isArray(value.frozenAtomIds)&&new Set(value.frozenAtomIds).size===value.frozenAtomIds.length&&value.frozenAtomIds.every(id=>ids.has(id))&&value.frozenAtomIds.length<atoms.length,'Invalid or fully fixed path structure');
-  assert(integer(value.maxSteps,1,Number.MAX_SAFE_INTEGER)&&integer(value.maxEvaluations,1,Number.MAX_SAFE_INTEGER)&&(value.maxWallTimeSeconds===undefined||finite(value.maxWallTimeSeconds,.01,1800))&&finite(value.forceToleranceEVPerAngstrom,1e-6,1),'Invalid path execution/convergence budget');
+  assert(integer(value.maxSteps,1,Number.MAX_SAFE_INTEGER)&&integer(value.maxEvaluations,1,Number.MAX_SAFE_INTEGER)&&(value.maxWallTimeSeconds===undefined||finite(value.maxWallTimeSeconds,.01,Number.MAX_VALUE))&&finite(value.forceToleranceEVPerAngstrom,1e-6,1),'Invalid path execution/convergence budget');
   const cores=cpu.logicalCpuCount;assert(integer(cores,1,Number.MAX_SAFE_INTEGER)&&integer(value.threads,1,cores),'Invalid path CPU budget');
   const calc={accuracy:1,maxIterations:250,electronicTemperatureK:300,...raw.calculator};keys(calc,['accuracy','maxIterations','electronicTemperatureK']);assert(finite(calc.accuracy,.001,10)&&integer(calc.maxIterations,1,Number.MAX_SAFE_INTEGER)&&finite(calc.electronicTemperatureK,0,10000),'Invalid electronic settings');value.calculator=calc;
   assert(Array.isArray(value.constraints)&&Number.isSafeInteger(value.constraints.length),'Invalid path constraints');const seen=new Set();

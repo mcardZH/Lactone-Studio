@@ -38,7 +38,7 @@ export function validateVibronicRequest(request:VibronicRequest):VibronicValidat
   for(const side of ['initial','final'] as const) {
     const state=request[side],label=side==='initial'?'初态':'末态';
     if(!state.log)add('missing-log',`${label}尚未选定Gaussian频率LOG/OUT及其频率作业。`,side);
-    if(!state.fchk)add('missing-fchk',`${label}缺少由对应CHK转换的完整FCHK。`,side);
+    if(!state.fchk)add('missing-fchk',`${label}缺少由对应CHK转换且含完整振动数据的FCHK。`,side);
     if(!state.checkpoint)add('missing-chk',`${label}尚未显式选择实际二进制CHK。`,side);
     for(const file of [state.log?.identity,state.fchk?.identity,state.checkpoint].filter(Boolean)) {
       if(!/^[a-f0-9]{64}$/i.test(file!.sha256)||!Number.isSafeInteger(file!.size)||file!.size<1)add('file-identity',`${label}来源身份缺失或无效。`,side);

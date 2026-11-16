@@ -163,10 +163,15 @@ export default function ToolbarGrid<T extends ToolbarPlacementShape = WorkbenchT
       const definition = WORKBENCH_ACTIONS.find(entry => entry.id === item.actionId);
       const kind = action.kind ?? definition?.kind ?? 'action';
       const position = positions[index];
+      const optimizationIndex = item.actionId === 'dynamics' ? placements.findIndex(entry => entry.actionId === 'preopt') : -1;
+      const optimizationPosition = positions[optimizationIndex];
+      const followsOptimization = optimizationPosition && position.column === optimizationPosition.column
+        && position.span === optimizationPosition.span && position.row === optimizationPosition.row + (optimizationPosition.rowSpan ?? 1);
       const update = (patch: Partial<ToolbarPlacementShape>) => onChange('span' in patch || 'rowSpan' in patch ? placeToolbarTile(items, item.actionId, patch, columns) : items.map(entry => entry.actionId === item.actionId ? { ...entry, ...patch } : entry));
       return <section key={item.actionId} className={`workbench-tool-cell workbench-tool-${kind}${dragging === item.actionId ? ' is-dragging' : ''}`}
         style={{ gridColumn: `${position.column} / span ${position.span}`, gridRow: `${position.row + (editMode ? 1 : 0)} / span ${position.rowSpan ?? 1}`, minHeight: (position.rowSpan ?? 1) * (editMode ? 48 : 30) }}
         data-action-id={item.actionId} data-tool-kind={kind} data-break-after={Boolean(item.breakAfter)} data-grid-row={position.row} data-grid-column={position.column} data-grid-row-span={position.rowSpan ?? 1}
+        data-simulation-neighbor={followsOptimization || undefined}
         title={editMode ? undefined : conciseToolTooltip(action.label, action.tooltip)}
         onDragOver={event => { if (editMode && dragId.current) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; } }}
         >

@@ -1,4 +1,3 @@
-import {DismissibleNotice} from '../DismissibleNotice';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
 import {useAnalysisProjectSnapshot,notifyAnalysisProjectStateChanged} from '../../projects/analysis-state';
 import NumericInput from '../NumericInput';
@@ -16,6 +15,7 @@ import {useAnalysisFeedback} from './AnalysisFeedback';
 import {traceTrajectoryOperation,type TrajectoryOperationContext} from '../../results/trajectory-operations';
 import {createMultiwfnProgressTracker,multiwfnProgressTerminal,type MultiwfnProgressIdentity,type MultiwfnProgressSnapshot} from '../../results/multiwfn-progress';
 import MultiwfnProgress from './MultiwfnProgress';
+import MultiwfnErrorNotice from './MultiwfnErrorNotice';
 import NumericPrecisionControl from './NumericPrecisionControl';
 import { AnalysisPlotSettings, AnalysisTaskLayout, AnalysisTaskSection } from './AnalysisTaskLayout';
 import AnalysisColorbarLayoutControls from './AnalysisColorbarLayoutControls';
@@ -100,7 +100,6 @@ export function visibleBondHighlights(result:BondAnalysis,keys:readonly string[]
  return visibleBondRows(result).filter(row=>keys.includes(JSON.stringify([row.atomId1,row.atomId2]))).map(row=>[row.atomId1,row.atomId2] as [string,string]);
 }
 const textCell = (value: unknown) => String(value ?? '').replace(/[\t\r\n]/g, ' ');
-const missingAnalysisBackend = (message:string) => /(?:ANALYSIS|ORBITAL)_BACKEND_MISSING/.test(message);
 /** Full results, not the filtered visual subset. Printed columns are Origin friendly. */
 export function analysisText(result: WavefunctionAnalysisResult, sourceName: string): string {
   const rows = [`# source=${textCell(sourceName)}; session=${result.sessionId}; revision=${result.sourceRevision}; method=${result.method}; backend=${result.backend.name} ${result.backend.version}`];
@@ -209,7 +208,7 @@ function SingleAnalysisControls(p: AnalysisControlsProps) {
       if(!analysisMethodAvailable(request.kind,request.method,callbacks.current.context))return;
       if (value.sessionId !== p.context.sessionId || value.sourceRevision !== p.context.sourceRevision || value.kind !== request.kind || value.method !== request.method || value.kind === 'composition' && value.orbitalKey !== p.orbitalKey) throw new Error('分析回执与当前来源或方法不匹配。');
       const accepted=withoutGeneratedSpin(value,callbacks.current.context);cache.current.set(cacheKey, accepted);notifyAnalysisProjectStateChanged(); setResult(accepted);progress?.tracker.committed();
-    } catch (cause) { if (mounted.current && guard.current.accepts(ownIdentity, own)){const message=cause instanceof Error?cause.message:String(cause);progress?.tracker.failed(progress.tracker.getSnapshot().settlement??'native-settled',message);if(missingAnalysisBackend(message))showNotice('请先选择本机 Multiwfn。');else setError(message);} }
+    } catch (cause) { if (mounted.current && guard.current.accepts(ownIdentity, own)){const message=cause instanceof Error?cause.message:String(cause);progress?.tracker.failed(progress.tracker.getSnapshot().settlement??'native-settled',message);setError(message);} }
     finally {if(progress&&multiwfnProgressTerminal(progress.tracker.getSnapshot().phase)){progress.off();if(progressRun.current===progress)progressRun.current=null;} if (mounted.current && guard.current.accepts(ownIdentity, own)) setBusy(false); }
   }
   function chooseMethod(value:string){
@@ -223,10 +222,10 @@ function SingleAnalysisControls(p: AnalysisControlsProps) {
   const interaction=(key:string)=>({'aria-selected':current===key,onPointerEnter:()=>setHover(key),onPointerLeave:()=>setHover(null)});
   const rawSingleTable:ScientificTableProjection=result?.kind==='bond-orders'?{columns:[{key:'pair',label:'原子对'},{key:'length',label:'键长 / Å'},{key:'value',label:'连续键级 > 0.05'}],rows:visibleBondRows(result).map(row=>({key:JSON.stringify([row.atomId1,row.atomId2]),cells:[`${row.sourceIndex1}–${row.sourceIndex2}`,formatAnalysisValue(p.getBondLength?.([row.atomId1,row.atomId2]),display.decimals),formatAnalysisValue(row.value,display.decimals)]}))}:{columns:[{key:'atom',label:'原子'},{key:'value',label:result?analysisValueLabel(result,effectiveSpin):'数值'}],rows:values.map(row=>({key:row.atomId,cells:[`${row.sourceIndex} ${row.element}`,formatAnalysisValue(result?analysisAtomDisplayValue(result,row,effectiveSpin):null,display.decimals)]}))};
   const singleTable=sortAnalysisTable(rawSingleTable,sort,(key,column)=>{const row=values.find(row=>row.atomId===key);return column==='identity'?row?.sourceIndex:row?.value;});
-  const progress=taskProgress?<MultiwfnProgress progress={taskProgress} operationLabel={`Multiwfn · ${method}`} onStop={()=>void cancel()}/>:busy?<div role="status">正在分析当前来源… <InputSettingsAction onClick={()=>void cancel()}>停止</InputSettingsAction></div>:null;
+  const progress=taskProgress?<MultiwfnProgress progress={taskProgress} showFailureReason={!error} operationLabel={`Multiwfn · ${method}`} onStop={()=>void cancel()}/>:busy?<div role="status">正在分析当前来源… <InputSettingsAction onClick={()=>void cancel()}>停止</InputSettingsAction></div>:null;
   return <InputSettingsLayout className="analysis-controls">{feedback}<AnalysisTaskLayout variant="card" title={p.kind === 'charges' ? '原子电荷' : p.kind === 'bond-orders' ? '连续键级' : '空间轨道组成'} progress={progress} setup={<>
     <div className="analysis-method-chips" role="group" aria-label={`${p.kind}分析方法`}>{options.map(option=><button type="button" key={option.value} className="shared-input-action analysis-method-chip" aria-pressed={method===option.value} disabled={!analysisMethodAvailable(p.kind,option.value,p.context)||undefined} onClick={()=>chooseMethod(option.value)}>{option.label}</button>)}</div>
-    </>}>{error && <DismissibleNotice role="alert" className="postprocess-warning">{error}</DismissibleNotice>}
+    </>}>{error && <MultiwfnErrorNotice message={error} identity={taskProgress?.identity.runId}/>}
     {result ? <AnalysisTaskSection title="组成结果"><p className="postprocess-note">{result.kind==='composition'?`当前轨道 ${result.orbitalKey} · `:''}{result.method} · {p.context?.sourceName ?? '已载入的波函数'}</p>
       {result.kind === 'composition' && <><InputSettingsField label="贡献筛选"><select aria-label="轨道贡献筛选" value={filter} onChange={event => setFilter(event.target.value as typeof filter)}><option value="threshold">&gt;5% · 最多10项</option><option value="top10">Top10 · 按绝对贡献</option></select></InputSettingsField><dl className="analysis-angular">{Object.entries(result.angular).map(([key, value]) => <div key={key}><dt><AngularShape kind={key}/>{key.toUpperCase()}</dt><dd>{formatAnalysisValue(value,display.decimals)}%</dd></div>)}</dl><p className="postprocess-note">显示原始有符号百分比，不对筛选子集重新归一化。完整和 {formatAnalysisValue(result.sum,display.decimals)}%。</p></>}
       <ScientificDataTable hideTitle onExport={()=>exportBlob(new Blob([result.kind==='composition'?compositionDisplayText(result,filter,display.decimals,singleTable):scientificTableText(singleTable)],{type:'text/plain;charset=utf-8'}),analysisFilename(result))} title={p.kind==='composition'?'轨道组成':p.kind==='charges'?'原子电荷':'连续键级'} projection={singleTable} sorting={{value:sort.column,direction:sort.direction,options:[{value:"",label:"默认顺序"},{value:"identity",label:"原子编号"},{value:"value",label:"贡献"}],onChange:(column,direction)=>setSort({column,direction})}} selectionScope={identity} onRowActivate={row=>setCurrent(row.key)} onClearActive={()=>{setCurrent(null);setHover(null);}} activeRowKey={current??undefined} format={{decimals:display.decimals??2,onDecimalsChange:decimals=>setDisplay({...display,decimals}),ariaLabel:p.kind==='composition'?'轨道组成':p.kind==='charges'?'原子电荷':'连续键级'}} rowBindings={row=>interaction(row.key)} rowAction={{kind:'pin',label:row=>`${pinned.includes(row.key)?'取消固定':'固定'} ${row.cells[0]}`,active:row=>pinned.includes(row.key),onActivate:row=>setPinned(value=>toggleAnalysisRow(value,row.key))}}/>
@@ -248,7 +247,7 @@ function MultiAnalysisControls(p: AnalysisControlsProps) {
   const display=useMemo(()=>({...localDisplay,...(p.context?.generatedXtb||p.sourceContext?.generatedXtb?{spin:false}:{}),decimals:p.decimals??localDisplay.decimals??2}),[localDisplay,p.decimals,p.context?.generatedXtb,p.sourceContext?.generatedXtb]);
   const setDisplay=(value:AnalysisDisplaySettings)=>{setLocalDisplay(value);if(value.decimals!==undefined)p.onDecimalsChange?.(value.decimals);};
   const [pinned, setPinned] = useProjectState<string[]>('AnalysisControls.pinned', []), [hover, setHover] = useState<string | null>(null), [current, setCurrent] = useProjectState<string | null>('AnalysisControls.current', null);
-  const missingBackendNotice = useRef('');
+
   const sourceSelections=useRef(new Map<string,{manual:boolean;methods:string[]}>());
   const [reviewPrinted,setReviewPrinted]=useState(false);
   const [sort,setSort]=useProjectState<AnalysisTableSort>('AnalysisControls.sort', {column:'identity',direction:'asc'});
@@ -305,11 +304,6 @@ function MultiAnalysisControls(p: AnalysisControlsProps) {
     queue.current!.restore({...saved.state,results,running:null});sourceSelections.current=saved.sourceSelections;setPinned(saved.pinned);setCurrent(saved.current);setActiveMethod(saved.activeMethod);setHover(null);setStopping(false);
   },undefined,()=>({results:queue.current!.snapshot().results}));
   useEffect(() => {if(p.sourceContext?.wavefunctionAvailable===false)queue.current!.cancel();queue.current!.setEnabled((p.active !== false || p.cancelOnInactive === false)&&p.sourceContext?.wavefunctionAvailable!==false); if (p.active === false) setHover(null); }, [p.active, p.cancelOnInactive,p.sourceContext?.wavefunctionAvailable]);
-  useEffect(()=>{
-    const message=state.selected.map(method=>state.errors.get(method)).find(value=>value&&missingAnalysisBackend(value))??'';
-    if(message&&message!==missingBackendNotice.current)showNotice('请先选择本机 Multiwfn。');
-    missingBackendNotice.current=message;
-  },[state]);
   useEffect(() => () => {
     progressRun.current?.handle.off();
     queue.current!.dispose(); clearHighlights();
@@ -362,11 +356,11 @@ function MultiAnalysisControls(p: AnalysisControlsProps) {
     const status = pending && methodResult ? `${statusLabel(method)}；保留已有值` : !methodResult ? statusLabel(method) : '';
     return <><span className="scientific-table-heading">{column.heading ?? column.label}</span>{p.kind!=='charges'&&<span className="scientific-table-unit">{column.quantityLabel??column.headerUnit}</span>}{status&&<span className="analysis-method-status">{status}</span>}</>;
   };
-  const progress=taskProgress?<MultiwfnProgress progress={taskProgress} operationLabel={`Multiwfn · ${methodLabel(taskProgress.identity.operation.split(':')[1])}`} onStop={()=>queue.current!.cancel()}/>:stopping?<p role="status">正在停止…</p>:state.running?<div role="status">正在计算 {methodLabel(state.running)}… <InputSettingsAction onClick={()=>queue.current!.cancel()}>停止</InputSettingsAction></div>:null;
+  const progress=taskProgress?<MultiwfnProgress progress={taskProgress} showFailureReason={!state.errors.has(taskProgress.identity.operation.split(':')[1])} operationLabel={`Multiwfn · ${methodLabel(taskProgress.identity.operation.split(':')[1])}`} onStop={()=>queue.current!.cancel()}/>:stopping?<p role="status">正在停止…</p>:state.running?<div role="status">正在计算 {methodLabel(state.running)}… <InputSettingsAction onClick={()=>queue.current!.cancel()}>停止</InputSettingsAction></div>:null;
   return <InputSettingsLayout className="analysis-controls analysis-comparison">{feedback}<AnalysisTaskLayout variant="card" methodDetails title={p.kind === 'charges' ? '原子电荷' : '连续键级'} progress={progress} setup={<>
     <div className="analysis-method-chips" role="group" aria-label={`${p.kind}分析方法`}>{[...options,...originals.filter(column=>!/gfn.*xtb|xtb/i.test(column.label)&&!options.some(option=>option.value===column.key)).map(column=>({value:column.key,label:column.label}))].map(option => <button type="button" key={option.value} className="shared-input-action analysis-method-chip" role="checkbox" aria-checked={state.selected.includes(option.value)} disabled={!originals.some(column=>column.key===option.value)&&!analysisMethodAvailable(p.kind,option.value,p.context)||undefined} data-unavailable={!analysisMethodAvailable(p.kind,option.value,p.context)||undefined} onClick={() => chooseMethod(option.value)}><span className="analysis-method-check" aria-hidden="true">{state.selected.includes(option.value) ? '✓' : ''}</span>{option.label}</button>)}</div>
     </>}>
-    {state.selected.filter(method => state.errors.has(method)&&!missingAnalysisBackend(state.errors.get(method)!)).map(method => <DismissibleNotice role="alert" className="postprocess-warning" key={method}>{methodLabel(method)}：{state.errors.get(method)} <InputSettingsAction disabled={!!state.running} onClick={()=>retryMethod(method)}>重试</InputSettingsAction></DismissibleNotice>)}
+    {state.selected.filter(method => state.errors.has(method)).map(method => <MultiwfnErrorNotice key={method} message={state.errors.get(method)!} label={methodLabel(method)} onRetry={state.running?undefined:()=>retryMethod(method)}/>)}
     {p.kind==='charges'&&p.sourceContext&&!state.selected.length&&<p className="postprocess-note">当前帧未输出电荷或自旋值。</p>}
     {originals.some(column=>state.results.has(column.key))&&<InputSettingsCheckbox label="核对来源打印值" checked={reviewPrinted} onChange={setReviewPrinted}/>}
     {state.selected.length > 0 && <>

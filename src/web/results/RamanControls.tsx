@@ -16,6 +16,7 @@ export interface RamanControlsProps {
   onPreviewIndex?(index:number|null):void;
   defaults?: RamanDefaults; scaleFactor?: number;
   decimals?:number;
+  onDecimalsChange?(value:number):void;
 }
 export function ramanActivityTable(modes: readonly ProjectedVibrationMode[], scaleFactor = 1,decimals=2): ScientificTableProjection {
   const number=(value:number|null|undefined)=>formatResultValue(value,decimals);
@@ -38,7 +39,8 @@ export function ramanStokesTable(rows: readonly RamanStokesMode[], modes: readon
     rows: rows.map((row, index) => ({ key: String(modes[index].displayIndex), cells: [String(modes[index].displayIndex), number(row.mode.frequency), ...(scaleFactor !== 1 ? [number(correctedFrequency(row.mode.frequency, scaleFactor))] : []), number(row.intensity), row.unavailableReason ? unavailableLabels[row.unavailableReason] : '可用'] })) };
 }
 function RamanControlsInner(p: RamanControlsProps) {
-  const [decimals,setDecimals]=useProjectState('RamanControls.decimals', 2),number=(value:number|null|undefined)=>formatResultValue(value,decimals);
+  const [localDecimals,setLocalDecimals]=useProjectState('RamanControls.decimals', 2);
+  const decimals=p.decimals??localDecimals,setDecimals=p.onDecimalsChange??setLocalDecimals,number=(value:number|null|undefined)=>formatResultValue(value,decimals);
   const [laser, setLaser] = useProjectState('RamanControls.laser', p.defaults?.laserWavelengthNm == null ? '' : String(p.defaults.laserWavelengthNm));
   const [temperature, setTemperature] = useProjectState('RamanControls.temperature', p.defaults?.temperatureK == null ? '' : String(p.defaults.temperatureK));
   const [width, setWidth] = useProjectState('RamanControls.width', p.defaults?.fwhm == null ? '' : String(p.defaults.fwhm));

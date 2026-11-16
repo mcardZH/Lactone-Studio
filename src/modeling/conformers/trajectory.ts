@@ -68,7 +68,7 @@ export function createConformerTrajectory(input:Omit<ConformerResultCollection,'
   const result:ConformerTrajectoryResult={id,label:input.label,kind:'collection',engine:'structure',identity:Object.freeze({...identity}),frameIds:Object.freeze(frameIds),protectedAtomIds:Object.freeze(protectedAtomIds),...(displayRestoration?{displayRestoration}:{}),
     source:{id,name:input.label,size:0},jobIndex:0,status:'completed',messages:[],initialStructure:structuredClone(reference),
     frames:frames.map((frame,index)=>({index,sourceFrameIndex:frame.source.ref.sourceFrameIndex,sourceStep:frame.step??null,
-      label:`构象 ${index+1}`,stageId:identity.stageId,sourceLine:0,convergence:[],
+      label:`frame-${index+1}`,stageId:identity.stageId,sourceLine:0,convergence:[],
       time:frame.process?.kind==='sampling'?{value:frame.process.data.timeFs,unit:'fs'}:null,
       energy:input.includeEnergies&&Number.isFinite(frame.energyHartree)?{value:frame.energyHartree!,unit:'Eh'}:null})),
     async getFrame(index,signal){assertResultNotAborted(signal);if(!Number.isSafeInteger(index)||index<0||index>=frames.length)throw new Error('轨迹帧号超出范围。');prepareConformerPlaybackDisplay(result,index,frames[index].source.structure);return structuredClone(frames[index].source.structure);},

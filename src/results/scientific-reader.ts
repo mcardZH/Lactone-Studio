@@ -3,10 +3,11 @@ import type { Atom, Structure } from '../core/types';
 import { assertResultNotAborted, ScientificDiagnosticError, UnsupportedResultKindError, type ResultDiagnostic, type ResultInputFile, type ResultReadOptions, type ScientificFileResults, type TrajectoryResult } from './contracts';
 import { GaussianScientificParser } from './gaussian-scientific-parser';
 import { OrcaScientificParser } from './orca-scientific-parser';
-import { outputLines } from './optimization-reader';
+import { outputLines } from './output-lines';
 import { emptyScientificDiagnostics, scientificAtom, type ScientificGeometry, type ScientificJob, type ScientificParser, type ScientificParserSnapshot } from './scientific-contracts';
 import { abortableResultRead } from './xyz-reader';
-import { outputSoftwareOnLine, recognizeResultSource } from './source-recognition';
+import { recognizeResultSource } from './source-recognition';
+import { MixedOutputSoftwareError } from './output-sections';
 import { attachTrajectoryStages } from './trajectory-stages';
 import { createTrajectoryOperationBatch, traceTrajectoryOperation } from './trajectory-operations';
 import { readResultSourceRange } from './source-range';
@@ -51,38 +52,44 @@ async function scientificFileResults(file: ResultInputFile, options: ResultReadO
       jobs = snapshot.jobs;
     } else {
     const identity = await recognizeResultSource(file, options);
-    if (identity.status === 'conflict' || identity.format !== 'output' || !['gaussian', 'orca'].includes(identity.software)) {
-      throw new UnsupportedResultKindError(identity.message ?? (identity.software === 'cp2k' ? '识别为CP2K输出；未作为Gaussian/ORCA解析。' : '输出前1 MiB没有可确认的 Gaussian/ORCA 身份。'));
-    }
-    const parser: ScientificParser = identity.software === 'gaussian' ? new GaussianScientificParser() : new OrcaScientificParser();
-    let damagedTailLine:number|null=null, interruption: unknown;
-    // Samples are consume calls, not frames. Keep original streaming order and
-    // time only each synchronous parser segment, never the intervening reads.
-    const indexTrace = createTrajectoryOperationBatch('parse', { sourceId: file.id, workPhase: 'semantic-index' });
-    try {
-      for await (const line of outputLines(file, options, sourceLine=>{damagedTailLine=sourceLine;})) {
-        const software = outputSoftwareOnLine(line.text);
-        if (software && software !== identity.software) throw new UnsupportedResultKindError('来源后续出现不同软件运行身份；未跨软件读取结果。');
-        indexTrace.run(() => parser.consume(line));
+      if (identity.status === 'conflict' || identity.format !== 'output' || !['gaussian', 'orca'].includes(identity.software)) {
+        throw new UnsupportedResultKindError(identity.message ?? (identity.software === 'cp2k' ? '识别为CP2K输出；未作为Gaussian/ORCA解析。' : '输出中没有可确认的 Gaussian/ORCA 身份。'));
       }
-    } catch (error) { interruption = error; }
-    finally { indexTrace.flush(); }
-    jobs = createTrajectoryOperationBatch('parse', { sourceId: file.id, workPhase: 'semantic-index-finalize' }, 1)
-      .run(() => parser.finish());
-    if (interruption && jobs.length) {
-      const message = options.signal?.aborted ? '读取已取消；保留此前完整有效结构与科学字段，未读取后续来源。' : `读取停止；保留此前完整有效数据：${interruption instanceof Error ? interruption.message : String(interruption)}`;
-      const last = jobs.at(-1)!; if (last.status !== 'failed') last.status = 'incomplete';
-      last.messages.push(message); last.data.notices.push(message);
-    }
-    if (interruption && !jobs.length) throw interruption;
-    if(damagedTailLine!==null&&jobs.length){
-      const message=`源行${damagedTailLine}含NUL损坏；已停止该行及后续读取，仅保留此前完整数据，未将后文终止/收敛标记用于本结果。`;
-      const last=jobs.at(-1)!;if(last.status!=='failed')last.status='incomplete';
-      last.messages.push(message);last.data.notices.push(message);
-      // File integrity is shared provenance. Only the unfinished last job's
-      // legacy status changes; earlier completed jobs retain their outcome.
-      for (const job of jobs) (job.data.diagnostics ??= emptyScientificDiagnostics()).integrity = { status: 'damaged-tail', sourceLine: damagedTailLine, message };
-    }
+      const parser: ScientificParser = identity.software === 'gaussian' ? new GaussianScientificParser() : new OrcaScientificParser();
+      let damagedTail: string | undefined, damagedTailLine: number | undefined, interruption: unknown;
+      // Samples are consume calls, not frames. Keep original streaming order and
+      // time only each synchronous parser segment, never the intervening reads.
+      const indexTrace = createTrajectoryOperationBatch('parse', { sourceId: file.id, workPhase: 'semantic-index' });
+      try {
+        for await (const line of outputLines(file, options, (sourceLine, reason) => {
+          damagedTailLine = sourceLine;
+          damagedTail = `源行${sourceLine}含${reason}损坏；仅保留此前完整数据，未使用损坏行及后文。`;
+        })) indexTrace.run(() => parser.consume(line));
+      } catch (error) {
+        if (error instanceof MixedOutputSoftwareError) throw new UnsupportedResultKindError(error.message);
+        interruption = error;
+      } finally { indexTrace.flush(); }
+      try {
+        jobs = createTrajectoryOperationBatch('parse', { sourceId: file.id, workPhase: 'semantic-index-finalize' }, 1)
+          .run(() => parser.finish());
+      } catch (error) {
+        if (error instanceof MixedOutputSoftwareError) throw new UnsupportedResultKindError(error.message);
+        throw error;
+      }
+      if (interruption && jobs.length) {
+        const message = options.signal?.aborted ? '读取已取消；保留此前完整有效结构与科学字段，未读取后续来源。' : `读取停止；保留此前完整有效数据：${interruption instanceof Error ? interruption.message : String(interruption)}`;
+        const last = jobs.at(-1)!; if (last.status !== 'failed') last.status = 'incomplete';
+        last.messages.push(message); last.data.notices.push(message);
+      }
+      if (interruption && !jobs.length) throw interruption;
+      if (damagedTail && jobs.length) {
+        const last = jobs.at(-1)!;
+        last.messages.push(damagedTail); last.data.notices.push(damagedTail);
+        // The file tail and a preceding program terminal outcome are independent.
+        for (const job of jobs) (job.data.diagnostics ??= emptyScientificDiagnostics()).integrity = {
+          status: 'damaged-tail', sourceLine: damagedTailLine, message: damagedTail
+        };
+      }
     }
     if (!jobs.length) throw new Error('已确认Gaussian/ORCA文件身份，但未取得可保存的作业诊断；未回退为普通结构。');
     let remaining = jobs.length;

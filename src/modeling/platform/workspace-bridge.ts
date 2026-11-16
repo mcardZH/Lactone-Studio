@@ -5,6 +5,7 @@ import { validateBondOrderEvidence } from '../bond-orders';
 import { validateCoordinates } from '../../core/modeling/model-document-validation';
 import { validateStructureLibraryProvenance } from '../../core/structure-library-provenance';
 import { copyWorkspaceSnapshotJSON, copyWorkspaceCommandJSON } from '../../../desktop/workspace-snapshot-codec.mjs';
+import { createWorkspacePublicationErrors, type WorkspacePublicationIssue } from './workspace-publication-errors';
 
 const schema = 'sciyue-workspace-document';
 const commandTypes = new Set(['model.execute', 'model.select', 'model.undo', 'model.redo', 'model.context', 'model.electronic-state', 'chemistry.start', 'chemistry.cancel', 'dynamics.start', 'dynamics.command', 'input.draft-update', 'workspace.close-view', 'workspace.viewport-event']);
@@ -128,10 +129,13 @@ function listeners() {
 export interface WorkspaceBridgeState {
   status: 'registering' | 'ready' | 'pending' | 'unavailable' | 'disposed'; pending: boolean; error: string | null;
   membership: WorkspaceMembership | null;
+  publicationIssue?: WorkspacePublicationIssue;
   closing?: boolean;
 }
 export interface WorkspaceOwnerOptions {
   bridge: WorkspaceDesktopBridge; documentId: string;
+  /** Known registry lifetime, available even if the initial snapshot is invalid. */
+  documentEpoch?: string;
   nextSnapshot(): WorkspaceDocumentSnapshot;
   /** This is the only application/domain executor. It must also check actual
    * store revision, runtime locks, transaction and engine-specific context. */
@@ -142,34 +146,50 @@ export interface WorkspaceOwnerOptions {
 export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
   const { bridge, documentId } = options;
   requireValue(identity(documentId), '共享文档 ID 无效。');
+  requireValue(options.documentEpoch === undefined || identity(options.documentEpoch), '共享文档生命周期无效。');
   const delay = options.coalesceMs ?? 16;
   requireValue(Number.isInteger(delay) && delay >= 0 && delay <= 100, '共享文档发布合并预算无效。');
   const notifications = listeners();
   let state: WorkspaceBridgeState = { status: 'registering', pending: true, error: null, membership: null };
   let disposed = false, unavailable = false, dirty = false, publicationQueued = false, work = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let waiters: { resolve(value: WorkspaceMembership): void; reject(error: unknown): void }[] = [];
+  type PublicationBatch = { promise: Promise<WorkspaceMembership>; resolve(value: WorkspaceMembership): void; reject(error: unknown): void };
+  let pendingPublication: PublicationBatch | null = null, activePublication: PublicationBatch | null = null;
   let tail: Promise<unknown> = Promise.resolve();
   let publicationFailure: unknown = null;
+  const publicationErrors = createWorkspacePublicationErrors(documentId);
+  if (options.documentEpoch) publicationErrors.setDocumentEpoch(options.documentEpoch);
+  let endLifetime!: (error: unknown) => void;
+  const lifetimeEnded = new Promise<never>((_resolve, reject) => { endLifetime = reject; });
+  void lifetimeEnded.catch(() => {});
   function update(error: string | null = state.error) {
+    state = { ...state, publicationIssue: publicationErrors.get() };
     if (disposed) state = { ...state, status: 'disposed', pending: false, error };
     else if (unavailable) state = { ...state, status: 'unavailable', pending: false, error };
     else { const pending = !state.membership || work > 0 || dirty || publicationQueued || timer !== undefined; state = { ...state, status: state.membership ? pending ? 'pending' : 'ready' : 'registering', pending, error }; }
     notifications.emit();
   }
   let initial: WorkspaceDocumentSnapshot;
-  const ready = Promise.resolve().then(() => {
+  const registration = Promise.resolve().then(() => {
     requireValue(!disposed, '共享文档 adapter 已关闭。');
     // Capacity/validation failures follow the existing unavailable/error path;
     // A real clone/resource or validation failure must not crash React.
     initial = checkedSnapshot(options.nextSnapshot(), documentId);
+    requireValue(options.documentEpoch === undefined || initial.documentEpoch === options.documentEpoch, '共享文档生命周期已变化。');
+    publicationErrors.setDocumentEpoch(initial.documentEpoch);
     return bridge.registerWorkspaceDocument(envelopeJSON({ documentId, revision: initial.document.revision, snapshot: initial }));
   }).then(raw => {
+    requireValue(!disposed && !unavailable, '共享文档 adapter 已关闭或不可用。');
     const membership = checkedMembership(raw, true);
     requireValue(membership.documentId === documentId && membership.snapshot.documentEpoch === initial.documentEpoch, '共享文档注册回执身份不匹配。');
     requireValue(JSON.stringify(membership.snapshot) === JSON.stringify(initial), '共享文档注册回执未确认原始快照。');
-    state = { ...state, membership }; update(null); return membership;
-  }).catch(error => { unavailable = true; update(errorMessage(error)); throw error; });
+    state = { ...state, membership }; publicationErrors.resolve(); update(null); return membership;
+  }).catch(error => {
+    unavailable = true; endPublications(error);
+    if (!disposed) publicationErrors.report('registration', error);
+    update(errorMessage(error)); throw error;
+  });
+  const ready = Promise.race([registration, lifetimeEnded]);
   function queue<T>(operation: () => Promise<T>): Promise<T> {
     work++; update();
     const task = tail.catch(() => {}).then(operation);
@@ -177,29 +197,60 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
     void task.then(() => { work--; update(); }, error => { work--; update(errorMessage(error)); });
     return task;
   }
-  async function commit(snapshot: WorkspaceDocumentSnapshot): Promise<WorkspaceMembership> {
+  async function commit(snapshot: WorkspaceDocumentSnapshot, forcePublication = false): Promise<WorkspaceMembership> {
+    const operationId = publicationErrors.operation();
     await ready;
     const current = state.membership!;
     const checked = checkedSnapshot(snapshot, documentId, current.snapshot.documentEpoch);
     requireValue(checked.publicationSerial > current.snapshot.publicationSerial && checked.document.revision >= current.revision, '共享文档发布序列或修订倒退。');
+    // Serial numbers order actual publications; a redundant display notification
+    // need not transfer the complete unchanged snapshot again. Commands still
+    // force a new acknowledged publication even for an intentional no-op.
+    const { publicationSerial: _nextSerial, ...nextContent } = checked;
+    const { publicationSerial: _currentSerial, ...currentContent } = current.snapshot;
+    if (!forcePublication && JSON.stringify(nextContent) === JSON.stringify(currentContent)) {
+      publicationFailure = null; publicationErrors.resolve(operationId); update(null); return current;
+    }
     const result = checkedMembership(await bridge.publishWorkspaceDocument(envelopeJSON({ ...auth(current), expectedRevision: current.revision, revision: checked.document.revision, snapshot: checked })), true, current);
     requireValue(JSON.stringify(result.snapshot) === JSON.stringify(checked), '共享文档 host 回执未确认实际发布快照。');
-    state = { ...state, membership: result }; publicationFailure = null; update(null); return result;
+    state = { ...state, membership: result }; publicationFailure = null; publicationErrors.resolve(operationId); update(null); return result;
   }
-  function rejectWaiters(error: unknown) { for (const waiter of waiters.splice(0)) waiter.reject(error); }
+  function requestedPublication() {
+    if (!pendingPublication) {
+      let resolve!: PublicationBatch['resolve'], reject!: PublicationBatch['reject'];
+      const promise = new Promise<WorkspaceMembership>((accept, fail) => { resolve = accept; reject = fail; });
+      // Store subscriptions also request publication without awaiting it.
+      void promise.catch(() => {});
+      pendingPublication = { promise, resolve, reject };
+    }
+    dirty = true; return pendingPublication;
+  }
+  function endPublications(error: unknown) {
+    if (timer !== undefined) clearTimeout(timer); timer = undefined; dirty = false;
+    pendingPublication?.reject(error); pendingPublication = null;
+    activePublication?.reject(error);
+    endLifetime(error);
+  }
   function schedule(immediate = false) {
     if (disposed || unavailable || publicationQueued || timer !== undefined) return;
     const run = () => {
       timer = undefined; publicationQueued = true;
       const task = queue(async () => {
-        const group = waiters.splice(0); dirty = false;
+        const group = pendingPublication; pendingPublication = null; activePublication = group; dirty = false;
+        let operationId = publicationErrors.operation();
         try {
           requireValue(!disposed && !unavailable, '共享文档 adapter 已关闭或不可用。');
           await ready;
+          requireValue(!disposed && !unavailable, '共享文档 adapter 已关闭或不可用。');
+          operationId = publicationErrors.operation();
           const result = await commit(options.nextSnapshot());
-          for (const waiter of group) waiter.resolve(result);
+          group?.resolve(result);
           return result;
-        } catch (error) { publicationFailure = error; for (const waiter of group) waiter.reject(error); throw error; }
+        } catch (error) {
+          publicationFailure = error; group?.reject(error);
+          if (!disposed && !unavailable) publicationErrors.report('publication', error, operationId);
+          throw error;
+        } finally { if (activePublication === group) activePublication = null; }
       });
       void task.then(() => { publicationQueued = false; if (dirty) schedule(); update(); }, () => { publicationQueued = false; if (dirty) schedule(); update(); });
     };
@@ -208,10 +259,8 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
   }
   function publish(): Promise<WorkspaceMembership> {
     if (disposed || unavailable) return Promise.reject(new Error('共享文档 adapter 已关闭或不可用。'));
-    if (waiters.length >= 256) return Promise.reject(new Error('共享文档等待发布请求超过上限。'));
-    dirty = true;
-    const promise = new Promise<WorkspaceMembership>((resolve, reject) => waiters.push({ resolve, reject }));
-    schedule(); update(null); return promise;
+    const batch = requestedPublication();
+    schedule(); update(); return batch.promise;
   }
   async function handleCommand(event: Extract<WorkspaceDocumentEvent, { kind: 'command' }>) {
     await ready; const membership = state.membership!;
@@ -225,7 +274,7 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
       await options.onCommand(command, event.expectedRevision, event.requesterWindowId);
       // Already-started authoritative work must be acknowledged even if a view
       // disposes its subscription while the callback is awaiting completion.
-      const committed = await commit(options.nextSnapshot());
+      const committed = await commit(options.nextSnapshot(), true);
       await bridge.replyWorkspaceDocumentCommand(envelopeJSON({ ...request, requestId: event.requestId, status: 'committed' as const, revision: committed.revision, snapshot: committed.snapshot }));
     } catch (error) {
       update(errorMessage(error));
@@ -235,19 +284,19 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
   const unsubscribeEvent = bridge.onWorkspaceDocumentEvent(event => {
     if (!('documentId' in event)||event.documentId !== documentId || disposed) return;
     if (event.kind === 'command') void queue(() => handleCommand(event)).catch(error => update(errorMessage(error)));
-    else if (event.kind === 'unavailable') { unavailable = true; rejectWaiters(new Error('共享文档 owner 不可用。')); update('共享文档 owner 不可用。'); }
+    else if (event.kind === 'unavailable') { unavailable = true; endPublications(new Error('共享文档 owner 不可用。')); update('共享文档 owner 不可用。'); }
   });
   const unsubscribeStore = options.subscribe?.(() => {
-    if (!disposed && !unavailable) { dirty = true; schedule(); update(null); }
+    if (!disposed && !unavailable) { requestedPublication(); schedule(); update(); }
   });
   return {
     ready, publish,
     async flush() {
       if (timer !== undefined) { clearTimeout(timer); timer = undefined; }
       if (dirty && !publicationQueued) schedule(true);
-      await ready;
+      await Promise.race([ready, lifetimeEnded]);
       do {
-        const current = tail; await current;
+        const current = tail; await Promise.race([current, lifetimeEnded]);
         // Completing an in-flight publish may have armed a coalesce timer for
         // the latest dirty snapshot. Flush owns that timer: drain it now rather
         // than repeatedly awaiting an already-resolved queue (starving timers).
@@ -262,10 +311,15 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
       return state.membership;
     },
     getState: () => state, subscribeState: notifications.subscribe,
+    setPublicationOperation(operationId: string) {
+      requireValue(typeof operationId === 'string' && operationId.length > 0, '共享文档同步操作身份无效。');
+      if (publicationErrors.setOperation(operationId)) update();
+    },
+    dismissPublicationIssue(issueId: string) { if (publicationErrors.dismiss(issueId)) update(); },
     dispose() {
       if (disposed) return; disposed = true;
-      if (timer !== undefined) clearTimeout(timer); timer = undefined; dirty = false;
-      unsubscribeStore?.(); unsubscribeEvent(); rejectWaiters(new Error('共享文档 adapter 已关闭。')); update(); notifications.clear();
+      endPublications(new Error('共享文档 adapter 已关闭。'));
+      unsubscribeStore?.(); unsubscribeEvent(); update(); notifications.clear();
       // Never leave/close a document or cancel its native controller here.
     },
   };

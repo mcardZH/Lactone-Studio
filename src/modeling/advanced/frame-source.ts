@@ -6,6 +6,7 @@ export interface AdvancedFrameRef {
   documentEpoch: string;
   revision: number;
   sourceId?: string;
+  sourceRevision?: string;
   taskId?: string;
   runId?: string;
   stageId?: string;
@@ -63,6 +64,6 @@ export function assertAdvancedIsolated(source: AdvancedFrameSource): void {
 }
 export function sameAdvancedFrame(a: AdvancedFrameRef, b: AdvancedFrameRef): boolean {
   return a.documentId === b.documentId && a.documentEpoch === b.documentEpoch && a.revision === b.revision
-    && a.sourceId === b.sourceId && a.taskId === b.taskId && a.runId === b.runId && a.stageId === b.stageId
+    && a.sourceId === b.sourceId && a.sourceRevision === b.sourceRevision && a.taskId === b.taskId && a.runId === b.runId && a.stageId === b.stageId
     && a.collectionId === b.collectionId && a.frameId === b.frameId && a.sourceFrameIndex === b.sourceFrameIndex;
 }

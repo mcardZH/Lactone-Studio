@@ -13,10 +13,10 @@ describe('Lactone Studio rebranding & LICENSE.txt Article 7/8 compliance', () =>
   it('exposes structured Lactone Studio identity and unofficial modification provenance in applicationVersion', () => {
     expect(applicationVersion.productName).toBe('Lactone Studio');
     expect(applicationVersion.shortName).toBe('LS');
-    expect(applicationVersion.displayVersion).toBe('2.0.3');
+    expect(applicationVersion.displayVersion).toBe('2.1.1');
     expect(modificationNotice.unofficialModification).toBe(true);
     expect(modificationNotice.unofficialLabel).toBe('非官方修改版');
-    expect(modificationNotice.modifiedVersion).toBe('2.0.3-lactone.1');
+    expect(modificationNotice.modifiedVersion).toBe('2.1.1-lactone.1');
     expect(modificationNotice.modifier).toBe('mcardZH');
     expect(modificationNotice.sourceRepository).toBe('https://github.com/mcardZH/Lactone-Studio');
     expect(modificationNotice.upstreamName).toBe('Ester Studio (ES)');
@@ -31,7 +31,7 @@ describe('Lactone Studio rebranding & LICENSE.txt Article 7/8 compliance', () =>
     expect(html).toContain('data-testid="lactone-about-card"');
     expect(html).toContain('Lactone Studio (LS)');
     expect(html).toContain('非官方修改版');
-    expect(html).toContain('v2.0.3-lactone.1');
+    expect(html).toContain('v2.1.1-lactone.1');
     expect(html).toContain('mcardZH');
     expect(html).toContain('https://github.com/mcardZH/Lactone-Studio');
     expect(html).toContain('Zixuan Zhang');
@@ -64,7 +64,7 @@ describe('Lactone Studio rebranding & LICENSE.txt Article 7/8 compliance', () =>
     const readme = fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
     expect(readme).toContain('# Lactone Studio (LS)');
     expect(readme).toContain('非官方修改版');
-    expect(readme).toContain('v2.0.3-lactone.1');
+    expect(readme).toContain('v2.1.1-lactone.1');
     expect(readme).toContain('https://github.com/mcardZH/Lactone-Studio');
     expect(readme).toContain('https://github.com/Ahey1/Ester-Studio');
     expect(readme).toContain('Zixuan Zhang');

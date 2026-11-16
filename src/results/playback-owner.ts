@@ -14,7 +14,7 @@ export class PlaybackOwnerRegistry {
    // reader until release and cannot publish into the new owner.
    this.entries.delete(key);entry=undefined;
   }
-  if(!entry){entry={result,revision,session:new OptPlaybackSession(result,{...options,...(options.prepared?{prepared:options.prepared.fork()}:{})}),consumers:new Map()};this.entries.set(key,entry);}
+  if(!entry){const members=new Map(collection.frames.map(frame=>[frame.sourceFrameIndex,frame.frameId]));const frameIds=result.frames.map((_,index)=>members.get(index)??JSON.stringify([collection.identity.sourceId,index]));entry={result,revision,session:new OptPlaybackSession(result,{...options,frameIds,...(options.prepared?{prepared:options.prepared.fork()}:{})}),consumers:new Map()};this.entries.set(key,entry);}
   const own=entry,token={},refresh=()=>{const values=[...own.consumers.values()];own.session.setEnvironment(values.some(value=>value.active),values.some(value=>value.active&&value.ready));};
   own.consumers.set(token,{active:false,ready:false});let released=false;
   return{session:own.session,

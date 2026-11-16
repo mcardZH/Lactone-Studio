@@ -7,7 +7,70 @@ const { hash, directoryIdentity, checkDirectory, readChecked, sameFile } = requi
 const { sessionIdentity } = require('./xtb-security.cjs');
 // Compatibility export: file-size identity is checked against each actual member.
 const MAX_BUNDLE_BYTES = Number.MAX_SAFE_INTEGER;
-const FILES = Object.freeze({ molden: 'molden.input', stdout: 'stdout.log', stderr: 'stderr.log', wbo: 'wbo' });
+const FILES = Object.freeze({ molden: 'molden.input', 'analysis-molden': 'analysis.molden', stdout: 'stdout.log', stderr: 'stderr.log', wbo: 'wbo' });
+const G_XTB_CONVERSION = 'gxtb-cartesian-spdf-v1';
+
+function validGxtbConversion(value, original, derived, atomCount) {
+  return plain(value) && value.version === G_XTB_CONVERSION && value.originalSha256 === original.sha256 && value.derivedSha256 === derived.sha256
+    && Array.isArray(value.effectiveNuclearCharges) && value.effectiveNuclearCharges.length === atomCount
+    && value.effectiveNuclearCharges.every(z => Number.isSafeInteger(z) && z > 0)
+    && Number.isFinite(value.representedElectrons) && value.representedElectrons > 0
+    && ['restricted', 'alpha-beta'].includes(value.spinResolution)
+    && ['alphaElectrons', 'betaElectrons'].every(key => Number.isFinite(value[key]) && value[key] >= 0)
+    && Math.abs(value.alphaElectrons + value.betaElectrons - value.representedElectrons) <= 1e-7
+    && ['basisCount', 'orbitalCount'].every(key => Number.isSafeInteger(value[key]) && value[key] > 0)
+    && Object.entries({ originalGramMaxError: 1e-7, derivedGramMaxError: 1e-7, overlapCovarianceMaxError: 1e-9, relativeOrbitalValueDifference: 1e-10 })
+      .every(([key, limit]) => Number.isFinite(value[key]) && value[key] >= 0 && value[key] <= limit);
+}
+
+/** One owned worker in the original single-point run directory and grant. */
+function createGxtbElectronicArtifactPreparation({ spawn, resolveRuntime }) {
+  return async ({ directory, request, metadata, files, resources, signal }) => {
+    signal?.throwIfAborted();
+    assert(request.method === 'gxtb' && request.calculation === 'singlepoint' && request.electronicProperties === true && metadata.converged === true, 'Only a converged g-xTB wavefunction single point may be converted');
+    const original = files.find(file => file.role === 'molden');
+    assert(original?.name === FILES.molden, 'Original g-xTB Molden is missing');
+    const runtime = await resolveRuntime();
+    signal?.throwIfAborted();
+    const id = randomUUID(), threads = String(resources?.threads ?? 1);
+    const worker = spawn(runtime.executable, runtime.args, {
+      cwd: runtime.cwd, windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1', OMP_NUM_THREADS: threads, OPENBLAS_NUM_THREADS: threads, MKL_NUM_THREADS: threads },
+    });
+    let stdout = '', stderr = '', failure;
+    worker.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk; });
+    worker.stderr.setEncoding('utf8').on('data', chunk => { stderr = (stderr + chunk).slice(-8192); });
+    worker.on('error', error => { failure = error; });
+    worker.stdin.on('error', error => { failure = error; });
+    const closed = new Promise(resolve => worker.once('close', resolve));
+    const stop = () => { try { worker.kill(); } catch { /* The owned close event still determines settlement. */ } };
+    signal?.addEventListener('abort', stop, { once: true });
+    try {
+      if (signal?.aborted) stop();
+      else worker.stdin.end(JSON.stringify({ id, operation: 'convert-gxtb-molden', sourceRevision: original.sha256,
+        sourcePath: path.join(directory, original.name), charge: request.charge, uhf: request.uhf,
+        atoms: request.structure.atoms.map(({ element, x, y, z }) => ({ element, x, y, z })) }) + '\n');
+      const code = await closed;
+      signal?.throwIfAborted();
+      if (failure) throw failure;
+      assert(code === 0 && stdout.trim(), `g-xTB Molden conversion worker exited (${code}): ${stderr}`);
+      const response = JSON.parse(stdout.trim());
+      assert(plain(response) && response.id === id && response.sourceRevision === original.sha256, 'g-xTB conversion worker response identity changed');
+      if (!response.ok) throw Error(response.error?.message ?? 'g-xTB Molden conversion failed');
+      const name = FILES['analysis-molden'], target = path.join(directory, name), stat = await fs.lstat(target);
+      assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'Invalid owned g-xTB analysis Molden');
+      const checked = await readChecked(target, stat.size);
+      const derived = { role: 'analysis-molden', name, bytes: checked.bytes.length, sha256: checked.sha256, text: checked.bytes.toString('utf8') };
+      assert(validGxtbConversion(response.conversion, original, derived, request.structure.atoms.length), 'Invalid g-xTB equivalent Molden provenance');
+      assert(metadata.spinTreatment === (response.conversion.spinResolution === 'alpha-beta' ? 'unrestricted' : 'restricted'), 'g-xTB native spin and Molden channels differ');
+      return { files: [...files, derived], moldenConversion: response.conversion };
+    } catch (error) {
+      stop(); await closed; throw error;
+    } finally {
+      signal?.removeEventListener('abort', stop);
+    }
+  };
+}
 
 /** Host-only immutable snapshots. Public references never expose native paths.
  * Acknowledging retain means every byte was independently saved and verified. */
@@ -39,7 +102,7 @@ function createXtbElectronicArtifacts({ root }) {
     assert(plain(value) && Object.keys(value).every(key => ['sessionId', 'stamp', 'runIdentity', 'metadata', 'files'].includes(key)) && string(value.sessionId, 100) && /^[A-Za-z0-9_-]+$/.test(value.sessionId) && plain(value.stamp) && plain(value.metadata), 'Invalid xTB artifact provenance');
     if (value.runIdentity !== undefined) { assert(plain(value.runIdentity) && Object.keys(value.runIdentity).length === 2 && Object.keys(value.runIdentity).every(key => ['taskId', 'runId'].includes(key)), 'Invalid xTB artifact task/run identity'); sessionIdentity(value.runIdentity.taskId); sessionIdentity(value.runIdentity.runId); }
     boundedJSON({ sessionId: value.sessionId, stamp: value.stamp, runIdentity: value.runIdentity, metadata: value.metadata });
-    assert(Array.isArray(value.files) && value.files.length >= 2 && value.files.length <= 4, 'Invalid xTB artifact inventory');
+    assert(Array.isArray(value.files) && value.files.length >= 2 && value.files.length <= Object.keys(FILES).length, 'Invalid xTB artifact inventory');
     const roles = new Set();
     const files = value.files.map(file => {
       assert(plain(file) && Object.keys(file).every(key => ['role', 'name', 'text', 'sha256', 'bytes'].includes(key)) && Object.hasOwn(FILES, file.role) && file.name === FILES[file.role] && typeof file.text === 'string' && !roles.has(file.role), 'Invalid xTB artifact member');
@@ -48,6 +111,10 @@ function createXtbElectronicArtifacts({ root }) {
       return { role: file.role, name: file.name, content: bytes, sha256: file.sha256, bytes: bytes.length };
     });
     assert(roles.has('molden') && roles.has('stdout'), 'Molden and native output are required');
+    if (value.metadata.method === 'gxtb') {
+      assert(roles.has('analysis-molden') && validGxtbConversion(value.metadata.moldenConversion, files.find(file => file.role === 'molden'),
+        files.find(file => file.role === 'analysis-molden'), value.metadata.orderedAtoms?.length), 'Invalid g-xTB retained Molden pair');
+    } else assert(!roles.has('analysis-molden') && value.metadata.moldenConversion === undefined, 'Unexpected g-xTB conversion on another source');
     const bindingKey = owner + ':' + value.sessionId;
     const signature = hash(Buffer.from(JSON.stringify({ stamp: value.stamp, runIdentity: value.runIdentity, metadata: value.metadata, files: files.map(({ role, name, bytes, sha256 }) => ({ role, name, bytes, sha256 })) }), 'utf8'));
     const previous = bindings.get(bindingKey);
@@ -113,4 +180,4 @@ function createXtbElectronicArtifacts({ root }) {
   }
   return { retain, read, release, closeOwner, dispose, activeCount: () => records.size, MAX_BUNDLE_BYTES };
 }
-module.exports = { createXtbElectronicArtifacts, MAX_BUNDLE_BYTES };
+module.exports = { createXtbElectronicArtifacts, createGxtbElectronicArtifactPreparation, MAX_BUNDLE_BYTES };

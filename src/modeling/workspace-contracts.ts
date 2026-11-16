@@ -57,7 +57,7 @@ export interface WorkspaceDocumentSnapshot {
   /** Replica history is empty; Undo/Redo is executed by the authoritative owner. */
   document:ModelDocument;
   contexts?:{gaussian?:WorkspaceContext;orca?:WorkspaceContext};
-  metadata?:{label:string;electronicStateConfirmed:boolean;sourceEpoch:number;inputDirty:{gaussian:boolean;orca:boolean}};
+  metadata?:{label:string;labelOrigin?:'automatic'|'manual';electronicStateConfirmed:boolean;sourceEpoch:number;inputDirty:{gaussian:boolean;orca:boolean}};
   ui?:JsonValue; runtime?:JsonValue; viewport?:JsonValue;
 }
 export type WorkspaceCommand =
@@ -92,7 +92,7 @@ export type WorkspaceDocumentEvent =
 export interface WorkspaceMemberAuth {documentId:string;membershipNonce:string}
 export interface WorkspaceDesktopBridge {
   workspaceWindowGeometry?():Promise<{x:number;y:number;width:number;height:number}>;
-  detachWorkspaceDocument?(request:WorkspaceMemberAuth&{placement?:{x?:number;y?:number;width?:number;height?:number}}):Promise<{windowId:string}>;
+  detachWorkspaceDocument?(request:WorkspaceMemberAuth&{placement?:{x?:number;y?:number;width?:number;height?:number};restorePlacement?:true}):Promise<{windowId:string}>;
   dockWorkspaceDocument?(request:WorkspaceMemberAuth):Promise<{status:'docked'}>;
   activateWorkspaceDocument?(request:WorkspaceMemberAuth):Promise<{status:'activated'}>;
   requestWorkspaceDocumentClose?(request:WorkspaceMemberAuth):Promise<{status:'closed'|'cancelled'}>;
@@ -100,7 +100,7 @@ export interface WorkspaceDesktopBridge {
    * window from its pending close transaction, never from caller-supplied IDs. */
   confirmWorkspaceDocumentClose?(request:WorkspaceMemberAuth&{requestId:string}):Promise<{decision:'cancel'|'discard'}>;
   /** Owner-authenticated prompt shown on this document's actual floating window. */
-  confirmWorkspaceScientificEdit?(request:WorkspaceMemberAuth&{expectedRevision:number;copyOnly?:boolean;purpose?:'file-import'}):Promise<{decision:'current'|'copy'|'cancel'}>;
+  confirmWorkspaceScientificEdit?(request:WorkspaceMemberAuth&{expectedRevision:number;copyOnly?:boolean;purpose?:'file-import';problem?:string}):Promise<{decision:'current'|'copy'|'cancel'}>;
   replyWorkspaceDocumentClose?(request:WorkspaceMemberAuth&{requestId:string;status:'closed'|'cancelled';error?:string}):Promise<{status:'closed'|'cancelled'}>;
   restoreWorkspaceOwner?(request:WorkspaceMemberAuth):Promise<{status:'shown'|'restored-headless';windowId:string}>;
   registerWorkspaceDocument(request:{documentId:string;revision:number;snapshot:WorkspaceDocumentSnapshot}):Promise<WorkspaceMembership>;

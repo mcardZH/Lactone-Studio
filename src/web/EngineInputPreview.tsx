@@ -12,6 +12,7 @@ import './native-input-preview.css';
 
 interface Props {
   engine: 'gaussian'|'orca';
+  exportPage?: boolean;
   text?: string;
   atomCount?: number;
   issues?: string[];
@@ -25,10 +26,11 @@ interface Props {
   capabilityError?: string | null;
 }
 
-export default function EngineInputPreview({engine,text='',atomCount=0,issues=[],orcaRequest,gaussianRequest,foldCoordinates,onFoldCoordinates,manualText=false,capabilityError,snapshotFiles,minimumVersionLabel}:Props) {
+export default function EngineInputPreview({engine,exportPage=false,text='',atomCount=0,issues=[],orcaRequest,gaussianRequest,foldCoordinates,onFoldCoordinates,manualText=false,capabilityError,snapshotFiles,minimumVersionLabel}:Props) {
   const workbench=useWorkbenchLayout();
-  const open=!workbench.layout.folds['input.preview'];
-  const setOpen=(value:boolean)=>workbench.updateLayout(current=>({...current,folds:{...current.folds,'input.preview':!value}}));
+  const foldKey=exportPage?'input.preview.export':'input.preview';
+  const open=!(workbench.layout.folds[foldKey]??exportPage);
+  const setOpen=(value:boolean)=>workbench.updateLayout(current=>({...current,folds:{...current.folds,[foldKey]:!value}}));
   const [index,setIndex] = useState(0);
   const resizeStart=useRef<{y:number;height:number}|null>(null);
   const savedPreviewHeight=workbench.layout.paneSizes.previewHeight;

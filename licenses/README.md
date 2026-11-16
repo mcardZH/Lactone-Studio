@@ -1,54 +1,18 @@
-# Ester Studio 2.0.3 third-party materials
+# Ester Studio 2.1.1 第三方许可与来源材料
 
-Ester Studio's own content is covered by the root `LICENSE.txt`. Third-party
-components retain their original licences, notices, exceptions and rights. The
-application licence does not relicense those components or restrict rights
-granted by their original licences.
+本目录提供本版本的许可和署名材料。`publicDistributionApproved` 仍为 false；发布身份及对应源码须由最终候选复核。
 
-The release's `SOURCE_INDEX.json` lists the exact files in this `licenses/`
-directory. `COMPONENT_SOURCES.json` identifies bundled versions and their
-source entries. `SAME_BODY_INDEX.json` records unchanged original notice copies.
-These generated indexes do not replace any original legal text.
+- ES 自有部分沿该版本根 LICENSE。第三方各自沿原许可；ES 的许可不覆盖、限制或替代第三方权利。
+- 原有 Electron/Chromium、FFmpeg、Ketcher/Indigo、图像解码、原生分析、SSH、OCR 等原文保留；旧来源材料仅在字节及组件相符时复用。
+- `xtb-current/` 是当前 xTB 运行时原文；`xtb-source-licenses/` 是所附确切源码归档的许可。
+- `pes-core/` 补齐 PES 核心 Python、Sella、JAX/JAXlib、ml-dtypes、NetworkX 等原文；`pes-libxtb-6.8.0/` 为新增常驻库及实际 GNU/OpenBLAS 组成原文。
+- pyGSM MIT 原始署名为 Copyright (c) 2022 Cody Aldaz；Sella 的原文保留 NTESS 及 US Government 权利。论文作者和软件版权所有者分别保留。
+- `fonts/DejaVu-LICENSE.txt` 独立覆盖界面嵌入的 DejaVu 字体，不能只依赖已排除的 matplotlib 副本携带许可。
+- `structure-sources.json` 保留 301 个数据条目，对四个 NOMAD 条目补充署名。数据许可与科学引用按各自用途提供。
+- 依据用户决定，下次公开包排除 AFIR/pysisyphus 的专属运行闭包；此目录不把该闭包声明为仍随包分发。
+- g-xTB 改为用户从官方自行下载，ES 只配置并调用外部程序；本次公开附件不分发其二进制和专属闭包。此前“保留内置并取得源码”前置路线已被替代。保留的 GPL 文本仅为上游许可参考，不表示该程序仍随 ES 分发。
 
-| Component | Bundled identity | Materials and corresponding source |
-|---|---|---|
-| Frontend, Electron and Chromium | Electron 44.7.0; Chromium 152.0.7977.130; other versions in the lock/index | `frontend/`, `electron/`, `chromium/` and `SOURCE_INDEX.json`; Electron's MIT licence does not replace Chromium's component notices |
-| Native chemistry engine | Actual build/source identity in this release provenance; historical parent materials retained | Original runtime notices under `runtime/resources/chemistry/licenses/`; paired source `source-native-identity.json` and `third-party/corresponding-source-index.json` |
-| GNU xTB | 6.7.0 with ES H-only initialization modification | `runtime/resources/xtb/licenses/`; paired upstream source `third-party/corresponding-sources/XTB-GNU-SOURCE-INDEX.json`; [ES modification notice](xtb/ES-H-INITIAL-VELOCITY.md) |
-| FFmpeg and native shared libraries | Exact versions in the component/source indexes | Paired source `third-party/corresponding-source-index.json`, including its FFmpeg/GNU/library guides and original licences |
-| OpenBLAS | 0.3.33 | `openblas-0.3.33/`; earlier notices are retained separately |
-| Ketcher / Indigo | 3.18.0 / 1.46.0 | [2D notices](2d-components/README.md), original notices under `2d-components/`, and [supplemental corresponding sources](supplemental-sources/README.md) |
-| Static image decoding | UTIF 3.1.0 / pako 1.0.11 | [Image notices](image-decode/README.md), including original Zlib source notices |
-| SSH | ssh2 1.17.0 and its locked dependencies | [SSH notices](task-system/README.md) and `task-system/npm/` |
-| MolVec / Eclipse Temurin | 0.9.8 / 17.0.20.1+1 Windows x64 JRE | Runtime under `runtime/ocr-components/molvec/`; [OCR notices](ocr/molvec/README.md), complete vendor `legal/` tree, and the paired exact-source archives described below |
+`SOURCE_INDEX.json` 对本目录逐成员给出字节数和 SHA-256，自身不列入。`SAME_BODY_INDEX.json` 只对确实原字节复制的许可材料声明原文未改。
+配套源码准备见 `../third-party/corresponding-sources/pes/SOURCE-MATERIALS.json`；主 Agent 整合时可迁移为公共源码包的对应相对路径，并重新生成索引，不能把本 fork 的内部路径带入公开物。
 
-The complete source ZIP and portable ZIP are offered together at the
-[Ester Studio 2.0.3 release](https://github.com/Ahey1/Ester-Studio/releases/tag/v2.0.3).
-In the source ZIP, `licenses/supplemental-sources/` contains the exact Indigo
-vendor source (including Cairo and InChI), Emscripten/emsdk sources and original
-notices, the official Temurin/OpenJDK source archive, and the corresponding
-Temurin build scripts. Its index gives archive names, checksums and origins.
-These source archives are in the companion source ZIP; paths beginning
-`third-party/` also refer to that source ZIP, not a hidden portable directory.
-
-Cairo 1.17.4 as vendored by Indigo is distributed using its MPL 1.1 option;
-the original dual-licence headers and both original licence texts are preserved.
-The source remains available under its original terms. InChI 1.06 retains the
-IUPAC/InChI-Trust InChI Licence No. 1.0. Its complete corresponding vendor source
-and build scripts are supplied in the same release source ZIP. See the
-[source availability notice](supplemental-sources/README.md) for the exact scope.
-
-Multiwfn, Gaussian and ORCA are obtained separately by the user and are not
-distributed in these archives. Scientific method citations, data licences and
-third-party software licences each retain their own scope. Original copyrights,
-notices and required exceptions remain in their original locations as well as
-in the applicable material collection.
-
-The source and binary identities and supplied build controls do not claim a
-fresh build of the complete native product on a new Windows installation.
-
-The native engine retains its original 1.0.3-dev.10 build identity. Separate
-source-side build controls for six Fortran shared libraries are provided at
-`scripts/release/fortran-relative-source/README.md` in the companion source ZIP.
-Actual library build identities belong to the final runtime provenance; this
-source navigation does not claim an engine rebuild or numerical validation.
+源码、构建和替换材料见同版本配套附件 `Ester-Studio-v2.1.1-source-code.zip`。文中 `../third-party/` 与 `../scripts/` 路径相对于该源码附件，不表示它们已嵌入便携目录。

@@ -1,25 +1,167 @@
 /* Presentation tokens only. Scientific palettes and state remain with callers. */
 :root {
-  --ui-control-font:var(--ui-primary-size,16px);
+  --ui-control-font:var(--ui-secondary-size,14px);
+  --ui-control-line:calc(20px * var(--ui-font-scale,1));
+  --ui-title-line:calc(24px * var(--ui-font-scale,1));
+  --ui-window-title-size:calc(18px * var(--ui-font-scale,1));
+  --ui-window-title-line:calc(26px * var(--ui-font-scale,1));
+  --ui-metadata-line:calc(18px * var(--ui-font-scale,1));
+  --ui-font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  --ui-section-ink:#13766e;
+  --ui-field-ink:#3c5763;
+  --ui-label-ink:#506b75;
+  --ui-note-ink:#5a707a;
   --ui-control-caption-font:var(--ui-secondary-size,14px);
   --ui-control-small-font:var(--ui-small-size,13px);
-  --ui-control-ink:#294454;
-  --ui-control-muted:#526879;
-  --ui-control-border:#cadfd1;
+  --ui-control-ink:#233c33;
+  --ui-control-muted:#526c62;
+  --ui-control-border:#d5ded9;
   --ui-control-bg:#fff;
   --ui-control-radius:7px;
-  --ui-control-height:36px;
-  --ui-control-compact-height:30px;
-  --ui-control-padding:5px 9px;
-  --ui-control-compact-padding:3px 6px;
+  --ui-control-height:calc(30px + (var(--ui-font-scale,1) - 1) * 32px);
+  --ui-control-compact-height:var(--ui-control-height);
+  --ui-control-primary-height:36px;
+  --ui-control-primary-width:64px;
+  --ui-control-padding:4px 8px;
+  --ui-control-compact-padding:var(--ui-control-padding);
   --ui-control-accent:#548f74;
+  --ui-control-hover-bg:#f8faf9;
+  --ui-control-selected-bg:#f1f6f3;
+  --ui-tool-selected-border:#9ab5a6;
+  --ui-control-selected-ink:#186846;
+  --ui-control-focus:#427e66;
+  --ui-control-invalid:#ad534b;
+  --ui-action-disabled-bg:#eff4f0;
+  --ui-action-disabled-ink:#5b7062;
+  --ui-action-disabled-border:#cadfd1;
+  --ui-action-primary-bg:#147d75;
+  --ui-action-primary-hover:#11645e;
+  --ui-surface-border:#e8ece9;
+  --ui-surface-bg:#fcfffd;
+  --ui-parameter-card-bg:var(--ui-surface-bg);
+  --ui-surface-radius:12px;
+  --ui-page-bg:#fefffe;
+  --ui-sidebar-bg:#feffff;
+  --ui-workspace-rail-bg:#fdfefd;
+  --ui-workspace-nav-selected:#edf4f0;
+  --ui-workspace-tabs-bg:#fdfffd;
+  --ui-workspace-group-bg:#fafdfc;
+  --ui-workspace-active-tab-bg:#eef5f1;
+  --ui-workspace-active-tab-line:#779b8b;
+  --ui-workspace-collapsed-active-bg:var(--ui-workspace-active-tab-bg);
+  --ui-analysis-tools-bg:#fbfcfb;
+  --ui-workspace-tools-bg:var(--ui-sidebar-bg);
+  --ui-workspace-canvas-bg:#fbfefb;
+  --ui-table-header-bg:#f8fbf9;
+  --ui-table-body-bg:#fff;
+  --ui-table-row-alt-bg:var(--ui-table-body-bg);
+  --ui-table-line:#c8d6cd;
+  --ui-subcard-bg:#fff;
+  /* A 1 px native border plus the contiguous .2 px inset paints the approved
+     1.2 px stroke without Chromium's native fractional-border rounding. */
+  --ui-card-stroke-width:1.2px;
+  --ui-card-stroke-inset:inset 0 0 0 calc(var(--ui-card-stroke-width) - 1px) var(--ui-surface-border);
+  --ui-theme-mixed-preview:#eef5ee;
+  --ui-theme-mint-preview:#edf4f0;
+  --ui-theme-clear-preview:#e2f7ef;
+  --ui-window-radius:16px;
+  --ui-subcard-radius:10px;
+}
+
+:root[data-interface-theme=clear] {
+  --ui-control-ink:#243643;
+  --ui-control-muted:#566a73;
+  --ui-control-border:#b9d6cb;
   --ui-control-hover-bg:#edf7f1;
-  --ui-control-selected-bg:#e1f1e7;
-  --ui-control-selected-ink:#174d34;
-  --ui-control-focus:#76ad94;
-  --ui-surface-border:#d4e5db;
-  --ui-surface-bg:#f1f8f3;
-  --ui-surface-radius:11px;
+  --ui-tool-selected-border:var(--ui-control-accent);
+  --ui-control-selected-bg:#e2f7ef;
+  --ui-control-selected-ink:#176956;
+  --ui-action-disabled-bg:#f1f4f3;
+  --ui-action-disabled-ink:#64716c;
+  --ui-surface-border:#d1e5de;
+  --ui-surface-bg:#fff;
+  --ui-page-bg:#fcfefd;
+  --ui-parameter-card-bg:#f8fbfa;
+  --ui-sidebar-bg:#fbfdfc;
+  --ui-workspace-rail-bg:#f4fbf9;
+  --ui-workspace-nav-selected:#d7f4eb;
+  --ui-workspace-tabs-bg:#f5fbfa;
+  --ui-workspace-group-bg:#e1f5ef;
+  --ui-workspace-active-tab-bg:var(--ui-control-bg);
+  --ui-workspace-active-tab-line:var(--ui-action-primary-bg);
+  --ui-workspace-collapsed-active-bg:initial;
+  --ui-analysis-tools-bg:#f9fcfa;
+  --ui-workspace-canvas-bg:#fff;
+  --ui-table-header-bg:#f8fbf9;
+  --ui-table-row-alt-bg:var(--ui-table-body-bg);
+}
+
+/* The root also covers the first paint before the preference binding mounts. */
+:root:not([data-interface-theme]),:root[data-interface-theme=mixed] {
+  --ui-section-ink:#217465;
+  --ui-field-ink:#40585c;
+  --ui-label-ink:#40585c;
+  --ui-note-ink:#5d7274;
+  --ui-control-ink:#40585c;
+  --ui-control-muted:#5d7274;
+  --ui-control-border:#d5ded6;
+  --ui-control-accent:#237c6d;
+  --ui-control-focus:#237c6d;
+  --ui-control-hover-bg:#f6f9f6;
+  --ui-control-selected-bg:#eef5ee;
+  --ui-control-selected-ink:#217465;
+  --ui-tool-selected-border:#a9c1b3;
+  --ui-action-primary-bg:#237c6d;
+  --ui-action-primary-hover:#1c665a;
+  --ui-surface-border:#d5ded6;
+  --ui-surface-bg:#fefefe;
+  --ui-parameter-card-bg:var(--ui-surface-bg);
+  --ui-page-bg:#fbfdfc;
+  --ui-sidebar-bg:var(--ui-page-bg);
+  --ui-workspace-rail-bg:var(--ui-page-bg);
+  --ui-workspace-nav-selected:#eef5ee;
+  --ui-workspace-tabs-bg:var(--ui-page-bg);
+  --ui-workspace-group-bg:var(--ui-surface-bg);
+  --ui-workspace-active-tab-bg:#eef5ee;
+  --ui-workspace-active-tab-line:#237c6d;
+  --ui-analysis-tools-bg:var(--ui-page-bg);
+  --ui-workspace-canvas-bg:#fff;
+  --ui-table-header-bg:#fbfcfb;
+  --teal:var(--ui-action-primary-bg);
+  --teal-dark:var(--ui-action-primary-hover);
+}
+
+/* Reserve a visible arrow inside every native single-choice control. */
+select:not([multiple]):is(:not([size]),[size="1"]) {
+  appearance:none;
+  padding-inline-end:calc(26px * var(--ui-font-scale,1))!important;
+  background-image:linear-gradient(45deg,transparent 50%,#427e66 50%),linear-gradient(135deg,#427e66 50%,transparent 50%)!important;
+  background-size:5px 5px,5px 5px!important;
+  background-position:right 13px center,right 8px center!important;
+  background-repeat:no-repeat!important;
+}
+select:not([multiple]):disabled {
+  background-image:linear-gradient(45deg,transparent 50%,#78897e 50%),linear-gradient(135deg,#78897e 50%,transparent 50%)!important;
+}
+
+.electronic-state-warning { position:relative; display:inline-block; flex:0 0 auto; margin:0; padding:0; border:0; color:#916d12; background:transparent; }
+.electronic-state-warning>summary {
+  display:grid; place-items:center; box-sizing:border-box; inline-size:22px; block-size:22px;
+  list-style:none; cursor:pointer; border:1px solid #d4b454; border-radius:50%;
+  background:#fff3cc; color:#86620d; font:700 14px/1 var(--ui-font-family);
+}
+.electronic-state-warning>summary::-webkit-details-marker { display:none; }
+.electronic-state-warning>summary:focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
+.electronic-state-warning[open]>[role=note] {
+  position:absolute; z-index:40; inset-block-start:calc(100% + 6px); inset-inline-end:0;
+  box-sizing:border-box; inline-size:max-content; max-inline-size:min(320px,calc(100vw - 32px));
+  padding:8px 10px; border:1px solid #d4b454; border-radius:7px; background:#fffbef; color:#765b20;
+  font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family); white-space:normal; overflow-wrap:anywhere;
+  box-shadow:0 4px 12px #614a1520;
+}
+
+@media (prefers-contrast: more) {
+  :root { --ui-control-border:#768e81; }
 }
 
 /* Existing compact consumers share metrics without sharing their callbacks. */
@@ -38,3 +180,93 @@
 :where(.model-settings-popover,.postprocess-plot,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button:hover:not(:disabled)) { background:var(--ui-control-hover-bg); }
 :where(.model-settings-popover,.postprocess-plot,.input-settings-surface,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button,input,select,textarea):focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
 :where(.dialog-shell,.dialog-surface,.ui-control-surface) :where(input[type=checkbox],input[type=radio],input[type=range]) { accent-color:var(--ui-control-accent); }
+
+:root[data-font-size=large] { --ui-control-primary-height:41px; --ui-control-primary-width:72px; }
+:root[data-font-size=larger] { --ui-control-primary-height:45px; --ui-control-primary-width:80px; }
+@supports (min-height:round(up, 30px, 1px)) {
+  :root, :root[data-font-size] {
+    --ui-control-height:round(up, calc(30px * var(--ui-font-scale,1)), 1px);
+    --ui-control-primary-height:round(up, calc(36px * var(--ui-font-scale,1)), 1px);
+    --ui-control-primary-width:round(up, calc(64px * var(--ui-font-scale,1)), 1px);
+  }
+}
+
+.ui-control-surface :where(button,select,input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]),textarea) {
+  font-family:var(--ui-font-family); line-height:var(--ui-control-line);
+}
+.ui-control-surface :where(button,input,select,textarea):disabled {
+  opacity:1; color:var(--ui-action-disabled-ink); background:var(--ui-action-disabled-bg); border-color:var(--ui-action-disabled-border);
+}
+.ui-control-surface :where(input,select,textarea)[aria-invalid=true]:not(:disabled) { border-color:var(--ui-control-invalid); background:#fff; }
+.ui-control-surface :where(.button-primary,[data-ui-action=primary]) {
+  min-height:var(--ui-control-primary-height); min-width:min(100%,var(--ui-control-primary-width)); padding:5px 12px;
+  border-color:var(--ui-action-primary-bg); background:var(--ui-action-primary-bg); color:#fff; font-weight:600;
+}
+.ui-control-surface :where(.button-primary,[data-ui-action=primary]):hover:not(:disabled) {
+  border-color:var(--ui-action-primary-hover); background:var(--ui-action-primary-hover);
+}
+
+/* One action group uses one size role. Grid rows share the tallest content,
+   including a wrapped narrow layout; columns still follow their labels. */
+:is(.input-settings-layout.input-settings-surface[data-input-layout=standard],.dialog-shell,.ui-control-surface)
+  :is(.shared-input-row[data-input-row=actions],.ui-action-row,.modal-buttons) {
+  --ui-action-group-height:var(--ui-control-height);
+  --ui-action-group-padding:var(--ui-control-padding);
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--ui-control-primary-width)),max-content));
+  grid-auto-rows:1fr; justify-content:var(--ui-action-group-justify,start); align-items:stretch; gap:8px; min-width:0;
+}
+:is(.input-settings-layout.input-settings-surface[data-input-layout=standard],.dialog-shell,.ui-control-surface)
+  :is(.shared-input-row[data-input-row=actions],.ui-action-row,.modal-buttons):has(> :is(.button-primary,[data-input-variant=primary],[data-ui-action=primary])) {
+  --ui-action-group-height:var(--ui-control-primary-height);
+  --ui-action-group-padding:5px 12px;
+}
+:is(.input-settings-layout.input-settings-surface[data-input-layout=standard],.dialog-shell,.ui-control-surface)
+  :is(.shared-input-row[data-input-row=actions],.ui-action-row,.modal-buttons) > :is(button,.shared-input-action[data-input-reset]) {
+  box-sizing:border-box; width:auto; height:auto; min-width:0; min-height:var(--ui-action-group-height);
+  max-width:100%; padding:var(--ui-action-group-padding); align-self:stretch;
+  font-size:var(--ui-control-font); line-height:var(--ui-control-line);
+}
+.dialog-shell .modal-buttons { --ui-action-group-justify:end; }
+
+/* Ordinary cards share one painted stroke. The inset extends the native border
+   inward by .2 px; it has no blur, offset, depth or layout effect. State rings,
+   splitters, fields and buttons retain their own roles. */
+:root :is(.sy-settings-card,.analysis-task-card,.analysis-task-section,
+  .postprocess-file-slot,.postprocess-basic,.scientific-quick-values,.scientific-scf,
+  .optimization-plot,.orbital-channel,.orbital-shared-frame,
+  .workbench-tool-cell,.workbench-layout-editor,.model-clipboard-dock,.advanced-modeling-function-card,
+  .task-analysis-card) {
+  border:1px solid var(--ui-surface-border);
+  box-shadow:var(--ui-card-stroke-inset);
+}
+:root :is(.sy-settings-card,.workbench-tool-cell,.workbench-layout-editor,.task-analysis-card) {
+  background:var(--ui-surface-bg);
+}
+:root :is(.sy-settings-card,.workbench-tool-cell,.workbench-layout-editor,.task-analysis-card)
+  :is(.sy-settings-card,.workbench-tool-cell,.workbench-layout-editor,.task-analysis-card) {
+  background:var(--ui-subcard-bg);
+}
+:root :is(.page-heading h1,.workflow-session-bar,.input-workflow-header .breadcrumb>strong,
+  .workflow-content-card .heading-with-number h2,.shared-orca-form .card-heading h2,
+  .shared-orca-form .orca-step-content h2,.model-workspace-heading>strong,
+  .sy-settings-header>strong,.task-monitor-name h3,.task-analysis-card header h4,
+  .orca-workflow-heading h1,.orca-workbench .orca-step-content h1,.analysis-detached-header strong,
+  .structure-library-header h2,.structure-library-detail h3,.advanced-modeling-heading strong,
+  .optimization-plot-header>strong,.trajectory-heading>strong,.scientific-table-title) {
+  color:var(--ui-section-ink);
+}
+:root :is(.optimization-convergence,.xtb-constraint-results) thead {
+  background:var(--ui-table-header-bg);
+}
+:root :is(.optimization-convergence,.xtb-constraint-results) tbody {
+  background:var(--ui-table-body-bg);
+}
+:root :is(.optimization-convergence,.xtb-constraint-results) :is(th,td) {
+  border-color:var(--ui-table-line);
+}
+:root .software-choice-card:enabled,
+:root .task-card.shared-task-choice:enabled:not(.selected) {
+  border-color:var(--ui-surface-border);
+  box-shadow:var(--ui-card-stroke-inset);
+  color:var(--ui-section-ink);
+}

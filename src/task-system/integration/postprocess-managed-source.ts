@@ -26,12 +26,20 @@ export async function captureManagedPostprocessSourceSet(input: { documentId: st
   const identity = attachment.source.result.source;
   if (attachment.source.generatedXtb) {
    const pkg = await readGeneratedXtbSourcePackage(attachment.source); guard();
-   if (!pkg) throw Error('此历史GFN2来源缺少完整原始输出包；已有Molden和结果保留，不能冒完整来源归档。');
-   for (const file of pkg.bundle.files) { const bytes = encoder.encode(file.text); await add(file.name, file.role === 'molden' ? 'wavefunction' : file.role === 'stdout' || file.role === 'stderr' ? 'diagnostic' : 'other', `xtb-${pkg.bundle.artifactId}:${file.role}`, bytes.byteLength, async (start, end) => bytes.slice(start, end), file.sha256); files.at(-1)!.format = file.role === 'molden' ? 'molden' : file.role === 'stdout' ? 'xtb-output' : file.role; }
+   if (!pkg) throw Error('此历史XTB来源缺少完整原始输出包，已有Molden和结果仍可查看。');
+   const gxtb=pkg.bundle.metadata.method==='gxtb';
+   for (const file of pkg.bundle.files) {
+    const bytes=encoder.encode(file.text), activeWavefunction=file.role===(gxtb?'analysis-molden':'molden');
+    const role=activeWavefunction?'wavefunction':file.role==='stdout'||file.role==='stderr'?'diagnostic':'other';
+    const sourceRole=activeWavefunction?'molden':gxtb&&file.role==='molden'?'original-molden':file.role;
+    await add(file.name,role,`xtb-${pkg.bundle.artifactId}:${sourceRole}`,bytes.byteLength,async (start,end)=>bytes.slice(start,end),file.sha256);
+    files.at(-1)!.format=activeWavefunction?'molden':gxtb&&file.role==='molden'?'gxtb-raw-molden':file.role==='stdout'?'xtb-output':file.role;
+   }
    const { files: nativeFiles, ...metadata } = pkg.bundle;
-   const bytes = encoder.encode(JSON.stringify({ schema: 'ester-gfn2-source-package/v1', metadata, expected: pkg.expected, analysisPolicy: pkg.analysisPolicy, files: nativeFiles.map(({ text: _text, ...file }) => file) }));
-   await add('gfn2-provenance.json', 'other', `xtb-${pkg.bundle.artifactId}:provenance`, bytes.byteLength, async (start, end) => bytes.slice(start, end));
-   files.at(-1)!.format = 'ester-gfn2-provenance';
+   const producer=gxtb?'gxtb':'gfn2';
+   const bytes = encoder.encode(JSON.stringify({ schema: `ester-${producer}-source-package/v1`, metadata, expected: pkg.expected, analysisPolicy: pkg.analysisPolicy, files: nativeFiles.map(({ text: _text, ...file }) => file) }));
+   await add(`${producer}-provenance.json`, 'other', `xtb-${pkg.bundle.artifactId}:provenance`, bytes.byteLength, async (start, end) => bytes.slice(start, end));
+   files.at(-1)!.format = `ester-${producer}-provenance`;
   } else { const kind=attachment.source.kind,role=kind==='fchk'||kind==='molden'?'wavefunction':kind==='xyz'?'trajectory':kind==='hess'?'modes':kind==='gaussian-output'||kind==='orca-output'?'primary-output':'other';await add(identity.name,role,identity.id,identity.size,(start,end,signal)=>readPostprocessSourceBytes(attachment,start,end,signal),attachment.source.metadata?.sourceRevision); files.at(-1)!.format=kind; }
   const chunks = new Map<string, Uint8Array>();
   const writer = { async write(_category: string, _name: string, value: Uint8Array | string) { guard(); const bytes = typeof value === 'string' ? encoder.encode(value) : value.slice(), assetId = 'chunk-' + chunks.size; chunks.set(assetId, bytes); return { assetId }; } };
@@ -56,7 +64,7 @@ export async function captureManagedPostprocessSourceSet(input: { documentId: st
  if(last&&primary){const structure=await result.getFrame(last.index);guard();const ownerFile=files.find(file=>file.sourceId===result.source.id)??files.find(file=>file.sourceId===primary.source.result.source.id);
   if(ownerFile&&structure.atoms.length){const generated=input.document.wavefunction?.source.generatedXtb,method=result.scientific?.summary.find(field=>field.key==='method'&&typeof field.value==='string')?.value;
    const tasks=primary.source.tasks,taskKind=tasks.includes('opt')&&tasks.includes('freq')?'optfreq':tasks[0]??'unknown';
-   descriptor.summary={schema:1,sourceSetId,sourceVersion,sourceSha256:ownerFile.revision,sourceId:ownerFile.sourceId,engineId:generated?'xtb':primary.source.software&&primary.source.software!=='unknown'?primary.source.software:result.engine==='structure'?'unknown':result.engine,taskKind,frameIndex:last.index,sourceFrameIndex:last.sourceFrameIndex??null,structure,energy:last.energy?{...last.energy}:null,...(generated?{method:'GFN2-xTB',capabilities:[...generated.capabilities]}:typeof method==='string'?{method}:{})};
+   descriptor.summary={schema:1,sourceSetId,sourceVersion,sourceSha256:ownerFile.revision,sourceId:ownerFile.sourceId,engineId:generated?'xtb':primary.source.software&&primary.source.software!=='unknown'?primary.source.software:result.engine==='structure'?'unknown':result.engine,taskKind,frameIndex:last.index,sourceFrameIndex:last.sourceFrameIndex??null,structure,energy:last.energy?{...last.energy}:null,...(generated?{method:generated.kind==='trusted-generated-gxtb-sp'?'g-xTB':'GFN2-xTB',capabilities:[...generated.capabilities]}:typeof method==='string'?{method}:{})};
   }
  }
  return { descriptor, files, scope };

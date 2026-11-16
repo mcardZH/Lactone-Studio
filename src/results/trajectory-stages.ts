@@ -4,6 +4,25 @@ import { getPreparedTrajectoryFrame, registerPreparedTrajectoryProjection } from
 import { projectNmrCouplingFrames } from './nmr-coupling-projection';
 import { projectMdDifferences, projectMdStepFrames } from './md-observations';
 
+function isClimbingFrame(frame: ResultFrameSummary, iteration: number | undefined): boolean {
+  const proof = frame.climbingImage;
+  return proof !== undefined && proof.iteration === iteration && frame.pathIteration === iteration
+    && frame.geometryAssociation?.iteration === iteration && frame.geometryAssociation.image === proof.image - proof.imageBase;
+}
+
+export function confirmedStageCiFrame(result: TrajectoryResult, stage: ResultStage | undefined): number | undefined {
+  if (stage?.kind !== 'neb-path' || stage.ciFrameIndex === undefined) return undefined;
+  const candidates = stage.frameIndices.filter(index => result.frames[index] && isClimbingFrame(result.frames[index], stage.sourceIteration));
+  return candidates.length === 1 && candidates[0] === stage.ciFrameIndex ? candidates[0] : undefined;
+}
+
+export function confirmedStageTsFrame(result: TrajectoryResult, stage: ResultStage | undefined): number | undefined {
+  const index = stage?.tsFrameIndex;
+  if (stage?.kind !== 'irc' || index === undefined || !result.frames[index] || !stage.frameIndices.includes(index)) return undefined;
+  const marked = stage.frameIndices.filter(frameIndex => result.frames[frameIndex]?.pathDirection === 'ts');
+  return !marked.length || marked.length === 1 && marked[0] === index ? index : undefined;
+}
+
 /** Stage metadata references the original index. It neither reads geometry nor computes results. */
 export function attachTrajectoryStages(result: TrajectoryResult): TrajectoryResult {
   if (result.stages?.length) return result;
@@ -25,7 +44,8 @@ export function attachTrajectoryStages(result: TrajectoryResult): TrajectoryResu
       add('scan-unassigned', 'trajectory', '未归属扫描点的结构', unassigned);
     }
   } else if (tasks.includes('irc') || result.role === 'irc-full' || result.role === 'irc-branch') {
-    const ts = frames.find(frame => frame.pathDirection === 'ts');
+    const tsFrames = frames.filter(frame => frame.pathDirection === 'ts');
+    const ts = tsFrames.length === 1 ? tsFrames[0] : undefined;
     const accepted = frames.some(frame => frame.pathPoint) ? frames.filter(frame => frame.pathPoint || frame.pathDirection === 'ts') : [...frames];
     if (ts && accepted.every(frame => frame.pathDirection)) {
       const rank = { reverse: 0, ts: 1, forward: 2 };
@@ -50,7 +70,7 @@ export function attachTrajectoryStages(result: TrajectoryResult): TrajectoryResu
       if (selected.length && selected.every(frame => frame.pathImage !== undefined)) {
         const images = new Set(selected.map(frame => frame.pathImage));
         if (images.size === selected.length) {
-          const ci=selected.filter(frame=>frame.climbingImage&&frame.geometryAssociation?.iteration===frame.climbingImage.iteration&&frame.geometryAssociation.image===frame.climbingImage.image-frame.climbingImage.imageBase&&frame.pathIteration===frame.climbingImage.iteration);
+          const ci=selected.filter(frame=>isClimbingFrame(frame,latest));
           add('neb-path', 'neb-path', latest === undefined ? '路径（轮次未确认）' : unassigned.length ? '最新已确认路径' : '最新路径', selected.map(frame => frame.index), {...(latest===undefined?{}:{sourceIteration:latest}),...(ci.length===1?{ciFrameIndex:ci[0].index}:{})});
         }
       } else if (result.role === 'neb-path' && !iterations.length) add('neb-path', 'neb-path', '路径', selected.map(frame => frame.index));
