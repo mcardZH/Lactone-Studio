@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import {
@@ -729,6 +730,8 @@ test('Linux OCR runtime, Multiwfn orbital candidates, and Unified GitHub Actions
       'SHA256SUMS.txt',
       '"libblas=*=*openblas"',
       'RAW_TAG:',
+      '--no-readonly',
+      'git config --global core.autocrlf false',
     ]) {
       assert.ok(workflowYaml.includes(requiredToken), `Expected '${requiredToken}' in .github/workflows/release.yml`);
     }
@@ -738,7 +741,47 @@ test('Linux OCR runtime, Multiwfn orbital candidates, and Unified GitHub Actions
       'release.yml must not interpolate untrusted GitHub expressions directly into bash double-quoted strings',
     );
 
-    // 4. AppDir builder verification
+    // 4. .gitattributes (* -text) preserves exact LF and CRLF 2D license material bytes under Windows core.autocrlf=true checkout
+    const gitattributesPath = path.join(REPO_ROOT, '.gitattributes');
+    assert.equal(fs.existsSync(gitattributesPath), true, '.gitattributes must exist at repository root');
+    const gitattributesText = fs.readFileSync(gitattributesPath, 'utf8');
+    assert.match(gitattributesText, /^\*\s+-text\s*$/m, '.gitattributes must configure `* -text`');
+
+    const receiptPath = path.join(REPO_ROOT, 'licenses/2d-components/RECEIPT.json');
+    const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+    const lfSampleRel = 'npm/@babel__code-frame@7.29.7/LICENSE';
+    const crlfSampleRel = 'npm/font-face-observer@1.0.0/LICENSE';
+    const lfMeta = receipt.materials.find((m) => m.file === lfSampleRel);
+    const crlfMeta = receipt.materials.find((m) => m.file === crlfSampleRel);
+    assert.ok(lfMeta && crlfMeta, 'Expected both LF and CRLF sample materials in RECEIPT.json');
+
+    const srcGitRepo = path.join(tmp, 'git-eol-origin');
+    const winCloneRepo = path.join(tmp, 'git-eol-windows-clone');
+    fs.mkdirSync(srcGitRepo, { recursive: true });
+    execFileSync('git', ['init', '-q'], { cwd: srcGitRepo });
+    execFileSync('git', ['config', 'user.email', 'ci@lactone.test'], { cwd: srcGitRepo });
+    execFileSync('git', ['config', 'user.name', 'CI'], { cwd: srcGitRepo });
+    execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: srcGitRepo });
+
+    fs.copyFileSync(gitattributesPath, path.join(srcGitRepo, '.gitattributes'));
+    for (const rel of [lfSampleRel, crlfSampleRel]) {
+      const dst = path.join(srcGitRepo, 'licenses/2d-components', rel);
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.copyFileSync(path.join(REPO_ROOT, 'licenses/2d-components', rel), dst);
+    }
+    execFileSync('git', ['add', '.'], { cwd: srcGitRepo });
+    execFileSync('git', ['commit', '-q', '-m', 'seed license materials'], { cwd: srcGitRepo });
+
+    // Simulate GitHub Actions windows-latest runner global `core.autocrlf=true`
+    execFileSync('git', ['-c', 'core.autocrlf=true', 'clone', '-q', srcGitRepo, winCloneRepo]);
+    for (const meta of [lfMeta, crlfMeta]) {
+      const clonedBytes = fs.readFileSync(path.join(winCloneRepo, 'licenses/2d-components', meta.file));
+      const clonedSha = createHash('sha256').update(clonedBytes).digest('hex');
+      assert.equal(clonedBytes.length, meta.bytes, `Byte length must match RECEIPT.json for ${meta.file}`);
+      assert.equal(clonedSha, meta.sha256, `SHA-256 must match RECEIPT.json for ${meta.file}`);
+    }
+
+    // 5. AppDir builder verification
     const appDir = prepareLinuxAppDir({
       portableDirPath: molvecDir,
       appDirPath: path.join(tmp, 'Sample.AppDir'),

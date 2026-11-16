@@ -24,8 +24,13 @@ import {
   stageDarwinRuntime,
   resolveDefaultCondaPrefix,
   verifyMachOArchitecture,
+  lockDirectoryTreeReadOnly,
   verifyTreeReadOnly,
-  makeDirectoryTreeWritable
+  makeDirectoryTreeWritable,
+  renameWithRetryAndFallbackSync,
+  recoverInterruptedStagingTransaction,
+  copyIncompleteMarkerPath,
+  sourceObsoleteMarkerPath
 } from '../../scripts/native/stage-darwin-runtime.mjs';
 
 const require = createRequire(import.meta.url);
@@ -1271,6 +1276,278 @@ test('stageDarwinRuntime enforces prefix-independent reproducibility, non-destru
         }),
       /STAGE_IMPORT_PROBE_FAILED/
     );
+
+    // 6. Strict macOS CI directory-rename invariant: renameImpl must never receive a 0555 (non-owner-writable) source directory
+    const strictCheckoutDir = path.join(tmpRoot, 'strict-macos-ci-checkout');
+    fs.mkdirSync(path.join(strictCheckoutDir, 'desktop/chemistry'), { recursive: true });
+    fs.mkdirSync(path.join(strictCheckoutDir, 'scripts/native'), { recursive: true });
+    fs.writeFileSync(
+      path.join(strictCheckoutDir, 'desktop/chemistry/engine.py'),
+      `${mockEngineCode}\n`,
+      'utf8'
+    );
+    fs.writeFileSync(
+      path.join(strictCheckoutDir, 'scripts/native/dev-runtime.py'),
+      REAL_DEV_BOOTSTRAP,
+      'utf8'
+    );
+    let strictRenameCalls = 0;
+    const strictMacRenameImpl = (oldP, newP) => {
+      strictRenameCalls += 1;
+      const st = fs.lstatSync(oldP);
+      if (st.isDirectory() && (st.mode & 0o200) === 0) {
+        const err = new Error(`EACCES: permission denied, rename '${oldP}' -> '${newP}'`);
+        err.code = 'EACCES';
+        throw err;
+      }
+      fs.renameSync(oldP, newP);
+    };
+    const firstStrictStage = stageDarwinRuntime({
+      appPath: strictCheckoutDir,
+      platformId: 'darwin-arm64',
+      condaPrefix: condaShortDir,
+      updateLocks: true,
+      lockReadOnly: true,
+      renameImpl: strictMacRenameImpl,
+      rollbackRenameImpl: strictMacRenameImpl
+    });
+    assert.ok(strictRenameCalls >= 7);
+    verifyTreeReadOnly(firstStrictStage.toolchainRoot);
+    verifyTreeReadOnly(firstStrictStage.dependencyRoot);
+    verifyTreeReadOnly(path.join(strictCheckoutDir, '.local/preparation/darwin-arm64'));
+
+    // Re-staging over an already locked 0555 runtime also keeps source/backup dirs owner-writable during rename and re-locks afterward
+    const secondStrictStage = stageDarwinRuntime({
+      appPath: strictCheckoutDir,
+      platformId: 'darwin-arm64',
+      condaPrefix: condaShortDir,
+      updateLocks: true,
+      lockReadOnly: true,
+      renameImpl: strictMacRenameImpl,
+      rollbackRenameImpl: strictMacRenameImpl
+    });
+    verifyTreeReadOnly(secondStrictStage.toolchainRoot);
+    verifyTreeReadOnly(secondStrictStage.dependencyRoot);
+    verifyTreeReadOnly(path.join(strictCheckoutDir, '.local/preparation/darwin-arm64'));
+  } finally {
+    makeDirectoryTreeWritable(tmpRoot);
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('renameWithRetryAndFallbackSync retries transient EACCES/EBUSY and falls back to mode-preserving copy on persistent EACCES', () => {
+  const isPosix = process.platform !== 'win32';
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'es-rename-retry-test-'));
+  try {
+    // 1. Transient EACCES + EBUSY clears on 3rd attempt via atomic rename, restoring original 0555 directory mode on POSIX
+    const srcA = path.join(tmpRoot, 'src-transient');
+    const dstA = path.join(tmpRoot, 'dst-transient');
+    fs.mkdirSync(path.join(srcA, 'sub'), { recursive: true });
+    fs.writeFileSync(path.join(srcA, 'sub', 'lib.dylib'), 'macho-bytes', 'utf8');
+    if (isPosix) {
+      lockDirectoryTreeReadOnly(srcA);
+      verifyTreeReadOnly(srcA);
+    }
+
+    let attemptsA = 0;
+    const sleepsA = [];
+    renameWithRetryAndFallbackSync(srcA, dstA, {
+      sleepFn: (ms) => sleepsA.push(ms),
+      retryDelaysMs: [10, 20, 40],
+      rawRenameSync: (oldP, newP) => {
+        attemptsA += 1;
+        if (attemptsA <= 2) {
+          const err = new Error('transient scanner handle');
+          err.code = attemptsA === 1 ? 'EACCES' : 'EBUSY';
+          throw err;
+        }
+        assert.notEqual(fs.lstatSync(oldP).mode & 0o200, 0, 'Retry must grant owner-write before re-attempting rename');
+        fs.renameSync(oldP, newP);
+      }
+    });
+    assert.equal(attemptsA, 3);
+    assert.deepEqual(sleepsA, [10, 20]);
+    assert.equal(fs.existsSync(srcA), false);
+    assert.equal(fs.readFileSync(path.join(dstA, 'sub', 'lib.dylib'), 'utf8'), 'macho-bytes');
+    if (isPosix) {
+      verifyTreeReadOnly(dstA);
+    }
+
+    // 2. Persistent EACCES on directory rename falls back to exact-mode directory copy + cleanup
+    const srcB = path.join(tmpRoot, 'src-persistent');
+    const dstB = path.join(tmpRoot, 'dst-persistent');
+    fs.mkdirSync(path.join(srcB, 'bin'), { recursive: true });
+    const binFile = path.join(srcB, 'bin', 'python3');
+    fs.writeFileSync(binFile, '#!/bin/sh\n', 'utf8');
+    if (isPosix) {
+      fs.chmodSync(binFile, 0o755);
+      lockDirectoryTreeReadOnly(srcB);
+      verifyTreeReadOnly(srcB);
+    }
+
+    let attemptsB = 0;
+    renameWithRetryAndFallbackSync(srcB, dstB, {
+      sleepFn: () => {},
+      retryDelaysMs: [5, 10],
+      rawRenameSync: () => {
+        attemptsB += 1;
+        const err = new Error('VM volume blocks directory rename');
+        err.code = 'EACCES';
+        throw err;
+      }
+    });
+    assert.equal(attemptsB, 3);
+    assert.equal(fs.existsSync(srcB), false);
+    assert.equal(fs.existsSync(copyIncompleteMarkerPath(dstB)), false);
+    assert.equal(fs.existsSync(sourceObsoleteMarkerPath(srcB)), false);
+    assert.equal(fs.existsSync(path.join(dstB, 'bin', 'python3')), true);
+    if (isPosix) {
+      assert.notEqual(fs.lstatSync(path.join(dstB, 'bin', 'python3')).mode & 0o111, 0);
+      verifyTreeReadOnly(dstB);
+    }
+
+    // 3. Non-retryable error (ENOENT) fails immediately without sleeping
+    let attemptsC = 0;
+    assert.throws(
+      () =>
+        renameWithRetryAndFallbackSync(
+          path.join(tmpRoot, 'missing-src'),
+          path.join(tmpRoot, 'missing-dst'),
+          {
+            sleepFn: () => {
+              throw new Error('Should not sleep on ENOENT');
+            },
+            rawRenameSync: (o, n) => {
+              attemptsC += 1;
+              fs.renameSync(o, n);
+            }
+          }
+        ),
+      /ENOENT/
+    );
+    assert.equal(attemptsC, 1);
+
+    // 4. Crash-consistency of recoverInterruptedStagingTransaction across interrupted fallback directory copies
+    // 4a. Pre-existing runtime (existed: true) interrupted mid-backup copy (.copy-incomplete on backupPath):
+    //     must preserve intact targetPath, discard partial backupPath, and restore targetMode!
+    const appA = path.join(tmpRoot, 'crash-app-backup-incomplete');
+    const tcTargetA = path.join(appA, '.local/toolchains/darwin-arm64/conda-py312-arm64');
+    const tcNextA = path.join(appA, '.local/toolchains/darwin-arm64/.stage-next-a-tc');
+    const tcBakA = path.join(appA, '.local/toolchains/darwin-arm64/.stage-bak-a-tc');
+    fs.mkdirSync(path.join(tcTargetA, 'python/bin'), { recursive: true });
+    fs.writeFileSync(path.join(tcTargetA, 'python/bin/python3'), 'INTACT_RUNTIME', 'utf8');
+    fs.writeFileSync(path.join(tcTargetA, 'inventory.json'), '{"intact":true}\n', 'utf8');
+    if (isPosix) {
+      lockDirectoryTreeReadOnly(tcTargetA);
+      // Simulate renameDirectorySafely having granted 0o200 to tcTargetA right before mid-copy crash
+      fs.chmodSync(tcTargetA, 0o755);
+    }
+    fs.mkdirSync(path.join(tcBakA, 'python'), { recursive: true });
+    fs.writeFileSync(path.join(tcBakA, 'python/truncated'), 'PARTIAL', 'utf8');
+    fs.writeFileSync(copyIncompleteMarkerPath(tcBakA), '', 'utf8');
+    fs.mkdirSync(tcNextA, { recursive: true });
+    fs.writeFileSync(
+      path.join(appA, '.local/.staging-journal.json'),
+      JSON.stringify({
+        swapId: 'a',
+        txRoot: null,
+        items: [
+          {
+            targetPath: tcTargetA,
+            nextPath: tcNextA,
+            backupPath: tcBakA,
+            existed: true,
+            targetMode: 0o555
+          }
+        ],
+        modifiedParentModes: []
+      }),
+      'utf8'
+    );
+    assert.equal(recoverInterruptedStagingTransaction(appA), true);
+    assert.equal(fs.readFileSync(path.join(tcTargetA, 'python/bin/python3'), 'utf8'), 'INTACT_RUNTIME');
+    assert.equal(fs.readFileSync(path.join(tcTargetA, 'inventory.json'), 'utf8'), '{"intact":true}\n');
+    assert.equal(fs.existsSync(tcBakA), false);
+    assert.equal(fs.existsSync(copyIncompleteMarkerPath(tcBakA)), false);
+    assert.equal(fs.existsSync(tcNextA), false);
+    assert.equal(fs.existsSync(path.join(appA, '.local/.staging-journal.json')), false);
+    if (isPosix) {
+      verifyTreeReadOnly(tcTargetA);
+    }
+
+    // 4b. Clean checkout (existed: false) interrupted mid-install copy (both partial targetPath and nextPath exist):
+    //     must unconditionally delete both partial targetPath and nextPath!
+    const appB = path.join(tmpRoot, 'crash-app-clean-install-incomplete');
+    const tcTargetB = path.join(appB, '.local/toolchains/darwin-arm64/conda-py312-arm64');
+    const tcNextB = path.join(appB, '.local/toolchains/darwin-arm64/.stage-next-b-tc');
+    const tcBakB = path.join(appB, '.local/toolchains/darwin-arm64/.stage-bak-b-tc');
+    fs.mkdirSync(path.join(tcTargetB, 'python'), { recursive: true });
+    fs.writeFileSync(path.join(tcTargetB, 'python/half-copied'), 'PARTIAL', 'utf8');
+    fs.writeFileSync(copyIncompleteMarkerPath(tcTargetB), '', 'utf8');
+    fs.mkdirSync(path.join(tcNextB, 'python/bin'), { recursive: true });
+    fs.writeFileSync(path.join(tcNextB, 'python/bin/python3'), 'STAGED_NEXT', 'utf8');
+    fs.writeFileSync(
+      path.join(appB, '.local/.staging-journal.json'),
+      JSON.stringify({
+        swapId: 'b',
+        txRoot: null,
+        items: [
+          {
+            targetPath: tcTargetB,
+            nextPath: tcNextB,
+            backupPath: tcBakB,
+            existed: false,
+            targetMode: null
+          }
+        ],
+        modifiedParentModes: []
+      }),
+      'utf8'
+    );
+    assert.equal(recoverInterruptedStagingTransaction(appB), true);
+    assert.equal(fs.existsSync(tcTargetB), false);
+    assert.equal(fs.existsSync(copyIncompleteMarkerPath(tcTargetB)), false);
+    assert.equal(fs.existsSync(tcNextB), false);
+    assert.equal(fs.existsSync(path.join(appB, '.local/.staging-journal.json')), false);
+
+    // 4c. Recovery itself interrupted mid-rmSync(backupPath) (.source-obsolete on backupPath after targetPath restored):
+    //     subsequent recovery must keep complete targetPath and finish deleting half-removed backupPath!
+    const appC = path.join(tmpRoot, 'crash-app-obsolete-backup');
+    const tcTargetC = path.join(appC, '.local/toolchains/darwin-arm64/conda-py312-arm64');
+    const tcBakC = path.join(appC, '.local/toolchains/darwin-arm64/.stage-bak-c-tc');
+    fs.mkdirSync(path.join(tcTargetC, 'python/bin'), { recursive: true });
+    fs.writeFileSync(path.join(tcTargetC, 'python/bin/python3'), 'RESTORED_COMPLETE', 'utf8');
+    if (isPosix) {
+      lockDirectoryTreeReadOnly(tcTargetC);
+    }
+    fs.mkdirSync(tcBakC, { recursive: true });
+    fs.writeFileSync(path.join(tcBakC, 'leftover'), 'HALF_DELETED', 'utf8');
+    fs.writeFileSync(sourceObsoleteMarkerPath(tcBakC), '', 'utf8');
+    fs.writeFileSync(
+      path.join(appC, '.local/.staging-journal.json'),
+      JSON.stringify({
+        swapId: 'c',
+        txRoot: null,
+        items: [
+          {
+            targetPath: tcTargetC,
+            nextPath: path.join(appC, '.local/toolchains/darwin-arm64/.stage-next-c-tc'),
+            backupPath: tcBakC,
+            existed: true,
+            targetMode: 0o555
+          }
+        ],
+        modifiedParentModes: []
+      }),
+      'utf8'
+    );
+    assert.equal(recoverInterruptedStagingTransaction(appC), true);
+    assert.equal(fs.readFileSync(path.join(tcTargetC, 'python/bin/python3'), 'utf8'), 'RESTORED_COMPLETE');
+    assert.equal(fs.existsSync(tcBakC), false);
+    assert.equal(fs.existsSync(sourceObsoleteMarkerPath(tcBakC)), false);
+    if (isPosix) {
+      verifyTreeReadOnly(tcTargetC);
+    }
   } finally {
     makeDirectoryTreeWritable(tmpRoot);
     fs.rmSync(tmpRoot, { recursive: true, force: true });

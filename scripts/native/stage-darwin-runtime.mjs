@@ -312,10 +312,11 @@ export function makeDirectoryTreeWritable(rootDir) {
   }
 }
 
-export function lockDirectoryTreeReadOnly(rootDir) {
+export function lockDirectoryTreeReadOnly(rootDir, { keepRootWritable = false } = {}) {
   if (!fs.existsSync(rootDir)) return;
+  const resolvedRoot = path.resolve(rootDir);
   const dirs = [];
-  const stack = [rootDir];
+  const stack = [resolvedRoot];
   while (stack.length > 0) {
     const dir = stack.pop();
     dirs.push(dir);
@@ -330,20 +331,27 @@ export function lockDirectoryTreeReadOnly(rootDir) {
     }
   }
   for (let i = dirs.length - 1; i >= 0; i -= 1) {
-    const st = fs.lstatSync(dirs[i]);
-    fs.chmodSync(dirs[i], st.mode & ~0o222);
+    const dirPath = dirs[i];
+    const st = fs.lstatSync(dirPath);
+    if (keepRootWritable && dirPath === resolvedRoot) {
+      fs.chmodSync(dirPath, (st.mode & ~0o022) | 0o200);
+    } else {
+      fs.chmodSync(dirPath, st.mode & ~0o222);
+    }
   }
 }
 
-export function verifyTreeReadOnly(rootDir) {
+export function verifyTreeReadOnly(rootDir, { allowWritableRoot = false } = {}) {
   if (!fs.existsSync(rootDir)) {
     throw new Error(`STAGE_READONLY_FAILED: Directory does not exist: ${rootDir}`);
   }
-  const stack = [rootDir];
+  const resolvedRoot = path.resolve(rootDir);
+  const stack = [resolvedRoot];
   while (stack.length > 0) {
     const current = stack.pop();
     const st = fs.lstatSync(current);
-    if ((st.mode & 0o222) !== 0) {
+    const disallowedMask = allowWritableRoot && current === resolvedRoot ? 0o022 : 0o222;
+    if ((st.mode & disallowedMask) !== 0) {
       throw new Error(`STAGE_READONLY_FAILED: Path remains writable: ${current}`);
     }
     if (st.isDirectory()) {
@@ -1413,6 +1421,210 @@ function copyDirectoryTree(srcDir, dstDir) {
   }
 }
 
+function copyDirectoryTreePreservingModes(srcDir, dstDir) {
+  if (typeof activeSignalCheck === "function") activeSignalCheck();
+  const copyFlag = fs.constants.COPYFILE_FICLONE || 0;
+  const dirModes = [];
+  const walk = (sDir, dDir) => {
+    if (typeof activeSignalCheck === "function") activeSignalCheck();
+    const sStat = fs.lstatSync(sDir);
+    fs.mkdirSync(dDir, { recursive: true, mode: 0o755 });
+    fs.chmodSync(dDir, (sStat.mode & 0o777) | 0o200);
+    dirModes.push([dDir, sStat.mode & 0o777]);
+    for (const entry of fs.readdirSync(sDir, { withFileTypes: true })) {
+      const srcFull = path.join(sDir, entry.name);
+      const dstFull = path.join(dDir, entry.name);
+      const st = fs.lstatSync(srcFull);
+      if (st.isDirectory()) {
+        walk(srcFull, dstFull);
+      } else if (st.isFile()) {
+        fs.copyFileSync(srcFull, dstFull, copyFlag);
+        fs.chmodSync(dstFull, st.mode & 0o777);
+      }
+    }
+  };
+  walk(srcDir, dstDir);
+  for (let i = dirModes.length - 1; i >= 0; i -= 1) {
+    const [dDir, exactMode] = dirModes[i];
+    fs.chmodSync(dDir, exactMode);
+  }
+}
+
+const RETRYABLE_RENAME_CODES = new Set(["EACCES", "EPERM", "EBUSY"]);
+const FALLBACK_COPY_RENAME_CODES = new Set(["EACCES", "EPERM", "EBUSY", "EXDEV"]);
+const DEFAULT_RENAME_RETRY_DELAYS_MS = Object.freeze([25, 50, 100, 200, 400, 800]);
+const COPY_INCOMPLETE_SUFFIX = ".copy-incomplete";
+const SOURCE_OBSOLETE_SUFFIX = ".source-obsolete";
+
+export function copyIncompleteMarkerPath(targetPath) {
+  return `${targetPath}${COPY_INCOMPLETE_SUFFIX}`;
+}
+
+export function sourceObsoleteMarkerPath(sourcePath) {
+  return `${sourcePath}${SOURCE_OBSOLETE_SUFFIX}`;
+}
+
+function removeSwapSidecarMarkers(basePath) {
+  if (!basePath || typeof basePath !== "string") return;
+  for (const marker of [copyIncompleteMarkerPath(basePath), sourceObsoleteMarkerPath(basePath)]) {
+    try {
+      if (fs.existsSync(marker)) {
+        fs.rmSync(marker, { force: true });
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function sleepSyncMs(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return;
+  const sab = new SharedArrayBuffer(4);
+  const view = new Int32Array(sab);
+  Atomics.wait(view, 0, 0, Math.trunc(ms));
+}
+
+export function renameWithRetryAndFallbackSync(
+  oldPath,
+  newPath,
+  {
+    rawRenameSync = fs.renameSync,
+    sleepFn = sleepSyncMs,
+    retryDelaysMs = DEFAULT_RENAME_RETRY_DELAYS_MS,
+  } = {}
+) {
+  let savedOldDirMode = null;
+  let lastErr = null;
+  const maxAttempts = 1 + retryDelaysMs.length;
+
+  try {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (typeof activeSignalCheck === "function") activeSignalCheck();
+      try {
+        rawRenameSync(oldPath, newPath);
+        if (savedOldDirMode !== null && fs.existsSync(newPath)) {
+          fs.chmodSync(newPath, savedOldDirMode);
+          savedOldDirMode = null;
+        }
+        return;
+      } catch (err) {
+        lastErr = err;
+        if (!err || !RETRYABLE_RENAME_CODES.has(err.code)) {
+          break;
+        }
+        for (const parent of [path.dirname(oldPath), path.dirname(newPath)]) {
+          if (fs.existsSync(parent)) {
+            const pst = fs.lstatSync(parent);
+            if ((pst.mode & 0o200) === 0) {
+              try {
+                fs.chmodSync(parent, pst.mode | 0o200);
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
+        if (fs.existsSync(oldPath)) {
+          const ost = fs.lstatSync(oldPath);
+          if (ost.isDirectory() && (ost.mode & 0o200) === 0) {
+            if (savedOldDirMode === null) {
+              savedOldDirMode = ost.mode & 0o777;
+            }
+            try {
+              fs.chmodSync(oldPath, ost.mode | 0o200);
+            } catch {
+              // ignore
+            }
+          }
+        }
+        if (attempt < retryDelaysMs.length) {
+          sleepFn(retryDelaysMs[attempt]);
+        }
+      }
+    }
+
+    if (
+      lastErr &&
+      FALLBACK_COPY_RENAME_CODES.has(lastErr.code) &&
+      fs.existsSync(oldPath) &&
+      fs.lstatSync(oldPath).isDirectory() &&
+      !fs.existsSync(newPath)
+    ) {
+      const dstIncompleteMarker = copyIncompleteMarkerPath(newPath);
+      const srcObsoleteMarker = sourceObsoleteMarkerPath(oldPath);
+      try {
+        fs.writeFileSync(dstIncompleteMarker, "", "utf8");
+        copyDirectoryTreePreservingModes(oldPath, newPath);
+        if (savedOldDirMode !== null && fs.existsSync(newPath)) {
+          fs.chmodSync(newPath, savedOldDirMode);
+          savedOldDirMode = null;
+        }
+        fs.writeFileSync(srcObsoleteMarker, "", "utf8");
+        fs.rmSync(dstIncompleteMarker, { force: true });
+      } catch {
+        if (fs.existsSync(newPath)) {
+          makeDirectoryTreeWritable(newPath);
+          fs.rmSync(newPath, { recursive: true, force: true });
+        }
+        removeSwapSidecarMarkers(newPath);
+        try {
+          fs.rmSync(srcObsoleteMarker, { force: true });
+        } catch {
+          // ignore
+        }
+        throw lastErr;
+      }
+      makeDirectoryTreeWritable(oldPath);
+      fs.rmSync(oldPath, { recursive: true, force: true });
+      removeSwapSidecarMarkers(oldPath);
+      return;
+    }
+
+    throw lastErr;
+  } finally {
+    if (savedOldDirMode !== null && fs.existsSync(oldPath)) {
+      try {
+        fs.chmodSync(oldPath, savedOldDirMode);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+function renameDirectorySafely(renameFn, srcPath, dstPath, { finalDirMode = null } = {}) {
+  let isDir = false;
+  let origSrcMode = null;
+  if (fs.existsSync(srcPath)) {
+    const st = fs.lstatSync(srcPath);
+    if (st.isDirectory()) {
+      isDir = true;
+      origSrcMode = st.mode & 0o777;
+      if ((origSrcMode & 0o200) === 0) {
+        fs.chmodSync(srcPath, origSrcMode | 0o200);
+      }
+    }
+  }
+  try {
+    renameFn(srcPath, dstPath);
+  } catch (err) {
+    if (isDir && origSrcMode !== null && fs.existsSync(srcPath)) {
+      try {
+        fs.chmodSync(srcPath, origSrcMode);
+      } catch {
+        // ignore
+      }
+    }
+    throw err;
+  }
+  if (isDir && fs.existsSync(dstPath)) {
+    const targetMode = finalDirMode !== null ? finalDirMode : origSrcMode;
+    if (typeof targetMode === "number") {
+      fs.chmodSync(dstPath, targetMode);
+    }
+  }
+}
+
 function isProcessAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
@@ -1425,7 +1637,7 @@ function isProcessAlive(pid) {
 
 export function recoverInterruptedStagingTransaction(
   appPath,
-  { rollbackRenameImpl = fs.renameSync } = {}
+  { rollbackRenameImpl = renameWithRetryAndFallbackSync } = {}
 ) {
   const localDir = path.join(path.resolve(appPath), ".local");
   try {
@@ -1483,24 +1695,48 @@ export function recoverInterruptedStagingTransaction(
         }
       }
       if (item.existed) {
-        if (item.backupPath && fs.existsSync(item.backupPath)) {
+        const backupIncomplete = item.backupPath
+          ? fs.existsSync(copyIncompleteMarkerPath(item.backupPath))
+          : false;
+        const backupObsolete = item.backupPath
+          ? fs.existsSync(sourceObsoleteMarkerPath(item.backupPath))
+          : false;
+        const hasValidBackup = Boolean(
+          item.backupPath && fs.existsSync(item.backupPath) && !backupIncomplete && !backupObsolete
+        );
+        if (hasValidBackup) {
           if (fs.existsSync(item.targetPath)) {
             makeDirectoryTreeWritable(item.targetPath);
             fs.rmSync(item.targetPath, { recursive: true, force: true });
           }
-          rollbackRenameImpl(item.backupPath, item.targetPath);
+          removeSwapSidecarMarkers(item.targetPath);
+          renameDirectorySafely(rollbackRenameImpl, item.backupPath, item.targetPath, {
+            finalDirMode: typeof item.targetMode === "number" ? item.targetMode : null,
+          });
+        } else {
+          removeSwapSidecarMarkers(item.targetPath);
+          if (
+            typeof item.targetMode === "number" &&
+            fs.existsSync(item.targetPath) &&
+            fs.lstatSync(item.targetPath).isDirectory()
+          ) {
+            fs.chmodSync(item.targetPath, item.targetMode);
+          }
         }
-      } else if (
-        fs.existsSync(item.targetPath) &&
-        (!item.nextPath || !fs.existsSync(item.nextPath))
-      ) {
-        makeDirectoryTreeWritable(item.targetPath);
-        fs.rmSync(item.targetPath, { recursive: true, force: true });
+      } else {
+        if (fs.existsSync(item.targetPath)) {
+          makeDirectoryTreeWritable(item.targetPath);
+          fs.rmSync(item.targetPath, { recursive: true, force: true });
+        }
+        removeSwapSidecarMarkers(item.targetPath);
       }
       for (const tempPath of [item.nextPath, item.backupPath]) {
-        if (tempPath && fs.existsSync(tempPath)) {
-          makeDirectoryTreeWritable(tempPath);
-          fs.rmSync(tempPath, { recursive: true, force: true });
+        if (tempPath) {
+          if (fs.existsSync(tempPath)) {
+            makeDirectoryTreeWritable(tempPath);
+            fs.rmSync(tempPath, { recursive: true, force: true });
+          }
+          removeSwapSidecarMarkers(tempPath);
         }
       }
     } catch (rbErr) {
@@ -1742,8 +1978,8 @@ export function stageDarwinRuntime({
   updateLocks = false,
   verifyCommittedLocks = true,
   lockReadOnly = true,
-  renameImpl = fs.renameSync,
-  rollbackRenameImpl = fs.renameSync,
+  renameImpl = renameWithRetryAndFallbackSync,
+  rollbackRenameImpl = renameWithRetryAndFallbackSync,
   chmodImpl = fs.chmodSync,
 } = {}) {
   if (platformId !== "darwin-arm64" && platformId !== "darwin-x64") {
@@ -1779,24 +2015,30 @@ export function stageDarwinRuntime({
   const nextDepRoot = path.join(path.dirname(depAbsRoot), `.stage-next-${swapId}-dep`);
   const nextPrepDir = path.join(path.dirname(prepAbsDir), `.stage-next-${swapId}-prep`);
 
+  const readExistingMode = (targetP) =>
+    fs.existsSync(targetP) ? fs.lstatSync(targetP).mode & 0o777 : null;
+
   const swapPlan = [
     {
       targetPath: tcAbsRoot,
       nextPath: nextTcRoot,
       backupPath: path.join(path.dirname(tcAbsRoot), `.stage-bak-${swapId}-tc`),
       existed: fs.existsSync(tcAbsRoot),
+      targetMode: readExistingMode(tcAbsRoot),
     },
     {
       targetPath: depAbsRoot,
       nextPath: nextDepRoot,
       backupPath: path.join(path.dirname(depAbsRoot), `.stage-bak-${swapId}-dep`),
       existed: fs.existsSync(depAbsRoot),
+      targetMode: readExistingMode(depAbsRoot),
     },
     {
       targetPath: prepAbsDir,
       nextPath: nextPrepDir,
       backupPath: path.join(path.dirname(prepAbsDir), `.stage-bak-${swapId}-prep`),
       existed: fs.existsSync(prepAbsDir),
+      targetMode: readExistingMode(prepAbsDir),
     },
   ];
   if (shouldWriteLocks) {
@@ -1812,6 +2054,7 @@ export function stageDarwinRuntime({
         nextPath: path.join(packagingAbsDir, `.stage-next-${swapId}-${def.tag}`),
         backupPath: path.join(packagingAbsDir, `.stage-bak-${swapId}-${def.tag}`),
         existed: fs.existsSync(def.targetPath),
+        targetMode: readExistingMode(def.targetPath),
         tag: def.tag,
       });
     }
@@ -1830,6 +2073,7 @@ export function stageDarwinRuntime({
         nextPath: item.nextPath,
         backupPath: item.backupPath,
         existed: item.existed,
+        targetMode: item.targetMode,
       })),
       modifiedParentModes: [...modifiedParentModes.entries()],
     };
@@ -2302,12 +2546,12 @@ export function stageDarwinRuntime({
     fs.writeFileSync(path.join(nextPrepDir, "native-preparation.json"), prepText, "utf8");
 
     if (lockReadOnly) {
-      lockDirectoryTreeReadOnly(nextTcRoot);
-      lockDirectoryTreeReadOnly(nextDepRoot);
-      lockDirectoryTreeReadOnly(nextPrepDir);
-      verifyTreeReadOnly(nextTcRoot);
-      verifyTreeReadOnly(nextDepRoot);
-      verifyTreeReadOnly(nextPrepDir);
+      lockDirectoryTreeReadOnly(nextTcRoot, { keepRootWritable: true });
+      lockDirectoryTreeReadOnly(nextDepRoot, { keepRootWritable: true });
+      lockDirectoryTreeReadOnly(nextPrepDir, { keepRootWritable: true });
+      verifyTreeReadOnly(nextTcRoot, { allowWritableRoot: true });
+      verifyTreeReadOnly(nextDepRoot, { allowWritableRoot: true });
+      verifyTreeReadOnly(nextPrepDir, { allowWritableRoot: true });
     }
 
     if (shouldWriteLocks) {
@@ -2338,12 +2582,20 @@ export function stageDarwinRuntime({
         const swapRecord = { ...item, existed, backedUp: false, installed: false };
         appliedSwaps.push(swapRecord);
         if (existed) {
-          renameImpl(item.targetPath, item.backupPath);
+          renameDirectorySafely(renameImpl, item.targetPath, item.backupPath);
           swapRecord.backedUp = true;
           checkPendingTerminationSignal();
         }
-        renameImpl(item.nextPath, item.targetPath);
+        const nextSt = fs.existsSync(item.nextPath) ? fs.lstatSync(item.nextPath) : null;
+        const lockTargetRoot = Boolean(lockReadOnly && !item.tag && nextSt && nextSt.isDirectory());
+        const desiredMode = lockTargetRoot ? nextSt.mode & 0o777 & ~0o222 : null;
+        renameDirectorySafely(renameImpl, item.nextPath, item.targetPath, {
+          finalDirMode: desiredMode,
+        });
         swapRecord.installed = true;
+        if (lockTargetRoot) {
+          verifyTreeReadOnly(item.targetPath);
+        }
         checkPendingTerminationSignal();
       }
 
@@ -2379,8 +2631,11 @@ export function stageDarwinRuntime({
               makeDirectoryTreeWritable(item.targetPath);
               fs.rmSync(item.targetPath, { recursive: true, force: true });
             }
+            removeSwapSidecarMarkers(item.targetPath);
             if (item.existed && item.backedUp && fs.existsSync(item.backupPath)) {
-              rollbackRenameImpl(item.backupPath, item.targetPath);
+              renameDirectorySafely(rollbackRenameImpl, item.backupPath, item.targetPath, {
+                finalDirMode: typeof item.targetMode === "number" ? item.targetMode : null,
+              });
             }
           }
         } catch (rbErr) {
@@ -2424,12 +2679,14 @@ export function stageDarwinRuntime({
 
     if (!preserveBackups) {
       for (const item of swapPlan) {
+        removeSwapSidecarMarkers(item.targetPath);
         for (const tempPath of [item.nextPath, item.backupPath]) {
           try {
             if (fs.existsSync(tempPath)) {
               makeDirectoryTreeWritable(tempPath);
               fs.rmSync(tempPath, { recursive: true, force: true });
             }
+            removeSwapSidecarMarkers(tempPath);
           } catch {
             // ignore
           }

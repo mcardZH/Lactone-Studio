@@ -129,7 +129,8 @@ jobs:
             --conda-prefix "${CONDA_ENV_PATH}" \
             --xtb-archive "${XTB_ARCHIVE_PATH}" \
             --platform "darwin-${TARGET_ARCH}" \
-            --update-locks
+            --update-locks \
+            --no-readonly
 
       - name: Prepare desktop assets & build frontend bundle
         run: |
@@ -185,6 +186,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: Preserve exact repository line endings on Windows
+        shell: pwsh
+        run: git config --global core.autocrlf false
+
       - name: Checkout repository
         uses: actions/checkout@v4
 

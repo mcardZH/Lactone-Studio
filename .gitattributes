@@ -1,0 +1,5 @@
+# Preserve exact blob bytes across Windows (core.autocrlf=true), macOS, and Linux.
+# Many upstream license materials (licenses/2d-components/RECEIPT.json) and generated
+# runtime anchors verify exact byte lengths and SHA-256 digests against mixed LF/CRLF
+# originals; `-text` disables automatic EOL conversion while keeping normal text diff/merge.
+* -text
