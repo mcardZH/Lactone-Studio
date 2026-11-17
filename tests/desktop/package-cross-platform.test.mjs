@@ -21,7 +21,10 @@ import {
   assembleWindowsPortableBundle,
   buildWindowsChemistryBootstrapScript,
   buildWindowsInstallGuideText,
+  buildWindowsPythonSmokeScript,
+  compileWindowsEngineLauncher,
   isKnownPythonLauncherStubExe,
+  validateWindowsLauncherCapabilities,
 } from '../../scripts/release/package-windows.mjs';
 import {
   assembleLinuxPortableBundle,
@@ -585,6 +588,94 @@ test('stageCondaRuntime stages win32-x64 and assembleWindowsPortableBundle produ
     assert.ok(buildWindowsChemistryBootstrapScript().includes('add_dll_directory'));
     assert.ok(buildWindowsInstallGuideText({ version: '2.0.3' }).includes('Lactone Studio.exe'));
 
+    const smokeScript = buildWindowsPythonSmokeScript(
+      'D:\\a\\Lactone-Studio\\Lactone-Studio\\release\\win32-x64\\Lactone-Studio-2.1.1-win32-x64\\resources\\chemistry',
+    );
+    assert.equal(smokeScript.includes(':;'), false, 'Smoke probe script must separate blocks with newlines, not :;');
+    assert.ok(smokeScript.includes('\n    for d in '), 'Smoke probe script must preserve multiline loop indentation');
+    const localDarwinPy = path.join(REPO_ROOT, '.local/toolchains/darwin-arm64/conda-py312-arm64/python/bin/python3');
+    const astPy = fs.existsSync(localDarwinPy) ? localDarwinPy : process.platform === 'win32' ? 'python' : 'python3';
+    execFileSync(
+      astPy,
+      ['-I', '-S', '-B', '-c', 'import ast, sys; ast.parse(sys.stdin.read(), mode="exec")'],
+      { input: smokeScript, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
+    );
+
+    const parsedCaps = validateWindowsLauncherCapabilities(
+      '{"schema":"sciyue-native-capabilities/v1","periodicGfn2BondOrders":true,"tbliteVersion":"0.6.0"}\n',
+    );
+    assert.equal(parsedCaps.tbliteVersion, '0.6.0');
+    assert.throws(() => validateWindowsLauncherCapabilities('not-json'), /invalid JSON/);
+    assert.throws(
+      () => validateWindowsLauncherCapabilities('{"schema":"other","periodicGfn2BondOrders":true}'),
+      /capabilities probe failed/,
+    );
+    assert.throws(
+      () => validateWindowsLauncherCapabilities('{"schema":"sciyue-native-capabilities/v1","periodicGfn2BondOrders":false}'),
+      /capabilities probe failed/,
+    );
+
+    // compileWindowsEngineLauncher static-first compiler precedence & fallback coverage
+    const launcherSrc = path.join(REPO_ROOT, 'scripts/portable/win32-engine-launcher.c');
+    const launcherOut = path.join(tmp, 'launcher-test/engine.exe');
+    const invocations1 = [];
+    const resGccStatic = compileWindowsEngineLauncher(launcherSrc, launcherOut, {
+      gccCandidates: ['gcc-no-static', 'gcc-static'],
+      spawnImpl: (bin, args) => {
+        invocations1.push([bin, ...args]);
+        if (args.includes('--version') || (bin === 'gcc-static' && args.includes('-static'))) {
+          if (args.includes('-o')) fs.writeFileSync(launcherOut, makeSyntheticPe64({ machine: 0x8664 }));
+          return { status: 0 };
+        }
+        return { status: 1 };
+      },
+    });
+    assert.deepEqual(resGccStatic, { compiler: 'gcc-static', staticLink: true });
+    assert.equal(
+      invocations1.some((c) => c[0] === 'gcc-no-static' && !c.includes('-static') && !c.includes('--version')),
+      false,
+      'Static compiler candidate must be preferred over dynamic fallback on an earlier candidate',
+    );
+
+    const invocations2 = [];
+    const resClStatic = compileWindowsEngineLauncher(launcherSrc, launcherOut, {
+      gccCandidates: ['gcc-dyn-only'],
+      spawnImpl: (bin, args) => {
+        invocations2.push([bin, ...args]);
+        if (bin === 'gcc-dyn-only' && args.includes('--version')) return { status: 0 };
+        if (bin === 'cl.exe' && args.includes('/MT')) {
+          fs.writeFileSync(launcherOut, makeSyntheticPe64({ machine: 0x8664 }));
+          return { status: 0 };
+        }
+        if (bin === 'cl.exe' && args.length === 0) return { status: 0 };
+        return { status: 1 };
+      },
+    });
+    assert.deepEqual(resClStatic, { compiler: 'cl.exe', staticLink: true });
+
+    const resGccDynamic = compileWindowsEngineLauncher(launcherSrc, launcherOut, {
+      gccCandidates: ['gcc-dyn-only'],
+      spawnImpl: (bin, args) => {
+        if (bin === 'gcc-dyn-only' && args.includes('--version')) return { status: 0 };
+        if (bin === 'gcc-dyn-only' && !args.includes('-static')) {
+          fs.writeFileSync(launcherOut, makeSyntheticPe64({ machine: 0x8664 }));
+          return { status: 0 };
+        }
+        if (bin === 'cl.exe') return { error: new Error('ENOENT') };
+        return { status: 1 };
+      },
+    });
+    assert.deepEqual(resGccDynamic, { compiler: 'gcc-dyn-only', staticLink: false });
+
+    assert.throws(
+      () =>
+        compileWindowsEngineLauncher(launcherSrc, launcherOut, {
+          gccCandidates: ['missing-gcc'],
+          spawnImpl: () => ({ error: new Error('ENOENT'), status: null }),
+        }),
+      /Unable to compile Windows chemistry engine\.exe/,
+    );
+
     // Defense-in-depth: unstaged setuptools/cli-32.exe stub inside pythonDepsRoot is ignored & omitted from bundle,
     // while genuine non-x64 executables/DLLs inside pythonDepsRoot or xtbRoot are strictly rejected!
     writeFile(staged.pythonDepsRoot, 'Lib/site-packages/setuptools/cli-32.exe', makeSyntheticPe64({ machine: 0x014c }));
@@ -777,6 +868,7 @@ test('Linux OCR runtime, Multiwfn orbital candidates, and Unified GitHub Actions
       'RAW_TAG:',
       '--no-readonly',
       'git config --global core.autocrlf false',
+      'target_commitish: ${{ github.sha }}',
     ]) {
       assert.ok(workflowYaml.includes(requiredToken), `Expected '${requiredToken}' in .github/workflows/release.yml`);
     }

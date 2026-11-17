@@ -203,43 +203,49 @@ function validatePeTreeArch(rootDir, expectedArch, label) {
   }
 }
 
-export function compileWindowsEngineLauncher(cSourcePath, outputExePath) {
+const DEFAULT_WINDOWS_GCC_CANDIDATES = Object.freeze([
+  'gcc',
+  'x86_64-w64-mingw32-gcc',
+  'clang',
+  'C:\\msys64\\mingw64\\bin\\gcc.exe',
+  'C:\\msys64\\ucrt64\\bin\\gcc.exe',
+  'C:\\Program Files\\LLVM\\bin\\clang.exe',
+]);
+
+export function compileWindowsEngineLauncher(
+  cSourcePath,
+  outputExePath,
+  { spawnImpl = spawnSync, gccCandidates = DEFAULT_WINDOWS_GCC_CANDIDATES } = {},
+) {
   fs.mkdirSync(path.dirname(outputExePath), { recursive: true });
 
-  const gccCandidates = [
-    'gcc',
-    'x86_64-w64-mingw32-gcc',
-    'clang',
-    'C:\\msys64\\mingw64\\bin\\gcc.exe',
-    'C:\\msys64\\ucrt64\\bin\\gcc.exe',
-    'C:\\Program Files\\LLVM\\bin\\clang.exe',
-  ];
-  for (const gccBin of gccCandidates) {
-    const probe = spawnSync(gccBin, ['--version'], { stdio: 'pipe' });
-    if (!probe.error && probe.status === 0) {
-      const flagVariants = [
-        ['-O2', '-static', cSourcePath, '-lshell32', '-o', outputExePath],
-        ['-O2', cSourcePath, '-lshell32', '-o', outputExePath],
-      ];
-      for (const args of flagVariants) {
-        fs.rmSync(outputExePath, { force: true });
-        const compile = spawnSync(gccBin, args, { encoding: 'utf8', timeout: 60000 });
-        if (!compile.error && compile.status === 0 && fs.existsSync(outputExePath)) {
-          return { compiler: gccBin };
-        }
-      }
+  const workingGcc = gccCandidates.filter((bin) => {
+    const probe = spawnImpl(bin, ['--version'], { stdio: 'pipe' });
+    return !probe.error && probe.status === 0;
+  });
+  const tryGccWithArgs = (gccBin, args) => {
+    fs.rmSync(outputExePath, { force: true });
+    const compile = spawnImpl(gccBin, args, { encoding: 'utf8', timeout: 60000 });
+    return !compile.error && compile.status === 0 && fs.existsSync(outputExePath);
+  };
+  for (const gccBin of workingGcc) {
+    if (tryGccWithArgs(gccBin, ['-O2', '-static', cSourcePath, '-lshell32', '-o', outputExePath])) {
+      return { compiler: gccBin, staticLink: true };
     }
   }
 
-  const clProbe = spawnSync('cl.exe', [], { stdio: 'pipe' });
-  if (!clProbe.error) {
+  const clProbe = spawnImpl('cl.exe', [], { stdio: 'pipe' });
+  const tryClWithFlags = (extraFlags) => {
+    if (clProbe.error) return false;
     const tmpObjDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ester-win-launcher-'));
     try {
-      const compile = spawnSync(
+      fs.rmSync(outputExePath, { force: true });
+      const compile = spawnImpl(
         'cl.exe',
         [
           '/nologo',
           '/O2',
+          ...extraFlags,
           `/Fo:${path.join(tmpObjDir, 'launcher.obj')}`,
           `/Fe:${outputExePath}`,
           cSourcePath,
@@ -247,12 +253,22 @@ export function compileWindowsEngineLauncher(cSourcePath, outputExePath) {
         ],
         { cwd: tmpObjDir, encoding: 'utf8', timeout: 60000 },
       );
-      if (!compile.error && compile.status === 0 && fs.existsSync(outputExePath)) {
-        return { compiler: 'cl.exe' };
-      }
+      return !compile.error && compile.status === 0 && fs.existsSync(outputExePath);
     } finally {
       removeTreeForce(tmpObjDir);
     }
+  };
+  if (tryClWithFlags(['/MT'])) {
+    return { compiler: 'cl.exe', staticLink: true };
+  }
+
+  for (const gccBin of workingGcc) {
+    if (tryGccWithArgs(gccBin, ['-O2', cSourcePath, '-lshell32', '-o', outputExePath])) {
+      return { compiler: gccBin, staticLink: false };
+    }
+  }
+  if (tryClWithFlags([])) {
+    return { compiler: 'cl.exe', staticLink: false };
   }
 
   throw new Error(
@@ -269,6 +285,35 @@ function patchXtbWindowsFormatBugIfPresent(xtbExePath) {
   return true;
 }
 
+export function buildWindowsPythonSmokeScript(chemistryDestDir) {
+  return [
+    'import os, sys',
+    `root = ${JSON.stringify(chemistryDestDir)}`,
+    'if hasattr(os, "add_dll_directory"):',
+    '    for d in (os.path.join(root, "deps", "Library", "bin"), os.path.join(root, "python", "Library", "bin"), os.path.join(root, "python", "DLLs"), os.path.join(root, "python")):',
+    '        if os.path.isdir(d): os.add_dll_directory(d)',
+    'sys.path[:] = [root, os.path.join(root, "deps", "Lib", "site-packages"), os.path.join(root, "python", "DLLs"), os.path.join(root, "python", "Lib"), os.path.join(root, "python")]',
+    'import numpy, rdkit, scipy, ase, spglib, tblite',
+  ].join('\n');
+}
+
+export function validateWindowsLauncherCapabilities(stdoutText) {
+  let caps;
+  try {
+    caps = JSON.parse(String(stdoutText || '').trim());
+  } catch {
+    throw new Error(
+      `Windows chemistry engine.exe launcher smoke probe returned invalid JSON: ${String(stdoutText || '').slice(0, 300)}`,
+    );
+  }
+  if (!caps || caps.schema !== 'sciyue-native-capabilities/v1' || caps.periodicGfn2BondOrders !== true) {
+    throw new Error(
+      `Windows chemistry engine.exe capabilities probe failed: ${JSON.stringify(caps)}`,
+    );
+  }
+  return caps;
+}
+
 function runWindowsLiveSmokeProbes(chemistryDestDir, xtbDestDir, expectedXtbVersion) {
   if (process.platform !== 'win32' || process.arch !== 'x64') return;
   const pythonExe = path.join(chemistryDestDir, 'python', 'python.exe');
@@ -281,14 +326,7 @@ function runWindowsLiveSmokeProbes(chemistryDestDir, xtbDestDir, expectedXtbVers
       '-S',
       '-B',
       '-c',
-      [
-        'import os, sys',
-        `root = ${JSON.stringify(chemistryDestDir)}`,
-        'for d in (os.path.join(root, "deps", "Library", "bin"), os.path.join(root, "python", "Library", "bin"), os.path.join(root, "python", "DLLs"), os.path.join(root, "python")):',
-        '    if os.path.isdir(d): os.add_dll_directory(d)',
-        'sys.path[:] = [root, os.path.join(root, "deps", "Lib", "site-packages"), os.path.join(root, "python", "DLLs"), os.path.join(root, "python", "Lib"), os.path.join(root, "python")]',
-        'import numpy, rdkit, scipy, ase, spglib, tblite',
-      ].join('; '),
+      buildWindowsPythonSmokeScript(chemistryDestDir),
     ],
     {
       cwd: chemistryDestDir,
@@ -333,6 +371,7 @@ function runWindowsLiveSmokeProbes(chemistryDestDir, xtbDestDir, expectedXtbVers
         `Windows chemistry engine.exe launcher smoke probe failed (exit ${launcherSmoke.status}): ${(launcherSmoke.stderr || launcherSmoke.error?.message || '').trim()}`,
       );
     }
+    validateWindowsLauncherCapabilities(launcherSmoke.stdout);
   }
 
   const xtbExe = path.join(xtbDestDir, 'bin', 'xtb.exe');

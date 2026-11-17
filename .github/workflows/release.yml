@@ -459,6 +459,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_meta.outputs.tag_name }}
+          target_commitish: ${{ github.sha }}
           name: Lactone Studio ${{ steps.release_meta.outputs.tag_name }} (macOS / Windows / Linux 非官方修改版)
           body_path: release-notes.md
           prerelease: ${{ inputs.prerelease || false }}
