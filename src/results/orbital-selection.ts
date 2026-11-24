@@ -1,6 +1,7 @@
 import type { TrajectoryResult } from './contracts';
 import type { WavefunctionMetadata, WavefunctionOrbital } from './orbital-contracts';
-import type { PostprocessSourcePair } from './postprocess-sources';
+import {postprocessPairedWavefunctionBinding,type PostprocessDocument} from './postprocess-document';
+import {postprocessMetadataConflict,type PostprocessSourcePair} from './postprocess-sources';
 
 type OrbitalListIdentity = Pick<WavefunctionMetadata, 'sourceId' | 'sourceRevision' | 'orbitals'>;
 export interface OrbitalSelectionSource {
@@ -11,6 +12,7 @@ export interface OrbitalSelectionSource {
   sourceResult?: TrajectoryResult | null;
   sourceFrameIndex?: number;
   sourcePair?: PostprocessSourcePair;
+  sourceDocument?: PostprocessDocument;
 }
 const positiveIndex = (value: number) => Number.isSafeInteger(value) && value > 0;
 function unique<T>(values: readonly T[]): T | null { return values.length === 1 ? values[0] : null; }
@@ -31,6 +33,16 @@ function nativeAt(metadata: WavefunctionMetadata, spin: WavefunctionOrbital['spi
   return candidate;
 }
 
+function matchesContinuation(input:OrbitalSelectionSource,result:TrajectoryResult,frame:number,originalFrame:number,pair:PostprocessSourcePair) {
+  const document=input.sourceDocument;
+  if(result.engine!=='gaussian'||pair.wavefunction.kind!=='fchk'||!pair.comparisonResultId||!document||document.pair!==pair
+    ||document.result.id!==result.id||document.result.source.id!==result.source.id||document.result.jobIndex!==result.jobIndex
+    ||document.result.frames!==result.frames)return false;
+  const native=unique(pair.primary.results.filter(row=>row.id===pair.comparisonResultId&&row.jobIndex===result.jobIndex&&row.source.id===result.source.id));
+  const binding=postprocessPairedWavefunctionBinding(document);
+  return Boolean(native&&binding?.frameIndex===frame&&binding.sourceFrameIndex===originalFrame&&binding.pairFrameIndex===pair.frameIndex);
+}
+
 /** Source-aware selection only; never starts work or changes scientific data.
  * Missing/ambiguous provenance stays read-only instead of trying another index. */
 export function resolveNativeOrbitalKey(input: OrbitalSelectionSource): string | null {
@@ -49,13 +61,18 @@ export function resolveNativeOrbitalKey(input: OrbitalSelectionSource): string |
   const expectedRevision = JSON.stringify([result.id, result.jobIndex, frame, result.frames[frame]?.sourceFrameIndex ?? frame]);
   if (list.sourceRevision !== expectedRevision) return null;
   const standalone = result.source.id === metadata.sourceId;
+  let continuation:PostprocessSourcePair|undefined;
   if (standalone) {
     if (frame !== 0 || (metadata.format === 'molden' ? result.engine !== 'structure' : result.engine !== 'gaussian')) return null;
   } else {
     const pair = input.sourcePair, saved = pair?.wavefunction.metadata;
-    if (!pair || pair.frameIndex !== originalFrame || pair.primary.result.source.id !== result.source.id || pair.primary.result.jobIndex !== result.jobIndex
+    if (!pair || pair.conflicts.length||postprocessMetadataConflict(pair)||pair.primary.result.source.id!==result.source.id
       || pair.wavefunction.kind !== metadata.format || saved?.sourceId !== metadata.sourceId || saved.sourceRevision !== metadata.sourceRevision || saved.format !== metadata.format
       || (result.engine === 'orca' ? metadata.format !== 'molden' : result.engine !== 'gaussian' || metadata.format !== 'fchk')) return null;
+    if(pair.primary.result.jobIndex!==result.jobIndex){
+      if(!matchesContinuation(input,result,frame,originalFrame,pair))return null;
+      continuation=pair;
+    }else if(pair.frameIndex!==originalFrame)return null;
   }
   // The list uses the last printed channel for this frame, just like its owner.
   const channel = result.scientific?.orbitals.filter(value => value.spin === row.spin && value.frameIndex === frame).at(-1);
@@ -71,5 +88,17 @@ export function resolveNativeOrbitalKey(input: OrbitalSelectionSource): string |
   const ordinal = origin === metadata.sourceId ? original.sourceIndex ?? original.index + (zeroBasedOutput ? 1 : 0)
     : (original.sourceIndex ?? original.index) + (zeroBasedOutput ? 1 : 0);
   if (ordinal !== original.index + (zeroBasedOutput ? 1 : 0)) return null;
-  return nativeAt(metadata, row.spin, ordinal)?.key ?? null;
+  const native=nativeAt(metadata,row.spin,ordinal);
+  if(!native)return null;
+  if(continuation){
+    const definition=`orbital:${row.spin}:${ordinal}:energy`;
+    const printed=continuation.primary.continuationObservations?.find(value=>value.definition===definition&&value.unit==='hartree');
+    const saved=continuation.wavefunction.observations.find(value=>value.definition===definition&&value.unit==='hartree');
+    if(origin!==result.source.id||channel.unit!=='hartree'||!printed||!saved||!positiveIndex(metadata.basisCount)||ordinal>metadata.basisCount
+      ||original.energy!==printed.value||(original.sourceLine??channel.sourceLine)!==printed.sourceLine
+      ||native.energy!==saved.value||native.occupation!==original.occupation)return null;
+    const roundoff=4*Number.EPSILON*Math.max(1,Math.abs(printed.value),Math.abs(saved.value));
+    if(Math.abs(printed.value-saved.value)>printed.rounding+saved.rounding+roundoff)return null;
+  }
+  return native.key;
 }

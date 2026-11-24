@@ -1,6 +1,7 @@
 'use strict';
 const {isDeepStrictEqual:same}=require('node:util');
-const {assert,plain,boundedJSON,validateStructure,MAX_FINGERPRINT_BYTES}=require('./security.cjs');
+const {assert,plain,boundedJSON,validateStructure}=require('./security.cjs');
+const {validSourceStampFingerprints}=require('./native-source-stamp.cjs');
 const {sessionIdentity,measure}=require('./xtb-security.cjs');
 const {cpuResourceSnapshot}=require('./cpu-resources.cjs');
 const ELEMENTS='H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn'.split(' ');
@@ -18,7 +19,7 @@ function validateStart(raw,cpu=cpuResourceSnapshot()){
   boundedJSON(raw);keys(raw,['schema','stamp','runIdentity','operation','structure','method','charge','uhf','frozenAtomIds','constraints','threads','memoryBudgetBytes','maxSteps','maxEvaluations','maxWallTimeSeconds','forceToleranceEVPerAngstrom','calculator','scan','ts','neb']);
   assert(raw.memoryBudgetBytes===undefined||integer(raw.memoryBudgetBytes,1,Number.MAX_SAFE_INTEGER),'Invalid path soft memory budget');
   assert(raw.schema===1&&['scan','ts','ci-neb-ts'].includes(raw.operation)&&['gfn1','gfn2'].includes(raw.method),'Unsupported path operation/method');
-  const stamp=raw.stamp;assert(plain(stamp)&&typeof stamp.documentId==='string'&&stamp.documentId.length>0&&integer(stamp.revision,0,Number.MAX_SAFE_INTEGER)&&['graphFingerprint','coordinatesFingerprint','constraintsFingerprint'].every(k=>typeof stamp[k]==='string'&&Buffer.byteLength(stamp[k])<=MAX_FINGERPRINT_BYTES)&&(stamp.activationEpoch===undefined||integer(stamp.activationEpoch,0,Number.MAX_SAFE_INTEGER)),'Invalid path source stamp');
+  const stamp=raw.stamp;assert(plain(stamp)&&typeof stamp.documentId==='string'&&stamp.documentId.length>0&&integer(stamp.revision,0,Number.MAX_SAFE_INTEGER)&&validSourceStampFingerprints(stamp)&&(stamp.activationEpoch===undefined||integer(stamp.activationEpoch,0,Number.MAX_SAFE_INTEGER)),'Invalid path source stamp');
   keys(raw.runIdentity,['taskId','runId']);sessionIdentity(raw.runIdentity.taskId);sessionIdentity(raw.runIdentity.runId);
   const ids=structure(raw.structure),atoms=raw.structure.atoms;
   assert(integer(raw.charge,-100,100),'Explicit integer charge required');const electrons=atoms.reduce((s,a)=>s+ELEMENTS.indexOf(a.element)+1,0)-raw.charge;

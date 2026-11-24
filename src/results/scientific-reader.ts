@@ -6,18 +6,19 @@ import { OrcaScientificParser } from './orca-scientific-parser';
 import { outputLines } from './output-lines';
 import { emptyScientificDiagnostics, scientificAtom, type ScientificGeometry, type ScientificJob, type ScientificParser, type ScientificParserSnapshot } from './scientific-contracts';
 import { abortableResultRead } from './xyz-reader';
-import { recognizeResultSource } from './source-recognition';
+import { recognizeResultSource, type SourceRecognition } from './source-recognition';
 import { MixedOutputSoftwareError } from './output-sections';
 import { attachTrajectoryStages } from './trajectory-stages';
 import { createTrajectoryOperationBatch, traceTrajectoryOperation } from './trajectory-operations';
 import { readResultSourceRange } from './source-range';
+import { decodeResultText, readFileTextEncoding, type ResultTextEncoding } from './byte-text-lines';
 import {createScientificStructureMetadata} from './scientific-structure-metadata';
 
 /** Decode one proven complete coordinate block. Shared by static results and
  * incremental monitoring; this performs no chemistry or bond inference. */
-export function decodeScientificGeometry(bytes: Uint8Array, geometry: ScientificGeometry): Atom[] {
+export function decodeScientificGeometry(bytes: Uint8Array, geometry: ScientificGeometry, encoding?: ResultTextEncoding): Atom[] {
   const atoms: Atom[] = [];
-  for (const line of new TextDecoder('utf-8', { fatal: true }).decode(bytes).trim().split(/\r?\n/)) {
+  for (const line of decodeResultText(bytes, encoding).trim().split(/\r\n?|\n/)) {
     const fields = line.trim().split(/\s+/), gaussian = geometry.format === 'gaussian-orientation';
     if (gaussian ? fields.length !== 6 || Number(fields[0]) !== atoms.length + 1 : fields.length !== 4) throw new Error('来源坐标格式与索引不一致。');
     let element: string;
@@ -34,12 +35,19 @@ export function decodeScientificGeometry(bytes: Uint8Array, geometry: Scientific
 export async function readScientificFileResults(file: ResultInputFile, options: ResultReadOptions = {}): Promise<ScientificFileResults> {
   return scientificFileResults(file, options);
 }
+
+/** Carry this open's already observed identity into parsing the same source. */
+export function readRecognizedScientificFileResults(file: ResultInputFile, identity: SourceRecognition,
+  options: ResultReadOptions = {}): Promise<ScientificFileResults> {
+  return scientificFileResults(file, options, undefined, identity);
+}
 /** Project an already parsed immutable index. The caller binds file to this
  * exact fixed source boundary; this path never reconsumes text or infers EOF. */
 export async function readScientificSnapshotResults(file: ResultInputFile, snapshot: ScientificParserSnapshot, options: ResultReadOptions = {}): Promise<ScientificFileResults> {
   return scientificFileResults(file, options, snapshot);
 }
-async function scientificFileResults(file: ResultInputFile, options: ResultReadOptions, snapshot?: ScientificParserSnapshot): Promise<ScientificFileResults> {
+async function scientificFileResults(file: ResultInputFile, options: ResultReadOptions,
+  snapshot?: ScientificParserSnapshot, recognized?: SourceRecognition): Promise<ScientificFileResults> {
   let closed = false;
   const close = async () => { if (!closed) { closed = true; await file.close?.(); } };
   const results: TrajectoryResult[] = [];
@@ -47,14 +55,17 @@ async function scientificFileResults(file: ResultInputFile, options: ResultReadO
   try {
     assertResultNotAborted(options.signal);
     let jobs: readonly ScientificJob[];
+    let encoding: ResultTextEncoding;
     if (snapshot) {
       if (!Number.isSafeInteger(snapshot.publishedByteEnd) || snapshot.publishedByteEnd < 0 || snapshot.publishedByteEnd > file.size) throw new Error('科学快照范围与固定来源不一致。');
       jobs = snapshot.jobs;
+      encoding = await readFileTextEncoding(file, options.signal);
     } else {
-    const identity = await recognizeResultSource(file, options);
+      const identity = recognized ?? await recognizeResultSource(file, options);
       if (identity.status === 'conflict' || identity.format !== 'output' || !['gaussian', 'orca'].includes(identity.software)) {
         throw new UnsupportedResultKindError(identity.message ?? (identity.software === 'cp2k' ? '识别为CP2K输出；未作为Gaussian/ORCA解析。' : '输出中没有可确认的 Gaussian/ORCA 身份。'));
       }
+      encoding = identity.encoding ?? 'utf-8';
       const parser: ScientificParser = identity.software === 'gaussian' ? new GaussianScientificParser() : new OrcaScientificParser();
       let damagedTail: string | undefined, damagedTailLine: number | undefined, interruption: unknown;
       // Samples are consume calls, not frames. Keep original streaming order and
@@ -64,7 +75,7 @@ async function scientificFileResults(file: ResultInputFile, options: ResultReadO
         for await (const line of outputLines(file, options, (sourceLine, reason) => {
           damagedTailLine = sourceLine;
           damagedTail = `源行${sourceLine}含${reason}损坏；仅保留此前完整数据，未使用损坏行及后文。`;
-        })) indexTrace.run(() => parser.consume(line));
+        }, encoding)) indexTrace.run(() => parser.consume(line));
       } catch (error) {
         if (error instanceof MixedOutputSoftwareError) throw new UnsupportedResultKindError(error.message);
         interruption = error;
@@ -137,7 +148,7 @@ async function scientificFileResults(file: ResultInputFile, options: ResultReadO
         if (disposed || closed) throw new Error('结果文档已关闭。');
         if (bytes.length !== geometry.end - geometry.start) throw new Error('结果来源已截断，不能使用旧索引。');
         const structure = traceTrajectoryOperation('parse', { ...traceContext, workPhase: 'frame-parse' }, () => {
-          const atoms = decodeScientificGeometry(bytes, geometry);
+          const atoms = decodeScientificGeometry(bytes, geometry, encoding);
           const structure: Structure = { id: `${id}:frame:${index}`, name: `${file.name} · 帧 ${index + 1}`, format: `${job.engine} result`, atoms,
             charge: job.charge, multiplicity: job.multiplicity, dimension: 3, sourceRoute: job.data.route || undefined,
             notes: [`来源 ${file.name}，job ${job.jobIndex + 1}，源行 ${geometry.line}；只读结果，未执行新计算。`] };

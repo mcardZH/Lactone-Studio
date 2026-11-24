@@ -46,6 +46,20 @@ export function initialBaseElectronicState(structure: BaseStructure | null): Bas
   return { charge, multiplicity };
 }
 
+/** Initialize working fields for geometry imports. Trajectory frames and
+ * Gaussian source metadata continue to carry the printed state. */
+export function editableImportedStructureElectronicState(structure: Structure): Structure {
+  if (!/^(?:XYZ|extended XYZ|CIF|PDB(?: .+)?|GJF \/ COM)$/.test(structure.format) || !structure.atoms.length) return structure;
+  const charge = structure.charge ?? 0;
+  const multiplicity = structure.multiplicity !== null && !electronicStateError(structure.atoms, charge, structure.multiplicity)
+    ? structure.multiplicity : suggestedMultiplicity(structure.atoms, charge);
+  if (charge === structure.charge && multiplicity === structure.multiplicity) return structure;
+  return { ...structure, charge, multiplicity, notes: [
+    ...structure.notes,
+    `来源电子态：总电荷 ${structure.charge ?? '未知'}，自旋多重度 ${structure.multiplicity ?? '未知'}；导入建模初值：${charge}，${multiplicity}，运行前请核对。`,
+  ] };
+}
+
 /** UI navigation uses the existing input capability, including Ne >= 1. */
 export function baseElectronicStateError(structure: BaseStructure | null, values: BaseElectronicStateValues): string | null {
   if (!structure?.atoms.length) return '请先提供结构。';

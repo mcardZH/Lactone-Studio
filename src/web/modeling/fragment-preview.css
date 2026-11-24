@@ -18,3 +18,8 @@
 .fragment-library-panel-header strong,.fragment-library-families h4 { color:var(--ui-section-ink); }
 .active-structure-preview>header span,.active-structure-preview-anchor,.active-structure-preview-empty { color:var(--ui-note-ink); }
 .active-structure-preview-resize { background:var(--ui-workspace-tools-bg); }
+
+.fragment-library-panel .fragment-library-cards{grid-template-columns:repeat(auto-fill,minmax(min(100%,100px),1fr))}
+.fragment-library-card .fragment-skeletal-thumbnail{height:58px;color:var(--ui-control-ink)}
+.fragment-skeletal-thumbnail text{font:600 11px var(--ui-font-family);fill:currentColor;stroke:var(--ui-control-bg);stroke-width:3.5px;stroke-linejoin:round;paint-order:stroke}
+.fragment-library-card[aria-pressed=true] .fragment-skeletal-thumbnail text{stroke:var(--ui-control-selected-bg)}

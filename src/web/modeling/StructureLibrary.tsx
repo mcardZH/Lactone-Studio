@@ -1,13 +1,13 @@
 import {DismissibleNotice} from '../DismissibleNotice';
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
-import type { Structure, Vector3 } from '../../core/types';
+import type { Structure } from '../../core/types';
 import type { DisplaySettings } from '../../modeling/contracts';
 import { createStructureLibraryClient, searchStructureLibrary, STRUCTURE_LIBRARY_CATEGORIES, structureLibraryCellLabel, type StructureLibraryCatalog, type StructureLibraryCategory, type StructureLibraryClient, type StructureLibraryEntry } from '../../modeling/structure-library';
 import DialogShell from '../DialogShell';
 import Fragment3DPreview from './Fragment3DPreview';
-import { cellSegments } from './render/geometry';
-import { elementColor } from './render/element-colors';
+import { LibraryModelThumbnail } from './LibraryModelThumbnail';
+import { useLibraryThumbnail } from './use-library-thumbnail';
 import { structureLibraryPreviewSnapshot, structureLibraryPreviewSummary } from './StructureLibraryPreview';
 import './structure-library.css';
 
@@ -30,32 +30,18 @@ function useLibrarySnapshot(entry: StructureLibraryEntry | undefined, client: St
   }, [entry, client, preview]);
   return state.entryId === entry?.id ? state : { entryId: entry?.id ?? '', structure: null, error: '' };
 }
-/** A cheap fixed projection of the same display-only neighborhood as the live
- * library preview. No viewer, bond perception or source-coordinate edit. */
+/** The selected detail continues to own the only interactive 3D viewer. */
 export function StructureLibraryThumbnail({ structure, display }: { structure: Structure; display?: DisplaySettings }) {
-  const graphic = useMemo(() => {
-    const preview = structureLibraryPreviewSnapshot(structure), drawing = preview.structure;
-    const project = ([x, y, z]: Vector3) => { const yaw = .55, pitch = -.35, u = x * Math.cos(yaw) + z * Math.sin(yaw), w = -x * Math.sin(yaw) + z * Math.cos(yaw); return { x: u, y: -y * Math.cos(pitch) + w * Math.sin(pitch), depth: y * Math.sin(pitch) + w * Math.cos(pitch) }; };
-    const atoms = drawing.atoms.map(atom => ({ ...project([atom.x, atom.y, atom.z]), element: atom.element }));
-    const edges = drawing.cell ? cellSegments(drawing.cell,preview.cellPresentation).map(edge => edge.map(project)) : [];
-    const points = [...atoms, ...edges.flat()], xs = points.map(point => point.x), ys = points.map(point => point.y);
-    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), scale = Math.min(156 / Math.max(x1 - x0, 1), 88 / Math.max(y1 - y0, 1));
-    const transform = (point: { x: number; y: number }) => ({ x: 90 + (point.x - (x0 + x1) / 2) * scale, y: 56 + (point.y - (y0 + y1) / 2) * scale });
-    // Paths group thousands of real atoms without thousands of SVG DOM objects.
-    const groups = new Map<string, string[]>(), radius = Math.max(1.15, Math.min(3.3, 14 / Math.sqrt(Math.max(1, atoms.length) / 4)));
-    for (const atom of atoms.sort((a, b) => a.depth - b.depth)) { const point = transform(atom), color = elementColor(atom.element, display?.elementColors), commands = groups.get(color) ?? []; commands.push(`M${(point.x - radius).toFixed(2)},${point.y.toFixed(2)}a${radius},${radius} 0 1,0 ${2 * radius},0a${radius},${radius} 0 1,0 ${-2 * radius},0`); groups.set(color, commands); }
-    return { groups: [...groups].map(([color, path]) => ({ color, path: path.join('') })), cell: edges.map(([a, b]) => { const start = transform(a), end = transform(b); return `M${start.x},${start.y}L${end.x},${end.y}`; }).join(''), displayAtomCount: preview.displayAtomCount };
-  }, [structure, display?.elementColors]);
-  return <svg viewBox="0 0 180 112" role="img" aria-label={`${structure.name}真实结构缩略图`} data-atom-count={structure.atoms.length} data-display-atom-count={graphic.displayAtomCount}>
-    <path d={graphic.cell} fill="none" stroke="var(--ui-control-muted)" strokeWidth=".7" opacity=".5"/>
-    {graphic.groups.map(group => <path key={group.color} d={group.path} fill={group.color} stroke="#526879" strokeWidth=".28"/>)}
-  </svg>;
+  const preview = useMemo(() => structureLibraryPreviewSnapshot(structure), [structure]);
+  return <LibraryModelThumbnail structure={preview.structure} label={`${structure.name}真实结构缩略图`} sourceAtomCount={preview.sourceAtomCount}
+    cellPresentation={preview.cellPresentation} elementColors={display?.elementColors}/>;
 }
 function LibraryCard({ entry, selected, client, display, onSelect }: { entry: StructureLibraryEntry; selected: boolean; client: StructureLibraryClient; display?: DisplaySettings; onSelect(): void }) {
-  const snapshot = useLibrarySnapshot(entry, client);
-  return <button type="button" className="structure-library-card" data-library-entry={entry.id} aria-pressed={selected} onClick={onSelect}>
-    <span className="structure-library-thumb">{snapshot.structure ? <StructureLibraryThumbnail structure={snapshot.structure} display={display}/> : <span className="structure-library-thumb-state">{snapshot.error ? '预览不可用' : '读取结构…'}</span>}</span>
-    <span className="structure-library-card-copy"><strong>{entry.name}</strong><span>{entry.formula} · {entry.source.structureKind === 'derived' && entry.category === 'two-dimensional' ? '派生单层' : entry.phase}</span><span className="structure-library-card-source">{sourceRecordLabel(entry)}</span></span>
+  const { ref, visible } = useLibraryThumbnail<HTMLButtonElement>();
+  const snapshot = useLibrarySnapshot(visible ? entry : undefined, client, true);
+  return <button ref={ref} type="button" className="structure-library-card" data-library-entry={entry.id} aria-pressed={selected} onClick={onSelect}>
+    <span className="structure-library-thumb">{snapshot.structure ? <StructureLibraryThumbnail structure={snapshot.structure} display={display}/> : <span className="structure-library-thumb-state">{snapshot.error ? '预览不可用' : visible ? '读取结构…' : ''}</span>}</span>
+    <span className="structure-library-card-copy"><strong>{entry.name}</strong><span>{entry.formula} · {entry.source.structureKind === 'derived' && entry.category === 'two-dimensional' ? '派生单层' : entry.phase}</span><span className="structure-library-card-source" title={sourceRecordLabel(entry)}>{sourceRecordLabel(entry)}</span></span>
   </button>;
 }
 const sourceKindLabels = { experimental: '实验结构', computed: '计算结构', curated: '整理结构', derived: '派生结构' };

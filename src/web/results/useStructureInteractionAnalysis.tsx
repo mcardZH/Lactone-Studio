@@ -19,11 +19,12 @@ import AnalysisWorkspace from './AnalysisWorkspace';
 import PostprocessDisplayPanel from './PostprocessDisplayPanel';
 import { currentStructureAnalysisUnavailable } from './CurrentStructureAnalysisEntry';
 import {useProjectUiSnapshot} from '../../projects/ui-state';
+import {ResultsMcpPlotScope} from './results-mcp-context';
 
 export interface StructureInteractionAnalysisOptions {
   document: ModelDocument; active: boolean; desktop?: InteractionDesktopApi | null; store?: ModelStore;
   capturePort?: AnalysisSelectionPort;
-  onOpenScatter?(snapshot: InteractionScatterSnapshot): void;
+  onOpenScatter?(snapshot: InteractionScatterSnapshot): string|void;
   onExportImage?(): void | Promise<void>; onError(message: string): void;
 }
 interface Owner {
@@ -129,15 +130,17 @@ export function useStructureInteractionAnalysis(options: StructureInteractionAna
         available={value === owner} desktop={options.desktop} capturePort={value === owner ? options.capturePort ?? capture.selectionPort : undefined}
         onProjection={value.publish} onMeshObserverReady={value.bind} onInteractionReady={value.bindInteraction} onOpenScatter={options.onOpenScatter ?? (snapshot => {
           if (!sameSurfaceContext(snapshot.context, value.context)) return;
-          setScatter(previous => [...previous, { ...snapshot, id: 'structure-scatter-' + crypto.randomUUID(),
+          const id='structure-scatter-'+crypto.randomUUID();
+          setScatter(previous => [...previous, { ...snapshot, id,
             title: `${INTERACTION_METHOD_LABELS[snapshot.method]} · ${INTERACTION_COMPONENT_LABELS[snapshot.component]}`,
             modelName: value.document.draft.structure.name }]);
+          return id;
         })}
         onExportImage={options.onExportImage} onError={options.onError}/>
     </div>)}
   </>;
   const controls = <section className="analysis-workspace-host" data-testid="structure-interaction-analysis" data-document-id={options.document.id}>
-    <AnalysisWorkspace key={options.document.id} sourceId={options.document.id} initialPage="interaction" active={options.active}
+    <ResultsMcpPlotScope scope={{id:`structure-interaction:${options.document.id}`,ownerId:options.document.id,inline:true}}><AnalysisWorkspace key={options.document.id} sourceId={options.document.id} mcpKey={options.document.id} mcpRunId={owner?.id} initialPage="interaction" active={options.active}
       unavailableReason={page => currentStructureAnalysisUnavailable(options.document, page)}
       onActive={id => setPanelOpen(id !== null)} onActivate={() => {}} onError={options.onError}
       render={(instance, active) => <PostprocessDisplayPanel result={null} structure={options.document.draft.structure}
@@ -145,8 +148,8 @@ export function useStructureInteractionAnalysis(options: StructureInteractionAna
         unavailableReason={page => currentStructureAnalysisUnavailable(options.document, page)}
         atomicDisplay={{property:null,color:false,labels:false}} onAtomicDisplay={() => {}}
         dipoleVisible={false} dipoleAvailable={false} onDipoleVisible={() => {}} onOpenPlot={() => {}}
-        interactionControls={content}/>}/>
-    {scatter.length > 0 && <InteractionStructureScatterDeck snapshots={scatter} active={options.active}
+        interactionControls={content}/>}/></ResultsMcpPlotScope>
+    {scatter.length > 0 && <InteractionStructureScatterDeck snapshots={scatter} ownerId={options.document.id} active={options.active}
       onClose={id => setScatter(previous => previous.filter(value => value.id !== id))}/>}
   </section>;
   return { controls, viewport, projection, hasResults, currentSource: owner?.context ?? null, clear };

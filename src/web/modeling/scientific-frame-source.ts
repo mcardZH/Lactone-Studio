@@ -2,6 +2,33 @@ import type { ModelDocument, ModelSelection } from '../../modeling/contracts';
 import type { AnalysisCanvas } from '../results/analysis-canvas';
 import type { Structure } from '../../core/types';
 import {captureStructureExportDocument} from '../../modeling/application/structure-export-snapshot';
+import type {TrajectoryResult} from '../../results/contracts';
+import {getPreparedTrajectoryFrame} from '../../results/prepared-trajectory';
+
+/** A scientific consumer borrows the prepared raw frame, or reads the same
+ * source directly. Display preparation is neither a dependency nor a fallback. */
+export async function readScientificTrajectoryFrame(result:TrajectoryResult,index:number,signal?:AbortSignal):Promise<Structure>{
+  signal?.throwIfAborted();
+  return getPreparedTrajectoryFrame(result,index)?.raw??result.getFrame(index,signal??new AbortController().signal);
+}
+
+/** A calculation uses the publisher's exact raw structure rather than the
+ * display document, which may own per-frame edits, inference or alignment. */
+export function scientificCanvasStructure(canvas?:AnalysisCanvas|null,submittedOnly=false):Structure|undefined{
+  if(!canvas||canvas.displayOnlySourcePreview)return;
+  if(submittedOnly&&canvas.readSubmittedScientificFrame)return canvas.readSubmittedScientificFrame()?.structure;
+  if(canvas.scientificFrameReady===false)return;
+  if(canvas.scientificDocument)return canvas.scientificDocument.draft.structure;
+  if(canvas.result)return canvas.frameIndex===undefined?undefined:getPreparedTrajectoryFrame(canvas.result,canvas.frameIndex)?.raw;
+  return canvas.staticDocument?.draft.structure;
+}
+
+/** A derived model with no source graph must not ask the builder to infer one
+ * implicitly. Existing source topology, including an explicit empty graph,
+ * retains its provenance. */
+export function scientificFrameForModel(structure:Structure):Structure{
+  return structure.bonds===undefined?{...structure,bonds:[]}:structure;
+}
 
 /** Seal the geometry already supplied to a visible canvas. This is an export
  * copy, so animation, preparation of another frame, and native progress do not
@@ -24,6 +51,11 @@ export function scientificSourceCanvas(displayed:AnalysisCanvas|null|undefined,r
 /** Identity of the published scientific frame, independent of camera and
  * vibration phase. A cached context must never be re-signed with a newer key. */
 export function scientificCanvasKey(canvas?: AnalysisCanvas | null): string {
+  if(canvas?.readSubmittedScientificFrame){
+    const submitted=canvas.readSubmittedScientificFrame();
+    return JSON.stringify([canvas.result?.id,canvas.sourceRevision,submitted?.result.source.id,submitted?.result.source.sha256,
+      submitted?.result.jobIndex,submitted?.collection,submitted?.stageId,submitted?.frameId,submitted?.index]);
+  }
   return JSON.stringify([canvas?.result?.id,canvas?.result?.source.id,canvas?.result?.source.sha256,
     canvas?.sourceRevision,canvas?.result?.jobIndex,canvas?.frameIndex,
     canvas?.result?.frames[canvas.frameIndex??-1]?.stageId,
@@ -35,17 +67,22 @@ export function scientificCanvasKey(canvas?: AnalysisCanvas | null): string {
  * Display coordinates, alignment, camera, and vibration phases are not inputs. */
 export function captureScientificModelDocument(owner:ModelDocument,canvas?:AnalysisCanvas|null,options?:{allowAnimation?:boolean;selection?:ModelSelection;purpose?:'calculation-source'}):ModelDocument {
   const calculationSource=options?.purpose==='calculation-source';
-  if(calculationSource&&!canvas?.onOptimize)throw new Error('当前视图未提供派生计算入口。');
   if(!canvas)return structuredClone(owner);
-  if(canvas.scientificFrameReady===false||!canvas.staticDocument)throw new Error('当前科学帧尚未准备完整，请等待载入完成。');
-  if(calculationSource&&canvas.displayOnlySourcePreview)throw new Error('当前显示为来源预览，请先返回已准备完整的科学帧。');
+  if(calculationSource&&canvas.displayOnlySourcePreview)throw new Error('当前显示为来源预览，请先返回已显示的完整科学帧。');
+  if(calculationSource&&!canvas.onOptimize&&(canvas.result||canvas.modelEditingBlocked))
+    throw new Error('当前视图未提供派生计算入口。');
+  const submitted=calculationSource?canvas.readSubmittedScientificFrame?.():undefined;
+  const raw=submitted?.structure??scientificCanvasStructure(canvas,calculationSource);
+  if(!raw)throw new Error('当前科学帧尚未准备完整，请等待载入完成。');
+  const independentCalculation=Boolean(submitted&&canvas.onOptimize);
   const pausedCalculationSource=calculationSource&&canvas.scientificFrameReady===true&&canvas.bondEditingBlocked===false;
-  if(calculationSource&&canvas.bondEditingBlocked===true||
-    (calculationSource||!options?.allowAnimation)&&canvas.modelEditingBlocked&&!pausedCalculationSource)throw new Error('请先暂停播放或振动，再使用当前科学帧。');
-  const structure=canvas.staticDocument.draft.structure;
+  if(!independentCalculation&&((calculationSource&&canvas.bondEditingBlocked===true)||
+    ((calculationSource||!options?.allowAnimation)&&canvas.modelEditingBlocked&&!pausedCalculationSource)))throw new Error('请先暂停播放或振动，再使用当前科学帧。');
+  const structure=canvas.result?scientificFrameForModel(raw):raw;
   if(!structure.atoms.length||structure.atoms.some(atom=>!atom.id||![atom.x,atom.y,atom.z].every(Number.isFinite)))throw new Error('当前科学帧缺少完整原子坐标。');
   if(JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]))!==JSON.stringify(owner.draft.structure.atoms.map(atom=>[atom.id,atom.element])))throw new Error('当前科学帧原子身份或顺序与模型不一致。');
   const source=structuredClone(owner);source.draft.structure=structuredClone(structure);
+  if(canvas.pesConstraints)source.sharedConstraints=structuredClone(canvas.pesConstraints);
   if(options?.selection)source.selection=structuredClone(options.selection);
   source.draft.selectedIds=[...source.selection.atomIds];
   return source;

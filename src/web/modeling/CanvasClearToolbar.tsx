@@ -7,6 +7,7 @@ export interface CanvasClearToolbarProps {
   onClearFrozen(): void;
   onClearCoordinates(): void;
   disabled?: boolean;
+  selectionDisabled?: boolean;
   frozenDisabled?: boolean;
   /** Optional controlled UI preference. Omit to keep position local to this view. */
   dock?: CanvasToolbarDock;
@@ -48,7 +49,7 @@ export function createCanvasToolbarDragIntent() {
   };
 }
 
-export default function CanvasClearToolbar({ onClearSelection, onClearFrozen, onClearCoordinates, disabled = false, frozenDisabled = false, dock, onDockChange, containerRef }: CanvasClearToolbarProps) {
+export default function CanvasClearToolbar({ onClearSelection, onClearFrozen, onClearCoordinates, disabled = false, selectionDisabled = disabled, frozenDisabled = false, dock, onDockChange, containerRef }: CanvasClearToolbarProps) {
   const [localDock, setLocalDock] = useState<CanvasToolbarDock>('top-left'), [freePosition, setFreePosition] = useState<{ x: number; y: number } | null>(null);
   const currentDock = dock ?? localDock, toolbar = useRef<HTMLDivElement>(null), suppressClick = useRef(false);
   const gesture = useRef(createCanvasToolbarDragIntent()), drag = useRef<{ pointerId: number; startX: number; startY: number; width: number; height: number; toolbarWidth: number; toolbarHeight: number; x: number; y: number } | null>(null);
@@ -86,7 +87,7 @@ export default function CanvasClearToolbar({ onClearSelection, onClearFrozen, on
         own.x = next.x; own.y = next.y; setFreePosition(next);
       }} onPointerUp={event => finishDrag(event)} onPointerCancel={event => finishDrag(event, true)} onLostPointerCapture={() => { if (drag.current) gesture.current.finish(drag.current.pointerId, true); drag.current = null; setFreePosition(null); }}
       onKeyDown={event => { if (event.key === 'Escape' && drag.current) { event.preventDefault(); const pointerId = drag.current.pointerId; suppressClick.current = gesture.current.finish(pointerId, true).consumeClick; drag.current = null; setFreePosition(null); if (event.currentTarget.hasPointerCapture(pointerId)) event.currentTarget.releasePointerCapture(pointerId); return; } if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) { event.preventDefault(); event.stopPropagation(); setDock(canvasToolbarDockByKey(currentDock, event.key)); } }}><span aria-hidden="true">⠿</span></button>
-    <button type="button" aria-label="清空选择" title="清空选择" disabled={disabled} onClick={onClearSelection}>清选</button>
+    <button type="button" aria-label="清空选择" title="清空选择" disabled={selectionDisabled} onClick={onClearSelection}>清选</button>
     <button type="button" aria-label="清空冻结" title="清空冻结" disabled={disabled || frozenDisabled} onClick={onClearFrozen}>解冻</button>
     <button type="button" aria-label="清空内坐标" title="清空内坐标" disabled={disabled} onClick={onClearCoordinates}>清内坐标</button>
   </div>;

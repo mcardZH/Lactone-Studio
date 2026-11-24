@@ -11,11 +11,12 @@ export function validPesPathRecord(record:PesPathRecord):boolean{
     frame.energyHartree!=null&&!Number.isFinite(frame.energyHartree)||frame.cv!==undefined&&(!Array.isArray(frame.cv)||!frame.cv.every(Number.isFinite))||Object.hasOwn(frame,'positions'))return false;ids.add(frame.id);}
   return record.connections===undefined||Array.isArray(record.connections)&&record.connections.every(pair=>Array.isArray(pair)&&pair.length===2&&pair.every(id=>ids.has(id)));
 }
-interface Entry{record:PesPathRecord;version:string;consumers:Set<object>;frames?:readonly PesFrame[];pending?:{abort:AbortController;promise:Promise<readonly PesFrame[]>}}
+interface Entry{record:PesPathRecord;version:string;consumers:Set<object>;frames?:readonly PesFrame[];frameById?:ReadonlyMap<string,PesFrame>;pending?:{abort:AbortController;promise:Promise<readonly PesFrame[]>}}
 /** Raw coordinate ownership is independent from the UI snapshot and scientific
  * source. Only consumers keep a prepared complete round resident. */
 export class PesPathRecordOwner {
   private entries=new Map<string,Entry>();
+  private latestRecords?:readonly PesPathRecord[];
   private recordReaders=new Map<string,PesPathRecordReader>();
   private closed=false;
   private reads=0;
@@ -25,9 +26,12 @@ export class PesPathRecordOwner {
     if(!Number.isSafeInteger(atomCount)||atomCount<1)throw Error('路径轮缺少真实原子组成。');
   }
   update(records:readonly PesPathRecord[]):void{
-    if(this.closed)return;
+    if(this.closed||records===this.latestRecords)return;
+    this.latestRecords=records;
     for(const record of records){
-      const version=pesPathRecordVersion(record),old=this.entries.get(record.id);
+      const old=this.entries.get(record.id);
+      if(old?.record===record)continue;
+      const version=pesPathRecordVersion(record);
       if(old?.version===version){old.record=record;continue;}
       if(old)this.clear(old);
       this.entries.set(record.id,{record,version,consumers:old?.consumers??new Set()});
@@ -36,11 +40,11 @@ export class PesPathRecordOwner {
   private clear(entry:Entry){
     entry.pending?.abort.abort();entry.pending=undefined;
     if(entry.frames)this.residentBytes-=entry.frames.reduce((bytes,frame)=>bytes+frame.positions.length*3*8,0);
-    entry.frames=undefined;
+    entry.frames=undefined;entry.frameById=undefined;
   }
   private entry(id:string){const entry=this.entries.get(id);if(this.closed||!entry)throw Error('该路径轮已关闭或不在当前结果索引中。');return entry;}
   get(recordId:string):readonly PesFrame[]|undefined{return this.closed?undefined:this.entries.get(recordId)?.frames;}
-  frame(recordId:string,frameId:string):PesFrame|undefined{return this.get(recordId)?.find(frame=>frame.id===frameId);}
+  frame(recordId:string,frameId:string):PesFrame|undefined{return this.closed?undefined:this.entries.get(recordId)?.frameById?.get(frameId);}
   /** Publish an immutable project source only after its index transaction commits. */
   setRecordReader(recordId:string,reader:PesPathRecordReader){if(this.closed)return;this.entry(recordId);this.recordReaders.set(recordId,reader);}
   acquire(recordId:string){
@@ -73,7 +77,7 @@ export class PesPathRecordOwner {
         frame.positions.some((position:PesFrame['positions'][number])=>!Array.isArray(position)||position.length!==3||!position.every(Number.isFinite))||
         expected[index].energyHartree!=null&&frame.energyHartree!==expected[index].energyHartree))
         throw Error('路径轮的结构、能量或原子对应与来源索引不一致，原始数据已保留。');
-      entry.frames=frames;
+      entry.frames=frames;entry.frameById=new Map(frames.map(frame=>[frame.id,frame]));
       this.residentBytes+=frames.reduce((bytes,frame)=>bytes+frame.positions.length*3*8,0);this.peakResidentBytes=Math.max(this.peakResidentBytes,this.residentBytes);
       return frames;
     }).finally(()=>{if(entry.pending===pending)entry.pending=undefined;});

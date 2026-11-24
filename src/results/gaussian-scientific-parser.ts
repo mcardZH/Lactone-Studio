@@ -53,14 +53,14 @@ const numbers = (text: string): number[] | null => {
 };
 /** Fixed-width eigenvalues may touch at a sign. Consume the entire list with
  * the shared finite-number grammar; never search past malformed residual text. */
-const orbitalNumbers=(text:string):number[]|null=>{
-  const values:number[]=[],pattern=new RegExp(`(\\s*)(${N})`,'y');let end=0;
+const orbitalNumbers=(text:string):{value:number;token:string}[]|null=>{
+  const values:{value:number;token:string}[]=[],pattern=new RegExp(`(\\s*)(${N})`,'y');let end=0;
   while(end<text.length){
     pattern.lastIndex=end;const match=pattern.exec(text);
     if(!match)return values.length&&/^\s*$/.test(text.slice(end))?values:null;
     if(values.length&&!match[1]&&!/^[+-]/.test(match[2]))return null;
     const value=scientificNumber(match[2]);if(value===null)return null;
-    values.push(value);end=pattern.lastIndex;
+    values.push({value,token:match[2]});end=pattern.lastIndex;
   }
   return values.length?values:null;
 };
@@ -172,6 +172,7 @@ export class GaussianScientificParser implements ScientificParser {
   private ircSummaryReference: NonNullable<ScientificData['pathSummary']>[number]['referenceEnergy'];
   private orbitalSet: { alpha?: OrbitalChannel; beta?: OrbitalChannel } | null = null;
   private orbitalSetLimited = false;
+  private orbitalSetMalformed = false;
   private atomTable: AtomTable | null = null;
   private shielding: AtomicProperty | null = null;
   private shieldingHeader:{label:string;sourceLine:number;unit:'ppm'}|null=null;
@@ -464,14 +465,16 @@ export class GaussianScientificParser implements ScientificParser {
   private flushOrbitals(): void {
     if (!this.orbitalSet) return;
     const { alpha, beta } = this.orbitalSet;
-    if (this.orbitalSetLimited) {
+    if (this.orbitalSetLimited || this.orbitalSetMalformed) {
       // A partial orbital list cannot establish frontier orbitals or occupations.
       const retained = (alpha?.orbitals.length ?? 0) + (beta?.orbitals.length ?? 0);
       this.storage.releaseObservations(retained); this.segmentRetained -= retained;
-      this.omitted(retained, alpha?.sourceLine ?? beta?.sourceLine ?? this.lastLine);
-      this.notice('轨道表达到科学观测上限，已隔离该不完整表；未由截断轨道推断HOMO/LUMO或补齐占据。');
+      if (this.orbitalSetLimited) {
+        this.omitted(retained, alpha?.sourceLine ?? beta?.sourceLine ?? this.lastLine);
+        this.notice('轨道表达到科学观测上限，已隔离该不完整表；未由截断轨道推断HOMO/LUMO或补齐占据。');
+      }
       if(alpha)this.cpOrbitalTokens.delete(alpha);if(beta)this.cpOrbitalTokens.delete(beta);
-      this.orbitalSet = null; this.orbitalSetLimited = false; return;
+      this.orbitalSet = null; this.orbitalSetLimited = false; this.orbitalSetMalformed = false; return;
     }
     if (alpha && !beta && this.scfChannel === 'restricted') {
       // Gaussian prints Alpha for a restricted channel too. The population tells
@@ -1260,15 +1263,19 @@ export class GaussianScientificParser implements ScientificParser {
     const orbital = text.match(/^\s*(Alpha|Beta)\s+(occ\.|virt\.)\s+eigenvalues\s*--\s*(.+)$/i);
     if (orbital) {
       const values = orbitalNumbers(orbital[3]);
-      if (!values) { this.notice('轨道能量行含无效数值，未补值。'); return; }
       this.orbitalSet ??= {};
+      if (!values) {
+        if (!this.orbitalSetMalformed) this.notice('轨道能量行含无效数值，已隔离该表，未继续推断轨道序号。');
+        this.orbitalSetMalformed = true;
+        return;
+      }
       const spin = orbital[1].toLowerCase() as 'alpha' | 'beta';
       const previous = this.orbitalSet[spin];
       if (previous && orbital[2].toLowerCase() === 'occ.' && previous.orbitals.some(item => !item.occupation)) { this.flushOrbitals(); this.orbitalSet = {}; }
       if (!this.count(values.length, line.number, !this.orbitalSetLimited)) { this.orbitalSetLimited = true; return; }
       const channel = this.orbitalSet[spin] ??= { spin, frameIndex: this.current?.index ?? null, sourceLine: line.number, orbitals: [], unit: 'hartree' };
-      if(this.cpNonfull())this.cpOrbitalTokens.set(channel,[...(this.cpOrbitalTokens.get(channel)??[]),...(orbital[3].match(new RegExp(N,'g'))??[])]);
-      values.forEach(value => channel.orbitals.push({ index: channel.orbitals.length + 1, energy: value, occupation: orbital[2].toLowerCase() === 'occ.' ? 1 : 0,sourceLine:line.number })); return;
+      if(this.cpNonfull())this.cpOrbitalTokens.set(channel,[...(this.cpOrbitalTokens.get(channel)??[]),...values.map(item=>item.token)]);
+      values.forEach(({value, token}) => channel.orbitals.push({ index: channel.orbitals.length + 1, energy: value, rawEnergy: token, occupation: orbital[2].toLowerCase() === 'occ.' ? 1 : 0,sourceLine:line.number })); return;
     }
     if (this.orbitalSet && !orbital) this.flushOrbitals();
     if (this.dipoleNext) {

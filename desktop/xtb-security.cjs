@@ -67,14 +67,15 @@ function validateStart(value, cpuResources = cpuResourceSnapshot()) {
   assert(calculation==='singlepoint'||!constraints.length||value.internalConstraintsConfirmed===true,'Native internal-coordinate constraints require confirmation for every start');
   const nativeSteps=value.optimizationStepPolicy==='native-default';
   assert(value.optimizationStepPolicy===undefined||nativeSteps&&calculation==='optimize'&&!periodic&&value.runIdentity&&value.maxSteps===undefined,'Native default steps require an isolated advanced optimization without an explicit step count');
-  const maxSteps=nativeSteps?undefined:value.maxSteps??(periodic&&calculation==='optimize'?1000:500),maxSccIterations=value.maxSccIterations??250,maxWallTimeSeconds=value.maxWallTimeSeconds,threads=value.threads??2;
+  const maxSteps=nativeSteps||calculation==='singlepoint'?undefined:value.maxSteps??(periodic?1000:500),maxSccIterations=value.maxSccIterations??250,maxWallTimeSeconds=value.maxWallTimeSeconds,threads=value.threads??2;
   const threadLimit=cpuResources.logicalCpuCount;
-  assert(nativeSteps||Number.isSafeInteger(maxSteps)&&maxSteps>=1,'Invalid xTB step budget');assert(Number.isSafeInteger(maxSccIterations)&&maxSccIterations>=1,'Invalid xTB SCC iteration budget');assert(maxWallTimeSeconds===undefined||Number.isFinite(maxWallTimeSeconds)&&maxWallTimeSeconds>0,'Invalid xTB wall budget');assert(Number.isSafeInteger(threadLimit)&&threadLimit>=1&&Number.isSafeInteger(threads)&&threads>=1&&threads<=threadLimit,'Invalid xTB thread budget');
-  const normalized={...value,...(uhf===undefined?{}:{uhf}),calculation,frozenAtomIds:frozen,constraints:calculation==='singlepoint'?constraints:constraints.map(row=>({...row,value:row.value??measure(row,atoms)})),maxSteps,maxSccIterations,maxWallTimeSeconds,threads};if(value.ffModel!==undefined)validateFixedFf(value.ffModel,normalized);boundedJSON(normalized);return structuredClone(normalized);
+  assert(calculation==='singlepoint'||nativeSteps||Number.isSafeInteger(maxSteps)&&maxSteps>=1,'Invalid xTB step budget');assert(Number.isSafeInteger(maxSccIterations)&&maxSccIterations>=1,'Invalid xTB SCC iteration budget');assert(maxWallTimeSeconds===undefined||Number.isFinite(maxWallTimeSeconds)&&maxWallTimeSeconds>0,'Invalid xTB wall budget');assert(Number.isSafeInteger(threadLimit)&&threadLimit>=1&&Number.isSafeInteger(threads)&&threads>=1&&threads<=threadLimit,'Invalid xTB thread budget');
+  const {maxSteps:_geometrySteps,...input}=value;
+  const normalized={...input,...(uhf===undefined?{}:{uhf}),calculation,frozenAtomIds:frozen,constraints:calculation==='singlepoint'?constraints:constraints.map(row=>({...row,value:row.value??measure(row,atoms)})),...(maxSteps===undefined?{}:{maxSteps}),maxSccIterations,maxWallTimeSeconds,threads};if(value.ffModel!==undefined)validateFixedFf(value.ffModel,normalized);boundedJSON(normalized);return structuredClone(normalized);
 }
 function xyzInput(request){return request.structure.atoms.length+'\nEster Studio owned xTB preoptimization; coordinates in angstrom\n'+request.structure.atoms.map(atom=>[atom.element,atom.x.toPrecision(17),atom.y.toPrecision(17),atom.z.toPrecision(17)].join(' ')).join('\n')+'\n';}
-// The approved xTB run uses the complete current box as XYZ; source axes stay untouched.
-function isPeriodic(request){return Boolean(request.structure.cell);}
+// A finite display box's disabled axes do not send the request to a periodic driver.
+function isPeriodic(request){return request.structure.cell?.pbc.some(Boolean)===true;}
 function optimizerFor(request){return nativePeriodicOptimization(request)?'inertial':'rf';}
 function xcontrolInput(request){
   if(request.calculation==='singlepoint')return '';
@@ -124,7 +125,10 @@ function optimizedCoordinates(text,request){
     const valid=xyz.every(value=>Number.isFinite(value)&&Math.abs(value)<=1e6);
     if(!valid&&request.optimizationPool)throw Object.assign(Error('Native candidate returned nonfinite or unsafe optimized coordinates'),{code:'XTB_CANDIDATE_RESULT'});
     assert(valid,'Nonfinite or unsafe optimized coordinate');
-    if(fixed.has(atom.id)){assert(xyz.every((value,i)=>Math.abs(value-atom[['x','y','z'][i]])<=1e-7),'Strictly fixed atom moved in xTB output');return{id:atom.id,element:atom.element,x:atom.x,y:atom.y,z:atom.z};}
+    if(fixed.has(atom.id)&&!request.optimizationPool){
+      assert(xyz.every((value,i)=>Math.abs(value-atom[['x','y','z'][i]])<=1e-7),'Strictly fixed atom moved in xTB output');
+      return{id:atom.id,element:atom.element,x:atom.x,y:atom.y,z:atom.z};
+    }
     return{id:atom.id,element:atom.element,x:xyz[0],y:xyz[1],z:xyz[2]};
   });
 }

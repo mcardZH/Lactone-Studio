@@ -16,12 +16,13 @@ export interface EmpiricalFramePreparationState {status:'inferred'|'unavailable'
 const empiricalStates=new WeakMap<Structure,EmpiricalFramePreparationState>();
 export function empiricalFramePreparationState(prepared:PreparedTrajectoryView|null,index:number):EmpiricalFramePreparationState|null {
   const sourceIndex=prepared?.indices[index],frame=sourceIndex===undefined?undefined:prepared?.owner.get(sourceIndex);
-  return frame?empiricalStates.get(frame.raw)??null:null;
+  return frame ? empiricalStates.get(frame.raw) ?? null : sourceIndex === undefined ? null
+    : (prepared!.owner.pageProof(sourceIndex) as EmpiricalFramePreparationState | undefined) ?? null;
 }
 const ownerIds = new WeakMap<PreparedTrajectorySource, string>();
 const ownerModes = new WeakMap<PreparedTrajectorySource, TrajectoryGeometryPreparation>();
 let ownerSerial = 0;
-const geometryContracts={empirical:Object.freeze({mode:'empirical',policy:'composite-v1'}),'preserve-source-graph':Object.freeze({mode:'preserve-source-graph'})};
+const geometryContracts={empirical:Object.freeze({mode:'empirical',policy:'per-frame-geometry-v2'}),'preserve-source-graph':Object.freeze({mode:'preserve-source-graph'})};
 
 /** One preparation owner for import, model handoff and every result view. */
 export function prepareTrajectoryView(result: TrajectoryResult, mode: TrajectoryGeometryPreparation = 'empirical'): PreparedTrajectoryView {
@@ -31,26 +32,37 @@ export function prepareTrajectoryView(result: TrajectoryResult, mode: Trajectory
         const empirical = new EmpiricalFrameBonds({ port: {
           capabilities: () => createChemistryPort().capabilities(),
           start: request => createChemistryPort().start(request),
+          startEmpiricalFrame: request => {
+            const port = createChemistryPort();
+            return port.startEmpiricalFrame?.(request) ?? port.start(request);
+          },
         }, sourceId: source.id, retainCache: false,
           operationContext: { sourceId: source.source.id, resultId: source.id, jobIndex: source.jobIndex } });
         return {
           reuseContract:geometryContracts[mode],
           onInherited:(frame,previous)=>{if(empiricalAccepted.has(previous.raw))empiricalAccepted.add(frame.raw);const state=empiricalStates.get(previous.raw);if(state)empiricalStates.set(frame.raw,state);},
+          pageProof:frame=>empiricalStates.get(frame.raw),
+          restorePageProof:(frame,proof)=>{
+            const state=proof as EmpiricalFramePreparationState|undefined;if(!state)return;
+            empiricalStates.set(frame.raw,state);if(state.status==='inferred')empiricalAccepted.add(frame.raw);
+          },
           prepareFrame: async (raw: Structure, sourceFrameIndex: number, signal: AbortSignal) => {
             // An uncomputed captured-model preview owns an actual graph, not
             // an empirical result. Keep it without fabricating native proof.
             if (mode === 'preserve-source-graph' && raw.bonds !== undefined) {
               if (signal.aborted) throw new DOMException('帧预备已取消。', 'AbortError');
-              return structuredClone(raw);
+              return raw;
             }
-            const value = await empirical.resolve(raw, sourceFrameIndex, { signal });
+            const inheritedSourceGraph=source.frames[sourceFrameIndex]?.sourceBondGraph==='inherited';
+            const value = await empirical.resolve(raw, sourceFrameIndex, { signal, inheritedSourceGraph, immutableSource:true });
             if (value.status === 'cancelled' || value.status === 'stale') throw new DOMException('帧预备已取消。', 'AbortError');
-            for (const warning of empiricalFrameBondDisplayWarnings(value)) warn(warning);
+            const warnings=empiricalFrameBondDisplayWarnings(value);
+            for (const warning of warnings) warn(warning);
             // D01: a failed optional drawing operation does not discard valid
             // scientific geometry. Retain failure warnings and false empirical
             // proof, using only this exact frame's validated source graph.
             if(value.status==='inferred')empiricalAccepted.add(raw);else empiricalAccepted.delete(raw);
-            empiricalStates.set(raw,{status:value.status,warnings:empiricalFrameBondDisplayWarnings(value)});
+            empiricalStates.set(raw,{status:value.status,warnings});
             return empiricalFrameBondDisplayStructure(value);
           },
           dispose: () => empirical.dispose(),
@@ -70,7 +82,9 @@ export async function readPreparedTrajectoryFrame(result: TrajectoryResult, inde
   const view = existingPreparedTrajectoryView(result) ?? prepareTrajectoryView(result);
   try {
     const frame = await view.ensure(index, signal);
-    return { ...structuredClone(frame.structure), bonds: structuredClone(frame.structure.bonds ?? []) };
+    const structure=structuredClone(frame.structure);
+    structure.bonds??=[];
+    return structure;
   } finally { view.release(); }
 }
 
@@ -98,9 +112,9 @@ export function preparationDiagnostic(prepared: PreparedTrajectoryView | null) {
   if (!cacheOwnerId) { cacheOwnerId = `prepared-owner:${++ownerSerial}`; ownerIds.set(prepared.owner, cacheOwnerId); }
   const snapshot = prepared.snapshot();
   const frames = prepared.indices.flatMap((sourceFrameIndex, localFrameIndex) => {
-    const frame = prepared.get(localFrameIndex);
     const ownerFrame=prepared.owner.get(sourceFrameIndex);
-    return frame ? [{ localFrameIndex, sourceFrameIndex, rawSettled: true, empiricalSettled: Boolean(ownerFrame&&empiricalAccepted.has(ownerFrame.raw)), validationSettled: true }] : [];
+    return prepared.ready(localFrameIndex) ? [{ localFrameIndex, sourceFrameIndex, rawSettled: true,
+      empiricalSettled: Boolean(ownerFrame&&empiricalAccepted.has(ownerFrame.raw)) || (prepared.owner.pageProof(sourceFrameIndex) as EmpiricalFramePreparationState|undefined)?.status==='inferred', validationSettled: true }] : [];
   });
   const readyIndices = frames.map(frame => frame.localFrameIndex), allReady = prepared.indices.length > 0 && readyIndices.length === prepared.indices.length;
   return {

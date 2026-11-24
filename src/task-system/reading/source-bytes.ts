@@ -41,46 +41,4 @@ export class SourceByteBlocks {
   clear(): void { this.chunks = []; this.length = 0; }
 }
 
-/** Decode only LF-complete lines. CRLF and UTF-8 may cross arbitrary byte chunks. */
-export class CompleteByteLines {
-  private tail = new Uint8Array(0);
-  private offset = 0;
-  private line = 0;
-  private ended = false;
-  private damaged: number | undefined;
-  private decoder = new TextDecoder('utf-8', { fatal: true });
-  get consumedByteEnd(): number { return this.offset; }
-  get damagedAtByte(): number | undefined { return this.damaged; }
-  append(bytes: Uint8Array, consume: (line: import('./contracts').MonitorLine) => void): void {
-    if (this.ended) throw new Error('来源行读取已结束。');
-    if (this.damaged !== undefined) return;
-    const chunk = new Uint8Array(this.tail.length + bytes.length);
-    chunk.set(this.tail); chunk.set(bytes, this.tail.length);
-    let start = 0;
-    for (let at = 0; at < chunk.length; at++) {
-      if (chunk[at] === 0) { this.damaged = this.offset + at - start; this.tail = new Uint8Array(0); return; }
-      if (chunk[at] !== 10) continue;
-      const contentEnd = at > start && chunk[at - 1] === 13 ? at - 1 : at;
-      let text: string;
-      try { text = this.decoder.decode(chunk.subarray(start, contentEnd)); }
-      catch { this.damaged = this.offset; this.tail = new Uint8Array(0); return; }
-      if (this.line === 0) text = text.replace(/^\uFEFF/, '');
-      const end = this.offset + at + 1 - start;
-      consume({ text, start: this.offset, end, number: ++this.line });
-      this.offset = end; start = at + 1;
-    }
-    this.tail = chunk.slice(start);
-  }
-  final(consume: (line: import('./contracts').MonitorLine) => void): void {
-    if (this.ended) return;
-    this.ended = true;
-    if (this.damaged !== undefined || !this.tail.length) return;
-    let text: string;
-    try { text = this.decoder.decode(this.tail).replace(/\r$/, ''); }
-    catch { this.damaged = this.offset; this.tail = new Uint8Array(0); return; }
-    if (this.line === 0) text = text.replace(/^\uFEFF/, '');
-    const end = this.offset + this.tail.length;
-    consume({ text, start: this.offset, end, number: ++this.line });
-    this.offset = end; this.tail = new Uint8Array(0);
-  }
-}
+export { CompleteByteLines } from '../../results/byte-text-lines';

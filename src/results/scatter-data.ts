@@ -34,16 +34,31 @@ export function scatterScreenPoint(x: number, y: number, viewport: ScientificPlo
   return { x: bounds.left + (x - viewport.x[0]) / (viewport.x[1] - viewport.x[0]) * (bounds.right - bounds.left),
     y: bounds.bottom - (y - viewport.y[0]) / (viewport.y[1] - viewport.y[0]) * (bounds.bottom - bounds.top) };
 }
+/** Hover narrows the search by source X without changing point identity or validity. */
+export function scatterXIndex(data: ScientificScatterData): Uint32Array {
+  const indexes = Uint32Array.from({length:data.x.length}, (_, index) => index);
+  return indexes.sort((a,b) => data.x[a] - data.x[b] || a-b);
+}
 /** Exact source values and deterministic source-order ties; no model-selection semantics. */
 export function nearestScatterPoint(data: ScientificScatterData, position: { x: number; y: number }, viewport: ScientificPlotViewport,
-  bounds: ScatterPlotBounds, radius = 8): ScientificScatterPoint | null {
+  bounds: ScatterPlotBounds, radius = 8, index?: Uint32Array): ScientificScatterPoint | null {
   let chosen: ScientificScatterPoint | null = null, distance = radius * radius;
-  for (let i = 0; i < data.x.length; i++) {
+  const sourceX = (pixel: number) => viewport.x[0] + (pixel-bounds.left)/(bounds.right-bounds.left) * (viewport.x[1]-viewport.x[0]);
+  const low = sourceX(position.x-radius), high = sourceX(position.x+radius);
+  let first=0, last=index?.length??0;
+  if(index) while(first<last) {
+    const mid=(first+last)>>>1;
+    if(data.x[index[mid]]<low) first=mid+1;
+    else last=mid;
+  }
+  for (let row = first; row < (index?.length??data.x.length); row++) {
+    const i=index?.[row]??row;
+    if(index && data.x[i]>high) break;
     if (!scatterPointValid(data, i)) continue;
     const x = data.x[i], y = data.y[i];
     if (x < viewport.x[0] || x > viewport.x[1] || y < viewport.y[0] || y > viewport.y[1]) continue;
     const p = scatterScreenPoint(x, y, viewport, bounds), next = (p.x - position.x) ** 2 + (p.y - position.y) ** 2;
-    if (next <= distance && (chosen === null || next < distance)) { distance = next; chosen = { index: i, x, y }; }
+    if (next <= distance && (chosen === null || next < distance || i < chosen.index)) { distance = next; chosen = { index: i, x, y }; }
   }
   return chosen;
 }

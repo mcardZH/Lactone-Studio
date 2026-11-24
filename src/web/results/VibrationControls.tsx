@@ -1,6 +1,6 @@
 import {matchingSliderRange} from '../numeric-step';
 import NumericInput from '../NumericInput';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Structure, Vector3 } from '../../core/types';
 import type { TrajectoryResult } from '../../results/contracts';
 import type { VibrationMode } from '../../results/scientific-contracts';
@@ -8,7 +8,7 @@ import { buildInfraredSpectrum, frequencyTargetLabel, prepareVibrationPlayback, 
 import { MAX_VIBRATION_AMPLITUDE_ANGSTROM } from '../../results/vibrations';
 import { InputSettingsCard } from '../InputSettingsFields';
 import { InputSettingsLayout } from '../InputSettingsLayout';
-import SpectroscopyControls, { SpectroscopyTable } from './SpectroscopyControls';
+import SpectroscopyControls, { SpectroscopyTable, type SpectrumBuildOptions } from './SpectroscopyControls';
 import { vibrationModeTable } from './spectroscopy-presentation';
 import RamanControls, { type RamanDefaults } from './RamanControls';
 import AppearancePresetPicker from '../AppearancePresetPicker';
@@ -20,6 +20,10 @@ import SaveSurfaceAppearanceDefault from './SaveSurfaceAppearanceDefault';
 import type { SavedVectorAppearance } from './surface-appearance-defaults';
 import { formatResultValue } from '../../results/numeric-format';
 import { useProjectState, useProjectUiRestored, useProjectUiScope, useProjectUiSnapshot } from '../../projects/ui-state';
+import { bindStaticVibrationPose, bindVibrationAnimation, createVibrationAnimation, readVibrationPresentedAngle } from './vibration-animation';
+import { useResultsMcp } from './results-mcp-context';
+import { citationDocumentIdFromScope } from '../../citations/workspace-facts';
+import { mountVibrationView, type VibrationViewPatch, type VibrationViewPort } from './vibration-view-port';
 
 /** Confirmed editable initial parameters; applying them remains an explicit action. */
 export const DEFAULT_RAMAN_STOKES_PARAMETERS = { laserWavelengthNm: 532, temperatureK: 298.15 } as const;
@@ -71,13 +75,16 @@ export default function VibrationControls(p: VibrationControlsProps) {
   const modes = useMemo(() => vibrationModesForFrame(p.result.scientific, p.currentIndex, { setIndex: matchingSet, scaleFactor: scaled ? factor : 1 }), [p.result, p.currentIndex, matchingSet, scaled, factor]);
   // Hover is information only; it must never replace the animated mode.
   const activeMode=playIdentity===identity?selected:1;
-  const mode=modes.find(item=>item.displayIndex===activeMode);
+  const mode=useMemo(() => modes.find(item=>item.displayIndex===activeMode), [modes, activeMode]);
   const prepared = useMemo(() => { if (!mode) return null; try { return prepareVibrationPlayback(p.structure, mode); } catch { return null; } }, [p.structure, mode]);
   const valid = prepared?.vectors ?? null;
   const isPlaying = playing && p.active && playIdentity === identity && !!valid;
+  const animation = useMemo(() => isPlaying && prepared ? createVibrationAnimation(value => prepared.sample(amplitude, value).atoms) : undefined,
+    [isPlaying, prepared, amplitude]);
   const currentPhase = playIdentity === identity ? phase : 0;
   const playbackAngle = useRef(savedAngle),lastPaintAngle=useRef(savedAngle);
-  clockSnapshot.current={angle:playIdentity===identity?lastPaintAngle.current:savedAngle,phase:playIdentity===identity?phase:savedPhase};
+  const clockAngle=animation?.readPresented()?.angle??lastPaintAngle.current;
+  clockSnapshot.current=playIdentity===identity?{angle:clockAngle,phase:isPlaying?Math.sin(clockAngle):phase}:{angle:savedAngle,phase:savedPhase};
   const playbackButton = useRef<HTMLButtonElement>(null);
   const pauseForModelEdit=useCallback(()=>{setPlaying(false);playbackAngle.current=lastPaintAngle.current=0;setPhase(0);setManual(0);},[setManual]);
   const callbacks = useRef(p); callbacks.current = p;
@@ -85,7 +92,15 @@ export default function VibrationControls(p: VibrationControlsProps) {
   // activation starts playback; pointer preview never changes the projection.
   useEffect(() => { if(priorIdentity.current===identity)return;priorIdentity.current=identity;playbackAngle.current=lastPaintAngle.current=savedAngle; setPlaying(!restored);setPreview(null);setPhase(savedPhase);if(!projectScope){setSelected(1);setSetIndex(0);setManual(0);}setPlayIdentity(identity); }, [identity,restored,projectScope,setSelected,setSetIndex,setManual,savedAngle,savedPhase]);
   const modeIdentity=`${identity}:${matchingSet}:${mode?.displayIndex}`,priorModeIdentity=useRef(modeIdentity),priorModeSource=useRef(identity);
-  useEffect(() => { if(priorModeIdentity.current===modeIdentity)return;priorModeIdentity.current=modeIdentity;if(priorModeSource.current!==identity){priorModeSource.current=identity;return;}playbackAngle.current=lastPaintAngle.current=0;setPhase(0); }, [modeIdentity,identity]);
+  const requestedModeClock=useRef<{identity:string;angle:number}|undefined>(undefined);
+  useEffect(() => {
+    if(priorModeIdentity.current===modeIdentity)return;
+    priorModeIdentity.current=modeIdentity;
+    if(priorModeSource.current!==identity){priorModeSource.current=identity;requestedModeClock.current=undefined;return;}
+    const requested=requestedModeClock.current;requestedModeClock.current=undefined;
+    const angle=requested?.identity===modeIdentity?requested.angle:0;
+    playbackAngle.current=lastPaintAngle.current=angle;setPhase(Math.sin(angle));
+  }, [modeIdentity,identity]);
   useEffect(() => { if (!p.active) setPreview(null); }, [p.active]);
   useEffect(() => {
     if (!isPlaying) return;
@@ -96,38 +111,106 @@ export default function VibrationControls(p: VibrationControlsProps) {
       // Integrate wall time even when a faster display refresh is skipped.
       // Deadlines advance in 60 Hz slots, with no catch-up render burst.
       playbackAngle.current += (now - last) * 2 * Math.PI / periodMs; last = now;
-      if (now >= nextPaint) { lastPaintAngle.current=playbackAngle.current;setPhase(Math.sin(playbackAngle.current)); nextPaint += (Math.floor((now - nextPaint) / interval) + 1) * interval; }
+      if (now >= nextPaint) {
+        const angle=lastPaintAngle.current=playbackAngle.current, phase=Math.sin(angle);
+        if (!animation?.publish(angle)) setPhase(phase);
+        const presentedAngle=animation?.readPresented()?.angle??angle;
+        clockSnapshot.current={angle:presentedAngle,phase:Math.sin(presentedAngle)};
+        nextPaint += (Math.floor((now - nextPaint) / interval) + 1) * interval;
+      }
       frame = owner.requestAnimationFrame(paint);
     };
     frame = owner.requestAnimationFrame(paint);
     return () => owner.cancelAnimationFrame(frame);
-  }, [isPlaying, periodMs, identity, mode?.displayIndex]);
+  }, [isPlaying, periodMs, identity, mode?.displayIndex, animation, clockSnapshot]);
   const projection = useMemo<VibrationAnalysisProjection | null>(() => {
     if (!mode || !valid || playIdentity!==identity) return null;
     try {
-      const structure = currentPhase === 0 && !isPlaying ? prepared!.sample(Math.abs(playIdentity === identity ? manual : 0), Math.sign(playIdentity === identity ? manual : 0)) : prepared!.sample(amplitude, currentPhase);
+      const angle=lastPaintAngle.current;
+      const sampledPhase=isPlaying?Math.sin(angle):currentPhase;
+      const structure = sampledPhase === 0 && !isPlaying ? prepared!.sample(Math.abs(playIdentity === identity ? manual : 0), Math.sign(playIdentity === identity ? manual : 0)) : prepared!.sample(amplitude, sampledPhase);
       const value={ sourceId: p.result.source.id, jobIndex: p.result.jobIndex, frameIndex: p.currentIndex, mode, displayIndex: mode.displayIndex,
-        structure, vectors: valid, amplitude, arrowAmplitude, phase: currentPhase, playing: isPlaying, arrows, periodMs, manualDisplacementAngstrom: playIdentity === identity ? manual : 0, gifDurationSeconds: duration, arrowAppearance };
+        structure, vectors: valid, amplitude, arrowAmplitude, phase: sampledPhase, playing: isPlaying, arrows, periodMs, manualDisplacementAngstrom: playIdentity === identity ? manual : 0, gifDurationSeconds: duration, arrowAppearance };
+      if (animation) bindVibrationAnimation(structure.atoms,animation,angle);
+      else bindStaticVibrationPose(structure.atoms,angle);
       vibrationPauseOwners.set(value,pauseForModelEdit);return value;
     } catch { return null; }
-  }, [mode, valid, prepared, p.structure, p.result.source.id, p.result.jobIndex, p.currentIndex, amplitude, arrowAmplitude, currentPhase, isPlaying, manual, arrows, periodMs, playIdentity, identity, duration, arrowAppearance]);
+  }, [mode, valid, prepared, p.structure, p.result.source.id, p.result.jobIndex, p.currentIndex, amplitude, arrowAmplitude, currentPhase, isPlaying, manual, arrows, periodMs, playIdentity, identity, duration, arrowAppearance, animation]);
+  const changePlayback = (next:boolean) => {
+    if (!next && isPlaying) {
+      playbackAngle.current=lastPaintAngle.current=animation?.readPresented()?.angle??lastPaintAngle.current;
+      setPhase(Math.sin(lastPaintAngle.current));
+    }
+    setPlayIdentity(identity);
+    setPlaying(next);
+  };
+  const togglePlayback=()=>changePlayback(!isPlaying);
   useEffect(() => { callbacks.current.onProjection?.(projection); }, [projection]);
   useEffect(() => () => callbacks.current.onProjection?.(null), []);
   const units = useMemo(()=>[...new Set(modes.filter(item => item.irIntensity != null).map(item => item.irIntensityUnit ?? '单位未确认'))],[modes]);
-  const [unit, setUnit] = useProjectState('vibration.irUnit','',identity), intensityUnit = units.includes(unit) ? unit : units[0];
-  const build = useCallback((options: { range?: [number, number]; fwhm: number; normalize: boolean }) => buildInfraredSpectrum(modes, { ...options, scaleFactor: scaled ? factor : 1, intensityUnit }), [modes, scaled, factor, intensityUnit]);
+  const [unit] = useProjectState('vibration.irUnit','',identity), intensityUnit = units.includes(unit) ? unit : units[0];
+  const build = useCallback((options: SpectrumBuildOptions) => buildInfraredSpectrum(modes, { ...options, scaleFactor: scaled ? factor : 1 }), [modes, scaled, factor]);
   const changeMode = useCallback((displayIndex: number) => { playbackAngle.current=lastPaintAngle.current=0; setSelected(displayIndex); setPreview(null); setPhase(0); setManual(0); setPlaying(true); },[setSelected,setManual]);
   const selectSpectrumMode = useCallback((displayIndex: number) => {
     if (!modes.some(item => item.displayIndex === displayIndex)) return;
     changeMode(displayIndex);
     setRevealMode(previous => ({identity:`${identity}:${matchingSet}`,key:String(displayIndex),requestId:(previous?.requestId??0)+1}));
   },[modes,changeMode,identity,matchingSet]);
+  const resultsMcp=useResultsMcp(),[viewRef]=useState(()=>crypto.randomUUID());
+  const ownerId=citationDocumentIdFromScope(projectScope?.scope??[])??p.result.id;
+  const sourceLease=useMemo(()=>crypto.randomUUID(),[p.result.id,p.result.scientific,p.result.source.sha256,p.currentIndex,projectScope?.generation]);
+  const mcpOwner=useRef<VibrationViewPort>(null!);
+  useLayoutEffect(()=>{
+    mcpOwner.current={
+      read(){
+        const angle=projection&&p.active?readVibrationPresentedAngle(projection.structure.atoms):undefined;
+        const frame=p.result.frames[p.currentIndex];
+        return {viewRef,ownerId,resultId:p.result.id,sourceId:p.result.source.id,sourceSha256:p.result.source.sha256,
+          jobIndex:p.result.jobIndex,frameIndex:p.currentIndex,sourceFrameIndex:frame?.sourceFrameIndex,active:p.active&&playIdentity===identity,
+          revision:JSON.stringify([viewRef,sourceLease,matchingSet,activeMode,amplitude,periodMs,playing,manual,isPlaying?null:phase,scaled,factor]),
+          sets:sets.map((set,index)=>({index,modeCount:set.modes.filter(mode=>mode.kind!=='rotation'&&mode.kind!=='translation').length,selected:index===matchingSet})),
+          setIndex:matchingSet,modes:modes.map(mode=>({mode:mode.displayIndex,sourceMode:mode.sourceIndex,frequencyCmInverse:mode.originalFrequency,
+            correctedFrequencyCmInverse:mode.correctedFrequency,sourceLine:mode.sourceLine})),mode:activeMode,hasDisplacements:!!valid,
+          amplitudeAngstrom:amplitude,periodMs,playing:isPlaying,manualDisplacementAngstrom:manual,
+          scene:angle===undefined?{status:projection&&p.active?'preparing':'unavailable'}:{status:'presented',phase:Math.sin(angle),angleRadians:angle}};
+      },
+      configure(patch:VibrationViewPatch){
+        if(!p.active||playIdentity!==identity)throw Error('请先激活目标振动分析页。');
+        const set=patch.setIndex??matchingSet,selectedMode=patch.mode??(set===matchingSet?activeMode:1);
+        if(!Number.isSafeInteger(set)||set<0||set>=sets.length)throw Error('所选结果帧没有该频率组。');
+        const nextModes=set===matchingSet?modes:vibrationModesForFrame(p.result.scientific,p.currentIndex,{setIndex:set,scaleFactor:scaled?factor:1});
+        const next=nextModes.find(item=>item.displayIndex===selectedMode);
+        if(!next)throw Error('所选频率组没有该振动模式。');
+        const {amplitudeAngstrom,periodMs:period,phase:position}=patch;
+        if(amplitudeAngstrom!==undefined&&(!Number.isFinite(amplitudeAngstrom)||amplitudeAngstrom<0||amplitudeAngstrom>MAX_VIBRATION_AMPLITUDE_ANGSTROM))throw Error('振幅超出原生振动控件范围。');
+        if(period!==undefined&&(!Number.isFinite(period)||period<40))throw Error('动画周期须为至少 40 ms 的有限数值。');
+        if(position!==undefined&&(!Number.isFinite(position)||Math.abs(position)>1))throw Error('相位位移比例须在 −1 至 +1 范围内。');
+        if(amplitudeAngstrom!==undefined||period!==undefined||position!==undefined||patch.playing===true)prepareVibrationPlayback(p.structure,next);
+        const changeSelection=patch.mode!==undefined||patch.setIndex!==undefined;
+        const modeChanged=set!==matchingSet||selectedMode!==activeMode;
+        if(changeSelection){if(set!==matchingSet)setSetIndex(set);changeMode(selectedMode);}
+        if(amplitudeAngstrom!==undefined)setAmplitude(amplitudeAngstrom);
+        if(period!==undefined)setPeriodMs(period);
+        if(position!==undefined){
+          const angle=Math.asin(position);
+          if(modeChanged)requestedModeClock.current={identity:`${identity}:${set}:${selectedMode}`,angle};
+          playbackAngle.current=lastPaintAngle.current=angle;setPhase(position);setManual(0);setPlaying(patch.playing??false);
+        }else if(patch.playing!==undefined){
+          if(changeSelection)setPlaying(patch.playing);
+          else changePlayback(patch.playing);
+        }
+      },
+    };
+  },[viewRef,ownerId,p,playIdentity,identity,projection,sourceLease,matchingSet,activeMode,amplitude,periodMs,playing,manual,isPlaying,phase,scaled,factor,sets,modes,valid,changeMode,setSetIndex,setAmplitude,setPeriodMs,changePlayback,setManual]);
+  useLayoutEffect(()=>resultsMcp?mountVibrationView(resultsMcp,viewRef,{
+    read:()=>mcpOwner.current.read(),configure:patch=>mcpOwner.current.configure(patch),
+  }):undefined,[resultsMcp,viewRef]);
   // Animation phase belongs to the viewport projection, not the static mode
   // table. Keep both its projection and React subtree stable during playback.
   const modeTable=useMemo(()=>vibrationModeTable(modes,scaled,decimals),[modes,scaled,decimals]);
   const modeTableView=useMemo(()=><SpectroscopyTable hideTitle projection={modeTable} fileName="Ester-Studio-vibration-modes.txt" selectionScope={`${identity}:${matchingSet}:vibration-modes`} selectedKey={String(selected)} selectionLabel="模式" onSelect={key=>changeMode(Number(key))} onPreview={key=>setPreview(key===null?null:Number(key))} format={{decimals,onDecimalsChange:setDecimals,ariaLabel:'振动模式表'}} revealRow={revealMode?.identity===`${identity}:${matchingSet}`?revealMode:undefined}/>,[modeTable,identity,matchingSet,selected,changeMode,decimals,setDecimals,revealMode]);
-  const infraredView=useMemo(()=>units.length?<SpectroscopyControls appearanceKey={`${identity}:${matchingSet}`} presentation="section" title="红外谱" decimals={decimals} identity={`${identity}:${matchingSet}:${scaled}:${factor}:${intensityUnit}`} axis="cm⁻¹" fwhmUnit="cm⁻¹" defaultFwhm={16} build={build} selectedIndex={selected} onSelectIndex={selectSpectrumMode} sourceIndex={(line,sourceIndex)=>modes.find(item=>item.sourceLine===line&&item.sourceIndex===sourceIndex)?.displayIndex}
-    settings={units.length>1?<label>IR 强度单位<select aria-label="IR强度单位" value={intensityUnit} onChange={event=>setUnit(event.target.value)}>{units.map(value=><option key={value}>{value}</option>)}</select></label>:undefined}/>:<AnalysisTaskSection title="红外谱"><p className="postprocess-note">当前模式未输出红外强度。</p></AnalysisTaskSection>,[units,decimals,identity,matchingSet,scaled,factor,intensityUnit,build,selected,selectSpectrumMode,modes]);
+  const infraredView=useMemo(()=>units.length?<SpectroscopyControls kind="ir" appearanceKey={`${identity}:${matchingSet}`} presentation="section" title="红外谱" decimals={decimals} identity={`${identity}:${matchingSet}:${scaled}:${factor}:${intensityUnit}`} axis="cm⁻¹" fwhmUnit="cm⁻¹" defaultFwhm={16} build={build} selectedIndex={selected} onSelectIndex={selectSpectrumMode} sourceIndex={(line,sourceIndex)=>modes.find(item=>item.sourceLine===line&&item.sourceIndex===sourceIndex)?.displayIndex}
+    intensityUnits={units} initialIntensityUnit={intensityUnit}/>:<AnalysisTaskSection title="红外谱"><p className="postprocess-note">当前模式未输出红外强度。</p></AnalysisTaskSection>,[units,decimals,identity,matchingSet,scaled,factor,intensityUnit,build,selected,selectSpectrumMode,modes]);
   const ramanView=useMemo(()=><RamanControls modes={modes} decimals={decimals} onDecimalsChange={setDecimals} identity={`${identity}:${matchingSet}`} selectedIndex={selected} onSelectIndex={selectSpectrumMode} onPreviewIndex={setPreview} defaults={{...DEFAULT_RAMAN_STOKES_PARAMETERS,...p.ramanDefaults}} scaleFactor={scaled?factor:1}/>,[modes,decimals,setDecimals,identity,matchingSet,selected,selectSpectrumMode,p.ramanDefaults,scaled,factor]);
   const report = (error: unknown) => callbacks.current.onError?.(error instanceof Error ? error.message : String(error));
   if (!modes.length) return <InputSettingsCard title="振动"><p className="postprocess-note">当前帧未输出振动模式。</p></InputSettingsCard>;
@@ -137,7 +220,7 @@ export default function VibrationControls(p: VibrationControlsProps) {
       <label><input type="checkbox" checked={scaled} onChange={event => setScaled(event.target.checked)}/>频率校正</label><label>因子<NumericInput aria-label="频率校正因子"  min={0.000001} step={.01} value={factor} disabled={!scaled} onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value > 0 && modes.every(item => Number.isFinite(item.frequency * value))) setFactor(value); }}/></label></div>}>
     <AnalysisTaskSection title="模式表">{modeTableView}</AnalysisTaskSection>
     {mode&&<AnalysisTaskSection title="振动显示" onRestore={()=>{setAmplitude(.3);setArrowAmplitude(.3);setPeriodMs(1000);setDuration(2);setManual(0);setArrows(true);playbackAngle.current=lastPaintAngle.current=0;setPhase(0);setPlaying(true);const saved=appearanceDefaults.snapshot?.value.vibration;if(saved&&'vector' in saved){setArrowPreset(saved.presetId);setArrowAppearance({...saved.vector});}else{setArrowPreset('teal');setArrowAppearance(vibrationVectorAppearance('teal'));}}}><div className="spectroscopy-vibration-playback" role="group" aria-label="模式播放与GIF"><p className="spectroscopy-current-mode">模式 {mode.displayIndex} · {formatResultValue(mode.frequency,decimals)} cm⁻¹{scaled&&` · 校正 ${formatResultValue(mode.correctedFrequency,decimals)} cm⁻¹`}</p>
-    <div className="spectroscopy-control-row"><button ref={playbackButton} type="button" className="button button-primary" aria-label={isPlaying ? '暂停振动' : '播放振动'} disabled={!valid} onClick={() => { setPlayIdentity(identity); setPlaying(!isPlaying); }}>{isPlaying ? '暂停振动' : '播放振动'}</button><button type="button" disabled={!valid} onClick={() => { playbackAngle.current=lastPaintAngle.current=0; setPlaying(false); setPhase(0); setManual(0); }}>恢复原结构</button>
+    <div className="spectroscopy-control-row"><button ref={playbackButton} type="button" className="button button-primary" aria-label={isPlaying ? '暂停振动' : '播放振动'} disabled={!valid} onClick={togglePlayback}>{isPlaying ? '暂停振动' : '播放振动'}</button><button type="button" disabled={!valid} onClick={() => { playbackAngle.current=lastPaintAngle.current=0; setPlaying(false); setPhase(0); setManual(0); }}>恢复原结构</button>
       <label><input type="checkbox" checked={arrows} disabled={!valid} onChange={event => setArrows(event.target.checked)}/>位移箭头</label></div>
     {!valid && <p className="postprocess-note">当前模式缺少与结构对应的笛卡尔位移向量。</p>}
     <div className="spectroscopy-control-row"><label className="spectroscopy-range-field">播放幅度 / Å<span className="spectroscopy-range-inputs"><input aria-label="振动播放幅度" type="range" {...matchingSliderRange(amplitude,0,2,.01)} value={amplitude} disabled={!valid} onChange={event => setAmplitude(Number(event.target.value))}/><NumericInput aria-label="振动播放幅度数值" stepper adaptiveStep={.1} min={0} max={MAX_VIBRATION_AMPLITUDE_ANGSTROM} step={.1} value={amplitude} disabled={!valid} onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 0 && value <= MAX_VIBRATION_AMPLITUDE_ANGSTROM) setAmplitude(value); }}/></span></label>

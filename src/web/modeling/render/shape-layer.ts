@@ -12,7 +12,16 @@ export function createShapeLayer(viewer: { removeShape(shape: any): unknown }) {
       bounds=includeRenderPoint(bounds,[sphere.center.x,sphere.center.y,sphere.center.z],sphere.radius);
     else for(const group of shape.geo?.geometryGroups??[]){
       const vertices=group.vertexArray,count=Math.min(group.vertices??0,Math.floor((vertices?.length??0)/3));
-      for(let index=0;index<count;index++)bounds=includeRenderPoint(bounds,[vertices[index*3],vertices[index*3+1],vertices[index*3+2]]);
+      for (let offset = 0; offset < count * 3; offset += 3) {
+        const x = vertices[offset], y = vertices[offset + 1], z = vertices[offset + 2];
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+        if (!bounds) bounds = { min: [x, y, z], max: [x, y, z] };
+        else {
+          bounds.min[0] = Math.min(bounds.min[0], x); bounds.max[0] = Math.max(bounds.max[0], x);
+          bounds.min[1] = Math.min(bounds.min[1], y); bounds.max[1] = Math.max(bounds.max[1], y);
+          bounds.min[2] = Math.min(bounds.min[2], z); bounds.max[2] = Math.max(bounds.max[2], z);
+        }
+      }
     }
   };
   return {

@@ -1,13 +1,13 @@
 # Build Lactone Studio (LS) / Ester Studio (ES) and replace runtimes from the exported source
 
-> **Unofficial Modified Version Notice (`LICENSE.txt` Article 7)**: **Lactone Studio (LS)** (`v2.1.1-lactone.1`, maintained by `mcardZH` at https://github.com/mcardZH/Lactone-Studio) is an unofficial modified version based on **Ester Studio (ES) v2.1.1** (by Zixuan Zhang, https://github.com/Ahey1/Ester-Studio). For macOS native development and `.app`/`.dmg` packaging (`npm run native:stage:darwin` and `npm run package:mac`), see [README.md](README.md). The sections below preserve the upstream Windows source-snapshot build documentation.
+> **Unofficial Modified Version Notice (`LICENSE.txt` Article 7)**: **Lactone Studio (LS)** (`v2.1.3-lactone.1`, maintained by `mcardZH` at https://github.com/mcardZH/Lactone-Studio) is an unofficial modified version based on **Ester Studio (ES) v2.1.3** (by Zixuan Zhang, https://github.com/Ahey1/Ester-Studio). For macOS native development and `.app`/`.dmg` packaging (`npm run native:stage:darwin` and `npm run package:mac`), see [README.md](README.md). The sections below preserve the upstream Windows source-snapshot build documentation.
 
 ## Current xTB/PES runtime and a locally modified library
 
 The current runtime uses xTB 6.8.0 with separate official, GFN0 stack-header
 derivative and FIRE variants. g-xTB is a user-supplied external CLI; it is not
 one of the distributed variants. The source archive includes the actual PES
-Python modules, provider/model code, fixed source archives, patches and build
+Python modules, provider code, fixed source archives, patches and build
 controls under `third-party/corresponding-sources/pes/`, covered by
 `third-party/pes-corresponding-source-index.json` and the central source index.
 Earlier GNU 6.7/native instructions below retain their original component scope;
@@ -301,9 +301,20 @@ values have different meanings. The frontend and
 engine spec bundles it as `conformer-solvation.json` in its extraction root.
 Do not create a second numeric table or substitute display values for the
 native parameters. The public source manifest binds the canonical file once,
-and `source-native-identity.json` also records it as the seventh engine build
-input, alongside the six existing builder/control files. The profile lists it
+and source-native-identity.json also records its exact build identity with the
+builder and finite-system acceleration sources. The profile lists it
 under `nativeDataSources`, separately from Python `nativeSources`.
+
+The finite-system bond-perception accelerator is built from
+desktop/chemistry/finite_empirical_accel.c by
+scripts/native/finite_empirical_extension.py. To reproduce that component,
+set SCIYUE_FINITE_ACCEL_GCC to an explicit compatible GCC executable and
+SCIYUE_FINITE_ACCEL_PYTHON_SDK to a matching Python 3.12 SDK directory.
+The builder verifies the SDK's python312.dll against the frozen interpreter,
+records every header and the compiler identity, and disables floating-point
+contraction with -ffp-contract=off. The resulting native receipt records
+finiteEmpiricalExtension. Keep that field and its compiled member together
+when assembling a native package.
 
 Read the exact Python executable from desktop/packaging/native-toolchain.lock.json
 and invoke it with -I -B, rather than a global Python/Conda executable:
@@ -320,7 +331,7 @@ $NativeRoot = Join-Path $SourceRoot $NativeReceipt.output
 
 Preparation verifies the complete current members, paths and links and runs
 fresh current-root import/DLL/compiler probes. Native source identity includes
-all six builder inputs, including runtime_pruning.py and the exact output recipe.
+all declared builder inputs, runtime_pruning.py and the exact output recipe.
 The local builder retains source/build-contract, pruning, unresolved-import and
 output-member checks. It records the actual sourceContract, not a source-only
 hash or old acceptance receipt. Logs remain in its fresh .cache build directory;

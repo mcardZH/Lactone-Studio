@@ -4,9 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { assert } = require('./security.cjs');
 const { MAX_EVENT_BYTES, TERMINAL_EVENTS, graph, sessionIdentity, validateStart, validateCommand, validateEvent } = require('./dynamics-security.cjs');
+const { cleanTaskDirectory } = require('./task-cache.cjs');
 
 /** Owner is a trusted webContents ID, never supplied by renderer payloads. */
-function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRuntime, jobRoot, resolveResources, admit, now = Date.now, setInterval: every = setInterval, clearInterval: clearEvery = clearInterval, setTimeout: later = setTimeout, clearTimeout: clearLater = clearTimeout, limits = {} }) {
+function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRuntime, resolveAseContext, jobRoot, resolveResources, admit, now = Date.now, setInterval: every = setInterval, clearInterval: clearEvery = clearInterval, setTimeout: later = setTimeout, clearTimeout: clearLater = clearTimeout, limits = {} }) {
   const policy = { stopMs: 2000, tickMs: 250, frameMs: 33, displayFrames:24, displayBytes:2*1024*1024, ...limits };
   assert(Number.isSafeInteger(policy.displayFrames)&&policy.displayFrames>0&&Number.isSafeInteger(policy.displayBytes)&&policy.displayBytes>0,'Invalid dynamics display queue limits');
   const sessions = new Map();
@@ -33,23 +34,23 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
   }
   function flushFrame(session) {
     const frame = session.pendingFrame;
-    const displayFrames = (session.pendingDisplayFrames ?? []).map(entry=>entry.frame);
+    const displayFrames = (session.pendingDisplayFrames ?? []).filter(entry => entry !== frame).map(entry => ({ ...entry.frame, displayByteLength: entry.bytes }));
     discardFrame(session);
     if (!frame || session.done || session.ownerClosed) return;
     session.lastFrameAt = now();
-    emit(session, frame.operation==='md'?{...frame,displayFrames}:frame);
+    emit(session, frame.frame.operation === 'md' ? { ...frame.frame, displayFrames, displayByteLength: frame.bytes } : frame.frame);
   }
-  function queueFrame(session, frame) {
+  function queueFrame(session, frame, bytes) {
     if (session.ownerClosed) return;
     // One scientific latest slot; an independent bounded batch preserves real
     // presentation samples that would otherwise vanish during native bursts.
-    session.pendingFrame = frame;
+    const entry = { frame, bytes };
+    session.pendingFrame = entry;
     if(frame.operation==='md'){
-      const bytes=Buffer.byteLength(JSON.stringify(frame),'utf8');
       session.pendingDisplayFrames ??=[];session.pendingDisplayBytes ??=0;
       if(bytes<=policy.displayBytes){
         while(session.pendingDisplayFrames.length&&(session.pendingDisplayFrames.length>=policy.displayFrames||session.pendingDisplayBytes+bytes>policy.displayBytes)){session.pendingDisplayBytes-=session.pendingDisplayFrames.shift().bytes;}
-        session.pendingDisplayFrames.push({frame,bytes});session.pendingDisplayBytes+=bytes;
+        session.pendingDisplayFrames.push(entry);session.pendingDisplayBytes+=bytes;
       }
     }
     const remaining = policy.frameMs - (now() - session.lastFrameAt);
@@ -78,6 +79,7 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
   function fail(session, code, message) {
     if (session.done || session.failing) return;
     session.failing = true;
+    session.failed = true;
     flushFrame(session);
     releaseOwnership(session);
     stop(session);
@@ -98,7 +100,7 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
     }, policy.stopMs);
     session.killTimer.unref?.();
   }
-  function onEvent(session, raw) {
+  function onEvent(session, raw, bytes) {
     if (session.done || session.failing) return;
     const value = validateEvent(raw, session);
     assert(value.event !== 'ready' || !session.ready, 'Duplicate dynamics ready event');
@@ -113,13 +115,14 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
     session.heartbeatAt = timestamp;
     if (value.event === 'paused') { session.pausedAt = timestamp; session.state = 'paused'; }
     else if (value.event === 'resumed' || value.event === 'started') { session.state = 'running'; session.progressAt = timestamp; }
-    if (value.event === 'frame') queueFrame(session, value);
+    if (value.event === 'frame') queueFrame(session, value, bytes);
     else {
       // Status/control acknowledgements and terminal snapshots follow the
       // newest candidate, preserving increasing sequence and pause snapshots.
       flushFrame(session);
       if (TERMINAL_EVENTS.has(value.event)) {
         session.terminal = true;
+        session.failed = value.event === 'error';
         session.failing = true; // Disallow every late event from this child.
         releaseOwnership(session);
         stop(session); // Retain owned shutdown before the UI starts anew.
@@ -127,7 +130,7 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
       emit(session, value);
     }
   }
-  function startNow(owner, rawRequest, sessionId, releaseAdmission, validated=false, resolvedXtb) {
+  function startNow(owner, rawRequest, sessionId, releaseAdmission, validated=false, context={}) {
     assert(!disposed && Number.isSafeInteger(owner) && owner >= 0, 'Invalid dynamics owner');
     assert(!pendingStarts.has(owner), 'Dynamics start already waiting for owned child close');
     const key = keyFor(owner, sessionId);
@@ -135,12 +138,11 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
     assert(![...sessions.values()].some(session => session.owner === owner), 'Only one dynamics session per window');
     assert((policy.maxSessions === undefined || workers.size < policy.maxSessions), 'Dynamics concurrency limit reached');
     const request = validated?rawRequest:validateStart(rawRequest);
-    const runtime = resolveRuntime(); // Trusted host-only resolver, no renderer paths.
-    let nativeContext;
-    if(request.method){assert(resolvedXtb&&path.isAbsolute(jobRoot),'Native MD requires trusted xTB/runtime workspace');fs.mkdirSync(jobRoot,{recursive:true});nativeContext={runtime:resolvedXtb,workspacePath:fs.mkdtempSync(path.join(jobRoot,'md-')),threads:releaseAdmission?.resources?.threads??1,memoryBudgetBytes:releaseAdmission?.resources?.memoryBudgetBytes};}
-    const child = spawn(runtime.executable, runtime.args, { cwd: runtime.cwd, windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1', OMP_NUM_THREADS: '1', OPENBLAS_NUM_THREADS: '1', MKL_NUM_THREADS: '1' } });
+    const runtime = resolveRuntime(request); // Trusted host-only resolver, no renderer paths.
+    const threads = String(context.aseContext?.threads ?? 1);
+    const child = spawn(runtime.executable, runtime.args, { cwd: runtime.cwd, windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1', OMP_NUM_THREADS: threads, OPENBLAS_NUM_THREADS: threads, MKL_NUM_THREADS: threads, ...runtime.env } });
     const timestamp = now();
-    const session = { key, owner, sessionId, request, child, releaseAdmission, effectiveResources:releaseAdmission?.resources?structuredClone(releaseAdmission.resources):undefined, graph: graph(request.structure), movable: new Set(request.movableAtomIds), lastSeq: -1, lastStep: 0, lastTimeFs: 0, state: 'starting', ready: false, createdAt: timestamp, heartbeatAt: timestamp, progressAt: timestamp, previousTick: timestamp, runningMs: 0, lastFrameAt: -Infinity, pendingFrame: undefined, frameTimer: undefined, done: false, buffer: '', stderr: '', decoder: new StringDecoder('utf8') };
+    const session = { key, owner, sessionId, request, child, releaseAdmission, aseBackend:context.aseContext?.backend, effectiveResources:releaseAdmission?.resources?structuredClone(releaseAdmission.resources):undefined, graph: graph(request.structure), movable: new Set(request.movableAtomIds), lastSeq: -1, lastStep: 0, lastTimeFs: 0, state: 'starting', ready: false, createdAt: timestamp, heartbeatAt: timestamp, progressAt: timestamp, previousTick: timestamp, runningMs: 0, lastFrameAt: -Infinity, pendingFrame: undefined, frameTimer: undefined, done: false, buffer: '', stderr: '', decoder: new StringDecoder('utf8') };
     sessions.set(key, session);
     workers.add(session);
     ownedChildren.add(session);
@@ -166,7 +168,7 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
           const line = session.buffer.slice(0, newline).replace(/\r$/, '');
           session.buffer = session.buffer.slice(newline + 1);
           assert(line.length > 0, 'Empty dynamics protocol line');
-          onEvent(session, JSON.parse(line));
+          onEvent(session, JSON.parse(line), Buffer.byteLength(line, 'utf8'));
           if (session.failing) { session.buffer = ''; return; }
         }
       } catch (error) { fail(session, 'DYNAMICS_PROTOCOL_ERROR', error.message); }
@@ -182,10 +184,20 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
         fail(session, 'DYNAMICS_UNEXPECTED_EXIT', message);
       }
       finish(session);
-      if(!session.releaseAdmission){ownedChildren.delete(session);session.resolveClosed();}
-      else void Promise.resolve().then(()=>session.releaseAdmission()).then(()=>{ownedChildren.delete(session);session.resolveClosed();},error=>session.rejectClosed(error));
+      if(!session.releaseAdmission && !context.aseContext){
+        ownedChildren.delete(session);
+        session.resolveClosed();
+        return;
+      }
+      void Promise.resolve().then(async()=>{
+        await session.releaseAdmission?.();
+        if(context.aseContext && !session.failed){
+          try{await cleanTaskDirectory(context.aseContext.workspacePath);}
+          catch(error){console.warn('MD_TASK_CACHE_RETAINED',error.message);}
+        }
+      }).then(()=>{ownedChildren.delete(session);session.resolveClosed();},error=>session.rejectClosed(error));
     });
-    try { write(session, { command: 'start', request, ...(nativeContext?{nativeContext}:{}) }); }
+    try { write(session, { command: 'start', request, ...context }); }
     catch (error) { fail(session, 'DYNAMICS_INPUT_FAILED', error.message); }
     return { sessionId, status: 'starting' };
   }
@@ -200,12 +212,11 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
     const previous = [...ownedChildren].filter(session => session.owner === owner);
     assert(previous.every(session => !session.ownerClosed && (session.terminal || session.failing || session.done)), 'Dynamics previous child is not retired');
     if (!previous.length&&!resolveResources&&!admit&&!request.method) { beforeStart(); return startNow(owner, request, sessionId,undefined,true); }
-    const pending = {sessionId,documentId:request.stamp.documentId,abort:new AbortController()};let release;
+    const pending = {sessionId,documentId:request.stamp.documentId,abort:new AbortController()};let release,aseWorkspace;
     pending.cancel=message=>{pending.abort.abort();pending.error=new Error(message);pending.reject?.(pending.error);};
     pendingStarts.set(owner, pending);
     try {
-      const resolvedXtb=request.method?await resolveXtbRuntime({...request,periodic:Boolean(request.structure.cell),signal:pending.abort.signal}):undefined;
-      const snapshot=resolveResources?await new Promise((resolve,reject)=>{pending.reject=reject;Promise.resolve(resolveResources(owner,{...structuredClone(request),method:request.method??request.forcefield??'UFF'})).then(resolve,reject);}):undefined;
+      const snapshot=resolveResources?await new Promise((resolve,reject)=>{pending.reject=reject;Promise.resolve(resolveResources(owner,{...structuredClone(request),method:request.method})).then(resolve,reject);}):undefined;
       assert(!pending.abort.signal.aborted,'DYNAMICS_CANCELLED: resource capture cancelled');
       if(previous.length)await new Promise((resolve, reject) => {
         pending.reject=reject;
@@ -216,13 +227,34 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
       assert(previous.every(session => session.closed) && ![...ownedChildren].some(session => session.owner === owner), 'Dynamics actual owned child close not confirmed');
       beforeStart(); // Main rechecks maintenance/document/concurrency after wait.
       if(admit){release=await admit(owner,request,{signal:pending.abort.signal,resources:snapshot});assert(typeof release==='function','Dynamics admission must return a trusted release');if(snapshot)assert(release.resources&&Number.isSafeInteger(release.resources.threads)&&release.resources.threads>=1&&(request.method||release.resources.threads===1)&&Number.isSafeInteger(release.resources.memoryBudgetBytes)&&release.resources.memoryBudgetBytes>0,'DYNAMICS_RESOURCE_GRANT: Actual soft grant required');}
-      assert(!pending.abort.signal.aborted&&!disposed&&!closedOwners.has(owner),'DYNAMICS_CANCELLED: queued start cancelled');beforeStart();
+      assert(!pending.abort.signal.aborted&&!disposed&&!closedOwners.has(owner),'DYNAMICS_CANCELLED: queued start cancelled');
+      const context = {};
+      if (request.method) {
+        assert(typeof jobRoot==='string'&&path.isAbsolute(jobRoot),'MD requires a trusted runtime workspace');
+        fs.mkdirSync(jobRoot,{recursive:true});
+        const workspacePath=fs.mkdtempSync(path.join(jobRoot,'md-'));
+        const resources=release?.resources;
+        if (request.integrator==='ase') {
+          aseWorkspace=workspacePath;
+          assert(typeof resolveAseContext==='function','ASE MD runtime is unavailable');
+          context.aseContext=await resolveAseContext(request,resources,workspacePath,pending.abort.signal);
+          assert(context.aseContext,'ASE MD requires a trusted calculator context');
+        } else {
+          const runtime=await resolveXtbRuntime({...request,periodic:request.structure.cell?.pbc.some(Boolean)===true,signal:pending.abort.signal});
+          assert(runtime,'Native MD requires a trusted xTB runtime');
+          context.nativeContext={runtime,workspacePath,threads:resources?.threads??1,memoryBudgetBytes:resources?.memoryBudgetBytes};
+        }
+      }
       assert(!pending.abort.signal.aborted&&!disposed&&!closedOwners.has(owner),'DYNAMICS_CANCELLED: native runtime resolve cancelled');
+      beforeStart();
       pendingStarts.delete(owner);
-      const result=startNow(owner,request,sessionId,release,true,resolvedXtb);release=undefined;return result;
+      const result=startNow(owner,request,sessionId,release,true,context);release=undefined;aseWorkspace=undefined;return result;
+    } catch(error) {
+      throw pending.error ?? error;
     } finally {
       clearLater(pending.timer);
       if(release)await release();
+      if(aseWorkspace)try{await cleanTaskDirectory(aseWorkspace);}catch(error){console.warn('MD_TASK_CACHE_RETAINED',error.message);}
       if (pendingStarts.get(owner) === pending) pendingStarts.delete(owner);
     }
   }

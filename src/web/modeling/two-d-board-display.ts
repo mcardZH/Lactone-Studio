@@ -66,57 +66,131 @@ export function twoDValenceWarningPosition(preferred:{x:number;y:number}, board:
 }
 
 export interface TwoDCipLabel { x:number;y:number;element:string;charge:number;isotope:number;value:'R'|'S' }
-interface CipSourceAtom {label:string;location:number[];charge?:number;isotope?:number;mapping?:number;cip?:string}
+interface CipSourceAtom {label:string;location:number[];charge?:number;isotope?:number;mapping?:number;cip?:string;stereoLabel?:string}
 interface CipSourceEdge {type:number;atoms:number[];stereo?:number;cip?:string}
 interface CipNode {type:string;atoms:CipSourceAtom[];bonds?:CipSourceEdge[]}
+export interface TwoDCipResult {labels:TwoDCipLabel[]; failures:string[]}
 
-/** Preserve the original KET representation and verify the returned graph
- * via temporary atom maps. The maps and calculated CIP never enter Ketcher
- * history or the editable KET. A problematic fragment does not suppress the
- * labels of a separate, unambiguous molecule. */
-export async function deriveTwoDCip(ket:string,calculate:(input:string,signal?:AbortSignal)=>Promise<string>,signal?:AbortSignal):Promise<TwoDCipLabel[]> {
-  const original=JSON.parse(ket), result:TwoDCipLabel[]=[];
+const edgeKey=(a:number,b:number,type:number)=>[Math.min(a,b),Math.max(a,b),type].join(':');
+
+interface BoardCipComponent {
+  node:{type:'molecule';atoms:CipSourceAtom[];bonds:CipSourceEdge[]};
+  indices:number[];
+  explicit:ReadonlySet<number>;
+}
+
+function* boardCipComponents(source:CipNode):Generator<BoardCipComponent> {
+  const incident=source.atoms.map(()=>[] as CipSourceEdge[]);
+  const uncertain=new Set<number>(), pairs=new Map<string,CipSourceEdge[]>();
+  for(const bond of source.bonds??[]) {
+    if(!Array.isArray(bond.atoms)||bond.atoms.length!==2)continue;
+    const [a,b]=bond.atoms;
+    if(!incident[a]||!incident[b]||a===b) {
+      if(incident[a])uncertain.add(a);
+      if(incident[b])uncertain.add(b);
+      continue;
+    }
+    const key=edgeKey(a,b,0), same=pairs.get(key);
+    if(same)same.push(bond);else pairs.set(key,[bond]);
+  }
+  for(const entries of pairs.values()) {
+    const [bond]=entries, [a,b]=bond.atoms;
+    if(entries.length!==1||![1,2,3,4].includes(bond.type)) {
+      uncertain.add(a);uncertain.add(b);continue;
+    }
+    incident[a].push(bond);incident[b].push(bond);
+    if(bond.stereo&&![1,6].includes(bond.stereo)){uncertain.add(a);uncertain.add(b);}
+  }
+  const visited=new Set<number>();
+  for(const start of source.atoms.keys()) {
+    if(visited.has(start)||!incident[start].length)continue;
+    const indices=[start], edges=new Set<CipSourceEdge>();
+    visited.add(start);
+    for(const index of indices) for(const edge of incident[index]){
+      edges.add(edge);
+      const other=edge.atoms[0]===index?edge.atoms[1]:edge.atoms[0];
+      if(!visited.has(other)){visited.add(other);indices.push(other);}
+    }
+    const affected=indices.some(index=>uncertain.has(index)||
+      Boolean(source.atoms[index].stereoLabel&&source.atoms[index].stereoLabel!=='abs'));
+    const explicit=new Set(indices.filter(index=>{
+      const atom=source.atoms[index], attached=incident[index];
+      if(uncertain.has(index)||atom.stereoLabel&&atom.stereoLabel!=='abs'||
+        !attached.some(bond=>bond.atoms[0]===index&&bond.type===1&&[1,6].includes(bond.stereo??0)))return false;
+      if(!affected)return true;
+      const ligands=attached.map(edge=>source.atoms[edge.atoms[0]===index?edge.atoms[1]:edge.atoms[0]].label);
+      if(ligands.length===3&&atom.label==='C')ligands.push('H');
+      return ligands.length===4&&new Set(ligands).size===4;
+    }));
+    if(!explicit.size)continue;
+    const local=new Map(indices.map((index,position)=>[index,position]));
+    const atoms=indices.map(index=>{
+      const atom=structuredClone(source.atoms[index]);delete atom.cip;atom.mapping=index+1;return atom;
+    });
+    const bonds=[...edges].map(edge=>{
+      const bond={...structuredClone(edge),atoms:edge.atoms.map(index=>local.get(index)!)};
+      delete bond.cip;return bond;
+    });
+    yield {node:{type:'molecule',atoms,bonds}, indices, explicit};
+  }
+}
+
+function readTwoDCip(source:CipNode, component:BoardCipComponent, ket:string):TwoDCipLabel[] {
+  const output=JSON.parse(ket), expectedAtoms=new Set(component.indices);
+  const mapped=new Set<number>(), edges:string[]=[], labels:TwoDCipLabel[]=[];
+  for(const ref of output.root.nodes) {
+    const molecule=output[ref.$ref] as CipNode;
+    if(molecule?.type!=='molecule'||!Array.isArray(molecule.atoms))throw Error('Indigo 返回的二维分子不完整。');
+    const indices:number[]=[];
+    for(const atom of molecule.atoms) {
+      const index=(atom.mapping??0)-1, before=source.atoms[index];
+      if(!expectedAtoms.has(index)||!before||mapped.has(index)||before.label!==atom.label||
+        (before.charge??0)!==(atom.charge??0)||(before.isotope??0)!==(atom.isotope??0)||
+        !Array.isArray(atom.location)||![0,1].every(i=>Number.isFinite(atom.location[i])&&Math.abs(atom.location[i]-before.location[i])<=Math.max(1,Math.abs(before.location[i]))*1e-6)) {
+        throw Error('Indigo 返回的二维原子与当前画板不一致。');
+      }
+      indices.push(index);mapped.add(index);
+      if(component.explicit.has(index)&&(atom.cip==='R'||atom.cip==='S')) {
+        labels.push({x:before.location[0],y:before.location[1],element:before.label,charge:before.charge??0,isotope:before.isotope??0,value:atom.cip});
+      }
+    }
+    for(const bond of molecule.bonds??[]) {
+      if(bond.atoms.length!==2||bond.atoms.some(i=>indices[i]===undefined))throw Error('Indigo 返回的二维键图不完整。');
+      edges.push(edgeKey(indices[bond.atoms[0]],indices[bond.atoms[1]],bond.type));
+    }
+  }
+  const expected=component.node.bonds.map(bond=>edgeKey(component.indices[bond.atoms[0]],component.indices[bond.atoms[1]],bond.type)).sort();
+  if(mapped.size!==expectedAtoms.size||JSON.stringify(expected)!==JSON.stringify(edges.sort()))throw Error('Indigo 返回的二维键图与当前画板不一致。');
+  return labels;
+}
+
+/** Temporary maps are confined to Indigo, leaving the editable KET and its
+ * wedge declarations intact. Each known component owns its yield or failure. */
+export async function deriveTwoDCipResult(ket:string,calculate:(input:string,signal?:AbortSignal)=>Promise<string>,signal?:AbortSignal):Promise<TwoDCipResult> {
+  const original=JSON.parse(ket), labels:TwoDCipLabel[]=[], failures=new Set<string>();
   for(const ref of original.root?.nodes??[]) {
     signal?.throwIfAborted();
     const source=original[ref.$ref] as CipNode|undefined;
-    if(source?.type!=='molecule'||!source.bonds?.length)continue;
-    const explicit=new Set(source.bonds.filter(b=>b.type===1&&[1,6].includes(b.stereo??0)).map(b=>b.atoms[0]));
-    if(!explicit.size)continue;
-    const node=structuredClone(source);
-    node.atoms.forEach((atom,index)=>{delete atom.cip;atom.mapping=index+1;});
-    node.bonds?.forEach(bond=>delete bond.cip);
-    try {
-      const output=JSON.parse(await calculate(JSON.stringify({root:{nodes:[{$ref:'mol0'}]},mol0:node}),signal));
+    if(source?.type!=='molecule'||!Array.isArray(source.atoms)||!source.bonds?.length)continue;
+    for(const component of boardCipComponents(source)){
       signal?.throwIfAborted();
-      const mapped=new Set<number>(), edges:string[]=[], labels:TwoDCipLabel[]=[];
-      const edgeKey=(a:number,b:number,type:number)=>`${Math.min(a,b)}:${Math.max(a,b)}:${type}`;
-      let valid=true;
-      for(const ref of output.root.nodes) {
-        const molecule=output[ref.$ref] as CipNode;
-        if(molecule?.type!=='molecule'||!Array.isArray(molecule.atoms)){valid=false;break;}
-        const indices:number[]=[];
-        for(const atom of molecule.atoms) {
-          const index=(atom.mapping??0)-1,before=source.atoms[index];
-          if(!Number.isInteger(index)||!before||mapped.has(index)||before.label!==atom.label||
-            (before.charge??0)!==(atom.charge??0)||(before.isotope??0)!==(atom.isotope??0)||
-            !Array.isArray(atom.location)||![0,1].every(i=>Number.isFinite(atom.location[i])&&Math.abs(atom.location[i]-before.location[i])<=Math.max(1,Math.abs(before.location[i]))*1e-6)) {
-            valid=false;break;
-          }
-          indices.push(index);mapped.add(index);
-          if(explicit.has(index)&&(atom.cip==='R'||atom.cip==='S'))labels.push({x:before.location[0],y:before.location[1],element:before.label,charge:before.charge??0,isotope:before.isotope??0,value:atom.cip});
-        }
-        if(!valid)break;
-        for(const bond of molecule.bonds??[]) {
-          if(bond.atoms.length!==2||bond.atoms.some(i=>indices[i]===undefined)){valid=false;break;}
-          edges.push(edgeKey(indices[bond.atoms[0]],indices[bond.atoms[1]],bond.type));
-        }
+      try{
+        const ket=await calculate(JSON.stringify({root:{nodes:[{$ref:'mol0'}]},mol0:component.node}),signal);
+        signal?.throwIfAborted();
+        labels.push(...readTwoDCip(source,component,ket));
+      }catch(error){
+        signal?.throwIfAborted();
+        failures.add(error instanceof Error?error.message:String(error));
       }
-      const expected=source.bonds.map(b=>edgeKey(b.atoms[0],b.atoms[1],b.type)).sort();
-      if(valid&&mapped.size===source.atoms.length&&JSON.stringify(expected)===JSON.stringify(edges.sort()))result.push(...labels);
-    } catch (error) { if(signal?.aborted) throw error; }
+    }
   }
-  return result;
+  return {labels,failures:[...failures]};
 }
+
+export async function deriveTwoDCip(ket:string,calculate:(input:string,signal?:AbortSignal)=>Promise<string>,signal?:AbortSignal):Promise<TwoDCipLabel[]> {
+  return (await deriveTwoDCipResult(ket,calculate,signal)).labels;
+}
+
 
 const svgNS='http://www.w3.org/2000/svg';
 export function isOrdinaryIsolatedMethane(a:Atom):boolean {

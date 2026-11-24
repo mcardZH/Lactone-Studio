@@ -1,6 +1,8 @@
+import { VibronicSha256 } from '../core/gaussian-vibronic/sha256-stream';
+
 export type ProjectAssetCategory = 'models' | 'sources' | 'trajectories' | 'results';
 export type ProjectOpaqueState = unknown;
-const PROJECT_FORMAT_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const;
+const PROJECT_FORMAT_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] as const;
 export type ProjectFormatVersion = typeof PROJECT_FORMAT_VERSIONS[number];
 export interface ProjectAsset { assetId: string; sha256: string; bytes: number; relativePath: string; category: ProjectAssetCategory; originalName?: string }
 export interface ProjectManifest {
@@ -12,6 +14,7 @@ export interface ProjectSessionDescription {
   recovery: { previous: ProjectManifest | null; auto: ProjectManifest | null };
   issues: Array<{ kind?: string; assetId?: string; code: string }>; recovered?: boolean; unchanged?: boolean;
   writeProtection?: { code: 'SY_SCHEMA_UNSUPPORTED'; points: ('auto' | 'previous')[] };
+  openRequestId?: string;
 }
 type WithSession = { sessionId: string };
 type WithTransaction = WithSession & { transactionId: string };
@@ -35,7 +38,8 @@ export type SyProjectRequest =
   | (WithTransaction & { action: 'abort' })
   | (WithSession & { action: 'read'; assetId: string; offset?: number; length?: number })
   | (WithSession & {action:'read-assets';assetIds:string[]})
-  | (WithSession & { action: 'close' | 'gc' });
+  | (WithSession & { action: 'settle-open'; openRequestId: string; status: 'loaded' | 'failed'; message?: string })
+  | (WithSession & { action: 'close' | 'gc' | 'read-saved' });
 export interface SyProjectActionValues {
   'choose-location': { locationToken: string; label: string } | { cancelled: true };
   create: ProjectSessionDescription | { cancelled: true };
@@ -52,7 +56,9 @@ export interface SyProjectActionValues {
   abort: { aborted: true };
   read: { bytes: Uint8Array; eof: boolean; totalBytes: number };
   'read-assets':{assets:{assetId:string;bytes:Uint8Array;asset:ProjectAsset}[]};
+  'settle-open': { accepted: true };
   close: { closed: true };
+  'read-saved': ProjectSessionDescription;
   gc: { deleted: Array<{ assetId: string; bytes: number }>; skipped: string | Array<{ assetId: string; reason: string }> };
 }
 export type SyProjectResponse<T = SyProjectActionValues[keyof SyProjectActionValues]> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } };
@@ -83,9 +89,18 @@ export interface ProjectAssetWriter {
   retainAsset(assetId: string): void;
   hasAsset?(assetId: string): boolean;
 }
-export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]> }
+export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]>; readRange?(assetId: string, offset: number, length: number, expectedBytes: number): Promise<Uint8Array> }
 export async function projectAssetSha256(bytes:Uint8Array):Promise<string>{
-  const digest=await crypto.subtle.digest('SHA-256',bytes as Uint8Array<ArrayBuffer>);
+  if(bytes.length>PROJECT_CHUNK_BYTES){
+    const hash=new VibronicSha256();let lastYield=performance.now();
+    for(let offset=0;offset<bytes.length;offset+=PROJECT_CHUNK_BYTES){
+      hash.update(bytes.subarray(offset,offset+PROJECT_CHUNK_BYTES));
+      if(performance.now()-lastYield>=10){await new Promise<void>(resolve=>setTimeout(resolve,0));lastYield=performance.now();}
+    }
+    return hash.digest();
+  }
+  const input=bytes.buffer instanceof ArrayBuffer?bytes as Uint8Array<ArrayBuffer>:bytes.slice();
+  const digest=await crypto.subtle.digest('SHA-256',input);
   return [...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,'0')).join('');
 }
 export function createProjectAssetIO(sessionId: string, transactionId: string, invoke: SyProjectInvoke, initialAssetIds: Iterable<string> = [], reusableAssetIds: Iterable<string> = []): { writer: ProjectAssetWriter; reader: ProjectAssetReader; assetIds: () => string[]; forEachAsset: (callback: (assetId: string) => void) => void; retainAsset: (assetId: string) => void } {
@@ -102,7 +117,8 @@ export function createProjectAssetIO(sessionId: string, transactionId: string, i
       const uploadId = `asset-${Date.now()}-${nextUpload++}`; let asset: ProjectAsset | undefined;
       for (let offset = 0; offset < bytes.byteLength || offset === 0; offset += PROJECT_CHUNK_BYTES) {
         const end = Math.min(bytes.byteLength, offset + PROJECT_CHUNK_BYTES);
-        const result = await invokeProject(invoke, { action: 'chunk', sessionId, transactionId, uploadId, category, originalName: name, expectedBytes: bytes.byteLength, bytes: bytes.subarray(offset, end), final: end === bytes.byteLength });
+        const page = bytes.byteOffset===0&&offset===0&&end===bytes.buffer.byteLength&&bytes.buffer instanceof ArrayBuffer ? bytes : bytes.slice(offset,end);
+        const result = await invokeProject(invoke, { action: 'chunk', sessionId, transactionId, uploadId, category, originalName: name, expectedBytes: bytes.byteLength, bytes: page, final: end === bytes.byteLength });
         asset = result.asset;
         if (end === bytes.byteLength) break;
       }
@@ -129,12 +145,22 @@ export function createProjectAssetIO(sessionId: string, transactionId: string, i
         const bytes=typeof value.bytes==='string'?new TextEncoder().encode(value.bytes):value.bytes;
         if(bytes.byteLength>PROJECT_CHUNK_BYTES){await flush();output.push(await writer.write(value.category,value.name,bytes));continue;}
         if(batch.length===PROJECT_ASSET_BATCH_COUNT||batchBytes+bytes.byteLength>PROJECT_CHUNK_BYTES)await flush();
-        batch.push({...value,bytes});batchBytes+=bytes.byteLength;
+        const page=bytes.byteOffset===0&&bytes.byteLength===bytes.buffer.byteLength&&bytes.buffer instanceof ArrayBuffer?bytes:bytes.slice();
+        batch.push({...value,bytes:page});batchBytes+=bytes.byteLength;
       }
       await flush();return output;
     }, assetIds, forEachAsset, retainAsset, hasAsset: assetId=>reusable.has(assetId),
   };
   const reader: ProjectAssetReader = {
+    async readRange(assetId, offset, length, expectedBytes) {
+      if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length <= 0 || length > PROJECT_CHUNK_BYTES
+        || !Number.isSafeInteger(expectedBytes) || length > expectedBytes - offset) throw Error('Project asset range is invalid.');
+      const result = await invokeProject(invoke, { action: 'read', sessionId, assetId, offset, length });
+      const bytes = result.bytes instanceof Uint8Array ? result.bytes : new Uint8Array(result.bytes);
+      if (result.totalBytes !== expectedBytes || bytes.byteLength !== length || Boolean(result.eof) !== (offset + length === expectedBytes)) throw Error('Project asset page size changed while reading.');
+      assets.add(assetId);
+      return bytes;
+    },
     async readMany(assetIds){
       if(assetIds.length>PROJECT_ASSET_BATCH_COUNT)throw Error('Project asset read batch exceeds its bounded count.');
       if(!assetIds.length)return[];

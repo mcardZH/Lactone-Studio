@@ -128,9 +128,10 @@ class _FileLines:
     def close(self):self.stream.close()
 
 
-def _fchk_metadata(text):
+def _fchk_metadata(text, *, excitation_evidence=False):
     lines = text.splitlines()
-    fields, provenance = {}, {}
+    fields, provenance, evidence = {}, {}, {}
+    scf_records = 0
     pattern = re.compile(r'^(.+?)\s+([IR])\s+(?:N=\s*(\d+)|([^\s]+))\s*$')
     wanted = {'Charge', 'Multiplicity', 'Number of atoms', 'Atomic numbers', 'Current cartesian coordinates', 'Number of basis functions',
               'Number of independent functions', 'Number of independant functions', 'Number of alpha electrons',
@@ -144,6 +145,12 @@ def _fchk_metadata(text):
         if not m:
             continue
         label, kind, count, scalar = m.groups(); label = label.strip()
+        if excitation_evidence and label == 'SCF Energy':
+            scf_records += 1
+            if scf_records == 1 and kind == 'R' and count is None:
+                evidence['scfEnergyToken'] = scalar
+            else:
+                evidence.pop('scfEnergyToken', None)
         if label not in wanted:
             continue
         if label in fields:
@@ -157,7 +164,10 @@ def _fchk_metadata(text):
         while seen < count and i < len(lines):
             if pattern.match(lines[i]):
                 break
-            row = [_number(v) for v in lines[i].split()]; seen += len(row)
+            tokens = lines[i].split()
+            row = [_number(v) for v in tokens]; seen += len(row)
+            if excitation_evidence and label == 'Current cartesian coordinates':
+                evidence.setdefault('coordinateTokens', []).extend(tokens)
             if not coefficient_count_only: values.extend(row)
             i += 1
         if seen != count:
@@ -220,7 +230,8 @@ def _fchk_metadata(text):
     return dict(format='fchk', charge=int(charge) if charge is not None else None, multiplicity=multiplicity,
                 atoms=[dict(atomicNumber=_integer(z, 1), positionBohr=positions[3*i:3*i+3]) for i,z in enumerate(numbers)],
                 basisCount=basis, shellTypes=sorted(set(map(int, shells))), orbitals=orbitals,
-                basisConvention='Gaussian FCHK shell type/order; evaluation delegated to Multiwfn')
+                basisConvention='Gaussian FCHK shell type/order; evaluation delegated to Multiwfn',
+                **({'excitationEvidence': evidence} if excitation_evidence else {}))
 
 
 def _molden_metadata(text):
@@ -346,14 +357,14 @@ def _wavefunction_format(raw):
     return 'molden' if molden else 'fchk'
 
 
-def inspect_wavefunction(path):
+def inspect_wavefunction(path, *, excitation_evidence=False):
     source=Path(path).resolve()
     if not source.is_file():
         raise OrbitalError('source-limit','Wavefunction is absent.')
     initial=source.stat();lines=_FileLines(source)
     try:
         with source.open('rb') as stream:head=stream.read(1024*1024+1)
-        metadata=_molden_metadata(lines) if _wavefunction_format(head)=='molden' else _fchk_metadata(lines)
+        metadata=_molden_metadata(lines) if _wavefunction_format(head)=='molden' else _fchk_metadata(lines, excitation_evidence=excitation_evidence)
         stat=source.stat()
         if (stat.st_size,stat.st_mtime_ns)!=(initial.st_size,initial.st_mtime_ns) or lines.bytes!=stat.st_size:
             raise OrbitalError('source-changed','Wavefunction changed during metadata inspection.')
@@ -621,15 +632,24 @@ class MultiwfnSession:
             self.process=None; self._job=None
         self._terminate(process,job)
 
-    def export_cube(self,key):
+    def _cube_rows(self,key,title=None):
         values=self.cache.get(key)
         if values is None or self.cube_header is None:
             raise OrbitalError('field-pending','Requested orbital has not completed.')
         header=list(self.cube_header)
-        header[0]='Ester Studio orbital '+key+'; psi [bohr^-3/2]; Multiwfn '+self.backend['version']
+        header[0]=title or 'Ester Studio orbital '+key+'; psi [bohr^-3/2]; Multiwfn '+self.backend['version']
         header[1]='Source '+self.metadata['sourceName']+' sha256='+self.metadata['sourceSha256']
-        rows=[' '.join(f'{v: .12E}' for v in values[i:i+6]) for i in range(0,len(values),6)]
-        return '\n'.join(header+rows)+'\n'
+        yield from header
+        for index in range(0,len(values),6):
+            yield ' '.join(f'{v: .12E}' for v in values[index:index+6])
+
+    def export_cube(self,key):
+        return '\n'.join(self._cube_rows(key))+'\n'
+
+    def write_cube(self,key,target,title=None):
+        with Path(target).open('x',encoding='utf-8',newline='\n') as stream:
+            for row in self._cube_rows(key,title):
+                stream.write(row+'\n')
 
     def close(self):
         with self._lifecycle: self.closed=True

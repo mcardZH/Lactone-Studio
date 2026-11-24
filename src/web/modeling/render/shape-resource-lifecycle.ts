@@ -45,6 +45,28 @@ export function withOwnedShapeRetirementBatch(viewer: object, remove: () => void
   if (owner) owner.batchRetire(remove); else remove();
 }
 
+/** Locked GLShape.globj finalizes its arrays and recreates the root/material
+ * even on unrelated model draws. Keep only explicitly owned compatible
+ * meshes attached and defer genuine style/context changes to native globj. */
+export function retainNativeShapeRoot(shape: any) {
+  if (typeof shape?.globj !== 'function' || typeof shape.geo?.initTypedArrays !== 'function') return;
+  const globj = shape.globj, updateStyle = shape.updateStyle;
+  let styleChanged = false;
+  if (typeof updateStyle === 'function') shape.updateStyle = function(this: any, ...args: any[]) {
+    styleChanged = true;
+    return updateStyle.apply(this, args);
+  };
+  shape.globj = function(this: any, group: any, options?: { regen?: boolean }) {
+    const root = this.renderedShapeObj;
+    if (!root || styleChanged || this.hidden || options?.regen) {
+      const result = globj.call(this, group, options);
+      styleChanged = false;
+      return result;
+    }
+    if (root.parent !== group && !(group.children ?? []).includes(root)) group.add(root);
+  };
+}
+
 export function retainViewerShapeResources(viewer: any) {
   if (owners.has(viewer)) throw new Error('Shape resource owner already installed.');
   const shapes = new Map<any, number>(), models = new Set<any>(), resources = new Map<any, ResourceRecord>();
@@ -223,6 +245,29 @@ export function retainViewerShapeResources(viewer: any) {
     }
     if (failure) throw failure;
   }
+  function compactSlots(isNativeShape:(shape:any)=>boolean) {
+    const slots=viewer.shapes;
+    // 3Dmol 2.5.5 removes by shapePosition and prunes only trailing holes.
+    // Keep its inventory dense in the original draw order, on a fully owned
+    // published scene. Geometry, materials, GL identities and refs stay put.
+    if(closed||renderDepth||retirementDepth||!Array.isArray(slots)||slots.length<=shapes.size*2+64||!Object.isExtensible(slots)||!Object.getOwnPropertyDescriptor(slots,'length')?.writable)return false;
+    const live=[];
+    for(let index=0;index<slots.length;index++){
+      const slot=Object.getOwnPropertyDescriptor(slots,String(index));
+      if(!slot)continue;
+      if(!slot.configurable||!slot.writable||!('value' in slot))return false;
+      const shape=slot.value;
+      if(shape===undefined)continue;
+      if(!shapes.has(shape)||!isNativeShape(shape))return false;
+      const position=Object.getOwnPropertyDescriptor(shape,'shapePosition');
+      if(!position?.writable||position.value!==index)return false;
+      live.push(shape);
+    }
+    if(live.length!==shapes.size)return false;
+    for(const [index,shape] of live.entries()){slots[index]=shape;shape.shapePosition=index;}
+    slots.length=live.length;
+    return true;
+  }
   const originalResize = viewer.resize, resizeDescriptor = Object.getOwnPropertyDescriptor(viewer, 'resize');
   const resize = function(this: any, ...args: any[]) {
     install(viewer.getRenderer?.());
@@ -230,7 +275,7 @@ export function retainViewerShapeResources(viewer: any) {
   };
   install(viewer.getRenderer?.());
   if (typeof originalResize === 'function') viewer.resize = resize;
-  return { keepModel,retireModel,stats:()=>({shapes:shapes.size,models:models.size,resources:resources.size}),dispose() {
+  return { keepModel,retireModel,compactSlots,stats:()=>({shapes:shapes.size,models:models.size,resources:resources.size}),dispose() {
     if (closed) return; closed = true;
     let failure: unknown;
     try {

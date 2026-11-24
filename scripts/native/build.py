@@ -10,11 +10,13 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 import common as c
+import finite_empirical_extension
 import runtime_pruning
 from pathlib import Path
 
 BUILDERS = ('scripts/native/build.py', 'scripts/native/common.py', 'scripts/native/prepare.py', 'desktop/packaging/native-engine.spec',
-            'scripts/native/runtime_pruning.py', runtime_pruning.RECIPE, 'src/data/conformer-solvation.json')
+            'scripts/native/runtime_pruning.py', runtime_pruning.RECIPE, 'src/data/conformer-solvation.json',
+            'scripts/native/finite_empirical_extension.py', finite_empirical_extension.SOURCE)
 
 # These package-owned locations are part of the locked wheels' DLL loaders.
 # Keep both BLAS ABIs and differently named CRT files; only omit root copies.
@@ -58,6 +60,7 @@ def _rdkit_locked_input(config, expected):
 
 def freeze_rdkit_paths(config, pure, datas, rows, run):
     """Bind admitted original inputs and a separate, explicitly transformed PYZ source."""
+    input_root = config.get('inputRoot', c.ROOT)
     source = _rdkit_locked_input(config, RDKIT_PATHS_INPUT)
     ctest = _rdkit_locked_input(config, RDKIT_CTEST_INPUT)
     modules = [row for row in pure if row[0] == 'rdkit.RDPaths']
@@ -67,7 +70,7 @@ def freeze_rdkit_paths(config, pure, datas, rows, run):
     c.require(omitted[0][2] == 'DATA' and Path(omitted[0][1]).resolve() == ctest.resolve(), 'RDKit CTest source/type mismatch')
     for target, path, kind in (modules[0], omitted[0]):
         admitted = [row for row in rows if row['target'] == target]
-        identity = c.identity(path)
+        identity = c.identity(path, input_root)
         c.require(len(admitted) == 1 and admitted[0]['kind'] == kind and
                   all(admitted[0].get(key) == value for key, value in {'source': identity['path'], 'bytes': identity['bytes'], 'sha256': identity['sha256']}.items()),
                   'RDKit transform input must first pass locked Analysis admission')
@@ -75,8 +78,8 @@ def freeze_rdkit_paths(config, pure, datas, rows, run):
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open('xb') as stream:
         stream.write(portable_rdkit_paths_source(source.read_bytes()))
-    transform = {'module': 'rdkit.RDPaths', 'rule': RDKIT_FREEZE_RULE, 'input': c.identity(source), 'output': c.identity(output)}
-    omission = {'target': 'rdkit/CTestTestfile.cmake', 'kind': 'DATA', 'input': c.identity(ctest),
+    transform = {'module': 'rdkit.RDPaths', 'rule': RDKIT_FREEZE_RULE, 'input': c.identity(source, input_root), 'output': c.identity(output)}
+    omission = {'target': 'rdkit/CTestTestfile.cmake', 'kind': 'DATA', 'input': c.identity(ctest, input_root),
                 'reason': 'CMake test registration is not runtime data'}
     new_pure = [(name, str(output) if name == 'rdkit.RDPaths' else path, kind) for name, path, kind in pure]
     new_datas = [row for row in datas if row != omitted[0]]
@@ -88,13 +91,14 @@ def freeze_rdkit_paths(config, pure, datas, rows, run):
 
 def validate_frozen_dependency_adaptations(config, run, rows, evidence):
     """Reject stale, unpinned, or undisclosed dependency transformations."""
+    input_root = config.get('inputRoot', c.ROOT)
     source = _rdkit_locked_input(config, RDKIT_PATHS_INPUT)
     ctest = _rdkit_locked_input(config, RDKIT_CTEST_INPUT)
     output = c.safe(run, run / 'freeze-transforms/rdkit/RDPaths.py')
     c.require(output.read_bytes() == portable_rdkit_paths_source(source.read_bytes()), 'Frozen RDPaths output differs from exact rule')
     expected = {'schema': 'sciyue-native-frozen-dependency-adaptations-v1',
-                'sourceTransforms': [{'module': 'rdkit.RDPaths', 'rule': RDKIT_FREEZE_RULE, 'input': c.identity(source), 'output': c.identity(output)}],
-                'dataOmissions': [{'target': 'rdkit/CTestTestfile.cmake', 'kind': 'DATA', 'input': c.identity(ctest),
+                'sourceTransforms': [{'module': 'rdkit.RDPaths', 'rule': RDKIT_FREEZE_RULE, 'input': c.identity(source, input_root), 'output': c.identity(output)}],
+                'dataOmissions': [{'target': 'rdkit/CTestTestfile.cmake', 'kind': 'DATA', 'input': c.identity(ctest, input_root),
                                   'reason': 'CMake test registration is not runtime data'}]}
     c.require(evidence == expected, 'Dependency adaptation evidence changed')
     adapted = [row for row in rows if row['target'] == 'rdkit.RDPaths']
@@ -163,14 +167,14 @@ def inputs(config, contract_path, review_path, review_sha, full=False):
     c.require(isinstance(review['evidence'], list) and review['evidence'], 'Actual source review evidence is required')
     for row in review['evidence']:
         c.check(row)
-    preparation_path = c.check(config['profile']['preparation'])
+    preparation_path = c.check(config['profile']['preparation'], config['inputRoot'])
     preparation = c.read(preparation_path)
     c.require(preparation['schema'] == 'sciyue-native-preparation-v1' and preparation['passed'] is True and not preparation['scienceExecuted'], 'New stable preparation required')
     for key in ('runtimeLock', 'toolchainLock', 'xtbLock'):
         c.require(preparation[key] == config[key + 'Identity'], 'Preparation lock changed')
         if full:
             c.verify_lock(config[key], config[key + 'Root'])
-    probe_path = c.check(preparation['importProbe'])
+    probe_path = c.check(preparation['importProbe'], config['inputRoot'])
     probe = c.read(probe_path)
     c.require(probe['schema'] == 'sciyue-native-import-probe-v1' and probe['passed'] is True and not probe['scienceExecuted'], 'New stable import/source probe required')
     c.require(probe['runtimeLock'] == contract['runtimeLock'] and probe['toolchainLock'] == contract['toolchainLock'], 'Import probe belongs to other locks')
@@ -179,10 +183,10 @@ def inputs(config, contract_path, review_path, review_sha, full=False):
     c.require(all(any(Path(path).resolve().is_relative_to(config[name + 'Root']) for name in ('runtimeLock', 'toolchainLock')) for path in probe['packagePaths'].values()), 'Import probe package paths belong to another physical stage')
     return {'contract': contract, 'buildContract': c.identity(contract_path), 'sourceReview': c.identity(review_path),
             **({'buildPurpose': purpose, 'independentSourceReview': False} if purpose == 'internal-development' else {}),
-            'preparation': c.identity(preparation_path), 'importProbe': preparation['importProbe']}
+            'preparation': c.identity(preparation_path, config['inputRoot']), 'importProbe': preparation['importProbe']}
 
 
-def analysis_rows(config, rows, namespaces, run, contract):
+def analysis_rows(config, rows, namespaces, run, contract, finite_extension=None):
     allowed = {}
     for name in ('runtimeLock', 'toolchainLock'):
         root = config[name + 'Root']
@@ -220,9 +224,14 @@ def analysis_rows(config, rows, namespaces, run, contract):
         elif target == 'base_library.zip' and kind == 'DATA' and path == run / 'work/native-engine/base_library.zip':
             c.safe(run, path)
             c.require(path.is_file(), 'Generated base library is missing')
+        elif finite_extension and path == finite_extension[0]:
+            c.require(target == finite_empirical_extension.NAME and kind == 'BINARY'
+                      and c.identity(path) == finite_extension[1]['extension'], 'Finite accelerator Analysis identity differs')
         else:
             raise ValueError('Analysis source outside current declared inputs: ' + str(path))
-        result.append({'target': str(target), 'source': c.identity(path)['path'], 'kind': kind, 'bytes': path.stat().st_size, 'sha256': c.digest(path)})
+        source_root = config['inputRoot'] if key in allowed else c.ROOT
+        result.append({'target': str(target), 'source': c.identity(path, source_root)['path'], 'kind': kind,
+                       'bytes': path.stat().st_size, 'sha256': c.digest(path)})
     return result
 
 
@@ -280,7 +289,7 @@ def ownership(config, bundle, closure, graph):
             c.require(not target.exists(), 'License output collision')
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
-            licenses.append({**c.identity(target, bundle), 'source': c.identity(source)})
+            licenses.append({**c.identity(target, bundle), 'source': c.identity(source, config['inputRoot'])})
     source_owners = {}
     for name in ('runtimeLock', 'toolchainLock'):
         for row in config[name]['files']:
@@ -291,7 +300,7 @@ def ownership(config, bundle, closure, graph):
             if owner not in packages:
                 matches = [r['owner'] for r in config['runtimeLock']['files'] if 'owner' in r and Path(r['path']).name.casefold() == path.name.casefold() and r['sha256'] == row['sha256']]
                 owner = matches[0] if matches else next((k for k, p in packages.items() if p['name'].casefold() == 'python'), None)
-            source_owners[path.relative_to(c.ROOT).as_posix().casefold()] = owner
+            source_owners[path.relative_to(config['inputRoot']).as_posix().casefold()] = owner
     analysis = {row['target'].replace('\\', '/'): row for row in closure['files']}
     native = []
     for node in graph:
@@ -300,6 +309,15 @@ def ownership(config, bundle, closure, graph):
         if node['path'] == 'engine.exe':
             owner = next(k for k, p in packages.items() if p['name'].casefold() == 'pyinstaller')
             source = 'PyInstaller-generated engine container'
+        elif target == finite_empirical_extension.NAME:
+            extension = closure.get('finiteEmpiricalExtension')
+            output = c.identity(bundle / node['path'], bundle)
+            c.require(extension and source == extension['extension']['path']
+                      and all(output[key] == extension['extension'][key] for key in ('bytes', 'sha256')),
+                      'Finite accelerator packaged identity differs')
+            native.append({**output, 'target': target, 'source': extension['source']['path'],
+                           'owner': 'product-source', 'license': c.identity(c.ROOT / 'LICENSE.txt')})
+            continue
         else:
             c.require(source, 'Native output has no Analysis source: ' + target)
             owner = source_owners.get(source.casefold())
@@ -320,6 +338,11 @@ def build(config, run, contract_path, review_path, review_sha):
     (run / 'temp').mkdir(parents=True)
     environment = c.clean_environment(config, run / 'temp')
     environment['PYINSTALLER_CONFIG_DIR'] = str(run / 'pyinstaller-cache')
+    if config['inputRoot'] != c.ROOT:
+        environment[c.INPUT_ROOT_ENV] = str(config['inputRoot'])
+    for name in (finite_empirical_extension.COMPILER_ENV, finite_empirical_extension.SDK_ENV):
+        if name in os.environ:
+            environment[name] = os.environ[name]
     python = config['toolchainLockRoot'] / config['toolchainLock']['python']
     command = [str(python), '-I', '-B', str(c.ROOT / 'scripts/native/build.py'), '_worker', '--run-id', run.name,
                '--contract', str(contract_path), '--source-review', str(review_path), '--source-review-sha256', review_sha]
@@ -350,7 +373,7 @@ def build(config, run, contract_path, review_path, review_sha):
     for row in unresolved:
         source = Path(row['dependentSource'])
         c.safe(config['runtimeLockRoot'], source)
-        row['dependentSource'] = c.identity(source)
+        row['dependentSource'] = c.identity(source, config['inputRoot'])
     versions, _ = packaged_dependency_metadata(config)
     provenance = {'schema': 'sciyue-native-dependency-manifest-v1', **context, 'runtimeLock': config['runtimeLockIdentity'],
                   'toolchainLock': config['toolchainLockIdentity'], 'profile': config['profileIdentity'], 'backend': 'OpenBLAS',
@@ -376,6 +399,7 @@ def build(config, run, contract_path, review_path, review_sha):
                  'historicalInputsRead': False, 'globalEnvironmentModified': False, 'scienceExecuted': False, 'scienceAccepted': False,
                  'packagedDynamicClosureValidated': False, 'publicDistribution': False, 'experimentalOnly': True,
                  'cleanMachineValidated': False, 'crossCpuValidated': False,
+                 **{key: closure[key] for key in ('finiteEmpiricalExtension',) if key in closure},
                  **({key: context[key] for key in ('buildPurpose', 'independentSourceReview')} if 'buildPurpose' in context else {})}
     c.write_new(run / 'candidate-receipt.json', candidate)
     print(__import__('json').dumps({'receipt': c.identity(run / 'candidate-receipt.json'), 'status': candidate['status']}))

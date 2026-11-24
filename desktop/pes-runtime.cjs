@@ -3,10 +3,12 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { requiresResidentLibrary } = require('./pes-security.cjs');
+const { requiresResidentLibrary, usesFixedCellTblite } = require('./pes-security.cjs');
+const { resolveMdTblite } = require('./current-runtime.cjs');
 const defaultLockPath = path.join(__dirname, 'packaging', 'pes-runtime.lock.json');
 const defaultLock = require(defaultLockPath);
 const SUPPORTED_POSIX_PES_PLATFORMS = new Set(['darwin-arm64', 'darwin-x64', 'linux-x64']);
+const digests = new Map();
 
 function loadPesLock(platformId) {
   if (platformId === 'win32-x64') {
@@ -27,7 +29,38 @@ function loadPesLock(platformId) {
 }
 
 function digest(file) {
-  return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const signature = stat => JSON.stringify([stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs]);
+  const initial = signature(fs.statSync(file));
+  const previous = digests.get(file);
+  if (previous?.signature === initial) return previous.value;
+  const handle = fs.openSync(file, 'r');
+  try {
+    if (signature(fs.fstatSync(handle)) !== initial) throw new Error('PES runtime member changed before reading');
+    const value = crypto.createHash('sha256').update(fs.readFileSync(handle)).digest('hex');
+    if (signature(fs.fstatSync(handle)) !== initial) throw new Error('PES runtime member changed during reading');
+    digests.set(file, { signature: initial, value });
+    return value;
+  } finally {
+    fs.closeSync(handle);
+  }
+}
+
+function pythonEnvironment(executable, platform = process.platform) {
+  const python = path.dirname(executable);
+  if (platform === 'win32') {
+    const windows = process.env.SystemRoot || 'C:\\Windows';
+    // Windows compares PATH keys case-insensitively. Use the bundled DLLs first.
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.toUpperCase() !== 'PATH'));
+    env.PATH = [path.join(python, 'Library', 'bin'), python, path.join(windows, 'System32'), windows].join(path.delimiter);
+    return env;
+  }
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+    !/^(?:PATH$|CONDA_|_CONDA_|VIRTUAL_ENV$|PYTHON|_PYTHON_|_CE_CONDA$|_CE_M$|DYLD_|LD_|RDBASE$)/i.test(key)));
+  env.PATH = [python, '/usr/bin', '/bin'].join(path.delimiter);
+  const libPaths = [path.resolve(python, '..', 'lib'), python, ...(platform === 'darwin' ? ['/usr/lib'] : [])].join(path.delimiter);
+  if (platform === 'darwin') env.DYLD_FALLBACK_LIBRARY_PATH = libPaths;
+  else env.LD_LIBRARY_PATH = libPaths;
+  return env;
 }
 
 function ownedMember(root, relative) {
@@ -61,9 +94,13 @@ function resolveResidentLibrary(root, declaration = defaultLock.residentLibrary,
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   if (manifest.schema !== declaration.schema || manifest.platform !== expectedPlatform
     || !Array.isArray(manifest.files)) throw new Error('PES resident library manifest is invalid');
-  // The packager verifies the full dependency closure. At launch, bind the
-  // locked manifest, actual library and the two method parameter files only.
-  for (const relative of [manifest.libraryRelativePath, manifest.parameters?.gfn1, manifest.parameters?.gfn2]) {
+  // The worker verifies the full native closure at load. The host rechecks the
+  // small set of members that may be reopened for every task.
+  const fallbackDirectory = manifest.parameterDirectory ?? 'data';
+  const additional = [['gfn0', 'param_gfn0-xtb.txt'], ['gfnff', '.param_gfnff.xtb']]
+    .map(([method, filename]) => manifest.parameters?.[method] ?? `${fallbackDirectory}/${filename}`)
+    .filter(relative => manifest.files.some(entry => entry.path === relative));
+  for (const relative of [manifest.libraryRelativePath, manifest.parameters?.gfn1, manifest.parameters?.gfn2, ...additional]) {
     const entry = manifest.files.find(row => row.path === relative);
     const member = ownedMember(libraryRoot, relative);
     if (!entry || !/^[a-f0-9]{64}$/.test(entry.sha256 ?? '') || fs.statSync(member).size !== entry.bytes
@@ -72,14 +109,28 @@ function resolveResidentLibrary(root, declaration = defaultLock.residentLibrary,
   return { libxtbRoot: libraryRoot, libxtbManifestSha256: declaration.manifestSha256 };
 }
 
-function resolvePesRuntime({ packaged, resourcesPath, appPath, request, platform = process.platform, arch = process.arch }) {
+function pesRuntimeRoot({ packaged, resourcesPath, appPath, platform = process.platform, arch = process.arch }) {
   const platformId = `${platform}-${arch}`;
   const { lockPath, lock } = loadPesLock(platformId);
   const parent = packaged ? resourcesPath : appPath;
   if (typeof parent !== 'string' || !path.isAbsolute(parent)) {
     throw new Error('PES runtime requires an absolute application location');
   }
-  const root = path.join(parent, packaged ? lock.subdirectory : lock.developmentRoot);
+  return {
+    root: path.join(parent, packaged ? lock.subdirectory : lock.developmentRoot),
+    lockPath,
+    lock,
+    platformId
+  };
+}
+
+function resolveMdResidentLibrary(location) {
+  const { root, lock, platformId } = pesRuntimeRoot(location);
+  return resolveResidentLibrary(root, lock.residentLibrary, platformId);
+}
+
+function resolvePesRuntime({ request, ...location }) {
+  const { root, lockPath, lock, platformId } = pesRuntimeRoot(location);
   try {
     const manifest = JSON.parse(fs.readFileSync(ownedMember(root, 'runtime.json'), 'utf8'));
     if (manifest.schema !== lock.schema || manifest.lockSha256 !== digest(lockPath)) {
@@ -98,10 +149,15 @@ function resolvePesRuntime({ packaged, resourcesPath, appPath, request, platform
         throw new Error(`PES runtime ${name} identity changed`);
       }
     }
-    const resolved = { executable, args: ['-I', '-B', bootstrap, '--pes-worker'], cwd: root };
+    const resolved = { executable, args: ['-I', '-B', bootstrap, '--pes-worker'], cwd: root,
+      workerIdentity: entrypointIdentities.map(([, , expected]) => expected).join(':') };
     if (requiresResidentLibrary(request)) {
       try { Object.assign(resolved, resolveResidentLibrary(root, lock.residentLibrary, platformId)); }
       catch (error) { resolved.libxtbError = error.message; }
+    }
+    if (usesFixedCellTblite(request)) {
+      try { resolved.tblite = resolveMdTblite(location); }
+      catch (error) { resolved.tbliteError = error.message; }
     }
     return resolved;
   } catch (error) {
@@ -109,4 +165,4 @@ function resolvePesRuntime({ packaged, resourcesPath, appPath, request, platform
   }
 }
 
-module.exports = { resolvePesRuntime, resolveResidentLibrary };
+module.exports = { pythonEnvironment, resolvePesRuntime, resolveResidentLibrary, resolveMdResidentLibrary };

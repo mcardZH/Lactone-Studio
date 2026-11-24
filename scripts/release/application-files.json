@@ -255,5 +255,18 @@
   "desktop/mcp/connection-config.cjs",
   "desktop/mcp/protocol.cjs",
   "desktop/mcp/live-bridge.cjs",
-  "desktop/mcp/stdio-server.cjs"
+  "desktop/mcp/stdio-server.cjs",
+  "desktop/mcp/host.cjs",
+  "desktop/mcp/identity.cjs",
+  "desktop/mcp/image-result.cjs",
+  "desktop/mcp/stdio.cjs",
+  "desktop/mcp/wire.cjs",
+  "desktop/mcp-agent-panel.cjs",
+  "desktop/mcp-assistant-artifacts.cjs",
+  "desktop/mcp-assistant.cjs",
+  "desktop/mcp-files.cjs",
+  "desktop/mcp-model-providers.cjs",
+  "desktop/mcp-pty-helper.py",
+  "desktop/mcp-terminal-worker.cjs",
+  "desktop/mcp-terminal.cjs"
 ]

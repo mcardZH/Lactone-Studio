@@ -204,13 +204,19 @@ function validateBondOrderEvidence(value,ids,observation=false) {
   }
   if(observation)assert(string(value.runId,100)&&value.engine===(aggregate?'tblite':'xtb')&&string(value.version,100)&&value.method==='gfn2'&&['optimize','singlepoint'].includes(value.calculation)&&(!aggregate||value.calculation==='singlepoint')&&Number.isSafeInteger(value.charge)&&Number.isSafeInteger(value.uhf)&&value.uhf>=0,'Invalid MBO provenance');
 }
-function validateChemistry(value) {
-  boundedJSON(value);
-  assert(plain(value) && ['generate3d', 'optimize', 'perceive-bonds', 'convert'].includes(value.operation), 'Invalid chemistry operation');
+function validateStampedChemistryModel(value) {
   // Domain fingerprints intentionally contain canonical full JSON, not hashes.
   // Preserve the complete canonical identity independently of payload size.
   assert(plain(value.stamp) && string(value.stamp.documentId) && Number.isInteger(value.stamp.revision) && value.stamp.revision >= 0 && ['graphFingerprint', 'coordinatesFingerprint', 'constraintsFingerprint'].every(k => typeof value.stamp[k] === 'string'), 'Invalid document stamp');
   const ids = validateStructure(value.structure);
+  validateConstraints(value.constraints, ids,undefined,value.structure);
+  assert(Array.isArray(value.movableAtomIds) && value.movableAtomIds.length <= ids.size && new Set(value.movableAtomIds).size === value.movableAtomIds.length && value.movableAtomIds.every(id => ids.has(id)), 'Invalid movable atom identities');
+  return ids;
+}
+function validateChemistry(value) {
+  boundedJSON(value);
+  assert(plain(value) && ['generate3d', 'perceive-bonds', 'convert'].includes(value.operation), 'Invalid chemistry operation');
+  const ids = validateStampedChemistryModel(value);
   if (value.empiricalBondParameters !== undefined) {
     assert(value.operation === 'perceive-bonds', 'Empirical parameters require explicit bond perception');
     validateEmpiricalBondParameters(value.empiricalBondParameters);
@@ -220,21 +226,7 @@ function validateChemistry(value) {
     assert(value.bondPerceptionPolicy==='composite-v1','MBO evidence requires composite perception');
     validateBondOrderEvidence(value.bondOrderEvidence,ids);
   }
-  validateConstraints(value.constraints, ids,undefined,value.structure);
-  assert(Array.isArray(value.movableAtomIds) && value.movableAtomIds.length <= ids.size && new Set(value.movableAtomIds).size === value.movableAtomIds.length && value.movableAtomIds.every(id => ids.has(id)), 'Invalid movable atom identities');
-  assert(value.forcefield === undefined || ['auto', 'MMFF94', 'MMFF94s', 'UFF'].includes(value.forcefield), 'Invalid force field');
-  assert(value.steps === undefined || Number.isSafeInteger(value.steps) && value.steps >= 1 && value.steps <= 2147483647, 'Optimization steps must fit RDKit signed 32-bit maxIts');
   assert(value.maxWallTimeSeconds === undefined || Number.isInteger(value.maxWallTimeSeconds) && value.maxWallTimeSeconds >= 1 && Number.isFinite(value.maxWallTimeSeconds), 'Invalid chemistry wall budget');
-  if (value.runIdentity !== undefined) {
-    assert(value.operation === 'optimize' && plain(value.runIdentity) && Object.keys(value.runIdentity).length === 2 && ['taskId', 'runId'].every(key => string(value.runIdentity[key], 100) && /^[A-Za-z0-9_-]+$/.test(value.runIdentity[key])), 'Invalid advanced chemistry run identity');
-  }
-  assert(value.optimizationStepPolicy === undefined || value.optimizationStepPolicy === 'native-default'
-    && value.operation === 'optimize' && value.runIdentity && value.steps === undefined, 'Native default steps require an advanced force-field optimization without an explicit step count');
-  if (value.optimizationPool !== undefined) {
-    const pool = value.optimizationPool;
-    assert(value.operation === 'optimize' && value.runIdentity && plain(pool) && Object.keys(pool).length === 2
-      && ['stageId', 'candidateId'].every(key => string(pool[key], 200) && /^[A-Za-z0-9_:-]+$/.test(pool[key])), 'Invalid chemistry optimization pool identity');
-  }
   assert(value.aggression === undefined || ['conservative', 'standard', 'aggressive'].includes(value.aggression), 'Invalid bond aggression');
   assert(value.format === undefined || Object.hasOwn(FORMATS, value.format), 'Invalid output format');
   return value;
@@ -311,4 +303,4 @@ function validateCipUsageEvent(event) {
   assert(Buffer.byteLength(JSON.stringify(event), 'utf8') <= 512 * 1024, 'CIP usage control receipt is too large');
   return event;
 }
-module.exports = { FORMATS, MAX_BYTES, MAX_FINGERPRINT_BYTES, assert, plain, string, boundedJSON, within, validateStructure, validateAttachmentPorts, validateCoordinateObjects, validateSharedConstraints, validateClipboard, validateBondOrderEvidence, validateEmpiricalBondParameters, validateChemistry, validateSaveRequest, suggestedSaveName, formatForPath, allowedURL, createNavigationGuard, validateCipUsageEvent };
+module.exports = { FORMATS, MAX_BYTES, MAX_FINGERPRINT_BYTES, assert, plain, string, boundedJSON, within, validateStructure, validateAttachmentPorts, validateCoordinateObjects, validateSharedConstraints, validateClipboard, validateBondOrderEvidence, validateEmpiricalBondParameters, validateStampedChemistryModel, validateChemistry, validateSaveRequest, suggestedSaveName, formatForPath, allowedURL, createNavigationGuard, validateCipUsageEvent };

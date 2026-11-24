@@ -2,6 +2,86 @@
   "schemaVersion": 1,
   "records": [
     {
+      "id": "net-model-aimnet2",
+      "kind": "software",
+      "title": "AIMNet2 (ωB97M-D3)",
+      "authors": [
+        {
+          "literal": "Isayev Lab"
+        }
+      ],
+      "identity": "https://huggingface.co/isayevlab/aimnet2-wb97m-d3",
+      "url": "https://huggingface.co/isayevlab/aimnet2-wb97m-d3",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://huggingface.co/isayevlab/aimnet2-wb97m-d3",
+          "checkedAt": "2026-11-16"
+        }
+      ]
+    },
+    {
+      "id": "net-model-aimnet2-nse",
+      "kind": "software",
+      "title": "AIMNet2-NSE",
+      "authors": [
+        {
+          "literal": "Isayev Lab"
+        }
+      ],
+      "identity": "https://huggingface.co/isayevlab/aimnet2-nse",
+      "url": "https://huggingface.co/isayevlab/aimnet2-nse",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://huggingface.co/isayevlab/aimnet2-nse",
+          "checkedAt": "2026-11-16"
+        }
+      ]
+    },
+    {
+      "id": "net-model-aimnet2-rxn",
+      "kind": "software",
+      "title": "AIMNet2-rxn",
+      "authors": [
+        {
+          "literal": "Isayev Lab"
+        }
+      ],
+      "identity": "https://huggingface.co/isayevlab/aimnet2-rxn",
+      "url": "https://huggingface.co/isayevlab/aimnet2-rxn",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://huggingface.co/isayevlab/aimnet2-rxn",
+          "checkedAt": "2026-11-16"
+        }
+      ]
+    },
+    {
+      "id": "net-model-orbmol-v2",
+      "kind": "software",
+      "title": "OrbMol-v2",
+      "authors": [
+        {
+          "literal": "Orbital Materials"
+        }
+      ],
+      "identity": "https://huggingface.co/Orbital-Materials/orbmol-v2",
+      "url": "https://huggingface.co/Orbital-Materials/orbmol-v2",
+      "status": "verified",
+      "evidence": [
+        {
+          "kind": "official",
+          "url": "https://huggingface.co/Orbital-Materials/orbmol-v2",
+          "checkedAt": "2026-11-16"
+        }
+      ]
+    },
+    {
       "id": "horn-quaternion-1987",
       "kind": "article",
       "title": "Closed-form solution of absolute orientation using unit quaternions",
@@ -6224,6 +6304,46 @@
     }
   ],
   "mappings": [
+    {
+      "id": "pes-net-aimnet2",
+      "feature": "method",
+      "method": "aimnet2",
+      "citationIds": [
+        "net-model-aimnet2"
+      ],
+      "role": "scientific",
+      "reasonZh": "本次实际求值使用的神经网络势权重。"
+    },
+    {
+      "id": "pes-net-aimnet2-nse",
+      "feature": "method",
+      "method": "aimnet2-nse",
+      "citationIds": [
+        "net-model-aimnet2-nse"
+      ],
+      "role": "scientific",
+      "reasonZh": "本次实际求值使用的神经网络势权重。"
+    },
+    {
+      "id": "pes-net-aimnet2-rxn",
+      "feature": "method",
+      "method": "aimnet2-rxn",
+      "citationIds": [
+        "net-model-aimnet2-rxn"
+      ],
+      "role": "scientific",
+      "reasonZh": "本次实际求值使用的神经网络势权重。"
+    },
+    {
+      "id": "pes-net-orbmol-v2",
+      "feature": "method",
+      "method": "orbmol-v2",
+      "citationIds": [
+        "net-model-orbmol-v2"
+      ],
+      "role": "scientific",
+      "reasonZh": "本次实际求值使用的神经网络势权重。"
+    },
     {
       "id": "conformer-horn-quaternion-fit",
       "feature": "analysis",

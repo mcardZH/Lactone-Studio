@@ -106,10 +106,12 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
     return document;
   }
   function envelope(document, owner) {
-    return snapshotCopy({ schema: SCHEMA, version: VERSION, documentId: document.id, ownerWindowId: String(document.owner), memberWindowId: String(owner), isOwner: document.owner === owner, membershipNonce: document.members.get(owner), revision: document.revision, snapshot: document.snapshot });
+    // The stored snapshot has already passed JSON admission and host validation.
+    return { schema: SCHEMA, version: VERSION, documentId: document.id, ownerWindowId: String(document.owner), memberWindowId: String(owner), isOwner: document.owner === owner, membershipNonce: document.members.get(owner), revision: document.revision, snapshot: structuredClone(document.snapshot) };
   }
-  function broadcast(document) {
+  function broadcast(document, includeOwner) {
     for (const owner of document.members.keys()) {
+      if (!includeOwner && owner === document.owner) continue;
       try { send(owner, { kind: 'snapshot', ...envelope(document, owner) }); }
       catch {
         // A dead replica cannot roll back a canonical owner publication or
@@ -124,7 +126,7 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
   }
   function checkedSnapshot(request) {
     assert(identity(request.documentId) && revision(request.revision), 'Invalid workspace document identity');
-    const snapshot = snapshotCopy(request.snapshot, 'snapshot');
+    const snapshot = request.snapshot;
     validateSnapshot(snapshot, request.documentId, request.revision);
     return snapshot;
   }
@@ -132,19 +134,19 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
     const pending = document.pending;
     if (!pending) return;
     document.pending = null; clearTimer(pending.timer);
-    if (error) pending.reject(error); else pending.resolve(snapshotCopy(result));
+    if (error) pending.reject(error); else pending.resolve(result);
   }
   function abandonRequester(document) {
     const pending = document.pending;
     if (pending && !pending.abandoned) { pending.abandoned = true; pending.reject(new Error('Workspace requesting view closed; owner command continues')); }
   }
-  function installSnapshot(document, request, allowCurrent = false) {
+  function installSnapshot(document, request, allowCurrent = false, includeOwner = true) {
     const snapshot = checkedSnapshot(request);
     assert(snapshot.documentEpoch === document.snapshot.documentEpoch, 'Workspace document epoch mismatch');
     const newer = snapshot.publicationSerial > document.snapshot.publicationSerial;
     const same = allowCurrent && snapshot.publicationSerial === document.snapshot.publicationSerial && JSON.stringify(snapshot) === JSON.stringify(document.snapshot);
     assert(newer || same, 'Workspace publication serial is stale or inconsistent');
-    if (newer) { document.snapshot = snapshot; document.revision = request.revision; broadcast(document); }
+    if (newer) { document.snapshot = snapshot; document.revision = request.revision; broadcast(document, includeOwner); }
     return snapshot;
   }
   function ownerOnly(owner, request) {
@@ -154,9 +156,6 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
   }
   function idle(owner) { if (!hasOwnedDocuments(owner)) onOwnerIdle(owner); }
   function hasOwnedDocuments(owner) { return [...documents.values()].some(document => document.owner === owner); }
-  function assertInternalDocumentRemains(document) {
-    assert([...documents.values()].some(other => other.owner === document.owner && other.id !== document.id && other.detached == null && !other.closePending), 'WORKSPACE_LAST_INTERNAL: 主窗口至少需要保留一个内部建模页，请先新建或停靠另一个模型。');
-  }
   function assertCommandAvailable(document) {
     assert(!document.closePending, 'WORKSPACE_CLOSING: 模型正在关闭，请先完成关闭确认。');
     assert(!document.pending, 'WORKSPACE_PENDING: 模型操作尚未确认，请稍后重试。');
@@ -195,6 +194,15 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
       documents.set(documentKey(owner, document.id), document); return envelope(document, owner);
     },
     read(owner) { windowActive(owner); return [...documents.values()].filter(document => document.members.has(owner)).map(document => envelope(document, owner)); },
+    presentationTarget(owner, documentId) {
+      windowActive(owner);
+      assert(identity(documentId), 'Invalid workspace document identity');
+      const document = membershipDocument(owner, documentId);
+      assert(document, 'Workspace document membership denied');
+      const target = document.detached ?? document.owner;
+      assert(document.members.has(target) && attachedWindows.has(target), 'Workspace presentation window unavailable');
+      return { documentId: document.id, owner: document.owner, target, detached: document.detached != null };
+    },
     join(requester, target, raw) {
       const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce']);
       const document = member(requester, request); windowActive(target);
@@ -205,7 +213,6 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
       const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce']); const document = ownerOnly(owner, request);
       assert(!document.closePending, 'WORKSPACE_CLOSING: 模型正在关闭，请先完成关闭确认。');
       assert(document.detached == null && target !== owner && document.members.has(target), 'Workspace document already detached');
-      assertInternalDocumentRemains(document);
       document.detached = target; placement(document); if(options?.activate!==false)activate(document);
       return { windowId: String(target) };
     },
@@ -213,7 +220,6 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
       const request = jsonCopy(raw); keys(request, ['documentId', 'membershipNonce']); const document = ownerOnly(owner, request);
       assert(!document.closePending, 'WORKSPACE_CLOSING: 模型正在关闭，请先完成关闭确认。');
       assert(document.detached == null, 'Workspace document already detached');
-      assertInternalDocumentRemains(document);
       return request;
     },
     dock(owner, raw) {
@@ -277,10 +283,13 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
       return { status: 'closed' };
     },
     publish(owner, raw) {
-      const request = snapshotCopy(raw); keys(request, ['documentId', 'membershipNonce', 'expectedRevision', 'revision', 'snapshot']);
+      const request = snapshotCopy(raw); keys(request, ['documentId', 'membershipNonce', 'expectedRevision', 'revision', 'snapshot'], ['reply']);
       const document = ownerOnly(owner, request);
+      assert(request.reply === undefined || request.reply === 'receipt', 'Invalid workspace publication reply');
       assert(revision(request.expectedRevision) && request.expectedRevision === document.revision && request.revision >= document.revision, 'Workspace revision conflict');
-      installSnapshot(document, request); document.uncertain = false;
+      const compact = request.reply === 'receipt';
+      const snapshot = installSnapshot(document, request, false, !compact); document.uncertain = false;
+      if (compact) return { documentId: document.id, documentEpoch: snapshot.documentEpoch, revision: document.revision, publicationSerial: snapshot.publicationSerial };
       return envelope(document, owner);
     },
     command(owner, raw) {
@@ -298,7 +307,7 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
       assert(saveIntent || request.expectedRevision === document.revision, 'Workspace revision conflict');
       const requestId = nonce();
       return new Promise((resolve, reject) => {
-        const pending = { requestId, requester: owner, expectedRevision: request.expectedRevision, resolve, reject, timer: null };
+        const pending = { requestId, requester: owner, expectedRevision: request.expectedRevision, publicationSerial: document.snapshot.publicationSerial, resolve, reject, timer: null };
         document.pending = pending;
         pending.timer = setTimer(() => { document.uncertain = true; finish(document, null, new Error('WORKSPACE_UNCERTAIN: 模型操作确认超时，状态暂未确认；请等待主工作台刷新后重试。')); }, commandTimeoutMs);
         try { send(document.owner, copyWorkspaceCommandJSON({ kind: 'command', schema: SCHEMA, version: VERSION, documentId: document.id, requestId, requesterWindowId: String(owner), expectedRevision: request.expectedRevision, command: request.command }, 'event')); }
@@ -306,15 +315,22 @@ function createWorkspaceDocuments({ send, nonce = randomUUID, setTimer = setTime
       });
     },
     reply(owner, raw) {
-      const request = snapshotCopy(raw); keys(request, ['documentId', 'membershipNonce', 'requestId', 'status'], ['revision', 'snapshot', 'error']);
+      const request = snapshotCopy(raw); keys(request, ['documentId', 'membershipNonce', 'requestId', 'status'], ['revision', 'snapshot', 'error', 'documentEpoch', 'publicationSerial']);
       const document = ownerOnly(owner, request), pending = document.pending;
       assert(pending && pending.requestId === request.requestId && ['committed', 'rejected'].includes(request.status), 'Workspace command response is stale or unknown');
       if (request.status === 'rejected') {
-        assert(string(request.error, 2048) && request.snapshot === undefined && request.revision === undefined, 'Invalid workspace rejection');
+        assert(string(request.error, 2048) && request.snapshot === undefined && request.revision === undefined && request.documentEpoch === undefined && request.publicationSerial === undefined, 'Invalid workspace rejection');
         finish(document, null, new Error(request.error)); return { status: 'rejected' };
       }
       assert(request.error === undefined && revision(request.revision) && request.revision >= document.revision && request.revision >= pending.expectedRevision, 'Invalid workspace committed revision');
-      installSnapshot(document, request, true);
+      if (request.snapshot === undefined) {
+        assert(request.revision === document.revision && request.documentEpoch === document.snapshot.documentEpoch
+          && request.publicationSerial === document.snapshot.publicationSerial && request.publicationSerial > pending.publicationSerial,
+        'Workspace command receipt does not match the committed publication');
+      } else {
+        assert(request.documentEpoch === undefined && request.publicationSerial === undefined, 'Invalid workspace committed snapshot');
+        installSnapshot(document, request, true);
+      }
       finish(document, pending.abandoned ? { status: 'committed' } : { status: 'committed', ...envelope(document, pending.requester) });
       return { status: 'committed' };
     },

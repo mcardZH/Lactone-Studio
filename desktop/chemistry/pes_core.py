@@ -14,6 +14,7 @@ import time
 import numpy as np
 
 from pes_coordinates import CoordinateSet, ConstraintSpace
+from pes_periodic import FixedCellGeometry
 
 
 BOHR_ANGSTROM = 0.529177210903
@@ -50,11 +51,24 @@ def atom_numbers(request):
 def uses_resident_eg(request):
     operation = request.get('operation')
     method = request.get('method')
-    return ((request.get('parameters', {}).get('executionProfile') == 'pes-v222'
+    return ((operation in ('opt', 'irc') and method in ('gfn0', 'gfn1', 'gfn2', 'gfnff'))
+            or (operation == 'hessian' and uses_v212_policy(request) and method in ('gfn1', 'gfn2'))
+            or (request.get('parameters', {}).get('executionProfile') == 'pes-v222'
              and method in ('gfn0', 'gfn1', 'gfn2', 'gfnff')
              and operation in ('ts', 'scan', 'path'))
             or method == 'gfnff' and operation in ('ts', 'scan', 'path')
             or operation == 'hessian' and method in ('gfn0', 'gfnff'))
+
+
+def uses_v212_policy(request):
+    return (request.get('operation') in ('opt', 'irc')
+            or request.get('parameters', {}).get('policyVersion') == 'v212')
+
+
+def electronic_accuracy(request, *, hessian=False):
+    if uses_v212_policy(request):
+        return .1 if hessian or request.get('operation') in ('ts', 'irc', 'hessian') else 1.
+    return request.get('parameters', {}).get('accuracy', .1)
 
 
 def frame(request, positions, energy, step, phase, series_id, status, **details):
@@ -73,9 +87,8 @@ def frame(request, positions, energy, step, phase, series_id, status, **details)
 class PathRecords:
     """Publish immutable whole-round assets without evaluating any geometry.
 
-    Only the producer knows whether all currently existing nodes were observed.
-    It passes a complete batch; incomplete rounds must never call consider().
-    The most recent complete batch is the sole unrecorded coordinate cache.
+    The producer separates complete rounds from partial observations. A partial
+    observation never replaces the most recent unrecorded complete round.
     """
 
     def __init__(self, ctx, series_id='path'):
@@ -86,6 +99,9 @@ class PathRecords:
         self.records = {}
         self.has_physical_round = False
         self.latest = None
+        self.latest_partial = None
+        self.last_complete_id = None
+        self.last_partial_id = None
         # Contexts without a workspace are in-process callers and own these
         # assets themselves. The worker always supplies an owned workspace.
         self.memory_assets = {}
@@ -93,18 +109,28 @@ class PathRecords:
             ctx.path_recorders = []
         ctx.path_recorders.append(self)
 
-    def consider(self, frames, phase, step, *, initial=False):
+    def consider(self, frames, phase, step, *, initial=False, first_physical=False):
         if not frames:
             return
         batch = json.loads(json.dumps(frames, allow_nan=False))
         self.latest = (batch, phase, step)
-        first = not initial and not self.has_physical_round
+        first = not initial and (first_physical or not self.has_physical_round)
         if not initial:
             self.has_physical_round = True
         if initial or first or step > 0 and step % self.interval == 0:
             self._record(batch, phase, step, 'initial' if initial else 'first-energy' if first else 'interval')
 
-    def _record(self, frames, phase, step, kind):
+    def consider_partial(self, frames, phase, step):
+        if not frames:
+            return
+        batch = json.loads(json.dumps(frames, allow_nan=False))
+        for item in batch:
+            item['status'] = 'partial'
+        self.latest_partial = (batch, phase, step)
+        if step > 0 and step % self.interval == 0:
+            self.last_partial_id = self._record(batch, phase, step, 'interval', partial=True)['id']
+
+    def _record(self, frames, phase, step, kind, *, partial=False):
         identity = f'{self.ctx.request["runIdentity"]["runId"]}:{self.series_id}:{phase}:{step}'
         if identity in self.records:
             return self.records[identity]
@@ -122,7 +148,7 @@ class PathRecords:
             right['arcLengthAngstrom'] = length
         for left, middle, right in zip(frames, frames[1:], frames[2:]):
             energies = [item.get('energyHartree') for item in (left, middle, right)]
-            if (all(value is not None for value in energies)
+            if (not partial and all(value is not None for value in energies)
                     and right.get('bead') == middle.get('bead', 0) + 1 == left.get('bead', 0) + 2
                     and energies[1] >= max(energies[0], energies[2]) and energies[1] > min(energies[0], energies[2])):
                 middle['localEnergyMaximum'] = True
@@ -152,15 +178,24 @@ class PathRecords:
         return record
 
     def finish(self):
-        if self.latest is None:
+        if self.latest is None and self.latest_partial is None:
             return None
-        frames, phase, step = self.latest
-        record = self._record(frames, phase, step, 'final')
-        # The same round can be both an interval and final. Its immutable
-        # coordinate asset is not written or transmitted a second time.
-        self.records[record['id']] = dict(record, kind='final')
-        self.latest = None
-        return record['id']
+        if self.latest is not None:
+            frames, phase, step = self.latest
+            record = self._record(frames, phase, step, 'final')
+            # A complete interval can also be the final complete round.
+            # An initial geometry remains labelled as such beside partial data.
+            if self.has_physical_round or self.latest_partial is None:
+                self.records[record['id']] = dict(record, kind='final')
+            self.last_complete_id = record['id']
+            self.latest = None
+        if self.latest_partial is not None:
+            frames, phase, step = self.latest_partial
+            self.last_partial_id = self._record(frames, phase, step, 'interval', partial=True)['id']
+            self.latest_partial = None
+        if self.has_physical_round:
+            return self.last_complete_id
+        return self.last_partial_id or self.last_complete_id
 
 
 class PesContext:
@@ -176,10 +211,9 @@ class PesContext:
         require(self.initial.shape == (len(self.atom_ids), 3) and len(self.atom_ids) > 0
                 and np.isfinite(self.initial).all(), 'Invalid or empty PES source geometry')
         require(len(set(self.atom_ids)) == len(self.atom_ids), 'PES atoms must have distinct stable IDs')
-        cell = request['structure'].get('cell')
-        require(not cell or not any(cell.get('pbc', [])), 'PES requires an isolated structure')
-        self.constraints = ConstraintSpace(self.initial, self.atom_ids, request.get('constraints'))
-        self.coordinates = CoordinateSet(self.atom_ids, request.get('coordinates', ()))
+        self.geometry = FixedCellGeometry.from_structure(request['structure'])
+        self.constraints = ConstraintSpace(self.initial, self.atom_ids, request.get('constraints'), geometry=self.geometry)
+        self.coordinates = CoordinateSet(self.atom_ids, request.get('coordinates', ()), geometry=self.geometry)
         self.evaluations = 0
         self.evaluation_attempts = 0
         self.runtime = None
@@ -325,31 +359,64 @@ def native_solvation(output, expected, method):
                 temperatureKelvin=298.15, parameterSet=parameter_set, sourceField='stdout:solvation-model')
 
 
+def native_electronic_failure(log, *, has_scc):
+    geometry_failure = re.search(r'\b(?:Diagonalization of (?:the )?Hamiltonian failed|'
+                                 r'failed to diagonalize (?:the )?Hamiltonian)\b', log, re.I)
+    if geometry_failure:
+        return 'PES_XTB_GEOMETRY', geometry_failure.group()
+    scc_failure = re.search(r'\b(?:SCC|SCF) (?:not (?:fully )?converged|'
+                            r'(?:did not|failed to|could not) converge)\b(?: in \d+ (?:cycles|iterations))?|'
+                            r'\b(?:SCC|SCF) (?:iteration )?failed\b|'
+                            r'\belectronic structure (?:was )?not converged\b|'
+                            r'\bconvergence criteria cannot be satisfied\b', log, re.I)
+    if has_scc and scc_failure:
+        return 'PES_XTB_SCC', scc_failure.group()
+    return None
+
+
+def native_shared_failure(log):
+    return re.search(r'\b(?:out of memory|memory allocation|allocation (?:error|failed|failure)|'
+                     r'cannot allocate|failed to allocate|not enough memory|insufficient memory|permission denied|'
+                     r'access is denied|no space left|disk full|i/o error|input/output error|'
+                     r'no such file|(?:cannot|could not|failed to) (?:open|load|read|write)|'
+                     r'missing (?:parameter(?:s| file)?|dynamic librar(?:y|ies))|error while loading shared libraries)\b',
+                     log, re.I) is not None
+
+
+def native_scc_started(output):
+    """A numbered row under the native electronic-iteration header."""
+    numeric = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[EeDd][-+]?\d+)?'
+    return re.search(r'^[ \t]*(?:cycle[ \t]+total energy[ \t]+energy error[ \t]+density error|'
+                     r'iter[ \t]+E[ \t]+dE[ \t]+RMSdq)[^\r\n]*\r?\n'
+                     r'[ \t]*1[ \t]+' + numeric + r'(?:[ \t]+' + numeric + r'){2}(?:[ \t]|\r?$)',
+                     output, re.I | re.M) is not None
+
+
 def native_status(output, errors, runtime_version, request, scc_limit, exit_code=0):
     output = output.replace('\r\n', '\n')
     version = re.search(r'\bxtb version\s+(\d+\.\d+\.\d+(?:pre)?)', output, re.I)
     require(version is not None and version.group(1) == runtime_version, 'Native xTB version mismatch', 'PES_XTB_FAILED')
     log = output + '\n' + errors
-    # xTB reports candidate-local SCC failure with a fatal envelope and may exit
-    # nonzero. Recognize the native cause before applying generic exit checks.
-    geometry_failure = re.search(r'^-\d+- scc_core: Diagonalization of Hamiltonian failed\s*$',
-                                 log, re.I | re.M)
-    if geometry_failure:
-        raise PesError(geometry_failure.group(0).strip(), 'PES_XTB_GEOMETRY')
-    scc_failure = re.search(r'\b(?:SCC|SCF) not converged in \d+ (?:cycles|iterations)\b|'
-                            r'^\s*\*{3}\s+convergence criteria cannot be satisfied\b[^\n]*', log, re.I | re.M)
-    if request['method'] != 'gfn0' and scc_failure:
-        raise PesError(scc_failure.group(0).strip(), 'PES_XTB_SCC')
+    failure = native_electronic_failure(log, has_scc=request['method'] != 'gfn0')
+    shared_failure = native_shared_failure(log)
+    if failure and not shared_failure:
+        code, detail = failure
+        raise PesError(detail, code)
+    method = request['method'].upper() + '-XTB'
+    headings = [re.sub(r'\s+', '', title).upper() for title in
+                re.findall(r'^\s*\|\s*([^|\r\n]+?)\s*\|\s*$', output, re.M)]
+    methods = [title for title in headings if re.fullmatch(r'GFN(?:\d+-XTB|-FF)', title)]
+    if (exit_code == 1 and not shared_failure and request.get('parameters', {}).get('batchFinalOnly') is True
+            and request['method'] in ('gfn1', 'gfn2') and methods == [method] and native_scc_started(output)):
+        raise PesError('Native xTB stopped during this structure’s electronic evaluation (exit code 1)',
+                       'PES_XTB_EVALUATION')
     require(exit_code == 0 and 'normal termination of xtb' in log.lower(),
             f'Native xTB termination mismatch (exit code {exit_code})', 'PES_XTB_FAILED')
     require(not re.search(r'ABNORMAL TERMINATION|\[ERROR\]|FATAL ERROR|Single point calculation terminated|'
                           r'FAILED TO CONVERGE|convergence criteria cannot be satisfied|SCC (?:iteration )?failed',
                           output + '\n' + errors, re.I),
             'Native xTB energy/gradient evaluation failed', 'PES_XTB_FAILED')
-    headings = [re.sub(r'\s+', '', title).upper() for title in
-                re.findall(r'^\s*\|\s*([^|\r\n]+?)\s*\|\s*$', output, re.M)]
-    methods = [title for title in headings if re.fullmatch(r'GFN(?:\d+-XTB|-FF)', title)]
-    require(methods == [request['method'].upper() + '-XTB']
+    require(methods == [method]
             and not re.search(r'Periodic properties|GEOMETRY OPTIMIZATION|Fast Inertial Relaxation Engine|RF solver',
                               output, re.I),
             'Native gradient does not belong to the requested isolated GFN method', 'PES_XTB_OUTPUT')
@@ -478,8 +545,8 @@ class NativeGfnEvaluator:
         if method in ('gfn1', 'gfn2'):
             argv.extend(['--iterations', str(self.scc_limit)])
         settings = self.request.get('parameters', {})
-        if uses_resident_eg(self.request):
-            accuracy = settings.get('accuracy', .1)
+        if uses_resident_eg(self.request) or uses_v212_policy(self.request):
+            accuracy = electronic_accuracy(self.request, hessian=operation == '--hess')
             require(type(accuracy) in (int, float) and math.isfinite(accuracy) and accuracy > 0,
                     'Electronic accuracy must be positive')
             argv.extend(['--acc', format(accuracy, '.17g')])
@@ -557,7 +624,8 @@ class NativeGfnEvaluator:
         text = isolated_coordinate_input(self.request['structure']['atoms'], xyz / BOHR_ANGSTROM)
         source = directory / 'input.coord'
         source.write_text(text, encoding='ascii', newline='\n')
-        control = f'$hess\n step={step:.17g}\n$write\n hessian.out=true\n$end\n'
+        scc_accuracy = f' sccacc={electronic_accuracy(self.request, hessian=True):.17g}\n' if uses_v212_policy(self.request) else ''
+        control = f'$hess\n step={step:.17g}\n{scc_accuracy}$write\n hessian.out=true\n$end\n'
         (directory / 'hessian.inp').write_text(control, encoding='ascii', newline='\n')
         argv = self._arguments('--hess') + ['--input', 'hessian.inp']
         try:
@@ -637,14 +705,72 @@ class NativeGfnEvaluator:
         return stdout.decode('utf-8', errors='replace'), stderr.decode('utf-8', errors='replace'), record
 
 
+class ResidentTblitePes:
+    """Use the common fixed-cell tblite evaluator with PES node ownership."""
+
+    def __init__(self, request, descriptor):
+        from pes_libxtb import TbliteEvaluator
+        options = request.get('parameters', {})
+        self.settings = dict(accuracy=.1 if request['operation'] in ('ts', 'hessian', 'irc') else 1.,
+                             maxSccIterations=options.get('maxSccIterations', 250),
+                             electronicTemperatureK=300.)
+        self.provider = TbliteEvaluator({**request, 'parameters': self.settings}, descriptor)
+        self.native_invocations = 0
+
+    def bind(self, context):
+        self.ctx = context
+
+    def evaluation_started(self):
+        self.native_invocations += 1
+        if self.native_invocations == 1:
+            self.ctx.emit('evaluation-started', dict(physicalEvaluationStartedAtMs=time.time_ns() / 1e6,
+                          backend='tblite', clockSource='native-boundary'))
+
+    def evaluate_node(self, positions, *, node_id=None, need_bond_orders=False):
+        require(not need_bond_orders, 'Periodic bond orders require image identities', 'PES_BOND_ORDERS_INVALID')
+        try:
+            return self.provider.evaluate_node(positions, node_id=node_id, on_start=self.evaluation_started)
+        except RuntimeError as error:
+            message = str(error)
+            failure = (native_electronic_failure(message, has_scc=True)
+                       if message.startswith('tblite energy and gradient:') and not native_shared_failure(message) else None)
+            raise PesError(message, failure[0] if failure else 'PES_XTB_FAILED') from error
+
+    def release_node(self, node_id):
+        self.provider.release_node(node_id)
+
+    def evidence(self):
+        provider_identity = self.provider.evidence()
+        engine_identity = dict(engine='tblite', providerInterface='c-api', version=provider_identity['version'],
+                               librarySha256=provider_identity['librarySha256'])
+        return dict(engine='tblite', provider='tblite', providerInterface='c-api', fixedCell=True,
+                    sourceCell=self.ctx.request['structure']['cell'], providerSettings=self.settings,
+                    nativeInvocations=self.native_invocations, engineIdentity=engine_identity, **provider_identity)
+
+    def close(self):
+        self.provider.close()
+
+
 def make_context(request, runtime, workspace, *, cancelled=None, emit=None):
-    evaluator = NativeGfnEvaluator(request, runtime, workspace)
-    if uses_resident_eg(request):
-        from pes_libxtb import LibXtbEvaluator
-        evaluator = LibXtbEvaluator(request, runtime, workspace, native=evaluator)
+    method = request.get('method')
+    require(method != 'mcgfnff', 'mcGFN-FF is available in saved results only')
+    cell = request['structure'].get('cell')
+    periodic = cell and any(cell.get('pbc', ()))
+    require(method in ('gfn0', 'gfn1', 'gfn2', 'gfnff', 'gxtb'),
+            'This calculation method is unavailable in this edition of Ester Studio', 'PES_METHOD_UNAVAILABLE')
+    if periodic and method in ('gfn1', 'gfn2') and 'tblite' in runtime:
+        evaluator = ResidentTblitePes(request, runtime['tblite'])
+    elif (request['operation'] == 'opt' and method == 'gxtb') or (periodic and method in ('gfn1', 'gfn2')):
+        from pes_opt_evaluator import NativeOptEvaluator
+        evaluator = NativeOptEvaluator(request, runtime, workspace, cancelled=cancelled)
+    else:
+        evaluator = NativeGfnEvaluator(request, runtime, workspace)
+        if uses_resident_eg(request):
+            from pes_libxtb import LibXtbEvaluator
+            evaluator = LibXtbEvaluator(request, runtime, workspace, native=evaluator)
     try:
         context = PesContext(request, evaluator, cancelled=cancelled, emit=emit)
-        context.runtime, context.workspace = runtime, evaluator.workspace
+        context.runtime, context.workspace = runtime, Path(workspace)
         evaluator.bind(context)
         return context
     except BaseException:

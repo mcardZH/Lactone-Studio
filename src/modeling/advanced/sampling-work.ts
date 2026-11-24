@@ -8,7 +8,7 @@ import {samplingGenerationProgress,type SamplingGenerationCounters} from './samp
 type GenerationArguments = Parameters<typeof generateConformerGuesses>;
 export type SamplingWorkRequest =
   | { kind: 'generate'; snapshot: GenerationArguments[0]; entries: GenerationArguments[1]; quantity: GenerationArguments[2]; options: Omit<NonNullable<GenerationArguments[3]>, 'onProgress'> }
-  | { kind: 'deduplicate'; candidates: Structure[]; retained: Structure[]; threshold: number }
+  | { kind: 'deduplicate'; candidates: Structure[]; retained: Structure[]; threshold: number; frozenAtomIds?: string[] }
   | { kind: 'cluster'; records: Parameters<typeof clusterConformerResults>[0]; policy: Parameters<typeof clusterConformerResults>[1] };
 export interface SamplingWorkProgress { completed: number; total: number | null; phase?:'cluster'|'eliminate-equivalent';valid?: number;generation?:SamplingGenerationCounters }
 export interface SamplingDeduplicationResult { acceptedIndices: number[]; processed: number; completed: boolean }
@@ -38,7 +38,7 @@ export function startSamplingWork<T>(request: SamplingWorkRequest, onProgress: (
       }
       if (request.kind === 'cluster') return clusterConformerResults(request.records, request.policy,onProgress) as T;
       const retained = [...request.retained], accepted: number[] = [];
-      request.candidates.forEach((candidate, index) => { if (!isMixedSamplingDuplicate(candidate, retained, request.threshold)) { retained.push(candidate); accepted.push(index); } });
+      request.candidates.forEach((candidate, index) => { if (!isMixedSamplingDuplicate(candidate, retained, request.threshold, undefined, request.frozenAtomIds)) { retained.push(candidate); accepted.push(index); } });
       return {acceptedIndices:accepted,processed:request.candidates.length,completed:true} as T;
     }) };
   }

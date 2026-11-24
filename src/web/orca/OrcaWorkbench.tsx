@@ -5,9 +5,8 @@ import {copyPlainText} from '../clipboard-text';
 import GeneratedInputEditor from '../GeneratedInputEditor';
 import {InputDeliveryDialog,useInputDeliveryOperation,type InputDeliveryRunner} from '../InputDeliveryOperation';
 import DialogShell from '../DialogShell';
-import {editOrcaGeneratedFile,orcaGeneratedSource,type OrcaGeneratedDraft} from '../../modeling/application/orca-generated-draft';
-import { buildOrcaCommon, createOrcaCommonSettings, getOrcaCommonMethodProfile, getOrcaCommonCompatibility, type OrcaJobRequest, type OrcaSettings } from '../../core/orca';
-import { referencedOrcaAssets } from '../../core/orca/assets';
+import {createOrcaGeneratedDraft,editOrcaGeneratedFile,orcaGeneratedSource,type OrcaGeneratedDraft} from '../../modeling/application/orca-generated-draft';
+import { buildOrcaCommon, createOrcaCommonSettings, getOrcaCommonMethodProfile, type OrcaJobRequest, type OrcaSettings } from '../../core/orca';
 import { orcaExternalInputDraft, selectOrcaMainInput, type ExternalInputDraft, type SubmitExternalInput } from '../../task-system/integration/input-draft';
 import type { InputStructureSource,Structure } from '../../core/types';
 import type { BuilderApplyResult } from '../../core/builder-draft';
@@ -57,13 +56,22 @@ import './orca.css';
 import './orca-readability.css';
 export { ORCA_TASKS } from './task-catalog';
 
+export interface OrcaAgentEditor {
+  external(fileName?:string):ExternalInputDraft;
+  busy():boolean;
+  storeBinary(id:string,file:File):void;
+  removeBinary(id:string):void;
+  hasBinary(id:string):boolean;
+  binaryOutputs():Array<{name:string;file:File}>;
+}
+
 export interface OrcaWorkbenchProps extends MultiStructureSourceActions {
   runInputDelivery?:InputDeliveryRunner;
   active?:boolean;
   generatedDraft?:OrcaGeneratedDraft;
   onGeneratedDraftChange?:(task:OrcaJobRequest['settings']['task'],draft:OrcaGeneratedDraft)=>void;
+  onAgentEditor?:(value:OrcaAgentEditor|null)=>void;
   onSubmitExternalInput?: SubmitExternalInput;
-  onCaptureExternalDraft?: (capture: (() => ExternalInputDraft | null) | null) => void;
   onPreparedInput?:(input:import('../citations/state').PreparedCitationInput)=>void;
   onResetTask?:()=>void;
   onResetElectronicState?:()=>void;
@@ -108,7 +116,7 @@ function saveFile(name: string, content: BlobPart, type = 'text/plain;charset=ut
 }
 function safeDefaultStem(name: string) { return name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9_.-]+/g, '_').replace(/^[^A-Za-z0-9]+/, '').replace(/\.{2,}/g, '.').slice(0, 70) || 'molecule'; }
 
-export default function OrcaWorkbench({ runInputDelivery, request, onChange, onGaussian, onDirtyChange, embedded = false, selected, onSelectionChange, onModelResult, beforeExport, onEffectiveRequest, workflowStep, onWorkflowStep, onNavigationReady, inputPreview, onRequestSelection, capabilityError: inheritedCapabilityError, inputLayerEditor,onExitMultiscale,sourceCandidates,sharedConstraints,namingPolicy,onNamingPolicyChange,onInheritLevel,canInheritLevel=false,onInheritFreezes,canInheritFreezes=false,onRequestSourcePick,onImportSources,onFreezeEnabledChange,onGenerateBatch,onResetTask,onResetElectronicState,onBeforeLocalReset,onPreparedInput,onSubmitExternalInput,onCaptureExternalDraft,generatedDraft,onGeneratedDraftChange,active=true,electronicRawText,onElectronicRawTextChange,onElectronicRawTextCommit,onBeforeElectronicStateConfirm }: OrcaWorkbenchProps) {
+export default function OrcaWorkbench({ runInputDelivery, request, onChange, onGaussian, onDirtyChange, embedded = false, selected, onSelectionChange, onModelResult, beforeExport, onEffectiveRequest, workflowStep, onWorkflowStep, onNavigationReady, inputPreview, onRequestSelection, capabilityError: inheritedCapabilityError, inputLayerEditor,onExitMultiscale,sourceCandidates,sharedConstraints,namingPolicy,onNamingPolicyChange,onInheritLevel,canInheritLevel=false,onInheritFreezes,canInheritFreezes=false,onRequestSourcePick,onImportSources,onFreezeEnabledChange,onGenerateBatch,onResetTask,onResetElectronicState,onBeforeLocalReset,onAgentEditor,onPreparedInput,onSubmitExternalInput,generatedDraft,onGeneratedDraftChange,active=true,electronicRawText,onElectronicRawTextChange,onElectronicRawTextCommit,onBeforeElectronicStateConfirm }: OrcaWorkbenchProps) {
   const localDelivery=useInputDeliveryOperation();
   const deliver=runInputDelivery??localDelivery.run;
   const [localGenerated,setLocalGenerated]=useState<Partial<Record<OrcaJobRequest['settings']['task'],OrcaGeneratedDraft>>>({});
@@ -156,6 +164,32 @@ export default function OrcaWorkbench({ runInputDelivery, request, onChange, onG
   function reportNamingPolicy(){onNamingPolicyChange?.({systemNameTouched:systemNameTouched.current,outputNameTouched:outputNameTouched.current,titleTouched:titleTouched.current});}
   useEffect(()=>{reportNamingPolicy();},[request.systemName,request.name,request.title,onNamingPolicyChange]);
   const binaryFiles = useRef(new Map<string, File>()), latest = useRef(request); latest.current = request;
+  useEffect(()=>{
+    if(!onAgentEditor)return;
+    onAgentEditor({
+      busy:()=>busy||generating.current||submittingExternal.current||dirtyRef.current||!!replacement,
+      storeBinary:(id,file)=>{binaryFiles.current.set(id,file);},
+      removeBinary:id=>{binaryFiles.current.delete(id);},
+      hasBinary:id=>binaryFiles.current.has(id),
+      binaryOutputs(){
+        const snapshot=generatedLive.current;
+        if(!snapshot)return [];
+        const textNames=new Set(snapshot.files.map(file=>file.name.toLowerCase()));
+        return snapshot.assets.flatMap(asset=>{
+          const file=binaryFiles.current.get(asset.id);
+          return file&&!textNames.has(asset.name.toLowerCase())?[{name:asset.name,file}]:[];
+        });
+      },
+      external(fileName){
+        const snapshot=generatedLive.current;
+        if(!snapshot)throw Error('请先生成输入。');
+        const index=fileName===undefined?-1:snapshot.files.findIndex(file=>file.name===fileName&&file.role==='input');
+        if(fileName!==undefined&&index<0)throw Error('编辑器没有指定的主输入文件。');
+        return orcaExternalInputDraft(snapshot.files,index,snapshot.assets,binaryFiles.current);
+      }
+    });
+    return()=>onAgentEditor(null);
+  },[onAgentEditor,busy,replacement]);
   const sourceElectronicState=useRef({id:request.structure?.id,initial:request.structure?initialBaseElectronicState(request.structure):{charge:0,multiplicity:1}});
   if(sourceElectronicState.current.id!==request.structure?.id)sourceElectronicState.current={id:request.structure?.id,initial:request.structure?initialBaseElectronicState(request.structure):{charge:0,multiplicity:1}};
   function resetLocal(reset:()=>void){onBeforeLocalReset?.();reset();}
@@ -297,7 +331,7 @@ export default function OrcaWorkbench({ runInputDelivery, request, onChange, onG
       if(first){setError(first.message);setStep(2);setValidationFocus(previous=>({selector:orcaIssueSelector(first.field),sequence:(previous?.sequence??0)+1}));return;}
       const previous=generatedLive.current;
       const prepared=await captureExport();prepared.assertCurrent();if(onGenerateBatch){await onGenerateBatch(prepared.captured,prepared.assertCurrent);return;}
-      const commit=()=>{try{prepared.assertCurrent();if(!activeRef.current||generatedLive.current!==previous)throw new Error('输入任务或文本已变化，请重新生成。');setGenerated(prepared.captured.settings.task,{sourceSignature:orcaGeneratedSource(prepared.captured),files:structuredClone(prepared.built.files),minimumVersion:getOrcaCommonCompatibility(prepared.captured).minimumVersion,issues:structuredClone(prepared.built.issues),editedNames:[],assets:structuredClone(referencedOrcaAssets(prepared.captured))});setPreviewIndex(0);setValidationFocus(null);setError('');setStep(3);}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}};
+      const commit=()=>{try{prepared.assertCurrent();if(!activeRef.current||generatedLive.current!==previous)throw new Error('输入任务或文本已变化，请重新生成。');setGenerated(prepared.captured.settings.task,createOrcaGeneratedDraft(prepared.captured,prepared.built));setPreviewIndex(0);setValidationFocus(null);setError('');setStep(3);}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}};
       if(previous?.editedNames.length&&step===3){setReplacement({action:commit});return;}commit();
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
     finally{generating.current=false;setGenerationBusy(false);}
@@ -361,18 +395,6 @@ export default function OrcaWorkbench({ runInputDelivery, request, onChange, onG
       submittingExternal.current=false;if(exportLifetime.current.alive)setExternalSubmitBusy(false);
     }
   }
-  const captureExternalDraftRef=useRef<()=>ExternalInputDraft|null>(()=>null);
-  captureExternalDraftRef.current=()=>{
-    const snapshot=generatedLive.current;
-    if(!snapshot||dirtyRef.current||!exportReady||onGenerateBatch)return null;
-    if(generatedStale){
-      if(snapshot.editedNames.length>0)return null;
-      if(!result.files.length||result.issues.some(issue=>issue.severity==='error'))return null;
-      return orcaExternalInputDraft(result.files,0,referencedOrcaAssets(effectiveRequest),binaryFiles.current);
-    }
-    return orcaExternalInputDraft(snapshot.files,previewIndex,snapshot.assets,binaryFiles.current);
-  };
-  useEffect(()=>{if(!onCaptureExternalDraft)return;onCaptureExternalDraft(()=>captureExternalDraftRef.current());return()=>onCaptureExternalDraft(null);},[onCaptureExternalDraft]);
   function electronic(patch: Pick<Partial<OrcaJobRequest>, 'charge' | 'multiplicity'>) {
     const next={...request,...patch};
     update({ ...next, electronicStateConfirmed:false, settings: { ...s, neb: { ...s.neb, mappingConfirmed: false }, md: { ...s.md, restartConfirmed: false }, multiscale: { ...s.multiscale, configurationConfirmed: false } }, assets: request.assets.map(asset => asset.orbitalEvidence ? { ...asset, orbitalEvidence: { ...asset.orbitalEvidence, compatibilityConfirmed: false } } : asset) });

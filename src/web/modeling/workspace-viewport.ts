@@ -1,6 +1,11 @@
 import type {ModelViewportProps} from './ModelViewport';
+import type {CameraZoomReceipt} from './render/adapter';
 import type {JsonValue} from '../../modeling/workspace-contracts';
-import type {DisplaySettings,InteractionState,ModelCommand,ModelSelection,PickResult} from '../../modeling/contracts';
+import type {DisplaySettings,InteractionState,ModelCommand,ModelDocument,ModelSelection,PickResult} from '../../modeling/contracts';
+import type {CellEditorRequest} from '../../core/modeling/cell-editor';
+import type {StructureTransformEdit} from '../../core/modeling/structure-transform';
+import type {PeriodicInspectRequest,PeriodicModelingRequest} from './PeriodicModelingPanel';
+import type {EmpiricalBondPerceptionParameters} from '../../core/bond-perception-parameters';
 import type {AtomStateAction,ViewportObjectState,ViewportStateMarker} from './viewport-overlays';
 import {normalizeWorkspaceJSON,normalizeWorkspaceViewportJSON} from '../../modeling/platform/workspace-bridge';
 import type {ViewportDisplayDescriptor} from './viewport-display-channel';
@@ -9,12 +14,14 @@ import type {SamplingSphereViewportDraft} from '../../modeling/advanced/sampling
 import type {TrajectoryPlaybackCommand,TrajectoryPlaybackState} from '../results/trajectory-playback-bridge';
 import type {PlaybackCollectionIdentity} from '../../results/playback-collection';
 import type {CipViewportUsage} from './use-cip-usage';
+import {sameViewportRenderIdentity,type ViewportRenderIdentity} from './render/render-completion';
 
 /** A display/interaction projection only. The one ModelStore and native owner
  * remain in the main workspace; no history or executable callbacks cross IPC. */
 type DataKeys = {[K in keyof ModelViewportProps]: NonNullable<ModelViewportProps[K]> extends (...args:any[])=>any ? never : K}[keyof ModelViewportProps];
 export type WorkspaceViewportState = Partial<Pick<ModelViewportProps,Exclude<DataKeys,undefined|'document'>>> & {
   frameBondEditing?:FrameBondEditingState;
+  readonlyClearSelection?:boolean;
   documentId:string;revision:number;interaction:InteractionState;
   selectShortcut:string;freezeShortcut:string;
   dockTarget?:{x:number;y:number;width:number;height:number};error?:string;
@@ -28,6 +35,14 @@ export type WorkspaceViewportState = Partial<Pick<ModelViewportProps,Exclude<Dat
 };
 export interface FrameBondEditingState {frameKey:string;blocked:boolean;canUndo:boolean;canRedo:boolean}
 export interface FrameBondTarget {frameKey:string;projectionSerial:number}
+export interface DetachedFrameTarget {
+  documentId:string;
+  revision:number;
+  documentEpoch:string;
+  projectionSerial:number|null;
+  exportSourceIdentity?:string;
+  renderIdentity?:ViewportRenderIdentity;
+}
 export function checkedFrameBondEditing(value:FrameBondEditingState):FrameBondEditingState {
  const tuple=JSON.parse(value.frameKey);
  if(!value||Object.keys(value).some(key=>!['frameKey','blocked','canUndo','canRedo'].includes(key))||!Array.isArray(tuple)||tuple.length!==5
@@ -35,7 +50,7 @@ export function checkedFrameBondEditing(value:FrameBondEditingState):FrameBondEd
   ||![value.blocked,value.canUndo,value.canRedo].every(part=>typeof part==='boolean'))throw Error('帧显示键编辑能力身份无效。');
  return value;
 }
-export type WorkspaceViewportEvent = ({frameBondTarget?:FrameBondTarget}&(
+export type WorkspaceViewportEvent = ({frameBondTarget?:FrameBondTarget;detachedFrameTarget?:DetachedFrameTarget}&(
  | {type:'cip-used';documentEpoch:string;projectionSerial:number|null;receipt:CipViewportUsage}
  | {type:'sampling-sphere';sourceDocumentId:string;sourceRevision:number;radiusAngstrom:number}
  | {type:'trajectory-playback';resultId:string;projectionKey?:string;collectionIdentity?:PlaybackCollectionIdentity;command:TrajectoryPlaybackCommand}
@@ -61,8 +76,20 @@ export type WorkspaceViewportEvent = ({frameBondTarget?:FrameBondTarget}&(
  | {type:'display-settings';display:DisplaySettings}
  | {type:'axes-visible';visible:boolean}
  | {type:'display-subscribe';channelToken:string}));
+export function isDetachedFrameAction(event:WorkspaceViewportEvent):boolean {
+  return event.type==='key'&&event.key===' '&&!event.release||event.type==='clear'&&event.kind==='selection';
+}
+export function assertDetachedFrameTarget(current:DetachedFrameTarget,event:WorkspaceViewportEvent):void {
+  if(!isDetachedFrameAction(event))return;
+  const target=event.detachedFrameTarget;
+  if(!target||target.documentId!==current.documentId||target.revision!==current.revision||target.documentEpoch!==current.documentEpoch
+    ||target.projectionSerial!==current.projectionSerial||target.exportSourceIdentity!==current.exportSourceIdentity
+    ||(target.renderIdentity||current.renderIdentity)&&!sameViewportRenderIdentity(target.renderIdentity,current.renderIdentity)){
+    throw Error('独立窗口所属文档或科学帧已变化，请在当前画面重新操作。');
+  }
+}
 /** Requires a source-bound intent whenever the owner presents a scientific frame.
- * Camera, ordinary observation, save and Space playback retain their own scopes. */
+ * Camera, save and detached frame actions retain their own scopes. */
 export function isFrameBondViewportEdit(event:WorkspaceViewportEvent):boolean {
  if(event.type==='object-delete')return ['bond','auxiliary','port'].includes(event.pick.kind);
  if(event.type==='command'){
@@ -76,7 +103,32 @@ export function frameBondTargetCurrent(state:FrameBondEditingState|undefined,pro
  const target=event.frameBondTarget;if(!target)return !state||!isFrameBondViewportEdit(event);
  return Boolean(state&&target.frameKey===state.frameKey&&Number.isSafeInteger(target.projectionSerial)&&target.projectionSerial>=0&&target.projectionSerial===projectionSerial);
 }
-export interface WorkspaceViewportController { dispatch(event:WorkspaceViewportEvent):void|Promise<void>;isBusy():boolean;cancelInteraction?():void;getCameraView?():number[]|undefined;preoptimize?():Promise<void> }
+type CameraRequest = NonNullable<ModelViewportProps['cameraRequest']>;
+export type ModelCameraCommand = {kind:'reset'}|{kind:'view';view:number[]}|{kind:'zoom';factor:number}|Omit<CameraRequest,'serial'>;
+export interface ModelBondPerceptionRequest {
+  method?:'empirical'|'gfn2';
+  mode:'supplement'|'rebuild';
+  parameters?:Partial<EmpiricalBondPerceptionParameters>;
+  electronic?:{charge:number;multiplicity:number};
+  solvent?:string;
+  maxSccIterations?:number;
+}
+export interface WorkspaceModelCommandPort {
+  frameKey():string|undefined;
+  selection():ModelSelection;
+  subscribeObservedSelection(listener:(change:{revision:number;frameKey:string|undefined})=>void):()=>void;
+  edit(expectedRevision:number,commands:ModelCommand[],background?:boolean):ModelDocument;
+  select(expectedRevision:number,selection:ModelSelection):ModelSelection;
+  history(expectedRevision:number,direction:'undo'|'redo'):boolean;
+  source(expectedRevision:number):ModelDocument;
+  camera(expectedRevision:number,command:ModelCameraCommand):CameraZoomReceipt|void;
+  inspectCrystal(expectedRevision:number,request:PeriodicInspectRequest):Promise<unknown>;
+  transform(expectedRevision:number,request:StructureTransformEdit|PeriodicModelingRequest|CellEditorRequest,derive:boolean):Promise<void>;
+  perceiveBonds(expectedRevision:number,request:ModelBondPerceptionRequest,signal?:AbortSignal):Promise<unknown>;
+}
+/** The workspace owner supplies this locally after authenticating the detached window. */
+export interface WorkspaceViewportDispatchContext {detached?:true}
+export interface WorkspaceViewportController { dispatch(event:WorkspaceViewportEvent,source?:WorkspaceViewportDispatchContext):void|Promise<void>;isBusy():boolean;cancelInteraction?():void;getCameraView?():number[]|undefined;getCameraZoomDistance?():number|undefined;preoptimize?(settings?:Omit<import('../results/analysis-canvas').WorkspaceSpaceOptimizationRequest,'source'|'onRunStarted'>):Promise<void>;model?:WorkspaceModelCommandPort }
 /** An independent window can hold a valid result ID after its collection was
  * replaced. Check the complete publication identity before consuming a command. */
 export function trajectoryPlaybackEventCurrent(state:TrajectoryPlaybackState,event:Extract<WorkspaceViewportEvent,{type:'trajectory-playback'}>):boolean {

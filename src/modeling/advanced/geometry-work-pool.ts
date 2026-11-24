@@ -1,24 +1,29 @@
 import type { Structure } from '../../core/types';
 import type { SamplingDeduplicationResult, SamplingWorkProgress } from './sampling-work';
+import { packGeometryWorkerFrames, type GeometryWorkerFrame } from './geometry-worker-frames';
 
 interface Slot { worker:Worker; terminated?:boolean; failure?:Error; pending?: { id?:number; resolve(value:boolean):void; reject(error:Error):void } }
 /** Source registration is fixed once per granted worker. Only stable indices
  * travel in comparison jobs; the coordinator alone chooses representatives in
  * original order, independent of completion order or worker count. */
-export function startGeometryWorkPool(request:{candidates:Structure[];retained:Structure[];threshold:number},
+export function startGeometryWorkPool(request:{candidates:Structure[];retained:Structure[];threshold:number;frozenAtomIds?:string[]},
   resources:{threads:number;memoryBudgetBytes:number;retainedMemoryEstimateBytes?:number},onProgress:(value:SamplingWorkProgress)=>void) {
   const structures=[...request.retained,...request.candidates];
   const sourceBytes=structures.reduce((sum,structure)=>sum+structure.atoms.length*512+(structure.bonds?.length??0)*96+1024,0);
   // A copy estimate selects concurrency only. A large source is still attempted
   // by one worker instead of being refused by a conservative predicted size.
   const availableEstimate=Math.max(0,resources.memoryBudgetBytes-(resources.retainedMemoryEstimateBytes??0));
-  const width=Math.min(resources.threads,Math.max(1,structures.length-1),Math.max(1,Math.floor(availableEstimate/Math.max(1,sourceBytes*2))));
+  const canShare=typeof SharedArrayBuffer==='function'&&globalThis.crossOriginIsolated!==false;
+  // Without a usable shared transport one worker owns the transferred numerical
+  // blocks. The complete candidate set is still processed in source order.
+  const width=canShare?Math.min(resources.threads,Math.max(1,structures.length-1),Math.max(1,Math.floor(availableEstimate/Math.max(1,sourceBytes*2)))):1;
+  const pack=packGeometryWorkerFrames(width>1);
   const slots:Slot[]=[],accepted:number[]=[],retained=request.retained.map((_,index)=>index);
   let stopped=false,settled=false,processed=0,serial=0,lastProgress=0;
   const terminate=()=>{for(const slot of slots){if(!slot.terminated){slot.worker.terminate();slot.terminated=true;}slot.pending?.reject(new Error('几何工作块已停止。'));slot.pending=undefined;}};
-  const send=(slot:Slot,value:object,id?:number)=>new Promise<boolean>((resolve,reject)=>{
+  const send=(slot:Slot,value:object,id?:number,transfer?:Transferable[])=>new Promise<boolean>((resolve,reject)=>{
     if(slot.failure){reject(slot.failure);return;}
-    slot.pending={id,resolve,reject};try{slot.worker.postMessage(value);}catch(error){slot.pending=undefined;reject(error instanceof Error?error:new Error(String(error)));}
+    slot.pending={id,resolve,reject};try{slot.worker.postMessage(value,transfer??[]);}catch(error){slot.pending=undefined;reject(error instanceof Error?error:new Error(String(error)));}
   });
   const promise=(async():Promise<SamplingDeduplicationResult>=>{
     try {
@@ -31,12 +36,20 @@ export function startGeometryWorkPool(request:{candidates:Structure[];retained:S
           else if(value.kind==='registered'&&pending.id===undefined||value.kind==='compared'&&pending.id===value.id){slot.pending=undefined;pending.resolve(value.duplicate===true);}
         };
         worker.onerror=event=>{slot.failure=new Error(event.message||'几何工作块worker失败。');slot.pending?.reject(slot.failure);slot.pending=undefined;};
-        const registration=send(slot,{kind:'register',structures,threshold:request.threshold});
+         const registration=send(slot,{kind:'register',threshold:request.threshold,frozenAtomIds:request.frozenAtomIds});
         // A later Worker constructor can fail before Promise.all is reached.
         // Retain a rejection observer for every already-issued registration.
         void registration.catch(()=>{});registrations.push(registration);
       }
       await Promise.all(registrations);
+      for(let index=0;index<structures.length&&!stopped;){
+        const frames:GeometryWorkerFrame[]=[],buffers:Transferable[]=[];let bytes=0;
+        do{
+          const frame=pack(structures[index++]);frames.push(frame);bytes+=frame.coordinates.byteLength;
+          if(width===1)buffers.push(frame.coordinates.buffer as ArrayBuffer);
+        }while(index<structures.length&&bytes<1024*1024&&frames.length<32);
+        await Promise.all(slots.map(slot=>send(slot,{kind:'frames',frames},undefined,buffers)));
+      }
       for(let index=0;index<request.candidates.length&&!stopped;index++) {
         const movingIndex=request.retained.length+index;
         const chunkSize=Math.max(1,Math.ceil(retained.length/slots.length)),jobs:Promise<boolean>[]=[];

@@ -122,7 +122,7 @@ interface Props {
 	visible: boolean;
 	revision(): number;
 	onError(message: string): void;
-	onCancelReady(cancel: (() => void) | null): void;
+	onCancelReady(cancel: (() => void) | null, isEditing?: () => boolean): void;
 	onHistoryChange?(history: { undo: number; redo: number }): void;
 }
 interface Gesture {
@@ -199,6 +199,7 @@ export default function TwoDInteractionLayer({
 	const gesture = useRef<Gesture | null>(null),
 		held = useRef(new HeldElement());
 	const pendingSingle = useRef<{gesture:Gesture;timer:ReturnType<typeof setTimeout>} | null>(null);
+	const pendingEdits = useRef(0);
 	const previewGraph = useRef<{revision:number;promise:Promise<EditGraph>} | null>(null);
 	const hoverPreview = useRef<Gesture | null>(null);
 	const heldTarget = useRef<{ hit: Hit; revision: number } | null>(null),
@@ -364,16 +365,12 @@ export default function TwoDInteractionLayer({
 		else bondAction(g, oxygen);
 	}
 	async function commitKet(ket: string, expected: number, expectedEpoch = serial.current) {
-		const struct = await editor.formatterFactory
-			.create(SupportedFormat.ket)
-			.getStructureFromStringAsync(ket);
-		if (
-			!current.current.active ||
-			current.current.revision() !== expected ||
-			expectedEpoch !== serial.current
-		)
-			return;
-		doAction(fromNewCanvas(editor.editor.render.ctab, struct));
+		pendingEdits.current++;
+		try {
+			const struct = await editor.formatterFactory.create(SupportedFormat.ket).getStructureFromStringAsync(ket);
+			if (!current.current.active || current.current.revision() !== expected || expectedEpoch !== serial.current) return;
+			doAction(fromNewCanvas(editor.editor.render.ctab, struct));
+		} finally { pendingEdits.current--; }
 	}
 	function deleteHit(hit: Hit) {
 		const selection = editor.editor.explicitSelected();
@@ -588,6 +585,11 @@ export default function TwoDInteractionLayer({
 		}
 	}
 	async function commit(g: Gesture) {
+		pendingEdits.current++;
+		try { await commitGesture(g); }
+		finally { pendingEdits.current--; }
+	}
+	async function commitGesture(g: Gesture) {
 		if (
 			!current.current.active ||
 			g.revision !== current.current.revision() ||
@@ -728,7 +730,7 @@ export default function TwoDInteractionLayer({
 		}
 	}, [editor, nativeReadyEpoch]);
 	useEffect(() => {
-		onCancelReady(cancel);
+		onCancelReady(cancel, () => Boolean(gesture.current || pendingSingle.current || pendingEdits.current || current.current.dialogOpen));
 		return () => onCancelReady(null);
 	}, [onCancelReady]);
 	useEffect(() => {

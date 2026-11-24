@@ -185,6 +185,7 @@ def probe(config, output):
 
 
 def prepare(config, run_id, reuse_verified=None, refresh_xtb=False):
+    c.require(config['inputRoot'] == c.ROOT, 'Preparation writes must use the owning native input root')
     import subprocess
     from datetime import datetime, timezone
     reused = None

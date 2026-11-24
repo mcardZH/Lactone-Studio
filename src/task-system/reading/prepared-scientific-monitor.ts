@@ -1,5 +1,6 @@
 import type { ScientificGeometry, ScientificJob, ScientificParserSnapshot } from '../../results/scientific-contracts';
 import { decodeScientificGeometry } from '../../results/scientific-reader';
+import { readFileTextEncoding } from '../../results/byte-text-lines';
 import type { MonitorGeometry } from '../application-contracts';
 import type { ScientificReadSnapshot } from './contracts';
 import { SCIENTIFIC_READER_IMPLEMENTATION_VERSION } from './implementation-version';
@@ -52,6 +53,7 @@ export async function prepareScientificMonitor(snapshot: ScientificReadSnapshot<
   const frames: MonitorGeometry[] = [];
   const counts = { geometryReads: 0, reusedGeometries: 0, frames: 0 };
   try {
+    const encoding = await readFileTextEncoding(lease, signal);
     for (const job of snapshot.value.jobs) {
       // Match the common scientific result contract: a special-center job is
       // retained as diagnostics, never converted to a zero-atom display model.
@@ -68,7 +70,7 @@ export async function prepareScientificMonitor(snapshot: ScientificReadSnapshot<
         else {
           const raw = await lease.readRange(geometry.start, geometry.end, signal); signal?.throwIfAborted();
           if (raw.length !== geometry.end - geometry.start) throw new Error('固定结构来源字节不完整。');
-          const atoms = decodeScientificGeometry(raw, geometry).map(atom => Object.freeze({ id: atom.id!, element: atom.element, x: atom.x, y: atom.y, z: atom.z }));
+          const atoms = decodeScientificGeometry(raw, geometry, encoding).map(atom => Object.freeze({ id: atom.id!, element: atom.element, x: atom.x, y: atom.y, z: atom.z }));
           counts.geometryReads++;
           prepared = Object.freeze({ sourceKey: collectionId, frameId, atoms: Object.freeze(atoms) as unknown as MonitorGeometry['atoms'] });
           let byContext = geometryBlocks.get(geometry);

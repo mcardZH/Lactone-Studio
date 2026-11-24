@@ -6,10 +6,19 @@ import {CONFORMER_OPTIMIZATION_METHODS,type AdvancedMethodDraft} from './Advance
 import {samplingRemainingLabel} from './sampling-time-estimate';
 import ConformerSolventField from './ConformerSolventField';
 import {conformerSolvationDraftIssue} from './conformer-solvation-draft';
+import {ConformerMethodField,conformerNetMethods} from './ConformerMethodFields';
 import type {AdvancedStageRun} from '../../modeling/advanced/contracts';
+import {isPesNetMethod,type PesNetMethod} from '../../modeling/pes/contracts';
+import {periodicPesOperationAvailable} from '../../modeling/pes/periodic-capabilities';
+import {conformerAlpbPresets} from '../../modeling/advanced/conformer-solvation';
+import { ConvergenceField, CustomConvergenceFields, validConvergence } from '../modeling/XtbOptimizationPanel';
+import { availableOrdinaryOptimizer, netMethods, ordinaryOptimizers, type OrdinaryOptimizer, type OptimizationSettings } from '../modeling/tool-session';
 
+export type ConformerStageMethodDraft=Omit<AdvancedMethodDraft,'maxSteps'|'method'>&OptimizationSettings&{
+  method:AdvancedMethodDraft['method']|PesNetMethod; device?:'cpu'|'gpu'; retiredMethod?:string; sccIterationLimitExplicit?:boolean;
+};
 export interface ConformerOptimizationDraft {
-  id:string;method:Omit<AdvancedMethodDraft,'maxSteps'>;energyThresholdKcalMol:number;rmsdThresholdAngstrom:number;rmsdMatching?:'fixed'|'symmetry';eliminateEquivalent?:boolean;inputStride?:number;inputClusterCount?:number;advanceCount?:number;checkpointAfter:boolean;
+  id:string;method:ConformerStageMethodDraft;energyThresholdKcalMol:number;rmsdThresholdAngstrom:number;rmsdMatching?:'fixed'|'symmetry';eliminateEquivalent?:boolean;inputStride?:number;inputClusterCount?:number;advanceCount?:number;checkpointAfter:boolean;
 }
 export interface ConformerOptimizationAction {
   kind:'start'|'continue';hasHistory:boolean;running?:boolean;stopping?:boolean;
@@ -31,29 +40,41 @@ export default function ConformerOptimizationStages(p:{
   onStart(index:number):void;onRunAll():void;canStart(index:number):boolean;busy?:boolean;
   progressForStage?(id:string,index:number):ReactNode;
   actionForStage?(id:string,index:number):ConformerOptimizationAction;
+  allowSharedOptimizer?:boolean;periodic?:boolean;
   upstreamForStage?(index:number):{count:number;selectedCount?:number;ready:boolean;message?:string};
   samplingInputCount?:number;hasCoordinates?:boolean;
   onContinue?(index:number):void;onRestart?(index:number):void;onPause?(index:number):void;
   onRestartAll?():void;onViewResults?(index:number):void;onViewInterrupted?(index:number):void;
 }){
  const gxtbBackend=useGxtbBackend();
+  const periodic=p.periodic===true;
+  const xtbMethods=CONFORMER_OPTIMIZATION_METHODS.filter(([id])=>!periodic||periodicPesOperationAvailable(id,'opt'))
+    .map(([id,label])=>[id,id==='gxtb'?gxtbMethodLabel(gxtbBackend):label+(id==='gfn2'?'（推荐）':'')] as const);
+  const netOptions=p.allowSharedOptimizer!==false?conformerNetMethods(periodic):[];
   const update=(index:number,patch:Partial<ConformerOptimizationDraft>)=>p.onChange(p.stages.map((row,i)=>i===index?{...row,...patch}:row));
   const validInputs=p.stages.every((stage,index)=>{
     const count=index===0?stage.inputStride??1:stage.inputClusterCount??10;
-    return !conformerSolvationDraftIssue(stage.method.method,stage.method)&&Number.isSafeInteger(count)&&count>0&&
+    const method=stage.method.method,net=isPesNetMethod(method);
+    return !stage.method.retiredMethod&&(net?netOptions.includes(method):xtbMethods.some(([id])=>id===method))&&
+      (periodic||conformerAlpbPresets(method).length===0||!conformerSolvationDraftIssue(method,stage.method))&&Number.isSafeInteger(count)&&count>0&&
+      Number.isSafeInteger(stage.method.maxSteps??500)&&(stage.method.maxSteps??500)>0&&
+      (net||!['gfn1','gfn2','gxtb'].includes(method)||Number.isSafeInteger(stage.method.sccIterationLimit)&&stage.method.sccIterationLimit>0)&&
       Number.isFinite(stage.energyThresholdKcalMol)&&stage.energyThresholdKcalMol>=0&&Number.isFinite(stage.rmsdThresholdAngstrom)&&stage.rmsdThresholdAngstrom>0;
   });
-  const constraintsConfirmed=(stage:ConformerOptimizationDraft)=>!p.hasCoordinates||['MMFF94','MMFF94s','UFF'].includes(stage.method.method)||stage.method.internalConstraintsConfirmed;
-  const canRunAll=!p.stages.some(stage=>gxtbRunBlocked(gxtbBackend,stage.method.method))&&validInputs&&p.stages.every(constraintsConfirmed)&&p.canStart(0);
+  const constraintsConfirmed=(stage:ConformerOptimizationDraft)=>!p.hasCoordinates||stage.method.internalConstraintsConfirmed;
+  const stageReady=(stage:ConformerOptimizationDraft)=>constraintsConfirmed(stage)&&(p.allowSharedOptimizer===false
+    ||availableOrdinaryOptimizer(stage.method.method,periodic,stage.method.optimizer??'lbfgs')&&validConvergence(stage.method));
+  const canRunAll=!p.stages.some(stage=>gxtbRunBlocked(gxtbBackend,stage.method.method))&&validInputs&&p.stages.every(stageReady)&&p.canStart(0);
   const addStage=()=>{
     const previous=p.stages.at(-1);
     if(!previous)return;
     const {inputStride:_inputStride,...next}=previous;
-    p.onChange([...p.stages,{...next,id:crypto.randomUUID(),method:{...previous.method},rmsdMatching:'fixed',eliminateEquivalent:false}]);
+    p.onChange([...p.stages,{...next,id:crypto.randomUUID(),method:{...previous.method,
+      ...(p.allowSharedOptimizer!==false?{optimizer:previous.method.optimizer??'lbfgs'}:{})},rmsdMatching:'fixed',eliminateEquivalent:false}]);
   };
   return <InputSettingsCard className="conformer-optimization-stages" testId="conformer-optimization-stages" title="优化与归簇" stack
     actions={<InputSettingsAction disabled={p.busy||p.stages.length>=8} onClick={addStage}>添加优化级</InputSettingsAction>}>
-    {p.stages.map((stage,index)=>{const action=p.actionForStage?.(stage.id,index);return <InputSettingsCard key={stage.id} sectionKey={`conformer-stage:${stage.id}`} level="subcard" collapsible stack title={`第 ${index+1} 级优化`}
+    {p.stages.map((stage,index)=>{const action=p.actionForStage?.(stage.id,index),net=isPesNetMethod(stage.method.method),optimizer=stage.method.optimizer??'lbfgs';return <InputSettingsCard key={stage.id} sectionKey={`conformer-stage:${stage.id}`} level="subcard" collapsible stack title={`第 ${index+1} 级优化`}
       actions={p.stages.length>1&&<InputSettingsAction disabled={p.busy} onClick={()=>p.onChange(p.stages.filter((_,i)=>i!==index))}>移除此级</InputSettingsAction>}>
       {index>0?(()=>{const upstream=p.upstreamForStage?.(index),count=Math.min(stage.inputClusterCount??10,upstream?.count??0);return <InputSettingsStack className="conformer-stage-input-summary"><p role="status">输入：优化{index}归簇{upstream?.ready?` · 共 ${upstream.count} 簇`:` · ${upstream?.message??'等待上一级正式归簇'}`}</p>{upstream?.ready&&<p>本级选取 {upstream.selectedCount??count} 个最低能量代表</p>}</InputSettingsStack>;})():p.samplingInputCount!==undefined&&<p role="status">输入：采样结果 · 可用 {p.samplingInputCount} 帧 · 本级选取 {Number.isSafeInteger(stage.inputStride??1)&&(stage.inputStride??1)>0?Math.ceil(p.samplingInputCount/(stage.inputStride??1)):'—'} 帧</p>}
       {action?<ConformerOptimizationProgress action={action} index={index} method={stage.method.method}/>:p.progressForStage?.(stage.id,index)}
@@ -61,25 +82,39 @@ export default function ConformerOptimizationStages(p:{
       {index>0&&<InputSettingsRow className="conformer-stage-fields">
         <InputSettingsField label="取上一级正式簇中最低能量的代表数" controlWidth="short"><InputSettingsNumericControl ariaLabel={`第${index+1}级选取上一级簇数`} disabled={p.busy} min={1} step={1} integer value={stage.inputClusterCount??10} onValue={inputClusterCount=>update(index,{inputClusterCount})}/></InputSettingsField>
       </InputSettingsRow>}
+      <GxtbAvailability method={stage.method.method}/>
       <InputSettingsRow className="conformer-stage-fields">
-        <GxtbAvailability method={stage.method.method}/><InputSettingsField label="计算级别" className="conformer-choice-field" controlWidth="select"><select aria-label={`第${index+1}级优化方式`} title={CONFORMER_OPTIMIZATION_METHODS.find(([id])=>id===stage.method.method)?.[1]} disabled={p.busy} value={stage.method.method} onChange={event=>{
-          const method=event.target.value as AdvancedMethodDraft['method'];
-          update(index,{method:{...stage.method,method,...(['MMFF94','MMFF94s','UFF'].includes(method)?{threads:1}:{})}});
-        }}>{CONFORMER_OPTIMIZATION_METHODS.map(([id,label])=><option key={id} value={id}>{id==='gxtb'?gxtbMethodLabel(gxtbBackend):label}{id==='gfn2'?'（推荐）':''}</option>)}</select></InputSettingsField>
-        <ConformerSolventField method={stage.method.method} value={stage.method} onChange={value=>update(index,{method:{...stage.method,...value}})} ariaLabel={`第${index+1}级溶剂`} disabled={p.busy}/>
+        <ConformerMethodField method={stage.method.retiredMethod?'retired':stage.method.method} ariaLabel={`第${index+1}级优化方式`} xtb={xtbMethods} net={netOptions} disabled={p.busy}
+          retainedLabel={stage.method.retiredMethod?`${stage.method.retiredMethod}（已停用，重新选择）`:undefined} onChange={id=>{
+            const method=id as ConformerStageMethodDraft['method'];
+            update(index,{method:{...stage.method,method,retiredMethod:undefined,optimizer:availableOrdinaryOptimizer(method,periodic,optimizer)?optimizer:'lbfgs'}});
+          }}/>
+          {!net&&!periodic&&conformerAlpbPresets(stage.method.method).length>0&&<ConformerSolventField method={stage.method.method} value={stage.method} onChange={value=>update(index,{method:{...stage.method,...value}})} ariaLabel={`第${index+1}级溶剂`} disabled={p.busy}/>}
       </InputSettingsRow>
       {index===0&&<InputSettingsRow className="conformer-stage-fields">
         <InputSettingsField label="抽帧间隔" controlWidth="short"><InputSettingsNumericControl ariaLabel="第1级抽帧间隔" disabled={p.busy} min={1} step={1} integer value={stage.inputStride??1} onValue={inputStride=>update(index,{inputStride})}/></InputSettingsField>
       </InputSettingsRow>}
-      <InputSettingsRow className="conformer-stage-fields">
-        <InputSettingsField label="归簇能量差 / kcal·mol⁻¹" controlWidth="number"><InputSettingsNumericControl ariaLabel={`第${index+1}级归簇能量差`} disabled={p.busy} min={0} value={stage.energyThresholdKcalMol} onValue={energyThresholdKcalMol=>update(index,{energyThresholdKcalMol})}/></InputSettingsField>
+      <InputSettingsRow className="conformer-stage-fields conformer-clustering-row">
+        {!periodic&&<InputSettingsCheckbox label="消除等价构象" ariaLabel={`第${index+1}级消除等价构象`} disabled={p.busy} checked={stage.eliminateEquivalent===true} onChange={eliminateEquivalent=>update(index,{eliminateEquivalent,rmsdMatching:'fixed'})}/>}
+        <InputSettingsField label="归簇能量差" unit="kcal·mol⁻¹" controlWidth="short"><InputSettingsNumericControl ariaLabel={`第${index+1}级归簇能量差`} disabled={p.busy} min={0} value={stage.energyThresholdKcalMol} onValue={energyThresholdKcalMol=>update(index,{energyThresholdKcalMol})}/></InputSettingsField>
         <InputSettingsField label="RMSD" unit="Å" controlWidth="number"><InputSettingsNumericControl ariaLabel={`第${index+1}级归簇RMSD`} disabled={p.busy} min={.000001} value={stage.rmsdThresholdAngstrom} onValue={rmsdThresholdAngstrom=>update(index,{rmsdThresholdAngstrom})}/></InputSettingsField>
       </InputSettingsRow>
-      {p.hasCoordinates&&!['MMFF94','MMFF94s','UFF'].includes(stage.method.method)&&<InputSettingsCheckbox label="确认使用当前 B/A/D 冻结" disabled={p.busy} checked={stage.method.internalConstraintsConfirmed} onChange={internalConstraintsConfirmed=>update(index,{method:{...stage.method,internalConstraintsConfirmed}})}/>}
-      <InputSettingsStack className="conformer-equivalence-option"><InputSettingsCheckbox label="消除等价构象" ariaLabel={`第${index+1}级消除等价构象`} disabled={p.busy} checked={stage.eliminateEquivalent===true} onChange={eliminateEquivalent=>update(index,{eliminateEquivalent,rmsdMatching:'fixed'})}/>
-        {stage.eliminateEquivalent===true&&<div className="conformer-equivalence-description"><p>簇代表能量差 &lt; 0.03 kcal/mol</p><p>快速判定，未确认等价的构象保留</p></div>}
-      </InputSettingsStack>
-      <InputSettingsRow variant="actions"><InputSettingsAction variant="primary" ariaLabel={`第${index+1}级${action?.kind==='continue'?'继续':'开始'}`} disabled={gxtbRunBlocked(gxtbBackend,stage.method.method)||p.busy||action?.blockedByRetainedBatch||!validInputs||!constraintsConfirmed(stage)||!p.canStart(index)} onClick={()=>action?.kind==='continue'&&p.onContinue?p.onContinue(index):p.onStart(index)}>{action?.kind==='continue'?'继续优化':'开始优化'}</InputSettingsAction>{p.onPause&&<InputSettingsAction ariaLabel={`第${index+1}级暂停优化`} disabled={!action?.running||action.stopping} onClick={()=>p.onPause?.(index)}>{action?.stopping?'正在暂停':'暂停优化'}</InputSettingsAction>}{p.onRestart&&<InputSettingsAction ariaLabel={`第${index+1}级重新优化`} disabled={gxtbRunBlocked(gxtbBackend,stage.method.method)||p.busy||!validInputs||!constraintsConfirmed(stage)||!action?.hasHistory||!p.canStart(index)} onClick={()=>p.onRestart?.(index)}>重新优化</InputSettingsAction>}</InputSettingsRow>
+      {periodic&&<output>晶胞固定 · RMSD 只计算非冻结原子</output>}
+      {!periodic&&stage.eliminateEquivalent===true&&<div className="conformer-equivalence-description"><p>簇代表能量差 &lt; 0.03 kcal/mol</p><p>快速判定，未确认等价的构象保留</p></div>}
+      {p.hasCoordinates&&<InputSettingsCheckbox label={stage.method.optimizer?'确认使用当前精确 B/A/D 冻结':'确认使用当前 B/A/D 冻结'} disabled={p.busy} checked={stage.method.internalConstraintsConfirmed} onChange={internalConstraintsConfirmed=>update(index,{method:{...stage.method,internalConstraintsConfirmed}})}/>}
+      {p.allowSharedOptimizer!==false&&<details className="xtb-constraint-results xtb-run-settings">
+        <summary>运行设置 · {ordinaryOptimizers[optimizer]}</summary>
+        <InputSettingsRow>
+          <InputSettingsField label="优化算法" controlWidth="select"><select aria-label={`第${index+1}级优化算法`} disabled={p.busy} value={optimizer} onChange={event=>update(index,{method:{...stage.method,optimizer:event.currentTarget.value as OrdinaryOptimizer}})}>
+            {Object.entries(ordinaryOptimizers).filter(([id])=>id===optimizer||availableOrdinaryOptimizer(stage.method.method,periodic,id as OrdinaryOptimizer)).map(([id,label])=><option key={id} value={id} disabled={!availableOrdinaryOptimizer(stage.method.method,periodic,id as OrdinaryOptimizer)}>{label}</option>)}
+          </select></InputSettingsField>
+          <ConvergenceField settings={stage.method} disabled={p.busy} onChange={settings=>update(index,{method:{...stage.method,...settings}})}/>
+          <InputSettingsField label="最大优化步数" controlWidth="short"><InputSettingsNumericControl ariaLabel={`第${index+1}级最大优化步数`} disabled={p.busy} min={1} integer value={stage.method.maxSteps??500} onValue={maxSteps=>update(index,{method:{...stage.method,maxSteps}})}/></InputSettingsField>
+          {!net&&['gfn1','gfn2','gxtb'].includes(stage.method.method)&&<InputSettingsField label="SCC 迭代上限" controlWidth="short"><InputSettingsNumericControl ariaLabel={`第${index+1}级 SCC 迭代上限`} disabled={p.busy} min={1} integer value={stage.method.sccIterationLimit} onValue={sccIterationLimit=>update(index,{method:{...stage.method,sccIterationLimit,sccIterationLimitExplicit:true}})}/></InputSettingsField>}
+        </InputSettingsRow>
+        <CustomConvergenceFields settings={stage.method} disabled={p.busy} onChange={settings=>update(index,{method:{...stage.method,...settings}})}/>
+      </details>}
+      <InputSettingsRow variant="actions"><InputSettingsAction variant="primary" ariaLabel={`第${index+1}级${action?.kind==='continue'?'继续':'开始'}`} disabled={gxtbRunBlocked(gxtbBackend,stage.method.method)||p.busy||action?.blockedByRetainedBatch||!validInputs||!stageReady(stage)||!p.canStart(index)} onClick={()=>action?.kind==='continue'&&p.onContinue?p.onContinue(index):p.onStart(index)}>{action?.kind==='continue'?'继续优化':'开始优化'}</InputSettingsAction>{p.onPause&&<InputSettingsAction ariaLabel={`第${index+1}级暂停优化`} disabled={!action?.running||action.stopping} onClick={()=>p.onPause?.(index)}>{action?.stopping?'正在暂停':'暂停优化'}</InputSettingsAction>}{p.onRestart&&<InputSettingsAction ariaLabel={`第${index+1}级重新优化`} disabled={gxtbRunBlocked(gxtbBackend,stage.method.method)||p.busy||!validInputs||!stageReady(stage)||!action?.hasHistory||!p.canStart(index)} onClick={()=>p.onRestart?.(index)}>重新优化</InputSettingsAction>}</InputSettingsRow>
     </InputSettingsCard>;})}
     <InputSettingsRow variant="actions"><InputSettingsAction variant="primary" disabled={p.busy||!canRunAll||p.stages.some((stage,index)=>p.actionForStage?.(stage.id,index).blockedByRetainedBatch)} onClick={p.onRunAll}>{p.actionForStage?p.stages.some((stage,index)=>p.actionForStage?.(stage.id,index).kind==='continue')?'批量继续优化':'批量开始优化':'批量运行全部'}</InputSettingsAction>{p.onRestartAll&&<InputSettingsAction disabled={p.busy||!canRunAll||!p.stages.some((stage,index)=>p.actionForStage?.(stage.id,index).hasHistory)} onClick={p.onRestartAll}>全部重新优化</InputSettingsAction>}</InputSettingsRow>
   </InputSettingsCard>;
@@ -91,7 +126,8 @@ export function ConformerOptimizationProgress({action,index,method}:{action:Conf
   if(!progress&&!action.running&&action.finalClusterCount===undefined&&!action.cleanupWarning)return null;
   const succeeded=progress?.succeeded??progress?.completed??0,discarded=progress?.discarded??((progress?.interrupted??0)+(progress?.failed??0));
   const unconverged=action.unconvergedCount??0,discardedText=unconverged?`未收敛 ${unconverged} · 丢弃 ${Math.max(0,discarded-unconverged)}`:`丢弃 ${discarded}`;
-  const phaseLabel=phase==='cluster'?'常规归簇':phase==='eliminate-equivalent'?'消除等价构象':phase==='prepare-results'?'准备结果':`${CONFORMER_OPTIMIZATION_METHODS.find(([id])=>id===method)?.[1]??method} 优化`;
+  const methodLabel=isPesNetMethod(method)?netMethods[method]:CONFORMER_OPTIMIZATION_METHODS.find(([id])=>id===method)?.[1]??method;
+  const phaseLabel=phase==='cluster'?'常规归簇':phase==='eliminate-equivalent'?'消除等价构象':phase==='prepare-results'?'准备结果':`${methodLabel} 优化`;
   const total=phase==='optimization'?progress?.total:background?.total;
   const processed=phase==='optimization'?succeeded+discarded:background?.completed??0;
   const determinate=typeof total==='number'&&Number.isFinite(total)&&total>0&&Number.isFinite(processed)&&processed>=0&&processed<=total;

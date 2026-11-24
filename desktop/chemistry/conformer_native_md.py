@@ -392,9 +392,10 @@ def settings(request, *, periodic_hydrogen_bond_references=None):
     raw_frames = (count + dump - 1) // dump
     shake = request.get('shakeHydrogenBonds', True)
     mass = request.get('hydrogenMassAmu')
-    require(mass is None or (type(mass) in (int, float) and mass == 4 and request['method'] == 'gfnff'),
-            'Only ordinary GFN-FF supports the explicit 4 amu hydrogen mass')
-    mass = None if mass is None else 4
+    require(mass is None and 'integrator' not in request or type(mass) in (int, float) and mass == (1 if shake else 4)
+            and ('integrator' in request or request['method'] == 'gfnff'),
+            'Native MD hydrogen mass must match the effective 1/4 amu X-H constraint setting')
+    mass = int(mass) if mass is not None else None
     require(type(shake) is bool and type(request['threads']) is int and 1 <= request['threads'] <= 2**53-1,
             'Explicit native MD SHAKE/thread settings required')
     # Locked main.F90 initializes xtb_gfnff_shake, but dynamic.f90 uses the
@@ -563,7 +564,8 @@ def native_arguments(request, runtime):
     verify_external_gxtb(runtime)
     args = [runtime['executable'], 'input.coord']
     if method == 'gfnff':
-        require(request['uhf'] == 0, 'GFN-FF has no spin Hamiltonian')
+        require('uhf' not in request or type(request['uhf']) is int and request['uhf'] == 0,
+                'GFN-FF has no spin Hamiltonian')
         args += ['--gfnff']
     elif method == 'gxtb':
         require(not request.get('periodic') and not request.get('solvation'), 'g-xTB MD requires an isolated gas-phase structure')
@@ -631,11 +633,12 @@ class NativeProgressReader:
 
 class TrajectoryReader:
     """Parse complete XYZ records with optional velocities and validated header."""
-    def __init__(self, atoms, dump_steps, total_steps, positions_only=False, frame_header=None):
+    def __init__(self, atoms, dump_steps, total_steps, positions_only=False, frame_header=None, *, optional_energy=False):
         self.atoms = atoms; self.dump_steps = dump_steps; self.total_steps = total_steps
         self.pending = b''; self.offset = 0; self.raw_index = 0; self.identity = None
         self.positions_only = positions_only
         self.frame_header = frame_header
+        self.optional_energy = optional_energy
         self.lines = deque()
 
     def drain(self, path, *, final=False):
@@ -667,8 +670,18 @@ class TrajectoryReader:
                     if self.frame_header is not None:
                         self.frame_header(comment)
                     match = re.search(r'\benergy:\s*([^"\s]+)', comment, re.I)
-                    require(match is not None, 'Native trajectory has no energy field')
-                    energy = number(match.group(1)); coordinates = []; velocities = []
+                    observation = {}
+                    if match is None and self.optional_energy:
+                        observation['energyObservationWarning'] = 'missing'
+                    else:
+                        require(match is not None, 'Native trajectory has no energy field')
+                        try:
+                            observation['energyHartree'] = number(match.group(1))
+                        except NativeMDError:
+                            if not self.optional_energy:
+                                raise
+                            observation['energyObservationWarning'] = 'invalid'
+                    coordinates = []; velocities = []
                     for atom, row in zip(self.atoms, record[2:2+n]):
                         fields = row.decode('ascii').split()
                         require(len(fields) == 4 and fields[0].lower() == atom['element'].lower(), 'Native MD element/order changed')
@@ -678,8 +691,8 @@ class TrajectoryReader:
                         velocities.append([number(v) * BOHR_ANGSTROM / ATOMIC_TIME_FS for v in fields])
                     step = self.raw_index * self.dump_steps
                     require(step < self.total_steps, 'Native MD produced an unexpected extra raw frame')
-                    value = dict(rawIndex=self.raw_index, step=step, energyHartree=energy,
-                                 coordinates=coordinates, velocities=None if self.positions_only else velocities)
+                    value = dict(rawIndex=self.raw_index, step=step, coordinates=coordinates,
+                                 velocities=None if self.positions_only else velocities, **observation)
                     self.raw_index += 1
                     yield value
         if final:
@@ -807,7 +820,7 @@ def validate_header(output, request, configuration, version):
         require(not printed_mass, 'Native natural hydrogen mass setting differs')
     else:
         require(len(printed_mass) == 1 and number(printed_mass[0]) == configuration['hydrogenMassAmu'],
-                'Native actual hydrogen mass does not match requested 4 amu')
+                'Native actual hydrogen mass does not match the requested absolute mass')
     protection = configuration['nativeProtection']
     if protection.get('constraints'):
         force = re.findall(r'^\s*(?:->\s+)?force constant\s*=\s*(\S+)\s*$', output, re.M)

@@ -1,15 +1,68 @@
 import type { ExcitedState,OrbitalChannel } from '../../results/scientific-contracts';
 import {frontierOrbitals} from '../../results/scientific-analysis';
-import { EV_NM, effectiveMultiplicity, excitedStateWavelength, type ProjectedVibrationMode, type SpectrumProjection } from '../../results/spectroscopy';
-import { formatResultValue } from '../../results/numeric-format';
+import { EV_NM, effectiveMultiplicity, excitedStateWavelength, gaussianPeak, lorentzianPeak, type ProjectedVibrationMode, type SpectrumPoint, type SpectrumProjection } from '../../results/spectroscopy';
+import { formatResultValue, fullPrecisionValue } from '../../results/numeric-format';
+import type { ScientificPlotPoint, ScientificPlotSeries } from '../../results/scientific-plot';
 import type { ScientificTableProjection } from './scientific-table';
 import {isNativeEstimatedMultiplicity} from './scientific-presentation';
 
 export function spectrumAxisRange(range: [number, number] | undefined, from: string, to: string): [number, number] | undefined {
   if (!range) return undefined;
   if (from === to) return range;
-  if ((from === 'eV' && to === 'nm' || from === 'nm' && to === 'eV') && range[0] > 0) return [EV_NM / range[1], EV_NM / range[0]];
+  if ((from === 'eV' && to === 'nm' || from === 'nm' && to === 'eV') && range[0] > 0 && range[1] > range[0]) {
+    const converted: [number, number] = [EV_NM / range[1], EV_NM / range[0]];
+    if (converted.every(Number.isFinite) && converted[0] > 0 && converted[1] > converted[0]) return converted;
+  }
   return undefined;
+}
+
+export type SpectrumDisplay = 'envelope' | 'sticks' | 'both';
+export type SpectrumKind = 'uv-vis' | 'ir' | 'raman';
+
+export const spectrumFigureTitles: Record<SpectrumKind, string> = {
+  'uv-vis': 'UV–Vis Absorption Spectrum',
+  ir: 'Infrared Spectrum',
+  raman: 'Raman Stokes Spectrum',
+};
+
+export function spectrumXLabel(kind: SpectrumKind, unit: string): string {
+  if (kind === 'uv-vis') return unit === 'nm' ? 'Wavelength / nm' : 'Excitation Energy / eV';
+  return kind === 'raman' ? 'Raman Shift / cm⁻¹' : 'Wavenumber / cm⁻¹';
+}
+
+/** Source positions map to the rendered envelope by interpolation. The curve
+ * samples remain unmodified and available for export. */
+function spectrumPeakAnchors(curve: readonly SpectrumPoint[], sticks: readonly ScientificPlotPoint[]): ScientificPlotPoint[] {
+  if (curve.length < 2) return [];
+  return sticks.map(stick => {
+    if (stick.index === undefined || stick.x < curve[0].x || stick.x > curve[curve.length - 1].x) return { ...stick, y: null };
+    let lo = 0, hi = curve.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >>> 1;
+      if (curve[mid].x > stick.x) hi = mid;
+      else lo = mid;
+    }
+    const left = curve[lo], right = curve[hi];
+    const fraction = right.x === left.x ? 0 : (stick.x - left.x) / (right.x - left.x);
+    return { ...stick, y: left.y + fraction * (right.y - left.y) };
+  });
+}
+
+export function spectrumPlotData(kind: SpectrumKind, display: SpectrumDisplay, curve: SpectrumProjection | null, sticks: readonly ScientificPlotPoint[], stickUnit: string) {
+  const quantity = kind === 'ir' ? 'IR Intensity' : kind === 'raman' ? 'Stokes Intensity' : 'Spectral Intensity';
+  const unit = (value: string) => value.replace('单位未确认', 'Unit Unconfirmed');
+  const stickLabel = kind === 'uv-vis' ? 'Oscillator Strength (f)'
+    : `${kind==='ir'?'Integrated IR Intensity':'Stokes Stick Intensity'} (${unit(stickUnit)})`;
+  const stickSeries: ScientificPlotSeries = { id: 'spectrum-sticks', label: 'Sticks', kind: 'stick', points: sticks };
+  if (!curve || display === 'sticks') return { yLabel: stickLabel, series: [stickSeries], secondaryYAxis: undefined, peaks: undefined };
+  const series: ScientificPlotSeries[] = [{ id: 'spectrum', label: 'Envelope', kind: 'line', points: curve.points }];
+  const peak = curve.peakShape==='gaussian'?gaussianPeak:lorentzianPeak;
+  const toPrimaryScale=peak(0,curve.fwhm)/curve.normalizationDivisor;
+  return {
+    yLabel: curve.normalized ? 'Normalized Intensity' : `${quantity} (${unit(curve.intensityUnit)})`,
+    series, secondaryYAxis: display === 'both' && sticks.length ? { label: stickLabel, series: [stickSeries],toPrimaryScale } : undefined,
+    peaks: display === 'envelope' ? spectrumPeakAnchors(curve.points, sticks) : undefined,
+  };
 }
 
 export function excitedStateLabel(state: ExcitedState, unrestricted = false): string {
@@ -68,8 +121,12 @@ export function vibrationModeTable(modes: readonly ProjectedVibrationMode[], sca
   rows: modes.map(mode => ({ key: String(mode.displayIndex), cells: [String(mode.displayIndex), number(mode.originalFrequency),
     ...(scaled ? [number(mode.correctedFrequency)] : []), number(mode.irIntensity),...(!unit?[mode.irIntensity==null?'未输出':mode.irIntensityUnit??'单位未确认']:[]),...(ramanModes.length?[number(mode.ramanActivity),...(!ramanUnit?[mode.ramanActivity==null?'未输出':mode.ramanActivityUnit??'单位未确认']:[])]:[])] })) };
 }
-export function spectrumText(spectrum: SpectrumProjection, sticks: boolean, decimals = 2): string {
-  const number = (value: number | null | undefined) => formatResultValue(value, decimals);
-  return [`${spectrum.xUnit}\t${sticks ? spectrum.stickIntensityUnit : spectrum.intensityUnit}`,
-    ...(sticks ? spectrum.sticks : spectrum.points).map(point => `${number(point.x)}\t${number(point.y)}`)].join('\n') + '\n';
+export function spectrumText(spectrum: SpectrumProjection, sticks: boolean, decimals: number | null = 2): string {
+  return spectrumDataText(spectrum.xUnit, sticks ? spectrum.stickIntensityUnit : spectrum.intensityUnit,
+    sticks ? spectrum.sticks : spectrum.points, decimals ?? undefined);
+}
+
+export function spectrumDataText(xUnit: string, intensityUnit: string, points: readonly SpectrumPoint[], decimals?: number): string {
+  const number = decimals === undefined ? fullPrecisionValue : (value: number) => formatResultValue(value, decimals);
+  return [`${xUnit}\t${intensityUnit}`, ...points.map(point => `${number(point.x)}\t${number(point.y)}`)].join('\n') + '\n';
 }

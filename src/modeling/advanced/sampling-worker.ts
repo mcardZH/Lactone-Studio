@@ -39,7 +39,7 @@ self.onmessage = async (event: MessageEvent<SamplingWorkRequest | { kind: 'stop'
       let processed = 0;
       for (let index = 0; index < request.candidates.length; index++) {
         const candidate = request.candidates[index];
-        if (!isMixedSamplingDuplicate(candidate, retained, request.threshold,compare)) { accepted.push(index); retained.push(candidate); }
+        if (!isMixedSamplingDuplicate(candidate, retained, request.threshold, compare, request.frozenAtomIds)) { accepted.push(index); retained.push(candidate); }
         progress(index + 1, request.candidates.length);
         processed = index + 1;
         if (performance.now() - last < 5) await new Promise(resolve => setTimeout(resolve, 0));

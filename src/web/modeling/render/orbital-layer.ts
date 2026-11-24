@@ -6,10 +6,11 @@ import type { ModelDocument } from '../../../modeling/contracts';
 import { composeTransforms, rotate, transformPoint, type RigidTransform } from './alignment';
 import { cross, dot } from './geometry';
 import { createShapeLayer } from './shape-layer';
-import { createSurfaceMesh, createSignedSurfaceMeshes } from './surface-mesh';
-import { meshGeometryChunks, type MeshGeometryChunk } from './mesh-geometry';
+import { retainNativeShapeRoot } from './shape-resource-lifecycle';
+import { createSurfaceMeshJob } from './surface-mesh-job';
+import type {PackedChunk} from './surface-mesh-transfer';
+import {addPackedNativeMesh} from './native-packed-mesh';
 import { updateCustomMeshAppearance } from './mesh-appearance';
-import { createScalarGradientNormals } from './field-gradient-normals';
 import { attachLocalMeshFinish, updateLocalMeshFinish } from './mesh-finish';
 import { meshFinishKey } from '../../../results/mesh-appearance';
 
@@ -56,12 +57,13 @@ export function orbitalVolumeData(mol: any, layer: AmplitudeLayer, transform: Ri
 
 /** Same-scene native GLShape custom meshes, never atom models or pick proxies.
  * No camera/zoom/render calls: the owning adapter presents one completed frame. */
-export function createOrbitalLayer(viewer: any, mol: any) {
+export function createOrbitalLayer(viewer: any, mol: any, notify?: () => void) {
   const shapes = createShapeLayer(viewer);
+  const preparation = createSurfaceMeshJob(mol.MarchingCube, notify);
   let field: AmplitudeLayer['field'] | null = null, signature = '', geometrySignature = '', finishSignature = '';
   let meshState = emptyNtoMesh();
   let materials: { handle: any; vertices: number; sign: number; color: string; opacity: number }[] = [];
-  type PreparedMesh = { field: AmplitudeLayer['field']; values: Float64Array; chunks: {sign:number; geometry:MeshGeometryChunk}[]; bytes:number };
+  type PreparedMesh = { field: AmplitudeLayer['field']; values: Float64Array; chunks: PackedChunk[]; bytes:number };
   const recent = new Map<string,PreparedMesh>();
   let cacheOwner = '';
   let idleRelease:ReturnType<typeof setTimeout>|undefined;
@@ -74,12 +76,14 @@ export function createOrbitalLayer(viewer: any, mol: any) {
     while(recent.size>2||bytes>ORBITAL_MESH_CACHE_BYTES){const oldest=recent.keys().next().value!;bytes-=recent.get(oldest)!.bytes;recent.delete(oldest);}
   }
   return {
+    pending:preparation.pending,
     bounds:shapes.bounds,
     sync(layer: AmplitudeLayer | null, document: ModelDocument | null, transform: RigidTransform): boolean {
       cancelIdleRelease();
       const owner=document?`${document.id}:${document.revision}`:'';
       if(owner!==cacheOwner){recent.clear();cacheOwner=owner;}
       if (!layer?.visible || !document || layer.documentId !== document.id || layer.geometryRevision !== document.revision) {
+        preparation.cancel();
         // A null layer can be a same-turn selection handoff. Give that handoff
         // one short grace period, then release an inactive/closed analysis too.
         if(recent.size){idleRelease=setTimeout(()=>{recent.clear();idleRelease=undefined;},500);(idleRelease as unknown as {unref?:()=>void}).unref?.();}
@@ -110,32 +114,29 @@ export function createOrbitalLayer(viewer: any, mol: any) {
       // mutation, sign-reversed field copy, or vertex-moving smoothing.
       const pose = orbitalPose(layer, transform);
       if (isNto(layer)) validateNtoField(layer.field);
+      const removed = shapes.size > 0;
       shapes.clear(); materials = []; field = null; signature = geometrySignature = finishSignature = '';
       try {
         let prepared=recent.get(geometryKey);
         if(prepared&&(prepared.field!==layer.field||prepared.values!==layer.field.values)){recent.delete(geometryKey);prepared=undefined;}
         if(!prepared){
-          const normalAt = createScalarGradientNormals(layer.field), chunks:PreparedMesh['chunks']=[];
-          let bytes=layer.field.values.byteLength;
-          const meshes=layer.phase==='positive'||layer.phase==='negative'
-            ? [{sign:layer.phase==='positive'?1:-1,mesh:createSurfaceMesh(layer.field,(layer.phase==='positive'?1:-1)*layer.isovalue,mol.MarchingCube,undefined,layer.phase==='negative'?'below':'above')}]
-            : createSignedSurfaceMeshes(layer.field,layer.isovalue,mol.MarchingCube);
-          for (const {sign,mesh} of meshes) {
-            for (const geometry of meshGeometryChunks(mesh, pose, BOHR_TO_ANGSTROM, undefined, false, position => normalAt(position,sign > 0 ? -1 : 1))) {
-              bytes+=geometry.vertexArr.length*256+geometry.faceArr.length*16;
-              chunks.push({sign,geometry});
-            }
-          }
+          const { grid, values } = layer.field;
+          const chunks = preparation.read(geometryKey, { kind: 'amplitude', shape: { grid, values, ...(isNto(layer) ? {validDomain: layer.field.validDomain} : {}) },
+            isovalue: layer.isovalue, phase: layer.phase, pose, factor: BOHR_TO_ANGSTROM });
+          if (!chunks) return removed;
+          const bytes = chunks.reduce((size,chunk) => size + chunk.vertices.byteLength+chunk.normals.byteLength+chunk.faces.byteLength, values.byteLength);
           prepared={field:layer.field,values:layer.field.values,chunks,bytes};remember(geometryKey,prepared);
-        }else{recent.delete(geometryKey);recent.set(geometryKey,prepared);}
+        }else{preparation.cancel();recent.delete(geometryKey);recent.set(geometryKey,prepared);}
         let vertexCount = 0, triangleCount = 0;
-        for (const {sign,geometry:{sourceIndices:_sourceIndices,...chunk}} of prepared.chunks) {
-            const handle = shapes.keep(viewer.addCustom({ ...chunk, color: sign > 0 ? layer.positiveColor : layer.negativeColor, opacity: layer.opacity, clickable: false, hoverable: false }));
+        for (const chunk of prepared.chunks) {
+            const {sign}=chunk;
+            const handle = shapes.keep(addPackedNativeMesh(viewer,mol,chunk,{color:sign>0?layer.positiveColor:layer.negativeColor,opacity:layer.opacity,clickable:false,hoverable:false}));
             attachLocalMeshFinish(handle,layer.finish);
+            retainNativeShapeRoot(handle);
             const groups = handle?.geo?.geometryGroups;
             if (isNto(layer) && !groups?.length) throw new Error('NTO没有实际提交的渲染几何。');
             for (const group of groups ?? []) { vertexCount += group.vertices; triangleCount += group.faceidx / 3; }
-            materials.push({ handle, vertices: chunk.vertexArr.length, sign, color: sign > 0 ? layer.positiveColor : layer.negativeColor, opacity: layer.opacity });
+            materials.push({ handle, vertices: chunk.vertices.length/3, sign, color: sign > 0 ? layer.positiveColor : layer.negativeColor, opacity: layer.opacity });
         }
         if (isNto(layer)) {
           if (!(vertexCount > 0 && triangleCount > 0)) throw new Error('当前NTO等值没有可提交的表面三角形。');
@@ -144,6 +145,7 @@ export function createOrbitalLayer(viewer: any, mol: any) {
       } catch (error) { shapes.clear(); materials = []; throw error; }
       field = layer.field; signature = key; geometrySignature = geometryKey; finishSignature=nextFinishSignature; return true;
       } catch (error) {
+        preparation.cancel();
         shapes.clear(); materials = []; field = null; signature = geometrySignature = finishSignature = '';
         if (isNto(layer)) meshState = { ...meshState, fieldId: layer.field.id, status: 'failed', committedKey: null, submitted: false, shapeCount: 0, vertexCount: 0, triangleCount: 0, error: error instanceof Error ? error.message : String(error) };
         else meshState = emptyNtoMesh();
@@ -157,6 +159,6 @@ export function createOrbitalLayer(viewer: any, mol: any) {
       shapes.clear(); materials = []; field = null; signature = geometrySignature = finishSignature = '';
       meshState = { ...meshState, status: 'failed', committedKey: null, submitted: false, shapeCount: 0, vertexCount: 0, triangleCount: 0, error: error instanceof Error ? error.message : String(error) };
     },
-    dispose() { cancelIdleRelease(); shapes.clear(); materials = []; recent.clear(); cacheOwner=''; field = null; signature = geometrySignature = finishSignature = ''; meshState = emptyNtoMesh(); },
+    dispose() { preparation.cancel(); cancelIdleRelease(); shapes.clear(); materials = []; recent.clear(); cacheOwner=''; field = null; signature = geometrySignature = finishSignature = ''; meshState = emptyNtoMesh(); },
   };
 }

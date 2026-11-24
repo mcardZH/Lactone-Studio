@@ -53,10 +53,18 @@ function validateGrid(grid: SurfaceGrid): void {
   const scaled = grid.axes.map(axis => { const norm = Math.hypot(...axis); return axis.map(value => value / norm) as Vector3; });
   if (!scaled.flat().every(Number.isFinite) || determinant(scaled) === 0) throw new Error('表面仿射步进矩阵退化。');
 }
+// Scalar values and masks are immutable scientific snapshots. Keep structural
+// checks at each boundary and remember the successful scans of shared buffers.
+const checkedScalarValues = new WeakSet<Float64Array>();
+const checkedNodeMasks = new WeakSet<Uint8Array>();
 export function validateSurfaceScalarField(field: SurfaceScalarField): void {
   validateGrid(field.grid);
   const count = field.grid.dimensions.reduce((n, d) => n * d, 1);
-  if (!Number.isSafeInteger(count) || !(field.values instanceof Float64Array) || field.values.length !== count || field.values.some(value => !Number.isFinite(value))) throw new Error('表面标量格点数据数量或数值无效。');
+  if (!Number.isSafeInteger(count) || !(field.values instanceof Float64Array) || field.values.length !== count) throw new Error('表面标量格点数据数量或数值无效。');
+  if (!checkedScalarValues.has(field.values)) {
+    if (field.values.some(value => !Number.isFinite(value))) throw new Error('表面标量格点数据数量或数值无效。');
+    checkedScalarValues.add(field.values);
+  }
   if (!field.id || !field.source.id || !field.source.revision || !field.context.sourceId || !field.context.sourceRevision || !Number.isSafeInteger(field.context.generation) || field.context.generation < 0) throw new Error('表面格点缺少稳定来源与代际身份。');
   if ([field.context.jobIndex, field.context.sourceFrameIndex].some(value => value !== null && (!Number.isSafeInteger(value) || value < 0))
     || [field.context.documentRevision, field.context.activationEpoch].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) throw new Error('表面格点来源帧或修订身份无效。');
@@ -66,7 +74,14 @@ export function validateSurfaceScalarField(field: SurfaceScalarField): void {
     || precision.nuclearCharges !== undefined && (precision.nuclearCharges.length !== field.atoms.length || precision.nuclearCharges.some(value => !Number.isFinite(value)))
     || [...precision.origin, ...precision.axes.flat(), ...precision.atomCoordinates.flat(), ...(precision.nuclearCharges ?? [])].some(value => value < 0)) throw new Error('表面格点缺少可靠原始打印精度。');
   if (!field.atoms.length || field.atoms.some((atom, i) => atom.sourceIndex !== i + 1 || !Number.isSafeInteger(atom.atomicNumber) || atom.atomicNumber < 1 || atom.atomicNumber > 118 || !Number.isFinite(atom.nuclearCharge) || !finiteVector(atom.position))) throw new Error('表面格点原子身份、顺序或坐标无效。');
-  if (field.validDomain.kind === 'node-mask' && (!(field.validDomain.mask instanceof Uint8Array) || field.validDomain.mask.length !== count || field.validDomain.mask.some(value => value !== 0 && value !== 1))) throw new Error('表面格点有效节点mask无效。');
+  if (field.validDomain.kind === 'node-mask') {
+    const {mask}=field.validDomain;
+    if (!(mask instanceof Uint8Array) || mask.length !== count) throw new Error('表面格点有效节点mask无效。');
+    if (!checkedNodeMasks.has(mask)) {
+      if (mask.some(value => value !== 0 && value !== 1)) throw new Error('表面格点有效节点mask无效。');
+      checkedNodeMasks.add(mask);
+    }
+  }
   if (!['full-grid', 'node-mask', 'unknown'].includes(field.validDomain.kind)) throw new Error('未知的表面有效域定义。');
 }
 const agrees = (a: number, b: number, ar: number, br: number) => Math.abs(a - b) <= ar + br + 64 * Number.EPSILON * Math.max(1, Math.abs(a), Math.abs(b));

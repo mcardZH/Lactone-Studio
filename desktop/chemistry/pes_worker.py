@@ -1,10 +1,14 @@
-"""One owned PES run over an NDJSON request, event and stop pipe."""
+"""Owned PES runs over an NDJSON request, event and stop pipe."""
 from __future__ import annotations
 
+from contextlib import contextmanager, nullcontext
 import importlib
 import json
+import hashlib
+import struct
 import os
 from pathlib import Path
+from queue import Queue
 import re
 import stat
 import sys
@@ -12,15 +16,19 @@ import threading
 import time
 import traceback
 
-from native_stdin import control_blocks
+from native_stdin import control_blocks, replace_native_output_descriptors, route_native_output
 
 
 SCHEMA = 'es-pes/v1'
+RESIDENT_SCHEMA = 'es-pes-resident/v1'
+ORDINARY_WARM = {'fire2': 'fire2', 'sella-xyz': 'sella', 'sella-ric': 'sella'}
 OPERATIONS = {
-    'scan': ('pes_scan_ts', {'slsqp', 'sella-scan'}),
+    'scan': ('pes_scan_ts', {'slsqp', 'sella-scan', 'lbfgs-scan', 'fire2-scan'}),
     'ts': ('pes_scan_ts', {'prfo', 'rfo', 'qn', 'dimer', 'climb'}),
     'hessian': ('pes_scan_ts', {'numeric'}),
     'path': ('pes_paths', {'ci-neb', 'de-gsm', 'fsm'}),
+    'opt': ('pes_opt', {'lbfgs', 'precon-exp', 'fire2', 'sella-xyz', 'sella-ric'}),
+    'irc': ('pes_irc', {'sella-irc'}),
 }
 STATUSES = {'completed', 'partial', 'not-converged', 'stopped', 'failed'}
 
@@ -80,29 +88,34 @@ def validate_input(payload):
     return request, payload['runtime'], workspace, module
 
 
-def route_native_output(workspace):
-    """Keep the protocol descriptor private from Python and native libraries."""
+class ResidentProtocol:
+    """Keep concurrent preparation and scientific events on whole NDJSON lines."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.lock = threading.Lock()
+
+    def write(self, data):
+        with self.lock:
+            self.stream.write(data)
+            self.stream.flush()
+
+    def flush(self):
+        pass  # Each line was flushed while holding the writer lock.
+
+
+@contextmanager
+def resident_protocol():
     sys.stdout.flush()
-    sys.stderr.flush()
-    protocol = os.fdopen(os.dup(sys.stdout.fileno()), 'wb')
-    try:
-        with (workspace / 'stderr.log').open('xb') as log:
-            os.dup2(log.fileno(), sys.stdout.fileno())
-            os.dup2(log.fileno(), sys.stderr.fileno())
-            if os.name == 'nt':
-                import ctypes
-                from ctypes import wintypes
-                import msvcrt
-                set_handle = ctypes.WinDLL('kernel32', use_last_error=True).SetStdHandle
-                set_handle.argtypes = [wintypes.DWORD, wintypes.HANDLE]
-                set_handle.restype = wintypes.BOOL
-                for native, stream in ((-11, sys.stdout), (-12, sys.stderr)):
-                    if not set_handle(native, msvcrt.get_osfhandle(stream.fileno())):
-                        raise ctypes.WinError(ctypes.get_last_error())
-    except BaseException:
-        protocol.close()
-        raise
-    return protocol
+    with os.fdopen(os.dup(sys.stdout.fileno()), 'wb') as stdout:
+        try:
+            # Optional imports can run concurrently. Their prints use the
+            # diagnostic descriptors while the private stream carries events.
+            replace_native_output_descriptors(sys.stderr.fileno(), sys.stderr.fileno())
+            yield ResidentProtocol(stdout)
+        finally:
+            sys.stdout.flush()
+            replace_native_output_descriptors(stdout.fileno(), sys.stderr.fileno())
 
 
 def json_value(value):
@@ -112,16 +125,20 @@ def json_value(value):
 
 
 class Events:
-    def __init__(self, protocol, request):
+    def __init__(self, protocol, request, *, compact_terminal_frames=False, numeric_directory=None):
         self.protocol = protocol
         self.request = request
         self.seq = 0
         self.frames = {}
+        self.compact_terminal_frames = compact_terminal_frames
+        self.emitted_frame_hashes = {}
+        self.numeric_directory = numeric_directory
         self.path_records = {}
         self.scan_points = {}
         self.timed_stage = None
         self.completed = None
         self.stage_started = None
+        self.evaluation_started = False
 
     def emit(self, event, **fields):
         packet = dict(schema=SCHEMA, runIdentity=self.request['runIdentity'], seq=self.seq, event=event, **fields)
@@ -154,7 +171,17 @@ class Events:
         elif kind == 'frame':
             if payload['id'] in self.frames:
                 raise ValueError('PES algorithm repeated a live frame identity')
-            self.emit('frame', frame=payload)
+            if self.compact_terminal_frames:
+                frame = json.dumps(payload, ensure_ascii=True, allow_nan=False,
+                                   separators=(',', ':'), default=json_value).encode('ascii')
+                header = dict(schema=SCHEMA, runIdentity=self.request['runIdentity'], seq=self.seq, event='frame')
+                context = json.dumps(header, ensure_ascii=True, separators=(',', ':')).encode('ascii')
+                self.protocol.write(context[:-1] + b',"frame":' + frame + b'}\n')
+                self.protocol.flush()
+                self.seq += 1
+                self.emitted_frame_hashes[payload['id']] = hashlib.sha256(frame).digest()
+            else:
+                self.emit('frame', frame=payload)
             self.frames[payload['id']] = payload
         elif kind == 'path-record':
             record = payload['record']
@@ -167,6 +194,12 @@ class Events:
                 raise ValueError('PES algorithm repeated a scan point identity')
             self.emit('scan-point', point=payload)
             self.scan_points[payload['pointIndex']] = payload
+        elif kind == 'evaluation-started':
+            if not self.evaluation_started:
+                self.evaluation_started = True
+                self.emit('evaluation-started', **payload)
+        elif kind == 'optimization-timing':
+            self.emit(kind, timing=payload)
         else:
             raise ValueError(f'Unknown PES progress kind {kind}')
 
@@ -185,10 +218,80 @@ class Events:
         # yielding a partial or nonconverged scientific result.
         terminal = 'failed' if error is not None else 'stopped' if status == 'stopped' else 'completed'
         packet = {'status': terminal, 'result': result}
+        # Reuse the exact order in the final solver result, including frames
+        # emitted only at termination. A changed previously emitted frame
+        # stays explicit so the host can reject it as it did on the old wire.
+        if self.compact_terminal_frames and result.get('frames'):
+            frames = result.get('frames', ())
+            def was_emitted(frame):
+                previous = self.emitted_frame_hashes.get(frame['id'])
+                if previous is None:
+                    return False
+                encoded = json.dumps(frame, ensure_ascii=True, allow_nan=False,
+                                     separators=(',', ':'), default=json_value).encode('ascii')
+                return hashlib.sha256(encoded).digest() == previous
+            changed = []
+            for frame in frames:
+                if frame['id'] not in self.emitted_frame_hashes:
+                    self.emit('terminal-frame', frame=frame)
+                elif not was_emitted(frame):
+                    # A redefined live receipt is checked by the host and can
+                    # never be silently reused as the earlier immutable frame.
+                    changed.append(frame)
+            packet['resultFrameIds'] = [frame['id'] for frame in frames]
+            packet['result'] = {**result, 'frames': changed}
+        if self.numeric_directory is not None:
+            try:
+                compact, fields = write_terminal_numeric_fields(packet['result'], self.numeric_directory)
+                if fields:
+                    packet['result'] = compact
+                    packet['resultNumericFiles'] = fields
+            except OSError as storage_error:
+                # Numerical results still exist in the solver payload if the
+                # transport file could not be created.
+                packet['result'] = {**packet['result'], 'provenance': {
+                    **packet['result']['provenance'], 'terminalNumericStorageWarning': str(storage_error)}}
         if error is not None:
             packet['error'] = error
         self.emit('terminal', **packet)
         return 1 if terminal == 'failed' else 0
+
+
+def write_terminal_numeric_fields(result, directory):
+    """Emit immutable Float64 evidence while leaving geometry and mode metadata inline."""
+    hessian = result.get('hessian')
+    matrix = hessian.get('matrixHartreePerBohr2') if hessian is not None else None
+    modes = result.get('frequencies')
+    if matrix is None and not modes:
+        return result, {}
+    fields = {}
+
+    def write(name, rows, shape):
+        digest = hashlib.sha256()
+        length = 0
+        with (directory / name).open('xb') as stream:
+            for row in rows:
+                packed = struct.pack(f'<{len(row)}d', *row)
+                stream.write(packed)
+                digest.update(packed)
+                length += len(packed)
+            stream.flush()
+            os.fsync(stream.fileno())
+        return {'name': name, 'shape': shape, 'bytes': length, 'sha256': digest.hexdigest()}
+
+    compact = dict(result)
+    if matrix is not None:
+        size = len(matrix)
+        fields['hessianMatrix'] = write('hessian-matrix.f64', matrix, [size, size])
+        compact['hessian'] = {key: value for key, value in hessian.items() if key != 'matrixHartreePerBohr2'}
+    if modes:
+        atoms = len(modes[0]['displacements'])
+        fields['modeDisplacements'] = write(
+            'vibration-displacements.f64', (xyz for mode in modes for xyz in mode['displacements']),
+            [len(modes), atoms, 3])
+        compact['frequencies'] = [{key: value for key, value in mode.items() if key != 'displacements'}
+                                  for mode in modes]
+    return compact, fields
 
 
 class StopReader:
@@ -273,6 +376,8 @@ def main():
     fd = sys.stdin.fileno()
     try:
         payload, pending = read_request(fd)
+        if isinstance(payload, dict) and payload.get('schema') == RESIDENT_SCHEMA:
+            return run_on_large_stack(lambda: resident_main(fd, pending, payload))
         request, runtime, workspace, module = validate_input(payload)
     except Exception:
         traceback.print_exc(file=sys.stderr)
@@ -283,48 +388,282 @@ def main():
         from pes_core import uses_resident_eg
         needs_stack = uses_resident_eg(request)
     if needs_stack:
-        # The Windows native non-SCC loaders need the validated 64 MiB stack.
-        # Keep create/evaluate/release on this one task thread; OMP/BLAS grants
-        # remain untouched. Restore the process default before other threads.
-        values, failures, ready = [], [], threading.Event()
-        def execute():
-            ready.wait()
-            try:
-                values.append(run_owned(request, runtime, workspace, module, pending, fd))
-            except BaseException as error:
-                failures.append(error)
-        previous = threading.stack_size()
-        try:
-            threading.stack_size(64 * 1024 * 1024)
-            solver = threading.Thread(target=execute, name='pes-resident-solver')
-            solver.start()
-        finally:
-            threading.stack_size(previous)
-        ready.set()
-        solver.join()
-        if failures:
-            raise failures[0]
-        return values[0]
+        return run_on_large_stack(lambda: run_owned(request, runtime, workspace, module, pending, fd))
     return run_owned(request, runtime, workspace, module, pending, fd)
 
 
+def run_on_large_stack(work):
+    # The Windows non-SCC loaders need the validated 64 MiB native stack.
+    values, failures, ready = [], [], threading.Event()
+
+    def execute():
+        ready.wait()
+        try:
+            values.append(work())
+        except BaseException as error:
+            failures.append(error)
+
+    previous = threading.stack_size()
+    try:
+        threading.stack_size(64 * 1024 * 1024)
+        solver = threading.Thread(target=execute, name='pes-resident-solver')
+        solver.start()
+    finally:
+        threading.stack_size(previous)
+    ready.set()
+    solver.join()
+    if failures:
+        raise failures[0]
+    return values[0]
+
+
+class ResidentControl:
+    def __init__(self, fd, pending):
+        self.commands = Queue()
+        self.active = None
+        self.last_identity = None
+        self.done = threading.Event()
+        self.lock = threading.Lock()
+        self.error = None
+        self.thread = threading.Thread(target=self.read, args=(fd, pending), name='pes-resident-control', daemon=True)
+        self.thread.start()
+
+    def read(self, fd, pending):
+        incoming = bytearray()
+        try:
+            if not self.consume(incoming, pending):
+                return
+            for block in control_blocks(fd, self.done):
+                if not block:
+                    break
+                if not self.consume(incoming, block):
+                    return
+        except Exception as error:
+            self.error = error
+        finally:
+            self.done.set()
+            with self.lock:
+                if self.active is not None:
+                    self.active[1].set()
+            self.commands.put(None)
+
+    def consume(self, incoming, block):
+        lines = block.split(b'\n')
+        for line in lines[:-1]:
+            incoming.extend(line)
+            packet = load_line(incoming)
+            incoming.clear()
+            if packet.get('command') == 'stop':
+                self.stop(packet)
+                continue
+            if packet.get('schema') != RESIDENT_SCHEMA:
+                raise ValueError('Invalid PES resident control schema')
+            command = packet.get('command')
+            if command == 'shutdown':
+                return False
+            if command == 'run':
+                payload = packet['payload']
+                identity = payload['request']['runIdentity']
+                with self.lock:
+                    if self.active is not None:
+                        raise ValueError('PES worker received overlapping task leases')
+                    stop = threading.Event()
+                    self.active = (identity, stop)
+                self.commands.put((command, payload, stop))
+            elif command == 'prepare':
+                self.commands.put((command, packet['profile'], None))
+            else:
+                raise ValueError('Invalid PES resident control command')
+        incoming.extend(lines[-1])
+        return True
+
+    def stop(self, packet):
+        identity = packet.get('runIdentity')
+        if packet != dict(schema=SCHEMA, runIdentity=identity, command='stop'):
+            raise ValueError('Invalid PES stop message')
+        with self.lock:
+            if self.active is not None and identity == self.active[0]:
+                self.active[1].set()
+            elif identity != self.last_identity or identity is None:
+                raise ValueError('Invalid PES stop identity')
+
+    def release(self, identity):
+        with self.lock:
+            if self.active is None or identity != self.active[0]:
+                raise ValueError('Invalid PES worker lease release')
+            self.active = None
+            self.last_identity = identity
+
+
+def prepare_profile(profile):
+    module = solver_module(profile)
+    algorithm = profile['algorithm']
+    importlib.import_module(module)
+    importlib.import_module('ase.data')
+    if algorithm.startswith('sella') or algorithm in ('prfo', 'rfo', 'qn'):
+        importlib.import_module('sella')
+        importlib.import_module('sella.internal')
+        importlib.import_module('sella.optimize.restricted_step')
+    elif algorithm in ('fire2', 'climb'):
+        importlib.import_module('ase.optimize')
+    elif algorithm == 'dimer':
+        importlib.import_module('ase.mep')
+    elif algorithm == 'fsm':
+        importlib.import_module('pes_strings')
+    elif algorithm == 'ci-neb':
+        importlib.import_module('pes_neb')
+    elif algorithm == 'de-gsm':
+        importlib.import_module('pyGSM.growing_string_methods.de_gsm')
+        importlib.import_module('pyGSM.molecule')
+
+
+def resident_main(fd, pending, envelope):
+    with resident_protocol() as protocol:
+        return run_resident(fd, pending, envelope, protocol)
+
+
+def run_resident(fd, pending, envelope, protocol):
+    from threadpoolctl import ThreadpoolController
+
+    if set(envelope) != {'schema', 'command', 'library', 'profile'} or envelope['command'] != 'resident':
+        raise ValueError('Invalid PES resident bootstrap envelope')
+    warm_directory = Path.cwd()
+    control = ResidentControl(fd, pending)
+    library = envelope['library']
+    close_library = lambda: None
+    controller = None
+    prepared_profiles = set()
+    optional = {}
+    preparation = None
+
+    def emit(event, **fields):
+        line = json.dumps(dict(schema=RESIDENT_SCHEMA, event=event, **fields),
+                          ensure_ascii=True, separators=(',', ':')) + '\n'
+        protocol.write(line.encode('ascii'))
+
+    def prepare(profile):
+        nonlocal controller
+        key = (profile['operation'], profile['algorithm'], profile.get('parameters', {}).get('executionProfile'))
+        if key in prepared_profiles:
+            return
+        dependency = ORDINARY_WARM.get(profile['algorithm']) if profile['operation'] == 'opt' else None
+        warming = optional.get(dependency)
+        if warming is None:
+            prepare_profile(profile)
+            controller = ThreadpoolController()
+        else:
+            warming['done'].wait()
+            if 'error' in warming:
+                raise warming['error']
+            controller = warming['controller']
+        prepared_profiles.add(key)
+
+    def warm_optimizers():
+        for dependency, algorithm in (('fire2', 'fire2'), ('sella', 'sella-xyz')):
+            if control.done.is_set():
+                return
+            state = optional[dependency]
+            try:
+                prepare_profile({'operation': 'opt', 'algorithm': algorithm})
+                state['controller'] = ThreadpoolController()
+            except Exception as error:
+                state['error'] = error
+                traceback.print_exc(file=sys.stderr)
+            finally:
+                state['done'].set()
+            if not control.done.is_set():
+                error = state.get('error')
+                emit('optimizer-prepared', optimizer=dependency, ready=error is None,
+                     **({'detail': str(error)} if error is not None else {}))
+
+    try:
+        if library is not None:
+            from pes_libxtb import close_resident_api, prepare_resident_api
+            close_library = close_resident_api
+            prepare_resident_api(library)
+        prepare(envelope['profile'])
+        emit('ready')
+        if library is not None:
+            optional.update({name: {'done': threading.Event()} for name in ('fire2', 'sella')})
+            preparation = threading.Thread(target=warm_optimizers, name='pes-optimizer-preparation', daemon=True)
+            preparation.start()
+        while not control.done.is_set():
+            message = control.commands.get()
+            if message is None:
+                break
+            command, payload, stop = message
+            if command == 'prepare':
+                try:
+                    prepare(payload)
+                    emit('prepared')
+                except Exception as error:
+                    traceback.print_exc(file=sys.stderr)
+                    emit('prepare-failed', detail=str(error))
+                continue
+            request, runtime, workspace, module = validate_input(payload)
+            prepare(request)
+            if 'libxtbRoot' in runtime:
+                from pes_libxtb import close_resident_api, prepare_resident_api
+                close_library = close_resident_api
+                prepare_resident_api(runtime)
+                if library is None:
+                    library = runtime
+                    controller = ThreadpoolController()
+            os.chdir(workspace)
+            try:
+                with controller.limit(limits=request['threads']):
+                    _, reusable = execute_owned(request, runtime, workspace, module, nullcontext(control),
+                                                stop=stop, event_stream=protocol)
+            finally:
+                os.chdir(warm_directory)
+            if control.error is not None:
+                raise control.error
+            if not reusable:
+                return 1
+            identity = request['runIdentity']
+            control.release(identity)
+            emit('released', runIdentity=identity)
+        if control.error is not None:
+            raise control.error
+        return 0
+    finally:
+        control.done.set()
+        if preparation is not None:
+            preparation.join()
+        close_library()
+
+
 def run_owned(request, runtime, workspace, module, pending, fd):
+    return execute_owned(request, runtime, workspace, module, StopReader(fd, pending, request['runIdentity']))[0]
+
+
+def execute_owned(request, runtime, workspace, module, stop_reader, *, stop=None, event_stream=None):
     with route_native_output(workspace) as protocol:
-        events = Events(protocol, request)
+        events = Events(event_stream if event_stream is not None else protocol, request,
+                        compact_terminal_frames=runtime.get('compactTerminalFrames') is True,
+                        numeric_directory=workspace if runtime.get('binaryTerminalFields') is True else None)
         ctx = None
+        control = None
         stopped_type = ()
         result = None
         failure = None
+        reusable = True
         try:
             with (workspace / 'request.json').open('x', encoding='ascii') as stream:
                 json.dump(request, stream, ensure_ascii=True, allow_nan=False)
-            with StopReader(fd, pending, request['runIdentity']) as control:
-                if control.stop.is_set():
+            with stop_reader as control:
+                stop = stop if stop is not None else control.stop
+                if stop.is_set():
                     result = fallback(request, events, ctx, 'stopped')
                 else:
+                    observe_opt = request.get('operation') == 'opt' and request.get('parameters', {}).get('batchFinalOnly') is not True
+                    context_started = time.perf_counter() if observe_opt else None
                     from pes_core import PesCancelled, make_context
                     stopped_type = PesCancelled
-                    ctx = make_context(request, runtime, workspace, cancelled=control.stop.is_set, emit=events.observe)
+                    ctx = make_context(request, runtime, workspace, cancelled=stop.is_set, emit=events.observe)
+                    if observe_opt:
+                        events.observe('optimization-timing', dict(phase='worker-context-ready',
+                                       contextMs=(time.perf_counter() - context_started) * 1000))
                     result = importlib.import_module(module).run(request, ctx)
             if control.error is not None:
                 raise control.error
@@ -339,9 +678,16 @@ def run_owned(request, runtime, workspace, module, pending, fd):
                 result = fallback(request, events, ctx, 'partial' if events.frames or events.path_records else 'failed')
                 failure = dict(message='PES 停止消息无效。', detail=str(control.error))
         except Exception as error:
-            traceback.print_exc(file=sys.stderr)
+            control_error = getattr(control, 'error', None)
+            traceback.print_exception(control_error or error, file=sys.stderr)
             result = fallback(request, events, ctx, 'partial' if events.frames or events.path_records else 'failed')
-            failure = dict(message='PES 工作进程执行失败。', detail=str(error))
+            failure = dict(message='PES 停止消息无效。' if control_error is not None else 'PES 工作进程执行失败。',
+                           detail=str(control_error or error))
+            if control_error is None and request.get('parameters', {}).get('batchFinalOnly') is True:
+                from pes_coordinates import CoordinateError
+                code = 'PES_OPT_COORDINATE' if isinstance(error, CoordinateError) else getattr(error, 'code', None)
+                if code:
+                    result['error'] = dict(code=code, message=str(error))
         finally:
             close = getattr(ctx, 'close', None)
             if close is not None:
@@ -353,17 +699,22 @@ def run_owned(request, runtime, workspace, module, pending, fd):
                             name: after_close[name] for name in ('activeElectronicNodes', 'releasedElectronicNodes')
                             if name in after_close})
                 except Exception as error:
+                    reusable = False
                     traceback.print_exc(file=sys.stderr)
                     if result is not None:
                         result['provenance'] = dict(result['provenance'], resourceCleanupError=str(error),
                                                     scientificStatusBeforeCleanup=result['status'])
+                        if request.get('parameters', {}).get('batchFinalOnly') is True:
+                            if result.get('error') is not None:
+                                result['provenance']['scientificErrorBeforeCleanup'] = result['error']
+                            result['error'] = dict(code='PES_RESOURCE_CLEANUP', message=str(error))
                         if result['status'] in ('completed', 'stopped'):
                             result['status'] = 'partial'
                     failure = dict(message='PES 计算资源释放失败。', detail=str(error))
         # Native handles are released before publishing a terminal packet. The
         # host still waits for the owned worker's actual close before returning
         # the shared grant or announcing workerSettled.
-        return events.terminal(result, failure)
+        return events.terminal(result, failure), reusable
 
 
 if __name__ == '__main__':

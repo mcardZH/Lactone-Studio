@@ -2,10 +2,11 @@ import type { JobRequest, Structure } from '../../core/types';
 import { ELEMENTS, electronicStateInputError } from '../../core/elements';
 import { buildGaussian, defaultFiles } from '../../core/gaussian';
 import { buildOrcaCommon, type OrcaJobRequest } from '../../core/orca';
-import { exportStructure } from '../../core/structure-export';
+import { exportXyzChunks, validateXyzGeometry } from '../../core/structure-export';
+import { exportJsonChunks } from '../../core/export-json-chunks';
 import { createBuilderDraft } from '../../core/builder-draft';
 import type { DocumentStamp, FragmentSnapshot, ModelCoordinateObject, SharedModelConstraints } from '../contracts';
-import { advancedFrameWorkingCopy, assertAdvancedIsolated, captureAdvancedFrame, sameAdvancedFrame,
+import { advancedFrameWorkingCopy, assertAdvancedIsolated, captureAdvancedFrame,
   type AdvancedFrameRef, type AdvancedFrameSource } from '../advanced/frame-source';
 import { assertImageCoordinateExecutionSupported, modelCoordinateKey, validateSharedConstraints } from '../constraints';
 import { applySharedGaussianConstraints } from './gaussian-bridge';
@@ -18,6 +19,8 @@ export interface AdvancedFrameInput {
   stem: string;
   /** This confirmation belongs to this output frame, not to the shared template. */
   electronicState: { charge: number; multiplicity: number; confirmed: boolean };
+  /** Explicit per-frame Gaussian checkpoint name, when independent names are requested. */
+  outputCheckpointName?: string;
 }
 export type AdvancedInputTemplate = { engine: 'gaussian'; request: JobRequest } | { engine: 'orca'; request: OrcaJobRequest };
 export interface AdvancedOutputItem {
@@ -27,6 +30,8 @@ export interface AdvancedOutputItem {
   errors: readonly string[];
   warnings: readonly string[];
   fileNames: readonly string[];
+  effective?: { name:string; settings:JobRequest['settings']|OrcaJobRequest['settings']; cores:number; memoryGB:number;
+    resourcesConfirmed?:boolean; files?:JobRequest['files'] };
 }
 export interface AdvancedOutputFrameManifest {
   order: number;
@@ -35,7 +40,7 @@ export interface AdvancedOutputFrameManifest {
   stamp: DocumentStamp;
   coordinateUnit: 'angstrom';
   atoms: { id: string; element: string; sourceIndex?: number }[];
-  sourceElectronicState: { charge: number; multiplicity: number };
+  sourceElectronicState: { charge: number | null; multiplicity: number | null };
   electronicState: { charge: number; multiplicity: number; confirmed?: boolean };
   constraints: SharedModelConstraints;
   fileNames: string[];
@@ -58,6 +63,26 @@ export interface AdvancedFrameOutputPlan {
   /** Empty on any preflight error. Names are basenames, never renderer-supplied paths. */
   files: readonly AdvancedOutputFile[];
   manifest: AdvancedOutputManifest;
+}
+export interface AdvancedFrameStreamPlan {
+  streamed: true;
+  ready: boolean;
+  items: readonly AdvancedOutputItem[];
+  errors: readonly string[];
+  files: readonly { name: string; chunks(): Iterable<string> }[];
+}
+type TrajectoryRequest = { frames: readonly AdvancedFrameSource[]; format: 'xyz' | 'extxyz'; stem: string };
+
+/** Match the stable fields of sameAdvancedFrame independently of property order. */
+function trackFrameRefs() {
+  const seen = new Set<string>();
+  return (ref: AdvancedFrameRef) => {
+    if (Number.isNaN(ref.outputJob?.index)) return false;
+    const { documentId, documentEpoch, revision, sourceId, sourceRevision, outputJob, taskId, runId, stageId, collectionId, frameId, sourceFrameIndex } = ref;
+    const key = JSON.stringify({ documentId, documentEpoch, revision, sourceId, sourceRevision, outputJobSource: outputJob?.sourceId,
+      outputJobRevision: outputJob?.sourceRevision, outputJobId: outputJob?.id, outputJobIndex: outputJob?.index, taskId, runId, stageId, collectionId, frameId, sourceFrameIndex });
+    const duplicate = seen.has(key); seen.add(key); return duplicate;
+  };
 }
 
 const message = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
@@ -103,10 +128,11 @@ export function advancedFrameFragment(source: AdvancedFrameSource): FragmentSnap
 }
 
 function frameManifest(source: AdvancedFrameSource, order: number, constraints: SharedModelConstraints,
-  electronicState = { charge: source.structure.charge!, multiplicity: source.structure.multiplicity! }): AdvancedOutputFrameManifest {
+  electronicState = { charge: source.structure.charge!, multiplicity: source.structure.multiplicity! },
+  sourceElectronicState = { charge: source.structure.charge ?? null, multiplicity: source.structure.multiplicity ?? null }): AdvancedOutputFrameManifest {
   return { order, label: source.label, ref: structuredClone(source.ref), stamp: structuredClone(source.stamp), coordinateUnit: 'angstrom',
     atoms: source.structure.atoms.map(atom => ({ id: atom.id!, element: atom.element, ...(atom.sourceIndex === undefined ? {} : { sourceIndex: atom.sourceIndex }) })),
-    sourceElectronicState: { charge: source.structure.charge!, multiplicity: source.structure.multiplicity! },
+    sourceElectronicState: structuredClone(sourceElectronicState),
     electronicState: structuredClone(electronicState), constraints: structuredClone(constraints), fileNames: [] };
 }
 function templateNeedsMatchingAtoms(template: AdvancedInputTemplate): boolean {
@@ -139,18 +165,22 @@ function verifyIndependentTemplate(template: AdvancedInputTemplate): void {
       || s.multiscale.mode !== 'none') throw Error('此批量模板依赖GBW/Hessian/重启或多结构来源，请逐结构在既有输入流程独立配置。');
   }
 }
-function finishPlan(items: AdvancedOutputItem[], errors: string[], files: AdvancedOutputFile[], manifest: AdvancedOutputManifest,
-  manifestStem: string): AdvancedFrameOutputPlan {
+function finalizeInventory(items: readonly AdvancedOutputItem[], errors: string[], files: readonly { name: string }[], manifestStem: string): boolean {
   try { requireStem(manifestStem); } catch (cause) { errors.push(message(cause)); }
-  const manifestName = `${manifestStem}.manifest.json`, names = new Set<string>();
-  for (const file of [...files, { name: manifestName, text: '' }]) {
+  const names = new Set<string>();
+  for (const file of files) {
     if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,239}$/.test(file.name) || file.name.endsWith('.') || file.name.includes('..')
       || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(file.name)
       || names.has(file.name.toLowerCase())) errors.push(`输出文件名称无效或重名：${file.name}`);
     names.add(file.name.toLowerCase());
   }
-  errors.push(...items.flatMap(item => item.errors.map(issue => `第${item.order}项：${issue}`)));
-  const ready = !errors.length && items.length > 0 && items.every(item => !item.errors.length);
+  for (const item of items) for (const issue of item.errors) errors.push(`第${item.order}项：${issue}`);
+  return !errors.length && items.length > 0;
+}
+function finishPlan(items: AdvancedOutputItem[], errors: string[], files: AdvancedOutputFile[], manifest: AdvancedOutputManifest,
+  manifestStem: string): AdvancedFrameOutputPlan {
+  const manifestName = `${manifestStem}.manifest.json`;
+  const ready = finalizeInventory(items, errors, [...files, { name: manifestName }], manifestStem);
   return immutable({ ready, items, errors, files: ready ? [...files, { name: manifestName, text: JSON.stringify(manifest, null, 2) + '\n' }] : [], manifest });
 }
 
@@ -160,13 +190,14 @@ export function prepareAdvancedFrameInputs(request: { frames: readonly AdvancedF
   const manifest: AdvancedOutputManifest = { schema: 'sciyue-advanced-frame-output', version: 1, kind: 'inputs',
     engine: request.template.engine, ordering: 'explicit-frame-order', coordinateUnit: 'angstrom', frames: [] };
   if (!request.frames.length) errors.push('请先明确选择需要准备输入的完整帧。');
-  const names = new Map<string, number>(), runtimeNames = new Map<string, number>();
+  const names = new Map<string, number>(), runtimeNames = new Map<string, number>(), duplicateRef = trackFrameRefs();
   request.frames.forEach((frame, index) => {
     const item: AdvancedOutputItem = { order: index + 1, sourceRef: structuredClone(frame.source.ref), stem: frame.stem, errors: [], warnings: [], fileNames: [] };
     const issues: string[] = [], warnings: string[] = []; let frameFiles: AdvancedOutputFile[] = [];
+    const duplicate = duplicateRef(frame.source.ref);
     try {
       const source = scientificSource(frame.source); requireStem(frame.stem); assertAdvancedIsolated(source);
-      if (request.frames.slice(0, index).some(previous => sameAdvancedFrame(previous.source.ref, source.ref))) throw Error('同一来源帧重复选择，请确认输出顺序。');
+      if (duplicate) throw Error('同一来源帧重复选择，请确认输出顺序。');
       const previousName = names.get(frame.stem.toLowerCase());
       if (previousName !== undefined) throw Error(`输出名称与第${previousName + 1}项重名。`);
       names.set(frame.stem.toLowerCase(), index);
@@ -178,13 +209,13 @@ export function prepareAdvancedFrameInputs(request: { frames: readonly AdvancedF
       verifyIndependentTemplate(request.template); verifyTemplateAtoms(request.template, source.structure, sharedConstraints);
       const structure = advancedFrameWorkingCopy(source);
       structure.charge = frame.electronicState.charge; structure.multiplicity = frame.electronicState.multiplicity;
-      const entry = frameManifest(source, index + 1, sharedConstraints, frame.electronicState);
+      const entry = frameManifest(source, index + 1, sharedConstraints, frame.electronicState, frame.source.sourceElectronicState);
       if (request.template.engine === 'gaussian') {
         const req = structuredClone(request.template.request), projection = applySharedGaussianConstraints(structure, req.settings, sharedConstraints);
         if (projection.errors.length) throw Error(projection.errors.join('\n'));
         const mapped: JobRequest = { ...req, structure, name: frame.stem, settings: projection.settings,
           charge: frame.electronicState.charge, multiplicity: frame.electronicState.multiplicity, electronicStateConfirmed: true };
-        if(request.independentRuntimeNames) mapped.files={...(mapped.files??defaultFiles()),checkpointName:`${frame.stem}.chk`};
+        if(request.independentRuntimeNames) mapped.files={...(mapped.files??defaultFiles()),checkpointName:frame.outputCheckpointName??`${frame.stem}.chk`};
         const output = mapped.files ?? defaultFiles();
         const gaussianText=buildGaussian(mapped);
         if (output.saveCheckpoint && (!request.independentRuntimeNames || /^%chk=/mi.test(gaussianText))) {
@@ -193,16 +224,20 @@ export function prepareAdvancedFrameInputs(request: { frames: readonly AdvancedF
           runtimeNames.set(checkpoint.toLowerCase(), index); entry.runtimeOutputNames = [checkpoint];
         }
         frameFiles = [{ name: `${frame.stem}.gjf`, text: gaussianText }];
+        item.effective={name:mapped.name,settings:mapped.settings,cores:mapped.cores,memoryGB:mapped.memoryGB,resourcesConfirmed:mapped.resourcesConfirmed,
+          files:{...output,checkpointName:entry.runtimeOutputNames?.[0]??''}};
       } else {
         const req = structuredClone(request.template.request), projection = applySharedOrcaConstraints(structure, req.settings, sharedConstraints);
         if (projection.errors.length) throw Error(projection.errors.join('\n'));
-        const built = buildOrcaCommon({ ...req, structure, name: frame.stem, settings: projection.settings,
-          charge: frame.electronicState.charge, multiplicity: frame.electronicState.multiplicity, electronicStateConfirmed: true });
+        const mapped={ ...req, structure, name: frame.stem, settings: projection.settings,
+          charge: frame.electronicState.charge, multiplicity: frame.electronicState.multiplicity, electronicStateConfirmed: true };
+        const built = buildOrcaCommon(mapped);
         const failed = built.issues.filter(issue => issue.severity === 'error');
         if (failed.length) throw Error(failed.map(issue => issue.message).join('\n'));
         if (!built.files.length) throw Error('现有ORCA写出器未产生完整文件组。');
         warnings.push(...built.issues.filter(issue => issue.severity === 'warning').map(issue => issue.message));
         frameFiles = built.files.map(file => ({ name: file.name, text: file.text }));
+        item.effective={name:mapped.name,settings:mapped.settings,cores:mapped.cores,memoryGB:mapped.memoryGB,resourcesConfirmed:mapped.resourcesConfirmed};
         if(request.independentRuntimeNames)entry.runtimeOutputNames=[`${frame.stem}.gbw`,`${frame.stem}.out`];
       }
       entry.fileNames = frameFiles.map(file => file.name); manifest.frames.push(entry);
@@ -213,29 +248,84 @@ export function prepareAdvancedFrameInputs(request: { frames: readonly AdvancedF
   return finishPlan(items, errors, files, manifest, request.manifestStem ?? 'frame-inputs');
 }
 
-/** Caller resolves range/filter selection; this exact sequence is the scientific output order. */
-export function prepareAdvancedFrameTrajectory(request: { frames: readonly AdvancedFrameSource[]; format: 'xyz' | 'extxyz'; stem: string }): AdvancedFrameOutputPlan {
-  const items: AdvancedOutputItem[] = [], errors: string[] = [], chunks: string[] = [];
-  const manifest: AdvancedOutputManifest = { schema: 'sciyue-advanced-frame-output', version: 1, kind: 'trajectory',
+function newTrajectoryManifest(request: TrajectoryRequest): AdvancedOutputManifest {
+  return { schema: 'sciyue-advanced-frame-output', version: 1, kind: 'trajectory',
     format: request.format, ordering: 'explicit-frame-order', coordinateUnit: 'angstrom', frames: [] };
+}
+function* preflightTrajectory(request: TrajectoryRequest, errors: string[]): Generator<AdvancedOutputItem> {
   try { requireStem(request.stem); if (!['xyz', 'extxyz'].includes(request.format)) throw Error('多帧科学导出仅支持XYZ/extXYZ。'); }
   catch (cause) { errors.push(message(cause)); }
   if (!request.frames.length) errors.push('请先明确选择需要导出的完整帧。');
-  const filename = `${request.stem}.${request.format}`;
-  request.frames.forEach((frame, index) => {
+  const filename = `${request.stem}.${request.format}`, duplicateRef = trackFrameRefs();
+  for (const [index, frame] of request.frames.entries()) {
     const issues: string[] = [];
+    const duplicate = duplicateRef(frame.ref);
     try {
       const source = scientificSource(frame);
-      if (request.frames.slice(0, index).some(previous => sameAdvancedFrame(previous.ref, source.ref))) throw Error('同一来源帧重复选择，请确认导出顺序。');
+      if (duplicate) throw Error('同一来源帧重复选择，请确认导出顺序。');
       const stateError = electronicStateInputError(source.structure.atoms, source.structure.charge!, source.structure.multiplicity!);
       if (stateError) throw Error(stateError);
-      const { sharedConstraints } = frameConstraints(source);
-      const text = exportStructure(source.structure, request.format, true), firstNewline = text.indexOf('\n'), secondNewline = text.indexOf('\n', firstNewline + 1);
-      const identity = encodeURIComponent(JSON.stringify(source.ref));
-      chunks.push(text.slice(0, secondNewline) + ` coordinate_unit="angstrom" output_frame=${index + 1} sciyue_frame_ref=${identity}` + text.slice(secondNewline));
-      const entry = frameManifest(source, index + 1, sharedConstraints); entry.fileNames = [filename]; manifest.frames.push(entry);
+      frameConstraints(source);
+      validateXyzGeometry(source.structure, request.format, true);
     } catch (cause) { issues.push(message(cause)); }
-    items.push({ order: index + 1, sourceRef: structuredClone(frame.ref), errors: issues, warnings: [], fileNames: issues.length ? [] : [filename] });
-  });
-  return finishPlan(items, errors, chunks.length ? [{ name: filename, text: chunks.join('') }] : [], manifest, request.stem);
+    yield { order: index + 1, sourceRef: structuredClone(frame.ref), errors: issues, warnings: [], fileNames: issues.length ? [] : [filename] };
+  }
+}
+function* trajectoryChunks(request: TrajectoryRequest): Generator<string> {
+  for (const [index, source] of request.frames.entries()) {
+    const identity = encodeURIComponent(JSON.stringify(source.ref));
+    yield* exportXyzChunks(source.structure, request.format, true, ` coordinate_unit="angstrom" output_frame=${index + 1} sciyue_frame_ref=${identity}`);
+  }
+}
+function* trajectoryManifestFrames(request: TrajectoryRequest, filename: string): Generator<AdvancedOutputFrameManifest> {
+  for (const [index, source] of request.frames.entries()) {
+    const entry = frameManifest(source, index + 1, frameConstraints(source).sharedConstraints);
+    entry.fileNames = [filename];
+    yield entry;
+  }
+}
+function* trajectoryManifestChunks(request: TrajectoryRequest, filename: string): Generator<string> {
+  const { frames: _frames, ...header } = newTrajectoryManifest(request);
+  yield JSON.stringify(header, null, 2).slice(0, -2) + ',\n  "frames": [';
+  let first = true;
+  for (const entry of trajectoryManifestFrames(request, filename)) {
+    yield first ? '\n    ' : ',\n    ';
+    yield* exportJsonChunks(entry, 2, 2);
+    first = false;
+  }
+  yield (first ? '' : '\n  ') + ']\n}\n';
+}
+
+/** Keep the old direct text projection for small independent callers. */
+export function prepareAdvancedFrameTrajectory(request: TrajectoryRequest): AdvancedFrameOutputPlan {
+  const errors: string[] = [], manifest = newTrajectoryManifest(request), filename = `${request.stem}.${request.format}`;
+  const items = [...preflightTrajectory(request, errors)];
+  // Keep original output indexes in partial preflight provenance.
+  for (const [index, source] of request.frames.entries()) {
+    if (items[index].errors.length) continue;
+    const entry = frameManifest(source, index + 1, frameConstraints(source).sharedConstraints);
+    entry.fileNames = [filename]; manifest.frames.push(entry);
+  }
+  const files = manifest.frames.length ? [{ name: filename, text: '' }] : [];
+  if (manifest.frames.length === request.frames.length && !errors.length && files.length) files[0].text = [...trajectoryChunks(request)].join('');
+  return finishPlan(items, errors, files, manifest, request.stem);
+}
+
+/** Pass through the event loop between batches; caller owns cancellation. */
+export async function prepareAdvancedFrameTrajectoryStream(request: TrajectoryRequest, current: () => boolean): Promise<AdvancedFrameStreamPlan> {
+  const items: AdvancedOutputItem[] = [], errors: string[] = [];
+  let resumeAt = performance.now() + 16;
+  for (const item of preflightTrajectory(request, errors)) {
+    items.push(item);
+    if (performance.now() >= resumeAt) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+      if (!current()) throw Error('输出条件已变化，请重新预检。');
+      resumeAt = performance.now() + 16;
+    }
+  }
+  const filename = `${request.stem}.${request.format}`;
+  const files = [{ name: filename, chunks: () => trajectoryChunks(request) },
+    { name: `${request.stem}.manifest.json`, chunks: () => trajectoryManifestChunks(request, filename) }];
+  const ready = finalizeInventory(items, errors, files, request.stem);
+  return { streamed: true, ready, items, errors, files: ready ? files : [] };
 }

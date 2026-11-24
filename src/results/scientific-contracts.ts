@@ -124,7 +124,7 @@ export function createNmrCouplingBlock(input: Omit<NmrCouplingBlock, 'values'> &
 }
 export interface OrbitalChannel {
   spin: 'restricted' | 'alpha' | 'beta'; frameIndex: number | null; sourceLine: number;
-  orbitals: { index: number; energy: number; occupation: number; sourceIndex?: number; sourceLine?: number; sourceId?: string; sourceName?: string }[];
+  orbitals: { index: number; energy: number; occupation: number; rawEnergy?: string; sourceIndex?: number; sourceLine?: number; sourceId?: string; sourceName?: string }[];
   unit: 'hartree' | 'eV';
   sourceId?: string; sourceName?: string;
 }

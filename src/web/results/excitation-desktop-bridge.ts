@@ -13,7 +13,9 @@ import { assertSurfaceCubeSourceGeometry } from './surface-desktop-bridge';
 import type { ExcitationControlsBridge } from './excitation-controls-contracts';
 import {excitationCapabilityReason} from './excitation-presentation';
 
-export type ExcitationDesktopApi = Pick<DesktopBridge, 'openExcitationSession' | 'runExcitation' | 'restoreExcitationFields' | 'exportExcitationCube' | 'cancelExcitation' | 'closeExcitationSession' | 'onMultiwfnProgress'> & ProjectCompanionBridge;
+import { materializeCubeFields, type CubeAssetDesktop } from './cube-asset-bridge';
+
+export type ExcitationDesktopApi = Pick<DesktopBridge, 'openExcitationSession' | 'runExcitation' | 'restoreExcitationFields' | 'exportExcitationCube' | 'cancelExcitation' | 'closeExcitationSession' | 'onMultiwfnProgress'> & ProjectCompanionBridge & CubeAssetDesktop;
 export interface ExcitationDesktopBridgeOptions {
   desktop: ExcitationDesktopApi; analysisId: string; context: SurfaceContext; document: PostprocessDocument;
   structure: Structure; coordinateRoundingAngstrom?: number | null; active: boolean;
@@ -133,7 +135,7 @@ export function createExcitationDesktopBridge(options: ExcitationDesktopBridgeOp
       if (request.operation === 'nto-field') { const generation = request.generationId ? artifacts.get(request.generationId) : undefined;
         assert(request.generationId && acceptedIds.has(request.generationId) && generation?.operation === 'nto' && equal(generation.state, request.state) && generation.pairs.some(pair => pair.index === request.pairIndex && pair.spin === request.spin), 'NTO格点须引用当前已接受的成对分解。'); }
       const expected = stamp(requestId, request.context);
-      op.submitted = true; const result = await desktop.runExcitation(sessionId!, { ...parameters, stamp: expected }); current(op);
+      op.submitted = true; const result = await materializeCubeFields(await desktop.runExcitation(sessionId!, { ...parameters, stamp: expected }),desktop,op.abort.signal); current(op);
       assert(result.operation === request.operation && equal(result.state, request.state), '激发态方法/原始态发生变化。');
       if (result.operation === 'nto-field') assert(result.field.pairIndex === request.pairIndex && result.field.spin === request.spin && result.field.side === request.side, '返回NTO格点不是所请求轨道对/自旋/侧。');
       if (result.operation === 'hole-electron') assert(result.coulomb.requested === !!request.includeCoulomb, '库仑计算请求发生变化。');
@@ -160,7 +162,7 @@ export function createExcitationDesktopBridge(options: ExcitationDesktopBridgeOp
       assert(sameScience(request.context, context) && artifacts.has(request.generationId) && desktop.restoreExcitationFields, '激发态artifact不属于当前owner，不能以新计算冒充恢复。');
       const original = artifacts.get(request.generationId)!;
       const expected = stamp(request.requestId, request.context);
-      op.submitted = true; const result = await desktop.restoreExcitationFields(sessionId!, { stamp: expected, generationId: request.generationId }); current(op); const restored = accept(result, expected);
+      op.submitted = true; const result = await materializeCubeFields(await desktop.restoreExcitationFields(sessionId!, { stamp: expected, generationId: request.generationId }),desktop,op.abort.signal); current(op); const restored = accept(result, expected);
       assert(result.operation === original.operation && equal(result.state, original.state), '恢复结果与原激发态artifact不符。');
       for (const field of result.operation === 'nto-field' ? [result.field] : result.operation === 'hole-electron' ? [result.hole, result.electron] : []) {
         const previous = original.operation === 'nto-field' ? [original.field] : original.operation === 'hole-electron' ? [original.hole, original.electron] : [];
@@ -169,7 +171,14 @@ export function createExcitationDesktopBridge(options: ExcitationDesktopBridgeOp
       for (const field of restored) fields.set(field.id, fieldSignature(field)); artifacts.set(request.requestId, result); return result;
     }); },
     accepted(requestId: string, renderRequired = false) { if (artifacts.has(requestId)) { acceptedIds.add(requestId); trackers.get(requestId)?.committed({ required: renderRequired }); } },
-    renderCommitted(requestId: string) { trackers.get(requestId)?.renderCommitted(); },
+    renderCommitted(requestId: string) {
+      const tracker = trackers.get(requestId);
+      if (tracker?.getSnapshot().phase === 'render') tracker.renderCommitted();
+    },
+    renderFailed(requestId: string, message: string) {
+      const tracker = trackers.get(requestId), snapshot = tracker?.getSnapshot();
+      if (snapshot?.phase === 'render' && snapshot.settlement) tracker?.failed(snapshot.settlement, message);
+    },
     onProgress(listener: (snapshot: MultiwfnProgressSnapshot) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     async setActive(value: boolean) { if (disposed || active === value) return; active = value; epoch++; if (!value && operation) await cancelOperation(operation); },
     dispose:runtimeOwner.dispose,

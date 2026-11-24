@@ -13,7 +13,7 @@ export type ActiveStructurePreviewSource =
 export interface ActiveStructurePreviewModel {
   kind: ActiveStructurePreviewSource['kind']; key: string; label: string;
   structure: Structure; attachmentPorts: AttachmentPort[];
-  payload: ClipboardPayload; defaultActiveAtomIndex: number;
+  payload: ClipboardPayload; defaultActiveAtomIndex: number; independentOnly?: boolean;
 }
 
 /** Build once per stable preset/template/copy identity in the workspace's
@@ -22,6 +22,7 @@ export interface ActiveStructurePreviewModel {
  * selection, history or engine context, and owns no hydrogen algorithm. */
 export function createActiveStructurePreview(source: ActiveStructurePreviewSource): ActiveStructurePreviewModel {
   let payload: ClipboardPayload, label: string, key: string, defaultActiveAtomIndex = 0;
+  let independentOnly: boolean | undefined;
   if (source.kind === 'copy') {
     if ('payload' in source) {
       payload = structuredClone(source.payload);
@@ -46,14 +47,15 @@ export function createActiveStructurePreview(source: ActiveStructurePreviewSourc
       temporary.execute({ type: 'place-fragment', templateId: source.templateId, position: [0, 0, 0] });
       label = template.label; key = `template:${source.templateId}`;
       defaultActiveAtomIndex = template.connectionAnchor;
+      independentOnly = template.independentOnly;
     }
     payload = temporary.copy('all');
   }
   const structure = payload.fragment.structure, attachmentPorts = payload.fragment.attachmentPorts ?? [];
   // The read adapter checks identities, finite coordinates, real bonds and
   // port ownership before the model is offered as an interactive preview.
-  fragmentPreviewDocument(structure, key, attachmentPorts);
-  return { kind: source.kind, key, label, structure, attachmentPorts, payload, defaultActiveAtomIndex };
+  fragmentPreviewDocument(structure, key, attachmentPorts, source.kind === 'copy' ? 'copy' : 'fragment');
+  return { kind: source.kind, key, label, structure, attachmentPorts, payload, defaultActiveAtomIndex, independentOnly };
 }
 
 /** A pointer choice belongs to the exact preview object present at press.

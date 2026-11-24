@@ -22,12 +22,14 @@ import MeshFinishControls from './MeshFinishControls';
 import MultiwfnProgress from './MultiwfnProgress';
 import { exportBlob } from './export-image';
 import AnalysisColorbarLayoutControls from './AnalysisColorbarLayoutControls';
+import { ANALYSIS_PALETTES } from './analysis-display';
 import SurfaceAppearanceControls from './SurfaceAppearanceControls';
 import SaveSurfaceAppearanceDefault from './SaveSurfaceAppearanceDefault';
 import { captureHirshfeldAppearance, restoreHirshfeldAppearance } from './surface-appearance-defaults';
 import { hirshfeldAppearance } from './surface-appearance';
 import { useSurfaceAppearanceDefaults } from './useSurfaceAppearanceDefaults';
 import { ScientificPlotExportMenu } from './ScientificPlotExportMenu';
+import ResultNumberFormatFields from './ResultNumberFormatFields';
 import './hirshfeld-analysis.css';
 
 function combinedFingerprintSvg(panels: readonly string[], doc: Document): string {
@@ -84,7 +86,7 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {dis
     { key: 'area', label: '接触面积 / Å²', heading: '接触面积', headerUnit: 'Å²' },
     { key: 'percent', label: '完整表面占比 / %', heading: '完整表面占比', headerUnit: '%' },
   ], rows: rows.map(row => ({ key: hirshfeldContactKey(row.insideElement, row.outsideElement, s.merged),
-    cells: [`${row.insideElement}${s.merged ? '···' : ' → '}${row.outsideElement}`, formatAnalysisValue(row.area, s.decimals), formatAnalysisValue(row.nativePercent, s.decimals)] })) }), [rows, s.merged, s.decimals]);
+    cells: [`${row.insideElement}${s.merged ? '···' : ' → '}${row.outsideElement}`, formatAnalysisValue(row.area, s.decimals, s.contactNumberFormat), formatAnalysisValue(row.nativePercent, s.decimals, s.contactNumberFormat)] })) }), [rows, s.merged, s.decimals, s.contactNumberFormat]);
   const ranges = p.displayRanges ?? prepareHirshfeldDisplayRanges(s, p.context, p.structure);
   const actualGrid = ranges.actual?.grid, estimated = ranges.estimate;
   const rangeIssue = s.showRange ? ranges.issue || s.rangeError : '';
@@ -130,15 +132,17 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {dis
             <InputSettingsAction disabled={p.disabled} onClick={() => { void p.onExportImage?.(); }}>导出图像</InputSettingsAction>
             <ScientificPlotExportMenu disabled={p.disabled} options={[{ key: 'weight', label: '权重 Cube', run: () => p.onExportCube('shape') }, { key: 'dnorm', label: 'dnorm Cube', run: () => p.onExportCube('mapping') }]}/></InputSettingsRow>
           <SurfaceAppearanceControls label="表面外观" presets={['hirshfeld']} actions={<SaveSurfaceAppearanceDefault family="surface:hirshfeld" appearance={captureHirshfeldAppearance(s.display)}/>} value={s.display.appearancePreset} onChange={id => p.onChange({ display: hirshfeldAppearance(s.display, id) })}>
-            <InputSettingsRow>{(s.display.colors ?? ['#2166ac', '#ffffff', '#b2182b']).map((color, index) => <InputSettingsField key={index} label={['低值色', '零点色', '高值色'][index]}><input type="color" aria-label={`Hirshfeld${['低值色', '零点色', '高值色'][index]}`} value={color} onChange={event => { const colors = [...(s.display.colors ?? ['#2166ac', '#ffffff', '#b2182b'])]; colors[index] = event.currentTarget.value; display({ colors }); }}/></InputSettingsField>)}
-              <InputSettingsCheckbox label="反转色标" checked={s.display.reverse} onChange={reverse => display({ reverse })}/></InputSettingsRow>
             <MeshFinishControls value={s.display.finish} onChange={finish => display({ finish })} labelPrefix="Hirshfeld表面"/>
           </SurfaceAppearanceControls>
           <InputSettingsRow><InputSettingsField label="不透明度"><input type="range" aria-label="Hirshfeld表面不透明度滑杆" {...matchingSliderRange(s.display.opacity,.05,1,.01)} value={s.display.opacity} onChange={event => display({ opacity: event.currentTarget.valueAsNumber })}/><NumericInput stepper adaptiveStep={0.1} aria-label="Hirshfeld表面不透明度" min={.05} max={1} step={.01} value={s.display.opacity} onChange={event => { const value = event.currentTarget.valueAsNumber; if (value >= .05 && value <= 1) display({ opacity: value }); }}/></InputSettingsField>
             <div className="analysis-control-group"><InputSettingsField label="色标最小值"><NumericInput  aria-label="Hirshfeld色标最小值" step={.1} value={s.display.range?.min ?? ''} placeholder="自动" onChange={event => { const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value) && value < (s.display.range?.max ?? 1)) display({ range: { min: value, max: s.display.range?.max ?? 1 } }); }}/></InputSettingsField>
             <InputSettingsField label="最大值"><NumericInput  aria-label="Hirshfeld色标最大值" step={.1} value={s.display.range?.max ?? ''} placeholder="自动" onChange={event => { const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value) && value > (s.display.range?.min ?? -.5)) display({ range: { min: s.display.range?.min ?? -.5, max: value } }); }}/></InputSettingsField></div>
-            <InputSettingsAction onClick={() => display({ range: null })}>自动范围</InputSettingsAction></InputSettingsRow>
-          <AnalysisColorbarLayoutControls layout={s.display.colorbarLayout} onChange={colorbarLayout => display({ colorbarLayout })}/>
+            <InputSettingsAction onClick={() => display({ range: null })}>自动范围</InputSettingsAction>
+            <InputSettingsCheckbox label="反转色标" checked={s.display.reverse} onChange={reverse => display({ reverse, appearancePreset: 'custom' })}/>
+          </InputSettingsRow>
+          <AnalysisColorbarLayoutControls layout={s.display.colorbarLayout} onChange={colorbarLayout => display({ colorbarLayout })} colorbar={p.colorbar} disabled={p.disabled}
+            palette={{ colors: s.display.colors ?? ANALYSIS_PALETTES['blue-red'], reverse: s.display.reverse, zeroCentered: true, labelPrefix: 'Hirshfeld',
+              onChange: colors => display({ colors, appearancePreset: 'custom' }) }}/>
         </>}
       </AnalysisTaskSection>
       <AnalysisTaskSection title="指纹图" testId="hirshfeld-fingerprint-card">
@@ -147,24 +151,22 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {dis
           <InputSettingsRow><InputSettingsField label="图内容"><select aria-label="Hirshfeld指纹图内容" value={focusKey} disabled={exporting} onChange={event => p.onChange({ selectedContact: options.find(focus => hirshfeldContactKey(focus.insideElement, focus.outsideElement, s.merged) === event.currentTarget.value) ?? null })}><option value="">总图</option>{options.map(focus => <option key={hirshfeldContactKey(focus.insideElement, focus.outsideElement, s.merged)} value={hirshfeldContactKey(focus.insideElement, focus.outsideElement, s.merged)}>{hirshfeldContactLabel(focus)}</option>)}</select></InputSettingsField>
             {p.onOpenFingerprint && <InputSettingsAction onClick={() => p.onOpenFingerprint?.({ result: { stamp: result.stamp, source: result.source, vertices: result.vertices, contacts: result.contacts }, focus: s.selectedContact, decimals: s.decimals, merged: s.merged, plotDisplay: s.plotDisplay })}>独立窗口</InputSettingsAction>}
             <ScientificPlotExportMenu disabled={exporting} options={[{ key: 'all', label: '总图＋全部分项 SVG', run: () => { void exportPlots('all'); } }, { key: 'combined', label: '总图＋选定分项组合 SVG', run: () => { void exportPlots('combined'); } }]}/></InputSettingsRow>
-          <details className="analysis-method-details"><summary>显示设置</summary><InputSettingsRow><InputSettingsAction onClick={() => p.onChange({ plotDisplay: { radiusAngstrom: .02, densityMin: 1, densityMax: 750, logarithmic: false, pointSize: .5 } })}>图库预设</InputSettingsAction><InputSettingsAction onClick={() => p.onChange({ plotDisplay: { ...s.plotDisplay, densityMax: null } })}>自动色阶</InputSettingsAction>
-            <InputSettingsField label="点密度半径 / Å"><NumericInput  aria-label="指纹点密度半径" min={.001} step={.005} value={s.plotDisplay.radiusAngstrom} onChange={event => { const radiusAngstrom = event.currentTarget.valueAsNumber; if (Number.isFinite(radiusAngstrom) && radiusAngstrom > 0) p.onChange({ plotDisplay: { ...s.plotDisplay, radiusAngstrom } }); }}/></InputSettingsField>
-            <InputSettingsField label="点数色标最小值"><NumericInput  min={1} aria-label="指纹点数色标最小值" value={s.plotDisplay.densityMin} onChange={event => { const densityMin = event.currentTarget.valueAsNumber; if (densityMin >= 1 && densityMin < (s.plotDisplay.densityMax ?? Infinity)) p.onChange({ plotDisplay: { ...s.plotDisplay, densityMin } }); }}/></InputSettingsField>
-            <InputSettingsField label="最大值"><NumericInput  aria-label="指纹点数色标最大值" placeholder="自动" value={s.plotDisplay.densityMax ?? ''} onChange={event => { const densityMax = event.currentTarget.value === '' ? null : event.currentTarget.valueAsNumber; if (densityMax === null || Number.isFinite(densityMax) && densityMax > s.plotDisplay.densityMin) p.onChange({ plotDisplay: { ...s.plotDisplay, densityMax } }); }}/></InputSettingsField>
-            <InputSettingsCheckbox label="对数色标" checked={s.plotDisplay.logarithmic} onChange={logarithmic => p.onChange({ plotDisplay: { ...s.plotDisplay, logarithmic } })}/></InputSettingsRow></details>
           <details className="analysis-method-details"><summary>组合图分项</summary><InputSettingsRow>{options.map(focus => { const key = hirshfeldContactKey(focus.insideElement, focus.outsideElement, s.merged); return <InputSettingsCheckbox key={key} label={hirshfeldContactLabel(focus)} checked={selectedExport.includes(key)} onChange={checked => setSelectedExport(previous => checked ? [...previous, key] : previous.filter(value => value !== key))}/>; })}</InputSettingsRow></details>
           {exporting && <output role="status">正在导出完整数据指纹图…</output>}{exportError && <DismissibleNotice>{exportError}</DismissibleNotice>}
-          <HirshfeldFingerprint exportEpoch={exportFocus} result={result} focus={exportFocus ? exportFocus.value : s.selectedContact} decimals={s.decimals} merged={s.merged} display={s.plotDisplay} onDisplay={plotDisplay => p.onChange({ plotDisplay })} exportHandle={receiveHandle} onContact={selectedContact => { if (!exporting) p.onChange({ selectedContact }); }}/>
+          <HirshfeldFingerprint showDisplayControls={!exporting} exportEpoch={exportFocus} result={result} focus={exportFocus ? exportFocus.value : s.selectedContact} decimals={s.decimals} merged={s.merged} display={s.plotDisplay} onDisplay={plotDisplay => p.onChange({ plotDisplay })} exportHandle={receiveHandle} onContact={selectedContact => { if (!exporting) p.onChange({ selectedContact }); }}/>
         </>}
       </AnalysisTaskSection>
       <AnalysisTaskSection title="接触面积" testId="hirshfeld-area-card">
         {!result?.contacts ? <p className="postprocess-empty">{result ? '开放预览不提供完整表面面积与总面积占比。' : '完整闭合计算后显示原生接触面积。'}</p> : <>
-          <InputSettingsRow><InputSettingsField label="显示方式"><select aria-label="接触面积显示方式" value={s.areaView} onChange={event => p.onChange({ areaView: event.currentTarget.value as typeof s.areaView })}><option value="table">表格</option><option value="chart">贡献图</option><option value="both">表格＋图</option></select></InputSettingsField><InputSettingsCheckbox label="双向合并" checked={s.merged} onChange={merged => p.onChange({ merged, selectedContact: null })}/></InputSettingsRow>
-          <output>完整表面面积 {formatAnalysisValue(result.contacts.denominator.area, s.decimals)} Å²</output>
+          <InputSettingsRow><InputSettingsField label="显示方式"><select aria-label="接触面积显示方式" value={s.areaView} onChange={event => p.onChange({ areaView: event.currentTarget.value as typeof s.areaView })}><option value="table">表格</option><option value="chart">贡献图</option><option value="both">表格＋图</option></select></InputSettingsField><InputSettingsCheckbox label="双向合并" checked={s.merged} onChange={merged => p.onChange({ merged, selectedContact: null })}/>
+            <ResultNumberFormatFields labelPrefix="接触面积" value={s.contactNumberFormat} fallbackDigits={s.decimals}
+              onFallbackDigitsChange={decimals => p.onChange({ decimals })} onChange={contactNumberFormat => p.onChange({ contactNumberFormat })}/>
+          </InputSettingsRow>
+          <output>完整表面面积 {formatAnalysisValue(result.contacts.denominator.area, s.decimals, s.contactNumberFormat)} Å²</output>
           {s.areaView !== 'chart' && <ScientificDataTable hideTitle projection={table} selectionScope={`${result.stamp.requestId}:${s.merged}`} exportFileName="Ester-Studio-hirshfeld-contacts.txt" onExport={() => exportBlob(new Blob([scientificTableText(table)], { type: 'text/plain;charset=utf-8' }), 'Ester-Studio-hirshfeld-contacts.txt')}
             activeRowKey={focusKey} sorting={{ value: s.areaSort, direction: s.areaSortDirection, options: [{ value: 'contact', label: '接触类型' }, { value: 'area', label: '接触面积' }, { value: 'percent', label: '完整表面占比' }], onChange: (value, areaSortDirection) => p.onChange({ areaSort: value as typeof s.areaSort, areaSortDirection }) }}
-            format={{ decimals: s.decimals, onDecimalsChange: decimals => p.onChange({ decimals }), ariaLabel: '接触面积格式' }} onRowActivate={row => { const contact = rows.find(value => hirshfeldContactKey(value.insideElement, value.outsideElement, s.merged) === row.key); if (contact) p.onChange({ selectedContact: { insideElement: contact.insideElement, outsideElement: contact.outsideElement, merged: s.merged } }); }}/ >}
-          {s.areaView !== 'table' && <HirshfeldContactContribution appearanceKey={`hirshfeld-contact:${result.stamp.sourceId}:${result.stamp.sourceRevision}:${result.stamp.jobIndex}:${result.stamp.sourceFrameIndex}:${result.stamp.documentId}:${result.stamp.documentRevision}:${s.merged}`} rows={rows} merged={s.merged} decimals={s.decimals} onContact={selectedContact => p.onChange({ selectedContact })}/>}
+            onRowActivate={row => { const contact = rows.find(value => hirshfeldContactKey(value.insideElement, value.outsideElement, s.merged) === row.key); if (contact) p.onChange({ selectedContact: { insideElement: contact.insideElement, outsideElement: contact.outsideElement, merged: s.merged } }); }}/ >}
+          {s.areaView !== 'table' && <HirshfeldContactContribution appearanceKey={`hirshfeld-contact:${result.stamp.sourceId}:${result.stamp.sourceRevision}:${result.stamp.jobIndex}:${result.stamp.sourceFrameIndex}:${result.stamp.documentId}:${result.stamp.documentRevision}:${s.merged}`} rows={rows} merged={s.merged} decimals={s.decimals} numberFormat={s.contactNumberFormat} onContact={selectedContact => p.onChange({ selectedContact })}/>}
         </>}
       </AnalysisTaskSection>
     </AnalysisTaskLayout></InputSettingsLayout></section>;

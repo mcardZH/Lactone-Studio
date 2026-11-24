@@ -1,5 +1,9 @@
-export interface ScientificPlotPoint { x: number; y: number | null; index?: number; label?: string; tooltip?: string; segment?: string; xEnd?: number }
-export interface ScientificPlotSeries { id: string; points: readonly ScientificPlotPoint[]; label?: string; color?: string; kind?: 'line' | 'stick' | 'histogram'; pointLabels?: boolean; showPoints?: boolean }
+export interface ScientificPlotPoint {
+  x: number; y: number | null; index?: number; label?: string; tooltip?: string; segment?: string; xEnd?: number;
+  readoutId?: number | string;
+  markerLabel?: string;
+}
+export interface ScientificPlotSeries { id: string; points: readonly ScientificPlotPoint[]; label?: string; color?: string; kind?: 'line' | 'stick' | 'histogram'; pointLabels?: boolean; showPoints?: boolean; dashed?: boolean }
 export interface ScientificPlotViewport { x: [number, number]; y: [number, number] }
 
 export function plotDataBounds(series: readonly ScientificPlotSeries[]): ScientificPlotViewport | null {

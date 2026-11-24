@@ -62,7 +62,7 @@ export interface TrajectoryControlsProps {
   compact?: boolean;
   previewing?: boolean; previewStartedAt?: number | null; previewCompletedAt?: number | null;
   frameDelayMs?: number; previewFrameDelayMs?: number; onFrameDelay?(value: number): void;
-  count: number; index: number; playing: boolean; busy: boolean; disabled?: boolean;
+  count: number; index: number; requestedIndex?: number; playing: boolean; busy: boolean; disabled?: boolean; seekDisabled?: boolean;
   fps: number; direction: PlaybackDirection; mode: PlaybackMode; range: TrajectoryRange;
   endpointPauseMs?: number; onEndpointPause?(value: number): void;
   onPlay(): void; onPause(): void; onSeek(index: number): void; onStep(direction: PlaybackDirection): void;
@@ -74,15 +74,16 @@ export default function TrajectoryControls(p: TrajectoryControlsProps) {
   const [fpsDraft,setFpsDraft]=useState(String(effectiveFps)),[fpsInvalid,setFpsInvalid]=useState(false),[fpsDirty,setFpsDirty]=useState(false);
   useEffect(()=>{setFpsDraft(String(effectiveFps));setFpsInvalid(false);setFpsDirty(false);},[effectiveFps]);
   const commitFps=()=>{if(!fpsDirty)return;const value=Number(fpsDraft);if(!fpsDraft.trim()||!Number.isFinite(value)||value<=0||!Number.isFinite(1000/value)){setFpsInvalid(true);return;}setFpsInvalid(false);setFpsDirty(false);p.onFps(value);};
-  const sliderCount = Math.max(1, p.count), sliderValue = Math.max(1, Math.min(sliderCount, p.index + 1));
+  const seekDisabled=p.seekDisabled??p.disabled;
+  const sliderCount = Math.max(1, p.count), sliderValue = Math.max(1, Math.min(sliderCount, (p.requestedIndex??p.index) + 1));
   const effectiveFrameDelayMs = p.previewing ? p.previewFrameDelayMs : p.frameDelayMs;
   const integer = (value: string, max: number) => Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= max;
   const completed=p.preparation?.completed??0,total=p.preparation?.total??p.count;
   const elapsedSeconds=(p.preparation?.elapsedMs??0)/1000,seconds=Math.round(elapsedSeconds),measured=p.preparation?.measuredCompleted??completed,time=(value:number)=>`${Math.floor(value/60).toString().padStart(2,'0')}:${(value%60).toString().padStart(2,'0')}`;
   const loading=!p.loading&&!p.loadCancelled&&!p.loadFailed&&completed===total?null:<div className="trajectory-load-status" role="status" data-testid="trajectory-load-status">
-    {p.loading?<><strong>轨迹载入 · 本批共{total}帧</strong>
+    {p.loading?<><strong>轨迹载入 · 本批共{total}帧{p.preparation?.paged?' · 使用本机暂存':''}</strong>
       <div className="trajectory-load-progress"><progress aria-label="轨迹载入进度" max={total} value={completed}/><span>{completed} / {total}帧 · {total?Math.floor(completed/total*100):0}%</span></div>
-      <span>{p.silentLoading?'静默载入中':completed?`正在预览：第${completed}帧`:'读取、校验与显示准备中'}</span>
+      <span>{p.requestedIndex!==undefined?`正在准备第 ${p.requestedIndex+1} 帧`:p.silentLoading?'静默载入中':p.previewing&&completed?`正在预览：第 ${p.index+1} 帧`:'后台准备中'}</span>
       <span>已用：{time(seconds)}　预计剩余：{measured>1?`约${time(Math.round(elapsedSeconds/measured*(total-completed)))}`:'估算中'}</span>
       <div className="trajectory-load-actions"><button onClick={()=>p.onSilentLoading?.(!p.silentLoading)}>{p.silentLoading?'恢复载入预览':'静默载入'}</button><button onClick={p.onCancelPreparation}>取消载入</button></div></>
       :p.preparation?<><span>{p.loadCancelled?'载入未完成，来源已保留':p.loadFailed?'轨迹载入失败':'轨迹尚未载入'} · {completed} / {total}帧</span><button onClick={p.onPrepare}>重新载入</button></>:null}
@@ -91,14 +92,15 @@ export default function TrajectoryControls(p: TrajectoryControlsProps) {
     data-current-frame-index={p.index} data-frame-count={p.count} data-playing={p.playing} data-playback-mode={p.mode}
     data-previewing={p.previewing} data-preview-started-at={p.previewStartedAt ?? undefined} data-preview-completed-at={p.previewCompletedAt ?? undefined}
     data-preview-frame-delay-ms={p.previewFrameDelayMs} data-frame-delay-ms={p.frameDelayMs} data-effective-frame-delay-ms={effectiveFrameDelayMs}>
-    <button title="范围首帧" aria-label="范围首帧" disabled={p.disabled} onClick={() => p.onSeek(bounds.first)}>⏮</button>
-    <button title="上一帧（按步距）" aria-label="上一帧" disabled={p.disabled} onClick={() => p.onStep(-1)}>‹</button>
+    <button title="范围首帧" aria-label="范围首帧" disabled={seekDisabled} onClick={() => p.onSeek(bounds.first)}>⏮</button>
+    <button title="上一帧（按步距）" aria-label="上一帧" disabled={seekDisabled} onClick={() => p.onStep(-1)}>‹</button>
     <button className="trajectory-play" aria-label={p.playing ? '暂停' : '播放'} disabled={!p.playing&&(p.disabled || bounds.length < 2||fpsInvalid)} onClick={p.playing ? p.onPause : p.onPlay}>{p.playing ? 'Ⅱ' : '▶'}</button>
-    <button title="下一帧（按步距）" aria-label="下一帧" disabled={p.disabled} onClick={() => p.onStep(1)}>›</button>
-    <button title={p.compact ? '跳到最后一帧' : '范围末帧'} aria-label={p.compact ? '跳到最后一帧' : '范围末帧'} disabled={p.disabled} onClick={() => p.onSeek(p.compact ? p.count - 1 : bounds.last)}>⏭</button>
-    <input className={`trajectory-slider${p.count < 2 ? ' trajectory-slider-single' : ''}`} aria-label="轨迹帧滑条" type="range" min={1} max={sliderCount} value={sliderValue} disabled={p.disabled || p.count < 2} onChange={e => p.onSeek(Number(e.target.value) - 1)}/>
-    <label className="trajectory-frame-field"><NumericInput aria-label="跳到帧" stepper min={1} max={p.count} value={p.index + 1} disabled={p.disabled} onChange={e => { if (integer(e.target.value, p.count)) p.onSeek(Number(e.target.value) - 1); }}/><span>/ {p.count}</span></label>
+    <button title="下一帧（按步距）" aria-label="下一帧" disabled={seekDisabled} onClick={() => p.onStep(1)}>›</button>
+    <button title={p.compact ? '跳到最后一帧' : '范围末帧'} aria-label={p.compact ? '跳到最后一帧' : '范围末帧'} disabled={seekDisabled} onClick={() => p.onSeek(p.compact ? p.count - 1 : bounds.last)}>⏭</button>
+    <input className={`trajectory-slider${p.count < 2 ? ' trajectory-slider-single' : ''}`} aria-label="轨迹帧滑条" type="range" min={1} max={sliderCount} value={sliderValue} disabled={seekDisabled || p.count < 2} onChange={e => p.onSeek(Number(e.target.value) - 1)}/>
+    <label className="trajectory-frame-field"><NumericInput aria-label="跳到帧" stepper min={1} max={p.count} value={sliderValue} disabled={seekDisabled} onChange={e => { if (integer(e.target.value, p.count)) p.onSeek(Number(e.target.value) - 1); }}/><span>/ {p.count}</span></label>
     <TrajectoryDetails className="trajectory-playback-options" title="播放详情">
+    {p.preparation?.paged&&completed===total&&<small>全部帧已准备，可按序播放或直接跳帧。</small>}
     <label>帧率<NumericInput aria-label="播放FPS" value={fpsDraft} aria-invalid={fpsInvalid||undefined} disabled={p.disabled} onChange={event=>{setFpsDraft(event.target.value);setFpsDirty(true);}} onBlur={commitFps} onKeyDown={event=>{if(event.key==='Enter')commitFps();}}/> FPS</label>
     {fpsInvalid&&<DismissibleNotice role="alert">帧率须为有限正数。</DismissibleNotice>}
     <select aria-label="播放方向" value={p.direction} disabled={p.disabled} onChange={e => p.onDirection(Number(e.target.value) as PlaybackDirection)}><option value={1}>正向</option><option value={-1}>反向</option></select>
@@ -112,7 +114,7 @@ export default function TrajectoryControls(p: TrajectoryControlsProps) {
     </TrajectoryDetails>
     {p.detailsContent}
     </TrajectoryDetails>
-    {(['ts','ci'] as const).map(kind=>p.targets?.[kind]&&(kind==='ts'||p.targets[kind]?.frameId)&&<button key={kind} type="button" disabled={p.disabled||!p.targets[kind]?.frameId} title={p.targets[kind]?.reason} onClick={()=>p.onSeekTarget?.(kind)}>跳到 {kind.toUpperCase()}</button>)}
+    {(['ts','ci'] as const).map(kind=>p.targets?.[kind]&&(kind==='ts'||p.targets[kind]?.frameId)&&<button key={kind} type="button" disabled={seekDisabled||!p.targets[kind]?.frameId} title={p.targets[kind]?.reason} onClick={()=>p.onSeekTarget?.(kind)}>跳到 {kind.toUpperCase()}</button>)}
     {p.afterDetails}
     <span className="trajectory-loading" role="status">{p.busy ? '读取中' : ''}</span>
   </div></>;

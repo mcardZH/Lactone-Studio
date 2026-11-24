@@ -1,5 +1,5 @@
 'use strict';
-const { readManagedResult,inspectManagedSource } = require('./analysis-result-wire.cjs');
+const { readManagedResult,inspectManagedSource,packedFieldLength,fieldBytesIdentity,publishManagedFields,discardManagedFields,takeCubeExport } = require('./analysis-result-wire.cjs');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { requireBackend, requireSameBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
@@ -31,7 +31,7 @@ function checkedRequest(operation, raw, s) {
 
 /** Two independent scientific families, with one worker and the shared native
  * lease. The worker owns science; this host owns identity, memory and lifetime. */
-function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, resolveResources, captureResources, resolveCompanions, verifyCompanionSource, snapshotSource, jobRoot, scheduler, sendProgress = () => {}, limits = {} }) {
+function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, resolveResources, captureResources, adoptResultFile, releaseResultFile, resolveCompanions, verifyCompanionSource, snapshotSource, jobRoot, scheduler, sendProgress = () => {}, limits = {} }) {
   assert(scheduler && typeof resolveResources === 'function', 'Electronic host requires shared scheduler/resources');
   const policy = { requestMs: 0, stopMs: 6000, ...limits };
   const sessions = new Map(), pending = new Map(), tasks = new Set(), closedOwners = new Set();
@@ -102,7 +102,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
     child.once('close', code => { w.closed = true; clearTimeout(w.timer); if (worker === w) { worker = null; for (const s of sessions.values()) if (s.worker === w) s.failed = true; } w.finish(code); for (const [id, entry] of pending) if (entry.w === w) { clearTimeout(entry.timer); pending.delete(id); entry.reject(w.firstError ?? new Error('Electronic worker exited (' + code + ')')); } });
     return w;
   }
-  function request(operation, s, payload = {}, progress) {
+  function request(operation, s, payload = {}, progress, files) {
 
     const w = operation === 'open' ? ensureWorker() : s.worker;
     assert(w && w === worker && !w.closing && !w.closed && (operation==='open'||s.registered), 'ELECTRONIC_WORKER_UNAVAILABLE: 原分析会话已结束');
@@ -112,7 +112,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
       const timer = policy.requestMs>0?setTimeout(() => { void stopWorker(w, new Error('ELECTRONIC_TIMEOUT')).catch(() => {}); }, policy.requestMs):undefined; timer?.unref?.();
       pending.set(id, { w, s, operation, resolve, reject, timer, progress });
       try { w.child.stdin.write(JSON.stringify({ id, operation, sessionId: s.sessionId, family: s.family, ...payload }) + '\n'); } catch (error) { void stopWorker(w, error).catch(() => {}); }
-    }).then(value=>readManagedResult(value,s.directory));
+    }).then(value=>readManagedResult(value,s.directory,{deferBinary:!!adoptResultFile&&!!files,files}));
   }
   async function resources(owner, s, lease, captured, backend, scientific=true) {
     const configured = scientific?await resolveResources(owner,undefined,captured,backend):
@@ -126,16 +126,18 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
     const ids = new Set(); let added = 0;
     function visit(item) {
       if (!item || typeof item !== 'object' || ArrayBuffer.isView(item)) return;
-      if (Object.hasOwn(item, 'valuesBase64') || Object.hasOwn(item, 'values')) {
+      if (Object.hasOwn(item, 'valuesBinary') || Object.hasOwn(item, 'valuesBase64') || Object.hasOwn(item, 'values')) {
         assert(plain(item.grid) && Array.isArray(item.grid.dimensions) && item.grid.dimensions.length === 3 && string(item.id, 512) && !ids.has(item.id), 'Invalid/duplicate electronic field');
         ids.add(item.id);
         const count = item.grid.dimensions.reduce((total, dimension) => { assert(Number.isSafeInteger(dimension) && dimension > 0, 'Invalid electronic field dimension'); return total * dimension; }, 1);
         assert(Number.isSafeInteger(count) && Number.isSafeInteger(count*8), 'Electronic field exceeds integer representation');
-        if (item.valuesBase64 !== undefined) {
+        if (item.valuesBinary !== undefined) {
+          assert(item.values===undefined&&item.valuesBase64===undefined&&(packedFieldLength(item.valuesBinary,'float64-le')??item.valuesBinary.byteLength)===count*8,'Invalid electronic packed float64 field wire');
+        } else if (item.valuesBase64 !== undefined) {
           assert(item.values === undefined && (item.valuesBase64 instanceof Uint8Array ? item.valuesBase64.byteLength===count*8 : typeof item.valuesBase64 === 'string' && /^[A-Za-z0-9+/]*={0,2}$/.test(item.valuesBase64) && item.valuesBase64.length === 4 * Math.ceil(count * 8 / 3)) && (item.valueEncoding === undefined || item.valueEncoding === 'float64-le'), 'Invalid electronic float64 field wire');
         } else assert(Array.isArray(item.values) && item.values.length === count && item.values.every(Number.isFinite), 'Invalid electronic raw field values');
         const mask = item.validDomain?.kind === 'node-mask' ? item.validDomain : null;
-        if (mask) assert(mask.maskBase64 instanceof Uint8Array ? mask.maskBase64.byteLength===count : typeof mask.maskBase64 === 'string' && /^[A-Za-z0-9+/]*={0,2}$/.test(mask.maskBase64) && mask.maskBase64.length === 4 * Math.ceil(count / 3), 'Invalid electronic mask wire');
+        if (mask) assert(mask.maskBinary!==undefined?(packedFieldLength(mask.maskBinary,'uint8')??mask.maskBinary.byteLength)===count:mask.maskBase64 instanceof Uint8Array ? mask.maskBase64.byteLength===count : typeof mask.maskBase64 === 'string' && /^[A-Za-z0-9+/]*={0,2}$/.test(mask.maskBase64) && mask.maskBase64.length === 4 * Math.ceil(count / 3), 'Invalid electronic mask wire');
         added += count * 8 + (mask ? count : 0);
         return;
       }
@@ -149,7 +151,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
     function visit(item) {
       if (!item || typeof item !== 'object' || ArrayBuffer.isView(item)) return;
       if (Array.isArray(item.values)) item.values = Float64Array.from(item.values);
-      if (item.values instanceof Float64Array) delete item.valueEncoding;
+      if (item.values instanceof Float64Array || packedFieldLength(item.values,'float64-le')!==undefined) delete item.valueEncoding;
       for (const child of Object.values(item)) visit(child);
     }
     visit(result); return result;
@@ -158,13 +160,13 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
     const batch = new Map();
     function visit(item) {
       if (!item || typeof item !== 'object' || ArrayBuffer.isView(item)) return;
-      if (item.values instanceof Float64Array) {
+      if (item.values instanceof Float64Array || packedFieldLength(item.values,'float64-le')!==undefined) {
         assert(string(item.id, 512) && !batch.has(item.id), 'Invalid/duplicate electronic field identity');
-        const bytes = Buffer.from(item.values.buffer, item.values.byteOffset, item.values.byteLength), mask = item.validDomain?.mask;
-        assert(mask === undefined || mask instanceof Uint8Array, 'Invalid electronic field mask');
-        const hash = createHash('sha256').update(bytes); if (mask) hash.update(mask);
+        const bytes = fieldBytesIdentity(item.values,'float64-le');
+        const mask = item.validDomain?.mask===undefined?null:fieldBytesIdentity(item.validDomain.mask,'uint8');
+        const hash = createHash('sha256').update(bytes.sha256).update(mask?.sha256??'');
         hash.update(JSON.stringify(item, (key, entry) => ['values', 'mask', 'activationEpoch'].includes(key) ? undefined : plain(entry) ? Object.fromEntries(Object.keys(entry).sort().map(name => [name, entry[name]])) : entry));
-        const identity = { bytes: bytes.length + (mask?.byteLength ?? 0), sha256: hash.digest('hex') }, previous = s.published?.get(item.id);
+        const identity = { bytes: bytes.bytesLength + (mask?.bytesLength ?? 0), sha256: hash.digest('hex') }, previous = s.published?.get(item.id);
         assert(!previous || same(previous, identity), 'Electronic field id was reused for different content'); batch.set(item.id, identity); return;
       }
       for (const child of Object.values(item)) visit(child);
@@ -254,7 +256,7 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
     s.busy = true; s.controller = controller; s.submitted = false; s.lastDisposition = 'not-started'; s.lastDispositionConfirmed = false;
     const progress = createMultiwfnProgress(progressIdentity({ ownerId: checked.stamp.analysisId, analysisId: checked.stamp.analysisId, runId: checked.stamp.requestId, sessionId: id, sourceId: s.context.sourceId, sourceRevision: s.context.sourceRevision, jobIndex: s.context.jobIndex, sourceFrameIndex: s.context.sourceFrameIndex, generation: s.context.generation, operation: s.family + '-' + operation }, { sessionId: id, sourceId: s.context.sourceId, sourceRevision: s.context.sourceRevision }), value => sendProgress(owner, value));
     s.progress = progress; progress.report('queued', scientific ? {} : { stageLabel: '等待读取资源' });
-    let lease, submitted = false, passed = false;
+    const files=new Set(); let lease, submitted = false, passed = false;
     try {
       lease = await scheduler.acquire({ owner, key: 'electronic:' + operation + ':' + id, signal: controller.signal }); owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
       const captured=captureResources?await require('./compute-resources.cjs').captureComputeResources(captureResources,owner,controller.signal):undefined;owned(owner,id);assert(!controller.signal.aborted,'ELECTRONIC_CANCELLED');
@@ -267,17 +269,16 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
       if (s.companionSource) await verifyCompanionSource(owner, s.companionSource.token, s.companionSource);
       owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
       submitted = true; s.submitted = true; progress.report(scientific ? 'running' : 'reading', scientific ? s.family === 'reactivity' ? { stageLabel: '计算指标' } : {} : { stageLabel: '读取已保存数据' });
-      const result = await request(operation, s, { request: checked, resources: configured }, progress); owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
+      const result = await request(operation, s, { request: checked, resources: configured }, progress, files); owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
       if (s.companionSource) await verifyCompanionSource(owner, s.companionSource.token, s.companionSource);
       owned(owner, id); assert(!controller.signal.aborted, 'ELECTRONIC_CANCELLED');
       assert(plain(result), 'Invalid electronic result');
-      if (operation === 'export-cube') assert(string(result.name, 512) && path.basename(result.name) === result.name && typeof result.text === 'string' && Buffer.byteLength(result.text) <= MAX_SOURCE_BYTES, 'Unsafe electronic Cube export');
-      else {
+      if (operation !== 'export-cube') {
         assert(same(stamp(result.stamp, { ...s.context, activationEpoch: checked.stamp.activationEpoch }), checked.stamp), 'Electronic result stamp changed');
         if (scientific && s.family === 'excitation') assert(result.operation === checked.operation && same(result.state, checked.state), 'Excitation result state/operation changed');
       }
       preflightFields(s, result, lease, configured.configuredMemoryBudgetBytes);
-      const value = hydrateFields(result); recordPublishedFields(s, value);
+      const value = operation==='export-cube'?takeCubeExport(result,files):hydrateFields(result);recordPublishedFields(s, value);
       let progressSettlement = s.lastDisposition;
       if (scientific && s.family === 'reactivity') {
         assert(s.lastDispositionConfirmed && plain(value.provenance), 'Reactivity native disposition is not confirmed');
@@ -288,8 +289,10 @@ function createElectronicAnalysisHost({ spawn, resolveRuntime, resolveBackend, r
           progressSettlement = 'not-required';
         } else assert(s.lastDisposition === 'native-settled' && value.provenance.settlement === 'native-settled' && plain(value.provenance.backend), 'Reactivity native disposition conflicts with native provenance');
       }
-      passed = true; progress.report('parse', { stageLabel: '等待结果接受', validated: true, settlement: progressSettlement }); return value;
+      const published=await publishManagedFields(value,{files,owner,signal:controller.signal,adopt:adoptResultFile,release:releaseResultFile});
+      passed = true; progress.report('parse', { stageLabel: '等待结果接受', validated: true, settlement: progressSettlement }); return published;
     } finally {
+      await discardManagedFields(files);
       lease?.release();
       const disposition = !submitted ? (controller.signal.aborted ? 'cancelled-before-start' : 'not-started') : s.worker?.closed && scientific ? 'native-settled' : s.lastDisposition;
       s.lastDisposition = disposition;

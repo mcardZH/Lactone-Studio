@@ -116,14 +116,15 @@ def load_ase_overlay_chain(config, recipe):
     require('derivation' in lock, 'Unrecognized runtime lock requires an exact ASE parent/overlay chain')
     raw_lock = common.read(common.check(config['runtimeLockIdentity']))
     require(raw_lock['lockId'] == lock['lockId'] and raw_lock['root'] == lock['root'], 'Active derived lock identity mismatch')
-    root = common.safe(common.ROOT / '.local/dependencies/win-x64', common.ROOT / raw_lock['root'])
+    input_root = config['inputRoot']
+    root = common.safe(input_root / '.local/dependencies/win-x64', input_root / raw_lock['root'])
     def document(reference, scope):
         target(reference['path'])
-        path = common.safe(scope, common.ROOT / reference['path'])
-        return common.read(common.check(reference)), path
+        path = common.safe(scope, input_root / reference['path'])
+        return common.read(common.check(reference, input_root)), path
     record, _ = document(raw_lock['derivation'], root)
     parent, _ = document(record['parentRef'], root)
-    parent_root = common.safe(common.ROOT / '.local/dependencies/win-x64', common.ROOT / parent['root'])
+    parent_root = common.safe(input_root / '.local/dependencies/win-x64', input_root / parent['root'])
     parent_inventory, _ = document(record['parentInventory'], parent_root)
     derived_inventory, _ = document(record['derivedInventory'], root)
     require(derived_inventory['files'] == lock['files'], 'Loaded derived inventory differs from active expanded lock')

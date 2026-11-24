@@ -734,3 +734,11 @@ test('desktop/main.cjs and desktop/preload.cjs use standard prepareVersionProfil
   assert.equal(typeof runPreloadFor('win32', {}).portableTools, 'function');
   assert.equal(typeof runPreloadFor('darwin', { SCIYUE_TEST_ISOLATED_IO: '1' }).portableTools, 'function');
 });
+
+test('buildMacInstallGuideText defaults to v2.1.3 and cites LICENSE.txt articles 2, 3, and 4', () => {
+  const guide = buildMacInstallGuideText();
+  assert.match(guide, /Lactone Studio v2\.1\.3/);
+  assert.match(guide, /LICENSE\.txt 第三条/);
+  assert.match(guide, /科研引用（第四条）/);
+  assert.match(guide, /禁止商业售卖（第二条）/);
+});

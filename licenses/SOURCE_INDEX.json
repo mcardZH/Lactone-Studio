@@ -1,6 +1,6 @@
 {
   "schema": "ester-public-license-materials/v2",
-  "version": "2.1.1",
+  "version": "2.1.3",
   "publicDistributionApproved": false,
   "indexSelfExcluded": true,
   "files": [
@@ -1671,8 +1671,8 @@
     },
     {
       "path": "COMPONENT_SOURCES.json",
-      "bytes": 11329,
-      "sha256": "6438adea435416d0889de49a1b901ea02267055ec18a3fc106065450c97ff2b3"
+      "bytes": 14129,
+      "sha256": "a55c6f375ae7c901e1f5a3ad0483b3ebea51dca131a8c8f13e750abc8778812d"
     },
     {
       "path": "PES-LGPL-REPLACEMENT-NOTICE.md",
@@ -1681,13 +1681,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 2281,
-      "sha256": "b280cf4a123940ab0540a90d557d4d8f3041f7dd041e565a48560e6bbdd0151f"
+      "bytes": 2518,
+      "sha256": "5c05c7b1611eaadb322d1d30a7e84330b1802321e935dd3f3abd1934beb69c18"
     },
     {
       "path": "SAME_BODY_INDEX.json",
-      "bytes": 189210,
-      "sha256": "5dfac2c057c612743580df7ebed712cb5af682e1388c8ad37d4308c0b87df62a"
+      "bytes": 190606,
+      "sha256": "f6336f9d188f3bd89d98b8546c3192ed74dc402dd6d15151521b63fe7d289ec6"
     },
     {
       "path": "THIRD_PARTY_RUNTIME_TERMS.md",
@@ -1858,6 +1858,41 @@
       "path": "image-decode/npm/utif@3.1.0/LICENSE",
       "bytes": 1065,
       "sha256": "c1fb8861eca211bf5aea574358aba7039396c0c1824c2a1477cc126d398efd89"
+    },
+    {
+      "path": "mcp/@xterm/addon-fit/LICENSE",
+      "bytes": 1103,
+      "sha256": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f"
+    },
+    {
+      "path": "mcp/@xterm/xterm/LICENSE",
+      "bytes": 1261,
+      "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd"
+    },
+    {
+      "path": "mcp/node-addon-api/LICENSE.md",
+      "bytes": 1150,
+      "sha256": "89024017b88a9f2b763f79b941a4f2db3b4428edfcacdc0b23866b2da633ad0c"
+    },
+    {
+      "path": "mcp/node-pty/LICENSE",
+      "bytes": 3326,
+      "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f"
+    },
+    {
+      "path": "mcp/windows-terminal-conpty/LICENSE",
+      "bytes": 1116,
+      "sha256": "5d177f23ecfeb0ea8e050b6a5a16355e1ae9a0b286436ca8f83ed08b3795be6b"
+    },
+    {
+      "path": "mcp/windows-terminal-conpty/NOTICE.md",
+      "bytes": 21983,
+      "sha256": "224973ca2057b99324c6bf2ac40320c11938e3a2efd53dabbbce61bb66547281"
+    },
+    {
+      "path": "mcp/winpty/LICENSE",
+      "bytes": 1085,
+      "sha256": "c39e428064b4f3e4fe81a975bf0fd3b845922b431bc4d9a7ffc8bfb091981836"
     },
     {
       "path": "native/conda/bzip2/LICENSE",

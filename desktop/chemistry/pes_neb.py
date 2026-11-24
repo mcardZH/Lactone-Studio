@@ -12,7 +12,7 @@ from ase import Atoms, __version__ as ase_version
 from ase.calculators.calculator import Calculator, all_changes
 from ase.mep import NEB
 from ase.mep.neb import ImprovedTangentMethod
-from ase.optimize import FIRE
+from ase.optimize import FIRE, LBFGS
 from ase.optimize.fire2 import FIRE2
 
 from pes_coordinates import CoordinateError
@@ -23,6 +23,7 @@ EV_PER_ANGSTROM = HARTREE_EV / BOHR_ANGSTROM
 PRESETS = {
     'loose': (.020, .010, .002, .001),
     'medium': (.005, .0025, .0005, .00025),
+    'normal': (.005, .0025, .0005, .00025),
     'tight': (.001, .0005, .0001, .00005),
 }
 
@@ -44,9 +45,11 @@ def neb_settings(options):
     if profile not in (None, 'pes-v222'):
         raise NebInputError('Unsupported CI-NEB execution profile')
     modern = profile == 'pes-v222'
+    unified = options.get('policyVersion') == 'v212'
     optimizer = options.get('nebOptimizer', 'fire2' if modern else 'fire')
-    if not isinstance(optimizer, str) or optimizer.lower() not in ('fire', 'fire2'):
-        raise NebInputError('CI-NEB supports FIRE and FIRE2 geometry updates')
+    allowed = ('fire2', 'lbfgs') if unified else ('fire', 'fire2', 'lbfgs')
+    if not isinstance(optimizer, str) or optimizer.lower() not in allowed:
+        raise NebInputError('Unsupported CI-NEB geometry optimizer')
     if options.get('coordinateSystem', 'xyz') != 'xyz':
         raise NebInputError('CI-NEB requires Cartesian XYZ coordinates')
     maximum = options.get('nebIterations', 1000)
@@ -59,7 +62,8 @@ def neb_settings(options):
     fields = ('nebMaxForce', 'nebRmsForce', 'ciMaxForce', 'ciRmsForce')
     if modern and preset == 'custom' and any(key not in options for key in fields):
         raise NebInputError('Custom CI-NEB convergence requires all four force thresholds')
-    normal_max, normal_rms, ci_max, ci_rms = [_positive(options, key, default) for key, default in zip(fields, defaults)]
+    normal_max, normal_rms, ci_max, ci_rms = (defaults if unified and preset != 'custom' else
+        [_positive(options, key, default) for key, default in zip(fields, defaults)])
     scale = _positive(options, 'ciToleranceScale', 10.) if not modern else None
     return dict(profile=profile, modern=modern, optimizer=optimizer.lower(), preset=preset,
                 maximum=maximum, normal_max=normal_max, normal_rms=normal_rms,
@@ -166,6 +170,28 @@ class BoundedBand(NEB):
         self.climb, self.last_effective, self.step_origin = True, None, None
 
 
+class BandLBFGS(LBFGS):
+    """ASE L-BFGS on the coupled NEB force field, with safe curvature resets."""
+
+    def update(self, pos, forces, r0, f0):
+        if self.iteration > 0:
+            step, delta = pos - r0, f0 - forces
+            curvature = float(np.dot(step, delta))
+            if not math.isfinite(curvature) or curvature <= 1e-12 * np.linalg.norm(step) * np.linalg.norm(delta):
+                # A stationary or nonpositive secant carries no usable
+                # inverse-curvature information for this projected force field.
+                self.initialize()
+        super().update(pos, forces, r0, f0)
+
+    def determine_step(self, displacement):
+        band = self.atoms
+        blocks = np.asarray(displacement).reshape(-1, band.natoms, 3)
+        projected = np.concatenate([band.space.project_vector(image.positions, block)
+                                    for image, block in zip(band.images[1:-1], blocks)]).ravel()
+        extent = float(np.max(np.abs(projected)))
+        return projected * (band.component_step / extent) if extent > band.component_step else projected
+
+
 def force_stats(force, dofs):
     values = np.asarray(force)
     if not values.size:
@@ -201,7 +227,11 @@ def _within(stats, maximum, rms):
 
 
 def make_optimizer(name, band):
-    optimizer = {'fire': FIRE, 'fire2': FIRE2}[name]
+    optimizer = {'fire': FIRE, 'fire2': FIRE2, 'lbfgs': BandLBFGS}[name]
+    if name == 'lbfgs':
+        # NEB forces include perpendicular and spring terms. A line search
+        # on the physical image energies would optimize the wrong objective.
+        return optimizer(band, logfile=None, use_line_search=False)
     limit = band.component_step * math.sqrt(3 * band.natoms * (band.nimages - 2))
     return optimizer(band, logfile=None, maxstep=limit)
 
@@ -224,6 +254,8 @@ def run_ci_neb(reference, symbols, ctx, options, result):
                     optimizerResets=0, largestAcceptedComponentStepAngstrom=0.)
     if settings['scale'] is not None:
         metadata['thresholdsHartreePerBohr']['climbNormalNodeScale'] = settings['scale']
+    # The band uses continuous anchored Cartesian images for its springs.
+    # Each physical calculator still evaluates the request's fixed cell.
     images = [Atoms(symbols, positions=xyz, pbc=False) for xyz in reference]
     node_ids = [f'ci-neb:bead:{i}' for i in range(len(images))]
     for image, node_id in zip(images, node_ids):
@@ -231,18 +263,23 @@ def run_ci_neb(reference, symbols, ctx, options, result):
     metadata['physicalNodeIds'] = node_ids
     band = BoundedBand(images, ctx.constraints, settings['spring'], settings['step'])
     optimizer, completed = make_optimizer(settings['optimizer'], band), 0
+    lbfgs_climbing_bead = None
     try:
         while True:
             ctx.check_cancelled()
             try:
                 statistics, pool, trigger = neb_state(band)
             except Exception:
-                if not result.physical:
-                    for i, image in enumerate(images):
-                        calculator = image.calc
-                        if (calculator.energy_hartree is not None and calculator.evaluated_positions is not None
-                                and np.array_equal(calculator.evaluated_positions, image.positions)):
-                            result.physical[i] = (image.positions.copy(), calculator.energy_hartree, completed, {})
+                # A dependent band step needs all forces. Keep independently
+                # verified E/G from the interrupted step as a separate snapshot.
+                partial = {}
+                for i, image in enumerate(images):
+                    calculator = image.calc
+                    if (calculator.energy_hartree is not None and calculator.evaluated_positions is not None
+                            and np.array_equal(calculator.evaluated_positions, image.positions)):
+                        partial[i] = (image.positions.copy(), calculator.energy_hartree, completed, {})
+                phase = 'ci-neb-climb' if band.climb else 'ci-neb-ordinary'
+                result.remember_partial(partial, phase + '-interrupted')
                 raise
             internal_barrier = bool(band.emax > max(band.energies[0], band.energies[-1]))
             if not band.climb:
@@ -262,6 +299,11 @@ def run_ci_neb(reference, symbols, ctx, options, result):
                     # geometry. Record this physical round once, not twice.
                     continue
             phase = 'ci-neb-climb' if band.climb else 'ci-neb-ordinary'
+            if band.climb and settings['optimizer'] == 'lbfgs':
+                if lbfgs_climbing_bead is not None and band.imax != lbfgs_climbing_bead:
+                    optimizer.initialize()
+                    metadata['optimizerResets'] += 1
+                lbfgs_climbing_bead = band.imax
             state = {i: (image.positions.copy(), image.calc.energy_hartree, completed,
                          {**statistics.get(i, {}), **({'climbingImage': True} if band.climb and i == band.imax else {})})
                      for i, image in enumerate(images)}

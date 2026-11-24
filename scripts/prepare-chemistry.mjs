@@ -6,13 +6,15 @@ import { createHash } from 'node:crypto';
 export const desktopPublicEntries = Object.freeze([
   'appearance-previews', 'structure-library', 'favicon.svg', 'brand-icon.png',
 ]);
-// Ship only the current thirteen choices. Retired previews and their source
+// Ship only the current choices. Retired previews and their source
 // history remain in the development checkout, outside both delivery objects.
 export const desktopAppearancePreviewFiles = Object.freeze([
   'manifest.json',
   'structure-original.png', 'structure-gallery-pastel.png',
   'structure-gallery-cpk-glossy.png', 'structure-gallery-vmd-glossy.png',
+  'structure-gallery-vesta-pearl.png', 'structure-gallery-space-filling.png',
   'surface-gallery-orbital.png', 'surface-gallery-density.png',
+  'surface-gallery-vesta-cyan-yellow.png',
   'surface-gallery-esp.png', 'surface-gallery-iri.png',
   'surface-gallery-igmh.png', 'surface-gallery-dual.png',
   'surface-gallery-hirshfeld.png', 'vector-standard.png', 'vector-teal.png',

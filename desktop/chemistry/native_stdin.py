@@ -1,11 +1,46 @@
-"""Byte transport only; each worker retains its own control state machine.
+"""Native worker pipe transport; each worker retains its own protocol.
 
 On Windows an empty-pipe CRT read holds the descriptor lock. A concurrent
 library's stdio initialization can then block on the same descriptor. Poll the
 native pipe handle first, and read no more than the bytes actually available.
 """
 from __future__ import annotations
+from contextlib import contextmanager
 import os
+import sys
+
+
+def replace_native_output_descriptors(stdout_fd, stderr_fd):
+    os.dup2(stdout_fd, sys.stdout.fileno())
+    os.dup2(stderr_fd, sys.stderr.fileno())
+    if os.name == 'nt':
+        import ctypes
+        from ctypes import wintypes
+        import msvcrt
+        set_handle = ctypes.WinDLL('kernel32', use_last_error=True).SetStdHandle
+        set_handle.argtypes = [wintypes.DWORD, wintypes.HANDLE]
+        set_handle.restype = wintypes.BOOL
+        for native, stream in ((-11, sys.stdout), (-12, sys.stderr)):
+            if not set_handle(native, msvcrt.get_osfhandle(stream.fileno())):
+                raise ctypes.WinError(ctypes.get_last_error())
+
+
+@contextmanager
+def route_native_output(workspace, *, filename='stderr.log', restore=True):
+    """Give events a private pipe and route library output to the owned log."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with os.fdopen(os.dup(sys.stdout.fileno()), 'wb') as protocol, os.fdopen(os.dup(sys.stderr.fileno()), 'wb') as stderr:
+        with (workspace / filename).open('xb') as log:
+            try:
+                replace_native_output_descriptors(log.fileno(), log.fileno())
+                yield protocol
+            finally:
+                sys.stdout.flush()
+                sys.stderr.flush()
+                # A one-task worker keeps late Fortran flushes in the log.
+                if restore:
+                    replace_native_output_descriptors(protocol.fileno(), stderr.fileno())
 
 
 def control_blocks(fd, done, *, max_bytes=65536, poll_seconds=.01):

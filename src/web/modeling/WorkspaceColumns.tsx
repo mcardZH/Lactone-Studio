@@ -13,13 +13,31 @@ export interface WorkspaceColumnSizes {
 	left: number;
 	right: number | null;
 }
+export type WorkspaceColumnGeometry = {visible:false;reason:'unmounted'|'hidden'|'unmeasurable'} | {
+	visible:true;container:{width:number;height:number};leftWidth:number;rightWidth:number;centerWidth:number;leftPercent:number;gridTemplateColumns:string;
+};
+/** Measure the committed native three-column grid, including container fitting.
+ * Saved percentages and widths are deliberately not used as evidence of paint. */
+export function readWorkspaceColumnGeometry(element:HTMLElement|null|undefined):WorkspaceColumnGeometry {
+	if(!element?.isConnected)return {visible:false,reason:'unmounted'};
+	const view=element.ownerDocument.defaultView,box=element.getBoundingClientRect();
+	if(!view||!element.getClientRects().length||box.width<=0||box.height<=0)return {visible:false,reason:'hidden'};
+	const style=view.getComputedStyle(element);
+	if(style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse')return {visible:false,reason:'hidden'};
+	const columns=style.gridTemplateColumns.trim().split(/\s+/);
+	if(columns.length!==5||columns.some(value=>!/^\d+(?:\.\d+)?px$/.test(value)))return {visible:false,reason:'unmeasurable'};
+	const widths=columns.map(parseFloat);
+	return {visible:true,container:{width:box.width,height:box.height},leftWidth:widths[0],rightWidth:widths[4],centerWidth:widths[2],leftPercent:widths[0]/box.width*100,gridTemplateColumns:style.gridTemplateColumns};
+}
 const defaults: WorkspaceColumnSizes = { left: 27, right: null };
-export function fitWorkspaceColumns(width: number, sizes: WorkspaceColumnSizes) {
-	const available = Math.max(0, width - 12),
-		center = Math.min(160, Math.max(0, available - 470));
-	const left = Math.max(250, Math.min((width * sizes.left) / 100, available - 220 - center));
+export function fitWorkspaceColumns(width: number, sizes: WorkspaceColumnSizes, rightVisible = true) {
+	const rightMinimum = rightVisible ? 220 : 0;
+	const available = Math.max(0, width - (rightVisible ? 12 : 6));
+	const center = Math.min(160, Math.max(0, available - 250 - rightMinimum));
+	const left = Math.max(250, Math.min((width * sizes.left) / 100, available - rightMinimum - center));
+	if (!rightVisible) return { left, right: 0 };
 	const right = Math.max(
-		220,
+		rightMinimum,
 		Math.min(sizes.right ?? Math.round(width * 0.2), available - left - center)
 	);
 	return { left, right };
@@ -56,8 +74,8 @@ export function useWorkspaceColumns(key: string) {
 }
 export const WorkspaceColumns = forwardRef<
 	HTMLDivElement,
-	HTMLAttributes<HTMLDivElement> & { sizes?: WorkspaceColumnSizes }
->(function WorkspaceColumns({ sizes, style, className = "", ...props }, ref) {
+	HTMLAttributes<HTMLDivElement> & { sizes?: WorkspaceColumnSizes; rightVisible?: boolean }
+>(function WorkspaceColumns({ sizes, rightVisible = true, style, className = "", ...props }, ref) {
 	const host = useRef<HTMLDivElement | null>(null),
 		[width, setWidth] = useState(0);
 	useEffect(() => {
@@ -69,10 +87,11 @@ export const WorkspaceColumns = forwardRef<
 		observer.observe(root);
 		return () => observer.disconnect();
 	}, [Boolean(sizes)]);
-	const fitted = sizes ? fitWorkspaceColumns(width, sizes) : undefined;
+	const fitted = sizes ? fitWorkspaceColumns(width, sizes, rightVisible) : undefined;
 	return (
 		<div
 			{...props}
+			data-right-pane={rightVisible}
 			ref={(node) => {
 				host.current = node;
 				if (typeof ref === "function") ref(node);
@@ -87,7 +106,9 @@ export const WorkspaceColumns = forwardRef<
 								"--shared-input-width": width ? `${fitted!.left}px` : `${sizes.left}%`,
 								"--shared-tool-width": `${fitted!.right}px`,
 								gridTemplateColumns:
-									"minmax(250px,var(--shared-input-width)) 6px minmax(0,1fr) 6px minmax(220px,var(--shared-tool-width))"
+									rightVisible
+										? "minmax(250px,var(--shared-input-width)) 6px minmax(0,1fr) 6px minmax(220px,var(--shared-tool-width))"
+										: "minmax(250px,var(--shared-input-width)) 6px minmax(0,1fr) 0px 0px"
 							}
 						: {})
 				} as CSSProperties

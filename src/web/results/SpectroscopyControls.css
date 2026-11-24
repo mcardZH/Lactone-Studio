@@ -12,6 +12,8 @@
 .spectroscopy-vibration-playback { display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;flex:1 1 100%;min-width:0; }
 .spectroscopy-vibration-playback > .spectroscopy-control-row { display:contents; }
 .spectroscopy-card .scientific-plot-tools > .spectroscopy-control-row { display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;max-width:100%; }
+.spectroscopy-plot-settings label { min-width:0;max-width:100%; }
+.spectroscopy-plot-settings label select { min-width:0; }
 .spectroscopy-generation-range { display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:100%;min-width:0; }
 .spectroscopy-generation-range>.scientific-plot-control-group { flex-wrap:wrap; }
 .spectroscopy-current-mode { flex:1 1 100%;margin:0; }

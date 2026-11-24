@@ -18,16 +18,40 @@ const machineError = (a: number, b: number) => Number.EPSILON * 8 * Math.max(1, 
 
 /** Reads native reference labels only from the indexed job. No referenced path is opened. */
 export async function readIrcOutputContext(file: ResultInputFile, output: TrajectoryResult | ResultDiagnostic, options: ResultReadOptions = {}): Promise<IrcOutputContext | null> {
-  if (output.engine !== 'orca' || output.jobIndex === null || !output.scientific?.tasks.includes('irc')) return null;
-  const declared = output.scientific.relatedFiles?.filter(ref => ref.role === 'irc-full' || ref.role === 'irc-branch') ?? [];
-  const wanted = new Map(declared.map(ref => [ref.sourceLine, ref]));
-  const references: IrcOutputContext['references'] = [];
-  for await (const line of outputLines(file, options, () => undefined)) {
-    const ref = wanted.get(line.number); if (!ref) continue;
-    const match = line.text.match(/^\s*Storing (full IRC|forward|backward) trajectory in\s*\.+\s+(\S+\.xyz)\s*$/i);
-    if (match && match[2] === ref.name) references.push({ name: ref.name, sourceLine: line.number, role: /full/i.test(match[1]) ? 'irc-full' : /forward/i.test(match[1]) ? 'irc-forward' : 'irc-reverse' });
+  return (await readIrcOutputContexts(file, [output], options))[0] ?? null;
+}
+
+/** A single source read verifies the printed references of every ORCA IRC job. */
+export async function readIrcOutputContexts(file: ResultInputFile, outputs: readonly (TrajectoryResult | ResultDiagnostic)[], options: ResultReadOptions = {}): Promise<IrcOutputContext[]> {
+  const contexts: IrcOutputContext[] = [];
+  const wanted = new Map<number, { name: string; context: IrcOutputContext }[]>();
+  let lastLine = 0;
+  for (const output of outputs) {
+    if (output.engine !== 'orca' || output.jobIndex === null || !output.scientific?.tasks.includes('irc')) continue;
+    const refs = output.scientific.relatedFiles?.filter(ref => ref.role === 'irc-full' || ref.role === 'irc-branch') ?? [];
+    if (!refs.length) continue;
+    const context: IrcOutputContext = { outputId: output.id, output: { ...output, jobIndex: output.jobIndex }, references: [] };
+    contexts.push(context);
+    // Keep the last declaration per raw source line, as before.
+    for (const [line, ref] of new Map(refs.map(ref => [ref.sourceLine, ref]))) {
+      lastLine = Math.max(lastLine, line);
+      const matches = wanted.get(line) ?? [];
+      matches.push({ name: ref.name, context });
+      wanted.set(line, matches);
+    }
   }
-  return references.length ? { outputId: output.id, output: { ...output, jobIndex: output.jobIndex }, references } : null;
+  if (!wanted.size) return [];
+  for await (const line of outputLines(file, options, () => undefined)) {
+    if (line.number > lastLine) break;
+    const refs = wanted.get(line.number);
+    if (!refs) continue;
+    const match = line.text.match(/^\s*Storing (full IRC|forward|backward) trajectory in\s*\.+\s+(\S+\.xyz)\s*$/i);
+    if (!match) continue;
+    for (const ref of refs) if (match[2] === ref.name) ref.context.references.push({
+      name: ref.name, sourceLine: line.number, role: /full/i.test(match[1]) ? 'irc-full' : /forward/i.test(match[1]) ? 'irc-forward' : 'irc-reverse',
+    });
+  }
+  return contexts.filter(context => context.references.length);
 }
 
 /** Proven complete/partial native IRC geometry. A source OUT need not have any computed geometry. */

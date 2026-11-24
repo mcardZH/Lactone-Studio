@@ -1,4 +1,5 @@
 import { importStructureFiles, type StructureImportFile } from '../../core/file-import';
+import { editableImportedStructureElectronicState } from '../../core/base-electronic-state';
 import type { DesktopBridge, FragmentSnapshot, OpenedModelFile } from '../contracts';
 import { modelFragmentsFromStructures, parseModelFiles } from './files';
 import type { ScientificSourceFile } from '../../results/input-file';
@@ -63,7 +64,10 @@ export async function importModelSources(sources: File[] | OpenedModelFile[], br
       aborted(signal);
       const text = await file.text(); aborted(signal); return { name: file.name, bytes: file.size, text };
     }));
-    return [...modelFragmentsFromStructures(structures), ...parseModelFiles(texts)];
+    return [...modelFragmentsFromStructures(structures), ...parseModelFiles(texts)].map(fragment => {
+      const structure = editableImportedStructureElectronicState(fragment.structure);
+      return structure === fragment.structure ? fragment : { ...fragment, structure };
+    });
   } finally {
     if (opened && bridge?.closeFileStream) await Promise.all(opened.flatMap(file => file.streamToken ? [bridge.closeFileStream!(file.streamToken).catch(() => ({ closed: false }))] : []));
   }

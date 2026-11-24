@@ -4,7 +4,7 @@ import NumericInput from '../NumericInput';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { buildRamanSpectrum, correctedFrequency, projectRamanStokesModes, type ProjectedVibrationMode, type RamanStokesMode, type RamanStokesParameters } from '../../results/spectroscopy';
 import { AnalysisTaskLayout, AnalysisTaskSection } from './AnalysisTaskLayout';
-import SpectroscopyControls, { SpectroscopyTable } from './SpectroscopyControls';
+import SpectroscopyControls, { SpectroscopyTable, type SpectrumBuildOptions } from './SpectroscopyControls';
 import { formatResultValue } from '../../results/numeric-format';
 import type { ScientificTableProjection } from './scientific-table';
 
@@ -43,14 +43,14 @@ function RamanControlsInner(p: RamanControlsProps) {
   const decimals=p.decimals??localDecimals,setDecimals=p.onDecimalsChange??setLocalDecimals,number=(value:number|null|undefined)=>formatResultValue(value,decimals);
   const [laser, setLaser] = useProjectState('RamanControls.laser', p.defaults?.laserWavelengthNm == null ? '' : String(p.defaults.laserWavelengthNm));
   const [temperature, setTemperature] = useProjectState('RamanControls.temperature', p.defaults?.temperatureK == null ? '' : String(p.defaults.temperatureK));
-  const [width, setWidth] = useProjectState('RamanControls.width', p.defaults?.fwhm == null ? '' : String(p.defaults.fwhm));
-  const [peakShape, setPeakShape] = useProjectState<'' | 'gaussian' | 'lorentzian'>('RamanControls.peakShape', p.defaults?.peakShape ?? '');
+  const [width] = useProjectState('RamanControls.width', p.defaults?.fwhm == null ? '' : String(p.defaults.fwhm));
+  const [peakShape] = useProjectState<'' | 'gaussian' | 'lorentzian'>('RamanControls.peakShape', p.defaults?.peakShape ?? '');
   const [applied, setApplied] = useProjectState<{ identity: string; parameters: RamanStokesParameters }>('RamanControls.applied');
   const [error, setError] = useState('');
   const dataIdentity = `${p.identity}:${JSON.stringify(p.modes.map(mode => [mode.index, mode.sourceIndex, mode.sourceLine, mode.kind, mode.frequency, mode.frequencyRounding, mode.ramanActivity, mode.ramanActivityUnit, mode.ramanActivityConvention, mode.ramanExcitationWavelengthNm, mode.ramanActivitySourceLine]))}`;
   useEffect(() => { setError(''); }, [dataIdentity]);
   const parameters = applied?.identity === dataIdentity ? applied.parameters : null;
-  const laserValue = Number(laser), temperatureValue = Number(temperature), widthValue = Number(width);
+  const laserValue = Number(laser), temperatureValue = Number(temperature);
   const validParameters = laser.trim() !== '' && temperature.trim() !== '' && [laserValue, temperatureValue].every(value => Number.isFinite(value) && value > 0);
   const projected = useMemo(() => {
     if (!parameters) return null;
@@ -59,9 +59,10 @@ function RamanControlsInner(p: RamanControlsProps) {
   const available = projected?.some(row => row.intensity !== null) ?? false;
   const scaleFactor = p.scaleFactor ?? 1;
   const points = projected?.flatMap(row => row.intensity === null ? [] : [{ x: correctedFrequency(row.mode.frequency, scaleFactor), y: row.intensity, sourceIndex:row.sourceIndex, sourceLine:row.mode.sourceLine }]) ?? [];
-  const build = useCallback((options: { range?: [number, number]; fwhm: number; normalize: boolean }) => {
-    if (!parameters || !peakShape) throw new Error('请先应用激光和温度参数，并选择展宽峰型。');
-    return buildRamanSpectrum(p.modes, { ...parameters, ...options, peakShape, scaleFactor });
+  const build = useCallback((options: SpectrumBuildOptions) => {
+    const shape = options.peakShape ?? peakShape;
+    if (!parameters || !shape) throw new Error('请先应用激光和温度参数，并选择展宽峰型。');
+    return buildRamanSpectrum(p.modes, { ...parameters, ...options, peakShape: shape, scaleFactor });
   }, [p.modes, parameters, peakShape, scaleFactor]);
   const activityModes = p.modes.filter(mode => mode.ramanActivity != null && Number.isFinite(mode.ramanActivity));
   if (!activityModes.length) return <AnalysisTaskLayout variant="card" title="拉曼谱" className="spectroscopy-card"><p className="postprocess-note">当前频率结果未输出拉曼活性。</p></AnalysisTaskLayout>;
@@ -77,8 +78,7 @@ function RamanControlsInner(p: RamanControlsProps) {
         <SpectroscopyTable hideTitle projection={ramanStokesTable(projected, p.modes, scaleFactor,decimals)} fileName="Ester-Studio-raman-stokes-intensity.txt" selectionScope={`${p.identity}:raman-stokes`} selectedKey={p.selectedIndex===undefined?undefined:String(p.selectedIndex)} selectionLabel="模式" onSelect={key => p.onSelectIndex(Number(key))} onPreview={p.onPreviewIndex?key=>p.onPreviewIndex?.(key===null?null:Number(key)):undefined} format={{decimals,onDecimalsChange:setDecimals,ariaLabel:'拉曼强度表'}}/>
       </> : <p className="postprocess-note">输入激光波长和温度后应用参数。</p>}
     </AnalysisTaskSection>
-    {parameters && available ? <SpectroscopyControls appearanceKey={p.identity} presentation="section" title="拉曼 Stokes 谱" decimals={decimals} identity={`${dataIdentity}:${parameters.laserWavelengthNm}:${parameters.temperatureK}:${peakShape}:${scaleFactor}`} axis="cm⁻¹" fwhmUnit="cm⁻¹" defaultFwhm={16} fwhm={Number.isFinite(widthValue)&&widthValue>0?widthValue:16} hideFwhmControl peakShape={peakShape||undefined} broadening={!!peakShape&&width.trim()!==''&&Number.isFinite(widthValue)&&widthValue>0} rawSticks={{points,intensityUnit:'a.u.'}} build={build} selectedIndex={p.selectedIndex} onSelectIndex={p.onSelectIndex} sourceIndex={(line, sourceIndex) => p.modes.find(mode => mode.sourceLine === line && mode.sourceIndex === sourceIndex)?.displayIndex}
-      settings={<><label>峰型<select aria-label="Raman展宽峰型" value={peakShape} onChange={event => setPeakShape(event.target.value as typeof peakShape)}><option value="">不展宽</option><option value="gaussian">高斯</option><option value="lorentzian">洛伦兹</option></select></label><label>FWHM / cm⁻¹<NumericInput aria-label="Raman展宽FWHM"  min={0} step={1} value={width} disabled={!peakShape} onChange={event => setWidth(event.target.value)}/></label></>}/>
+    {parameters && available ? <SpectroscopyControls kind="raman" appearanceKey={p.identity} presentation="section" title="拉曼 Stokes 谱" decimals={decimals} identity={`${dataIdentity}:${parameters.laserWavelengthNm}:${parameters.temperatureK}:${peakShape}:${scaleFactor}`} axis="cm⁻¹" fwhmUnit="cm⁻¹" defaultFwhm={16} ramanBroadening={{width,peakShape}} rawSticks={{points,intensityUnit:'a.u.'}} build={build} selectedIndex={p.selectedIndex} onSelectIndex={p.onSelectIndex} sourceIndex={(line, sourceIndex) => p.modes.find(mode => mode.sourceLine === line && mode.sourceIndex === sourceIndex)?.displayIndex}/>
       : parameters && <AnalysisTaskSection title="拉曼 Stokes 谱"><p className="postprocess-note">缺少可用于 Stokes 换算的拉曼活性。</p></AnalysisTaskSection>}
   </AnalysisTaskLayout>;
 }

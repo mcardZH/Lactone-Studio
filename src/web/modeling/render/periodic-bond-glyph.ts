@@ -8,6 +8,7 @@ export function createPeriodicBondGlyphExporter(mol:any){
  const native=createPeriodicBondGlyphCore(mol);let disposed=false,worker:Worker|null=null,serial=0,contextKey='',workerContextKey='',registrationSerial=0;
  let cached:{structure:Structure;positions:readonly Atom[];styles:readonly any[];expanded:boolean;rows:Map<number,{unclipped:boolean;primitives:BondGlyphPrimitive[]}>}|null=null;
  let local:{key:string;structure:Structure;styles:readonly any[];prepared:Map<number,ReturnType<typeof periodicBondGlyphContext>>}|null=null;
+ const bondIndices=new WeakMap<readonly Bond[],Map<Bond,number>>();
  const pending=new Map<number,{resolve(rows:any[]):void;reject(error:unknown):void}>();
  const counters={registrations:0,batches:0,bonds:0,workerStarts:0,workerStops:0,cancellations:0,adjacencyBuilds:0};
  const topologyKey=(structure:Structure,styles:readonly any[])=>JSON.stringify([structure.atoms.map(a=>[a.id,a.element]),structure.bonds,structure.cell,styles]);
@@ -43,7 +44,10 @@ export function createPeriodicBondGlyphExporter(mol:any){
     async prepareAsync(structure:Structure,_bond:Bond,positions:readonly Atom[],styles:readonly any[],expanded:boolean,signal?:AbortSignal){return this.prepareBatchAsync(structure,positions,styles,expanded,signal);},
     export(structure:Structure,bond:Bond,positions:readonly Atom[],styles:readonly any[],representation:'stick'|'line'='stick',prepared?:ReturnType<typeof periodicBondGlyphContext>,unclipped=false):BondGlyphPrimitive[]{
       if(disposed)throw new Error('周期键glyph导出器已关闭。');
-      const index=structure.bonds?.indexOf(bond)??-1,row=cached?.structure===structure&&cached.positions===positions&&cached.styles===styles?cached.rows.get(index):undefined;
+      const bonds=structure.bonds;
+      let indices=bonds&&bondIndices.get(bonds);
+      if(bonds&&!indices){indices=new Map();for(const [index,edge] of bonds.entries())if(!indices.has(edge))indices.set(edge,index);bondIndices.set(bonds,indices);}
+      const index=indices?.get(bond)??-1,row=cached?.structure===structure&&cached.positions===positions&&cached.styles===styles?cached.rows.get(index):undefined;
       if(row&&row.unclipped===unclipped&&representation==='stick')return row.primitives;
       if(!prepared){if(local?.structure!==structure||local.styles!==styles){const key=topologyKey(structure,styles);if(local?.key!==key){const adjacency=periodicBondGlyphTopology(structure),contexts=new Map<number,ReturnType<typeof periodicBondGlyphContext>>();counters.adjacencyBuilds++;for(const [i,edge]of(structure.bonds??[]).entries())if(periodicGlyphRequired(structure,edge))contexts.set(i,periodicBondGlyphContext(structure,edge,positions,adjacency));local={key,structure,styles,prepared:contexts};}else{local.structure=structure;local.styles=styles;}}prepared=local.prepared.get(index);}
       return native.export(structure,bond,positions,styles,representation,prepared,unclipped);

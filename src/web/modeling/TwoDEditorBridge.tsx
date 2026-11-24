@@ -11,7 +11,7 @@ import {
 import type { TwoDCommitData, TwoDDraft, TwoDSourceInput } from "../../modeling/two-d";
 import {prepareTwoDAssembly,type TwoDAssemblyInput} from '../../modeling/application/two-d-assembly';
 import { calculateGeometryCip, createTwoDEditorProvider, twoDIndigoConverter } from "./two-d-editor-service";
-import { deriveTwoDCip, paintTwoDBoardLabels, type TwoDCipLabel } from "./two-d-board-display";
+import { deriveTwoDCipResult, paintTwoDBoardLabels, type TwoDCipLabel, type TwoDCipResult } from "./two-d-board-display";
 import "./two-d-editor-ui.css";
 import { ScientificImageCopyButton } from "../ScientificImageCopyButton";
 import { captureTwoDBoardPng } from "./two-d-image-copy";
@@ -38,12 +38,17 @@ export interface TwoDEditorSnapshot {
 }
 export interface TwoDEditorRuntime {
 	getSnapshot(): Promise<TwoDEditorSnapshot>;
+	applyKet(ket:string, expectedRevision:number, assertCurrent:()=>void): Promise<TwoDEditorSnapshot>;
+	history(direction:'undo'|'redo', expectedRevision:number): Promise<TwoDEditorSnapshot>;
+	prepareGeneration(expectedRevision:number): Promise<{assembly:TwoDAssemblyInput;commit:TwoDCommitData;editorSnapshot:TwoDEditorSnapshot}>;
+	readonly ready:boolean;
+	stereochemistry(expectedRevision:number,shown?:boolean,retry?:boolean):Promise<{revision:number;shown:boolean;labels:TwoDCipLabel[];errors:string[];status:string}>;
 	readonly revision: number;
 	readonly hasContent: boolean;
 	cancelGesture(): void;
 	replaceSource(
 		source: TwoDSourceInput,
-		options?: { history?: "reset" | "append"; metadata?: unknown; expectedRevision?: number }
+		options?: { history?: "reset" | "append"; metadata?: unknown; expectedRevision?: number; preserveGesture?:boolean; assertCurrent?:()=>void; stillCurrent?:()=>boolean }
 	): Promise<boolean>;
 }
 /** Captured synchronously by the generating click, before editor serialization. */
@@ -134,8 +139,10 @@ export default function TwoDEditorBridge({
 	const [provider] = useState(createTwoDEditorProvider);
 	const [editor, setEditor] = useState<Ketcher | null>(null);
 	const [showRS,setShowRS]=useState(()=>showRsByWindow.get(document)??false);
-	const showRSRef=useRef(showRS);showRSRef.current=showRS;
-	const cipJob=useRef<{ket:string;revision:number;controller:AbortController;promise:Promise<TwoDCipLabel[]>;labels?:TwoDCipLabel[]} | null>(null);
+	const showRSRef=useRef(showRS);
+	const visibleRef=useRef(visible);visibleRef.current=visible;
+	const cipJob=useRef<{ket:string;revision:number;controller:AbortController;promise:Promise<TwoDCipResult|undefined>;labels?:TwoDCipLabel[]} | null>(null);
+	const [cipFailures,setCipFailures]=useState<string[]>([]);
 	const [nativeReadyEpoch, setNativeReadyEpoch] = useState(0);
 	const [sourceEpoch, setSourceEpoch] = useState(0);
 	const [sourceVisibility, setSourceVisibility] = useState<{ key?: string; hidden: boolean }>({
@@ -149,7 +156,8 @@ export default function TwoDEditorBridge({
 		setEditor(value);
 		setNativeReadyEpoch((previous) => previous + 1);
 	}, []);
-	const [draft, setDraft] = useState<TwoDDraft | null>(null);
+	const [draftState,setDraft] = useState<{draft:TwoDDraft;revision:number}|null>(null);
+	const draft=draftState?.draft;
 	const [loading, setLoading] = useState(false);
 	const [dirty, setDirty] = useState(false);
 	const [history, setHistory] = useState({ undo: 0, redo: 0 });
@@ -170,28 +178,38 @@ export default function TwoDEditorBridge({
 		sourceMetadata = useRef<unknown>(undefined),
 		hasContent = useRef(false);
 	const cancelGesture = useRef<(() => void) | null>(null);
+	const activeEdit = useRef<(() => boolean) | undefined>(undefined);
 	const snapshotCallback = useRef(onSnapshot);
 	snapshotCallback.current = onSnapshot;
-	const registerCancel = useCallback((cancel: (() => void) | null) => {
+	const registerCancel = useCallback((cancel: (() => void) | null, isEditing?:()=>boolean) => {
 		cancelGesture.current = cancel;
+		activeEdit.current = isEditing;
 	}, []);
 	const getRevision = useCallback(() => revision.current, []);
 	function discardCip() {
 		cipJob.current?.controller.abort();cipJob.current=null;
+		setCipFailures([]);
 		if(editor)paintTwoDBoardLabels(editor,[]);
 	}
-	function boardCip(ket:string,expected:number) {
+	function setStereoVisibility(checked:boolean,owner:Document){
+		showRsByWindow.set(owner,checked);showRSRef.current=checked;setShowRS(checked);if(!checked)discardCip();
+	}
+	function boardCip(ket:string,expected:number,retry=false) {
 		const current=cipJob.current;
-		if(current?.ket===ket&&current.revision===expected)return current.promise;
+		if(!retry&&current?.ket===ket&&current.revision===expected)return current.promise;
 		current?.controller.abort();
 		const controller=new AbortController();
-		const job={ket,revision:expected,controller,promise:Promise.resolve([] as TwoDCipLabel[]),labels:undefined as TwoDCipLabel[]|undefined};
+		const job:NonNullable<typeof cipJob.current>={ket,revision:expected,controller,promise:Promise.resolve(undefined),labels:retry&&current?.revision===expected?current.labels:undefined};
 		cipJob.current=job;
-		job.promise=deriveTwoDCip(ket,calculateGeometryCip,controller.signal).catch(()=>[]).then(labels=>{
-			if(cipJob.current!==job||controller.signal.aborted||!showRSRef.current||revision.current!==expected)return [];
+		setCipFailures([]);
+		job.promise=deriveTwoDCipResult(ket,calculateGeometryCip,controller.signal).catch(error=>({
+			labels:[],failures:[error instanceof Error?error.message:String(error)]
+		})).then(({labels,failures})=>{
+			if(cipJob.current!==job||controller.signal.aborted||!showRSRef.current||!visibleRef.current||revision.current!==expected)return;
 			job.labels=labels;
+			setCipFailures(failures);
 			if(editor)paintTwoDBoardLabels(editor,labels);
-			return labels;
+			return {labels,failures};
 		});
 		return job.promise;
 	}
@@ -251,7 +269,7 @@ export default function TwoDEditorBridge({
 					allowEmpty: true
 				});
 				hasContent.current = next.components.some((c) => c.atoms.length > 0);
-				setDraft(next);
+				setDraft({draft:next,revision:revision.current});
 				setDirty(ket !== originalKet.current);
 				snapshotCallback.current?.(snapshot(ket));
 			} catch (error) {
@@ -302,7 +320,6 @@ export default function TwoDEditorBridge({
 			});
 			editor.editor.clearHistory();
 			source.current = next;
-			setDraft(editorBaseline.current);
 			setDirty(false);
 			setHistory({ undo: 0, redo: 0 });
 			sourceInput.current = initialSource;
@@ -310,6 +327,7 @@ export default function TwoDEditorBridge({
 			sourceMetadata.current = undefined;
 			hasContent.current = next.components.some((c) => c.atoms.length > 0);
 			revision.current++;
+			setDraft({draft:editorBaseline.current,revision:revision.current});
 			snapshotCallback.current?.(snapshot(originalKet.current));
 			if (display.restriction) latest.current.onError(display.restriction);
 		})()
@@ -338,12 +356,12 @@ export default function TwoDEditorBridge({
 		return()=>{observer.disconnect();svg.querySelector('[data-two-d-derived-labels]')?.remove();};
 	},[editor,nativeReadyEpoch]);
 	useEffect(()=>{
-		if(!editor||!showRS||!visible){discardCip();return;}
-		if(!draft?.components.length)return;
-		const expected=revision.current, ket=draft.ket;
-		const timer=setTimeout(()=>{if(revision.current===expected&&showRSRef.current)void boardCip(ket,expected);},90);
+		if(!editor||!showRSRef.current||!visibleRef.current){discardCip();return;}
+		if(!draftState?.draft.components.length)return;
+		const {revision:expected,draft:{ket}}=draftState;
+		const timer=setTimeout(()=>{if(revision.current===expected&&showRSRef.current&&visibleRef.current)void boardCip(ket,expected);},90);
 		return()=>clearTimeout(timer);
-	},[editor,draft,showRS,visible]);
+	},[editor,draftState,showRS,visible]);
 
 	useEffect(() => {
 		if (!visible) cancelGesture.current?.();
@@ -353,7 +371,33 @@ export default function TwoDEditorBridge({
 			onRuntime?.(null);
 			return;
 		}
+		function assertEditable(expected:number,epoch:number){
+			if(!mounted.current||loadingRef.current||session.current!==epoch)throw Error('二维编辑器尚未就绪或会话已切换。');
+			if(revision.current!==expected)throw Error('二维草稿版本已变化，请重新读取。');
+			if(activeEdit.current?.())throw Error('二维编辑器正在处理手势或原子标签编辑。');
+		}
+		async function readSnapshot(){
+			const expected=revision.current,epoch=session.current;
+			if(loadingRef.current)throw Error('二维编辑器正在载入草稿。');
+			const ket=await editor!.getKet();
+			if(!mounted.current||session.current!==epoch||revision.current!==expected)throw Error('二维草稿在读取期间发生变化。');
+			const content=parseKetDraft(ket,{sourceId:source.current?.source.id??manualId.current,allowEmpty:true}).components.length>0;
+			return {...snapshot(ket),hasContent:content};
+		}
 		const runtime: TwoDEditorRuntime = {
+			get ready(){return mounted.current&&!loadingRef.current;},
+			async stereochemistry(expected,shown,retry){
+				const epoch=session.current;assertEditable(expected,epoch);
+				const draft=await readSnapshot();assertEditable(expected,epoch);
+				if(shown!==undefined)setStereoVisibility(shown,editor.editor.render.paper.canvas.ownerDocument);
+				if(!showRSRef.current)return {revision:expected,shown:false,labels:[],errors:[],status:'hidden'};
+				if(!draft.hasContent)return {revision:expected,shown:true,labels:[],errors:[],status:'empty'};
+				const result=await boardCip(draft.ket,expected,retry);assertEditable(expected,epoch);
+				if(!showRSRef.current)return {revision:expected,shown:false,labels:[],errors:[],status:'hidden'};
+				if(!result||!visibleRef.current)return {revision:expected,shown:true,labels:[],errors:[],status:'superseded'};
+				const {labels,failures:errors}=result;
+				return {revision:expected,shown:true,labels,errors,status:errors.length?(labels.length?'partial':'failed'):'ready'};
+			},
 			get revision() {
 				return revision.current;
 			},
@@ -363,8 +407,29 @@ export default function TwoDEditorBridge({
 			cancelGesture() {
 				cancelGesture.current?.();
 			},
-			async getSnapshot() {
-				return snapshot(await editor.getKet());
+			getSnapshot:readSnapshot,
+			async applyKet(ket,expected,assertCurrent){
+				const epoch=session.current;assertEditable(expected,epoch);
+				parseKetDraft(ket,{sourceId:source.current?.source.id??manualId.current,allowEmpty:true});
+				const display=normalizeTwoDDisplayKet(ket);
+				if(display.restriction)throw Error(display.restriction);
+				const canonical=await canonicalizeTwoDSource(editor,display.ket);
+				const before=await readSnapshot();assertCurrent();assertEditable(expected,epoch);
+				if(before.ket===canonical.ket)return before;
+				editor.editor.update(fromNewCanvas(editor.editor.render.ctab,canonical.struct));
+				fitTwoDSourceViewport(editor);
+				return readSnapshot();
+			},
+			async history(direction,expected){
+				assertEditable(expected,session.current);
+				setHistory(performTwoDHistory(editor,direction));
+				return readSnapshot();
+			},
+			async prepareGeneration(expected){
+				const epoch=session.current;assertEditable(expected,epoch);
+				const current=await readSnapshot();assertEditable(expected,epoch);
+				if(!current.hasContent)throw Error('请先绘制分子。');
+				return assemblyDraft(parseKetDraft(current.ket,{sourceId:source.current?.source.id??manualId.current,allowEmpty:true}));
 			},
 			async replaceSource(input, options = {}) {
 				const expected = options.expectedRevision ?? revision.current;
@@ -382,6 +447,9 @@ export default function TwoDEditorBridge({
 				const { struct, ket: canonicalKet } = await canonicalizeTwoDSource(editor, display.ket);
 				if (!mounted.current || epoch !== session.current || expected !== revision.current)
 					return false;
+				options.assertCurrent?.();
+				if(options.stillCurrent&&!options.stillCurrent())return false;
+				if(options.preserveGesture&&activeEdit.current?.())return false;
 				cancelGesture.current?.();
 				const baseline = parseKetDraft(canonicalKet, {
 					sourceId: next.source.id,
@@ -579,16 +647,19 @@ export default function TwoDEditorBridge({
 						const expected=revision.current,enabled=showRSRef.current;
 						const ket=await editor.getKet();signal.throwIfAborted();
 						if(expected!==revision.current)throw new Error('二维结构已变化，请重新复制。');
-						const labels=enabled?await boardCip(ket,expected):[];signal.throwIfAborted();
-						if(expected!==revision.current||enabled!==showRSRef.current)throw new Error('二维结构或标注已变化，请重新复制。');
-						paintTwoDBoardLabels(editor,labels);
+						const result=enabled?await boardCip(ket,expected):undefined;signal.throwIfAborted();
+						if(expected!==revision.current||enabled!==showRSRef.current||enabled&&!result)throw new Error('二维结构或标注已变化，请重新复制。');
+						paintTwoDBoardLabels(editor,result?.labels??[]);
 						return captureTwoDBoardPng(editor.editor.render.paper.canvas,owner,signal);
 					}}
 				/>
-				<label className="two-d-rs-toggle"><input type="checkbox" checked={showRS} onChange={event=>{
-					const checked=event.currentTarget.checked;showRsByWindow.set(event.currentTarget.ownerDocument,checked);
-					showRSRef.current=checked;setShowRS(checked);if(!checked)discardCip();
-				}}/>显示R/S</label>
+				<label className="two-d-rs-toggle"><input type="checkbox" checked={showRS} onChange={event=>setStereoVisibility(event.currentTarget.checked,event.currentTarget.ownerDocument)}/>显示R/S</label>
+				{showRS&&cipFailures.length>0&&<details>
+					<summary aria-label={cipJob.current?.labels?.length?'部分立体化学标注失败':'立体化学标注失败'}>⚠</summary>
+					<div role="status">{cipFailures.join('；')}</div>
+					<button type="button" onClick={()=>{const job=cipJob.current;if(job)void boardCip(job.ket,job.revision,true);}}>重试标注</button>
+					<button type="button" aria-label="关闭立体化学标注警告" onClick={()=>setCipFailures([])}>×</button>
+				</details>}
 				{onPreviewEnabledChange&&<label className="two-d-preview-toggle"><input type="checkbox" checked={previewEnabled} onChange={event=>onPreviewEnabledChange(event.currentTarget.checked)}/>三维预览</label>}
 				<input
 					ref={fileInput}

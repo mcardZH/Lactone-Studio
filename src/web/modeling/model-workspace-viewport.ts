@@ -1,11 +1,12 @@
 import type { ModelDocument } from '../../modeling/contracts';
 import { displayedCoordinateObjects } from './coordinate-objects';
 import type { ViewportStateMarker } from './viewport-overlays';
-import {isFrameBondViewportEdit,type WorkspaceViewportEvent} from './workspace-viewport';
+import {isFrameBondViewportEdit,type WorkspaceViewportDispatchContext,type WorkspaceViewportEvent} from './workspace-viewport';
 
 interface DispatchContext {
   current: ModelDocument;
   releasing: boolean;
+  detached: boolean;
   resolveMarker(marker: ViewportStateMarker): ViewportStateMarker;
 }
 type ViewportHandlers = {
@@ -48,20 +49,21 @@ export function resolveModelWorkspaceMarker(marker: ViewportStateMarker, current
  * tool/runtime policies. Key release must still clear held bookkeeping after
  * revision/activation changes; it cannot bypass owner lifetime or document ID. */
 export function createModelWorkspaceViewportDispatcher(options: ViewportDispatchOptions) {
-  return async (event: WorkspaceViewportEvent) => {
+  return async (event: WorkspaceViewportEvent,source?:WorkspaceViewportDispatchContext) => {
     try {
       const { document: current, alive, active } = options.read();
       const releasing = event.type === 'key' && event.release;
       const frameKey=options.frameBondKey?.();
       if(event.frameBondTarget&&event.frameBondTarget.frameKey!==frameKey||frameKey&&isFrameBondViewportEdit(event)&&!event.frameBondTarget)throw Error('当前科学帧已变化，旧显示键操作未应用。');
-      if (!alive || current.id !== options.documentId || (!releasing && (active === false || current.revision !== options.revision))) {
+      const detached=source?.detached===true;
+      if (!alive || current.id !== options.documentId || (!releasing && (active === false&&!detached || current.revision !== options.revision))) {
         throw new Error('视口所属文档或修订已变化，请重新操作。');
       }
       if (!releasing && options.blocked()) throw new Error('请先完成当前对话框或工具栏编辑，再操作视口。');
       const handler = (Object.hasOwn(options.handlers, event.type) ? options.handlers[event.type] : undefined) as
         ((event: WorkspaceViewportEvent, context: DispatchContext) => void | Promise<void>) | undefined;
       if (!handler) throw new Error('未知视口交互事件。');
-      await handler(event, { current, releasing,
+      await handler(event, { current, releasing, detached,
         resolveMarker: marker => resolveModelWorkspaceMarker(marker, current, options.markers) });
     } catch (cause) { options.onError(cause); throw cause; }
   };

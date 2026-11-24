@@ -1,7 +1,7 @@
 /** Presentation-only shared by result tables, viewport overlays and image export. */
-import { formatResultValue, resultDecimals } from '../../results/numeric-format';
+import { formatResultValue, resultDecimals, type ResultNumberFormat } from '../../results/numeric-format';
 import type {AnalysisColorbarLayout} from './analysis-colorbar-layout';
-import {zeroCenteredColorStops} from '../../results/zero-centered-color';
+import {interpolateColor, zeroCenteredColorStops} from '../../results/zero-centered-color';
 export type AnalysisPalette = 'blue-red' | 'purple-green' | 'viridis';
 export interface AnalysisDisplaySettings {
   color:boolean; labels:boolean; spin:boolean;
@@ -9,14 +9,14 @@ export interface AnalysisDisplaySettings {
   colorbarLayout?:AnalysisColorbarLayout;
   range?:{min:number;max:number};
 }
-export interface AnalysisColorbar {min:number;max:number;palette:AnalysisPalette;label:string;decimals:number;reverse?:boolean;colors?:readonly string[];zeroCentered?:boolean;layout?:AnalysisColorbarLayout}
+export interface AnalysisColorbar {min:number;max:number;palette:AnalysisPalette;label:string;decimals:number;reverse?:boolean;colors?:readonly string[];zeroCentered?:boolean;layout?:AnalysisColorbarLayout;sourceKey?:string}
 export const ANALYSIS_PALETTES:Record<AnalysisPalette,readonly [string,string,string]>={
   'blue-red':['#2166ac','#ffffff','#b2182b'],
   'purple-green':['#762a83','#f7f7f7','#1b7837'],
   viridis:['#440154','#21918c','#fde725'],
 };
 export const analysisDecimals = resultDecimals;
-export function formatAnalysisValue(value:number|null|undefined,decimals=2){return formatResultValue(value,decimals);}
+export function formatAnalysisValue(value:number|null|undefined,decimals=2,format?:ResultNumberFormat){return formatResultValue(value,decimals,format);}
 export function analysisRange(values:readonly number[],settings:AnalysisDisplaySettings,zeroCentered:boolean):{min:number;max:number}|null{
   if(settings.range&&Number.isFinite(settings.range.min)&&Number.isFinite(settings.range.max)&&settings.range.min<settings.range.max)return {...settings.range};
   const finite=values.filter(Number.isFinite);if(!finite.length)return null;
@@ -34,12 +34,20 @@ export function analysisGradient(palette:AnalysisPalette='blue-red',reverse=fals
 export function analysisColorbarStops(colorbar:AnalysisColorbar):{offset:number;color:string}[]{
   const colors=colorbar.colors??ANALYSIS_PALETTES[colorbar.palette];
   if(colorbar.zeroCentered)return zeroCenteredColorStops(colorbar.min,colorbar.max,colors,!!colorbar.reverse);
+  if(colorbar.min===colorbar.max){
+    const color=interpolateColor(.5,colors);
+    return [{offset:0,color},{offset:1,color}];
+  }
   const stops=colorbar.reverse?[...colors].reverse():colors;
   return stops.map((color,index)=>({offset:index/Math.max(1,stops.length-1),color}));
 }
 export function analysisColorbarGradient(colorbar:AnalysisColorbar):string{
-  if(!colorbar.zeroCentered)return analysisGradient(colorbar.palette,!!colorbar.reverse,colorbar.colors);
-  return `linear-gradient(to right, ${analysisColorbarStops(colorbar).map(stop=>`${stop.color} ${stop.offset*100}%`).join(', ')})`;
+  const direction=colorbar.layout?.orientation==='vertical'?'top':'right';
+  return `linear-gradient(to ${direction}, ${analysisColorbarStops(colorbar).map(stop=>`${stop.color} ${stop.offset*100}%`).join(', ')})`;
+}
+export function analysisColorbarValues(colorbar:AnalysisColorbar): readonly [string,string] {
+  const format = colorbar.layout?.numberFormat;
+  return [formatAnalysisValue(colorbar.min,colorbar.decimals,format),formatAnalysisValue(colorbar.max,colorbar.decimals,format)];
 }
 /** Pins remain visible; hover adds at most one temporary target. */
 export function activeAnalysisRows(pinned:readonly string[],hover:string|null){return [...new Set(hover?[...pinned,hover]:pinned)];}

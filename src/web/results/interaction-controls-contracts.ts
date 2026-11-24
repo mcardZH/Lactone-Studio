@@ -9,6 +9,7 @@ import type { ScientificScatterData } from '../../results/scatter-data';
 import type { ScientificPlotViewport } from '../../results/scientific-plot';
 import type { SurfaceColorMapping } from '../modeling/render/surface-layer';
 import type { AnalysisColorbarLayout } from './analysis-colorbar-layout';
+import type { AnalysisColorbar } from './analysis-display';
 import type { LocalAppearanceId } from './SurfaceAppearanceControls';
 
 export interface InteractionGenerateInvocation { context: SurfaceContext; requestId: string; method: InteractionMethod; fragments: readonly InteractionSourceFragment[]; quality: InteractionGridQuality }
@@ -43,6 +44,14 @@ export interface InteractionProjection extends CalculationRangeFeedback {
   context: SurfaceContext; method: InteractionMethod; fields: InteractionFieldPair|null;
   display: InteractionDisplaySettings; generated: InteractionGeneratedFields|null;
   contributions: InteractionContributions|null; highlights: InteractionHighlights; decimals: number;
+  colorbarSourceKey?: string;
+}
+export function interactionSurfaceColorbar(projection: InteractionProjection): AnalysisColorbar | null {
+  const { fields, display, decimals, colorbarSourceKey } = projection, { color } = display;
+  return fields && color ? {
+    ...color, zeroCentered: true, palette: 'blue-red', decimals, label: `sign(λ₂)ρ / ${fields.mapping.valueUnit ?? '单位未确认'}`,
+    layout: display.colorbarLayout, sourceKey: colorbarSourceKey,
+  } : null;
 }
 export interface InteractionInteractionPort { hover(key: string|null): void; toggle(key: string): void; releaseFields?():void; setColorbarLayout?(layout:AnalysisColorbarLayout):void }
 export interface InteractionFragmentSelectionProps {
@@ -54,9 +63,10 @@ export interface InteractionFragmentSelectionProps {
 }
 export interface InteractionScatterSnapshot {
   context: SurfaceContext; method: InteractionMethod; component: InteractionComponent; data: ScientificScatterData;
-  xLabel: string; yLabel: string; display: InteractionDisplaySettings; decimals: number;
+  xLabel: string; yLabel: string; display: InteractionDisplaySettings; decimals: number; analysisSourceKey?:string;
 }
 export interface InteractionAnalysisControlsProps {
+  analysisId?:string;
   /** Same-source owner memory only. No file/global settings or transport. */
   draftState?: { current?: import('./InteractionAnalysisControls').InteractionAnalysisSnapshot };
   context: SurfaceContext; structure: Structure; active: boolean; available?: boolean;
@@ -76,6 +86,6 @@ export interface InteractionAnalysisControlsProps {
    * taken from the original host run, never inferred from this callback alone. */
   onResultRejected?(requestId:string,operation:'export',reason:'cancelled'|'failed',message?:string):void;
   onInteractionReady?(port: InteractionInteractionPort|null): void;
-  onOpenScatter?(snapshot: InteractionScatterSnapshot): void;
+  onOpenScatter?(snapshot: InteractionScatterSnapshot): string|void;
   onExportImage?(): void|Promise<void>; onError?(message:string): void;
 }

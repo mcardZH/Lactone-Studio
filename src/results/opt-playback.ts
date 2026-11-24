@@ -5,6 +5,15 @@ import type { PreparedTrajectoryView, PreparationSnapshot } from './prepared-tra
 import { recordTrajectoryOperation } from './trajectory-operations';
 import { confirmedStageTsFrame } from './trajectory-stages';
 
+interface PlaybackSceneRequest { requestId: string; frameIndex: number; publishedAt: number; }
+export interface PlaybackNavigation {
+  id: string;
+  index: number;
+  status: 'pending' | 'selected' | 'failed';
+  error?: string;
+}
+let nextPlaybackSceneOwner = 0;
+
 export interface OptPlaybackSnapshot {
   frame: { index: number; structure: Structure };
   /** A source-confirmed TS in this result's local frame numbering, never an energy maximum. */
@@ -12,6 +21,10 @@ export interface OptPlaybackSnapshot {
   preparation: PreparationSnapshot | null;
   busy: boolean; error: string; playing: boolean; previewing: boolean;
   loading: boolean; loadCancelled: boolean; silentLoading: boolean;
+  /** An explicit frame lookup may still be waiting while the previous frame remains visible. */
+  seekTargetIndex?: number;
+  /** The current continuous-playback draw must be submitted before advancing. */
+  sceneRequest?: PlaybackSceneRequest;
   /** Live incremental handoff keeps the selected ready frame while preparing its tail. */
   holdingFrameDuringPreparation?:boolean;
   /** Failed/busy preparation is retryable and is never a user cancellation. */
@@ -43,14 +56,17 @@ export interface OptPlaybackSessionOptions {
   };
   /** Only an already-open, proven same-source incremental view may supply this intent. */
   liveContinuation?:Pick<OptPlaybackSnapshot,'playing'|'silentLoading'>;
+  /** An active live projection can publish its chosen frame before preparing the remaining members. */
+  deferBatchPreparation?: boolean;
+  awaitSceneSubmission?: boolean;
 }
 export type OptPlaybackViewState=NonNullable<OptPlaybackSessionOptions['restored']>&Pick<OptPlaybackSnapshot,'playing'|'silentLoading'>;
-/** Batch navigation needs the complete prepared collection. A retained ready
- * frame remains independently available to canvas/export consumers. */
+/** Single-frame navigation and continuous playback have separate readiness. */
 export function playbackCapabilities(state: Pick<OptPlaybackSnapshot,'loading'|'loadCancelled'|'loadFailed'|'preparation'|'range'>, count:number, active=true, ready=true) {
-  const navigation=active&&ready&&count>0&&!state.loading&&!state.loadCancelled&&!state.loadFailed
+  const seek=active&&ready&&count>0&&!state.loadCancelled&&!state.loadFailed;
+  const navigation=seek&&!state.loading
     &&(!state.preparation||state.preparation.completed===state.preparation.total);
-  return { navigation, play:navigation&&playbackRange(state.range,count).length>1 };
+  return { seek,navigation,play:navigation&&playbackRange(state.range,count).length>1 };
 }
 /** Historical sessions scheduled milliseconds. A missing millisecond field
  * may use an explicit FPS; zero/invalid values are never treated as missing. */
@@ -93,11 +109,23 @@ export class OptPlaybackSession {
   private playAfterPreparation = false;
   private readonly prepared?: PreparedTrajectoryView;
   private frameOrder: readonly number[];
+  private orderPositions: number[];
   private readonly frameIds: readonly string[];
   private unsubscribePreparation?: () => void;
   private readonly notifyPreparation: boolean;
   private readonly liveContinuation:boolean;
+  private deferBatchPreparation: boolean;
+  private awaitSceneSubmission: boolean;
+  private readonly sceneOwner=++nextPlaybackSceneOwner;
+  private sceneSequence=0;
+  private navigationSequence=0;
+  private navigation?:PlaybackNavigation;
+  readNavigation=()=>this.navigation;
+  private acknowledgedScene?: string;
   private liveResumePlaying=false;
+  private manuallySelectedInBatch=false;
+  private batchLookupIndex:number|undefined;
+  private readonly prioritizedFrames=new Set<number>();
   /** Spatial restore survives batch preparation independently of live play intent. */
   private preparationLanding:number|undefined;
   readonly previewFrameDelayMs: number;
@@ -112,8 +140,11 @@ export class OptPlaybackSession {
     this.notifyPreparation = configuration.notifyPreparation ?? true;
     this.prepared = configuration.prepared;
     this.liveContinuation=Boolean(configuration.liveContinuation&&configuration.restored);
+    this.deferBatchPreparation=configuration.deferBatchPreparation??false;
+    this.awaitSceneSubmission=configuration.awaitSceneSubmission??false;
     this.frameOrder = configuration.frameOrder ?? result.frames.map((_, index) => index);
     this.validateFrameOrder(this.frameOrder);
+    this.orderPositions=this.indexFrameOrder(this.frameOrder);
     this.frameIds=configuration.frameIds??result.frames.map(frame=>JSON.stringify([result.source.id,result.jobIndex,frame.stageId??null,frame.sourceFrameIndex??frame.index,frame.sourceLine]));
     if(this.frameIds.length!==result.frames.length||new Set(this.frameIds).size!==this.frameIds.length)throw Error('播放帧需要不同的稳定身份。');
     this.initialFramePrepared = !(this.prepareFrame || this.prepared) || result.frames.length === 0;
@@ -146,9 +177,12 @@ export class OptPlaybackSession {
     // The requested landing is independent of transient frame previews and
     // must survive cancellation and retry of the same preparation batch.
     if (this.prepared || configuration.restored) this.preparationLanding = this.landingIndex;
+    if (this.deferBatchPreparation && configuration.initialFrameIndex !== undefined) {
+      this.landingIndex = this.preparationLanding = configuration.initialFrameIndex;
+    }
     const landing = this.landingIndex;
     const preparation = this.state.preparation;
-    if (landing !== undefined && (configuration.restored || preparation && preparation.completed === preparation.total) && this.prepared?.canReuse(landing)) {
+    if (landing !== undefined && (this.deferBatchPreparation || configuration.restored || preparation && preparation.completed === preparation.total) && this.prepared?.canReuse(landing)) {
       const cached = this.prepared.get(landing);
       if (cached) {
         this.state = { ...this.state, frame: { index: landing, structure: cached.structure }, busy: false };
@@ -177,30 +211,68 @@ export class OptPlaybackSession {
   private validateFrameOrder(order: readonly number[]) {
     if (order.length !== this.result.frames.length || new Set(order).size !== order.length || order.some(index => !Number.isSafeInteger(index) || index < 0 || index >= order.length)) throw new Error('轨迹播放顺序必须包含全部帧且不得重复。');
   }
-  setFrameOrder(order: readonly number[]) { this.validateFrameOrder(order); if (order.every((index, position) => index === this.frameOrder[position])) return; const {range,rangeMode}=this.state,start=this.frameOrder[range.start],end=this.frameOrder[range.end];this.pause(); this.frameOrder = [...order];if(rangeMode==='custom')this.publish({range:{start:order.indexOf(start),end:order.indexOf(end),stride:range.stride}}); }
+  private indexFrameOrder(order: readonly number[]) { const positions: number[] = []; order.forEach((index, position) => { positions[index] = position; }); return positions; }
+  setFrameOrder(order: readonly number[]) { this.validateFrameOrder(order); if (order.every((index, position) => index === this.frameOrder[position])) return; const {range,rangeMode}=this.state,start=this.frameOrder[range.start],end=this.frameOrder[range.end];this.pause(); this.frameOrder = [...order];this.orderPositions=this.indexFrameOrder(order);if(rangeMode==='custom')this.publish({range:{start:this.orderPositions[start],end:this.orderPositions[end],stride:range.stride}}); }
   /** Effect cleanup is reversible: StrictMode may set up this same owner again.
    * Keep preview/manual intent, but release every live resource and invalidate reads.
    * The source itself belongs to the workspace and must not be disposed here. */
   dispose() {
     this.active = false; this.ready = false;
+    this.navigation=undefined;
     this.clearTimer(); this.cancelRead(); this.batchController?.abort(); this.batchController = null; this.batchAttempted = false; clearInterval(this.batchProgressTimer); this.batchProgressTimer = undefined;
+    this.prioritizedFrames.clear();
     this.unsubscribePreparation?.(); this.unsubscribePreparation = undefined; this.prepared?.release();
-    this.state = { ...this.state, busy: false, ...(this.prepared ? { loading: false, playing: false, previewing: false } : {}) };
+    this.state = { ...this.state, busy: false, seekTargetIndex: undefined, sceneRequest:undefined, ...(this.prepared ? { loading: false, playing: false, previewing: false } : {}) };
     this.listeners.clear();
   }
   /** Explicit React effect replay; ordinary visibility callbacks cannot revive a lease. */
   reacquire() { this.prepared?.reacquire(); }
+  setBatchPreparationDeferred(value: boolean) {
+    if (this.deferBatchPreparation && !value) {
+      this.preparationLanding ??= this.navigation?.status==='pending'?this.navigation.index:this.initialFramePrepared?this.state.frame.index:undefined;
+    }
+    this.deferBatchPreparation=value;
+  }
+  /** Re-enabling follow may reuse the same ready collection and player. */
+  followDeferredFrame(index:number) {
+    if(!this.deferBatchPreparation||this.readController&&this.landingIndex===index
+      ||this.initialFramePrepared&&this.state.frame.index===index)return;
+    this.seek(index);
+  }
+  setSceneSubmissionRequired(value: boolean) {
+    if (value === this.awaitSceneSubmission) return;
+    if (this.state.playing) this.pause();
+    this.awaitSceneSubmission=value;
+  }
+  private sceneRequest(frameIndex: number, publishedAt: number): PlaybackSceneRequest {
+    return { requestId:`playback:${this.sceneOwner}:${++this.sceneSequence}`, frameIndex, publishedAt };
+  }
+  acknowledgeSceneSubmission = (identity: {requestId?: string; frameIndex: number}) => {
+    const request=this.state.sceneRequest;
+    if (!this.active || !this.ready || !this.state.playing || !request || this.acknowledgedScene===request.requestId
+      || request.requestId!==identity.requestId || request.frameIndex!==identity.frameIndex) return;
+    this.acknowledgedScene=request.requestId;
+    if (this.atPlaybackEnd(request.frameIndex)) {
+      this.publish({playing:false,sceneRequest:undefined});
+      return;
+    }
+    this.schedule(request.publishedAt);
+  };
   setEnvironment(active: boolean, ready: boolean) {
     this.active = active; this.ready = ready;
     if (!this.unsubscribePreparation && this.prepared) this.unsubscribePreparation = this.prepared.subscribe(() => this.updatePreparation());
     if (!active) {
       const attempted = this.previewAttempted, landingIndex = this.landingIndex;
-      this.pause(); this.previewAttempted = attempted; this.landingIndex = landingIndex;
+      this.pausePlayback(true); this.previewAttempted = attempted; this.landingIndex = landingIndex;
       return;
     }
-    if (!ready) { this.clearTimer(); return; }
-    if (this.prepared && !this.batchAttempted && !this.state.loadCancelled && !this.state.loadFailed && this.prepared.snapshot().completed < this.prepared.indices.length) {
+    if (!ready) { if(this.awaitSceneSubmission&&this.state.playing)this.pause();else this.clearTimer(); return; }
+    if (this.prepared && !this.deferBatchPreparation && !this.batchAttempted && !this.state.loadCancelled && !this.state.loadFailed && this.prepared.snapshot().completed < this.prepared.indices.length) {
       void this.loadBatch(); return;
+    }
+    if (this.state.loading && this.batchLookupIndex !== undefined && this.batchLookupIndex !== this.state.frame.index && !this.readController) {
+      this.seek(this.batchLookupIndex);
+      return;
     }
     if (this.state.loading || this.state.loadCancelled || this.state.loadFailed) return;
     // A source may have been opened before native capability was ready. React
@@ -225,70 +297,116 @@ export class OptPlaybackSession {
   private updatePreparation() {
     if(!this.prepared||this.state.loading&&Date.now()-this.lastPreparationUpdate<250)return;
     this.lastPreparationUpdate=Date.now();const preparation=this.prepared.snapshot();
-    const preview=this.state.loading&&!this.state.silentLoading&&!this.state.holdingFrameDuringPreparation&&this.active&&preparation.completed>0?this.prepared.get(preparation.completed-1):undefined;
+    const index=preparation.latestReadyIndex;
+    const preview=this.state.loading&&!this.manuallySelectedInBatch&&!this.state.silentLoading&&!this.state.holdingFrameDuringPreparation&&this.active&&index!==undefined?this.prepared.get(index):undefined;
     if(preview)this.initialFramePrepared=true;
-    if(this.notifyPreparation||this.state.loading)this.publish({preparation,...(preview&&this.state.frame.structure!==preview.structure?{frame:{index:preparation.completed-1,structure:preview.structure}}:{})});
+    if(this.notifyPreparation||this.state.loading)this.publish({preparation,...(preview&&index!==undefined&&this.state.frame.structure!==preview.structure?{frame:{index,structure:preview.structure}}:{})});
   }
-  pause = () => { this.liveResumePlaying=false;this.previewAttempted = true; this.playAfterPreparation = false; this.landingIndex = undefined; this.clearTimer(); this.cancelRead(); this.publish({ playing: false, previewing: false, busy: false }); };
+  private pausePlayback(notifyUnchanged: boolean, keepSeek = false) {
+    const seek = keepSeek && this.navigation?.status !== 'failed' ? this.navigation : undefined;
+    const pending = seek?.status === 'pending';
+    this.navigation=seek;
+    this.liveResumePlaying = false;
+    this.previewAttempted = true;
+    this.playAfterPreparation = false;
+    this.landingIndex = undefined;
+    this.clearTimer();
+    if (!pending) this.cancelRead();
+    const { playing, previewing, busy, seekTargetIndex, sceneRequest } = this.state;
+    if (notifyUnchanged || playing || previewing || busy || seekTargetIndex !== undefined || sceneRequest !== undefined) {
+      this.publish({ playing: false, previewing: false, busy: pending&&busy, seekTargetIndex:pending?seek.index:undefined, sceneRequest: undefined });
+    }
+  }
+  pause = () => this.pausePlayback(true,true);
   seek = (index: number) => {
-    if (!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).navigation) return;
-    this.pause();
-    if (this.active && this.ready) void this.load(index);
+    if (!Number.isSafeInteger(index)||index<0||index>=this.result.frames.length||!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).seek) return;
+    this.pausePlayback(false);
+    const navigation:PlaybackNavigation={id:`seek:${this.sceneOwner}:${++this.navigationSequence}`,index,status:'pending'};
+    this.navigation=navigation;
+    this.preparationLanding=index;
+    const batch=this.batchController;
+    if (batch && this.prepared) {
+      this.manuallySelectedInBatch=true;
+      this.batchLookupIndex=index;
+      if (!this.prepared.get(index) && !this.prioritizedFrames.has(index)) {
+        this.prioritizedFrames.add(index);
+        void this.prepared.prioritizePreparation(index,batch.signal).catch(()=>{if(this.batchController===batch)this.prioritizedFrames.delete(index);});
+      }
+    }
+    void this.load(index,undefined,false,navigation);
   };
   seekTs = () => { if (this.state.tsFrameIndex !== null) this.seek(this.state.tsFrameIndex); };
   /** An explicit display-only retry replaced an already prepared cache entry. */
   refreshPreparedFrame = (index=this.state.frame.index) => {
     if(!this.prepared||!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).navigation)return;
-    this.pause();void this.load(index,undefined,true);
+    this.pausePlayback(true);void this.load(index,undefined,true);
   };
   prepare = () => { this.pause(); if (this.active && this.ready && this.prepared) void this.loadBatch(); };
   setSilentLoading = (silentLoading: boolean) => { this.publish({ silentLoading,...(this.liveContinuation?{holdingFrameDuringPreparation:false}:{}) }); };
   cancelPreparation = () => {
     this.liveResumePlaying=false;
     this.batchController?.abort(); this.batchController = null;
+    this.batchLookupIndex=undefined;
+    this.prioritizedFrames.clear();
+    this.cancelRead();
+    if(this.navigation?.status==='pending')this.navigation={...this.navigation,status:'failed',error:'已取消轨迹准备。'};
     clearInterval(this.batchProgressTimer); this.batchProgressTimer = undefined;
-    this.publish({ loading: false, busy: false, previewing: false, playing: false, loadCancelled: true, loadFailed:false, preparation: this.prepared?.snapshot() ?? null });
+    this.publish({ loading: false, busy: false, previewing: false, playing: false, seekTargetIndex:undefined, loadCancelled: true, loadFailed:false, preparation: this.prepared?.snapshot() ?? null });
   };
   private async loadBatch() {
     if (!this.prepared || this.batchController) return;
     const resume=this.liveResumePlaying,landing=this.preparationLanding??this.landingIndex??(this.liveContinuation?this.state.frame.index:0);
+    const holdingFrame=this.liveContinuation||this.initialFramePrepared&&this.prepared.get(this.state.frame.index)?.structure===this.state.frame.structure;
     this.batchAttempted = true; this.pause();this.preparationLanding=landing;if(this.liveContinuation)this.liveResumePlaying=resume;
+    this.manuallySelectedInBatch=holdingFrame||this.navigation?.status==='pending';
     const controller = new AbortController(); this.batchController = controller;
     this.batchProgressTimer = setInterval(() => { if(this.batchController===controller)this.updatePreparation(); },250);
     this.publish({ loading: true, loadCancelled: false, loadFailed:false, silentLoading:this.liveContinuation?this.state.silentLoading:false, busy: true, error: '', previewing:!this.liveContinuation,previewStartedAt:this.liveContinuation?null:Date.now(),previewCompletedAt:null,...(this.liveContinuation?{holdingFrameDuringPreparation:true}:{}) });
     try {
       await this.prepared.prepare(controller.signal);
       if (controller.signal.aborted || this.batchController !== controller) return;
-      const preparation = this.prepared.snapshot(), first = this.prepared.get(landing);
-      if (preparation.completed !== preparation.total || !first) throw new Error('轨迹尚未完整准备，不能开始全量播放。');
-      this.initialFramePrepared = true; this.landingIndex = undefined;this.preparationLanding=undefined;this.previewAttempted = true; this.prepared.pin(landing);
-      this.publish({ frame: { index: landing, structure: first.structure }, preparation, loading: false, busy: false, playing: false, previewing: false, previewCompletedAt:this.liveContinuation?null:Date.now(),...(this.liveContinuation?{holdingFrameDuringPreparation:false}:{}) });
+      const target = () => this.batchLookupIndex??this.preparationLanding??landing;
+      let selected=target(), first=this.prepared.get(selected);
+      while (!first) {
+        first=await this.prepared.ensure(selected,controller.signal);
+        if (controller.signal.aborted || this.batchController !== controller) return;
+        if (selected!==target()) { selected=target();first=this.prepared.get(selected); }
+      }
+      const preparation = this.prepared.snapshot();
+      if (preparation.completed !== preparation.total) throw new Error('轨迹尚未完整准备，不能开始全量播放。');
+      this.initialFramePrepared = true; this.landingIndex = undefined;this.preparationLanding=undefined;this.manuallySelectedInBatch=false;this.previewAttempted = true; this.prepared.pin(selected);
+      if(this.navigation?.status==='pending'&&this.navigation.index===selected){
+        this.cancelRead(false);
+        this.navigation={...this.navigation,status:'selected'};
+      }
+      this.publish({ frame: { index: selected, structure: first.structure }, preparation, loading: false, busy: false, playing: false, seekTargetIndex:undefined, previewing: false, previewCompletedAt:this.liveContinuation?null:Date.now(),...(this.liveContinuation?{holdingFrameDuringPreparation:false}:{}) });
+      this.warmAdjacent(selected);
       if(this.liveContinuation&&this.liveResumePlaying&&this.active&&this.ready){this.liveResumePlaying=false;this.play();}
     } catch (cause) {
       if (!controller.signal.aborted && this.batchController === controller) {
         const error = cause instanceof Error ? cause.message : String(cause);
         this.publish({ error, loading: false, busy: false, previewing: false, loadCancelled: false, loadFailed:true, preparation: this.prepared.snapshot() }); this.onError?.(error);
       }
-    } finally { if (this.batchController === controller) { this.batchController = null; clearInterval(this.batchProgressTimer); this.batchProgressTimer = undefined; } }
+    } finally { if (this.batchController === controller) { this.batchController = null; this.batchLookupIndex=undefined; this.prioritizedFrames.clear(); controller.abort(); clearInterval(this.batchProgressTimer); this.batchProgressTimer = undefined; } }
   }
   step = (direction: PlaybackDirection) => {
-    if (!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).navigation) return;
-    this.pause();
-    if (!this.active || !this.ready || !this.result.frames.length) return;
-    const next = advancePlayback(this.frameOrder.indexOf(this.state.frame.index), this.state.range, this.result.frames.length, direction, 'once');
-    if (!next.stopped) void this.load(this.frameOrder[next.index]);
+    if (!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).seek) return;
+    const next = advancePlayback(this.orderPositions[this.state.seekTargetIndex??this.state.frame.index], this.state.range, this.result.frames.length, direction, 'once');
+    if (next.stopped) this.pause();
+    else this.seek(this.frameOrder[next.index]);
   };
   play = () => {
     if (!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).play) return;
     if (!this.initialFramePrepared) { this.previewAttempted = true; this.playAfterPreparation = true; this.schedule(); return; }
-    this.pause();
+    this.pausePlayback(true);
     const { range, direction, mode, frame } = this.state;
     const bounds = playbackRange(range, this.result.frames.length);
     if (bounds.length < 2) return;
-    const playbackIndex = this.frameOrder.indexOf(frame.index);
+    const playbackIndex = this.orderPositions[frame.index];
     const position = (playbackIndex - range.start) / (bounds.sign * range.stride);
     const restart = position < 0 || position >= bounds.length || mode === 'once' && playbackIndex === (direction === 1 ? bounds.last : bounds.first);
-    this.publish({ playing: true });
+    const sceneRequest=!restart&&this.awaitSceneSubmission ? this.sceneRequest(frame.index,performance.now()) : undefined;
+    this.publish({ playing: true,sceneRequest });
     if (restart) void this.load(this.frameOrder[direction === 1 ? bounds.first : bounds.last]);
     else this.schedule();
   };
@@ -307,24 +425,44 @@ export class OptPlaybackSession {
     if (this.state.previewing) this.pause();
     this.clearTimer(); this.publish(patch); this.schedule();
   }
-  private async load(index: number, initial?: Structure, prepareAll = false) {
+  private atPlaybackEnd(index: number) {
+    if (this.state.mode!=='once') return false;
+    const bounds=playbackRange(this.state.range,this.result.frames.length);
+    return this.orderPositions[index]===(this.state.direction===1?bounds.last:bounds.first);
+  }
+  private warmAdjacent(index: number) {
+    if (!this.prepared?.owner.usesWindows) return;
+    const position = this.orderPositions[index];
+    const { range, direction, mode } = this.state;
+    const next = advancePlayback(position,range,this.result.frames.length,direction,mode);
+    const following = next.stopped ? next : advancePlayback(next.index,range,this.result.frames.length,next.direction,mode);
+    const previous = advancePlayback(position,range,this.result.frames.length,direction === 1 ? -1 : 1,mode);
+    this.prepared.warm([...new Set([next,following,previous].flatMap(step=>step.stopped?[]:[this.frameOrder[step.index]]))]);
+  }
+  private async load(index: number, initial?: Structure, prepareAll = false, navigation?:PlaybackNavigation) {
     if (!Number.isSafeInteger(index) || index < 0 || index >= this.result.frames.length || !this.active || !this.ready) return;
-    if (index === this.state.frame.index && this.initialFramePrepared && !prepareAll && (!this.prepared || this.prepared.get(index))) { this.landingIndex = undefined;this.preparationLanding=undefined; this.schedule(); return; }
+    if (index === this.state.frame.index && this.initialFramePrepared && !prepareAll && (!this.prepared || this.prepared.get(index)?.structure===this.state.frame.structure)) {
+      if(navigation&&this.navigation===navigation){this.navigation={...navigation,status:'selected'};this.publish({});}
+      this.landingIndex = undefined;if(!this.batchController)this.preparationLanding=undefined; this.schedule(); return;
+    }
     this.cancelRead(false);
     const epoch = this.epoch, controller = new AbortController(); this.readController = controller;
     const current = () => epoch === this.epoch && this.active && !controller.signal.aborted;
     const cached = this.prepared?.get(index);
-    if (!cached) this.publish({ busy: true, error: '' });
+    if (!cached) this.publish({ busy: true, seekTargetIndex: navigation ? index : undefined, error: '' });
     try {
       let structure: Structure;
       if (this.prepared) {
         const pending = cached ?? this.prepared.ensure(index, controller.signal);
         this.prepared.cancelPrefetch();
-        const frame = await pending;
+        // A manual resident seek can reach the viewport in the input turn.
+        // Scheduled playback retains its existing asynchronous cadence.
+        const frame = !this.state.playing && cached ? cached : await pending;
         if (!current()) return;
         recordTrajectoryOperation('memory', { sourceId: this.prepared.owner.source.source.id, resultId: this.prepared.owner.source.id,
           jobIndex: this.prepared.owner.source.jobIndex, sourceFrameIndex: frame.sourceIndex, stageId: this.result.stages?.[0]?.id, localFrameIndex: index });
         this.prepared.pin(index); structure = frame.structure;
+        if (!this.state.loading) this.warmAdjacent(index);
       } else {
         const raw = initial ?? await this.reader.read(this.result, index, controller.signal);
         if (!raw || !current()) return;
@@ -335,26 +473,28 @@ export class OptPlaybackSession {
       }
       this.initialFramePrepared = true;
       if (this.landingIndex === index) this.landingIndex = undefined;
-      this.preparationLanding = undefined;
+      if (!this.batchController) this.preparationLanding = undefined;
+      else if (this.batchLookupIndex===index) this.preparationLanding=index;
       const interval = this.state.preparation?.window;
       const changedWindow = this.state.preparation?.mode === 'window' && (!interval || index < interval.start || index > interval.end);
       const publishedAt = performance.now();
-      this.publish({ frame: { index, structure }, busy: false,
+      const sceneRequest=this.awaitSceneSubmission&&this.state.playing&&!this.state.previewing ? this.sceneRequest(index,publishedAt) : undefined;
+      if(navigation&&this.navigation===navigation)this.navigation={...navigation,status:'selected'};
+      this.publish({ frame: { index, structure }, busy: false, seekTargetIndex: undefined,
+        sceneRequest,
         ...(this.prepared && (!cached || initial || prepareAll || changedWindow) ? { preparation: this.prepared.snapshot() } : {}) });
       if (!current()) return;
       if (this.state.previewing && (this.previewReturning || index === this.result.frames.length - 1 && (this.state.tsFrameIndex === null || this.state.tsFrameIndex === index)))
         this.publish({ playing: false, previewing: false, previewCompletedAt: Date.now() });
-      else if (this.state.playing && !this.state.previewing && this.state.mode === 'once') {
-        const bounds = playbackRange(this.state.range, this.result.frames.length);
-        if (this.frameOrder.indexOf(index) === (this.state.direction === 1 ? bounds.last : bounds.first)) this.publish({ playing: false });
-      }
+      else if (this.state.playing && !this.state.previewing && !sceneRequest && this.atPlaybackEnd(index)) this.publish({ playing: false });
       this.resumeReady(publishedAt);
       // Current frame is already visible. A background consumer can be aborted
       // independently when the user seeks, pauses or closes this view.
     } catch (cause) {
       if (!current()) return;
       const error = cause instanceof Error ? cause.message : String(cause);
-      this.pause(); this.publish({ error }); this.onError?.(error);
+      const failedNavigation=navigation&&this.navigation===navigation?{...navigation,status:'failed' as const,error}:undefined;
+      this.pausePlayback(false); this.navigation=failedNavigation; this.publish({ error }); this.onError?.(error);
     } finally { if (this.readController === controller) this.readController = null; }
   }
   private schedule(publishedAt?: number) {
@@ -369,8 +509,10 @@ export class OptPlaybackSession {
     if (this.state.busy) return;
     if (landing !== undefined) { void this.load(landing); return; }
     if (!this.state.playing) return;
+    const sceneRequest=this.state.sceneRequest;
+    if (sceneRequest && this.acknowledgedScene!==sceneRequest.requestId) return;
     // Anchor only this displayed frame. Never carry a missed deadline into a later frame/read.
-    const deadline = (delay: number) => (publishedAt ?? performance.now()) + delay;
+    const deadline = (delay: number) => (sceneRequest?.publishedAt ?? publishedAt ?? performance.now()) + delay;
     if (this.state.previewing) {
       this.waitUntil(deadline(this.previewFrameDelayMs), () => {
         if (this.state.frame.index === this.result.frames.length - 1) {
@@ -379,7 +521,7 @@ export class OptPlaybackSession {
       });
     } else {
       const { frame, range, direction, mode, frameDelayMs, endpointPauseMs } = this.state;
-      const playbackIndex = this.frameOrder.indexOf(frame.index);
+      const playbackIndex = this.orderPositions[frame.index];
       const bounds = playbackRange(range, this.result.frames.length);
       this.waitUntil(deadline(frameDelayMs + (playbackIndex === bounds.first || playbackIndex === bounds.last ? endpointPauseMs : 0)), () => {
         const next = advancePlayback(playbackIndex, range, this.result.frames.length, direction, mode);

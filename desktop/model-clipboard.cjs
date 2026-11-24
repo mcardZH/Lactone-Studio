@@ -16,6 +16,8 @@ function createModelClipboard({ clipboard, ClipboardItem }) {
       validateClipboard(payload);
       // Serialize before the first await, detaching the transport from its caller.
       const text = boundedJSON(payload);
+      assert(Buffer.byteLength(text, 'utf8') <= MAX_BYTES,
+        'The model exceeds the clipboard transport limit of 16 MiB. Save it as an .es project to transfer it.');
       const item = new ClipboardItem({ [MODEL_CLIPBOARD_MIME]: new Blob([text], { type: MODEL_CLIPBOARD_MIME }) });
       await clipboard.write([item]);
     },

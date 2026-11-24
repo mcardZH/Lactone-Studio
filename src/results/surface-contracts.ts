@@ -128,7 +128,8 @@ export interface SurfaceCapability {
   valueUnit: string; reason?: string;
 }
 /** Host-owned immutable snapshot, never a renderer-supplied filesystem path. */
-export interface SurfaceImportedCube { token: string; name: string; text: string; bytes: number; sourceRevision: string; knownDomain?: { sourceRevision: string; validDomain: SurfaceValidDomain } }
+export interface SurfaceCubeReceipt { token: string; name: string; bytes: number; sourceRevision: string; knownDomain?: { sourceRevision: string; validDomain: SurfaceValidDomain; coordinateUnit?: SurfaceLengthUnit } }
+export interface SurfaceImportedCube extends SurfaceCubeReceipt { text: string }
 export interface SurfaceCubeSourceRef { token: string; fieldMetadata: Omit<SurfaceScalarField, 'values'> }
 export type SurfaceSourceRequest =
   | { kind: 'wavefunction'; text?: string; sourceToken?: string; name: string; sourceId: string; sourceRevision?: string; context: SurfaceContext }
@@ -145,4 +146,5 @@ export interface SurfaceRestoreFieldsRequest { stamp: SurfaceStamp; generationId
 export interface SurfaceRegionRequest { stamp: SurfaceStamp; selection: SurfaceRegionSelection }
 export interface SurfaceRegionResponse { stamp: SurfaceStamp; region: SurfaceRegionResult }
 export interface SurfaceCubeRegisterRequest { name: string; text: string }
+export interface SurfaceCubeAssetRegisterRequest { name: string; assetId: string; sourceRevision: string }
 export interface SurfaceCubeExportRequest { fieldId: string; stamp: SurfaceStamp }

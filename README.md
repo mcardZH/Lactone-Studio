@@ -3,13 +3,12 @@
 **面向计算化学、量子化学与分子模拟工作流的跨平台（macOS / Windows / Linux）一体化桌面工作台**
 
 > [!IMPORTANT]
-> **非官方修改版声明（Unofficial Modified Version Notice — 遵循 `LICENSE.txt` 第七条）**
-> - **本项目性质**：**Lactone Studio (LS)** 是基于 **Ester Studio (ES) v2.1.1** 源码改造的**非官方修改版（Unofficial Modified Version）**。
-> - **修改者与版本标识**：修改者 [`mcardZH`](https://github.com/mcardZH) · 当前修改版本 `v2.1.1-lactone.1`（基线版本 `v2.1.1`）。
+> **非官方修改版声明（Unofficial Modified Version Notice — 遵循 `LICENSE.txt` 第三条）**
+> - **本项目性质**：**Lactone Studio (LS)** 是基于 **Ester Studio (ES) v2.1.3** 源码改造的**非官方修改版（Unofficial Modified Version）**。
+> - **修改者与版本标识**：修改者 [`mcardZH`](https://github.com/mcardZH) · 当前修改版本 `v2.1.3-lactone.1`（基线版本 `v2.1.3`）。
 > - **对应源码获取地址**：https://github.com/mcardZH/Lactone-Studio
-> - **上游官方项目与原始作者**：上游软件 **Ester Studio (ES)**（历史名称 SY-Studio / SciYue）由原始作者兼著作权人 **Zixuan Zhang**（许可联系渠道：`ddwz@sciyue.cn`）开发并发布于官方仓库 https://github.com/Ahey1/Ester-Studio（基线版本对应发布页：https://github.com/Ahey1/Ester-Studio/releases/tag/v2.1.1）。
+> - **上游官方项目与原始作者**：上游软件 **Ester Studio (ES)**（历史名称 SY-Studio / SciYue）由原始作者兼著作权人 **Zixuan Zhang**（许可联系渠道：`ddwz@sciyue.cn`）开发并发布于官方仓库 https://github.com/Ahey1/Ester-Studio（基线版本对应发布页：https://github.com/Ahey1/Ester-Studio/releases/tag/v2.1.3）。
 > - **官方身份免责声明**：本修改版由社区独立维护，**未获得原始作者审核、科学验证、支持或商业认可**；修改者不代表原始作者或官方发布渠道。使用者须自行核验计算输入、参数、单位与科学结论。
-
 ---
 
 ## 1. 项目简介与命名由来
@@ -22,8 +21,8 @@
    - 实现 macOS 独立自包含 Python 3.12 科学计算引擎（`RDKit`、`ASE`、`Spglib`、`tblite`、`SciPy`、`NumPy`）及 Mach-O `@rpath` / `@loader_path` 动态库重定位；
    - 适配 macOS 原生 `GNU xTB` 半经验计算宿主、`MolVec` 离线化学结构图片识别（OCR）JRE 运行时以及 `Multiwfn` 波函数分析调用；
    - 提供一键式 macOS 应用打包脚本（`npm run package:mac`），可直接生成自包含签名的 `Lactone Studio.app` 与 `.dmg` 安装镜像。
-2. **人机同屏协作 MCP 服务底座 (`desktop/mcp/`)**：
-   - 内置零第三方依赖的标准 **Model Context Protocol (`stdio` JSON-RPC 2.0)** 服务端与 Electron 主进程↔React 渲染进程安全回环通信桥接层，支持 AI 客户端实时探活与读取工作台状态。
+2. **人机同屏协作 MCP 服务与原生工具集成 (`desktop/mcp/`, `src/web/mcp/`)**：
+   - 在保留跨平台 **Streamable HTTP / Legacy SSE / Stdio (`stdio-server.cjs`)** MCP 服务及方法推荐引擎 (`ester_recommend_method`) 的同时，全面桥接上游 `v2.1.3` 原生工作台工具目录（建模、2D 草图、PES/CI-NEB/IRC/Scan、构象混合采样、绘图与波函数分析等 120+ 工具），并在 macOS / Linux / Windows 上适配原生 `mcpHost`、无 `node-pty` 编译依赖的 `AgentTerminal` 与 `AgentAssistant` 侧栏。
 3. **100% 保持原版工程文件与科学工作流兼容**：
    - 采用 `.es` 工程格式（替代原 `.sy` 作为工程索引标准），同时完整保留历史 `.sy` 工程文件导入兼容；
    - 内置无 Git 历史的上游源码包三方增量同步工具（`npm run upstream:*`）与多子代理独立盲审工作流（`npm run review:*`）。
@@ -92,7 +91,7 @@ npm run package:linux
 
 打包产物默认输出至 `release/darwin-arm64/`（或 `release/darwin-x64/`），包含：
 - `Lactone Studio.app`（已自动嵌入 `scripts/portable/assets/lactone.icns` 专属内酯环应用图标及自包含 Python 3.12 + GNU xTB 运行时）；
-- `Lactone-Studio-2.1.1-darwin-<arch>.dmg`（内置 `Lactone Studio.app`、`Applications` 拖拽快捷方式及 `安装说明 (INSTALL).txt`）；
+- `Lactone-Studio-2.1.3-darwin-<arch>.dmg`（内置 `Lactone Studio.app`、`Applications` 拖拽快捷方式及 `安装说明 (INSTALL).txt`）；
 - `安装说明 (INSTALL).txt`（独立输出的 macOS 安装与使用指南）。
 
 > **macOS 首次安装与解除安全隔离提示**：
@@ -121,7 +120,7 @@ brew install --HEAD multiwfn --with-openmp
 
 仓库内置了统一的跨平台自动化构建与发布流水线 [.github/workflows/release.yml](.github/workflows/release.yml)：
 - **触发方式**：
-  1. 推送 `v*` 版本标签（如 `git tag v2.1.1-lactone.1 && git push origin v2.1.1-lactone.1`），自动并行构建 **macOS (`arm64` + `x64`) + Windows (`x64`) + Linux (`x64`)** 全平台安装包并汇总至同一 GitHub Release；
+  1. 推送 `v*` 版本标签（如 `git tag v2.1.3-lactone.1 && git push origin v2.1.3-lactone.1`），自动并行构建 **macOS (`arm64` + `x64`) + Windows (`x64`) + Linux (`x64`)** 全平台安装包并汇总至同一 GitHub Release；
   2. 在 GitHub 仓库 **Actions -> Build & Release Cross-Platform Apps -> Run workflow** 手动触发（支持通过 `target_platform` 选择 `all` 或单独构建 `macos-arm64` / `macos-x64` / `windows-x64` / `linux-x64`，可选填写 `release_tag` 发布到 GitHub Releases）。
 - **自动化产物**：
   - **macOS (`darwin-arm64` / `darwin-x64`)**：`Lactone-Studio-<ver>-darwin-<arch>.dmg`、`*.app.zip` 与 `INSTALL-macos-<arch>.txt`；
@@ -161,11 +160,11 @@ npm run mcp:server
 
 1. **原版软件必引条目（Ester Studio）**：
    - 若论文首次正式投稿时，Ester Studio 官方软件论文尚未正式发表，请引用官方 GitHub 项目页面：
-     > Zixuan Zhang. *Ester Studio* (v2.1.1), computer software, https://github.com/Ahey1/Ester-Studio (contact: ddwz@sciyue.cn).
+     > Zixuan Zhang. *Ester Studio* (v2.1.3), computer software, https://github.com/Ahey1/Ester-Studio (contact: ddwz@sciyue.cn).
    - 若投稿时官方软件论文已正式发表，请采用其正式出版引文。
 2. **本修改版附加说明（可选，推荐在正文或方法学部分补充）**：
    - 如使用了本项目的 macOS 原生移植或扩展特性，可在引用上述原版软件的同时补充说明：
-     > macOS adaptation via *Lactone Studio* (`v2.1.1-lactone.1`, unofficial modified version of Ester Studio maintained by mcardZH, https://github.com/mcardZH/Lactone-Studio).
+     > macOS adaptation via *Lactone Studio* (`v2.1.3-lactone.1`, unofficial modified version of Ester Studio maintained by mcardZH, https://github.com/mcardZH/Lactone-Studio).
 3. **第三方科学程序与方法学引用**：
    - 引用 Ester Studio / Lactone Studio **不替代**实际使用的第三方计算程序（如 Gaussian、ORCA、xTB、g-xTB、Multiwfn、RDKit、ASE、Spglib）、泛函、基组及分析方法各自要求的文献引用。您可使用软件工作台右上角的 **「导出文献」** 功能一键生成当前工程涉及的完整方法学参考文献。
 

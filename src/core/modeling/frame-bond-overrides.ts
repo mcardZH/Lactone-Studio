@@ -49,7 +49,8 @@ export function frameBondGraph(document:ModelDocument):FrameBondGraph {
 }
 function entryFor(owner:ModelDocument,projected:ModelDocument,identity:FrameBondIdentity):FrameBondOverride|undefined {
   const entry=owner.frameBondOverrides?.[frameBondIdentityKey(identity)];
-  return entry?.scientificFingerprint===frameBondScientificFingerprint(projected.draft.structure)?entry:undefined;
+  if (!entry) return undefined;
+  return entry.scientificFingerprint === frameBondScientificFingerprint(projected.draft.structure) ? entry : undefined;
 }
 /** Only the final display graph changes. Source atoms, q/M, provenance and all
  * result data remain owned by the original prepared scientific frame. */

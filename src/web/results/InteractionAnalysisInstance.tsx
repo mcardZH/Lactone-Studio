@@ -18,6 +18,7 @@ import { interactionUsesStructure } from '../../results/interaction-structure-co
 import { createInteractionContextPool, type InteractionContextPool, type InteractionDesktopController } from './interaction-context-pool';
 import type { InteractionDesktopApi } from './interaction-desktop-bridge';
 import type { InteractionAnalysisControlsProps, InteractionInteractionPort, InteractionProjection, InteractionScatterSnapshot } from './interaction-controls-contracts';
+import { interactionSurfaceColorbar } from './interaction-controls-contracts';
 import { INTERACTION_METHOD_REFERENCES } from '../../results/interaction-references';
 import { structureInteractionAtomOrder } from '../../results/interaction-structure-context';
 import { MULTIWFN_CONFIGURATION_CHANGED } from './MultiwfnPathControl';
@@ -68,7 +69,7 @@ export interface InteractionAnalysisInstanceProps {
   onProjection(value: InteractionViewportProjection | null): void;
   onInteractionReady?(port: InteractionInteractionPort | null): void;
   onMeshObserverReady?(observer: ((state: Readonly<SurfaceMeshState>, document: Pick<ModelDocument, 'id' | 'revision'>) => void) | null): void;
-  onOpenScatter?(snapshot: InteractionScatterSnapshot): void;
+  onOpenScatter?(snapshot: InteractionScatterSnapshot): string|void;
   onExportImage?(): void | Promise<void>; onError(message: string): void;
 }
 
@@ -82,8 +83,7 @@ export function interactionInstanceProjection(projection: InteractionProjection 
   const proof = document?.pair && document.pair.primary === document.output?.source && document.pair.wavefunction === document.wavefunction?.source ? document.pair : undefined;
   const fit = pair && pair.shape.source.kind === 'generated-cube' && sourceKind(pair.shape) === 'wavefunction' ? proof?.sourceToDisplay : undefined;
   const color = projection.display.color ? { ...projection.display.color, zeroCentered: true } : null;
-  const colorbar: AnalysisColorbar | null = pair && !invalid && color ? { min: color.min, max: color.max, palette: 'blue-red', colors: color.colors,
-    decimals: projection.decimals, label: 'sign(λ₂)ρ / a.u.', reverse: color.reverse, zeroCentered: true, layout: projection.display.colorbarLayout } : null;
+  const colorbar = invalid ? null : interactionSurfaceColorbar(projection);
   return { ...projection, calculationRanges: invalid ? undefined : projection.calculationRanges?.map(range=>transformCalculationRange(range,range.estimated?undefined:fit)), surfaceLayer: !pair || invalid ? null : { pair, documentId: context.documentId!, geometryRevision: context.documentRevision!,
     visible: projection.display.visible, opacity: projection.display.opacity, finish: projection.display.finish, color: color ?? undefined, sourceToDocument: fit }, colorbar };
 }
@@ -187,7 +187,7 @@ export default function InteractionAnalysisInstance(p: InteractionAnalysisInstan
   const revision=generated&&metadata?generatedXtbAnalysisRevision(generated,metadata.sourceRevision):'';
   const electronicMethods=(['iri','rdg','igmh'] as const).filter(method=>p.wavefunctionAvailable&&(!generated||generatedXtbMethodAllowed(generated.analysisPolicy,revision,'interaction',method)));
   const methods:InteractionMethod[]=[...electronicMethods,'migm','igm'];
-  return <InteractionAnalysisControls key={lifetime} draftState={p.draftState} context={p.context} structure={p.structure} active={p.active} available={p.available} resourceBudgetBytes={resourceBudget}
+  return <InteractionAnalysisControls key={lifetime} analysisId={p.analysisId} draftState={p.draftState} context={p.context} structure={p.structure} active={p.active} available={p.available} resourceBudgetBytes={resourceBudget}
     wavefunctionAvailable={p.wavefunctionAvailable} methods={methods}
     sourceAtomOrder={sourceAtomOrder} methodReferences={INTERACTION_METHOD_REFERENCES} bridge={projectBridge} progress={pool?.progress(p.context)} cubeGeometryError={admit}
     renderFragmentSelection={p.capturePort ? props => <InteractionFragmentSelection {...props} structure={p.structure} capture={p.capturePort!}/> : undefined}

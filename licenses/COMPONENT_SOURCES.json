@@ -1,6 +1,6 @@
 {
   "schema": "ester-v201-public-component-sources/v1",
-  "version": "2.1.1",
+  "version": "2.1.3",
   "publicDistributionApproved": false,
   "scope": "Exact component source and notice provision; whole-product native clean rebuild and final release identity are separate",
   "native": {
@@ -175,8 +175,8 @@
   },
   "correspondingSourceIndex": {
     "path": "../third-party/corresponding-source-index.json",
-    "bytes": 388410,
-    "sha256": "fd64c9be17a7197412365df0b48699793017297a127dbeac901846458307d490",
+    "bytes": 388409,
+    "sha256": "3e399206908a8c7d09602efc32b00c86847f4b1cba22051e5092be3086fa5a66",
     "schema": "sy-corresponding-sources/v2",
     "componentScope": {
       "sourceAcquiredAndIncluded": "completed",
@@ -253,9 +253,75 @@
   "pesCorrespondingSourceIndex": {
     "path": "../third-party/pes-corresponding-source-index.json",
     "bytes": 23156,
-    "sha256": "453a5cb0868423d214ddc794fe72051080a0e988491aec18c2a3ce39f41a4f70",
+    "sha256": "d77e82c402480c4700e86f453db030e5772d5008cd911797aa03598a00a0259f",
     "scope": "PES libraries, static dependencies, exact patches and re-link/build materials",
     "desktopModifiedLibraryAdmission": "pending-actual-candidate-check"
   },
-  "sourceMaterialLocation": "References to ../third-party/ and ../scripts/ resolve in companion Ester-Studio-v2.1.1-source-code.zip; these are not bundled portable-local paths."
+  "sourceMaterialLocation": "References to ../third-party/ and ../scripts/ resolve in companion Ester-Studio-v2.1.3-source-code.zip.",
+  "terminal": {
+    "npm": [
+      {
+        "name": "node-pty",
+        "version": "1.1.0",
+        "license": "MIT",
+        "sourceArchive": "https://registry.npmjs.org/node-pty/-/node-pty-1.1.0.tgz",
+        "sourceIntegrity": "sha512-20JqtutY6JPXTUnL0ij1uad7Qe1baT46lyolh2sSENDd4sTzKZ4nmAFkeAARDKwmlLjPx6XKRlwRUxwjOy+lUg==",
+        "notice": "mcp/node-pty/LICENSE"
+      },
+      {
+        "name": "node-addon-api",
+        "version": "7.1.1",
+        "license": "MIT",
+        "sourceArchive": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-7.1.1.tgz",
+        "sourceIntegrity": "sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==",
+        "notice": "mcp/node-addon-api/LICENSE.md"
+      },
+      {
+        "name": "@xterm/xterm",
+        "version": "6.0.0",
+        "license": "MIT",
+        "sourceArchive": "https://registry.npmjs.org/@xterm/xterm/-/xterm-6.0.0.tgz",
+        "sourceIntegrity": "sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==",
+        "notice": "mcp/@xterm/xterm/LICENSE"
+      },
+      {
+        "name": "@xterm/addon-fit",
+        "version": "0.11.0",
+        "license": "MIT",
+        "sourceArchive": "https://registry.npmjs.org/@xterm/addon-fit/-/addon-fit-0.11.0.tgz",
+        "sourceIntegrity": "sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==",
+        "notice": "mcp/@xterm/addon-fit/LICENSE"
+      }
+    ],
+    "winpty": {
+      "upstream": "https://github.com/rprichard/winpty",
+      "sourceDistribution": "The exact locked node-pty 1.1.0 package identified above includes winpty, its Windows x64 prebuilds and original deps/winpty/LICENSE.",
+      "license": "MIT",
+      "notice": "mcp/winpty/LICENSE"
+    },
+    "windowsTerminalConpty": {
+      "version": "1.23.251008001",
+      "upstreamRelease": "https://github.com/microsoft/terminal/releases/tag/v1.23.12811.0",
+      "sourceTree": "https://github.com/microsoft/terminal/tree/v1.23.12811.0",
+      "upstreamBinaryArchive": "https://github.com/microsoft/terminal/releases/download/v1.23.12811.0/Microsoft.Windows.Console.ConPTY.1.23.251008001.nupkg",
+      "upstreamBinaryArchiveSha256": "f7e142a99f5dfee573ace98676b3c7c2fcdb870bc90b238086a4d80a36fcf099",
+      "license": "MIT",
+      "notices": [
+        "mcp/windows-terminal-conpty/LICENSE",
+        "mcp/windows-terminal-conpty/NOTICE.md"
+      ],
+      "windowsX64Members": [
+        {
+          "path": "conpty.dll",
+          "bytes": 109600,
+          "sha256": "7c7430632052ff703540b68371ec43821820aa1335d8e11dfbcd9ff00e9daaed"
+        },
+        {
+          "path": "OpenConsole.exe",
+          "bytes": 1148448,
+          "sha256": "d1fe7faa62f9e955e2ac2371f95d7e5513df4d496255097158f979c94782c5fc"
+        }
+      ]
+    }
+  }
 }

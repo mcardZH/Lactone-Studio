@@ -22,6 +22,9 @@ export function createProjectReaderRouter(invoke:SyProjectInvoke,sessionId:strin
  const track=<T,>(pending:Promise<T>)=>{active.add(pending);void pending.then(()=>active.delete(pending),()=>active.delete(pending));return pending;};
  return{reader:{
   read:(assetId:string)=>{const cached=verifiedBatchBytes.get(assetId);if(cached){verifiedBatchBytes.delete(assetId);verifiedBatchBytes.set(assetId,cached);return Promise.resolve(cached.slice());}return track(createProjectAssetIO(selected,'reader',invoke).reader.read(assetId));},
+  // One-pass consumers already keep the verified, decoded science. Hand them
+  // the fresh batch buffer without making a second retained bytes cache.
+  readManyTransient:(assetIds:readonly string[])=>track(createProjectAssetIO(selected,'reader',invoke).reader.readMany!(assetIds)),
   readMany:(assetIds:readonly string[])=>{const ownEpoch=epoch,ownSession=selected,retained=new Map(assetIds.flatMap(id=>{const bytes=verifiedBatchBytes.get(id);return bytes?[[id,bytes] as const]:[];}));return track((async()=>{
    const missing=[...new Set(assetIds.filter(id=>!retained.has(id)))],fresh=missing.length?await createProjectAssetIO(ownSession,'reader',invoke).reader.readMany!(missing):[];
    const accepted=new Map(missing.map((id,index)=>[id,fresh[index]]));
@@ -48,9 +51,9 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
  const dirty=savedRevision.current!==p.revision;
  useLayoutEffect(()=>{if(baselinePending.current&&!p.restoring){baselinePending.current=false;savedRevision.current=p.revision;automaticRevision.current=p.revision;setBaselineEpoch(value=>value+1);}},[project,p.revision,p.restoring]);
  const readerFor=useCallback((value:ProjectSessionDescription)=>{let router=routers.current.get(value.sessionId);if(!router){router=createProjectReaderRouter(invoke!,value.sessionId);routers.current.set(value.sessionId,router);}return router.reader;},[invoke]);
- const save=useCallback(async(asNew=false,automatic=false)=>{
-  if(!invoke||saving.current||claiming.current||current.current.restoring||baselinePending.current)return false;
-  if(writeBlocked.current||live.current?.writeProtection){if(!automatic){current.current.onError('项目恢复点由较新版本保存，当前项目只读；未覆盖保存或回收资产。');setStatus('项目只读');}return false;}
+ const save=useCallback(async(asNew=false,automatic=false,providedTarget?:{name:string;locationToken:string},throwOnError=false)=>{
+  if(!invoke||saving.current||claiming.current||current.current.restoring||baselinePending.current){if(throwOnError)throw Object.assign(new Error('项目正在保存或载入，请在当前操作完成后再保存。'),{code:'SY_SAVE_BUSY'});return false;}
+  if(writeBlocked.current||live.current?.writeProtection){if(!automatic){current.current.onError('项目恢复点由较新版本保存，当前项目只读；未覆盖保存或回收资产。');setStatus('项目只读');}if(throwOnError)throw Object.assign(new Error('项目由较新版本保存，当前项目只读。'),{code:'SY_SCHEMA_UNSUPPORTED'});return false;}
   if(automatic&&(!live.current?.manifest||automaticRevision.current===current.current.revision))return true;
   saving.current=true;setBusy(true);setStatus(automatic?'自动保存项目…':'保存项目…');
   const previous=live.current;let selected=previous,transactionId:string|undefined;
@@ -58,7 +61,7 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
    const sourceFormatFloor=projectFormatFloor(formatFloor.current,previous?.manifest?.formatVersion,previous?.recovery.auto?.formatVersion,previous?.recovery.previous?.formatVersion);
    if(asNew||!selected){
     const name=projectCopyName(previous?.indexPath);
-    const target=await new Promise<{name:string;locationToken:string}|null>(resolve=>setNameChoice({name,choosing:false,resolve}));setNameChoice(null);
+    const target=providedTarget??await new Promise<{name:string;locationToken:string}|null>(resolve=>setNameChoice({name,choosing:false,resolve}));setNameChoice(null);
     if(!target){setStatus('');return false;}const value=await invokeProject(invoke,{action:'create',...target});if('cancelled'in value){setStatus('');return false;}selected=value;
    }
    const revision=current.current.revision;
@@ -80,14 +83,39 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
    automaticRevision.current=revision;try{current.current.onSaved?.(result,{automatic,asNew});}catch(error){current.current.onError(error instanceof Error?error.message:String(error));}
    setStatus(automatic?'项目恢复副本已更新':'项目已保存');
    try{await invokeProject(invoke,{action:'gc',sessionId:result.sessionId});}catch(error){current.current.onError('项目已保存，冗余数据回收未完成：'+(error instanceof Error?error.message:String(error)));}return true;
-  }catch(error){if(previous&&selected?.sessionId===previous.sessionId&&(error as {code?:string})?.code==='SY_SCHEMA_UNSUPPORTED')writeBlocked.current=true;current.current.onError(error instanceof Error?error.message:String(error));setStatus('保存未完成');return false;}
+  }catch(error){if(previous&&selected?.sessionId===previous.sessionId&&(error as {code?:string})?.code==='SY_SCHEMA_UNSUPPORTED')writeBlocked.current=true;current.current.onError(error instanceof Error?error.message:String(error));setStatus('保存未完成');if(throwOnError)throw error;return false;}
   finally{if(transactionId&&selected)await invokeProject(invoke,{action:'abort',sessionId:selected.sessionId,transactionId}).catch(()=>{});if(selected&&selected!==previous&&live.current?.sessionId!==selected.sessionId)await invokeProject(invoke,{action:'close',sessionId:selected.sessionId}).catch(()=>{});saving.current=false;if(alive.current)setBusy(false);}
  },[invoke,readerFor]);
+ const reopen=useCallback(async(options:{unsaved?:'error'|'save'|'discard';signal?:AbortSignal}={})=>{
+  const selected=live.current;
+  options.signal?.throwIfAborted();
+  if(!invoke||!selected?.manifest)throw Object.assign(new Error('当前项目还没有已保存的 .es 入口。'),{code:'SY_INDEX_MISSING'});
+  if(saving.current||claiming.current||current.current.restoring||baselinePending.current)throw Object.assign(new Error('项目正在保存或载入，请在当前操作完成后重开。'),{code:'SY_PROJECT_BUSY'});
+  if(savedRevision.current!==current.current.revision){
+   if(options.unsaved==='save'){
+    if(!await save(false,false,undefined,true)||savedRevision.current!==current.current.revision)throw Object.assign(new Error('保存期间项目仍有修改，请检查后重开。'),{code:'SY_PROJECT_CHANGED'});
+   }else if(options.unsaved!=='discard')throw Object.assign(new Error('项目有未保存修改，请指定 unsaved="save" 保存后重开，或 unsaved="discard" 载入手动保存点。'),{code:'SY_PROJECT_DIRTY'});
+  }
+  const revision=current.current.revision;
+  claiming.current=true;setBusy(true);
+  try{
+   const value=await invokeProject(invoke,{action:'read-saved',sessionId:selected.sessionId});
+   options.signal?.throwIfAborted();
+   if(live.current?.sessionId!==selected.sessionId||current.current.revision!==revision)throw Object.assign(new Error('读取保存点期间项目已有修改，已保留当前窗口。'),{code:'SY_PROJECT_CHANGED'});
+   const floor=projectFormatFloor(value.manifest?.formatVersion,value.recovery.auto?.formatVersion,value.recovery.previous?.formatVersion);
+   for(const router of routers.current.values())router.clearBatchCache();
+   await current.current.restore(value.state,readerFor(value));
+   formatFloor.current=floor;writeBlocked.current=!!value.writeProtection;live.current=value;
+   baselinePending.current=true;setProject(value);setStatus('项目已重新打开');
+   return value;
+  }finally{claiming.current=false;if(alive.current)setBusy(false);}
+ },[invoke,readerFor,save]);
  const claim=useCallback(async()=>{
   if(!invoke||claimed.current)return;
   claimed.current=true;claiming.current=true;
   try{
-   const value=await invokeProject(invoke,{action:'claim'});if(!('sessionId'in value))return;
+   const claimedProject=await invokeProject(invoke,{action:'claim'});if(!('sessionId'in claimedProject))return;
+   const {openRequestId,...value}=claimedProject;
    if(!alive.current){await invokeProject(invoke,{action:'close',sessionId:value.sessionId});return;}
    setBusy(true);
    try{
@@ -97,9 +125,12 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
     baselinePending.current=!value.recovered;savedRevision.current=value.recovered?null:savedRevision.current;
     setProject(value);setStatus(value.writeProtection?'项目只读：恢复点需要较新版本':value.recovered?'已恢复项目副本，请保存':'项目已打开');
    }catch(error){
+    const message=(error instanceof Error?error.message:String(error)).slice(0,2000);
+    if(openRequestId)await invokeProject(invoke,{action:'settle-open',sessionId:value.sessionId,openRequestId,status:'failed',message}).catch(()=>{});
     routers.current.get(value.sessionId)?.clearBatchCache();routers.current.delete(value.sessionId);
     await invokeProject(invoke,{action:'close',sessionId:value.sessionId}).catch(()=>{});throw error;
    }
+   if(openRequestId)await invokeProject(invoke,{action:'settle-open',sessionId:value.sessionId,openRequestId,status:'loaded'});
   }finally{claiming.current=false;if(alive.current)setBusy(false);}
  },[invoke,readerFor]);
  useEffect(()=>{alive.current=true;void claim().catch(error=>current.current.onError(error instanceof Error?error.message:String(error)));return()=>{alive.current=false;for(const router of routers.current.values())router.clearBatchCache();};},[claim]);
@@ -122,7 +153,7 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
  },[save]);
  const chooseLocation=async()=>{if(!invoke||!nameChoice||nameChoice.choosing)return;setNameChoice(value=>value?{...value,choosing:true}:value);try{const value=await invokeProject(invoke,{action:'choose-location'});if(!('cancelled'in value))setNameChoice(previous=>previous?{...previous,location:value}:previous);}catch(error){current.current.onError(error instanceof Error?error.message:String(error));}finally{setNameChoice(value=>value?{...value,choosing:false}:value);}};
  const validName=Boolean(nameChoice&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(nameChoice.name)&&!/\.$/.test(nameChoice.name)&&!/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(nameChoice.name));
- return{project,busy,status,dirty,save,prepareClose,reader:project?readerFor(project):null,
+ return{project,currentProject:()=>live.current,busy,status,dirty,save,reopen,prepareClose,reader:project?readerFor(project):null,
   dialog:nameChoice?<DialogShell aria-label="保存项目" className="modal workspace-import-choice" backdropClassName="modal-backdrop" onCancel={()=>nameChoice.resolve(null)}>
     <header><h2>保存项目</h2></header>
     <InputSettingsLayout><InputSettingsStack>

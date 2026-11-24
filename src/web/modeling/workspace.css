@@ -62,10 +62,6 @@
 /* A tool-pane container, rather than the whole window, determines when all
    four optimization controls should reflow. Every track remains equal. */
 .model-tool-rail{container-type:inline-size;container-name:model-tools}
-.model-tool-rail .model-preopt-unified:not(.xtb-optimization-panel){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;align-items:stretch}
-.model-tool-rail .model-preopt-unified:not(.xtb-optimization-panel)>:is(select,button){width:100%;max-width:none;min-width:0;min-height:calc(2.25rem * var(--ui-font-scale,1))!important;box-sizing:border-box;padding:4px!important;font-size:calc(12px * var(--ui-font-scale,1))!important}
-@container model-tools (max-width:350px){.model-tool-rail .model-preopt-unified:not(.xtb-optimization-panel){grid-template-columns:repeat(2,minmax(0,1fr))}}
-@container model-tools (max-width:150px){.model-tool-rail .model-preopt-unified:not(.xtb-optimization-panel){grid-template-columns:minmax(0,1fr)}}
 /* Coordinate selection is an overlay cue, not an atom freeze/selection edit. */
 .model-workspace .model-coordinate-selected,.model-workspace [data-coordinate-selected=true]{outline:2px solid #dfbb39;outline-offset:2px;border-radius:4px}
 /* The renderer owns the true capture background. CSS only frames the purpose

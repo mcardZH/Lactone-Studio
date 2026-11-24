@@ -13,10 +13,10 @@ import re
 import subprocess
 import time
 
-import engine
+from dynamics_errors import reject
 import numpy as np
 from ase import units
-from conformer_sampling import validate_request
+from conformer_sampling import hydrogen_settings, validate_request
 from conformer_gfnff import ordinary_directory, isolated_coordinate_input
 from conformer_native_md import (admitted_md_engine_identity, settings, control_input,
     native_arguments, TrajectoryReader, restart_frame, bounded_file, validate_header,
@@ -32,26 +32,36 @@ CORE_K = 500000 / 9648.533212331
 
 
 def sampling_request(request, threads, steps=CHECKPOINT_STEPS):
+    if request.get('dtFs', 2) != 2 or 'device' in request or request.get('sphere'):
+        reject('md-native-settings', '原生建模 MD 使用固定 2 fs 步长，设备和 ASE 球壁设置不适用。')
     selected = request.get('protectedAtomIds', [])
     if len(selected) == 1:
-        engine.reject('md-single-protected-atom', 'GFN相对距离保护至少需要2个冻结原子；请增加冻结原子，或改用MMFF/UFF。')
+        reject('md-single-protected-atom', '相对距离保护至少需要两个原子。')
     structure = copy.deepcopy(request['structure'])
-    periodic = 'cell' in structure
+    periodic = any(structure.get('cell', {}).get('pbc', ()))
     # The conformer validator has a deliberately fixed stamp schema. Keep the
     # modeling permission in this session's original request/returned stamp;
     # sampling's private numerical adapter receives only its supported fields.
     numerical_stamp = {k:v for k,v in request['stamp'].items() if k != 'nativeMDPolicy'}
+    # Historical modeling GFN-FF always used 4 amu. Historical GFN0/1/2 and
+    # g-xTB used natural hydrogen mass unless the start request opts in.
+    shake, mass = hydrogen_settings(request)
+    if request['method'] == 'gfnff' and mass is None:
+        mass = 4
     raw = dict(schema=1, stamp=numerical_stamp, runIdentity=dict(taskId='modeling-md', runId='modeling-md-run'),
         operation='md', method=request['method'], structure=structure,
         charge=structure.get('charge') if structure.get('charge') is not None else 0,
-        uhf=0 if request['method']=='gfnff' else (structure.get('multiplicity') or 1)-1,
         threads=threads, maxSteps=steps, maxEvaluations=steps+2, maxFrames=steps+1,
         dtFs=2, reportEvery=10,
-        shakeHydrogenBonds=request['method'] != 'gfnff',
+        shakeHydrogenBonds=shake,
+        calculator=dict(accuracy=2, maxIterations=250, electronicTemperatureK=300),
         molecularMD=dict(temperatureK=request['temperatureK'], durationFs=steps*2, sampleEveryFs=20))
-    if request['method'] == 'gfnff':
-        raw['hydrogenMassAmu'] = 4
-        structure.pop('multiplicity', None)
+    if 'integrator' in request:
+        raw['integrator'] = request['integrator']
+    if mass is not None:
+        raw['hydrogenMassAmu'] = mass
+    if request['method'] != 'gfnff':
+        raw['uhf'] = (structure.get('multiplicity') or 1) - 1
     if structure.get('charge') is None:
         structure.pop('charge', None)
     if structure.get('multiplicity') is None:
@@ -66,11 +76,13 @@ def sampling_request(request, threads, steps=CHECKPOINT_STEPS):
         raw['nativeProtection'] = dict(core=dict(kind='pairwise-distance', atomIds=selected,
                                                forceConstantEVPerAngstrom2=CORE_K))
     if periodic:
+        if 'integrator' in request:
+            reject('md-periodic-settings', '本批周期 MD 使用固定晶胞 ASE 积分。')
         if selected or raw.get('constraints') or raw.get('solvation') or request['method']=='gxtb':
-            engine.reject('md-periodic-settings', '周期原生MD只使用固定晶胞，不应用用户保护、约束或隐式溶剂。')
+            reject('md-periodic-settings', '周期原生MD只使用固定晶胞，不应用用户保护、约束或隐式溶剂。')
         # The desktop validates the full periodic structure and owns its input.
         # Do not run it through the molecule-only conformer graph contract.
-        raw.update(periodic=True, calculator=dict(accuracy=1, maxIterations=250, electronicTemperatureK=300))
+        raw['periodic'] = True
         return raw
     return validate_request(raw)
 
@@ -101,7 +113,7 @@ class PeriodicMDChart:
         points = np.asarray(coordinates, dtype=float)
         fractional = points @ self.inverse
         if not np.isfinite(fractional).all() or np.any(np.abs(fractional) >= 2**52):
-            engine.reject('md-periodic-chart', '当前周期坐标无法可靠确定整数晶胞镜像。')
+            reject('md-periodic-chart', '当前周期坐标无法可靠确定整数晶胞镜像。')
         # Match xTB pbc_tools.f90:shift_back_abc, including the cell-edge rule.
         epsilon = 1e-14
         images = np.where((fractional < -epsilon) | (fractional > 1 + epsilon), np.floor(fractional), 0)
@@ -138,7 +150,7 @@ def periodic_hydrogen_references(request, chart=None):
             continue
         j = min((j for j in range(len(atoms)) if j!=i), key=lambda j:math.dist(xyz[i],xyz[j]), default=None)
         if j is None or not 1e-8 < math.dist(xyz[i],xyz[j]) < math.sqrt(1000)*BOHR_ANGSTROM:
-            engine.reject('md-shake-periodic-identity', '周期X–H约束在原生SHAKE的当前坐标中缺少有效配对。')
+            reject('md-shake-periodic-identity', '周期X–H约束在原生SHAKE的当前坐标中缺少有效配对。')
         if atoms[j]['element']=='H' and j<i:
             continue
         key = tuple(sorted((i,j)))
@@ -151,7 +163,7 @@ def periodic_hydrogen_references(request, chart=None):
         key = tuple(sorted((a,b)))
         native_image = (chart.source_images[a] - chart.source_images[b]).tolist()
         if key not in pairs or key in declared or list(bond.get('image',[0,0,0])) != native_image:
-            engine.reject('md-shake-periodic-identity', '周期X–H连接的源镜像与实际SHAKE参考无法对应。')
+            reject('md-shake-periodic-identity', '周期X–H连接的源镜像与实际SHAKE参考无法对应。')
         declared.add(key)
     return list(pairs.values())
 
@@ -190,14 +202,14 @@ class Session:
             coordinates = self.periodic_chart.model_positions(raw['coordinates']) if self.periodic_chart else raw['coordinates']
             for atom, point in zip(output['atoms'], coordinates):
                 if not all(math.isfinite(v) and abs(v) <= 1e6 for v in point):
-                    engine.reject('md-invalid-frame', '原生MD帧包含无效坐标，保留上一有效帧。')
+                    reject('md-invalid-frame', '原生MD帧包含无效坐标，保留上一有效帧。')
                 atom.update(zip(('x', 'y', 'z'), point))
             if self.configuration['shakeHydrogenBonds']:
                 for pair in self.configuration['hydrogenBondReferences']:
                     pa,pb = [raw['coordinates'][pair[key]] for key in ('a','b')]
                     residual = abs(math.dist(pa,pb)-pair['lengthAngstrom'])
                     if residual > SHAKE_BOND_TOLERANCE_ANGSTROM:
-                        engine.reject('md-shake-residual', '原生MD含氢键长约束未通过实际残差检查。')
+                        reject('md-shake-residual', '原生MD含氢键长约束未通过实际残差检查。')
             output.pop('molfile', None)
         result = dict(stamp=self.request['stamp'], operation='md', step=self.step, timeFs=self.step*2,
             structure=output, movableAtomIds=self.request['movableAtomIds'],
@@ -245,7 +257,10 @@ class Session:
             # With protection the native potential includes the added restraint.
             if not protected:
                 result['energyEV'] = raw['energyHartree']*units.Hartree
-        if self.last_potential is not None:
+        warning = raw.get('energyObservationWarning') if raw else None
+        if warning is not None:
+            receipt['energyObservationWarning'] = warning
+        elif self.last_potential is not None:
             result['nativeMD']['rawPotential'] = copy.deepcopy(self.last_potential)
         return result
 
@@ -263,7 +278,7 @@ class Session:
                     json.dump(dict(segment=self.segment, step=self.step, timeFs=self.step*2,
                         nativeClosed=self.current is None, exceptionType=type(exc).__name__,
                         code=getattr(exc,'code',None), message=str(exc)),handle,allow_nan=False)
-                engine.reject(getattr(exc,'code',None) or 'md-native-failure', '原生MD未能继续；已保留末有效帧、当前段和前检查点。')
+                reject(getattr(exc,'code',None) or 'md-native-failure', '原生MD未能继续；已保留末有效帧、当前段和前检查点。')
             base_step += self.configuration['steps']; self.segment += 1
 
     def _segment(self, base_step, emit, controls):
@@ -282,7 +297,8 @@ class Session:
             OMP_MAX_ACTIVE_LEVELS='1', OMP_DYNAMIC='FALSE', MKL_NUM_THREADS=str(self.sampling['threads']), OPENBLAS_NUM_THREADS=str(self.sampling['threads']))
         apply_posix_library_env(env, self.runtime)
         reader = TrajectoryReader(self.sampling['structure']['atoms'], self.configuration['dumpSteps'], self.configuration['steps'],
-            positions_only=self.configuration.get('positionsOnly',False), frame_header=self._periodic_frame_header if self.periodic else None)
+            positions_only=self.configuration.get('positionsOnly',False), frame_header=self._periodic_frame_header if self.periodic else None,
+            optional_energy=True)
         header = False; process = job = None
         initial = restart_frame(directory/'mdrestart', len(self.sampling['structure']['atoms'])) if self.restart_bytes else None
 
@@ -294,7 +310,7 @@ class Session:
                     return
                 if self.restart_bytes and not re.search(r'^[ \t]*RESTART[ \t]*$', output, re.M):
                     if final:
-                        engine.reject('md-restart-not-confirmed', '原生MD未确认读取连续状态。')
+                        reject('md-restart-not-confirmed', '原生MD未确认读取连续状态。')
                     return
                 effective = validate_header(output, self.sampling, self.configuration, self.runtime['version'])
                 self.seed = validate_seed(output, dict(self.sampling, seed=self.configuration['nativeSeed'])) if self.seed_verifiable else None
@@ -311,9 +327,9 @@ class Session:
                     else:
                         error = max(abs(v-w) for p,q in zip(raw['coordinates'], expected) for v,w in zip(p,q))
                     if not math.isfinite(error) or error > 5e-6:
-                        engine.reject('md-restart-position-mismatch', 'MD检查点坐标未按原生状态连续恢复。')
+                        reject('md-restart-position-mismatch', 'MD检查点坐标未按原生状态连续恢复。')
                     if initial and raw.get('velocities') and max(abs(v-w) for p,q in zip(raw['velocities'], initial['velocities']) for v,w in zip(p,q)) > 1e-8:
-                        engine.reject('md-restart-velocity-mismatch', 'MD检查点速度未按原生状态连续恢复。')
+                        reject('md-restart-velocity-mismatch', 'MD检查点速度未按原生状态连续恢复。')
                 self.step = base_step + raw['step']
                 self.last_validated = self.snapshot(raw)
                 if raw['step'] % self.sampling['reportEvery'] == 0:
@@ -355,11 +371,11 @@ class Session:
         output = (directory/'stdout.txt').read_text(encoding='utf-8', errors='replace')
         errors = (directory/'stderr.txt').read_text(encoding='utf-8', errors='replace')
         if process.returncode != 0:
-            engine.reject('md-native-exit', '原生MD异常退出；保留最后有效帧及原始证据。')
+            reject('md-native-exit', '原生MD异常退出；保留最后有效帧及原始证据。')
         validate_completion_output(output, errors, self.sampling, self.configuration, self.runtime['version'])
         drain(final=True)
         if reader.raw_index != self.configuration['rawFrames']:
-            engine.reject('md-incomplete-checkpoint', '原生MD检查点轨迹不完整。')
+            reject('md-incomplete-checkpoint', '原生MD检查点轨迹不完整。')
         bounded_file(directory/'xtbmdok', 1024, allow_empty=True)
         final = restart_frame(directory/'mdrestart', len(self.sampling['structure']['atoms']))
         self.step = base_step + self.configuration['steps']
@@ -373,8 +389,8 @@ class Session:
     def _periodic_frame_header(self, comment):
         lattice = re.search(r'\bLattice="([^"]+)"', comment)
         if not lattice or not re.search(r'\bpbc="T T T"', comment) or not re.search(r'\bProperties=species:S:1:pos:R:3\b', comment):
-            engine.reject('md-periodic-trajectory-format', '周期MD轨迹缺少有效的晶胞和坐标元数据。')
+            reject('md-periodic-trajectory-format', '周期MD轨迹缺少有效的晶胞和坐标元数据。')
         cell = [number(value) for value in lattice[1].split()]
         source = [value for row in self.request['structure']['cell']['vectors'] for value in row]
         if len(cell)!=9 or any(abs(a-b)>1e-8 for a,b in zip(cell,source)):
-            engine.reject('md-periodic-cell-changed', '周期MD轨迹晶胞与本次固定晶胞不符。')
+            reject('md-periodic-cell-changed', '周期MD轨迹晶胞与本次固定晶胞不符。')

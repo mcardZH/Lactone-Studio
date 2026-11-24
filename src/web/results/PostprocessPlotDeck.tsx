@@ -4,10 +4,11 @@ import PostprocessPlot from './PostprocessPlot';
 import type { PostprocessPlotSnapshot } from './PostprocessPresentation';
 import type { InteractionScatterSnapshot } from './interaction-controls-contracts';
 import InteractionScatterWindow from './InteractionScatterWindow';
-import type { HirshfeldFingerprintSnapshot } from './hirshfeld-controls-contracts';
+import {hirshfeldFingerprintSourceKey,type HirshfeldFingerprintSnapshot} from './hirshfeld-controls-contracts';
 import HirshfeldFingerprintWindow from './HirshfeldFingerprintWindow';
 import {FilePathEnergyPlot} from './PostprocessFileInformation';
 import {matchesFilePathPlotScope,type FilePathPlotScope,type FilePathPlotSnapshot} from './file-path-plot';
+import {ResultsMcpPlotScope} from './results-mcp-context';
 import './Postprocess.css';
 
 export interface InteractionPlotWindowSnapshot extends InteractionScatterSnapshot {
@@ -18,13 +19,14 @@ export interface HirshfeldPlotWindowSnapshot extends HirshfeldFingerprintSnapsho
 }
 export interface PostprocessPlotDeckProps {
   snapshots: readonly (PostprocessPlotSnapshot | InteractionPlotWindowSnapshot | HirshfeldPlotWindowSnapshot | FilePathPlotSnapshot)[]; onClose(id: string): void; active?: boolean;
+  ownerId?:string;
   /** Undefined shows all sources; null means the current context has no plots. */
   visibleResultId?: string | null;
   visibleFilePlotScope?: FilePathPlotScope | null;
 }
 /** All snapshots keep one mounted content slot. Visibility is presentation-only:
  * minimize, source changes and module navigation do not recreate the chart. */
-export default function PostprocessPlotDeck({ snapshots, onClose, active = true, visibleResultId, visibleFilePlotScope }: PostprocessPlotDeckProps) {
+export default function PostprocessPlotDeck({ snapshots, onClose, active = true, ownerId,visibleResultId, visibleFilePlotScope }: PostprocessPlotDeckProps) {
   const [minimized, setMinimized] = useState<ReadonlySet<string>>(() => new Set());
   const [activeId, setActiveId] = useState(''), [order, setOrder] = useState<string[]>([]);
   const [modes, setModes] = useState<Record<string, ModelDocumentDeckMode>>({}), [arrangeRequest, setArrangeRequest] = useState(0);
@@ -51,6 +53,9 @@ export default function PostprocessPlotDeck({ snapshots, onClose, active = true,
     setMinimized(before => { const next = new Set(before); if (value) next.add(id); else next.delete(id); return next; });
     if (!value) setActiveId(id);
   }
+  const display=(id:string)=>({eligible:active&&visible.some(snapshot=>snapshot.id===id),visible:active&&shown.some(snapshot=>snapshot.id===id),active:active&&id===currentId,
+    activate:()=>minimize(id,false),minimize:()=>minimize(id,true),close:()=>onClose(id),layout:mode as 'free'|'tiled',
+    setLayout:(next:'free'|'tiled',arrange:boolean)=>{setMode(next);if(next==='tiled'&&arrange)setArrangeRequest(value=>value+1);}});
   return <div className="postprocess-plot-deck ui-control-surface" aria-label="后处理内部图窗" hidden={!active || !visible.length}>
     <ModelDocumentDeck activeId={currentId} mode={mode} onActivate={setActiveId} onReorder={setOrder} arrangeRequest={arrangeRequest} layoutKey={scope}
       documents={ordered.map(snapshot => ({ id: snapshot.id, label: snapshot.title, handleContent: snapshot.title,
@@ -59,10 +64,15 @@ export default function PostprocessPlotDeck({ snapshots, onClose, active = true,
         content: <section className="postprocess-plot-window" data-plot-id={snapshot.id} aria-label={`${snapshot.title} · ${snapshot.source.name}`}>
           <div className="postprocess-window-body"><p className="postprocess-note postprocess-source-name">固定来源：{snapshot.source.name} · {snapshot.kind==='file-path'
             ? snapshot.jobIndex===null?'未关联作业':`作业 ${snapshot.jobIndex+1}`
-            : `作业 ${snapshot.jobIndex+1} · 帧 ${snapshot.frameIndex+1}`}</p>{snapshot.kind==='file-path'
+            : `作业 ${snapshot.jobIndex+1} · 帧 ${snapshot.frameIndex+1}`}</p><ResultsMcpPlotScope scope={snapshot.kind==='file-path'
+              ?{id:snapshot.id,kind:snapshot.kind,reference:snapshot.reference,source:snapshot.source,ownerId:snapshot.fileOwnerId,jobId:snapshot.jobId,jobIndex:snapshot.jobIndex,display:display(snapshot.id)}
+              :{id:snapshot.id,kind:snapshot.kind,source:snapshot.source,ownerId:'ownerId' in snapshot?snapshot.ownerId??ownerId:ownerId,resultId:snapshot.resultId,
+                rootResultId:'rootResultId' in snapshot?snapshot.rootResultId:undefined,jobIndex:snapshot.jobIndex,frameIndex:snapshot.frameIndex,
+                analysisSourceKey:snapshot.kind==='hirshfeld-fingerprint'?snapshot.analysisSourceKey??hirshfeldFingerprintSourceKey(snapshot):
+                  snapshot.kind==='interaction-scatter'?snapshot.analysisSourceKey:undefined,display:display(snapshot.id)}}>{snapshot.kind==='file-path'
             ? <FilePathEnergyPlot snapshot={snapshot}/> : snapshot.kind === 'interaction-scatter'
             ? <InteractionScatterWindow snapshot={snapshot}/> : snapshot.kind === 'hirshfeld-fingerprint' ? <HirshfeldFingerprintWindow snapshot={snapshot}/>
-            : <PostprocessPlot snapshot={snapshot}/>}</div>
+            : <PostprocessPlot snapshot={snapshot}/>}</ResultsMcpPlotScope></div>
         </section>,
       }))}/>
     {visible.length > 0 && <div className="postprocess-window-tray"><div className="postprocess-window-tray-controls"><button type="button" onClick={() => { setMode('tiled'); setArrangeRequest(value => value + 1); }}>平铺图窗</button>

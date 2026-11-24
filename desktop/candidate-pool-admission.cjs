@@ -6,7 +6,7 @@ const { outputBudget } = require('./output-budget.cjs');
 function validateOptimizationPool(request) {
   const value = request.optimizationPool;
   if (value === undefined) return;
-  assert(request.runIdentity && (request.operation === 'optimize' || request.calculation === 'optimize')
+  assert(request.runIdentity && request.calculation === 'optimize'
     && plain(value) && Object.keys(value).length === 2
     && ['stageId', 'candidateId'].every(key => string(value[key], 200) && /^[A-Za-z0-9_:-]+$/.test(value[key])), 'Invalid candidate optimization pool identity');
 }

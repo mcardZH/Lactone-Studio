@@ -31,9 +31,11 @@ export function inputCoordinateFold(layout: WorkbenchLayout, fold: boolean): Wor
 /** Adapt the common workspace's presentation ports; do not copy scientific state. */
 export function sharedWorkspacePresentation(desktopMode: boolean, surface?: DocumentWorkspaceSurface) {
   return desktopMode && surface?.sharedLayout ? {
-    observationOnly: surface.module === 'analysis', allowModelEditing: true, analysisCanvas: surface.analysisCanvas, structureAnalysisActive: surface.structureAnalysisActive, presentationActive: surface.presentationActive,
-    onToolSurfaceChange: surface.onToolSurfaceChange, onToolbarSurfaceChange: surface.onToolbarSurfaceChange, onLegendSurfaceChange: surface.onLegendSurfaceChange,
+    observationOnly: surface.module === 'analysis' || surface.analysisCanvas?.observeResultGeometry === true, allowModelEditing: true, analysisCanvas: surface.analysisCanvas, structureAnalysisActive: surface.structureAnalysisActive, presentationActive: surface.presentationActive,
+    onToolSurfaceChange: surface.onToolSurfaceChange, onModelToolsChange: surface.onModelToolsChange,
+    onToolbarSurfaceChange: surface.onToolbarSurfaceChange, onLegendSurfaceChange: surface.onLegendSurfaceChange,
     legendExpanded: surface.legendExpanded, onLegendExpandedChange: surface.onLegendExpandedChange, linkedAtomActions: surface.linkedAtomActions, linkedAtomsActive: surface.linkedAtomsActive,
     workspaceInputRoles: surface.workspaceInputRoles, workspaceDocumentPickMode: surface.workspaceDocumentPickMode, workspaceDocumentPickSelected: surface.workspaceDocumentPickSelected, onAtomNumberPick: surface.onAtomNumberPick,
+    onRetainedOptimization: surface.onRetainedOptimization,
   } : {};
 }

@@ -1,12 +1,12 @@
 import type { TrajectoryResult } from '../../results/contracts';
 import type { AtomicProperty, ScientificField } from '../../results/scientific-contracts';
-import { convertEnergy } from '../../results/energy';
+import { convertEnergy, type EnergyUnit } from '../../results/energy';
 import { frontierOrbitals } from '../../results/scientific-analysis';
 import {decimalEnergyValue,formatEnergyValue,formatResultValue} from '../../results/numeric-format';
 import {solventLabel} from '../solvent-presentation';
 
 export type PostprocessEnergyUnit = 'eV' | 'hartree';
-export const postprocessUnitLabel = (unit: PostprocessEnergyUnit) => unit === 'hartree' ? 'Eh' : 'eV';
+export const postprocessUnitLabel = (unit: EnergyUnit) => unit === 'hartree' ? 'Eh' : unit;
 export const postprocessStatusLabel = (status?: TrajectoryResult['status']) => status ? ({ completed: '正常完成', incomplete: '未完成', failed: '失败', unknown: '状态未确认' }[status]) : '未载入';
 export function postprocessFields(result: TrajectoryResult): ScientificField[] {
   return [...(result.scientific?.summary ?? []), ...(result.scientific?.properties ?? [])];
@@ -253,32 +253,43 @@ export function postprocessScfState(result: TrajectoryResult | null, frameIndex:
 }
 export interface PostprocessPlotSnapshot {
   id: string; kind: 'scf' | 'levels'; title: string;
+  ownerId?:string;
+  rootResultId?:string;
   source: TrajectoryResult['source']; resultId: string; jobIndex: number; frameIndex: number;
   scfCycles: NonNullable<TrajectoryResult['scientific']>['scfCycles'];
   orbitals: NonNullable<TrajectoryResult['scientific']>['orbitals'];
   decimals?:number;
+  orbitalDisplayOffset?:number;
 }
 /** Snapshot contains copied printed numbers and provenance, never readers or live source pointers. */
 export function createPostprocessPlotSnapshot(result: TrajectoryResult, frameIndex: number, kind: PostprocessPlotSnapshot['kind'], id = `${result.id}:${frameIndex}:${kind}`): PostprocessPlotSnapshot {
   if (!Number.isSafeInteger(frameIndex) || frameIndex < 0 || frameIndex >= result.frames.length) throw new Error('图窗来源帧无效。');
   return structuredClone({ id, kind, title: kind === 'scf' ? 'SCF 收敛过程' : '二维轨道能级', source: result.source, resultId: result.id, jobIndex: result.jobIndex, frameIndex,
+    ...(kind === 'levels' && result.engine === 'orca' ? { orbitalDisplayOffset: 1 } : {}),
     scfCycles: result.scientific?.scfCycles.filter(cycle => cycle.frameIndex === frameIndex) ?? [], orbitals: result.scientific?.orbitals.filter(channel => channel.frameIndex === frameIndex) ?? [] });
 }
-export function postprocessPlotData(snapshot: PostprocessPlotSnapshot, unit: PostprocessEnergyUnit) {
+export function postprocessPlotData(snapshot: PostprocessPlotSnapshot, unit: EnergyUnit) {
   return { schema: 'sciyue-postprocess-plot.v1', source: snapshot.source, resultId: snapshot.resultId, jobIndex: snapshot.jobIndex, frameIndex: snapshot.frameIndex, kind: snapshot.kind, unit,
     cycles: snapshot.scfCycles.map(cycle => ({ ...cycle, points: cycle.points.map(point => ({ ...point, energy: point.energy == null ? null : convertEnergy({ value: point.energy, unit: 'hartree' }, unit), deltaEnergy: point.deltaEnergy == null ? null : convertEnergy({ value: point.deltaEnergy, unit: 'hartree' }, unit) })) })),
     channels: snapshot.orbitals.map(channel => ({ ...channel, originalUnit: channel.unit, unit, frontier: frontierOrbitals(channel, unit), orbitals: channel.orbitals.map(orbital => ({ ...orbital, energy: convertEnergy({ value: orbital.energy, unit: channel.unit }, unit) })) })) };
 }
-export function postprocessPlotText(snapshot: PostprocessPlotSnapshot, unit: PostprocessEnergyUnit): string {
+export function postprocessPlotText(snapshot: PostprocessPlotSnapshot, unit: EnergyUnit, scfDisplay?: { cycleIndex: number; zeroIndex: number }): string {
   const data = postprocessPlotData(snapshot, unit);
   const rows = [`# ${snapshot.title}`, `# source=${snapshot.source.name}; source_id=${snapshot.source.id}; job=${snapshot.jobIndex + 1}; frame=${snapshot.frameIndex + 1}; unit=${postprocessUnitLabel(unit)}`];
   if (snapshot.kind === 'scf') {
     rows.push('cycle\tsource_line\titeration\tenergy\tdelta_energy');
-    data.cycles.forEach((cycle, index) => cycle.points.forEach(point => rows.push([index + 1, cycle.sourceLine, point.iteration, point.energy == null?'':decimalEnergyValue(point.energy), point.deltaEnergy == null?'':decimalEnergyValue(point.deltaEnergy)].join('\t'))));
+    data.cycles.forEach((cycle, index) => cycle.points.forEach(point => rows.push([index + 1, point.sourceLine ?? cycle.sourceLine, point.iteration, point.energy == null?'':decimalEnergyValue(point.energy), point.deltaEnergy == null?'':decimalEnergyValue(point.deltaEnergy)].join('\t'))));
+    const cycle = scfDisplay && data.cycles[scfDisplay.cycleIndex], zero = scfDisplay && cycle && cycle.points[scfDisplay.zeroIndex];
+    if (cycle && zero && zero.energy !== null) {
+      rows.push('', `# displayed_cycle=${scfDisplay.cycleIndex + 1}; zero_iteration=${zero.iteration}`, 'source_line\titeration\tdisplayed_relative_energy');
+      cycle.points.forEach(point => rows.push([point.sourceLine ?? cycle.sourceLine, point.iteration, point.energy === null ? '' : decimalEnergyValue(point.energy - zero.energy!)].join('\t')));
+    }
   } else {
-    rows.push('spin\tsource_line\torbital\tenergy\toccupation\tsource_name\tsource_id\tsource_index');
-    data.channels.forEach(channel => channel.orbitals.forEach(orbital => rows.push([channel.spin, orbital.sourceLine ?? channel.sourceLine, orbital.index, formatEnergyValue(orbital.energy,snapshot.decimals??2), Number.isInteger(orbital.occupation)?String(orbital.occupation):formatResultValue(orbital.occupation,snapshot.decimals??2),
-      orbital.sourceName ?? channel.sourceName ?? snapshot.source.name, orbital.sourceId ?? channel.sourceId ?? snapshot.source.id, orbital.sourceIndex ?? ''].join('\t'))));
+    const displayOffset = snapshot.orbitalDisplayOffset ?? 0;
+    const orbitalColumn = displayOffset ? 'display_orbital_index' : 'orbital';
+    rows.push(`spin\tsource_line\t${orbitalColumn}\tenergy\toccupation\tsource_name\tsource_id\tsource_index`);
+    data.channels.forEach(channel => channel.orbitals.forEach(orbital => rows.push([channel.spin, orbital.sourceLine ?? channel.sourceLine, orbital.index + displayOffset, formatEnergyValue(orbital.energy,snapshot.decimals??2), Number.isInteger(orbital.occupation)?String(orbital.occupation):formatResultValue(orbital.occupation,snapshot.decimals??2),
+      orbital.sourceName ?? channel.sourceName ?? snapshot.source.name, orbital.sourceId ?? channel.sourceId ?? snapshot.source.id, orbital.sourceIndex ?? (displayOffset === 1 ? orbital.index : '')].join('\t'))));
   }
   return rows.join('\n') + '\n';
 }

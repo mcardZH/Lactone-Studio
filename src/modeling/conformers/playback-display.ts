@@ -1,9 +1,16 @@
+import { isPeriodic } from '../../core/periodic';
 import type {Structure} from '../../core/types';
+import type {ModelDocument} from '../../core/modeling/contracts';
+import {applyFrameBondOverride} from '../../core/modeling/frame-bond-overrides';
 import type {TrajectoryResult} from '../../results/contracts';
+import {readTrajectoryDisplayFrame} from '../../results/prepared-trajectory';
+import {trajectoryFrameBondIdentity} from '../../results/frame-bond-identity';
+import {trajectoryViewDocument} from '../../results/playback';
 import type {AdvancedResultFrame} from '../advanced/contracts';
 import type {AdvancedFrameSource} from '../advanced/frame-source';
 import {sha256Utf8} from '../../core/file-identity';
 import {superposeViewAtoms} from '../view-superposition';
+import type {Vector3} from '../../core/types';
 
 /** Pure run facts only. Scientific trajectory assets remain raw. */
 export interface ConformerDisplayRestoration {
@@ -16,21 +23,34 @@ export interface ConformerDisplayRestoration {
 export interface ConformerFrameDisplayPolicy {referenceSource?:AdvancedFrameSource;strategy:'freeze'|'flexible'|'rmsd';fitAtomIds:readonly string[];restorationAtomIds:readonly string[];restricted?:boolean}
 type DisplayResult=TrajectoryResult&{displayRestoration?:ConformerDisplayRestoration};
 export interface ConformerPlaybackDisplay {structure:Structure;restored:boolean;aligned:boolean;restriction?:string}
-const batches=new WeakMap<TrajectoryResult,Map<number,ConformerPlaybackDisplay>>();
-const projections=new WeakMap<Structure,ConformerPlaybackDisplay>();
+type DisplayFacts = Omit<ConformerPlaybackDisplay,'structure'> & {transform?: {rotation:readonly Vector3[];translation:Vector3}};
+interface DisplayBatch { frames:Map<number,DisplayFacts>; hot?:{index:number;raw:Structure; projection:ConformerPlaybackDisplay} }
+const batches=new WeakMap<TrajectoryResult,DisplayBatch>();
+const fitReferences = new WeakMap<ConformerDisplayRestoration['references'][number], {
+  original:Map<string|undefined,Structure['atoms'][number]>; ids:readonly string[];
+  selected:Set<string>; referenceAtoms:Structure['atoms']; pairs:{movingAtomId:string;referenceAtomId:string}[];
+}>();
 export function createConformerDisplayRestoration(frames:readonly AdvancedResultFrame[],policies?:readonly (ConformerFrameDisplayPolicy|null)[]):ConformerDisplayRestoration|undefined {
   const references:ConformerDisplayRestoration['references']=[],keys=new Map<string,number>(),unavailableFrameIndices:number[]=[];
+  const byStructure = new WeakMap<Structure,Map<string,number>>();
   const frameReferences=frames.map((frame,frameIndex)=>{
     // Optimization outputs already obey their own strict freeze contract.
-    const origin=frame.samplingOrigin;if(frame.kind==='optimized'||frame.kind==='singlepoint')return null;
+    const origin=frame.samplingOrigin;if(frame.kind==='optimized'||frame.kind==='singlepoint'||isPeriodic(frame.source.structure))return null;
     const policy=policies?.[frameIndex];if(policy===null)return null;
     const protection=origin?.protection??(frame.process?.kind==='sampling'||frame.kind==='sampling-trajectory'||frame.kind==='sampled-candidate'?frame.source.protection:undefined),source=policy?policy.referenceSource:protection?.reference??origin?.source;
     if(policy?.restricted){unavailableFrameIndices.push(frameIndex);return null;}
     if(!source?.structure){if(policy||origin||protection)unavailableFrameIndices.push(frameIndex);return null;}
     const ids=[...(policy?.restorationAtomIds??protection?.restorationAtomIds??origin?.protectedAtomIds??[])];
-    const item={sourceRef:structuredClone(source.ref),coordinatesFingerprint:source.stamp.coordinatesFingerprint,structure:structuredClone(source.structure),restorationAtomIds:ids,...(policy?{strategy:policy.strategy,fitAtomIds:[...policy.fitAtomIds]}:{})};
+    let known = byStructure.get(source.structure);
+    if (!known) { known = new Map(); byStructure.set(source.structure,known); }
+    const policyKey = JSON.stringify([source.ref,ids,policy?.strategy,policy?.fitAtomIds]);
+    // The same immutable coordinate source and actual fit policy commonly recur
+    // for every saved frame. Keep one validation/hash and one detached reference.
+    const same = known.get(policyKey);
+    if (same !== undefined && references[same].coordinatesFingerprint === source.stamp.coordinatesFingerprint) return same;
+    const item={sourceRef:source.ref,coordinatesFingerprint:source.stamp.coordinatesFingerprint,structure:source.structure,restorationAtomIds:ids,...(policy?{strategy:policy.strategy,fitAtomIds:[...policy.fitAtomIds]}:{})};
     const key=sha256Utf8(JSON.stringify(item));let index=keys.get(key);
-    if(index===undefined){index=references.length;references.push(item);keys.set(key,index);}return index;
+    if(index===undefined){index=references.length;references.push(structuredClone(item));keys.set(key,index);}known.set(policyKey,index);return index;
   });
   return references.length||unavailableFrameIndices.length?{schema:1,projection:'rigid-v2',references,frameReferences,...(unavailableFrameIndices.length?{unavailableFrameIndices}:{})}:undefined;
 }
@@ -55,33 +75,48 @@ export function conformerDisplayRestorationRequiresFormat6(value:ConformerDispla
 export function releaseConformerPlaybackDisplay(result:TrajectoryResult):void {batches.delete(result);}
 /** Called during the existing complete raw-frame admission. No IO or fitting on seeks. */
 export function prepareConformerPlaybackDisplay(result:TrajectoryResult,index:number,raw:Structure):void {
-  const metadata=(result as DisplayResult).displayRestoration;if(!metadata)return;
-  let batch=batches.get(result);if(!batch){batch=new Map();batches.set(result,batch);}if(batch.has(index))return;
+  const metadata=(result as DisplayResult).displayRestoration;if(!metadata||isPeriodic(raw))return;
+  let batch=batches.get(result);if(!batch){batch={frames:new Map()};batches.set(result,batch);}if(batch.frames.has(index))return;
   const entry=metadata.frameReferences[index],reference=entry==null?undefined:metadata.references[entry];
-  if(!reference){batch.set(index,{structure:raw,restored:false,aligned:false,...(metadata.unavailableFrameIndices?.includes(index)?{restriction:'本帧缺少可靠的运行参考，保留原始显示。'}:{})});return;}
-  const original=new Map(reference.structure.atoms.map(atom=>[atom.id,atom]));
-  const restricted=(message:string)=>batch!.set(index,{structure:raw,restored:false,aligned:false,restriction:message});
+  if(!reference){batch.frames.set(index,{restored:false,aligned:false,...(metadata.unavailableFrameIndices?.includes(index)?{restriction:'本帧缺少可靠的运行参考，保留原始显示。'}:{})});return;}
+  let fitReference=fitReferences.get(reference);
+  if(!fitReference){
+    const original=new Map(reference.structure.atoms.map(atom=>[atom.id,atom]));
+    const ids=reference.fitAtomIds??(reference.restorationAtomIds.length?reference.restorationAtomIds:reference.structure.atoms.filter(atom=>atom.element!=='H').map(atom=>atom.id!));
+    const selected=new Set(ids);
+    fitReference={original,ids,selected,referenceAtoms:reference.structure.atoms.filter(atom=>selected.has(atom.id!)),pairs:ids.map(id=>({movingAtomId:id,referenceAtomId:id}))};
+    fitReferences.set(reference,fitReference);
+  }
+  const {original,ids,selected,referenceAtoms,pairs}=fitReference;
+  const restricted=(message:string)=>batch!.frames.set(index,{restored:false,aligned:false,restriction:message});
   if(original.size!==raw.atoms.length||raw.atoms.some(atom=>original.get(atom.id)?.element!==atom.element)){restricted('本帧缺少可靠的运行参考原子对应，保留原始显示。');return;}
-  const ids=reference.fitAtomIds??(reference.restorationAtomIds.length?reference.restorationAtomIds:reference.structure.atoms.filter(atom=>atom.element!=='H').map(atom=>atom.id!));
   // Historical all-H structures keep their original display when heavy anchors do not exist.
-  if(!ids.length){batch.set(index,{structure:raw,restored:false,aligned:false});return;}
-  const selected=new Set(ids),fit=superposeViewAtoms({movingAtoms:raw.atoms.filter(atom=>selected.has(atom.id!)),referenceAtoms:reference.structure.atoms.filter(atom=>selected.has(atom.id!)),pairs:ids.map(id=>({movingAtomId:id,referenceAtomId:id})),mappingConfirmed:true});
+  if(!ids.length){batch.frames.set(index,{restored:false,aligned:false});return;}
+  const fit=superposeViewAtoms({movingAtoms:raw.atoms.filter(atom=>selected.has(atom.id!)),referenceAtoms,pairs,mappingConfirmed:true});
   if(!fit.ok){restricted('本帧运行参考无法叠合，保留原始显示。');return;}
-  const {rotation,translation}=fit.transform;
+  batch.frames.set(index,{transform:fit.transform,restored:false,aligned:true});
+}
+export function conformerPlaybackDisplay(result:TrajectoryResult,index:number,raw:Structure):ConformerPlaybackDisplay {
+  const batch=batches.get(result),cached=batch?.frames.get(index);
+  if(!cached)return{structure:raw,restored:false,aligned:false};
+  const {transform,...facts}=cached;
+  if(!transform)return{...facts,structure:raw};
+  if(batch?.hot?.index===index&&batch.hot.raw===raw)return batch.hot.projection;
+  const {rotation,translation}=transform;
   const atoms=raw.atoms.map(atom=>{
     const point=[atom.x,atom.y,atom.z],moved=rotation.map((row,i)=>row.reduce((sum,v,j)=>sum+v*point[j],translation[i]));
     return{...atom,x:moved[0],y:moved[1],z:moved[2]};
   });
-  batch.set(index,{structure:{...raw,atoms},restored:false,aligned:true});
-}
-export function conformerPlaybackDisplay(result:TrajectoryResult,index:number,raw:Structure):ConformerPlaybackDisplay {
-  const cached=batches.get(result)?.get(index);if(!cached)return{structure:raw,restored:false,aligned:false};
-  if(!cached.aligned)return{...cached,structure:raw};
-  const existing=projections.get(raw);if(existing?.structure.atoms===cached.structure.atoms)return existing;
-  const projection={...cached,structure:{...raw,atoms:cached.structure.atoms}};projections.set(raw,projection);return projection;
+  const projection={...facts,structure:{...raw,atoms}};
+  batch!.hot={index,raw,projection};return projection;
 }
 /** A visual-only adapter. Raw XYZ/trajectory export must use the original result. */
-export function conformerVisualTrajectory(result:TrajectoryResult):TrajectoryResult {
-  if(!(result as DisplayResult).displayRestoration)return result;
-  return{...result,async getFrame(index,signal){const raw=await result.getFrame(index,signal);return structuredClone(conformerPlaybackDisplay(result,index,raw).structure);},dispose(){}};
+export function conformerVisualTrajectory(result:TrajectoryResult,owner?:ModelDocument):TrajectoryResult {
+  const overrides=owner?.frameBondOverrides;
+  if(!(result as DisplayResult).displayRestoration&&(!overrides||!Object.keys(overrides).length))return result;
+  return{...result,async getFrame(index,signal){
+    const frame=await readTrajectoryDisplayFrame(result,index,signal);
+    const projected=owner&&overrides?applyFrameBondOverride(owner,trajectoryViewDocument(result,frame,index),trajectoryFrameBondIdentity(result,index)).draft.structure:frame;
+    return structuredClone(conformerPlaybackDisplay(result,index,projected).structure);
+  },dispose(){}};
 }

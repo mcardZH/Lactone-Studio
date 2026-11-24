@@ -10,6 +10,9 @@ export interface AnalysisAtomCaptureOptions {
   sourceId: string; sourceRevision?: string | number | null; jobIndex?: number;
   frameIndex: number; activationEpoch: string | number; active: boolean;
   purpose?: AnalysisSelectionIntent['purpose'];
+  /** A published trajectory supplies the source revision and exact frame.
+   * Validate its geometry when a capture starts, and while a capture is open. */
+  lazyStructureIdentity?: boolean;
   onError?(message: string): void;
 }
 export interface AnalysisCaptureTarget {
@@ -20,7 +23,7 @@ export interface AnalysisCaptureTarget {
   displayGeometry?:import('../../modeling/pes/contracts').PesGeometry;
   assertCurrent(): void;
 }
-interface Session { id: string; key: string; generation: number; intent: AnalysisSelectionIntent; ids: string[]; images?:Vector3[]; target?: AnalysisCaptureTarget }
+interface Session { id: string; key: string; generation: number; intent: AnalysisSelectionIntent; ids: string[]; images?:Vector3[]; target?: AnalysisCaptureTarget; geometryIdentity?:string }
 
 function notifyDraft(target:Session){
   if(target.images)target.intent.onDraftChange?.([...target.ids],structuredClone(target.images));
@@ -35,22 +38,31 @@ export function useAnalysisAtomCapture(options: AnalysisAtomCaptureOptions): {
   cancel(): void;
 } {
   const identity = useRef<{ structure: Structure; value: string } | null>(null);
-  // Ordinary frame playback has no capture capability and must not serialize
-  // all atoms. Drop the cache so activation always seals the actual geometry.
+  function geometryIdentity(structure:Structure) {
+    if (identity.current?.structure !== structure) identity.current = { structure, value: pickerStructureIdentity(structure) };
+    return identity.current.value;
+  }
   if (!options.active) identity.current = null;
-  else if (identity.current?.structure !== options.structure) identity.current = { structure: options.structure, value: pickerStructureIdentity(options.structure) };
   const key = JSON.stringify([options.ownerId, options.purpose ?? 'surface-region', options.documentId, options.revision, options.sourceId, options.sourceRevision,
-    options.jobIndex, options.frameIndex, options.activationEpoch, identity.current?.value ?? 'inactive']);
+    options.jobIndex, options.frameIndex, options.activationEpoch,
+    !options.active ? 'inactive' : options.lazyStructureIdentity ? 'published-frame' : geometryIdentity(options.structure)]);
   const latest = useRef({ options, key, generation: 0 });
-  // An A -> B -> A return cannot revive a handle, even before effect cleanup.
-  if (latest.current.key !== key || latest.current.options.active !== options.active) latest.current.generation++;
-  latest.current.options = options; latest.current.key = key;
   const alive = useRef(true), serial = useRef(0), session = useRef<Session | null>(null);
+  const currentSession=session.current;
+  const captureGeometryChanged=options.active&&currentSession?.generation===latest.current.generation&&
+    currentSession.geometryIdentity!==undefined&&currentSession.geometryIdentity!==geometryIdentity(options.structure);
+  // An A -> B -> A return cannot revive a handle, even before effect cleanup.
+  if (latest.current.key !== key || latest.current.options.active !== options.active || captureGeometryChanged) latest.current.generation++;
+  latest.current.options = options; latest.current.key = key;
   const [snapshot, setSnapshot] = useState<{ session: Session; ids: string[] } | null>(null);
   function assertContext(expectedKey = key, generation = latest.current.generation) {
     const current = latest.current;
     if (!alive.current || !current.options.active || !current.options.ownerId.trim() || !current.options.documentId || !current.options.sourceId ||
       current.key !== expectedKey || current.generation !== generation) throw new Error('分析选择的文档、帧或激活状态已变化，请重新选择。');
+  }
+  function assertGeometry(target:Session) {
+    if (target.geometryIdentity !== undefined && target.geometryIdentity !== geometryIdentity(latest.current.options.structure))
+      throw Error('分析选择的几何已变化，请重新选择。');
   }
   function end(target: Session | null, result: 'confirmed' | 'cancelled') {
     if (!target || session.current !== target) return;
@@ -70,9 +82,10 @@ export function useAnalysisAtomCapture(options: AnalysisAtomCaptureOptions): {
       const structure=targetSource?.structure??latest.current.options.structure;
       inputSelectionIndices(structure,intent.initialAtomIds);
       cancel();
-      const target:Session={id:`analysis-capture-${++serial.current}`,key,generation,intent,ids:[...intent.initialAtomIds],target:targetSource};
+      const target:Session={id:`analysis-capture-${++serial.current}`,key,generation,intent,ids:[...intent.initialAtomIds],target:targetSource,
+        ...(latest.current.options.lazyStructureIdentity ? {geometryIdentity:geometryIdentity(latest.current.options.structure)} : {})};
       session.current=target;
-      const assertCurrent=()=>{assertContext(key,generation);if(session.current!==target)throw Error('分析选择已结束或被替换，请重新选择。');targetSource?.assertCurrent();};
+      const assertCurrent=()=>{assertContext(key,generation);if(session.current!==target)throw Error('分析选择已结束或被替换，请重新选择。');assertGeometry(target);targetSource?.assertCurrent();};
       if(!targetSource||intent.origin==='interactive')setSnapshot({session:target,ids:[...target.ids]});
       try{notifyDraft(target);}catch(error){end(target,'cancelled');throw error;}
       return {assertCurrent,cancel:()=>end(target,'cancelled'),setAtomIds(ids){
@@ -95,7 +108,7 @@ export function useAnalysisAtomCapture(options: AnalysisAtomCaptureOptions): {
   useLayoutEffect(() => {
     const current=latest.current;
     if (session.current && (session.current.key !== current.key || session.current.generation !== current.generation || !current.options.active)) cancel();
-    try{session.current?.target?.assertCurrent();}catch{cancel();}
+    try{if(session.current){assertGeometry(session.current);session.current.target?.assertCurrent();}}catch{cancel();}
   });
   useLayoutEffect(() => {
     alive.current = true;
@@ -104,7 +117,7 @@ export function useAnalysisAtomCapture(options: AnalysisAtomCaptureOptions): {
   const viewportCapture = useMemo<AnalysisAtomCapture | undefined>(() => {
     const target = snapshot?.session;
     if (!target || session.current !== target || target.key !== key || target.generation !== generation || !options.active) return undefined;
-    const assertCurrent = () => { assertContext(key, generation); if (session.current !== target) throw new Error('分析选择已结束或被替换，请重新选择。');target.target?.assertCurrent(); };
+    const assertCurrent = () => { assertContext(key, generation); if (session.current !== target) throw new Error('分析选择已结束或被替换，请重新选择。');assertGeometry(target);target.target?.assertCurrent(); };
     const draft = (ids: string[],images?:Vector3[]) => {
       assertCurrent(); inputSelectionIndices(target.target?.structure??latest.current.options.structure, ids);
       target.ids = [...ids];target.images=images&&structuredClone(images);setSnapshot({session:target,ids:[...ids]});notifyDraft(target);

@@ -9,6 +9,7 @@ generation is a separate operation and publishes only complete validated pairs.
 from __future__ import annotations
 
 import base64
+import codecs
 import ctypes
 import hashlib
 import itertools
@@ -26,6 +27,7 @@ import threading
 import time
 
 import numpy as np
+from analysis_result_wire import packed_values, packed_mask, write_domain_record, read_domain_record, sha256_file, cube_export_file
 from multiwfn_resources import (resolve_resources, _override, _values, require_native_binary_grant, start_multiwfn,
                                 gxtb_valence_settings, native_output_has_edf)
 from orbitals import OrbitalError, MultiwfnSession, _windows_owned_job, inspect_wavefunction
@@ -73,7 +75,9 @@ def half_last_digit(raw):
 def domain_node_mask(domain, count):
     """Validate membership before uint8 conversion (256 must not wrap to zero)."""
     try:
-        if 'maskBase64' in domain:
+        if 'maskBinary' in domain:
+            mask = domain['maskBinary'].array
+        elif 'maskBase64' in domain:
             mask = np.frombuffer(base64.b64decode(domain['maskBase64'], validate=True), dtype=np.uint8)
         else:
             values = domain.get('mask', [])
@@ -85,6 +89,13 @@ def domain_node_mask(domain, count):
     if mask.size != count or not np.isin(mask, [0, 1]).all():
         raise SurfaceError('surface-domain', 'The restricted field mask has an invalid shape or node membership.')
     return mask
+
+
+def packed_cube_domain(domain, count):
+    if domain.get('kind') != 'node-mask' or 'maskBinary' in domain:
+        return domain
+    return {**{key: value for key, value in domain.items() if key not in ('maskBase64', 'mask')},
+            'maskBinary': packed_mask(domain_node_mask(domain, count))}
 
 
 def retained_size(value, seen=None):
@@ -262,11 +273,18 @@ def read_scalar_cube(path, memory_budget=None, coordinate_unit=None):
             precision['atomCoordinates'].append([half_last_digit(value) for value in row[2:]])
             precision['nuclearCharges'].append(half_last_digit(row[1]))
         def tokens():
-            for raw in stream:
+            decoder = codecs.getincrementaldecoder('utf-8')()
+            pending = ''
+            for raw in iter(lambda: stream.read(65536), b''):
                 digest.update(raw)
-                try: record = raw.decode('utf-8')
+                try: part = pending + decoder.decode(raw)
                 except UnicodeDecodeError as exc: raise SurfaceError('surface-cube', 'Cube must be readable UTF-8 text.') from exc
-                yield from record.split()
+                fields = part.split(); pending = ''
+                if fields and not part[-1].isspace():
+                    pending = fields.pop()
+                yield from fields
+            try: yield from (pending + decoder.decode(b'', final=True)).split()
+            except UnicodeDecodeError as exc: raise SurfaceError('surface-cube', 'Cube must be readable UTF-8 text.') from exc
         data = tokens(); dataset_id = None
         if declared_count < 0:
             first, second = next(data, None), next(data, None)
@@ -315,16 +333,36 @@ def write_native_cube(cube, target, comments=None):
     """Only normalize spatial units in an owned copy, never values or rho iso."""
     factor = 1 if cube['grid']['coordinateUnit'] == 'bohr' else 1 / BOHR_TO_ANGSTROM
     grid = cube['grid']; comments = comments or cube['comments']
-    rows = [str(comments[0]), str(comments[1]), f"{len(cube['atoms']):5d} " + ' '.join(f'{value * factor:.16e}' for value in grid['origin'])]
-    rows.extend(f'{count:5d} ' + ' '.join(f'{value * factor:.16e}' for value in axis) for count, axis in zip(grid['dimensions'], grid['axes']))
-    rows.extend(f"{atom['atomicNumber']:5d} {atom['nuclearCharge']:.16e} " + ' '.join(f'{value * factor:.16e}' for value in atom['position']) for atom in cube['atoms'])
     values = cube['values']
     # Native Fortran readers consume one z-column in records of at most six.
     # A record must not straddle two y-columns when nz is not divisible by six.
     nz = grid['dimensions'][2]
-    rows.extend(' '.join(f'{float(value):.16e}' for value in values[start + i:start + min(i + 6, nz)])
-                for start in range(0, values.size, nz) for i in range(0, nz, 6))
-    Path(target).write_text('\n'.join(rows) + '\n', encoding='utf-8')
+    with Path(target).open('w', encoding='utf-8') as stream:
+        stream.write(f"{comments[0]}\n{comments[1]}\n")
+        stream.write(f"{len(cube['atoms']):5d} " + ' '.join(f'{value * factor:.16e}' for value in grid['origin']) + '\n')
+        for count, axis in zip(grid['dimensions'], grid['axes']):
+            stream.write(f'{count:5d} ' + ' '.join(f'{value * factor:.16e}' for value in axis) + '\n')
+        for atom in cube['atoms']:
+            stream.write(f"{atom['atomicNumber']:5d} {atom['nuclearCharge']:.16e} " + ' '.join(f'{value * factor:.16e}' for value in atom['position']) + '\n')
+        for start in range(0, values.size, nz):
+            for index in range(0, nz, 6):
+                stream.write(' '.join(f'{float(value):.16e}' for value in values[start + index:start + min(index + 6, nz)]) + '\n')
+
+
+def write_canonical_surface_cube(cube, target, comments, memory_budget):
+    write_native_cube(cube, target, comments)
+    canonical = read_scalar_cube(target, memory_budget)
+    # The wider serialization preserves the parsed numbers. It cannot recover
+    # the precision lost when Multiwfn printed the original Cube header.
+    precision = cube['precision']
+    if cube['grid']['coordinateUnit'] == 'angstrom':
+        def to_bohr(row):
+            return [value / BOHR_TO_ANGSTROM for value in row]
+        precision = dict(precision, origin=to_bohr(precision['origin']),
+                         axes=[to_bohr(axis) for axis in precision['axes']],
+                         atomCoordinates=[to_bohr(position) for position in precision['atomCoordinates']])
+    canonical['precision'] = precision
+    return canonical
 
 
 def read_surface_vertex_file(path, memory_budget, with_values=False, current=lambda: None):
@@ -621,7 +659,7 @@ def _cube_field(cube, field_id, context, function, unit, name, domain):
                   function=function, functionLabel={'electron-density': 'Electron density', 'esp': 'ESP', 'alie': 'ALIE'}[function], valueUnit=unit,
                   definitionEvidence=dict(kind='native-output', description='Multiwfn main-5 native function and exact Cube export.'),
                   grid=cube['grid'], atoms=cube['atoms'], precision=cube['precision'], validDomain=domain,
-                  valuesBase64=base64.b64encode(cube['values'].astype('<f8', copy=False).tobytes()).decode('ascii'))
+                  valuesBinary=packed_values(cube['values']))
     return result
 
 
@@ -882,7 +920,7 @@ class SurfaceAnalysisSession:
         for role, name in [('native-output', frozen_log), ('native-menu', frozen_menu), ('effective-settings', 'settings.ini'), *roles, *getattr(native, 'point_artifacts', [])]:
             path = native.work / name
             if path.is_file():
-                artifacts.append(dict(role=role, name=name, revision=hashlib.sha256(path.read_bytes()).hexdigest()))
+                artifacts.append(dict(role=role, name=name, revision=sha256_file(path)))
         return dict(backend=dict(name='Multiwfn', version=native.backend['version']), sourceIds=[self.context['sourceId']],
                     parameters=dict(threads=self.resources['threads'], memoryBudgetBytes=self.resources['memoryBudgetBytes'], settingsRevision=self.resources['settingsRevision'], **(getattr(native, 'source_prerequisites', None) or {}), **getattr(native, 'point_parameters', {}), **parameters), rawArtifacts=artifacts,
                     notices=['Quantitative values and native display Cube sampling are independent.'])
@@ -1091,6 +1129,7 @@ class SurfaceAnalysisSession:
             # Lock the serialized complete native grid for both actual density
             # evaluation and mapping. Never choose two independent medium grids.
             template = native.work / 'grid-template.cub'; shutil.copyfile(first_path, template)
+            del first
             shape_path, _ = self._export_main5(native, 1, ['8', template.name])
             shape = read_scalar_cube(shape_path, self.resources['memoryBudgetBytes'])
             mapping_path, mapping_output = self._export_main5(native, 12 if request['function'] == 'esp' else 18, ['8', shape_path.name])
@@ -1099,8 +1138,8 @@ class SurfaceAnalysisSession:
             prefix = request['stamp']['analysisId'] + ':' + request['stamp']['requestId']
             shape_id, mapping_id = prefix + ':density', prefix + ':' + request['function']
             shape_final = native.work / 'density-surface.cub'
-            write_native_cube(shape, shape_final, ['Ester Studio electron density [e/bohr^3]; Multiwfn native grid', 'Complete density grid; no scalar values were resampled.'])
-            shape = read_scalar_cube(shape_final, self.resources['memoryBudgetBytes'])
+            shape = write_canonical_surface_cube(shape, shape_final, ['Ester Studio electron density [e/bohr^3]; Multiwfn native grid',
+                                                 'Complete density grid; no scalar values were resampled.'], self.resources['memoryBudgetBytes'])
             domain = dict(kind='full-grid', evidence='Every node was evaluated by native main-5 ALIE on the locked density grid.')
             domain_parameters = {}
             if request['function'] == 'esp':
@@ -1114,14 +1153,14 @@ class SurfaceAnalysisSession:
                 coverage = crossing_domain_coverage(shape['values'], shape['grid']['dimensions'], request['isovalue'], mask)
                 if coverage['invalidCrossingCells']:
                     raise SurfaceError('surface-domain', 'The generated surface lacks valid direct ESP data at every interpolation neighbour; no partial colored field was published.')
-                domain = dict(kind='node-mask', maskBase64=base64.b64encode(mask.tobytes()).decode('ascii'),
+                domain = dict(kind='node-mask', maskBinary=packed_mask(mask),
                               evidence='Actual native ESPrhoiso evaluation count matches the density-derived surrounding-node predicate; copied neighbours and zero fill are excluded.',
                               restrictedTo=dict(shapeFieldId=shape_id, shapeSourceRevision=shape['revision'], isovalue=request['isovalue']))
                 domain_parameters = dict(ESPrhoiso=request['isovalue'], ESPrhonlay=layers, directlyEvaluatedNodes=native_count, validatedMaskNodes=int(mask.sum()), copiedNeighboursAreNotDirect=True, **coverage)
             mapping_final = native.work / (request['function'] + '-surface.cub')
             title = f"Ester Studio {request['function'].upper()} [a.u.]; " + ('restricted-domain; requires bound domain metadata' if request['function'] == 'esp' else 'full-grid')
-            write_native_cube(mapping, mapping_final, [title, 'Multiwfn native scalar field; grid locked to density; no fitted charges or FPA.'])
-            mapping = read_scalar_cube(mapping_final, self.resources['memoryBudgetBytes'])
+            mapping = write_canonical_surface_cube(mapping, mapping_final, [title, 'Multiwfn native scalar field; grid locked to density; no fitted charges or FPA.'],
+                                                   self.resources['memoryBudgetBytes'])
             shape_field = _cube_field(shape, shape_id, context, 'electron-density', 'e/bohr^3', shape_final.name, dict(kind='full-grid', evidence='Every density node was evaluated by native main-5.'))
             mapping_field = _cube_field(mapping, mapping_id, context, request['function'], 'a.u.', mapping_final.name, domain)
             provenance = self._provenance(native, dict(function=request['function'], isovalue=request['isovalue'], cubeQuality=mode,
@@ -1135,13 +1174,13 @@ class SurfaceAnalysisSession:
                 if field['validDomain']['kind'] != 'full-grid':
                     sidecar = dict(schema='sciyue-surface-domain/v1', sourceRevision=field['source']['revision'], validDomain=field['validDomain'], context=context,
                                    parameters=provenance['parameters'], cubeName=field['source']['name'])
-                    (native.work / (field['source']['name'] + '.domain.json')).write_text(json.dumps(sidecar, allow_nan=False, indent=2), encoding='utf-8')
+                    write_domain_record(native.work / (field['source']['name'] + '.domain.json'), sidecar)
             for field, path in ((shape_field, shape_final), (mapping_field, mapping_final)):
-                descriptor = {key: value for key, value in field.items() if key != 'valuesBase64'}
-                descriptor['validDomain'] = {key: value for key, value in field['validDomain'].items() if key not in ('mask', 'maskBase64')}
+                descriptor = {key: value for key, value in field.items() if key != 'valuesBinary'}
+                descriptor['validDomain'] = {key: value for key, value in field['validDomain'].items() if key not in ('mask', 'maskBase64', 'maskBinary')}
                 self.fields[field['id']] = dict(path=str(path), revision=field['source']['revision'], restricted=field['validDomain']['kind'] != 'full-grid', stamp=request['stamp'], descriptor=descriptor)
                 if self.fields[field['id']]['restricted']:
-                    self.fields[field['id']]['domainRevision'] = hashlib.sha256(Path(str(path) + '.domain.json').read_bytes()).hexdigest()
+                    self.fields[field['id']]['domainRevision'] = sha256_file(str(path) + '.domain.json')
             self.generations[request['stamp']['requestId']] = dict(analysisId=request['stamp']['analysisId'], quality=quality,
                 shapeId=shape_id, mappingId=mapping_id, isovalue=request['isovalue'], provenance=provenance)
             return result
@@ -1159,7 +1198,7 @@ class SurfaceAnalysisSession:
         work = Path(self.fields[saved['shapeId']]['path']).parent
         for artifact in saved['provenance']['rawArtifacts']:
             raw = work / artifact['name']
-            if raw.parent != work or hashlib.sha256(raw.read_bytes()).hexdigest() != artifact['revision']:
+            if raw.parent != work or sha256_file(raw) != artifact['revision']:
                 raise SurfaceError('surface-artifact-changed', 'The generation native artifact identity changed; cached fields were not restored.')
         pair = dict(isovalue=saved['isovalue']); cubes = {}
         for slot, key in (('shape', 'shapeId'), ('mapping', 'mappingId')):
@@ -1169,15 +1208,12 @@ class SurfaceAnalysisSession:
             cubes[slot] = cube
             field = dict(item['descriptor'])
             if item['restricted']:
-                sidecar_bytes = Path(item['path'] + '.domain.json').read_bytes()
-                if hashlib.sha256(sidecar_bytes).hexdigest() != item['domainRevision']:
-                    raise SurfaceError('surface-domain', 'Cached bound domain metadata changed; fields were not restored.')
-                sidecar = json.loads(sidecar_bytes.decode('utf-8'))
+                try: sidecar = read_domain_record(item['path'] + '.domain.json', item['domainRevision'], cube['values'].size)
+                except (ValueError, OSError) as exc: raise SurfaceError('surface-domain', 'Cached bound domain metadata changed or is invalid; fields were not restored.') from exc
                 if sidecar.get('sourceRevision') != cube['revision']:
                     raise SurfaceError('surface-domain', 'Cached Cube domain identity no longer matches its scalar field.')
-                field['validDomain'] = sidecar['validDomain']
-                domain_node_mask(field['validDomain'], cube['values'].size)
-            field['valuesBase64'] = base64.b64encode(cube['values'].astype('<f8', copy=False).tobytes()).decode('ascii')
+                field['validDomain'] = packed_cube_domain(sidecar['validDomain'], cube['values'].size)
+            field['valuesBinary'] = packed_values(cube['values'])
             pair[slot] = field
         require_cube_pair(cubes['shape'], cubes['mapping'])
         domain = pair['mapping']['validDomain']
@@ -1194,16 +1230,15 @@ class SurfaceAnalysisSession:
             if request['stamp']['analysisId'] != item['stamp']['analysisId']:
                 raise SurfaceError('surface-field-stamp', 'The requested field belongs to another analysis.')
             path = Path(item['path'])
-            result = dict(name=path.name, text=path.read_bytes().decode('utf-8'))
-            if hashlib.sha256(result['text'].encode('utf-8')).hexdigest() != item['revision']:
+            if sha256_file(path) != item['revision']:
                 raise SurfaceError('surface-field-changed', 'The generated Cube identity changed before export.')
+            domain = None
             if item['restricted']:
                 sidecar = path.with_name(path.name + '.domain.json')
-                raw_domain = sidecar.read_bytes()
-                if hashlib.sha256(raw_domain).hexdigest() != item['domainRevision']:
+                if sha256_file(sidecar) != item['domainRevision']:
                     raise SurfaceError('surface-domain', 'The generated Cube domain identity changed before export.')
-                result['domain'] = dict(name=path.name + '.sciyue-domain.json', text=raw_domain.decode('utf-8'))
-            return result
+                domain = (sidecar, item['domainRevision'])
+            return cube_export_file(path.name, path, item['revision'], domain)
         if self.source['kind'] == 'cube-pair':
             for slot in ('shape', 'mapping'):
                 if self.source.get(slot) and self.source[slot]['fieldMetadata'].get('id') == field_id:

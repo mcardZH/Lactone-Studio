@@ -1,5 +1,6 @@
 'use strict';
-const {assert,plain,boundedJSON,validateStructure,MAX_FINGERPRINT_BYTES}=require('./security.cjs');
+const {assert,plain,boundedJSON,validateStructure}=require('./security.cjs');
+const {validSourceStampFingerprints}=require('./native-source-stamp.cjs');
 const {sessionIdentity}=require('./xtb-security.cjs');
 const {cpuResourceSnapshot}=require('./cpu-resources.cjs');
 const ELEMENTS='H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn'.split(' ');
@@ -16,7 +17,7 @@ const integer=(n,a,b)=>Number.isSafeInteger(n)&&n>=a&&n<=b;
 const finite=(n,a=-1e6,b=1e6)=>typeof n==='number'&&Number.isFinite(n)&&n>=a&&n<=b;
 const numeric=/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?$/;
 function keys(value,allowed){assert(plain(value)&&Object.keys(value).every(key=>allowed.includes(key)),'Unknown or invalid aISS request field');}
-function stamp(value){keys(value,['documentId','revision','activationEpoch','graphFingerprint','coordinatesFingerprint','constraintsFingerprint']);assert(typeof value.documentId==='string'&&value.documentId.length>0&&value.documentId.length<=1024&&!value.documentId.includes('\0')&&integer(value.revision,0,Number.MAX_SAFE_INTEGER)&&(value.activationEpoch===undefined||integer(value.activationEpoch,0,Number.MAX_SAFE_INTEGER))&&['graphFingerprint','coordinatesFingerprint','constraintsFingerprint'].every(key=>typeof value[key]==='string'&&Buffer.byteLength(value[key])<=MAX_FINGERPRINT_BYTES),'Invalid aISS source stamp');}
+function stamp(value){keys(value,['documentId','revision','activationEpoch','graphFingerprint','coordinatesFingerprint','constraintsFingerprint']);assert(typeof value.documentId==='string'&&value.documentId.length>0&&value.documentId.length<=1024&&!value.documentId.includes('\0')&&integer(value.revision,0,Number.MAX_SAFE_INTEGER)&&(value.activationEpoch===undefined||integer(value.activationEpoch,0,Number.MAX_SAFE_INTEGER))&&validSourceStampFingerprints(value),'Invalid aISS source stamp');}
 function diameter(atoms){let max=0;for(let i=0;i<atoms.length;i++)for(let j=0;j<i;j++)max=Math.max(max,Math.hypot(atoms[i].x-atoms[j].x,atoms[i].y-atoms[j].y,atoms[i].z-atoms[j].z));return max/BOHR;}
 function validateStart(raw,cpu=cpuResourceSnapshot()){
   boundedJSON(raw);keys(raw,['schema','operation','stamp','runIdentity','sources','method','threads','memoryBudgetBytes','maxWallTimeSeconds','search','refinement','calculator']);

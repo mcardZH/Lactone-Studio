@@ -1,6 +1,8 @@
 import type {AdvancedClusterCollection,AdvancedTaskRecord,AdvancedOptimizationMethod,AdvancedOptimizationStageConfig,AdvancedCandidateInput,AdvancedStageInputSelection} from './contracts';
 import {conformerCalculationIdentityKey} from '../conformers/clustering';
 import {coordinatesFingerprint,graphFingerprint} from '../../core/modeling/graph';
+import {VibronicSha256} from '../../core/gaussian-vibronic/sha256-stream';
+import {isCapturedAdvancedStructure} from './frame-source';
 
 export function conformerStageConfigs(task:AdvancedTaskRecord):AdvancedOptimizationStageConfig[]{
   return task.spec.kind==='conformer-search'?task.spec.search.stages:task.spec.kind==='sampling'||task.spec.kind==='docking'?task.spec.optimizationStages:[];
@@ -25,9 +27,26 @@ export function conformerTaskRequiresElementGeometrySemantics(task:AdvancedTaskR
 export function conformerTaskRequiresNativeDefaultSemantics(task:AdvancedTaskRecord):boolean{
   const nativeDefault=(config:AdvancedOptimizationStageConfig)=>{
     const method=config.method;
-    return (method.backend==='xtb'?method.options.optimizationStepPolicy:method.optimizationStepPolicy)==='native-default';
+    return (method.backend==='xtb'?method.options.optimizationStepPolicy:method.backend==='forcefield'?method.optimizationStepPolicy:undefined)==='native-default';
   };
   return conformerStageConfigs(task).some(nativeDefault)||task.runs.some(run=>run.stages.some(stage=>stage.configuration&&nativeDefault(stage.configuration)));
+}
+/** A reader that lacks the shared driver must not reopen these stages as native OPT. */
+export function conformerTaskRequiresSharedOptimizer(task:AdvancedTaskRecord):boolean{
+  const shared=(config:AdvancedOptimizationStageConfig|undefined)=>config?.method.backend==='net'
+    || config?.method.backend==='xtb'&&!!config.method.optimizer;
+  return conformerStageConfigs(task).some(shared)||task.runs.some(run=>run.stages.some(stage=>
+    shared(stage.configuration)||stage.results.some(result=>!!result.sharedOptimization)));
+}
+/** Earlier readers cannot restore explicit integration and its mass settings. */
+export function conformerTaskRequiresMdIntegrator(task:AdvancedTaskRecord):boolean{
+  const usesIntegrator=(definition:import('./contracts').AdvancedMixedSamplingDefinition|undefined)=>
+    definition?.cards.some(card=>card.kind==='sampling'&&card.sampling.integrator!==undefined);
+  if(task.spec.kind==='sampling'&&(task.spec.sampling.integrator!==undefined
+    ||usesIntegrator(task.spec.mixedSampling)))return true;
+  return Boolean(usesIntegrator(task.mixedSampling?.draft)
+    ||task.mixedSampling?.batches?.some(batch=>usesIntegrator(batch.definition))
+    ||task.runs.some(run=>usesIntegrator(run.mixedSampling?.definition)||run.sampling?.terminal?.lastFrame?.aseMD));
 }
 /** Pure, one-time current-draft migration. Executed runs retain the original
  * configuration, inputs and promotion list as historical scientific evidence. */
@@ -46,9 +65,11 @@ export function migrateConformerInputSemantics(task:AdvancedTaskRecord):void {
 }
 export function conformerNativeStepMethod(method:AdvancedOptimizationMethod):AdvancedOptimizationMethod {
   if(method.backend==='xtb'){
+    if(method.optimizer)return method;
     const {maxSteps:_previousSteps,...options}=method.options;
-    return {...method,options:{...options,optimizationStepPolicy:'native-default'}};
+    return {...method,options:{...options,optimizationStepPolicy:'native-default' as const}};
   }
+  if (method.backend === 'net') return method;
   const {maxSteps:_previousSteps,...settings}=method;
   return {...settings,optimizationStepPolicy:'native-default'};
 }
@@ -95,10 +116,27 @@ export function buildAdvancedClusterCollection(task:AdvancedTaskRecord,configura
     current:state.valid,settlement:complete?'complete':stage?.clustering?'partial':rows.length?'historical-incomplete':(state.resultFrameIds?.length??0)>0?'needs-clustering':'partial',
     comparison:group?{groupId:group.id,comparisonKey:group.comparisonKey,identity:group.identity}:null,clusters:rows};
 }
+export function conformerSelectionDigest(prefix:readonly unknown[],rows:Iterable<unknown>):string {
+  const hash=new VibronicSha256(), encoder=new TextEncoder(), fingerprints=new Map<string,number>();
+  const write=(record:unknown)=>hash.update(encoder.encode(JSON.stringify(record)+'\n'));
+  write(['selection',prefix]);
+  for(const row of rows){
+    // Repeated canonical topology and constraint strings carry the same value.
+    // Bind each exact string once and bind its ordered references for each row.
+    const encoded=JSON.stringify(row,(key,value)=>{
+      if(typeof value!=='string'||!['graphFingerprint','coordinatesFingerprint','constraintsFingerprint'].includes(key))return value;
+      let index=fingerprints.get(value);
+      if(index===undefined){index=fingerprints.size;fingerprints.set(value,index);write(['fingerprint',index,value]);}
+      return {fingerprint:index};
+    });
+    write(['row',encoded]);
+  }
+  return `es-conformer-selection-sha256-v2:${hash.digest()}`;
+}
 export function clusterCollectionSignature(collection:AdvancedClusterCollection,inputs:readonly AdvancedCandidateInput[]):string {
-  return JSON.stringify([collection.id,collection.revision,collection.comparison&&conformerCalculationIdentityKey(collection.comparison.identity),
-    collection.clusters.map(row=>[row.clusterId,row.representativeCandidateId,row.representativeFrameId,row.energyHartree]),
-    inputs.map(input=>[input.candidateId,input.source.ref,input.source.stamp,input.source.structure.charge,input.source.structure.multiplicity,input.source.constraints])]);
+  return conformerSelectionDigest(['clusters',collection.id,collection.revision,collection.comparison&&conformerCalculationIdentityKey(collection.comparison.identity),
+    collection.clusters.map(row=>[row.clusterId,row.representativeCandidateId,row.representativeFrameId,row.energyHartree])],
+    inputs.map(input=>[input.candidateId,input.source.ref,input.source.stamp,input.source.structure.charge,input.source.structure.multiplicity,input.source.constraints]));
 }
 export function selectAdvancedClusterInputs(task:AdvancedTaskRecord,configurationId:string,count:number,_legacyStride?:number):{inputs:AdvancedCandidateInput[];selection:AdvancedStageInputSelection}{
   if(!Number.isSafeInteger(count)||count<1)throw Error('选取上一级簇数须为正整数。');
@@ -107,7 +145,8 @@ export function selectAdvancedClusterInputs(task:AdvancedTaskRecord,configuratio
   const selected=collection.clusters.slice(0,count),frames=new Map(task.runs.flatMap(run=>run.frames).map(frame=>[frame.id,frame]));
   const inputs=selected.map(row=>{const frame=row.representativeFrameId?frames.get(row.representativeFrameId):undefined;
     if(row.unavailableReason||!frame)throw Error('选中簇代表完整结构缺失，未用较高能簇补足输入。');
-    return {candidateId:row.representativeCandidateId,source:structuredClone(frame.source)};});
+    const source = Object.isFrozen(frame.source) && isCapturedAdvancedStructure(frame.source.structure) ? frame.source : structuredClone(frame.source);
+    return {candidateId:row.representativeCandidateId,source};});
   return {inputs,selection:{schema:1,mode:'previous-clusters',collectionId:collection.id,collectionRevision:collection.revision,
     collectionSignature:clusterCollectionSignature(collection,inputs),requestedCount:count,actualCount:inputs.length,clusterIds:selected.map(row=>row.clusterId),representativeFrameIds:selected.map(row=>row.representativeFrameId!)}};
 }

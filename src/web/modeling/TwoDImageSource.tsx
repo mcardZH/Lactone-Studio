@@ -25,13 +25,14 @@ interface Props {
   crop?: TwoDImageCrop | null;
   onSelection?(crop: TwoDImageCrop): void;
   onDecoded?(value: TwoDImageDecoded): void;
+  onInteraction?(read:(()=>boolean)|null):void;
   onChooseComponent(): void;
   onRecognize(selection: TwoDImageSelection): void;
   onError(message: string): void;
 }
 
 /** Canvas and crop are display/session state. OCR ownership lives in the workspace. */
-export default function TwoDImageSource({ file, busy, capabilities, crop: controlledCrop, onSelection, onDecoded, onChooseComponent, onRecognize, onError }: Props) {
+export default function TwoDImageSource({ file, busy, capabilities, crop: controlledCrop, onSelection, onDecoded, onChooseComponent, onRecognize, onError, onInteraction }: Props) {
   const [display, setDisplay] = useState<{ id: string; image: DecodedTwoDImage } | null>(() => file.image ? { id: file.id, image: file.image } : null);
   const [localCrop, setLocalCrop] = useState<TwoDImageCrop | null>(() => file.image ? fullImageCrop(file.image.metadata) : null);
   const [preparing, setPreparing] = useState(false), [zoom, setZoom] = useState(1);
@@ -45,6 +46,7 @@ export default function TwoDImageSource({ file, busy, capabilities, crop: contro
   const crop = controlledCrop === undefined ? localCrop : controlledCrop;
   const capability = capabilities?.engines.find(value => value.engine === 'molvec');
   const limits = { maxImageBytes: capabilities?.maxImageBytes ?? TWO_D_OCR_LIMITS.maxImageBytes, maxImagePixels: capabilities?.maxImagePixels ?? TWO_D_OCR_LIMITS.maxImagePixels };
+  useEffect(()=>{onInteraction?.(()=>Boolean(drag.current||preparing));return ()=>onInteraction?.(null);},[preparing,onInteraction]);
   function select(value: TwoDImageCrop) { setLocalCrop(value); latest.current.onSelection?.(value); }
 
   useEffect(() => {

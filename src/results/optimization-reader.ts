@@ -4,6 +4,7 @@ import { parseGaussianSource } from '../core/gaussian-source';
 import { assertResultNotAborted, UnsupportedResultKindError, type ResultConvergence, type ResultFrameSummary, type ResultInputFile, type ResultReadOptions, type ResultStatus, type TrajectoryResult } from './contracts';
 import { abortableResultRead } from './xyz-reader';
 import { outputLines } from './output-lines';
+import { decodeResultText, type ResultTextEncoding } from './byte-text-lines';
 export { outputLines } from './output-lines';
 import { GaussianOutputSections, gaussianEntry, gaussianErrorTermination, gaussianExplicitLink, gaussianJobLink, gaussianNormalTermination, type GaussianOutputSection } from './gaussian-output-archive';
 import { assertOutputSoftware, orcaOutputComment, orcaOutputEcho, orcaNormalTermination, orcaPrintedState, outputSoftwareOnLine } from './output-sections';
@@ -325,7 +326,8 @@ export async function readOptimizationResults(file: ResultInputFile, options: Re
   const close = async () => { if (!closed) { closed = true; await file.close?.(); } };
   try {
     const parser = new OptimizationIndex();
-    for await (const line of outputLines(file, options)) parser.consume(line);
+    let encoding: ResultTextEncoding = 'utf-8';
+    for await (const line of outputLines(file, options, undefined, undefined, value => { encoding = value; })) parser.consume(line);
     assertResultNotAborted(options.signal);
     const segments = parser.finish();
     if (!segments.length) {
@@ -353,9 +355,9 @@ export async function readOptimizationResults(file: ResultInputFile, options: Re
         assertResultNotAborted(combined);
         if (disposed || closed) throw new Error('结果文档已关闭。');
         if (bytes.length !== geometry.end - geometry.start) throw new Error('来源OPT帧范围已截断或发生变化。');
-        const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        const text = decodeResultText(bytes, encoding);
         const atoms: Atom[] = [];
-        for (const line of text.trim().split(/\r?\n/)) {
+        for (const line of text.trim().split(/\r\n?|\n/)) {
           const atom = row(line, segment.engine, atoms.length);
           if (!atom) throw new Error('按需读取的坐标与已建立的OPT索引不一致。');
           atoms.push(atom);

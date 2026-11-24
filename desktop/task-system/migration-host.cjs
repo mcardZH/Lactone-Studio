@@ -170,13 +170,15 @@ async function migrateHostLibrary({
 	probe,
 	jobs,
 	owners,
-	localEnvironmentId
+	localEnvironmentId,
+	targetOverride
 }) {
 	const manager = context.manager(),
 		source = context.pointer.root,
 		expected = settings.readPointer(),
-		target = await dependencies.chooseDirectory?.({ purpose: "migrate", ownerId: context.ownerId });
+		target = targetOverride ?? await dependencies.chooseDirectory?.({ purpose: "migrate", ownerId: context.ownerId });
 	if (!target) throw fail("LIBRARY_SELECTION_CANCELLED");
+	if(!path.isAbsolute(target))throw fail("LIBRARY_PATH_INVALID");
 	if (
 		!(await dependencies.confirmImpact?.({
 			purpose: "migrate",

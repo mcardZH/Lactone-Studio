@@ -9,6 +9,7 @@ import { FchkReader } from './fchk-reader';
 import { fchkTextRecords, looksLikeFchk } from './fchk-records';
 import { cellInverse, cross3, norm3 } from './periodic';
 import type { Vector3 } from './types';
+import { readXyzElectronicState } from './xyz-electronic-state';
 
 const BOHR_TO_ANGSTROM = 0.529177210903;
 
@@ -34,16 +35,7 @@ function base(name: string, format: string, index = 0): Structure {
   return { id: `${name}-${index}`, name, format, atoms: [], charge: null, multiplicity: null, notes: [] };
 }
 
-function parseXyz(text: string, name: string): Structure[] {
-  const lines = text.split('\n');
-  const structures: Structure[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    if (!lines[i].trim()) { i++; continue; }
-    if (!/^\d+$/.test(lines[i].trim())) throw new Error(`XYZ第${i + 1}行应为原子数，未忽略任何尾部内容。`);
-    const n = Number(lines[i++]); checkCount(n);
-    if (i >= lines.length) throw new Error('XYZ缺少注释行。');
-    const comment = lines[i++];
+export function plainXyzFrame(name: string, comment: string, index: number) {
     let speciesColumn = 0; let positionColumn = 1; let totalColumns = 0;
     const properties = comment.match(/\bProperties\s*=\s*"?([^"\s]+)/i)?.[1];
     if (properties) {
@@ -59,29 +51,63 @@ function parseXyz(text: string, name: string): Structure[] {
       }
       if (speciesColumn < 0 || positionColumn < 0) throw new Error('该扩展XYZ必须含species:S:1与pos:R:3，不能猜测坐标列。');
     }
-    const structure = base(name, 'XYZ', structures.length);
+    const structure = base(name, 'XYZ', index);
     const scale = /\b(?:units\s*=\s*|units\s*:\s*)bohr\b/i.test(comment) ? BOHR_TO_ANGSTROM : 1;
     if (/\bunits\s*[=:]/i.test(comment) && scale === 1 && !/\bunits\s*[=:]\s*(?:angstrom|ang|a)\b/i.test(comment)) throw new Error('XYZ声明的单位未覆盖，不能默认为Å。');
-    for (let j = 0; j < n; j++) {
-      const row = lines[i++]?.trim().split(/\s+/);
-      if (!row || row.length < 4) throw new Error(`XYZ第${j + 1}个原子行缺失或不完整。`);
-      if (totalColumns && row.length !== totalColumns) throw new Error('扩展XYZ实际列数与Properties声明不一致。');
-      structure.atoms.push(atom(row[speciesColumn], row[positionColumn], row[positionColumn + 1], row[positionColumn + 2], scale));
-    }
-    const metadata = (pattern: RegExp): number | null => {
-      const value = comment.match(pattern)?.[1];
-      if (value === undefined) return null;
-      if (!/^[+-]?\d+$/.test(value)) throw new Error('XYZ电荷/多重度元数据不是整数。');
-      return Number(value);
-    };
-    structure.charge = metadata(/\bcharge\s*=\s*([^\s]+)/i);
-    structure.multiplicity = metadata(/\b(?:multiplicity|mult)\s*=\s*([^\s]+)/i);
+    readXyzElectronicState(comment, structure);
     if (scale !== 1) structure.notes.push('来源明确标记Bohr，已转换为Å。');
     if (/\bLattice=/i.test(comment)) structure.notes.push('来源含周期晶胞信息；本原型只生成有限分子输入，请确认选取的结构。');
+    return { structure, readAtom(row: string[] | undefined, j: number): Atom {
+      if (!row || row.length < 4) throw new Error(`XYZ第${j + 1}个原子行缺失或不完整。`);
+      if (totalColumns && row.length !== totalColumns) throw new Error('扩展XYZ实际列数与Properties声明不一致。');
+      return atom(row[speciesColumn], row[positionColumn], row[positionColumn + 1], row[positionColumn + 2], scale);
+    } };
+}
+
+function parseXyz(text: string, name: string): Structure[] {
+  const lines = text.split('\n');
+  const structures: Structure[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (!lines[i].trim()) { i++; continue; }
+    if (!/^\d+$/.test(lines[i].trim())) throw new Error(`XYZ第${i + 1}行应为原子数，未忽略任何尾部内容。`);
+    const n = Number(lines[i++]); checkCount(n);
+    if (i >= lines.length) throw new Error('XYZ缺少注释行。');
+    const { structure, readAtom } = plainXyzFrame(name, lines[i++], structures.length);
+    for (let j = 0; j < n; j++) structure.atoms.push(readAtom(lines[i++]?.trim().split(/\s+/), j));
     structures.push(structure);
   }
   if (!structures.length) throw new Error('XYZ中没有可读取的结构。');
   return structures;
+}
+
+function gjfStateInteger(token?: string): number | null {
+  const value = token && /^[+-]?\d+$/.test(token) ? Number(token) : NaN;
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+/** The source line is optional for structure viewing. Reuse this boundary
+ * when the modeling adapter locates a following Connectivity section. */
+export function gjfCartesianSection(lines: string[], routeEnd: number, route: string) {
+  let i = routeEnd;
+  while (i < lines.length && !lines[i].trim()) i++;
+  const titleStart = i;
+  while (i < lines.length && lines[i].trim()) i++;
+  const title = lines.slice(titleStart, i).join(' ');
+  while (i < lines.length && !lines[i].trim()) i++;
+  const raw = lines[i]?.split('!')[0].trim() ?? '';
+  const tokens = raw.split(/[\s,]+/);
+  const states = tokens.map(gjfStateInteger);
+  const layerStates = /\boniom\s*\(|\bcounterpoise\s*=/i.test(route);
+  // An atomic-number Cartesian row can also consist entirely of integers.
+  // A multi-pair state row belongs to a native layered/fragment specification.
+  const shortState = tokens.length <= 2 && !/^[A-Za-z]{1,2}(?:[\d(-]|$)/.test(tokens[0]);
+  const fullLayerState = layerStates && states.length > 2 && states.length % 2 === 0 && states.every(value => value !== null);
+  const haveState = Boolean(raw) && (shortState || fullLayerState);
+  return {
+    title, geometryStart: haveState ? i + 1 : i, states: haveState ? states : [],
+    rawState: haveState ? lines[i].trim() : null,
+  };
 }
 
 function parseGjf(text: string, name: string): Structure[] {
@@ -91,16 +117,21 @@ function parseGjf(text: string, name: string): Structure[] {
     if (i < 0) throw new Error('没有找到Gaussian的#关键词行。');
     const routeStart=i;const route: string[] = [];
     while (i < lines.length && lines[i].trim()) route.push(lines[i++].trim());
-    while (i < lines.length && !lines[i].trim()) i++;
-    const titleStart=i;while (i < lines.length && lines[i].trim()) i++;
-    const title=lines.slice(titleStart,i).join(' ');
-    while (i < lines.length && !lines[i].trim()) i++;
-    if (!/^\s*[+-]?\d+\s+\d+(?:\s+[+-]?\d+\s+\d+)*\s*$/.test(lines[i] ?? '')) throw new Error('未找到完整电荷/多重度行，或输入含未覆盖的电子态。');
-    const states=lines[i++].trim().split(/\s+/).map(Number);const [charge, multiplicity] = states;
+    const routeText = route.join(' ');
+    const {title, geometryStart, states, rawState} = gjfCartesianSection(lines, i, routeText);
+    i = geometryStart;
+    const charge = states[0] ?? null;
+    const rawMultiplicity = states[1] ?? null;
+    const multiplicity = rawMultiplicity !== null && rawMultiplicity >= 1 ? rawMultiplicity : null;
     const structure = base(name, 'GJF / COM', index);
     structure.charge = charge; structure.multiplicity = multiplicity;
-    structure.sourceRoute = route.join(' ');
+    structure.sourceRoute = routeText;
     const source=parseGaussianSource(structure.sourceRoute,'gjf',name,index);source.title=title;source.charge=charge;source.multiplicity=multiplicity;applyGaussianLink0(source,lines.slice(0,routeStart));
+    if (charge === null || multiplicity === null) source.issues.push({
+      code: 'electronic-state-unavailable', field: 'state', severity: 'missing',
+      message: 'GJF来源电荷或多重度缺失、无效；已保留可读坐标，请在运行前核对电子态。',
+      ...(rawState === null ? {} : { raw: rawState }),
+    });
     structure.gaussianSource=source;const fragments=new Map<number,number[]>();const layers=new Map<string,number[]>();
     if (/\bgeom\s*=\s*(?:\()?\s*(allcheck|check)/i.test(structure.sourceRoute)) throw new Error('这个GJF从CHK读取几何，没有独立完整坐标；请提供含显式坐标的GJF或FCHK。');
     const bohr = /\bunits\s*=\s*\(?\s*(?:bohr|au)\b/i.test(structure.sourceRoute);
@@ -136,13 +167,40 @@ function parseGjf(text: string, name: string): Structure[] {
       source.issues.push({code:'periodic-cell-incomplete',field:'geometry',severity:'missing',message:'已保留原子及Tv平移信息；缺少完整晶胞，不作为有限分子或完整周期来源运行。'});
       structure.notes.push(structure.periodicSource.evidence+'保留可读原子，运行前须补齐完整晶胞，未虚构非周期方向盒长。');
     }
-    if(fragments.size){const count=Number(structure.sourceRoute.match(/counterpoise\s*=\s*(\d+)/i)?.[1]??Math.max(...fragments.keys()));source.fragments=Array.from({length:count},(_,j)=>({atoms:fragments.get(j+1)??[],charge:states[2+j*2]??0,multiplicity:states[3+j*2]??1}));if(states.length!==2+count*2)source.issues.push({code:'fragment-states',message:'来源片段电荷/多重度不完整，不能用默认值冒充继承。',field:'state',severity:'missing'});}
+    if (fragments.size) {
+      const count = Number(structure.sourceRoute.match(/counterpoise\s*=\s*(\d+)/i)?.[1] ?? Math.max(...fragments.keys()));
+      if (states.length === 2 + count * 2 && states.slice(2).every((value, offset) => value !== null && (!(offset % 2) || value >= 1))) {
+        source.fragments = Array.from({ length: count }, (_, j) => ({ atoms: fragments.get(j + 1) ?? [], charge: states[2 + j * 2]!, multiplicity: states[3 + j * 2]! }));
+      } else {
+        source.issues.push({ code: 'fragment-states', message: '来源片段电荷/多重度不完整，不能用默认值冒充继承。', field: 'state', severity: 'missing', ...(rawState === null ? {} : { raw: rawState }) });
+      }
+    }
     if(layers.size)source.layers=[...layers].map(([layer,atoms])=>({atoms,label:layer==='H'?'QM':layer==='L'?'MM':'Middle',kind:layer==='H'?'qm':layer==='L'?'mm':'middle'}));
     applyGaussianTail(source,lines.slice(i).join('\n'),structure.atoms.length,structure.atoms.map(atom=>atom.element));
     structure.notes.push('已读取来源路由、电子态与可识别冻结/附加段；仅在主动选择继承时应用，并保留未覆盖项供核对。');
     if (bohr) structure.notes.push('来源为Bohr坐标，已转换为Å。');
     return structure;
   });
+}
+
+export function plainPdbAtom(line: string): Atom {
+  let element = line.slice(76, 78).trim();
+  if (!element) {
+    const raw = line.slice(12, 16);
+    const letters = raw.replace(/^\d+/, '').trim();
+    element = /^\s|^\d/.test(raw) ? letters[0] : letters.slice(0, 2);
+    try { elementSymbol(element); } catch { element = letters[0]; }
+  }
+  const sourceIndex = Number(line.slice(6, 11).trim());
+  if (!Number.isSafeInteger(sourceIndex) || sourceIndex < 1) throw new Error('PDB来源原子序号无效。');
+  return { ...atom(element, line.slice(30, 38).trim(), line.slice(38, 46).trim(), line.slice(46, 54).trim()), sourceIndex };
+}
+
+export function plainPdbStructure(name: string, modelIndex: number, alternate: string, structureIndex: number): Structure {
+  const structure = base(name, `PDB · 模型${modelIndex + 1}${alternate ? ` · 替代位置${alternate}` : ''}`, structureIndex);
+  structure.notes.push('PDB一般不含可靠总电荷/多重度；只保留显式原子，不补氢。');
+  if (alternate) structure.notes.push(`当前构型使用替代位置${alternate}及公共原子，请明确核对构型。`);
+  return structure;
 }
 
 function parsePdb(text: string, name: string): Structure[] {
@@ -159,23 +217,10 @@ function parsePdb(text: string, name: string): Structure[] {
   models.forEach((model, modelIndex) => {
     const alternates = [...new Set(model.map(line => line[16]?.trim()).filter(Boolean))];
     for (const alternate of alternates.length ? alternates : ['']) {
-      const structure = base(name, `PDB · 模型${modelIndex + 1}${alternate ? ` · 替代位置${alternate}` : ''}`, structures.length);
+      const structure = plainPdbStructure(name, modelIndex, alternate, structures.length);
       const chosen = model.filter(line => !line[16]?.trim() || line[16].trim() === alternate);
-      for (const line of chosen) {
-        let element = line.slice(76, 78).trim();
-        if (!element) {
-          const raw = line.slice(12, 16);
-          const letters = raw.replace(/^\d+/, '').trim();
-          element = /^\s|^\d/.test(raw) ? letters[0] : letters.slice(0, 2);
-          try { elementSymbol(element); } catch { element = letters[0]; }
-        }
-        const sourceIndex = Number(line.slice(6, 11).trim());
-        if (!Number.isSafeInteger(sourceIndex) || sourceIndex < 1) throw new Error('PDB来源原子序号无效。');
-        structure.atoms.push({ ...atom(element, line.slice(30, 38).trim(), line.slice(38, 46).trim(), line.slice(46, 54).trim()), sourceIndex });
-      }
+      for (const line of chosen) structure.atoms.push(plainPdbAtom(line));
       checkCount(structure.atoms.length);
-      structure.notes.push('PDB一般不含可靠总电荷/多重度；只保留显式原子，不补氢。');
-      if (alternates.length) structure.notes.push(`当前构型使用替代位置${alternate}及公共原子，请明确核对构型。`);
       structures.push(structure);
     }
   });

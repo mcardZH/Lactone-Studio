@@ -9,23 +9,34 @@ import type {Structure} from '../../core/types';
 import type {ModelCommand,ModelDocument,ModelSelection} from '../../modeling/contracts';
 import {isFrameBondCommand} from '../../core/modeling/frame-bond-overrides';
 import {modelCoordinateKey} from '../../modeling/constraints';
+import {canonicalFreezeRows} from '../../modeling/application/canonical-freezes';
+import {mergePesConstraintEdit,projectPesConstraintDefinitions} from '../../modeling/pes/request';
 import type {WorkspaceCommand} from '../../modeling/workspace-contracts';
 import {frameBondTargetCurrent,type WorkspaceViewportEvent,type WorkspaceViewportState} from './workspace-viewport';
+import {readWorkspaceOptimizationPreferences} from './tool-session';
+import {createChemistryPort} from '../../modeling/chemistry';
+import {rebuildOrdinaryOptimizationBonds} from './pes-ordinary-optimization';
 
 type SavedPesDocuments=Record<string,WorkspacePesGroup&{documentId:string}>;
+type PesDocumentRemoval=Pick<WorkspacePesGroup,'groupId'>&{nodeId?:string};
 type PendingPes={asset:WorkspacePesAsset;read():Promise<PesProjectSnapshot|undefined>;pending?:Promise<void>};
 const empty=():PesProjectSnapshot=>({schema:PES_SCHEMA,groups:[]});
 const live=new Set(['starting','running','stopping']);
 export const pesRunActive=(group:PesGroup,nodeId?:string)=>Object.values(group.runs).some(run=>(!nodeId||run.nodeId===nodeId)&&live.has(run.status));
 const text=(value:unknown):value is string=>typeof value==='string'&&Boolean(value.trim());
 export const pesScientificModelKey=(structure:Structure)=>JSON.stringify([structure.atoms,structure.bonds,structure.cell,structure.dimension,structure.charge,structure.multiplicity,structure.preparation]);
+export function matchesPesDocumentRemoval(binding:PesDocumentRemoval|undefined,target:PesDocumentRemoval):boolean {
+  return binding?.groupId===target.groupId&&(!target.nodeId||binding.nodeId===target.nodeId);
+}
 
 /** The same reader owns a visible PES page in the task and modeling modules.
  * Tiled pages remain separate observers; only the task module owns its panels. */
-export function pesReaderVisible(context:{module:string;section?:string|null;documentId:string;activeDocumentId?:string|null;displayedDocumentId?:string|null;deckMode:string;blocked:boolean}):boolean {
+export function pesReaderVisible(context:{module:string;section?:string|null;documentId:string;activeDocumentId?:string|null;displayedDocumentId?:string|null;deckMode:string;blocked:boolean;detached?:boolean;projected?:boolean}):boolean {
   if(context.blocked)return false;
-  return context.module==='modeling'?(context.deckMode!=='single'||context.documentId===context.displayedDocumentId)
-    :context.module==='advanced'&&context.section==='path'&&context.documentId===context.activeDocumentId;
+  if(context.detached)return true;
+  if(context.module==='modeling')return context.deckMode!=='single'||context.documentId===context.displayedDocumentId;
+  if(context.module==='advanced'&&context.section==='path')return context.documentId===context.activeDocumentId;
+  return context.projected===true&&context.documentId===context.displayedDocumentId;
 }
 
 export function pesWorkspaceBindings(entries:readonly WorkspaceDocumentEntry[]):SavedPesDocuments{
@@ -45,16 +56,15 @@ export function currentPesRegistryGeometry(entry:WorkspaceDocumentEntry,geometry
   const current=entry.store.getSnapshot();
   return {...geometry,documentId:entry.id,revision:current.revision,label:entry.label,structure:projected?geometry.structure:current.draft.structure};
 }
-/** A successful local OPT returns one geometry to its original editable Store. */
-export function adoptPesOptimizationGeometry(registry:WorkspaceRegistry,context:{groupId:string;nodeId:string;source:PesGeometry;geometry:PesGeometry}):void{
+/** A settled local OPT returns the last usable geometry to its original editable Store. */
+export function adoptPesOptimizationGeometry(registry:WorkspaceRegistry,context:{groupId:string;nodeId:string;source:PesGeometry;geometry:PesGeometry}):Pick<PesGeometry,'revision'|'structure'>{
   const {groupId,nodeId,source,geometry}=context;
   const entry=registry.getSnapshot().documents.find(row=>row.pesGroup?.groupId===groupId&&row.pesGroup.nodeId===nodeId);
   if(!entry||protectedPesDocument(entry))throw Error('优化所属编辑页面已关闭，结果未覆盖原结构。');
   const document=entry.store.getSnapshot();
   if(document.id!==source.documentId||document.revision!==source.revision)throw Error('优化期间原结构已变化，结果未覆盖当前结构。');
-  const identity=(structure:Structure)=>JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]));
-  if(identity(document.draft.structure)!==identity(geometry.structure))throw Error('优化结果的原子身份或顺序改变，未覆盖原结构。');
-  entry.store.execute({type:'replace-structure',structure:structuredClone(geometry.structure)});
+  const adopted=entry.store.execute({type:'apply-optimization-geometry',structure:geometry.structure,documentId:source.documentId,expectedRevision:source.revision});
+  return {revision:adopted.revision,structure:adopted.draft.structure};
 }
 /** Old OPT views become editable without discarding the last displayed geometry. */
 export function restorePesEditableOptGeometry(registry:WorkspaceRegistry,before:PesProjectSnapshot,after:PesProjectSnapshot):void{
@@ -116,15 +126,24 @@ export function assertPesWorkspaceCommandAllowed(entry:WorkspaceDocumentEntry,co
     }
   }
 }
-export function applyPesConstraints(entry:WorkspaceDocumentEntry,constraints:SharedModelConstraints):SharedModelConstraints{
+export function applyPesConstraints(entry:WorkspaceDocumentEntry,constraints:SharedModelConstraints,mirror=false):SharedModelConstraints{
   if(protectedPesDocument(entry))return constraints;
   const current=entry.store.getSnapshot(),have=current.sharedConstraints,ids=new Set(current.draft.structure.atoms.map(atom=>atom.id));
-  const frozenAtomIds=constraints.frozenAtomIds.filter(id=>ids.has(id)),coordinates=constraints.coordinates.filter(row=>row.atomIds.every(id=>ids.has(id)));
+  const frozenAtomIds=constraints.frozenAtomIds.filter(id=>ids.has(id));
+  const activeRows=constraints.coordinates.filter(row=>row.action==='freeze'&&row.atomIds.every(id=>ids.has(id))).map(row=>{
+    const bound=current.coordinateObjects?.find(object=>object.id===row.objectId);
+    return bound&&modelCoordinateKey(bound)!==modelCoordinateKey(row)?{...row,objectId:undefined}:row;
+  });
+  const coordinates=canonicalFreezeRows(current.draft.structure,activeRows,current.coordinateObjects).coordinates;
   const commands:ModelCommand[]=[];
   if(JSON.stringify(frozenAtomIds)!==JSON.stringify(have?.frozenAtomIds??[]))commands.push({type:'replace-shared-atom-freezes',atomIds:frozenAtomIds});
   if(JSON.stringify(coordinates)!==JSON.stringify(have?.coordinates??[]))commands.push({type:'replace-shared-coordinate-freezes',coordinates});
   if((constraints.enabled!==false)!==(have?.enabled!==false))commands.push({type:'set-shared-freezes-enabled',enabled:constraints.enabled!==false});
-  if(commands.length){if(!entry.store.executeBatch)throw Error('当前模型不支持约束事务。');entry.store.executeBatch(commands);}
+  if(commands.length){
+    if(mirror&&entry.store.synchronizeSharedConstraints)entry.store.synchronizeSharedConstraints({...constraints,frozenAtomIds,coordinates});
+    else if(entry.store.executeBatch)entry.store.executeBatch(commands);
+    else throw Error('当前模型不支持约束事务。');
+  }
   const canonical=entry.store.getSnapshot().sharedConstraints;
   const byGeometry=new Map(canonical?.coordinates.map(row=>[modelCoordinateKey(row),row]));
   return {...constraints,canonical:canonical?.canonical??constraints.canonical,coordinates:constraints.coordinates.map(row=>{
@@ -133,13 +152,6 @@ export function applyPesConstraints(entry:WorkspaceDocumentEntry,constraints:Sha
   })};
 }
 
-function groupConstraintsFromStore(model:ModelDocument,group:PesGroup):SharedModelConstraints{
-  const shared=model.sharedConstraints!,ids=new Set(model.draft.structure.atoms.map(atom=>atom.id));
-  return {...shared,
-    frozenAtomIds:[...shared.frozenAtomIds,...group.constraints.frozenAtomIds.filter(id=>!ids.has(id))],
-    coordinates:[...shared.coordinates,...group.constraints.coordinates.filter(row=>row.atomIds.some(id=>!ids.has(id)))],
-  };
-}
 export async function settlePesWorkspaceRuns(controller:PesController,groupId:string,nodeId?:string){
   const read=()=>controller.getSnapshot().groups.find(group=>group.id===groupId);
   const group=read();if(!group)throw Error('势能面任务组已关闭。');
@@ -346,7 +358,10 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
   const follow=useRef(mayFollow);follow.current=mayFollow;
   const observed=useRef(new WeakMap<WorkspaceDocumentEntry['store'],ModelDocument>());
   const constraintProjection=useRef(false);
+  const synchronizingStores=useRef(false);
+  const lastConstraintProjection=useRef(new WeakMap<WorkspaceDocumentEntry['store'],{constraints:SharedModelConstraints;atoms:Structure['atoms']}>());
   const initialOwner=useRef<WorkspaceDocumentEntry|undefined>(undefined);
+  const removingDocuments=useRef<PesDocumentRemoval|null>(null);
 
   function createInitialGroup(initial:PesGeometry, constraints:SharedModelConstraints|undefined, existing?:WorkspaceDocumentEntry) {
     const current=owner.current;
@@ -369,7 +384,24 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
     return registry.addPesDocument(node.geometry.structure,node.name,{groupId,nodeId:node.id,kind:node.kind});
   }
   function reconcile(current:PesController){
-    for(const group of current.getSnapshot().groups)for(const node of group.nodes)register(group.id,node);
+    const known=new Set(registry.getSnapshot().documents.flatMap(entry=>{
+      const link=entry.pesGroup;
+      return link?[JSON.stringify([link.groupId,link.nodeId,link.kind])]:[];
+    }));
+    for(const group of current.getSnapshot().groups)for(const node of group.nodes){
+      if(removingDocuments.current&&matchesPesDocumentRemoval({groupId:group.id,nodeId:node.id},removingDocuments.current))continue;
+      if(!known.has(JSON.stringify([group.id,node.id,node.kind])))register(group.id,node);
+    }
+  }
+  async function removeDocuments(target:PesDocumentRemoval,remove:()=>Promise<void>){
+    if(removingDocuments.current)throw Error('已有势能面标签正在关闭。');
+    const current=owner.current;
+    removingDocuments.current=target;
+    try{await remove();}
+    finally{
+      removingDocuments.current=null;
+      if(current&&owner.current===current)reconcile(current);
+    }
   }
   function syncStore(current:PesController){
     if(restoring.current)return;
@@ -395,29 +427,66 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
           electronicConfirmed:model.electronicStateConfirmed===true,
         });
       }
+      // A structural edit prunes the authoritative initial separately. A peer's
+      // dropped IDs are its local membership, not a global unfreeze command.
+      const membershipChanged=JSON.stringify(previousStructure.atoms.map(atom=>[atom.id,atom.element]))!==JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]));
+      if(membershipChanged&&link.kind!=='initial')continue;
       if(active===entry.id&&!constraintProjection.current&&model.sharedConstraints&&model.sharedConstraints!==previous.sharedConstraints){
         const liveGroup=current.getSnapshot().groups.find(row=>row.id===link.groupId);
         if(!liveGroup)continue;
-        const constraints=groupConstraintsFromStore(model,liveGroup);
+        const before=previous.sharedConstraints??{frozenAtomIds:[],coordinates:[]},ids=new Set(structure.atoms.map(atom=>atom.id));
+        const retained=membershipChanged?{...before,frozenAtomIds:before.frozenAtomIds.filter(id=>ids.has(id)),coordinates:before.coordinates.filter(row=>row.atomIds.every(id=>ids.has(id)))}:before;
+        const constraints=mergePesConstraintEdit(liveGroup,structure,retained,model.sharedConstraints);
         if(JSON.stringify(constraints)!==JSON.stringify(liveGroup.constraints))current.updateConstraints(group.id,constraints);
       }
+    }
+  }
+  function projectCurrentConstraints(current:PesController){
+    if(restoring.current||constraintProjection.current||synchronizingStores.current)return;
+    const groups=new Map(current.getSnapshot().groups.map(group=>[group.id,group]));
+    for(const entry of registry.getSnapshot().documents){
+      const binding=entry.pesGroup,group=binding&&groups.get(binding.groupId);
+      if(!binding||!group||protectedPesDocument(entry)||entry.store.hasTransaction?.()||entry.store.isRuntimeSessionActive?.()||pesRunActive(group,binding.nodeId))continue;
+      const prior=lastConstraintProjection.current.get(entry.store),atoms=entry.store.getSnapshot().draft.structure.atoms;
+      if(prior?.constraints===group.constraints&&prior.atoms===atoms)continue;
+      try{
+        projectConstraints(entry,group,true);
+        lastConstraintProjection.current.set(entry.store,{constraints:group.constraints,atoms:entry.store.getSnapshot().draft.structure.atoms});
+      }catch(cause){onError(cause instanceof Error?cause.message:String(cause));}
     }
   }
   useEffect(()=>{
     const desktop=desktopBridge();
     const bridge=desktop?.startPes&&desktop.stopPes&&desktop.onPesEvent?{startPes:desktop.startPes.bind(desktop),stopPes:desktop.stopPes.bind(desktop),onPesEvent:desktop.onPesEvent.bind(desktop),
-      readPesPathRecord:desktop.readPesPathRecord?.bind(desktop),releasePesPathRecords:desktop.releasePesPathRecords?.bind(desktop)}:undefined;
-    const current=new PesController(bridge,undefined,{onPathSourceReleaseError:onError,submittingDocument:()=>JSON.stringify([registry.stamp().documentId,registry.stamp().activationEpoch]),
-    onOptimizationGeometry(context){adoptPesOptimizationGeometry(registry,context);},canFollowWorkbench(groupId,nodeId){
+      readPesPathRecord:desktop.readPesPathRecord?.bind(desktop),releasePesPathRecords:desktop.releasePesPathRecords?.bind(desktop),
+      readPesTerminalFrames:desktop.readPesTerminalFrames?.bind(desktop),releasePesTerminalFrames:desktop.releasePesTerminalFrames?.bind(desktop),
+      readBinaryAsset:desktop.readBinaryAsset?.bind(desktop),releaseBinaryAsset:desktop.releaseBinaryAsset?.bind(desktop)}:undefined;
+    const current=new PesController(bridge,undefined,{defaultXtbSolvation:()=>{
+      const solvation=readWorkspaceOptimizationPreferences().xtb.solvation;
+      return solvation?.model==='alpb'?{model:'alpb',solvent:solvation.solvent}:undefined;
+    },onPathSourceReleaseError:onError,submittingDocument:()=>JSON.stringify([registry.stamp().documentId,registry.stamp().activationEpoch]),
+    async prepareOptimizationGeometry(geometry,frame,request,signal){
+      const entry=registry.getSnapshot().documents.find(row=>row.id===geometry.documentId);
+      if(!entry)return geometry.structure;
+      return rebuildOrdinaryOptimizationBonds(geometry.structure,frame,request,entry.store.stamp(),createChemistryPort(),signal);
+    },
+    onOptimizationGeometry(context){return adoptPesOptimizationGeometry(registry,context);},canFollowWorkbench(groupId,nodeId){
       const state=registry.getSnapshot(),id=state.views.find(view=>view.id===state.activeViewId)?.documentId;
       const binding=state.documents.find(entry=>entry.id===id)?.pesGroup;
       return follow.current()&&state.module==='advanced'&&binding?.groupId===groupId&&binding.nodeId===nodeId;
     }});owner.current=current;setController(current);
-    const persistent=current.subscribePersistence(()=>{
-      try{reconcile(current);if(!restoring.current)bump(++persistentRevision.current);}
+    const persistent=current.subscribePersistence(kind=>{
+      try{if(kind==='content'){reconcile(current);projectCurrentConstraints(current);}if(!restoring.current)bump(++persistentRevision.current);}
       catch(cause){onError(cause instanceof Error?cause.message:String(cause));}
     });
-    const documents=registry.subscribe(()=>syncStore(current));
+    const documents=registry.subscribe(()=>{
+      if(synchronizingStores.current)return;
+      try{
+        synchronizingStores.current=true;
+        try{syncStore(current);}finally{synchronizingStores.current=false;}
+        projectCurrentConstraints(current);
+      }catch(cause){onError(cause instanceof Error?cause.message:String(cause));}
+    });
     return()=>{persistent();documents();current.dispose();if(owner.current===current)owner.current=null;};
   },[registry,onError]);
 
@@ -425,7 +494,7 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
     restoring.current=true;
     try{
       pending.current=asset?{asset,read}:null;retained.current=asset;
-      owner.current?.importSnapshot(empty());observed.current=new WeakMap();
+      owner.current?.importSnapshot(empty());observed.current=new WeakMap();lastConstraintProjection.current=new WeakMap();
       if(asset)for(const binding of Object.values(restoredPesBindings(bindings,registry.getSnapshot().documents)))registry.bindPesDocument(binding.documentId,binding);
       for(const entry of registry.getSnapshot().documents){
         if(entry.pesGroup&&!protectedPesDocument(entry))observed.current.set(entry.store,entry.store.getSnapshot());
@@ -447,21 +516,23 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
           for(const binding of Object.values(pesWorkspaceBindings(registry.getSnapshot().documents))){
             if(!snapshot.groups.some(group=>group.id===binding.groupId&&group.nodes.some(node=>node.id===binding.nodeId&&node.kind===binding.kind)))throw Error('势能面标签和来源资产身份不一致。');
           }
-          current.importSnapshot(snapshot);
+          current.importSnapshot(snapshot,{shareProjectNumbers:true});
           restorePesEditableOptGeometry(registry,snapshot,current.getSnapshot());
         }
         pending.current=null;bumpLoad(value=>value+1);
       }finally{restoring.current=false;}
-      syncStore(current);
+      syncStore(current);projectCurrentConstraints(current);
     })();
     try{await target.pending;}finally{target.pending=undefined;}
   }
-  function projectConstraints(entry:WorkspaceDocumentEntry,constraints:SharedModelConstraints){
+  function projectConstraints(entry:WorkspaceDocumentEntry,group:PesGroup|SharedModelConstraints,mirror=false){
+    const structure=entry.store.getSnapshot().draft.structure;
+    const projected='initialNodeId'in group?projectPesConstraintDefinitions(group,structure).constraints:group;
     constraintProjection.current=true;
-    try{return applyPesConstraints(entry,constraints);}finally{constraintProjection.current=false;}
+    try{return applyPesConstraints(entry,projected,mirror);}finally{constraintProjection.current=false;}
   }
-  return {controller,revision,readRevision:()=>persistentRevision.current,loaded,pending,restore,ensure,register,createInitialGroup,projectConstraints,
-    capture:()=>({pes:pending.current?undefined:owner.current?.exportSnapshot(),retainedPes:retained.current}),
+  return {controller,getController:()=>owner.current,revision,readRevision:()=>persistentRevision.current,loaded,pending,restore,ensure,register,createInitialGroup,projectConstraints,removeDocuments,
+    capture:()=>({pes:pending.current?undefined:owner.current?.exportSnapshot({shareProjectNumbers:true,trackCursorChanges:true}),retainedPes:retained.current}),
     citationSnapshot:()=>pending.current?pending.current.read():Promise.resolve(owner.current?.exportSnapshot()),
   };
 }

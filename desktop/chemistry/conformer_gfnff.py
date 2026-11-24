@@ -99,7 +99,7 @@ class IsolatedGfnffCalculator(Calculator):
         require(Path(self.runtime['executable']).name.lower() in ('xtb', 'xtb.exe') and isinstance(self.runtime.get('version'), str),
                 'Only the locked xTB runtime is accepted')
         require(request['method'] == self.method and type(request['threads']) is int and 1 <= request['threads'] <= 2**53-1
-                and (self.method != 'gfnff' or request['uhf'] == 0),
+                and (self.method != 'gfnff' or 'uhf' not in request or type(request['uhf']) is int and request['uhf'] == 0),
                 'Invalid native sampling method/spin/thread range')
         require(not request.get('solvation'), 'Native sampling solvation is not enabled for this method')
         self.emit, self.check, self.cancelled = context['emit'], context['check'], context['cancelled']

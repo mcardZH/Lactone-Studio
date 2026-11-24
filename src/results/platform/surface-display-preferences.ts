@@ -60,7 +60,8 @@ export function validateSurfaceAppearance(id: SurfaceDisplayFamily, value: unkno
     if (!Array.isArray(value.colors) || value.colors.length < minimumColors || value.colors.length > 16 || Object.keys(value.colors).length !== value.colors.length || !Array.from(value.colors).every(color)
       || (id === 'orbital' || id === 'electron-hole') && value.colors.length !== 2) throw new Error('有序外观颜色无效。');
     const f = value.finish;
-    if (!plain(f) || !['preset', 'specular', 'exponent'].every(key => Object.hasOwn(f, key)) || Object.keys(f).some(key => !['preset', 'specular', 'exponent', 'ambient', 'diffuse', 'outline', 'outlineWidth'].includes(key))
+    if (!plain(f) || !['preset', 'specular', 'exponent'].every(key => Object.hasOwn(f, key)) || Object.keys(f).some(key => !['preset', 'specular', 'exponent', 'ambient', 'diffuse', 'outline', 'outlineWidth', 'facingOpacity'].includes(key))
+      || Object.hasOwn(f,'facingOpacity') && f.facingOpacity!==true
       || !['matte', 'soft', 'glossy', 'custom'].includes(f.preset as string) || !finite(f.specular, 0, 1) || !finite(f.exponent, 1, 128)
       || ['ambient', 'diffuse', 'outline', 'outlineWidth'].some(key => Object.hasOwn(f, key) && !finite(f[key], 0, 1))) throw new Error('表面材质参数无效。');
   }

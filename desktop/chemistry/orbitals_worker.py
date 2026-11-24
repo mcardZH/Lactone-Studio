@@ -1,17 +1,17 @@
 """NDJSON orbital worker: one scheduler, many analysis sessions, one grid cache.
 
 Requests: {id, operation, sessionId, ...}. Replies echo id; unsolicited events
-have event='progress'|'state'|'error'|'native-idle'. Grid payload is base64 little-endian
+have event='progress'|'state'|'error'|'native-idle'. Grid payload is packed little-endian
 Float64 (z fastest). Only field/export-cube transfers a completed grid. The host
 must terminate this owned worker on app exit; EOF also releases every session.
 """
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
 from pathlib import Path
-from analysis_result_wire import managed_result
+import re
+from analysis_result_wire import managed_result, packed_values, ExportRows
 import sys
 import threading
 import time
@@ -173,10 +173,14 @@ class OrbitalWorker:
             if operation=='field':
                 key=request.get('orbitalId'); values=session.cache.get(key)
                 if values is None: raise OrbitalError('field-pending','Requested orbital has not completed; prioritize it or continue generation.')
-                self._reply(request,orbitalId=key,grid=session.grid,encoding='float64-le-base64',valueUnit='bohr^-3/2',
-                            dataBase64=base64.b64encode(values.astype('<f8',copy=False).tobytes()).decode('ascii'),backend=session.backend); return
+                self._reply(request,orbitalId=key,grid=session.grid,encoding='float64-le',valueUnit='bohr^-3/2',
+                            valuesBinary=packed_values(values),backend=session.backend); return
             if operation=='export-cube':
-                self._reply(request,text=session.export_cube(request.get('orbitalId'))); return
+                key=request.get('orbitalId')
+                if request.get('streamed') is True:
+                    name=re.sub(r'[^-_.A-Za-z0-9]+','_',session.metadata['sourceName']+'-'+key).strip('._')[:240] or 'orbital'
+                    self._reply(request,name=name+'.cube',file=ExportRows(session._cube_rows(key)));return
+                self._reply(request,text=session.export_cube(key));return
             if operation=='status':
                 self._reply(request,state=item['state'],completedIds=list(session.cache),total=len(session.metadata['orbitals']),backend=session.backend); return
             if operation=='close':
@@ -257,7 +261,7 @@ def main():
     def emit(payload):
         root=roots.get(payload.get('sessionId'))
         if root is not None and payload.get('ok') is True:
-            payload={key:managed_result(value,root,key) if key in ('metadata','dataBase64','text') else value for key,value in payload.items()}
+            payload={key:managed_result(value,root,key) if key in ('metadata','dataBase64','valuesBinary','text','file') else value for key,value in payload.items()}
         with write_lock:
             sys.stdout.write(json.dumps(payload,separators=(',',':'),allow_nan=False)+'\n'); sys.stdout.flush()
     worker=OrbitalWorker(emit)

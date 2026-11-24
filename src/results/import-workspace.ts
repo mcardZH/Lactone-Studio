@@ -21,8 +21,8 @@ export type WorkspaceImportItem = { kind: 'model'; fragment: FragmentSnapshot; r
 /** Route complete result files without stealing explicitly paired input dependencies. */
 export async function importWorkspaceItems(files: ScientificSourceFile[], options: ResultReadOptions & { onSourceError?(file: ScientificSourceFile, error: unknown): void } = {}): Promise<WorkspaceImportItem[]> {
   const items: WorkspaceImportItem[] = [], fallback: ScientificSourceFile[] = [];
-  const protectedNames = new Set<string>();
-  const fallbackNotes = new Map<string,string>();
+  const protectedFiles = new Set<ScientificSourceFile>(), xyzDependencyNames = new Set<string>();
+  const fallbackNotes = new Map<ScientificSourceFile,string>();
   const diagnosticInputs = new Set<ScientificSourceFile>();
   const nebAuxiliaries: NebAuxiliarySource[] = [], nebContexts: NebOutputContext[] = [];
   const mdAuxiliaries: MdAuxiliarySource[] = [];
@@ -73,20 +73,21 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
       }
       continue;
     }
-    protectedNames.add(file.name.toLowerCase());
-    for (const name of referencedXyz(text)) protectedNames.add(name.toLowerCase());
+    protectedFiles.add(file);
+    for (const name of referencedXyz(text)) xyzDependencyNames.add(name.toLowerCase());
     // CP2K includes may themselves reference coordinates: let its existing
     // parser resolve the whole selected dependency set without competing reads.
-    if (/^\s*&(?:SUBSYS|FORCE_EVAL)\b/im.test(text)) for (const other of files) protectedNames.add(other.name.toLowerCase());
+    if (/^\s*&(?:SUBSYS|FORCE_EVAL)\b/im.test(text)) for (const other of files) protectedFiles.add(other);
     } catch (error) { failed(file, error); }
   }
+    for (const file of files) if (xyzDependencyNames.has(file.name.toLowerCase())) protectedFiles.add(file);
     for (const file of files) {
       if (failedFiles.has(file)) continue;
       try {
       if (options.signal?.aborted && items.length) return items;
       assertResultNotAborted(options.signal);
       if (diagnosticInputs.has(file)) continue;
-      if (protectedNames.has(file.name.toLowerCase())) { fallback.push(file); continue; }
+      if (protectedFiles.has(file)) { fallback.push(file); continue; }
       const source = resultFile(file);
       let identity;
       try { identity = await recognizeResultSource(source, options); }
@@ -132,7 +133,7 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
           continue;
         } else results = await (isXyz ? readXyzTrajectory(source,options) : isFchk ? readFchkScientificResult(source,options) : isHess ? readHessScientificResult(source,options) : readStructureCollection(source,options));
       }
-      catch (cause) { await source.close?.(); if (cause instanceof UnsupportedResultKindError) { fallback.push(file); fallbackNotes.set(file.name,`以已有结构入口打开；该文件尚未取得完整结果能力。${cause.message}`); continue; } throw cause; }
+      catch (cause) { await source.close?.(); if (cause instanceof UnsupportedResultKindError) { fallback.push(file); fallbackNotes.set(file,`以已有结构入口打开；该文件尚未取得完整结果能力。${cause.message}`); continue; } throw cause; }
       if (!results.length) { await source.close?.(); fallback.push(file); continue; }
       if (options.signal?.aborted) { items.push(...results.map(result => ({ kind: 'result' as const, result }))); return items; }
       if (!isOutput && !isFchk && !isHess && results.length === 1 && results[0].frames.length === 1 && results[0].status !== 'failed' && results[0].status !== 'incomplete') {
@@ -155,11 +156,12 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
     }
     if (fallback.length) {
       const restoredModels = new WeakMap<FragmentSnapshot, RestoredWorkspaceModel>();
-      const dependencies = fallback.filter(file => protectedNames.has(file.name.toLowerCase()));
-      const groups = [...(dependencies.length ? [dependencies] : []), ...fallback.filter(file => !protectedNames.has(file.name.toLowerCase())).map(file => [file])];
+      const dependencies = fallback.filter(file => protectedFiles.has(file));
+      const groups = [...(dependencies.length ? [dependencies] : []), ...fallback.filter(file => !protectedFiles.has(file)).map(file => [file])];
       for (const group of groups) {
         try {
-          items.push(...(await importWorkspaceSources(group,undefined,options.signal,restoredModels,{onSourceError(file,error){failed(file as ScientificSourceFile,error);}})).map(fragment=>{const note=fallbackNotes.get(fragment.structure.name);if(note)fragment.structure.notes.push(note);const restoredModel=restoredModels.get(fragment);return {kind:'model' as const,fragment,...(restoredModel?{restoredModel}:{})};}));
+          const note = group.length === 1 ? fallbackNotes.get(group[0]) : undefined;
+          items.push(...(await importWorkspaceSources(group,undefined,options.signal,restoredModels,{onSourceError(file,error){failed(file as ScientificSourceFile,error);}})).map(fragment=>{if(note)fragment.structure.notes.push(note);const restoredModel=restoredModels.get(fragment);return {kind:'model' as const,fragment,...(restoredModel?{restoredModel}:{})};}));
         } catch (error) { failed(group[0], error); }
       }
     }

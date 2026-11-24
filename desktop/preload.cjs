@@ -86,10 +86,47 @@ return { hydrateManagedResult };
 })();
 // END GENERATED MANAGED RESULT HYDRATOR
 const invoke=async(channel,...args)=>hydrateManagedResult(await ipcRenderer.invoke(channel,...args),request=>ipcRenderer.invoke('sciyue:managed-result-transfer',request));
+function onMcpEvent(channel, listener) {
+  if (typeof listener !== 'function') throw new TypeError('MCP listener must be a function');
+  const receive = (_event, payload) => listener(payload);
+  ipcRenderer.on(channel, receive);
+  return () => ipcRenderer.removeListener(channel, receive);
+}
 // No generic IPC channel, filesystem, shell, process object, or event object crosses the bridge.
 // about:blank inherits opener preferences in Chromium. It is a UI-only portal
 // surface: do not expose a second desktop bridge in that child document.
 if (typeof location === 'undefined' || location.href !== 'about:blank') contextBridge.exposeInMainWorld('sciyueDesktop', Object.freeze({
+  mcp: Object.freeze({
+    publish: catalog => ipcRenderer.invoke('sciyue:mcp-publish', catalog),
+    reply: reply => ipcRenderer.invoke('sciyue:mcp-reply', reply),
+    state: () => ipcRenderer.invoke('sciyue:mcp-state'),
+    disconnect: sessionId => ipcRenderer.invoke('sciyue:mcp-disconnect', sessionId),
+    forget: clientId => ipcRenderer.invoke('sciyue:mcp-forget', clientId),
+    show: request => ipcRenderer.invoke('sciyue:mcp-show', request),
+    connectionConfig: () => ipcRenderer.invoke('sciyue:mcp-connection-config'),
+    file: spec => invoke('sciyue:mcp-file', spec),
+    onRequest: listener => onMcpEvent('sciyue:mcp-request', listener),
+    onCancel: listener => onMcpEvent('sciyue:mcp-cancel', listener),
+    onState: listener => onMcpEvent('sciyue:mcp-state', listener),
+  }),
+  mcpAgent: Object.freeze({
+    terminalStart: request => ipcRenderer.invoke('sciyue:mcp-agent:terminal-start', request),
+    terminalWrite: (id, data) => ipcRenderer.invoke('sciyue:mcp-agent:terminal-write', id, data),
+    terminalResize: (id, cols, rows) => ipcRenderer.invoke('sciyue:mcp-agent:terminal-resize', id, cols, rows),
+    terminalStop: id => ipcRenderer.invoke('sciyue:mcp-agent:terminal-stop', id),
+    assistantSettings: () => ipcRenderer.invoke('sciyue:mcp-agent:assistant-settings'),
+    assistantModels: request => ipcRenderer.invoke('sciyue:mcp-agent:assistant-models', request),
+    assistantConfigure: request => ipcRenderer.invoke('sciyue:mcp-agent:assistant-configure', request),
+    assistantSend: request => ipcRenderer.invoke('sciyue:mcp-agent:assistant-send', request),
+    assistantContinue: () => ipcRenderer.invoke('sciyue:mcp-agent:assistant-continue'),
+    assistantGuide: (message, waitingForImages) => ipcRenderer.invoke('sciyue:mcp-agent:assistant-guide', message, waitingForImages),
+    assistantGuideImages: (id, attachments) => ipcRenderer.invoke('sciyue:mcp-agent:assistant-guide-images', id, attachments),
+    assistantSaveInstructions: text => ipcRenderer.invoke('sciyue:mcp-agent:assistant-save-instructions', text),
+    assistantCancel: () => ipcRenderer.invoke('sciyue:mcp-agent:assistant-cancel'),
+    assistantReset: () => ipcRenderer.invoke('sciyue:mcp-agent:assistant-reset'),
+    onTerminalEvent: listener => onMcpEvent('sciyue:mcp-agent:terminal-event', listener),
+    onAssistantEvent: listener => onMcpEvent('sciyue:mcp-agent:assistant-event', listener),
+  }),
   twoDPointerSettings:()=>invoke('sciyue:two-d-pointer-settings'),
   onTwoDPointerActivation:listener=>{
     if(typeof listener!=='function')throw new TypeError('Pointer activation listener must be a function');
@@ -99,6 +136,18 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   taskSystemRequest:request=>invoke('sciyue:task-system-request',request),
   cancelTaskSystemRequest:requestId=>invoke('sciyue:task-system-cancel',requestId),
   syProject: request => invoke('sciyue:sy-project', request),
+  beginBinaryAsset: bytes => invoke('sciyue:begin-binary-asset', bytes),
+  appendBinaryAsset: (id, bytes) => invoke('sciyue:append-binary-asset', id, bytes),
+  sealBinaryAsset: id => invoke('sciyue:seal-binary-asset', id),
+  readBinaryAsset: (id, offset, length) => ipcRenderer.invoke('sciyue:read-binary-asset', id, offset, length),
+  releaseBinaryAsset: id => invoke('sciyue:release-binary-asset', id),
+  listConformerRecovery: () => invoke('sciyue:list-conformer-recovery'),
+  openConformerRecovery: (kind, id) => invoke('sciyue:open-conformer-recovery', kind, id),
+  readConformerRecovery: (kind, token, offset, limit, summaryOnly) => invoke('sciyue:read-conformer-recovery', kind, token, offset, limit, summaryOnly),
+  closeConformerRecovery: (kind, token) => invoke('sciyue:close-conformer-recovery', kind, token),
+  discardConformerRecovery: (kind, id) => invoke('sciyue:discard-conformer-recovery', kind, id),
+  readPesTerminalFrames: request => invoke('sciyue:read-pes-terminal-frames', request),
+  releasePesTerminalFrames: identity => invoke('sciyue:release-pes-terminal-frames', identity),
   citationRuntimeInfo: () => invoke('sciyue:citation-runtime-info'),
   exportCitations: request => invoke('sciyue:export-citations', request),
   onCitationsOpen: listener => {
@@ -138,6 +187,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   openModelWindow: request => invoke('sciyue:open-model-window', request),
   prepareAnalysisWindow: request => invoke('sciyue:prepare-analysis-window', request),
   releaseAnalysisWindow: request => invoke('sciyue:release-analysis-window', request),
+  moveWorkbenchFloat: request => invoke('sciyue:move-workbench-float', request),
   onAnalysisWindowEvent: callback => {
     if (typeof callback !== 'function') throw new TypeError('Analysis window listener must be a function');
     const listener = (_event, value) => callback(value);
@@ -155,6 +205,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   registerWorkspaceDocument: request => invoke('sciyue:register-workspace-document', request),
   readWorkspaceDocuments: () => invoke('sciyue:read-workspace-documents'),
   publishWorkspaceDocument: request => invoke('sciyue:publish-workspace-document', request),
+  publishWorkspaceDocumentReceipt: request => invoke('sciyue:publish-workspace-document', { ...request, reply: 'receipt' }),
   commandWorkspaceDocument: request => invoke('sciyue:command-workspace-document', request),
   replyWorkspaceDocumentCommand: request => invoke('sciyue:reply-workspace-document-command', request),
   leaveWorkspaceDocument: request => invoke('sciyue:leave-workspace-document', request),
@@ -270,6 +321,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   chooseSavePath: request => invoke('sciyue:choose-save-path', request),
   writeChosenFile: request => invoke('sciyue:write-chosen-file', request),
   runChemistry: (request, jobId) => invoke('sciyue:run-chemistry', request, jobId),
+  runEmpiricalFrameBonds: (request, jobId) => invoke('sciyue:run-chemistry', request, jobId, 'empirical-frame-graph-v1'),
   cancelChemistry: jobId => invoke('sciyue:cancel-chemistry', jobId),
   surfaceCapabilities: sessionId => invoke('sciyue:surface-capabilities', sessionId),
   openSurfaceSession: request => invoke('sciyue:open-surface-session', request),
@@ -287,6 +339,10 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   importSurfaceCube: file => invoke('sciyue:import-surface-cube', file === undefined ? undefined : webUtils.getPathForFile(file)),
   registerSurfaceCube: request => invoke('sciyue:register-surface-cube', request),
   readRegisteredSurfaceCube: token => invoke('sciyue:read-registered-surface-cube', token),
+  registerSurfaceCubeAsset: request => invoke('sciyue:register-surface-cube-asset', request),
+  describeRegisteredSurfaceCube: token => invoke('sciyue:describe-registered-surface-cube', token),
+  readRegisteredSurfaceCubePage: (token,offset,length) => ipcRenderer.invoke('sciyue:read-registered-surface-cube-page', token,offset,length),
+  saveOwnedSurfaceCube: request => invoke('sciyue:save-owned-surface-cube', request),
   releaseSurfaceCube: token => invoke('sciyue:release-surface-cube', token),
   exportSurfaceCube: (sessionId, request) => invoke('sciyue:export-surface-cube', sessionId, request),
   exportRegisteredSurfaceCube: request => invoke('sciyue:export-registered-surface-cube', request),
@@ -330,8 +386,8 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
     ipcRenderer.on('sciyue:multiwfn-progress', listener);
     return () => ipcRenderer.removeListener('sciyue:multiwfn-progress', listener);
   },
-  chooseOrbitalBackend: () => invoke('sciyue:choose-orbital-backend'),
-  chooseMultiwfnWorkDirectory: () => invoke('sciyue:choose-multiwfn-work-directory'),
+  chooseOrbitalBackend: request => invoke('sciyue:choose-orbital-backend', request),
+  chooseMultiwfnWorkDirectory: request => invoke('sciyue:choose-multiwfn-work-directory', request),
   resetMultiwfnWorkDirectory: () => invoke('sciyue:reset-multiwfn-work-directory'),
   analyzeWavefunction: (sessionId, request, progressIdentity) => invoke('sciyue:analyze-wavefunction', sessionId, request, progressIdentity),
   cancelWavefunctionAnalysis: sessionId => invoke('sciyue:cancel-wavefunction-analysis', sessionId),
@@ -345,6 +401,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   commandOrbitals: (sessionId, request, progressIdentity) => invoke('sciyue:command-orbitals', sessionId, request, progressIdentity),
   readOrbitalField: (sessionId, key) => invoke('sciyue:read-orbital-field', sessionId, key),
   exportOrbitalCube: (sessionId, key) => invoke('sciyue:export-orbital-cube', sessionId, key),
+  saveOrbitalCube: (sessionId,key) => invoke('sciyue:save-orbital-cube',sessionId,key),
   onOrbitalEvent: callback => {
     if (typeof callback !== 'function') throw new TypeError('Orbital listener must be a function');
     const listener = (_event, value) => callback(value);
@@ -365,6 +422,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   },
   startDynamics: (request, sessionId) => invoke('sciyue:start-dynamics', request, sessionId),
   startAdvancedPath: (request, sessionId) => invoke('sciyue:start-advanced-path', request, sessionId),
+  preparePes:request=>invoke('sciyue:prepare-pes',request),
   startPes:request=>invoke('sciyue:start-pes',request),
   stopPes:identity=>invoke('sciyue:stop-pes',identity),
   readPesPathRecord:request=>invoke('sciyue:read-pes-path-record',request),

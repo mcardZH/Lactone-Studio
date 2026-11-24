@@ -16,6 +16,7 @@ import type { TrajectoryResult } from "../../results/contracts";
 import type { Structure } from "../../core/types";
 import type {
 	MonitoringSettings,
+	MonitorSnapshotTarget,
 	TaskCardView,
 	TaskManagerView,
 	TaskMonitorView,
@@ -30,6 +31,7 @@ import TaskScientificStates from "./TaskScientificStates";
 import TaskMonitorResults from "./TaskMonitorResults";
 import {
 	EMPTY_MONITOR_FRAMES,
+	hydrateMonitorFrames,
 	mergeMonitorFrames,
 	MonitorRevisionError,
 	type MonitorFrames
@@ -46,6 +48,8 @@ import {
 	taskKindLabel
 } from "./presentation";
 import { useTaskTextPreviewWindows, type OpenTaskPreview } from "./TaskTextPreviewWindows";
+import type { ObservedPostprocessFrame } from "../results/PostprocessResultView";
+import { monitorSnapshotTarget } from "./monitor-snapshot-target";
 
 export interface TaskMonitorProps {
 	workspaceCache?: TaskMonitorWorkspaceCache;
@@ -66,7 +70,8 @@ export interface TaskMonitorProps {
 		taskId: string,
 		snapshotId: string,
 		leaseId: string,
-		canNavigate?: () => boolean
+		canNavigate?: () => boolean,
+		target?: MonitorSnapshotTarget
 	): void | Promise<void>;
 }
 const progressLabels = {
@@ -227,6 +232,7 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 		[publication, setPublication] = useState<TaskMonitorPublication | null>(initial ?? null),
 		[openingAction, setOpeningAction] = useState<OpeningReadAction>("idle"),
 		[pending, setPending] = useState(false),
+		[hydration, setHydration] = useState<{ completed: number; total: number } | null>(null),
 		[automatic, setAutomatic] = useState(retainedPreferences?.automatic ?? settings.automatic),
 		[seconds, setSeconds] = useState(
 			retainedPreferences?.seconds ??
@@ -293,6 +299,25 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 		captureFrame = useCallback((structure: Structure | null) => {
 			observedFrame.current = structure;
 		}, []);
+	const observed = useRef<{ frame: ObservedPostprocessFrame; target: MonitorSnapshotTarget } | null>(null);
+	const captureCursor = useCallback((frame: ObservedPostprocessFrame | null) => {
+		if (!frame) {
+			observed.current = null;
+			return;
+		}
+		const entry = frame.publicationRevision
+			? workspace.findPublication(taskId, frame.publicationRevision)
+			: publication;
+		if (!entry) {
+			const previous = observed.current?.frame;
+			if (previous?.result !== frame.result || previous.index !== frame.index ||
+				previous.publicationRevision !== frame.publicationRevision)
+				observed.current = null;
+			return;
+		}
+		const target = monitorSnapshotTarget(entry.view, frame);
+		observed.current = target ? { frame, target } : null;
+	}, [taskId, workspace, publication]);
 	async function read(refresh: boolean, explicit = false) {
 		if (!live.current || inflight.current) return;
 		const own = new AbortController();
@@ -300,36 +325,37 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 		if (refresh && manager.access === "manager") opening.current.started();
 		setPending(true);
 		const fail = explicit ? errors.attempt("refresh") : errors.automatic("read");
+		const requestView = async (previous: MonitorFrames, refresh: boolean) => {
+			const summary = await bridge.request("monitor.read", {
+				taskId, refresh, knownRevision: previous.revision, pagedFrames: true
+			}, { signal: own.signal });
+			own.signal.throwIfAborted();
+			if (summary.task.taskId !== taskId) throw new Error("读取结果不属于当前任务。");
+			const value = await hydrateMonitorFrames(bridge, summary, own.signal, (completed, total) => {
+				if (live.current) setHydration({ completed, total });
+			});
+			return { summary: { ...summary, framePage: undefined, framesDelta: [] }, merged: mergeMonitorFrames(previous, value) };
+		};
 		try {
-			let value = await bridge.request(
-				"monitor.read",
-				{
-					taskId,
-					refresh: refresh && manager.access === "manager",
-					knownRevision: cache.current.revision
-				},
-				{ signal: own.signal }
-			);
-			if (!live.current || own.signal.aborted) return;
-			if (value.task.taskId !== taskId) throw new Error("读取结果不属于当前任务。");
-			let merged: MonitorFrames;
+			let result;
 			try {
-				merged = mergeMonitorFrames(cache.current, value);
+				result = await requestView(cache.current, refresh && manager.access === "manager");
 			} catch (error) {
-				if (!(error instanceof MonitorRevisionError)) throw error;
-				value = await bridge.request(
-					"monitor.read",
-					{ taskId, refresh: false, knownRevision: null },
-					{ signal: own.signal }
-				);
-				if (!live.current || own.signal.aborted) return;
-				merged = mergeMonitorFrames(EMPTY_MONITOR_FRAMES, value);
+				own.signal.throwIfAborted();
+				if (!(error instanceof MonitorRevisionError) && !(
+					error instanceof Error && /\bMONITOR_FRAME_PAGE_STALE\b/.test(error.message)
+				))
+					throw error;
+				setHydration(null);
+				result = await requestView(EMPTY_MONITOR_FRAMES, false);
 			}
-			if (value.task.taskId !== taskId) throw new Error("读取结果不属于当前任务。");
+			if (!live.current || own.signal.aborted) return;
+			const { summary, merged } = result;
+			const nextPublication = workspace.publish(taskId, summary, merged);
 			cache.current = merged;
-			setView(value);
-			setPublication(workspace.publish(taskId, value, merged));
-			setOpeningAction(opening.current.observe(value, manager.access));
+			setView(summary);
+			setPublication(nextPublication);
+			setOpeningAction(opening.current.observe(summary, manager.access));
 		} catch (error) {
 			if (!own.signal.aborted) {
 				opening.current.cancel();
@@ -339,7 +365,10 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 		} finally {
 			if (inflight.current === own) {
 				inflight.current = null;
-				if (live.current) setPending(false);
+				if (live.current) {
+					setPending(false);
+					setHydration(null);
+				}
 			}
 		}
 	}
@@ -427,9 +456,12 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 		setSnapshotPending(true);
 		const canNavigate = () => live.current && snapshotEpoch.current === epoch;
 		try {
-			const result = await bridge.request("snapshot.open", { taskId });
+			if (!view) return;
+			const target = observed.current?.target ?? (!results.length ? monitorSnapshotTarget(view) : null);
+			if (!target) throw Error("当前显示帧尚未完成来源确认，请稍后再转到后处理。");
+			const result = await bridge.request("snapshot.open", { taskId, target });
 			if (p.onOpenSnapshot)
-				await p.onOpenSnapshot(taskId, result.snapshotId, result.leaseId, canNavigate);
+				await p.onOpenSnapshot(taskId, result.snapshotId, result.leaseId, canNavigate, target);
 			else
 				await bridge.request("snapshot.release", {
 					snapshotId: result.snapshotId,
@@ -546,6 +578,11 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 									))}
 								{(!view || pending || preparing) && (
 									<div className="task-read-progress" role="status">
+										{hydration ? <>
+											<span>读取已准备的结构</span>
+											<progress max={hydration.total} value={hydration.completed} />
+											<span>{hydration.completed} / {hydration.total} 帧</span>
+										</> : <>
 										<span>
 											{progress
 												? progressLabels[progress.stage]
@@ -561,6 +598,7 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 												: ""}
 										</span>
 										<span>预计剩余 估算中</span>
+										</>}
 									</div>
 								)}
 								<div ref={setPreparationHost} className="task-display-preparation" />
@@ -793,6 +831,7 @@ export default function TaskMonitor(p: TaskMonitorProps) {
 						continuity={continuity}
 						loadingHost={preparationHost}
 						onFrame={captureFrame}
+						onCursor={captureCursor}
 						results={results}
 						taskKind={task?.taskKind ?? ""}
 						collectionFixed={taskMonitorCollectionFixed(task,publication?.view)}

@@ -2,7 +2,7 @@ import type { BondPerceptionMode, ChemistryJob, ChemistryPort, ChemistryResult, 
 import { effectiveModelConstraints } from '../constraints';
 import { bondOrderObservation, periodicBondOrderConnections, validateBondOrderEvidence } from '../bond-orders';
 import { DEFAULT_EMPIRICAL_BOND_PARAMETERS, validateEmpiricalBondParameters, type EmpiricalBondPerceptionParameters } from '../../core/bond-perception-parameters';
-import { perceivePeriodicConnections } from '../../core/periodic';
+import { isPeriodic, perceivePeriodicConnections } from '../../core/periodic';
 import type { XtbBondOrders, XtbBridge, XtbCoordinateResult, XtbEvent, XtbMetadata, XtbMethod, XtbRequest, XtbPreviewFrame, XtbOptimizationScope } from './contracts';
 import { XTB_METHOD_LABELS } from './contracts';
 import { applyXtbCoordinates, applyXtbStoppedCoordinates, validateXtbPeriodicity, xtbOptimizationStepKind, xtbPreoptimizationSolvationIssue, type XtbPreoptimizationSolvation } from './accept-result';
@@ -90,7 +90,7 @@ export class XtbController {
   async continueOptimization(maxSteps?:number,maxSccIterations?:number){
     const pending=this.getContinuation(),document=this.deps.store.getSnapshot();
     if(!pending||this.state.running)throw Error('继续优化的结构已变化，请重新启动优化。');
-    const solvationIssue=xtbPreoptimizationSolvationIssue(pending.options.method,pending.options.solvation,Boolean(document.draft.structure.cell));
+    const solvationIssue=xtbPreoptimizationSolvationIssue(pending.options.method,pending.options.solvation,isPeriodic(document.draft.structure));
     if(solvationIssue)throw new Error(solvationIssue);
     this.continuing=pending;
     try{await this.run({...pending.options,...(maxSteps===undefined?{}:{maxSteps}),...(maxSccIterations===undefined?{}:{maxSccIterations})});}
@@ -244,12 +244,15 @@ export class XtbController {
       return result;
     }finally{store.finishRuntimeSession();this.chemistryJob=undefined;}
   }
-  async perceiveEmpirical(electronic?: {charge:number;multiplicity:number}, mode:BondPerceptionMode='rebuild', parameters:EmpiricalBondPerceptionParameters=DEFAULT_EMPIRICAL_BOND_PARAMETERS){
+  async perceiveEmpirical(electronic?: {charge:number;multiplicity:number}, mode:BondPerceptionMode='rebuild',
+    parameters:EmpiricalBondPerceptionParameters=DEFAULT_EMPIRICAL_BOND_PARAMETERS, capturedSource?:ModelDocument){
     const validated=validateEmpiricalBondParameters(parameters);
     const {store:owner}=this.deps;
     if(this.state.running||owner.hasTransaction?.()||owner.isRuntimeSessionActive?.())throw new Error('请先结束当前编辑或优化。');
     this.deps.assertCurrent();
-    const document=owner.getSnapshot(),operation=this.deps.captureSource&&owner.createScientificOperation?.(this.deps.captureSource());
+    const document=owner.getSnapshot(), source=capturedSource??this.deps.captureSource?.();
+    // An unbound editable model already owns the intended structure.
+    const operation=source&&(source!==document||document.analysisBindingId) ? owner.createScientificOperation?.(source) : undefined;
     const store=operation?.store??owner,structure=store.getSnapshot().draft.structure;
     const admission = empiricalBondAdmission(structure); if (admission) throw new Error(admission);
     let settleRun!:()=>void;this.runSettled=new Promise<void>(resolve=>{settleRun=resolve;});
@@ -302,7 +305,7 @@ export class XtbController {
     if(observer?.deferApplication&&!operation)throw Error('当前模型不支持隔离优化结果接管。');
     const store=operation?.store??owner,document=operation?.source??capturedSource??ownerDocument,structure=structuredClone(document.draft.structure);
     if (structure.dimension !== 3 || !structure.atoms.length || structure.periodicSource?.completeness==='partial') throw new Error('xTB预优化需要三维结构及完整晶胞。');
-    const periodic=Boolean(structure.cell);
+    const periodic=isPeriodic(structure);
     if(!supportsXtbOperation(options.method,singlepoint?'bond-perception':'optimize',periodic))throw new Error('当前xTB方法不支持此操作或周期条件，请选择适用方法。');
     const solvation=options.solvation===undefined?undefined:structuredClone(options.solvation);
     const solvationIssue=xtbPreoptimizationSolvationIssue(options.method,solvation,periodic);

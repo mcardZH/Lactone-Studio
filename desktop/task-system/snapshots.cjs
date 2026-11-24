@@ -1,9 +1,53 @@
 "use strict";
 const fs = require("node:fs/promises");
 const crypto = require("node:crypto");
+const { isDeepStrictEqual } = require("node:util");
 const { iterateRecords } = require("./operation-guards.cjs");
 const { fail } = require("./platform/global-settings.cjs");
 const { hashFile } = require("./submission.cjs");
+const { expectedSnapshotId } = require("./assets/snapshot.cjs");
+const { unchanged } = require("./assets/io.cjs");
+
+function requireSnapshotPublication(sources, expected) {
+	if (!expected) return;
+	const source = sources.find(item => item.artifactId === expected.artifactId);
+	if (source?.provenance?.sourceRevision !== expected.revision ||
+		!isDeepStrictEqual(source?.provenance?.sourceBoundary, expected.boundary))
+		throw fail("SNAPSHOT_SOURCE_VERSION_CHANGED", "当前固定来源与监控页面显示的版本不一致，请刷新后重试。");
+}
+
+/** An ended or independently registered source can be read after its monitor owner
+ * has retired, provided the exact observed file and published bytes still exist. */
+function observedRange(identity, expected) {
+	const observed = expected.boundary?.fileIdentity;
+	const range = expected.boundary?.publishedByteRange;
+	if (!observed?.fileId || !observed.changeToken || !identity?.isRegularFile ||
+		!unchanged(observed, identity) || range?.start !== 0 ||
+		!Number.isSafeInteger(range.end) || range.end <= 0 || range.end > identity.byteSize)
+		throw fail("SNAPSHOT_SOURCE_VERSION_CHANGED", "监控页面显示的来源已变化或不可用，请刷新后重试。");
+	return { offset: 0, length: range.end };
+}
+
+function observedProvenance(provenance, expected) {
+	return expected
+		? { ...provenance, sourceBoundary: expected.boundary, sourceRevision: expected.revision }
+		: provenance;
+}
+
+async function waitForSnapshot(pending, signal) {
+	if (!signal) return pending;
+	if (signal.aborted) throw fail("SNAPSHOT_CANCELLED");
+	let abort;
+	try {
+		await Promise.race([pending, new Promise((_, reject) => {
+			abort = () => reject(fail("SNAPSHOT_CANCELLED"));
+			signal.addEventListener("abort", abort, { once: true });
+		})]);
+	} finally {
+		signal.removeEventListener("abort", abort);
+	}
+}
+
 function createSnapshotGateway({
 	assets,
 	store,
@@ -13,7 +57,8 @@ function createSnapshotGateway({
 	resolveSource
 }) {
 	const snapshots = new Map(),
-		leases = new Map();
+		leases = new Map(),
+		pendingSnapshots = new Map();
 	const libraryId = store.describe().libraryId;
 	let building = 0;
 	const buildingTasks = new Map();
@@ -33,23 +78,83 @@ function createSnapshotGateway({
 			handle = previous;
 			handle.retain();
 		} else snapshots.set(id, handle);
+		return createLease(owner, id);
+	}
+	function createLease(owner, id) {
 		const leaseId = crypto.randomUUID();
 		leases.set(leaseId, { owner, snapshotId: id });
 		return { snapshotId: id, leaseId };
 	}
+	async function releaseLease(leaseId, snapshotId, handle) {
+		leases.delete(leaseId);
+		// Stop advertising the final handle before its asynchronous removal.
+		if (![...leases.values()].some((value) => value.snapshotId === snapshotId))
+			snapshots.delete(snapshotId);
+		await handle.release();
+	}
+	async function openFixed(owner, request, { signal, assertSourceVersion, excludedSources } = {}) {
+		const expectedId = expectedSnapshotId(request);
+		const checkCurrent = () => {
+			assertSourceVersion?.();
+			if (signal?.aborted) throw fail("SNAPSHOT_CANCELLED");
+		};
+		checkCurrent();
+		let finish;
+		if (expectedId) {
+			for (;;) {
+				const previous = snapshots.get(expectedId);
+				if (previous) {
+					previous.retain();
+					return createLease(owner, expectedId);
+				}
+				const pending = pendingSnapshots.get(expectedId);
+				if (!pending) break;
+				await waitForSnapshot(pending, signal);
+				checkCurrent();
+			}
+			pendingSnapshots.set(expectedId, new Promise((resolve) => { finish = resolve; }));
+		}
+		try {
+			const handle = await assets().materializeSnapshot(request, { destination, signal });
+			try {
+				checkCurrent();
+			} catch (error) {
+				await handle.release();
+				throw error;
+			}
+			if (excludedSources) handle.snapshot.excludedSources = excludedSources;
+			return register(owner, handle);
+		} finally {
+			if (finish) {
+				pendingSnapshots.delete(expectedId);
+				finish();
+			}
+		}
+	}
 	return {
-		async open(owner, { taskId }, { signal } = {}) {
+		async open(owner, { taskId, target }, { signal } = {}) {
 			building++;
 			buildingTasks.set(taskId, (buildingTasks.get(taskId) || 0) + 1);
 			try {
 				if (!destination) throw fail("SNAPSHOT_DESTINATION_UNAVAILABLE");
-				const task = store.read("task", taskId),
-					run = task && store.read("run", task.latestRunId);
+				const task = store.read("task", taskId);
 				if (!task) throw fail("TASK_NOT_FOUND");
+				const runId = target ? target.runId : task.latestRunId;
+				const run = runId == null ? null : store.read("run", runId);
+				if (target && runId !== null && (!run || run.taskId !== taskId))
+					throw fail("SNAPSHOT_RUN_UNAVAILABLE", "监控页面显示的运行已不可用。");
+				const expectedSource = target?.source;
 				if (!run) {
 					const sourceSet = task.sourceSetId && store.read("sourceSet", task.sourceSetId);
 					if (!sourceSet || sourceSet.state === "missing")
 						throw fail("SNAPSHOT_SOURCE_UNAVAILABLE");
+					if (target && (target.sourceSetId !== sourceSet.sourceSetId ||
+						target.sourceVersion !== sourceSet.sourceVersion))
+						throw fail("SNAPSHOT_SOURCE_VERSION_CHANGED");
+					const sourceTarget = {
+						runId: null, sourceSetId: sourceSet.sourceSetId, sourceVersion: sourceSet.sourceVersion,
+						source: expectedSource
+					};
 					let retained;
 					const assertSourceVersion = () => {
 						const currentTask = store.read("task", taskId),
@@ -62,17 +167,18 @@ function createSnapshotGateway({
 							throw fail("SNAPSHOT_SOURCE_VERSION_CHANGED");
 					};
 					try {
-						retained = await monitoring.snapshotSources(taskId, signal);
+						retained = await monitoring.snapshotSources(taskId, signal, sourceTarget);
 					} catch (error) {
 						if (
 							signal?.aborted ||
 							error.code !== "SNAPSHOT_SOURCE_NOT_PREPARED" ||
-							error.detail?.preparedPublication
+							(error.detail?.preparedPublication && !expectedSource)
 						)
 							throw error;
 					}
 					try {
 						assertSourceVersion();
+						if (retained) requireSnapshotPublication(retained.sources, expectedSource);
 						const sources = (retained?.sources || [])
 							.filter((source) => source.roles?.includes("primary-output"))
 							.map((source) => {
@@ -117,13 +223,17 @@ function createSnapshotGateway({
 									signal
 								}),
 								t = resolved.transport,
-								identity = resolved.identity || (await t.stat(resolved.location.path)),
+								identity = resolved.identity || (await t.stat(resolved.location.path, { signal })),
+								expected = expectedSource?.artifactId === artifact.artifactId ? expectedSource : undefined,
+								range = expected ? observedRange(identity, expected) : undefined,
 								checked = await t.hash({
 									path: resolved.location.path,
 									identity,
-									algorithm: "sha256"
-								});
-							if (artifact.contentHash?.hash && checked.hash !== artifact.contentHash.hash)
+									algorithm: "sha256",
+									...(range ? { range } : {})
+								}, { signal });
+							if (artifact.contentHash?.hash && (!range || range.length === identity.byteSize) &&
+								checked.hash !== artifact.contentHash.hash)
 								throw fail("SNAPSHOT_SOURCE_CHANGED");
 							sources.push({
 								artifactId: artifact.artifactId,
@@ -132,6 +242,7 @@ function createSnapshotGateway({
 								path: resolved.location.path,
 								identity: checked.identity,
 								sha256: checked.hash,
+								...(range ? { range } : {}),
 								roles: artifact.roles,
 								format: artifact.format,
 								formatVersion: artifact.formatVersion,
@@ -139,7 +250,7 @@ function createSnapshotGateway({
 								dependencies: artifact.dependencies || [],
 								companionCandidate: artifact.companionCandidate,
 								sourceIdentity: artifact.sourceIdentity,
-								provenance: artifact.provenance,
+								provenance: observedProvenance(resolved.provenance || artifact.provenance, expected),
 								stable: true,
 								compatible: artifact.roles.includes("wavefunction")
 									? ["molden", "fchk", "wfn", "wfx"].includes(artifact.format)
@@ -147,8 +258,9 @@ function createSnapshotGateway({
 							});
 						}
 						if (!sources.length) throw fail("SNAPSHOT_SOURCE_UNAVAILABLE");
-						assertSourceVersion();
-						const handle = await assets().materializeSnapshot(
+						requireSnapshotPublication(sources, expectedSource);
+						return await openFixed(
+							owner,
 							{
 								taskId,
 								runId: null,
@@ -157,37 +269,28 @@ function createSnapshotGateway({
 								origin: sourceSet.origin,
 								sources
 							},
-							{ destination, signal }
+							{ signal, assertSourceVersion }
 						);
-						try {
-							assertSourceVersion();
-						} catch (error) {
-							await handle.release();
-							throw error;
-						}
-						if (signal?.aborted) {
-							await handle.release();
-							throw fail("SNAPSHOT_CANCELLED");
-						}
-						return register(owner, handle);
 					} finally {
 						await retained?.release?.();
 					}
 				}
 				let retained;
 				try {
-					retained = await monitoring.snapshotSources(taskId, signal);
+					retained = await monitoring.snapshotSources(taskId, signal, { runId: run.runId, source: expectedSource });
 				} catch (error) {
 					if (
 						signal?.aborted ||
 						run.state.executionState !== "ended" ||
-						run.state.verificationState !== "verified"
+						run.state.verificationState !== "verified" ||
+						(expectedSource && error.code !== "SNAPSHOT_SOURCE_NOT_PREPARED")
 					)
 						throw error;
 				}
 				try {
 					const sources = retained?.sources || [],
 						excludedSources = [];
+					if (retained) requireSnapshotPublication(sources, expectedSource);
 					if (run.state.executionState === "ended" && run.state.verificationState === "verified")
 						for (const artifact of iterateRecords(store, "artifact", { runId: run.runId })) {
 							if (sources.some((source) => source.artifactId === artifact.artifactId)) continue;
@@ -214,12 +317,19 @@ function createSnapshotGateway({
 								if (!location) continue;
 								const transport =
 										resolved?.transport || (await transportFor(location.environmentId)),
-									identity = resolved?.identity || (await transport.stat(location.path)),
+									identity = resolved?.identity || (await transport.stat(location.path, { signal })),
+									expected = expectedSource?.artifactId === artifact.artifactId ? expectedSource : undefined,
+									range = expected ? observedRange(identity, expected) : undefined,
 									checked = await transport.hash({
 										path: location.path,
 										identity,
-										algorithm: "sha256"
-									});
+										algorithm: "sha256",
+										...(range ? { range } : {})
+									}, { signal });
+								if (artifact.roles.includes("primary-output") && !expected &&
+									task.latestRunId !== run.runId && !resolved?.sha256 &&
+									artifact.contentHash?.hash !== checked.hash)
+									throw fail("SNAPSHOT_SOURCE_VERSION_CHANGED", "历史运行的主输出字节无法核对。");
 								if (
 									artifact.contentHash?.hash &&
 									artifact.contentHash.hash !== checked.hash &&
@@ -234,13 +344,14 @@ function createSnapshotGateway({
 									path: location.path,
 									identity: checked.identity,
 									sha256: checked.hash,
+									...(range ? { range } : {}),
 									roles: artifact.roles,
 									format: artifact.format,
 									formatVersion: artifact.formatVersion,
 									representation: artifact.representation,
 									dependencies: artifact.dependencies || [],
 									companionCandidate: artifact.companionCandidate,
-									provenance: resolved?.provenance || artifact.provenance,
+									provenance: observedProvenance(resolved?.provenance || artifact.provenance, expected),
 									stable: true,
 									compatible: artifact.compatible === true
 								});
@@ -255,6 +366,7 @@ function createSnapshotGateway({
 					if (!sources.length) {
 						throw fail("SNAPSHOT_SOURCE_UNAVAILABLE");
 					}
+					requireSnapshotPublication(sources, expectedSource);
 					const primarySource = sources.find((source) => source.roles.includes("primary-output"));
 					for (let index = sources.length - 1; index >= 0; index--) {
 						const candidate = sources[index];
@@ -271,23 +383,19 @@ function createSnapshotGateway({
 							sources.splice(index, 1);
 						}
 					}
-					const handle = await assets().materializeSnapshot(
+					return await openFixed(
+						owner,
 						{ taskId, runId: run.runId, sources },
-						{ destination, signal }
+						{ signal, excludedSources }
 					);
-					handle.snapshot.excludedSources = excludedSources;
-					if (signal?.aborted) {
-						await handle.release();
-						throw fail("SNAPSHOT_CANCELLED");
-					}
-					const registered = register(owner, handle);
-					return registered;
 				} finally {
 					await retained?.release?.();
 				}
 			} finally {
 				building--;
-				buildingTasks.set(taskId, buildingTasks.get(taskId) - 1);
+				const remaining = buildingTasks.get(taskId) - 1;
+				if (remaining) buildingTasks.set(taskId, remaining);
+				else buildingTasks.delete(taskId);
 			}
 		},
 		describe(owner, { snapshotId, leaseId }) {
@@ -377,19 +485,12 @@ function createSnapshotGateway({
 		},
 		async release(owner, { snapshotId, leaseId }) {
 			const handle = owned(owner, snapshotId, leaseId);
-			leases.delete(leaseId);
-			await handle.release();
-			if (![...leases.values()].some((value) => value.snapshotId === snapshotId))
-				snapshots.delete(snapshotId);
+			await releaseLease(leaseId, snapshotId, handle);
 		},
 		async releaseOwner(owner) {
 			for (const [leaseId, value] of [...leases])
-				if (value.owner === owner) {
-					leases.delete(leaseId);
-					await snapshots.get(value.snapshotId)?.release();
-					if (![...leases.values()].some((x) => x.snapshotId === value.snapshotId))
-						snapshots.delete(value.snapshotId);
-				}
+				if (value.owner === owner && leases.has(leaseId))
+					await releaseLease(leaseId, value.snapshotId, owned(owner, value.snapshotId, leaseId));
 		},
 		active: () => leases.size,
 		activeIO: () => building,

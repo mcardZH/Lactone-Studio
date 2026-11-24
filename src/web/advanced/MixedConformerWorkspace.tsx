@@ -1,7 +1,8 @@
+import {isPeriodic} from '../../core/periodic';
 import {useGxtbBackend,gxtbSamplingRunBlocked,GxtbAvailability} from '../results/GxtbPathControl';
 import NumericInput from '../NumericInput';
 import {DismissibleNotice} from '../DismissibleNotice';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {useProjectState} from '../../projects/ui-state';
 import type { AdvancedController } from "../../modeling/advanced/controller";
@@ -81,7 +82,8 @@ import { compileSampling } from "./process-config";
 import {samplingRemainingLabel} from './sampling-time-estimate';
 import {optimizationActionView,conformerPlaybackReference} from './conformer-incremental-presentation';
 import {submitConformerSampling,commitConformerElectronicDraft} from './conformer-sampling-action';
-import {ConformerSamplingCardProgress,conformerGenerationProgressForCard} from './ConformerSamplingProgress';
+import {ConformerSamplingCardProgress,conformerGenerationProgressForCard,conformerSamplingTimeProgress} from './ConformerSamplingProgress';
+import {conformerMcpConfigurationRevision,subscribeConformerMcpConfiguration} from '../mcp/science-conformer-state';
 import {createConformerPlaybackResolver,projectConformerPlaybackCollection} from './conformer-playback';
 import {
 	buildConformerResultCollections,
@@ -93,6 +95,7 @@ import {
 
 interface PageCache {
 	draft: MixedConformerDraft;
+	mcpConfigurationRevision?:number;
 	source?: AdvancedFrameSource;
 	taskId?: string;
 	sphere?: SamplingSphereDraft | null;
@@ -159,11 +162,21 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		p.contextTaskId ?? initial.current?.taskId ?? null
 	);
 	const task = state.tasks.find((value) => value.id === (p.contextTaskId ?? localTaskId));
+	const readMcpConfiguration=()=>conformerMcpConfigurationRevision(p.controller,task?.id);
+	const mcpConfigurationRevision=useSyncExternalStore(
+		useCallback(listener=>subscribeConformerMcpConfiguration(p.controller,listener),[p.controller]),
+		readMcpConfiguration,readMcpConfiguration
+	);
 	const [draft, setDraft] = useState<MixedConformerDraft>(
 		() =>
-			initial.current?.draft ??
+			(initial.current&&(initial.current.mcpConfigurationRevision??0)===mcpConfigurationRevision?initial.current.draft:undefined) ??
 			(task ? restoreMixedConformerDraft(task) : createMixedConformerDraft())
 	);
+	const [acceptedMcpConfiguration,setAcceptedMcpConfiguration]=useState(mcpConfigurationRevision);
+	if(task&&mcpConfigurationRevision!==acceptedMcpConfiguration){
+		setAcceptedMcpConfiguration(mcpConfigurationRevision);
+		setDraft(restoreMixedConformerDraft(task));
+	}
 	// Retained soft fields are historical only. This card and new requests use
 	// the same public hard-freeze owner as F and the modeling workspace.
 	const effectiveDraft=draft;
@@ -189,6 +202,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	// The editable initial's current document is the display/input draft. A run
 	// and every retained batch keep the controller's immutable captured source.
 	const source = !busy&&editingInitial ? p.displayedSource??null : taskSource ?? (!busy ? p.displayedSource : null) ?? null;
+	const periodic=isPeriodic(source?.structure);
 	const frameSelected = Boolean(initialGeometryCurrent&&taskSource&&(!editingInitial||conformerInitialGeometrySelected(taskSource,source)));
 	const requiresNewSearch=Boolean(conformerInitialHasInformation(task)&&taskSource&&editingInitial&&source&&!conformerInitialCompatible(taskSource,source));
 	const [sphere, setSphere] = useState<SamplingSphereDraft | null>(initial.current?.sphere ?? null);
@@ -216,9 +230,25 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const [confirmedElectronic,setConfirmedElectronic]=useState(task?.mixedSampling?.electronicConfirmation??'');
 	const confirmationSource=editingInitial?source:observedInitialSource??taskSource;
 	const electronicConfirmed=frameSelected&&(advancedElectronicConfirmationMatches(confirmedElectronic,confirmationSource,electronic)||advancedElectronicConfirmationMatches(task?.mixedSampling?.electronicConfirmation,confirmationSource,electronic));
-	const [clock,setClock]=useState(()=>Date.now());
-	useEffect(()=>{if(!p.active||!running(run))return;const timer=setInterval(()=>setClock(Date.now()),1000);return()=>clearInterval(timer);},[p.active,run?.id,run?.status]);
 	const resources = usableComputeResources(p.computeResources);
+	const samplingFrameSummaries = useMemo(() => {
+		const summaries = new Map<string, string>();
+		let summarySource: AdvancedFrameSource | undefined;
+		try { if (resources && source) summarySource = overrideAdvancedTaskSource(source, { protectionAtomIds: [] }); }
+		catch { /* An incomplete source has no sampling count yet. */ }
+		for (const card of draft.cards) {
+			if (card.kind === 'conformer-search') continue;
+			let summary = resources ? '采样参数待完善' : '等待全局计算资源配置';
+			try {
+				if (resources && summarySource) {
+					const count = conformerSamplingSchedule(compileSampling({ ...card.sampling, ...resources, coreIds: [] }, summarySource))?.candidateCount;
+					summary = `预计采样 ${count ?? '—'} 帧`;
+				}
+			} catch { /* An incomplete card has no sampling count yet. */ }
+			summaries.set(card.id, summary);
+		}
+		return summaries;
+	}, [draft.cards, resources, source]);
 	const root = useRef<HTMLDivElement>(null),
 		alive = useRef(true),
 		captureEpoch = useRef(0),
@@ -226,7 +256,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		autoCapture = useRef(false);
 	const latest = useRef({ p, draft, source, task, sphere, collectionId, fit,displayCoreIds,playbackReferenceMode,displayCoreAutomatic });
 	latest.current = { p, draft, source, task, sphere, collectionId, fit,displayCoreIds,playbackReferenceMode,displayCoreAutomatic };
-	useEffect(()=>{if(task)cache.set(scope,{draft,source:source??undefined,taskId:task.id,sphere,collectionId,fit});},[cache,scope,task?.id,draft,source,sphere,collectionId,fit]);
+	useEffect(()=>{if(task)cache.set(scope,{draft,mcpConfigurationRevision,source:source??undefined,taskId:task.id,sphere,collectionId,fit});},[cache,scope,task?.id,draft,mcpConfigurationRevision,source,sphere,collectionId,fit]);
 	// Check the unique initial once on activation/source edits, including when
 	// returning to a result page. Playback ticks never recapture the initial.
 	const initialDisplaySource=editingInitial?source:null;
@@ -266,7 +296,8 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		if (alive.current) setError(message);
 		latest.current.p.onError(message);
 	}
-	const atomConfigurationIssues=useMemo(()=>source?mixedConformerAtomConfigurationIssues(effectiveDraft,source):{cards:{}},[effectiveDraft,source]);
+	const atomConfigurationIssues=useMemo<ReturnType<typeof mixedConformerAtomConfigurationIssues>>(
+		()=>source?mixedConformerAtomConfigurationIssues(effectiveDraft,source):{cards:{},details:[]},[effectiveDraft,source]);
 	const protectedSource = useMemo(
 		() => {
 			return source;
@@ -354,7 +385,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const sphereSourceRef = useRef("");
 	const sphereGeometrySource=useRef<AdvancedFrameSource|null>(null);
 	useEffect(() => {
-		if (!source || sphereSourceRef.current === sphereSource) return;
+		if (!source || periodic || sphereSourceRef.current === sphereSource) return;
 		const cached = sphereSourceRef.current===''?initial.current?.sphere:undefined;
 		const reusable=sphere&&conformerInitialGeometrySelected(sphereGeometrySource.current,source)?{...sphere,sourceDocumentId:source.ref.documentId,sourceRevision:source.ref.revision}:undefined;
 		const next = reusable??(
@@ -385,10 +416,10 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 				}
 			}
 		}));
-	}, [sphereSource, source]);
+	}, [sphereSource, source, periodic]);
 	function acceptSphere(next: SamplingSphereDraft) {
 		if (
-			!source ||
+			!source || periodic ||
 			busy ||
 			next.sourceDocumentId !== source.ref.documentId ||
 			next.sourceRevision !== source.ref.revision
@@ -409,12 +440,12 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		}));
 	}
 	useEffect(() => {
-		if (p.sphereRadiusChange && sphere && !busy)
+		if (p.sphereRadiusChange && sphere && !busy && !periodic)
 			act(() => acceptSphere(applySamplingSphereRadiusChange(sphere, p.sphereRadiusChange!)));
 	}, [p.sphereRadiusChange]);
 	useEffect(() => {
 		p.onSphereDraft?.(
-			p.active &&
+			p.active && !periodic &&
 				draft.shared.sphereEnabled &&
 				sameDisplaySource(source, p.displayedSource) &&
 				sphere?.previewEnabled
@@ -422,7 +453,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 				: undefined
 		);
 		return () => p.onSphereDraft?.(undefined);
-	}, [p.active, p.onSphereDraft, draft.shared.sphereEnabled, sphere, source, p.displayedSource]);
+	}, [p.active, p.onSphereDraft, draft.shared.sphereEnabled, sphere, source, p.displayedSource, periodic]);
 	const {definition,compileError} = useMemo(() => {
 		if (!source || !resources) return {definition:null,compileError:''};
 		try {
@@ -468,8 +499,8 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const playbackResolution=selectedFrame?resolvePlayback(selectedFrame):undefined;
 	const shownCoreIds=playbackResolution?.coreAtomIds??EMPTY_DISPLAY_CORE;
 	const effectivePlaybackReference=conformerPlaybackReference(undefined,playbackResolution,shownCoreIds).mode;
-	const displayedPlaybackFrame=Boolean(selectedFrame&&p.activeConformerFrame?.taskId===task?.id&&p.activeConformerFrame?.frameId===selectedFrame.id);
-	const displayCoreCapture=useAnalysisAtomCapture({ownerId:'conformer-playback-reference',structure:p.displayedSource?.structure??EMPTY,documentId:p.displayedSource?.ref.documentId??'',revision:p.displayedSource?.ref.revision??0,sourceId:JSON.stringify(p.displayedSource?.ref??''),frameIndex:p.displayedSource?.ref.sourceFrameIndex??0,activationEpoch:p.displayTargetId??'',active:Boolean(p.active&&displayedPlaybackFrame&&p.displayedSource),purpose:'advanced-region'});
+	const displayedPlaybackFrame=Boolean(selectedFrame&&!isPeriodic(selectedFrame.source.structure)&&p.activeConformerFrame?.taskId===task?.id&&p.activeConformerFrame?.frameId===selectedFrame.id);
+	const displayCoreCapture=useAnalysisAtomCapture({ownerId:'conformer-playback-reference',structure:p.displayedSource?.structure??EMPTY,documentId:p.displayedSource?.ref.documentId??'',revision:p.displayedSource?.ref.revision??0,sourceId:JSON.stringify(p.displayedSource?.ref??''),frameIndex:p.displayedSource?.ref.sourceFrameIndex??0,activationEpoch:p.displayTargetId??'',active:Boolean(p.active&&displayedPlaybackFrame&&p.displayedSource),lazyStructureIdentity:true,purpose:'advanced-region'});
 	useEffect(()=>{p.onCaptureProjection?.(displayCoreCapture.viewportCapture??coordinateCapture.viewportCapture??regionCapture.viewportCapture);return()=>p.onCaptureProjection?.(undefined);},[p.onCaptureProjection,displayCoreCapture.viewportCapture,coordinateCapture.viewportCapture,regionCapture.viewportCapture]);
 	const published = useRef(new Map<string, string>()),
 		openCallback = useRef(p.onOpenConformerCollection);
@@ -506,7 +537,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	function beginSampling(mode: "continue" | "append" | "restart") {
   if(mode==='continue'?samplingContinueBlocked:samplingNewBlocked)throw Error('请先在全局设置中配置可用的 g-xTB 程序。');
 		if (submitLock.current || !task?.mixedSampling || busy) return;
-		if(draft.shared.sphereEnabled&&sphereInputInvalid)throw Error('请修正球内限制的参数。');
+		if(!periodic&&draft.shared.sphereEnabled&&sphereInputInvalid)throw Error('请修正球内限制的参数。');
 		if (!resources) throw Error(RESOURCES_WAITING);
 		if (!source || !draft.cards.length) throw Error("请先添加采样方式。");
 		if (!electronicConfirmed || baseElectronicStateError(source.structure,electronic)) throw Error("请先确认本次任务的电荷与自旋多重度。");
@@ -521,7 +552,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			const canonical=initial.source;
 			if(canonical.structure.charge!==electronic.charge||canonical.structure.multiplicity!==electronic.multiplicity||baseElectronicStateError(canonical.structure,electronic))throw Error("初始结构的电子态已改变，请确认当前电荷与自旋多重度后再开始。");
 			const submittedDraft=effectiveDraft;
-			const configuration=compileMixedDefinition(submittedDraft,canonical,resources),stages=compileMixedStages(submittedDraft.stages,resources.threads);
+			const configuration=compileMixedDefinition(submittedDraft,canonical,resources),stages=compileMixedStages(submittedDraft.stages,resources.threads,isPeriodic(canonical.structure));
 			const submitted=submitConformerSampling({controller:p.controller,task:current,definition:configuration,stages,electronic,mode,confirm});
 			if(submitted){setFallbackSource(submitted.source);setOverlay(null);setPreview(null);setDraft(value=>({...value,cards:value.cards.map(card=>({...card,expanded:false}))}));}
 		} finally {
@@ -541,7 +572,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		if(!resources)throw Error(RESOURCES_WAITING);
 		if(!electronicConfirmed||!source||baseElectronicStateError(source.structure,electronic))throw Error("请先确认本次任务的电荷与自旋多重度。");
 		setError("");
-		const configurations=compileMixedStages(draft.stages,resources.threads),impact=p.controller.previewStageConfiguration(task.id,configurations);
+		const configurations=compileMixedStages(draft.stages,resources.threads,periodic),impact=p.controller.previewStageConfiguration(task.id,configurations);
 		if(action==='restart'&&!confirm(`${index===undefined?'全部优化':'第'+(index+1)+'级及其后续优化'}将从固定上游输入重新处理全部候选，不复用旧完成标记。继续？`))return;
 		if(action!=='restart'&&impact.requiresConfirmation&&!confirm(`更改优化设置将使本级及更高级的 ${impact.affectedFrameCount} 个已有结果失效，上游采样保留。继续？`))return;
 		p.controller.configureStages(task.id,configurations);
@@ -551,7 +582,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	}
 	function changeStages(stages:typeof draft.stages){
 		if(!task||!resources){setDraft(value=>({...value,stages}));return;}
-		let configurations;try{configurations=compileMixedStages(stages,resources.threads);}catch{setDraft(value=>({...value,stages}));return;}
+		let configurations;try{configurations=compileMixedStages(stages,resources.threads,periodic);}catch{setDraft(value=>({...value,stages}));return;}
 		const impact=p.controller.previewStageConfiguration(task.id,configurations);
 		if(impact.requiresConfirmation&&!confirm(`更改本级设置将使本级及更高级的 ${impact.affectedFrameCount} 个已有结果失效，上游采样和较低级结果保留。继续？`))return;
 		p.controller.configureStages(task.id,configurations);setDraft(value=>({...value,stages}));
@@ -560,7 +591,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		const collection=collections.find(row=>row.id===id),configurationId=collection?.clusterCollection?.configurationId;
 		if(!task||!configurationId)return;
 		if(!resources)throw Error(RESOURCES_WAITING);
-		const configurations=compileMixedStages(draft.stages,resources.threads),impact=p.controller.previewStageConfiguration(task.id,configurations);
+		const configurations=compileMixedStages(draft.stages,resources.threads,periodic),impact=p.controller.previewStageConfiguration(task.id,configurations);
 		if(impact.requiresConfirmation&&!confirm(`按当前设置重新整理归簇将更新本级及更高级的 ${impact.affectedFrameCount} 个已有结果。原始优化结构保留，不会重新优化。继续？`))return;
 		p.controller.configureStages(task.id,configurations);
 		p.controller.organizeStage(task.id,configurationId);
@@ -649,12 +680,12 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		const accepted=await p.onConformerFreezeChange(task.id,p.displayedSource,[...ids]);
 		return accepted;
 	}
-	function changeFrozenCoordinate(ids:string[],frozen:boolean,previousCoordinate?:ConformerCoordinateSelection):boolean|Promise<boolean>{
+	function changeFrozenCoordinate(ids:string[],frozen:boolean,previousCoordinate?:ConformerCoordinateSelection,images?:ConformerCoordinateSelection['images']):boolean|Promise<boolean>{
 		if(!task||!editingInitial||!p.conformerFreezeEditable||!p.displayedSource||!p.onConformerCoordinateFreezeChange)return false;
 		if(!ids.length)return false;
 		const type=ids.length===2?'B':ids.length===3?'A':ids.length===4?'D':undefined;
 		if(!type||new Set(ids).size!==ids.length)throw Error('请按顺序选择 2–4 个不同原子。');
-		return p.onConformerCoordinateFreezeChange(task.id,p.displayedSource,{type,atomIds:ids},frozen,previousCoordinate);
+		return p.onConformerCoordinateFreezeChange(task.id,p.displayedSource,{type,atomIds:ids,...(images?{images}:{})},frozen,previousCoordinate);
 	}
 	const previewOwner = hover ?? preview;
 	const torsionPreview = useMemo(() => {
@@ -777,23 +808,16 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const batches=task?.mixedSampling?.batches??[],currentBatch=batches.find(batch=>batch.id===task?.mixedSampling?.currentBatchId);
 	const hasSamplingHistory=batches.length>0||Boolean(task?.runs.some(run=>run.intent==='sampling'))||Boolean(collections[0]?.frames.length);
 	const atomConfigurationError=atomConfigurationIssues.core??Object.values(atomConfigurationIssues.cards)[0]??'';
-	const invalidSphere=draft.shared.sphereEnabled&&sphereInputInvalid;
+	const invalidSphere=!periodic&&draft.shared.sphereEnabled&&sphereInputInvalid;
 	let samplingConfigurationError=atomConfigurationError?'':compileError;
 	let samplingImpact:ReturnType<AdvancedController['previewMixedConfiguration']>|undefined;
 	try{samplingImpact=task&&definition?p.controller.previewMixedConfiguration(task.id,definition):undefined;}catch(cause){samplingConfigurationError=cause instanceof Error?cause.message:String(cause);}
 	const batchLocked=Boolean(currentBatch?.sealed||samplingImpact?.sealed);
  const samplingNewBlocked=gxtbSamplingRunBlocked(gxtbBackend,draft.cards);
  const samplingContinueBlocked=gxtbSamplingRunBlocked(gxtbBackend,draft.cards,samplingImpact?.pendingCardIds);
-	const renderCardProgress=(card:AdvancedSamplingCardState,configuration:AdvancedMixedSamplingCard,index:number)=><ConformerSamplingCardProgress card={card} configuration={configuration} index={index} batchRunning={running(samplingRun)} configurationChanged={samplingImpact?.affectedCardIds.includes(card.id)} remainingMs={card.id===currentCard?.id?remaining:null} generationProgress={conformerGenerationProgressForCard(samplingRun,task?.id,currentBatch?.id,card.id)}/>;
+	const renderCardProgress=(card:AdvancedSamplingCardState,configuration:AdvancedMixedSamplingCard,index:number)=><ConformerSamplingCardProgress card={card} configuration={configuration} index={index} batchRunning={running(samplingRun)} configurationChanged={samplingImpact?.affectedCardIds.includes(card.id)} timeProgress={card.id===currentCard?.id?timeProgress:null} generationProgress={conformerGenerationProgressForCard(samplingRun,task?.id,currentBatch?.id,card.id)}/>;
 	const currentCard=mix?.definition.cards[mix.currentCardIndex];
-	const currentSchedule=currentCard?.kind==='sampling'?conformerSamplingSchedule(currentCard.sampling):null;
-	const currentProgress=running(samplingRun)?samplingRun?.sampling?.progress:undefined;
-	const currentGenerated=running(samplingRun)?samplingRun?.sampling?.candidateFrameIds.length??0:0;
-	const generated=(mix?.generated??0)+currentGenerated;
-	const currentCompleted=currentProgress?.candidateCount??currentGenerated;
-	const currentTotal=currentSchedule?.candidateCount;
-	const currentElapsed=Math.max(0,clock-(samplingRun?.sampling?.startedAt??clock));
-	const remaining=currentTotal&&currentCompleted>1&&currentElapsed>0?Math.max(0,currentElapsed/currentCompleted*(currentTotal-currentCompleted)):null;
+	const timeProgress=p.active?conformerSamplingTimeProgress(samplingRun,state.activeNative,currentBatch?.id):null;
 	const canStartStage = (index: number) =>
 		!!(
 			resources &&
@@ -845,7 +869,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
                     onMultiplicityChange={multiplicity=>act(()=>changeElectronic({multiplicity}))}
                     onConfirm={()=>act(commitElectronic)}
                 >
-                    <p className="conformer-current-source" data-initial-guess-id={selectedInitial?.id}>{source?`初猜：${selectedInitial?.label??`帧 ${(source.ref.sourceFrameIndex??0)+1}`} · ${molecularFormula(source.structure.atoms)} · ${source.structure.atoms.length} 原子`:'尚无当前帧'}</p>
+					<p className="conformer-current-source" data-initial-guess-id={selectedInitial?.id}>{source?`初猜：${selectedInitial?.label??`帧 ${(source.ref.sourceFrameIndex??0)+1}`} · ${molecularFormula(source.structure.atoms)} · ${source.structure.atoms.length} 原子${periodic?' · 固定晶胞':''}`:'尚无当前帧'}</p>
                     {task&&!frameSelected&&<p role="status">{requiresNewSearch?'当前体系与原搜索不兼容，请以当前帧建立新搜索；原搜索及结果保留。':'初始结构已修改，请确认电荷与自旋多重度。'}</p>}
 				</BaseElectronicStateFields></InputSettingsCard>
 				<InputSettingsSection title="高级采样设置" collapsible stack sectionKey="conformer-advanced-sampling">
@@ -853,12 +877,12 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 						<ConformerConstraintSettings source={constraintSource} atomIds={cardFrozenIds} coordinates={constraints} ownerKey={JSON.stringify([task?.id,selectedInitial?.id])}
 						 atomPort={regionCapture.selectionPort} coordinatePort={coordinateCapture.selectionPort} atomsEditable={freezeEditable} coordinatesEditable={coordinateEditable}
 						 onAtomRequest={()=>coordinateCapture.cancel()} onCoordinateRequest={()=>regionCapture.cancel()}
-						 onAtoms={ids=>act(()=>changeFrozenAtoms(ids))} onCoordinate={changeFrozenCoordinate}/>
-						<InputSettingsEnableCard className="conformer-advanced-card" level="subcard" title="球内限制" stack switchLabel="将体系限制在一个球内" testId="conformer-sphere-protection-card" enabled={draft.shared.sphereEnabled} disabled={busy||!source} onEnabledChange={sphereEnabled=>setDraft(value=>({...value,shared:{...value.shared,sphereEnabled}}))}><SamplingSphereEditor draft={sphere} disabled={busy} onInvalidChange={setSphereInputInvalid} onChange={acceptSphere} onRefit={()=>source&&acceptSphere(createSamplingSphereDraft(source.ref.documentId,source.ref.revision,source.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),draft.shared.spherePaddingAngstrom))}/></InputSettingsEnableCard>
+						 onAtoms={ids=>act(()=>changeFrozenAtoms(ids))} onCoordinate={changeFrozenCoordinate} coordinateImageSelection={periodic}/>
+						{!periodic&&<InputSettingsEnableCard className="conformer-advanced-card" level="subcard" title="球内限制" stack switchLabel="将体系限制在一个球内" testId="conformer-sphere-protection-card" enabled={draft.shared.sphereEnabled} disabled={busy||!source} onEnabledChange={sphereEnabled=>setDraft(value=>({...value,shared:{...value.shared,sphereEnabled}}))}><SamplingSphereEditor draft={sphere} disabled={busy} onInvalidChange={setSphereInputInvalid} onChange={acceptSphere} onRefit={()=>source&&acceptSphere(createSamplingSphereDraft(source.ref.documentId,source.ref.revision,source.structure.atoms.map(atom=>[atom.x,atom.y,atom.z]),draft.shared.spherePaddingAngstrom))}/></InputSettingsEnableCard>}
 					</InputSettingsStack></fieldset>
 				</InputSettingsSection>
 				<InputSettingsCard title="混合采样" testId="mixed-sampling-settings" stack actions={<InputSettingsAction variant="primary" ariaLabel="添加采样方式" disabled={busy||!source} onClick={()=>setAdding(value=>!value)}>添加采样方式</InputSettingsAction>}>
-					{adding&&<InputSettingsRow>{MIXED_SAMPLING_CHOICES.map(choice=><InputSettingsAction key={choice.id} disabled={busy||!source}
+					{adding&&<InputSettingsRow>{MIXED_SAMPLING_CHOICES.filter(choice=>!periodic||choice.id==='md').map(choice=><InputSettingsAction key={choice.id} disabled={busy||!source}
 						ariaLabel={`添加${choice.label}`} onClick={()=>addCard(choice.id)}>{choice.label}</InputSettingsAction>)}</InputSettingsRow>}
 						{draft.cards.map((card, index) => (
 							<div key={card.id} className="conformer-sampling-card">
@@ -1001,14 +1025,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 										onRegionRequest={() => coordinateCapture.cancel()}
 										frameSummary={
 											<output>
-												{(() => {
-													if(!resources)return "等待全局计算资源配置";
-													try {
-														return `预计采样 ${conformerSamplingSchedule(compileSampling({ ...card.sampling, ...resources, coreIds: [] }, overrideAdvancedTaskSource(source!, { protectionAtomIds: [] })))?.candidateCount ?? '—'} 帧`;
-													} catch {
-														return "采样参数待完善";
-													}
-												})()}
+												{samplingFrameSummaries.get(card.id)}
 											</output>
 										}
 									/>
@@ -1031,7 +1048,11 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 							/>
 						</InputSettingsField></InputSettingsRow>
 						{draft.deduplicationEnabled!==false&&samplingRun?.backgroundProgress?.phase==='deduplicate'&&(()=>{const progress=samplingRun.backgroundProgress;return <><output>总共收到 {progress.total??'—'}帧，已处理 {progress.completed} / {progress.total??'—'}</output><div className="conformer-progress-row"><progress aria-label="采样末尾去重进度" max={progress.total??undefined} value={progress.total===null?undefined:progress.completed}/><output>{progress.total?Number((progress.completed/progress.total*100).toFixed(1)):0}%　预计剩余 {progress.etaMs==null?'估算中':samplingRemainingLabel(progress.etaMs)}</output></div></>;})()}
-						{samplingRun?.backgroundProgress?.phase==='prepare-results'&&<div className="conformer-progress-row"><output role="status">{samplingRun.status==='stopping'?'采样计算已停止 · 正在准备保留结果':'正在准备采样结果'}</output><progress aria-label="准备采样结果"/><output>预计剩余 估算中</output></div>}
+						{samplingRun?.backgroundProgress?.phase==='prepare-results'&&(()=>{const progress=samplingRun.backgroundProgress;return <div className="conformer-progress-row">
+            <output role="status">{samplingRun.status==='stopping'?'准备保留的轨迹帧':'正在准备采样结果'}{progress.total!==null&&<> · {progress.completed} / {progress.total} 帧</>}</output>
+            <progress aria-label="准备采样结果" max={progress.total||undefined} value={progress.total===null?undefined:progress.completed}/>
+            <output>预计剩余 {progress.etaMs==null?'估算中':samplingRemainingLabel(progress.etaMs)}</output>
+          </div>;})()}
 						{mix?.deduplicationCompleted&&<output>保留 {collections[0]?.frames.length??0} 帧</output>}
 						{mix?.deduplicationCompleted===false&&<output role="status">去重未完成 · 已处理 {mix.deduplicationProcessed??0} / {mix.deduplicationTotal??0} 帧，未分类完整帧已保留</output>}
 						</InputSettingsStack></fieldset>
@@ -1083,6 +1104,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 				</InputSettingsCard>
 				<ConformerOptimizationStages
 					stages={draft.stages}
+					periodic={periodic}
 					hasCoordinates={constraints.length>0}
 					samplingInputCount={task?.conformerWorkflow?.candidateSet?.valid?task.conformerWorkflow.candidateSet.frameIds.length:undefined}
 					busy={busy}

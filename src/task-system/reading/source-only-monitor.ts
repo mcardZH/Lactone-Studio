@@ -13,7 +13,7 @@ import { readXyzTrajectory } from "../../results/xyz-reader";
 import { readFchkScientificResult } from "../../results/fchk-scientific-reader";
 import { readHessScientificResult } from "../../results/hess-scientific-reader";
 import { readMoldenStructure } from "../../results/molden-structure-reader";
-import { readMolecularCube } from "../../results/cube-reader";
+import { readMolecularCubeHeader } from "../../results/cube-reader";
 import { emptyScientificData } from "../../results/scientific-contracts";
 import { readScientificResults } from "../../results/scientific-reader";
 
@@ -258,7 +258,7 @@ export async function readSourceOnlyMonitor(input: {
 					)
 				];
 			} else if (input.format === "cube") {
-				const cube = await readMolecularCube(file, { signal: input.signal }),
+				const cube = await readMolecularCubeHeader(file, { signal: input.signal }),
 					factor = cube.grid.coordinateUnit === "bohr" ? 0.529177210903 : 1;
 				const structure: Structure = {
 					id: file.id,

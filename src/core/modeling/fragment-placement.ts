@@ -26,6 +26,7 @@ export interface FragmentPlacementResult {
 export function placeBuilderFragment(input: Structure, options: FragmentPlacementOptions, idFactory: () => string = newModelId): FragmentPlacementResult {
   const template = getBuilderTemplate(options.templateId);
   if (!template) throw new Error('未知片段模板。');
+  if (template.independentOnly && (options.targetAtomId || options.targetPortId)) throw new Error('三苯基膦请在画布空白处独立放置。');
   const active = options.activeAtomIndex ?? template.connectionAnchor;
   if (!Number.isSafeInteger(active) || active < 0 || active >= template.atoms.length) throw new Error('片段活性原子索引无效。');
   if (options.position.length !== 3 || !options.position.every(Number.isFinite)) throw new Error('片段放置坐标必须有限。');
@@ -79,7 +80,9 @@ export function placeBuilderFragment(input: Structure, options: FragmentPlacemen
   // real seed neighbour equal weight without changing any internal geometry.
   // Free placement and single-neighbour chains retain their previous path.
   const neighbours = [...new Set(template.bonds.flatMap(b => b.a === active ? [b.b] : b.b === active ? [b.a] : []))];
-  if (hasExternalConnection && neighbours.length > 1) {
+  const exterior = port ?? (externalCount === 1 ? structure.bonds!.find(b => b.a === hostIndex || b.b === hostIndex) : undefined);
+  const declaredVacancy = active === template.connectionAnchor && exterior?.order === 1 && template.attachmentDirection;
+  if (hasExternalConnection && neighbours.length > 1 && !declaredVacancy) {
     sourceDirection = neighbours.reduce<Vector3>((sum, index) => {
       const delta = builderVector.sub(builderPosition(template.atoms[index]), activePoint), length = Math.hypot(...delta);
       if (!Number.isFinite(length) || length <= 1e-9) throw new Error('片段模板连接方向退化，未提交；请选择其它活性原子。');
@@ -87,8 +90,7 @@ export function placeBuilderFragment(input: Structure, options: FragmentPlacemen
     }, [0, 0, 0]);
     if (Math.hypot(...sourceDirection) <= 1e-9) throw new Error('片段模板连接方向退化，未提交；请选择其它活性原子。');
   }
-  if (hasExternalConnection && (port || externalCount === 1)) {
-    const exterior = port ?? structure.bonds!.find(b => b.a === hostIndex || b.b === hostIndex)!;
+  if (hasExternalConnection && exterior) {
     const order = 'aromatic' in exterior && exterior.aromatic || exterior.order === 4 ? 1.5 : exterior.order;
     const vacant = templateConnectionDirection(template, active, order);
     // direction points away from the host, so rotate the opposite vacancy
@@ -114,6 +116,19 @@ export function placeBuilderFragment(input: Structure, options: FragmentPlacemen
   if (port) {
     structure.bonds.push({ a: structure.atoms.findIndex(a => a.id === parent!.id), b: mapping.get(active)!, order: port.order, ...(port.order === 1.5 ? { fractional: true, aromatic: false } : {}) });
     ports.splice(ports.findIndex(p => p.id === port.id), 1); touched.push(parent!.id!);
+  }
+  if (template.attachmentDirection && (!hasExternalConnection || active !== template.connectionAnchor)) {
+    // Independent placement closes the same real vacancy used for grafting.
+    // A capped sulfinyl or sulfonyl site needs this H even though its bond
+    // valence exceeds the builder's generic organic saturation target.
+    const anchorIndex = mapping.get(template.connectionAnchor)!;
+    const anchor = structure.atoms[anchorIndex];
+    const xyz = builderVector.add(builderPosition(anchor), align(builderVector.scale(template.attachmentDirection,
+      constructionBondLength(anchor.element, 'H', 1))));
+    const id = makeId();
+    structure.bonds.push({ a: anchorIndex, b: structure.atoms.length, order: 1 });
+    structure.atoms.push({ element: 'H', id, x: xyz[0], y: xyz[1], z: xyz[2], hydrogenMode: 'auto' });
+    touched.push(id); createdFrom[id] = anchor.id!;
   }
   // Saturate only template atoms and the mapped host. Over-valence is explicit
   // and permitted; no preserved exterior H is removed to repair it.

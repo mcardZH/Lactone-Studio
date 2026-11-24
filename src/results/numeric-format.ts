@@ -1,5 +1,16 @@
 /** Presentation only. Source values, scientific tolerances and file writers stay untouched. */
 export const DEFAULT_RESULT_DECIMALS = 2;
+export type ResultNumberFormatMode = 'decimal' | 'significant';
+export interface ResultNumberFormat {
+  mode: ResultNumberFormatMode;
+  digits: number;
+}
+
+export function normalizeResultNumberFormat(value?: ResultNumberFormat | null): ResultNumberFormat | undefined {
+  if (value?.mode !== 'decimal' && value?.mode !== 'significant') return;
+  const digits = resultDecimals(value.digits);
+  return { mode: value.mode, digits: value.mode === 'significant' ? Math.max(1, digits) : digits };
+}
 export function resultDecimals(value = DEFAULT_RESULT_DECIMALS): number {
   return Number.isInteger(value) ? Math.max(0, Math.min(8, value)) : DEFAULT_RESULT_DECIMALS;
 }
@@ -34,8 +45,14 @@ export function energySummaryValue(value: number | null | undefined, unit: strin
 export function formatEnergyValue(value: number | string | null | undefined, decimals = DEFAULT_RESULT_DECIMALS): string {
   return decimalEnergyValue(formatResultValue(value, decimals));
 }
-export function formatResultValue(value: number | string | null | undefined, decimals = DEFAULT_RESULT_DECIMALS): string {
+export function formatResultValue(value: number | string | null | undefined, decimals = DEFAULT_RESULT_DECIMALS, format?: ResultNumberFormat): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fullPrecisionValue(value);
+  const explicit = normalizeResultNumberFormat(format);
+  if (explicit?.mode === 'significant') return value.toPrecision(explicit.digits);
+  if (explicit?.mode === 'decimal') {
+    const text = value.toFixed(explicit.digits);
+    return value !== 0 && Number(text) === 0 ? value.toExponential(Math.max(0, explicit.digits - 1)) : text;
+  }
   const digits = resultDecimals(decimals), magnitude = Math.abs(value);
   if (magnitude === 0) return (0).toFixed(digits);
   const exponent = Math.floor(Math.log10(magnitude));

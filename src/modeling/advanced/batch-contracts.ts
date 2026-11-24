@@ -1,15 +1,15 @@
 import type { Structure } from '../../core/types';
-import type { ChemistryRequest } from '../contracts';
 import type { ComputeResourceEvidence, ComputeResourceSnapshot } from '../resource-preferences';
 import type { XtbRequest, XtbMetadata } from '../xtb/contracts';
-import type { AdvancedForcefieldOptimization, AdvancedOptimizationMethod } from './contracts';
+import type { AdvancedOptimizationMethod } from './contracts';
 import type { AdvancedFrameSource } from './frame-source';
+import type { ConformerOptimizationRequest } from './conformer-shared-optimization';
 
 /** Host batch handles are scoped to a trusted window owner, never filesystem paths. */
 export interface ConformerBatchIdentity { taskId: string; runId: string; stageId: string; revision: number }
 export interface ConformerBatchInput {
   candidateId: string; source: AdvancedFrameSource; originalInput?: AdvancedFrameSource;
-  request?: { backend: 'xtb'; request: XtbRequest } | { backend: 'forcefield'; request: ChemistryRequest };
+  request?: { backend: 'xtb'; request: XtbRequest & ConformerOptimizationRequest } | { backend: 'net'; request: ConformerOptimizationRequest };
 }
 export interface ConformerBatchBegin {
   identity: ConformerBatchIdentity; total: number; method: AdvancedOptimizationMethod;
@@ -18,9 +18,10 @@ export interface ConformerBatchBegin {
   resources?: ComputeResourceSnapshot; metadata?: Record<string, unknown>;
 }
 export interface ConformerBatchResult {
-  structure: Structure; energyHartree: number; metadata?: XtbMetadata; forcefieldOptimization?: AdvancedForcefieldOptimization;
+  structure: Structure; energyHartree: number; metadata?: XtbMetadata;
   identity?: import('../conformers').ConformerCalculationIdentity;
   sessionId?: string; resourceGrant?: ComputeResourceEvidence;
+  sharedOptimization?: import('./conformer-shared-optimization').ConformerSharedOptimizationEvidence;
 }
 export interface ConformerBatchEntry extends ConformerBatchInput {
   index: number; status: 'pending' | 'succeeded' | 'discarded';

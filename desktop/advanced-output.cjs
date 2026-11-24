@@ -1,9 +1,10 @@
 'use strict';
 const nativeFS = require('node:fs/promises');
 const path = require('node:path');
-const { randomUUID } = require('node:crypto');
+const { createHash, randomUUID } = require('node:crypto');
 const { plain } = require('./security.cjs');
 const { failure, hash, identity, directoryIdentity, checkDirectory, readChecked } = require('./portable-storage.cjs');
+const { describeFile, fileChunks, currentStreamFile } = require('./stream-file-publication.cjs');
 
 const ADVANCED_OUTPUT_LIMITS = Object.freeze({ tokenLifetimeMs: 120000 });
 const requireValue = (condition, code, message) => { if (!condition) throw failure(code, message); };
@@ -14,18 +15,25 @@ function basename(name, maximum = 240) {
 }
 function snapshotRequest(request) {
   const direct = plain(request) && request.mode === 'existing-directory';
-  requireValue(plain(request) && (direct ? Object.keys(request).every(key => ['mode','files','reservedNames'].includes(key)) : Object.keys(request).length === 2 && Object.keys(request).every(key => ['directoryName', 'files'].includes(key))),
+  const streamed = plain(request) && request.mode === 'sealed-trajectory';
+  const acceptedKeys = direct ? ['mode', 'files', 'reservedNames'] : streamed ? ['mode', 'directoryName', 'files'] : ['directoryName', 'files'];
+  requireValue(plain(request) && Object.keys(request).every(key => acceptedKeys.includes(key)),
     'ADVANCED_OUTPUT_REQUEST', '文本包请求须包含明确的新目录名称和完整文件清单。');
   if(!direct)basename(request.directoryName, 100);
   requireValue(Array.isArray(request.files) && request.files.length > 0,
     'ADVANCED_OUTPUT_REQUEST', '文本包必须包含完整文件清单。');
   let totalBytes = 0; const names = new Set();
   const files = request.files.map(file => {
-    requireValue(plain(file) && Object.keys(file).length === 2 && Object.keys(file).every(key => ['name', 'text'].includes(key)),
+    requireValue(plain(file) && Object.keys(file).length === 2 && Object.keys(file).every(key => ['name', streamed ? 'assetId' : 'text'].includes(key)),
       'ADVANCED_OUTPUT_REQUEST', '文本包成员只接受名称和完整文本。');
     basename(file.name);
     requireValue(!names.has(file.name.toLowerCase()), 'ADVANCED_OUTPUT_NAME', '文本包文件名称重复，大小写不同也不能覆盖。');
     names.add(file.name.toLowerCase());
+    if (streamed) {
+      requireValue(typeof file.assetId === 'string' && /^[a-f0-9-]{36}$/i.test(file.assetId),
+        'ADVANCED_OUTPUT_REQUEST', '轨迹暂存凭据无效。');
+      return { name: file.name, assetId: file.assetId };
+    }
     requireValue(typeof file.text === 'string', 'ADVANCED_OUTPUT_TEXT', '文本包只接受完整文本。');
     totalBytes += Buffer.byteLength(file.text, 'utf8');
     requireValue(Number.isSafeInteger(totalBytes), 'ADVANCED_OUTPUT_SIZE', '文本包字节数无法安全表示。');
@@ -34,6 +42,12 @@ function snapshotRequest(request) {
     requireValue(bytes.toString('utf8') === file.text, 'ADVANCED_OUTPUT_TEXT', '文本包含不完整Unicode字符，不能静默改写UTF-8内容。');
     return Object.freeze({ name: file.name, text: file.text, bytes: bytes.length, sha256: hash(bytes) });
   });
+  if (streamed) {
+    const stem = files[0]?.name.match(/^(.*)\.(?:xyz|extxyz)$/)?.[1];
+    requireValue(files.length === 2 && stem && files[1].name === `${stem}.manifest.json` && files[0].assetId !== files[1].assetId,
+      'ADVANCED_OUTPUT_REQUEST', '轨迹文本包须包含科学轨迹和对应来源清单。');
+    return { streamed, directoryName: request.directoryName, files, leases: [] };
+  }
   // The validated immutable strings are already the snapshot. Serializing the
   // entire request again duplicates all texts and adds no identity protection.
   const reservedNames = [];
@@ -49,7 +63,7 @@ function snapshotRequest(request) {
 
 /** Owner-bound, sealed text packages. Selection never creates a directory, and
  * write consumes only the host snapshot; renderer text cannot change it later. */
-function createAdvancedOutputStore({ chooseDestination, assertDestination, ownerAlive, fs = nativeFS, now = Date.now }) {
+function createAdvancedOutputStore({ chooseDestination, assertDestination, ownerAlive, takeBinaryAsset, fs = nativeFS, now = Date.now }) {
   requireValue(typeof chooseDestination === 'function' && typeof assertDestination === 'function' && typeof ownerAlive === 'function',
     'ADVANCED_OUTPUT_CONFIGURATION', 'Advanced output host policy is required.');
   const tokens = new Map(), reservations = new Set(), closedOwners = new Set(); let disposed = false;
@@ -58,9 +72,27 @@ function createAdvancedOutputStore({ chooseDestination, assertDestination, owner
       'ADVANCED_OUTPUT_OWNER', '文本包所属窗口已关闭。');
     requireValue(ownerAlive(owner) !== false, 'ADVANCED_OUTPUT_OWNER', '文本包所属窗口已关闭。');
   }
-  function release(record) { reservations.delete(record); }
+  const notifyReleaseFailure = error => console.warn('Advanced output staging release failed:', error);
+  function release(record) {
+    clearTimeout(record.expiryTimer);
+    if (record.releasing) return record.releasing.then(() => release(record));
+    if (!record.leases?.length) { reservations.delete(record); return; }
+    return record.releasing = (async () => {
+      const entries = record.leases.splice(0), settled = await Promise.allSettled(entries.map(lease => lease.close()));
+      settled.forEach((result, i) => { if (result.status === 'rejected') record.leases.push(entries[i]); });
+      const failed = settled.find(result => result.status === 'rejected');
+      if (failed) throw failed.reason;
+      if (!record.leases.length) reservations.delete(record);
+    })().finally(() => { record.releasing = undefined; });
+  }
+  async function expire(token, record) {
+    if (tokens.get(token) !== record) return;
+    record.abandoned = true;
+    try { await release(record); tokens.delete(token); }
+    catch (error) { notifyReleaseFailure(error); }
+  }
   function prune() {
-    for (const [token, record] of tokens) if (record.expiresAt < now()) { tokens.delete(token); release(record); }
+    for (const [token, record] of tokens) if (record.expiresAt < now()) void expire(token, record);
   }
   function reserve(owner, snapshot) {
     prune();
@@ -83,6 +115,24 @@ function createAdvancedOutputStore({ chooseDestination, assertDestination, owner
     active(owner);
     const record = reserve(owner, snapshotRequest(request)); let retained = false;
     try {
+      if (record.streamed) {
+        requireValue(typeof takeBinaryAsset === 'function', 'ADVANCED_OUTPUT_CONFIGURATION', '轨迹暂存服务不可用。');
+        let totalBytes = 0;
+        for (const file of record.files) {
+          const lease = await takeBinaryAsset(owner, file.assetId);
+          record.leases.push(lease);
+          active(owner);
+          const source = await describeFile(lease.path);
+          requireValue(source.parent === lease.parent && source.bytesLength === lease.bytesLength && /^[a-f0-9]{64}$/.test(lease.sha256),
+            'ADVANCED_OUTPUT_TEXT', '轨迹暂存文件身份或校验无效。');
+          Object.assign(file, { source, bytes: lease.bytesLength, sha256: lease.sha256 });
+          totalBytes += file.bytes;
+          requireValue(Number.isSafeInteger(totalBytes), 'ADVANCED_OUTPUT_SIZE', '文本包字节数无法安全表示。');
+          active(owner);
+        }
+        record.manifest = { schema: 'sciyue-advanced-output', version: 1,
+          files: record.files.map(({ name, bytes, sha256 }) => ({ name, bytes, sha256 })), totalBytes };
+      }
       const selected = await chooseDestination(owner, { ...(record.mode?{mode:record.mode}:{directoryName: record.directoryName}),
         files: record.manifest.files, totalBytes: record.manifest.totalBytes }); active(owner);
       if (selected === null || selected === undefined) return { status: 'cancelled' };
@@ -96,17 +146,23 @@ function createAdvancedOutputStore({ chooseDestination, assertDestination, owner
       await checkDirectory(path.dirname(directory), parent, fs); active(owner); policy(owner, directory, record.files);
       const token = randomUUID(), expiresAt = now() + ADVANCED_OUTPUT_LIMITS.tokenLifetimeMs;
       Object.assign(record, { directory, parent, expiresAt, ...(selectedIdentity?{directoryIdentity:selectedIdentity}:{}) }); tokens.set(token, record); retained = true;
+      if (record.streamed) {
+        record.expiryTimer = setTimeout(() => { void expire(token, record); }, ADVANCED_OUTPUT_LIMITS.tokenLifetimeMs);
+        record.expiryTimer.unref?.();
+      }
       return { status: 'selected', token, directory, manifest: record.manifest, expiresAt };
-    } finally { if (!retained) release(record); }
+    } finally { if (!retained) await release(record); }
   }
   async function write(owner, token) {
     active(owner);
     requireValue(typeof token === 'string' && /^[a-f0-9-]{36}$/i.test(token), 'ADVANCED_OUTPUT_TOKEN', '文本包保存确认无效。');
     const record = tokens.get(token);
-    requireValue(record && record.owner === owner, 'ADVANCED_OUTPUT_TOKEN', '文本包确认已消费、过期或属于另一窗口。');
+    requireValue(record && record.owner === owner && !record.abandoned, 'ADVANCED_OUTPUT_TOKEN', '文本包确认已消费、过期或属于另一窗口。');
     // Consume synchronously before the first await: concurrent/repeated writes
     // cannot dispatch the same snapshot twice, including after a failed write.
     tokens.delete(token);
+    clearTimeout(record.expiryTimer);
+    record.writing = true;
     const diagnostic = { directory: record.directory, directoryCreated: false, written: [], tokenConsumed: true };
     const verifyDirectory = async () => {
       policy(owner, record.directory);
@@ -114,17 +170,20 @@ function createAdvancedOutputStore({ chooseDestination, assertDestination, owner
       if (record.directoryIdentity) await checkDirectory(record.directory, record.directoryIdentity, fs);
       active(owner);
     };
-    const verifyFile = async (file, ownedIdentity) => {
+    const verifyFile = async (file, ownedIdentity, verifiedIdentity) => {
       await verifyDirectory();
       const location = path.join(record.directory, file.name); assertDestination(location);
-      const saved = await readChecked(location, Number.MAX_SAFE_INTEGER, fs);
+      // Verify stream bytes once, then compare that exact stat after all members
+      // are written. This reuses the verification without rereading the payload.
+      const saved = verifiedIdentity ? null : file.source
+        ? await currentStreamFile(location) : await readChecked(location, Number.MAX_SAFE_INTEGER, fs);
       const stat = await fs.lstat(location);
       requireValue(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1
         && (!ownedIdentity || `${stat.dev}:${stat.ino}` === ownedIdentity)
-        && identity(stat) === saved.identity
-        && saved.bytes.length === file.bytes && saved.sha256 === file.sha256 && saved.bytes.equals(Buffer.from(file.text, 'utf8')),
+        && (verifiedIdentity ? identity(stat) === verifiedIdentity : saved && identity(stat) === saved.identity && saved.sha256 === file.sha256
+          && (file.source ? saved.bytesLength === file.bytes : saved.bytes.length === file.bytes && saved.bytes.equals(Buffer.from(file.text, 'utf8')))),
       'PORTABLE_PATH_CHANGED', '文本包成员身份或写入字节已变化，未报告保存成功。');
-      await verifyDirectory(); return `${stat.dev}:${stat.ino}`;
+      await verifyDirectory(); return { opened: `${stat.dev}:${stat.ino}`, ...(file.source ? { verified: identity(stat) } : {}) };
     };
     try {
       requireValue(record.expiresAt >= now(), 'ADVANCED_OUTPUT_TOKEN', '文本包保存确认已过期，请重新确认完整清单。');
@@ -142,7 +201,25 @@ function createAdvancedOutputStore({ chooseDestination, assertDestination, owner
         try {
           const opened = await handle.stat(); ownedIdentity = `${opened.dev}:${opened.ino}`;
           requireValue(opened.isFile() && opened.nlink === 1, 'PORTABLE_PATH_CHANGED', '新文本包文件不是独立普通文件。');
-          await verifyDirectory(); await handle.writeFile(Buffer.from(file.text, 'utf8')); await handle.sync();
+          await verifyDirectory();
+          if (file.source) {
+            const digest = createHash('sha256'), decoder = new TextDecoder('utf-8', { fatal: true });
+            let written = 0;
+            for await (const chunk of fileChunks(file.source)) {
+              active(owner);
+              requireValue(!chunk.includes(0), 'ADVANCED_OUTPUT_TEXT', '文本包不能包含二进制内容或NUL。');
+              decoder.decode(chunk, { stream: true });
+              for (let offset = 0; offset < chunk.length;) {
+                const { bytesWritten } = await handle.write(chunk, offset, chunk.length - offset);
+                requireValue(bytesWritten > 0, 'ADVANCED_OUTPUT_WRITE', '轨迹分块写入未完成。');
+                offset += bytesWritten;
+              }
+              digest.update(chunk); written += chunk.length;
+            }
+            decoder.decode();
+            requireValue(written === file.bytes && digest.digest('hex') === file.sha256, 'ADVANCED_OUTPUT_TEXT', '轨迹暂存字节校验失败。');
+          } else await handle.writeFile(Buffer.from(file.text, 'utf8'));
+          await handle.sync();
           diagnostic.partialFile.bytes = (await handle.stat()).size;
         } catch (error) {
           try { diagnostic.partialFile.bytes = (await handle.stat()).size; } catch { /* Preserve the original write failure. */ }
@@ -155,14 +232,18 @@ function createAdvancedOutputStore({ chooseDestination, assertDestination, owner
       // byte edits, hardlinks, or unlisted additions to the new directory.
       await verifyDirectory();
       const members = record.mode?null:await fs.readdir(record.directory);
-      requireValue(!members || members.length === record.files.length && members.every(name => record.files.some(file => file.name === name)),
+      const expectedNames = new Set(identities.keys());
+      requireValue(!members || members.length === record.files.length && members.every(name => expectedNames.has(name)),
         'PORTABLE_PATH_CHANGED', '新文本包目录出现清单外成员，未报告保存成功。');
-      for (const file of record.files) await verifyFile(file, identities.get(file.name));
+      for (const file of record.files) {
+        const { opened, verified } = identities.get(file.name);
+        await verifyFile(file, opened, verified);
+      }
       await verifyDirectory(); return { status: 'saved', directory: record.directory, manifest: record.manifest };
     } catch (cause) {
       const error = cause instanceof Error ? cause : failure('ADVANCED_OUTPUT_FAILED', String(cause));
       error.advancedOutput = diagnostic; throw error;
-    } finally { release(record); }
+    } finally { record.writing = false; await Promise.resolve(release(record)).catch(notifyReleaseFailure); }
   }
   function abandon(owner, token) {
     active(owner);
@@ -172,15 +253,20 @@ function createAdvancedOutputStore({ chooseDestination, assertDestination, owner
     requireValue(record.owner === owner, 'ADVANCED_OUTPUT_TOKEN', '文本包确认属于另一窗口。');
     // Only unconsumed selections are in tokens. A write removes its token before
     // awaiting I/O, so abandoning never releases or changes an in-flight write.
-    tokens.delete(token); release(record);
-    return { released: record.expiresAt >= now() };
+    const result = { released: record.expiresAt >= now() };
+    record.abandoned = true;
+    const closing = release(record);
+    if (closing) return closing.then(() => { tokens.delete(token); return result; });
+    tokens.delete(token); return result;
   }
   function closeOwner(owner) {
     closedOwners.add(owner);
-    for (const [token, record] of tokens) if (record.owner === owner) { tokens.delete(token); release(record); }
+    for (const [token, record] of tokens) if (record.owner === owner) tokens.delete(token);
+    for (const record of reservations) if (record.owner === owner && !record.writing) Promise.resolve(release(record)).catch(notifyReleaseFailure);
   }
   function dispose() {
-    disposed = true; for (const record of tokens.values()) release(record); tokens.clear();
+    disposed = true; tokens.clear();
+    for (const record of reservations) if (!record.writing) Promise.resolve(release(record)).catch(notifyReleaseFailure);
   }
   return { choose, write, abandon, closeOwner, dispose };
 }

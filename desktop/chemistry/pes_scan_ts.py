@@ -15,10 +15,9 @@ from pes_core import BOHR_ANGSTROM, HARTREE_EV, PesCancelled, PesError, atom_num
 
 CONSTRAINT_TOLERANCE = 1e-7
 DIFFERENCE_STEP_BOHR = .002
-FORCE_LIMITS = dict(maxForceHartreePerBohr=.000450, rmsForceHartreePerBohr=.000300)
-DISPLACEMENT_LIMITS = dict(maxDisplacementBohr=.001800, rmsDisplacementBohr=.001200)
 SELLA_PROFILE = 'pes-v222'
 SELLA_CMAX = 1e-5
+ATOM_FORCE_PRESETS = dict(loose=.002500, normal=.000450, tight=.000015)
 
 
 def positive(parameters, key, default, integer=False):
@@ -28,9 +27,22 @@ def positive(parameters, key, default, integer=False):
     return value
 
 
+def atom_force_threshold(parameters, preset_default):
+    preset = parameters.get('convergencePreset', preset_default)
+    preset = 'normal' if preset == 'medium' else preset
+    require(preset in ATOM_FORCE_PRESETS or preset == 'custom', 'Unknown geometry convergence preset')
+    return positive(parameters, 'fmaxHartreePerBohr', ATOM_FORCE_PRESETS.get(preset, ATOM_FORCE_PRESETS[preset_default]))
+
+
 def error_details(error):
     return dict(code=getattr(error, 'code', 'PES_OPTIMIZATION_FAILED'), message=str(error),
                 **({'diagnostics': error.diagnostics} if getattr(error, 'diagnostics', None) else {}))
+
+
+def recoverable_geometry_error(error):
+    return (isinstance(error, CoordinateError)
+            or isinstance(error, PesError)
+            and error.code in ('PES_XTB_SCC', 'PES_XTB_GEOMETRY'))
 
 
 def constraint_valid(space, positions):
@@ -40,10 +52,12 @@ def constraint_valid(space, positions):
 
 def force_metrics(positions, gradient, space):
     projected, dof = space.project_vector(positions, gradient, return_dof=True)
+    gradient_norm = float(np.linalg.norm(projected))
     return dict(
         maxForceHartreePerBohr=float(np.max(np.abs(projected))),
-        rmsForceHartreePerBohr=float(np.linalg.norm(projected) / math.sqrt(dof)) if dof else 0.0,
+        rmsForceHartreePerBohr=gradient_norm / math.sqrt(dof) if dof else 0.0,
         maxAtomForceHartreePerBohr=float(np.linalg.norm(projected, axis=1).max()),
+        gradientNormHartreePerBohr=gradient_norm,
         effectiveDegreesOfFreedom=dof,
     )
 
@@ -63,8 +77,10 @@ def convergence(positions, gradient, space, displacement=None):
     return result
 
 
-def meets_limits(metrics, limits):
-    return metrics['constraintsSatisfied'] and all(metrics[key] <= value for key, value in limits.items())
+def atom_force_convergence(positions, raw, space, threshold, displacement=None):
+    metrics = convergence(positions, raw['gradientHartreePerBohr'], space, displacement)
+    metrics['fmaxHartreePerBohr'] = threshold
+    return metrics, metrics['constraintsSatisfied'] and metrics['maxAtomForceHartreePerBohr'] <= threshold
 
 
 def bounded_move(space, before, trial, maximum):
@@ -84,14 +100,19 @@ def bounded_move(space, before, trial, maximum):
     raise CoordinateError('Could not retract the trial step within the maximum atomic displacement')
 
 
-def relax(positions, ctx, space, max_steps, limits=None, observe=None):
+def relax(positions, ctx, space, max_steps, threshold=ATOM_FORCE_PRESETS['loose'], observe=None):
     """Run SLSQP on movable XYZ variables, preserving the last feasible E/G."""
-    limits = limits or FORCE_LIMITS
     start = space.project(positions)
     initial = ctx.evaluate(start)
     best = [start, initial]
+    iterations = 0
+
+    class PointConverged(Exception):
+        pass
 
     def observe_candidate(x):
+        nonlocal iterations
+        iterations += 1
         ctx.check_cancelled()
         candidate = space.expand(x)
         if constraint_valid(space, candidate):
@@ -99,6 +120,8 @@ def relax(positions, ctx, space, max_steps, limits=None, observe=None):
             best[:] = candidate, raw
             if observe:
                 observe(candidate, raw)
+            if atom_force_convergence(candidate, raw, space, threshold)[1]:
+                raise PointConverged
 
     _, jacobian = space.equations_at(start)
     jacobian = jacobian[:, space.free]
@@ -122,33 +145,97 @@ def relax(positions, ctx, space, max_steps, limits=None, observe=None):
         return space.equations_at(space.expand(x))[1][selected][:, space.free] / row_norms[selected, None]
 
     def pack(final, raw, optimizer):
-        metrics = convergence(final, raw['gradientHartreePerBohr'], space)
+        metrics, converged = atom_force_convergence(final, raw, space, threshold)
         return dict(positions=final, energyHartree=raw['energyHartree'], convergence=metrics,
-                    converged=meets_limits(metrics, limits), optimizer=optimizer)
+                    converged=converged, optimizer=optimizer)
 
-    if meets_limits(convergence(start, initial['gradientHartreePerBohr'], space), limits):
+    if atom_force_convergence(start, initial, space, threshold)[1]:
         return pack(start, initial, dict(steps=0, success=True, message='Initial geometry satisfies the thresholds'))
-    optimization = None
     try:
         constraints = [dict(type='eq', fun=equalities, jac=equalities_jacobian)] if len(selected) else []
-        target_accuracy = min(1e-11, (min(limits.values()) / BOHR_ANGSTROM)**2 * .001)
+        target_accuracy = min(1e-11, (threshold / BOHR_ANGSTROM)**2 * .001)
         optimization = minimize(objective, start.ravel()[space.free], jac=True, constraints=constraints,
                                 method='SLSQP', callback=observe_candidate,
                                 options=dict(maxiter=max_steps, ftol=target_accuracy))
         final = space.project(space.expand(optimization.x))
         best[:] = final, ctx.evaluate(final)
+    except PointConverged:
+        return pack(*best, dict(steps=iterations, success=True, message='Projected force threshold reached'))
     except (CoordinateError, PesError) as error:
         if isinstance(error, PesCancelled):
             return dict(pack(*best, dict(steps=None, success=False, message=str(error))),
                         converged=False, stopped=True)
-        if isinstance(error, PesError) and error.code not in ('PES_XTB_SCC', 'PES_XTB_GEOMETRY'):
+        if isinstance(error, PesError) and not recoverable_geometry_error(error):
             raise
         return dict(pack(*best, dict(steps=None, success=False, message=str(error))),
                     converged=False, warning=error_details(error))
     metadata = dict(steps=int(optimization.nit), success=bool(optimization.success), message=str(optimization.message))
-    result = pack(*best, metadata)
-    result['converged'] = result['converged'] and metadata['success']
-    return result
+    return pack(*best, metadata)
+
+
+def relax_projected(positions, ctx, space, max_steps, threshold, maximum, observe, algorithm):
+    positions = space.project(positions)
+    raw = ctx.evaluate(positions)
+    displacement = np.zeros_like(positions)
+    completed, reason, warning = 0, 'step-limit', None
+    metadata = dict(name=algorithm, coordinateSystem='xyz')
+    with ExitStack() as resources:
+        if algorithm == 'fire2':
+            from ase.optimize import FIRE2
+
+            atoms = ase_atoms(ctx, positions)
+            attach_constraints(atoms, space, maximum)
+            optimizer = resources.enter_context(FIRE2(atoms, logfile=None, maxstep=maximum))
+            metadata['version'] = version('ase')
+
+            def step():
+                optimizer.step()
+                trial = atoms.positions.copy()
+                if not np.isfinite(trial).all() or not constraint_valid(space, trial):
+                    raise CoordinateError('FIRE2 SCAN proposal violated its exact constraints')
+                evaluated = ctx.evaluate(trial)
+                optimizer.nsteps += 1
+                return trial, evaluated
+        else:
+            from pes_opt import ProjectedLBFGS
+
+            optimizer = ProjectedLBFGS(ctx, space, maximum)
+
+            def step():
+                return optimizer.step(positions, raw)
+
+        for index in range(max_steps + 1):
+            metrics, converged = atom_force_convergence(positions, raw, space, threshold, displacement)
+            if converged:
+                reason = 'converged'
+                break
+            if index == max_steps:
+                break
+            try:
+                ctx.check_cancelled()
+                next_positions, next_raw = step()
+            except PesCancelled:
+                reason = 'stopped'
+                break
+            except (CoordinateError, PesError) as error:
+                line_search = getattr(error, 'code', None) == 'PES_OPT_LINE_SEARCH'
+                if not line_search and not recoverable_geometry_error(error):
+                    raise
+                warning = error_details(error)
+                reason = 'no-feasible-step' if line_search else 'evaluation-failed'
+                break
+            displacement = next_positions - positions
+            if not np.any(displacement):
+                reason = 'no-feasible-step'
+                break
+            positions, raw = next_positions, next_raw
+            completed += 1
+            if observe:
+                observe(positions, raw)
+    return dict(positions=positions, energyHartree=raw['energyHartree'], convergence=metrics,
+                converged=reason == 'converged', stopped=reason == 'stopped',
+                failed=reason == 'evaluation-failed', warning=warning,
+                optimizer=dict(metadata, steps=completed, terminationReason=reason))
 
 
 def scan_sequence(axes):
@@ -167,17 +254,19 @@ def coordinate_parameter(parameters, coordinates, positions):
 
 def run_scan(request, ctx):
     parameters = request['parameters']
-    modern = request['algorithm'] == 'sella-scan'
-    require(request['algorithm'] in ('slsqp', 'sella-scan'), 'Unsupported SCAN optimizer')
-    if modern:
+    algorithm = request['algorithm']
+    sella = algorithm == 'sella-scan'
+    projected = algorithm in ('lbfgs-scan', 'fire2-scan')
+    require(sella or projected or algorithm == 'slsqp', 'Unsupported SCAN optimizer')
+    require(ctx.constraints.geometry is None or projected, 'Fixed-cell SCAN requires L-BFGS or FIRE2')
+    if sella:
         require(parameters.get('executionProfile') == SELLA_PROFILE, 'Sella SCAN requires the pes-v222 execution profile')
-    coordinate_system = parameters.get('coordinateSystem', 'ric') if modern else 'xyz'
+    coordinate_system = parameters.get('coordinateSystem', 'ric') if sella else 'xyz'
     require(coordinate_system in ('xyz', 'ric'), 'Unsupported Sella coordinate system')
     definitions = parameters.get('axes', ())
     require(len(definitions) in (1, 2), 'SCAN requires one or two axes')
     steps = positive(parameters, 'maxSteps', 200, integer=True)
-    limits = ({'fmaxHartreePerBohr': positive(parameters, 'fmaxHartreePerBohr', .0025)} if modern else
-              {key: positive(parameters, key, default) for key, default in FORCE_LIMITS.items()})
+    threshold = atom_force_threshold(parameters, 'loose')
     previous = ctx.constraints.project(ctx.initial)
     expressions = [coordinate_parameter(axis, ctx.coordinates, previous) for axis in definitions]
     axes = []
@@ -193,8 +282,8 @@ def run_scan(request, ctx):
                 'A dihedral scan needs adjacent targets separated by less than 180 degrees')
         axes.append(np.linspace(start, end, points))
     if len(axes) == 2:
-        tangent = ctx.constraints.tangent(previous)
-        jacobian = np.array([expression.gradient(previous).ravel() @ tangent for expression in expressions])
+        jacobian = np.array([ctx.constraints.project_vector(previous, expression.gradient(previous)).ravel()
+                             for expression in expressions])
         require(np.linalg.matrix_rank(jacobian / np.linalg.norm(jacobian, axis=1)[:, None]) == 2,
                 'SCAN axes must be independent in the available constraint space')
 
@@ -216,11 +305,15 @@ def run_scan(request, ctx):
             space = ctx.constraints.with_equations(equations)
             def observe(_, __):
                 ctx.emit('progress', dict(phase='scan', completed=step, total=total, pointIndex=step))
-            if modern:
-                result = relax_sella(previous, ctx, space, steps, limits['fmaxHartreePerBohr'], observe,
+            if projected:
+                result = relax_projected(previous, ctx, space, steps, threshold,
+                                         positive(parameters, 'maxStepAngstrom', .1), observe,
+                                         algorithm.removesuffix('-scan'))
+            elif sella:
+                result = relax_sella(previous, ctx, space, steps, threshold, observe,
                                      coordinate_system=coordinate_system)
             else:
-                result = relax(previous, ctx, space, steps, limits, observe)
+                result = relax(previous, ctx, space, steps, threshold, observe)
             previous = result['positions']
             status = ('stopped' if result.get('stopped') else 'failed' if result.get('failed') else
                       'converged' if result['converged'] else 'unconverged')
@@ -236,7 +329,7 @@ def run_scan(request, ctx):
             record.update(status=status, energyHartree=point['energyHartree'], actual=values, frameId=point['id'])
             if result.get('warning'):
                 record['error' if result.get('failed') else 'warning'] = result['warning']
-            if modern:
+            if sella or projected:
                 record['terminationReason'] = result['optimizer']['terminationReason']
                 record['optimizer'] = result['optimizer']
             frames.append(point)
@@ -253,7 +346,7 @@ def run_scan(request, ctx):
             record['error'] = error_details(error)
         except PesError as error:
             record['error'] = error_details(error)
-            if error.code not in ('PES_XTB_SCC', 'PES_XTB_GEOMETRY'):
+            if not recoverable_geometry_error(error):
                 failure = record['error']
                 keep_point(record)
                 terminal = 'partial' if frames else 'failed'
@@ -269,38 +362,48 @@ def run_scan(request, ctx):
                             energyHartree=None, status='missing'))
     if terminal == 'completed' and any(record['status'] != 'converged' for record in records):
         terminal = 'partial' if frames else 'failed'
-    provenance = dict(ctx.provenance(), optimizer='sella' if modern else 'scipy-slsqp',
+    provenance = dict(ctx.provenance(), optimizer=algorithm.removesuffix('-scan') if algorithm != 'slsqp' else 'scipy-slsqp',
                       traversal='ascending-first-axis-and-serpentine-second-axis',
                       continuation='last-feasible-geometry', pointCount=total,
-                      forceThresholds=limits, coordinateUnits=[expression.unit for expression in expressions])
-    if modern:
+                      forceThresholds={'fmaxHartreePerBohr': threshold},
+                      coordinateUnits=[expression.unit for expression in expressions],
+                      coordinateSystem=coordinate_system, maxStepsPerPoint=steps,
+                      convergencePreset=parameters.get('convergencePreset', 'loose'),
+                      convergenceCriterion=('sella-max-atom-projected-force-and-exact-equalities' if sella else
+                                            'max-atom-projected-force-and-exact-equalities'))
+    if sella:
         used = any(record.get('optimizer', {}).get('initialized', False) for record in processed_records)
         provenance['optimizer'] = 'sella' if used else 'none'
         provenance.update(executionProfile=SELLA_PROFILE, optimizerVersion=version('sella'), order=0,
                           requestedOptimizer='sella', optimizerInitialized=used,
                           optimizerStepCount=sum(record.get('optimizer', {}).get('steps', 0) for record in processed_records),
-                          coordinateSystem=coordinate_system, maxStepsPerPoint=steps,
-                          convergencePreset=parameters.get('convergencePreset', 'custom'),
-                          convergenceCriterion='sella-max-atom-projected-force-and-exact-equalities',
                           nativeConstraintNormTolerance=SELLA_CMAX, nativeConstraintNormRole='diagnostic',
                           formalConstraintTolerance=CONSTRAINT_TOLERANCE,
                           constraintNormalization='one source unit per equation; fixed XYZ in angstrom')
-    else:
+    elif algorithm == 'fire2-scan':
+        provenance['optimizerVersion'] = version('ase')
+    elif algorithm == 'slsqp':
         provenance['scipyVersion'] = version('scipy')
     return dict(frames=frames, series=[dict(id='scan', label='SCAN', frameIds=[row['id'] for row in frames])],
                 points=processed_records, scanPoints=records, status=terminal, provenance=provenance,
                 **({'error': failure} if failure else {}))
 
 
-def physical_hessian(positions, ctx, phase, step=DIFFERENCE_STEP_BOHR):
-    """Central differences of the unprojected physical gradient, in Eh/Bohr²."""
+def physical_hessian(positions, ctx, phase, step=None):
+    """Physical Cartesian Hessian in Eh/Bohr², on movable coordinates for PBC."""
+    request = getattr(ctx, 'request', {})
+    space = getattr(ctx, 'constraints', None)
+    periodic = getattr(space, 'geometry', None) is not None
+    if step is None:
+        step = positive(request.get('parameters', {}), 'hessianStepBohr', DIFFERENCE_STEP_BOHR)
     geometry = np.asarray(positions, dtype=float)
-    dimensions = geometry.size
+    columns = space.free if periodic else np.arange(geometry.size)
+    dimensions = len(columns)
     ctx.last_hessian = dict(derivativeMethod='central-unprojected-physical-gradient-difference',
                             displacementBohr=step, derivativeEvaluations=2 * dimensions,
                             nativeHessianCalls=0)
     provider = getattr(ctx, 'physical_hessian', None)
-    if provider is not None:
+    if provider is not None and not periodic:
         ctx.emit('progress', dict(phase=phase))
         result = provider(geometry, step)
         if result is not None:
@@ -309,21 +412,32 @@ def physical_hessian(positions, ctx, phase, step=DIFFERENCE_STEP_BOHR):
     delta = step * BOHR_ANGSTROM
     completed = 0
     ctx.emit('progress', dict(phase=phase, completed=completed, total=2 * dimensions))
-    for column in range(dimensions):
+    for index, column in enumerate(columns):
         gradients = []
         for sign in (1., -1.):
             displaced = geometry.copy()
             displaced.flat[column] += sign * delta
-            gradients.append(ctx.evaluate(displaced)['gradientHartreePerBohr'].ravel())
+            gradients.append(ctx.evaluate(displaced)['gradientHartreePerBohr'].ravel()[columns])
             completed += 1
             ctx.emit('progress', dict(phase=phase, completed=completed, total=2 * dimensions))
-        hessian[:, column] = (gradients[0] - gradients[1]) / (2 * step)
-    asymmetry = float(np.max(np.abs(hessian - hessian.T)))
+        hessian[:, index] = (gradients[0] - gradients[1]) / (2 * step)
+    asymmetry = float(np.max(np.abs(hessian - hessian.T), initial=0.))
     ctx.last_hessian['maximumRawAntisymmetryHartreePerBohr2'] = asymmetry
     return .5 * (hessian + hessian.T), asymmetry
 
 
-def lagrangian_hessian(hessian, positions, gradient, space):
+def hessian_for_optimizer(matrix, space):
+    """Sella takes a full XYZ matrix. Frozen rows get no movable coupling."""
+    dimensions = space.reference.size
+    if matrix.shape == (dimensions, dimensions):
+        return matrix
+    require(matrix.shape == (len(space.free),) * 2, 'Hessian does not match the current Cartesian freedoms')
+    full = np.zeros((dimensions, dimensions))
+    full[np.ix_(space.free, space.free)] = matrix
+    return full
+
+
+def lagrangian_hessian(hessian, positions, gradient, space, *, active_only=False):
     """Remove the equality curvature from the physical Hessian before projection."""
     if not space.equations:
         return hessian
@@ -332,23 +446,26 @@ def lagrangian_hessian(hessian, positions, gradient, space):
     multipliers = np.linalg.lstsq(jacobian.T, gradient.ravel()[space.free], rcond=None)[0]
     curvature = np.zeros_like(hessian)
     delta = DIFFERENCE_STEP_BOHR * BOHR_ANGSTROM
-    for column in space.free:
+    for index, column in enumerate(space.free):
         plus, minus = positions.copy(), positions.copy()
         plus.flat[column] += delta
         minus.flat[column] -= delta
         derivative = space.equations_at(plus)[1] - space.equations_at(minus)[1]
-        curvature[:, column] = multipliers @ derivative * BOHR_ANGSTROM / (2 * DIFFERENCE_STEP_BOHR)
+        if active_only:
+            derivative = derivative[:, space.free]
+        curvature[:, index if active_only else column] = multipliers @ derivative * BOHR_ANGSTROM / (2 * DIFFERENCE_STEP_BOHR)
     return hessian - .5 * (curvature + curvature.T)
 
 
-def vibrational_space(positions, masses, tangent):
+def vibrational_space(positions, masses, tangent, *, periodic=False):
     """Mass-weighted free tangent, with only allowed rigid motions removed."""
     mass_sqrt = np.repeat(np.sqrt(masses), 3)
     free = orth(mass_sqrt[:, None] * tangent)
-    center = np.average(positions, axis=0, weights=masses)
-    relative = positions - center
     motions = [np.broadcast_to(axis, positions.shape).ravel() for axis in np.eye(3)]
-    motions.extend(np.cross(axis, relative).ravel() for axis in np.eye(3))
+    if not periodic:
+        center = np.average(positions, axis=0, weights=masses)
+        relative = positions - center
+        motions.extend(np.cross(axis, relative).ravel() for axis in np.eye(3))
     rigid = orth(mass_sqrt[:, None] * np.array(motions).T)
     residual = rigid - free @ (free.T @ rigid)
     _, singular_values, vt = np.linalg.svd(residual, full_matrices=False)
@@ -360,10 +477,14 @@ def vibrational_space(positions, masses, tangent):
 def harmonic_result(positions, raw, hessian, asymmetry, ctx, frame_id):
     from ase.data import atomic_masses
     space = ctx.constraints
+    periodic = space.geometry is not None
     tangent = space.tangent(positions)
-    lagrangian = lagrangian_hessian(hessian, positions, raw['gradientHartreePerBohr'], space)
-    mass_basis, rigid_modes = vibrational_space(positions, atomic_masses[atom_numbers(ctx.request)], tangent)
-    weighted = mass_basis.T @ lagrangian @ mass_basis
+    lagrangian = lagrangian_hessian(hessian, positions, raw['gradientHartreePerBohr'], space, active_only=periodic)
+    mass_basis, rigid_modes = vibrational_space(positions, atomic_masses[atom_numbers(ctx.request)], tangent,
+                                                periodic=periodic)
+    active_basis = mass_basis[space.free] if periodic else mass_basis
+    active_tangent = tangent[space.free] if periodic else tangent
+    weighted = active_basis.T @ lagrangian @ active_basis
     eigenvalues, eigenvectors = np.linalg.eigh(weighted)
     eh = physical_constants['Hartree energy'][0]
     bohr = physical_constants['Bohr radius'][0]
@@ -380,7 +501,7 @@ def harmonic_result(positions, raw, hessian, asymmetry, ctx, frame_id):
         frameId=frame_id,
         geometryAngstrom=positions.tolist(),
         matrixHartreePerBohr2=hessian.tolist(),
-        projectedMatrixHartreePerBohr2=(tangent.T @ lagrangian @ tangent).tolist(),
+        projectedMatrixHartreePerBohr2=(active_tangent.T @ lagrangian @ active_tangent).tolist(),
         projectedDegreesOfFreedom=tangent.shape[1],
         vibrationalDegreesOfFreedom=len(frequencies),
         removedRigidModes=rigid_modes,
@@ -389,6 +510,10 @@ def harmonic_result(positions, raw, hessian, asymmetry, ctx, frame_id):
         constraints=space.residuals(positions),
         frozenAtomIds=[atom_id for atom_id, fixed in zip(ctx.atom_ids, space.frozen) if fixed],
     )
+    if periodic:
+        matrix_space = (dict(kind='cartesian-full') if len(space.free) == positions.size else
+                        dict(kind='cartesian-active', activeDofs=space.free.tolist()))
+        evidence.update(space=matrix_space, cell=ctx.request['structure']['cell'])
     evidence.update(getattr(ctx, 'last_hessian', None) or dict(
         derivativeMethod='central-unprojected-physical-gradient-difference',
         displacementBohr=DIFFERENCE_STEP_BOHR, maximumRawAntisymmetryHartreePerBohr2=asymmetry))
@@ -429,7 +554,9 @@ def ase_atoms(ctx, positions):
             self.results = dict(energy=raw['energyHartree'] * HARTREE_EV,
                                 forces=-raw['gradientHartreePerBohr'] * HARTREE_EV / BOHR_ANGSTROM)
 
-    atoms = Atoms(numbers=atom_numbers(ctx.request), positions=positions)
+    cell = ctx.request['structure'].get('cell')
+    atoms = Atoms(numbers=atom_numbers(ctx.request), positions=positions,
+                  **(dict(cell=cell['vectors'], pbc=cell['pbc']) if cell else {}))
     atoms.calc = PhysicalCalculator()
     return atoms
 
@@ -450,7 +577,7 @@ def sella_optimizer(ctx, atoms, algorithm, strategy, maximum, *, space=None,
             centroid_fixed = True
             constraints.fix_translation(expression.indices, dim=expression.component, target=target)
             continue
-        if modern:
+        if modern or any(np.any(offsets) for offsets in expression.offsets.values()):
             expression = expression.rebase(atoms.positions)
             if expression.periodic:
                 current = expression.value(atoms.positions)
@@ -538,7 +665,8 @@ def sella_optimizer(ctx, atoms, algorithm, strategy, maximum, *, space=None,
                                       accepted.get('magnitude', magnitude) if modern else magnitude)
 
     rigid_gauge = not np.any(space.frozen) and not centroid_fixed
-    gauge = dict(proj_trans=rigid_gauge, proj_rot=rigid_gauge) if coordinate_system == 'xyz' else {}
+    gauge = (dict(proj_trans=rigid_gauge, proj_rot=rigid_gauge and not np.any(atoms.pbc))
+             if coordinate_system == 'xyz' else {})
     optimizer = ConstrainedSella(atoms, logfile=None, order=order, method=algorithm, constraints=constraints,
                                 internal=coordinate_system == 'ric', rs='mis' if coordinate_system == 'ric' else 'ras',
                                 delta0=maximum, max_cpu_threads=ctx.request.get('threads', 1), **gauge)
@@ -547,7 +675,7 @@ def sella_optimizer(ctx, atoms, algorithm, strategy, maximum, *, space=None,
     return optimizer
 
 
-def sella_convergence(optimizer, positions, raw, space, threshold, displacement=None):
+def sella_convergence(optimizer, positions, raw, space, threshold, displacement=None, *, inclusive=False):
     """Actual Sella max-atom force plus the original per-equation contract.
 
     The native cmax is a norm of residuals, and is recorded as a diagnostic;
@@ -560,14 +688,17 @@ def sella_convergence(optimizer, positions, raw, space, threshold, displacement=
     fmax = float(native[1]) * BOHR_ANGSTROM / HARTREE_EV
     metrics.update(sellaMaxAtomForceHartreePerBohr=fmax,
                    sellaNativeConstraintResidualNorm=float(native[2]),
-                   sellaNativeConverged=bool(native[0]),
-                   fmaxHartreePerBohr=threshold)
-    return metrics, bool(metrics['constraintsSatisfied'] and np.isfinite(fmax) and fmax < threshold)
+                   sellaNativeConverged=bool(native[0]))
+    metrics['fmaxHartreePerBohr'] = threshold
+    within_threshold = fmax <= threshold if inclusive else fmax < threshold
+    return metrics, bool(metrics['constraintsSatisfied'] and np.isfinite(fmax) and within_threshold)
 
 
 def relax_sella(positions, ctx, space, max_steps, threshold, observe=None, *, coordinate_system='ric'):
     """One finite order=0 run. Its last valid E/G can seed the next point."""
     start = space.project(positions)
+    if not np.isfinite(start).all() or not constraint_valid(space, start):
+        raise CoordinateError('Sella SCAN initial geometry did not satisfy exact constraints')
     raw = ctx.evaluate(start)
     best = [start.copy(), raw]
     metadata = dict(name='sella', version=version('sella'), order=0, coordinateSystem=coordinate_system,
@@ -582,10 +713,11 @@ def relax_sella(positions, ctx, space, max_steps, threshold, observe=None, *, co
             for index in range(max_steps + 1):
                 ctx.check_cancelled()
                 current = atoms.positions.copy()
-                require(np.isfinite(current).all() and constraint_valid(space, current),
-                        'Sella SCAN geometry did not satisfy exact constraints')
+                if not np.isfinite(current).all() or not constraint_valid(space, current):
+                    raise CoordinateError('Sella SCAN geometry did not satisfy exact constraints')
                 raw = ctx.evaluate(current)
-                metrics, optimized = sella_convergence(optimizer, current, raw, space, threshold)
+                metrics, optimized = sella_convergence(optimizer, current, raw, space, threshold,
+                                                       inclusive=True)
                 best[:] = current.copy(), raw
                 metadata.update(steps=index, success=optimized)
                 if optimized:
@@ -596,7 +728,7 @@ def relax_sella(positions, ctx, space, max_steps, threshold, observe=None, *, co
                 optimizer.step()
                 optimizer.nsteps += 1
                 accepted = atoms.positions.copy()
-                if constraint_valid(space, accepted) and np.isfinite(accepted).all():
+                if np.isfinite(accepted).all() and constraint_valid(space, accepted):
                     accepted_raw = ctx.evaluate(accepted)
                     best[:] = accepted.copy(), accepted_raw
                     if observe:
@@ -609,7 +741,7 @@ def relax_sella(positions, ctx, space, max_steps, threshold, observe=None, *, co
         if isinstance(error, PesCancelled):
             return dict(positions=best[0], energyHartree=best[1]['energyHartree'], convergence=convergence(best[0], best[1]['gradientHartreePerBohr'], space),
                         converged=False, stopped=True, optimizer=metadata)
-        if isinstance(error, PesError) and error.code not in ('PES_XTB_SCC', 'PES_XTB_GEOMETRY'):
+        if isinstance(error, PesError) and not recoverable_geometry_error(error):
             raise
         return dict(positions=best[0], energyHartree=best[1]['energyHartree'], convergence=convergence(best[0], best[1]['gradientHartreePerBohr'], space),
                     converged=False, failed=True, warning=error_details(error), optimizer=metadata)
@@ -646,7 +778,8 @@ def dimer_optimizer(ctx, atoms, maximum, resources):
     seed = ctx.request['parameters'].get('seed', 1)
     require(type(seed) is int and 0 <= seed < 2**32, 'Dimer seed must be an unsigned 32-bit integer')
     basis = space.tangent(atoms.positions)
-    modes, _ = vibrational_space(atoms.positions, atoms.get_masses(), basis)
+    modes, _ = vibrational_space(atoms.positions, atoms.get_masses(), basis,
+                                 periodic=ctx.constraints.geometry is not None)
     require(modes.shape[1] > 0, 'Dimer has no movable nonrigid degree of freedom')
     mode = modes @ np.random.default_rng(seed).normal(size=modes.shape[1])
     mode = (mode / np.linalg.norm(mode)).reshape(-1, 3)
@@ -667,7 +800,7 @@ def dimer_optimizer(ctx, atoms, maximum, resources):
     return step
 
 
-def climbing_optimizer(ctx, atoms, maximum, limits, resources):
+def climbing_optimizer(ctx, atoms, maximum, threshold, resources):
     from ase.optimize import BFGS
     space = ctx.constraints
     expression = coordinate_parameter(ctx.request['parameters'], ctx.coordinates, atoms.positions)
@@ -683,10 +816,9 @@ def climbing_optimizer(ctx, atoms, maximum, limits, resources):
         local_space = space.with_equations([('climb', expression, target)])
         if relaxer is None:
             relaxer = BFGS(atoms, logfile=None, maxstep=maximum)
-        raw_gradient = ctx.evaluate(before)['gradientHartreePerBohr']
-        local_metrics = convergence(before, raw_gradient, local_space)
-        force_limits = {key: limits[key] for key in FORCE_LIMITS}
-        if not meets_limits(local_metrics, force_limits):
+        raw = ctx.evaluate(before)
+        raw_gradient = raw['gradientHartreePerBohr']
+        if not atom_force_convergence(before, raw, local_space, threshold)[1]:
             attach_constraints(atoms, local_space, maximum)
             relaxer.step()
             return dict(climbStage='orthogonal-relaxation', cv=[expression.value(atoms.positions)])
@@ -731,9 +863,7 @@ def run_ts(request, ctx):
     recalc = positive(parameters, 'recalcInterval', 5, integer=True) if strategy == 'recalcfc' else None
     max_steps = positive(parameters, 'maxSteps', 200, integer=True)
     maximum = positive(parameters, 'maxStepAngstrom', .10)
-    limits = ({'fmaxHartreePerBohr': positive(parameters, 'fmaxHartreePerBohr', .00045)} if modern else
-              {key: positive(parameters, key, default)
-               for key, default in (FORCE_LIMITS | DISPLACEMENT_LIMITS).items()})
+    threshold = atom_force_threshold(parameters, 'normal')
     positions = ctx.constraints.project(ctx.initial)
     require(ctx.constraints.tangent(positions).shape[1] > 0, 'TS has no movable coordinate')
     initial_projected = not np.array_equal(positions, ctx.initial)
@@ -765,7 +895,7 @@ def run_ts(request, ctx):
                     nonlocal exact
                     matrix, asymmetry = physical_hessian(atoms.positions, ctx, 'initial-hessian' if step == 0 else 'recalculate-hessian')
                     optimizer.pes.get_g()
-                    installed = matrix * HARTREE_EV / BOHR_ANGSTROM**2
+                    installed = hessian_for_optimizer(matrix, ctx.constraints) * HARTREE_EV / BOHR_ANGSTROM**2
                     if optimizer.pes.int is not None:
                         # Sella performs B^-T (Hcart - internal curvature) B^-1
                         # and reconstructs the redundant internal subspace.
@@ -791,40 +921,30 @@ def run_ts(request, ctx):
                 if algorithm == 'dimer':
                     step = dimer_optimizer(ctx, atoms, maximum, resources)
                 else:
-                    step = climbing_optimizer(ctx, atoms, maximum, limits, resources)
+                    step = climbing_optimizer(ctx, atoms, maximum, threshold, resources)
+
+            def current_convergence(current, evaluated, displacement=None):
+                if is_sella:
+                    return sella_convergence(optimizer, current, evaluated, ctx.constraints, threshold, displacement)
+                return atom_force_convergence(current, evaluated, ctx.constraints, threshold, displacement)
 
             for index in range(1, max_steps + 1):
                 ctx.check_cancelled()
                 before = atoms.positions.copy()
-                raw_before = ctx.evaluate(before)
-                projected = ctx.constraints.project_vector(before, raw_before['gradientHartreePerBohr'])
-                if modern:
-                    check, ready = sella_convergence(optimizer, before, raw_before, ctx.constraints,
-                                                     limits['fmaxHartreePerBohr'], np.zeros_like(before))
+                if index == 1:
+                    raw_before = ctx.evaluate(before)
+                    check, ready = current_convergence(before, raw_before)
                     if ready:
                         positions, raw = before, raw_before
                         stationary_verification, optimized = check, True
                         identification = 'frequency-incomplete'
                         break
-                # No optimizer step exists at an exactly stationary point.
-                if np.linalg.norm(projected) <= 1e-14:
-                    stationary_verification = convergence(before, raw_before['gradientHartreePerBohr'],
-                                                          ctx.constraints, np.zeros_like(before))
-                    optimized = (ready if modern else meets_limits(stationary_verification, limits))
-                    if optimized:
-                        identification = 'frequency-incomplete'
-                    break
                 optimizer_details = step()
                 positions = atoms.positions.copy()
                 require(np.isfinite(positions).all() and constraint_valid(ctx.constraints, positions),
                         'TS trial did not satisfy the frozen coordinates and internal constraints')
                 raw = ctx.evaluate(positions)
-                if modern:
-                    metrics, optimized = sella_convergence(optimizer, positions, raw, ctx.constraints,
-                                                           limits['fmaxHartreePerBohr'], positions - before)
-                else:
-                    metrics = convergence(positions, raw['gradientHartreePerBohr'], ctx.constraints, positions - before)
-                    optimized = meets_limits(metrics, limits)
+                metrics, optimized = current_convergence(positions, raw, positions - before)
                 if optimized:
                     identification = 'frequency-incomplete'
                 if np.array_equal(positions, before):
@@ -870,14 +990,16 @@ def run_ts(request, ctx):
                   provenance=dict(ctx.provenance(), optimizer=optimizer_name, optimizerVersion=optimizer_version,
                                   algorithm=algorithm, hessianStrategy=strategy, recalcInterval=recalc,
                                   hessianEvents=hessian_events, inputProjectedToConstraints=initial_projected,
-                                  maxSteps=max_steps, maxStepAngstrom=maximum, convergenceThresholds=limits,
+                                  maxSteps=max_steps, maxStepAngstrom=maximum,
+                                  convergenceThresholds={'fmaxHartreePerBohr': threshold},
+                                  convergencePreset=parameters.get('convergencePreset', 'normal'),
+                                  convergenceCriterion=('sella-max-atom-projected-force-and-exact-equalities' if is_sella else
+                                                        'max-atom-projected-force-and-exact-equalities'),
                                   convergenceCoordinates='constraint-tangent-cartesian'))
     if modern:
         result['provenance']['optimizer'] = 'sella' if optimizer_initialized else 'none'
         result['provenance'].update(executionProfile=SELLA_PROFILE, coordinateSystem=coordinate_system, order=1,
                                     requestedOptimizer='sella', optimizerInitialized=optimizer_initialized,
-                                    convergencePreset=parameters.get('convergencePreset', 'custom'),
-                                    convergenceCriterion='sella-max-atom-projected-force-and-exact-equalities',
                                     nativeConstraintNormTolerance=SELLA_CMAX, nativeConstraintNormRole='diagnostic',
                                     formalConstraintTolerance=CONSTRAINT_TOLERANCE,
                                     constraintNormalization='one source unit per equation; fixed XYZ in angstrom')

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,useProjectUiRestored,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,useProjectUiRestored,projectUiSourceIdentity} from '../../projects/ui-state';
 import {useAnalysisProjectSnapshot,loadAnalysisProjectSnapshot} from '../../projects/analysis-state';
 import type { Structure } from '../../core/types';
 import type {MeasurementRecord} from '../../core/modeling/contracts';
@@ -56,23 +56,29 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
   const [editor, setEditor] = useState(false);
   const [entries, setEntries] = useState<TraceEntry[]>([]), [scanX, setScanX] = useState('source');
   const [defaultTrace, setDefaultTrace] = useState<CoordinateTrace | null>(null), [tracing, setTracing] = useState(false);
+  const scan = trajectoryPlotKind(p.result) === 'scan';
+  const nativeScanAxis = useMemo(() => scan && trajectoryPlotAxis(p.result, p.result.frames).physical, [p.result, scan]);
   const mounted = useRef(true), traceController = useRef<AbortController | null>(null), defaultController = useRef<AbortController | null>(null);
   const latest = useRef(p); latest.current = p;
   const source = useRef(p.result); if (source.current !== p.result) { traceController.current?.abort(); defaultController.current?.abort(); source.current = p.result; }
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; traceController.current?.abort(); defaultController.current?.abort(); }; }, []);
-  useEffect(() => { setTraceOwner(p.result); setEntries([]); setScanX('source'); setDefaultTrace(null); setEditor(false); setTracing(false); }, [p.result]);
+  useEffect(() => {
+    setTraceOwner(p.result); setEntries([]);
+    setScanX(value => value === 'ordinal' && traceOwner.id === p.result.id ? value : 'source');
+    setDefaultTrace(null); setEditor(false); setTracing(false);
+  }, [p.result]);
   useEffect(() => { if (!p.active) { traceController.current?.abort(); defaultController.current?.abort(); setEditor(false); setTracing(false); } }, [p.active]);
   useAnalysisProjectSnapshot(snapshotKey,()=>({entries,scanX,defaultTrace,editor}),saved=>{setEntries(saved.entries);setScanX(saved.scanX);setDefaultTrace(saved.defaultTrace);setEditor(saved.editor);setTraceOwner(p.result);setTracing(false);},p.onError,()=>null);
   useEffect(()=>{if(restoring)void loadAnalysisProjectSnapshot(snapshotKey).then(()=>setRestoring(false),()=>setRestoring(false));},[snapshotKey,restoring]);
   useEffect(() => {
-    if (restoring || !p.active || traceOwner === p.result && defaultTrace || trajectoryPlotAxis(p.result, p.result.frames).physical) return;
+    if (restoring || !p.active || traceOwner === p.result && defaultTrace || nativeScanAxis) return;
     const definition = trajectoryScanDefinition(p.result); if (!definition) return;
     const result = p.result, controller = new AbortController(); defaultController.current = controller;
     void traceInternalCoordinate(result, definition.kind, definition.atomIndices, controller.signal).then(trace => {
       if (mounted.current && latest.current.result === result && latest.current.active && !controller.signal.aborted) setDefaultTrace(trace);
     }).catch(error => { if (!controller.signal.aborted && mounted.current && latest.current.result === result && latest.current.active) latest.current.onError(error instanceof Error ? error.message : '扫描坐标读取失败。'); });
     return () => { controller.abort(); if (defaultController.current === controller) defaultController.current = null; };
-  }, [p.result, p.active, defaultTrace, traceOwner,restoring]);
+  }, [p.result, p.active, defaultTrace, traceOwner, restoring, nativeScanAxis]);
   const visibleEntries = traceOwner === p.result ? entries : [];
   useEffect(()=>{
     p.onCoordinateAnnotations?.(traceOwner===p.result?entries.flatMap((entry,index)=>{
@@ -82,8 +88,17 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
     }):[]);
     return()=>p.onCoordinateAnnotations?.([]);
   },[p.result,traceOwner,entries,p.onCoordinateAnnotations]);
-  const scan = trajectoryPlotKind(p.result) === 'scan';
-  const override = scan && traceOwner === p.result ? scanX === 'source' ? defaultTrace : visibleEntries.find(entry => entry.id === scanX)?.trace ?? null : null;
+  const scanAxis = scan && traceOwner === p.result ? scanX : 'source';
+  const override = scan && scanAxis !== 'ordinal' ? scanAxis === 'source'
+    ? traceOwner === p.result ? defaultTrace : null
+    : visibleEntries.find(entry => entry.id === scanAxis)?.trace ?? null : null;
+  const sourceScanAxis = nativeScanAxis || scan && Boolean(traceOwner === p.result && defaultTrace);
+  const scanAxisControl = scan && (sourceScanAxis || visibleEntries.length > 0) ? <label>横轴 <select aria-label="扫描横轴"
+    value={scanAxis === 'source' && !sourceScanAxis ? 'ordinal' : scanAxis} onChange={event => setScanX(event.target.value)}>
+    {sourceScanAxis && <option value="source">来源扫描坐标</option>}
+    <option value="ordinal">扫描点序号</option>
+    {visibleEntries.map(entry => <option key={entry.id} value={entry.id}>{traceLabel(entry.trace)}</option>)}
+  </select></label> : undefined;
   const seek = (index: number) => { if (!latest.current.active) return; latest.current.onPause(); latest.current.onSeek(index); };
   const sourceCurrent = (result: TrajectoryResult) => mounted.current && latest.current.result === result && latest.current.active;
   const confirm = (ids: string[], assertCurrent: () => void, replaceId?: string) => {
@@ -119,16 +134,17 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
   };
   return <div className="trajectory-analysis-controls" data-testid="trajectory-analysis-controls">
     {p.extension?.controls}
-    {p.extension?.energyPlot??<OptimizationPlot result={p.result} currentIndex={p.currentIndex} onSelectFrame={seek} coordinateTrace={override} extension={p.extension?.plot} responsive/>}
+    {p.extension?.energyPlot??<OptimizationPlot result={p.result} currentIndex={p.currentIndex} onSelectFrame={seek} coordinateTrace={override}
+      scanOrdinal={scanAxis === 'ordinal'} axisControl={scanAxisControl} extension={p.extension?.plot} responsive/>}
     {p.extension?.details}
     <AnalysisTaskLayout variant="card" title="内坐标变化" className="trajectory-coordinate-task"
       headerActions={<SelectionAddButton label="添加内坐标" disabled={!p.active || !p.structure || tracing || editor} onClick={() => { p.onPause(); setEditor(true); }}/>}
-      progress={tracing ? <div className="trajectory-read-progress"><span role="status">读取来源结构…</span><button type="button" onClick={() => { traceController.current?.abort(); setTracing(false); }}>取消统计</button></div> : null}
-      setup={scan && visibleEntries.length > 0 ? <label>扫描横轴 <select aria-label="扫描横轴" value={scanX} onChange={event => setScanX(event.target.value)}><option value="source">{defaultTrace || trajectoryPlotAxis(p.result, p.result.frames).physical ? '来源扫描坐标' : '扫描点序号'}</option>{visibleEntries.map(entry => <option key={entry.id} value={entry.id}>{traceLabel(entry.trace)}</option>)}</select></label> : undefined}>
+      progress={tracing ? <div className="trajectory-read-progress"><span role="status">读取来源结构…</span><button type="button" onClick={() => { traceController.current?.abort(); setTracing(false); }}>取消统计</button></div> : null}>
     {visibleEntries.map((entry, index) => <AnalysisTaskSection key={entry.id} title={`内坐标${index + 1} · ${{B:'键长',A:'键角',D:'二面角'}[entry.trace.kind]}`} controls={<SelectionRemoveButton label={`删除内坐标${index + 1}`} disabled={tracing} onClick={() => remove(entry.id)}/>}>
       {selectionField(entry)}
       <output className="trajectory-coordinate-current">当前值 {entry.trace.points.find(point => point.frameIndex === p.currentIndex)?.value?.toFixed(3) ?? '未输出'} {entry.trace.unit === 'angstrom' ? 'Å' : '°'}</output>
-      <CoordinatePlot appearanceKey={`${p.result.id}:coordinate:${entry.id}`} trace={entry.trace} currentIndex={p.currentIndex} onSelectFrame={seek}/>
+      <CoordinatePlot appearanceKey={`${p.result.id}:coordinate:${entry.id}`} trace={entry.trace} currentIndex={p.currentIndex} onSelectFrame={seek}
+        atoms={p.result.initialStructure.atoms} sourceFrames={p.result.frames}/>
     </AnalysisTaskSection>)}
     {editor && p.active && traceOwner === p.result && <AnalysisTaskSection title={`内坐标${visibleEntries.length + 1}`} testId="trajectory-coordinate-editor" controls={<SelectionRemoveButton label="删除未确认内坐标" onClick={() => remove()}/>}>
       {selectionField()}
@@ -138,4 +154,11 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
   </div>;
 }
 
-export default function TrajectoryAnalysisControls(p:TrajectoryAnalysisControlsProps){const project=useProjectUiScope();return project?<ProjectUiScope scope={['TrajectoryAnalysisControls',projectUiSourceIdentity(p)]}><ProjectNativeDetailsBoundary><TrajectoryAnalysisControlsInner {...p}/></ProjectNativeDetailsBoundary></ProjectUiScope>:TrajectoryAnalysisControlsInner(p);}
+export default function TrajectoryAnalysisControls(p:TrajectoryAnalysisControlsProps) {
+  const project = useProjectUiScope();
+  // Figure state belongs to the complete stage. Seeking is only a cursor change.
+  const identity = projectUiSourceIdentity({ result: p.result });
+  return project ? <ProjectUiScope scope={['TrajectoryAnalysisControls', identity]}>
+    <ProjectNativeDetailsBoundary><TrajectoryAnalysisControlsInner {...p}/></ProjectNativeDetailsBoundary>
+  </ProjectUiScope> : TrajectoryAnalysisControlsInner(p);
+}

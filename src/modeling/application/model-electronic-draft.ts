@@ -74,8 +74,9 @@ export function flushModelElectronicDraft(store:ModelStore,ui:ProjectUiStore,con
   ui.set(modelElectronicDraftKey(document.id),{...current,baseCharge:document.draft.structure.charge??null,baseMultiplicity:document.draft.structure.multiplicity??null,deferred:false});
   return true;
 }
-export function replaceModelElectronicDraft(store:ModelStore,ui:ProjectUiStore,values:{charge:number;multiplicity:number}):void {
+export function replaceModelElectronicDraft(store:ModelStore,ui:ProjectUiStore,values:{charge:number;multiplicity:number},confirmed=false):void {
   const current=readModelElectronicDraft(store,ui);
-  ui.set(modelElectronicDraftKey(store.getSnapshot().id),{...current,chargeText:Number.isFinite(values.charge)?String(values.charge):'',multiplicityText:Number.isFinite(values.multiplicity)?String(values.multiplicity):'',deferred:true});
-  if(!store.isRuntimeSessionActive?.())flushModelElectronicDraft(store,ui);
+  ui.set(modelElectronicDraftKey(store.getSnapshot().id),{...current,chargeText:Number.isFinite(values.charge)?String(values.charge):'',multiplicityText:Number.isFinite(values.multiplicity)?String(values.multiplicity):'',
+    deferred:true,lastEditedField:undefined,pairingError:null});
+  if(!store.isRuntimeSessionActive?.())flushModelElectronicDraft(store,ui,confirmed);
 }

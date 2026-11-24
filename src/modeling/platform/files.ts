@@ -8,7 +8,7 @@ import { bindImportedSourceAtomIds, sourceModelState, validateOrcaModelSource, v
 import { requiresElectronicStateConfirmation } from '../application/electronic-state-context';
 import { getInputLayerDraftRole, inputLayerCapabilityError } from '../../core/input-layer-capability';
 import { electronCount, electronicStateError, elementSymbol } from '../../core/elements';
-import { parseStructures } from '../../core/parsers';
+import { gjfCartesianSection, parseStructures } from '../../core/parsers';
 import { assertNoMol2Source, parsePeriodicStructures, validatePeriodicSourceMetadata } from '../../core/periodic-parsers';
 import { exportStructure, geometryPeriodicity, validateGeometryAtomIdentity, validateGeometryAtoms, validateGeometryCell } from '../../core/structure-export';
 import { asciiJson, automaticStem } from '../../core/naming';
@@ -61,12 +61,8 @@ function parseGaussianFiles(text: string, name: string): Structure[] {
       if (structure.gaussianSource) { structure.gaussianSource.jobIndex = index; structure.gaussianSource.id = `${name}:${index}`; structure.gaussianSource.routeOverrides.sourceId = `${name}:${index}`; }
       return structure;
     }
-    let cursor = routeEnd;
-    while (cursor < lines.length && !lines[cursor].trim()) cursor++;
-    while (cursor < lines.length && lines[cursor].trim()) cursor++; // title
-    while (cursor < lines.length && !lines[cursor].trim()) cursor++;
-    cursor++; // electronic state
-    const atomStart = cursor;
+    const { geometryStart: atomStart } = gjfCartesianSection(lines, routeEnd, route);
+    let cursor = atomStart;
     while (cursor < lines.length && lines[cursor].trim()) cursor++;
     const count = cursor - atomStart;
     while (cursor < lines.length && !lines[cursor].trim()) cursor++;

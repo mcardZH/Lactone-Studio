@@ -158,9 +158,10 @@ function createLocalTransport({
 			// in-place rewrite during that read cannot pass as a normal append.
 			if (previousPrefix) {
 				const digest = crypto.createHash("sha256");
+				const buffer = Buffer.alloc(Math.min(1024 * 1024, previousPrefix.end));
 				for (let at = 0; at < previousPrefix.end;) {
-					admit(io); const buffer = Buffer.alloc(Math.min(1024 * 1024, previousPrefix.end - at));
-					const read = await handle.read(buffer, 0, buffer.length, at);
+					admit(io);
+					const read = await handle.read(buffer, 0, Math.min(buffer.length, previousPrefix.end - at), at);
 					if (!read.bytesRead) fail("OBSERVED_RANGE_SHORT_READ");
 					digest.update(buffer.subarray(0, read.bytesRead)); at += read.bytesRead;
 				}

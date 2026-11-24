@@ -264,7 +264,9 @@ function splitNode(node: Obj, nodeKey: string, sourceId: string, offset: number,
       const right = component.bonds.filter(edge => edge.a === bond.b || edge.b === bond.b).length;
       const configuration=builderDoubleBondConfiguration(plane, component.atoms[bond.a].id, component.atoms[bond.b].id);
       const sourceBond=rawNode.bonds[component.bonds.indexOf(bond)];
-      if(['E','Z'].includes(sourceBond?.cip) && sourceBond.cip!==configuration) component.issues.push(blocked('double-bond-configuration','来源双键E/Z标签与可核验二维构型冲突或无法确定。'));
+      if(['E','Z'].includes(sourceBond?.cip) && configuration!=='undefined' && sourceBond.cip!==configuration) {
+        component.issues.push(blocked('double-bond-configuration','来源双键 E/Z 标签与可核验的二维构型冲突。'));
+      }
       if (left > 1 && right > 1 && configuration === 'undefined') {
         // Symmetric substituents are not E/Z centres; native generation remains the final graph/stereo check.
         component.issues.push(warning('unassigned-double-bond', '此双键未获得唯一E/Z标签；三维生成仍须保留可判定的实际构型。'));

@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import {ProjectUiScope,useProjectState} from '../../projects/ui-state';
 import { RotateCcw } from 'lucide-react';
 import { BOHR_TO_ANGSTROM } from '../../core/orca/assets';
@@ -17,6 +17,7 @@ export interface AnalysisTaskLayoutProps {
   actions?: ReactNode;
   progress?: ReactNode;
   children?: ReactNode;
+  retainCollapsedResults?: boolean;
   plotting?: ReactNode;
   onRestorePlotting?(): void;
   /** Legacy remains available for task internals outside the current UI scope. */
@@ -31,9 +32,12 @@ export interface AnalysisTaskLayoutProps {
  */
 export function AnalysisTaskLayout({
   title, headerActions, ariaLabel, testId, className = '', setup, quality, actions, progress,
-  children, plotting, onRestorePlotting, variant = 'legacy', plottingSections = false, methodDetails = false, onRestoreQuality, qualityDisabled = false,
+  children, retainCollapsedResults=false, plotting, onRestorePlotting, variant = 'legacy', plottingSections = false, methodDetails = false, onRestoreQuality, qualityDisabled = false,
 }: AnalysisTaskLayoutProps) {
   const [collapsed, setCollapsed] = useProjectState('analysis-card.collapsed',false, testId??ariaLabel??title??className), bodyId = useId();
+  const retained=useRef<ReactNode>(null);
+  if(!title||!collapsed||!retainCollapsedResults)retained.current=children;
+  const results=retained.current;
   const qualityBlock=quality!=null&&quality!==false?<AnalysisQualitySettings onRestore={onRestoreQuality} disabled={qualityDisabled}>{quality}</AnalysisQualitySettings>:null;
   return <section className={`analysis-task-layout ${variant === 'card' ? 'analysis-task-card' : ''} ${className}`.trim()}
     aria-label={ariaLabel ?? title} data-testid={testId}>
@@ -50,7 +54,7 @@ export function AnalysisTaskLayout({
       {actions != null && <div className="analysis-task-actions">{actions}</div>}
       {progress != null && <div className="analysis-task-progress">{progress}</div>}
     </>}
-    {children != null && <div className="analysis-task-results">{children}</div>}
+    {results != null && <div className="analysis-task-results">{results}</div>}
     {plotting != null && (plottingSections ? plotting : <AnalysisPlotSettings onRestore={onRestorePlotting}>{plotting}</AnalysisPlotSettings>)}
     {methodDetails && <AnalysisMethodDetails/>}
     </div>

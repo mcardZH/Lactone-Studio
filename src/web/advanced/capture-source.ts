@@ -6,8 +6,8 @@ import {makeDocumentStamp} from '../../core/modeling/model-store';
 import {captureAdvancedFrame,sameAdvancedFrame,type AdvancedFrameSource} from '../../modeling/advanced/frame-source';
 import type {AdvancedControllerState} from '../../modeling/advanced/contracts';
 import type {PostprocessDocument} from '../../results/postprocess-document';
-import type {AnalysisCanvas} from '../results/analysis-canvas';
-import {readPreparedTrajectoryFrame} from '../results/usePreparedTrajectory';
+import type {AnalysisCanvas,SubmittedScientificFrame} from '../results/analysis-canvas';
+import {readScientificTrajectoryFrame,scientificFrameForModel} from '../modeling/scientific-frame-source';
 import {graphFingerprint} from '../../core/modeling/graph';
 import {baseElectronicStateParameterError as baseElectronicStateError} from '../../core/base-electronic-state';
 import {advancedDisplayDocument} from './advanced-display';
@@ -26,11 +26,14 @@ export function overrideAdvancedTaskSource(source:AdvancedFrameSource,patch:{cha
 }
 
 /** Stage projections have their own result ID but retain a bound source/job. */
-export function boundAdvancedCanvasResult(binding:PostprocessDocument|undefined,canvas:AnalysisCanvas|undefined):TrajectoryResult|undefined{
- if(!binding||!canvas?.result)return undefined;
+export function boundAdvancedResult(binding:PostprocessDocument|undefined,observed:TrajectoryResult|undefined):TrajectoryResult|undefined{
+ if(!binding||!observed)return undefined;
  const sources=[binding.result,...[binding.output,binding.wavefunction,...(binding.companions??[])].flatMap(attachment=>attachment?[attachment.source.result,...attachment.source.results]:[])];
- return sources.some(result=>result.source.id===canvas.result!.source.id&&result.jobIndex===canvas.result!.jobIndex
-  &&result.source.sha256===canvas.result!.source.sha256&&result.source.size===canvas.result!.source.size)?canvas.result:undefined;
+ return sources.some(result=>result.source.id===observed.source.id&&result.jobIndex===observed.jobIndex
+  &&result.source.sha256===observed.source.sha256&&result.source.size===observed.source.size)?observed:undefined;
+}
+export function boundAdvancedCanvasResult(binding:PostprocessDocument|undefined,canvas:AnalysisCanvas|undefined):TrajectoryResult|undefined{
+ return boundAdvancedResult(binding,canvas?.result);
 }
 
 /** A plain model has neither a result nor collection/source IDs. Missing IDs
@@ -54,7 +57,7 @@ export function retainedAdvancedSource(state:AdvancedControllerState,source:Adva
 }
 
 /** Read the scientific frame again: animations/alignment never become inputs. */
-type WorkspaceFrameCapture = {document:ModelDocument;documentEpoch:string;label:string;result?:TrajectoryResult;frameIndex?:number;signal?:AbortSignal;guard():void};
+type WorkspaceFrameCapture = {document:ModelDocument;documentEpoch:string;label:string;result?:TrajectoryResult;frameIndex?:number;submitted?:SubmittedScientificFrame;signal?:AbortSignal;guard():void};
 
 /** The raw editing path keeps unknown q/M. It shares the same scientific frame
  * read and before/after owner guard as executable capture, without inventing an
@@ -64,7 +67,9 @@ async function captureWorkspaceFrame<T>(p:WorkspaceFrameCapture,consume:(source:
  if(p.signal?.aborted)throw Error('读取已取消。');
  if(p.result&&(p.frameIndex===undefined||!Number.isSafeInteger(p.frameIndex)||p.frameIndex<0||p.frameIndex>=p.result.frames.length))throw Error('请先在来源轨迹中显示所需的完整帧。');
  const result=p.result,index=p.frameIndex,sourceIdentity=result?JSON.stringify([result.id,result.source,result.jobIndex,result.frames[index!]]):undefined;
- const structure=result?await readPreparedTrajectoryFrame(result,index!,p.signal):p.document.draft.structure;p.guard();if(p.signal?.aborted)throw Error('读取已取消。');
+ if(p.submitted&&(p.submitted.result!==result||p.submitted.index!==index))throw Error('所选画面与科学来源不一致。');
+ const structure=p.submitted?.structure??(result?await readScientificTrajectoryFrame(result,index!,p.signal):p.document.draft.structure);
+ p.guard();if(p.signal?.aborted)throw Error('读取已取消。');
  if(result&&sourceIdentity!==JSON.stringify([result.id,result.source,result.jobIndex,result.frames[index!]]))throw Error('读取期间科学来源或帧身份已变化。');
  const scientific={...p.document,draft:{...p.document.draft,structure}},frame=p.frameIndex===undefined?undefined:p.result?.frames[p.frameIndex];
  if(!structure.atoms.length||structure.atoms.some(atom=>!atom.id||![atom.x,atom.y,atom.z].every(Number.isFinite))
@@ -72,7 +77,7 @@ async function captureWorkspaceFrame<T>(p:WorkspaceFrameCapture,consume:(source:
  const constraints=p.document.sharedConstraints??{frozenAtomIds:[],coordinates:[]},ids=new Set(structure.atoms.map(atom=>atom.id));
  if(constraints.frozenAtomIds.some(id=>!ids.has(id))||constraints.coordinates.some(row=>row.atomIds.some(id=>!ids.has(id))))throw Error('当前帧的冻结定义不匹配原子身份。');
  return consume({structure:structuredClone(structure),ref:{documentId:p.document.id,documentEpoch:p.documentEpoch,revision:p.document.revision,
-  ...(p.result?{sourceId:p.result.source.id,sourceRevision:p.result.source.sha256,collectionId:p.result.id,frameId:`${p.result.id}:${frame?.sourceFrameIndex??p.frameIndex}`,stageId:frame?.stageId,sourceFrameIndex:frame?.sourceFrameIndex??p.frameIndex}: {})},
+  ...(p.result?{sourceId:p.result.source.id,sourceRevision:p.result.source.sha256,collectionId:p.result.id,frameId:p.submitted?.frameId??`${p.result.id}:${frame?.sourceFrameIndex??p.frameIndex}`,stageId:frame?.stageId,sourceFrameIndex:frame?.sourceFrameIndex??p.frameIndex,...(frame?.pesOrigin?{pesOrigin:frame.pesOrigin}:{})}: {})},
   stamp:makeDocumentStamp(scientific),label:p.frameIndex===undefined?p.label:`${automaticStem(p.label)}-frame-${p.frameIndex+1}`,constraints:structuredClone(constraints),coordinateUnit:'angstrom'});
 }
 export function captureWorkspaceElectronicSourceContext(p:WorkspaceFrameCapture):Promise<ElectronicStateSourceContext>{
@@ -86,7 +91,7 @@ export function captureWorkspaceAdvancedSource(p:WorkspaceFrameCapture):Promise<
  * Unknown q/M remain unknown until the target Store commits the explicit edit. */
 export function electronicSourceEditingFragment(source:ElectronicStateSourceContext):FragmentSnapshot{
  if(source.coordinateUnit!=='angstrom')throw Error('编辑来源坐标单位不明确。');
- const structure=structuredClone(source.structure);structure.preparation=undefined;
+ const structure=structuredClone(source.ref.sourceId?scientificFrameForModel(source.structure):source.structure);structure.preparation=undefined;
  const sharedConstraints=structuredClone(source.constraints);sharedConstraints.canonical=true;
  const coordinateObjects=sharedConstraints.coordinates.map(row=>{
   row.objectId??=`advanced-frame-coordinate:${modelCoordinateKey(row)}`;row.id??=`advanced-frame-freeze:${row.objectId}`;

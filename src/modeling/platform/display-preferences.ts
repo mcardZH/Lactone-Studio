@@ -1,11 +1,12 @@
 import { ELEMENTS } from '../../core/elements';
 import { DEFAULT_DISPLAY, type DisplaySettings } from '../contracts';
-import { structureAppearancePreset, validStructureSizing } from '../appearance-presets';
+import { STRUCTURE_LIGHTING, structureAppearancePreset, validStructureSizing } from '../appearance-presets';
 import { desktopBridge } from './desktop';
 
 export const MODEL_DISPLAY_PREFERENCES_KEY = 'sciyue.model-display.preferences.v1';
 export const MODEL_DISPLAY_PREFERENCES_LIMIT = 128 * 1024;
 export const STRUCTURE_SNAPSHOT_FIELDS = ['representation','structurePreset','structureFinish','structureLighting','structureSizing','vdwShell','elementColors','elementScales','atomScale','bondScale','depthFade','showBonds','backgroundColor','bondStyle'] as const;
+const STRUCTURE_PRESET_FIELDS = [...STRUCTURE_SNAPSHOT_FIELDS,'cell','cellStyle','periodicDisplay','axisDisplay'] as const;
 export type StructureAppearanceSnapshot = Partial<DisplaySettings>;
 export interface NamedStructurePreset { name: string; appearance: StructureAppearanceSnapshot }
 export interface ModelDisplayPreferencesSnapshot { version: string; display: DisplaySettings; namedPresets?: NamedStructurePreset[]; writable: boolean; error?: string }
@@ -39,7 +40,7 @@ export function validateModelDisplay(value: unknown): DisplaySettings {
   if (Object.hasOwn(value, 'alignment') && (typeof value.alignment !== 'string' || !['auto', 'heavy', 'off'].includes(value.alignment))) throw new Error('无效观察叠合方式。');
   if (Object.hasOwn(value, 'depthFade') && (typeof value.depthFade !== 'number' || !Number.isFinite(value.depthFade) || value.depthFade < 0 || value.depthFade > 1)) throw new Error('深度渐淡须在 0–1 范围。');
   if (Object.hasOwn(value,'structurePreset') && value.structurePreset!=='custom' && !structureAppearancePreset(value.structurePreset)) throw new Error('无效结构风格。');
-  if (Object.hasOwn(value,'structureLighting') && (typeof value.structureLighting!=='string'||!['pymol-soft','pymol-cpk','vmd'].includes(value.structureLighting))) throw new Error('无效结构光照。');
+  if (Object.hasOwn(value,'structureLighting') && !STRUCTURE_LIGHTING.some(lighting=>lighting===value.structureLighting)) throw new Error('无效结构光照。');
   if (Object.hasOwn(value,'structureFinish')) {
     const f=value.structureFinish;
     if(!validFinish(f)) throw new Error('无效结构材质。');
@@ -56,7 +57,7 @@ export function validateModelDisplay(value: unknown): DisplaySettings {
 }
 export function captureStructureAppearance(display: DisplaySettings): StructureAppearanceSnapshot {
   const source=display as unknown as Record<string,unknown>;
-  return structuredClone(Object.fromEntries(STRUCTURE_SNAPSHOT_FIELDS.filter(key=>Object.hasOwn(source,key)).map(key=>[key,source[key]]))) as StructureAppearanceSnapshot;
+  return structuredClone(Object.fromEntries(STRUCTURE_PRESET_FIELDS.filter(key=>Object.hasOwn(source,key)).map(key=>[key,source[key]]))) as StructureAppearanceSnapshot;
 }
 export function applyStructureAppearanceSnapshot(display: DisplaySettings, appearance: StructureAppearanceSnapshot): DisplaySettings {
   const next={...display} as unknown as Record<string,unknown>;
@@ -64,7 +65,7 @@ export function applyStructureAppearanceSnapshot(display: DisplaySettings, appea
   return validateModelDisplay({...next,...validateStructureAppearance(appearance)});
 }
 export function validateStructureAppearance(value: unknown): StructureAppearanceSnapshot {
-  if(!plain(value)||!Object.hasOwn(value,'representation')||Object.keys(value).some(key=>!STRUCTURE_SNAPSHOT_FIELDS.includes(key as typeof STRUCTURE_SNAPSHOT_FIELDS[number])))throw Error('预设只能包含结构外观。');
+  if(!plain(value)||!Object.hasOwn(value,'representation')||Object.keys(value).some(key=>!STRUCTURE_PRESET_FIELDS.some(field=>field===key)))throw Error('预设只能包含结构外观。');
   validateModelDisplay({...createDefaultModelDisplay(),...value});return structuredClone(value) as StructureAppearanceSnapshot;
 }
 export function validateNamedStructurePresets(value: unknown): NamedStructurePreset[] {

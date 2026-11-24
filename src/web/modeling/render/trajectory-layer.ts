@@ -8,6 +8,7 @@ import { cellEdgeStrokes,cellEdgeStrokesWork } from './display-settings';
 import { attachLocalMeshFinish, attachStructureShapeFinish, attachStructureModelFinish } from './mesh-finish';
 import { applyResolvedAtomStyles } from './atom-style-batch';
 import type { SceneShapeMethod } from './scene-sequence';
+import type { NativeBatchRod } from './native-primitive-batch';
 import { transformAtoms, transformPoint, rotate, composeTransforms, type RigidTransform } from './alignment';
 import { bondConnectionOnly, bondPathSections,bondPathSectionsWork, dashedBondSections,dashedBondSectionsWork, cellSegments, coordinates, point } from './geometry';
 import { periodicGlyphRequired, type createPeriodicBondGlyphExporter, type periodicBondGlyphContext } from './periodic-bond-glyph';
@@ -26,11 +27,16 @@ export function displayHiddenAtomIds(ids:readonly string[]|undefined,structure?:
   return new Set(ids);
 }
 
+/** Bonds drawn by the native atom mesh rather than by a separate glyph. */
+export function isNativeFrameBond(structure:Structure,bond:Bond):boolean{
+  return bond.order!==.5&&!bondConnectionOnly(bond)&&!bond.image?.some(Boolean)&&!periodicGlyphRequired(structure,bond);
+}
+
 /** Same native adjacency for the primary model and display-only frame models. */
 export function frameModelAtoms(structure: Structure, positions: readonly Atom[],hidden:ReadonlySet<string>=new Set(),showBonds=true,display?:DisplaySettings) {
   const links = positions.map(() => ({ bonds: [] as number[], bondOrder: [] as number[],bondStyles:[] as {radius:number}[] }));
   for (const bond of showBonds?structure.bonds ?? []:[]) {
-    if (hidden.has(positions[bond.a]?.id!)||hidden.has(positions[bond.b]?.id!)||bond.order === .5 || bondConnectionOnly(bond) || bond.image?.some(Boolean) || periodicGlyphRequired(structure, bond) || !links[bond.a] || !links[bond.b]) continue;
+    if (hidden.has(positions[bond.a]?.id!)||hidden.has(positions[bond.b]?.id!)|| !isNativeFrameBond(structure,bond) || !links[bond.a] || !links[bond.b]) continue;
     const order = !bond.fractional && (bond.aromatic || bond.order === 1.5) ? 4 : bond.order;
     links[bond.a].bonds.push(bond.b); links[bond.a].bondOrder.push(order); links[bond.b].bonds.push(bond.a); links[bond.b].bondOrder.push(order);
     if(display?.structureLighting?.startsWith('pymol-')){
@@ -45,19 +51,23 @@ const displayedCell = (cell: PeriodicCell, transform: RigidTransform): PeriodicC
 
 /** Existing capped/colored rod and native periodic glyph painting shared with
  * the base adapter. This is geometry presentation, without proxies or selection. */
-export function createFrameBondPainter(viewer: any, keep: <T>(shape: T) => T, glyphs: ReturnType<typeof createPeriodicBondGlyphExporter>,finish?:()=>DisplaySettings['structureFinish'],construct?:(method:SceneShapeMethod,spec:any)=>any,lighting?:()=>DisplaySettings['structureLighting']) {
+export function createFrameBondPainter(viewer: any, keep: <T>(shape: T) => T, glyphs: ReturnType<typeof createPeriodicBondGlyphExporter>,finish?:()=>DisplaySettings['structureFinish'],construct?:(method:SceneShapeMethod,spec:any,poseCylinder?:boolean)=>any,lighting?:()=>DisplaySettings['structureLighting'],
+  batchRod?: (spec: NativeBatchRod & { opacity: number }) => boolean) {
   const finished=(handle:any)=>attachStructureShapeFinish(handle,finish?.(),lighting?.());
-  const create=(method:SceneShapeMethod,spec:any)=>construct?construct(method,spec):viewer[method](spec);
-  const shape = (method: SceneShapeMethod, spec: any) => keep(method==='addLine'?create(method,spec):finished(create(method,spec)));
+  const create=(method:SceneShapeMethod,spec:any,poseCylinder=false)=>construct?construct(method,spec,poseCylinder):viewer[method](spec);
+  const shape = (method: SceneShapeMethod, spec: any,poseCylinder=false) => keep(method==='addLine'?create(method,spec):finished(create(method,spec,poseCylinder)));
   const drawCappedRod = (start: Vector3, end: Vector3, radius: number, color: any, fromCap = 1, toCap = 1,
     clip?: { start: Vector3; end: Vector3; cell: PeriodicCell }, opacity = 1) => {
     const planes = clip ? cellRenderPlanes(clip.cell) : [];
     if (clip && needsObliqueCellCap(start, end, clip.start, clip.end, planes)) {
       const mesh = clippedCellCylinder(clip.start, clip.end, radius, planes);
       if (mesh.faces.length) keep(finished(create('addCustom',{ vertexArr: mesh.vertices.map(point), normalArr: mesh.normals.map(point), faceArr: mesh.faces, color, opacity })));
-    } else shape('addCylinder', { start: point(start), end: point(end), radius, color, opacity,
+    } else {
+      const spec = { start: point(start), end: point(end), radius, color, opacity,
       fromCap: clip && Math.hypot(...start.map((value, axis) => value - clip.start[axis])) > 1e-8 ? 1 : fromCap,
-      toCap: clip && Math.hypot(...end.map((value, axis) => value - clip.end[axis])) > 1e-8 ? 1 : toCap });
+      toCap: clip && Math.hypot(...end.map((value, axis) => value - clip.end[axis])) > 1e-8 ? 1 : toCap };
+      if (!batchRod?.(spec)) shape('addCylinder', spec, !clip&&fromCap===1&&toCap===1&&opacity===1);
+    }
   };
   const drawColoredRod = (start: Vector3, end: Vector3, t0: number, t1: number, colors: [string, string], radius: number,
     cap = 1, cell?: PeriodicCell, sourceT0 = 0, sourceT1 = 1, opacity = 1) => {
@@ -134,11 +144,11 @@ export function createTrajectoryLayer(viewer: any, owner: { keepModel<T>(model: 
   };
   return {
     sync(plan: MultiframeDisplayPlan | undefined, display: DisplaySettings, outer: RigidTransform,hiddenIds?:readonly string[]) {finishRenderWork(this.syncWork(plan,display,outer,hiddenIds));},
-    *syncWork(plan: MultiframeDisplayPlan | undefined, display: DisplaySettings, outer: RigidTransform,hiddenIds?:readonly string[],cooperative=false):RenderWork<void> {
+    *syncWork(plan: MultiframeDisplayPlan | undefined, display: DisplaySettings, outer: RigidTransform,hiddenIds?:readonly string[],cooperative=false,fixedCellView=false):RenderWork<void> {
       if (disposed) throw new Error('多帧显示图层已关闭。');
       if (!plan) { if (children.size || currentPlan) clear(); return; }
       if(!validated.has(plan.frames)){validateMultiframeDisplayPlan(plan);validated.add(plan.frames);}
-      const hidden=displayHiddenAtomIds(hiddenIds,plan.frames[0].structure),next = JSON.stringify([plan.key, (plan as MultiframeDisplayPlan&{generation?:number}).generation, display, outer,hiddenIds]);
+      const hidden=displayHiddenAtomIds(hiddenIds,plan.frames[0].structure),next = JSON.stringify([plan.key, (plan as MultiframeDisplayPlan&{generation?:number}).generation, display, outer,hiddenIds,fixedCellView]);
       if(plan===currentPlan&&next===signature)return;
       const same=next===signature,staged=new Map<string,Child>();let committed=false;
       try {
@@ -148,12 +158,12 @@ export function createTrajectoryLayer(viewer: any, owner: { keepModel<T>(model: 
           if(same&&children.has(frame.key))continue;
           const shapes=createShapeLayer(viewer),painter=createFrameBondPainter(viewer,shape=>shapes.keep(shape),glyphs,()=>display.structureFinish,undefined,()=>display.structureLighting);
           let bounds:RenderBounds|null=null;
-          const transform = composeTransforms(outer, frame.transform), positions = transformAtoms(frame.structure.atoms, transform);
+          const transform = fixedCellView?outer:composeTransforms(outer, frame.transform), positions = transformAtoms(frame.structure.atoms, transform);
           const styles = positions.map(atom => hidden.has(atom.id!)?{}:structureAtomStyle(display, atom.element, elementColor(atom.element, display.elementColors)));
           const instances=yield* periodicDisplayInstancesWork(frame.structure,frame.structure.atoms,display,hidden);
           const connectionContext=frame.structure.cell?.pbc.some(Boolean)&&(periodicDisplaySettings(display).images||frame.structure.bonds?.some(bond=>bond.image?.some(Boolean)))
             ?yield* preparePeriodicDisplayConnectionsWork(frame.structure,frame.structure.atoms,instances,display):undefined;
-          const model = owner.keepModel(attachStructureModelFinish(viewer.addModel('', 'xyz'),display.structureFinish,display.structureLighting));
+          const model = owner.keepModel(attachStructureModelFinish(viewer.addModel('', 'xyz'),display.structureFinish,display.structureLighting,display.representation==='stick'));
           const child:Child={model,shapes,bounds:null,visible:true};staged.set(frame.key,child);
           model.addAtoms(frameModelAtoms(frame.structure, positions,hidden,display.showBonds!==false,display));
           applyResolvedAtomStyles(model, styles, (index, style) => { if (typeof model.setStyle === 'function') model.setStyle({ index }, style); else viewer.setStyle({ model, index }, style); });
@@ -175,7 +185,8 @@ export function createTrajectoryLayer(viewer: any, owner: { keepModel<T>(model: 
           if(cooperative&&display.representation!=='vdw'&&display.showBonds!==false)yield signal=>glyphs.prepareBatchAsync(frame.structure,frame.structure.atoms,styles,periodicDisplaySettings(display).images,signal);
           for (const bond of frame.structure.bonds ?? []) if(!hidden.has(positions[bond.a]?.id!)&&!hidden.has(positions[bond.b]?.id!))yield* painter.paintSpecialBondWork({ structure: frame.structure, bond, rawPositions: frame.structure.atoms, transform, settings: display,
             atomStyles: styles, atomColor: index => (styles[index] as any)?.stick?.color??elementColor(positions[index].element, display.elementColors),instances,connectionContext,cooperative });
-          if (display.cell && frame.structure.cell) for (const [rawStart, rawEnd] of cellSegments(frame.structure.cell)) {
+          // The active model already draws the one shared fixed cell.
+          if (!fixedCellView && display.cell && frame.structure.cell) for (const [rawStart, rawEnd] of cellSegments(frame.structure.cell)) {
             const start=transformPoint(transform,rawStart),end=transformPoint(transform,rawEnd);
             // Preserve the older secondary-frame cell when no custom style was
             // saved. Explicit cell settings apply to all displayed frames.

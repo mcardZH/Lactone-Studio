@@ -16,11 +16,11 @@
     "lockPath": "desktop/packaging/pes-libxtb-runtime.lock.json"
   },
   "baseRuntime": {
-    "lockSha256": "22761e1bc2aa8dddff4300d30032d358b2372c66df0b54af18de99ecbe7d036f",
+    "lockSha256": "a2add1025dc386886cb6461e96250dea04758a8fc23f1df09c631eba567faa43",
     "runtimeManifest": {
       "path": "runtime.json",
-      "bytes": 3386767,
-      "sha256": "6b7980a443735bb14ec6d0dcf0c5a0e9353fc09a5360ac1ee5561ca3b125dcc6"
+      "bytes": 963138,
+      "sha256": "82d15f59220330c3fc03e232af47a76ae104fac2b3764c46f74ad3ddb893b58b"
     }
   },
   "pythonVersion": "3.12.13",
@@ -328,7 +328,11 @@
     "desktop/chemistry/pes_worker.py",
     "desktop/chemistry/native_stdin.py",
     "desktop/chemistry/pes_core.py",
+    "desktop/chemistry/pes_periodic.py",
     "desktop/chemistry/pes_libxtb.py",
+    "desktop/chemistry/pes_opt.py",
+    "desktop/chemistry/pes_opt_evaluator.py",
+    "desktop/chemistry/pes_irc.py",
     "desktop/chemistry/pes_coordinates.py",
     "desktop/chemistry/pes_scan_ts.py",
     "desktop/chemistry/pes_paths.py",
@@ -350,7 +354,9 @@
     "members": [
       "third-party/pysisyphus.ini",
       "third-party/sources/pysisyphus-1.0.0.tar.gz",
-      "chemistry/pes_single_end.py"
+      "chemistry/pes_single_end.py",
+      "chemistry/pes_net.py",
+      "chemistry/pes_net_protocol.py"
     ]
   }
 }

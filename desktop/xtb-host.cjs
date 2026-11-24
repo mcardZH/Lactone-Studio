@@ -148,16 +148,34 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
       if(session.trace){clearLater(session.trace.timer);await session.trace.task;}
       if(session.stopReason){
         if(session.trace&&session.job)try{await readTrajectory(session,true,true);}catch(error){await trajectoryWarning(session,error);}
-        await diagnostics(session);await preserveDiagnostics(session,{reason:session.stopReason.code,exit:{code,signal}});emit(session,session.stopReason.code==='XTB_CANCELLED'?'stopped':'error',{...(session.stopReason.code==='XTB_CANCELLED'?{reason:'cancelled'}:{error:session.stopReason}),...(session.lastReliableFrame??{}),exit:{code,signal}});return;
+        await diagnostics(session);
+        await preserveDiagnostics(session,{reason:session.stopReason.code,exit:{code,signal}}).catch(error=>{
+          if(!session.batchSink)throw error;
+          console.warn('XTB_DIAGNOSTIC_RETAIN_FAILED',String(error.message));
+        });
+        emit(session,session.stopReason.code==='XTB_CANCELLED'?'stopped':'error',{...(session.stopReason.code==='XTB_CANCELLED'?{reason:'cancelled'}:{error:session.stopReason}),...(session.lastReliableFrame??{}),exit:{code,signal}});return;
       }
       if(session.trace)try{await readTrajectory(session,true);}catch(error){await trajectoryWarning(session,error);}await closeTrace(session.trace);
       await closeLogs(session);
-      assert(!session.logError,`xTB diagnostic I/O failed: ${session.logError}`);
+      if(session.logError&&session.batchSink){
+        session.preserveForRecovery=true;
+        console.warn('XTB_DIAGNOSTIC_RETAIN_FAILED',session.logError);
+      }else assert(!session.logError,`xTB diagnostic I/O failed: ${session.logError}`);
       const scientificOutput=session.scientificStdout.finish(),scientificErrors=session.scientificStderr.finish();
-      const observedVersion=scientificOutput.match(/\bxtb version\s+(\d+\.\d+\.\d+(?:pre)?)/i)?.[1];const version=observedVersion??'unknown';assert(session.runtime.version==='unknown'||version===session.runtime.version,'Actual xTB runtime version does not match the trusted runtime');
+      const observedVersion=scientificOutput.match(/\bxtb version\s+(\d+\.\d+\.\d+(?:pre)?)/i)?.[1];
+      const version=observedVersion??'unknown';
+      const unsuccessful=code!==0||signal!==null;
+      const ownedCandidateExit=session.batchSink&&session.child&&unsuccessful;
+      assert(session.runtime.version==='unknown'||version===session.runtime.version||ownedCandidateExit&&observedVersion===undefined,
+        'Actual xTB runtime version does not match the trusted runtime');
       const candidateFailure=signal===null&&nativeOptimizationFailure(scientificOutput+'\n'+scientificErrors,session.request);
       if(candidateFailure)throw Object.assign(new Error(candidateFailure.message),{code:candidateFailure.code});
-      assert(code===0&&signal===null,`xTB process did not exit successfully (${code}, ${signal})`);await directory(session.job);
+      if(unsuccessful){
+        const error=new Error(`xTB process did not exit successfully (${code}, ${signal})`);
+        if(ownedCandidateExit)error.code='XTB_CANDIDATE_EXIT';
+        throw error;
+      }
+      await directory(session.job);
       if(session.trace?.closeError)await trajectoryWarning(session,new Error(session.trace.closeError));
       const notConverged=!(await absent(path.join(session.job,'NOT_CONVERGED')));
       const sp=session.request.calculation==='singlepoint';
@@ -167,11 +185,17 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
       if(!sp)validateNativeConstraints(scientificOutput,session.request);
       assert(!notConverged||!scientific.converged,'Native convergence marker conflicts with the terminal status');
       let coordinates;if(sp){assert(await readRegular(path.join(session.job,'input.xyz'))===xyzInput(session.request),'Singlepoint input coordinates changed');assert(await absent(path.join(session.job,'xtbopt.xyz')),'Singlepoint produced unexpected optimized coordinates');coordinates=session.request.structure.atoms.map(({id,element,x,y,z})=>({id,element,x,y,z}));}
-      else if(session.periodic)coordinates=periodicOptimizedCoordinates(await readRegular(path.join(session.job,'xtbopt.coord')),session.request);
-      else coordinates=optimizedCoordinates(await readRegular(path.join(session.job,'xtbopt.xyz')),session.request);
+      else {
+        const outputFile=path.join(session.job,session.periodic?'xtbopt.coord':'xtbopt.xyz');
+        const text=await readRegular(outputFile).catch(error=>{
+          if(session.batchSink&&error.code==='ENOENT')error.code='XTB_CANDIDATE_RESULT';
+          throw error;
+        });
+        coordinates=(session.periodic?periodicOptimizedCoordinates:optimizedCoordinates)(text,session.request);
+      }
       const spinTreatment=session.request.method==='gfnff'?'not-supported':session.request.method==='gxtb'?(scientific.spinTreatment??gxtbSpin(scientificOutput,session.request)):'requested-unpaired-electrons';
       const {movableGradientNormHartreePerBohr,gradientTargetHartreePerBohr,gradientTargetMet,...terminal}=scientific;
-      const metadata={...terminal,engine:'xtb',version,...(session.runtime.engineIdentity?{engineIdentity:structuredClone(session.runtime.engineIdentity)}:{}),method:session.request.method,charge:session.request.charge,uhf:session.request.method==='gfnff'?null:session.request.uhf,spinTreatment,threads:session.request.threads,...(session.effectiveResources?{resourceGrant:structuredClone(session.effectiveResources)}:{}),maxSteps:scientific.maxSteps??session.request.maxSteps,maxWallTimeSeconds:session.request.maxWallTimeSeconds,frozenAtomIds:session.request.frozenAtomIds,internalConstraintMode:!sp&&session.request.constraints.length?'native-harmonic':'none',internalConstraints:sp?[]:constraintResiduals(session.request,coordinates)};
+      const metadata={...terminal,engine:'xtb',version,...(session.runtime.engineIdentity?{engineIdentity:structuredClone(session.runtime.engineIdentity)}:{}),method:session.request.method,charge:session.request.charge,uhf:session.request.method==='gfnff'?null:session.request.uhf,spinTreatment,threads:session.request.threads,...(session.effectiveResources?{resourceGrant:structuredClone(session.effectiveResources)}:{}),...(!sp?{maxSteps:scientific.maxSteps??session.request.maxSteps}:{}),maxWallTimeSeconds:session.request.maxWallTimeSeconds,frozenAtomIds:session.request.frozenAtomIds,internalConstraintMode:!sp&&session.request.constraints.length?'native-harmonic':'none',internalConstraints:sp?[]:constraintResiduals(session.request,coordinates)};
       if(session.fixedFf)metadata.ffModelRuntime={...session.fixedFf,initialization:'reference-geometry-cli-topology',topologyReadFromOwnedSeed:true};
       if(session.periodic)metadata.periodic={...periodicEvidence(session.request,version),movableGradientNormHartreePerBohr,gradientTargetHartreePerBohr,gradientTargetMet};
       try{const solvation=nativeSolvation(scientificOutput,session.request);if(solvation)metadata.solvation=solvation;}catch(error){throw Object.assign(new Error(String(error.message).slice(0,8192)),{code:'XTB_SOLVATION_MISMATCH'});}
@@ -238,7 +262,7 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
         return;
       }
       emit(session,'completed',{coordinates,metadata,...(optimizationCache??{}),...(electronicArtifacts?{electronicArtifacts}:{}),exit:{code,signal},...(session.trace&&session.trace.lastFrameStep>=0?{step:session.trace.lastFrameStep,stepKind:session.periodic?'native-fire-cycle':'native-log-frame'}:{})});
-    }catch(error){await diagnostics(session);await preserveDiagnostics(session,{reason:'xtb-failed',error:String(error.message),exit:{code,signal}}).catch(failure=>{session.preserveForRecovery=true;console.warn('XTB_DIAGNOSTIC_RETAIN_FAILED',String(failure.message));});emit(session,'error',{error:{code:['XTB_BOND_ORDERS_MISSING','XTB_BOND_ORDERS_INVALID','XTB_ARTIFACT_HANDOFF_FAILED','XTB_SOLVATION_MISMATCH','XTB_NATIVE_STEP_OVERRUN','XTB_CANDIDATE_SCC','XTB_CANDIDATE_GEOMETRY','XTB_CANDIDATE_OPTIMIZER','XTB_CANDIDATE_RESULT'].includes(error.code)?error.code:'XTB_RESULT_REJECTED',message:String(error.message).slice(0,8192)},...(session.lastReliableFrame??{}),exit:{code,signal}});}
+    }catch(error){await diagnostics(session);await preserveDiagnostics(session,{reason:'xtb-failed',error:String(error.message),exit:{code,signal}}).catch(failure=>{session.preserveForRecovery=true;console.warn('XTB_DIAGNOSTIC_RETAIN_FAILED',String(failure.message));});emit(session,'error',{error:{code:['XTB_BOND_ORDERS_MISSING','XTB_BOND_ORDERS_INVALID','XTB_ARTIFACT_HANDOFF_FAILED','XTB_SOLVATION_MISMATCH','XTB_NATIVE_STEP_OVERRUN','XTB_CANDIDATE_SCC','XTB_CANDIDATE_GEOMETRY','XTB_CANDIDATE_OPTIMIZER','XTB_CANDIDATE_RESULT','XTB_CANDIDATE_EXIT'].includes(error.code)?error.code:'XTB_RESULT_REJECTED',message:String(error.message).slice(0,8192)},...(session.lastReliableFrame??{}),exit:{code,signal}});}
     finally{
       await closeTrace(session.trace);
       await closeLogs(session);
@@ -250,7 +274,8 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
           assert(session.batchTerminal,'Batch xTB terminal handoff missing');
           const receipt=await session.batchSink(session.batchTerminal);
           if(receipt?.discardDiagnostics===false&&!session.preserveForRecovery){
-            await preserveDiagnostics(session,{reason:'batch-candidate-discarded',exit:{code,signal},nativeTerminal:session.batchTerminal.metadata});
+            await preserveDiagnostics(session,{reason:'batch-candidate-discarded',exit:{code,signal},nativeTerminal:session.batchTerminal.metadata})
+              .catch(error=>console.warn('XTB_DIAGNOSTIC_RETAIN_FAILED',String(error.message)));
           }
           if(receipt?.discardDiagnostics===true){
             let deferred=false;
@@ -276,7 +301,7 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
   }
   function capture(session,stream,chunk){
     if(session.closed)return;const decoder=stream==='stdout'?session.outDecoder:session.errDecoder,text=decoder.write(Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk));session.outputBytes+=Buffer.byteLength(text);
-    try { session.releaseAdmission?.consumeOutput?.(Buffer.byteLength(text)); } catch(error) { stop(session,{code:'XTB_OUTPUT_LIMIT',message:error.message}); return; }
+    try { session.releaseAdmission?.consumeOutput?.(Buffer.byteLength(text)); } catch(error) { stop(session,{code:session.batchSink?'XTB_BATCH_OUTPUT_LIMIT':'XTB_OUTPUT_LIMIT',message:error.message}); return; }
     if(session.outputBytes>(session.outputBudgetBytes??policy.maxOutputBytes)){stop(session,{code:'XTB_OUTPUT_LIMIT',message:'xTB累计输出已达到本次配置上限。'});return;}
     try{session[stream==='stdout'?'scientificStdout':'scientificStderr'].push(text);}catch(error){stop(session,{code:'XTB_OUTPUT_PACKET_LIMIT',message:error.message});return;}
     appendLog(session,stream,text);session.lastOutputMs=now();session[stream]=boundedLog(session[stream],text);

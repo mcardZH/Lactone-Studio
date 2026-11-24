@@ -1,5 +1,5 @@
 'use strict';
-const { readManagedResult,inspectManagedSource } = require('./analysis-result-wire.cjs');
+const { readManagedResult,inspectManagedSource,fieldBytesIdentity,publishManagedFields,discardManagedFields,takeCubeExport } = require('./analysis-result-wire.cjs');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { requireBackend, requireSameBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
@@ -40,7 +40,7 @@ function checkedRequest(operation, raw, s) {
 /** Independent analysis owner, sharing the existing single-Multiwfn lease.
  * Surface's pure context/stamp/scalar wire decoder are reused, never its
  * density-only scientific service or capabilities. No renderer path is trusted. */
-function createInteractionAnalysisHost({ spawn, resolveRuntime, resolveBackend, resolveResources, captureResources, jobRoot, scheduler, sendProgress = () => {}, limits = {} }) {
+function createInteractionAnalysisHost({ spawn, resolveRuntime, resolveBackend, resolveResources, captureResources, adoptResultFile, releaseResultFile, jobRoot, scheduler, sendProgress = () => {}, limits = {} }) {
   assert(scheduler && typeof resolveResources === 'function', 'Interaction host requires the shared scheduler/resource owner');
   const policy = { requestMs: 0, stopMs: 6000, ...limits };
   const sessions = new Map(), pending = new Map(), tasks = new Set(), closedOwners = new Set(); let worker, disposed = false, sequence = 0;
@@ -93,11 +93,11 @@ function createInteractionAnalysisHost({ spawn, resolveRuntime, resolveBackend, 
     child.once('close', code => { w.closed = true; clearTimeout(w.timer); if (worker === w) { worker = null; for (const s of sessions.values()) if (s.worker === w) s.failed = true; } w.finish(code); for (const [id, entry] of pending) if (entry.w === w) { clearTimeout(entry.timer); pending.delete(id); entry.reject(w.firstError ?? new Error('Interaction worker exited (' + code + ')')); } });
     return w;
   }
-  function request(operation, s, payload = {}, progress) {
+  function request(operation, s, payload = {}, progress, files) {
      const w = operation === 'open' ? ensureWorker() : s.worker;
     assert(w && w === worker && !w.closing && !w.closed && (operation==='open'||s.registered), 'INTERACTION_WORKER_UNAVAILABLE: 原分析会话已结束');
     const id = 'interaction-' + ++sequence; if (operation === 'open') s.worker = w;
-    return new Promise((resolve, reject) => { const timer = policy.requestMs>0?setTimeout(() => { void stopWorker(w, new Error('INTERACTION_TIMEOUT')); }, policy.requestMs):undefined; timer?.unref?.(); pending.set(id, { w, s, operation, resolve, reject, timer, progress }); try { w.child.stdin.write(JSON.stringify({ id, operation, sessionId: s.sessionId, ...payload }) + '\n'); } catch (error) { void stopWorker(w, error); } }).then(value=>readManagedResult(value,s.directory));
+    return new Promise((resolve, reject) => { const timer = policy.requestMs>0?setTimeout(() => { void stopWorker(w, new Error('INTERACTION_TIMEOUT')); }, policy.requestMs):undefined; timer?.unref?.(); pending.set(id, { w, s, operation, resolve, reject, timer, progress }); try { w.child.stdin.write(JSON.stringify({ id, operation, sessionId: s.sessionId, ...payload }) + '\n'); } catch (error) { void stopWorker(w, error); } }).then(value=>readManagedResult(value,s.directory,{deferBinary:!!adoptResultFile&&!!files,files}));
   }
   async function resources(owner, s, lease, captured, backend, scientific=true) {
     const value=scientific?await resolveResources(owner,undefined,captured,backend):
@@ -110,11 +110,10 @@ function createInteractionAnalysisHost({ spawn, resolveRuntime, resolveBackend, 
     if (!plain(result.fields) || !result.mapping) return;
     const batch = new Map(); let added = 0;
     for (const field of [...Object.values(result.fields), result.mapping]) {
-      assert(plain(field) && string(field.id, 512) && field.values instanceof Float64Array && !batch.has(field.id), 'Invalid/duplicate published interaction field');
-      const values = Buffer.from(field.values.buffer, field.values.byteOffset, field.values.byteLength), mask = field.validDomain?.mask;
-      assert(mask === undefined || mask instanceof Uint8Array, 'Invalid published interaction mask');
-      const bytes = values.length + (mask?.byteLength ?? 0), hash = createHash('sha256').update(values);
-      if (mask) hash.update(mask);
+      assert(plain(field) && string(field.id, 512) && !batch.has(field.id), 'Invalid/duplicate published interaction field');
+      const values = fieldBytesIdentity(field.values,'float64-le');
+      const mask = field.validDomain?.mask===undefined?null:fieldBytesIdentity(field.validDomain.mask,'uint8');
+      const bytes = values.bytesLength + (mask?.bytesLength ?? 0), hash = createHash('sha256').update(values.sha256).update(mask?.sha256??'');
       hash.update(JSON.stringify(field, (key, value) => key === 'values' || key === 'mask' ? undefined : plain(value) ? Object.fromEntries(Object.keys(value).sort().map(name => [name, value[name]])) : value));
       const identity = { bytes, sha256: hash.digest('hex') }, previous = s.published?.get(field.id);
       assert(!previous || same(previous, identity), 'Interaction field id was reused for different content');
@@ -163,7 +162,7 @@ function createInteractionAnalysisHost({ spawn, resolveRuntime, resolveBackend, 
     s.busy = true; s.controller = controller; s.submitted=false;
     const scientific = SCIENCE.has(operation);
     const progress = createMultiwfnProgress(progressIdentity({ ownerId: checked.stamp.analysisId, analysisId: checked.stamp.analysisId, runId: checked.stamp.requestId, sessionId: id, sourceId: s.context.sourceId, sourceRevision: s.context.sourceRevision, jobIndex: s.context.jobIndex, sourceFrameIndex: s.context.sourceFrameIndex, generation: s.context.generation, operation }, { sessionId: id, sourceId: s.context.sourceId, sourceRevision: s.context.sourceRevision }), value => sendProgress(owner, value)); s.progress = progress; progress.report('queued', scientific ? {} : { stageLabel: '等待读取资源' });
-    let lease, submitted = false, passed = false;
+    const files=new Set(); let lease, submitted = false, passed = false;
     try {
       lease = await scheduler.acquire({ owner, key: 'interactions:' + (scientific ? operation : 'read') + ':' + id, signal: controller.signal }); owned(owner, id); assert(!controller.signal.aborted, 'INTERACTION_CANCELLED');
       const captured=captureResources?await require('./compute-resources.cjs').captureComputeResources(captureResources,owner,controller.signal):undefined;owned(owner,id);assert(!controller.signal.aborted,'INTERACTION_CANCELLED');
@@ -176,12 +175,18 @@ function createInteractionAnalysisHost({ spawn, resolveRuntime, resolveBackend, 
         const points = checked.quality.dimensions.reduce((total, value) => total * value, 1), fields = ['iri', 'rdg'].includes(checked.method) ? 2 : 4;
       }
       owned(owner, id); assert(!controller.signal.aborted, 'INTERACTION_CANCELLED'); submitted = true; s.submitted=true; progress.report(scientific ? 'running' : 'reading', scientific ? {} : { stageLabel: '读取已保存数据' });
-      const result = await request(operation, s, { request: checked, resources: configured }, progress); owned(owner, id); assert(!controller.signal.aborted, 'INTERACTION_CANCELLED');
+      const result = await request(operation, s, { request: checked, resources: configured }, progress, files); owned(owner, id); assert(!controller.signal.aborted, 'INTERACTION_CANCELLED');
       assert(plain(result), 'Invalid interaction result');
-      if (operation === 'export-cube') assert(string(result.name, 512) && path.basename(result.name) === result.name && typeof result.text === 'string' && (!result.domain || string(result.domain.name, 512) && path.basename(result.domain.name) === result.domain.name && typeof result.domain.text === 'string'), 'Unsafe interaction Cube export');
-      else { assert(same(stamp(result.stamp, s.context), checked.stamp), 'Interaction result stamp changed'); if (SCIENCE.has(operation)) assert(result.method === checked.method && same(result.fragments, checked.fragments) && (operation === 'generate' ? same(result.quality, checked.quality) : same(result.pair, checked.pair) && result.integrationQuality === checked.integrationQuality), 'Interaction scientific request identity changed'); }
-      const value = hydrate(result); recordPublishedFields(s, value, lease, configured.configuredMemoryBudgetBytes); passed = true; progress?.report('parse', { stageLabel: '等待结果接受', validated: true, settlement: 'native-settled' }); return value;
-    } finally { lease?.release(); if (controller.signal.aborted) progress?.report('stopped', { settlement: submitted ? 'native-settled' : 'cancelled-before-start' }); else if (!passed) progress?.report('failed', { settlement: submitted ? 'native-settled' : 'not-started' }); if (s.controller === controller) s.controller = null; s.progress = null; s.busy = false; }
+      let published;
+      if (operation === 'export-cube') published=takeCubeExport(result,files);
+      else {
+        assert(same(stamp(result.stamp, s.context), checked.stamp), 'Interaction result stamp changed');
+        if (SCIENCE.has(operation)) assert(result.method === checked.method && same(result.fragments, checked.fragments) && (operation === 'generate' ? same(result.quality, checked.quality) : same(result.pair, checked.pair) && result.integrationQuality === checked.integrationQuality), 'Interaction scientific request identity changed');
+        const value = hydrate(result); recordPublishedFields(s, value, lease, configured.configuredMemoryBudgetBytes);
+        published=await publishManagedFields(value,{files,owner,signal:controller.signal,adopt:adoptResultFile,release:releaseResultFile});
+      }
+      passed = true; progress?.report('parse', { stageLabel: '等待结果接受', validated: true, settlement: 'native-settled' }); return published;
+    } finally { await discardManagedFields(files); lease?.release(); if (controller.signal.aborted) progress?.report('stopped', { settlement: submitted ? 'native-settled' : 'cancelled-before-start' }); else if (!passed) progress?.report('failed', { settlement: submitted ? 'native-settled' : 'not-started' }); if (s.controller === controller) s.controller = null; s.progress = null; s.busy = false; }
   }
   function operation(owner, id, name, raw) { const s = owned(owner, id), task = operate(owner, id, name, raw); s.inflight.add(task); task.then(() => s.inflight.delete(task), () => s.inflight.delete(task)); return track(task); }
   async function cancel(owner, id) {

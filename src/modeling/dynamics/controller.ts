@@ -1,22 +1,22 @@
 import type { Structure } from '../../core/types';
+import { isPeriodic } from '../../core/periodic';
 import { effectiveModelCoordinates } from '../constraints';
 import type { DocumentStamp, ForcefieldChoice, ModelDocument, ModelStore, NativeMDPolicy, ScientificModelOperation } from '../contracts';
 import { coordinatesFingerprint, getMovableAtomIds } from '../../core/modeling/graph';
-import type { DynamicsCommand, DynamicsEvent, DynamicsFrame, DynamicsMethod, MDMethod, DynamicsOperation, DynamicsRequest, DynamicsTerminalFailure, DynamicsTermination, GeometryDistanceTarget, GeometryTargetStatus } from './contracts';
+import type { DynamicsCommand, DynamicsEvent, DynamicsFrame, MDIntegrator, MDMethod, DynamicsOperation, DynamicsRequest, DynamicsTerminalFailure, DynamicsTermination } from './contracts';
 import type { DynamicsCapabilities, DynamicsPort } from './port';
 import { acceptTransportedDynamicsStructure, validateDynamicsAdmission, validateDynamicsConfig, validateDynamicsStructure, validateDynamicsError } from './validation';
-import { validateHybridMetadata } from './hybrid-metadata';
 import { createRuntimeModelStore } from '../../core/modeling/model-store';
 import {runtimePreviewSourceCurrent} from '../../core/modeling/runtime-source-lineage';
-import { builderCoordinateValue } from '../../core/builder-geometry';
-import { isXtbMethod, supportsXtbAlpb, XTB_METHOD_LABELS } from '../../core/xtb-capabilities';
+import { supportsXtbAlpb, XTB_METHOD_LABELS } from '../../core/xtb-capabilities';
 import type { XtbSolvation } from '../xtb/contracts';
+import { mdHydrogenSettings, resolveMDConstraint } from './md-methods';
 import { BoundedDisplayQueue, createDisplayScheduler, DISPLAY_BYTE_LIMIT, DISPLAY_FRAME_LIMIT, DISPLAY_INTERVAL_MS, DISPLAY_MAX_WAIT_MS, serializedFrameBytes, type DisplayScheduler } from './display-queue';
 
 export type DynamicsStatus = 'idle' | 'starting' | 'running' | 'pausing' | 'paused' | 'stopping' | 'stopped' | 'completed' | 'error';
-export interface DynamicsConfig { temperatureK?: number; maxSteps?: number; maxWallTimeSeconds?: number; forcefield?: ForcefieldChoice; method?: MDMethod; movableAtomIds?: string[]; seed?: number; solvation?:XtbSolvation; frictionPerFs?: number; geometryMode?: 'hybrid-local'; hybridScalePolicy?: 'uff-bond-stiffness-v1'; allowPureGeometryFallback?: true; geometryDistanceTargets?: GeometryDistanceTarget[] }
+export interface DynamicsConfig { temperatureK?: number; maxSteps?: number; maxWallTimeSeconds?: number; forcefield?: ForcefieldChoice; method?: MDMethod; integrator?: MDIntegrator; shakeHydrogenBonds?: boolean; movableAtomIds?: string[]; seed?: number; solvation?:XtbSolvation; frictionPerFs?: number }
 export interface DisplayDynamicsFrame extends DynamicsFrame { physicalTimeFs: number; instantTemperatureK?: number }
-export interface DynamicsSnapshotObservation { step:number; timeFs:number; energyEV?:number; temperatureK?:number; targetTemperatureK?:number; forcefield?:string; nativeMD?:DynamicsEvent['nativeMD']; engine?:string; engineVersion?:string; aseVersion?:string }
+export interface DynamicsSnapshotObservation { step:number; timeFs:number; energyEV?:number; temperatureK?:number; targetTemperatureK?:number; forcefield?:string; nativeMD?:DynamicsEvent['nativeMD']; aseMD?:DynamicsEvent['aseMD']; engine?:string; engineVersion?:string; aseVersion?:string }
 export interface DynamicsSnapshot { structure: Structure; seq: number; sessionId?: string; detached?: true; workingSource?: {documentId:string;revision:number}; modelDocument?:ModelDocument; observation?:DynamicsSnapshotObservation }
 export interface DynamicsControllerState {
   status: DynamicsStatus; capabilities: DynamicsCapabilities; mode?: DynamicsOperation;
@@ -29,7 +29,7 @@ export interface DynamicsControllerState {
 export interface DynamicsDependencies {
   getSnapshot(): ModelDocument;
   getWorkingSnapshot?(): ModelDocument;
-  prepareSource?(): ScientificModelOperation;
+  prepareSource?(capturedSource?:ModelDocument): ScientificModelOperation;
   getStamp(movableAtomIds?: string[], nativeMDPolicy?: NativeMDPolicy, sourceOperation?: ScientificModelOperation): DocumentStamp;
   beginRun(): void;
   acceptFrame(frame: DynamicsFrame): void;
@@ -40,12 +40,30 @@ export interface DynamicsDependencies {
 }
 export type DynamicsUICommand = { type: 'pause' | 'stop' } | { type: 'resume'; temperatureK?: number };
 const clone = <T,>(value: T): T => structuredClone(value);
+type PresentationSample = {frame:DisplayDynamicsFrame;bytes:number};
+function presentationSize(event: DynamicsEvent, fallback = event): number {
+  const bytes = event.displayByteLength;
+  return typeof bytes === 'number' && Number.isSafeInteger(bytes) && bytes > 0 ? bytes : serializedFrameBytes(fallback);
+}
 const sameStamp = (a: DocumentStamp, b: DocumentStamp) => a.documentId === b.documentId && a.revision === b.revision && a.graphFingerprint === b.graphFingerprint && a.coordinatesFingerprint === b.coordinatesFingerprint && a.constraintsFingerprint === b.constraintsFingerprint && JSON.stringify(a.nativeMDPolicy) === JSON.stringify(b.nativeMDPolicy);
 function validateMDMetadata(event:DynamicsEvent,request:DynamicsRequest):void {
-  if(!request.method || !event.structure)return;
+  const stopped = event.event === 'stopped';
+  if (!request.method || !event.structure && !stopped) return;
+  const matches = (a:unknown, b:unknown) => JSON.stringify(a) === JSON.stringify(b);
+  if (request.integrator === 'ase') {
+    const evidence = event.aseMD;
+    const movable = new Set(request.movableAtomIds);
+    const frozen = request.structure.atoms.filter(atom=>!movable.has(atom.id!)).map(atom=>atom.id!);
+    if (event.nativeMD || !evidence || evidence.driver !== 'ase-bussi' || evidence.method !== request.method || evidence.dtFs !== 2
+      || evidence.thermostat !== 'Bussi' || evidence.thermostatTimeConstantFs !== 500 || evidence.periodic !== isPeriodic(request.structure)
+      || evidence.hydrogenMassAmu !== request.hydrogenMassAmu || evidence.shakeHydrogenBonds !== request.shakeHydrogenBonds
+      || !matches(evidence.frozenAtomIds, frozen) || stopped && evidence.nativeClosed !== true) throw new Error('ASE MD方法、冻结或停止回执与运行请求不符。');
+    return;
+  }
+  if (event.aseMD) throw new Error('原生MD运行收到ASE积分回执。');
   const metadata=event.nativeMD;
-  if(!metadata || metadata.method!==request.method || metadata.dtFs!==2 || metadata.thermostat!=='Berendsen' || metadata.hydrogenMassAmu!==(request.method==='gfnff'?4:null) || metadata.shakeHydrogenBonds!==(request.method!=='gfnff') || JSON.stringify(metadata.protectedAtomIds)!==JSON.stringify(request.protectedAtomIds??[]) || metadata.protection!==((request.protectedAtomIds??[]).length?'pairwise-distance':'none') || metadata.forceConstantKJMolNm2!==500000 || !Number.isSafeInteger(metadata.segment) || metadata.segment<0 || metadata.velocityInitialization!==(metadata.segment===0?'fresh':'restart') || typeof metadata.nativeClosed!=='boolean')throw new Error('原生MD方法或保护元数据不符。');
-  const periodic=Boolean(request.structure.cell), constraints=periodic?[]:request.constraints??[];
+  if(!metadata || metadata.method!==request.method || metadata.dtFs!==2 || metadata.thermostat!=='Berendsen' || metadata.hydrogenMassAmu!==(request.hydrogenMassAmu??(request.method==='gfnff'?4:null)) || metadata.shakeHydrogenBonds!==(request.shakeHydrogenBonds??(request.method!=='gfnff')) || !matches(metadata.protectedAtomIds,request.protectedAtomIds??[]) || metadata.protection!==((request.protectedAtomIds??[]).length?'pairwise-distance':'none') || metadata.forceConstantKJMolNm2!==500000 || !Number.isSafeInteger(metadata.segment) || metadata.segment<0 || metadata.velocityInitialization!==(metadata.segment===0?'fresh':'restart') || typeof metadata.nativeClosed!=='boolean' || stopped&&!metadata.nativeClosed)throw new Error('原生MD方法、保护或停止回执与运行请求不符。');
+  const periodic=isPeriodic(request.structure), constraints=periodic?[]:request.constraints??[];
   if(Boolean(metadata.periodic)!==periodic)throw new Error('原生MD固定晶胞回执与运行请求不符。');
   if(metadata.effectiveSeed!==undefined&&(metadata.effectiveSeed!==request.seed||metadata.seedTreatment!=='verified'||request.method==='gxtb'))throw new Error('原生MD实际种子回执不匹配。');
   if(metadata.seedTreatment!==undefined&&(request.method==='gxtb'?metadata.seedTreatment!=='program-random':event.engineVersion==='6.8.0'?metadata.seedTreatment!=='verified':metadata.seedTreatment!=='native-internal-initialization'))throw new Error('原生MD随机初始化回执不匹配。');
@@ -55,52 +73,6 @@ function validateMDMetadata(event:DynamicsEvent,request:DynamicsRequest):void {
   if(metadata.rawPotential){const p=metadata.rawPotential,protectedRun=(request.protectedAtomIds??[]).length>0||constraints.length>0;if(!Number.isFinite(p.value)||p.unit!=='hartree'||p.definition!==(protectedRun?'native-total-including-protection':'native-physical-potential')||p.includesProtection!==protectedRun||p.sourceArtifact!=='xtb.trj'||!Number.isSafeInteger(p.sourceStep)||p.sourceStep<0||p.sourceStep>event.step!||p.sourceTimeFs!==p.sourceStep*2||!Number.isSafeInteger(p.segment)||p.segment<0||p.segment>metadata.segment)throw new Error('原生MD总势能来源或含保护项定义不符。');}
 }
 const active = (status: DynamicsStatus) => ['starting', 'running', 'pausing', 'paused', 'stopping'].includes(status);
-const targetKey = (atomIds: string[], image: number[] = [0,0,0]) => {
-  const forward = JSON.stringify([atomIds,image]), reverse = JSON.stringify([[atomIds[1],atomIds[0]],image.map(value=>-value)]);
-  return forward < reverse ? forward : reverse;
-};
-const targetEdges = (structure: Structure) => new Map((structure.bonds ?? []).map(edge => [targetKey([structure.atoms[edge.a].id!,structure.atoms[edge.b].id!],edge.image),edge]));
-function targetEndpoint(row: { atomIds: string[]; image?: number[] }, structure: Structure): string {
-  const ids = new Set(structure.atoms.map(atom=>atom.id)), image = row.image ?? [0,0,0];
-  if (!Array.isArray(row.atomIds) || row.atomIds.length !== 2 || row.atomIds.some(id=>typeof id !== 'string' || !ids.has(id)) || !Array.isArray(image) || image.length !== 3 || image.some((v,i)=>!Number.isSafeInteger(v) || Math.abs(v)>1000000 || v !== 0 && !structure.cell?.pbc[i])) throw new Error('机械距离的原子或镜像身份无效。');
-  return targetKey(row.atomIds,image);
-}
-function validateDistanceTargets(value: GeometryDistanceTarget[] | undefined, request: Pick<DynamicsRequest,'operation'|'geometryMode'|'structure'>): void {
-  if (value === undefined) return;
-  if (request.operation !== 'geometry' || request.geometryMode !== undefined || !Array.isArray(value) || value.length > 4000) throw new Error('显式机械距离仅适用于纯几何整理。');
-  const edges = targetEdges(request.structure), seen = new Set<string>();
-  for (const row of value) {
-    if (!row || typeof row !== 'object' || Object.keys(row).some(k=>!['atomIds','image','distanceAngstrom'].includes(k)) || !Number.isFinite(row.distanceAngstrom) || row.distanceAngstrom<=0 || row.distanceAngstrom>1000000) throw new Error('显式机械距离无效。');
-    const key = targetEndpoint(row,request.structure), edge = edges.get(key);
-    if (!edge || edge.order === .5 || seen.has(key)) throw new Error('显式机械距离必须指向已有的非弱连接，不能新增连接。');
-    seen.add(key);
-  }
-}
-function validateTargetStatus(value: GeometryTargetStatus, request: DynamicsRequest): void {
-  const counts = ['targetedConnectionCount','movableConnectionTargetCount','untargetedCoordinationCount','weakConnectionCount','unresolvedImmovableConnectionCount','angleTargetCount','planeTargetCount','activeCollisionCount'] as const;
-  if (request.operation !== 'geometry' || request.geometryMode !== undefined || !value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== counts.length+2 || Object.keys(value).some(k=>![...counts,'status','connectionTargets'].includes(k)) || counts.some(k=>!Number.isSafeInteger(value[k]) || value[k]<0)) throw new Error('机械目标状态字段无效。');
-  if (!Array.isArray(value.connectionTargets) || value.connectionTargets.length !== (request.structure.bonds ?? []).length) throw new Error('机械目标项数无效。');
-  const edges=targetEdges(request.structure), explicit=new Map((request.geometryDistanceTargets ?? []).map(row=>[targetKey(row.atomIds,row.image),row.distanceAngstrom])), movable=new Set(request.movableAtomIds), seen=new Set<string>();
-  let targeted=0, available=0, unsupported=0, weak=0;
-  for (const row of value.connectionTargets) {
-    if (!row || typeof row !== 'object' || Object.keys(row).length!==5 || Object.keys(row).some(k=>!['atomIds','image','targetAngstrom','source','orderKnown'].includes(k))) throw new Error('机械连接目标字段无效。');
-    const key=targetEndpoint(row,request.structure), edge=edges.get(key);
-    if (!edge || seen.has(key) || row.orderKnown !== (edge.orderKnown !== false)) throw new Error('机械目标改变了连接或键级身份。'); seen.add(key);
-    if (edge.order===.5) { if(row.source!=='weak-relation' || row.targetAngstrom!==null)throw new Error('弱连接不能成为普通共价目标。'); weak++; }
-    else if(explicit.has(key)) { if(row.source!=='user-distance' || row.targetAngstrom!==explicit.get(key))throw new Error('显式机械距离未按请求保留。'); }
-    else if(edge.kind==='coordination') { if(row.source!=='unavailable-coordination' || row.targetAngstrom!==null)throw new Error('配位连接缺少可靠距离目标。'); unsupported++; }
-    else if(!['typical-covalent','covalent-radii'].includes(row.source) || edge.orderKnown===false && row.source!=='covalent-radii')throw new Error('未知键级不能被提升为已知共价键目标。');
-    if(row.targetAngstrom!==null) {
-      if(!Number.isFinite(row.targetAngstrom) || row.targetAngstrom<=0 || row.targetAngstrom>1000000)throw new Error('机械目标距离无效。'); targeted++;
-      if(row.atomIds[0]!==row.atomIds[1] && row.atomIds.some(id=>movable.has(id)))available++;
-    }
-  }
-  if(value.targetedConnectionCount!==targeted || value.movableConnectionTargetCount!==available || value.untargetedCoordinationCount!==unsupported || value.weakConnectionCount!==weak || value.unresolvedImmovableConnectionCount>targeted-available)throw new Error('机械目标摘要与连接记录不一致。');
-  const hasTargets=available+value.angleTargetCount+value.planeTargetCount>0;
-  const expected=hasTargets ? unsupported || value.unresolvedImmovableConnectionCount ? 'partial-targets' : 'targeted' : value.activeCollisionCount ? 'collision-only' : 'no-targets';
-  if(value.status!==expected)throw new Error('机械状态与实际可调整目标不一致。');
-}
-
 /** Headless controller: bounded latest-frame storage, independent runtime revision, grouped undo. */
 export class DynamicsController {
   private workingSourceDocument?:ModelDocument;
@@ -164,24 +136,33 @@ export class DynamicsController {
       this.scheduleDisplay();
     },Math.max(0,DISPLAY_INTERVAL_MS-(this.displayScheduler.now()-this.displayAt)));
   }
-  private presentMD(frame:DisplayDynamicsFrame,frames:DisplayDynamicsFrame[]):void {
+  private presentMD(latest:PresentationSample,frames:PresentationSample[],queueLatest:boolean):void {
     const now=this.displayScheduler.now();
-    if(serializedFrameBytes(frame)>DISPLAY_BYTE_LIMIT){this.clearDisplayQueue();this.displayAt=now;this.update({displayFrame:frame});return;}
-    for(const item of frames)this.displayQueue.push(item,now);
-    if(!this.state.displayFrame){this.displayAt=now;this.update({displayFrame:this.displayQueue.shift()??frame});}
+    if(latest.bytes>DISPLAY_BYTE_LIMIT){this.clearDisplayQueue();this.displayAt=now;this.update({lastFrame:latest.frame,displayFrame:latest.frame});return;}
+    for(const item of frames)this.displayQueue.push(item.frame,now,item.bytes);
+    if(queueLatest)this.displayQueue.push(latest.frame,now,latest.bytes);
+    if(!this.state.displayFrame){this.displayAt=now;this.update({lastFrame:latest.frame,displayFrame:this.displayQueue.shift()??latest.frame});}
+    else this.update({lastFrame:latest.frame});
     this.scheduleDisplay();
   }
-  private validateDisplayBatch(event:DynamicsEvent,request:DynamicsRequest):DisplayDynamicsFrame[] {
-    if(event.displayFrames===undefined)return [];
-    if(request.operation!=='md' || event.event!=='frame' || !Array.isArray(event.displayFrames) || event.displayFrames.length>DISPLAY_FRAME_LIMIT)throw new Error('动态显示批次类型或数量无效。');
-    let bytes=0,lastSeq=this.nextSeq,lastStep=this.state.lastFrame?.step??-1;const frames:DisplayDynamicsFrame[]=[];
+  private presentationFrames(event:DynamicsEvent,request:DynamicsRequest):PresentationSample[] {
+    if(request.operation!=='md' || event.event!=='frame' || !Array.isArray(event.displayFrames) || event.displayFrames.length>DISPLAY_FRAME_LIMIT)return [];
+    let bytes=0,lastSeq=this.nextSeq,lastStep=this.state.lastFrame?.step??-1;const frames:PresentationSample[]=[];
     for(const item of event.displayFrames){
-      if(!item || item.displayFrames!==undefined || item.schema!==1 || item.event!=='frame' || item.operation!=='md' || item.sessionId!==event.sessionId || !item.stamp || !sameStamp(item.stamp,request.stamp) || !Number.isSafeInteger(item.seq) || item.seq<=lastSeq || item.seq>event.seq || !Number.isSafeInteger(item.step) || item.step<0 || item.step<lastStep || item.step>event.step! || !Number.isFinite(item.timeFs) || item.timeFs!==item.step*(request.dtFs??1) || !item.structure)throw new Error('动态显示帧身份、顺序或时间无效。');
-      bytes+=serializedFrameBytes(item);if(bytes>DISPLAY_BYTE_LIMIT)throw new Error('动态显示批次超过载荷上限。');
-      const structure=acceptTransportedDynamicsStructure(request.structure,item.structure,request.movableAtomIds,request.operation);validateMDMetadata(item,request);
-      for(const value of [item.energyEV,item.kineticEnergyEV,item.temperatureK,item.targetTemperatureK])if(value!==undefined&&!Number.isFinite(value))throw new Error('动态显示帧物理数值无效。');
-      if(item.temperatureK!==undefined&&item.temperatureK<0 || item.targetTemperatureK!==undefined&&item.targetTemperatureK!==request.temperatureK || item.geometryObjective!==undefined || item.hybridGeometry!==undefined || item.geometryTargetStatus!==undefined)throw new Error('动态显示帧物理定义无效。');
-      frames.push({...clone({...item,structure}),physicalTimeFs:item.timeFs,instantTemperatureK:item.temperatureK});lastSeq=item.seq;lastStep=item.step;
+      if(!item || item.displayFrames!==undefined || item.schema!==1 || item.event!=='frame' || item.operation!=='md' || item.sessionId!==event.sessionId || !item.stamp || !sameStamp(item.stamp,request.stamp) || !Number.isSafeInteger(item.seq) || item.seq<=lastSeq || item.seq>=event.seq || !Number.isSafeInteger(item.step) || item.step<0 || item.step<lastStep || item.step>event.step! || !Number.isFinite(item.timeFs) || item.timeFs!==item.step*(request.dtFs??1) || !item.structure)continue;
+      if([item.energyEV,item.kineticEnergyEV,item.temperatureK,item.targetTemperatureK].some(value=>value!==undefined&&!Number.isFinite(value)))continue;
+      if(item.temperatureK!==undefined&&item.temperatureK<0 || item.targetTemperatureK!==undefined&&item.targetTemperatureK!==request.temperatureK)continue;
+      try {
+        const size=presentationSize(item);
+        if(bytes+size>DISPLAY_BYTE_LIMIT)continue;
+        const structure=acceptTransportedDynamicsStructure(request.structure,item.structure,request.movableAtomIds);
+        validateMDMetadata(item,request);
+        const {displayByteLength: _bytes,...sample}=item;
+        frames.push({frame:{...clone({...sample,structure}),physicalTimeFs:item.timeFs,instantTemperatureK:item.temperatureK},bytes:size});
+        bytes+=size;lastSeq=item.seq;lastStep=item.step;
+      } catch {
+        // A rejected display sample has no ownership of the native run.
+      }
     }
     return frames;
   }
@@ -206,7 +187,7 @@ export class DynamicsController {
       origin: details.origin ?? 'controller', code: details.code ?? 'controller-validation-failed', message: error.message,
       stage: this.coordinatesAccepted ? 'after-frame' : 'before-first-frame', coordinatesAccepted: this.coordinatesAccepted,
       identityVerified: details.nativeTerminal === true, sessionId, stamp: clone(request.stamp), operation: request.operation,
-      forcefield: request.forcefield, movableAtomIds: [...request.movableAtomIds], constraints: clone(request.constraints ?? []),
+      movableAtomIds: [...request.movableAtomIds], constraints: clone(request.constraints ?? []),
       ...(details.phase === undefined ? {} : { phase: details.phase }), ...(details.atomIds === undefined ? {} : { atomIds: [...details.atomIds] }),
     } : undefined;
     this.generation++; this.request = undefined; this.expectedStamp = undefined; this.finish();
@@ -238,12 +219,13 @@ export class DynamicsController {
     return clone(receipt);
   }
 
-  async start(mode: DynamicsOperation, config: DynamicsConfig = {}): Promise<void> {
+  async start(mode: DynamicsOperation, config: DynamicsConfig = {}, capturedSource?:ModelDocument): Promise<void> {
     if (this.disposed) throw new Error('动态控制器已关闭。');
     this.connect();
     if (active(this.state.status)) throw new Error('请先停止当前动态会话。');
     const owner=this.deps.getWorkingSnapshot?.();
-    const operation=this.deps.prepareSource?.();
+    if(capturedSource&&!this.deps.prepareSource)throw Error('当前动态控制器无法接收已确认的模型来源。');
+    const operation=this.deps.prepareSource?.(capturedSource);
     const preparation=operation?{cancelled:false}:undefined;
     this.preparing=preparation;
     if(preparation)this.update({status:'starting',mode,sessionId:undefined,lastFrame:undefined,displayFrame:undefined,error:undefined,resultAdoption:undefined});
@@ -263,9 +245,8 @@ export class DynamicsController {
   private async startRun(mode:DynamicsOperation,config:DynamicsConfig,owner?:ModelDocument,operation?:ScientificModelOperation,preparation?:{cancelled:boolean}):Promise<void> {
     if (this.state.termination?.status === 'pending') await this.waitForTermination();
     if(preparation?.cancelled)return;
-    // A new preflight must never borrow an earlier native failure for AUTO fallback.
     this.terminationTask = undefined; this.update({ terminalFailure: undefined, termination: undefined });
-    const temperatureK = config.temperatureK ?? 300, maxSteps = config.maxSteps ?? (mode === 'md' ? 100000 : 500);
+    const temperatureK = config.temperatureK ?? 300, maxSteps = config.maxSteps ?? 100000;
     validateDynamicsConfig(mode, temperatureK, maxSteps);
     const pendingGeneration = this.generation;
     const capabilities = await this.port.capabilities(); this.update({ capabilities });
@@ -277,34 +258,35 @@ export class DynamicsController {
     if(operation&&!operation.isCurrent())throw new Error('启动期间模型或来源已变化，动态请求已取消。');
     const document = operation?.source??this.deps.getSnapshot(), structure = document.draft.structure;
     const constraints = effectiveModelCoordinates(document);
-    validateDynamicsAdmission(structure, mode, { ...config, constraints, attachmentPorts: document.attachmentPorts });
-    validateDistanceTargets(config.geometryDistanceTargets, { operation:mode, geometryMode:config.geometryMode, structure });
+    validateDynamicsAdmission(structure, mode, { ...config, method: config.method ?? 'gfn2', constraints, attachmentPorts: document.attachmentPorts });
     if (!structure.atoms.length) throw new Error('动态整理需要非空显式原子结构。');
-    if (mode === 'md' && document.attachmentPorts?.length) throw new Error('当前模型含未完成的悬空端口，属于编辑状态；完成连接或移除端口后才能运行真实MD。');
-    const nativeMD = mode === 'md' && isXtbMethod(config.method ?? ''), periodicMD=nativeMD&&Boolean(structure.cell);
-    if(nativeMD && temperatureK<=0) throw new Error('GFN原生MD需要大于0 K的目标温度。');
-    if (config.method !== undefined && mode !== 'md') throw new Error('MD计算级别仅适用于MD。');
-    const editorMovable = config.movableAtomIds ?? getMovableAtomIds(document, 'all');
-    if(config.solvation&&(config.solvation.model!=='alpb'||!nativeMD||!supportsXtbAlpb(config.method!,config.solvation.solvent,periodicMD)))throw new Error('所选MD方法或周期条件不支持此溶剂，请明确改选。');
-    if(nativeMD&&!periodicMD&&constraints.some(row=>row.action!=='freeze'||row.images?.some(image=>image.some(Boolean))))throw new Error('原生MD只应用非周期B/A/D保护，不能执行内坐标扫描。');
-    const nativeConstraints=nativeMD&&!periodicMD?constraints.map(row=>({...row,value:row.value??builderCoordinateValue(structure,row.type,row.atomIds)})):[];
-    const protectedAtomIds = periodicMD?[]:structure.atoms.map(atom=>atom.id!).filter(id=>!editorMovable.includes(id));
-    if (nativeMD && protectedAtomIds.length === 1) throw new Error('GFN相对距离保护至少需要2个冻结原子；请增加冻结原子，或改用MMFF/UFF。');
-    const movableAtomIds = nativeMD ? structure.atoms.map(atom=>atom.id!) : editorMovable;
+    if (document.attachmentPorts?.length) throw new Error('当前模型含未完成的悬空端口，属于编辑状态；完成连接或移除端口后才能运行真实MD。');
+    const method = config.method ?? 'gfn2', periodicMD=isPeriodic(structure);
+    if(temperatureK<=0) throw new Error('MD需要大于0 K的目标温度。');
+    const ase = config.integrator === 'ase';
+    const documentMovable = getMovableAtomIds(document, 'all');
+    const editorMovable = ase ? documentMovable : config.movableAtomIds ?? documentMovable;
+    const hydrogen = config.integrator ? mdHydrogenSettings(method, config.shakeHydrogenBonds) : undefined;
+    if(config.solvation&&(config.solvation.model!=='alpb'||!supportsXtbAlpb(method,config.solvation.solvent,periodicMD)))throw new Error('所选MD方法或周期条件不支持此溶剂，请明确改选。');
+    if((ase||!periodicMD)&&constraints.some(row=>row.action!=='freeze'||!ase&&row.images?.some(image=>image.some(Boolean))))throw new Error(ase?'ASE MD可应用B/A/D冻结。请先停用内坐标扫描。':'原生MD只应用非周期B/A/D保护，不能执行内坐标扫描。');
+    const runConstraints=ase||!periodicMD?constraints.map(row=>resolveMDConstraint(structure,row)):[];
+    const protectedAtomIds = periodicMD||ase?[]:structure.atoms.map(atom=>atom.id!).filter(id=>!editorMovable.includes(id));
+    if (protectedAtomIds.length === 1) throw new Error('相对距离保护至少需要两个原子。');
+    const movableAtomIds = ase ? editorMovable : structure.atoms.map(atom=>atom.id!);
     if (!movableAtomIds.length) throw new Error('没有可动原子。');
-    const allowedMovable = new Set(getMovableAtomIds(document, 'all'));
+    const allowedMovable = new Set(documentMovable);
     if (editorMovable.some(id => !allowedMovable.has(id))) throw new Error('动态可动原子包含冻结或不存在的原子。');
-    validateDynamicsStructure(structure, structure, movableAtomIds, mode);
-    this.nativeMDPolicy = nativeMD ? {kind:'native-gfn-md',method:config.method as DynamicsMethod,dtFs:2,protectedAtomIds:[...protectedAtomIds],forceConstantKJMolNm2:500000,
-      ...(periodicMD?{periodic:true as const}:{}),...(nativeConstraints.length?{internalConstraintMode:'native-harmonic' as const}:{})} : undefined;
+    validateDynamicsStructure(structure, structure, movableAtomIds);
+    this.nativeMDPolicy = ase ? undefined : {kind:'native-gfn-md',method,dtFs:2,protectedAtomIds:[...protectedAtomIds],forceConstantKJMolNm2:500000,
+      ...hydrogen,...(periodicMD?{periodic:true as const}:{}),...(runConstraints.length?{internalConstraintMode:'native-harmonic' as const}:{})};
     const stamp = this.deps.getStamp(movableAtomIds,this.nativeMDPolicy,operation), sessionId = `${this.windowId}-${crypto.randomUUID()}`;
-    const seed = config.method==='gxtb'?undefined:config.seed ?? (mode === 'md' ? crypto.getRandomValues(new Uint32Array(1))[0] % (nativeMD?2**31:2**32) : undefined);
-    if(nativeMD&&seed!==undefined&&(!Number.isSafeInteger(seed)||seed<0||seed>2147483647))throw new Error('原生GFN MD的种子必须在0–2147483647之间。');
+    const seed = method==='gxtb'?undefined:config.seed ?? crypto.getRandomValues(new Uint32Array(1))[0] % 2**31;
+    if(seed!==undefined&&(!Number.isSafeInteger(seed)||seed<0||seed>2147483647))throw new Error('MD的种子必须在0–2147483647之间。');
     this.request = { stamp, operation: mode, structure: clone(structure), movableAtomIds: [...movableAtomIds],
-      constraints: clone(nativeMD?nativeConstraints:constraints),
+      constraints: clone(runConstraints),
       maxSteps, ...(config.maxWallTimeSeconds === undefined ? {} : {maxWallTimeSeconds: config.maxWallTimeSeconds}),
-      ...(mode === 'geometry' ? { attachmentPorts: clone(document.attachmentPorts ?? []), ...(config.geometryDistanceTargets === undefined ? {} : { geometryDistanceTargets:clone(config.geometryDistanceTargets) }), ...(config.geometryMode ? { geometryMode: config.geometryMode, hybridScalePolicy: config.hybridScalePolicy, ...(config.allowPureGeometryFallback === true ? { allowPureGeometryFallback: true } : {}) } : {}) }
-        : { ...(nativeMD ? {method:config.method as DynamicsMethod, protectedAtomIds,...(config.solvation?{solvation:clone(config.solvation)}:{})} : {forcefield: (config.method as ForcefieldChoice | undefined) ?? config.forcefield ?? 'auto',frictionPerFs:config.frictionPerFs}), ...(mode === 'md' ? {untilStopped:true as const} : {}), dtFs: nativeMD ? 2 : 1, reportEvery: 10, temperatureK, seed }) };
+      method, ...(config.integrator?{integrator:config.integrator,...hydrogen}:{}), ...(!ase?{protectedAtomIds}:{}), ...(config.solvation ? { solvation: clone(config.solvation) } : {}),
+      untilStopped: true, dtFs: 2, reportEvery: 10, temperatureK, seed };
     this.expectedStamp=clone(stamp);this.nextSeq=-1;this.coordinatesAccepted=false;this.terminationTask=undefined;this.startIssued=false;
     this.begin();this.preparing=undefined;
     const generation = ++this.generation;
@@ -402,7 +384,7 @@ export class DynamicsController {
       if(!source || working.id!==source.documentId || working.revision!==source.revision) throw new Error('MD运行期间工作源已变化，不能导出旧MD快照。');
       const modelDocument=clone(this.deps.getSnapshot());
       const frame=this.state.lastFrame;
-      const observation: DynamicsSnapshotObservation | undefined=frame?clone({step:frame.step,timeFs:frame.timeFs,...(frame.energyEV===undefined?{}:{energyEV:frame.energyEV}),...(frame.temperatureK===undefined?{}:{temperatureK:frame.temperatureK}),...(frame.targetTemperatureK===undefined?{}:{targetTemperatureK:frame.targetTemperatureK}),...(frame.forcefield===undefined?{}:{forcefield:frame.forcefield}),...(frame.nativeMD===undefined?{}:{nativeMD:frame.nativeMD}),...(frame.engine===undefined?{}:{engine:frame.engine}),...(frame.engineVersion===undefined?{}:{engineVersion:frame.engineVersion}),...(frame.aseVersion===undefined?{}:{aseVersion:frame.aseVersion})}):undefined;
+      const observation: DynamicsSnapshotObservation | undefined=frame?clone({step:frame.step,timeFs:frame.timeFs,...(frame.energyEV===undefined?{}:{energyEV:frame.energyEV}),...(frame.temperatureK===undefined?{}:{temperatureK:frame.temperatureK}),...(frame.targetTemperatureK===undefined?{}:{targetTemperatureK:frame.targetTemperatureK}),...(frame.forcefield===undefined?{}:{forcefield:frame.forcefield}),...(frame.nativeMD===undefined?{}:{nativeMD:frame.nativeMD}),...(frame.aseMD===undefined?{}:{aseMD:frame.aseMD}),...(frame.engine===undefined?{}:{engine:frame.engine}),...(frame.engineVersion===undefined?{}:{engineVersion:frame.engineVersion}),...(frame.aseVersion===undefined?{}:{aseVersion:frame.aseVersion})}):undefined;
       return { structure:clone(modelDocument.draft.structure),modelDocument,...(observation?{observation}:{}),seq:frame?.seq ?? 0,sessionId:this.state.sessionId,detached:true,workingSource:clone(source) };
     }
     return { structure:clone(working.draft.structure),seq:this.state.lastFrame?.seq ?? 0,sessionId:this.state.sessionId };
@@ -435,36 +417,25 @@ export class DynamicsController {
       if (request.operation === 'md' && Math.abs(event.timeFs! - event.step!*(request.dtFs ?? 1)) > 1e-7) throw new Error('MD累计时间与实际积分步长不一致。');
       if (request.untilStopped && (['paused','resumed','temperature'].includes(event.event) || event.targetTemperatureK !== undefined && event.targetTemperatureK !== request.temperatureK)) throw new Error('持续MD不能暂停或修改运行温度。');
       validateMDMetadata(event,request);
-      if (request.method && event.event === 'stopped' && event.nativeMD?.nativeClosed !== true) throw new Error('原生MD尚未确认实际退出。');
-      if (request.operation === 'geometry') {
-        if (event.timeFs !== 0) throw new Error('机械几何整理没有物理累计时间。');
-        if (event.event === 'temperature' || [event.energyEV, event.kineticEnergyEV, event.temperatureK, event.targetTemperatureK, event.forcefield].some(value => value !== undefined)) throw new Error('机械几何整理不能提供物理势能、力场或温度。');
-        if (event.hybridGeometry !== undefined) {
-          if (request.geometryMode !== 'hybrid-local') throw new Error('未请求局部混合优化，不能接受混合结果。');
-          validateHybridMetadata(event.hybridGeometry, request.structure, event.geometryObjective);
-          if (event.hybridGeometry.mode === 'geometry-only' && request.allowPureGeometryFallback !== true) throw new Error('未授权自动纯几何回退，不能接受该结果。');
-        }
-        if (request.geometryMode === 'hybrid-local' && event.structure && !event.hybridGeometry) throw new Error('局部混合结果缺少真实分区和目标。');
-        if (event.geometryObjective !== undefined && (!Number.isFinite(event.geometryObjective) || !event.hybridGeometry && event.geometryObjective < 0)) throw new Error('机械几何目标无效。');
-        if (event.structure && event.geometryObjective === undefined) throw new Error('机械几何帧缺少真实几何目标。');
-        if (event.geometryTargetStatus !== undefined) validateTargetStatus(event.geometryTargetStatus, request);
-        if (event.reason === 'no-targets' && (event.event !== 'completed' || event.converged !== false || event.geometryTargetStatus?.status !== 'no-targets')) throw new Error('没有可调整目标时不能声称机械收敛。');
-      } else if (event.geometryObjective !== undefined || event.hybridGeometry !== undefined || event.geometryTargetStatus !== undefined || event.reason === 'no-targets') throw new Error('物理力场事件不能混入机械几何目标。');
-      if (event.event === 'completed' && event.reason !== undefined && (!['converged','step-limit','no-targets'].includes(event.reason) || event.reason === 'converged' && event.converged !== true || event.reason === 'step-limit' && event.converged !== false)) throw new Error('动态结束原因无效。');
-      if (event.event === 'completed' && event.geometryTargetStatus?.status === 'no-targets' && (event.reason !== 'no-targets' || event.converged !== false)) throw new Error('无目标的机械结束状态不完整。');
+      if (event.event === 'completed' && event.reason !== undefined && (event.reason !== 'step-limit' || event.converged !== false)) throw new Error('MD结束原因无效。');
       for (const value of [event.energyEV, event.kineticEnergyEV, event.temperatureK, event.targetTemperatureK]) if (value !== undefined && !Number.isFinite(value)) throw new Error('动态帧能量或温度非有限。');
       if (event.temperatureK !== undefined && event.temperatureK < 0 || event.targetTemperatureK !== undefined && (event.targetTemperatureK < 0 || event.targetTemperatureK > 5000)) throw new Error('动态帧温度无效。');
       const terminalError = event.event === 'error' ? validateDynamicsError(event.error, request.structure) : undefined;
-      const displayFrames=this.validateDisplayBatch(event,request);
+      const displayFrames=this.presentationFrames(event,request);
       this.nextSeq = event.seq;
       if (event.structure) {
         if (this.state.status === 'paused' && event.event === 'frame') throw new Error('暂停期间收到未恢复的动态坐标帧。');
-        const structure=acceptTransportedDynamicsStructure(request.structure,event.structure,request.movableAtomIds,request.operation);
+        const structure=acceptTransportedDynamicsStructure(request.structure,event.structure,request.movableAtomIds);
         // Native status/heartbeat events also carry the last validated snapshot.
         // Capture a pause's exact final step before ending its undo transaction.
-        const {displayFrames: _displayBatch,...scientificEvent}=event;
+        const {displayFrames: _displayBatch,displayByteLength: _displayBytes,...scientificEvent}=event;
         const frame = { ...scientificEvent, structure, event: 'frame' } as DynamicsFrame;
-        const changed = coordinatesFingerprint(structure) !== coordinatesFingerprint(this.deps.getSnapshot().draft.structure);
+        const current = this.deps.getSnapshot().draft.structure;
+        const ordered = structure.atoms.length === current.atoms.length && structure.atoms.every((atom, index) => atom.id === current.atoms[index].id);
+        const changed = ordered ? structure.atoms.some((atom, index) => {
+          const before = current.atoms[index];
+          return atom.x !== before.x || atom.y !== before.y || atom.z !== before.z;
+        }) : coordinatesFingerprint(structure) !== coordinatesFingerprint(current);
         // A terminal event can repeat the last coordinates but supply the
         // final energy and convergence record for the same accepted run.
         const terminalReceipt=this.deps.prepareSource&&this.coordinatesAccepted&&(event.event==='stopped'||event.event==='completed');
@@ -476,13 +447,13 @@ export class DynamicsController {
           this.expectedStamp = this.deps.getStamp(request.movableAtomIds,this.nativeMDPolicy);
         }
         const latest={ ...clone(frame), physicalTimeFs: frame.timeFs, instantTemperatureK: frame.temperatureK };
-        this.update({ lastFrame:latest });
-        if(request.operation==='md')this.presentMD(latest,event.displayFrames===undefined&&event.event==='frame'?[latest]:displayFrames);
+        if(request.operation==='md')this.presentMD({frame:latest,bytes:presentationSize(event,latest)},displayFrames,event.event==='frame');
+        else this.update({lastFrame:latest});
       } else if (event.event === 'frame') throw new Error('动态帧缺少结构。');
       if (event.event === 'started' || event.event === 'resumed') { this.update({ status: 'running' }); this.settleStarted(); }
       if (event.event === 'paused') { this.commit(); this.update({ status: 'paused' }); this.settleWaiters(); }
       if (event.event === 'stopped' || event.event === 'completed') {
-        if (!event.structure && this.state.lastFrame) this.update({ lastFrame: { ...this.state.lastFrame, ...(event.reason === undefined ? {} : { reason:event.reason }), ...(event.converged === undefined ? {} : { converged:event.converged }), ...(event.geometryTargetStatus === undefined ? {} : { geometryTargetStatus:clone(event.geometryTargetStatus) }) } });
+        if (!event.structure && this.state.lastFrame) this.update({ lastFrame: { ...this.state.lastFrame, ...(event.reason === undefined ? {} : { reason:event.reason }), ...(event.converged === undefined ? {} : { converged:event.converged }) } });
         this.complete(event.event);
       }
       if (terminalError) {
@@ -496,16 +467,15 @@ export class DynamicsController {
   dispose(): void { if (this.disposed) return; this.disconnect(); this.disposed = true; this.listeners.clear(); this.settleWaiters(new Error('动态控制器已关闭。')); }
 }
 
-export function createStoreDynamicsDependencies(store: ModelStore, options?: { isolated: true; captureSource?(): ModelDocument; deferApplication?():boolean }): DynamicsDependencies {
+export function createStoreDynamicsDependencies(store: ModelStore, options?: { isolated: true; captureSource?(): ModelDocument }): DynamicsDependencies {
   if (!options?.isolated) return { getSnapshot: store.getSnapshot, getStamp: (ids,policy) => policy?store.stampNativeMD(policy):store.stamp(ids), hasRuntimeLock: () => store.isRuntimeSessionActive?.() ?? false, beginRun: () => { store.beginRuntimeSession(); store.beginTransaction('dynamics'); }, acceptFrame: frame => { store.acceptRuntimeFrame(frame); }, commitRun: () => store.endTransaction(), finishRun: () => store.finishRuntimeSession() };
-  let runStore: ModelStore | undefined, source: ModelDocument | undefined, lastFrame: DynamicsFrame | undefined, operation:ScientificModelOperation|undefined,begun=false,deferred=false;
+  let runStore: ModelStore | undefined, source: ModelDocument | undefined, lastFrame: DynamicsFrame | undefined, operation:ScientificModelOperation|undefined,begun=false;
   return {
     getSnapshot: () => begun && runStore ? runStore.getSnapshot() : store.getSnapshot(),
     getWorkingSnapshot:store.getSnapshot,
-    ...(options.captureSource&&store.createScientificOperation?{prepareSource:()=>{deferred=options.deferApplication?.()===true;return store.createScientificOperation!(options.captureSource!());}}:{}),
+    ...(options.captureSource&&store.createScientificOperation?{prepareSource:capturedSource=>store.createScientificOperation!(capturedSource??options.captureSource!())}:{}),
     getStamp: (ids,policy,preparedOperation) => {
       if (!begun) {
-        if(!options.captureSource)deferred=options.deferApplication?.()===true;
         operation=preparedOperation;source=operation?.source??store.getSnapshot();runStore=operation?.store??createRuntimeModelStore(source);
         if(!operation){if(policy)store.stampNativeMD(policy);else store.stamp(ids);}
       }
@@ -525,7 +495,6 @@ export function createStoreDynamicsDependencies(store: ModelStore, options?: { i
       if(!begun)return;
       try {
         runStore?.endTransaction(); runStore?.finishRuntimeSession();
-        if(deferred)return 'retained';
         if(operation)return adopt&&lastFrame?operation.apply('dynamics',onAccepted):undefined;
         // Exact monotonically increasing revision prevents edit -> Undo from
         // allowing an old run to overwrite the working document again.
@@ -535,7 +504,7 @@ export function createStoreDynamicsDependencies(store: ModelStore, options?: { i
           try { store.acceptRuntimeFrame(lastFrame,source); store.endTransaction(); }
           catch (error) { store.cancelTransaction(); throw error; }
         }
-      } finally { store.finishRuntimeSession(); runStore = undefined; source = undefined; lastFrame = undefined; operation=undefined;begun=false;deferred=false; }
+      } finally { store.finishRuntimeSession(); runStore = undefined; source = undefined; lastFrame = undefined; operation=undefined;begun=false; }
     },
   };
 }

@@ -15,7 +15,11 @@ export const scale = (a: Vector3, n: number): Vector3 => a.map(v => v * n) as Ve
 export const dot = (a: Vector3, b: Vector3) => a.reduce((n, v, i) => n + v * b[i], 0);
 export const cross = (a: Vector3, b: Vector3): Vector3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 export function centroid(atoms: { x: number; y: number; z: number }[]): Vector3 {
-  return atoms.length ? scale(atoms.reduce<Vector3>((sum, a) => add(sum, coordinates(a)), [0, 0, 0]), 1 / atoms.length) : [0, 0, 0];
+  if(!atoms.length)return [0,0,0];
+  let x=0,y=0,z=0;
+  for(const atom of atoms){x+=atom.x;y+=atom.y;z+=atom.z;}
+  const inverse=1/atoms.length;
+  return [x*inverse,y*inverse,z*inverse];
 }
 /** Actual construction endpoint; no synthetic atom or auxiliary relation. */
 export function attachmentPortEndpoint(host: Vector3, port: AttachmentPort): Vector3 | null {

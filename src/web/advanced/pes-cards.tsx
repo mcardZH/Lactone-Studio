@@ -1,64 +1,87 @@
-import { useState } from 'react';
-import { PES_EXECUTION_PROFILE, type PesCard, type PesGeometry, type PesParameter, type PesRun, type PesConvergencePreset } from '../../modeling/pes/contracts';
-import { PES_ALGORITHMS, PES_CARD_LABELS, PES_CONVERGENCE_OPTIONS, defaultParameters, effectivePesPathParameters, nebPresetParameters, pesParameterSections, usesPesExecutionProfile, pesId } from '../../modeling/pes/defaults';
-import { pesPathStructureIssue } from '../../modeling/pes/request';
+import { useMemo, useState } from 'react';
+import { PES_EXECUTION_PROFILE, type PesCard, type PesGeometry, type PesMethod, type PesParameter, type PesRun, type PesConvergencePreset } from '../../modeling/pes/contracts';
+import { PES_ALGORITHMS, PES_CARD_LABELS, PES_CONVERGENCE_OPTIONS, GSM_CONVERGENCE_PRESETS, defaultParameters, effectivePesPathParameters, nebPresetParameters, pesParameterSections, usesPesExecutionProfile, pesId } from '../../modeling/pes/defaults';
+import { pesStructureCompatibilityIssues } from '../../modeling/pes/request';
+import {periodicPesOperationAvailable} from '../../modeling/pes/periodic-capabilities';
 import { InputSettingsCard, InputSettingsField, InputSettingsRow, InputSettingsStack } from '../InputSettingsFields';
 import {SelectionAddButton,SelectionGroupHeader,SelectionRemoveButton} from '../InteractiveSelectionField';
-import { isPesRunLive, PesMethodFields, PesParameterSections,
+import { isPesRunLive, PesParameterSections,
   PesRunControls, PesSelect, PesText, type PesSelectionScope } from './pes-fields';
 import { PesScanAxes, PesScanCoordinates, PesScanOptimization, PesScanSourceRow } from './PesScanSettings';
-import type { ScanSourceChoice } from '../../modeling/pes/scan-source';
+import type { PesTabSnapshotSource } from '../modeling/pes-tab-snapshot';
+import { PesSnapshotWarning } from './PesSnapshotWarning';
 
 function sourceKey(source: PesGeometry): string {
-  return JSON.stringify([source.documentId, source.revision, source.source?.nodeId, source.source?.runId, source.source?.seriesId, source.source?.frameId,source.inputSnapshotId]);
+  return JSON.stringify([source.documentId, source.revision, source.source?.groupId, source.source?.nodeId, source.source?.runId,
+    source.source?.seriesId, source.source?.frameId, source.source?.recordId, source.inputSnapshotId]);
 }
 
-interface SourceRowProps { label: string; fieldLabel?: string; value?: PesGeometry; fallback?: string; sources: PesGeometry[]; canCapture: boolean; onSelect(value?: PesGeometry): void; onCapture(): void; issues?: string[] }
-function SourceRow({ label, fieldLabel = label, value, fallback = '选择结构', sources, canCapture, onSelect, onCapture, issues }: SourceRowProps) {
-  const options = new Map(sources.map(source => [sourceKey(source), source]));
-  if (value && !options.has(sourceKey(value))) options.set(sourceKey(value), value);
+interface SourceRowProps {
+  label: string; fieldLabel?: string; value?: PesGeometry; fallback?: string; sources: readonly PesTabSnapshotSource[];
+  tabSources: readonly PesTabSnapshotSource[]; loading?: boolean; canCapture: boolean;
+  onSelect(value?: PesGeometry): void; onSelectTab(key: string): void; onCapture(): void; issues: string[];
+}
+function SourceRow({ label, fieldLabel = label, value, fallback = '选择结构', sources, tabSources, loading, canCapture, onSelect, onSelectTab, onCapture, issues }: SourceRowProps) {
   return <InputSettingsRow className="pes-source-row">
-    <InputSettingsField label={fieldLabel} controlWidth="select"><select aria-label={label} title={value?.label ?? value?.structure.name ?? fallback} value={value ? sourceKey(value) : ''}
-      onChange={event => onSelect(options.get(event.target.value))}>
+    <InputSettingsField label={fieldLabel} controlWidth="select"><select aria-label={label} title={value?.label ?? value?.structure.name ?? fallback} value={value ? sourceKey(value) : ''} disabled={loading}
+      onChange={event => {
+        const key = event.target.value;
+        if (key) onSelectTab(key);
+        else onSelect();
+      }}>
       <option value="">{fallback}</option>
-      {[...options].map(([key, source]) => <option key={key} value={key}>{source.label ?? source.structure.name}{source.source?.frameId ? ' · 所选帧' : ''}</option>)}
+      {value && <option value={sourceKey(value)}>{value.label ?? value.structure.name}{value.source?.frameId ? ' · 所选帧' : ''}</option>}
+      {sources.map(source => <option key={source.key} value={source.key}>{source.label}</option>)}
+      {!!tabSources.length && <optgroup label="ES 标签">{tabSources.map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}</optgroup>}
     </select></InputSettingsField>
-    <span className="pes-source-actions"><button type="button" className="button button-primary" disabled={!canCapture} aria-label={`${label}记录快照`} onClick={onCapture}>记录快照</button>
-      {!!issues?.length && <details className="pes-local-failures">
-        <summary aria-label="查看路径结构问题" title="查看路径结构问题"><span aria-hidden="true">!</span></summary>
-        <div role="note">{issues.map((issue, index) => <p key={index}>{issue}</p>)}</div>
-      </details>}
+    <span className="pes-source-actions"><button type="button" className="button button-primary" disabled={!canCapture || loading} aria-label={`${label}记录快照`} onClick={onCapture}>记录快照</button>
+      <PesSnapshotWarning label={`查看${label}结构问题`} issues={issues}/>
     </span>
   </InputSettingsRow>;
 }
 
-export function PesCalculationCard({ card, source, sources, scope, update, setSlot, capture, run, start, stop, move, remove, available, canCapture, scanSources,selectScanSource,sourceIssue,sourceLoading,selectAlgorithm }: {
-  card: PesCard; source: PesGeometry; sources: PesGeometry[]; scope:PesSelectionScope; update(edit: (card: PesCard) => PesCard): void;
-  setSlot(slot: string, geometry?: PesGeometry): void; capture(slot: string): void; run?: PesRun; start(): void; stop(): void;
-  move(direction: -1 | 1): void; remove(): void; available: boolean; canCapture: boolean;
-  scanSources?:ScanSourceChoice[];selectScanSource?(key:string):void;sourceIssue?:string;sourceLoading?:boolean;
+export function PesCalculationCard({ card, method = card.method.method, source, sources, tabSources = [], scope, update, setSlot, selectTab, capture, run, start, stop, move, remove, available, unavailableReason, canCapture, constraintIssue,sourceIssue,sourceLoading,selectAlgorithm }: {
+  card: PesCard; method?: PesMethod; source: PesGeometry; sources: readonly PesTabSnapshotSource[]; scope:PesSelectionScope; update(edit: (card: PesCard) => PesCard): void;
+  tabSources?: readonly PesTabSnapshotSource[];
+  setSlot(slot: string, geometry?: PesGeometry): void; selectTab?(slot:string,key:string):void; capture(slot: string): void; run?: PesRun; start(): void; stop(): void;
+  move(direction: -1 | 1): void; remove(): void; available: boolean; unavailableReason?:string; canCapture: boolean;
+  constraintIssue?: string;sourceIssue?:string;sourceLoading?:boolean;
   selectAlgorithm?(algorithm:string):void;
 }) {
   const [managing, setManaging] = useState(false);
   const live = isPesRunLive(run);
+  const { structure } = source;
+  const issues = useMemo(() => {
+    const warnings: Record<string, string[]> = {};
+    if (constraintIssue) warnings[card.kind === 'scan' ? 'start' : 'reactant'] = [constraintIssue];
+    if (card.kind === 'path' && !sourceIssue) {
+      if (card.slots.product)
+        warnings.product = pesStructureCompatibilityIssues(structure, card.slots.product.structure, '产物');
+      card.keys.forEach(({ id }, index) => {
+        const keyframe = card.slots[id];
+        if (keyframe) warnings[id] = pesStructureCompatibilityIssues(structure, keyframe.structure, `关键构型${index + 1}`);
+      });
+    }
+    return warnings;
+  }, [card.kind, card.slots, card.keys, constraintIssue, structure, sourceIssue]);
   if (card.kind === 'explore') return <InputSettingsCard sectionKey={`pes-card:${card.id}`} stack className="pes-calculation" title={`${PES_CARD_LABELS.explore} ${card.name}`}>
     <p>单端反应探索已停用，已有结果仍可查看和导出。</p>
     {run && <PesRunControls run={run} stop={stop}/>}
   </InputSettingsCard>;
   const algorithm = card.algorithm;
   const values = effectivePesPathParameters(algorithm, card.parametersByAlgorithm[algorithm] ?? {});
-  const structure = source.structure;
+  const periodic=!sourceIssue&&Boolean(structure.cell?.pbc.some(Boolean));
   const parameter = (key: string, value: PesParameter) => update(current => ({ ...current,
     parametersByAlgorithm: { ...current.parametersByAlgorithm, [algorithm]: { ...current.parametersByAlgorithm[algorithm], [key]: value,
       ...(usesPesExecutionProfile(current.parametersByAlgorithm[algorithm]??{})&&['ciMaxForce','ciRmsForce','nebMaxForce','nebRmsForce'].includes(key)?{nebConvergencePreset:'custom'}:{}) } },
   }));
-  const pathIssues = card.kind === 'path' ? [
-    ...(card.slots.product ? [pesPathStructureIssue(structure, card.slots.product.structure, '产物')] : []),
-    ...card.keys.map((key, index) => card.slots[key.id] ? pesPathStructureIssue(structure, card.slots[key.id]!.structure, `关键构型${index + 1}`) : `请选择第${index + 1}个关键构型。`),
-  ].filter((issue): issue is string => !!issue) : [];
-  const slot = (key: string, label: string, fallback?: string, fieldLabel?:string) => <SourceRow label={label} fieldLabel={fieldLabel} fallback={card.requiredSlots?.includes(key)&&!card.slots[key]?'请重新记录或选择结构':fallback} value={card.slots[key]} sources={sources} canCapture={canCapture}
-    issues={key === 'product' ? pathIssues : undefined}
-    onSelect={geometry => setSlot(key, geometry)} onCapture={() => capture(key)}/>;
+  const slot = (key: string, label: string, fallback?: string, fieldLabel?:string) => {
+    const selected=card.slots[key];
+    return <SourceRow label={label} fieldLabel={fieldLabel} fallback={card.requiredSlots?.includes(key)&&!selected?'请重新记录或选择结构':fallback}
+      value={selected} sources={sources} tabSources={tabSources} loading={sourceLoading} canCapture={canCapture}
+      issues={issues[key] ?? []}
+      onSelect={geometry => setSlot(key, geometry)} onSelectTab={tabKey => selectTab?.(key,tabKey)} onCapture={() => capture(key)}/>;
+  };
   const actions = <button type="button" className="button" aria-expanded={managing} onClick={() => setManaging(value => !value)}>卡片操作</button>;
   return <InputSettingsCard sectionKey={`pes-card:${card.id}`} actions={actions} stack className="pes-calculation" title={<button type="button" className="shared-input-card-toggle"
     aria-expanded={!card.collapsed} onClick={() => update(current => ({ ...current, collapsed: !current.collapsed }))}>
@@ -70,15 +93,15 @@ export function PesCalculationCard({ card, source, sources, scope, update, setSl
     </InputSettingsRow>}
     {!card.collapsed && <>
       {card.kind === 'path' && <InputSettingsField label="路径方法" controlWidth="select"><select aria-label="路径方法" value={algorithm} disabled={live} onChange={event=>selectAlgorithm?.(event.target.value)}>
-        {Object.entries(PES_ALGORITHMS.path).map(([key,label])=><option key={key} value={key}>{label}</option>)}
+        {Object.entries(PES_ALGORITHMS.path).map(([key,label])=><option key={key} value={key}
+          disabled={periodic&&!periodicPesOperationAvailable(method,'path',key)}>{label}</option>)}
       </select></InputSettingsField>}
       {card.kind==='path'&&algorithm==='ci-neb'&&<PesSelect label="初始路径" value={String(values.pathInitializer)} options={{sidpp:'S-IDPP',fsm:'FSM（原生两端生长）'}} onChange={value=>parameter('pathInitializer',value)}/>}
       {card.kind==='path'&&algorithm==='fsm'&&<PesSelect label="生长方式" value={String(values.fsmGrowth)} options={{native:'原生两端生长',sidpp:'S-IDPP引导'}} onChange={value=>parameter('fsmGrowth',value)}/>}
       {card.kind === 'path' && algorithm === 'de-gsm' && <PesSelect label="生长方式" value={String(usesPesExecutionProfile(values)?values.gsmGrowth??'native':'sidpp')} options={{native:'原生DLC生长',sidpp:'S-IDPP引导'}}
         onChange={gsmGrowth=>update(current=>({...current,parametersByAlgorithm:{...current.parametersByAlgorithm,[algorithm]:{...defaultParameters(algorithm),...current.parametersByAlgorithm[algorithm],executionProfile:PES_EXECUTION_PROFILE,gsmGrowth}}}))}/>}
-      <PesMethodFields value={card.method} onChange={method => update(current => ({ ...current, method }))}/>
       {card.kind === 'scan' && <>
-        <PesScanSourceRow card={card} choices={scanSources??[]} issue={sourceIssue} loading={sourceLoading} canCapture={canCapture} onSelect={key=>selectScanSource?.(key)} capture={()=>capture('start')}/>
+        <PesScanSourceRow label={sourceIssue?undefined:source.label??structure.name} warnings={issues.start} issue={sourceIssue}/>
         <PesScanCoordinates card={card} scope={scope} update={update}/>
         <PesScanAxes card={card} scope={scope} update={update}/>
       </>}
@@ -102,13 +125,29 @@ export function PesCalculationCard({ card, source, sources, scope, update, setSl
             }))}/>
           </InputSettingsStack>)}
           {slot('product', '产物')}
+          {sourceLoading && <output>正在读取所选来源…</output>}
         </InputSettingsCard>
       </>}
+      {algorithm==='ci-neb'&&<PesSelect label="路径优化器" value={String(values.nebOptimizer??(usesPesExecutionProfile(values)?'fire2':'fire'))}
+        options={{fire2:'FIRE2',lbfgs:'L-BFGS',...(!usesPesExecutionProfile(values)||values.nebOptimizer==='fire'?{fire:'FIRE（已有设置）'}:{})}}
+        onChange={value=>update(current=>{
+          const previous=current.parametersByAlgorithm[algorithm]??{};
+          const preset=String(previous.nebConvergencePreset??(usesPesExecutionProfile(previous)?'loose':'custom')) as PesConvergencePreset;
+          return {...current,parametersByAlgorithm:{...current.parametersByAlgorithm,[algorithm]:{...nebPresetParameters(previous,preset),nebOptimizer:value}}};
+        })}/>}
       {algorithm==='ci-neb'&&<PesSelect label="路径收敛标准" value={usesPesExecutionProfile(values)?String(values.nebConvergencePreset??'custom'):'legacy'}
         options={{...(!usesPesExecutionProfile(values)?{legacy:'已有FIRE设置'}:{}),...PES_CONVERGENCE_OPTIONS}}
         onChange={value=>update(current=>({...current,parametersByAlgorithm:{...current.parametersByAlgorithm,[algorithm]:nebPresetParameters(current.parametersByAlgorithm[algorithm]??{},value as PesConvergencePreset)}}))}/>}
-      {card.kind==='scan'?<PesScanOptimization card={card} update={update}/>:<PesParameterSections sections={pesParameterSections(algorithm,values)} values={values} method={card.method.method} onChange={parameter}/>}
-      {!live && <InputSettingsRow variant="actions"><button type="button" className="button button-primary" disabled={!available} onClick={start}>{card.kind === 'scan' ? '开始扫描' : '开始计算'}</button></InputSettingsRow>}
+      {algorithm==='de-gsm'&&<PesSelect label="节点收敛标准" value={String(values.gsmConvergencePreset??'loose')} options={PES_CONVERGENCE_OPTIONS}
+        onChange={value=>update(current=>{
+          const previous=current.parametersByAlgorithm[algorithm]??{};
+          const selected=value==='custom'?previous.gsmConvergencePreset??'loose':value;
+          const limits=GSM_CONVERGENCE_PRESETS[selected as keyof typeof GSM_CONVERGENCE_PRESETS];
+          return {...current,parametersByAlgorithm:{...current.parametersByAlgorithm,[algorithm]:{...previous,...limits,gsmConvergencePreset:value}}};
+        })}/>}
+      {card.kind==='scan'?<PesScanOptimization card={card} update={update} periodic={periodic}/>:<PesParameterSections sections={pesParameterSections(algorithm,values).map(section=>({...section,fields:section.fields.filter(field=>
+        !['gsmMaxGradient','gsmRmsGradient'].includes(field.key)||values.gsmConvergencePreset==='custom')}))} values={values} method={method} onChange={parameter}/>}
+      {!live && <InputSettingsRow variant="actions"><button type="button" className="button button-primary" disabled={!available || sourceLoading} title={unavailableReason} onClick={start}>{card.kind === 'scan' ? '开始扫描' : '开始计算'}</button></InputSettingsRow>}
     </>}
     {run && <PesRunControls run={run} stop={stop}/>}
   </InputSettingsCard>;

@@ -65,8 +65,10 @@ export function copyWorkspaceSnapshotJSON(value, kind = 'snapshot') {
   const scientificPaths = new Set(roots[kind].flatMap(root => ['draft/assignments', 'draft/baseAssignments', 'draft/baseAtomIds', 'draft/selectedIds', 'draft/touchedIds', 'draft/createdFrom', 'selection', 'auxiliaryRelations', 'deletedBonds', 'internalCoordinates', 'sharedConstraints', 'coordinateObjects', 'gaussianBoundCoordinates', 'attachmentPorts', 'bondOrderObservation'].map(path => at(root, path))));
   for (const prefix of kind === 'snapshot' ? [''] : kind === 'envelope' ? ['snapshot'] : []) for (const engine of ['gaussian', 'orca']) scientificPaths.add(at(prefix, `contexts/${engine}`));
   const displayPrefixes = kind === 'display-metadata' ? ['display'] : kind === 'viewport' ? [''] : kind === 'snapshot' ? ['viewport'] : kind === 'envelope' ? ['snapshot/viewport'] : [];
-  const isStructure = path => structures.has(path) || displayPrefixes.some(prefix => new RegExp(`^${prefix ? prefix + '/' : ''}multiframeDisplay/frames/\\d+/structure$`).test(path));
-  const blocks = new Map(), stack = new Set();
+  const displayStructures = displayPrefixes.map(prefix => new RegExp(`^${prefix ? prefix + '/' : ''}multiframeDisplay/frames/\\d+/structure$`));
+  const isStructure = path => structures.has(path) || displayStructures.some(pattern => pattern.test(path));
+  const scientificArrays = new Set(['atoms', 'bonds', 'bondPerceptionIssues']);
+  const blocks = new Map(), byIdentity = new WeakMap(), stack = new Set();
   // Complete authored snapshots have no aggregate byte/node ceiling. Only the
   // declared small scientific records below retain a record-complexity guard.
   const envelopeBudget = { nodes: 0 };
@@ -86,9 +88,12 @@ export function copyWorkspaceSnapshotJSON(value, kind = 'snapshot') {
     assert(!stack.has(item), '共享文档不能传输循环引用。');
     if (!scientific && isStructure(path)) {
       assert(plain(item), '共享科学结构必须为普通对象。');
+      // The depth is part of validation. Reusing one structure within this
+      // call must neither admit a deeper occurrence nor trust another input.
+      const known = byIdentity.get(item);
+      if (known?.depth === depth) return known.copy;
       const atoms = property(item, 'atoms');
       assert(Array.isArray(atoms), '共享科学结构原子必须为数组。');
-      const scientificArrays = new Set(['atoms', 'bonds', 'bondPerceptionIssues']);
       const result = {};
       stack.add(item);
       for (const key of Object.keys(item)) {
@@ -114,9 +119,10 @@ export function copyWorkspaceSnapshotJSON(value, kind = 'snapshot') {
         }
       }
       stack.delete(item);
-      const key = JSON.stringify(result), previous = blocks.get(key);
-      if (previous) return previous;
-      blocks.set(key, result); return result;
+      const key = JSON.stringify(result), copy = blocks.get(key) ?? result;
+      blocks.set(key, copy);
+      byIdentity.set(item, { depth, copy });
+      return copy;
     }
     const keys = Object.keys(item), array = Array.isArray(item), result = array ? [] : {};
     if (array) assert(keys.length === item.length && keys.every(key => /^(0|[1-9]\d*)$/.test(key)), '共享文档不能传输稀疏或附加属性数组。');

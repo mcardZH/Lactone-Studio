@@ -1,6 +1,6 @@
 import type { Structure, Vector3 } from '../core/types';
 import type { ExcitedState, ScientificData, VibrationMode, Vibrations, FrequencyElectronicTarget } from './scientific-contracts';
-import { displacedVibrationStructure, MAX_VIBRATION_AMPLITUDE_ANGSTROM } from './vibrations';
+import { displacedVibrationStructure, prepareCartesianVibration } from './vibrations';
 
 /** hc/e, from the exact SI definitions of h, c and e, in eV nm. */
 export const EV_NM = 1239.8419843320026;
@@ -71,13 +71,15 @@ export function vibrationModesForFrame(data: ScientificData | undefined, frameIn
 
 export interface SpectrumPoint { x: number; y: number }
 export interface SpectrumStick extends SpectrumPoint { sourceIndex: number; sourceLine: number }
+export type SpectrumPeakShape = 'gaussian' | 'lorentzian';
 export interface SpectrumProjection {
   sticks: SpectrumStick[]; points: SpectrumPoint[];
   xUnit: 'eV' | 'nm' | 'cm⁻¹'; stickIntensityUnit: string; intensityUnit: string;
   range: [number, number]; fwhm: number; fwhmUnit: 'eV' | 'cm⁻¹';
-  normalized: boolean; normalizationDivisor: number; peakShape: 'gaussian' | 'lorentzian';
+  normalized: boolean; normalizationDivisor: number; peakShape: SpectrumPeakShape;
 }
-export interface SpectrumOptions { range?: readonly [number, number]; fwhm?: number; normalize?: boolean; samples?: number }
+export interface SpectrumOptions { range?: readonly [number, number]; fwhm?: number; normalize?: boolean; samples?: number; peakShape?: SpectrumPeakShape }
+export const SPECTRUM_MAX_SAMPLES = 100_001;
 export interface AbsorptionSpectrumOptions extends SpectrumOptions { axis?: 'eV' | 'nm' }
 export interface InfraredSpectrumOptions extends SpectrumOptions { scaleFactor?: number; /** Select a native unit explicitly when the input contains different IR quantities. */ intensityUnit?: string }
 
@@ -102,7 +104,7 @@ function spectrumRange(range: readonly [number, number] | undefined, fallback: [
 }
 function sampleSpectrum(range: [number, number], samples: number | undefined, evaluate: (x: number) => number): SpectrumPoint[] {
   const count = samples ?? 1001;
-  if (!Number.isSafeInteger(count) || count < 2 || count > 100_001) throw new Error('谱图采样点数须为2–100001的整数。');
+  if (!Number.isSafeInteger(count) || count < 2 || count > SPECTRUM_MAX_SAMPLES) throw new Error('谱图采样点数须为2–100001的整数。');
   return Array.from({ length: count }, (_, index) => {
     const x = index === count - 1 ? range[1] : range[0] + (range[1] - range[0]) * index / (count - 1);
     const y = evaluate(x);
@@ -124,6 +126,8 @@ function extent(values: readonly number[], fallback: [number, number]): [number,
 /** Caller supplies the current frame's states. Missing f remains missing; f=0 remains a dark stick. */
 export function buildAbsorptionSpectrum(states: readonly ExcitedState[], options: AbsorptionSpectrumOptions = {}): SpectrumProjection {
   const axis = options.axis ?? 'eV', fwhm = options.fwhm ?? ABSORPTION_FWHM_EV;
+  const peakShape = options.peakShape ?? 'gaussian';
+  const kernel = peakShape === 'gaussian' ? gaussianPeak : lorentzianPeak;
   positive(fwhm, 'FWHM');
   const available = states.filter(state => energyEvToNm(state.energyEv) !== null && state.oscillatorStrength != null
     && Number.isFinite(state.oscillatorStrength) && state.oscillatorStrength >= 0);
@@ -134,18 +138,20 @@ export function buildAbsorptionSpectrum(states: readonly ExcitedState[], options
   const points = sampleSpectrum(range, options.samples, x => {
     const energy = axis === 'nm' ? wavelengthNmToEv(x) : x;
     if (energy === null) throw new Error('波长范围无法换算为有限正能量。');
-    return available.reduce((sum, state) => sum + state.oscillatorStrength! * gaussianPeak(energy - state.energyEv, fwhm), 0);
+    return available.reduce((sum, state) => sum + state.oscillatorStrength! * kernel(energy - state.energyEv, fwhm), 0);
   });
   const normalized = options.normalize ?? false, normalizationDivisor = normalizeSpectrum(points, normalized);
   return { points, sticks: available.map(state => ({ x: axis === 'nm' ? energyEvToNm(state.energyEv)! : state.energyEv,
     y: state.oscillatorStrength!, sourceIndex: state.index, sourceLine: state.sourceLine })),
     range, xUnit: axis, stickIntensityUnit: 'f', intensityUnit: normalized ? '归一化强度' : 'f/eV',
-    fwhm, fwhmUnit: 'eV', normalized, normalizationDivisor, peakShape: 'gaussian' };
+    fwhm, fwhmUnit: 'eV', normalized, normalizationDivisor, peakShape };
 }
 
 /** Never combines native T² with km/mol. Imaginary peaks remain on the signed wavenumber axis. */
 export function buildInfraredSpectrum(modes: readonly VibrationMode[], options: InfraredSpectrumOptions = {}): SpectrumProjection {
   const fwhm = options.fwhm ?? INFRARED_FWHM_CM, factor = options.scaleFactor ?? 1;
+  const peakShape = options.peakShape ?? 'lorentzian';
+  const kernel = peakShape === 'gaussian' ? gaussianPeak : lorentzianPeak;
   positive(fwhm, 'FWHM'); positive(factor, '频率校正因子');
   const candidates = modes.filter(mode => mode.kind !== 'translation' && mode.kind !== 'rotation' && Number.isFinite(mode.frequency)
     && mode.irIntensity != null && Number.isFinite(mode.irIntensity) && mode.irIntensity >= 0);
@@ -156,10 +162,10 @@ export function buildInfraredSpectrum(modes: readonly VibrationMode[], options: 
   const sticks = available.map(mode => ({ x: correctedFrequency(mode.frequency, factor), y: mode.irIntensity!, sourceIndex: mode.sourceIndex ?? mode.index, sourceLine: mode.sourceLine }));
   const [min, max] = extent(sticks.map(stick => stick.x), [0, 4000]);
   const range = spectrumRange(options.range, [min - 5 * fwhm, max + 5 * fwhm]);
-  const points = sampleSpectrum(range, options.samples, x => sticks.reduce((sum, stick) => sum + stick.y * lorentzianPeak(x - stick.x, fwhm), 0));
+  const points = sampleSpectrum(range, options.samples, x => sticks.reduce((sum, stick) => sum + stick.y * kernel(x - stick.x, fwhm), 0));
   const normalized = options.normalize ?? false, normalizationDivisor = normalizeSpectrum(points, normalized);
   return { points, sticks, range, xUnit: 'cm⁻¹', stickIntensityUnit: unit,
-    intensityUnit: normalized ? '归一化强度' : `${unit}/(cm⁻¹)`, fwhm, fwhmUnit: 'cm⁻¹', normalized, normalizationDivisor, peakShape: 'lorentzian' };
+    intensityUnit: normalized ? '归一化强度' : `${unit}/(cm⁻¹)`, fwhm, fwhmUnit: 'cm⁻¹', normalized, normalizationDivisor, peakShape };
 }
 
 /** hc/k in cm·K, calculated from the exact SI values of h, c and k. */
@@ -175,7 +181,7 @@ export interface RamanSpectrumOptions extends RamanStokesParameters {
   /** Display peak positions only; raw-frequency Stokes weights are unchanged. */
   scaleFactor?: number;
   /** Explicit cm⁻¹ width and peak shape; no implicit Raman broadening default. */
-  fwhm: number; peakShape: 'gaussian' | 'lorentzian';
+  fwhm: number; peakShape: SpectrumPeakShape;
   range?: readonly [number, number]; samples?: number; normalize?: boolean;
 }
 export interface RamanSpectrumProjection extends SpectrumProjection, RamanStokesParameters {
@@ -252,7 +258,7 @@ export function buildRamanSpectrum(modes: readonly VibrationMode[], options: Ram
 
 /** Direction vectors scaled so the largest atomic norm is one, without a mass transform. */
 export function normalizedCartesianMode(mode: VibrationMode): Vector3[] {
-  if (mode.displacementConvention !== 'cartesian') throw new Error('正常模式尚未确认为笛卡尔位移，不能生成位移。');
+  requireCartesianMode(mode);
   const vectors = mode.displacements;
   if (!vectors?.length || vectors.some(vector => !Array.isArray(vector) || vector.length !== 3 || !vector.every(Number.isFinite))) throw new Error('正常模式向量缺失、形状不符或含非有限数。');
   let maximum = 0;
@@ -263,25 +269,23 @@ export function normalizedCartesianMode(mode: VibrationMode): Vector3[] {
   for (const vector of scaled) norm = Math.max(norm, Math.hypot(...vector));
   return scaled.map(vector => vector.map(value => value / norm) as Vector3);
 }
+function requireCartesianMode(mode: VibrationMode): void {
+  if (mode.displacementConvention !== 'cartesian') throw new Error('正常模式尚未确认为笛卡尔位移，不能生成位移。');
+}
 /** Manual signed Å displacement: independent derived structure, no mutation of the source. */
 export function signedVibrationStructure(structure: Structure, mode: VibrationMode, displacementAngstrom: number): Structure {
-  normalizedCartesianMode(mode);
+  requireCartesianMode(mode);
   return displacedVibrationStructure(structure, mode, Math.abs(displacementAngstrom), displacementAngstrom < 0 ? -1 : 1);
 }
 /** Playback amplitude remains nonnegative; only phase oscillates between -1 and +1. */
 export function vibrationPlaybackStructure(structure: Structure, mode: VibrationMode, amplitudeAngstrom: number, phase: number): Structure {
-  normalizedCartesianMode(mode);
+  requireCartesianMode(mode);
   return displacedVibrationStructure(structure, mode, amplitudeAngstrom, phase);
 }
 
 /** Prepare one immutable display mode, then update only coordinates per paint.
  * Scientific extraction still uses signedVibrationStructure and its full record. */
 export function prepareVibrationPlayback(structure: Structure, mode: VibrationMode) {
-  const vectors = normalizedCartesianMode(mode), base = signedVibrationStructure(structure, mode, 0);
-  const atoms = base.atoms;
-  return { vectors, sample(amplitude: number, phase: number): Structure {
-    if (!Number.isFinite(amplitude) || amplitude < 0 || amplitude > MAX_VIBRATION_AMPLITUDE_ANGSTROM || !Number.isFinite(phase) || Math.abs(phase) > 1) throw new Error('振动显示幅度或相位无效。');
-    const scale = amplitude * phase;
-    return { ...base, atoms: atoms.map((atom, i) => ({ ...atom, x: atom.x + vectors[i][0] * scale, y: atom.y + vectors[i][1] * scale, z: atom.z + vectors[i][2] * scale })) };
-  } };
+  requireCartesianMode(mode);
+  return prepareCartesianVibration(structure, mode);
 }

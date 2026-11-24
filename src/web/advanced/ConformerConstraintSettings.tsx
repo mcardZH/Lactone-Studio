@@ -12,14 +12,15 @@ import {DismissibleNotice} from '../DismissibleNotice';
 import {useProjectState} from '../../projects/ui-state';
 import './conformer-constraint-settings.css';
 
-export interface ConformerCoordinateSelection {type:'B'|'A'|'D';atomIds:string[]}
+export interface ConformerCoordinateSelection {type:'B'|'A'|'D';atomIds:string[];images?:import('../../core/types').Vector3[]}
 export interface ConformerConstraintSettingsProps {
  source:AdvancedFrameSource|null;atomIds:readonly string[];coordinates:SharedModelConstraints['coordinates'];
  ownerKey?:string;
  atomPort:AnalysisSelectionPort;coordinatePort:AnalysisSelectionPort;atomsEditable:boolean;coordinatesEditable:boolean;
  onAtomRequest():void;onCoordinateRequest():void;
  onAtoms(ids:string[]):void;
- onCoordinate(ids:string[],frozen:boolean,previous?:ConformerCoordinateSelection):boolean|Promise<boolean>;
+ onCoordinate(ids:string[],frozen:boolean,previous?:ConformerCoordinateSelection,images?:import('../../core/types').Vector3[]):boolean|Promise<boolean>;
+ coordinateImageSelection?:boolean;
  title?:ReactNode;
  renderCoordinateDetails?(row:SharedModelConstraints['coordinates'][number],index:number):ReactNode;
 }
@@ -53,9 +54,9 @@ export default function ConformerConstraintSettings(p:ConformerConstraintSetting
  const currentDraft=draft?.session===session&&(draft.context===context||operation?.draftId===draft.id)?draft:null;
  const busy=operation!==null;
  const coordinateName=(ids:readonly string[])=>ids.map(id=>(structure?.atoms.findIndex(atom=>atom.id===id)??-1)+1).join(' ');
- const readout=(ids:readonly string[])=>{
+ const readout=(ids:readonly string[],images?:readonly import('../../core/types').Vector3[])=>{
   if(!structure)return '当前来源不可用';
-  try{const value=confirmCoordinateSelection(structure,ids);return `${value.type} ${coordinateName(ids)} · ${Number(value.value.toPrecision(7))} ${value.unit}`;}
+  try{const value=confirmCoordinateSelection(structure,ids,images);return `${value.type} ${coordinateName(ids)} · ${Number(value.value.toPrecision(7))} ${value.unit}`;}
   catch(error){return reason(error);}
  };
  function cancelDraft(id:string){
@@ -67,13 +68,13 @@ export default function ConformerConstraintSettings(p:ConformerConstraintSetting
   const next={id:`conformer-coordinate-new-${crypto.randomUUID()}`,session,context};
   draftRef.current=next;setDraft(next);setIssue(null);fold('coordinates',false);
  }
- function commit(ids:string[],frozen:boolean,previous?:ConformerCoordinateSelection,draftId?:string){
+ function commit(ids:string[],frozen:boolean,previous?:ConformerCoordinateSelection,draftId?:string,images?:import('../../core/types').Vector3[]){
   const current=latest.current;
   if(!current.p.coordinatesEditable||current.session!==session||current.context!==context)throw Error('内坐标所属初猜或来源已变化，请重新编辑。');
   if(operationRef.current)throw Error('当前内坐标正在确认，请等待回执。');
   if(draftId&&(draftRef.current?.id!==draftId||draftRef.current.context!==context))throw Error('新增内坐标草稿已取消或失效。');
   if(!structure)throw Error('当前来源不可用。');
-  const measured=confirmCoordinateSelection(structure,ids);
+  const measured=confirmCoordinateSelection(structure,ids,images);
   if(frozen&&!previous&&p.coordinates.some(row=>modelCoordinateKey(row)===modelCoordinateKey(measured)))throw Error('该内坐标已有冻结定义，请编辑现有条目。');
   const own:CommitOperation={serial:++serial.current,draftId,session,context};operationRef.current=own;setOperation(own);setIssue(null);
   const finish=(accepted:boolean,error?:unknown,report=true)=>{
@@ -84,15 +85,15 @@ export default function ConformerConstraintSettings(p:ConformerConstraintSetting
    if(report)setIssue({serial:own.serial,session:own.session,message:error?reason(error):'本次内坐标未提交，请核对后重试。'});
   };
   try{
-   const receipt=p.onCoordinate([...ids],frozen,previous);
+   const receipt=p.coordinateImageSelection?p.onCoordinate([...ids],frozen,previous,images):p.onCoordinate([...ids],frozen,previous);
    if(receipt&&typeof receipt==='object'&&'then' in receipt){void receipt.then(accepted=>finish(accepted===true),error=>finish(false,error));return;}
    if(receipt!==true)throw Error('本次内坐标未提交，请核对后重试。');
    finish(true);
   }catch(error){finish(false,error,false);throw error;}
  }
- const remove=(ids:string[])=>{try{commit(ids,false);}catch(error){setIssue({serial:++serial.current,session,message:reason(error)});}};
+ const remove=(ids:string[],previous:ConformerCoordinateSelection)=>{try{commit(ids,false,p.coordinateImageSelection?previous:undefined,undefined,previous.images);}catch(error){setIssue({serial:++serial.current,session,message:reason(error)});}};
  const field=(ids:readonly string[],rowId:string,label:string,previous?:ConformerCoordinateSelection,draftId?:string)=><fieldset className="conformer-coordinate-editor" disabled={busy}><InteractiveSelectionField
-  structure={structure} label={label} rowId={rowId} kind="coordinate" atomIds={ids} captureOwner={p.coordinatePort.owner}
+  structure={structure} label={label} rowId={rowId} kind="coordinate" atomIds={ids} coordinateImages={previous?.images} captureOwner={p.coordinatePort.owner}
   contextKey={p.coordinatePort.contextKey} analysisPurpose="advanced-coordinate" disabled={!p.coordinatesEditable} liveNumberDraft wrapActions
   onRequestAnalysisSelection={intent=>{
    p.onCoordinateRequest();
@@ -100,11 +101,11 @@ export default function ConformerConstraintSettings(p:ConformerConstraintSetting
    if(draftId&&draftRef.current?.id===draftId){const next={...draftRef.current,picking:true};draftRef.current=next;setDraft(next);}
    return handle;
   }}
-  onConfirm={(ids,guard)=>{guard();commit(ids,true,previous,draftId);}}
+  onConfirm={(ids,guard,_overwrite,images)=>{guard();commit(ids,true,previous,draftId,p.coordinateImageSelection?images:undefined);}}
   onEnd={result=>{if(draftId&&draftRef.current?.id===draftId){const next={...draftRef.current,picking:false};draftRef.current=next;setDraft(next);}if(result==='cancelled'&&draftId&&latest.current.p.coordinatesEditable)cancelDraft(draftId);}}
-  renderHeader={previous?()=> <SelectionGroupHeader title={<span className="advanced-coordinate-readout">{readout(ids)}</span>}
-   actions={<SelectionRemoveButton label={`解除冻结 ${readout(ids)}`} disabled={!p.coordinatesEditable||busy} onClick={()=>remove([...ids])}/>}/>:undefined}
-  renderDraft={ids=>ids.length>=2?<output className="advanced-coordinate-readout">当前值 {readout(ids)}</output>:undefined}/></fieldset>;
+  renderHeader={previous?()=> <SelectionGroupHeader title={<span className="advanced-coordinate-readout">{readout(ids,previous.images)}</span>}
+   actions={<SelectionRemoveButton label={`解除冻结 ${readout(ids,previous.images)}`} disabled={!p.coordinatesEditable||busy} onClick={()=>remove([...ids],previous)}/>}/>:undefined}
+  renderDraft={(ids,images)=>ids.length>=2?<output className="advanced-coordinate-readout">当前值 {readout(ids,images)}</output>:undefined}/></fieldset>;
  return <InputSettingsCard level="inline" title={p.title===undefined?'结构保护与约束':p.title} stack testId="conformer-constraint-settings">
   <InteractiveSelectionField structure={structure} label="冻结原子" rowId="conformer:frozen-atoms" atomIds={p.atomIds}
    captureOwner={p.atomPort.owner} contextKey={p.atomPort.contextKey} analysisPurpose="advanced-region" disabled={!p.atomsEditable} liveNumberDraft wrapActions
@@ -118,7 +119,7 @@ export default function ConformerConstraintSettings(p:ConformerConstraintSetting
    sectionKey={`${disclosureKey}:coordinate-freezes`} disclosure={{collapsed:collapsed.coordinates,onChange:value=>fold('coordinates',value)}}
    actions={<SelectionAddButton label="添加内坐标" disabled={!p.coordinatesEditable||!!currentDraft||busy} onClick={addDraft}/>}>
    {p.coordinates.map((row,index)=><InputSettingsStack key={row.id??`${row.type}:${row.atomIds.join(':')}`} className="advanced-coordinate-definition">
-    {field(row.atomIds,`conformer:coordinate:${row.id??index}`,`冻结内坐标${index+1}`,{type:row.type,atomIds:[...row.atomIds]})}
+    {field(row.atomIds,`conformer:coordinate:${row.id??index}`,`冻结内坐标${index+1}`,{type:row.type,atomIds:[...row.atomIds],...(row.images?{images:row.images}:{})})}
     {p.renderCoordinateDetails?p.renderCoordinateDetails(row,index):row.value!==undefined&&<output className="advanced-coordinate-readout">冻结目标 {row.value} {row.type==='B'?'Å':'°'}</output>}
    </InputSettingsStack>)}
    {currentDraft&&<div data-testid="conformer-coordinate-pending" data-draft-id={currentDraft.id} data-submitting={busy||undefined}>

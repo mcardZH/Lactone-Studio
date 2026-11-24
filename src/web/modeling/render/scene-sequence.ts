@@ -1,7 +1,7 @@
 export type SceneShapeMethod = 'addArrow' | 'addCylinder' | 'addLine' | 'addSphere' | 'addCustom';
 const METADATA_BYTES = 8 * 1024 * 1024, MAX_COMMANDS = 50000;
 type Snapshot = { value: any; bytes: number };
-type Command = Snapshot & { method: SceneShapeMethod; handle: any; phase: 'base' | 'after'; translateArrow?: boolean };
+type Command = Snapshot & { method: SceneShapeMethod; handle: any; phase: 'base' | 'after'; translateArrow?: boolean; poseCylinder?:boolean };
 
 /** Only small ordinary native specs participate; no getters or serialization. */
 function snapshot(value: unknown, maximumNodes = 256): Snapshot | null {
@@ -46,6 +46,8 @@ export function createSceneSequence(options: {
   handles(): Iterable<any>; inventory(): readonly any[] | undefined; size?():number;
   refreshBounds(): void;
   translateArrow?(handle: any, previous: any, next: any): boolean;
+  poseCylinder?(handle:any,previous:any,next:any):boolean;
+  separateOpaqueBatch?(handle: any): boolean;
 }) {
   let records: Command[] = [], next: Command[] = [], owner: string | null = null, appearance: Snapshot | null = null;
   let currentOwner: string | null = null, currentAppearance: Snapshot | null = null, cursor = 0, bytes = 0;
@@ -55,7 +57,7 @@ export function createSceneSequence(options: {
   function orderedTail() {
     const inventory = options.inventory(), handles = [...options.handles()];
     if (!inventory || handles.length !== records.length) return false;
-    const live = inventory.filter(Boolean), tail = live.slice(live.length - records.length);
+    const live = inventory.filter(shape => shape && !options.separateOpaqueBatch?.(shape)), tail = live.slice(live.length - records.length);
     return tail.length === records.length && records.every((record, index) => tail[index] === record.handle
       && Number.isSafeInteger(record.handle?.shapePosition) && inventory[record.handle.shapePosition] === record.handle);
   }
@@ -74,7 +76,7 @@ export function createSceneSequence(options: {
       if (!reuse && !staging) { retired=options.size?.()??records.length; options.clear(); records = []; }
       cursor = 0; next = []; bytes = currentAppearance?.bytes ?? 0; phase = 'base'; active = true; reused = created = 0; invalidated = false;
     },
-    create(method: SceneShapeMethod, spec: any, translateArrow = false) {
+    create(method: SceneShapeMethod, spec: any, translateArrow = false,poseCylinder=false) {
       if (closed) throw Error('Structural scene sequence is closed.');
       if (!active) {created++;return options.create(method, spec);}
       const captured = tracking && method !== 'addCustom' && spec!==null && typeof spec==='object' && !Array.isArray(spec) ? snapshot(spec) : null;
@@ -89,10 +91,13 @@ export function createSceneSequence(options: {
         && options.translateArrow?.(previous.handle,previous.value,captured!.value)) {
         cursor++;bytes+=captured!.bytes;next.push({...captured!,method,handle:previous.handle,phase,translateArrow});reused++;return previous.handle;
       }
+      if(!staging&&eligible&&poseCylinder&&previous?.poseCylinder&&previous.phase===phase&&previous.method===method&&options.poseCylinder?.(previous.handle,previous.value,captured!.value)){
+        cursor++;bytes+=captured!.bytes;next.push({...captured!,method,handle:previous.handle,phase,poseCylinder});reused++;return previous.handle;
+      }
       retireRest();
       const handle = options.create(method, spec); created++;
       if(staging&&handle)staged.add(handle);
-      if (eligible && handle) { bytes += captured!.bytes; next.push({ ...captured!, method, handle, phase, translateArrow }); }
+      if (eligible && handle) { bytes += captured!.bytes; next.push({ ...captured!, method, handle, phase, translateArrow,poseCylinder }); }
       else { tracking = false; next = []; invalidated = true; fallback ||= 'unsupported-transparent-or-budget'; }
       return handle;
     },

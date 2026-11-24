@@ -1,12 +1,17 @@
 import type { ResultFrameSummary, ResultQuantity } from './contracts';
 
 export type EnergyUnit = 'hartree' | 'eV' | 'kJ/mol' | 'kcal/mol';
-export type EnergyReference = 'first' | 'last' | 'min' | 'max' | 'current' | 'ts';
+export type EnergyReference = 'first' | 'last' | 'min' | 'max' | 'current' | 'ts' | 'ci' | 'point';
+export const defaultFrameEnergyDisplay = {unit:'kcal/mol',relative:true,reference:'first'} as const;
 export interface EnergyDisplayOptions {
   unit?: EnergyUnit;
   relative?: boolean;
   reference?: EnergyReference;
   currentIndex?: number;
+  /** An explicitly associated TS, CI, or user-selected frame. */
+  referenceFrameIndex?: number;
+  /** An already published point in a different source series. */
+  externalReference?: ResultQuantity;
 }
 export interface EnergySeries {
   unit: EnergyUnit;
@@ -26,7 +31,7 @@ function canonicalUnit(unit: string): EnergyUnit | 'meV' | null {
   // SI prefix case is significant: MeV is mega, never milli.
   if (/^M[eE][vV]$/.test(unit.trim())) return null;
   const token = unit.trim().toLowerCase().replace(/\s/g, '');
-  if (['hartree', 'hartrees', 'eh', 'ha', 'a.u.', 'au'].includes(token)) return 'hartree';
+  if (['hartree', 'hartrees', 'eh', 'eₕ', 'ha', 'a.u.', 'au'].includes(token)) return 'hartree';
   if (token === 'ev') return 'eV';
   if (token === 'mev') return 'meV';
   if (['kj/mol', 'kjmol-1', 'kjmol^-1'].includes(token)) return 'kJ/mol';
@@ -50,10 +55,16 @@ export function convertEnergy(energy: ResultQuantity | null, unit: EnergyUnit): 
 }
 
 export function buildEnergySeries(frames: readonly ResultFrameSummary[], options: EnergyDisplayOptions = {}): EnergySeries {
-  const { unit = 'hartree', relative = false, reference = 'first', currentIndex = 0 } = options;
+  const { unit = 'hartree', relative = false, reference = 'first', currentIndex = 0, referenceFrameIndex, externalReference } = options;
   const absolute = frames.map(frame => convertEnergy(frame.energy, unit));
-  let referencePosition: number | null = reference === 'current' ? frames.findIndex(frame => frame.index === currentIndex) : reference === 'last' ? frames.length - 1 : 0;
-  if (reference === 'ts') {
+  let referencePosition: number | null = reference === 'current' ? frames.findIndex(frame => frame.index === currentIndex) : absolute.findIndex(value => value !== null);
+  if (reference === 'last') {
+    referencePosition = absolute.length - 1;
+    while (referencePosition >= 0 && absolute[referencePosition] === null) referencePosition--;
+  }
+  if (reference === 'point' || reference === 'ci' || reference === 'ts' && referenceFrameIndex !== undefined) {
+    referencePosition = frames.findIndex(frame => frame.index === referenceFrameIndex);
+  } else if (reference === 'ts') {
     const candidates = frames.flatMap((frame, index) => frame.pathDirection === 'ts' ? [index] : []);
     referencePosition = candidates.length === 1 ? candidates[0] : null;
   }
@@ -63,7 +74,8 @@ export function buildEnergySeries(frames: readonly ResultFrameSummary[], options
       if (value !== null && (referencePosition === null || (reference === 'min' ? value < absolute[referencePosition]! : value > absolute[referencePosition]!))) referencePosition = index;
     });
   }
-  const referenceValue = referencePosition !== null ? absolute[referencePosition] ?? null : null;
+  const referenceValue = reference === 'point' && externalReference
+    ? convertEnergy(externalReference, unit) : referencePosition !== null ? absolute[referencePosition] ?? null : null;
   const referenceIndex = referenceValue === null || referencePosition === null ? null : frames[referencePosition]?.index ?? null;
   return {
     unit, relative, reference, referenceIndex, referenceValue,

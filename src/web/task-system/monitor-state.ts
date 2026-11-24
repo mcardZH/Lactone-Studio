@@ -1,4 +1,4 @@
-import type { MonitorGeometry, TaskMonitorView } from "../../task-system/application-contracts";
+import type { MonitorGeometry, TaskMonitorFramePage, TaskMonitorView, TaskSystemBridge } from "../../task-system/application-contracts";
 export interface MonitorFrames {
 	collectionId: string | null;
 	revision: string | null;
@@ -16,6 +16,36 @@ export class MonitorRevisionError extends Error {
 		super(message);
 		this.name = "MonitorRevisionError";
 	}
+}
+export async function hydrateMonitorFrames(
+	bridge: TaskSystemBridge,
+	view: TaskMonitorView,
+	signal: AbortSignal,
+	progress: (completed: number, total: number) => void
+): Promise<TaskMonitorView> {
+	const { framePage, collectionId, revision } = view;
+	if (!framePage) return view;
+	const { taskId } = view.task;
+	const { token, count } = framePage;
+	if (!collectionId || !revision || !token || !Number.isSafeInteger(count) || count < 1 ||
+		count > view.frameCount || view.reset && count !== view.frameCount || view.framesDelta.length)
+		throw new MonitorRevisionError("监控分页清单无效");
+	const framesDelta: TaskMonitorView["framesDelta"] = [];
+	progress(0, count);
+	for (let offset = 0; offset < count;) {
+		signal.throwIfAborted();
+		const page: TaskMonitorFramePage = await bridge.request("monitor.frames", { taskId, collectionId, revision, token, offset }, { signal });
+		signal.throwIfAborted();
+		if (page.taskId !== taskId || page.collectionId !== collectionId || page.revision !== revision ||
+			page.token !== token || page.count !== count || page.offset !== offset ||
+			!Number.isSafeInteger(page.nextOffset) || page.nextOffset <= offset || page.nextOffset > count ||
+			page.framesDelta.length !== page.nextOffset - offset)
+			throw new MonitorRevisionError("监控分页回执与当前来源不一致");
+		for (const item of page.framesDelta) framesDelta.push(item);
+		offset = page.nextOffset;
+		progress(offset, count);
+	}
+	return { ...view, framesDelta, framePage: undefined };
 }
 /** Identity-checked immutable merging. Never mutates an already published prefix. */
 export function mergeMonitorFrames(

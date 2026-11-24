@@ -2,6 +2,7 @@ import type { Atom, PeriodicCell, Structure, Vector3 } from './types';
 import { elementSymbol } from './elements';
 import { cartesianToFractional, cellFromParameters, cellInverse, cross3, dot3, fractionalToCartesian, minimumImage } from './periodic';
 import cifSpaceGroups from '../data/cif-space-groups.json';
+import { readXyzElectronicState } from './xyz-electronic-state';
 
 const BOHR=.529177210903;
 function num(raw:string):number {const value=raw?.replace(/\(\d+\)$/,'').replace(/[dD]/,'e');if(!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(value??''))throw new Error(`结构数值“${raw}”无效。`);const n=Number(value);if(!Number.isFinite(n))throw new Error('结构坐标必须为有限数值。');return n;}
@@ -38,15 +39,29 @@ function restorePeriodicity(s:Structure,encoded:string|undefined):void {
   if(meta.pbcProvenance!==undefined)s.cell!.pbcProvenance={...meta.pbcProvenance};
   if(meta.periodicSource!==undefined){s.periodicSource={...meta.periodicSource,translationVectors:meta.periodicSource.translationVectors.map(row=>[...row] as Vector3)};s.notes.push('保留来源部分Tv平移信息；缺少完整晶胞，不能作为有限分子或完整周期来源运行。');}
 }
-function parseXyz(text:string,name:string):Structure[] {
-  const lines=text.split('\n'),out:Structure[]=[];let i=0;
-  while(i<lines.length){if(!lines[i].trim()){i++;continue;}if(!/^\d+$/.test(lines[i].trim()))throw new Error('XYZ原子数行无效。');const n=Number(lines[i++]);if(!Number.isSafeInteger(n)||n<1)throw new Error('XYZ原子数超出范围。');if(i>=lines.length)throw new Error('XYZ缺少注释。');const meta=attrs(lines[i++]),s=base(name,'extended XYZ',out.length),scale=meta.units?.toLowerCase()==='bohr'?BOHR:1;if(meta.units&&!/^(bohr|angstrom|ang|a)$/i.test(meta.units))throw new Error('未知XYZ坐标单位。');
+export const periodicXyzComment = (comment:string):boolean => /\b(?:Lattice|Properties|pbc|builder_atoms)\s*=/i.test(comment);
+
+export function periodicXyzFrame(name:string,comment:string,n:number,index:number) {
+    const meta=attrs(comment),s=base(name,'extended XYZ',index),scale=meta.units?.toLowerCase()==='bohr'?BOHR:1;if(meta.units&&!/^(bohr|angstrom|ang|a)$/i.test(meta.units))throw new Error('未知XYZ坐标单位。');
     if(meta.lattice){const vals=meta.lattice.split(/\s+/).map(num);if(vals.length!==9)throw new Error('Lattice必须恰好为9个晶胞分量。');s.cell={vectors:[vals.slice(0,3),vals.slice(3,6),vals.slice(6,9)].map(v=>v.map(x=>x*scale)) as [Vector3,Vector3,Vector3],pbc:meta.pbc?pbc(meta.pbc):[true,true,true],source:name};if(meta.origin)s.cell.origin=vec(meta.origin.split(/\s+/)).map(x=>x*scale) as Vector3;cellInverse(s.cell);}else if(meta.pbc&&pbc(meta.pbc).some(Boolean))throw new Error('XYZ声明周期方向但没有真实Lattice。');
     restorePeriodicity(s,meta.builder_periodic);if(meta.cell_omitted==='true')s.notes.push('来源已明确省略原晶胞；当前文件仅保留坐标，不代表完整周期模型。');
     let species=0,pos=1,id=-1,source=-1,width=4;const schema=meta.properties?.split(':');if(schema){if(schema.length%3)throw new Error('Properties列定义不完整。');species=pos=-1;width=0;for(let j=0;j<schema.length;j+=3){const ncols=Number(schema[j+2]);if(!Number.isInteger(ncols)||ncols<1)throw new Error('Properties列宽无效。');if(schema[j]==='species'&&schema[j+1]==='S'&&ncols===1)species=width;if(schema[j]==='pos'&&schema[j+1]==='R'&&ncols===3)pos=width;if(schema[j]==='id'&&ncols===1)id=width;if(schema[j]==='source_index'&&ncols===1)source=width;width+=ncols;}if(species<0||pos<0)throw new Error('Properties必须含species:S:1和pos:R:3。');}
     let provenance:{id:string;sourceIndex:number}[]|undefined;if(meta.builder_atoms){try{provenance=JSON.parse(decodeURIComponent(meta.builder_atoms));}catch{throw new Error('XYZ来源原子元数据损坏。');}if(!Array.isArray(provenance)||provenance.length!==n||provenance.some(a=>typeof a?.id!=='string'||!Number.isSafeInteger(a?.sourceIndex)))throw new Error('XYZ来源原子元数据损坏。');}
-    for(let j=0;j<n;j++){const row=lines[i++]?.trim().split(/\s+/);if(!row||row.length!==width)throw new Error('XYZ坐标行列数与声明不符。');const sourceIndex=source>=0?num(row[source]):provenance?.[j].sourceIndex??j+1;if(!Number.isSafeInteger(sourceIndex))throw new Error('来源原子序号必须为整数。');add(s,row[species],vec(row.slice(pos)).map(x=>x*scale) as Vector3,id>=0?decodeURIComponent(row[id]):provenance?.[j].id,sourceIndex);}
-    for(const key of ['charge','multiplicity'] as const)if(meta[key]!==undefined){s[key]=num(meta[key]);if(!Number.isSafeInteger(s[key])||(key==='multiplicity'&&s[key]!<1))throw new Error('XYZ电子态元数据无效。');}
+    readXyzElectronicState(comment,s);
+    return {structure:s, readAtom(row:string[]|undefined,j:number):Structure['atoms'][number]{
+      if(!row||row.length!==width)throw new Error('XYZ坐标行列数与声明不符。');
+      const sourceIndex=source>=0?num(row[source]):provenance?.[j].sourceIndex??j+1;
+      if(!Number.isSafeInteger(sourceIndex))throw new Error('来源原子序号必须为整数。');
+      return {element:elementSymbol(row[species]),x:num(row[pos])*scale,y:num(row[pos+1])*scale,z:num(row[pos+2])*scale,
+        id:(id>=0?decodeURIComponent(row[id]):provenance?.[j].id)??`${s.id}:atom:${j+1}`,sourceIndex};
+    }};
+}
+
+function parseXyz(text:string,name:string):Structure[] {
+  const lines=text.split('\n'),out:Structure[]=[];let i=0;
+  while(i<lines.length){if(!lines[i].trim()){i++;continue;}if(!/^\d+$/.test(lines[i].trim()))throw new Error('XYZ原子数行无效。');const n=Number(lines[i++]);if(!Number.isSafeInteger(n)||n<1)throw new Error('XYZ原子数超出范围。');if(i>=lines.length)throw new Error('XYZ缺少注释。');
+    const {structure:s,readAtom}=periodicXyzFrame(name,lines[i++],n,out.length);
+    for(let j=0;j<n;j++)s.atoms.push(readAtom(lines[i++]?.trim().split(/\s+/),j));
     out.push(finish(s));
   }return out;
 }
@@ -293,8 +308,8 @@ function parsePoscar(text:string,name:string):Structure[] {const lines=text.spli
   const metadata=lines.slice(i).find(line=>line.startsWith('# builder_metadata '));if(metadata){let m:{origin?:Vector3;pbc?:[boolean,boolean,boolean];sourceIndices?:number[];periodicMetadata?:string};try{m=JSON.parse(metadata.slice(19));}catch{throw new Error('POSCAR builder元数据损坏。');}if(m.origin)s.cell.origin=vec(m.origin.map(String));if(m.pbc)s.cell.pbc=pbc(m.pbc.map(x=>x?'T':'F').join(' '));restorePeriodicity(s,m.periodicMetadata);if(m.sourceIndices){if(m.sourceIndices.length!==s.atoms.length||m.sourceIndices.some(x=>!Number.isSafeInteger(x)))throw new Error('POSCAR来源序号元数据损坏。');s.atoms.forEach((a,k)=>a.sourceIndex=m.sourceIndices![k]);}}
   return [finish(s)];}
 
-function parsePdb(text:string,name:string):Structure[] {
-  const lines=text.split('\n'),crystal=lines.find(line=>line.startsWith('CRYST1')),notes:string[]=[];
+export function periodicPdbHeader(lines: readonly string[],name:string) {
+  const crystal=lines.find(line=>line.startsWith('CRYST1')),notes:string[]=[];
   let cell:PeriodicCell|undefined,parameters:[number,number,number,number,number,number]|undefined;
   if(crystal){try{
     parameters=[crystal.slice(6,15),crystal.slice(15,24),crystal.slice(24,33),crystal.slice(33,40),crystal.slice(40,47),crystal.slice(47,54)].map(value=>num(value.trim())) as typeof parameters;
@@ -331,18 +346,35 @@ function parsePdb(text:string,name:string):Structure[] {
     cell=transformed;recoveredScale=true;
   }catch{notes.push('PDB SCALE矩阵无法恢复可靠晶胞；原子坐标仍保留，CRYST1默认晶胞方向仅作未确认候选。');}}
   if(cell)cell.pbcProvenance={kind:'unconfirmed',evidence:recoveredScale?'PDB晶胞方向及原点按SCALE变换恢复；SCALE/CRYST1未声明独立周期轴掩码，当前轴仅作预览，运行前须确认。':'PDB CRYST1仅保存晶胞参数，未保存独立周期轴掩码；当前轴为预览候选，运行前须确认。'};
+  return { crystal, cell, notes };
+}
+
+export function periodicPdbStructure(name:string,model:number,alt:string,index:number,header:ReturnType<typeof periodicPdbHeader>):Structure {
+  const { crystal, cell, notes } = header;
+  const s=base(name,`PDB${crystal?' CRYST1':''} model ${model+1}${alt?` alt ${alt}`:''}`,model*100+index);
+  if(cell)s.cell=structuredClone(cell);
+  s.notes.push(...notes,'PDB坐标按原固定列打印精度读取，不补原文件未记录的小数；CRYST1不证明二维周期轴。');
+  if(alt)s.notes.push(`使用替代位置${alt}及公共原子。`);
+  return s;
+}
+
+export function periodicPdbAtom(line:string):Structure['atoms'][number] {
+  let element=line.slice(76,78).trim();
+  if(!element){const label=line.slice(12,16),letters=label.trim().replace(/^\d+/,'');element=/^\s|^\d/.test(label)?letters[0]:letters.slice(0,2);try{elementSymbol(element);}catch{element=letters[0];}}
+  return {element:elementSymbol(element),x:num(line.slice(30,38).trim()),y:num(line.slice(38,46).trim()),z:num(line.slice(46,54).trim()),sourceIndex:num(line.slice(6,11).trim())};
+}
+
+function parsePdb(text:string,name:string):Structure[] {
+  const lines=text.split('\n'),header=periodicPdbHeader(lines,name);
   const models:string[][]=[];let current:string[]=[];
   for(const line of lines){if(/^MODEL |^ENDMDL/.test(line)){if(current.length){models.push(current);current=[];}}else if(/^(ATOM  |HETATM)/.test(line))current.push(line);}
   if(current.length)models.push(current);
   return models.flatMap((rows,model)=>{const alts=[...new Set(rows.map(line=>line[16]?.trim()).filter(Boolean))];return (alts.length?alts:['']).map((alt,index)=>{
-    const s=base(name,`PDB${crystal?' CRYST1':''} model ${model+1}${alt?` alt ${alt}`:''}`,model*100+index);
-    if(cell)s.cell=structuredClone(cell);s.notes.push(...notes,'PDB坐标按原固定列打印精度读取，不补原文件未记录的小数；CRYST1不证明二维周期轴。');
+    const s=periodicPdbStructure(name,model,alt,index,header);
     for(const line of rows.filter(line=>!line[16]?.trim()||line[16]===alt)){
-      const label=line.slice(12,16),letters=label.trim().replace(/^\d+/,'');let element=line.slice(76,78).trim();
-      if(!element){element=/^\s|^\d/.test(label)?letters[0]:letters.slice(0,2);try{elementSymbol(element);}catch{element=letters[0];}}
-      add(s,element,vec([line.slice(30,38),line.slice(38,46),line.slice(46,54)].map(value=>value.trim())),`${s.id}:serial:${line.slice(6,11).trim()}`,num(line.slice(6,11).trim()));
+      s.atoms.push({...periodicPdbAtom(line),id:`${s.id}:serial:${line.slice(6,11).trim()}`});
     }
-    if(alt)s.notes.push(`使用替代位置${alt}及公共原子。`);return finish(s);
+    return finish(s);
   });});
 }
 
@@ -419,6 +451,6 @@ export function parsePeriodicStructures(raw:string,name:string,external:Record<s
   if(/^(?:POSCAR|CONTCAR)(?:\.|$)/i.test(name.split(/[\\/]/).at(-1)??'')||ext==='vasp'||ext==='poscar')return parsePoscar(text,name);
   if(/^\s*&(?:SUBSYS|FORCE_EVAL)\b/im.test(text)&&(/^\s*&(?:CELL|COORD|TOPOLOGY)\b/im.test(text)||/^\s*@INCLUDE\b/im.test(text)))return parseCp2k(expandCp2kIncludes(text,external),name,external);
   if(/^(?:CRYST1|SCALE[123](?:\s|$))/m.test(text)&&/^(ATOM  |HETATM)/m.test(text))return parsePdb(text,name);
-  if(/^\s*\d+\s*\n/.test(text)&&/\b(?:Lattice|Properties|pbc|builder_atoms)\s*=/i.test(text.split('\n')[1]??''))return parseXyz(text,name);
+  if(/^\s*\d+\s*\n/.test(text)&&periodicXyzComment(text.split('\n')[1]??''))return parseXyz(text,name);
   return null;
 }

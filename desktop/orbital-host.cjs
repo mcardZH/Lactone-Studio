@@ -1,5 +1,5 @@
 'use strict';
-const { readManagedResult } = require('./analysis-result-wire.cjs');
+const { readManagedResult, publishManagedFields, discardManagedFields, takeCubeExport } = require('./analysis-result-wire.cjs');
 const nativeFS=require('node:fs/promises');
 const path=require('node:path');
 const { requireBackend, requireSameBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
@@ -31,7 +31,7 @@ function metadata(raw,session) {
   return {sourceId:session.sourceId,sourceRevision:session.sourceRevision,name:session.name,format:raw.format,structure:{id:session.sourceId,name:session.name,format:raw.format,atoms,charge:Number.isSafeInteger(raw.charge)?raw.charge:null,multiplicity:Number.isSafeInteger(raw.multiplicity)&&raw.multiplicity>0?raw.multiplicity:null,notes:['Wavefunction source geometry; no bond inference.'],dimension:3},basisCount:raw.basisCount,orbitals,messages:[raw.basisConvention].filter(v=>typeof v==='string'),...(effectiveNuclearCharges?{effectiveNuclearCharges}:{})};
 }
 /** One shared scientific worker; each opening metadata inspection owns its child. */
-function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBackend,resolveResources,snapshotSource,jobRoot,sendToWindow,sendProgress=()=>{},onAnalysisEvidence,analysisResourceOverrides,fs=nativeFS,limits={},scheduler,timers={setTimeout,clearTimeout}}) {
+function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBackend,resolveResources,snapshotSource,adoptResultFile,releaseResultFile,jobRoot,sendToWindow,sendProgress=()=>{},onAnalysisEvidence,analysisResourceOverrides,fs=nativeFS,limits={},scheduler,timers={setTimeout,clearTimeout}}) {
   assert(analysisResourceOverrides===undefined||(plain(analysisResourceOverrides)&&Object.keys(analysisResourceOverrides).length===2&&Object.keys(analysisResourceOverrides).every(k=>['threads','memoryBudgetBytes'].includes(k))&&Number.isSafeInteger(analysisResourceOverrides.threads)&&analysisResourceOverrides.threads>0&&analysisResourceOverrides.threads<=2147483647&&Number.isSafeInteger(analysisResourceOverrides.memoryBudgetBytes)&&analysisResourceOverrides.memoryBudgetBytes>0),'Invalid trusted numerical-analysis resource overrides');
   const analysisOverrides=analysisResourceOverrides===undefined?undefined:Object.freeze({...analysisResourceOverrides});
   const policy={requestMs:0,fieldMs:0,stopMs:6000,idleMs:30000,...limits};
@@ -128,11 +128,11 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
     child.on('close',code=>{w.closed=true;w.finish();clearTimeout(w.killTimer);if(worker!==w)return;if(!w.terminating)failAll(new Error(`Orbital worker exited (${code}): ${w.stderr}`),w);worker=null;for(const s of sessions.values())if(s.worker===w){s.nativeOpen=false;s.state='failed';nativeIdle(s,s.generation);}for(const s of cleanupAfterClose){void clean(s);cleanupAfterClose.delete(s);} });
     return w;
   }
-  function request(operation,s,extra={},gridKey) {const createsBinding=operation==='open', readsMetadata=operation==='plan'||operation==='resources';
+  function request(operation,s,extra={},gridKey,files) {const createsBinding=operation==='open', readsMetadata=operation==='plan'||operation==='resources';
     const w=createsBinding||readsMetadata?ensureWorker():s.worker;
     assert(w && w===worker && !w.closed && !w.terminating,'ORBITAL_WORKER_UNAVAILABLE: 原分析会话已结束');
     if(createsBinding)s.worker=w;
-    const id=`orb-${++requestSequence}`,generation=s?.generation??0;return new Promise((resolve,reject)=>{const waitMs=['field','export-cube'].includes(operation)?policy.fieldMs:policy.requestMs;const timer=waitMs>0?setTimeout(()=>failAll(new Error('ORBITAL_TIMEOUT: 轨道引擎响应超时'),w),waitMs):undefined;pending.set(id,{resolve,reject,timer,session:s,gridKey,generation});try{w.child.stdin.write(JSON.stringify({id,operation,...(s?{sessionId:s.sessionId,sourceRevision:s.sourceRevision,gridKey:gridKey??s.plan?.gridKey??'',generation}:{}),...extra})+'\n');}catch(error){failAll(error,w);}}).then(value=>readManagedResult(value,s?.scienceDirectory??s?.directory));}
+    const id=`orb-${++requestSequence}`,generation=s?.generation??0;return new Promise((resolve,reject)=>{const waitMs=['field','export-cube'].includes(operation)?policy.fieldMs:policy.requestMs;const timer=waitMs>0?setTimeout(()=>failAll(new Error('ORBITAL_TIMEOUT: 轨道引擎响应超时'),w),waitMs):undefined;pending.set(id,{resolve,reject,timer,session:s,gridKey,generation});try{w.child.stdin.write(JSON.stringify({id,operation,...(s?{sessionId:s.sessionId,sourceRevision:s.sourceRevision,gridKey:gridKey??s.plan?.gridKey??'',generation}:{}),...extra})+'\n');}catch(error){failAll(error,w);}}).then(value=>readManagedResult(value,s?.scienceDirectory??s?.directory,{deferBinary:!!adoptResultFile&&!!files,files}));}
   function cancelledOpen(){return new Error('ORBITAL_CANCELLED: 波函数读取已取消');}
   function rememberClosed(owner,id){let ids=closedSessions.get(owner);if(!ids)closedSessions.set(owner,ids=new Set());ids.add(id);}
   function stopInspect(w,error,force=false){
@@ -373,8 +373,21 @@ function createOrbitalHost({spawn,spawnInspect=spawn,resolveRuntime,resolveBacke
       finally{cycle.lease?.release();if(cycle.controller.signal.aborted)taskProgress.report('stopped',{settlement:cycle.submitted?'native-settled':'cancelled-before-start'});else if(failure||s.state==='failed')taskProgress.report('failed',{settlement:cycle.submitted?'native-settled':'not-started',message:(failure?.message??(s.lastNativeError?.generation===generation?s.lastNativeError.message:undefined))?.slice(0,2048)});else taskProgress.report('parse',{stageLabel:'等待轨道格点接受',settlement:'native-settled',validated:true});if(s.leaseCycle===cycle)delete s.leaseCycle;}
     })());return receipt;
   }
-  async function field(owner,sessionId,key){const s=owned(owner,sessionId);assert(s.nativeOpen&&s.keys.has(key)&&s.completed.has(key),'Orbital field is absent or pending');const value=await request('field',s,{orbitalId:key});owned(owner,sessionId);return decodeField(value,s,key);}
-  async function cube(owner,sessionId,key){const s=owned(owner,sessionId);assert(s.nativeOpen&&s.keys.has(key)&&s.completed.has(key),'Orbital field is absent or pending');const value=await request('export-cube',s,{orbitalId:key});owned(owner,sessionId);assert(typeof value.text==='string','Invalid orbital Cube export');return value.text;}
+  async function field(owner,sessionId,key){
+    const s=owned(owner,sessionId),files=new Set();assert(s.nativeOpen&&s.keys.has(key)&&s.completed.has(key),'Orbital field is absent or pending');
+    try{
+      const value=await request('field',s,{orbitalId:key},undefined,files);owned(owner,sessionId);
+      return await publishManagedFields(decodeField(value,s,key),{files,owner,adopt:adoptResultFile,release:releaseResultFile});
+    }finally{await discardManagedFields(files);}
+  }
+  async function cube(owner,sessionId,key,{stream=false}={}){
+    const s=owned(owner,sessionId),files=new Set();assert(s.nativeOpen&&s.keys.has(key)&&s.completed.has(key),'Orbital field is absent or pending');
+    try{
+      const value=await request('export-cube',s,{orbitalId:key,...(stream?{streamed:true}:{})},undefined,files);owned(owner,sessionId);
+      if(stream)return takeCubeExport(value,files);
+      assert(typeof value.text==='string','Invalid orbital Cube export');return value.text;
+    }finally{await discardManagedFields(files);}
+  }
   async function analyze(owner,sessionId,raw,progressContext){const s=owned(owner,sessionId);(s.sourceRoot??s).sourceExpectationUsed=true;const result=await analyses.run(s,raw,progressContext);owned(owner,sessionId,s);return result;}
   async function cancelAnalysis(owner,sessionId){owned(owner,sessionId);await analyses.cancel(sessionId);}
   function closeOwner(owner){closedOwners.add(owner);scheduler?.cancelOwner(owner);for(const s of sessions.values())if(s.owner===owner&&!s.parent)void track(closeSession(s)).catch(()=>{});}

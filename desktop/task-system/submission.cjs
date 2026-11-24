@@ -9,7 +9,33 @@ const crypto = require("node:crypto");
 const { createSoftwareAdapter } = require("./engines/adapters.cjs");
 const { base, mutation } = require("./management.cjs");
 const { fail, noLinks } = require("./platform/global-settings.cjs");
+const { describeFailure } = require("./task-failures.cjs");
 const sha = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
+function previewDiagnostic(stage, error, fallback = "SOFTWARE_CAPABILITY_UNVERIFIED") {
+	const code = typeof error?.code === "string" && /^[A-Z0-9_]{1,80}$/.test(error.code) ? error.code : fallback;
+	const { details } = describeFailure(error, { stage });
+	const record = { code, stage };
+	// Native diagnostics can carry complete commands, streams and credentials.
+	// Publish validated scalars and the validators' explicit textual reasons.
+	for (const key of ["field", "nativeCode", "operation", "variable"])
+		if (typeof details?.[key] === "string" && /^[A-Za-z0-9_. -]{1,100}$/.test(details[key])) record[key] = details[key];
+	if (Number.isInteger(details?.exitCode)) record.exitCode = details.exitCode;
+	if (typeof details?.reason === "string") record.reason = details.reason.slice(0, 512);
+	if (["GAUSSIAN_WINDOWS_SCRIPT_PATH_CONFLICT", "GAUSSIAN_WINDOWS_SCRIPT_MAPPING_UNVERIFIED"].includes(code))
+		for (const key of ["expected", "actual"])
+			if (typeof details?.[key] === "string") record[key] = details[key].slice(0, 1024);
+	return record;
+}
+function submissionEnvironment(environment) {
+	if (!environment?.softwareAdapter || !environment?.connection || !environment?.scheduler) return undefined;
+	return {
+		environmentId: environment.environmentId,
+		revision: environment.configurationRevision,
+		engineId: environment.softwareAdapter.engineId,
+		connectionKind: environment.connection.kind,
+		schedulerKind: environment.scheduler.kind
+	};
+}
 function safeName(value) {
 	if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(value) || value === "..")
 		throw fail("INPUT_NAME_UNSAFE");
@@ -363,8 +389,9 @@ function createSubmission({
 			};
 		});
 	}
-	async function prepare(request, actualSubmission = false) {
+	async function prepare(request, actualSubmission = false, reportStage = () => {}) {
 		const input = request?.input;
+		reportStage("input");
 		if (
 			!input ||
 			!["gaussian", "orca"].includes(input.engineId) ||
@@ -372,16 +399,19 @@ function createSubmission({
 			!input.finalInputText.trim()
 		)
 			throw fail("FINAL_INPUT_REQUIRED");
-		const environment = await environmentFor(request.environmentId, actualSubmission ? {
-			ensureWorkingParent: true, workingRootOverride: request.workingRootOverride
-		} : undefined);
+		reportStage("environment");
+		const environment = await environmentFor(request.environmentId, {
+			ensureWorkingParent: actualSubmission, workingRootOverride: request.workingRootOverride
+		});
 		if (environment.softwareAdapter.engineId !== input.engineId)
 			throw fail("ENGINE_ENVIRONMENT_MISMATCH");
 		environment.workingRoot = request.workingRootOverride || environment.workingRoot;
 		if (request.slurm) environment.scheduler = { ...environment.scheduler, ...request.slurm };
 		const platform = environment.connection.kind === "local" ? process.platform : "linux",
 			pathApi = platform === "win32" ? path.win32 : path.posix;
+		reportStage("paths");
 		if (!pathApi.isAbsolute(environment.workingRoot)) throw fail("ABSOLUTE_WORKING_ROOT_REQUIRED");
+		reportStage("dependencies");
 		const selected = dependencies(input),
 			bytes = Buffer.from(input.finalInputText, "utf8"),
 			adapter = createSoftwareAdapter(input.engineId),
@@ -446,7 +476,8 @@ function createSubmission({
 			preview.suggestedDisplayName = name;
 			previews.set(preview.submissionPlanId, preview);
 		}
-		if (request.resubmitTaskId) { const { task } = assertResubmittable(request.resubmitTaskId); preview.taskId = task.taskId; preview.suggestedDisplayName = task.displayName; }
+		if (request.resubmitTaskId) { reportStage("replacement"); const { task } = assertResubmittable(request.resubmitTaskId); preview.taskId = task.taskId; preview.suggestedDisplayName = task.displayName; }
+		reportStage("paths");
 		if (preview.archivePath && !path.isAbsolute(preview.archivePath)) throw fail("ABSOLUTE_ARCHIVE_ROOT_REQUIRED");
 		return { input, environment, selected, bytes, adapter, interpretation, preview };
 	}
@@ -481,16 +512,28 @@ function createSubmission({
 		catch (error) { return { taskKind: null, taskKindUnavailableReason: error.code || "最终输入任务类型暂不能可靠读取" }; }
 	}
 	async function preview(request) {
-		const prepared = await prepare(request),
-			restrictions = [...prepared.interpretation.restrictions],
-			restrictionDetails = [];
+		let stage = "input", prepared;
+		try {
+			prepared = await prepare(request, false, value => { stage = value; });
+		} catch (error) {
+			if (request?.includeDiagnostics !== true) throw error;
+			const detail = previewDiagnostic(stage, error, "SUBMISSION_PREFLIGHT_FAILED");
+			return { workingPath: "", script: "", resources: [], restrictions: [detail.code], restrictionDetails: [detail] };
+		}
+		const restrictions = [...prepared.interpretation.restrictions],
+			restrictionDetails = restrictions.map(code => ({
+				code, stage: prepared.environment.softwareAdapter.restrictions?.includes(code) ? "software" :
+					prepared.environment.scheduler.restrictions?.includes(code) ? "scheduler" : "input"
+			}));
 		let script = "",
 			executable = null,
 			calculation = null,
 			schedulerRequest = null;
 		try {
-			const software = await softwareFor(prepared.environment),
-				launch = prepared.adapter.planLaunch({
+			stage = "software";
+			const software = await softwareFor(prepared.environment);
+			stage = "launch";
+			const launch = prepared.adapter.planLaunch({
 					inputSnapshot: {
 						inputSnapshotId: "preview",
 						preparedName: prepared.input.inputName,
@@ -501,6 +544,7 @@ function createSubmission({
 					workLocation: prepared.preview.workLocation
 				});
 			executable = software.entryIdentity?.path || prepared.environment.softwareAdapter.executable;
+			stage = "calculation-script";
 			calculation = require("./engines/calculation-script.cjs").resolveCalculationScript({
 				launch,
 				environment: prepared.environment,
@@ -508,8 +552,11 @@ function createSubmission({
 				override: request.calculationScript
 			});
 			if (prepared.environment.scheduler.kind === "slurm") {
-				if (!prepared.environment.scheduler.siteId || !prepared.environment.scheduler.user)
+				stage = "scheduler";
+				if (!prepared.environment.scheduler.siteId || !prepared.environment.scheduler.user) {
 					restrictions.push("SLURM_SITE_USER_UNVERIFIED");
+					restrictionDetails.push({ code: "SLURM_SITE_USER_UNVERIFIED", stage });
+				}
 				const rendered = require("./execution/slurm.cjs").renderSlurmScript({
 					workLocation: prepared.preview.workLocation,
 					configuration: prepared.environment.scheduler,
@@ -518,6 +565,7 @@ function createSubmission({
 				});
 				script = rendered.expandedScript;
 				restrictions.push(...rendered.restrictions);
+				restrictionDetails.push(...rendered.restrictions.map(code => ({ code, stage })));
 				schedulerRequest = rendered.schedulerRequest;
 			} else if (software.platform !== "win32")
 				script =
@@ -538,19 +586,13 @@ function createSubmission({
 			if (launch.initialization && prepared.environment.scheduler.kind !== "slurm")
 				script = launch.initialization + "\n" + script;
 		} catch (error) {
-			const code = error.code || "SOFTWARE_CAPABILITY_UNVERIFIED";
-			restrictions.push(code);
-			if (["GAUSSIAN_WINDOWS_SCRIPT_PATH_CONFLICT", "GAUSSIAN_WINDOWS_SCRIPT_MAPPING_UNVERIFIED"].includes(code)) {
-				const detail = { code };
-				// Only the validator's small textual diagnostic contract crosses IPC;
-				// do not serialize arbitrary errors, objects or the script draft.
-				for (const field of ["field", "expected", "actual", "reason"])
-					if (typeof error.details?.[field] === "string") detail[field] = error.details[field];
-				restrictionDetails.push(detail);
-			}
+			const detail = previewDiagnostic(stage, error);
+			restrictions.push(detail.code);
+			restrictionDetails.push(detail);
 		}
 		return {
 			submissionPlanId: prepared.preview.submissionPlanId,
+			executionEnvironment: submissionEnvironment(prepared.environment),
 			...inputTaskSummary(prepared.input),
 			directoryMode: prepared.preview.directoryMode,
 			suggestedDisplayName: prepared.preview.suggestedDisplayName,
@@ -582,14 +624,26 @@ function createSubmission({
 					: [])
 			],
 			restrictions: [...new Set(restrictions)],
-			...(restrictionDetails.length ? { restrictionDetails } : {})
+			...(restrictionDetails.length ? { restrictionDetails: [...new Map(restrictionDetails.map(detail => [detail.code, detail])).values()] } : {})
 		};
+	}
+	function submissionReceipt({ submissionIntentId, includeOwnership }) {
+		if(typeof submissionIntentId!=="string"||!submissionIntentId)throw fail("SUBMISSION_INTENT_REQUIRED");
+		for(const run of iterateRecords(store,"run")){
+			if(run.executionIdentity?.submissionIntentId!==submissionIntentId)continue;
+			const receipt={taskId:run.taskId,runId:run.runId,operationId:run.submitOperationId};
+			if(!includeOwnership)return receipt;
+			const task=store.read("task",run.taskId);
+			return {...receipt,projectId:task?.sourceProjectRef?.projectId??null,executionEnvironment:submissionEnvironment(run.environmentSnapshot),
+				workingPath:run.executionIdentity.workLocation?.path};
+		}
+		return null;
 	}
 	async function submit(request) {
 		const intent = request.submissionIntentId || request.submissionPlanId;
 		if (intent) {
-			let existing; for (const run of iterateRecords(store, "run")) if (run.executionIdentity?.submissionIntentId === intent) { existing = run; break; }
-			if (existing) return { taskId: existing.taskId, runId: existing.runId, operationId: existing.submitOperationId };
+			const existing = submissionReceipt({submissionIntentId:intent,includeOwnership:request.includeOwnership});
+			if (existing) return existing;
 			if (submitFlights.has(intent)) return submitFlights.get(intent);
 			const flight = submitOnce(request);
 			submitFlights.set(intent, flight);
@@ -1274,7 +1328,8 @@ function createSubmission({
 					}
 				})()
 			);
-			return { taskId, runId, operationId, workingPath: workLocation.path, archivePath: prepared.preview.archivePath, directoryMode: prepared.preview.directoryMode };
+			return { taskId, runId, operationId, workingPath: workLocation.path, archivePath: prepared.preview.archivePath, directoryMode: prepared.preview.directoryMode,
+				...(request.includeOwnership?{projectId:input.projectId,executionEnvironment:submissionEnvironment(environment)}:{}) };
 		} finally {
 			freezeLease?.release();
 			for (const item of selected) {
@@ -1324,6 +1379,7 @@ function createSubmission({
 	}
 	return {
 		resubmitDraft,
+		submissionReceipt,
 		overwritePreview,
 		plannedLocation,
 		chooseDependencies,

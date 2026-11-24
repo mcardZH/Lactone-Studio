@@ -20,9 +20,30 @@ import time
 
 import numpy as np
 
-from pes_core import BOHR_ANGSTROM, PesCancelled, PesError, atom_numbers, require
+from pes_core import (BOHR_ANGSTROM, PesCancelled, PesError, atom_numbers, electronic_accuracy, initial_positions,
+                      native_electronic_failure, native_shared_failure, require)
 
 P = C.c_void_p
+_resident_api = None
+
+
+def prepare_resident_api(runtime):
+    """Retain only immutable library identity and bindings in a resident worker."""
+    global _resident_api
+    root = runtime.get('libxtbRoot')
+    digest = runtime.get('libxtbManifestSha256')
+    if _resident_api is None:
+        _resident_api = LibXtbApi(root, 1, digest)
+    require(Path(root) == _resident_api.root and digest == _resident_api.manifest_sha256,
+            'Resident libxtb runtime identity changed', 'PES_LIBXTB_RUNTIME')
+    return _resident_api
+
+
+def close_resident_api():
+    global _resident_api
+    if _resident_api is not None:
+        _resident_api.close()
+        _resident_api = None
 
 
 def _digest(file):
@@ -193,10 +214,15 @@ class LibXtbApi:
     def bind_current_thread(self):
         # libgomp's ICV is local to the calling thread. Even when callers use a
         # serialized helper pool, every actual C invocation keeps this grant.
+        self.set_current_threads(self.thread_settings['grantThreads'])
+
+    def set_current_threads(self, threads):
+        require(type(threads) is int and threads > 0, 'Missing PES thread grant')
+        self.thread_settings['grantThreads'] = threads
         for configure, observe, label in self._thread_controls:
-            configure(self.thread_settings['grantThreads'])
+            configure(threads)
             actual = observe()
-            require(0 < actual <= self.thread_settings['grantThreads'],
+            require(0 < actual <= threads,
                     'libxtb threading exceeds its actual resource grant', 'PES_LIBXTB_RUNTIME')
             self.thread_settings[label] = actual
 
@@ -228,14 +254,18 @@ class _Node:
             require(bool(self.env), 'libxtb could not create an environment', 'PES_LIBXTB_FAILED')
             self._output()
             self.lib.xtb_setVerbosity(self.env, 2)
-            count, charge, spin = C.c_int(len(self.numbers)), C.c_double(owner.request['charge']), C.c_int(owner.request['uhf'])
+            method = owner.request['method']
+            count, charge = C.c_int(len(self.numbers)), C.c_double(owner.request['charge'])
+            solver_spin = owner.request.get('uhf') if method == 'gfnff' else owner.request['uhf']
+            spin = C.c_int(solver_spin) if solver_spin is not None else None
             self.mol = P(self.lib.xtb_newMolecule(self.env, C.byref(count), self.numbers.ctypes.data,
-                self.positions.ctypes.data, C.byref(charge), C.byref(spin), None, None))
+                self.positions.ctypes.data, C.byref(charge), C.byref(spin) if spin is not None else None,
+                owner.lattice.ctypes.data if owner.lattice is not None else None,
+                owner.periodic.ctypes.data if owner.periodic is not None else None))
             self.check()
             self.calc = P(self.lib.xtb_newCalculator())
             self.res = P(self.lib.xtb_newResults())
             require(bool(self.mol) and bool(self.calc) and bool(self.res), 'libxtb native allocation failed', 'PES_LIBXTB_FAILED')
-            method = owner.request['method']
             loader = 'xtb_loadGFNFF' if method == 'gfnff' else 'xtb_loadGFN' + method[-1] + 'xTB'
             parameter = owner.api.parameter_files[method]
             getattr(self.lib, loader)(self.env, self.mol, self.calc,
@@ -256,14 +286,16 @@ class _Node:
         finally:
             self._release_output()
 
-    def check(self):
+    def check(self, *, electronic=False):
         if self.lib.xtb_checkEnvironment(self.env):
             length = C.c_int(16384)
             text = C.create_string_buffer(length.value)
             self.lib.xtb_getError(self.env, text, C.byref(length))
             message = text.value.decode('utf-8', errors='replace')
-            code = 'PES_XTB_SCC' if self.owner.has_scc and re.search(r'converg|SCC|SCF', message, re.I) else 'PES_XTB_GEOMETRY' if re.search(r'diagonali|Hamiltonian', message, re.I) else 'PES_LIBXTB_FAILED'
-            raise PesError(message or 'libxtb reported an electronic calculation failure', code)
+            failure = (native_electronic_failure(message, has_scc=self.owner.has_scc)
+                       if electronic and not native_shared_failure(message) else None)
+            raise PesError(message or 'libxtb reported a native calculation failure',
+                           failure[0] if failure else 'PES_LIBXTB_FAILED')
 
     def _output(self):
         self.path.write_bytes(b'')
@@ -284,16 +316,18 @@ class _Node:
             self.positions[:] = positions / BOHR_ANGSTROM
             self.lib.xtb_updateMolecule(self.env, self.mol, self.positions.ctypes.data, None)
             self.check()
+            self.owner.ctx.check_cancelled()
             self.owner.invocations += 1
+            self.owner.evaluation_started()
             self.lib.xtb_singlepoint(self.env, self.mol, self.calc, self.res)
-            self.check()
+            self.check(electronic=True)
             self.owner.ctx.check_cancelled()
             energy = C.c_double()
             self.lib.xtb_getEnergy(self.env, self.res, C.byref(energy))
             self.lib.xtb_getGradient(self.env, self.res, self.gradient.ctypes.data)
             self.check()
             require(math.isfinite(energy.value) and np.isfinite(self.gradient).all(),
-                    'libxtb returned nonfinite energy or gradient', 'PES_EVALUATOR_INVALID')
+                    'libxtb returned nonfinite energy or gradient', 'PES_XTB_EVALUATION')
         finally:
             self._release_output()
         log = self.path.read_text(encoding='utf-8', errors='replace')
@@ -331,14 +365,24 @@ class _Node:
 
 
 class LibXtbEvaluator:
-    def __init__(self, request, runtime, workspace, *, native):
+    def __init__(self, request, runtime, workspace, *, native=None):
         from conformer_gfnff import ordinary_directory
         self.request, self.native = copy.deepcopy(request), native
         self.workspace = ordinary_directory(Path(workspace))
         require(request.get('method') in ('gfn0', 'gfn1', 'gfn2', 'gfnff'), 'Unsupported libxtb E/G method')
         self.has_scc = request['method'] in ('gfn1', 'gfn2')
         parameters = request.get('parameters', {})
-        self.accuracy = parameters.get('accuracy', .1)
+        self.accuracy = electronic_accuracy(request)
+        self.lattice = self.periodic = None
+        cell = request['structure'].get('cell')
+        if cell and any(cell.get('pbc', ())):
+            require(request['method'] in ('gfn0', 'gfnff'),
+                    'Fixed-cell GFN1/GFN2 require a tblite evaluator')
+            require(not request.get('solvation'), 'Periodic libxtb requests do not use ALPB')
+            self.lattice = np.ascontiguousarray(np.asarray(cell['vectors'], dtype=np.float64) / BOHR_ANGSTROM)
+            self.periodic = np.ascontiguousarray(cell['pbc'], dtype=np.bool_)
+            require(self.lattice.shape == (3, 3) and np.isfinite(self.lattice).all() and self.periodic.shape == (3,),
+                    'Invalid fixed-cell geometry')
         self.temperature = parameters.get('electronicTemperatureK', 300.) if self.has_scc else None
         self.scc_limit = parameters.get('maxSccIterations', request.get('maxSccIterations', 250)) if self.has_scc else None
         require(type(self.accuracy) in (int, float) and math.isfinite(self.accuracy) and self.accuracy > 0,
@@ -356,30 +400,39 @@ class LibXtbEvaluator:
             reference = model.get('reference', {})
             atoms = reference.get('atoms', [])
             source = request['structure']['atoms']
+            source_multiplicity = (request['structure'].get('multiplicity') if request.get('operation') == 'md'
+                                   else request['uhf'] + 1)
             require(model.get('atomOrder') == [atom['id'] for atom in source]
                     and [(a.get('id'), a.get('element')) for a in atoms] == [(a['id'], a['element']) for a in source]
-                    and reference.get('charge') == request['charge'] and reference.get('multiplicity') == request['uhf'] + 1
+                    and reference.get('charge') == request['charge'] and reference.get('multiplicity') == source_multiplicity
                     and model.get('solvation') == request.get('solvation'),
                     'GFN-FF reference atom order, electronic state or solvent mismatch', 'PES_FF_MODEL')
             self.reference_positions = np.asarray([[a.get(key) for key in ('x', 'y', 'z')] for a in atoms], dtype=float)
             require(self.reference_positions.shape == (len(source), 3) and np.isfinite(self.reference_positions).all(),
                     'Invalid GFN-FF reference geometry', 'PES_FF_MODEL')
-        self.api = LibXtbApi(runtime.get('libxtbRoot'), request['threads'], runtime.get('libxtbManifestSha256'))
+        self.shared_api = _resident_api is not None
+        self.api = (prepare_resident_api(runtime) if self.shared_api else
+                    LibXtbApi(runtime.get('libxtbRoot'), request['threads'], runtime.get('libxtbManifestSha256')))
+        if self.shared_api:
+            self.api.set_current_threads(request['threads'])
         self.parameter_identity = dict(provider='libxtb', parameterSource='locked-runtime-file',
             parameterSha256=self.api.parameter_sha256[request['method']],
             librarySha256=self.api.identity.get('librarySha256'), version=self.api.identity['version'],
             apiVersion=self.api.identity.get('apiVersion'))
         if self.ff_model is not None and self.ff_model.get('parameterIdentity') is not None:
             if self.ff_model['parameterIdentity'] != self.parameter_identity:
-                self.api.close()
+                if not self.shared_api:
+                    self.api.close()
                 raise PesError('GFN-FF model parameters differ from the loaded runtime', 'PES_FF_MODEL_RUNTIME')
         self.numbers = np.ascontiguousarray(atom_numbers(request), dtype=np.int32)
         self.settings = dict(runIdentity=request.get('runIdentity'), atomIds=[atom['id'] for atom in request['structure']['atoms']],
-                             method=request['method'], charge=request['charge'], uhf=request['uhf'], solvation=request.get('solvation'),
+                             method=request['method'], charge=request['charge'], solvation=request.get('solvation'),
                              accuracy=self.accuracy, electronicTemperatureK=self.temperature, maxSccIterations=self.scc_limit,
                              threads=request['threads'], memoryBudgetBytes=request.get('memoryBudgetBytes'),
-                             threading=self.api.thread_settings,
+                             threading=dict(self.api.thread_settings),
                              engineIdentity=self.api.identity)
+        if 'uhf' in request:
+            self.settings['uhf'] = request['uhf']
         if self.ff_model is not None:
             self.settings['ffModel'] = self.ff_model
         self.settings_id = hashlib.sha256(json.dumps(self.settings, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -395,7 +448,13 @@ class LibXtbEvaluator:
 
     def bind(self, context):
         self.ctx = context
-        self.native.bind(context)
+        if self.native is not None:
+            self.native.bind(context)
+
+    def evaluation_started(self):
+        if self.invocations == 1:
+            self.ctx.emit('evaluation-started', dict(physicalEvaluationStartedAtMs=time.time_ns() / 1e6,
+                          backend='libxtb', clockSource='native-boundary'))
 
     def __call__(self, positions, *, need_bond_orders=False):
         return self.evaluate_node(positions, node_id=None, need_bond_orders=need_bond_orders)
@@ -406,6 +465,7 @@ class LibXtbEvaluator:
             self.ctx.check_cancelled()
             if need_bond_orders:
                 require(self.request['method'] != 'gfnff', 'GFN-FF has no wavefunction bond orders', 'PES_BOND_ORDERS_INVALID')
+                require(self.native is not None, 'This task cannot read native wavefunction bond orders', 'PES_BOND_ORDERS_INVALID')
                 # WBO is still the independently validated native provider.
                 return self.native(positions, need_bond_orders=True)
             self.api.bind_current_thread()
@@ -467,7 +527,7 @@ class LibXtbEvaluator:
                     pass  # The owned task cache still holds this rebuildable log.
 
     def physical_hessian(self, positions, step):
-        if self.request['method'] in ('gfn0', 'gfnff'):
+        if self.native is None or self.request['method'] in ('gfn0', 'gfnff'):
             return None  # Existing central differences use this same task model.
         return self.native.physical_hessian(positions, step)
 
@@ -482,12 +542,12 @@ class LibXtbEvaluator:
                     activeElectronicNodes=len(self.nodes), releasedElectronicNodes=self.releases,
                     failedElectronicEvaluations=self.failures, lastEvaluation=self.last,
                     lastElectronicFailure=self.last_failure,
-                    nativeHessianCalls=self.native.hessian_evaluations,
-                    attemptedNativeHessianCalls=self.native.hessian_attempts,
+                    nativeHessianCalls=getattr(self.native, 'hessian_evaluations', 0),
+                    attemptedNativeHessianCalls=getattr(self.native, 'hessian_attempts', 0),
                     solvationEvidence=(dict(model='alpb', solvent=self.request['solvation']['solvent'],
                         sourceField='libxtb:xtb_setSolvent', settingsId=self.settings_id)
                         if self.calls > 0 and self.request.get('solvation') else None),
-                    nativeAuxiliaryProvider=self.native.evidence())
+                    nativeAuxiliaryProvider=self.native.evidence() if self.native is not None else None)
         if self.ff_model is not None:
             result['ffModel'] = copy.deepcopy(self.ff_model)
             result['ffModelRuntime'] = dict(initialization='shared-reference-geometry-per-node',
@@ -512,8 +572,160 @@ class LibXtbEvaluator:
                 finally:
                     self.nodes.pop(key, None)
             try:
-                self.api.close()
+                if self.shared_api:
+                    self.api.set_current_threads(1)
+                else:
+                    self.api.close()
             except Exception as error:
                 errors.append(str(error))
             if errors:
                 raise PesError('; '.join(errors), 'PES_RESOURCE_CLEANUP')
+
+
+class TbliteEvaluator:
+    """Fixed-cell GFN1/2 through the bundled tblite C API, with one SCC state."""
+    def __init__(self, request, descriptor):
+        library = Path(descriptor['library'])
+        if not library.is_absolute():
+            raise RuntimeError('An absolute tblite library path is required')
+        actual_hash = _digest(library)
+        if actual_hash != descriptor['sha256']:
+            raise RuntimeError('tblite library identity changed')
+        self.dll_directory = os.add_dll_directory(str(library.parent)) if os.name == 'nt' else None
+        self.handles = {}
+        self.node_results = {}
+        self.identity = {'librarySha256': actual_hash}
+        try:
+            self.dll = C.CDLL(str(library))
+            self._bind()
+            encoded_version = self.get_version()
+            self.version = f'{encoded_version // 10000}.{encoded_version // 100 % 100}.{encoded_version % 100}'
+            if self.version != descriptor['version']:
+                raise RuntimeError('Loaded tblite library version differs')
+            self.identity['version'] = self.version
+            self._initialize(request)
+            from threadpoolctl import ThreadpoolController
+            self.thread_limit = ThreadpoolController().limit(limits=request['threads'])
+        except BaseException:
+            self.close()
+            raise
+
+    def _function(self, name, result, *arguments):
+        fn = getattr(self.dll, f'tblite_{name}')
+        fn.restype, fn.argtypes = result, arguments
+        setattr(self, name, fn)
+
+    def _bind(self):
+        p, i, d = C.c_void_p, C.c_int, C.c_double
+        self._function('get_version', i)
+        for kind in ('error', 'context', 'result'):
+            self._function(f'new_{kind}', p)
+        for kind in ('error', 'context', 'structure', 'calculator', 'result'):
+            self._function(f'delete_{kind}', None, C.POINTER(p))
+        for kind, getter in (('error', 'get_error'), ('context', 'get_context_error')):
+            self._function(f'check_{kind}', i, p)
+            self._function(getter, None, p, C.c_char_p, C.POINTER(i))
+        self._function('new_structure', p, p, i, p, p, C.POINTER(d), C.POINTER(i), p, p)
+        self._function('update_structure_geometry', None, p, p, p, p)
+        for method in ('gfn1', 'gfn2'):
+            self._function(f'new_{method}_calculator', p, p, p, p)
+        self._function('set_context_verbosity', None, p, i)
+        self._function('set_calculator_accuracy', None, p, p, d)
+        self._function('set_calculator_temperature', None, p, p, d)
+        self._function('set_calculator_max_iter', None, p, p, i)
+        self._function('get_singlepoint', None, p, p, p, p)
+        self._function('get_result_energy', None, p, p, C.POINTER(d))
+        self._function('get_result_gradient', None, p, p, p)
+
+    def _own(self, kind, pointer):
+        if not pointer:
+            raise RuntimeError(f'tblite returned an empty {kind} handle')
+        handle = C.c_void_p(pointer)
+        self.handles[kind] = handle
+        return handle
+
+    def _check(self, operation, *, context=False):
+        if context:
+            handle = self.handles['context']
+            status, getter = self.check_context(handle), self.get_context_error
+        else:
+            handle = self.handles['error']
+            status, getter = self.check_error(handle), self.get_error
+        if status:
+            buffer = C.create_string_buffer(4096)
+            getter(handle, buffer, C.byref(C.c_int(len(buffer))))
+            message = buffer.value.decode('utf-8', errors='replace').strip()
+            raise RuntimeError(f'{operation}: {message or f"tblite status {status}"}')
+
+    def _initialize(self, request):
+        self.error = self._own('error', self.new_error())
+        self.context = self._own('context', self.new_context())
+        self.set_context_verbosity(self.context, 0)
+        numbers = np.ascontiguousarray(atom_numbers(request), dtype=np.int32)
+        from ase import units
+        self.bohr_angstrom = units.Bohr
+        coordinates = np.ascontiguousarray(initial_positions(request) / self.bohr_angstrom)
+        cell = request['structure']['cell']
+        lattice = np.ascontiguousarray(np.asarray(cell['vectors']) / self.bohr_angstrom, dtype=np.float64)
+        pbc = np.ascontiguousarray(cell['pbc'], dtype=np.bool_)
+        pointer = self.new_structure(self.error, len(numbers), numbers.ctypes.data, coordinates.ctypes.data,
+            C.byref(C.c_double(request['charge'])), C.byref(C.c_int(request['uhf'])), lattice.ctypes.data, pbc.ctypes.data)
+        self._check('tblite structure')
+        self.structure = self._own('structure', pointer)
+        constructor = getattr(self, f'new_{request["method"]}_calculator')
+        pointer = constructor(self.context, self.structure, None)
+        self._check('tblite calculator', context=True)
+        self.calculator = self._own('calculator', pointer)
+        parameters = request['parameters']
+        self.set_calculator_accuracy(self.context, self.calculator, parameters['accuracy'])
+        self.set_calculator_max_iter(self.context, self.calculator, parameters['maxSccIterations'])
+        self.set_calculator_temperature(self.context, self.calculator, parameters['electronicTemperatureK'] * units.kB / units.Hartree)
+        self._check('tblite electronic settings', context=True)
+        self.result = self._own('result', self.new_result())
+        self.gradient = np.empty_like(coordinates)
+
+    def evaluate_node(self, positions, *, node_id=None, on_start=None):
+        result = self.result
+        if node_id is not None:
+            result = self.node_results.get(node_id)
+            if result is None:
+                pointer = self.new_result()
+                if not pointer:
+                    raise RuntimeError('tblite returned an empty result handle')
+                result = self.node_results[node_id] = C.c_void_p(pointer)
+        coordinates = np.ascontiguousarray(positions / self.bohr_angstrom, dtype=np.float64)
+        self.update_structure_geometry(self.error, self.structure, coordinates.ctypes.data, None)
+        self._check('tblite updated geometry')
+        if on_start is not None:
+            on_start()
+        self.get_singlepoint(self.context, self.structure, self.calculator, result)
+        self._check('tblite energy and gradient', context=True)
+        energy = C.c_double(float('nan'))
+        self.gradient.fill(np.nan)
+        self.get_result_energy(self.error, result, C.byref(energy))
+        self._check('tblite energy')
+        self.get_result_gradient(self.error, result, self.gradient.ctypes.data)
+        self._check('tblite gradient')
+        return {'energyHartree': energy.value, 'gradientHartreePerBohr': self.gradient}
+
+    def release_node(self, node_id):
+        result = self.node_results.pop(node_id, None)
+        if result is not None:
+            self.delete_result(C.byref(result))
+
+    def evidence(self):
+        return self.identity
+
+    def close(self):
+        for node_id in list(self.node_results):
+            self.release_node(node_id)
+        thread_limit = getattr(self, 'thread_limit', None)
+        if thread_limit is not None:
+            thread_limit.restore_original_limits()
+            self.thread_limit = None
+        for kind in reversed(tuple(self.handles)):
+            handle = self.handles.pop(kind)
+            getattr(self, f'delete_{kind}')(C.byref(handle))
+        if self.dll_directory is not None:
+            self.dll_directory.close()
+            self.dll_directory = None

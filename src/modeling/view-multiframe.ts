@@ -27,6 +27,15 @@ const identity = (): ViewRigidTransform => ({ rotation: [[1, 0, 0], [0, 1, 0], [
 function freeze<T>(value: T): T { if (value && typeof value === 'object' && !Object.isFrozen(value)) { for (const child of Object.values(value)) freeze(child); Object.freeze(value); } return value; }
 const sourceKey = (frame: MultiframeDisplayFrame) => JSON.stringify([frame.identity.sourceId, frame.identity.sourceRevision, frame.identity.collectionId, frame.identity.taskId, frame.identity.runId, frame.identity.stageId]);
 const signature = (s: Structure) => JSON.stringify(s.atoms.map(a => [a.id, a.element]).sort(([a], [b]) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0));
+const preparedFrames = new WeakSet<MultiframeDisplayFrame>();
+const structureVersions = new WeakMap<Structure,number>();
+const validatedFrames = new WeakMap<MultiframeDisplayPlan['frames'],{ sourceKey:string; atomInstances:number; keys:ReadonlySet<string> }>();
+let nextStructureVersion = 0;
+function preparedIdentity(structure:Structure):number {
+  let version=structureVersions.get(structure);
+  if(version===undefined){version=++nextStructureVersion;structureVersions.set(structure,version);}
+  return version;
+}
 function checkFrame(frame: MultiframeDisplayFrame) {
   const { structure: s, identity: ref } = frame;
   if (!frame.key || !ref?.sourceId || !ref.sourceRevision || !ref.collectionId || !ref.frameId
@@ -38,12 +47,17 @@ function checkFrame(frame: MultiframeDisplayFrame) {
 export function validateMultiframeDisplayPlan(plan: MultiframeDisplayPlan): void {
   if (!plan || typeof plan.key !== 'string' || !plan.key || !['raw', 'proper', 'core'].includes(plan.fitKind)) throw new Error('多帧显示计划身份或拟合类型无效。');
   if (!plan?.frames?.length) throw new Error('多帧叠合需要非空完整帧集合。');
+  const validated=validatedFrames.get(plan.frames);
+  if(validated){
+    if(plan.sourceKey!==validated.sourceKey||plan.frameCount!==plan.frames.length||plan.atomInstances!==validated.atomInstances||!validated.keys.has(plan.activeFrameKey))throw new Error('多帧显示数量、来源或当前帧身份不一致。');
+    return;
+  }
   if (plan.frameCount !== plan.frames.length || plan.atomInstances !== plan.frames.reduce((n, f) => n + f.structure.atoms.length, 0)
     || new Set(plan.frames.map(f => f.key)).size !== plan.frames.length || !plan.frames.some(f => f.key === plan.activeFrameKey)) throw new Error('多帧显示数量或当前帧身份不一致。');
-  const first = plan.frames[0];
+  const first = plan.frames[0], firstSignature=signature(first.structure);
   for (const frame of plan.frames) {
     checkFrame(frame);
-    if (sourceKey(frame) !== plan.sourceKey || sourceKey(frame) !== sourceKey(first) || signature(frame.structure) !== signature(first.structure)) throw new Error('多帧显示不能混用来源集合或猜测原子对应。');
+    if (sourceKey(frame) !== plan.sourceKey || sourceKey(frame) !== sourceKey(first) || frame!==first&&signature(frame.structure) !== firstSignature) throw new Error('多帧显示不能混用来源集合或猜测原子对应。');
     if (!Array.isArray(frame.transform?.anchorIds)) throw new Error('多帧显示拟合原子身份无效。');
     const r = frame.transform?.rotation, t = frame.transform?.translation;
     if (!Array.isArray(r) || r.length !== 3 || r.some(row => row.length !== 3 || !row.every(Number.isFinite)) || !Array.isArray(t) || t.length !== 3 || !t.every(Number.isFinite)) throw new Error('多帧显示变换必须有限。');
@@ -64,28 +78,33 @@ export function createMultiframeDisplay(input: { frames: readonly MultiframeDisp
     const heavy = reference!.structure.atoms.filter(a => a.element !== 'H'); return heavy.map(a => a.id!);
   })();
   if (fit.kind !== 'raw' && (!ids.length || new Set(ids).size !== ids.length)) throw new Error('拟合需要不同且非空的稳定原子ID；核心选择不会自动改为重原子。');
-  const selected = new Set(ids);
+  const selected = new Set(ids), referenceAtoms=reference?.structure.atoms.filter(atom=>selected.has(atom.id!));
+  const pairs=ids.map(id=>({movingAtomId:id,referenceAtomId:id}));
   const projected = frames.map(frame => {
     let transform = identity(), diagnostics: ViewSuperpositionDiagnostics | undefined;
-    if (reference) {
-      const result = superposeViewAtoms({ movingAtoms: frame.structure.atoms.filter(a => selected.has(a.id!)), referenceAtoms: reference.structure.atoms.filter(a => selected.has(a.id!)),
-        pairs: ids.map(id => ({ movingAtomId: id, referenceAtomId: id })), mappingConfirmed: true });
+    if (referenceAtoms) {
+      const result = superposeViewAtoms({ movingAtoms: frame.structure.atoms.filter(a => selected.has(a.id!)), referenceAtoms,
+        pairs, mappingConfirmed: true });
       if (!result.ok) throw new Error(result.issues.map(issue => issue.message).join(' '));
       transform = result.transform; diagnostics = result.diagnostics;
     }
-    return { ...structuredClone(frame), transform, diagnostics };
+    const copy=preparedFrames.has(frame)?{...frame,identity:{...frame.identity}}:structuredClone(frame);
+    return { ...copy, transform, diagnostics };
   });
   // Frame facts stay on frames. Their deterministic digests make this opaque
   // renderer cache key bounded without dropping any provenance or geometry.
-  const frameFingerprint=(frame:MultiframeDisplayFrame)=>sha256Utf8(JSON.stringify([frame.key,frame.identity,frame.structure]));
+  const frameFingerprint=(frame:MultiframeDisplayFrame)=>sha256Utf8(JSON.stringify([frame.key,frame.identity,
+    preparedFrames.has(frame)?['immutable-prepared',preparedIdentity(frame.structure)]:frame.structure]));
   const key='multiframe-plan-v1:'+sha256Utf8(JSON.stringify([frames.map(frameFingerprint),fit.kind,reference?frameFingerprint(reference):null,ids,input.generation??null,input.transformRevision??null]));
   const plan: MultiframeDisplayPlan = { generation:input.generation,transformRevision:input.transformRevision,key, sourceKey: sourceKey(frames[0]),
     activeFrameKey: input.activeFrameKey, fitKind: fit.kind, referenceKey: reference?.key, frameCount: frames.length, atomInstances: frames.reduce((n, f) => n + f.structure.atoms.length, 0), frames: projected };
-  validateMultiframeDisplayPlan(plan); return freeze(plan);
+  validateMultiframeDisplayPlan(plan); freeze(plan);
+  validatedFrames.set(plan.frames,{sourceKey:plan.sourceKey,atomInstances:plan.atomInstances,keys:new Set(plan.frames.map(frame=>frame.key))});
+  return plan;
 }
 /** Playback changes current frame only; reference and fits remain exactly fixed. */
 export function activateMultiframeDisplay(plan: MultiframeDisplayPlan, frameKey: string): MultiframeDisplayPlan {
-  if (!plan.frames.some(frame => frame.key === frameKey)) throw new Error('当前帧不在已选叠合范围内。');
+  if (!(validatedFrames.get(plan.frames)?.keys.has(frameKey)??plan.frames.some(frame => frame.key === frameKey))) throw new Error('当前帧不在已选叠合范围内。');
   return frameKey === plan.activeFrameKey ? plan : freeze({ ...plan, activeFrameKey: frameKey });
 }
 export function multiframeDisplayDiagnostics(plan: MultiframeDisplayPlan): string[] {
@@ -117,7 +136,10 @@ export async function createPinnedMultiframeDisplay(input: { owner: MultiframePi
       input.owner.pin(index); pins.add(index);
       const frame = input.frame(index, prepared.structure);
       if (frame.identity.sourceFrameIndex !== undefined && frame.identity.sourceFrameIndex !== index) throw new Error('多帧来源编号与实际准备帧不一致。');
-      frames.push({ ...frame, identity: { ...frame.identity, sourceFrameIndex: index } });
+      const projected={ ...frame, identity: { ...frame.identity, sourceFrameIndex: index } };
+      if(frame.structure===prepared.structure&&Object.isFrozen(prepared.structure)&&Object.isFrozen(prepared.structure.atoms)
+        &&(!prepared.structure.bonds||Object.isFrozen(prepared.structure.bonds)))preparedFrames.add(projected);
+      frames.push(projected);
     }
     const plan = createMultiframeDisplay({ frames, activeFrameKey: input.activeFrameKey, fit: input.fit,generation:input.generation,transformRevision:input.transformRevision }); check(); return { plan, dispose };
   } catch (error) { dispose(); throw error; }

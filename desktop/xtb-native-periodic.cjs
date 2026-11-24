@@ -17,7 +17,7 @@ function nativeNumber(text) {
 }
 
 function nativePeriodicOptimization(request) {
-  return Boolean(request.structure.cell) && request.calculation !== 'singlepoint';
+  return request.structure.cell?.pbc.some(Boolean) === true && request.calculation !== 'singlepoint';
 }
 
 function periodicCoordinatesInput(request) {

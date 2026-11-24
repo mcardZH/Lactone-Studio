@@ -1,16 +1,26 @@
-import type { Structure } from '../../core/types';
+import type { Structure, Vector3 } from '../../core/types';
+import { fractionalToCartesian, validatePeriodicEndpointImages } from '../../core/periodic';
 import { inputSelectionIndices } from '../../core/input-selection';
 import { coordinateValue } from '../../core/tasks';
 
 /** Confirm an ordered capture against the current structure without repairing it. */
-export function confirmCoordinateSelection(structure: Structure, atomIds: readonly string[]) {
+export function confirmCoordinateSelection(structure: Structure, atomIds: readonly string[], images?: readonly Vector3[]) {
   if (structure.dimension === 2) throw new Error('内坐标需要真实三维结构，二维画布不能代替。');
-  const indices = inputSelectionIndices(structure, atomIds);
+  if (images) validatePeriodicEndpointImages(structure, atomIds, images);
+  const uniqueIds = images ? [...new Set(atomIds)] : atomIds;
+  const uniqueIndices = inputSelectionIndices(structure, uniqueIds);
+  const indices = images ? atomIds.map(id => uniqueIndices[uniqueIds.indexOf(id)]) : uniqueIndices;
   const type = ({ 2: 'B', 3: 'A', 4: 'D' } as const)[indices.length as 2 | 3 | 4];
-  if (!type) throw new Error('请依次选择2、3或4个不同原子，确认后确定键长、键角或二面角。');
+  if (!type) throw new Error('请依次选择2、3或4个不同端点，确认后确定键长、键角或二面角。');
   const atoms = indices.map(index => index + 1);
   if (indices.some(index => ![structure.atoms[index].x, structure.atoms[index].y, structure.atoms[index].z].every(Number.isFinite))) throw new Error('内坐标原子需要有限的三维坐标。');
-  const value = coordinateValue({ type, atoms, action: 'freeze', steps: 1, increment: null }, structure.atoms);
+  const points = indices.map((index, coordinateIndex) => {
+    const atom = structure.atoms[index], image = images?.[coordinateIndex];
+    if (!image?.some(Boolean)) return atom;
+    const [dx, dy, dz] = fractionalToCartesian(structure.cell!, image, false);
+    return { ...atom, x: atom.x + dx, y: atom.y + dy, z: atom.z + dz };
+  });
+  const value = coordinateValue({ type, atoms: points.map((_, i) => i + 1), action: 'freeze', steps: 1, increment: null }, points);
   if (!Number.isFinite(value) || (type === 'B' && value < 1e-12)) throw new Error('重叠原子不能可靠定义键长。');
   return { type, atoms, atomIds: [...atomIds], value, unit: type === 'B' ? 'Å' : '°' };
 }

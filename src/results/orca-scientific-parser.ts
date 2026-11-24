@@ -507,7 +507,7 @@ export class OrcaScientificParser implements ScientificParser {
     this.auCandidate = null;
     const paired = pairOrcaCenterTables(candidate?.rows ?? [], table);
     if (!candidate && !paired.special) return;
-    if (paired.matched && !paired.special && !table.ecpFootnote) return;
+    if (paired.matched && !paired.special && !table.ecpFootnote && !paired.nativePrintConversion) return;
     const preserveOrdinary = paired.independentReal || paired.matched && !paired.special;
     const existingSpecial = !candidate?.geometry && this.data.centers?.some(center => center.kind !== 'real');
     if (!existingSpecial && !preserveOrdinary) {
@@ -1078,7 +1078,7 @@ export class OrcaScientificParser implements ScientificParser {
       if (fields.length === 4 && /^\d+$/.test(fields[0]) && fields.slice(1).every(v => num(v) !== null)) {
         if (!this.budget(2)) return;
         if (!this.orbital) { this.orbital = { spin: this.orbitalSpin, frameIndex: this.frameIndex(), sourceLine: line.number, unit: 'hartree', orbitals: [] }; this.data.orbitals.push(this.orbital); }
-        this.orbital.orbitals.push({ index: indexNumber(fields[0]), occupation: num(fields[1])!, energy: num(fields[2])! });
+        this.orbital.orbitals.push({ index: indexNumber(fields[0]), occupation: num(fields[1])!, energy: num(fields[2])!, rawEnergy: fields[2], sourceLine: line.number });
       } else if (this.orbital?.orbitals.length && !/^NO\s+OCC/i.test(t)) this.section = 'none';
     } else if (this.section === 'atomic' || this.section === 'shielding') {
       const row = t.match(new RegExp(`^(\\d+)\\s+([A-Za-z]{1,2})\\s*:?\\s+(${N})(?:\\s+(${N}))?`));

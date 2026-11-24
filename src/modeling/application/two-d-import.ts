@@ -76,9 +76,10 @@ export function generateTwoDFragment(structure: Structure, options: {
     // policy cannot replace the selected 2D source state before native dispatch.
     const temporary = createModelStore(staged);
     const prepared = temporary.getSnapshot(), movableAtomIds = getMovableAtomIds(prepared, 'all');
+    const sourceStereo=options.sourceStereo&&structuredClone(options.sourceStereo);
     const job = options.port.start({ stamp: temporary.stamp(movableAtomIds), operation: 'generate3d',
       structure: prepared.draft.structure, movableAtomIds,
-      ...(options.sourceStereo && {sourceStereo: options.sourceStereo}) });
+      ...(sourceStereo && {sourceStereo}) });
     const cancel = () => job.cancel();
     options.signal?.addEventListener('abort', cancel, { once: true });
     options.onJob?.(job);
@@ -86,7 +87,7 @@ export function generateTwoDFragment(structure: Structure, options: {
       if (options.signal?.aborted) cancel();
       const result = await job.promise;
       guard();
-      temporary.acceptCoordinates(result);
+      temporary.acceptCoordinates(result,sourceStereo);
       const completed = temporary.getSnapshot();
       if (completed.draft.structure.charge !== charge || completed.draft.structure.multiplicity !== staged.multiplicity ||
           twoDFormalCharge(completed.draft.structure.atoms) !== charge)

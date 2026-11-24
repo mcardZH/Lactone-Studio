@@ -1,21 +1,27 @@
-import { parseStructures } from '../core/parsers';
-import type { Structure } from '../core/types';
+import { plainXyzFrame } from '../core/parsers';
+import { periodicXyzComment, periodicXyzFrame } from '../core/periodic-parsers';
 import { assertResultNotAborted, type ResultFileRole, type ResultFrameSummary, type ResultInputFile, type ResultQuantity, type ResultReadOptions, type TrajectoryResult } from './contracts';
 import { attachTrajectoryStages } from './trajectory-stages';
-import { traceTrajectoryOperation } from './trajectory-operations';
+import { createTrajectoryOperationBatch } from './trajectory-operations';
 import { emptyScientificData, scientificRoundingInterval, type MdStepObservation } from './scientific-contracts';
-import { readResultSourceRange } from './source-range';
+import { consumeTrajectoryText, ownTrajectoryText, type TrajectoryTextLine } from './trajectory-text-reader';
+import { materializePackedTrajectoryFrame, PackedTrajectoryFrames, registerPackedTrajectorySource, type PackedTrajectoryAtom } from './packed-trajectory-source';
 
-const CACHE_FRAMES = 8;
-const CACHE_ATOMS = 100000;
+export { abortableResultRead } from './trajectory-text-reader';
 /** Validate representable counters; file size never limits a complete scientific index. */
 export function xyzIndexLimitMessage(frames: number, segments: number, initialAtoms: number, nextInitialAtoms: number): string | null {
   if (![frames, segments, initialAtoms, nextInitialAtoms, initialAtoms + nextInitialAtoms].every(value => Number.isSafeInteger(value) && value >= 0)) return '索引计数无效';
   return null;
 }
 const NUMBER = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eEdD][+-]?\\d+)?';
-interface FrameIndex { start: number; end: number; line: number; summary: ResultFrameSummary }
-interface Segment { frames: FrameIndex[]; initial: Structure; identity: string; status: TrajectoryResult['status']; messages: string[]; role?: ResultFileRole; nativeOrca: boolean; nativeJobName?: string; firstNativeImage?: number; displayImage: number; mdSteps: MdStepObservation[] }
+interface Segment {
+  frames: ResultFrameSummary[];
+  packed: PackedTrajectoryFrames;
+  sourceTopology: readonly PackedTrajectoryAtom[];
+  identity: string;
+  status: TrajectoryResult['status']; messages: string[]; role?: ResultFileRole; nativeOrca: boolean; nativeJobName?: string;
+  firstNativeImage?: number; displayImage: number; mdSteps: MdStepObservation[];
+}
 
 /** Native producer grammar establishes numeric observations and saved-point meaning.
  * A bare ORCA E column still needs independently established unit evidence. */
@@ -47,74 +53,12 @@ export function orcaMdXyzComment(comment: string): Partial<ResultFrameSummary> &
   };
 }
 
-/** Shared by result readers: cancellation also works with a slow provider. */
-export async function abortableResultRead<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
-  assertResultNotAborted(signal);
-  if (!signal) return promise;
-  let abort: (() => void) | undefined;
-  try {
-    return await Promise.race([promise, new Promise<never>((_, reject) => {
-      abort = () => reject(new DOMException('读取已取消。', 'AbortError'));
-      signal.addEventListener('abort', abort, { once: true });
-      if (signal.aborted) abort();
-    })]);
-  } finally { if (abort) signal.removeEventListener('abort', abort); }
-}
-
-/** Byte-oriented line boundaries keep offsets exact even across multibyte UTF-8 chunks. */
-async function* lines(file: ResultInputFile, options: ResultReadOptions): AsyncGenerator<{ text: string; start: number; end: number; line: number }> {
-  const reader = file.stream().getReader();
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-  let parts: Uint8Array[] = [], length = 0, offset = 0, start = 0, line = 1, skipLf = false, complete = false;
-  const decode = (tail?: Uint8Array) => {
-    const bytes = new Uint8Array(length + (tail?.length ?? 0));
-    let at = 0;
-    for (const part of parts) { bytes.set(part, at); at += part.length; }
-    if (tail) bytes.set(tail, at);
-    parts = []; length = 0;
-    return decoder.decode(bytes);
-  };
-  try {
-    while (true) {
-      assertResultNotAborted(options.signal);
-      const next = await abortableResultRead(reader.read(), options.signal);
-      assertResultNotAborted(options.signal);
-      if (next.done) { complete = true; break; }
-      const bytes = next.value;
-      let from = 0;
-      for (let i = 0; i < bytes.length; i++) {
-        if (skipLf) {
-          skipLf = false;
-          if (bytes[i] === 10) { from = i + 1; start = offset + i + 1; continue; }
-        }
-        if (bytes[i] !== 10 && bytes[i] !== 13) continue;
-        const text = decode(bytes.subarray(from, i));
-        const end = offset + i + 1;
-        yield { text, start, end, line: line++ };
-        start = end; from = i + 1; skipLf = bytes[i] === 13;
-      }
-      if (from < bytes.length) {
-        // Copy only the unfinished line; do not retain a large backing chunk.
-        const part = bytes.slice(from); parts.push(part); length += part.length;
-      }
-      offset += bytes.length;
-      options.onProgress?.(offset, file.size);
-    }
-    if (length) yield { text: decode(), start, end: offset, line };
-    if (offset !== file.size) throw new Error('XYZ来源读取长度发生变化。');
-  } finally {
-    if (!complete) await reader.cancel().catch(() => undefined);
-    reader.releaseLock();
-  }
-}
-
 function attributes(comment: string): Record<string, string> {
   const values: Record<string, string> = {};
   for (const m of comment.matchAll(/([A-Za-z_][\w]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s,]+))/g)) values[m[1].toLowerCase()] = m[2] ?? m[3] ?? m[4];
   return values;
 }
-function quantity(comment: string, key: 'time' | 'energy'): ResultQuantity | null {
-  const attrs = attributes(comment);
+function quantity(comment: string, key: 'time' | 'energy', attrs: Record<string, string>): ResultQuantity | null {
   const units = key === 'time' ? '(?:fs|ps|ns|us|ms|s)' : '(?:eV|meV|Eh|Ha|Hartree|kJ/mol|kcal/mol)';
   const inline = comment.match(new RegExp(`\\b${key}\\s*(?:\\[(${units})\\]|\\((${units})\\))?\\s*[=:]\\s*["']?(${NUMBER})\\s*(${units})?(?=[\\s,;"']|$)`, 'i'));
   if (!inline) return null;
@@ -130,158 +74,203 @@ function quantity(comment: string, key: 'time' | 'energy'): ResultQuantity | nul
   const canonical: Record<string, string> = { ev: 'eV', mev: 'meV', eh: 'Eh', ha: 'Eh', hartree: 'Eh', 'kj/mol': 'kJ/mol', 'kcal/mol': 'kcal/mol' };
   return { value, unit: canonical[unit.toLowerCase()] ?? unit.toLowerCase() };
 }
-function parsedFrame(text: string, name: string, id: string): Structure {
-  const structures = parseStructures(text, `${name.replace(/\.[^.]*$/, '')}.xyz`);
-  if (structures.length !== 1) throw new Error('XYZ帧索引对应的结构数量不是1。');
-  const structure = structures[0]; structure.id = id; structure.name = name;
-  // The original extended parser accepts multiplicity, while ordinary XYZ also accepts mult.
-  const attrs = attributes(text.replace(/\r\n?/g, '\n').split('\n')[1] ?? '');
-  if (attrs.mult !== undefined && structure.multiplicity === null) {
-    const mult = Number(attrs.mult);
-    if (!/^\+?\d+$/.test(attrs.mult) || !Number.isSafeInteger(mult) || mult < 1) throw new Error('XYZ多重度元数据无效。');
-    structure.multiplicity = mult;
-  }
-  return structure;
-}
-function frameIdentity(structure: Structure, comment: string): string {
-  const attrs = attributes(comment);
-  return JSON.stringify([structure.atoms.map(a => a.element), structure.charge, structure.multiplicity,
-    attrs.state ?? attrs.electronic_state ?? null, attrs.mode ?? null, attrs.properties ?? null,
-    structure.cell?.pbc ?? null, structure.atoms.map(a => a.id ?? null)]);
+type XyzGrammar = ReturnType<typeof plainXyzFrame> | ReturnType<typeof periodicXyzFrame>;
+
+interface PendingFrame {
+  count: number;
+  start: number;
+  line: number;
+  row: number;
+  structure?: XyzGrammar;
+  comment?: string;
+  attrs?: Record<string, string>;
+  native?: ReturnType<typeof orcaXyzComment> & ReturnType<typeof orcaMdXyzComment>;
+  rounding?: number;
+  coordinates?: Float64Array;
+  existing?: readonly PackedTrajectoryAtom[];
+  changed?: PackedTrajectoryAtom[];
 }
 
-/** Index once, retain only summaries/byte ranges and a bounded source-wide frame cache. */
+function sameAtom(a: PackedTrajectoryAtom | undefined, b: PackedTrajectoryAtom): boolean {
+  return a !== undefined && a.element === b.element && a.id === b.id && a.sourceIndex === b.sourceIndex;
+}
+
+function growCoordinates(frame: PendingFrame): Float64Array {
+  const coordinates = frame.coordinates;
+  if (coordinates && coordinates.length > frame.row * 3) return coordinates;
+  const next = new Float64Array(Math.min(frame.count * 3, coordinates ? 2 * coordinates.length : 1024 * 3));
+  if (coordinates) next.set(coordinates);
+  return frame.coordinates = next;
+}
+
+/** Validate every row while streaming. Subsequent access borrows packed coordinates
+ * or materializes a mutable scientific snapshot without re-reading the file. */
 export async function readXyzTrajectory(file: ResultInputFile, options: ResultReadOptions = {}): Promise<TrajectoryResult[]> {
   const segments: Segment[] = [];
-  let rows: string[] = [], atomCount = -1, frameStart = 0, frameLine = 0, frameEnd = 0, globalIndex = 0, initialAtoms = 0;
-  let closed = false, closePromise: Promise<void> | undefined;
-  const close = () => {
-    if (!closed) { closed = true; closePromise = Promise.resolve().then(() => file.close?.()).then(() => undefined); }
-    return closePromise!;
-  };
+  const appended = new Set<PackedTrajectoryFrames>();
+  const parse = createTrajectoryOperationBatch('parse', { sourceId: file.id, workPhase: 'xyz-index-frame' });
+  let pending: PendingFrame | undefined, currentLine = 1, globalIndex = 0, initialAtoms = 0;
+  let closePromise: Promise<void> | undefined;
+  const close = () => closePromise ??= Promise.resolve().then(() => file.close?.()).then(() => undefined);
+  const alias = file.name.replace(/\.[^.]*$/, '') + '.xyz';
+
+  function finish(frame: PendingFrame, grammar: XyzGrammar) {
+    const { comment, attrs, native, line, start } = frame as PendingFrame & Required<Pick<PendingFrame, 'comment' | 'attrs' | 'native'>>;
+    const { structure } = grammar;
+    const sourceTopology = frame.changed ?? frame.existing!;
+    const nativeOrca = native.unqualifiedEnergy !== undefined || native.energy !== undefined;
+    const identity = JSON.stringify([structure.charge, structure.multiplicity, attrs.state ?? attrs.electronic_state ?? null,
+      attrs.mode ?? null, attrs.properties ?? null, structure.cell?.pbc ?? null]);
+    const previous = segments.at(-1);
+    const newSegment = !previous || frame.existing !== previous.sourceTopology || !!frame.changed || previous.identity !== identity
+      || previous.role !== native.role || previous.nativeOrca !== nativeOrca || previous.nativeJobName !== native.nativeJobName;
+    const limit = xyzIndexLimitMessage(globalIndex, segments.length, initialAtoms, newSegment ? frame.count : 0);
+    if (limit) throw new Error('XYZ来源索引无效：' + limit);
+    if (frame.changed && structure.format === 'extended XYZ' && new Set(sourceTopology.map(atom => atom.id)).size !== frame.count) {
+      throw new Error('来源含重复原子ID。');
+    }
+    let segment = previous;
+    if (newSegment) {
+      segment = { frames: [], packed: new PackedTrajectoryFrames(), sourceTopology, identity, status: 'completed', messages: [], role: native.role,
+        nativeOrca, nativeJobName: native.nativeJobName, displayImage: 0, mdSteps: [] };
+      if (segments.length) segment.messages.push('结构身份、电子态、模式或原生作业/阶段标签变化：已开始独立段。');
+      segments.push(segment);
+      initialAtoms += frame.count;
+    }
+    const selected = segment!;
+    const index = selected.frames.length;
+    const step = attrs.step;
+    const sourceStep = step !== undefined && /^[+-]?\d+$/.test(step) && Number.isSafeInteger(Number(step)) ? Number(step) : null;
+    let imageLabel: string | undefined;
+    if (native.pathImage !== undefined) {
+      selected.firstNativeImage ??= native.pathImage;
+      // A repeated first native image changes order only, never scientific iteration.
+      if (native.pathImage === selected.firstNativeImage) selected.displayImage = 0;
+      imageLabel = 'NEB image ' + (++selected.displayImage);
+    }
+    const { atoms: _atoms, ...header } = structure;
+    const segmentId = file.id + ':xyz:segment:' + (segments.length - 1);
+    const topology = selected.packed.metadata(0)?.topology ?? sourceTopology.map((atom, i) => atom.id !== undefined
+      ? atom : { ...atom, id: segmentId + ':atom:' + (i + 1) });
+    selected.packed.append({ header: { ...header, name: file.name,
+      id: index === 0 ? file.id + ':xyz:frame:' + globalIndex : file.id + ':xyz:byte:' + start },
+      topology, coordinates: frame.coordinates! });
+    appended.add(selected.packed);
+    selected.frames.push({
+      index, sourceStep, time: quantity(comment, 'time', attrs), energy: quantity(comment, 'energy', attrs), convergence: [], sourceLine: line,
+      ...Object.fromEntries(Object.entries(native).filter(([key]) => key !== 'role' && key !== 'nativeJobName' && key !== 'mdStep')),
+      ...(native.energyObservations ? { energyObservations: native.energyObservations.map(observation => ({ ...observation, source: { id: file.id, name: file.name, line: line + 1 } })) } : {}),
+      ...(nativeOrca && Number.isFinite(frame.rounding) ? { coordinateRoundingAngstrom: frame.rounding } : {}),
+      ...(imageLabel ? { label: imageLabel } : {}),
+    });
+    if (native.mdStep) {
+      const row = { ...native.mdStep, sourceId: file.id, sourceName: file.name, sourceLine: line + 1, frameIndex: index };
+      for (const key of ['time', 'potentialEnergy'] as const) {
+        const value = row[key];
+        if (value) row[key] = { ...value, sourceLine: line + 1, sourceId: file.id, sourceName: file.name };
+      }
+      selected.mdSteps.push(row);
+    }
+    globalIndex++;
+  }
+
+  function consume(line: TrajectoryTextLine) {
+    currentLine = line.number;
+    if (!pending) {
+      const text = line.text.trim();
+      if (!text || text === '>') return;
+      if (!/^\d+$/.test(text)) throw new Error('XYZ第' + line.number + '行应为原子数。');
+      const count = Number(text);
+      if (!Number.isSafeInteger(count) || count < 1) throw new Error('XYZ第' + line.number + '行原子数须为正安全整数。');
+      const existing = segments.at(-1)?.sourceTopology;
+      pending = { count, start: line.start, line: line.number, row: 0,
+        ...(existing?.length === count ? { existing, coordinates: new Float64Array(count * 3) } : { changed: [] }) };
+      return;
+    }
+    const frame = pending;
+    if (!frame.structure) {
+      const comment = ownTrajectoryText(line.text);
+      frame.comment = comment;
+      frame.attrs = attributes(comment);
+      frame.native = { ...orcaXyzComment(comment), ...orcaMdXyzComment(comment) };
+      if (frame.native.unqualifiedEnergy !== undefined || frame.native.energy !== undefined) frame.rounding = 0;
+      frame.structure = periodicXyzComment(comment) ? periodicXyzFrame(alias, comment, frame.count, 0) : plainXyzFrame(alias, comment, 0);
+      if (frame.structure.structure.cell) frame.structure.structure.cell.source = file.name;
+      return;
+    }
+    const row = line.text.trim().split(/\s+/);
+    const atom = frame.structure.readAtom(row, frame.row);
+    if (!frame.changed && !sameAtom(frame.existing![frame.row], atom)) frame.changed = frame.existing!.slice(0, frame.row);
+    if (frame.changed) {
+      const { x: _x, y: _y, z: _z, ...topology } = atom;
+      if (topology.id !== undefined) topology.id = ownTrajectoryText(topology.id);
+      frame.changed.push(topology);
+    }
+    const coordinates = growCoordinates(frame);
+    const offset = frame.row * 3;
+    coordinates[offset] = atom.x; coordinates[offset + 1] = atom.y; coordinates[offset + 2] = atom.z;
+    if (Number.isFinite(frame.rounding)) {
+      const values = row.length === 4 ? row.slice(1).map(scientificRoundingInterval) : [];
+      frame.rounding = values.length === 3 && values.every(value => Number.isFinite(value)) ? Math.max(frame.rounding!, ...(values as number[])) : NaN;
+    }
+    if (++frame.row !== frame.count) return;
+    finish(frame, frame.structure);
+    pending = undefined;
+  }
+
   try {
     try {
-      for await (const line of lines(file, options)) {
-        assertResultNotAborted(options.signal);
-        if (!rows.length) {
-          if (!line.text.trim() || line.text.trim() === '>') continue;
-          if (!/^\d+$/.test(line.text.trim())) throw new Error(`XYZ第${line.line}行应为原子数。`);
-          atomCount = Number(line.text);
-          if (!Number.isSafeInteger(atomCount) || atomCount < 1) throw new Error(`XYZ第${line.line}行原子数须为正安全整数。`);
-          frameStart = line.start; frameLine = line.line;
-        }
-        rows.push(line.text); frameEnd = line.end;
-        if (rows.length !== atomCount + 2) continue;
-        // Segment/job identity is not known before this actual indexing parse.
-        const structure = traceTrajectoryOperation('parse', { sourceId: file.id, workPhase: 'xyz-index-frame' },
-          () => parsedFrame(rows.join('\n'), file.name, `${file.id}:xyz:frame:${globalIndex}`));
-        const comment = rows[1], native = { ...orcaXyzComment(comment), ...orcaMdXyzComment(comment) }, identity = frameIdentity(structure, comment);
-        const nativeRounding = rows.slice(2).every(row => row.trim().split(/\s+/).length === 4)
-          ? rows.slice(2).flatMap(row => row.trim().split(/\s+/).slice(1).map(scientificRoundingInterval)) : [];
-        const coordinateRounding = nativeRounding.length && nativeRounding.every(value => value !== undefined && Number.isFinite(value)) ? (nativeRounding as number[]).reduce((largest,value)=>Math.max(largest,value),0) : undefined;
-        let segment = segments.at(-1);
-        const nativeOrca = native.unqualifiedEnergy !== undefined || native.energy !== undefined;
-        const newSegment = !segment || segment.identity !== identity || segment.role !== native.role || segment.nativeOrca !== nativeOrca || segment.nativeJobName !== native.nativeJobName;
-        const limit = xyzIndexLimitMessage(globalIndex, segments.length, initialAtoms, newSegment ? structure.atoms.length : 0);
-        if (limit) {
-          if (!segment) throw new Error(`XYZ首帧超过资源门：${limit}；请拆分来源。`);
-          segment.status = 'incomplete';
-          segment.messages.push(`已达到${limit}；文件未读完，仅保留此前${globalIndex}个完整帧。请拆分来源后读取余下内容。`);
-          rows = [];
-          break;
-        }
-        if (newSegment) {
-          segment = { frames: [], initial: structure, identity, status: 'completed', messages: [], role: native.role, nativeOrca, nativeJobName: native.nativeJobName, displayImage: 0, mdSteps: [] };
-          if (segments.length) segment.messages.push('结构身份、电子态、模式或原生作业/阶段标签变化：已开始独立段。');
-          segments.push(segment);
-          initialAtoms += structure.atoms.length;
-        }
-        const step = attributes(comment).step;
-        const sourceStep = step !== undefined && /^[+-]?\d+$/.test(step) && Number.isSafeInteger(Number(step)) ? Number(step) : null;
-        let imageLabel: string | undefined;
-        if (native.pathImage !== undefined) {
-          segment!.firstNativeImage ??= native.pathImage;
-          // A repeated first native image restarts presentation order only; it
-          // does not establish a scientific iteration or authorize path grouping.
-          if (native.pathImage === segment!.firstNativeImage) segment!.displayImage = 0;
-          imageLabel = `NEB image ${++segment!.displayImage}`;
-        }
-        segment!.frames.push({ start: frameStart, end: frameEnd, line: frameLine, summary: {
-          index: segment!.frames.length, sourceStep, time: quantity(comment, 'time'), energy: quantity(comment, 'energy'), convergence: [], sourceLine: frameLine,
-          ...Object.fromEntries(Object.entries(native).filter(([key]) => key !== 'role' && key !== 'nativeJobName' && key !== 'mdStep')),
-          ...(native.energyObservations ? { energyObservations: native.energyObservations.map(observation => ({ ...observation, source: { id: file.id, name: file.name, line: frameLine + 1 } })) } : {}),
-          ...(nativeOrca && coordinateRounding !== undefined ? { coordinateRoundingAngstrom: coordinateRounding } : {}),
-          ...(imageLabel ? { label: imageLabel } : {}),
-        } });
-        if (native.mdStep) {
-          const row = { ...native.mdStep, sourceId: file.id, sourceName: file.name, sourceLine: frameLine + 1, frameIndex: segment!.frames.length - 1 };
-          for (const key of ['time', 'potentialEnergy'] as const) { const value = row[key]; if (value) row[key] = { ...value, sourceLine: frameLine + 1, sourceId: file.id, sourceName: file.name }; }
-          segment!.mdSteps.push(row);
-        }
-        globalIndex++; rows = [];
-        // Yield a browser task periodically so user cancellation is observable
-        // even when a provider supplies the entire source in one large chunk.
-        if (globalIndex % 128 === 0) await new Promise<void>(resolve => setTimeout(resolve, 0));
-      }
-      if (rows.length) {
-        if (!segments.length) throw new Error(`XYZ第${frameLine}行开始的首帧截断，尚无完整帧。`);
-        segments.at(-1)!.status = 'incomplete';
-        segments.at(-1)!.messages.push(`XYZ第${frameLine}行开始的末帧截断；仅保留此前${globalIndex}个完整帧。`);
+      await consumeTrajectoryText(file, options, line => parse.run(() => consume(line)),async()=>{
+        for(const packed of appended)await packed.drain();appended.clear();
+      });
+      if (pending) {
+        if (!segments.length) throw new Error('XYZ第' + pending.line + '行开始的首帧截断，尚无完整帧。');
+        const last = segments.at(-1)!;
+        last.status = 'incomplete';
+        last.messages.push('XYZ第' + pending.line + '行开始的末帧截断；仅保留此前' + globalIndex + '个完整帧。');
       }
     } catch (error) {
       if (!segments.length) throw error;
       const cancelled = options.signal?.aborted || (error instanceof Error && error.name === 'AbortError');
-      segments.at(-1)!.status = cancelled ? 'incomplete' : 'failed';
-      segments.at(-1)!.messages.push(`${cancelled ? '读取已取消；' : ''}在第${frameLine || 1}行附近停止读取，保留${globalIndex}个完整帧：${error instanceof Error ? error.message : String(error)}`);
-    }
+      const last = segments.at(-1)!;
+      last.status = cancelled ? 'incomplete' : 'failed';
+      last.messages.push((cancelled ? '读取已取消；' : '') + '在第' + (pending?.line ?? currentLine) + '行附近停止读取，保留'
+        + globalIndex + '个完整帧：' + (error instanceof Error ? error.message : String(error)));
+    } finally { parse.flush(); }
     if (!segments.length) throw new Error('XYZ中没有完整结构。');
-    const cache = new Map<string, Structure>();
-    let cachedAtoms = 0, remaining = segments.length;
-    return segments.map((segment, segmentIndex) => {
-      const id = `${file.id}:xyz:segment:${segmentIndex}`;
-      const initial = segment.initial;
-      initial.atoms.forEach((atom, index) => { atom.id ??= `${id}:atom:${index + 1}`; });
-      const lifetime = new AbortController();
+    pending = undefined;
+    let remaining = segments.length;
+    const results:TrajectoryResult[]=[];
+    for (let segmentIndex=0; segmentIndex<segments.length; segmentIndex++) {
+      const segment = segments[segmentIndex];
+      try{await segment.packed.seal();}catch(error){segment.status='failed';segment.messages.push('轨迹暂存未完成；保留可用坐标：'+(error instanceof Error?error.message:String(error)));}
+      const id = file.id + ':xyz:segment:' + segmentIndex;
       let disposed = false;
-      const result: TrajectoryResult = {
-        id, label: segments.length > 1 ? `${file.name} · 段${segmentIndex + 1}` : file.name,
-        kind: 'trajectory', engine: 'xyz', source: { id: file.id, name: file.name, size: file.size, ...(segment.nativeOrca ? { software: 'orca' as const, nativeJobName: segment.nativeJobName } : {}) }, jobIndex: 0,
-        status: segment.status, messages: segment.messages, frames: segment.frames.map(f => f.summary), initialStructure: structuredClone(initial),
+      const result = attachTrajectoryStages({
+        id, label: segments.length > 1 ? file.name + ' · 段' + (segmentIndex + 1) : file.name,
+        kind: 'trajectory', engine: 'xyz', source: { id: file.id, name: file.name, size: file.size,
+          ...(segment.nativeOrca ? { software: 'orca' as const, nativeJobName: segment.nativeJobName } : {}) }, jobIndex: 0,
+        status: segment.status, messages: segment.messages, frames: segment.frames, initialStructure: materializePackedTrajectoryFrame((await segment.packed.read(0))!),
+        role: segment.role ?? 'unknown',
         ...(segment.mdSteps.length ? { scientific: { ...emptyScientificData(), tasks: ['md' as const], source: { id: file.id, name: file.name }, mdSteps: segment.mdSteps } } : {}),
         async getFrame(index, signal) {
           assertResultNotAborted(signal);
           if (disposed) throw new Error('轨迹段已关闭。');
           if (!Number.isSafeInteger(index) || index < 0 || index >= segment.frames.length) throw new Error('轨迹帧索引超出范围。');
-          if (index === 0) return structuredClone(initial);
-          const entry = segment.frames[index], key = `${id}:${index}`;
-          const cached = cache.get(key);
-          if (cached) { cache.delete(key); cache.set(key, cached); return structuredClone(cached); }
-          const combined = AbortSignal.any([lifetime.signal, ...(signal ? [signal] : [])]);
-          const traceContext = { sourceId: file.id, resultId: id, jobIndex: result.jobIndex, sourceFrameIndex: index };
-          const read = () => readResultSourceRange(file, entry.start, entry.end, combined);
-          const bytes = await abortableResultRead(file.readTrace === 'source-boundary' ? read()
-            : traceTrajectoryOperation('read', traceContext, read), combined);
-          assertResultNotAborted(combined);
-          if (bytes.length !== entry.end - entry.start) throw new Error('来源文件帧范围已截断或发生变化。');
-          const structure = traceTrajectoryOperation('parse', { ...traceContext, workPhase: 'frame-parse' },
-            () => parsedFrame(new TextDecoder('utf-8', { fatal: true }).decode(bytes), file.name, `${file.id}:xyz:byte:${entry.start}`));
-          structure.atoms.forEach((atom, atomIndex) => { atom.id ??= `${id}:atom:${atomIndex + 1}`; });
-          // Concurrent readers may complete the same range; count its cache entry only once.
-          const existing = cache.get(key); if (existing) cachedAtoms -= existing.atoms.length;
-          cache.delete(key); cache.set(key, structure); cachedAtoms += structure.atoms.length;
-          while (cache.size > CACHE_FRAMES || cachedAtoms > CACHE_ATOMS) {
-            const first = cache.keys().next().value!; cachedAtoms -= cache.get(first)!.atoms.length; cache.delete(first);
-          }
-          return structuredClone(structure);
+          await Promise.resolve();
+          assertResultNotAborted(signal);
+          if (disposed) throw new DOMException('轨迹段已关闭。', 'AbortError');
+          return materializePackedTrajectoryFrame((await segment.packed.read(index,signal))!);
         },
         async dispose() {
-          if (disposed) return;
-          disposed = true; lifetime.abort();
-          for (const [key, structure] of cache) if (key.startsWith(`${id}:`)) { cachedAtoms -= structure.atoms.length; cache.delete(key); }
-          if (--remaining === 0) { cache.clear(); await close(); }
+          if (!disposed) { disposed = true; segment.sourceTopology = [];remaining--; }
+          await segment.packed.dispose();
+          if (remaining === 0) await close();
         },
-      };
-      return attachTrajectoryStages({ ...result, role: segment.role ?? 'unknown' });
-    });
-  } catch (error) { await close(); throw error; }
+      });
+      registerPackedTrajectorySource(result, segment.packed.get, {read:segment.packed.read,paged:segment.packed.paged});
+      results.push(result);
+    }
+    return results;
+  } catch (error) { await Promise.allSettled(segments.map(segment=>segment.packed.dispose()));await close();throw error; }
 }

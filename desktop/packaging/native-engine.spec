@@ -7,6 +7,7 @@ root = Path(SPECPATH).parents[1]
 sys.path.insert(0, str(root / 'scripts/native'))
 import common
 import build as builder
+import finite_empirical_extension
 import runtime_pruning
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_delvewheel_libs_directory, copy_metadata
 
@@ -28,6 +29,9 @@ for package in ('numpy', 'scipy'):
     datas, binaries = collect_delvewheel_libs_directory(package, datas=datas, binaries=binaries)
 library_binaries, library_selection = runtime_pruning.select_library_dlls(config, runtime_recipe)
 binaries += library_binaries
+finite_extension = finite_empirical_extension.build_extension(config, run)
+if finite_extension:
+    binaries.append((str(finite_extension[0]), '.'))
 a = Analysis([str(root / profile['entry'])], pathex=[str(root / 'desktop/chemistry')], binaries=binaries, datas=datas,
              hiddenimports=list(dict.fromkeys([Path(name).stem for name in profile['nativeSources']] + profile['hiddenImports'] + ['analysis_result_wire'])), excludes=profile['excludes'], noarchive=False)
 a.binaries, binary_deduplication = builder.deduplicate_binaries(config, list(a.binaries), run, context['contract'])
@@ -36,7 +40,8 @@ for target, source, kind in a.pure:
     if source in (None, '-'):
         node = a.graph.find_node(target)
         namespaces[target] = {'nodeType': type(node).__name__, 'paths': list(node.packagepath or [])}
-rows = builder.analysis_rows(config, list(a.scripts) + list(a.pure) + list(a.binaries) + list(a.datas), namespaces, run, context['contract'])
+rows = builder.analysis_rows(config, list(a.scripts) + list(a.pure) + list(a.binaries) + list(a.datas),
+                             namespaces, run, context['contract'], finite_extension)
 original_pure = a.pure
 a.pure, a.datas, rows, frozen_adaptations = builder.freeze_rdkit_paths(config, list(a.pure), list(a.datas), rows, run)
 # Keep unchanged Analysis code objects; compile only the declared transformed source.
@@ -52,7 +57,8 @@ a.binaries, rows, runtime_pruning_evidence = runtime_pruning.prune_analysis(
 common.write_new(run / 'analysis-closure.json', {'schema': 'sciyue-native-analysis-closure-v1', 'buildContract': context['buildContract'],
                  'sourceFiles': context['contract']['sourceFiles'], 'globalFallback': False, 'files': rows,
                  'binaryDeduplication': binary_deduplication, 'runtimePruning': runtime_pruning_evidence,
-                 'frozenDependencyAdaptations': frozen_adaptations})
+                 'frozenDependencyAdaptations': frozen_adaptations,
+                 **({'finiteEmpiricalExtension': finite_extension[1]} if finite_extension else {})})
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='engine', debug=False, bootloader_ignore_signals=False,
           strip=False, upx=False, console=True, disable_windowed_traceback=False)

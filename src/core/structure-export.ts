@@ -3,6 +3,7 @@ import { cartesianToFractional, cellInverse, cellParameters } from './periodic';
 import { validatePeriodicSourceMetadata } from './periodic-parsers';
 import { atomicNumber } from './elements';
 import { automaticStem } from './naming';
+import { exportJsonChunks } from './export-json-chunks';
 
 const f=(n:number):string=>{if(!Number.isFinite(n))throw new Error('不能导出非有限坐标。');return Object.is(n,-0)?'0':Number(n.toPrecision(15)).toString();};
 const quote=(s:string):string=>{if(!s.includes("'"))return `'${s}'`;if(!s.includes('"'))return `"${s}"`;throw new Error('CIF标签含两种引号，不能安全导出。');};
@@ -33,36 +34,70 @@ export function validateGeometryCell(cell: NonNullable<Structure['cell']>): void
 }
 
 /** These are the only period fields exported by the geometry writers. */
-export function geometryPeriodicity(s: Structure, withCell: boolean): Pick<Structure, 'cell' | 'periodicSource' | 'periodicWorkingSource'> {
+function validatedGeometryPeriodicity(s: Structure, withCell: boolean): Pick<Structure, 'cell' | 'periodicSource' | 'periodicWorkingSource'> {
   const cell = withCell ? s.cell : undefined;
   const periodicSource = s.cell ? undefined : s.periodicSource;
   if (cell) validateGeometryCell(cell);
   const source = cell ? s.periodicWorkingSource : undefined;
   const fields = { cell, periodicSource, periodicWorkingSource: source };
   validatePeriodicSourceMetadata({ ...s, ...fields });
+  return fields;
+}
+export function geometryPeriodicity(s: Structure, withCell: boolean): Pick<Structure, 'cell' | 'periodicSource' | 'periodicWorkingSource'> {
+  const fields = validatedGeometryPeriodicity(s, withCell), source = fields.periodicWorkingSource;
   if (!source) return fields;
   const { structureId, name, format, coordinateUnit } = source;
   return { ...fields, periodicWorkingSource: { structureId, name, format, coordinateUnit, cell: source.cell,
     atoms: source.atoms.map(({ element, id, sourceIndex, x, y, z }) => ({ element, id, sourceIndex, x, y, z })) } };
 }
 
+export function validateXyzGeometry(s: Structure, format: 'xyz' | 'extxyz', withCell: boolean): void {
+  validateGeometryAtoms(s.atoms);
+  validateGeometryAtomIdentity(s.atoms, i => `${s.id}:atom:${i + 1}`);
+  validatedGeometryPeriodicity(s, withCell);
+  if (format === 'extxyz') for (const [i, atom] of s.atoms.entries()) encodeURIComponent(atom.id ?? `${s.id}:atom:${i + 1}`);
+}
+
+/** The comment extension is supplied by the trajectory owner before the first atom. */
+export function* exportXyzChunks(s: Structure, format: 'xyz' | 'extxyz', withCell: boolean, commentExtension = ''): Generator<string> {
+  validateGeometryAtoms(s.atoms);
+  validateGeometryAtomIdentity(s.atoms, i => `${s.id}:atom:${i + 1}`);
+  const {cell,periodicSource,periodicWorkingSource}=geometryPeriodicity(s,withCell);
+  const name=automaticStem(s.name),electronic=`${Number.isSafeInteger(s.charge)?` charge=${s.charge}`:''}${Number.isSafeInteger(s.multiplicity)&&s.multiplicity!>0?` multiplicity=${s.multiplicity}`:''}`;
+  const lattice=cell?` Lattice="${cell.vectors.flat().map(f).join(' ')}" pbc="${cell.pbc.map(v=>v?'T':'F').join(' ')}"${cell.origin?` Origin="${cell.origin.map(f).join(' ')}"`:''}`:'';
+  yield `${s.atoms.length}\n`;
+  yield format === 'xyz' ? name + electronic + lattice : `name="${name}" Properties=species:S:1:pos:R:3:id:S:1:source_index:I:1${lattice}${electronic}`;
+  if (cell?.pbcProvenance || periodicSource || periodicWorkingSource) {
+    yield ' builder_periodic=';
+    for (const part of exportJsonChunks({version:1,coordinateUnit:'angstrom',pbcProvenance:cell?.pbcProvenance,periodicSource,periodicWorkingSource})) {
+      yield encodeURIComponent(part).replace(/'/g,'%27');
+    }
+  }
+  if (format === 'xyz') {
+    yield ' builder_atoms=%5B';
+    for (const [i, atom] of s.atoms.entries()) {
+      const record = { id: atom.id ?? `${s.id}:atom:${i + 1}`, sourceIndex: atom.sourceIndex ?? i + 1 };
+      yield (i ? '%2C' : '') + encodeURIComponent(JSON.stringify(record));
+    }
+    yield '%5D';
+  }
+  yield `${s.cell&&!withCell?' cell_omitted=true':''}${commentExtension}\n`;
+  for (const [i, atom] of s.atoms.entries()) {
+    const coordinates = `${atom.element} ${[atom.x,atom.y,atom.z].map(f).join(' ')}`;
+    yield format === 'xyz' ? coordinates + '\n'
+      : `${coordinates} ${encodeURIComponent(atom.id??`${s.id}:atom:${i+1}`)} ${atom.sourceIndex??i+1}\n`;
+  }
+}
+
 /** Structure-only export. POSCAR requires a real cell; no artificial bounding box is ever created. */
 export function exportStructure(s:Structure,format:'xyz'|'extxyz'|'cif'|'poscar',withCell:boolean):string {
+  if(format==='xyz'||format==='extxyz')return [...exportXyzChunks(s,format,withCell)].join('');
   validateGeometryAtoms(s.atoms);
   validateGeometryAtomIdentity(s.atoms, i => format === 'cif' ? `${s.atoms[i].element}${i + 1}` : `${s.id}:atom:${i + 1}`);
   const {cell,periodicSource,periodicWorkingSource}=geometryPeriodicity(s,withCell);
   const periodicMetadata=cell?.pbcProvenance||periodicSource||periodicWorkingSource?encodeURIComponent(JSON.stringify({version:1,coordinateUnit:'angstrom',pbcProvenance:cell?.pbcProvenance,periodicSource,periodicWorkingSource})).replace(/'/g,'%27'):undefined;
   const periodicComment=periodicMetadata?` builder_periodic=${periodicMetadata}`:'';
-  const name=automaticStem(s.name),electronic=`${Number.isSafeInteger(s.charge)?` charge=${s.charge}`:''}${Number.isSafeInteger(s.multiplicity)&&s.multiplicity!>0?` multiplicity=${s.multiplicity}`:''}`;
-  if(format==='xyz'){
-    const lattice=cell?` Lattice="${cell.vectors.flat().map(f).join(' ')}" pbc="${cell.pbc.map(v=>v?'T':'F').join(' ')}"${cell.origin?` Origin="${cell.origin.map(f).join(' ')}"`:''}`:'';
-    const provenance=encodeURIComponent(JSON.stringify(s.atoms.map((a,i)=>({id:a.id??`${s.id}:atom:${i+1}`,sourceIndex:a.sourceIndex??i+1}))));
-    return `${s.atoms.length}\n${name}${electronic}${lattice}${periodicComment} builder_atoms=${provenance}${s.cell&&!withCell?' cell_omitted=true':''}\n${s.atoms.map(a=>`${a.element} ${[a.x,a.y,a.z].map(f).join(' ')}`).join('\n')}\n`;
-  }
-  if(format==='extxyz'){
-    const lattice=cell?` Lattice="${cell.vectors.flat().map(f).join(' ')}" pbc="${cell.pbc.map(v=>v?'T':'F').join(' ')}"${cell.origin?` Origin="${cell.origin.map(f).join(' ')}"`:''}`:'';
-    return `${s.atoms.length}\nname="${name}" Properties=species:S:1:pos:R:3:id:S:1:source_index:I:1${lattice}${electronic}${periodicComment}${s.cell&&!withCell?' cell_omitted=true':''}\n${s.atoms.map((a,i)=>`${a.element} ${[a.x,a.y,a.z].map(f).join(' ')} ${encodeURIComponent(a.id??`${s.id}:atom:${i+1}`)} ${a.sourceIndex??i+1}`).join('\n')}\n`;
-  }
+  const name=automaticStem(s.name);
   if(format==='cif'){
     const lines=[`data_${name.replace(/[^A-Za-z0-9_.-]/g,'_')||'structure'}`,"_space_group_name_H-M_alt 'P 1'",'_space_group_IT_number 1'];
     if(cell){const params=cellParameters(cell);['length_a','length_b','length_c','angle_alpha','angle_beta','angle_gamma'].forEach((key,i)=>lines.push(`_cell_${key} ${f(params[i])}`));lines.push(`_builder_cell_vectors '${cell.vectors.flat().map(f).join(' ')}'`,`_builder_cell_pbc '${cell.pbc.map(v=>v?'T':'F').join(' ')}'`);if(cell.origin)lines.push(`_builder_cell_origin '${cell.origin.map(f).join(' ')}'`);}

@@ -10,6 +10,7 @@ import { createWorkspacePublicationErrors, type WorkspacePublicationIssue } from
 const schema = 'sciyue-workspace-document';
 const commandTypes = new Set(['model.execute', 'model.select', 'model.undo', 'model.redo', 'model.context', 'model.electronic-state', 'chemistry.start', 'chemistry.cancel', 'dynamics.start', 'dynamics.command', 'input.draft-update', 'workspace.close-view', 'workspace.viewport-event']);
 const maxBytes = 16 * 1024 * 1024;
+type AuthoredWorkspaceSnapshot = Omit<WorkspaceDocumentSnapshot, 'viewport'> & { viewport?: unknown };
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 function requireValue(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
 function plain(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
@@ -64,8 +65,7 @@ function freeze<T>(value: T): T {
   if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) { for (const item of Object.values(value)) freeze(item); Object.freeze(value); }
   return value;
 }
-function checkedSnapshot(raw: WorkspaceDocumentSnapshot, documentId: string, epoch?: string): WorkspaceDocumentSnapshot {
-  const value = snapshotJSON(raw);
+function validateSnapshot(value: WorkspaceDocumentSnapshot, documentId: string, epoch?: string): WorkspaceDocumentSnapshot {
   requireValue(plain(value) && value.schema === schema && value.version === 1 && identity(value.documentEpoch) && serial(value.publicationSerial), '共享文档快照协议不匹配。');
   requireValue(!epoch || value.documentEpoch === epoch, '共享文档生命周期已变化。');
   requireValue(plain(value.document) && value.document.id === documentId && serial(value.document.revision) && plain(value.document.draft) && plain(value.document.draft.structure), '共享文档身份或修订不匹配。');
@@ -105,12 +105,22 @@ function checkedSnapshot(raw: WorkspaceDocumentSnapshot, documentId: string, epo
   }
   return freeze(value);
 }
+const checkedSnapshot = (raw: AuthoredWorkspaceSnapshot, documentId: string, epoch?: string) => validateSnapshot(snapshotJSON(raw) as WorkspaceDocumentSnapshot, documentId, epoch);
+function samePublicationContent(current: WorkspaceDocumentSnapshot, next: WorkspaceDocumentSnapshot): boolean {
+  const nextKeys = Object.keys(next) as (keyof WorkspaceDocumentSnapshot)[];
+  if (current.document.revision !== next.document.revision || nextKeys.length !== Object.keys(current).length) return false;
+  // Display-only updates can keep the scientific model revision. Compare the
+  // changed view first so an actual seek never serializes the old model to
+  // decide whether to publish.
+  const equal = (key: keyof WorkspaceDocumentSnapshot) => current[key] === next[key] || JSON.stringify(current[key]) === JSON.stringify(next[key]);
+  return equal('viewport') && nextKeys.every(key => key === 'viewport' || key === 'publicationSerial' || (Object.hasOwn(current, key) && equal(key)));
+}
 function checkedMembership(raw: WorkspaceMembership, isOwner: boolean, previous?: WorkspaceMembership): WorkspaceMembership {
   const value = envelopeJSON(raw);
   requireValue(plain(value) && value.schema === schema && value.version === 1 && identity(value.documentId) && identity(value.ownerWindowId) && identity(value.memberWindowId) && identity(value.membershipNonce) && serial(value.revision), '共享文档成员回执不完整。');
   requireValue(value.isOwner === isOwner && value.isOwner === (value.ownerWindowId === value.memberWindowId), '共享文档 owner 角色不匹配。');
   if (previous) requireValue(value.documentId === previous.documentId && value.ownerWindowId === previous.ownerWindowId && value.memberWindowId === previous.memberWindowId && value.membershipNonce === previous.membershipNonce, '共享文档成员凭证已变化。');
-  const snapshot = checkedSnapshot(value.snapshot, value.documentId, previous?.snapshot.documentEpoch);
+  const snapshot = validateSnapshot(value.snapshot, value.documentId, previous?.snapshot.documentEpoch);
   requireValue(snapshot.document.revision === value.revision, '共享文档回执修订不匹配。');
   return freeze({ ...value, snapshot });
 }
@@ -136,7 +146,8 @@ export interface WorkspaceOwnerOptions {
   bridge: WorkspaceDesktopBridge; documentId: string;
   /** Known registry lifetime, available even if the initial snapshot is invalid. */
   documentEpoch?: string;
-  nextSnapshot(): WorkspaceDocumentSnapshot;
+  nextSnapshot(): AuthoredWorkspaceSnapshot;
+  currentRevision?(): number;
   /** This is the only application/domain executor. It must also check actual
    * store revision, runtime locks, transaction and engine-specific context. */
   onCommand(command: WorkspaceCommand, expectedRevision: number, requesterWindowId: string): void | Promise<void>;
@@ -177,7 +188,7 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
     initial = checkedSnapshot(options.nextSnapshot(), documentId);
     requireValue(options.documentEpoch === undefined || initial.documentEpoch === options.documentEpoch, '共享文档生命周期已变化。');
     publicationErrors.setDocumentEpoch(initial.documentEpoch);
-    return bridge.registerWorkspaceDocument(envelopeJSON({ documentId, revision: initial.document.revision, snapshot: initial }));
+    return bridge.registerWorkspaceDocument({ documentId, revision: initial.document.revision, snapshot: initial });
   }).then(raw => {
     requireValue(!disposed && !unavailable, '共享文档 adapter 已关闭或不可用。');
     const membership = checkedMembership(raw, true);
@@ -197,7 +208,7 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
     void task.then(() => { work--; update(); }, error => { work--; update(errorMessage(error)); });
     return task;
   }
-  async function commit(snapshot: WorkspaceDocumentSnapshot, forcePublication = false): Promise<WorkspaceMembership> {
+  async function commit(snapshot: AuthoredWorkspaceSnapshot, forcePublication = false): Promise<WorkspaceMembership> {
     const operationId = publicationErrors.operation();
     await ready;
     const current = state.membership!;
@@ -206,13 +217,21 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
     // Serial numbers order actual publications; a redundant display notification
     // need not transfer the complete unchanged snapshot again. Commands still
     // force a new acknowledged publication even for an intentional no-op.
-    const { publicationSerial: _nextSerial, ...nextContent } = checked;
-    const { publicationSerial: _currentSerial, ...currentContent } = current.snapshot;
-    if (!forcePublication && JSON.stringify(nextContent) === JSON.stringify(currentContent)) {
+    if (!forcePublication && samePublicationContent(current.snapshot, checked)) {
       publicationFailure = null; publicationErrors.resolve(operationId); update(null); return current;
     }
-    const result = checkedMembership(await bridge.publishWorkspaceDocument(envelopeJSON({ ...auth(current), expectedRevision: current.revision, revision: checked.document.revision, snapshot: checked })), true, current);
-    requireValue(JSON.stringify(result.snapshot) === JSON.stringify(checked), '共享文档 host 回执未确认实际发布快照。');
+    const request = { ...auth(current), expectedRevision: current.revision, revision: checked.document.revision, snapshot: checked };
+    let result: WorkspaceMembership;
+    if (bridge.publishWorkspaceDocumentReceipt) {
+      const receipt = await bridge.publishWorkspaceDocumentReceipt(request);
+      requireValue(plain(receipt) && Object.keys(receipt).length === 4 && receipt.documentId === documentId
+        && receipt.documentEpoch === checked.documentEpoch && receipt.revision === request.revision
+        && receipt.publicationSerial === checked.publicationSerial, '共享文档 host 回执未确认实际发布快照。');
+      result = freeze({ ...current, revision: request.revision, snapshot: checked });
+    } else {
+      result = checkedMembership(await bridge.publishWorkspaceDocument(request), true, current);
+      requireValue(JSON.stringify(result.snapshot) === JSON.stringify(checked), '共享文档 host 回执未确认实际发布快照。');
+    }
     state = { ...state, membership: result }; publicationFailure = null; publicationErrors.resolve(operationId); update(null); return result;
   }
   function requestedPublication() {
@@ -269,13 +288,16 @@ export function createWorkspaceOwnerAdapter(options: WorkspaceOwnerOptions) {
       requireValue(!disposed && !unavailable, '共享文档 owner adapter 已关闭。');
       requireValue(event.schema === schema && event.version === 1 && identity(event.requestId) && identity(event.requesterWindowId) && serial(event.expectedRevision), '共享文档命令事件不完整。');
       const command = checkedCommand(event.command);
-      const before = checkedSnapshot(options.nextSnapshot(), documentId, membership.snapshot.documentEpoch);
-      requireValue(before.document.revision === event.expectedRevision || isCurrentDocumentSaveIntent(command)&&event.expectedRevision<=before.document.revision, '模型修订已变化，请刷新后重新操作。');
+      const revision = options.currentRevision?.() ?? checkedSnapshot(options.nextSnapshot(), documentId, membership.snapshot.documentEpoch).document.revision;
+      requireValue(serial(revision) && (revision === event.expectedRevision || isCurrentDocumentSaveIntent(command) && event.expectedRevision <= revision), '模型修订已变化，请刷新后重新操作。');
       await options.onCommand(command, event.expectedRevision, event.requesterWindowId);
       // Already-started authoritative work must be acknowledged even if a view
       // disposes its subscription while the callback is awaiting completion.
       const committed = await commit(options.nextSnapshot(), true);
-      await bridge.replyWorkspaceDocumentCommand(envelopeJSON({ ...request, requestId: event.requestId, status: 'committed' as const, revision: committed.revision, snapshot: committed.snapshot }));
+      const response = { ...request, status: 'committed' as const, revision: committed.revision };
+      await bridge.replyWorkspaceDocumentCommand(bridge.publishWorkspaceDocumentReceipt
+        ? { ...response, documentEpoch: committed.snapshot.documentEpoch, publicationSerial: committed.snapshot.publicationSerial }
+        : { ...response, snapshot: committed.snapshot });
     } catch (error) {
       update(errorMessage(error));
       await bridge.replyWorkspaceDocumentCommand(normalizeWorkspaceJSON({ ...request, status: 'rejected' as const, error: errorMessage(error).slice(0, 2048) || '共享文档命令失败。' }));

@@ -2,24 +2,31 @@ import {DismissibleNotice} from '../DismissibleNotice';
 import MultiwfnErrorNotice from './MultiwfnErrorNotice';
 import { isMultiwfnBackendFailure } from './multiwfn-errors';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
-import {useAnalysisProjectSnapshot,rebindAnalysisContext,isRestoredAnalysisData,analysisProjectCubeArtifacts} from '../../projects/analysis-state';
+import {useAnalysisProjectSnapshot,rebindAnalysisContext,isRestoredAnalysisData} from '../../projects/analysis-state';
+import { exportSavedCube } from './export-saved-cube';
 import {matchingSliderRange} from '../numeric-step';
 import NumericInput from '../NumericInput';
 import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes } from 'react';
-import type { SurfaceAnalysisResult, SurfaceAreaDistribution, SurfaceCubeQuality, SurfaceFunction, SurfaceGeneratedFields, SurfaceQuantitativeGrid, SurfaceRegionResult, SurfaceRegionSelection, SurfaceScalarField } from '../../results/surface-contracts';
+import type { SurfaceAnalysisResult, SurfaceAreaDistribution, SurfaceCubeQuality, SurfaceFieldPair, SurfaceFunction, SurfaceGeneratedFields, SurfaceQuantitativeGrid, SurfaceRegionResult, SurfaceRegionSelection, SurfaceScalarField } from '../../results/surface-contracts';
 import { DEFAULT_SURFACE_ISOVALUE } from '../../results/surface-contracts';
 import { convertSurfaceMappingValue, convertSurfaceMetric, sameSurfaceContext, SURFACE_FUNCTIONS, validateSurfaceAnalysisResult, validateSurfaceCubeQuality, validateSurfaceFieldPair, validateSurfaceScalarField } from '../../results/surface-field';
 import { InputSettingsField, InputSettingsRow } from '../InputSettingsFields';
 import { InputSettingsAction, InputSettingsCheckbox, InputSettingsLayout } from '../InputSettingsLayout';
 import { ScientificDataTable, type ScientificDataTableProps } from './ScientificDataTable';
-import { ScientificPlot } from './ScientificPlot';
+import { SurfaceDistributionPlot, surfaceDistributionFigureKey,updateSurfaceDistributionFigure } from './SurfaceDistributionPlot';
+import {usePlotFigure} from './scientific-plot-figure';
+import type {PlotFigureEdits} from '../../results/scientific-plot-editing';
 import { scientificTableText, type ScientificTableProjection, type ScientificTableRow, type ScientificTableFormat } from './scientific-table';
 import { scientificDisplayValue as number } from './scientific-presentation';
 import { DEFAULT_RESULT_DECIMALS } from '../../results/numeric-format';
-import { ANALYSIS_PALETTES, toggleAnalysisRow } from './analysis-display';
+import { ANALYSIS_PALETTES, analysisColorbarValues, toggleAnalysisRow } from './analysis-display';
 import { exportBlob } from './export-image';
+import {ResultsMcpPortRegistration} from './results-mcp-context';
+import {patchColorbarLayout,patchMeshFinish,settingArray,settingBool,settingColor,settingColorbarLayout,settingColorRange,settingEnum,settingMeshFinish,settingPositive,settingText,spatialGridSetting,validateColorRange} from './analysis-mcp-settings';
+import {analysisCube,analysisText} from './analysis-mcp-assets';
+import {objectSchema,toolError} from '../mcp/types';
 import { useAnalysisFeedback } from './AnalysisFeedback';
-import { surfaceContextKey, surfaceDisplayUnit, surfaceDistributionSeries, surfaceDistributionSummary, surfaceDistributionTable, surfaceEspMetricTables, surfaceExtremaRange, surfaceExtremaTable, surfaceExtremumIdentity, surfaceExtremumLabel, surfaceExtremumCoordinates, surfaceExtremumPosition, surfaceMetricTable } from './surface-presentation';
+import { projectSurfaceDistribution, surfaceColorbarUnitLabel, surfaceContextKey, surfaceDisplayUnit, surfaceDistributionTable, surfaceEspMetricTables, surfaceExtremaRange, surfaceExtremaTable, surfaceExtremumIdentity, surfaceExtremumLabel, surfaceExtremumCoordinates, surfaceExtremumPosition, surfaceMetricTable } from './surface-presentation';
 import type { SurfaceAnalysisControlsProps, SurfaceCapabilityRequest, SurfaceDisplaySettings, SurfaceProjection } from './surface-controls-contracts';
 import {surfaceCapabilityKey} from './surface-capability';
 import { surfaceFieldDefinition, surfaceFieldDescriptor, surfaceGenerationDescriptor, type SurfaceFieldDescriptor, type SurfaceGenerationDescriptor } from './surface-ui-cache';
@@ -43,6 +50,15 @@ import './surface-analysis-controls.css';
 export type { SurfaceAnalysisControlsProps, SurfaceControlsBridge, SurfaceProjection, SurfaceInteractionPort } from './surface-controls-contracts';
 interface CubeSlot { name: string; field: SurfaceScalarField | null; descriptor?: SurfaceFieldDescriptor; status: 'empty' | 'reading' | 'ready' | 'error' | 'released'; message?: string; file?: File; pendingName?: string; pendingFile?: File; failedFile?: File }
 interface AnalysisCache { key: string; analysis: SurfaceAnalysisResult; regions: readonly SurfaceRegionResult[]; generated?: SurfaceGeneratedFields; generation?: SurfaceGenerationDescriptor; distributions: Record<string, SurfaceAreaDistribution> }
+export interface ElectronicSurfaceMeshReceipt {
+  pairKey: string;
+  attemptKey: string;
+  status: 'pending' | 'drawn' | 'failed';
+  error?: string;
+}
+export function electronicSurfacePairKey(pair: SurfaceFieldPair): string {
+  return JSON.stringify([surfaceContextKey(pair.shape.context), pair.shape.id, pair.shape.source.revision, pair.mapping?.id, pair.mapping?.source.revision, pair.isovalue]);
+}
 const emptySlot = (): CubeSlot => ({ name: '', field: null, status: 'empty' });
 const initialDisplay = (): SurfaceDisplaySettings => mappedSurfaceAppearance({ visible: true, opacity: .8, finish: DEFAULT_MESH_FINISH, palette: 'blue-red', rangeLocked: false, reverse: false, markersVisible: true, valuesVisible: true, coordinatesVisible: false, showAllExtremaValues: false, pinnedExtremumIds: [], hoveredExtremumId: null, hiddenExtremumIds: [] }, 'gallery-esp');
 const releaseSlot = (slot: CubeSlot): CubeSlot => {
@@ -58,7 +74,8 @@ function SurfaceTable(p: { title?: string; projection: ScientificTableProjection
   const root = useRef<HTMLDivElement>(null);
   return <div ref={root} className="analysis-result"><ScientificDataTable title={p.title ?? ''} projection={p.projection} selectionScope={p.selectionScope} format={p.format} sorting={p.sorting} activeRowKey={p.activeRowKey} onRowActivate={p.onRowActivate} onRowPreview={p.onRowPreview} onClearActive={p.onClearActive} expansion={p.expansion} rowBindings={p.rowBindings} rowActions={p.rowActions} onExport={() => exportBlob(new Blob([scientificTableText(p.exportProjection ?? p.projection)], { type: 'text/plain;charset=utf-8' }), p.fileName, root.current?.ownerDocument)}/></div>;
 }
-function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
+function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps & { meshReceipt?: ElectronicSurfaceMeshReceipt | null }) {
+  const [colorbarOwner] = useState(() => crypto.randomUUID());
   const appearanceDefaults=useSurfaceAppearanceDefaults();
   const { notify, feedback, clear } = useAnalysisFeedback();
   const [fn, setFunction] = useState<SurfaceFunction>('esp'), [inputKind, setInputKind] = useState<'wavefunction' | 'cubes'>('wavefunction');
@@ -159,7 +176,6 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   const displayUnit = units[fn] ?? capability?.valueUnit ?? SURFACE_FUNCTIONS[fn].atomicUnit;
   const colorbarUnit=colorbarUnits[fn]??capability?.valueUnit??SURFACE_FUNCTIONS[fn].atomicUnit;
   const extremaUnit = extremaUnits[fn] ?? capability?.valueUnit ?? SURFACE_FUNCTIONS[fn].atomicUnit;
-  const distributionUnit = distributionUnits[fn] ?? capability?.valueUnit ?? SURFACE_FUNCTIONS[fn].atomicUnit;
   const presentation = useMemo(() => {
     let unitWarning = false;
     const convertedRegion = region ? { ...region, metrics: region.metrics.map(metric => { try { return convertSurfaceMetric(metric, fn, displayUnit); } catch { unitWarning = true; return metric; } }) } : null;
@@ -175,8 +191,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   }, [displayedRegion, fn, decimals]);
   const rangeInUnit = (unit: string) => { try { return surfaceExtremaRange(nativeExtrema.map(row => ({ ...row, value: convertSurfaceMappingValue(row.value, fn, row.valueUnit, unit), valueUnit: unit }))); } catch { return undefined; } };
   const autoRange = useMemo(() => rangeInUnit(colorbarUnit), [nativeExtrema, fn, colorbarUnit]), colorRange = display.range ?? autoRange;
-  const distributionAutoRange = useMemo(() => rangeInUnit(distributionUnit), [nativeExtrema, fn, distributionUnit]);
-  const effectiveDistributionBounds: [string, string] = [distributionBounds[0] || (distributionAutoRange ? String(distributionAutoRange.min) : ''), distributionBounds[1] || (distributionAutoRange ? String(distributionAutoRange.max) : '')];
+  const colorbarUnitLabel = surfaceColorbarUnitLabel(fn, colorbarUnit);
   const generated = record?.generated;
   const generatedValidation = useMemo(() => {
     if (!generated) return null;
@@ -188,9 +203,17 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   const visiblePair = inputKind==='cubes'||stateOwnerKey !== contextKey ? null : generatedValidation?.compatible ? generated!.pair : null;
   const distribution = region?.distribution ?? (region && record?.distributions[region.selection.id]);
   const distributionAppearanceId = `${contextKey}:${fn}:${region?.selection.id ?? ''}`;
-  const distributionAppearance = distributionAppearances[distributionAppearanceId] ?? { smooth: false, showBins: true };
-  const patchDistributionAppearance = (patch: Partial<typeof distributionAppearance>) => setDistributionAppearances(values => ({ ...values, [distributionAppearanceId]: { ...distributionAppearance, ...patch } }));
-  const displayDistribution = useMemo(() => { if (!distribution) return null; try { return { ...distribution, valueUnit: distributionUnit, bins: distribution.bins.map(bin => ({ ...bin, lower: convertSurfaceMappingValue(bin.lower, fn, distribution.valueUnit, distributionUnit), upper: convertSurfaceMappingValue(bin.upper, fn, distribution.valueUnit, distributionUnit) })) }; } catch { return distribution; } }, [distribution, fn, distributionUnit]);
+  const distributionOwner = `surface-distribution:${contextKey}:${distributionAppearanceId}`;
+  const histogram = usePlotFigure(distribution ? surfaceDistributionFigureKey(distributionOwner, distribution) : distributionOwner);
+  const plotDisplay = histogram.figure.histogram;
+  const savedAppearance = distributionAppearances[distributionAppearanceId];
+  const distributionUnit = plotDisplay?.unit ?? distributionUnits[fn] ?? capability?.valueUnit ?? SURFACE_FUNCTIONS[fn].atomicUnit;
+  const updateDistribution = (patch: NonNullable<PlotFigureEdits['histogram']>) =>
+    updateSurfaceDistributionFigure(histogram,patch);
+  const displayDistribution = useMemo(() => {
+    if (!distribution) return null;
+    try { return projectSurfaceDistribution(distribution,fn,distributionUnit); } catch { return distribution; }
+  }, [distribution, fn, distributionUnit]);
   const patchDisplay = useCallback((update: Partial<SurfaceDisplaySettings> | ((current: SurfaceDisplaySettings) => Partial<SurfaceDisplaySettings>)) => setDisplays(values => {
     const own = values[fn] ?? initialDisplay();
     const local = own.extremaByRegion?.[extremaViewKey] ?? { pinnedExtremumIds: [], hoveredExtremumId: null, hiddenExtremumIds: [] };
@@ -202,6 +225,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
     return { ...values, [fn]: { ...own, ...global, extremaByRegion: { ...own.extremaByRegion, [extremaViewKey]: { ...local,
       ...(pinnedExtremumIds === undefined ? {} : { pinnedExtremumIds }), ...(hoveredExtremumId === undefined ? {} : { hoveredExtremumId }), ...(hiddenExtremumIds === undefined ? {} : { hiddenExtremumIds }), ...(currentExtremumId === undefined ? {} : { currentExtremumId }) } } } };
   }), [fn, extremaViewKey]);
+  const colorbarUnitChoices = [...new Set([capability?.valueUnit??SURFACE_FUNCTIONS[fn].atomicUnit,...SURFACE_FUNCTIONS[fn].units])];
   const cancel = useCallback(() => { const own = running.current; if (!own) return; own.controller.abort(); lifetime.current.serial++; running.current = null; setBusy(null);
     const cancelledSlot = (slot: CubeSlot): CubeSlot => slot.status === 'reading' ? { ...slot, status: 'error', message: `${slot.pendingName ?? '本次文件'}读取已取消。${slot.field ? `保留 ${slot.name}。` : ''}`, pendingName: undefined, failedFile: slot.pendingFile, pendingFile: undefined } : slot;
     setShape(cancelledSlot);
@@ -277,8 +301,10 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
     return { context: stableContext, function: fn, regionId: region?.selection.id ?? '', region, analysis, fields: visiblePair, display,capabilityRequest,
       surfaceLayer: visiblePair && renderable ? { pair: visiblePair, documentId, geometryRevision, visible: p.active && display.visible, opacity: display.opacity, finish: display.finish, sourceToDocument: p.sourceToDocument, color, ...(display.coloring==='solid'?{solidColor:display.solidColor??'#66cc4d'}:{}) } : null,
       surfaceExtrema: analysis && renderable ? { documentId, geometryRevision, visible: p.active, markersVisible: display.markersVisible, valuesVisible: display.valuesVisible, coordinatesVisible: display.coordinatesVisible, hiddenIds: display.hiddenExtremumIds, points: extrema.map(row => ({ id: row.id, position: surfaceExtremumPosition(row), identityLabel: surfaceExtremumIdentity(row), label: surfaceExtremumLabel(row, extremaDecimals), coordinateLabel: surfaceExtremumCoordinates(row, extremaDecimals), kind: row.type, global: row.scope === 'global' })), pinnedIds: [...new Set([...display.pinnedExtremumIds, ...(display.currentExtremumId ? [display.currentExtremumId] : [])])], hoveredId: display.hoveredExtremumId, showAllValues: false, sourceToDocument: p.sourceToDocument } : null,
-      colorbar: colorRange && color ? { ...colorRange, palette: display.palette, colors: display.colors, label: `${SURFACE_FUNCTIONS[fn].label} / ${colorbarUnit}`, decimals, reverse: display.reverse, layout: display.colorbarLayout } : null };
-  }, [stableContext, stateOwnerKey, contextKey, p.available, p.active, p.sourceToDocument, fn, region, analysis, visiblePair, display, extrema, colorRange, colorbarUnit,capabilityRequest,decimals,extremaDecimals]);
+      colorbar: colorRange && color && visiblePair?.mapping ? { ...colorRange, palette: display.palette, colors: color.colors, label: `${SURFACE_FUNCTIONS[fn].label} / ${colorbarUnitLabel}`, decimals,
+        reverse: color.reverse, layout: display.colorbarLayout, sourceKey: JSON.stringify([colorbarOwner, contextKey, fn, visiblePair.shape.id, visiblePair.mapping.id]) } : null };
+  }, [stableContext, stateOwnerKey, contextKey, p.available, p.active, p.sourceToDocument, fn, region, analysis, visiblePair, display, extrema, colorRange, colorbarUnit, colorbarUnitLabel,capabilityRequest,decimals,extremaDecimals, colorbarOwner]);
+  const colorbarValues = projection?.colorbar && analysisColorbarValues(projection.colorbar);
   const projectionCallback = useRef(p.onProjection); projectionCallback.current = p.onProjection;
   useEffect(() => { projectionCallback.current(projection); }, [projection]);
   useEffect(() => () => projectionCallback.current(null), []);
@@ -318,10 +344,10 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
       setDisplays(values => { const own = values[selectedFunction] ?? initialDisplay(); return { ...values, [selectedFunction]: { ...own, range: own.rangeLocked ? own.range : undefined, pinnedExtremumIds: [], hoveredExtremumId: null } }; });
     });
   }
+  const regionIssue=!analysis||!record?'请先分析全分子表面。':scope==='molecule'||!p.bridge.analyzeRegion||scope==='atoms'&&!capability?.atomRegions||scope==='fragment'&&!capability?.fragmentRegions
+    ?capability?.reason??'当前来源未开放所选区域分析。':!selectedSourceIndices.length||selectedSourceIndices.length!==atomIds.length||selectedSourceIndices.some(index=>!Number.isSafeInteger(index)||index<1)||new Set(selectedSourceIndices).size!==selectedSourceIndices.length?'请确认与来源对应的原子集合。':'';
   function analyzeRegion() {
-    if (!analysis || !record) { notify('请先分析全分子表面。'); return; }
-    if (!p.bridge.analyzeRegion || scope === 'atoms' && !capability?.atomRegions || scope === 'fragment' && !capability?.fragmentRegions) { showUnavailable(capability?.reason ?? '当前来源未开放所选区域分析。'); return; }
-    if (!selectedSourceIndices.length || selectedSourceIndices.length !== atomIds.length || selectedSourceIndices.some(index => !Number.isSafeInteger(index) || index < 1) || new Set(selectedSourceIndices).size !== selectedSourceIndices.length) { notify('请确认与来源对应的原子集合。'); return; }
+    if(regionIssue||!analysis||!record){showUnavailable(regionIssue);return;}
     const selections: SurfaceRegionSelection[] = scope === 'atoms' ? selectedSourceIndices.map(index => ({ id: `atom:${index}`, kind: 'atoms', atomIndices: [index], label: `原子 ${index}` })) : [{ id: selectionIdentity, kind: 'fragment', atomIndices: [...selectedSourceIndices], label: `片段 ${selectedSourceIndices.join(', ')}` }];
     const selectedFunction = fn;
     void run('区域分析中…', async (signal, requestId, accepts) => {
@@ -353,18 +379,160 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
       setRecords(values => { const current = values[selectedFunction]; return current?.key === analysisKey ? { ...values, [selectedFunction]: { ...current, generated: result, generation: surfaceGenerationDescriptor(result) } } : values; });
     });
   }
+  const session=analysis?p.bridge.analysisSession?.(analysis)??{status:'unknown' as const}:{status:'not_analyzed' as const};
+  const generationUnavailable=inputKind==='cubes'||!p.bridge.generate||!capability?.generation?capability?.reason??'当前来源未开放表面格点生成。':
+    !analysis?'请先完成当前表面分析。':session.status==='reanalysis_required'||session.status==='inactive'?'当前定量结果缺少可用的原生表面会话。':
+    surfaceCubeBudgetIssue(quality,p.resourceBudgetBytes);
+  const admittedGeneration=generatedValidation?.compatible?generated:undefined;
+  const requestedQualityReady=admittedGeneration&&JSON.stringify(admittedGeneration.quality)===JSON.stringify(quality);
+  const mesh=p.meshReceipt&&visiblePair&&p.meshReceipt.pairKey===electronicSurfacePairKey(visiblePair)?p.meshReceipt:null;
+  const output={quantitative:analysis?{status:'ready',stamp:analysis.stamp}:{status:'absent'},session,
+    generation:{status:admittedGeneration?'ready':record?.generation?'released':'absent',stamp:admittedGeneration?.stamp,matchesRequestedQuality:Boolean(requestedQualityReady),
+      canSubmit:!disabled&&!generationUnavailable,reason:generationUnavailable||undefined},
+    viewport:{status:!p.active||!display.visible?'hidden':!visiblePair?'absent':mesh?.status??'pending',
+      mapped:Boolean(mesh?.status==='drawn'&&projection?.surfaceLayer?.color),error:mesh?.error}};
+  const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.active?p.analysisId??null:null} port={{
+    sourceRevision:JSON.stringify([contextKey,analysisKey,quality,scope,selectedSourceIndices,extremaViewKey,display,colorbarUnit,analysis?.stamp.requestId,generated?.stamp.requestId,distribution?.stamp.requestId]),
+    methods:p.available===false||inputKind==='cubes'?[]:[...(!analysisUnavailable||analysis?['surface-analyze']:[]),
+      ...(analysis&&!analysisUnavailable&&session.status==='reanalysis_required'?['surface-restore-session']:[]),
+      ...(regionIssue||session.status==='reanalysis_required'||session.status==='inactive'?[]:['surface-region']),
+      ...(!generationUnavailable||requestedQualityReady?['surface-generate']:[])],
+    methodStatus:p.available===false||capabilityPending||session.status==='inactive'?'preparing':undefined,
+    recoverMethod:method=>!analysisUnavailable&&session.status==='reanalysis_required'&&['surface-analyze','surface-generate','surface-region'].includes(method)?'surface-restore-session':undefined,
+    read:()=>({kind:'surface',function:fn,isovalue,quantitativeGrid:invocationGrid,quality,busy,progress:visibleTaskProgress,error:error||analysisUnavailable,
+      output,result:analysis,regions:record?.regions,field:generated&&{stamp:generated.stamp,quality:generated.quality,shape:generated.pair.shape.grid,mapping:generated.pair.mapping?.grid}}),
+    execution:()=>({status:visibleTaskProgress?.phase??(running.current?'running':'idle'),requestId:running.current?.id??visibleTaskProgress?.identity.runId,
+      stoppable:Boolean(running.current&&visibleTaskProgress?.phase!=='stopping'),progress:visibleTaskProgress}),
+    stop:cancel,
+    assets:()=>!p.active||p.available===false?[]:[
+      ...(generated?.pair.shape?[analysisCube('surface-density',generated.pair.shape,{stamp:generated.stamp,source:generated.pair.shape.source,function:generated.pair.shape.function})]:[]),
+      ...(generated?.pair.mapping?[analysisCube('surface-mapping',generated.pair.mapping,{stamp:generated.stamp,source:generated.pair.mapping.source,function:generated.pair.mapping.function})]:[]),
+      ...(analysis?[analysisText('surface-regions',()=>JSON.stringify({...analysis,regions:record?.regions??analysis.regions},null,2),{stamp:analysis.stamp,...analysis.provenance},'json')]:[]),
+      ...(displayDistribution?[analysisText('surface-distribution',()=>scientificTableText(surfaceDistributionTable(displayDistribution,distributionDecimals)),
+        {stamp:displayDistribution.stamp,regionId:displayDistribution.regionId,valueUnit:displayDistribution.valueUnit})]:[]),
+    ],
+    configuration:{schema:objectSchema({function:settingEnum(p.allowedWavefunctionMethods??['esp','alie']),isovalue:settingPositive,
+      quantitativePreset:settingEnum(SURFACE_ANALYSIS_QUALITY_OPTIONS.filter(item=>item.value!=='spacing').map(item=>item.value)),
+      spacingBohr:settingPositive,quality:spatialGridSetting,scope:settingEnum(['molecule','atoms','fragment']),atomIds:settingArray(settingText),show:settingBool}),
+      read:()=>({function:fn,isovalue,quantitativePreset:analysisPreset,quantitativeGrid:invocationGrid,quality,scope,atomIds,show:display.visible}),
+      apply(values){
+        if(!p.active||disabled||inputKind==='cubes')throw new Error('当前表面设置不可编辑。');
+        const patch=values as Partial<{function:SurfaceFunction;isovalue:number;quantitativePreset:string;spacingBohr:number;quality:SurfaceCubeQuality;scope:typeof scope;atomIds:string[];show:boolean}>;
+        if(patch.quantitativePreset!==undefined&&patch.spacingBohr!==undefined)throw new Error('请选择规格预设或显式格距。');
+        if(patch.quality!==undefined)validateSurfaceCubeQuality(patch.quality);
+        if(patch.atomIds!==undefined)selectAtoms(patch.atomIds,()=>{});
+        if(patch.function!==undefined)changeFunction(patch.function);
+        if(patch.isovalue!==undefined)setIsovalue(patch.isovalue);
+        if(patch.quantitativePreset!==undefined){setAnalysisPreset(patch.quantitativePreset);setQuantitativeGrid(surfaceQuantitativePreset(patch.quantitativePreset,quantitativeGrid));}
+        if(patch.spacingBohr!==undefined){setAnalysisPreset(surfaceQuantitativePresetFor(patch.spacingBohr));setQuantitativeGrid({mode:'spacing',spacingBohr:patch.spacingBohr});}
+        if(patch.quality!==undefined){setCubePreset(surfaceCubePresetFor(patch.quality));setQuality(patch.quality);}
+        if(patch.scope!==undefined){setScope(patch.scope);setRegionId('');}
+        if(patch.show!==undefined) {
+          const target=patch.function??fn,visible=patch.show;
+          if(target===fn)patchDisplay({visible});
+          else setDisplays(values=>({...values,[target]:{...(values[target]??initialDisplay()),visible}}));
+        }
+      }},
+    presentation:{
+      schema:objectSchema({
+        showSurface:settingBool,opacity:{type:'number',minimum:.05,maximum:1},coloring:settingEnum(['mapped','solid']),
+        solidColor:settingColor,palette:settingEnum(Object.keys(ANALYSIS_PALETTES)),colors:settingArray(settingColor,2),reverse:settingBool,
+        colorbarUnit:settingEnum(colorbarUnitChoices),range:settingColorRange,rangeLocked:settingBool,colorbarLayout:settingColorbarLayout,
+        finish:settingMeshFinish,markersVisible:settingBool,valuesVisible:settingBool,coordinatesVisible:settingBool,
+        extrema:settingEnum(['all','none','global']),hiddenExtremumIds:settingArray(settingText),pinnedExtremumIds:settingArray(settingText),
+      }),
+      read:()=>({
+        function:fn,regionId:region?.selection.id,showSurface:display.visible,opacity:display.opacity,
+        coloring:display.coloring??'mapped',solidColor:display.solidColor,palette:display.palette,
+        colors:display.colors??ANALYSIS_PALETTES[display.palette],reverse:display.reverse,colorbarUnit,
+        range:display.range??null,effectiveRange:colorRange??null,rangeLocked:display.rangeLocked,
+        colorbarLayout:normalizeAnalysisColorbarLayout(display.colorbarLayout),finish:display.finish??DEFAULT_MESH_FINISH,
+        markersVisible:display.markersVisible,valuesVisible:display.valuesVisible!==false,coordinatesVisible:display.coordinatesVisible===true,
+        hiddenExtremumIds:display.hiddenExtremumIds??[],pinnedExtremumIds:display.pinnedExtremumIds,
+        extrema:extrema.map(row=>({id:row.id,kind:row.type,scope:row.scope,visible:display.markersVisible&&!display.hiddenExtremumIds?.includes(row.id)})),
+        mesh:!display.visible?'hidden':!visiblePair?'absent':mesh?.status??'pending',
+      }),
+      apply(values){
+        if(!p.active||p.available===false)throw new Error('当前表面显示不可编辑。');
+        const patch=values as Partial<Pick<SurfaceDisplaySettings,'opacity'|'coloring'|'solidColor'|'palette'|'colors'|'reverse'|'rangeLocked'|'markersVisible'|'valuesVisible'|'coordinatesVisible'|'hiddenExtremumIds'|'pinnedExtremumIds'>> & {
+          showSurface?:boolean;extrema?:'all'|'none'|'global';colorbarUnit?:string;range?:SurfaceDisplaySettings['range']|null;
+          colorbarLayout?:unknown;finish?:unknown;
+        };
+        const {showSurface,extrema:mode,colorbarUnit:nextUnit,range:nextRange,colorbarLayout,finish,...changes}=patch;
+        validateColorRange(nextRange);
+        if(mode!==undefined&&changes.hiddenExtremumIds!==undefined)throw new Error('请选择极值显示模式或提供明确的隐藏极值。');
+        if(changes.palette!==undefined&&changes.colors!==undefined)throw new Error('请选择色板或自定义色带。');
+        const known=new Set(extrema.map(row=>row.id));
+        for(const ids of [changes.hiddenExtremumIds,changes.pinnedExtremumIds])
+          if(ids&&(new Set(ids).size!==ids.length||ids.some(id=>!known.has(id))))throw new Error('极值不属于当前分析区域。');
+        if(mode!==undefined)changes.hiddenExtremumIds=extrema.filter(row=>mode==='none'||mode==='global'&&row.scope!=='global').map(row=>row.id);
+        const ranges = nextUnit!==undefined && nextUnit!==colorbarUnit ? convertedColorbarRanges(nextUnit) : undefined;
+        const unit=nextUnit??colorbarUnit;
+        const range=nextRange!==undefined?nextRange??undefined:ranges?ranges.range:display.range;
+        const locked=nextRange===null?false:changes.rangeLocked??display.rangeLocked;
+        if(ranges){setColorbarUnits(values=>({...values,[fn]:unit}));setRangeDraft(ranges.draft);}
+        if(nextRange===null||changes.rangeLocked===false)setRangeDraft(['','']);
+        patchDisplay({...changes,
+          ...(showSurface!==undefined&&{visible:showSurface}),
+          ...(changes.palette!==undefined&&{colors:undefined}),
+          ...((changes.reverse!==undefined||changes.colors!==undefined||changes.palette!==undefined||changes.coloring!==undefined)&&{appearancePreset:'custom'}),
+          ...((ranges||nextRange!==undefined||changes.rangeLocked!==undefined)&&{
+            range:changes.rangeLocked===false&&nextRange===undefined?undefined:range??(locked?rangeInUnit(unit):undefined),rangeLocked:locked,
+          }),
+          ...(colorbarLayout!==undefined&&{colorbarLayout:patchColorbarLayout(display.colorbarLayout,colorbarLayout)}),
+          ...(finish!==undefined&&{finish:patchMeshFinish(display.finish,finish)}),
+          ...(changes.hiddenExtremumIds!==undefined&&{hoveredExtremumId:null}),
+        });
+      },
+    },
+    run(method,retry,parameters){
+      if(Object.keys(parameters).length)throw new Error('表面分析使用当前面板的映射函数、等值和网格设置。');
+      if(!p.active||p.available===false||inputKind==='cubes')throw new Error('当前来源未开放波函数分子表面分析。');
+      if(running.current)throw toolError('analysis_busy','已有表面任务正在运行。',{requestId:running.current.id});
+      if(method==='surface-analyze'){
+        if(analysis&&!retry)return {status:'cached',stamp:analysis.stamp,output};
+        if(analysisUnavailable)throw new Error(analysisUnavailable);
+        analyze();
+      }else if(method==='surface-restore-session'){
+        if(!analysis||analysisUnavailable)throw new Error(analysisUnavailable||'当前来源尚未保留定量分析。');
+        if(session.status==='ready')return {status:'ready',output};
+        if(session.status!=='reanalysis_required')throw toolError('surface_session_unavailable','请等待原生表面会话就绪。',{session,output});
+        analyze();
+      }else if(method==='surface-region'){
+        if(regionIssue)throw new Error(regionIssue);
+        if(!retry&&scope!=='molecule'&&regions.length===(scope==='atoms'?selectedSourceIndices.length:1))return {status:'ready',regions:regions.map(row=>row.selection)};
+        if(session.status==='reanalysis_required'||session.status==='inactive')throw toolError('surface_session_unavailable','当前区域分析需要有效原生表面会话。',{session,output});
+        analyzeRegion();
+      }else if(method==='surface-generate'){
+        if(requestedQualityReady&&!retry)return {status:'cached',stamp:admittedGeneration?.stamp,output};
+        if(generationUnavailable)throw toolError('surface_generation_unavailable',generationUnavailable,{session,output});
+        validateSurfaceCubeQuality(quality);
+        generate();
+      }else throw new Error('当前表面方法不可用。');
+      return {status:'submitted',function:fn,isovalue,quantitativeGrid:invocationGrid,quality,output};
+    },
+  }}/>;
   function exportCube(field: SurfaceScalarField | null) {
-    if(field&&isRestoredAnalysisData(field)){try{const files=analysisProjectCubeArtifacts(field);exportBlob(new Blob([files.cube],{type:'text/plain'}),'Ester-Studio-surface.cube');exportBlob(new Blob([files.metadata],{type:'application/json'}),'Ester-Studio-surface.sciyue-domain.json');}catch(error){notify(reasonText(error));}return;}
+    if(field&&isRestoredAnalysisData(field)&&field.source.kind!=='external-cube'){
+      void run('导出 Cube…',async signal=>{await exportSavedCube(field,'Ester-Studio-surface.cube',{desktop:window.sciyueDesktop,signal});});
+      return;
+    }
     if (!field || !p.bridge.exportCube) { notify('请先载入或生成可导出的 Cube。'); return; }
     void run('导出 Cube…', async (signal, _requestId, accepts) => { await p.bridge.exportCube!(field, signal); if (accepts()) notify('已发起 Cube 及有效域说明导出。'); });
   }
   const selectAtoms = (ids: string[], assertCurrent: () => void) => { assertCurrent(); const known = new Set(p.sourceAtomOrder?.map(row => row.atomId)); if (ids.some(id => !known.has(id)) || new Set(ids).size !== ids.length) throw new Error('原子集合与当前来源对应不明确。'); setAtomIds([...ids]); setRegionId(''); };
+  const changeFunction=(next:SurfaceFunction)=>{setFunction(next);setRegionId('');setError('');};
+  function convertedColorbarRanges(nextUnit: string) {
+    const convert = (value:number)=>convertSurfaceMappingValue(value, fn, colorbarUnit, nextUnit);
+    const draft = rangeDraft.every(value => value.trim() && Number.isFinite(Number(value))) ?
+      rangeDraft.map(value => String(convert(Number(value)))) as [string,string] : ['',''] as [string,string];
+    const range = display.range ? {min:convert(display.range.min),max:convert(display.range.max)} : undefined;
+    return {draft,range};
+  }
   function changeColorbarUnit(nextUnit: string) {
     try {
-      const convertRange = (values: [string, string]): [string, string] => values.every(value => value.trim() && Number.isFinite(Number(value))) ? values.map(value => String(convertSurfaceMappingValue(Number(value), fn, colorbarUnit, nextUnit))) as [string, string] : ['', ''];
-      const nextRange = display.range ? { min: convertSurfaceMappingValue(display.range.min, fn, colorbarUnit, nextUnit), max: convertSurfaceMappingValue(display.range.max, fn, colorbarUnit, nextUnit) } : undefined;
-      const nextDraft = convertRange(rangeDraft);
-      setColorbarUnits(values => ({ ...values, [fn]: nextUnit })); patchDisplay({ range: nextRange }); setRangeDraft(nextDraft);
+      const {draft,range}=convertedColorbarRanges(nextUnit);
+      setColorbarUnits(values => ({ ...values, [fn]: nextUnit })); patchDisplay({ range }); setRangeDraft(draft);
     } catch (reason) { notify(reasonText(reason)); }
   }
   function restorePlotting() {
@@ -376,7 +544,10 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   const changeTableUnit = (kind: 'metrics' | 'extrema' | 'distribution', next: string) => {
     if (kind === 'metrics') setUnits(values=>({...values,[fn]:next}));
     else if (kind === 'extrema') setExtremaUnits(values => ({ ...values, [fn]: next }));
-    else { try { const converted = effectiveDistributionBounds.map(bound => bound.trim() ? String(convertSurfaceMappingValue(Number(bound), fn, distributionUnit, next)) : '') as [string, string]; setDistributionBounds(converted); setDistributionUnits(values => ({ ...values, [fn]: next })); } catch (reason) { setDistributionError(reasonText(reason)); } }
+    else if (distribution) {
+      try { convertSurfaceMappingValue(1, fn, distribution.valueUnit, next); updateDistribution({unit:next}); setDistributionError(''); }
+      catch (reason) { setDistributionError(reasonText(reason)); }
+    }
   };
   const tableFormat = (kind: 'metrics' | 'extrema' | 'distribution'): ScientificTableFormat => ({
     decimals: kind === 'metrics' ? decimals : kind === 'extrema' ? extremaDecimals : distributionDecimals,
@@ -398,7 +569,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
   </CalculationQualityControl> : <output>使用外部 Cube 原有网格，不重采样。</output>;
   const extremaPlotting = analysis && <><InputSettingsRow><InputSettingsCheckbox label="显示极值标记" checked={display.markersVisible} onChange={markersVisible => patchDisplay({ markersVisible })}/><InputSettingsCheckbox label="显示极值数值" checked={display.valuesVisible !== false} onChange={valuesVisible => patchDisplay({ valuesVisible })}/><InputSettingsCheckbox label="显示极值 XYZ 坐标" checked={display.coordinatesVisible === true} onChange={coordinatesVisible => patchDisplay({ coordinatesVisible })}/><InputSettingsAction disabled={!display.pinnedExtremumIds.length} onClick={() => patchDisplay({ pinnedExtremumIds: [] })}>清除固定</InputSettingsAction></InputSettingsRow>
     <InputSettingsRow><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: extrema.map(row => row.id) })}>隐藏全部</InputSettingsAction><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: [] })}>显示全部</InputSettingsAction><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: extrema.filter(row => row.scope !== 'global').map(row => row.id) })}>仅显示全局最大／最小</InputSettingsAction></InputSettingsRow></>;
-  return <section className="analysis-controls" aria-label="分子表面分析" data-testid="surface-analysis-controls" data-surface-function={fn} data-surface-state={busy ? 'running' : visiblePair?.mapping ? 'fields-ready' : analysis ? 'analysis-ready' : 'idle'} data-analysis-id={analysis?.stamp.analysisId ?? ''} data-request-id={running.current?.id ?? ''} data-source-id={p.context.sourceId} data-source-revision={p.context.sourceRevision} data-source-frame={p.context.sourceFrameIndex ?? ''} data-surface-colored={!!projection?.surfaceLayer?.color}><InputSettingsLayout>{feedback}{error && <MultiwfnErrorNotice message={error} identity={lifetime.current.serial}/>}{restoreMessage && <div className="postprocess-actions"><output role="status">{restoreMessage}</output><InputSettingsAction disabled={!!busy} onClick={() => setRestoreRetry(value => value + 1)}>恢复已有显示格点</InputSettingsAction></div>}{presentation.unitWarning && <p className="postprocess-warning">部分来源单位不能换算，相关数值保留来源单位。</p>}
+  return <section className="analysis-controls" aria-label="分子表面分析" data-testid="surface-analysis-controls" data-surface-function={fn} data-surface-state={busy ? 'running' : visiblePair?.mapping ? 'fields-ready' : analysis ? 'analysis-ready' : 'idle'} data-analysis-id={analysis?.stamp.analysisId ?? ''} data-request-id={running.current?.id ?? ''} data-source-id={p.context.sourceId} data-source-revision={p.context.sourceRevision} data-source-frame={p.context.sourceFrameIndex ?? ''} data-surface-colored={!!projection?.surfaceLayer?.color}>{mcpPort}<InputSettingsLayout>{feedback}{error && <MultiwfnErrorNotice message={error} identity={lifetime.current.serial}/>}{restoreMessage && <div className="postprocess-actions"><output role="status">{restoreMessage}</output><InputSettingsAction disabled={!!busy} onClick={() => setRestoreRetry(value => value + 1)}>恢复已有显示格点</InputSettingsAction></div>}{presentation.unitWarning && <p className="postprocess-warning">部分来源单位不能换算，相关数值保留来源单位。</p>}
     <AnalysisTaskLayout variant="card" methodDetails title="分子表面定量分析" className="surface-preparation" testId="surface-quantitative-task" onRestoreQuality={inputKind === 'wavefunction' ? ()=>{setAnalysisPreset('native-default');setQuantitativeGrid({mode:'spacing',spacingBohr:SURFACE_ANALYSIS_DEFAULT_SPACING});}:undefined} qualityDisabled={disabled} setup={<><InputSettingsRow className="surface-preparation-row surface-identity-row"><InputSettingsField label="映射函数"><select aria-label="表面映射函数" value={fn} disabled={disabled} onChange={event => { setFunction(event.target.value as SurfaceFunction); setRegionId(''); setError(''); }}>{(['esp','alie'] as const).map(method=><option key={method} value={method} disabled={inputKind==='wavefunction'&&p.allowedWavefunctionMethods!==undefined&&!p.allowedWavefunctionMethods.includes(method)}>{method.toUpperCase()}</option>)}</select></InputSettingsField>
       <InputSettingsField label="ρ 等值 / a.u."><NumericInput stepper adaptiveStep={0.01} aria-label="密度表面等值"  min={0} step={.0001} value={isovalue} disabled={disabled} onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value > 0) setIsovalue(value); }}/></InputSettingsField></InputSettingsRow>
       {inputKind === 'cubes' && <DismissibleNotice role="alert">旧记录引用了外部 Cube；当前不再支持此输入。请重新选择支持的波函数来源，原文件保留。</DismissibleNotice>}
@@ -414,7 +585,19 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
     </AnalysisTaskSection>
     <AnalysisTaskSection title="面积分布">
       {distributionError && <DismissibleNotice role="alert">{distributionError}</DismissibleNotice>}
-      {displayDistribution && analysis ? <><p className="postprocess-note">{surfaceDistributionSummary(displayDistribution, distributionDecimals)}</p><SurfaceTable projection={surfaceDistributionTable(displayDistribution, distributionDecimals)} fileName={`Ester-Studio-surface-${fn}-distribution.txt`} selectionScope={`distribution:${extremaViewKey}:${distribution?.stamp.requestId}`} format={tableFormat('distribution')}/><InputSettingsField label="纵轴"><select aria-label="表面分布纵轴" value={distributionQuantity} onChange={event => setDistributionQuantity(event.target.value as typeof distributionQuantity)}><option value="area">面积</option><option value="fraction">原生占比</option></select></InputSettingsField><InputSettingsRow><InputSettingsCheckbox label="平滑曲线" checked={distributionAppearance.smooth} onChange={smooth => patchDistributionAppearance({ smooth })}/><InputSettingsCheckbox label="显示原始分箱" checked={distributionAppearance.showBins} onChange={showBins => patchDistributionAppearance({ showBins })}/></InputSettingsRow><ScientificPlot plotStyle="plain" appearanceKey={`surface-distribution:${contextKey}:${distributionAppearanceId}`} onResetDefaults={() => patchDistributionAppearance({ smooth: false, showBins: true })} title={`${SURFACE_FUNCTIONS[fn].label} 面积分布`} xLabel={distributionUnit} yLabel={distributionQuantity === 'area' ? `面积 / ${surfaceDisplayUnit(displayDistribution.areaUnit)}` : '原生占比 / %'} decimals={distributionDecimals} series={surfaceDistributionSeries(displayDistribution, distributionQuantity, distributionDecimals, distributionAppearance)} resetKey={`${analysis.stamp.analysisId}:${region?.selection.id}:${distributionUnit}:${distributionQuantity}`} exportFileName={`Ester-Studio-surface-${fn}-distribution`} exportText={{ fileName: `Ester-Studio-surface-${fn}-distribution.txt`, text: scientificTableText(surfaceDistributionTable(displayDistribution, distributionDecimals)) }}/></> : <p className="postprocess-note">{analysis ? '本次定量分析未返回面积分布数据。' : '尚未分析。'}</p>}
+      {displayDistribution && analysis ? <SurfaceDistributionPlot fn={fn} distribution={displayDistribution} analysisId={p.analysisId}
+        appearanceKey={distributionOwner} figureRecord={histogram}
+        quantity={plotDisplay?.quantity ?? distributionQuantity} smooth={plotDisplay?.smooth ?? savedAppearance?.smooth ?? false}
+        showBins={plotDisplay?.showBins ?? savedAppearance?.showBins ?? true}
+        decimals={distributionDecimals} onQuantityChange={quantity=>updateDistribution({quantity})}
+        onUnitChange={unit=>changeTableUnit('distribution',unit)} onSmoothChange={smooth=>updateDistribution({smooth})}
+        onShowBinsChange={showBins=>updateDistribution({showBins})}>
+        <SurfaceTable projection={surfaceDistributionTable(displayDistribution, distributionDecimals)}
+          fileName={`Ester-Studio-surface-${fn}-distribution.txt`}
+          selectionScope={`distribution:${extremaViewKey}:${distribution?.stamp.requestId}`}
+          format={{...tableFormat('distribution'),hideUnit:true}}/>
+      </SurfaceDistributionPlot>
+        : <p className="postprocess-note">{analysis ? '本次定量分析未返回面积分布数据。' : '尚未分析。'}</p>}
     </AnalysisTaskSection>
     </AnalysisTaskLayout>
     <AnalysisTaskLayout variant="card" methodDetails title="分子表面着色图" testId="surface-mapping-task" onRestorePlotting={restorePlotting} onRestoreQuality={inputKind === 'wavefunction' ? ()=>{setCubePreset('medium');setQuality({mode:'medium'});}:undefined} qualityDisabled={disabled} quality={<CalculationQualityControl label="Cube 绘图质量" ariaLabel="表面Cube绘图精度" value={cubePreset} options={SURFACE_CUBE_QUALITY_OPTIONS} disabled={disabled || inputKind === 'cubes'} onChange={preset => { setCubePreset(preset); setQuality(surfaceCubePreset(preset, quality, generated&&JSON.stringify(generated.quality)===JSON.stringify(quality)?generated.pair.shape.grid:undefined)); }}>
@@ -428,14 +611,29 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps) {
       <InputSettingsRow><InputSettingsCheckbox label="显示表面" checked={display.visible} onChange={visible => patchDisplay({ visible })}/><InputSettingsField label="透明度"><input aria-label="表面透明度" type="range" {...matchingSliderRange(display.opacity,.05,1,.05)} value={display.opacity} onChange={event => patchDisplay({ opacity: Number(event.target.value) })}/><NumericInput stepper adaptiveStep={0.1} aria-label="表面透明度数值"  min={.05} max={1} step={.05} value={display.opacity} onChange={event => { const opacity = event.currentTarget.valueAsNumber; if (Number.isFinite(opacity) && opacity >= .05 && opacity <= 1) patchDisplay({ opacity }); }}/></InputSettingsField><InputSettingsAction disabled={!generated?.pair.shape || !p.bridge.exportCube} onClick={() => exportCube(generated?.pair.shape ?? null)}>导出生成密度 Cube</InputSettingsAction><InputSettingsAction disabled={!generated?.pair.mapping || !p.bridge.exportCube} onClick={() => exportCube(generated?.pair.mapping ?? null)}>导出生成映射 Cube</InputSettingsAction></InputSettingsRow>
       <SurfaceAppearanceControls label="表面" presets={['esp','density']} value={display.appearancePreset} onChange={id=>patchDisplay(mappedSurfaceAppearance(display,id))} actions={<SaveSurfaceAppearanceDefault family={`surface:${fn}`} appearance={captureMappedAppearance(display)}/>}><MeshFinishControls labelPrefix="表面" value={display.finish} onChange={finish => patchDisplay({ finish })}/>{display.coloring==='solid'&&<InputSettingsRow><InputSettingsField label="表面颜色"><input type="color" aria-label="表面单色颜色" value={display.solidColor??'#66cc4d'} onChange={event=>patchDisplay({solidColor:event.currentTarget.value})}/></InputSettingsField></InputSettingsRow>}</SurfaceAppearanceControls>
       </div>
-    {display.coloring!=='solid'&&<div className="field-colorbar-settings" aria-label="色标"><InputSettingsRow><InputSettingsField label="色尺单位"><select aria-label="表面色尺单位" value={colorbarUnit} onChange={event=>changeColorbarUnit(event.target.value)}>{[...new Set([capability?.valueUnit??SURFACE_FUNCTIONS[fn].atomicUnit,...SURFACE_FUNCTIONS[fn].units])].map(unit=><option key={unit} value={unit}>{fn==='esp'&&['eV','kcal/mol','kJ/mol'].includes(unit)?`${unit}/e`:unit}</option>)}</select></InputSettingsField>{(!display.appearancePreset?.startsWith('gallery-'))&&<><InputSettingsField label="色板"><select aria-label="表面色板" value={display.colors?'custom':display.palette} onChange={event => patchDisplay({ palette: event.target.value as SurfaceDisplaySettings['palette'], colors: undefined })}><option value="blue-red">蓝–白–红</option><option value="purple-green">紫–白–绿</option><option value="viridis">Viridis</option>{display.colors&&<option value="custom" disabled>自定义色带</option>}</select></InputSettingsField><InputSettingsCheckbox label="反转色标" checked={display.reverse} onChange={reverse => patchDisplay({ reverse })}/></>}<InputSettingsCheckbox label="锁定范围" checked={display.rangeLocked} onChange={locked => patchDisplay({ rangeLocked: locked, range: locked ? colorRange : undefined })}/><InputSettingsAction onClick={() => { patchDisplay({ range: undefined, rangeLocked: false }); setRangeDraft(['', '']); }}>自适应范围</InputSettingsAction></InputSettingsRow>
-      <AnalysisColorbarLayoutControls layout={display.colorbarLayout} onChange={setColorbarLayout} colorbar={projection?.colorbar}/>
-      {(!display.appearancePreset?.startsWith('gallery-'))&&display.colors&&<InputSettingsRow>{display.colors.map((color,index)=><InputSettingsField key={index} label={['低值','中值','高值'][index]??String(index+1)}><input type="color" aria-label={`表面色带${index+1}颜色`} value={color} onChange={event=>patchDisplay({colors:display.colors!.map((old,position)=>position===index?event.target.value:old)})}/></InputSettingsField>)}</InputSettingsRow>}
-      <InputSettingsRow><div className="analysis-control-group"><InputSettingsField label={`下限 / ${colorbarUnit}`}><NumericInput aria-label="表面色标下限"  value={rangeDraft[0]} placeholder={colorRange ? number(colorRange.min) : ''} onChange={event => setRangeDraft(values => [event.target.value, values[1]])}/></InputSettingsField><InputSettingsField label={`上限 / ${colorbarUnit}`}><NumericInput aria-label="表面色标上限"  value={rangeDraft[1]} placeholder={colorRange ? number(colorRange.max) : ''} onChange={event => setRangeDraft(values => [values[0], event.target.value])}/></InputSettingsField></div><InputSettingsAction onClick={() => { const min = Number(rangeDraft[0]), max = Number(rangeDraft[1]); if (rangeDraft.every(value => value.trim()) && [min, max].every(Number.isFinite) && min < max) patchDisplay({ range: { min, max } }); else notify('请输入递增的有限色标范围。'); }}>应用范围</InputSettingsAction></InputSettingsRow>
+    {display.coloring!=='solid'&&<div className="field-colorbar-settings" aria-label="色标">
+      <InputSettingsRow>
+        <InputSettingsField label="色尺单位"><select aria-label="表面色尺单位" value={colorbarUnit} onChange={event=>changeColorbarUnit(event.target.value)}>{colorbarUnitChoices.map(unit=><option key={unit} value={unit}>{surfaceColorbarUnitLabel(fn, unit)}</option>)}</select></InputSettingsField>
+        {!display.appearancePreset?.startsWith('gallery-')&&<InputSettingsField label="色板"><select aria-label="表面色板" value={display.colors?'custom':display.palette} onChange={event => patchDisplay({ palette: event.target.value as SurfaceDisplaySettings['palette'], colors: undefined })}><option value="blue-red">蓝–白–红</option><option value="purple-green">紫–白–绿</option><option value="viridis">Viridis</option>{display.colors&&<option value="custom" disabled>自定义色带</option>}</select></InputSettingsField>}
+        <InputSettingsCheckbox label="反转色标" checked={display.reverse} onChange={reverse => patchDisplay({ reverse, appearancePreset: 'custom' })}/>
+        <InputSettingsCheckbox label="锁定范围" checked={display.rangeLocked} onChange={locked => patchDisplay({ rangeLocked: locked, range: locked ? colorRange : undefined })}/>
+        <InputSettingsAction onClick={() => { patchDisplay({ range: undefined, rangeLocked: false }); setRangeDraft(['', '']); }}>自适应范围</InputSettingsAction>
+      </InputSettingsRow>
+      <AnalysisColorbarLayoutControls layout={display.colorbarLayout} onChange={setColorbarLayout} colorbar={projection?.colorbar}
+        disabled={p.available === false} palette={{ colors: display.colors ?? ANALYSIS_PALETTES[display.palette], reverse: display.reverse, labelPrefix: '表面',
+          onChange: colors => patchDisplay({ appearancePreset: 'custom', colors }) }}/>
+      {colorbarValues && <output data-testid="surface-colorbar-active-range">
+        {display.range ? '当前手动范围' : '当前自动范围'} {colorbarValues[0]} 至 {colorbarValues[1]} {colorbarUnitLabel}
+      </output>}
+      <InputSettingsRow><div className="analysis-control-group"><InputSettingsField label={`下限草稿 / ${colorbarUnitLabel}`}><NumericInput aria-label="表面色标下限"  value={rangeDraft[0]} placeholder={colorbarValues?.[0] ?? ''} onChange={event => setRangeDraft(values => [event.target.value, values[1]])}/></InputSettingsField><InputSettingsField label={`上限草稿 / ${colorbarUnitLabel}`}><NumericInput aria-label="表面色标上限"  value={rangeDraft[1]} placeholder={colorbarValues?.[1] ?? ''} onChange={event => setRangeDraft(values => [values[0], event.target.value])}/></InputSettingsField></div><InputSettingsAction onClick={() => { const min = Number(rangeDraft[0]), max = Number(rangeDraft[1]); if (rangeDraft.every(value => value.trim()) && [min, max].every(Number.isFinite) && min < max) patchDisplay({ range: { min, max } }); else notify('请输入递增的有限色标范围。'); }}>应用范围</InputSettingsAction></InputSettingsRow>
       {!colorRange && visiblePair?.mapping && <p className="postprocess-note">当前区域尚无可靠表面范围；仅显示形状，可分析后使用自适应色标或明确手动范围。</p>}
     </div>}
     </> : <p className="postprocess-note">尚未生成着色表面。</p>}>
-      {(generated || record?.generation) && <output>已生成：{surfaceQualityLabel(generated?.quality ?? record!.generation!.quality)} · {(generated?.pair.shape.grid.dimensions ?? record!.generation!.dimensions).join(' × ')} 点{qualityChanged ? '；当前设置尚未生成。' : ''}</output>}
+      {visiblePair && <output data-surface-draw-state={!display.visible ? 'hidden' : mesh?.status ?? 'pending'}>
+        {!display.visible ? '格点已就绪，表面已隐藏。' : mesh?.status === 'drawn' ? '表面已绘制。' : mesh?.status === 'failed' ? '格点已就绪。' : '格点已就绪，正在绘制表面…'}
+      </output>}
+      {visiblePair && display.visible && mesh?.status === 'failed' && <MultiwfnErrorNotice label="表面绘制失败" message={mesh.error ?? '当前等值未形成可绘制的表面。'} identity={mesh}/>}
+      {(generated || record?.generation) && <output>格点数据 {surfaceQualityLabel(generated?.quality ?? record!.generation!.quality)} · {(generated?.pair.shape.grid.dimensions ?? record!.generation!.dimensions).join(' × ')} 点{qualityChanged ? '；当前设置尚未生成。' : ''}</output>}
     </AnalysisTaskLayout>
   </InputSettingsLayout></section>;
 }

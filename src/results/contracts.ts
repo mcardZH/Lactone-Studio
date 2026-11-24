@@ -49,7 +49,20 @@ export interface ResultConvergence {
   converged: boolean | null;
   unit: string | null;
 }
+/** Native PES identity stays with one scientific frame through any stage/order projection. */
+export interface PesResultFrameOrigin {
+  groupId: string;
+  nodeId: string;
+  taskId: string;
+  runId: string;
+  recordId?: string;
+  seriesId: string;
+  frameId: string;
+}
 export interface ResultFrameSummary {
+  pesOrigin?: PesResultFrameOrigin;
+  /** A geometry-only producer may carry its input graph with new coordinates. */
+  sourceBondGraph?: 'inherited';
   /** Original geometry asset/frame, including projections assembled from multiple native files. */
   geometrySource?: { id: string; name: string; sourceFrameIndex: number; sourceLine: number };
   /** Half the last printed coordinate digit, in Å, for this source geometry. */
@@ -95,6 +108,12 @@ export interface TrajectoryResult {
   jobIndex: number;
   status: ResultStatus;
   messages: string[];
+  /** Original producer identity for a read-only recovered geometry collection. */
+  recoveredComputation?: {
+    kind: 'sampling' | 'optimization'; id: string; taskId: string; runId: string; phase: string;
+    stageId?: string; segmentId?: string; revision?: number; projectId?: string; sourceDocumentId?: string;
+    method?: string; originalRecords: number; verifiedRecords: number; biasDeposits?: number;
+  };
   scientific?: ScientificData;
   /** Other jobs in the same file that have no ordinary geometry. Plain data,
    * preserved by geometry-only consumers and project snapshots. */

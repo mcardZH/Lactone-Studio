@@ -1,16 +1,19 @@
 import type { CalculationRangeFeedback } from '../../results/calculation-range';
-import type { Structure } from '../../core/types';
+import type { Atom, Structure } from '../../core/types';
 import type { ViewerHighlights } from '../../core/display-highlights';
 import { getFrozenAtomIds } from '../../core/modeling';
+import { coordinateSelectionObjects } from '../../core/modeling/coordinate-selection';
 import { drawFreezeMarker } from '../modeling/freeze-marker-presentation';
+import { modelHighlights } from '../modeling/render/display';
 import type { MultiframeDisplayPlan, SamplingSphereDisplay } from '../../modeling/view-multiframe';
 import { assertResultNotAborted, trajectoryIndices, type TrajectoryRange, type TrajectoryResult } from '../../results/contracts';
 import { StoredZipWriter, type ResultByteSink } from '../../results/export';
 import { createGifEncoder } from '../../results/gif';
-import {getPreparedTrajectoryFrame} from '../../results/prepared-trajectory';
+import {readTrajectoryDisplayFrame} from '../../results/prepared-trajectory';
 import type { DisplaySettings, MeasurementState, ModelDocument } from '../../modeling/contracts';
 import { createRenderAdapter } from '../modeling/render/adapter';
-import { workspaceDefaultBackgroundColor } from '../modeling/render/viewport-background';
+import { cipStructureForDisplay, prepareCarbonCipLabels } from '../modeling/render/stereochemistry';
+import { workspaceDefaultBackgroundColor, viewportDefaultBackgroundColor } from '../modeling/render/viewport-background';
 import type { RenderFeedbackOptions, ViewportAtomScalarValue, ViewportDipoleVector, ViewportVibrationVector } from '../modeling/render/adapter';
 import type { ViewportOrbitalLayer } from '../../results/orbital-contracts';
 import type { SurfaceProjection } from './surface-controls-contracts';
@@ -116,7 +119,7 @@ export async function exportFrameImages(result: TrajectoryResult, range: Traject
   try {
     for (const [ordinal, index] of indices.entries()) {
       assertResultNotAborted(options.signal);
-      const structure = getPreparedTrajectoryFrame(result,index)?.structure ?? await result.getFrame(index, options.signal);
+      const structure = await readTrajectoryDisplayFrame(result,index,options.signal);
       assertResultNotAborted(options.signal);
       const source = await capture.capture(structure, index, options.signal);
       assertResultNotAborted(options.signal);
@@ -159,8 +162,12 @@ export interface OffscreenCaptureSnapshot extends CalculationRangeFeedback {
   linkedAtomsActive?:boolean;
   legend?:ViewportLegendSnapshot;
   multiframeDisplay?: MultiframeDisplayPlan;
+  fixedCellView?:boolean;
   samplingSphere?: SamplingSphereDisplay;
   document: ModelDocument; cameraView: number[]; display: DisplaySettings; showAxes: boolean;
+  /** Already presented display coordinates, with topology owned by document. */
+  displayAtoms?: Atom[];
+  cipStructure?: Structure|null;
   width: number; height: number; viewportWidth?: number; viewportHeight?: number; measurement?: MeasurementState;
   /** Pixel dimensions are the rendering viewport, not an image stretch. */
   exactDimensions?:boolean; transparent?:boolean;
@@ -188,6 +195,7 @@ export interface OffscreenCaptureSnapshot extends CalculationRangeFeedback {
   resultAtomLabels?:readonly ViewportResultAtomLabel[];
   resultHighlights?:ViewportResultHighlights;
   resultColorbar?:AnalysisColorbar;
+  includeStateMarkers?: boolean;
   atomProperty?: AtomicProperty; atomicProperties?: readonly AtomicProperty[];
   /** Only derived display phases can share one confirmed parent geometry's property. */
   scalarSourceFrameIndex?: number;
@@ -211,11 +219,21 @@ export function viewportImageSnapshot(input: OffscreenCaptureSnapshot, includeAn
   return { ...input, display: { ...input.display, atomNumbers: false, elementNames: false, stereochemistry: false, regionLabels: false,
     frozenMarks: false, scanMarks: false, measurementMarks: false }, measurement: undefined, atomScalarLabels: false,
     surfaceExtrema: input.surfaceExtrema === undefined ? undefined : null, resultBondLabels: false, resultAtomLabels: [],
-    resultHighlights: input.resultHighlights ? { atomIds: [], bondPairs: [] } : undefined, annotation: undefined };
+    resultHighlights: input.resultHighlights ? { atomIds: [], bondPairs: [] } : undefined, includeStateMarkers: false, annotation: undefined };
 }
 /** Resolve the current screen's absent background only in the export copy. */
 export function currentViewportImageSnapshot(input:OffscreenCaptureSnapshot,owner:Document):OffscreenCaptureSnapshot {
   return input.display.backgroundColor===undefined?{...input,display:{...input.display,backgroundColor:workspaceDefaultBackgroundColor(owner)}}:input;
+}
+export function viewportImageDisplay(display:DisplaySettings,viewport:HTMLElement):DisplaySettings {
+  return display.backgroundColor===undefined?{...display,backgroundColor:viewportDefaultBackgroundColor(viewport)}:display;
+}
+export function displayedImageStructure(snapshot: Pick<OffscreenCaptureSnapshot,'document'|'displayAtoms'>): Structure {
+  const base=snapshot.document.draft.structure, atoms=snapshot.displayAtoms;
+  if(!atoms)return base;
+  if(atoms.length!==base.atoms.length||atoms.some((atom,index)=>atom.id!==base.atoms[index].id||atom.element!==base.atoms[index].element||![atom.x,atom.y,atom.z].every(Number.isFinite)))
+    throw new Error('图片的显示坐标与当前帧原子不一致。');
+  return {...base,atoms};
 }
 /** SVG is an explicitly declared PNG image wrapper, not vector molecular geometry. */
 export function canvasEmbeddedSvg(canvas: HTMLCanvasElement): Blob {
@@ -227,9 +245,10 @@ export function canvasEmbeddedSvg(canvas: HTMLCanvasElement): Blob {
 /** Shared public capture path for modeling, analysis and their own renderer windows. */
 export async function exportViewportImage(input: OffscreenCaptureSnapshot, options: ViewportImageExportOptions, ownerDocument: Document, signal?: AbortSignal): Promise<Blob> {
   const snapshot = viewportImageSnapshot({ ...currentViewportImageSnapshot(input,ownerDocument), width:options.width??input.width,height:options.height??input.height,exactDimensions:options.width!==undefined||options.height!==undefined,transparent:options.transparent??false, viewportWidth: options.viewportWidth ?? input.viewportWidth, viewportHeight: options.viewportHeight ?? input.viewportHeight, measurement: options.measurement ?? input.measurement, legend: options.legend ?? input.legend }, options.includeAnnotations);
+  const structure=displayedImageStructure(snapshot.displayAtoms?{...snapshot,displayAtoms:structuredClone(snapshot.displayAtoms)}:snapshot);
   const capture = await createOffscreenCapture(snapshot, signal, ownerDocument);
   try {
-    const canvas = await capture.capture(snapshot.document.draft.structure, snapshot.document.revision, signal);
+    const canvas = await capture.capture(structure, snapshot.document.revision, signal);
     assertResultNotAborted(signal);
     return options.format === 'svg' ? canvasEmbeddedSvg(canvas) : await canvasPng(canvas, signal);
   } finally { await capture.dispose(); }
@@ -237,9 +256,10 @@ export async function exportViewportImage(input: OffscreenCaptureSnapshot, optio
 /** A trajectory's current PNG uses the same framing as its sequence export.
  * The caller supplies the displayed snapshot, with no playback or source read. */
 export async function captureTrajectoryViewportPng(input: OffscreenCaptureSnapshot, ownerDocument: Document, signal?: AbortSignal): Promise<Blob> {
+  const structure=displayedImageStructure(input.displayAtoms?{...input,displayAtoms:structuredClone(input.displayAtoms)}:input);
   const capture = await createOffscreenCapture(currentViewportImageSnapshot(input,ownerDocument), signal, ownerDocument);
   try {
-    const source = await capture.capture(input.document.draft.structure, input.document.revision, signal);
+    const source = await capture.capture(structure, input.document.revision, signal);
     assertResultNotAborted(signal);
     const { canvas } = fittedFrameCanvas(source, input.width, input.height);
     try { return await canvasPng(canvas, signal); }
@@ -252,22 +272,24 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
   assertResultNotAborted(signal);
   // The workspace request also carries source readers/callbacks/AbortSignal.
   // Clone only the explicit render data, never the executable source handle.
-  const snapshot: OffscreenCaptureSnapshot = structuredClone({ document: input.document, cameraView: input.cameraView,
-    display: input.display, displayFrozenAtomIds:input.displayFrozenAtomIds,stateMarkers:input.stateMarkers,highlights:input.highlights,linkedAtomsActive:input.linkedAtomsActive,legend:input.legend,hiddenAtomIds:input.hiddenAtomIds, multiframeDisplay: input.multiframeDisplay, samplingSphere: input.samplingSphere, calculationRanges:input.calculationRanges, previewGuides:input.previewGuides,previewCell:input.previewCell,cellGuides:input.cellGuides, showAxes: input.showAxes, width: input.width, height: input.height,
+  const snapshot: OffscreenCaptureSnapshot = structuredClone({ document: input.document, cipStructure:input.cipStructure, cameraView: input.cameraView,
+    display: input.display, displayFrozenAtomIds:input.displayFrozenAtomIds,stateMarkers:input.stateMarkers,highlights:input.highlights,linkedAtomsActive:input.linkedAtomsActive,legend:input.legend,hiddenAtomIds:input.hiddenAtomIds, multiframeDisplay: input.multiframeDisplay, fixedCellView:input.fixedCellView, samplingSphere: input.samplingSphere, calculationRanges:input.calculationRanges, previewGuides:input.previewGuides,previewCell:input.previewCell,cellGuides:input.cellGuides, showAxes: input.showAxes, width: input.width, height: input.height,
     exactDimensions:input.exactDimensions,transparent:input.transparent,
     viewportWidth: input.viewportWidth, viewportHeight: input.viewportHeight, measurement: input.measurement,
     viewBonds: input.viewBonds, resultKind: input.resultKind, displayGeometry: input.displayGeometry,
     vibrationBaseStructure: input.vibrationBaseStructure, vibrationVectors: input.vibrationVectors,
     atomProperty: input.atomProperty, atomicProperties: input.atomicProperties, scalarSourceFrameIndex: input.scalarSourceFrameIndex, annotation: input.annotation,
     orbitalLayer: input.orbitalLayer, ntoLayer: input.ntoLayer, surfaceLayer: input.surfaceLayer, surfaceLayers: input.surfaceLayers, surfaceExtrema: input.surfaceExtrema,
-    atomScalarValues: input.atomScalarValues, atomScalarColor: input.atomScalarColor, atomScalarLabels: input.atomScalarLabels, dipoleVector: input.dipoleVector, viewTransform: input.viewTransform,
-    resultBondValues:input.resultBondValues,resultBondLabels:input.resultBondLabels,resultBondColor:input.resultBondColor,resultAtomLabels:input.resultAtomLabels,resultHighlights:input.resultHighlights,resultColorbar:input.resultColorbar });
+    atomScalarValues: input.atomScalarValues, atomScalarColor: input.atomScalarColor, atomScalarLabels: input.atomScalarLabels, dipoleVector: input.dipoleVector, viewTransform: input.fixedCellView?undefined:input.viewTransform,
+    resultBondValues:input.resultBondValues,resultBondLabels:input.resultBondLabels,resultBondColor:input.resultBondColor,resultAtomLabels:input.resultAtomLabels,resultHighlights:input.resultHighlights,resultColorbar:input.resultColorbar,includeStateMarkers:input.includeStateMarkers });
   validateImageBudget({ format: 'png', width: snapshot.width, height: snapshot.height }, 1);
   const vibrationBase = snapshot.displayGeometry === 'vibration'
     ? snapshot.vibrationBaseStructure ?? snapshot.document.draft.structure : undefined;
   // Resolve the parent graph once. Display phases never infer reaction edges.
-  const vibrationTopology = vibrationBase && applyViewBondSnapshot(
-    await prepareViewBondSnapshot(vibrationBase, snapshot.scalarSourceFrameIndex ?? snapshot.document.revision,signal), vibrationBase).structure;
+  const parent=snapshot.document.draft.structure;
+  const vibrationTopology = vibrationBase && (parent.bonds!==undefined&&parent.atoms.length===vibrationBase.atoms.length&&
+    parent.atoms.every((atom,index)=>atom.id===vibrationBase.atoms[index].id&&atom.element===vibrationBase.atoms[index].element)
+    ?parent:applyViewBondSnapshot(await prepareViewBondSnapshot(vibrationBase,snapshot.scalarSourceFrameIndex??snapshot.document.revision,signal),vibrationBase).structure);
   const host = ownerDocument.createElement('div');
   const aspect = (snapshot.viewportWidth ?? snapshot.width) / (snapshot.viewportHeight ?? snapshot.height);
   if (!Number.isFinite(aspect) || aspect <= 0) throw new Error('原视口尺寸无效。');
@@ -276,15 +298,17 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
   host.style.cssText = `position:fixed;left:-10000px;top:0;width:${width}px;height:${height}px;pointer-events:none;overflow:hidden;`;
   host.setAttribute('aria-hidden', 'true'); ownerDocument.body.append(host);
   let adapter: Awaited<ReturnType<typeof createRenderAdapter>> | undefined;
+  let meshFailure:unknown;
   let disposed = false;
   const output = ownerDocument.createElement('canvas');
   const dispose = () => { if (disposed) return; disposed = true; try { adapter?.dispose(); } finally { host.remove(); output.width = 0; output.height = 0; } };
   try {
-    adapter = await createRenderAdapter(host,{backgroundAlpha:snapshot.transparent?0:1}); assertResultNotAborted(signal);
+    adapter = await createRenderAdapter(host,{backgroundAlpha:snapshot.transparent?0:1,asyncMeshes:true,onAsyncMeshError:error=>{meshFailure=error;}}); assertResultNotAborted(signal);
     return {
       async capture(structure, index, frameSignal) {
         if (disposed) throw new Error('导出视图已释放。');
         assertResultNotAborted(signal); assertResultNotAborted(frameSignal);
+        meshFailure=undefined;
         const matchesAtoms = (base: Structure) => {
           const ids = new Set(base.atoms.map(atom => atom.id));
           return ids.size === base.atoms.length && base.atoms.length === structure.atoms.length
@@ -308,12 +332,18 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
         const hidden=new Set(snapshot.hiddenAtomIds),visible=(ids:readonly string[])=>ids.every(id=>!hidden.has(id));
         const rawPresentation=resultSelectionPresentation(renderedStructure,sameGeometry?snapshot.resultHighlights:undefined),resultPresentation={...rawPresentation,records:rawPresentation.records.filter(row=>visible(row.atomIds)),markers:rawPresentation.markers.filter(row=>visible(row.atomIds))};
         const values = sameGeometry && snapshot.atomScalarValues ? snapshot.atomScalarValues : property ? atomicScalars(property, renderedStructure, propertyFrame) : [];
-        const draw=adapter!.drawAsync?.bind(adapter)??adapter!.draw.bind(adapter);await draw(frameDocument, snapshot.display, snapshot.highlights, undefined, snapshot.viewTransform, snapshot.measurement, { displayFrozenAtomIds:snapshot.displayFrozenAtomIds,linkedAtomsActive:snapshot.linkedAtomsActive,hiddenAtomIds:snapshot.hiddenAtomIds, multiframeDisplay: snapshot.multiframeDisplay, samplingSphere: snapshot.samplingSphere, calculationRanges:snapshot.calculationRanges, previewGuides:snapshot.previewGuides,previewCell:snapshot.previewCell,cellGuides:snapshot.cellGuides, vibrationVectors: sameGeometry ? snapshot.vibrationVectors : undefined, atomScalarValues: values.length ? values : undefined, atomScalarColor: snapshot.atomScalarColor, atomScalarLabels: snapshot.atomScalarLabels, dipoleVector: sameGeometry ? snapshot.dipoleVector : undefined,displaySelectionAtomIds:resultPresentation.atomIds,displayMeasurementRecords:resultPresentation.records },signal??frameSignal);
+        const captureSignal=signal&&frameSignal&&signal!==frameSignal?AbortSignal.any([signal,frameSignal]):signal??frameSignal;
+        const cipStructure=surfaceGeometry?snapshot.cipStructure:snapshot.cipStructure===undefined?undefined:null;
+        if(snapshot.display.stereochemistry)await prepareCarbonCipLabels(cipStructureForDisplay(renderedStructure,cipStructure),captureSignal);
+        const draw=adapter!.drawAsync?.bind(adapter)??adapter!.draw.bind(adapter);await draw(frameDocument, snapshot.display, snapshot.highlights, undefined, snapshot.viewTransform, snapshot.measurement, { displayFrozenAtomIds:snapshot.displayFrozenAtomIds,linkedAtomsActive:snapshot.linkedAtomsActive,hiddenAtomIds:snapshot.hiddenAtomIds, multiframeDisplay: snapshot.multiframeDisplay, fixedCellView:snapshot.fixedCellView, initialFixedCellCamera:snapshot.cameraView, samplingSphere: snapshot.samplingSphere, calculationRanges:snapshot.calculationRanges, previewGuides:snapshot.previewGuides,previewCell:snapshot.previewCell,cellGuides:snapshot.cellGuides, vibrationVectors: sameGeometry ? snapshot.vibrationVectors : undefined, atomScalarValues: values.length ? values : undefined, atomScalarColor: snapshot.atomScalarColor, atomScalarLabels: snapshot.atomScalarLabels, dipoleVector: sameGeometry ? snapshot.dipoleVector : undefined,displaySelectionAtomIds:resultPresentation.atomIds,displayMeasurementRecords:resultPresentation.records,cipStructure },captureSignal);
         // Parent wavefunction fields do not become valid for displaced atoms.
         if (snapshot.ntoLayer) adapter!.setNtoLayer(surfaceGeometry ? snapshot.ntoLayer : null);
-        else if (snapshot.orbitalLayer && !vibrationBase) adapter!.setOrbitalLayer(snapshot.orbitalLayer);
+        else if (snapshot.orbitalLayer !== undefined) adapter!.setOrbitalLayer(surfaceGeometry ? snapshot.orbitalLayer : null);
         if (snapshot.surfaceLayers !== undefined) adapter!.setSurfaceLayers(surfaceGeometry ? snapshot.surfaceLayers : []);
         else if (snapshot.surfaceLayer !== undefined) adapter!.setSurfaceLayer(surfaceGeometry ? snapshot.surfaceLayer : null);
+        await adapter!.awaitMeshes?.(captureSignal);
+        assertResultNotAborted(captureSignal);
+        if(meshFailure)throw meshFailure;
         if (surfaceGeometry && snapshot.ntoLayer?.visible) {
           const state = adapter!.ntoMeshState?.(), expected = ntoMeshKey(snapshot.ntoLayer, snapshot.viewTransform ?? identityTransform());
           if (state?.status !== 'committed' || !state.submitted || state.fieldId !== snapshot.ntoLayer.field.id || state.attemptKey !== expected || state.committedKey !== expected || !(state.vertexCount > 0 && state.triangleCount > 0))
@@ -353,29 +383,41 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
           for(const label of projectResultMeasurementLabels(renderedStructure,resultPresentation.records,adapter!.project,offset)){const body=resultMeasurementValueLabel(label.record,label.valueLabel,snapshot.resultBondValues);resultLabels.push({id:resultLabelTargetKey('pair',label.record.atomIds),presentation:resultLabelPresentation(resultTargetLabel(renderedStructure,label.record.atomIds,body)??body,label,'center',snapshot.display.fontSize),target:{x:label.x,y:label.y},bond:true});}
           for(const label of projectResultBondLabels(renderedStructure,(snapshot.resultBondValues??[]).filter(row=>snapshot.resultBondLabels&&visible(row.atomIds)&&!resultPresentation.records.some(record=>record.atomIds.every(id=>row.atomIds.includes(id)))),adapter!.project,offset))resultLabels.push({id:resultLabelTargetKey('pair',label.atomIds),presentation:resultLabelPresentation(resultTargetLabel(renderedStructure,label.atomIds,label.valueLabel)??label.valueLabel,label,'center',snapshot.display.fontSize),target:{x:label.x,y:label.y},bond:true});
         }
-        if(sameGeometry&&snapshot.resultHighlights){
+        if(sameGeometry&&snapshot.resultBondColor){
           const bounds=host.getBoundingClientRect(),offset={x:bounds.left,y:bounds.top};
           context.save();
-          if(snapshot.resultBondColor)for(const row of projectResultBondColors(renderedStructure,(snapshot.resultBondValues??[]).filter(row=>visible(row.atomIds)),adapter!.project,offset)){context.strokeStyle=row.color;context.lineWidth=4;context.beginPath();context.moveTo(row.x1,row.y1);context.lineTo(row.x2,row.y2);context.stroke();}
-          // Same marker anchors and glyph as ModelViewport, with no green
-          // analysis-specific circles or invented graph lines in the capture.
-          for(const marker of projectStateMarkers(renderedStructure.atoms,resultPresentation.markers,adapter!.project,offset,renderedStructure)){
-            context.fillStyle='#ffe87ad9';context.strokeStyle='#946b00';context.lineWidth=1;context.beginPath();context.arc(marker.x,marker.y,8.5,0,Math.PI*2);context.fill();context.stroke();
-            context.fillStyle='#946b00';context.font='bold 12px system-ui';context.textAlign='center';context.textBaseline='middle';context.fillText('✓',marker.x,marker.y);
-          }
+          for(const row of projectResultBondColors(renderedStructure,(snapshot.resultBondValues??[]).filter(row=>visible(row.atomIds)),adapter!.project,offset)){context.strokeStyle=row.color;context.lineWidth=4;context.beginPath();context.moveTo(row.x1,row.y1);context.lineTo(row.x2,row.y2);context.stroke();}
           context.restore();
         }
         if(sameGeometry&&(!(snapshot.surfaceLayer||snapshot.surfaceLayers?.length||snapshot.surfaceExtrema)||surfaceGeometry)&&snapshot.resultColorbar){
           drawAnalysisColorbar(context,snapshot.resultColorbar,{width,height},{width:snapshot.viewportWidth??width,height:snapshot.viewportHeight??height});
         }
-        const frozenMarkers=snapshot.display.frozenMarks
-          ? (snapshot.stateMarkers?.filter(marker=>marker.kind==='freeze') ??
-            [...new Set(snapshot.displayFrozenAtomIds??getFrozenAtomIds(frameDocument))].map(atomId=>({id:`freeze:${atomId}`,kind:'freeze' as const,atomIds:[atomId]})))
-          : [];
-        if(frozenMarkers.length){
-          const bounds=host.getBoundingClientRect(),offset={x:bounds.left,y:bounds.top};
-          for(const marker of projectStateMarkers(renderedStructure.atoms,frozenMarkers.filter(marker=>visible(marker.atomIds)),adapter!.project,offset,renderedStructure))
-            drawFreezeMarker(context,marker.x,marker.y,marker.inactive);
+        if(snapshot.includeStateMarkers!==false){
+          const highlights=modelHighlights(frameDocument,snapshot.highlights,snapshot.displayFrozenAtomIds);
+          const own=snapshot.stateMarkers??[
+            ...[...new Set(snapshot.displayFrozenAtomIds??getFrozenAtomIds(frameDocument))].map(atomId=>({id:`freeze:${atomId}`,kind:'freeze' as const,atomIds:[atomId]})),
+            ...(highlights.frozenCoordinates??[]).map(row=>({id:`freeze-coordinate:${row.id}`,kind:'freeze' as const,atomIds:row.atoms.map(index=>renderedStructure.atoms[index]?.id??'')})),
+            ...(highlights.scan??[]).map(row=>({id:`scan:${row.id}`,kind:'scan' as const,atomIds:row.atoms.map(index=>renderedStructure.atoms[index]?.id??'')})),
+          ];
+          const markers:ViewportStateMarker[]=[
+            ...resultPresentation.markers,
+            ...frameDocument.selection.atomIds.filter(id=>!own.some(marker=>marker.kind==='selection'&&marker.atomIds.includes(id))).map(id=>({id:`selection:${id}`,kind:'selection' as const,atomIds:[id]})),
+            ...coordinateSelectionObjects(frameDocument).filter(row=>frameDocument.selection.coordinateIds?.includes(row.id)).map(row=>({id:`selection-coordinate:${row.id}`,kind:'selection' as const,coordinateId:row.id,atomIds:row.atomIds})),
+            ...own,
+          ];
+          const shown=markers.filter(marker=>visible(marker.atomIds)&&(marker.kind==='selection'||(marker.kind==='freeze'?snapshot.display.frozenMarks:snapshot.display.scanMarks)));
+          if(shown.length){
+            const bounds=host.getBoundingClientRect(),offset={x:bounds.left,y:bounds.top};
+            context.save();
+            for(const marker of projectStateMarkers(renderedStructure.atoms,shown,adapter!.project,offset,renderedStructure)){
+              if(marker.kind==='freeze'){drawFreezeMarker(context,marker.x,marker.y,marker.inactive);continue;}
+              const selection=marker.kind==='selection',ink=selection?'#946b00':'#b85424';
+              context.fillStyle=selection?'#ffe87ad9':'#fff1e6eb';context.strokeStyle=ink;context.lineWidth=1;
+              context.beginPath();context.arc(marker.x,marker.y,8.5,0,Math.PI*2);context.fill();context.stroke();
+              context.fillStyle=ink;context.font='bold 12px system-ui';context.textAlign='center';context.textBaseline='middle';context.fillText(selection?'✓':'S',marker.x,marker.y);
+            }
+            context.restore();
+          }
         }
         if (snapshot.display.measurementMarks && snapshot.measurement || resultPresentation.records.length) {
           const state = snapshot.measurement, count = state?.atomIds.length ?? 0;

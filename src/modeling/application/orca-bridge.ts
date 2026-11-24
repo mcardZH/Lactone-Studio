@@ -148,16 +148,6 @@ function coordinateRows(coordinates: ModelCoordinate[], settings: OrcaSettings, 
     && !mapped.some(current => current.type === row.type && current.action === row.action && JSON.stringify(current.atomIds) === JSON.stringify(row.atomIds))).map(clone)];
 }
 
-/** Until the forcefield port accepts explicit targets, do not freeze a different geometry. */
-export function assertOrcaForcefieldTargets(structure: Structure, coordinates: ModelCoordinate[]): void {
-  for (const row of coordinates) {
-    if (row.source !== 'orca' || row.action !== 'freeze' || row.value === undefined) continue;
-    const actual = builderCoordinateValue(structure, row.type, row.atomIds);
-    const difference = row.type === 'D' ? Math.abs((((actual - row.value + 180) % 360 + 360) % 360) - 180) : Math.abs(actual - row.value);
-    if (difference > (row.type === 'B' ? 1e-6 : 1e-4)) throw new Error(`ORCA ${row.type} 冻结目标 ${row.value} 与当前几何 ${actual.toFixed(6)} 不同；请先用几何编辑落实目标，再整理力场。建模和输入导出仍保留原目标。`);
-  }
-}
-
 /** Commit only after checking the immutable baseline and genuine surviving IDs. */
 export function integrateOrcaBuilderResult(original: Structure | null, result: OrcaApplyResult, previous: OrcaSettings): OrcaBuilderIntegration {
   const structure = clone(result.structure), ids = validateIds(structure), settings = clone(previous);

@@ -1,6 +1,7 @@
 import type { Vector3 } from '../../core/types';
 import { BOHR_TO_ANGSTROM } from '../../core/orca/assets';
-import type { SurfaceAreaDistribution, SurfaceContext, SurfaceExtremum, SurfaceMetric, SurfaceRegionResult } from '../../results/surface-contracts';
+import type { SurfaceAreaDistribution, SurfaceContext, SurfaceExtremum, SurfaceFunction, SurfaceMetric, SurfaceRegionResult } from '../../results/surface-contracts';
+import { convertSurfaceMappingValue } from '../../results/surface-field';
 import type { ScientificTableProjection } from './scientific-table';
 import type { ScientificPlotPoint, ScientificPlotSeries } from './ScientificPlot';
 import { DEFAULT_RESULT_DECIMALS, formatResultValue as number } from '../../results/numeric-format';
@@ -11,6 +12,10 @@ export function surfaceDisplayUnit(unit: string | null): string {
   if (unit == null) return '未输出';
   const lengthPower = /^(?:angstrom|ångström|å)\s*(?:\^|\*\*)?\s*([23²³])$/iu.exec(unit.trim());
   return lengthPower ? `Å${lengthPower[1] === '2' || lengthPower[1] === '²' ? '²' : '³'}` : unit;
+}
+/** The energy conversion is per unit charge for ESP. Keep the native unit token for conversion. */
+export function surfaceColorbarUnitLabel(fn: SurfaceFunction, unit: string): string {
+  return fn === 'esp' && ['eV', 'kcal/mol', 'kJ/mol'].includes(unit) ? `${unit}/e` : surfaceDisplayUnit(unit);
 }
 export function surfaceDistributionSummary(distribution: SurfaceAreaDistribution, decimals = DEFAULT_RESULT_DECIMALS): string {
   const basis = distribution.denominator.scope === 'molecule' ? '全分子面积' : distribution.denominator.scope === 'selected-region' ? '所选区域面积' : '占比分母面积';
@@ -80,17 +85,29 @@ export function surfaceDistributionTable(distribution: SurfaceAreaDistribution, 
   return { columns: [{ key: 'interval', label: `区间 / ${surfaceDisplayUnit(distribution.valueUnit)}`, heading: '区间', headerUnit: surfaceDisplayUnit(distribution.valueUnit) }, { key: 'area', label: `面积 / ${surfaceDisplayUnit(distribution.areaUnit)}`, heading: '面积', headerUnit: surfaceDisplayUnit(distribution.areaUnit) }, { key: 'fraction', label: '占比 / %', heading: '占比', headerUnit: '%' }],
     rows: distribution.bins.map((bin, index) => ({ key: String(index), cells: [`${bin.lowerInclusive ? '[' : '('}${number(bin.lower, decimals)}, ${number(bin.upper, decimals)}${bin.upperInclusive ? ']' : ')'}`, number(bin.area, decimals), number(bin.fraction == null ? null : bin.fraction * 100, decimals)] })) };
 }
+export function projectSurfaceDistribution(distribution: SurfaceAreaDistribution, fn: SurfaceFunction, unit: string): SurfaceAreaDistribution {
+  if (unit === distribution.valueUnit) return distribution;
+  const convert = (value:number) => convertSurfaceMappingValue(value, fn, distribution.valueUnit, unit);
+  return {...distribution, valueUnit:unit, bins:distribution.bins.map(bin=>({...bin,lower:convert(bin.lower),upper:convert(bin.upper)}))};
+}
+
 /** Native areas over explicit intervals, never a vertex-count histogram. */
-export function surfaceDistributionSeries(distribution: SurfaceAreaDistribution, quantity: 'area' | 'fraction', decimals = DEFAULT_RESULT_DECIMALS, appearance: { smooth?: boolean; showBins?: boolean } = {}): ScientificPlotSeries[] {
+export function surfaceDistributionSeries(distribution: SurfaceAreaDistribution, quantity: 'area' | 'fraction', decimals = DEFAULT_RESULT_DECIMALS, appearance: { smooth?: boolean; showBins?: boolean; showCenters?: boolean } = {}): ScientificPlotSeries[] {
   const points = distribution.bins.map((bin) => {
     const y = quantity === 'area' ? bin.area : bin.fraction == null ? null : bin.fraction * 100;
     const unit = quantity === 'area' ? surfaceDisplayUnit(distribution.areaUnit) : '%';
     return { x: bin.lower, xEnd: bin.upper, y, label: `${number(bin.lower, decimals)} ${surfaceDisplayUnit(distribution.valueUnit)} · ${number(y, decimals)} ${unit}` };
   });
-  const centers = points.map(point => ({ ...point, x: (point.x + point.xEnd) / 2 }));
-  const line = appearance.smooth ? shapePreservingDistribution(points) : centers;
-  return [...(appearance.showBins === false ? [] : [{ id: 'surface-distribution', label: '原始分箱', kind: 'histogram' as const, color: '#397a9a', points }]),
-    { id: 'surface-distribution-centers', label: appearance.smooth ? '平滑曲线' : '分箱中心', kind: 'line', color: '#397a9a', showPoints: false, points: line }];
+  const plot:ScientificPlotSeries[]=[];
+  if (appearance.showBins !== false) plot.push({id:'surface-distribution', label:appearance.showCenters===false?'Native bins':'原始分箱', kind:'histogram', color:'#397a9a',
+    points:points.map((point,index)=>({...point,readoutId:index+1}))});
+  if (appearance.smooth || appearance.showCenters !== false) {
+    const line = appearance.smooth ? shapePreservingDistribution(points)
+      : points.map(point => ({...point, x:(point.x+point.xEnd)/2}));
+    plot.push({id:'surface-distribution-centers', label:appearance.showCenters===false?'Smoothed profile':appearance.smooth?'平滑曲线':'分箱中心',
+      kind:'line',color:appearance.showCenters===false?'#264b43':'#397a9a',showPoints:false,points:line});
+  }
+  return plot;
 }
 
 /** Display-only PCHIP at native bin centers. Runs stop at missing bins or interval

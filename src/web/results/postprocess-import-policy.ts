@@ -52,8 +52,13 @@ export async function preparePostprocessFileIncoming(incoming: readonly Postproc
   if (waves.length > 1) throw Error('多个波函数来源保独立，不能自动覆盖。');
   let wavefunction = waves[0] ?? (base && isScientificFileDocument(base) ? base.wavefunction : undefined);
   const companions: PostprocessAttachment[] = [], sourceWarnings: PostprocessSourceWarning[] = [];
+  const warn = (sourceId: string, code: PostprocessSourceWarning['code'], message: string) => {
+    if (!sourceWarnings.some(row => row.sourceId === sourceId && row.code === code)) sourceWarnings.push({ sourceId, code, message });
+  };
   const fileSource = owner.source;
   const selected = postprocessFileJob(fileSource);
+  const computedJob = selected && 'frames' in selected ? selected : undefined;
+  let hessEnriched: TrajectoryResult | undefined;
   const contexts = fileSource.ircContexts.flatMap(context => {
     const job = fileSource.jobs.find(job => job.id === context.outputId);
     return job && job.jobIndex !== null ? [{ ...context, output: job as IrcOutputSource }] : [];
@@ -65,37 +70,76 @@ export async function preparePostprocessFileIncoming(incoming: readonly Postproc
   for (const attachment of auxiliary) {
     if (attachment.source.kind === 'fchk' || attachment.source.kind === 'molden') { companions.push(attachment); continue; }
     const sourceId = attachment.source.result.source.id; if (seen.has(sourceId)) continue; seen.add(sourceId);
+    if (attachment.source.kind === 'hess') {
+      companions.push(attachment);
+      if (!computedJob || hessEnriched) {
+        warn(sourceId, hessEnriched ? 'ambiguous-companion' : 'unpaired-modes', hessEnriched
+          ? '当前作业已有配对模式，其他HESS保留为独立来源。'
+          : '当前作业没有可与HESS核对的计算结果；配套保留为独立来源。');
+        continue;
+      }
+      try {
+        const original = attachment.source.results[0] ?? attachment.source.result;
+        const proof = await assessHessCompanion(computedJob, original, options.signal);
+        guard();
+        if (proof.result) hessEnriched = { ...proof.result, dispose() {} };
+        else warn(sourceId, 'unpaired-modes', proof.reason ?? 'HESS未取得当前作业的唯一科学配对，保留独立来源。');
+      } catch (error) {
+        guard(); options.signal?.throwIfAborted();
+        if (error instanceof DOMException && error.name === 'AbortError') throw error;
+        warn(sourceId, 'unpaired-modes', error instanceof Error ? error.message : 'HESS读取受限，主OUT仍可用。');
+      }
+      continue;
+    }
     const matches: TrajectoryResult[] = [];
     try {
       if (attachment.source.kind === 'xyz') for (const context of contexts) { const match = await bindIrcCompanion(context, attachment.source.results[0] ?? attachment.source.result, options.signal); guard(); if (match) matches.push(match); }
-    } catch (error) { guard(); if (error instanceof DOMException && error.name === 'AbortError') throw error; sourceWarnings.push({ sourceId, code: 'unpaired-trajectory', message: error instanceof Error ? error.message : '配套读取受限。' }); }
+    } catch (error) { guard(); if (error instanceof DOMException && error.name === 'AbortError') throw error; warn(sourceId, 'unpaired-trajectory', error instanceof Error ? error.message : '配套读取受限。'); }
     if (matches.length === 1) {
       const match = matches[0]; companions.push({ ...projectPostprocessAttachment(attachment, match, attachment.source.results), role: match.scientific!.ircEvidence!.role });
     } else {
-      companions.push(attachment); sourceWarnings.push({ sourceId, code: matches.length > 1 ? 'ambiguous-companion' : attachment.source.kind === 'hess' ? 'unpaired-modes' : 'unpaired-trajectory', message: matches.length > 1 ? '配套可对应多个job，保独立来源并选择归属。' : '配套未取得唯一科学对应；主OUT及原来源保留。' });
+      companions.push(attachment); warn(sourceId, matches.length > 1 ? 'ambiguous-companion' : 'unpaired-trajectory', matches.length > 1 ? '配套可对应多个job，保独立来源并选择归属。' : '配套未取得唯一科学对应；主OUT及原来源保留。');
     }
   }
-  let displayedResult: TrajectoryResult | undefined = selected && 'frames' in selected ? selected : undefined;
-  const eligible = selected ? companions.filter(item => item.source.result.scientific?.ircEvidence?.outputId === selected.id) : [];
+  let displayedResult = hessEnriched ?? computedJob;
+  const eligible = selected ? companions.filter(item => item.source.result.scientific?.ircEvidence?.outputId === selected.id
+    && !sourceWarnings.some(row => row.sourceId === item.source.result.source.id)) : [];
   const conflicts = new Set<string>();
+  const unreadable = new Set<string>();
+  const readCompanionFrame = async (result: TrajectoryResult, index: number) => {
+    try { const structure = await result.getFrame(index, options.signal); guard(); return structure; }
+    catch (error) {
+      guard(); options.signal?.throwIfAborted(); if (error instanceof DOMException && error.name === 'AbortError') throw error;
+      unreadable.add(result.source.id);
+      warn(result.source.id, 'unpaired-trajectory', error instanceof Error ? error.message : '配套轨迹帧读取受限。');
+    }
+  };
   const established = new Set(existing.map(item => item.source.result.source.id));
   for (let i = 0; i < eligible.length; i++) for (let j = i + 1; j < eligible.length; j++) {
     const a = eligible[i].source.result, b = eligible[j].source.result;
+    if (unreadable.has(a.source.id) || unreadable.has(b.source.id)) continue;
     for (const frame of a.frames) {
       const other = b.frames.find(row => row.pathNode === frame.pathNode); if (!other) continue;
-      const x = await a.getFrame(frame.index, options.signal), y = await b.getFrame(other.index, options.signal); guard();
+      const x = await readCompanionFrame(a, frame.index); if (!x) break;
+      const y = await readCompanionFrame(b, other.index); if (!y) break;
       const rounding = (frame.coordinateRoundingAngstrom ?? 0) + (other.coordinateRoundingAngstrom ?? 0);
       if (x.atoms.length !== y.atoms.length || x.atoms.some((atom, k) => atom.element !== y.atoms[k].element || ['x', 'y', 'z'].some(axis => Math.abs(atom[axis as 'x'] - y.atoms[k][axis as 'x']) > rounding + Number.EPSILON * 8 * Math.max(1, Math.abs(atom[axis as 'x']))))) { if (!established.has(a.source.id) || established.has(b.source.id)) conflicts.add(a.source.id); if (!established.has(b.source.id) || established.has(a.source.id)) conflicts.add(b.source.id); break; }
     }
   }
   for (const sourceId of conflicts) sourceWarnings.push({ sourceId, code: 'pairing-conflict', message: 'Full与分支的同节点坐标冲突；保双方原资产，未自动选择显示。' });
-  const ready = eligible.filter(item => !conflicts.has(item.source.result.source.id));
+  const ready = eligible.filter(item => !conflicts.has(item.source.result.source.id) && !unreadable.has(item.source.result.source.id));
   const full = ready.filter(item => item.source.result.scientific?.ircEvidence?.role === 'irc-full');
   if (full.length === 1) displayedResult = full[0].source.result;
   else if (full.length > 1) sourceWarnings.push({ sourceId: owner.source.identity.id, code: 'ambiguous-companion', message: '多份完整IRC来源均可对应，需明确选择。' });
   else {
     const forward = ready.filter(item => item.source.result.scientific?.ircEvidence?.role === 'irc-forward'), reverse = ready.filter(item => item.source.result.scientific?.ircEvidence?.role === 'irc-reverse');
-    if (forward.length === 1 && reverse.length === 1) { displayedResult = await mergeIrcBranches(forward[0].source.result, reverse[0].source.result, options.signal) ?? undefined; guard(); }
+    if (forward.length === 1 && reverse.length === 1) {
+      try { displayedResult = await mergeIrcBranches(forward[0].source.result, reverse[0].source.result, options.signal) ?? displayedResult; guard(); }
+      catch (error) {
+        guard(); options.signal?.throwIfAborted(); if (error instanceof DOMException && error.name === 'AbortError') throw error;
+        for (const item of [forward[0], reverse[0]]) warn(item.source.result.source.id, 'unpaired-trajectory', error instanceof Error ? error.message : 'IRC分支未能合并，原来源保留。');
+      }
+    }
     if (!displayedResult && ready.length === 1) displayedResult = ready[0].source.result;
   }
   let pair: PostprocessSourcePair | undefined;
@@ -150,8 +194,14 @@ export async function preparePostprocessIncoming(incoming:readonly PostprocessAt
   for(const attachment of auxiliary){
     if(!owner)throw new Error('配套来源缺少主OUT。');
     if(attachment.source.kind==='hess'){
-      if(companions.some(value=>value.source.kind==='hess')){independent(attachment,'ambiguous-companion','多份模式来源保独立，未自动选择。');continue;}
-      const current=unaugmentedPostprocessOutput(enrichedOutput??owner)!,proof=await assessHessCompanion(current.source.result,attachment.source.result);guard();
+      if(enrichedOutput){independent(attachment,'ambiguous-companion','多份模式来源保独立，未自动选择。');continue;}
+      const current=unaugmentedPostprocessOutput(enrichedOutput??owner)!;
+      let proof;
+      try { proof=await assessHessCompanion(current.source.result,attachment.source.result,options.signal);guard(); }
+      catch (error) {
+        guard(); options.signal?.throwIfAborted(); if (error instanceof DOMException && error.name === 'AbortError') throw error;
+        independent(attachment,'unpaired-modes',error instanceof Error ? error.message : 'HESS读取受限，主OUT仍可用。');continue;
+      }
       if(!proof.result){independent(attachment,'unpaired-modes',proof.reason??'HESS未取得唯一科学配对，保留独立来源。');continue;}
       enrichedOutput=projectPostprocessAttachment(current,proof.result,current.source.results);
       companions.push(attachment);continue;
@@ -238,18 +288,18 @@ export function matchingImportTarget(base:PostprocessDocument|undefined,output:P
   try{return acceptedPair(pairPostprocessSources(nextOutput.source,nextWave.source));}catch(error){return rejectedPair(error);}
 }
 /** The multi-frame route verifies actual geometries before filling a counterpart. */
-export async function matchingImportTargetForFrames(base:PostprocessDocument|undefined,output:PostprocessAttachment|undefined,wave:PostprocessAttachment|undefined):Promise<PostprocessImportMatch> {
+export async function matchingImportTargetForFrames(base:PostprocessDocument|undefined,output:PostprocessAttachment|undefined,wave:PostprocessAttachment|undefined,signal?:AbortSignal):Promise<PostprocessImportMatch> {
   const rejected=ineligibleTarget(base,output,wave);if(rejected)return rejected;
   const nextOutput=output??base!.output,nextWave=wave??base!.wavefunction;
   if(!nextOutput||!nextWave)return{reuse:false,reason:{code:'missing-counterpart',message:'缺少可核对的主OUT或波函数来源。'}};
-  try{return acceptedPair(await pairPostprocessSourcesForFrames(nextOutput.source,nextWave.source));}catch(error){return rejectedPair(error);}
+  try{return acceptedPair(await pairPostprocessSourcesForFrames(nextOutput.source,nextWave.source,{signal}));}catch(error){signal?.throwIfAborted();if(error instanceof DOMException&&error.name==='AbortError')throw error;return rejectedPair(error);}
 }
 
 /** No mutations or filename/order heuristics. Callers own an async revision
  * guard and must recheck the returned document/source identities before commit. */
-export async function resolvePostprocessImportTarget(candidates:readonly PostprocessDocument[],output:PostprocessAttachment|undefined,wave:PostprocessAttachment|undefined,currentId?:string|null):Promise<{status:'matched'|'ambiguous'|'unmatched';targetId?:string;pair?:PostprocessSourcePair;candidateIds:string[];reasons:{targetId:string;code:string;message:string}[]}> {
+export async function resolvePostprocessImportTarget(candidates:readonly PostprocessDocument[],output:PostprocessAttachment|undefined,wave:PostprocessAttachment|undefined,currentId?:string|null,options?:{signal?:AbortSignal;onCompared?:(document:PostprocessDocument,match:PostprocessImportMatch)=>void}):Promise<{status:'matched'|'ambiguous'|'unmatched';targetId?:string;pair?:PostprocessSourcePair;candidateIds:string[];reasons:{targetId:string;code:string;message:string}[]}> {
   const reasons:{targetId:string;code:string;message:string}[]=[];
-  const check=async(document:PostprocessDocument)=>{const match=await matchingImportTargetForFrames(document,output,wave);if(match.reason)reasons.push({targetId:document.id,...match.reason});return match;};
+  const check=async(document:PostprocessDocument)=>{options?.signal?.throwIfAborted();const match=await matchingImportTargetForFrames(document,output,wave,options?.signal);options?.signal?.throwIfAborted();options?.onCompared?.(document,match);if(match.reason)reasons.push({targetId:document.id,...match.reason});return match;};
   const current=candidates.find(document=>document.id===currentId);
   if(current){const match=await check(current);if(match.reuse)return{status:'matched',targetId:current.id,pair:match.pair,candidateIds:[current.id],reasons};}
   const matches:{document:PostprocessDocument;pair:PostprocessSourcePair}[]=[];

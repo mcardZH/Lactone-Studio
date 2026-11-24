@@ -21,6 +21,7 @@ export function resultTargetLabel(structure:Structure,atomIds:readonly string[],
 /** Analysis owns this disposable presentation; the document selection, graph,
  * user measurements and Undo stay untouched. Both paths use modeling renderers. */
 export function resultSelectionPresentation(structure:Structure,value?:ViewportResultHighlights){
+ if(!value?.atomIds?.length&&!value?.bondPairs?.length)return{atomIds:[] as string[],records:[] as MeasurementRecord[],markers:[] as ViewportStateMarker[]};
  const known=new Set(structure.atoms.map(atom=>atom.id)),pairs=new Map<string,[string,string]>();
  for(const pair of value?.bondPairs??[]){if(pair[0]===pair[1]||pair.some(id=>!known.has(id)))continue;const ordered=[...pair].sort() as [string,string],key=JSON.stringify(ordered);if(!pairs.has(key))pairs.set(key,ordered);}
  // The same validated pair owns both endpoint outlines and its midpoint

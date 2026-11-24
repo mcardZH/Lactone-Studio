@@ -14,6 +14,53 @@ const {
 	removeExact
 } = require("./io.cjs");
 const { base, safeName } = require("./common.cjs");
+function snapshotSourceIdentity(source, fileId, environmentId, range, sha256) {
+	return {
+		artifactId: source.artifactId,
+		fileId: source.provenance?.sourceBoundary?.fileIdentity?.fileId || fileId,
+		environmentId: source.provenance?.originalLocation?.environmentId || environmentId,
+		range:
+			source.provenance?.sourceBoundary?.publishedByteRange ||
+			source.provenance?.sourceBoundary?.readByteRange ||
+			range,
+		sha256
+	};
+}
+function snapshotIdFor(request, sources) {
+	return "snapshot-" + digest(JSON.stringify({
+		...(request.sourceSetId
+			? { sourceSetId: request.sourceSetId, sourceVersion: request.sourceVersion }
+			: {}),
+		taskId: request.taskId,
+		runId: request.runId,
+		sources,
+		jobRef: request.jobRef ?? null,
+		stageRef: request.stageRef ?? null,
+		frameRef: request.frameRef ?? null
+	}));
+}
+function unstableWavefunction(source) {
+	return (source.roles || []).includes("wavefunction") &&
+		(source.stable !== true || source.compatible !== true || source.range);
+}
+/** Only already verified source descriptors can identify an existing fixed copy.
+ * Unverified requests continue through the ordinary materialization path. */
+function expectedSnapshotId(request) {
+	const identities = [];
+	for (const source of request.sources || []) {
+		const identity = source.identity;
+		const range = source.range || { offset: 0, length: identity?.byteSize };
+		if (
+			!identity?.fileId || identity.isDirectory ||
+			!/^[a-f0-9]{64}$/.test(source.sha256 || "") ||
+			unstableWavefunction(source) ||
+			![range.offset, range.length, identity.byteSize].every(Number.isSafeInteger) ||
+			range.offset < 0 || range.length < 0 || range.offset + range.length > identity.byteSize
+		) return;
+		identities.push(snapshotSourceIdentity(source, identity.fileId, source.environmentId, range, source.sha256));
+	}
+	return snapshotIdFor(request, identities);
+}
 function createSnapshot(context) {
 	const { fault, transport, location } = context;
 	async function materializeSnapshot(request, { destination, lease, signal } = {}) {
@@ -28,10 +75,7 @@ function createSnapshot(context) {
 		try {
 			for (const source of request.sources || []) {
 				lease?.assertActive?.();
-				if (
-					(source.roles || []).includes("wavefunction") &&
-					(source.stable !== true || source.compatible !== true || source.range)
-				)
+				if (unstableWavefunction(source))
 					throw fail("ASSET_WAVEFUNCTION_NOT_STABLE_COMPATIBLE");
 				const target = path.join(directory, safeName(source.artifactId) + ".asset");
 				createdPaths.push(target);
@@ -63,28 +107,9 @@ function createSnapshot(context) {
 				});
 			}
 			lease?.assertActive?.();
-			const signature = {
-				...(request.sourceSetId
-					? { sourceSetId: request.sourceSetId, sourceVersion: request.sourceVersion }
-					: {}),
-				taskId: request.taskId,
-				runId: request.runId,
-				sources: files.map((x) => ({
-					artifactId: x.artifactId,
-					fileId: x.provenance?.sourceBoundary?.fileIdentity?.fileId || x.sourceIdentity.fileId,
-					environmentId:
-						x.provenance?.originalLocation?.environmentId || x.originalLocation.environmentId,
-					range:
-						x.provenance?.sourceBoundary?.publishedByteRange ||
-						x.provenance?.sourceBoundary?.readByteRange ||
-						x.range,
-					sha256: x.sha256
-				})),
-				jobRef: request.jobRef ?? null,
-				stageRef: request.stageRef ?? null,
-				frameRef: request.frameRef ?? null
-			};
-			const snapshotId = "snapshot-" + digest(JSON.stringify(signature));
+			const snapshotId = snapshotIdFor(request, files.map((file) => snapshotSourceIdentity(
+				file, file.sourceIdentity.fileId, file.originalLocation.environmentId, file.range, file.sha256
+			)));
 			const snapshot = {
 				...base(),
 				...(request.runId === null
@@ -164,4 +189,4 @@ function createSnapshot(context) {
 
 	return { materializeSnapshot };
 }
-module.exports = { createSnapshot };
+module.exports = { createSnapshot, expectedSnapshotId };

@@ -1,6 +1,7 @@
 import type { TrajectoryResult, ResultInputFile } from '../results/contracts';
 import { assertResultNotAborted } from '../results/contracts';
 import { createLazyTrajectoryResult } from '../results/lazy-trajectory';
+import { getPreparedTrajectoryFrame } from '../results/prepared-trajectory';
 import { readPostprocessSourceBytes, retainPostprocessSourceBytes, type PostprocessAttachment, type PostprocessDocument } from '../results/postprocess-document';
 import type { PostprocessSource, PostprocessSourcePair } from '../results/postprocess-sources';
 import type { MDPreparationProvenance, Structure } from '../core/types';
@@ -18,7 +19,7 @@ import type { ResultDiagnostic, ResultDiagnosticSnapshot } from '../results/cont
 import { requiresProjectFormat15 } from './format15';
 
 export interface ProjectAssetWriter { write(category: string, name: string, bytes: Uint8Array | string): Promise<{ assetId: string }>;writeMany?(values:readonly ProjectAssetWrite[]):Promise<{assetId:string}[]> }
-export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]> }
+export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]>; readRange?(assetId: string, offset: number, length: number, expectedBytes: number): Promise<Uint8Array> }
 type ResultData = Omit<TrajectoryResult, 'getFrame' | 'dispose'>;
 export interface TrajectoryResultSnapshot { schema: 1; data: ResultData; frameAssets: string[];
   /** The first frame's metadata may not describe later native frames. */
@@ -56,9 +57,9 @@ export interface PostprocessScientificFileDocumentSnapshot {
 export type PostprocessFileDocumentSnapshot = PostprocessDocumentSnapshot | PostprocessScientificFileDocumentSnapshot;
 export const POSTPROCESS_SCIENTIFIC_FILE_CAPABILITY = 'scientific-file-v1';
 
-export function nativeMDRequiresFormat8(native: MDPreparationProvenance['native'] | undefined): boolean {
+export function nativeMDRequiresFormat8(native: MDPreparationProvenance['native'] | undefined, method?:string): boolean {
   return !!native && (native.periodic === true || native.solvation !== undefined || native.effectiveSeed !== undefined ||
-    native.seedTreatment !== undefined || !!native.internalConstraints?.length || native.engineIdentity !== undefined ||
+    native.seedTreatment !== undefined || native.hydrogenMassAmu===1 || !!method&&method!=='gfnff'&&native.hydrogenMassAmu===4 || !!native.internalConstraints?.length || native.engineIdentity !== undefined ||
     native.degreesOfFreedom !== undefined || native.restartInputSha256 !== undefined);
 }
 
@@ -66,7 +67,7 @@ export function structureRequiresXtbFormat8(structure: Structure | undefined): b
   const preparation = structure?.preparation, xtb = preparation?.xtb, md = preparation?.md;
   return !!(xtb?.schema === 1 && xtb.engine === 'xtb' && (xtb.method === 'gxtb' || xtb.terminal === 'unconverged' ||
     xtb.periodic?.optimizer === 'native-fire' || xtb.engineIdentity !== undefined || xtb.iterations !== undefined || xtb.optimizer !== undefined) ||
-    md?.schema === 1 && md.driver === 'native-xtb-md' && (md.method === 'gxtb' || nativeMDRequiresFormat8(md.native)));
+    md?.schema === 1 && (md.driver === 'ase-bussi' || md.driver === 'native-xtb-md' && (md.method === 'gxtb' || nativeMDRequiresFormat8(md.native,md.method))));
 }
 
 export function trajectorySnapshotRequiresFormat8(snapshot: TrajectoryResultSnapshot): boolean {
@@ -113,7 +114,7 @@ export async function encodeTrajectoryResult(result: TrajectoryResult, writer: P
     if(written.length!==values.length||written.some(value=>typeof value.assetId!=='string'||!value.assetId))throw new Error('项目轨迹批写回执不完整。');
     frameAssets.push(...written.map(value=>value.assetId));};
   for (let index = 0; index < data.frames.length; index++) {
-    const structure = await result.getFrame(index);
+    const structure = getPreparedTrajectoryFrame(result, index)?.raw ?? await result.getFrame(index);
     if (!requiresFormat15 && requiresProjectFormat15(structure)) requiresFormat15 = true;
     if (!requiresFormat8 && structureRequiresXtbFormat8(structure)) requiresFormat8 = true;
     const bytes=encoder.encode(json(structure)),name=`${result.id}-${index}.json`;
@@ -292,6 +293,7 @@ export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentS
   if (!metadata.fileOnly || metadata.identity.id !== raw.sourceId || metadata.identity.name !== raw.name || metadata.identity.size !== raw.size || !Number.isSafeInteger(raw.size) || raw.size < 0
     || !raw.chunks.every(part => typeof part.assetId === 'string' && Number.isSafeInteger(part.bytes) && part.bytes > 0 && part.bytes <= CHUNK_BYTES) || raw.chunks.reduce((sum, part) => sum + part.bytes, 0) !== raw.size || !raw.revision || metadata.identity.sha256 && metadata.identity.sha256 !== raw.revision) throw Error('科学文件原始资产索引不一致。');
   let closed = false, remaining = snapshot.output.jobs.length;
+  const managed = createRestoredManagedSource({ name: raw.name, size: raw.size, revision: raw.revision, stream: () => input.stream() });
   const input: ResultInputFile = { id: raw.sourceId, name: raw.name, size: raw.size,
     stream() { let index = 0; return new ReadableStream<Uint8Array>({ async pull(controller) { if (closed) return controller.error(Error('科学文件已关闭。')); if (index === raw.chunks.length) return controller.close(); const part = raw.chunks[index++], bytes = await reader.read(part.assetId); if (closed || bytes.length !== part.bytes) return controller.error(Error('科学文件分块损坏或已关闭。')); controller.enqueue(bytes); } }); },
     async readRange(start, end, signal) {
@@ -300,7 +302,8 @@ export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentS
       const bytes = new Uint8Array(end - start); let offset = 0;
       for (const part of raw.chunks) { const next = offset + part.bytes; if (next > start && offset < end) { const block = await reader.read(part.assetId); assertResultNotAborted(signal); if (closed || block.length !== part.bytes) throw Error('科学文件分块损坏或已关闭。'); const first = Math.max(start, offset), last = Math.min(end, next); bytes.set(block.subarray(first - offset, last - offset), first - start); } offset = next; }
       return bytes;
-    }, close() { closed = true; } };
+    }, readCompanionSourceDescriptor: signal => managed.available() ? managed.describe(signal) : Promise.resolve(undefined),
+    async close() { closed = true; await managed.close(); } };
   const release = () => { if (--remaining === 0) closed = true; };
   const jobs = snapshot.output.jobs.map(item => {
     let disposed = false;
@@ -314,7 +317,10 @@ export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentS
     result.dispose = async () => { if (disposed) return; await dispose(); disposed = true; release(); }; return result;
   });
   if (!jobs.length || metadata.selectedJobId && !jobs.some(job => job.id === metadata.selectedJobId)) throw Error('科学文件job选择或集合无效。');
-  const source: PostprocessScientificFileSource = { ...metadata, identity: { ...metadata.identity, sha256: raw.revision }, jobs, async dispose() { await Promise.all(jobs.map(job => job.dispose())); } };
+  const source: PostprocessScientificFileSource = { ...metadata, identity: { ...metadata.identity, sha256: raw.revision }, jobs, async dispose() {
+    await Promise.all(jobs.map(job => job.dispose()));
+    await input.close?.();
+  } };
   const output = retainPostprocessFileSourceBytes({ source, ...(snapshot.output.role ? { role: snapshot.output.role } : {}) }, input);
   const displayResult = snapshot.displayResult ? decodeTrajectoryResult(snapshot.displayResult, reader) : undefined;
   if (displayResult && (!source.selectedJobId || displayResult.scientific?.ircEvidence?.outputId !== source.selectedJobId && displayResult.id !== source.selectedJobId)) throw Error('科学文件显示轨迹缺少所选job对应。');

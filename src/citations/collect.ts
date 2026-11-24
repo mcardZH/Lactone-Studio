@@ -20,8 +20,11 @@ function factIdentity(fact: CitationFact): string {
 }
 export function createSyStudioCitation(version: string): CitationRecord {
   const releaseNote = applicationVersionNote(version);
+  const published = ['2.1.1', '2.1.2', '2.1.3'].includes(version) && !releaseNote;
+  const url = published ? 'https://github.com/Ahey1/Ester-Studio/releases/tag/v' + version : undefined;
   return { id: 'sy-studio', kind: 'software', identity: 'sy-studio', title: 'Ester Studio',
     authors: [{ family: 'Zhang', given: 'Zixuan' }], version: displayApplicationVersion(version), status: 'verified',
+    ...(published ? { year: 2026, url } : {}),
     publisher: 'Zixuan Zhang', evidence: [{ kind: 'project', locator: 'Ester Studio LICENSE.txt and package.json', checkedAt: '2026-10-29', note: 'Author: Zixuan Zhang; ddwz@sciyue.cn' },...(releaseNote?[{kind:'project' as const,locator:'package.json version/displayVersion/releaseChannel',checkedAt:'2026-10-30',note:releaseNote}]:[])],
     methodSummaryZh: '本地计算化学建模、输入准备及结果分析工作台。', note: ['Contact: ddwz@sciyue.cn', releaseNote].filter(Boolean).join('; ') };
 }

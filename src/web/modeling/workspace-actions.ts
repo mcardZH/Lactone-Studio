@@ -1,7 +1,12 @@
 import type { InteractionAction, ModelCommand, ModelDocument, PickResult } from '../../modeling/contracts';
 
+export function isReadOnlyImagePick(pick: PickResult | null): boolean {
+  return pick?.kind === 'atom' && Boolean(pick.image?.some(Boolean));
+}
+
 /** Hover hotkeys do not silently enlarge the current object selection. */
 export function hoverCommand(action: InteractionAction, hover: PickResult, document: ModelDocument, element: string | null = null): ModelCommand | null {
+  if (isReadOnlyImagePick(hover)) return null;
   if (action.type === 'delete') {
     if (hover.kind === 'atom') return document.draft.structure.atoms.some(atom => atom.id === hover.atomId)
       ? { type: 'delete-objects', selection: { atomIds: [hover.atomId], bonds: [], auxiliaryIds: [] } } : null;
@@ -17,6 +22,11 @@ export function hoverCommand(action: InteractionAction, hover: PickResult, docum
   if (hover.kind === 'atom' && action.order === 1 && element) {
     const atom = document.draft.structure.atoms.find(item => item.id === hover.atomId);
     return atom ? viewportCommand({ type: 'place-element', element, targetAtomId: hover.atomId, position: [atom.x, atom.y, atom.z] }) : null;
+  }
+  if (hover.kind === 'port' && action.order === 1 && element) {
+    const port = document.attachmentPorts?.find(value => value.id === hover.portId);
+    const host = port ? document.draft.structure.atoms.find(atom => atom.id === port.hostAtomId) : undefined;
+    return host ? { type: 'place-element', element, targetPortId: hover.portId, position: [host.x, host.y, host.z] } : null;
   }
   if (hover.kind === 'bond') return { type: 'set-bond-order', atomIds: hover.atomIds, order: action.order, image: hover.image };
   if (hover.kind === 'auxiliary') {
@@ -45,9 +55,9 @@ export interface WorkspaceSpaceKey {
   ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; shiftKey?: boolean;
 }
 /** Modeling optimization uses stop/new-run; MD retains its own pause/resume UI. */
-export function workspaceSpaceOptimizationAction(runtime:{xtbRunning:boolean;xtbPhase:string;xtbOperation?:string;dynamicsStatus:string;dynamicsMode?:string;canStart:boolean}):'stop'|'start'|'ignore'{
+export function workspaceSpaceOptimizationAction(runtime:{xtbRunning:boolean;xtbPhase:string;xtbOperation?:string;dynamicsStatus:string;canStart:boolean}):'stop'|'start'|'ignore'{
   if(runtime.xtbRunning)return runtime.xtbOperation==='optimize'&&runtime.xtbPhase!=='stopping'?'stop':'ignore';
-  if(['starting','running','pausing','paused','stopping'].includes(runtime.dynamicsStatus))return ['optimize','geometry'].includes(runtime.dynamicsMode??'')&&runtime.dynamicsStatus!=='stopping'?'stop':'ignore';
+  if(['starting','running','pausing','paused','stopping'].includes(runtime.dynamicsStatus))return 'ignore';
   return runtime.canStart?'start':'ignore';
 }
 /** A one-press canvas shortcut, never text entry or a control's Space action.

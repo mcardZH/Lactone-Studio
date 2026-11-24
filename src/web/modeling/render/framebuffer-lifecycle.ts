@@ -54,6 +54,8 @@ export function retainViewerFramebuffers(viewer:any){
  function install(renderer:any){
   if(!renderer||owned.has(renderer)||typeof renderer.initFrameBuffer!=='function'||typeof renderer.setSize!=='function')return;
   const initialize=renderer.initFrameBuffer,setSize=renderer.setSize,setFrameBuffer=renderer.setFrameBuffer;
+  const setViewport=renderer.setViewport;
+  const viewportDescriptor=Object.getOwnPropertyDescriptor(renderer,'setViewport');
   const spritePlugin=renderer.sprites;
   const initDescriptor=Object.getOwnPropertyDescriptor(renderer,'initFrameBuffer'),sizeDescriptor=Object.getOwnPropertyDescriptor(renderer,'setSize'),frameDescriptor=Object.getOwnPropertyDescriptor(renderer,'setFrameBuffer');
   const textures=['_targetTexture','_depthTexture','_shadingTexture','_scratchTexture'];
@@ -98,7 +100,17 @@ export function retainViewerFramebuffers(viewer:any){
    gl.clearDepth(1);gl.clear(gl.DEPTH_BUFFER_BIT);
    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,renderer._depthTexture,0);
   };
+  // The locked renderer writes both OffscreenCanvas dimensions even when
+  // successive submissions already match. Keep its resize and grid paths.
+  const viewport=function(this:any){
+   const canvas=renderer._canvas, surface=renderer._offscreen, gl=renderer._gl;
+   if(this===renderer&&surface&&canvas&&renderer.rows==null&&renderer.cols==null&&
+     surface.width===canvas.width&&surface.height===canvas.height&&canvas.width>0&&canvas.height>0&&
+     gl&&gl.drawingBufferWidth===canvas.width&&gl.drawingBufferHeight===canvas.height&&!gl.isContextLost?.())return;
+   return setViewport.call(this);
+  };
   renderer.initFrameBuffer=init;renderer.setSize=resize;if(typeof setFrameBuffer==='function')renderer.setFrameBuffer=frame;
+  if(typeof setViewport==='function')renderer.setViewport=viewport;
   owned.set(renderer,()=>{
    let failure:unknown;
    const release=(action:()=>void)=>{try{action();}catch(error){failure??=error;}};
@@ -118,6 +130,7 @@ export function retainViewerFramebuffers(viewer:any){
    if(renderer.initFrameBuffer===init){if(initDescriptor)Object.defineProperty(renderer,'initFrameBuffer',initDescriptor);else delete renderer.initFrameBuffer;}
    if(renderer.setSize===resize){if(sizeDescriptor)Object.defineProperty(renderer,'setSize',sizeDescriptor);else delete renderer.setSize;}
    if(renderer.setFrameBuffer===frame){if(frameDescriptor)Object.defineProperty(renderer,'setFrameBuffer',frameDescriptor);else delete renderer.setFrameBuffer;}
+   if(renderer.setViewport===viewport){if(viewportDescriptor)Object.defineProperty(renderer,'setViewport',viewportDescriptor);else delete renderer.setViewport;}
    if(failure)throw failure;
   });
  }

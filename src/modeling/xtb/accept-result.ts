@@ -1,5 +1,6 @@
 import { createBuilderDraft } from '../../core/builder-draft';
 import { builderCoordinateValue } from '../../core/builder-geometry';
+import { isPeriodic } from '../../core/periodic';
 import { transportLocalAttachmentPorts } from '../../core/modeling/attachment-ports';
 import { coordinatesFingerprint, graphFingerprint } from '../../core/modeling/graph';
 import type { XtbPreparationProvenance } from '../../core/types';
@@ -43,7 +44,7 @@ export function xtbPreoptimizationSolvationIssue(method:XtbRequest['method'], so
   if(solvation?.model!=='alpb'||!supportsXtbAlpb(method,solvation.solvent))return '当前xTB预优化方法不支持所选溶剂，请选择有效介质。';
 }
 function validateXtbPreoptimizationSolvation(request:XtbRequest,evidence:XtbSolvationEvidence|undefined):void {
-  const issue=xtbPreoptimizationSolvationIssue(request.method,request.solvation,Boolean(request.structure.cell));
+  const issue=xtbPreoptimizationSolvationIssue(request.method,request.solvation,isPeriodic(request.structure));
   if(issue)throw new Error(issue);
   if(!request.solvation){requireValue(evidence===undefined,'气相xTB预优化混入隐式溶剂结果。');return;}
   requireValue(matchesNativeAlpb(request.method,request.solvation.solvent,evidence),'xTB预优化缺少匹配的原生ALPB溶剂回执。');
@@ -82,7 +83,7 @@ export function isXtbPreparationProvenance(value:unknown,after:unknown,unit:unkn
     &&solvation.temperatureKelvin===298.15&&solvation.sourceField==='stdout:solvation-model'&&solvation.parameterSet===`internal ${XTB_METHOD_LABELS[receipt.method]}/GBSA`;
 }
 export function validateXtbPeriodicity(request:XtbRequest,evidence:XtbPeriodicEvidence|undefined):void{
-  const cell=request.structure.cell,periodic=Boolean(cell);
+  const cell=request.structure.cell,periodic=isPeriodic(request.structure);
   if(!periodic){requireValue(evidence===undefined,'非周期xTB结果混入周期运行元数据。');return;}
   requireValue(evidence&&JSON.stringify(evidence.sourceCell)===JSON.stringify(cell)&&JSON.stringify(evidence.sourcePbc)===JSON.stringify(cell!.pbc)&&JSON.stringify(evidence.effectivePbc)==='[true,true,true]'&&evidence.fixedCell===true,'周期xTB的原始晶胞或原始/有效周期轴不符。');
   if(request.calculation==='singlepoint'){
@@ -100,7 +101,7 @@ export function validateXtbPeriodicity(request:XtbRequest,evidence:XtbPeriodicEv
 }
 
 export function xtbOptimizationStepKind(request:XtbRequest,periodic?:XtbPeriodicEvidence) {
-  if(!request.structure.cell)return 'native-log-frame';
+  if(!isPeriodic(request.structure))return 'native-log-frame';
   return periodic&&'optimizer' in periodic&&periodic.optimizer==='native-fire'?'native-fire-cycle':'outer-optimizer-iteration';
 }
 
@@ -152,9 +153,9 @@ export function applyXtbCoordinates(document: ModelDocument, result: XtbCoordina
   requireValue((request.calculation ?? 'optimize') === 'optimize' && (metadata.calculation ?? 'optimize') === 'optimize', '单点结果不能作为优化坐标提交。');
   requireValue(request.stamp.documentId === document.id && request.stamp.revision === document.revision, 'xTB结果已不属于当前模型修订。');
   requireValue(graphFingerprint(request.structure) === graphFingerprint(original) && coordinatesFingerprint(request.structure) === coordinatesFingerprint(original), 'xTB请求与原始模型不一致。');
-  const stepLimit=request.maxSteps??(request.structure.cell?1000:500);
+  const periodic=isPeriodic(request.structure),stepLimit=request.maxSteps??(periodic?1000:500);
   requireValue(metadata.engine === 'xtb' && metadata.method === request.method && metadata.charge === request.charge, 'xTB方法或电子态结果不匹配。');
-  requireValue((request.optimizationStepPolicy==='native-default'&&!request.structure.cell||metadata.maxSteps===stepLimit)
+  requireValue((request.optimizationStepPolicy==='native-default'&&!periodic||metadata.maxSteps===stepLimit)
     &&validXtbOptimizationTerminal(request,metadata),'xTB优化收敛状态与实际步数不符。');
   validateXtbPeriodicity(request,metadata.periodic);
   if(metadata.periodic&&'optimizer' in metadata.periodic&&metadata.periodic.optimizer==='native-fire'){
@@ -163,7 +164,7 @@ export function applyXtbCoordinates(document: ModelDocument, result: XtbCoordina
     requireValue(metadata.periodic.gradientTargetHartreePerBohr===undefined||metadata.periodic.gradientTargetHartreePerBohr===1e-4&&metadata.periodic.gradientTargetMet===(gradient<=1e-4),'周期FIRE精度目标与实际梯度不一致。');
   }
   validateXtbPreoptimizationSolvation(request,metadata.solvation);
-  if(request.structure.cell)requireValue(metadata.bondOrders===undefined,'周期优化不能消费没有镜像身份的原子对键级。');
+  if(periodic)requireValue(metadata.bondOrders===undefined,'周期优化不能消费没有镜像身份的原子对键级。');
   requireValue(metadata.uhf === (request.method === 'gfnff' ? null : request.uhf), 'xTB自旋结果不匹配。');
   requireValue(Number.isFinite(metadata.energyHartree) && metadata.energyUnit === 'hartree' && metadata.coordinateUnit === 'angstrom', 'xTB结果单位或能量无效。');
   requireValue(typeof metadata.version === 'string' && metadata.version.length > 0, 'xTB完成元数据无效。');

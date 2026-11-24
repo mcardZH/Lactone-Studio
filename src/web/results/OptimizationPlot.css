@@ -30,9 +30,10 @@
 .scientific-plot-tools .shared-input-field { display:inline-flex;flex:0 1 auto;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:6px;max-width:100%;margin:0; }
 .scientific-plot-tools .shared-input-field-control { flex:0 1 auto;width:auto;min-width:0; }
 .scientific-plot-tools .shared-input-field-label { flex:0 0 auto;white-space:nowrap; }
-.scientific-plot-actions { margin-top:8px; }
+.scientific-plot-actions { position:relative; margin-top:8px; }
 .scientific-plot-size-controls output { min-width:3.8em; font-variant-numeric:tabular-nums; }
 .scientific-plot-export { position:relative; flex:0 0 auto; }
+.scientific-plot-actions > .scientific-plot-export { position:static; }
 .scientific-plot-export > summary { box-sizing:border-box;display:flex;align-items:center;min-height:var(--ui-control-height);list-style:none;cursor:pointer;border:1px solid var(--ui-control-border);border-radius:var(--ui-control-radius);background:#fff;color:var(--ui-field-ink,#3c5763);padding:var(--ui-control-padding);white-space:nowrap; }
 .scientific-plot-export > summary::after { content:' ▾'; }
 .scientific-plot-export > summary[aria-disabled=true] { opacity:1;cursor:default;color:var(--ui-action-disabled-ink);background:var(--ui-action-disabled-bg);border-color:var(--ui-action-disabled-border); }

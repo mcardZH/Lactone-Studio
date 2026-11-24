@@ -5,6 +5,8 @@ import {assertResultNotAborted} from '../../results/contracts';
 import {trajectoryViewDocument} from '../../results/playback';
 import {createLazyTrajectoryResult,type LazyTrajectoryInput} from '../../results/lazy-trajectory';
 import {createConformerDisplayRestoration,prepareConformerPlaybackDisplay,releaseConformerPlaybackDisplay,validateConformerDisplayRestoration,type ConformerDisplayRestoration} from './playback-display';
+import {isCapturedAdvancedStructure} from '../advanced/frame-source';
+import {registerRetainedTrajectoryFrames} from '../../results/prepared-trajectory';
 
 export interface ConformerTrajectoryResult extends TrajectoryResult {
   readonly identity:Readonly<WorkspaceTrajectoryIdentity>;
@@ -29,7 +31,11 @@ export function createLazyConformerTrajectory(input:LazyTrajectoryInput & {ident
   if(Object.values(identity).some(value=>typeof value!=='string'||!value)||frameIds.length!==trajectory.frames.length||new Set(frameIds).size!==frameIds.length||frameIds.some(id=>!id)
     ||new Set(protectedAtomIds).size!==protectedAtomIds.length||protectedAtomIds.some(id=>!ids.has(id)))throw new Error('构象轨迹的索引或保护原子身份不一致。');
   const referenceIds=new Map(trajectory.initialStructure.atoms.map(atom=>[atom.id,atom.element]));
-  const result:ConformerTrajectoryResult=Object.assign(createLazyTrajectoryResult({...trajectory,async readFrame(index,signal){
+  // Older snapshots of native MD carry an input graph with their time-stamped
+  // frames. Actual trajectory geometry is restored without altering that graph.
+  const frames=trajectory.frames.map(frame=>frame.time!==null&&frame.time!==undefined&&!frame.sourceBondGraph
+    ?{...frame,sourceBondGraph:'inherited' as const}:frame);
+  const result:ConformerTrajectoryResult=Object.assign(createLazyTrajectoryResult({...trajectory,frames,async readFrame(index,signal){
     const structure=await trajectory.readFrame(index,signal);
     if(structure.atoms.length!==referenceIds.size||structure.atoms.some(atom=>referenceIds.get(atom.id)!==atom.element))throw new Error('构象轨迹的原子身份不一致。');
     prepareConformerPlaybackDisplay(result,index,structure);return structure;
@@ -69,6 +75,7 @@ export function createConformerTrajectory(input:Omit<ConformerResultCollection,'
     source:{id,name:input.label,size:0},jobIndex:0,status:'completed',messages:[],initialStructure:structuredClone(reference),
     frames:frames.map((frame,index)=>({index,sourceFrameIndex:frame.source.ref.sourceFrameIndex,sourceStep:frame.step??null,
       label:`frame-${index+1}`,stageId:identity.stageId,sourceLine:0,convergence:[],
+      ...(frame.process?.kind==='sampling'||frame.kind==='sampling-trajectory'||frame.kind==='sampled-candidate'?{sourceBondGraph:'inherited' as const}:{}),
       time:frame.process?.kind==='sampling'?{value:frame.process.data.timeFs,unit:'fs'}:null,
       energy:input.includeEnergies&&Number.isFinite(frame.energyHartree)?{value:frame.energyHartree!,unit:'Eh'}:null})),
     async getFrame(index,signal){assertResultNotAborted(signal);if(!Number.isSafeInteger(index)||index<0||index>=frames.length)throw new Error('轨迹帧号超出范围。');prepareConformerPlaybackDisplay(result,index,frames[index].source.structure);return structuredClone(frames[index].source.structure);},
@@ -76,5 +83,10 @@ export function createConformerTrajectory(input:Omit<ConformerResultCollection,'
   };
   // Validate every frame once at the boundary, including the folded-away rows.
   frames.forEach((frame,index)=>{if(!Object.isFrozen(frame.source.structure))trajectoryViewDocument(result,frame.source.structure,index);});
+  registerRetainedTrajectoryFrames(result,index=>{
+    const structure=frames[index]?.source.structure;
+    if(!structure||!isCapturedAdvancedStructure(structure))return;
+    prepareConformerPlaybackDisplay(result,index,structure);return structure;
+  });
   return result;
 }

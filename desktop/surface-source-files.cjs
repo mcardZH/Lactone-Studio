@@ -15,6 +15,7 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
   function domain(value, revision) {
     assert(plain(value) && value.sourceRevision === revision && plain(value.validDomain), 'Surface domain content identity differs');
     const result = structuredClone(value), valid = result.validDomain;
+    assert(result.coordinateUnit===undefined || ['bohr','angstrom'].includes(result.coordinateUnit) && (!result.grid || result.grid.coordinateUnit===result.coordinateUnit), 'Invalid bound Cube spatial unit');
     assert(['node-mask', 'unknown', 'full-grid'].includes(valid.kind), 'Invalid surface domain');
     if (valid.kind === 'node-mask') {
       if (valid.mask?.encoding === 'base64') { valid.maskBase64 = valid.mask.data; delete valid.mask; }
@@ -47,7 +48,14 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
   async function verifyRecord(record,signal){if(!record.streamed)return sameFile(record.path,record,fs,MAX_SOURCE_BYTES);const current=await inspectManagedSource(record.path,{signal});assert(current.identity===record.identity&&current.sha256===record.sha256,'Managed surface source changed');return current;}
   function remove(record) {
     if(record.removal)return record.removal;
-    const removing=record.removal=(async()=>{ await checkDirectory(root, rootIdentity); await verifyRecord(record); const stat = await fs.lstat(record.path); assert(stat.nlink === 1, 'Shared surface snapshot retained'); await fs.unlink(record.path); records.delete(record.token);
+    const removing=record.removal=(async()=>{
+      if (record.asset) {
+        await record.reader.close();
+        await record.asset.close();
+      } else {
+        await checkDirectory(root, rootIdentity); await verifyRecord(record); const stat = await fs.lstat(record.path); assert(stat.nlink === 1, 'Shared surface snapshot retained'); await fs.unlink(record.path);
+      }
+      records.delete(record.token);
     })();
     void removing.catch(()=>{record.removal=null;});
     return removing;
@@ -71,6 +79,68 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
       } finally { if (created && owned) { await checkDirectory(root, rootIdentity); const current = await fs.lstat(location); if (current.isFile() && !current.isSymbolicLink() && current.dev === owned.dev && current.ino === owned.ino && current.nlink === 1) await fs.unlink(location); } }
     })();
     pending.set(task, owner); try { return await task; } finally { pending.delete(task); const count = reservedSlots.get(owner) - 1; if (count) reservedSlots.set(owner, count); else reservedSlots.delete(owner); }
+  }
+  function describeRecord(record) {
+    return { token: record.token, name: record.name, bytes: record.bytesLength, sourceRevision: record.sha256,
+      ...(record.knownDomain ? { knownDomain: record.knownDomain } : {}) };
+  }
+  async function registerAsset(owner, value, asset) {
+    let reader;
+    const task = (async () => {
+      active(owner);
+      assert(plain(value) && string(value.name, 256) && !/[\\/]/.test(value.name) && asset?.sha256 === value.sourceRevision
+        && /^[a-f0-9]{64}$/.test(asset.sha256) && Number.isSafeInteger(asset.bytesLength) && asset.bytesLength > 0 && typeof asset.close === 'function', 'Archived Cube identity differs');
+      await checkDirectory(path.dirname(asset.path), asset.parent);
+      const stat = await fs.lstat(asset.path);
+      assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size === asset.bytesLength, 'Archived Cube snapshot is not an owned file');
+      reader = await fs.open(asset.path, 'r');
+      const expected = identity(stat);
+      assert(identity(await reader.stat()) === expected, 'Archived Cube snapshot replaced');
+      const token = randomUUID(), known = await knownDomain(asset.sha256);
+      active(owner);
+      const record = { token, owner, kind: 'cube', streamed: true, name: value.name, path: asset.path, parent: asset.parent,
+        sha256: asset.sha256, bytesLength: asset.bytesLength, identity: expected, asset, reader, knownDomain: known, refs: new Set() };
+      records.set(token, record);
+      return describeRecord(record);
+    })();
+    pending.set(task, owner);
+    try { return await task; }
+    catch (error) { await reader?.close().catch(()=>{}); await asset?.close().catch(()=>{}); throw error; }
+    finally { pending.delete(task); }
+  }
+  function ownedCube(owner, token) {
+    active(owner);
+    const record = records.get(token);
+    assert(record && record.owner === owner && record.kind === 'cube' && !record.removal, 'Surface source token is not owned');
+    return record;
+  }
+  async function describe(owner, token) {
+    const record = ownedCube(owner, token);
+    await checkDirectory(path.dirname(record.path), record.parent);
+    assert(identity(await fs.lstat(record.path)) === record.identity, 'Cube snapshot changed');
+    active(owner);
+    return describeRecord(record);
+  }
+  function readPage(owner, token, offset, length) {
+    const record = ownedCube(owner, token);
+    assert(Number.isSafeInteger(offset) && offset >= 0 && Number.isSafeInteger(length) && length > 0
+      && length <= 64 * 1024 && length <= record.bytesLength - offset, 'Invalid Cube byte range');
+    const task = (async () => {
+      const handle = record.reader ?? await fs.open(record.path, 'r');
+      try {
+        assert(identity(await handle.stat()) === record.identity, 'Cube snapshot changed');
+        const page = new Uint8Array(length);
+        let read = 0;
+        while (read < length) {
+          const { bytesRead } = await handle.read(page, read, length - read, offset + read);
+          assert(bytesRead > 0, 'Cube snapshot page is incomplete'); read += bytesRead;
+        }
+        active(owner);
+        return page.buffer;
+      } finally { if (!record.reader) await handle.close(); }
+    })();
+    pending.set(task, owner);
+    return task.finally(() => pending.delete(task));
   }
   function cube(owner, ref) {
     assert(plain(ref) && Object.keys(ref).every(key => ['token', 'fieldMetadata'].includes(key)) && string(ref.token, 100) && plain(ref.fieldMetadata) && !Object.hasOwn(ref.fieldMetadata, 'values'), 'Invalid surface Cube source reference');
@@ -142,11 +212,25 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
     return closing;
   }
   async function release(owner, token) { active(owner); const record = records.get(token); assert(record && record.owner === owner && record.kind === 'cube', 'Surface source token is not owned'); assert(record.refs.size === 0, 'Surface source is in use'); await remove(record); return { released: true }; }
-  async function read(owner, token) { active(owner); const record = records.get(token); assert(record && record.owner === owner && record.kind === 'cube', 'Surface source token is not owned'); const checked = await sameFile(record.path, record, fs, MAX_SOURCE_BYTES); const known = await knownDomain(record.sha256); active(owner); return { token, name: record.name, text: checked.bytes.toString('utf8'), bytes: checked.bytes.length, sourceRevision: record.sha256, ...(known ? { knownDomain: known } : {}) }; }
+  async function read(owner, token) { const record = ownedCube(owner, token); const checked = await sameFile(record.path, record, fs, MAX_SOURCE_BYTES); const known = await knownDomain(record.sha256); active(owner); return { token, name: record.name, text: checked.bytes.toString('utf8'), bytes: checked.bytes.length, sourceRevision: record.sha256, ...(known ? { knownDomain: known } : {}) }; }
   async function closeOwner(owner) { closedOwners.add(owner); await Promise.allSettled([...pending].filter(([, pendingOwner]) => pendingOwner === owner).map(([task]) => task)); for (const record of [...records.values()]) if (record.owner === owner) await remove(record); for (const [key, session] of sessions) if (session.owner === owner) sessions.delete(key); }
   async function dispose() { disposed = true; await Promise.allSettled([...pending.keys()]); for (const record of [...records.values()]) await remove(record); sessions.clear(); }
-  async function exportRegistered(owner, ref) { active(owner); const { record, trusted } = cube(owner, ref); const checked = await sameFile(record.path, record, fs, MAX_SOURCE_BYTES); active(owner); const known = record.knownDomain; assert(known || trusted.fieldMetadata.validDomain?.kind === 'full-grid', 'Restricted Cube requires content-bound domain evidence'); return { name: record.name, text: checked.bytes.toString('utf8'), ...(known ? { domain: { name: record.name + '.sciyue-domain.json', text: encodeDomain(known) } } : {}) }; }
+  async function exportRegistered(owner, ref, {stream=false}={}) {
+    active(owner);
+    const { record, trusted } = cube(owner, ref), known = record.knownDomain;
+    assert(known || trusted.fieldMetadata.validDomain?.kind === 'full-grid', 'Restricted Cube requires content-bound domain evidence');
+    const domain = known ? { domain: { name: record.name + '.sciyue-domain.json', text: encodeDomain(known) } } : {};
+    if (stream) {
+      const file = await inspectManagedSource(record.path);
+      assert(file.identity===record.identity&&file.sha256===record.sha256,'Managed surface source changed');
+      active(owner);
+      return { name: record.name, file, ...domain };
+    }
+    const checked = await sameFile(record.path, record, fs, MAX_SOURCE_BYTES);
+    active(owner);
+    return { name: record.name, text: checked.bytes.toString('utf8'), ...domain };
+  }
   function assertExport(_owner, file) { const target = path.resolve(file).toLowerCase(); for (const record of records.values()) assert(![record.path, ...(record.originalPath ? [record.originalPath, record.originalPath + '.sciyue-domain.json'] : [])].some(source => target === path.resolve(source).toLowerCase()), 'Cannot overwrite a surface source'); }
-  return { register, read, open, release, closeSession, closeOwner, dispose, assertExport, exportRegistered, rememberDomain, activeCount: () => pending.size, MAX_SOURCE_BYTES };
+  return { register, registerAsset, describe, read, readPage, open, release, closeSession, closeOwner, dispose, assertExport, exportRegistered, rememberDomain, activeCount: () => pending.size, MAX_SOURCE_BYTES };
 }
 module.exports = { createSurfaceSourceFiles, MAX_SOURCE_BYTES };

@@ -6,7 +6,7 @@ const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
 const safe = require('./portable-storage.cjs');
 const SCHEMA = 'sciyue-project/v1';
-const FORMATS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+const FORMATS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 const isProjectIndexPath = file => typeof file === 'string' && path.extname(file).toLowerCase() === '.es';
 const CATEGORIES = new Set(['models', 'sources', 'trajectories', 'results']);
 // JSON/Buffer runtime limits are reported as real resource/format failures;
@@ -550,6 +550,23 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
     }
     await safe.checkDirectory(root, token); return { points, issues };
   }
-  return { create: indexPath => attach(indexPath, { create: true }), open: attach, inspectRecovery, begin, writeAssetChunk, writeAssets, importAsset, commit, abort, readAsset, readAssets, retainAssets, releaseAssets, gc, close, getSession: sessionId => describe(sessionFor(sessionId)) };
+  async function readSaved(sessionId) {
+    const s = sessionFor(sessionId);
+    return enqueue(s, async () => {
+      if (s.transaction) fail('SY_TRANSACTION_ACTIVE', '项目正在保存，请在提交完成后重新打开。');
+      await checkRoot(s);
+      const lock = await safe.readChecked(s.lockPath, 4096);
+      if (lock.sha256 !== s.lockHash || lock.identity !== s.lockIdentity) fail('SY_WRITE_CONFLICT', 'Project owner changed; the existing window was retained.');
+      const point = await readManifest(s.indexPath);
+      if (!point) fail('SY_INDEX_MISSING', '项目保存索引不存在。');
+      if (!s.expectedIndex || point.current.sha256 !== s.expectedIndex.sha256 || point.current.identity !== s.expectedIndex.identity ||
+          point.manifest.projectId !== s.projectId) fail('SY_WRITE_CONFLICT', '项目索引已从外部更改，原窗口和保存点已保留。');
+      await safe.sameFile(s.indexPath, point.current, fs, MAX_INDEX);
+      await checkRoot(s);
+      return describe({ ...s, manifest: point.manifest });
+    });
+  }
+  return { create: indexPath => attach(indexPath, { create: true }), open: attach, inspectRecovery, readSaved, begin, writeAssetChunk, writeAssets, importAsset, commit, abort, readAsset, readAssets, retainAssets, releaseAssets, gc, close, getSession: sessionId => describe(sessionFor(sessionId)),
+    getSessionIdentity(sessionId) { const {projectId,indexPath} = sessionFor(sessionId); return {projectId,indexPath}; } };
 }
 module.exports = { createSyProjectStore, isProjectIndexPath, validateManifest, SCHEMA, DEFAULT_CHUNK, ASSET_BATCH_ITEMS, ASSET_BATCH_BYTES };

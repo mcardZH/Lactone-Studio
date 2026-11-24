@@ -14,11 +14,12 @@ export function createLabelLayer(viewer:any){
    const foreign=viewer.labels.filter((label:any)=>!owned.has(label));
    const sharedMaterials=new Set(foreign.map((label:any)=>label.sprite?.material));
    const sharedMaps=new Set(foreign.map((label:any)=>label.sprite?.material?.map));
+   viewer.labels.length=foreign.length;
+   foreign.forEach((label:any,index:number)=>{viewer.labels[index]=label;});
    let failure:unknown;
    for(const label of owned){
     const sourceContext=labels.get(label);labels.delete(label);
     try{
-     const index=viewer.labels.indexOf(label);if(index>=0)viewer.labels.splice(index,1);
      viewer.modelGroup.remove(label.sprite);
     }catch(error){failure??=error;}
     const material=label.sprite?.material,map=material?.map,current=context();

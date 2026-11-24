@@ -6,7 +6,6 @@ both original grids before atomically publishing a complete result.
 """
 from __future__ import annotations
 
-import base64
 import copy
 import hashlib
 import json
@@ -17,6 +16,7 @@ import re
 import subprocess
 import tempfile
 import threading
+from analysis_result_wire import packed_values, sha256_file, cube_export_file
 
 from hirshfeld_analysis import (HirshfeldError, require, finite, validate_cluster_geometry,
                                 validate_cluster, admit_native_result, validate_native_cube_pair, native_boundary_faces)
@@ -240,7 +240,7 @@ class HirshfeldAnalysisSession:
                     function='hirshfeld-weight' if role == 'shape' else 'dnorm', functionLabel='Hirshfeld weight' if role == 'shape' else 'd_norm', valueUnit='dimensionless',
                     definitionEvidence=dict(kind='native-output', description='Same native main-12 Hirshfeld-weight 0.5 surface, explicitly selected d_norm, and original post-menu -2/13 Cube roles.'),
                     grid=copy.deepcopy(cube['grid']), atoms=copy.deepcopy(cube['atoms']), precision=copy.deepcopy(cube['precision']), validDomain=copy.deepcopy(domain),
-                    valuesBase64=base64.b64encode(cube['values'].astype('<f8', copy=False).tobytes()).decode('ascii'))
+                    valuesBinary=packed_values(cube['values']))
 
     def analyze(self, request):
         self._check_stamp(request.get('stamp'))
@@ -287,7 +287,7 @@ class HirshfeldAnalysisSession:
                 if open_preview and role in ('surface-vertices', 'fingerprint-distances') and not path.is_file():
                     continue
                 require(path.is_file() and not path.is_symlink(), 'artifacts', 'A required native provenance artifact is absent.')
-                raw_artifacts.append(dict(role=role, name=name, revision=hashlib.sha256(path.read_bytes()).hexdigest()))
+                raw_artifacts.append(dict(role=role, name=name, revision=sha256_file(path)))
             # Dataset's quantitative points and the display pair share one native
             # run but do not claim the same triangulation or vertex indices.
             dataset['surface'] = dict(available=True, representation='native-weight-grid', sampleRelationship=('Current-box native samples, when admitted, are distinct from display vertices; no complete-surface denominator is provided.' if open_preview else 'Native quantitative vertices and display mesh vertices are distinct samplings of the same weight-0.5 surface; contact-area denominator is native and immutable.'))
@@ -302,7 +302,7 @@ class HirshfeldAnalysisSession:
             saved = copy.deepcopy({key_: value for key_, value in result.items() if key_ != 'pair'})
             saved['fieldIds'] = {role: value['id'] for role, value in fields.items()}
             additions = {field['id']: dict(path=str(paths['surf.cub' if role == 'shape' else 'mapfunc.cub']), revision=field['source']['revision'],
-                                          analysisId=request['stamp']['analysisId'], descriptor={k: copy.deepcopy(v) for k, v in field.items() if k != 'valuesBase64'})
+                                          analysisId=request['stamp']['analysisId'], descriptor={k: copy.deepcopy(v) for k, v in field.items() if k != 'valuesBinary'})
                          for role, field in fields.items()}
             with self.lock:
                 self._current(); require(self.epoch == epoch, 'cancelled', 'A late HS result belongs to an obsolete operation.')
@@ -327,7 +327,7 @@ class HirshfeldAnalysisSession:
             cubes[role] = read_scalar_cube(path, self.resources['memoryBudgetBytes'])
             require(cubes[role]['revision'] == item['revision'], 'field-changed', 'Completed HS Cube bytes changed.')
             fields[role] = copy.deepcopy(item['descriptor'])
-            fields[role]['valuesBase64'] = base64.b64encode(cubes[role]['values'].astype('<f8', copy=False).tobytes()).decode('ascii')
+            fields[role]['valuesBinary'] = packed_values(cubes[role]['values'])
         validate_native_cube_pair(cubes['shape'], cubes['mapping'], saved['source'], SYMBOLS, saved['vertices'], open_preview=saved.get('mode') == 'open-preview')
         faces = native_boundary_faces(cubes['shape'])
         return dict(kind='hirshfeld', definition='hirshfeld-weight', isovalue=.5, inside='above',
@@ -351,8 +351,8 @@ class HirshfeldAnalysisSession:
         require(item is not None and item['analysisId'] == request['stamp']['analysisId'], 'field', 'HS Cube is absent or belongs to another analysis.')
         path = Path(item['path'])
         require(path.is_file() and not path.is_symlink(), 'field-changed', 'The original owned HS Cube is absent or was replaced.')
-        raw = path.read_bytes(); require(hashlib.sha256(raw).hexdigest() == item['revision'], 'field-changed', 'HS Cube bytes changed before export.')
-        self._current(); return dict(name=path.name, text=raw.decode('utf-8'))
+        require(sha256_file(path) == item['revision'], 'field-changed', 'HS Cube bytes changed before export.')
+        self._current(); return cube_export_file(path.name, path, item['revision'])
 
     def evidence(self):
         native = self.native; process = native.process if native else None

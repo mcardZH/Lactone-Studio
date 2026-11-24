@@ -9,15 +9,15 @@ import { superposeViewAtoms, type ViewRigidTransform } from '../modeling/view-su
 import { assertResultNotAborted, type ResultDiagnostic, type ResultInputFile, type ResultReadOptions, type TrajectoryResult } from './contracts';
 import { appendGaussianRouteSummary, readFchkSavedResult } from './fchk-scientific-reader';
 import { fchkWavefunctionBlocker } from './fchk-wavefunction-capability';
-import { streamFchkRecords, type FchkFieldDiagnostic } from '../core/fchk-records';
+import type { FchkFieldDiagnostic } from '../core/fchk-records';
 import type { WavefunctionMetadata } from './orbital-contracts';
 import { gaussianOutputLines, outputLines } from './output-lines';
 import { gaussianEntry, gaussianExplicitLink, gaussianJobLink, gaussianNormalTermination } from './gaussian-output-archive';
 import { orcaOutputComment, orcaOutputEcho, orcaNormalTermination } from './output-sections';
 import { emptyScientificData, SCIENTIFIC_NUMBER, scientificNumber, type ScfCycle, type ScientificField, type ScientificLine, type ScientificTask } from './scientific-contracts';
-import { readScientificFileResults, readScientificResults } from './scientific-reader';
-import { readIrcOutputContext, type IrcOutputContext } from './irc-companion-association';
-import { recognizeResultSource, type SourceSoftware } from './source-recognition';
+import { readRecognizedScientificFileResults, readScientificResults } from './scientific-reader';
+import { readIrcOutputContext, readIrcOutputContexts, type IrcOutputContext } from './irc-companion-association';
+import { recognizeResultSource, type SourceRecognition, type SourceSoftware } from './source-recognition';
 import { readXyzTrajectory } from './xyz-reader';
 import { readHessScientificResult } from './hess-scientific-reader';
 import { readMoldenStructure } from './molden-structure-reader';
@@ -132,8 +132,10 @@ export function printedRoundingInterval(token: string): number | null {
 
 /** Inspect bytes rather than trusting a suffix. No conversion or file mutation. */
 export async function identifyPostprocessSource(file: ResultInputFile, options: ResultReadOptions = {}): Promise<PostprocessSourceIdentity> {
+  return identifiedPostprocessSource(file, await recognizeResultSource(file, options), options);
+}
+async function identifiedPostprocessSource(file: ResultInputFile, identity: SourceRecognition, options: ResultReadOptions): Promise<PostprocessSourceIdentity> {
   assertResultNotAborted(options.signal);
-  const identity = await recognizeResultSource(file, options);
   if (identity.status === 'conflict') return { kind: 'unsupported', message: identity.message };
   if (identity.format === 'molden' || identity.format === 'fchk') return { kind: identity.format, software: identity.software };
   if (identity.format === 'xyz' || identity.format === 'hess') return { kind: identity.format, software: identity.software };
@@ -337,7 +339,28 @@ function isGaussianCounterpoiseResult(result:TrajectoryResult):boolean {
   return result.engine==='gaussian'&&(gaussianRouteTokens(result.scientific?.route??'').some(token=>/^counterpoise(?=$|[=(])/i.test(token))
     ||(result.scientific?.bsse??[]).some(field=>/^cp-component-\d+-role-kind$/.test(field.key)));
 }
-async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, kind: PostprocessSource['kind'], options: ResultReadOptions, bounds?: { start: number; end: number }) {
+function evidenceWindows(file: ResultInputFile, kind: 'gaussian-output' | 'orca-output', options: ResultReadOptions) {
+  const lines = kind === 'gaussian-output' ? gaussianOutputLines(file, options, true) : outputLines(file, options, () => undefined);
+  let pending: ScientificLine | undefined;
+  return {
+    async *take(end: number): AsyncGenerator<ScientificLine> {
+      while (true) {
+        if (!pending) {
+          const next = await lines.next();
+          if (next.done) return;
+          pending = next.value;
+        }
+        if (pending.number >= end) return;
+        const line = pending;
+        pending = undefined;
+        yield line;
+      }
+    },
+    close: () => lines.return(undefined),
+  };
+}
+
+async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, kind: PostprocessSource['kind'], options: ResultReadOptions, bounds?: { start: number; end: number }, selectedLines?: AsyncIterable<ScientificLine>) {
   const observations: PrintedObservation[] = [];
   // Counterpoise fragment responses are not ordinary complex-frame evidence.
   // Reuse the primary parser's proven component identity and source interval;
@@ -350,11 +373,9 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
   for (const field of [...(result.scientific?.summary ?? []), ...(result.scientific?.properties ?? [])]) {
     if (typeof field.value === 'number' && energyDefinition(field)) fieldsByLine.set(field.sourceLine, [...(fieldsByLine.get(field.sourceLine) ?? []), field]);
   }
-  let coordinateRounding: number | null = null, arrayField = '', arrayRemaining = 0, arrayOffset = 0, moldenAtoms = false, moldenScale = 1;
+  let coordinateRounding: number | null = null, moldenAtoms = false, moldenScale = 1;
   const coordinateRoundingByFrame: Record<number, number | null> = {};
-  const orbitalIndices = new Map<string, { count: number; virtual: boolean }>();
   let atomicTable: { scheme: string; rows: number; age: number; spin: boolean } | null = null;
-  let orcaOrbitalSpin: 'restricted' | 'alpha' | 'beta' = 'restricted', orcaOrbitals = false;
   let moldenMos = false, moldenEnergy: { token: string; line: number } | null = null, moldenSpin = 'alpha';
   const moldenOrdinals = new Map<string, number>();
   let quadrupole: { prefix: string; unit: string; remaining: number } | null = null;
@@ -371,9 +392,7 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
   let ircSummarySeen = false, savedDensityFrameIndex: number | undefined, normalTermination = false;
   let detachedStart: number | null = null;
   const detachedRanges: {start:number;end:number}[] = [];
-  async function* savedLines(){for await(const record of streamFchkRecords(file,options))if(!record.character)yield{text:record.text,number:record.sourceLine,start:record.start,end:record.end};}
-  const sourceLines = kind === 'fchk' ? savedLines() : kind === 'gaussian-output'
-    ? gaussianOutputLines(file, options, true) : outputLines(file, options, () => undefined);
+  const sourceLines = selectedLines ?? (kind === 'gaussian-output' ? gaussianOutputLines(file, options, true) : outputLines(file, options, () => undefined));
   for await (const line of sourceLines) {
     if (bounds && line.number < bounds.start) continue;
     if (bounds && line.number >= bounds.end) break;
@@ -385,7 +404,7 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
     if (detachedStart !== null && start === line.number) { detachedRanges.push({start:detachedStart,end:line.number}); detachedStart = null; }
     const frameIndex = detachedStart === null ? result.frames[framePosition]?.index ?? null : null;
     const ordinaryResponse=cpComplexLine(line.number);
-    if(!ordinaryResponse){atomicTable=null;quadrupole=null;orbitalIndices.clear();}
+    if(!ordinaryResponse){atomicTable=null;quadrupole=null;}
     if (kind === 'gaussian-output' && result.scientific?.tasks.includes('irc')) {
       if (/Summary of reaction path following/i.test(line.text)) ircSummarySeen = true;
       if (ircSummarySeen && frameIndex !== null && /Copying SCF densities to generalized density/i.test(line.text)) savedDensityFrameIndex = frameIndex;
@@ -441,25 +460,6 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
           if (/SCF (?:CONVERGED|NOT CONVERGED)/i.test(trimmed)) finishScfTable();
         }
       }
-      const gaussianOrbital = line.text.match(/^\s*(Alpha|Beta)\s+(occ\.|virt\.)\s+eigenvalues\s*--\s*(.+)$/i);
-      if (gaussianOrbital&&ordinaryResponse) {
-        const spin = gaussianOrbital[1] === 'Beta' ? 'beta' : result.scientific?.orbitals.some(channel => channel.spin === 'restricted') ? 'restricted' : 'alpha';
-        const virtual = gaussianOrbital[2].toLowerCase() === 'virt.', previous = orbitalIndices.get(spin);
-        let index = previous && !(previous.virtual && !virtual) ? previous.count : 0;
-        for (const token of gaussianOrbital[3].trim().split(/\s+/)) {
-          const value = observation(`orbital:${spin}:${++index}:energy`, 'hartree', token, line.number); if (value) observations.push(value);
-        }
-        orbitalIndices.set(spin, { count: index, virtual });
-      }
-      if (/^\s*ORBITAL ENERGIES\s*$/i.test(line.text)) orcaOrbitals = true;
-      if (orcaOrbitals && /SPIN UP ORBITALS/i.test(line.text)) orcaOrbitalSpin = 'alpha';
-      if (orcaOrbitals && /SPIN DOWN ORBITALS/i.test(line.text)) orcaOrbitalSpin = 'beta';
-      if (kind === 'orca-output' && orcaOrbitals) {
-        const row = line.text.trim().split(/\s+/);
-        if (row.length === 4 && /^\d+$/.test(row[0]) && row.slice(1).every(token => scientificNumber(token) !== null)) {
-          const value = observation(`orbital:${orcaOrbitalSpin}:${Number(row[0]) + 1}:energy`, 'hartree', row[2], line.number); if (value) observations.push(value);
-        } else if (/MULLIKEN|LOEWDIN|CHELPG|HIRSHFELD|FINAL SINGLE POINT|DIPOLE MOMENT/i.test(line.text)) orcaOrbitals = false;
-      }
       const atomicHeader = line.text.match(/^\s*(Mulliken (?:charges|atomic charges)(?: and spin densities)?|ESP charges|Hirshfeld charges(?:, spin densities.*)?|MULLIKEN ATOMIC CHARGES(?: AND SPIN POPULATIONS)?|LOEWDIN ATOMIC CHARGES(?: AND SPIN POPULATIONS)?)\s*:?\s*$/i);
       if (atomicHeader&&ordinaryResponse) atomicTable = { scheme: /Mulliken/i.test(atomicHeader[1]) ? 'Mulliken' : /Hirshfeld/i.test(atomicHeader[1]) ? 'Hirshfeld' : /Loewdin/i.test(atomicHeader[1]) ? 'Loewdin' : 'ESP', rows: 0, age: 0, spin: /spin/i.test(atomicHeader[1]) };
       else if (atomicTable) {
@@ -493,25 +493,6 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
           if (frameIndex !== null) coordinateRoundingByFrame[frameIndex] = Math.max(coordinateRoundingByFrame[frameIndex] ?? 0, rounding);
         }
       }
-    } else if (kind === 'fchk') {
-      if (line.number === 2 && /^\s*SP\s+/i.test(line.text) && result.scientific && result.scientific.tasks.length === 0) result.scientific.tasks.push('sp');
-      const header = line.text.match(/^(.+?)\s+[IR]\s+(?:N=\s*(\d+)\s*|([+-]?[\d.EeDd+-]+)\s*)$/);
-      if (header) {
-        arrayField = header[1].trim(); arrayRemaining = Number(header[2] ?? 0); arrayOffset = 0;
-        if (['SCF Energy', 'MP2 Energy'].includes(arrayField) && header[3] && fieldsByLine.get(line.number)?.some(field => field.key===arrayField)) {
-          const value = observation(`gaussian:${arrayField}`, 'hartree', header[3], line.number,true); if (value) observations.push(value);
-        }
-      } else if (arrayRemaining > 0) {
-        const tokens = line.text.trim().split(/\s+/); arrayRemaining -= tokens.length;
-        if (arrayField === 'Current cartesian coordinates') for (const token of tokens) coordinateRounding = Math.max(coordinateRounding ?? 0, (printedRoundingInterval(normalizedFchkNumber(token)??'') ?? 0) * BOHR_ANGSTROM);
-        const orbitalSpin = arrayField === 'Beta Orbital Energies' ? 'beta' : result.scientific?.orbitals.some(channel => channel.spin === 'restricted') ? 'restricted' : 'alpha';
-        const scheme = ({ 'Mulliken Charges': 'Mulliken', 'ESP Charges': 'ESP', 'NPA Charges': 'NPA' } as Record<string, string>)[arrayField];
-        for (const [index, token] of tokens.entries()) {
-          const definition = /^(?:Alpha|Beta) Orbital Energies$/.test(arrayField) ? `orbital:${orbitalSpin}:${arrayOffset + index + 1}:energy` : scheme ? `atomic:charge:${scheme}:${arrayOffset + index}` : null;
-          if (definition) { const value = observation(definition, scheme ? 'e' : 'hartree', token, line.number,true); if (value) observations.push(value); }
-        }
-        arrayOffset += tokens.length;
-      }
     } else {
       const section = line.text.match(/^\s*\[([^\]]+)\](.*)$/);
       if (section) { moldenAtoms = /^atoms$/i.test(section[1]); moldenMos = /^mo$/i.test(section[1]); moldenScale = /\bAU\b/i.test(section[2]) ? BOHR_ANGSTROM : 1; }
@@ -537,8 +518,6 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
   // the result itself still preserves all source observations in ScientificData.
   const available = observations.filter(value => {
     if(!cpComplexLine(value.sourceLine))return false;
-    const orbital = value.definition.match(/^orbital:(restricted|alpha|beta):(\d+):energy$/);
-    if (orbital) return result.scientific?.orbitals.some(channel => channel.spin === orbital[1] && channel.orbitals.some(item => item.energy === value.value)) ?? false;
     const atomic = value.definition.match(/^atomic:(charge|spin):([^:]+):(\d+)$/);
     if (atomic) return result.scientific?.atomicProperties.some(table => table.kind === atomic[1] && table.scheme.startsWith(atomic[2]) && table.values.some(item => item.atomIndex === Number(atomic[3]) && item.value === value.value)) ?? false;
     return true;
@@ -551,6 +530,19 @@ async function sourceEvidence(file: ResultInputFile, result: TrajectoryResult, k
     return found;
   };
   for (const value of available) value.frameIndex = kind.endsWith('-output') ? frameAtLine(value.sourceLine) : 0;
+  // Reuse the parser's actual scoped orbital records, including the raw token.
+  // Re-reading an unscoped numeric table can assign a valid number to the
+  // wrong orbital, frame or spin even when the displayed table is correct.
+  if (kind.endsWith('-output')) for (const channel of result.scientific?.orbitals ?? []) {
+    for (const item of channel.orbitals) {
+      if (!item.rawEnergy || item.sourceLine === undefined || !cpComplexLine(item.sourceLine) ||
+          bounds && (item.sourceLine < bounds.start || item.sourceLine >= bounds.end)) continue;
+      const value = observation(`orbital:${channel.spin}:${item.index + (kind === 'orca-output' ? 1 : 0)}:energy`,
+        'hartree', item.rawEnergy, item.sourceLine);
+      const frameIndex = frameAtLine(item.sourceLine);
+      if (value && frameIndex !== null && (channel.frameIndex === null || channel.frameIndex === frameIndex)) available.push({ ...value, frameIndex });
+    }
+  }
   const latest = new Map(available.map(value => [`${value.frameIndex}\0${value.definition}\0${value.unit}`, value]));
   return { observations: [...latest.values()], coordinateRoundingAngstrom: coordinateRounding, ...(kind.endsWith('-output') ? { coordinateRoundingByFrame } : {}),
     ...(normalTermination && savedDensityFrameIndex !== undefined ? { savedDensityFrameIndex } : {}) };
@@ -609,15 +601,22 @@ export async function readPostprocessOutput(file: ResultInputFile, options: Post
   return assemblePostprocessOutput(file, identity, results, options);
 }
 
-async function assemblePostprocessOutput(file: ResultInputFile, identity: PostprocessSourceIdentity, results: TrajectoryResult[], options: ResultReadOptions): Promise<PostprocessSource> {
-  if (identity.kind !== 'gaussian-output' && identity.kind !== 'orca-output') throw new PostprocessSourceError('wrong-source-kind', '几何输出组装只接入已识别的Gaussian或ORCA OUT。');
+async function assemblePostprocessOutput(file: ResultInputFile, identity: PostprocessSourceIdentity, results: TrajectoryResult[], options: ResultReadOptions, knownContinuation?: number | null): Promise<PostprocessSource> {
+  const { kind } = identity;
+  if (kind !== 'gaussian-output' && kind !== 'orca-output') throw new PostprocessSourceError('wrong-source-kind', '几何输出组装只接入已识别的Gaussian或ORCA OUT。');
   try {
-    const continuationLine = results.length > 1 ? await gaussianCombinedOptFreqContinuationLine(file, results, options) : null;
+    const continuationLine = knownContinuation !== undefined ? knownContinuation : results.length > 1 ? await gaussianCombinedOptFreqContinuationLine(file, results, options) : null;
     if (results.length !== 1 && continuationLine === null) throw new PostprocessSourceError('multiple-jobs', '来源含多个独立作业或结构状态段；请分别提供单个作业输出，不能自动选作一个分析。');
     if (continuationLine !== null) for (const result of results) result.messages.push(`Gaussian原生OPT/FREQ续段：源行${continuationLine}，AllCheck/TCheck/GenChk与末/首几何、电荷和多重度一致；各job的帧、态、模式及能量分别保留。`);
     const result = results[0];
-    const evidence = await sourceEvidence(file, result, identity.kind, options, continuationLine === null ? undefined : { start: 1, end: continuationLine });
-    const continuationEvidence = continuationLine !== null ? await sourceEvidence(file, results[1], identity.kind, options, { start: continuationLine + 1, end: Infinity }) : undefined;
+    const windows = continuationLine === null ? undefined : evidenceWindows(file, kind, options);
+    const evidenceForJobs = async () => {
+      if (!windows || continuationLine === null) return { primary: await sourceEvidence(file, result, kind, options) };
+      const primary = await sourceEvidence(file, result, kind, options, { start: 1, end: continuationLine }, windows.take(continuationLine));
+      const continuation = await sourceEvidence(file, results[1], kind, options, { start: continuationLine + 1, end: Infinity }, windows.take(Infinity));
+      return { primary, continuation };
+    };
+    const { primary: evidence, continuation: continuationEvidence } = await evidenceForJobs().finally(() => windows?.close());
     if (result.engine === 'orca' && result.scientific && isUnifiedPostprocessSource({ tasks: result.scientific.tasks, result })) {
       const structure = result.initialStructure, charge = structure.charge, multiplicity = structure.multiplicity;
       if (charge !== null && multiplicity !== null && result.scientific.route) {
@@ -636,43 +635,51 @@ async function assemblePostprocessOutput(file: ResultInputFile, identity: Postpr
     const nebOutputContext=context?{outputId:context.outputId,version:context.version,references:context.references,sourceLines:context.sourceLines}:undefined;
     const ircContext = await readIrcOutputContext(file, result, options);
     const ircOutputContext = ircContext ? { outputId: ircContext.outputId, references: ircContext.references } : undefined;
-    return { kind: identity.kind, software: identity.software, result, results, tasks: result.scientific?.tasks ?? [], ...evidence,...(nebOutputContext?{nebOutputContext}:{}), ...(ircOutputContext ? { ircOutputContext } : {}),
+    return { kind: kind, software: identity.software, result, results, tasks: result.scientific?.tasks ?? [], ...evidence,...(nebOutputContext?{nebOutputContext}:{}), ...(ircOutputContext ? { ircOutputContext } : {}),
       ...(continuationLine===null?{}:{nativeContinuations:[{kind:'gaussian-opt-freq' as const,optimizationResultId:results[0].id,frequencyResultId:results[1].id,evidenceSourceLine:continuationLine}],continuationObservations:continuationEvidence!.observations}) };
   } catch (error) { await Promise.all(results.map(result => result.dispose())); throw error; }
 }
 
 /** General file entry. All independent jobs and leases survive until explicit selection/disposal. */
 export async function readPostprocessFileOutput(file: ResultInputFile, options: PostprocessOutputReadOptions = {}): Promise<PostprocessFileSource> {
-  const identity = await identifyPostprocessSource(file, options);
+  const recognized = await recognizeResultSource(file, options);
+  const identity = await identifiedPostprocessSource(file, recognized, options);
   if (identity.kind !== 'gaussian-output' && identity.kind !== 'orca-output') throw new PostprocessSourceError('wrong-source-kind', identity.message ?? '请选择Gaussian或ORCA文本输出。');
   const reused = await options.reuseParsedResults?.();
   if (reused) return assemblePostprocessOutput(file, identity, await projectPostprocessParsedResults(file, reused), options);
-  const snapshotHash = new VibronicSha256();
-  for (let start = 0; start < file.size; start += 1024 ** 2) { const end = Math.min(file.size, start + 1024 ** 2), bytes = await file.readRange(start, end, options.signal); assertResultNotAborted(options.signal); if (bytes.length !== end - start) throw Error('来源建立快照时长度变化。'); snapshotHash.update(bytes); }
-  const sha256 = snapshotHash.digest();
-  const read = await readScientificFileResults(file, options);
-  if (!read.diagnostics.length && (read.results.length === 1 || await gaussianCombinedOptFreqContinuationLine(file, read.results, options) !== null)) return assemblePostprocessOutput(file, identity, read.results, options);
+  const read = await readRecognizedScientificFileResults(file, recognized, options);
   const jobs = [...read.results, ...read.diagnostics].sort((a, b) => (a.jobIndex ?? -1) - (b.jobIndex ?? -1));
   try {
-    const contexts = [];
-    for (const job of jobs) { const context = await readIrcOutputContext(file, job, options); if (context) contexts.push({ outputId: context.outputId, references: context.references }); }
+    const continuation = !read.diagnostics.length && read.results.length > 1
+      ? await gaussianCombinedOptFreqContinuationLine(file, read.results, options) : null;
+    if (!read.diagnostics.length && (read.results.length === 1 || continuation !== null))
+      return assemblePostprocessOutput(file, identity, read.results, options, continuation);
+    const snapshotHash = new VibronicSha256();
+    for (let start = 0; start < file.size; start += 1024 ** 2) { const end = Math.min(file.size, start + 1024 ** 2), bytes = await file.readRange(start, end, options.signal); assertResultNotAborted(options.signal); if (bytes.length !== end - start) throw Error('来源建立快照时长度变化。'); snapshotHash.update(bytes); }
+    const sha256 = snapshotHash.digest();
+    const contexts = (await readIrcOutputContexts(file, jobs, options)).map(context => ({
+      outputId: context.outputId, references: context.references,
+    }));
     const jobEvidence: Record<string, NonNullable<PostprocessScientificFileSource['jobEvidence']>[string]> = {};
     let startLine = 1, scoped = jobs[0]?.jobIndex === 0;
     const independent = new Set(jobs.map(job => job.jobIndex)).size === jobs.length;
-    for (const job of jobs) {
-      const terminal = job.scientific?.diagnostics?.termination;
-      const endLine = terminal?.sourceLine;
-      // A missing native boundary cannot be guessed from the next geometry,
-      // filename, input echo, or the last job in the array.
-      if (!independent || !scoped || terminal?.status === 'not-observed' || endLine === undefined || endLine < startLine) { scoped = false; continue; }
-      if ('frames' in job && job.frames.length && !job.scientific?.centers?.some(center => center.kind !== 'real')) {
-        const evidence = await sourceEvidence(file, job, identity.kind, options, { start: startLine, end: endLine + 1 });
-        jobEvidence[job.id] = { sourceId: file.id, sourceRevision: sha256, startLine, endLine,
-          observations: evidence.observations, coordinateRoundingAngstrom: evidence.coordinateRoundingAngstrom,
-          coordinateRoundingByFrame: evidence.coordinateRoundingByFrame };
+    const windows = evidenceWindows(file, identity.kind, options);
+    try {
+      for (const job of jobs) {
+        const terminal = job.scientific?.diagnostics?.termination;
+        const endLine = terminal?.sourceLine;
+        // A missing native boundary cannot be guessed from the next geometry,
+        // filename, input echo, or the last job in the array.
+        if (!independent || !scoped || terminal?.status === 'not-observed' || endLine === undefined || endLine < startLine) { scoped = false; continue; }
+        if ('frames' in job && job.frames.length && !job.scientific?.centers?.some(center => center.kind !== 'real')) {
+          const evidence = await sourceEvidence(file, job, identity.kind, options, { start: startLine, end: endLine + 1 }, windows.take(endLine + 1));
+          jobEvidence[job.id] = { sourceId: file.id, sourceRevision: sha256, startLine, endLine,
+            observations: evidence.observations, coordinateRoundingAngstrom: evidence.coordinateRoundingAngstrom,
+            coordinateRoundingByFrame: evidence.coordinateRoundingByFrame };
+        }
+        startLine = endLine + 1;
       }
-      startLine = endLine + 1;
-    }
+    } finally { await windows.close(); }
     let closed = false;
     return { fileOnly: true, kind: identity.kind, software: identity.software, identity: { id: file.id, name: file.name, size: file.size, sha256 }, jobs,
       ...(jobs.length === 1 ? { selectedJobId: jobs[0].id } : {}), tasks: [...new Set(jobs.flatMap(job => job.scientific?.tasks ?? []))], ircContexts: contexts, jobEvidence,
@@ -694,6 +701,30 @@ export async function readPostprocessWavefunctionStructure(file: ResultInputFile
   return structure;
 }
 
+function fchkSourceEvidence(saved: Awaited<ReturnType<typeof readFchkSavedResult>>) {
+  const observations: PrintedObservation[] = [];
+  let coordinateRoundingAngstrom: number | null = null;
+  const restricted = saved.result.scientific?.orbitals.some(channel => channel.spin === 'restricted');
+  const charges: Record<string, string> = { 'Mulliken Charges': 'Mulliken', 'ESP Charges': 'ESP', 'NPA Charges': 'NPA' };
+  for (const [field, entries] of saved.printedFields) {
+    if (field === 'Current cartesian coordinates') {
+      for (const { token } of entries) coordinateRoundingAngstrom = Math.max(coordinateRoundingAngstrom ?? 0,
+        (printedRoundingInterval(normalizedFchkNumber(token) ?? '') ?? 0) * BOHR_ANGSTROM);
+      continue;
+    }
+    const energies = field === 'SCF Energy' || field === 'MP2 Energy';
+    const spin = field === 'Beta Orbital Energies' ? 'beta' : field === 'Alpha Orbital Energies' ? restricted ? 'restricted' : 'alpha' : undefined;
+    const scheme = charges[field];
+    if (!energies && !spin && !scheme) continue;
+    entries.forEach(({ token, sourceLine }, index) => {
+      const key = energies ? `gaussian:${field}` : spin ? `orbital:${spin}:${index + 1}:energy` : `atomic:charge:${scheme}:${index}`;
+      const value = observation(key, scheme ? 'e' : 'hartree', token, sourceLine, true);
+      if (value) observations.push({ ...value, frameIndex: 0 });
+    });
+  }
+  return { observations, coordinateRoundingAngstrom };
+}
+
 /** Metadata is supplied by the native wavefunction reader, never reconstructed here. */
 export async function readPostprocessWavefunction(file: ResultInputFile, metadata: WavefunctionMetadata, options: ResultReadOptions = {}): Promise<PostprocessSource> {
   const identity = await identifyPostprocessSource(file, options);
@@ -701,14 +732,16 @@ export async function readPostprocessWavefunction(file: ResultInputFile, metadat
   if (identity.kind !== metadata.format || metadata.sourceId !== file.id) throw new PostprocessSourceError('metadata-source-mismatch', '波函数元数据与所选来源身份不一致。');
   let result: TrajectoryResult;
   let fchkDiagnostics: readonly FchkFieldDiagnostic[] | undefined;
+  let savedEvidence: ReturnType<typeof fchkSourceEvidence> | undefined;
   if (identity.kind === 'fchk') {
-    const saved = await readFchkSavedResult(file, options);
+    const saved = await readFchkSavedResult(file, { ...options, capturePrintedFields: true });
     result = saved.result;
     try {
       assertResultNotAborted(options.signal);
       const blocker = fchkWavefunctionBlocker(saved.validatedFields, saved.diagnostics);
       if (blocker) throw new PostprocessSourceError('incomplete-wavefunction', blocker);
       if (saved.diagnostics.length) fchkDiagnostics = saved.diagnostics;
+      savedEvidence = fchkSourceEvidence(saved);
     } catch (error) {
       await result.dispose();
       throw error;
@@ -726,7 +759,7 @@ export async function readPostprocessWavefunction(file: ResultInputFile, metadat
       async getFrame(index, signal) { assertResultNotAborted(signal); if (closed) throw new Error('Molden来源已关闭。'); if (index !== 0) throw new Error('Molden只含一个已保存结构。'); return structuredClone(structure); },
       async dispose() { if (!closed) { closed = true; await file.close?.(); } } };
   }
-  try { const evidence = await sourceEvidence(file, result, identity.kind, options); bindSourceProvenance(result, file); return { kind: identity.kind, software: identity.software, result, results: [result], tasks: result.scientific?.tasks ?? [], metadata, ...(fchkDiagnostics?{fchkDiagnostics}:{}), ...evidence }; }
+  try { const evidence = savedEvidence ?? await sourceEvidence(file, result, identity.kind, options); bindSourceProvenance(result, file); return { kind: identity.kind, software: identity.software, result, results: [result], tasks: result.scientific?.tasks ?? [], metadata, ...(fchkDiagnostics?{fchkDiagnostics}:{}), ...evidence }; }
   catch (error) { await result.dispose(); throw error; }
 }
 

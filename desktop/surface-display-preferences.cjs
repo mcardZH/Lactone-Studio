@@ -4,7 +4,7 @@ const {createHash,randomUUID}=require('node:crypto');
 const {assert,plain}=require('./security.cjs');
 const LIMIT=64*1024;
 const SURFACE_DISPLAY_FAMILIES=Object.freeze(['orbital','electron-hole','surface:esp','surface:alie','surface:hirshfeld','interaction:iri','interaction:rdg','interaction:igmh','interaction:migm','interaction:igm','vibration']);
-const families=new Set(SURFACE_DISPLAY_FAMILIES),presets=new Set(['esp','orbital','dual','iri','igmh','density','hirshfeld','gallery-esp','gallery-orbital','gallery-dual','gallery-iri','gallery-igmh','gallery-density','gallery-hirshfeld','custom']);
+const families=new Set(SURFACE_DISPLAY_FAMILIES),presets=new Set(['esp','orbital','dual','iri','igmh','density','hirshfeld','gallery-esp','gallery-orbital','gallery-dual','gallery-iri','gallery-igmh','gallery-density','gallery-hirshfeld','gallery-vesta-cyan-yellow','custom']);
 const identity=s=>[s.dev,s.ino,s.size,s.mtimeMs,s.ctimeMs].join(':');
 function exact(value,keys){assert(plain(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key)),'SURFACE_DISPLAY_FIELDS: Unexpected preference fields');}
 const number=(value,min,max)=>typeof value==='number'&&Number.isFinite(value)&&value>=min&&value<=max;
@@ -19,7 +19,8 @@ function validateSurfaceAppearance(family,value){
     assert(!Object.hasOwn(value,'opacity')||number(value.opacity,0,1),'SURFACE_DISPLAY_OPACITY: Invalid mesh opacity');
     const minimumColors=['surface:esp','surface:alie'].includes(family)?1:2;
     assert(Array.isArray(value.colors)&&value.colors.length>=minimumColors&&value.colors.length<=16&&Object.keys(value.colors).length===value.colors.length&&Array.from(value.colors).every(color)&&(!['orbital','electron-hole'].includes(family)||value.colors.length===2),'SURFACE_DISPLAY_COLORS: Invalid ordered colors');
-    const f=value.finish;assert(plain(f)&&['preset','specular','exponent'].every(key=>Object.hasOwn(f,key))&&Object.keys(f).every(key=>['preset','specular','exponent','ambient','diffuse','outline','outlineWidth'].includes(key)),'SURFACE_DISPLAY_FINISH: Unexpected finish fields');
+    const f=value.finish;assert(plain(f)&&['preset','specular','exponent'].every(key=>Object.hasOwn(f,key))&&Object.keys(f).every(key=>['preset','specular','exponent','ambient','diffuse','outline','outlineWidth','facingOpacity'].includes(key)),'SURFACE_DISPLAY_FINISH: Unexpected finish fields');
+    assert(!Object.hasOwn(f,'facingOpacity')||f.facingOpacity===true,'SURFACE_DISPLAY_FINISH: Invalid facing opacity');
     assert(['matte','soft','glossy','custom'].includes(f.preset)&&number(f.specular,0,1)&&number(f.exponent,1,128)&&['ambient','diffuse','outline','outlineWidth'].every(key=>!Object.hasOwn(f,key)||number(f[key],0,1)),'SURFACE_DISPLAY_FINISH: Invalid finish');
   }
   return structuredClone(value);

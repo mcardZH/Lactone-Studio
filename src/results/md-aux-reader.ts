@@ -1,6 +1,7 @@
 import { assertResultNotAborted, type ResultDiagnostic, type ResultFileRole, type ResultInputFile, type ResultReadOptions } from './contracts';
 import { emptyScientificData, emptyScientificDiagnostics, scientificNumber, type MdQuantityObservation, type MdStepObservation, type ScientificData } from './scientific-contracts';
 import { readAuxiliarySourceLines } from './auxiliary-source-lines';
+import { resultTextEncoding } from './byte-text-lines';
 
 export const MD_COLUMNS = ['Step', 'Sim. Time', 'Iter', 't_Ener', 't_Grad', 'Temp', 'E_Kin', 'E_Pot', 'E_Tot', 'Cons.Qty', 'E.Drift'] as const;
 const normalUnits: Record<string, string> = { fs: 'fs', ps: 'ps', K: 'K', Hartree: 'hartree', Eh: 'hartree' };
@@ -94,7 +95,7 @@ export async function readMdAuxiliary(file: ResultInputFile, options: ResultRead
   let prefix: Uint8Array;
   try { assertResultNotAborted(options.signal); const size = Math.min(file.size, 65536); prefix = await file.readRange(0, size, options.signal); assertResultNotAborted(options.signal); if (prefix.length !== size) throw new Error('MD辅助前缀长度发生变化。'); }
   catch (error) { await closeSource(); throw error; }
-  const recognized = kindOf(new TextDecoder().decode(prefix)), kind = recognized ?? declaredRole; if (!kind) return null;
+  const recognized = kindOf(new TextDecoder(resultTextEncoding(prefix)).decode(prefix)), kind = recognized ?? declaredRole; if (!kind) return null;
   let parsed: ReturnType<typeof parseMdAuxiliary>, sha256: string | undefined;
   try {
     const read = await readAuxiliarySourceLines(file, options, prefix);

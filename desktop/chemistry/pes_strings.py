@@ -44,9 +44,11 @@ class FSMNormalChart:
             raise PesError('FSM tangent vanished in the allowed Cartesian space')
         excluded = [projected / np.linalg.norm(projected)]
         if len(space.free) == self.seed.size and not space.equations:
-            centered = self.seed - self.seed.mean(axis=0)
-            rigid = np.column_stack((np.tile(np.eye(3), (len(seed), 1)),
-                                     np.column_stack([np.cross(axis, centered).ravel() for axis in np.eye(3)])))
+            rigid = np.tile(np.eye(3), (len(seed), 1))
+            if space.geometry is None:
+                centered = self.seed - self.seed.mean(axis=0)
+                rotations = np.column_stack([np.cross(axis, centered).ravel() for axis in np.eye(3)])
+                rigid = np.column_stack((rigid, rotations))
             excluded.extend((allowed.T @ rigid).T)
         self.basis = allowed @ _nullspace(excluded, allowed.shape[1])
         _, jacobian = space.equations_at(self.seed)

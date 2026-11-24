@@ -14,6 +14,11 @@ from rdkit import Chem, RDLogger, rdBase
 from rdkit.Chem import AllChem, rdDetermineBonds
 
 try:
+    import _finite_empirical_accel
+except ImportError:
+    _finite_empirical_accel = None
+
+try:
     import diagnostics
 except ModuleNotFoundError:
     # Existing external tests import this standalone worker by file location.
@@ -43,7 +48,7 @@ def reject(code, message, diagnostics=None):
 
 def require_resolved_perception(structure):
     if any(issue.get('kind') == 'unresolved' for issue in structure.get('bondPerceptionIssues', [])):
-        reject('perception-unresolved', 'This partial bond-perception candidate has unresolved local chemistry; confirm or edit that region before ordinary force-field optimization, MD or embedding.')
+        reject('perception-unresolved', 'This partial bond-perception candidate has unresolved local chemistry; confirm or edit that region before generating 3D coordinates.')
 
 
 def error_payload(exc, fallback_message):
@@ -60,42 +65,16 @@ def coordinates(structure):
 
 
 def periodic(structure):
-    return bool(structure.get("cell")) or any(
+    return any(structure.get("cell", {}).get("pbc", ())) or any(
         any(b.get("image", [0, 0, 0])) for b in structure.get("bonds", [])
     )
 
 
-def validate_periodic_cell(structure):
-    """Fixed-cell mechanical admission; axes are evidence, not a vacuum guess."""
-    cell = structure.get('cell')
-    if not isinstance(cell, dict) or not isinstance(cell.get('pbc'), list) or len(cell['pbc']) != 3 or any(type(v) is not bool for v in cell['pbc']):
-        reject('periodic-cell', 'Periodic geometry needs a complete cell and three explicit periodic-axis flags.')
-    provenance = cell.get('pbcProvenance')
-    if provenance is not None and (not isinstance(provenance, dict) or provenance.get('kind') not in ('source-explicit', 'format-defined', 'user-confirmed', 'unconfirmed') or not isinstance(provenance.get('evidence'), str) or not provenance['evidence'].strip()):
-        reject('periodic-axes-provenance', 'Periodic-axis provenance is malformed.')
-    if provenance and provenance.get('kind') == 'unconfirmed':
-        reject('periodic-axes-unconfirmed', 'The periodic axes have not been confirmed from source or by the user.')
-    vectors = cell.get('vectors')
-    if not isinstance(vectors, list) or len(vectors) != 3 or any(not isinstance(row, list) or len(row) != 3 or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in row) for row in vectors):
-        reject('periodic-cell', 'Cell vectors must be a finite 3 by 3 Angstrom matrix.')
-    a, b, c = vectors
-    volume = a[0]*(b[1]*c[2]-b[2]*c[1])-a[1]*(b[0]*c[2]-b[2]*c[0])+a[2]*(b[0]*c[1]-b[1]*c[0])
-    if abs(volume) < 1e-10:
-        reject('periodic-cell', 'A singular cell cannot define periodic geometry.')
-    origin = cell.get('origin', [0, 0, 0])
-    if not isinstance(origin, list) or len(origin) != 3 or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in origin):
-        reject('periodic-cell', 'Cell origin must be finite.')
-    return cell
-
-
-def validate(request):
-    if request.get("operation") not in ("optimize", "generate3d", "perceive-bonds", "convert", "geometry"):
+def validate(request, operations=("generate3d", "perceive-bonds", "convert")):
+    if request.get("operation") not in operations:
         reject("operation", "Unsupported chemistry operation.")
     if 'sourceStereo' in request and request['operation'] != 'generate3d':
         reject('stereo-source', 'The original 2D stereo reference applies only to this 3D generation operation.')
-    if 'optimizationStepPolicy' in request and (request['optimizationStepPolicy'] != 'native-default'
-            or request['operation'] != 'optimize' or not request.get('runIdentity') or 'steps' in request):
-        reject('steps', 'Native default steps require an advanced optimization without an explicit step count.')
     policy = request.get("bondPerceptionPolicy")
     if "empiricalBondParameters" in request:
         if request["operation"] != "perceive-bonds":
@@ -112,59 +91,61 @@ def validate(request):
     if not atoms:
         reject("atom-count", "Native modeling requires a nonempty explicit atom inventory.")
     ids = [a.get("id") for a in atoms]
-    if any(not isinstance(i, str) or not i for i in ids) or len(set(ids)) != len(ids):
+    if any(not isinstance(i, str) or not i for i in ids):
         reject("atom-identity", "Every explicit atom needs a unique stable ID.")
-    for atom in atoms:
-        if not all(isinstance(atom.get(k), (int, float)) and not isinstance(atom.get(k), bool)
-                   and math.isfinite(atom[k]) for k in ("x", "y", "z")):
+    id_set = set(ids)
+    if len(id_set) != len(ids):
+        reject("atom-identity", "Every explicit atom needs a unique stable ID.")
+    if _finite_empirical_accel is not None and type(atoms) is list and all(type(atom) is dict for atom in atoms):
+        status = _finite_empirical_accel.check_rows(atoms, Chem.GetPeriodicTable().GetAtomicNumber)
+        if status == 1:
             reject("coordinates", "All coordinates must be finite numbers.")
-        try:
-            if Chem.GetPeriodicTable().GetAtomicNumber(atom.get("element", "")) < 1:
-                raise ValueError()
-        except Exception:
+        if status == 2:
             reject("element", "An atom has an unsupported element.")
-        if not isinstance(atom.get("formalCharge", 0), int):
+        if status == 3:
             reject("charge", "Atom formal charges must be integers.")
+    else:
+        for atom in atoms:
+            if not all(isinstance(atom.get(k), (int, float)) and not isinstance(atom.get(k), bool)
+                       and math.isfinite(atom[k]) for k in ("x", "y", "z")):
+                reject("coordinates", "All coordinates must be finite numbers.")
+            try:
+                if Chem.GetPeriodicTable().GetAtomicNumber(atom.get("element", "")) < 1:
+                    raise ValueError()
+            except Exception:
+                reject("element", "An atom has an unsupported element.")
+            if not isinstance(atom.get("formalCharge", 0), int):
+                reject("charge", "Atom formal charges must be integers.")
     movable = request.get("movableAtomIds")
-    if not isinstance(movable, list) or len(set(movable)) != len(movable) or any(i not in ids for i in movable):
+    if not isinstance(movable, list) or len(set(movable)) != len(movable) or any(i not in id_set for i in movable):
         reject("movable-identity", "Movable atoms must be unique IDs in the current model.")
     seen = set()
-    periodic_geometry = request['operation'] == 'geometry' and bool(structure.get('cell'))
-    if periodic_geometry:
-        cell = validate_periodic_cell(structure)
-        if request.get('constraints'):
-            reject('periodic-internal-constraints', 'Periodic mechanical geometry currently supports atomic freezes only; image-aware B/A/D execution is not available.')
     for bond in structure.get("bonds", []):
         a, b = bond.get("a"), bond.get("b")
-        image = bond.get('image', [0, 0, 0])
-        if periodic_geometry and (not isinstance(image, list) or len(image) != 3 or any(type(v) is not int or abs(v) > 1000000 or v and not cell['pbc'][i] for i, v in enumerate(image))):
-            reject('periodic-bond-image', 'A periodic relation needs a finite integer image on confirmed periodic axes.')
-        if not isinstance(a, int) or not isinstance(b, int) or min(a, b) < 0 or max(a, b) >= len(atoms) or a == b and not (periodic_geometry and any(image)):
+        if not isinstance(a, int) or not isinstance(b, int) or min(a, b) < 0 or max(a, b) >= len(atoms) or a == b:
             reject("bond-identity", "Bond indices must reference two distinct current atoms.")
-        pair = (min(a, b), max(a, b), tuple(image if a <= b else [-v for v in image])) if periodic_geometry else tuple(sorted((a, b)))
-        if periodic_geometry and a == b and next((v for v in image if v), 0) < 0:
-            pair = (a, b, tuple(-v for v in image))
+        pair = tuple(sorted((a, b)))
         if pair in seen:
             reject("duplicate-bond", "Duplicate bond objects cannot parameterize a force field.")
         seen.add(pair)
         if bond.get('orderKnown') is False and (bond.get('perception') not in ('periodic-distance', 'empirical-distance') or bond.get('perception') == 'periodic-distance' and not structure.get('cell') or bond.get('order') != 1 or bond.get('mbo') is not None or bond.get('aromatic') or bond.get('fractional')):
             reject('periodic-bond-order', 'An empirical relation is unknown-order connectivity, not a measured chemical bond order.')
         empirical_rebuild = request['operation'] == 'perceive-bonds' and policy == 'composite-v1' and bond.get('perception') == 'empirical-distance'
-        if bond.get('orderKnown') is False and request['operation'] != 'geometry' and not empirical_rebuild and not (request['operation'] == 'convert' and request.get('format') == 'xyz'):
+        if bond.get('orderKnown') is False and not empirical_rebuild and not (request['operation'] == 'convert' and request.get('format') == 'xyz'):
             reject('unknown-bond-order', 'Unknown-order periodic connectivity cannot be passed off as force-field or molecular bond typing.')
         coordinate_export = request['operation'] == 'convert' and request.get('format') == 'xyz'
-        if bond.get("order") not in (0.5, 1, 1.5, 2, 3) or (bond.get("kind") == "coordination" and request["operation"] != "geometry" and not coordinate_export and policy != "composite-v1"):
+        if bond.get("order") not in (0.5, 1, 1.5, 2, 3) or (bond.get("kind") == "coordination" and not coordinate_export and policy != "composite-v1"):
             reject("bond-type", "Auxiliary and coordination bonds require explicit compatible chemistry; they are not force-field covalent bonds.")
         if (bond.get("order") == .5 and bond.get("fractional") is not True or
                 bond.get("fractional") is True and (bond.get("order") not in (.5, 1.5) or bond.get("aromatic") is True)):
             reject("bond-type", "An explicit fractional connection must have order 0.5 or 1.5 and must not be aromatic; order 0.5 requires fractional metadata.")
     if request["operation"] != "convert":
-        if periodic(structure) and not periodic_geometry:
-            reject("periodic-unsupported", "Native molecule generation, force fields and bond perception do not support periodic models.")
-        if request["operation"] in ("optimize", "generate3d", "geometry") and not movable:
+        if periodic(structure):
+            reject("periodic-unsupported", "Native molecular generation and bond perception do not support periodic models.")
+        if request["operation"] in ("generate3d", "md") and not movable:
             reject("no-movable-atoms", "There are no explicitly movable atoms.")
     if request["operation"] == "generate3d" and set(movable) != set(ids):
-        reject("partial-generation", "3D generation requires the entire explicit molecule to be movable; use local optimization for a selection.")
+        reject("partial-generation", "3D generation requires the entire explicit molecule to be movable.")
     constraints = request.get("constraints", [])
     if not isinstance(constraints, list):
         reject("constraints", "Internal-coordinate constraints must be a list.")
@@ -199,7 +180,7 @@ def molecule(structure, sanitize=True, declared_stereo=True):
         fractional = item.get("fractional") is True
         aromatic = not fractional and (item.get("aromatic", False) or item["order"] == 1.5)
         if fractional and item["order"] == .5:
-            reject("fractional-representation", "This RDKit molecule adapter cannot faithfully represent order 0.5; use coordinate export or mechanical geometry without sanitizing the measured graph.")
+            reject("fractional-representation", "This RDKit molecule adapter cannot faithfully represent order 0.5; use coordinate export to preserve the measured graph.")
         rw.AddBond(item["a"], item["b"], Chem.BondType.ONEANDAHALF if fractional else (Chem.BondType.AROMATIC if aromatic else types[item["order"]]))
         bond = rw.GetBondBetweenAtoms(item["a"], item["b"])
         if fractional:
@@ -610,7 +591,7 @@ def with_coordinates(structure, mol):
 
 
 def native_graph_signature(mol):
-    # MMFF's aromaticity typing may differ internally; compare a sanitized
+    # Native aromaticity typing may differ internally; compare a sanitized
     # copy using RDKit's ordinary aromaticity without mutating the worker mol.
     normalized = Chem.Mol(mol)
     Chem.SanitizeMol(normalized)
@@ -651,162 +632,6 @@ def coordinate_delta(value, target, kind):
     return math.atan2(math.sin(delta), math.cos(delta)) if kind == "D" else delta
 
 
-def forcefield_numerical(call, phase):
-    """Classify a failure inside an initialized candidate's numeric operation."""
-    try:
-        return call()
-    except (RuntimeError, ValueError, ArithmeticError) as exc:
-        reject("forcefield-numerical", "The native force-field numerical operation failed for this candidate.",
-               dict(phase=phase, exceptionType=type(exc).__name__, nativeMessage=str(exc)[:2048]))
-
-
-def constrained_minimize(request, structure, mol, ff, steps, warnings):
-    try:
-        import numpy as np
-        from scipy import __version__ as scipy_version
-        from scipy.optimize import minimize
-    except ImportError:
-        reject("constraint-dependency", "Exact internal-coordinate optimization requires the existing SciPy runtime; it is unavailable.")
-    ids = {a["id"]: i for i, a in enumerate(structure["atoms"])}
-    positions = np.asarray(coordinates(structure), dtype=float)
-    movable = set(request["movableAtomIds"])
-    variable_indices = [3*i+j for i, a in enumerate(structure["atoms"]) if a["id"] in movable for j in range(3)]
-    initial = positions.ravel().copy()
-    rows = []
-    for item in request.get("constraints", []):
-        if item["action"] != "freeze":
-            continue
-        indices = tuple(ids[i] for i in item["atomIds"])
-        rows.append((item, indices, internal_value(positions, item["type"], indices)))
-
-    def full(x):
-        # Fixed XYZ are copied unchanged, never solver variables or restored
-        # after a global minimization. Only movable coordinates are substituted.
-        flat = initial.copy()
-        flat[variable_indices] = x
-        return flat
-
-    def energy(x):
-        value = forcefield_numerical(lambda: ff.CalcEnergy(full(x).tolist()), "constraint-energy")
-        if not math.isfinite(value):
-            reject("energy", "Constrained force-field energy became non-finite.")
-        return value
-
-    def gradient(x):
-        values = np.asarray(forcefield_numerical(lambda: ff.CalcGrad(full(x).tolist()), "constraint-gradient"))[variable_indices]
-        if not np.all(np.isfinite(values)):
-            reject("gradient", "Constrained force-field gradients became non-finite.")
-        return values
-
-    active, keys = [], set()
-    for item, indices, target in rows:
-        # Constraints on fixed points are already satisfied exactly. Identical
-        # rows need one equality, while every requested row is checked below.
-        if not any(structure["atoms"][i]["id"] in movable for i in indices):
-            continue
-        key = (item["type"], min(indices, indices[::-1]))
-        if key in keys:
-            continue
-        keys.add(key)
-        active.append(dict(type="eq", fun=lambda x, row=(item, indices, target): coordinate_delta(
-            internal_value(full(x).reshape((-1, 3)), row[0]["type"], row[1]), row[2], row[0]["type"])))
-    options = dict(ftol=1e-9, disp=False)
-    if steps is not None:
-        options['maxiter'] = steps
-    result = forcefield_numerical(lambda: minimize(energy, initial[variable_indices], jac=gradient,
-                                                  method="SLSQP", constraints=active, options=options), "constraint-minimize")
-    if not result.success and result.status != 9:
-        reject("constraint-solver", "The exact internal-coordinate solver could not resolve this constraint set; the input structure is unchanged.")
-    final = full(result.x).reshape((-1, 3))
-    residuals = []
-    for item, indices, target in rows:
-        actual = internal_value(final, item["type"], indices)
-        residual = coordinate_delta(actual, target, item["type"])
-        tolerance = 1e-6 if item["type"] == "B" else 1e-5
-        if abs(residual) > tolerance:
-            reject("constraint-residual", "A frozen internal coordinate exceeded its verified residual tolerance; the result was rejected.")
-        scale = 1 if item["type"] == "B" else 180/math.pi
-        residuals.append(dict(id=item.get("id"), type=item["type"], target=target*scale,
-                              actual=actual*scale, residual=residual*scale,
-                              unit="angstrom" if item["type"] == "B" else "degree"))
-    conf = mol.GetConformer()
-    for i, atom in enumerate(structure["atoms"]):
-        if atom["id"] in movable:
-            conf.SetAtomPosition(i, final[i].tolist())
-    warnings.append(f"Frozen internal coordinates used SciPy {scipy_version} SLSQP equality constraints on movable XYZ only; verified tolerance is 1e-6 angstrom / 1e-5 radian.")
-    return (0 if result.success else 1), residuals
-
-
-def optimize(request, structure, mol, warnings):
-    # The installed standard MMFF/UFF path has not validated the full potential
-    # for ONEANDAHALF edges. Never replace them with SINGLE/DOUBLE or silently
-    # omit bonded terms. Mechanical geometry clean is a separate explicit mode.
-    if any(b.get("fractional") is True for b in structure.get("bonds", [])):
-        reject("fractional-parameterization", "Standard force fields are not validated for explicit fractional connections; choose mechanical geometry clean without changing the graph.", diagnostics.fractional_connections(structure))
-    original_graph = native_graph_signature(mol)
-    choice = request.get("forcefield", "auto")
-    if choice not in ("auto", "MMFF94", "MMFF94s", "UFF"):
-        reject("forcefield", "Unknown force-field selection.")
-    variant = "MMFF94s" if choice == "MMFF94s" else "MMFF94"
-    ff = None
-    actual = variant
-    if choice != "UFF":
-        if AllChem.MMFFHasAllMoleculeParams(mol):
-            props = AllChem.MMFFGetMoleculeProperties(mol, mmffVariant=variant)
-            if props is None:
-                reject("parameterization", "MMFF properties could not be constructed for the explicit graph.")
-            ff = AllChem.MMFFGetMoleculeForceField(mol, props, ignoreInterfragInteractions=False)
-            if ff is None:
-                reject("parameterization", "MMFF setup failed after parameter coverage; UFF fallback is only for missing parameters.")
-        else:
-            warnings.append(variant + " lacks parameters for this explicit graph; using UFF.")
-    if ff is None:
-        actual = "UFF"
-        if not AllChem.UFFHasAllMoleculeParams(mol):
-            reject("parameterization", "Neither the requested MMFF path nor UFF has parameters for the explicit graph.", diagnostics.uff_missing_types(mol, structure))
-        ff = AllChem.UFFGetMoleculeForceField(mol, ignoreInterfragInteractions=False)
-        if ff is None:
-            reject("parameterization", "UFF setup failed for the explicit graph.")
-    movable = set(request["movableAtomIds"])
-    fixed = [i for i, a in enumerate(structure["atoms"]) if a["id"] not in movable]
-    for i in fixed:
-        ff.AddFixedPoint(i)
-    forcefield_numerical(ff.Initialize, "initialize")
-    before = forcefield_numerical(ff.CalcEnergy, "initial-energy")
-    native_steps = request.get('optimizationStepPolicy') == 'native-default'
-    steps = None if native_steps else request.get('steps', 500)
-    if not native_steps and (type(steps) is not int or not 1 <= steps <= 2147483647):
-        reject("steps", "Optimization steps must be a positive signed 32-bit integer supported by RDKit.")
-    extra = {}
-    freezes = [c for c in request.get("constraints", []) if c["action"] == "freeze"]
-    if any(c["action"] == "scan" for c in request.get("constraints", [])):
-        warnings.append("Scan coordinates are not frozen and no force-field scan was performed.")
-    if freezes:
-        status, extra["constraintResiduals"] = constrained_minimize(request, structure, mol, ff, steps, warnings)
-        if native_steps:
-            # SciPy 1.17.1 _minimize_slsqp default; leave the option absent.
-            extra.update(optimizer='scipy-slsqp', maxSteps=100)
-    elif native_steps:
-        status = forcefield_numerical(lambda: ff.Minimize(forceTol=1e-4, energyTol=1e-6), "minimize")
-        # RDKit 2025.03.6 ForceField.Minimize wrapper default; omit maxIts.
-        extra.update(optimizer='rdkit-minimize', maxSteps=200)
-    else:
-        status = forcefield_numerical(lambda: ff.Minimize(maxIts=steps, forceTol=1e-4, energyTol=1e-6), "minimize")
-    after = forcefield_numerical(ff.CalcEnergy, "final-energy")
-    if not math.isfinite(before) or not math.isfinite(after):
-        reject("energy", "Force-field energy is non-finite; no coordinates were accepted.")
-    if native_graph_signature(mol) != original_graph:
-        reject("graph-change", "Native force-field setup or optimization changed the explicit chemical graph.")
-    output = with_coordinates(structure, mol)
-    for i in fixed:
-        if coordinates(output)[i] != coordinates(structure)[i]:
-            reject("fixed-atom-moved", "A fixed atom moved; the native result was rejected.")
-    if status:
-        warnings.append("The iteration limit was reached; these are final coordinates, not a convergence claim.")
-    warnings.append("Molecular force fields do not certify quantum electronic state or scientific convergence.")
-    return output, dict(forcefield=actual, before=before, after=after, unit="kcal/mol", converged=status == 0, **extra)
-
-
 def _bond_perception_module():
     try:
         import bond_perception
@@ -819,8 +644,8 @@ def _bond_perception_module():
     return bond_perception
 
 
-def composite_perceive(request, structure):
-    return _bond_perception_module().perceive(request, structure, reject)
+def composite_perceive(request, structure, *, finite_session=None):
+    return _bond_perception_module().perceive(request, structure, reject, session=finite_session)
 
 
 def perceive(request, structure):
@@ -864,16 +689,14 @@ def _perceive_import_local_fallback(request, structure, charge):
     output, _ = composite_perceive(dict(request, bondPerceptionPolicy='composite-v1'), blank)
     if not output['bonds'] or any(b.get('kind') == 'coordination' for b in output['bonds']):
         reject('bond-perception', 'No ordinary local covalent candidate could be recovered; the source structure is unchanged.')
-    covered = False
+    sanitized = False
     radical_indices = []
     try:
         probe = molecule(output)
         radical_indices = [atom.GetIdx() for atom in probe.GetAtoms() if atom.GetNumRadicalElectrons()]
         if radical_indices:
             raise ValueError('unresolved radical state')
-        if not (AllChem.MMFFHasAllMoleculeParams(probe) or AllChem.UFFHasAllMoleculeParams(probe)):
-            raise ValueError('no ordinary force-field coverage')
-        covered = True
+        sanitized = True
     except Exception:
         # Preserve certain local groups even when the reaction region has no
         # closed-shell Lewis representation. Ordinary engines are blocked by
@@ -890,7 +713,7 @@ def _perceive_import_local_fallback(request, structure, charge):
         else:
             pair = [output['bonds'][0]['a'], output['bonds'][0]['b']]
         atom_ids = [output['atoms'][i]['id'] for i in sorted(pair)]
-        issue = dict(atomIds=atom_ids, kind='unresolved', reason='The strict import failed and the local candidate has unresolved valence/electronic state or lacks ordinary force-field coverage; confirm this region before optimization or MD.')
+        issue = dict(atomIds=atom_ids, kind='unresolved', reason='The strict import failed and the local candidate has unresolved valence/electronic state; confirm this region before using the inferred graph.')
         previous = next((i for i, value in enumerate(issues) if set(value['atomIds']) == set(atom_ids)), None)
         if previous is None:
             issues.append(issue)
@@ -902,7 +725,7 @@ def _perceive_import_local_fallback(request, structure, charge):
         else:
             output.pop(key, None)
     output.pop('molfile', None)
-    status = 'A sanitized closed-shell ordinary graph with native force-field coverage was recovered; reaction contacts remain uncertain.' if covered else 'The partial local graph remains unresolved; ordinary force-field optimization, MD and embedding require that region to be confirmed or edited.'
+    status = 'A sanitized closed-shell covalent graph was recovered; reaction contacts remain uncertain.' if sanitized else 'The partial local graph remains unresolved; confirm or edit this region before using the inferred graph.'
     output.setdefault('notes', []).append(f'RDKit {VERSION} strict coordinate-import order assignment failed; a local distance-based fallback retained recoverable functional groups. Molecular identity and hydrogen completeness are not confirmed. {status} Source charge and multiplicity were retained.')
     if structure.get('charge') is None:
         output['notes'].append('Neutral charge 0 was assumed for bond perception only; source charge and multiplicity remain unchanged and calculation electronic state is not confirmed.')
@@ -1010,11 +833,12 @@ def convert(request, structure):
         # Actual installed probes: RDKit V2000 emits type 0 for ONEANDAHALF;
         # Never advertise either substitution as a faithful chemical export.
         reject("fractional-format", "This native chemical format cannot faithfully represent an explicit non-aromatic fractional connection; use a coordinate/input format or edit the connection explicitly.")
-    if periodic(structure) and fmt != "sdf":
+    explicit_cell = bool(structure.get('cell')) or periodic(structure)
+    if explicit_cell and fmt != "sdf":
         reject("periodic-format-loss", "This molecule format would discard the periodic cell; use an explicit cell format.")
     # Assign native stereochemistry when the graph is valid, but retain the
     # raw explicit graph for format writers when users are editing valence.
-    if periodic(structure):
+    if explicit_cell:
         # SDF is only an explicit connection-table serialization here. The
         # file port adds the authoritative cell/images in standard data fields;
         # no periodic perception, force field or connectivity repair is run.
@@ -1034,21 +858,18 @@ def convert(request, structure):
     reject("format", "Unsupported native output format.")
 
 
-def run(request):
+def run(request, *, finite_session=None):
     structure = validate(request)
     warnings = []
-    output = copy.deepcopy(structure)
     extra = {}
     engine = ENGINE
     operation = request["operation"]
-    if operation in ('optimize', 'generate3d'):
+    if operation != "perceive-bonds":
+        output = copy.deepcopy(structure)
+    if operation == "generate3d":
         require_resolved_perception(structure)
-    if operation in ("optimize", "generate3d") and any(b.get("fractional") is True for b in structure.get("bonds", [])):
-        reject("fractional-parameterization", "Standard force fields and embedding are not validated for explicit fractional connections; choose mechanical geometry clean without changing the graph.", diagnostics.fractional_connections(structure))
-    if operation == "optimize":
-        mol = molecule(structure)
-        output, extra = optimize(request, structure, mol, warnings)
-    elif operation == "generate3d":
+        if any(b.get("fractional") is True for b in structure.get("bonds", [])):
+            reject("fractional-parameterization", "3D embedding requires a supported molecular bond representation.", diagnostics.fractional_connections(structure))
         mol = generation_molecule(structure, request.get('sourceStereo'))
         original_graph = native_graph_signature(mol)
         failure = None
@@ -1082,7 +903,7 @@ def run(request):
         warnings.append("ETKDG generated explicit-atom coordinates; no force-field optimization or convergence is implied.")
     elif operation == "perceive-bonds":
         if request.get("bondPerceptionPolicy") == "composite-v1":
-            output, extra["bondPerceptionSummary"] = composite_perceive(request, structure)
+            output, extra["bondPerceptionSummary"] = composite_perceive(request, structure, finite_session=finite_session)
             extra["bondPerceptionPolicy"] = "composite-v1"
             warnings.extend(output.get("notes", [])[len(structure.get("notes", [])):])
         else:

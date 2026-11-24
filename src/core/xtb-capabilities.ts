@@ -23,6 +23,7 @@ export function supportsXtbOperation(method:string,operation:XtbNativeOperation,
   if(operation==='metadynamics')return !periodic;
   return true;
 }
+export function usesXtbSccIterations(method:string):boolean { return method==='gfn1'||method==='gfn2'||method==='gxtb'; }
 /** GBSA lists identify old settings/results only. New task UIs expose ALPB. */
 export function xtbSolvents(method:string,model:'alpb'|'gbsa',periodic=false):readonly string[] {
   if(periodic)return [];

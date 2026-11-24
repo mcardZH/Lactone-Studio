@@ -44,10 +44,26 @@ export default function GxtbPathControl(){
  const failureIdentity=error?`local-action-${actionEpoch.current}`:info.detectionId??failure;
  const failureDismissed=!!info.path&&!error&&dismissedDetections.get(info.path)===failureIdentity;
  const state=info.status==='ready'?`已检测 · 宿主 xTB ${info.hostVersion??'版本未知'} · g-xTB ${info.gxtbRelease??'版本未知'}`:({unconfigured:'未配置',unchecked:'路径已保存，请检测',unsupported:'所选程序未提供 g-xTB 能力','program-unavailable':'已配置的程序不可用','configuration-invalid':'配置无法读取','detection-failed':'程序检测失败'} as Record<string,string>)[info.status];
- return <section className="analysis-environment-control" aria-label="g-xTB 环境">
-  <div className="analysis-environment-row analysis-environment-setting"><strong>g-xTB 程序（用户自备）</strong><input className="analysis-environment-path" aria-label="g-xTB 程序路径" value={draft} onChange={event=>setDraft(event.target.value)} disabled={busy}/><button type="button" className="analysis-environment-button" onClick={()=>void act(desktop?.chooseGxtbBackend)} disabled={busy||!desktop?.chooseGxtbBackend}>浏览…</button><button type="button" className="analysis-environment-button" onClick={()=>void act(()=>desktop!.setGxtbBackendPath!(draft))} disabled={busy||!desktop?.setGxtbBackendPath||draft===(info.path??'')||!draft.trim()}>应用路径</button></div>
-  <div className="analysis-environment-row"><output aria-label="g-xTB 程序状态">{state}</output><button type="button" className="analysis-environment-button" onClick={()=>void act(desktop?.detectGxtbBackend)} disabled={busy||!info.path||!desktop?.detectGxtbBackend}>检测</button><button type="button" className="analysis-environment-button" onClick={()=>{void desktop?.openGxtbDownload?.().catch(cause=>setError(String(cause)));}} disabled={!desktop?.openGxtbDownload}>官方下载</button></div>
-  <p className="muted-note">{gxtbInstallHint()}</p>
-  {failure&&!failureDismissed&&<DismissibleNotice role="alert" identity={failureIdentity} onDismiss={()=>{if(info.path&&!error)dismissedDetections.set(info.path,String(failureIdentity));}}><span>g-xTB 程序配置或检测未完成。</span><details className="analysis-environment-details"><summary>详情</summary><textarea readOnly aria-label="g-xTB 错误详情" value={failure}/></details></DismissibleNotice>}
- </section>;
+ return <details className="analysis-environment-control settings-tool-disclosure">
+  <summary className="settings-tool-row">
+    <strong className="settings-tool-title">g-xTB</strong>
+    <output className="settings-tool-status" data-state={failure?'error':info.status==='ready'?'ready':undefined} aria-label="g-xTB 程序状态">{busy?'正在更新…':state}</output>
+    <span className="settings-tool-reveal" aria-hidden="true"><span>配置</span><span>收起</span></span>
+  </summary>
+  <section className="settings-tool-detail" aria-label="g-xTB 环境">
+    <div className="settings-tool-path">
+      <label><span>程序路径（用户自备）</span><input aria-label="g-xTB 程序路径" value={draft} onChange={event=>setDraft(event.target.value)} disabled={busy}/></label>
+      <div className="settings-tool-actions">
+        <button type="button" className="analysis-environment-button" onClick={()=>void act(desktop?.chooseGxtbBackend)} disabled={busy||!desktop?.chooseGxtbBackend}>浏览…</button>
+        <button type="button" className="analysis-environment-button" onClick={()=>void act(()=>desktop!.setGxtbBackendPath!(draft))} disabled={busy||!desktop?.setGxtbBackendPath||draft===(info.path??'')||!draft.trim()}>应用路径</button>
+      </div>
+    </div>
+    <div className="settings-tool-actions">
+      <button type="button" className="analysis-environment-button" onClick={()=>void act(desktop?.detectGxtbBackend)} disabled={busy||!info.path||!desktop?.detectGxtbBackend}>检测</button>
+      <button type="button" className="analysis-environment-button" onClick={()=>{void desktop?.openGxtbDownload?.().catch(cause=>setError(String(cause)));}} disabled={!desktop?.openGxtbDownload}>官方下载</button>
+    </div>
+    <p className="muted-note">{gxtbInstallHint()}</p>
+    {failure&&!failureDismissed&&<DismissibleNotice role="alert" identity={failureIdentity} onDismiss={()=>{if(info.path&&!error)dismissedDetections.set(info.path,String(failureIdentity));}}><span>g-xTB 程序配置或检测未完成。</span><details className="analysis-environment-details"><summary>详情</summary><textarea readOnly aria-label="g-xTB 错误详情" value={failure}/></details></DismissibleNotice>}
+  </section>
+ </details>;
 }

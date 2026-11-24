@@ -6,10 +6,17 @@ import { resolve, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 const root = resolve(import.meta.dirname, '..');
 const entry = 'es-conformer-batch-science-entry';
+const modules = {
+  'src/modeling/advanced/xtb-result.ts': 'validateAdvancedXtbResult',
+  'src/modeling/advanced/conformer-shared-optimization.ts': 'conformerPesRequest, acceptConformerPesResult',
+};
 const bundle = await rolldown({ cwd: root, input: entry, platform: 'node', plugins: [{
   name: 'same-source-conformer-science',
   resolveId(id) { if (id === entry) return '\0' + entry; },
-  load(id) { if (id === '\0' + entry) return `export { createAdvancedForcefieldAdapter } from ${JSON.stringify(resolve(root, 'src/modeling/advanced/forcefield-adapter.ts').replaceAll('\\', '/'))};\nexport { validateAdvancedXtbResult } from ${JSON.stringify(resolve(root, 'src/modeling/advanced/xtb-result.ts').replaceAll('\\', '/'))};\nexport { effectiveSharedFreezes } from ${JSON.stringify(resolve(root, 'src/modeling/constraints.ts').replaceAll('\\', '/'))};`; },
+  load(id) {
+    if (id === '\0' + entry) return Object.entries(modules).map(([source, names]) =>
+      `export { ${names} } from ${JSON.stringify(resolve(root, source).replaceAll('\\', '/'))};`).join('\n');
+  },
 }] });
 try {
   const { output } = await bundle.generate({ format: 'cjs', sourcemap: false, minify: false });

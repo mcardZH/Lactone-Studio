@@ -3,16 +3,8 @@
 RDKit 2025.03.6 primary sources:
 Code/GraphMol/MolOps.cpp: detectChemistryProblems copies its input and returns
 sanitization exceptions with GetAtomIdx/GetAtomIndices in the Python wrapper.
-Code/GraphMol/ForceFieldHelpers/UFF/AtomTyper.cpp: getAtomTypes (used by
-UFFHasAllMoleculeParams) and getUFFVdWParams use the same getAtomLabel and
-ParamCollection lookup. Querying (i, i) isolates missing atomic UFF parameters.
-https://github.com/rdkit/rdkit/blob/Release_2025_03_6/Code/GraphMol/ForceFieldHelpers/UFF/AtomTyper.cpp
-
-These diagnostics establish problem locations, not alternative chemistry or a
-force field's scientific validity. Unknown failure locations remain absent.
 """
 from rdkit import Chem
-from rdkit.Chem import AllChem
 
 
 def _ids(structure, indices, mol=None):
@@ -52,16 +44,6 @@ def sanitization(mol, structure):
             elif hasattr(problem, "GetAtomIndices"):
                 indices.extend(problem.GetAtomIndices())
         return _evidence("sanitization", _ids(structure, indices, probe))
-    except Exception:
-        return {}
-
-
-def uff_missing_types(mol, structure):
-    try:
-        probe = Chem.Mol(mol)
-        indices = [i for i in range(probe.GetNumAtoms())
-                   if AllChem.GetUFFVdWParams(probe, i, i) is None]
-        return _evidence("parameterization", _ids(structure, indices, probe))
     except Exception:
         return {}
 

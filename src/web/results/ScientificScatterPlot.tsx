@@ -1,29 +1,38 @@
-import { ScientificPlotSettings, usePlotAppearance, usePlotFont, plotFontFamily, plotPt } from './ScientificPlotSettings';
+import {useEffect, useId, useMemo, useRef, useState, type ReactNode, type KeyboardEvent} from 'react';
+import {assertResultNotAborted} from '../../results/contracts';
+import {nearestScatterPoint, scatterDataSummary, scatterDataText, scatterXIndex, type ScientificScatterData, type ScientificScatterPoint} from '../../results/scatter-data';
+import {plotFonts,plotPointKey, type PlotNote, type PlotPaneEdits} from '../../results/scientific-plot-editing';
+import {formatResultValue} from '../../results/numeric-format';
+import {validPlotViewport, type ScientificPlotSeries, type ScientificPlotViewport} from '../../results/scientific-plot';
+import type {ScatterColorScaleValue, ScatterScaleSource} from '../../results/scientific-scatter-scale';
+import {interpolateColor} from '../../results/zero-centered-color';
 import {useProjectState} from '../../projects/ui-state';
-import {matchingSliderRange} from '../numeric-step';
-import NumericInput from '../NumericInput';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type PointerEvent } from 'react';
-import { assertResultNotAborted } from '../../results/contracts';
-import { plotClientPoint } from '../../results/optimization-plot-axis';
-import { scientificPlotLayout } from '../../results/scientific-plot-layout';
-import { useScientificPlotSize } from './ScientificPlotSize';
-import { formatPlotTick, plotTicks, validPlotViewport, zoomPlotViewport, type ScientificPlotViewport } from '../../results/scientific-plot';
-import { nearestScatterPoint, scatterDataSummary, scatterDataText, scatterScreenPoint, type ScientificScatterData, type ScientificScatterPoint } from '../../results/scatter-data';
-import { decimalEnergyValue, formatResultValue } from '../../results/numeric-format';
-import { isEnergyUnit } from '../../results/energy';
-import { useScientificPlotViewport } from './ScientificPlot';
-import { exportBlob } from './export-image';
-import { captureScientificSvgPng } from './optimization-export';
-import { paintScatterBatch } from './scientific-scatter-canvas';
-import { scatterSvgSnapshot, waitForScatterFrame } from './scientific-scatter-export';
+import {plotClientPoint} from '../../results/optimization-plot-axis';
+import {plotFontFamily, usePlotAppearance, usePlotFont} from './ScientificPlotSettings';
+import {useScientificPlotSize} from './ScientificPlotSize';
+import {ScientificPlotDrawing, plotGeometry} from './ScientificPlotDrawing';
+import {ScientificScatterColorScale, ScatterColorScaleFields, scatterScaleFraction, scatterScaleTicks, type ScatterScaleChange} from './ScientificScatterColorScale';
+import {applyPlotPreset, fallbackPlotStyle, figureViewport, plotPresetSnapshot, plotTextInput, usePlotFigure, usePlotPresetLibrary} from './scientific-plot-figure';
+import {canRemovePlotTarget, hasPlotSettingsTarget, matchesRemovedPlotTarget, PlotEditorToolbar, PlotInspector, PlotPresetControls, PlotQuickControls, PlotQuickPopover, plotPanels, type PlotPanel, type PlotTarget} from './ScientificPlotEditor';
+import {insidePlot, targetFromPlotHit, usePlotGestures, clampPlot, type PlotSelection} from './use-plot-gestures';
+import {editCurrentPlot,plotCanvasConfiguration,plotEditorPane,plotPartCapabilities, plotMapping} from './plot-editor-pane';
+import {PlotSettingsWindow} from './VisualizationPresetDialog';
+import {captureScientificSvgPng} from './optimization-export';
+import {scatterSvgSnapshot, waitForScatterFrame} from './scientific-scatter-export';
+import {useScatterPointLayer} from './useScatterPointLayer';
+import {exportBlob} from './export-image';
+import {ScientificPlotExportMenu} from './ScientificPlotExportMenu';
+import {ResultsMcpPlotRegistration,type PlotExportFormat} from './results-mcp-context';
+import {ScientificImageCopyButton} from '../ScientificImageCopyButton';
+import {objectSchema} from '../mcp/types';
+import {settingArray,settingBool,settingColor,settingEnum,settingNumber,settingNumberFormat,settingText} from './analysis-mcp-settings';
+import {ANALYSIS_COLORBAR_LIMITS} from './analysis-colorbar-layout';
 import './OptimizationPlot.css';
 import './ScientificScatterPlot.css';
-import { ScientificPlotExportMenu } from './ScientificPlotExportMenu';
-import { ScientificImageCopyButton } from '../ScientificImageCopyButton';
-import { usePlotFrameUpdate } from './scientific-plot-frame';
-import { dragScatterLegend, scatterLegendLayout, type ScatterLegendGesture, type ScatterLegendLayout } from './scientific-scatter-legend';
+import './scientific-plot-editing.css';
 
-export type { ScientificScatterData, ScientificScatterPoint, ScientificPlotViewport };
+export type {ScientificScatterData, ScientificScatterPoint, ScientificPlotViewport};
+
 export interface ScientificScatterExportHandle {
   /** Waits for this scene's complete point layer; stale or cancelled scenes reject. */
   snapshotSvg(signal?: AbortSignal): Promise<string>;
@@ -31,272 +40,436 @@ export interface ScientificScatterExportHandle {
 }
 export interface ScientificScatterPlotProps {
   title: string; xLabel: string; yLabel: string; appearanceKey?: string | number; data: ScientificScatterData;
-  /** Pass the SAME mapping function/settings as the 3D field; no independent color interpolation. */
+  /** Source mapping remains authoritative until the figure receives a custom palette. */
   colorForX(value: number): string;
-  /** Optional same-point presentation used by both screen and vector export. */
   colorForPoint?(index: number, x: number, y: number): string;
-  colorLegend?: { min: number; max: number; label?: string };
-  pointSize?: number; onPointSizeChange?(value: number): void;
-  opacity?: number; onOpacityChange?(value: number): void;
+  colorLegend?: ScatterScaleSource;
+  colorScaleControls?(value: ScatterColorScaleValue, onChange: ScatterScaleChange, manualRange: boolean): ReactNode;
+  pointSize?: number;
+  opacity?: number;
   viewport?: ScientificPlotViewport | null; onViewportChange?(value: ScientificPlotViewport | null): void;
-  /** A viewing preset, independent of the full dataset and the 3D color range. */
   initialViewport?: ScientificPlotViewport | null;
   resetKey?: string | number; height?: number; decimals?: number;
   exportFileName?: string; metadata?: unknown; ariaLabel?: string; testId?: string;
   exportHandle?(api: ScientificScatterExportHandle | null): void;
   onPointSelect?(point: ScientificScatterPoint | null): void; children?: ReactNode;
+  embeddedPresetEditor?: boolean;
 }
-const bounded = (value: number, min: number, max: number, fallback: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
 export const SCATTER_VECTOR_EXPORT_LIMIT = 20000;
+const series:readonly ScientificPlotSeries[]=[{id:'scatter',label:'Scatter',points:[]}];
+const emptyRange:ScientificPlotViewport={x:[0,1],y:[0,1]};
 const editableCopyTarget = (target: EventTarget | null) => Boolean((target as Element | null)?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])'));
+const sameRange=(a:ScientificPlotViewport|null|undefined,b:ScientificPlotViewport|null|undefined)=>
+  a===b||!!a&&!!b&&a.x[0]===b.x[0]&&a.x[1]===b.x[1]&&a.y[0]===b.y[0]&&a.y[1]===b.y[1];
 
-/** Canvas point layer + bounded SVG axes. No point DOM, decimation or scientific-state writes. */
-export function ScientificScatterPlot({ title, xLabel, yLabel, data, colorForX, colorForPoint, colorLegend, pointSize, onPointSizeChange, opacity, onOpacityChange,
-  viewport, onViewportChange, initialViewport, resetKey, height, decimals = 2, exportFileName = 'Ester-Studio-scatter', metadata, ariaLabel = title,
-  testId = 'scientific-scatter-plot', exportHandle, onPointSelect, children, appearanceKey }: ScientificScatterPlotProps) {
-  const appearance = usePlotAppearance(appearanceKey), textStyle = appearance.value;
-  const energyX=isEnergyUnit(xLabel.split(' / ').at(-1)),energyY=isEnergyUnit(yLabel.split(' / ').at(-1));
-  const axisText=(text:string,energy:boolean)=>energy?decimalEnergyValue(text):text;
-  const displayTitle = textStyle.title ?? title, displayX = textStyle.xLabel ?? xLabel, displayY = textStyle.yLabel ?? yLabel;
-  const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), svg = useRef<SVGSVGElement>(null);
-  const sizing = useScientificPlotSize(appearanceKey??exportFileName);
+function hexColor(color:string) {
+  if(/^#[0-9a-f]{6}$/i.test(color)) return color;
+  const rgb=color.match(/\d+/g);
+  return rgb?.length===3?'#'+rgb.map(value=>Number(value).toString(16).padStart(2,'0')).join(''):'#64748b';
+}
+
+export function ScientificScatterPlot({title,xLabel,yLabel,data,colorForX,colorForPoint,colorLegend,pointSize,opacity,
+  viewport,onViewportChange,initialViewport,resetKey,height,decimals=2,exportFileName='Ester-Studio-scatter',metadata,ariaLabel=title,
+  testId='scientific-scatter-plot',exportHandle,onPointSelect,children,appearanceKey,embeddedPresetEditor=false,colorScaleControls}:ScientificScatterPlotProps) {
+  const id=useId().replace(/:/g,''), owner=appearanceKey??exportFileName;
+  const appearance=usePlotAppearance(owner), legacy=appearance.value;
+  const host=useRef<HTMLDivElement>(null), stage=useRef<HTMLDivElement>(null), canvas=useRef<HTMLCanvasElement>(null),svg=useRef<SVGSVGElement>(null);
+  const family=colorLegend?.valueForPoint?'fingerprint':'scatter';
+  const library=usePlotPresetLibrary(family);
+  const record=usePlotFigure(owner,{presetId:library.defaultId}), [draft,preview]=useState<PlotPaneEdits>();
+  const sizing=useScientificPlotSize(owner,record);
   usePlotFont(host.current?.ownerDocument);
-  const [localSize, setLocalSize] = useProjectState('scatter.pointSize',2,appearanceKey??exportFileName), [localOpacity, setLocalOpacity] = useProjectState('scatter.opacity',.65,appearanceKey??exportFileName);
-  const [legendPosition, setLegendPosition] = useProjectState<ScatterLegendLayout | null>('scatter.legendPosition',null,appearanceKey??exportFileName);
-  const legendDrag = useRef<{ start: ScatterLegendLayout; point: { x: number; y: number }; mode: ScatterLegendGesture; pointerId: number } | null>(null);
-  const legendFrame = usePlotFrameUpdate<ScatterLegendLayout>(next => setLegendPosition(previous => previous?.x === next.x && previous.y === next.y && previous.width === next.width ? previous : next));
-  const styleFrame = usePlotFrameUpdate<{ size?: number; alpha?: number }>(next => {
-    if (next.size !== undefined && next.size !== size) { if (pointSize === undefined) setLocalSize(next.size); onPointSizeChange?.(next.size); }
-    if (next.alpha !== undefined && next.alpha !== alpha) { if (opacity === undefined) setLocalOpacity(next.alpha); onOpacityChange?.(next.alpha); }
-    pendingStyle.current = {};
+  const [localSize]=useProjectState('scatter.pointSize',2,owner);
+  const [localOpacity]=useProjectState('scatter.opacity',.65,owner);
+  const [advanced,setAdvanced]=useState(false), [panel,setPanel]=useState<PlotPanel>('series');
+  const [selected,setSelected]=useState<PlotSelection>(),[picked,setPicked]=useState<ScientificScatterPoint|null>(null);
+  const [hover,setHover]=useState<{point:ScientificScatterPoint;x:number;y:number}>();
+  const [scalePopup,setScalePopup]=useState<{x:number;y:number}>();
+  const [savedShowAll]=useProjectState('scatter.showAll',false,owner);
+  const showAll=record.figure.scatterShowAll??savedShowAll;
+  const [copyAll,setCopyAll]=useState(false),[message,setMessage]=useState(''),[exporting,setExporting]=useState(false);
+  const controller=useRef<AbortController|null>(null);
+  const closeSettings=()=>{
+    setSelected(undefined);setScalePopup(undefined);
+    svg.current?.focus({preventScroll:true});
+  };
+  function dismissRemovedObject(target:PlotTarget){
+    if(selected&&matchesRemovedPlotTarget(selected.target,target))closeSettings();
+  }
+  const figure=draft??record.figure;
+  const presetId=figure.presetId??library.defaultId;
+  const baseline=useMemo(()=>{
+    const style=fallbackPlotStyle({...library,defaultId:presetId},appearance.stored);
+    if(presetId===library.builtins[0]?.id) style.line.point={...style.line.point,size:(pointSize??localSize)*.75};
+    return style;
+  },[family,presetId,appearance.stored,pointSize,localSize]);
+  const style=figure.style??baseline, size=style.line.point.size*4/3, alpha=style.scatterOpacity??opacity??localOpacity;
+  const summary=useMemo(()=>{
+    try{return {...scatterDataSummary(data),error:''};}
+    catch(error){return {count:0,excluded:0,nonfinite:0,viewport:null,error:error instanceof Error?error.message:'散点数据无效。'};}
+  },[data]);
+  const hitIndex=useMemo(()=>summary.count?scatterXIndex(data):undefined,[data,summary.count]);
+  const sourceRange=!showAll&&validPlotViewport(initialViewport)?initialViewport:summary.viewport;
+  const axes=figure.coordinates?.main??{};
+  const base=sourceRange&&{x:axes.x?.bounds??sourceRange.x,y:axes.y?.bounds??sourceRange.y};
+  // The source callback is an observer; it cannot reapply a range that the figure just undid.
+  const restored=useRef({owner,key:resetKey,range:viewport});
+  if(restored.current.owner!==owner||restored.current.key!==resetKey) restored.current={owner,key:resetKey,range:viewport};
+  const view=figureViewport(record,base,restored.current.range,resetKey);
+  const range=view.viewport;
+  const reported=useRef(restored.current), viewportCallback=useRef(onViewportChange);
+  viewportCallback.current=onViewportChange;
+  const reportedRange=record.figure.zoom?.scope===resetKey ? record.figure.zoom?.range : restored.current.range;
+  useEffect(()=>{
+    if(reported.current.owner!==owner||reported.current.key!==resetKey) reported.current=restored.current;
+    if(!sameRange(reported.current.range,reportedRange)) {
+      reported.current={owner,key:resetKey,range:reportedRange};
+      viewportCallback.current?.(reportedRange??null);
+    }
+  },[owner,resetKey,reportedRange]);
+  const titles={title:legacy.title??title,x:legacy.xLabel??xLabel,y:legacy.yLabel??yLabel};
+  const palette=useMemo(()=>colorLegend?.colors?.length&&colorLegend.colors.length>=2?[...colorLegend.colors]:colorLegend
+    ?Array.from({length:17},(_,i)=>hexColor(colorForX(colorLegend.min+(colorLegend.max-colorLegend.min)*i/16)))
+    :['#617482','#253b50'],[colorLegend?.colors,colorLegend?.min,colorLegend?.max,colorForX]);
+  const note=figure.text?.['color-legend'];
+  const {range:customScaleRange,logarithmic:customLogarithmic,...scaleEdits}=figure.scatterScale??{};
+  const scale:ScatterColorScaleValue|undefined=colorLegend&&Number.isFinite(colorLegend.min)&&colorLegend.min<colorLegend.max?{
+    range:customScaleRange??[colorLegend.min,colorLegend.max],colors:style.scatterColors??palette,zeroCentered:colorLegend.zeroCentered,
+    logarithmic:customLogarithmic??colorLegend.logarithmic,direction:colorLegend.direction??'vertical',
+    length:88,thickness:8.5,dx:0,dy:0,font:'Arial',numberPt:8.5,
+    ink:'#000000',decimals:family==='fingerprint'?0:decimals,tickMode:family==='fingerprint'?'automatic':'ends',tickCount:4,tickValues:[],
+    ...style.scatterScaleStyle,...scaleEdits,title:{content:note?.content??colorLegend.label??xLabel,visible:note?.hidden===false,
+      ...note?.font,dx:note?.position?.x,dy:note?.position?.y},
+  }:undefined;
+  const mainPoint=style.line.point;
+  const rulerVisible=figure.showLegend??style.showLegend;
+  const showScale=!!scale&&rulerVisible&&!(mainPoint.hollow||mainPoint.marker==='cross'?mainPoint.edgeOverride:mainPoint.fillOverride);
+  const plotWidth=style.canvas.width*96/25.4, plotHeight=style.canvas.height*96/25.4;
+  const logicalScale=Math.max(1,220/plotWidth,220/plotHeight);
+  const layout=plotGeometry({
+    width:plotWidth*logicalScale,height:height??plotHeight*logicalScale,title:titles.title,yLabel:titles.y,range:range??emptyRange,
+    style,edits:figure,reverseX:false,reverseY:false,editable:true,xStep:axes.x?.step,yStep:axes.y?.step,
+    reserveRight:showScale&&scale?.direction==='vertical'?62:0,footer:showScale&&scale?.direction==='horizontal'?74:0,
+    wideFrame:scale?.direction!=='horizontal'||!showScale,
+    squareFrame:family==='scatter'&&style.canvas.width===style.canvas.height,
+    equalAspect:family==='fingerprint',
   });
-  const pendingStyle = useRef<{ size?: number; alpha?: number }>({});
-  const [selected, setSelected] = useState<ScientificScatterPoint | null>(null), [message, setMessage] = useState('');
-  const [copyAll, setCopyAll] = useState(false);
-  const legendId = `scatter-legend-${useId().replace(/:/g, '')}`;
-  const [paintState, setPaintState] = useState<'drawing' | 'ready' | 'error'>('drawing'), [exporting, setExporting] = useState(false);
-  const controller = useRef<AbortController | null>(null);
-  const drag = useRef<{ start: { x: number; y: number }; end: { x: number; y: number }; pointerId: number } | null>(null);
-  const [dragBox, setDragBox] = useState<typeof drag.current>(null);
-  const canvasDocument = canvas.current?.ownerDocument;
-  const summary = useMemo(() => { try { return { ...scatterDataSummary(data), error: '' }; } catch (error) {
-    return { count: 0, excluded: 0, nonfinite: 0, viewport: null, error: error instanceof Error ? error.message : '散点数据无效。' };
-  } }, [data]);
-  const [showAll, setShowAll] = useProjectState('scatter.showAll',false,appearanceKey??exportFileName);
-  const defaultRange = !showAll && validPlotViewport(initialViewport) ? initialViewport : summary.viewport;
-  const view = useScientificPlotViewport(defaultRange, { viewport, onViewportChange, resetKey,appearanceKey:appearanceKey??exportFileName }), range = view.viewport;
-  const size = bounded(pointSize ?? localSize, .5, 10, 2), alpha = bounded(opacity ?? localOpacity, .01, 1, .65);
-  const rasterSvg = summary.count > SCATTER_VECTOR_EXPORT_LIMIT;
-  let layout = scientificPlotLayout(sizing.width, displayTitle, { height: sizing.height ?? height, square: true, footer: colorLegend ? 52 : 0 });
-  const preliminaryY = range ? plotTicks(range.y, layout.bottom - layout.top, 48) : { major: [], minor: [], step: 1 };
-  layout = scientificPlotLayout(sizing.width, displayTitle, { height: sizing.height ?? height, square: true, footer: colorLegend ? 52 : 0,
-    yLabelWidth: Math.max(0, ...preliminaryY.major.map(value => axisText(formatPlotTick(value, preliminaryY.step),energyY).length)) * 7 + 14 });
-  const yt = range ? plotTicks(range.y, layout.bottom - layout.top, 48) : preliminaryY;
-  const xt = range ? plotTicks(range.x, layout.right - layout.left) : { major: [], minor: [], step: 1 };
-  const legendLayout = scatterLegendLayout(layout, legendPosition);
-  // Cache only visited source colors. Size, opacity and geometry changes reuse
-  // the mapping without copying or reducing the scientific columns.
-  const pointColor = useMemo(() => {
-    const colors: string[] = [];
-    return (index: number, x: number, y: number) => colors[index] ?? (colors[index] = colorForPoint?.(index, x, y) ?? colorForX(x));
-  }, [data, colorForX, colorForPoint]);
-  const paintIdentity = useMemo(() => ({}), [data, summary.count, range?.x[0], range?.x[1], range?.y[0], range?.y[1], layout.width, layout.height, layout.left, layout.right, layout.top, layout.bottom, colorForX, colorForPoint, size, alpha, canvasDocument]);
-  const sceneIdentity = useMemo(() => ({}), [paintIdentity, textStyle, title, xLabel, yLabel, ariaLabel, colorLegend, legendLayout.x, legendLayout.y, legendLayout.width, metadata, selected, decimals, resetKey]);
-  const scene = useRef(sceneIdentity); scene.current = sceneIdentity;
-  const painted = useRef<object | null>(null), paintError = useRef<{ identity: object; error: unknown } | null>(null);
-  const paintCounters=useRef({generations:0,commits:0});
-  useEffect(() => { setShowAll(false); legendFrame.cancel(); setLegendPosition(null); legendDrag.current = null; }, [resetKey]);
-  useEffect(() => { setSelected(null); setCopyAll(false); drag.current = null; setDragBox(null); styleFrame.cancel(); pendingStyle.current = {}; }, [data, resetKey]);
-  useEffect(() => { setExporting(false); return () => { controller.current?.abort(); }; }, [data, resetKey]);
-  useEffect(() => {
-    const node = canvas.current, win = node?.ownerDocument.defaultView; if (!node || !win || !range || !summary.count) return;
-    paintCounters.current.generations++;if(host.current?.dataset)host.current.dataset.scatterPaintGenerations=String(paintCounters.current.generations);
-    const buffer = node.ownerDocument.createElement('canvas'), context = buffer.getContext('2d');
-    if (!context) { paintError.current = { identity: paintIdentity, error: new Error('散点画布不可用。') }; setPaintState('error'); setMessage('散点画布不可用。'); return; }
-    const ratio = Math.min(2, win.devicePixelRatio || 1);
-    buffer.width = Math.round(layout.width * ratio); buffer.height = Math.round(layout.height * ratio);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0); context.fillStyle = '#fff'; context.fillRect(0, 0, layout.width, layout.height);
-    let frame = 0, offset = 0, cancelled = false; painted.current = null; paintError.current = null; setPaintState('drawing'); setMessage('');
-    const paint = () => {
-      if (cancelled) return;
-      try {
-        const started = performance.now();
-        do { const end = Math.min(data.x.length, offset + 1024); paintScatterBatch(context, data, range, layout, colorForX, size, alpha, offset, end, pointColor); offset = end; }
-        while (offset < data.x.length && performance.now() - started < 8);
-        if (offset < data.x.length) frame = win.requestAnimationFrame(paint);
-        else {
-          const visible = node.getContext('2d'); if (!visible) throw new Error('散点画布不可用。');
-          // Only complete latest frames reach the visible canvas. Cancellation
-          // releases the private buffer and leaves the previous full image intact.
-          if (node.width !== buffer.width) node.width = buffer.width;
-          if (node.height !== buffer.height) node.height = buffer.height;
-          visible.setTransform(1, 0, 0, 1, 0, 0); visible.drawImage(buffer, 0, 0);
-          paintCounters.current.commits++;if(host.current?.dataset)host.current.dataset.scatterPaintCommits=String(paintCounters.current.commits);
-          painted.current = paintIdentity; buffer.width = 0; buffer.height = 0; setPaintState('ready');
-        }
-      } catch (error) { buffer.width = 0; buffer.height = 0; paintError.current = { identity: paintIdentity, error }; setPaintState('error'); setMessage(error instanceof Error ? error.message : '散点绘制失败。'); }
-    };
-    frame = win.requestAnimationFrame(paint);
-    return () => { cancelled = true; if (painted.current === paintIdentity) painted.current = null; win.cancelAnimationFrame(frame); buffer.width = 0; buffer.height = 0; };
-  }, [paintIdentity]);
-  useEffect(() => {
-    const source = svg.current, pixels = canvas.current;
-    if (!exportHandle) return;
-    if (!source || !pixels || !range || summary.error || !summary.count) { exportHandle(null); return; }
-    let active = true; const lifetime = new AbortController();
-    const assertCurrent = (signal?: AbortSignal) => {
+  const mapColors=Boolean(colorLegend?.zeroCentered||colorLegend?.valueForPoint||scaleEdits.colors||customScaleRange||style.scatterColors);
+  const pointColor=useMemo(()=>(index:number,x:number,y:number)=>{
+    if(!scale||!mapColors||colorLegend?.mutedForPoint?.(index)||colorForPoint&&!colorLegend?.valueForPoint)
+      return colorForPoint?.(index,x,y)??colorForX(x);
+    const value=colorLegend?.valueForPoint?.(index)??x;
+    return interpolateColor(scatterScaleFraction(value,scale),scale.colors);
+  },[colorForX,colorForPoint,mapColors,scale?.range[0],scale?.range[1],scale?.colors,scale?.zeroCentered,scale?.logarithmic,
+    colorLegend?.valueForPoint,colorLegend?.mutedForPoint]);
+  const pointAppearance=useMemo(()=>(index:number)=>figure.points?.[plotPointKey('scatter',index)]??mainPoint,[figure.points,mainPoint]);
+  const raster=summary.count>SCATTER_VECTOR_EXPORT_LIMIT;
+  const stageHeight=sizing.height??sizing.width*layout.height/layout.width;
+  const displayScale=Math.min(sizing.width/layout.width,stageHeight/layout.height);
+  const paintOptions={data,range,layout,size,alpha,colorForX,colorForPoint:pointColor,appearance:pointAppearance};
+  const paint=useScatterPointLayer(canvas,host,{...paintOptions,displayScale,active:!!summary.count,epoch:advanced?1:0});
+  const sceneIdentity=useMemo(()=>({}),[paint.identity,figure,titles.title,titles.x,titles.y,ariaLabel,metadata,picked,resetKey]);
+  const scene=useRef(sceneIdentity);scene.current=sceneIdentity;
+
+  useEffect(()=>{setPicked(null);setHover(undefined);setCopyAll(false);},[data,resetKey]);
+  useEffect(()=>{setSelected(undefined);setScalePopup(undefined);},[resetKey]);
+  useEffect(()=>{setExporting(false);return()=>controller.current?.abort();},[data,resetKey]);
+  useEffect(()=>{
+    if(!exportHandle)return;
+    const source=svg.current,pixels=canvas.current,win=source?.ownerDocument.defaultView;
+    if(!source||!pixels||!range||!win||!summary.count){exportHandle(null);return;}
+    const lifetime=new AbortController();
+    const assertCurrent=(signal?:AbortSignal)=>{
       assertResultNotAborted(signal);
-      if (!active || scene.current !== sceneIdentity || svg.current !== source || canvas.current !== pixels) throw new Error('散点图已切换或关闭，请重新导出当前图。');
+      if(lifetime.signal.aborted||scene.current!==sceneIdentity||svg.current!==source||canvas.current!==pixels)
+        throw new Error('散点图已切换或关闭，请重新导出当前图。');
     };
-    exportHandle({ ownerDocument: source.ownerDocument, snapshotSvg: async signal => {
+    exportHandle({ownerDocument:source.ownerDocument,snapshotSvg:async signal=>{
       assertCurrent(signal);
-      const win = source.ownerDocument.defaultView;
-      if (!win) throw new Error('散点图窗口已关闭。');
-      while (painted.current !== paintIdentity) {
+      while(paint.painted.current!==paint.identity){
         assertCurrent(signal);
-        if (paintError.current?.identity === paintIdentity) throw paintError.current.error;
-        await waitForScatterFrame(win, [signal, lifetime.signal]);
+        if(paint.failure.current?.identity===paint.identity)throw paint.failure.current.error;
+        await waitForScatterFrame(win,[signal,lifetime.signal]);
       }
-      assertCurrent(signal);
-      const text = scatterSvgSnapshot(source, pixels, { data, range, layout, colorForX, colorForPoint, size, alpha, raster: rasterSvg });
-      await Promise.resolve(); assertCurrent(signal); return text;
-    } });
-    return () => { active = false; lifetime.abort(); exportHandle(null); };
-  }, [exportHandle, sceneIdentity]);
-  const capturePng = (owner: Document, signal: AbortSignal) => {
-    const source = svg.current, pixels = canvas.current;
-    if (!source?.isConnected || !pixels?.isConnected || source.ownerDocument !== owner || pixels.ownerDocument !== owner)
+      const result=scatterSvgSnapshot(source,pixels,{...paintOptions,range,raster});
+      await Promise.resolve();assertCurrent(signal);return result;
+    }});
+    return()=>{lifetime.abort();exportHandle(null);};
+  },[exportHandle,sceneIdentity]);
+
+  const capturePng=(doc:Document,signal:AbortSignal)=>{
+    const source=svg.current,pixels=canvas.current;
+    if(!source?.isConnected||!pixels?.isConnected||source.ownerDocument!==doc||pixels.ownerDocument!==doc)
       throw new Error('当前散点图不可用或已切换窗口。');
-    if (!range || painted.current !== paintIdentity) throw new Error('散点绘制尚未完成。');
-    return captureScientificSvgPng(source, owner, signal, pixels);
+    if(!range||paint.painted.current!==paint.identity)throw new Error('散点绘制尚未完成。');
+    return captureScientificSvgPng(source,doc,signal,pixels);
   };
-  const exportFigure = async (kind: 'svg' | 'png' | 'txt' | 'raw') => {
-    const source = svg.current, pixels = canvas.current; if (!source || !pixels || exporting) return;
-    const job = new AbortController(); controller.current = job; setExporting(true); setMessage('');
+  async function captureExport(kind:PlotExportFormat,signal:AbortSignal) {
+    const source=svg.current,pixels=canvas.current;
+    if(!source||!pixels||!range)throw new Error('散点图尚未准备好。');
+    let blob:Blob;
+    if(kind==='txt'||kind==='raw')blob=new Blob([scatterDataText(data,{x:xLabel,y:yLabel},kind==='raw'?'raw':decimals)],{type:'text/plain;charset=utf-8'});
+    else if(kind==='png')blob=await capturePng(source.ownerDocument,signal);
+    else {
+      if(paint.painted.current!==paint.identity)throw new Error('散点绘制尚未完成。');
+      blob=new Blob([scatterSvgSnapshot(source,pixels,{...paintOptions,range,raster})],{type:'image/svg+xml;charset=utf-8'});
+    }
+    assertResultNotAborted(signal);
+    if(kind!=='txt'&&kind!=='raw'&&scene.current!==sceneIdentity)throw new Error('散点图已切换，请重新导出当前图。');
+    return {blob,filename:exportFileName+(kind==='raw'?'-raw.txt':'.'+kind)};
+  }
+  const exportFigure=async(kind:'svg'|'png'|'txt'|'raw')=>{
+    const source=svg.current,pixels=canvas.current;
+    if(!source||!pixels||!range||exporting)return;
+    const job=new AbortController();controller.current=job;setExporting(true);setMessage('');
     try {
-      let blob: Blob;
-      if (kind === 'txt' || kind === 'raw') blob = new Blob([scatterDataText(data, { x: xLabel, y: yLabel }, kind === 'raw' ? 'raw' : decimals)], { type: 'text/plain;charset=utf-8' });
-      else if (kind === 'png') blob = await capturePng(source.ownerDocument, job.signal);
-      else {
-        if (painted.current !== paintIdentity) throw new Error('散点绘制尚未完成。');
-        const text = scatterSvgSnapshot(source, pixels, { data, range: range!, layout, colorForX, colorForPoint, size, alpha, raster: rasterSvg });
-        blob = new Blob([text], { type: 'image/svg+xml;charset=utf-8' });
+      const {blob,filename}=await captureExport(kind,job.signal);
+      exportBlob(blob,filename,source.ownerDocument);
+      setMessage('已发起 '+(kind==='raw'?'原始数据 TXT':kind.toUpperCase())+' 下载。');
+    } catch(error){if(!job.signal.aborted)setMessage(error instanceof Error?error.message:'散点导出失败。');}
+    finally{if(controller.current===job)controller.current=null;if(!job.signal.aborted)setExporting(false);}
+  };
+  function edit(change:Partial<PlotPaneEdits>,group?:string){
+    record.replace(previous=>{
+      const next={...previous,...change}, proposed=change.coordinates?.main,before=previous.coordinates?.main;
+      return view.zoomed && proposed && (proposed.x?.bounds!==before?.x?.bounds||proposed.y?.bounds!==before?.y?.bounds)
+        ?{...next,zoom:{scope:resetKey,range:null,back:[]}}:next;
+    },group);
+  }
+  const updateScale:ScatterScaleChange=(delta,group)=>{
+    const {title,...patch}=delta;
+    record.replace(previous=>{
+      const next={...previous,scatterScale:{...previous.scatterScale,...patch}};
+      if(title){
+        const change:PlotNote={content:title.content,hidden:!title.visible,
+          position:{x:title.dx??0,y:title.dy??0},
+          font:{...(title.font!==undefined?{font:title.font}:{}),...(title.size!==undefined?{size:title.size}:{}),
+            ...(title.bold!==undefined?{bold:title.bold}:{}),...(title.italic!==undefined?{italic:title.italic}:{})}};
+        next.text={...previous.text,'color-legend':change};
       }
-      assertResultNotAborted(job.signal);
-      if (kind !== 'txt' && kind !== 'raw' && scene.current !== sceneIdentity) throw new Error('散点图已切换，请重新导出当前图。');
-      exportBlob(blob, `${exportFileName}${kind === 'raw' ? '-raw' : ''}.${kind === 'raw' ? 'txt' : kind}`, source.ownerDocument);
-      setMessage(`已发起 ${kind === 'raw' ? '原始数据 TXT' : kind.toUpperCase()} 下载。`);
-    } catch (error) { if (!job.signal.aborted) setMessage(error instanceof Error ? error.message : '散点导出失败。'); }
-    finally { if (controller.current === job) controller.current = null; if (!job.signal.aborted) setExporting(false); }
+      return next;
+    },group);
   };
-  const applyRange = (axis: 'x' | 'y', end: 0 | 1, value: number) => {
-    if (!range) return; const next = { x: [...range.x] as [number, number], y: [...range.y] as [number, number] }; next[axis][end] = value;
-    if (validPlotViewport(next)) view.zoom(next);
-  };
-  const changeSize = (value: number) => { pendingStyle.current = { ...pendingStyle.current, size: bounded(value, .5, 10, size) }; styleFrame.schedule(pendingStyle.current, host.current?.ownerDocument.defaultView); };
-  const changeOpacity = (value: number) => { pendingStyle.current = { ...pendingStyle.current, alpha: bounded(value, .01, 1, alpha) }; styleFrame.schedule(pendingStyle.current, host.current?.ownerDocument.defaultView); };
-  const finishLegend = (event: PointerEvent<SVGGElement>) => {
-    if (legendDrag.current?.pointerId !== event.pointerId) return;
-    event.preventDefault(); event.stopPropagation(); legendFrame.flush(); legendDrag.current = null; event.currentTarget.releasePointerCapture?.(event.pointerId);
-  };
-  if (!range || summary.error || !summary.count) return <div ref={host} className="scientific-plot scientific-scatter-plot" data-testid={testId} data-point-count="0" data-sampled="false" data-paint-state={summary.error ? 'error' : 'empty'}><p className="optimization-plot-empty" role="status">{summary.error || '没有可绘制的有效散点。'}</p></div>;
-  const at = (x: number, y: number) => scatterScreenPoint(x, y, range, layout);
-  const inside = (p: { x: number; y: number }) => p.x >= layout.left && p.x <= layout.right && p.y >= layout.top && p.y <= layout.bottom;
-  const marker = selected ? at(selected.x, selected.y) : null;
-  return <div ref={host} className="scientific-plot scientific-scatter-plot" tabIndex={0} aria-label="可复制散点数据" data-copy-all={copyAll || undefined} data-testid={testId} data-point-count={summary.count} data-source-point-count={data.x.length} data-sampled="false" data-paint-state={paintState}
-    onKeyDown={event => {
-      if (editableCopyTarget(event.target)) return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') { event.preventDefault(); event.stopPropagation(); setCopyAll(true); }
-      else if (event.key === 'Escape' && copyAll) { event.stopPropagation(); setCopyAll(false); }
-    }}
-    onCopy={event => { if (!copyAll || editableCopyTarget(event.target)) return; event.clipboardData.setData('text/plain', scatterDataText(data, { x: xLabel, y: yLabel }, decimals)); event.preventDefault(); event.stopPropagation(); }}
-    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setCopyAll(false); }}>
-    <div className="optimization-plot-options scientific-plot-tools scientific-scatter-tools scientific-plot-data-controls" aria-label="数据与显示" onPointerUp={() => styleFrame.flush()} onBlur={() => styleFrame.flush()}>
-      {children}
-      {(['x', 'y'] as const).map(axis => <span className="scientific-plot-control-group scientific-plot-range-control" role="group" aria-label={`${axis.toUpperCase()}范围`} key={axis}><span>{axis.toUpperCase()}范围</span><span className="scientific-plot-range-values">
-        <NumericInput aria-label={`${axis.toUpperCase()}轴最小值`}  step="any" value={range[axis][0]} onChange={event => { if (event.currentTarget.value !== '') applyRange(axis, 0, event.currentTarget.valueAsNumber); }}/>
-        <span>—</span><NumericInput aria-label={`${axis.toUpperCase()}轴最大值`}  step="any" value={range[axis][1]} onChange={event => { if (event.currentTarget.value !== '') applyRange(axis, 1, event.currentTarget.valueAsNumber); }}/></span></span>)}
-      <label>点大小<input aria-label="散点大小滑杆" type="range" min="0.5" max="10" step="0.5" value={size} onChange={event => changeSize(event.currentTarget.valueAsNumber)}/><NumericInput aria-label="散点大小"  min="0.5" max="10" step="0.5" value={size} onChange={event => changeSize(event.currentTarget.valueAsNumber)}/></label>
-      <label>透明度<input aria-label="散点透明度滑杆" type="range" {...matchingSliderRange(alpha,.01,1,.01)} value={alpha} onChange={event => changeOpacity(event.currentTarget.valueAsNumber)}/><NumericInput aria-label="散点透明度" stepper adaptiveStep={0.1} min="0.01" max="1" step="0.01" value={alpha} onChange={event => changeOpacity(event.currentTarget.valueAsNumber)}/></label>
-    </div>
-    <ScientificPlotSettings appearance={{...appearance,reset:()=>{appearance.reset();sizing.reset();}}} title={title} xLabel={xLabel} yLabel={yLabel} names={colorLegend?.label ? [{ id: 'color-legend', label: colorLegend.label }] : []}>{sizing.controls(layout.height)}</ScientificPlotSettings>
-    <div className="scientific-plot-viewport"><div ref={sizing.stageRef} className="scientific-scatter-stage scientific-plot-stage" style={sizing.style(layout.height)}>
-      <canvas ref={canvas} aria-hidden="true"/>
-      <svg ref={svg} xmlns="http://www.w3.org/2000/svg" width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={ariaLabel} className="scientific-plot-svg" fontFamily={plotFontFamily(textStyle.font)}
-        data-x-min={range.x[0]} data-x-max={range.x[1]} data-y-min={range.y[0]} data-y-max={range.y[1]}
-        data-plot-left={layout.left} data-plot-right={layout.right} data-plot-top={layout.top} data-plot-bottom={layout.bottom}
-        onPointerDown={event => { if (event.button !== 0) return; const p = plotClientPoint(event.currentTarget, event.clientX, event.clientY); if (!p || !inside(p)) return;
-          host.current?.focus({ preventScroll: true });
-          drag.current = { start: p, end: p, pointerId: event.pointerId }; setDragBox(drag.current); event.currentTarget.setPointerCapture?.(event.pointerId); }}
-        onPointerMove={event => { const active = drag.current; if (!active || active.pointerId !== event.pointerId) return; const p = plotClientPoint(event.currentTarget, event.clientX, event.clientY); if (!p) return; drag.current = { ...active, end: p }; setDragBox(drag.current); }}
-        onPointerUp={event => { const active = drag.current; if (!active || active.pointerId !== event.pointerId) return; drag.current = null; setDragBox(null); event.currentTarget.releasePointerCapture?.(event.pointerId);
-          const p = plotClientPoint(event.currentTarget, event.clientX, event.clientY) ?? active.end;
-          if (Math.abs(p.x - active.start.x) >= 5 && Math.abs(p.y - active.start.y) >= 5) { const next = zoomPlotViewport(range, active.start, p, layout); if (next) view.zoom(next); }
-          else if (Math.hypot(p.x - active.start.x, p.y - active.start.y) < 5) { const next = nearestScatterPoint(data, p, range, layout); setSelected(next); onPointSelect?.(next); }
-        }} onPointerCancel={() => { drag.current = null; setDragBox(null); }} onLostPointerCapture={() => { drag.current = null; setDragBox(null); }}>
-        <defs></defs><title>{displayTitle}</title><desc>{`${xLabel}；${yLabel}；全量有效点，无显示抽样；拖框缩放，单击查看数值。SVG使用${rasterSvg ? '嵌入点图和矢量坐标轴' : '可编辑矢量圆点和坐标轴'}。`}</desc>
-        <metadata>{JSON.stringify({ metadata, appearance: textStyle, viewport: range, pointSize: size, opacity: alpha, colorLegend, ...(colorLegend ? { colorLegendLayout: legendLayout } : {}), pointCount: summary.count, sampled: false, svgPointLayer: rasterSvg ? 'raster' : 'vector' })}</metadata>
-        {layout.titleLines.map((line, i) => <text key={i} x={layout.width / 2} y={24 + i * 18} textAnchor="middle" fill="#1e293b" fontSize={plotPt(textStyle.titleSize)}>{line}</text>)}
-        <text x={layout.left} y={layout.top - 12} fill="#334155" fontSize={plotPt(textStyle.axisSize)}>{displayY}</text>
-        {yt.major.map(value => <g key={value}><line x1={layout.left - 5} x2={layout.left} y1={at(0, value).y} y2={at(0, value).y} stroke="#64748b"/><text x={layout.left - 8} y={at(0, value).y + 4} textAnchor="end" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatPlotTick(value, yt.step),energyY)}</text></g>)}
-        {yt.minor.map(value => <line key={value} x1={layout.left - 3} x2={layout.left} y1={at(0, value).y} y2={at(0, value).y} stroke="#94a3b8"/>)}
-        <rect data-plot-frame="true" x={layout.left} y={layout.top} width={layout.right - layout.left} height={layout.bottom - layout.top} fill="none" stroke="#111827"/>
-        {xt.minor.map(value => <line key={value} x1={at(value, 0).x} x2={at(value, 0).x} y1={layout.bottom} y2={layout.bottom + 3} stroke="#94a3b8"/>)}
-        {xt.major.map(value => <g key={value}><line x1={at(value, 0).x} x2={at(value, 0).x} y1={layout.bottom} y2={layout.bottom + 5} stroke="#64748b"/><text x={at(value, 0).x} y={layout.bottom + 21} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatPlotTick(value, xt.step),energyX)}</text></g>)}
-        <text x={(layout.left + layout.right) / 2} y={layout.bottom + 45} textAnchor="middle" fill="#334155" fontSize={plotPt(textStyle.axisSize)}>{displayX}</text>
-        {colorLegend && <g data-scatter-color-legend="true" aria-label={colorLegend.label ?? xLabel} className="scientific-scatter-legend" tabIndex={0}
-          onPointerDown={event => {
-            if (event.button !== 0) return;
-            const point = svg.current && plotClientPoint(svg.current, event.clientX, event.clientY); if (!point) return;
-            event.preventDefault(); event.stopPropagation(); legendFrame.flush();
-            const handle = (event.target as Element).closest('[data-scatter-legend-handle]')?.getAttribute('data-scatter-legend-handle');
-            legendDrag.current = { start: legendLayout, point, mode: handle === 'left' || handle === 'right' ? handle : 'move', pointerId: event.pointerId };
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-          }}
-          onPointerMove={event => {
-            const active = legendDrag.current; if (!active || active.pointerId !== event.pointerId) return;
-            event.preventDefault(); event.stopPropagation();
-            const point = svg.current && plotClientPoint(svg.current, event.clientX, event.clientY); if (!point) return;
-            legendFrame.schedule(dragScatterLegend(active.start, active.mode, point.x - active.point.x, point.y - active.point.y, layout), event.currentTarget.ownerDocument.defaultView);
-          }} onPointerUp={finishLegend} onPointerCancel={finishLegend}
-          onLostPointerCapture={() => { legendFrame.flush(); legendDrag.current = null; }} onClick={event => event.stopPropagation()}>
-          <title>拖动色尺移动位置，拖动两端调整长度</title>
-          <defs><linearGradient id={legendId} x1="0%" y1="0%" x2="100%" y2="0%">
-            {Array.from({ length: 17 }, (_, i) => <stop key={i} offset={`${i / 16 * 100}%`} stopColor={colorForX(colorLegend.min + (colorLegend.max - colorLegend.min) * i / 16)}/>)}
-          </linearGradient></defs>
-          {colorLegend.label && <text x={legendLayout.x} y={legendLayout.y - 8} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{appearance.name('color-legend', colorLegend.label)}</text>}
-          <rect x={legendLayout.x - legendLayout.width / 2} y={legendLayout.y} width={legendLayout.width} height="10" fill={`url(#${legendId})`} stroke="#d8e2ea"/>
-          <text x={legendLayout.x - legendLayout.width / 2} y={legendLayout.y + 26} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatResultValue(colorLegend.min, decimals),isEnergyUnit(colorLegend.label?.split(' / ').at(-1)))}</text>
-          <text x={legendLayout.x + legendLayout.width / 2} y={legendLayout.y + 26} textAnchor="middle" fill="#64748b" fontSize={plotPt(textStyle.tickSize)}>{axisText(formatResultValue(colorLegend.max, decimals),isEnergyUnit(colorLegend.label?.split(' / ').at(-1)))}</text>
-          <g data-plot-interaction="legend-handles">
-            <rect x={legendLayout.x - legendLayout.width / 2 - 8} y={legendLayout.y - 20} width={legendLayout.width + 16} height="52" fill="transparent"/>
-            {(['left', 'right'] as const).map(side => <g key={side} data-scatter-legend-handle={side} style={{ cursor: 'ew-resize' }}>
-              <rect x={legendLayout.x + (side === 'left' ? -1 : 1) * legendLayout.width / 2 - 8} y={legendLayout.y - 4} width="16" height="18" fill="transparent"/>
-              <path d={`M ${legendLayout.x + (side === 'left' ? -1 : 1) * legendLayout.width / 2} ${legendLayout.y - 1} l 5 6 l -5 6 l -5 -6 Z`} fill="white" stroke="#397a9a" pointerEvents="none"/>
-            </g>)}
-          </g>
-        </g>}
-        {marker && inside(marker) && <circle cx={marker.x} cy={marker.y} r={Math.max(4, size)} fill="none" stroke="#1e293b" pointerEvents="none"/>}
-        {dragBox && <rect data-plot-interaction="zoom" x={Math.max(layout.left, Math.min(dragBox.start.x, dragBox.end.x))} y={Math.max(layout.top, Math.min(dragBox.start.y, dragBox.end.y))}
-          width={Math.max(0, Math.min(layout.right, Math.max(dragBox.start.x, dragBox.end.x)) - Math.max(layout.left, Math.min(dragBox.start.x, dragBox.end.x)))} height={Math.max(0, Math.min(layout.bottom, Math.max(dragBox.start.y, dragBox.end.y)) - Math.max(layout.top, Math.min(dragBox.start.y, dragBox.end.y)))} fill="#397a9a22" stroke="#397a9a" pointerEvents="none"/>}
-      </svg>{sizing.handles}
-    </div></div>
-    <div className="optimization-plot-options scientific-plot-tools scientific-plot-actions scientific-scatter-actions" aria-label="图像操作">
-      <button type="button" disabled={!view.canGoBack} onClick={view.back}>返回上一级</button>
-      <button type="button" onClick={() => { setShowAll(false); view.reset(); sizing.reset(); legendFrame.cancel(); setLegendPosition(null); changeSize(2); changeOpacity(.65); styleFrame.flush(); }}>恢复视图</button>
-      {validPlotViewport(initialViewport) && summary.viewport && (initialViewport.x[0] !== summary.viewport.x[0] || initialViewport.x[1] !== summary.viewport.x[1] || initialViewport.y[0] !== summary.viewport.y[0] || initialViewport.y[1] !== summary.viewport.y[1]) &&
-        <button type="button" disabled={showAll && !view.zoomed} onClick={() => { setShowAll(true); view.reset(); }}>全图</button>}
-      <ScientificImageCopyButton resetKey={data} disabled={paintState !== 'ready' || painted.current !== paintIdentity} capture={capturePng}/>
-      <ScientificPlotExportMenu disabled={exporting} options={[
-        { key: 'svg', label: rasterSvg ? 'SVG（嵌入点图）' : 'SVG', disabled: paintState !== 'ready', run: () => void exportFigure('svg') },
-        { key: 'png', label: 'PNG', disabled: paintState !== 'ready', run: () => void exportFigure('png') },
-        { key: 'txt', label: '所见格式 TXT', run: () => void exportFigure('txt') },
-        { key: 'raw', label: '原始数据 TXT', run: () => void exportFigure('raw') },
-      ]}/>
-      <button type="button" aria-pressed={copyAll} title="选择全部有效点，按 Ctrl/Cmd+C 复制" onClick={() => { setCopyAll(true); host.current?.focus({ preventScroll: true }); }}>选择全部数据</button>
-    </div>
-    <p className="optimization-plot-note" role="status">{summary.count} 点 · 全量{summary.excluded ? ` · 有效域外 ${summary.excluded} 点` : ''}{summary.nonfinite ? ` · 非有限值 ${summary.nonfinite} 点` : ''}{paintState === 'drawing' ? ' · 绘制中' : ''}{selected ? ` · ${xLabel}: ${axisText(formatResultValue(selected.x, decimals),energyX)}；${yLabel}: ${axisText(formatResultValue(selected.y, decimals),energyY)}` : ''}</p>
-    {message && <p className="optimization-plot-note" role="status">{message}</p>}
+  function selectTarget(target:PlotTarget,loc={x:16,y:16},editText=false){
+    setScalePopup(undefined);setSelected({part:'main',target,location:loc,editText});
+    setPanel(target.kind==='axis'?'axes':target.kind==='text'?'text':target.kind==='guide'?'guides':'series');
+  }
+  const context=plotEditorPane({pane:figure,style,range:range??emptyRange,axisKey:'main',mapping:plotMapping(),titles,series,
+    edit,endEdit:record.endGroup,onTarget:t=>selectTarget(t,undefined,true),onDismiss:dismissRemovedObject,canAnnotate:false});
+  context.scatterOpacity=alpha;
+  context.textDefaults={...context.textDefaults,'color-legend':{content:colorLegend?.label??xLabel,role:'legend',label:'色尺标题'}};
+  // Text popup starts from the effective ruler font; preserving the base point style prevents a view-only edit.
+  if(scale&&selected?.target.kind==='text'&&selected.target.id==='color-legend') context.style={...context.style,
+    fonts:{...context.style.fonts,legend:{font:scale.font,size:scale.numberPt,bold:false,italic:false}}};
+  const canInspect = !!selected && hasPlotSettingsTarget(selected.target, context);
+  useEffect(()=>{if(selected&&!canInspect)setSelected(undefined);},[selected,canInspect]);
+  const nearest=(at:{x:number;y:number})=>range&&insidePlot(at,layout)?nearestScatterPoint(data,at,range,layout,7,hitIndex):null;
+  function location(point:{clientX:number;clientY:number}){
+    const rect=stage.current?.getBoundingClientRect();
+    return {x:point.clientX-(rect?.left??0),y:point.clientY-(rect?.top??0)};
+  }
+  function scaleAt(point:{x:number;y:number}){
+    const matrix=svg.current?.getScreenCTM(), at=svg.current?.createSVGPoint();
+    if(!matrix||!at)return point;
+    at.x=point.x;at.y=point.y;
+    const pixel=at.matrixTransform(matrix);
+    return location({clientX:pixel.x,clientY:pixel.y});
+  }
+  function hasPlotPointAt(clientX:number,clientY:number){
+    const at = svg.current && plotClientPoint(svg.current,clientX,clientY);
+    return !!at && !!nearest(at);
+  }
+  const gesture=usePlotGestures({figure:record.figure,stage,main:{context,geometry:layout,axisKey:'main',offset:{x:0,y:0},nearest},
+    makeInset:false,location,preview,commit:next=>record.replace(next),zoom:next=>view.zoom(next),
+    hover(hit,at,local){
+      const point=hit.kind==='paper'&&local?nearest(local):null;
+      setHover(previous=>point?(previous?.point.index===point.index?previous:{point,...at}):undefined);
+    },
+    select(hit,local){
+      if(hit.kind!=='paper')return;
+      const point=nearest(local);
+      if(point || picked){setPicked(point);onPointSelect?.(point);}
+    },
+    inspect(hit,at,local){
+      const target=targetFromPlotHit(hit);
+      if(target){selectTarget(target,at);return;}
+      const point=hit.kind==='paper'&&nearest(local);
+      if(point)selectTarget({kind:'point',id:'scatter',index:point.index},at);
+    },
+  });
+  function removeTarget(){
+    if(selected?.target.kind==='text')context.removeText(selected.target.id);
+    if(selected?.target.kind==='guide')context.removeGuide(selected.target.id);
+  }
+  function keyboard(event:KeyboardEvent){
+    if(plotTextInput(event.target))return;
+    const key=event.key.toLowerCase(),mod=event.ctrlKey||event.metaKey;
+    if(mod&&key==='a'&&!editableCopyTarget(event.target)){event.preventDefault();event.stopPropagation();setCopyAll(true);}
+    else if(mod&&(key==='y'||key==='z')){
+      event.preventDefault();event.stopPropagation();if(key==='y'||event.shiftKey)record.redo();else record.undo();
+    }else if(key==='escape'&&(copyAll||gesture.resizePart)){
+      event.preventDefault();event.stopPropagation();setCopyAll(false);gesture.hideResizeHandles();
+    }
+  }
+  function resetLayout(){
+    record.replace(previous=>({...previous,frame:undefined,position:undefined,
+      text:Object.fromEntries(Object.entries(previous.text??{}).map(([k,v])=>[k,{...v,position:undefined}])),
+      ...(previous.scatterScale?{scatterScale:{...previous.scatterScale,dx:0,dy:0}}:{})}));
+  }
+  const snapshotStyle=plotPresetSnapshot({...style,...(scale?{scatterColors:scale.colors,
+    scatterScaleStyle:{direction:scale.direction,length:scale.length,thickness:scale.thickness,font:scale.font,
+      numberPt:scale.numberPt,ink:scale.ink,decimals:scale.decimals,numberFormat:scale.numberFormat,tickCount:scale.tickCount,
+      tickMode:scale.tickMode==='custom'?'ends':scale.tickMode}}:{}),scatterOpacity:alpha},figure);
+  function choose(id:string,custom?:typeof style){
+    if(custom){edit({presetId:id});return;}
+    const next=library.style(id);
+    const ruler=figure.scatterScale;
+    edit({...applyPlotPreset(figure,id,next),
+      ...(ruler?{scatterScale:{range:ruler.range,dx:ruler.dx,dy:ruler.dy,logarithmic:ruler.logarithmic,
+        tickValues:ruler.tickValues,...(ruler.tickMode==='custom'?{tickMode:ruler.tickMode}:{})}}:{})});
+  }
+  const assertFigureIdle=()=>{if(draft||gesture.inProgress())throw new Error('图形手势正在进行。');};
+  const scaleConfiguration=scale&&colorLegend?{
+    schema:objectSchema({
+      range:{anyOf:[settingArray(settingNumber,2,2),{type:'null'}]},colors:settingArray(settingColor,2),
+      ...(colorLegend.logarithmic!==undefined&&{logarithmic:settingBool}),direction:settingEnum(['horizontal','vertical']),
+      length:{type:'number',minimum:12,maximum:100},thickness:{type:'number',minimum:ANALYSIS_COLORBAR_LIMITS.thickness.min,maximum:ANALYSIS_COLORBAR_LIMITS.thickness.max},
+      dx:settingNumber,dy:settingNumber,font:settingEnum(plotFonts),numberPt:{type:'number',minimum:5,maximum:24},ink:settingColor,
+      decimals:{type:'integer',minimum:0,maximum:8},numberFormat:settingNumberFormat,
+      tickMode:settingEnum(['ends','automatic','custom']),tickCount:{type:'integer',minimum:2,maximum:10},tickValues:settingArray(settingNumber),
+      title:objectSchema({content:settingText,visible:settingBool,font:settingEnum(plotFonts),size:{type:'number',minimum:5,maximum:72},
+        bold:settingBool,italic:settingBool,dx:settingNumber,dy:settingNumber}),
+    }),
+    read:()=>({...scale,manualRange:customScaleRange!==undefined,visible:showScale}),
+    apply(values:Record<string,unknown>){
+      assertFigureIdle();
+      const {title,range:requested,...patch}=values as Omit<Partial<ScatterColorScaleValue>,'title'|'range'> &
+        {title?:Partial<ScatterColorScaleValue['title']>;range?:ScatterColorScaleValue['range']|null};
+      const limits=requested===null?[colorLegend.min,colorLegend.max] as const:requested??scale.range;
+      if(!(limits[0]<limits[1])||((patch.logarithmic??scale.logarithmic)&&limits[0]<1))throw new Error('色尺范围必须递增，对数计数下限至少为 1。');
+      const ticks=patch.tickValues;
+      if(ticks)patch.tickValues=[...new Set(ticks)].sort((a,b)=>a-b);
+      else if(patch.tickMode==='custom'&&!scale.tickValues.length)patch.tickValues=scatterScaleTicks({...scale,...patch,range:limits});
+      updateScale({...patch,...(requested!==undefined&&{range:requested??undefined}),...(title&&{title:{...scale.title,...title}})});
+    },
+  }:undefined;
+  const mcpPort=range&&!summary.error&&summary.count?<ResultsMcpPlotRegistration chartId={id} figureIdentity={`${owner}:${String(resetKey)}`} port={{
+    read:()=>{
+      const main=plotPartCapabilities(context,data.x.length);
+      return {title:figure.text?.title?.content??titles.title,xLabel:figure.text?.x?.content??titles.x,yLabel:figure.text?.y?.content??titles.y,
+        family,figure,range,metadata,formats:['svg','png','txt','raw'],
+        series:main.series,textIds:main.textIds,edits:main.editOperations,partCapabilities:{main},
+        presets:[...library.builtins,...library.personal].map(({id,label})=>({id,label})),defaultPresetId:library.defaultId,canUndo:record.canUndo,canRedo:record.canRedo};
+    },
+    edit:(change,part='main')=>{assertFigureIdle();if(part==='inset')throw new Error('当前散点图没有副图。');editCurrentPlot(change,context,record,data.x.length);},
+    configuration:{canvas:plotCanvasConfiguration(context,assertFigureIdle),...(scaleConfiguration&&{'color-scale':scaleConfiguration})},
+    preset:presetId=>{assertFigureIdle();choose(presetId);},
+    savePreset:label=>{
+      assertFigureIdle();
+      const snapshot=plotPresetSnapshot(style,figure),id=library.save(label,snapshot);choose(id,snapshot);return id;
+    },
+    defaultPreset:library.makeDefault,
+    export:captureExport,
+    isVisible:()=>!!svg.current?.getClientRects().length,
+  }}/>:null;
+  function assignStage(node:HTMLDivElement|null){stage.current=node;sizing.stageRef(node);}
+  // Ref identity must survive point hovers and edits.
+  const setStage=useRef(assignStage);setStage.current=assignStage;
+  const connectStage=useMemo(()=>(node:HTMLDivElement|null)=>setStage.current(node),[]);
+  if(!range||summary.error||!summary.count)return <div ref={host} className="scientific-plot scientific-scatter-plot"
+    data-testid={testId} data-point-count="0" data-sampled="false" data-paint-state={summary.error?'error':'empty'}>
+    <p className="optimization-plot-empty" role="status">{summary.error||'没有可绘制的有效散点。'}</p></div>;
+
+  const renderedHeight=stage.current?.clientHeight??stageHeight, width=stage.current?.clientWidth??sizing.width;
+  const box=gesture.box;
+  const actions=<div className="optimization-plot-options scientific-plot-tools scientific-plot-actions" aria-label="图像操作">
+    <button type="button" disabled={!view.canGoBack} onClick={view.back}>返回上一级</button>
+    <button type="button" onClick={()=>view.reset(showAll?{scatterShowAll:false}:undefined)}>恢复视图</button>
+    <button type="button" onClick={resetLayout}>恢复布局</button>
+    <button type="button" onClick={context.insertText}>插入文字</button>
+    {scale&&<label className="plot-edit-check"><input type="checkbox" checked={rulerVisible} onChange={e=>edit({showLegend:e.target.checked})}/>显示色尺</label>}
+    {validPlotViewport(initialViewport)&&!sameRange(initialViewport,summary.viewport)&&
+      <button type="button" disabled={showAll&&!view.zoomed} onClick={()=>view.reset(!showAll?{scatterShowAll:true}:undefined)}>全图</button>}
+    <button type="button" disabled={!record.canUndo} onClick={record.undo}>撤销</button>
+    <button type="button" disabled={!record.canRedo} onClick={record.redo}>重做</button>
+    <ScientificImageCopyButton resetKey={data} disabled={paint.status!=='ready'||paint.painted.current!==paint.identity} capture={capturePng}/>
+    <ScientificPlotExportMenu disabled={exporting} options={[
+      {key:'svg',label:raster?'SVG（嵌入点图）':'SVG',disabled:paint.status!=='ready',run:()=>void exportFigure('svg')},
+      {key:'png',label:'PNG',disabled:paint.status!=='ready',run:()=>void exportFigure('png')},
+      {key:'txt',label:'所见格式 TXT',run:()=>void exportFigure('txt')},{key:'raw',label:'原始数据 TXT',run:()=>void exportFigure('raw')},
+    ]}/>
+    <button type="button" aria-pressed={copyAll} onClick={()=>{setCopyAll(true);host.current?.focus({preventScroll:true});}}>选择全部数据</button>
+  </div>;
+  const graphics=<div className="scientific-plot-viewport"><div ref={connectStage}
+    className="scientific-scatter-stage scientific-plot-stage" style={sizing.style(stageHeight)}>
+    <canvas ref={canvas} aria-hidden="true"/>
+    <svg ref={svg} xmlns="http://www.w3.org/2000/svg" width={layout.width} height={layout.height}
+      viewBox={'0 0 '+layout.width+' '+layout.height} role="group" tabIndex={0} aria-label={ariaLabel}
+      className="scientific-plot-svg is-editable" fontFamily={plotFontFamily(style.fonts.ticks.font)}
+      data-x-min={range.x[0]} data-x-max={range.x[1]} data-y-min={range.y[0]} data-y-max={range.y[1]}
+      data-plot-left={layout.left} data-plot-right={layout.right} data-plot-top={layout.top} data-plot-bottom={layout.bottom}
+      onPointerDown={gesture.start} onPointerMove={gesture.move} onPointerUp={event=>gesture.finish(event)}
+      onPointerCancel={event=>gesture.finish(event,true)} onLostPointerCapture={event=>gesture.finish(event,true)}
+      onPointerLeave={()=>setHover(undefined)} onAuxClick={e=>{if(e.button===1)e.preventDefault();}}
+      onContextMenu={gesture.contextMenu}>
+      <title>{figure.text?.title?.content??titles.title}</title>
+      <desc>{titles.x+'；'+titles.y+'；全量有效点。'}</desc>
+      <metadata>{JSON.stringify({metadata,appearance:style,viewport:range,pointSize:size,opacity:alpha,colorLegend:scale,
+        pointCount:summary.count,sampled:false,svgPointLayer:raster?'raster':'vector'})}</metadata>
+      <ScientificPlotDrawing id={'scatter-'+id} part="main" geometry={layout} range={range} edits={figure} style={style}
+        title={titles.title} xLabel={titles.x} yLabel={titles.y} series={series} showLegend={false}
+        editable showResizeHandles={gesture.resizePart === 'main'} gripScale={displayScale} transparentPaper selectionMode="x" spectrum={false} decimals={decimals}
+        guides={context.guides.map(guide=>({...guide,displayValue:guide.value}))}
+        activeText={selected?.target.kind==='text'?selected.target.id:undefined}/>
+      {picked&&insidePlot({x:layout.x(picked.x),y:layout.y(picked.y)},layout)&&
+        <circle cx={layout.x(picked.x)} cy={layout.y(picked.y)} r={Math.max(4,size)} fill="none" stroke="#1e293b" pointerEvents="none" data-export-exclude="true"/>}
+      {showScale&&scale&&<ScientificScatterColorScale value={scale} frame={layout} onChange={updateScale}
+        titleSelected={selected?.target.kind==='text'&&selected.target.id==='color-legend'}
+        onOpenSettings={pos=>{setSelected(undefined);setPanel('series');setScalePopup(scaleAt(pos));}}
+        onOpenTitle={(pos,editText)=>selectTarget({kind:'text',id:'color-legend'},scaleAt(pos),editText)}
+        onDeleteTitle={()=>context.removeText('color-legend')}/>}
+      {box&&<rect data-plot-interaction="zoom" x={Math.min(box.start.x,box.end.x)} y={Math.min(box.start.y,box.end.y)}
+        width={Math.abs(box.start.x-box.end.x)} height={Math.abs(box.start.y-box.end.y)} fill="#227e681c" stroke="#227e68" pointerEvents="none"/>}
+    </svg>
+    {hover&&<div className="plot-point-readout" style={{left:clampPlot(hover.x+8,4,width-148),top:clampPlot(hover.y-27,4,renderedHeight-52)}}>
+      <span>Point {hover.point.index+1}</span><span>X {formatResultValue(hover.point.x,decimals)}</span><span>Y {formatResultValue(hover.point.y,decimals)}</span>
+    </div>}
+    {scalePopup&&scale?<PlotQuickPopover title="色尺" anchor={scalePopup} onClose={closeSettings} hasPlotPointAt={hasPlotPointAt}
+      remove={()=>{edit({showLegend:false});closeSettings();}}>
+      <ScatterColorScaleFields value={scale} onChange={updateScale} endEdit={record.endGroup}/>
+    </PlotQuickPopover>
+      :canInspect&&selected&&<PlotQuickControls key={JSON.stringify([selected.target,selected.editText])} target={selected.target}
+        context={context} anchor={selected.location} onClose={closeSettings} editText={selected.editText} hasPlotPointAt={hasPlotPointAt}
+        remove={canRemovePlotTarget(selected.target)?removeTarget:undefined}/>}
+  </div></div>;
+  const content=<>{graphics}{actions}<p className="optimization-plot-note" role="status">{summary.count} 点 · 全量
+    {!!summary.excluded&&' · 有效域外 '+summary.excluded+' 点'}{paint.status==='drawing'?' · 绘制中':''}</p>
+    {(message||paint.message)&&<p className="optimization-plot-note" role="status">{message||paint.message}</p>}</>;
+  const label=figure.presetId??library.defaultId??library.builtins[0]?.id;
+  const sidebar=<>
+    <PlotPresetControls library={library} active={label} style={snapshotStyle} onChoose={choose}/>
+    <nav className="plot-edit-tabs" aria-label="绘图参数">{plotPanels.map(([key,text])=>
+      <button type="button" key={key} aria-selected={panel===key} onClick={()=>setPanel(key)}>{key==='series'?'点与色尺':text}</button>)}</nav>
+    <PlotInspector context={context} panel={panel} target={canInspect?selected?.target:undefined}/>
+    {panel==='series'&&scale&&<div className="plot-edit-section"><strong>色尺</strong>
+      <ScatterColorScaleFields value={scale} onChange={updateScale} endEdit={record.endGroup}/></div>}
+  </>;
+  return <div ref={host} className="scientific-plot scientific-scatter-plot interactive-scientific-plot postprocess-plot" tabIndex={0}
+    aria-label="可复制散点数据" data-testid={testId} data-copy-all={copyAll||undefined}
+    data-point-count={summary.count} data-source-point-count={data.x.length} data-sampled="false" data-paint-state={paint.status}
+    onKeyDown={keyboard} onCopy={e=>{
+      if(!copyAll||editableCopyTarget(e.target))return;
+      e.clipboardData.setData('text/plain',scatterDataText(data,{x:xLabel,y:yLabel},decimals));e.preventDefault();e.stopPropagation();
+    }} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setCopyAll(false);}}>
+    {mcpPort}{scale&&colorScaleControls?.(scale,updateScale,!!customScaleRange)}
+    {embeddedPresetEditor?<div className="plot-preset-dialog-body">
+      <div className="plot-preset-art">{content}</div><aside className="plot-preset-fields">{sidebar}</aside>
+    </div>:<>
+      <PlotEditorToolbar data={children} library={library} active={label} style={snapshotStyle} onChoose={choose}
+        onAdvanced={()=>{gesture.hideResizeHandles();setAdvanced(true);}}/>
+      {advanced?<PlotSettingsWindow category={family==='fingerprint'?'fingerprint':'iri'} ownerDocument={host.current?.ownerDocument}
+        onKeyDown={keyboard} onClose={()=>{gesture.hideResizeHandles();setAdvanced(false);}} figure={content} sidebar={sidebar}/>:content}
+    </>}
   </div>;
 }
 export default ScientificScatterPlot;

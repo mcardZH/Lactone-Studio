@@ -1,5 +1,5 @@
 'use strict';
-const { readManagedResult } = require('./analysis-result-wire.cjs');
+const { readManagedResult, packedFieldLength, publishManagedFields, discardManagedFields, takeCubeExport } = require('./analysis-result-wire.cjs');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { requireBackend, requireSameBackend, createRunDirectory, verifyRunDirectory } = require('./orbital-runtime.cjs');
@@ -64,24 +64,30 @@ function wireValue(value) {
 function hydrate(value) {
   if (Array.isArray(value)) return value.map(hydrate);
   if (!plain(value)) return value;
-  const result=Object.fromEntries(Object.entries(value).filter(([key]) => !['valuesBase64','maskBase64'].includes(key)).map(([key,entry]) => [key,hydrate(entry)]));
-  if (value.valuesBase64 !== undefined) {
-    assert((typeof value.valuesBase64 === 'string'||value.valuesBase64 instanceof Uint8Array) && plain(value.grid) && Array.isArray(value.grid.dimensions) && value.grid.dimensions.length === 3, 'Invalid surface field wire payload');
+  const result=Object.fromEntries(Object.entries(value).filter(([key]) => !['valuesBase64','maskBase64','valuesBinary','maskBinary'].includes(key)).map(([key,entry]) => [key,hydrate(entry)]));
+  const values=value.valuesBinary??value.valuesBase64, mask=value.maskBinary??value.maskBase64;
+  if (values !== undefined) {
+    assert((typeof values === 'string'||values instanceof Uint8Array||packedFieldLength(values,'float64-le')!==undefined) && plain(value.grid) && Array.isArray(value.grid.dimensions) && value.grid.dimensions.length === 3, 'Invalid surface field wire payload');
     const count=value.grid.dimensions.reduce((total,n) => {assert(Number.isSafeInteger(n)&&n>0,'Invalid surface grid count');return total*n;},1);
-    const buffer=typeof value.valuesBase64==='string'?Buffer.from(value.valuesBase64,'base64'):value.valuesBase64;assert(Number.isSafeInteger(count)&&buffer.length===count*8,'Incomplete surface field values');
-    result.values=buffer.byteOffset%8===0?new Float64Array(buffer.buffer,buffer.byteOffset,buffer.length/8):new Float64Array(buffer.buffer.slice(buffer.byteOffset,buffer.byteOffset+buffer.length));
-    assert(result.values.every(Number.isFinite),'Surface field has nonfinite values');
+    const buffer=typeof values==='string'?Buffer.from(values,'base64'):values, bytes=packedFieldLength(buffer,'float64-le');
+    assert(Number.isSafeInteger(count*8)&&(bytes??buffer.length)===count*8,'Incomplete surface field values');
+    if (bytes!==undefined) result.values=buffer;
+    else {
+      result.values=buffer.byteOffset%8===0?new Float64Array(buffer.buffer,buffer.byteOffset,buffer.length/8):new Float64Array(buffer.buffer.slice(buffer.byteOffset,buffer.byteOffset+buffer.length));
+      assert(result.values.every(Number.isFinite),'Surface field has nonfinite values');
+    }
   }
-  if (value.maskBase64 !== undefined) {
-    assert(typeof value.maskBase64 === 'string'||value.maskBase64 instanceof Uint8Array,'Invalid surface domain mask');
-    result.mask=typeof value.maskBase64==='string'?new Uint8Array(Buffer.from(value.maskBase64,'base64')):value.maskBase64;
-    assert(result.mask.every(entry => entry === 0 || entry === 1),'Invalid surface domain node membership');
+  if (mask !== undefined) {
+    const bytes=packedFieldLength(mask,'uint8');
+    assert(typeof mask === 'string'||mask instanceof Uint8Array||bytes!==undefined,'Invalid surface domain mask');
+    result.mask=typeof mask==='string'?new Uint8Array(Buffer.from(mask,'base64')):mask;
+    if(bytes===undefined)assert(result.mask.every(entry => entry === 0 || entry === 1),'Invalid surface domain node membership');
   }
-  if (result.values && result.validDomain?.kind === 'node-mask') assert(result.validDomain.mask?.length===result.values.length,'Surface mask/value count differs');
+  if (result.values && result.validDomain?.kind === 'node-mask') assert((packedFieldLength(result.validDomain.mask,'uint8')??result.validDomain.mask?.length)===(packedFieldLength(result.values,'float64-le')===undefined?result.values.length:packedFieldLength(result.values,'float64-le')/8),'Surface mask/value count differs');
   return result;
 }
 /** One owned worker and serialized native science across trusted surface sources. */
-function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveResources,captureResources,scheduler=createMultiwfnScheduler(),jobRoot,sendToWindow=()=>{},sendProgress=()=>{},limits={}}) {
+function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveResources,captureResources,adoptResultFile,releaseResultFile,scheduler=createMultiwfnScheduler(),jobRoot,sendToWindow=()=>{},sendProgress=()=>{},limits={}}) {
   const policy={requestMs:0,stopMs:6000,...limits};
   const sessions=new Map(),pending=new Map(),tasks=new Set(),closedOwners=new Set();
   let worker=null,disposed=false,sequence=0,active=0;
@@ -124,7 +130,7 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
     child.on('close',(code,signal)=>{w.closed=true;clearTimeout(w.timer);if(worker===w){for(const s of sessions.values())if(s.worker===w)s.failed=true;if(!w.terminating)failWorker(new Error(`Surface worker exited (code=${code}, signal=${signal??'none'}): ${w.stderr}`),w);worker=null;}w.finish(code);});
     return w;
   }
-  function request(operation,s,extra={}) {
+  function request(operation,s,extra={},files) {
     const w=operation==='open'||operation==='resources'?ensureWorker():s.worker;
     assert(w && w===worker && !w.closed && !w.terminating && (operation==='open'||operation==='resources'||s.registered),'SURFACE_WORKER_UNAVAILABLE: 原分析会话已结束');
     if(operation==='open')s.worker=w;
@@ -133,7 +139,7 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
       const timer=policy.requestMs>0?setTimeout(()=>{failWorker(new Error('SURFACE_TIMEOUT: Surface worker response exceeded its explicit deadline'),w);},policy.requestMs):undefined;timer?.unref?.();
       pending.set(id,{resolve,reject,timer,sessionId:s.sessionId,operation,taskProgress:s.taskProgress});
       try{w.child.stdin.write(JSON.stringify(wireValue({id,operation,sessionId:s.sessionId,...extra}))+'\n');}catch(error){failWorker(error,w);}
-    }).then(value=>readManagedResult(value,s.directory));
+    }).then(value=>readManagedResult(value,s.directory,{deferBinary:!!adoptResultFile&&!!files,files}));
   }
   async function currentResources(owner,s,captured,backend) {
     const resources=resolveResources?await resolveResources(owner,s.resourceOverrides,captured,backend):await request('resources',s,{executable:backend.path,...s.resourceOverrides});
@@ -197,7 +203,7 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
     const {progressIdentity,createMultiwfnProgress}=require('./multiwfn-progress.cjs');
     const taskProgress=SCIENTIFIC.has(operation)?createMultiwfnProgress(progressIdentity({ownerId:identity.analysisId,analysisId:identity.analysisId,runId:identity.requestId,sessionId:s.sessionId,sourceId:s.context.sourceId,sourceRevision:s.context.sourceRevision,jobIndex:s.context.jobIndex,sourceFrameIndex:s.context.sourceFrameIndex,generation:s.context.generation,operation},{sessionId:s.sessionId,sourceId:s.context.sourceId,sourceRevision:s.context.sourceRevision}),snapshot=>sendProgress(owner,snapshot)):null;
     s.taskProgress=taskProgress;s.busy=true;s.submitted=false;active++;emit(s,'queued',operation,raw);taskProgress?.report('queued');
-    const controller=new AbortController();s.operationAbort=controller;let lease,submitted=false,successful=false;
+    const controller=new AbortController(), files=new Set();s.operationAbort=controller;let lease,submitted=false,successful=false;
     try{
       let resources;
       if(SCIENTIFIC.has(operation)){
@@ -212,20 +218,19 @@ function createSurfaceAnalysisHost({spawn,resolveRuntime,resolveBackend,resolveR
         if(s.family==='hirshfeld')s.info={...s.info,resources,resourceSnapshot:'analysis-grant'};
       }
       owned(owner,id,s);assert(!controller.signal.aborted,'SURFACE_CANCELLED');
-      taskProgress?.report('running');const pendingResult=request(operation,s,{request:{...raw,stamp:identity},...(resources?{resources}:{})});submitted=true;s.submitted=true;const result=await pendingResult;owned(owner,id,s);taskProgress?.report('parse');
+      taskProgress?.report('running');const pendingResult=request(operation,s,{request:{...raw,stamp:identity},...(resources?{resources}:{})},files);submitted=true;s.submitted=true;const result=await pendingResult;owned(owner,id,s);taskProgress?.report('parse');
       assert(plain(result),'Invalid surface operation result');
       const actual=result.stamp;
       if(!EXPORTS.has(operation))assert(plain(actual)&&actual.requestId===identity.requestId&&actual.analysisId===identity.analysisId&&sameContext(actual,s.context),'Surface result stamp changed');
-      if(EXPORTS.has(operation))assert(string(result.name,512)&&path.basename(result.name)===result.name&&typeof result.text==='string'&&(!result.domain||plain(result.domain)&&string(result.domain.name,512)&&path.basename(result.domain.name)===result.domain.name&&typeof result.domain.text==='string'),'Invalid Cube export payload');
       if(s.family==='hirshfeld'&&!EXPORTS.has(operation))assert(result.kind==='hirshfeld'&&plain(result.pair)&&result.pair.kind==='hirshfeld'&&result.pair.shape?.function==='hirshfeld-weight'&&result.pair.mapping?.function==='dnorm','Invalid HS result family or field roles');
-      const value=hydrate(result);if(s.family==='hirshfeld'&&!EXPORTS.has(operation))value.sessionInfo=structuredClone(s.info);successful=true;emit(s,'completed',operation,raw);return value;
+      const value=EXPORTS.has(operation)?takeCubeExport(result,files):await publishManagedFields(hydrate(result),{files,owner,signal:controller.signal,adopt:adoptResultFile,release:releaseResultFile});if(s.family==='hirshfeld'&&!EXPORTS.has(operation))value.sessionInfo=structuredClone(s.info);successful=true;emit(s,'completed',operation,raw);return value;
     }catch(error){
       if(s.family==='hirshfeld'&&submitted&&!controller.signal.aborted){
         const diagnostic=await retainHirshfeldFailure(s).catch(()=>null);
         if(diagnostic)error.message+='\n诊断文件：'+diagnostic;
       }
       emit(s,'failed',operation,raw);throw error;
-    }finally{lease?.release();if(controller.signal.aborted)taskProgress?.report('stopped',{settlement:submitted?'native-settled':'cancelled-before-start'});else if(successful)taskProgress?.report('parse',{stageLabel:'等待结果接受',settlement:'native-settled',validated:true});else taskProgress?.report('failed',{settlement:submitted?'native-settled':'not-started'});if(s.operationAbort===controller)s.operationAbort=null;if(s.taskProgress===taskProgress)s.taskProgress=null;s.busy=false;active--;}
+    }finally{await discardManagedFields(files);lease?.release();if(controller.signal.aborted)taskProgress?.report('stopped',{settlement:submitted?'native-settled':'cancelled-before-start'});else if(successful)taskProgress?.report('parse',{stageLabel:'等待结果接受',settlement:'native-settled',validated:true});else taskProgress?.report('failed',{settlement:submitted?'native-settled':'not-started'});if(s.operationAbort===controller)s.operationAbort=null;if(s.taskProgress===taskProgress)s.taskProgress=null;s.busy=false;active--;}
   }
   async function retainHirshfeldFailure(s){
     // Small owned diagnostic records survive closing the failed session. Cube

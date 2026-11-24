@@ -33,6 +33,9 @@ export function structureAtomStyle(settings: DisplaySettings, element: string, c
   // selection/freeze/measurement material while changing ordinary bond color.
   const uniform=settings.bondStyle?.colorMode==='uniform' && !(settings.representation==='stick' && markColor!==color);
   const stick = { radius: bondDisplayRadius(settings), color: uniform ? settings.bondStyle!.color : settings.representation === 'stick' ? markColor : structureBondColor(color,settings.structureSizing?.bondColorLightening),
+    // Fine pearl rods need wider gaps between parallel strokes at preview scale.
+    // 3Dmol scales the stroke radius and separation together with these values.
+    ...(settings.structureLighting==='vesta-pearl' ? {doubleBondScaling:.60,tripleBondScaling:.37} : {}),
     ...(settings.representation === 'stick' ? { showNonBonded: true } : {}) };
   return settings.representation === 'stick' ? { stick } : { stick, sphere: { scale: structureBallScale(settings,element) * atomDisplayScale(settings, element), color: markColor } };
 }

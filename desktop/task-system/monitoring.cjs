@@ -47,6 +47,11 @@ function completedPosixHandoff(run, operation, related) {
 		(scope.workLocation === undefined || isDeepStrictEqual(scope.workLocation, run.executionIdentity.workLocation)) &&
 		isHistoricalPosixLaunch(run, launches[0]) ? launches[0] : null;
 }
+// A read lease can outlive two live revisions. Share its pin with other
+// windows for this cache so ordinary publication retirement cannot delete it.
+const framePagePins = new Set();
+const framePageMaxRows = 32;
+const framePageMaxBytes = 8 * 1024 * 1024;
 const hash = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 function writeJSON(file, value) {
 	const candidate = file + ".candidate-" + crypto.randomUUID(),
@@ -126,7 +131,9 @@ function createMonitoring({
 		sourceErrors = new Map(),
 		failures = new Map(),
 		selected = new Set(),
-		frameKeys = new WeakMap();
+		frameKeys = new WeakMap(),
+		framePages = new Map(),
+		deferredFrameRetirements = new Map();
 	const cacheRoot = path.join(directory, "monitor-cache"),
 		frameRoot = path.join(cacheRoot, "frames");
 	noLinks(cacheRoot);
@@ -245,6 +252,7 @@ function createMonitoring({
 			results: prepared.results || previous?.results || [],
 			sourceGeneration: prepared.sourceGeneration || null,
 			sourceBoundary: prepared.sourceBoundary || null,
+			...(prepared.observedSha256 ? { observedSha256: prepared.observedSha256 } : {}),
 			collectionId: prepared.collectionId,
 			revision: String(prepared.revision),
 			sourceRevision: prepared.sourceRevision || null,
@@ -264,6 +272,12 @@ function createMonitoring({
 			previousFrameRefs: previous?.frameRefs || []
 		};
 		writeJSON(cachePath(cacheKey), scalar);
+		for (const page of framePagePins)
+			if (page.frameRoot === frameRoot && page.cacheKey === cacheKey &&
+				(page.collectionId !== scalar.collectionId || page.sourceGeneration !== scalar.sourceGeneration)) {
+				page.revoked = true;
+				framePagePins.delete(page);
+			}
 		if (!run) {
 			const currentTask = store.read("task", task.taskId),
 				last = frames.at(-1);
@@ -406,19 +420,29 @@ function createMonitoring({
 				])
 					retained.add(key);
 			}
-		for (const key of new Set(previous?.previousFrameRefs || []))
-			if (!retained.has(key)) {
-				const file = path.join(frameRoot, key + ".json");
-				try {
-					noLinks(file);
-					const bytes = fs.readFileSync(file);
-					if (hash(bytes) !== key) throw fail("MONITOR_FRAME_CACHE_CORRUPT");
-					fs.unlinkSync(file);
-				} catch (error) {
-					if (error.code !== "ENOENT")
-						onError({ taskId: run.taskId, code: error.code || "MONITOR_CACHE_RETIRE_FAILED" });
-				}
+		const deferred = deferredFrameRetirements.get(cacheKey) ?? [];
+		const retiring = [...new Set([...(previous?.previousFrameRefs || []), ...deferred])].filter(key => !retained.has(key));
+		if (retiring.length) for (const page of framePagePins)
+			if (page.frameRoot === frameRoot) for (const key of page.refs) retained.add(key);
+		const pinned = [];
+		for (const key of retiring) {
+			if (retained.has(key)) {
+				pinned.push(key);
+				continue;
 			}
+			const file = path.join(frameRoot, key + ".json");
+			try {
+				noLinks(file);
+				const bytes = fs.readFileSync(file);
+				if (hash(bytes) !== key) throw fail("MONITOR_FRAME_CACHE_CORRUPT");
+				fs.unlinkSync(file);
+			} catch (error) {
+				if (error.code !== "ENOENT")
+					onError({ taskId: run.taskId, code: error.code || "MONITOR_CACHE_RETIRE_FAILED" });
+			}
+		}
+		if (pinned.length) deferredFrameRetirements.set(cacheKey, pinned);
+		else deferredFrameRetirements.delete(cacheKey);
 		onChanged({
 			type: "monitor-publication",
 			taskId: run.taskId,
@@ -1283,8 +1307,69 @@ function createMonitoring({
 		if (scientific && !state.operationId) trackDisplayPreparation(taskId, state.promise);
 		return state.promise;
 	}
-	async function read({ taskId, refresh: immediate, knownRevision }, retried = false) {
-		selected.add(taskId);
+	const framePageKey=(taskId,pageOwner)=>JSON.stringify([taskId,pageOwner??null]);
+	function releaseFramePage(key, expected = framePages.get(key)) {
+		if (expected && framePages.get(key) === expected) {
+			framePages.delete(key);
+			framePagePins.delete(expected);
+		}
+	}
+	function releaseFramePages() {
+		for (const key of framePages.keys()) releaseFramePage(key);
+	}
+	function framePageOwner(taskId, artifactId) {
+		const task = store.read("task", taskId);
+		if (!task || task.deleted || task.resultsInvalidatedByOverwrite) return null;
+		const artifact = artifactId && store.read("artifact", artifactId);
+		return [task.latestRunId, task.sourceSetId, task.sourceVersion, task.workFileState, artifact?.locations];
+	}
+	async function readFramePage({ taskId, collectionId, revision, token, offset, pageOwner }, signal) {
+		const key=framePageKey(taskId,pageOwner),page=framePages.get(key);
+		if (!page || page.token !== token || page.collectionId !== collectionId || page.revision !== revision)
+			throw fail("MONITOR_FRAME_PAGE_STALE");
+		if (!Number.isSafeInteger(offset) || offset < 0 || offset >= page.count)
+			throw fail("MONITOR_FRAME_PAGE_INVALID");
+		function check(catalog = false) {
+			if (signal?.aborted) throw fail("TASK_REQUEST_CANCELLED");
+			if (page.revoked || framePages.get(key) !== page ||
+				catalog && (!page.owner || !isDeepStrictEqual(page.owner, framePageOwner(taskId, page.artifactId))))
+				throw fail("MONITOR_FRAME_PAGE_STALE");
+		}
+		const framesDelta = [];
+		let bytes = 0, nextOffset = offset;
+		try {
+			check(true);
+			while (nextOffset < page.count && framesDelta.length < framePageMaxRows) {
+				check();
+				const index = page.indices?.[nextOffset] ?? nextOffset;
+				const key = page.refs[index], file = path.join(frameRoot, key + ".json");
+				noLinks(file);
+				const input = await fs.promises.open(file, "r");
+				try {
+					const stats = await input.stat();
+					if (!stats.isFile() || stats.nlink !== 1) throw fail("MONITOR_FRAME_CACHE_CORRUPT");
+					if (framesDelta.length && bytes + stats.size > framePageMaxBytes) break;
+					const raw = await input.readFile({ signal });
+					if (raw.length !== stats.size || hash(raw) !== key) throw fail("MONITOR_FRAME_CACHE_CORRUPT");
+					framesDelta.push({ index, frame: JSON.parse(raw) });
+					bytes += raw.length;
+					nextOffset++;
+				} finally {
+					await input.close();
+				}
+			}
+			check(true);
+			if (nextOffset === page.count) releaseFramePage(key, page);
+			return { taskId, collectionId, revision, token, offset, nextOffset, count: page.count, framesDelta };
+		} catch (error) {
+			releaseFramePage(key, page);
+			throw error;
+		}
+	}
+	async function read({ taskId, refresh: immediate, knownRevision, pagedFrames, pageOwner }, retried = false) {
+		const key=framePageKey(taskId,pageOwner);
+		releaseFramePage(key);
+		if(pageOwner===undefined)selected.add(taskId);
 		ownerLastUsed.set(taskId, ++ownerClock);
 		if (
 			validClaim() &&
@@ -1360,8 +1445,25 @@ function createMonitoring({
 				knownRevision === publication.previousRevision &&
 				publication.previousCollectionId === publication.collectionId;
 		const framesDelta = [];
+		let framePage;
+		if (pagedFrames === true && !unchanged && publication.frameRefs.length) {
+			const refs = publication.frameRefs, indices = incremental ? [] : null;
+			if (indices) for (let index = 0; index < refs.length; index++)
+				if (refs[index] !== publication.previousFrameRefs[index]) indices.push(index);
+			const count = indices?.length ?? refs.length;
+			if (count) {
+				const artifactId = publication.sourceIdentity?.artifactId;
+				const page = { token: crypto.randomUUID(), count, indices, refs, frameRoot,
+					collectionId: publication.collectionId, revision: publication.revision,
+					sourceGeneration: publication.sourceGeneration, cacheKey: run?.runId || sourceCacheKey(store.read("task", taskId)),
+					owner: framePageOwner(taskId, artifactId), artifactId };
+				framePages.set(key, page);
+				framePagePins.add(page);
+				framePage = { token: page.token, count };
+			}
+		}
 		try {
-			if (!unchanged)
+			if (pagedFrames !== true && !unchanged)
 				for (const [index, key] of publication.frameRefs.entries()) {
 					if (incremental && key === publication.previousFrameRefs[index]) continue;
 					const file = path.join(frameRoot, key + ".json");
@@ -1372,7 +1474,7 @@ function createMonitoring({
 				}
 		} catch (error) {
 			if (error.code === "ENOENT" && !retried)
-				return read({ taskId, refresh: false, knownRevision: null }, true);
+				return read({ taskId, refresh: false, knownRevision: null,pagedFrames,pageOwner }, true);
 			throw error;
 		}
 		return {
@@ -1388,6 +1490,7 @@ function createMonitoring({
 			sourceGeneration: publication.sourceGeneration || null,
 			sourceRevision: publication.sourceRevision || null,
 			sourceBoundary: publication.sourceBoundary || null,
+			...(publication.observedSha256 ? { observedSha256: publication.observedSha256 } : {}),
 			stage: publication.stage,
 			iteration: publication.iteration,
 			elapsedSeconds: detail.elapsedSeconds,
@@ -1402,6 +1505,7 @@ function createMonitoring({
 			baseRevision: unchanged || incremental ? knownRevision : null,
 			frameCount: publication.frameCount,
 			framesDelta,
+			...(framePage ? { framePage } : {}),
 			reset: !unchanged && !incremental,
 			prepared: publication.prepared,
 			cards: publication.cards,
@@ -1437,12 +1541,15 @@ function createMonitoring({
 		}, 1000);
 		timer.unref?.();
 	}
-	async function release(taskId) {
+	async function release(taskId,pageOwner) {
+		releaseFramePage(framePageKey(taskId,pageOwner));
+		if(pageOwner!==undefined)return;
 		selected.delete(taskId);
 		ownerLastUsed.set(taskId, ++ownerClock);
 		await trimIdleOwners();
 	}
 	async function detachViews() {
+		releaseFramePages();
 		clearInterval(timer); timer = null; selected.clear();
 		const display = [...running.values(), ...inspecting.values()].filter(work => !work.operationId);
 		for (const work of display) work.controller.abort();
@@ -1450,6 +1557,7 @@ function createMonitoring({
 		await trimIdleOwners();
 	}
 	async function stop() {
+		releaseFramePages();
 		stopped = true;
 		clearInterval(timer);
 		timer = null;
@@ -1473,6 +1581,7 @@ function createMonitoring({
 		start,
 		stop,
 		read,
+		readFramePage,
 		refresh,
 		release,
 		applyReceipts,
@@ -1481,11 +1590,14 @@ function createMonitoring({
 		},
 		active: () => running.size,
 		usesTask: (taskId) => running.has(taskId),
-		async snapshotSources(taskId, signal) {
-			const source = owners.get(taskId);
+		async snapshotSources(taskId, signal, target) {
+			const task = store.read("task", taskId);
+			const expectedOwner = target && (target.runId ??
+				`source:${target.sourceSetId}:${target.sourceVersion}`);
+			const source = !expectedOwner || ownerVersions.get(taskId) === expectedOwner
+				? owners.get(taskId) : undefined;
 			if (!source?.snapshotSources) {
-				const task = store.read("task", taskId),
-					publication = task && cache(task.latestRunId || sourceCacheKey(task));
+				const publication = task && cache(target?.runId ?? (task.latestRunId || sourceCacheKey(task)));
 				throw fail("SNAPSHOT_SOURCE_NOT_PREPARED", {
 					taskId,
 					sourceSetId: task?.sourceSetId ?? null,
@@ -1505,7 +1617,7 @@ function createMonitoring({
 			};
 			let retained;
 			try {
-				retained = await source.snapshotSources({ signal });
+				retained = await source.snapshotSources({ signal, expected: target?.source });
 			} catch (error) {
 				await unpin();
 				throw error;

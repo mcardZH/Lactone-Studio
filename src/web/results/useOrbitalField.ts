@@ -7,8 +7,9 @@ import { BOHR_TO_ANGSTROM } from '../../core/orca/assets';
 import { MULTIWFN_CONFIGURATION_CHANGED } from './MultiwfnPathControl';
 import {traceTrajectoryOperation} from '../../results/trajectory-operations';
 import {createMultiwfnProgressTracker,type MultiwfnProgressSnapshot,type MultiwfnProgressIdentity,type MultiwfnProgressBridge} from '../../results/multiwfn-progress';
+import { materializeCubeFields, type CubeAssetDesktop } from './cube-asset-bridge';
 
-export type OrbitalBridge = Pick<DesktopBridge, 'orbitalBackendInfo' | 'chooseOrbitalBackend' | 'planOrbitalSession' | 'readOrbitalField' | 'exportOrbitalCube' | 'onOrbitalEvent' | 'orbitalResourceInfo'> & Partial<MultiwfnProgressBridge> & {commandOrbitals?(sessionId:string,request:import('../../results/orbital-contracts').OrbitalCommand,progressIdentity?:MultiwfnProgressIdentity):ReturnType<NonNullable<DesktopBridge['commandOrbitals']>>};
+export type OrbitalBridge = Pick<DesktopBridge, 'orbitalBackendInfo' | 'chooseOrbitalBackend' | 'planOrbitalSession' | 'readOrbitalField' | 'exportOrbitalCube' | 'onOrbitalEvent' | 'orbitalResourceInfo'> & CubeAssetDesktop & Partial<MultiwfnProgressBridge> & {saveOrbitalCube?(sessionId:string,key:string):Promise<{cancelled:boolean}>;commandOrbitals?(sessionId:string,request:import('../../results/orbital-contracts').OrbitalCommand,progressIdentity?:MultiwfnProgressIdentity):ReturnType<NonNullable<DesktopBridge['commandOrbitals']>>};
 export interface OrbitalSampling { spacingAngstrom: number; paddingAngstrom: number; threads: number; memoryBudgetBytes: number }
 export const DEFAULT_ORBITAL_SAMPLING: OrbitalSampling = { spacingAngstrom: .15, paddingAngstrom: 4, threads: 4, memoryBudgetBytes: 4 * 1024 ** 3 };
 export const ORBITAL_QUALITY_SPACING = { fast: .25, standard: .15, fine: .1 } as const;
@@ -56,6 +57,7 @@ export function createOrbitalSessionController(bridge: OrbitalBridge, metadata: 
   let sequence = -1, epoch = 0, starting = false, stopRequested = false, generating = false, priorityPreference: string | null = null, initializedSignature = '', nativeOff: (() => void) | undefined;
   let selectionSerial = 0, selectionKey: string | null = null, selectionSignature = '', selectionOwner: object | undefined;
   let selectionQueue: Promise<void> = Promise.resolve();
+  let acceptedProjectField: OrbitalProjectCache | undefined;
   let task:ReturnType<typeof createMultiwfnProgressTracker>|null=null,taskKey:string|null=null,progressOff:(()=>void)|undefined;
   const listeners = new Set<() => void>(), keys = new Set(metadata.orbitals.map(row => row.key));
   const update = (patch: Partial<OrbitalSessionState>) => { state = { ...state, ...patch }; for (const listener of listeners) listener(); };
@@ -216,20 +218,40 @@ export function createOrbitalSessionController(bridge: OrbitalBridge, metadata: 
       update({ error: '', progress: { ...state.progress, status: 'queued' } }); await command('continue', priorityKey ?? undefined);
     },
     async prioritize(key: string) { assert(keys.has(key), '轨道不属于当前波函数。'); priorityPreference = key; if (!state.planning && state.plan?.withinBudget && busy()) await command('prioritize', key); },
-    acceptField(field:OrbitalField){if(task&&field.sessionId===sessionId&&field.sourceRevision===metadata.sourceRevision&&field.gridKey===state.plan?.gridKey&&(!taskKey||field.orbitalKey===taskKey))task.committed();},
+    acceptField(field: OrbitalField) {
+      if (!state.grid || field.sessionId !== sessionId || field.sourceRevision !== metadata.sourceRevision ||
+          field.gridKey !== state.plan?.gridKey || !keys.has(field.orbitalKey)) return;
+      if (!isRestoredAnalysisData(field)) {
+        const { sessionId: _native, ...saved } = field;
+        acceptedProjectField = { sampling: state.sampling, grid: state.grid, fields: [saved] };
+      }
+      if (task && (!taskKey || field.orbitalKey === taskKey)) task.committed();
+    },
+    acceptedProjectField: () => acceptedProjectField,
   };
 }
 export type OrbitalSessionController = ReturnType<typeof createOrbitalSessionController>;
 export interface OrbitalProjectCache { sampling: OrbitalSampling; grid: OrbitalGridSpec; fields: Omit<OrbitalField, 'sessionId'>[] }
 const orbitalProjectKey = (metadata: WavefunctionMetadata) => `orbital-fields:${JSON.stringify([metadata.sourceId, metadata.sourceRevision])}`;
 const orbitalProjectCaches = new Map<string, { caches: OrbitalProjectCache[]; controllers: Map<OrbitalSessionController, OrbitalSampling>; unregister: () => void }>();
+function mergeOrbitalProjectCache(caches: OrbitalProjectCache[], added: OrbitalProjectCache): OrbitalProjectCache[] {
+  const signature = JSON.stringify(added.grid);
+  const index = caches.findIndex(cache => JSON.stringify(cache.grid) === signature);
+  if (index < 0) return [...caches, added];
+  const fields = new Map(caches[index].fields.map(field => [field.orbitalKey, field]));
+  for (const field of added.fields) fields.set(field.orbitalKey, field);
+  return caches.map((cache, i) => i === index ? { ...added, fields: [...fields.values()] } : cache);
+}
 function restoredOrbitalField(metadata: WavefunctionMetadata, grid: OrbitalGridSpec, key: string): OrbitalField | null {
   const cached = orbitalProjectCaches.get(orbitalProjectKey(metadata))?.caches.find(cache => JSON.stringify(cache.grid) === JSON.stringify(grid))?.fields.find(field => field.orbitalKey === key);
   return cached ? { ...cached, sessionId: '' } : null;
 }
 export function projectOrbitalCubeArtifacts(field: OrbitalField, metadata: WavefunctionMetadata) {
+  return analysisProjectCubeArtifacts(projectOrbitalCubeField(field,metadata),metadata.name+' '+field.orbitalKey);
+}
+export function projectOrbitalCubeField(field: OrbitalField, metadata: WavefunctionMetadata) {
   if (field.sourceRevision !== metadata.sourceRevision || !metadata.orbitals.some(orbital => orbital.key === field.orbitalKey)) throw new Error('轨道格点与原始波函数身份不符。');
-  return analysisProjectCubeArtifacts({ ...field, atoms: metadata.structure.atoms.map((atom, index) => ({ sourceIndex: index + 1, atomicNumber: atomicNumber(atom.element), nuclearCharge: atomicNumber(atom.element), position: [atom.x / BOHR_TO_ANGSTROM, atom.y / BOHR_TO_ANGSTROM, atom.z / BOHR_TO_ANGSTROM] })), validDomain: { kind: 'full-grid', evidence: '完整已生成轨道网格；不代表有限盒外的波函数尾部。' } }, metadata.name + ' ' + field.orbitalKey);
+  return { ...field, atoms: metadata.structure.atoms.map((atom, index) => ({ sourceIndex: index + 1, atomicNumber: atomicNumber(atom.element), nuclearCharge: atomicNumber(atom.element), position: [atom.x / BOHR_TO_ANGSTROM, atom.y / BOHR_TO_ANGSTROM, atom.z / BOHR_TO_ANGSTROM] as [number,number,number] })), validDomain: { kind: 'full-grid' as const, evidence: '完整已生成轨道网格；不代表有限盒外的波函数尾部。' } };
 }
 function registerOrbitalProjectController(metadata: WavefunctionMetadata, controller: OrbitalSessionController, sampling: OrbitalSampling) {
   const key = orbitalProjectKey(metadata);
@@ -238,15 +260,18 @@ function registerOrbitalProjectController(metadata: WavefunctionMetadata, contro
     owner = { caches: readAnalysisProjectSnapshot<OrbitalProjectCache[]>(key) ?? [], controllers: new Map(), unregister: () => {} };
     const node = owner;
     node.unregister = registerAnalysisProjectSnapshot(key, {
-      citationMetadata:()=>({sourceId:metadata.sourceId,sourceRevision:metadata.sourceRevision,completed:[...node.controllers.keys()].map(current=>current.getSnapshot().progress?.completedKeys??[])}),
-      async capture() {
-        const caches = [...node.caches];
-        for (const current of node.controllers.keys()) for (const cache of await current.captureProjectFields()) {
-          const previous = caches.find(entry => JSON.stringify(entry.grid) === JSON.stringify(cache.grid));
-          if (!previous) caches.push(cache);
-          else { const fields = new Map(previous.fields.map(field => [field.orbitalKey, field])); for (const field of cache.fields) fields.set(field.orbitalKey, field); previous.fields = [...fields.values()]; }
-        }
-        node.caches = caches; return caches;
+      citationMetadata: () => ({ sourceId: metadata.sourceId, sourceRevision: metadata.sourceRevision,
+        completed: [...node.caches.map(cache => cache.fields.map(field => field.orbitalKey)),
+          ...[...node.controllers.keys()].map(current => current.getSnapshot().progress?.completedKeys ?? [])] }),
+      capture() {
+        const controllers = [...node.controllers.keys()];
+        if (!controllers.length) return node.caches;
+        return (async () => {
+          const captured: OrbitalProjectCache[] = [];
+          for (const current of controllers) captured.push(...await current.captureProjectFields());
+          node.caches = captured.reduce(mergeOrbitalProjectCache, node.caches);
+          return node.caches;
+        })();
       },
       restore(value) { node.caches = value as OrbitalProjectCache[]; for (const [current, targetSampling] of node.controllers) { const cache = node.caches.find(cache => JSON.stringify(cache.grid) === JSON.stringify(orbitalGridFor(metadata, targetSampling))); if (cache) current.restoreProjectFields(cache); } },
     });
@@ -255,7 +280,17 @@ function registerOrbitalProjectController(metadata: WavefunctionMetadata, contro
   owner.controllers.set(controller, sampling);
   const saved = owner.caches.find(cache => JSON.stringify(cache.grid) === JSON.stringify(orbitalGridFor(metadata, sampling)));
   if (saved) controller.restoreProjectFields(saved);
-  return () => { owner!.controllers.delete(controller); if (!owner!.controllers.size) { owner!.unregister(); orbitalProjectCaches.delete(key); } };
+  return () => {
+    // Preserve the displayed grid while it is still available in this view.
+    // Closing the source may already be releasing its native session.
+    const cached = controller.acceptedProjectField();
+    if (cached) owner.caches = mergeOrbitalProjectCache(owner.caches, cached);
+    owner.controllers.delete(controller);
+    if (!owner.controllers.size) {
+      owner.unregister();
+      orbitalProjectCaches.delete(key);
+    }
+  };
 }
 const sessions = new WeakMap<OrbitalBridge, Map<string, OrbitalSessionController>>();
 export function orbitalSessionController(bridge: OrbitalBridge, metadata: WavefunctionMetadata, sessionId: string): OrbitalSessionController {
@@ -301,7 +336,7 @@ export function acquireOrbitalField(bridge: OrbitalBridge, sessionId: string, so
   const key = JSON.stringify([sessionId, sourceRevision, gridKey, orbitalKey]);
   let entry = group.get(key);
   if (!entry) {
-    const promise = Promise.resolve().then(() => bridge.readOrbitalField!(sessionId, orbitalKey)).then(field => {
+    const promise = Promise.resolve().then(() => bridge.readOrbitalField!(sessionId, orbitalKey)).then(field=>materializeCubeFields(field,bridge)).then(field => {
       assert(field.sessionId === sessionId && field.sourceRevision === sourceRevision && field.gridKey === gridKey && field.orbitalKey === orbitalKey, '轨道格点身份或网格已变化。');
       assert(field.values instanceof Float64Array && field.values.length === grid.dimensions.reduce((a, b) => a * b, 1) && field.values.every(Number.isFinite) && field.valueUnit === 'bohr^-3/2' && JSON.stringify(field.grid) === JSON.stringify(grid), '轨道格点数值、单位或网格不匹配。');
       return field;

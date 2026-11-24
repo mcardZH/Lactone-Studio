@@ -1,3 +1,5 @@
+import { isPeriodic, minimumImage } from '../../core/periodic';
+import { isPesNetMethod } from '../pes/contracts';
 import type { Structure } from '../../core/types';
 import {builderCoordinateValue} from '../../core/builder-geometry';
 import type { AdvancedPathFrameData, AdvancedPathRequest, AdvancedPathEvent, AdvancedPathScanSettings } from './path-contracts';
@@ -8,9 +10,9 @@ import type { AissRequest, AissCompletionEvent, AissSearchCheckpointEvent, AissA
 
 /** Preserve every scientific payload field, stripping only transport envelope. */
 export function routePayload<T extends object>(value: T): T {
-  const payload = structuredClone(value) as T & Record<string, unknown>;
+  const payload = { ...value } as T & Record<string, unknown>;
   for (const field of ['schema', 'sessionId', 'stamp', 'runIdentity', 'operation', 'method', 'seq', 'event', 'kind', 'effectiveResources']) delete payload[field];
-  return payload;
+  return structuredClone(payload);
 }
 const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 const ordinal = (n: unknown): n is number => Number.isSafeInteger(n) && (n as number) >= 0;
@@ -48,7 +50,7 @@ function validateScanPoint(scan: AdvancedPathScanSettings, data: { pointIndex?: 
 }
 export function routeStructure(source: Structure, coordinates: AdvancedPathFrameData['coordinates'], frozenAtomIds: readonly string[]): Structure {
   if (!Array.isArray(coordinates) || coordinates.length !== source.atoms.length) throw new Error('路径/采样帧原子数量不完整。');
-  const fixed = new Set(frozenAtomIds), structure = structuredClone(source);
+  const fixed = new Set(frozenAtomIds), structure = structuredClone({ ...source, atoms: [] as Structure['atoms'] });
   structure.atoms = source.atoms.map((atom, index) => {
     const point = coordinates[index];
     if (point?.id !== atom.id || point.element !== atom.element || ![point.x, point.y, point.z].every(n => finite(n) && Math.abs(n) <= 1e6)) throw new Error('路径/采样帧稳定ID、元素、顺序或坐标无效。');
@@ -124,8 +126,45 @@ function validateNativeSamplingProtection(request: ConformerSamplingRequest,data
   }
   const offset=wanted?.sphere?wanted.sphere.centerAngstrom.map(v=>-v):[0,0,0],transform=evidence.coordinateTransform;if(!transform||transform.kind!==(wanted?.sphere?'translation':'identity')||transform.offsetAngstrom.length!==3||!transform.offsetAngstrom.every((v,i)=>v===offset[i]))throw new Error('原生保护坐标平移及逆变换身份不符。');
 }
+function validateAseSamplingEvidence(request: ConformerSamplingRequest, data: ConformerSamplingFramePayload, structure: Structure) {
+  const evidence = data.aseMD, calculator = evidence?.calculatorEvidence;
+  const fixed = request.frozenAtomIds ?? [];
+  const json = (value: unknown) => JSON.stringify(value);
+  if (!evidence || evidence.driver !== 'ase-bussi' || evidence.method !== request.method || evidence.thermostat !== 'Bussi'
+    || evidence.thermostatTimeConstantFs !== 500 || evidence.dtFs !== (request.dtFs ?? 2)
+    || evidence.hydrogenMassAmu !== (request.hydrogenMassAmu ?? (request.shakeHydrogenBonds ? 1 : 4))
+    || evidence.shakeHydrogenBonds !== (request.shakeHydrogenBonds === true) || evidence.periodic !== isPeriodic(structure)
+    || json(evidence.frozenAtomIds) !== json(fixed)
+    || evidence.fixedPositionResidualAngstrom !== 0 || evidence.fixedVelocityResidualAngstromPerFs !== 0
+    || !calculator || calculator.method !== request.method || calculator.version === ''
+    || typeof calculator.version !== 'string' || !ordinal(calculator.evaluations) || calculator.evaluations < 1
+    || calculator.engine !== evidence.backend || json(calculator) !== json(data.calculatorEvidence)
+    || evidence.physicalEnergyEV !== data.physicalEnergyEV || evidence.sphereBiasEV !== data.sphereBiasEV
+    || evidence.sampledPotentialEV !== data.sampledPotentialEV) throw Error('ASE MD 的方法、能量、固定晶胞或冻结回执与采样帧不符。');
+  if (isPesNetMethod(request.method)) {
+    const identity = calculator.identity as Record<string, unknown> | undefined;
+    if (calculator.engine !== 'net' || identity?.device !== request.device
+      || typeof identity?.weightSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(identity.weightSha256))
+      throw Error('ASE MD 缺少匹配的 NET 设备或模型权重回执。');
+  } else if (calculator.engine === 'net') throw Error('xTB 采样混入了 NET 计算回执。');
+  const constraints = request.constraints ?? [], rows = evidence.internalConstraints;
+  if (!Array.isArray(rows) || rows.length !== constraints.length) throw Error('ASE MD 的 B/A/D 冻结库存与请求不符。');
+  for (const [index, row] of constraints.entries()) {
+    const observed = rows[index];
+    const actual = builderCoordinateValue(structure, row.type, row.atomIds, row.images);
+    const delta = actual - row.value;
+    const residual = row.type === 'D' ? ((delta + 180) % 360 + 360) % 360 - 180 : delta;
+    if (!observed || observed.id !== row.id || observed.type !== row.type || observed.target !== row.value
+      || json(observed.atomIds) !== json(row.atomIds) || json(observed.images) !== json(row.images)
+      || observed.action !== 'freeze' || observed.mode !== 'ase-rattle'
+      || observed.unit !== (row.type === 'B' ? 'angstrom' : 'degree') || !finite(observed.actual) || !finite(observed.residual)
+      || Math.abs(residual) > 1e-6 || Math.abs(residual - observed.residual) > 1e-8)
+      throw Error('ASE MD 的 B/A/D 精确冻结回执与实际坐标不符。');
+  }
+}
+
 export function validateSamplingFrame(request: ConformerSamplingRequest, data: ConformerSamplingFramePayload): Structure {
-  const selected=selectConformerSamplingDriver(request),native=selected.driver==='native-xtb-md';
+  const selected=selectConformerSamplingDriver(request),native=selected.driver==='native-xtb-md', bussi=selected.driver==='ase-bussi';
   if(request.nativeProtection&&!native)throw new Error('原生保护定义不能移贴到ASE采样方式。');
   const capability=getConformerSamplingCapability(request);
   if(native&&request.operation==='metadynamics'){
@@ -150,7 +189,7 @@ export function validateSamplingFrame(request: ConformerSamplingRequest, data: C
     || !(native&&data.velocitiesAngstromPerFs===null)&&(!Array.isArray(data.velocitiesAngstromPerFs)||data.velocitiesAngstromPerFs.length!==request.structure.atoms.length||!data.velocitiesAngstromPerFs.every(vector))) throw new Error('采样帧角色、单位、速度或能量分层无效。');
   if(data.physicalEnergyEV!==null&&data.sampledPotentialEV!==null&&data.coreBiasEV!==null&&data.metaBiasEV!==null&&data.sphereBiasEV!==null){const sum=data.physicalEnergyEV+data.coreBiasEV+data.metaBiasEV+data.sphereBiasEV;if(Math.abs(data.sampledPotentialEV-sum)>1e-8*Math.max(1,Math.abs(sum)))throw new Error('采样物理能与附加势总和不一致。');}
   if(!request.coreProtection&&!request.nativeProtection?.core&&data.coreBiasEV!==0||request.operation!=='metadynamics'&&data.metaBiasEV!==0||!request.sphere&&!request.nativeProtection?.sphere&&data.sphereBiasEV!==0)throw new Error('采样势能与物理/约束/偏置分项不一致。');
-  if(Math.abs(data.timeFs-data.step*(request.dtFs??.5))>1e-8)throw new Error('采样帧时间与完整积分步数不一致。');
+  if(Math.abs(data.timeFs-data.step*(request.dtFs??(bussi?2:.5)))>1e-8)throw new Error('采样帧时间与完整积分步数不一致。');
   const fixed = new Set(request.frozenAtomIds ?? []);
   if (request.structure.atoms.some((atom, i) => fixed.has(atom.id!) && (!data.velocitiesAngstromPerFs||data.velocitiesAngstromPerFs[i].some(n => n !== 0)))) throw new Error('XYZ冻结原子不能带有采样速度。');
   if (request.coreProtection) {
@@ -159,13 +198,14 @@ export function validateSamplingFrame(request: ConformerSamplingRequest, data: C
       || ![0, 1, 2, 3].includes(core.rank) || core.orientationUnique !== (core.rank >= 2)) throw new Error('核心软保护缺少相对几何和旋转退化诊断。');
   }
   const structure=routeStructure(request.structure, data.coordinates, request.frozenAtomIds ?? []);
+  if (bussi) validateAseSamplingEvidence(request, data, structure);
   if(native){const evidence=data.nativeMD;
     validateConformerNativeSolvation(request,evidence?.nativeSolvation);
     if(!evidence||evidence.method!==request.method||!evidence.version||!/^[a-f0-9]{64}$/.test(evidence.inputSha256)||evidence.shakeHydrogenBonds!==(request.shakeHydrogenBonds??capability.shakeDefaultEnabled)||!ordinal(evidence.rawIndex)
       ||!['xtb.trj','mdrestart'].includes(evidence.sourceArtifact)||!['pre-step','restart-final'].includes(evidence.frameTiming)||!['half-step','restart','unavailable'].includes(evidence.velocityPhase)||typeof evidence.nativeClosed!=='boolean')throw new Error('原生MD帧缺少真实SHAKE/质量/时间相位及产物来源。');
     if(request.method==='gxtb'&&(evidence.seedTreatment!=='native-program-random'||evidence.requestedSeed!==undefined||evidence.effectiveSeed!==null)
       ||evidence.seedTreatment==='native-controlled'&&(evidence.requestedSeed!==request.seed||evidence.effectiveSeed!==request.seed))throw Error('原生采样帧的种子来源不一致。');
-    if(request.hydrogenMassAmu===4?evidence.hydrogenMassAmu!==4||evidence.hydrogenMassMode!=='fixed-amu'||evidence.hydrogenMassScaling!==undefined:evidence.hydrogenMassScaling!==1||evidence.hydrogenMassAmu!=null||(evidence.hydrogenMassMode!==undefined&&evidence.hydrogenMassMode!=='natural'))throw new Error('原生MD实际氢质量与请求不一致。');
+    if(request.hydrogenMassAmu!==undefined?evidence.hydrogenMassAmu!==request.hydrogenMassAmu||evidence.hydrogenMassMode!=='fixed-amu'||evidence.hydrogenMassScaling!==undefined:evidence.hydrogenMassScaling!==1||evidence.hydrogenMassAmu!=null||(evidence.hydrogenMassMode!==undefined&&evidence.hydrogenMassMode!=='natural'))throw new Error('原生MD实际氢质量与请求不一致。');
     if((evidence.sourceArtifact==='mdrestart')!==(evidence.frameTiming==='restart-final'))throw new Error('原生MD产物与时间相位不一致。');
     if(request.nativeProtection||request.constraints?.length||request.operation==='metadynamics'){if(evidence.energyDefinition!=='native-total-including-sampling-potentials'||data.physicalEnergyEV!==null||data.coreBiasEV!==(request.nativeProtection?.core?null:0)||data.sphereBiasEV!==(request.nativeProtection?.sphere?null:0))throw new Error('原生含势总能不能冒物理能或伪造分项为零。');}
     else if(evidence.energyDefinition!==undefined&&evidence.energyDefinition!=='native-physical-potential')throw new Error('未启用原生保护却声明含势总能。');
@@ -174,7 +214,7 @@ export function validateSamplingFrame(request: ConformerSamplingRequest, data: C
     if(evidence.sourceArtifact==='mdrestart'&&(data.step!==finalStep||evidence.nativeClosed!==true||data.physicalEnergyEV!==null||data.sampledPotentialEV!==null||data.kineticEnergyEV!==null||data.temperatureK!==null))throw new Error('原生MD末restart不得挪用另一帧的步数、能量或温度。');
   }
   if(!native&&request.shakeHydrogenBonds===true){const shake=data.diagnostics?.shake;if(!shake||!shake.enabled||shake.algorithm!=='ASE-RATTLE'||!ordinal(shake.hydrogenBondCount)||!finite(shake.maxBondResidualAngstrom)||shake.maxBondResidualAngstrom<0||shake.maxBondResidualAngstrom>1e-6)throw new Error('已开启含氢键长约束，但缺少实际约束残差。');}
-  if (!native&&request.method === 'gfnff') {
+  if (!native&&!bussi&&request.method === 'gfnff') {
     const evidence = data.calculatorEvidence;
     if (!evidence || evidence.engine !== 'native-xtb' || evidence.method !== 'gfnff' || !evidence.version
       || typeof evidence.forceFieldTopologySha256 !== 'string' || !/^[a-f0-9]{64}$/.test(evidence.forceFieldTopologySha256) || evidence.spinTreatment !== 'not-supported'
@@ -182,20 +222,30 @@ export function validateSamplingFrame(request: ConformerSamplingRequest, data: C
   }
   if(!native&&request.shakeHydrogenBonds===true){
     const pairs=(request.structure.bonds??[]).filter(bond=>request.structure.atoms[bond.a].element==='H'||request.structure.atoms[bond.b].element==='H');
-    const distance=(atoms:Structure['atoms'],a:number,b:number)=>Math.hypot(atoms[a].x-atoms[b].x,atoms[a].y-atoms[b].y,atoms[a].z-atoms[b].z);
-    const residual=Math.max(0,...pairs.map(bond=>Math.abs(distance(structure.atoms,bond.a,bond.b)-distance(request.structure.atoms,bond.a,bond.b))));
+    const periodic = isPeriodic(structure);
+    const residual = Math.max(0, ...pairs.map(bond => {
+      const { a, b } = bond;
+      const measure = (model: Structure, images?: [number, number, number][]) =>
+        builderCoordinateValue(model, 'B', [model.atoms[a].id!, model.atoms[b].id!], images);
+      const images = periodic ? [[0, 0, 0] as [number, number, number], bond.image ?? minimumImage(request.structure, a, b).image] : undefined;
+      return Math.abs(measure(structure, images) - measure(request.structure, images));
+    }));
     if(data.diagnostics.shake!.hydrogenBondCount!==pairs.length||residual>1e-6||Math.abs(residual-data.diagnostics.shake!.maxBondResidualAngstrom!)>1e-9)throw new Error('含氢键约束回执与实际源/帧键长不一致。');
   }
   return structure;
 }
 export function validateSamplingCompletion(request: ConformerSamplingRequest, event: Extract<ConformerSamplingEvent, { event: 'completed' }>, frames: number, candidates: number): void {
-  const native=selectConformerSamplingDriver(request).driver==='native-xtb-md',n=['md','metadynamics'].includes(request.operation)?Math.round(((request.operation==='metadynamics'?request.metadynamics:request.molecularMD)?.durationFs??50000)/(request.dtFs??2)):0;
+  const driver=selectConformerSamplingDriver(request).driver,native=driver==='native-xtb-md',bussi=driver==='ase-bussi',n=['md','metadynamics'].includes(request.operation)?Math.round(((request.operation==='metadynamics'?request.metadynamics:request.molecularMD)?.durationFs??50000)/(request.dtFs??2)):0;
   if (event.samplingCompleted !== true || event.optimizationPerformed !== false || event.requiresUnbiasedOptimization !== true
     || !ordinal(event.candidateCount) || event.candidateCount < 1 || event.candidateCount !== candidates || event.frameCount !== frames
     || !(native?event.driver==='native-xtb-md'&&event.evaluations===null&&event.evaluationCountSource==='not-reported-native-md'&&event.budgetEvaluationUpperBound===n+2:ordinal(event.evaluations)&&event.evaluations<=request.maxEvaluations!)
     || JSON.stringify(event.postSamplingPotentials) !== JSON.stringify({ core: false, metadynamics: false, sphere: false })
     || event.exit?.code !== 0 || event.exit.signal !== null) throw new Error('采样完成数量或后续撤势合同不匹配；候选没有被冒充优化结果。');
   validateSamplingFrame(request, event.lastFrame);
+  if (bussi && (event.driver !== driver || event.step !== n || event.lastFrame.step !== n
+    || event.nativeClosed !== true || event.lastFrame.aseMD?.nativeClosed !== true
+    || event.evaluations !== n + 1 || event.lastFrame.aseMD?.calculatorEvidence.evaluations !== n + 1))
+    throw Error('ASE MD 完成回执的终态积分步与物理求值数量不符。');
   if(request.method==='gxtb'&&(event.seed!==undefined||event.seedTreatment!=='native-program-random'||event.effectiveSeed!==null)
     ||event.seedTreatment==='native-controlled'&&(event.seed!==request.seed||event.effectiveSeed!==request.seed))throw new Error('原生 MD/MTD 有效随机种子与运行请求不一致。');
   if(event.nativeSolvation!==undefined){validateConformerNativeSolvation(request,event.nativeSolvation);if(JSON.stringify(event.nativeSolvation)!==JSON.stringify(event.lastFrame.nativeMD?.nativeSolvation))throw Error('采样终态与末帧原生溶剂回执不一致。');}

@@ -1,42 +1,147 @@
 import type { ClipboardPayload, MeasurementSession, MeasurementState } from '../../modeling/contracts';
-import { isXtbMethod, XTB_ALPB_PRESETS, xtbSolvents, type XtbNativeMethod } from '../../core/xtb-capabilities';
+import { isXtbMethod, supportsXtbOperation, XTB_ALPB_PRESETS, xtbSolvents, type XtbNativeMethod } from '../../core/xtb-capabilities';
 import type { XtbPreoptimizationSolvation } from '../../modeling/xtb/accept-result';
 import type { ActiveStructurePreviewSource } from './active-structure-preview';
 import { emptyMeasurementSession, setMeasurementMode } from './measurement-state';
+import {isPesNetMethod,type PesConvergencePreset,type PesGeometryLimits} from '../../modeling/pes/contracts';
+import {periodicPesOperationAvailable} from '../../modeling/pes/periodic-capabilities';
 
 export type PersistentModelTool = 'hydrogen' | 'delete' | 'fragment';
 export type FreezeModelTool = 'point' | 'box' | 'remove';
 export type ObservationModelTool = 'rotate' | 'pan' | 'select' | 'box';
 
 /** Workspace UI preferences contain no model identity or electronic state. */
+export const ordinaryOptimizers = { lbfgs: 'L-BFGS / XYZ', 'precon-exp': 'L-BFGS / Exp', fire2: 'FIRE2 / XYZ', 'sella-xyz': 'Sella-XYZ', 'sella-ric': 'Sella-RIC' } as const;
+export const molecularNetMethods = { 'aimnet2-auto': 'AIMNet2-auto', 'aimnet2-rxn': 'AIMNet2-rxn', 'orbmol-v2': 'OrbMol-v2' } as const;
+export const periodicNetMethods = {
+  'orb-v3-omat':'ORB-v3-OMat','mace-polar-1-m':'MACE-POLAR-1 M','mace-mh1-omat-pbe':'MACE-MH-1 / OMat-PBE','mace-mh1-oc20':'MACE-MH-1 / OC20',
+} as const;
+export const netMethods = {...molecularNetMethods,...periodicNetMethods};
+export type OrdinaryOptimizer = keyof typeof ordinaryOptimizers;
+export type NetMethod = keyof typeof netMethods;
+export const netMethodScopeNotes:Readonly<Record<keyof typeof molecularNetMethods,string>>={
+  'aimnet2-auto':'H、B、C、N、O、F、Si、P、S、Cl、As、Se、Br、I。闭壳层使用通用权重，开壳层使用 NSE。',
+  'aimnet2-rxn':'H、C、N、O 的中性闭壳层分子。',
+  'orbmol-v2':'按本次提交的电荷和自旋多重度计算非周期气相分子。',
+};
+export function isNetGpuFailure(method:string,device:unknown,error:string|undefined,code?:string):boolean {
+  if (!error || (device ?? 'gpu') !== 'gpu' || !isPesNetMethod(method)) return false;
+  if (code) return code === 'PES_NET_DEVICE';
+  // Older project errors have text only. A device name alone also appears in their generic errors.
+  return /\b(?:CUDA (?:error:|out of memory\b|driver\b|initialization\b|illegal memory access\b|(?:is )?unavailable\b)|CUBLAS_STATUS_\w+|CUDNN_STATUS_\w+|(?:found )?no (?:NVIDIA driver|CUDA (?:GPUs?|devices?))\b)|NVIDIA GPU 或兼容的 CUDA 驱动不可用|显存不足|没有足够的显存/i.test(error);
+}
+export type GeometryLimits = PesGeometryLimits;
+export type OptimizationScope = 'all'|'selection'|'unselected';
+export interface OptimizationSettings {
+  optimizer?: OrdinaryOptimizer;
+  convergencePreset?: PesConvergencePreset;
+  convergenceLimits?: GeometryLimits;
+  maxSteps?: number;
+}
+export interface NetOptimizationPreferences extends OptimizationSettings {
+  method: NetMethod;
+  device: 'gpu'|'cpu';
+  rebuildBonds?: boolean;
+}
+export const defaultNetOptimizationPreferences: Readonly<NetOptimizationPreferences> = {method:'aimnet2-auto',device:'gpu',rebuildBonds:true};
+export function workspaceNetSettings(preferences:WorkspaceOptimizationPreferences,periodic:boolean):NetOptimizationPreferences {
+  const saved=periodic?preferences.periodicNet:preferences.net;
+  const method=periodic?'orb-v3-omat':defaultNetOptimizationPreferences.method;
+  return {...defaultNetOptimizationPreferences,method,...saved};
+}
+export function availableOrdinaryOptimizer(method:string,periodic:boolean,optimizer:OrdinaryOptimizer):boolean {
+  return periodic?periodicPesOperationAvailable(method,'opt',optimizer):optimizer!=='precon-exp';
+}
+export function resolveOrdinaryOptimizer(method:string,periodic:boolean,optimizer?:OrdinaryOptimizer):OrdinaryOptimizer {
+  return optimizer&&availableOrdinaryOptimizer(method,periodic,optimizer)?optimizer:'lbfgs';
+}
+export function validCustomOptimizationLimits(limits:GeometryLimits|undefined):limits is GeometryLimits {
+  return !!limits&&Number.isFinite(limits.energyDifferenceHartree)&&limits.energyDifferenceHartree>0
+    &&Number.isFinite(limits.gradientNormHartreePerBohr)&&limits.gradientNormHartreePerBohr>0;
+}
+function checkedOptimizationSettings(input: OptimizationSettings): OptimizationSettings {
+  const {optimizer,convergencePreset,convergenceLimits,maxSteps}=input;
+  const custom=validCustomOptimizationLimits(convergenceLimits);
+  return {
+    ...(optimizer&&Object.hasOwn(ordinaryOptimizers,optimizer)?{optimizer}:{}),
+    ...(convergencePreset&&(['loose','medium','tight'].includes(convergencePreset)||convergencePreset==='custom'&&custom)?{convergencePreset}:{}),
+    ...(custom?{convergenceLimits:{
+      energyDifferenceHartree:convergenceLimits.energyDifferenceHartree,gradientNormHartreePerBohr:convergenceLimits.gradientNormHartreePerBohr,
+    }}:{}),
+    ...(maxSteps!==undefined&&Number.isSafeInteger(maxSteps)&&maxSteps>0?{maxSteps}:{}),
+  };
+}
 export interface WorkspaceOptimizationPreferences {
-  version: 2;
-  defaultKind: 'forcefield' | 'xtb';
-  forcefield: { method: 'auto' | 'UFF' | 'MMFF94' | 'geometry'; scope: 'all' | 'selection' | 'unselected' };
-  xtb: { method: XtbNativeMethod; rebuildBonds: boolean; scope:'all'|'selection'|'unselected'; maxSteps?:number;maxSccIterations?:number; solvation?:XtbPreoptimizationSolvation };
+  version: 3;
+  defaultKind: 'xtb' | 'net';
+  periodicKind?: WorkspaceOptimizationPreferences['defaultKind'];
+  periodicXtbMethod?: XtbNativeMethod;
+  scope: OptimizationScope;
+  xtb: OptimizationSettings & { method: XtbNativeMethod; rebuildBonds: boolean; maxSccIterations?:number; solvation?:XtbPreoptimizationSolvation };
+  net?: NetOptimizationPreferences;
+  periodicNet?: NetOptimizationPreferences;
+}
+export function workspaceOptimizationKind(preferences:WorkspaceOptimizationPreferences,periodic:boolean) {
+  return periodic?preferences.periodicKind??preferences.defaultKind:preferences.defaultKind;
+}
+export function workspaceOptimizationMethodAvailable(method:string,periodic:boolean):boolean {
+  if (!isXtbMethod(method)) return false;
+  return periodic ? periodicPesOperationAvailable(method, 'opt') : supportsXtbOperation(method, 'optimize');
+}
+export function selectWorkspaceOptimizationMethod(preferences:WorkspaceOptimizationPreferences,periodic:boolean,method:string):WorkspaceOptimizationPreferences {
+  if(!isXtbMethod(method)||!workspaceOptimizationMethodAvailable(method,periodic))return preferences;
+  if(periodic)return {...preferences,periodicKind:'xtb',periodicXtbMethod:method};
+  const previousPeriodic={periodicKind:workspaceOptimizationKind(preferences,true),periodicXtbMethod:workspaceXtbSettings(preferences,true).method};
+  return {...preferences,...previousPeriodic,defaultKind:'xtb',xtb:{...preferences.xtb,method}};
+}
+export function workspaceOptimizationSolvation(method:string,periodic:boolean,saved?:XtbPreoptimizationSolvation) {
+  return saved?.model==='alpb'&&xtbSolvents(method,'alpb',periodic).includes(saved.solvent)?saved:undefined;
+}
+export function workspaceXtbSettings(preferences:WorkspaceOptimizationPreferences,periodic:boolean) {
+  const {method:saved,optimizer,solvation,...settings}=preferences.xtb;
+  const candidate=periodic?preferences.periodicXtbMethod??saved:saved;
+  const method=workspaceOptimizationMethodAvailable(candidate,periodic)?candidate:'gfn2';
+  return {...settings,method,optimizer:resolveOrdinaryOptimizer(method,periodic,optimizer),scope:preferences.scope,
+    solvation:workspaceOptimizationSolvation(method,periodic,solvation)};
 }
 export const OPTIMIZATION_PREFERENCE_KEY = 'sciyue.workspace-optimization.v1';
 export const OPTIMIZATION_PREFERENCE_EVENT = 'sciyue-workspace-optimization-changed';
+export const OPTIMIZATION_SOLVATION_EVENT = 'sciyue-workspace-optimization-solvation-changed';
 export function defaultWorkspaceOptimizationPreferences(): WorkspaceOptimizationPreferences {
-  return { version: 2, defaultKind: 'xtb', forcefield: { method: 'auto', scope: 'all' }, xtb: { method: 'gfn2', rebuildBonds: true,scope:'all',maxSccIterations:250 } };
+  return { version: 3, defaultKind: 'xtb', scope:'all', xtb: { method: 'gfn2', rebuildBonds: true,maxSccIterations:250 } };
 }
-type StoredOptimizationPreferences = Omit<WorkspaceOptimizationPreferences, 'version' | 'xtb'> & {
-  version: 1 | 2;
-  xtb: Omit<WorkspaceOptimizationPreferences['xtb'], 'scope'> & { scope?: WorkspaceOptimizationPreferences['xtb']['scope'] };
+type StoredOptimizationPreferences = Omit<WorkspaceOptimizationPreferences, 'version' | 'xtb' | 'net' | 'periodicNet' | 'defaultKind' | 'scope'> & {
+  version: 1 | 2 | 3;
+  defaultKind: WorkspaceOptimizationPreferences['defaultKind'] | 'forcefield';
+  xtb: WorkspaceOptimizationPreferences['xtb'] & { scope?: OptimizationScope };
+  net?: NetOptimizationPreferences & {scope?: OptimizationScope};
+  periodicNet?: NetOptimizationPreferences & {scope?: OptimizationScope};
+  scope?: OptimizationScope;
 };
+const validOptimizationScope=(scope:unknown):scope is OptimizationScope=>scope==='all'||scope==='selection'||scope==='unselected';
 function checkedOptimizationPreferences(value: unknown): WorkspaceOptimizationPreferences | null {
   const row = value as Partial<StoredOptimizationPreferences> | null;
   const solvation = row?.xtb?.solvation;
-  if (!row || ![1, 2].includes(row.version ?? 0) || !['forcefield', 'xtb'].includes(row.defaultKind ?? '')
-    || !['auto', 'UFF', 'MMFF94', 'geometry'].includes(row.forcefield?.method ?? '')
-    || !['all', 'selection', 'unselected'].includes(row.forcefield?.scope ?? '')
+  if (!row || ![1, 2, 3].includes(row.version ?? 0) || !['forcefield', 'xtb', 'net'].includes(row.defaultKind ?? '')
     || !isXtbMethod(row.xtb?.method ?? '') || row.xtb?.maxSteps !== undefined && (!Number.isSafeInteger(row.xtb.maxSteps)||row.xtb.maxSteps<1) || row.xtb?.maxSccIterations !== undefined && (!Number.isSafeInteger(row.xtb.maxSccIterations)||row.xtb.maxSccIterations<1) || typeof row.xtb?.rebuildBonds !== 'boolean'
-    || !['all','selection','unselected'].includes(row.xtb?.scope??'all')
+    || !validOptimizationScope(row.scope??row.xtb?.scope??'all')
     || (solvation!==undefined&&!(solvation?.model==='alpb'&&XTB_ALPB_PRESETS.some(preset=>preset.id===solvation.solvent)
       ||solvation?.model==='gbsa'&&['gfn1','gfn2'].some(method=>xtbSolvents(method,'gbsa').includes(solvation.solvent))))) return null;
-  // Version 2 records that the one-time Space-default migration was consumed.
-  // A later explicit forcefield choice is authoritative, not legacy data.
-  return { version: 2, defaultKind: row.version === 1 ? 'xtb' : row.defaultKind!, forcefield: { method: row.forcefield!.method, scope: row.forcefield!.scope }, xtb: { method: row.xtb!.method, rebuildBonds: row.xtb!.rebuildBonds,scope:row.xtb!.scope??'all',...(row.xtb!.maxSteps===undefined?{}:{maxSteps:row.xtb!.maxSteps}),maxSccIterations:row.xtb!.maxSccIterations??250,...(solvation?{solvation:{model:solvation.model,solvent:solvation.solvent}}:{}) } };
+  const checkedNet=(net:StoredOptimizationPreferences['net'],periodic:boolean)=>
+    net&&Object.hasOwn(periodic?periodicNetMethods:molecularNetMethods,net.method)&&['gpu','cpu'].includes(net.device)
+      ? {...checkedOptimizationSettings(net),method:net.method,device:net.device,
+        ...(typeof net.rebuildBonds==='boolean'?{rebuildBonds:net.rebuildBonds}:{})} : undefined;
+  const net=checkedNet(row.net,false),periodicNet=checkedNet(row.periodicNet,true);
+  const xtb=row.defaultKind==='forcefield'?defaultWorkspaceOptimizationPreferences().xtb
+    : {...checkedOptimizationSettings(row.xtb!),method:row.xtb!.method,rebuildBonds:row.xtb!.rebuildBonds,maxSccIterations:row.xtb!.maxSccIterations??250,
+      ...(solvation?{solvation:{model:solvation.model,solvent:solvation.solvent}}:{})};
+  const defaultKind=row.version!==1&&row.defaultKind==='net'?'net':'xtb';
+  const legacyNetScope=(net?row.net?.scope:undefined)??(periodicNet?row.periodicNet?.scope:undefined);
+  const scope=row.defaultKind==='forcefield'?'all':row.scope??(defaultKind==='net'&&validOptimizationScope(legacyNetScope)?legacyNetScope:row.xtb?.scope??'all');
+  return {version:3,defaultKind,scope,xtb,
+    ...(row.periodicKind==='net'||row.periodicKind==='xtb'?{periodicKind:row.periodicKind}:{}),
+    ...(typeof row.periodicXtbMethod==='string'&&isXtbMethod(row.periodicXtbMethod)?{periodicXtbMethod:row.periodicXtbMethod}:{}),
+    ...(net?{net}:{}),...(periodicNet?{periodicNet}:{})};
 }
 export function parseWorkspaceOptimizationPreferences(value: unknown): WorkspaceOptimizationPreferences {
   return checkedOptimizationPreferences(value) ?? defaultWorkspaceOptimizationPreferences();
@@ -47,18 +152,24 @@ export function readWorkspaceOptimizationPreferences(): WorkspaceOptimizationPre
   catch { return defaultWorkspaceOptimizationPreferences(); }
   const accepted = checkedOptimizationPreferences(value);
   if (!accepted) return defaultWorkspaceOptimizationPreferences();
-  if ((value as StoredOptimizationPreferences).version === 1) {
+  const stored=value as StoredOptimizationPreferences;
+  if (stored.version!==accepted.version||stored.defaultKind!==accepted.defaultKind||Object.hasOwn(stored,'forcefield')||Object.hasOwn(stored,'periodicXtb')) {
     // Initialize safely even when storage is blocked/full. Keep the validated
     // method/range choices in memory and retry persistence on the next read.
     try { window.localStorage.setItem(OPTIMIZATION_PREFERENCE_KEY, JSON.stringify(accepted)); } catch { /* Read must not break UI initialization. */ }
   }
   return accepted;
 }
-export function writeWorkspaceOptimizationPreferences(value: StoredOptimizationPreferences): WorkspaceOptimizationPreferences {
+export function workspaceOptimizationAlpb(preferences:WorkspaceOptimizationPreferences) {
+  const solvation=preferences.xtb.solvation;
+  return solvation?.model==='alpb'?{model:'alpb' as const,solvent:solvation.solvent}:undefined;
+}
+export function writeWorkspaceOptimizationPreferences(value: StoredOptimizationPreferences, explicitSolvent=false): WorkspaceOptimizationPreferences {
   const accepted = checkedOptimizationPreferences(value);
   if(!accepted)throw new Error('优化偏好中的方法、范围、迭代预算或溶剂无效。');
   window.localStorage.setItem(OPTIMIZATION_PREFERENCE_KEY, JSON.stringify(accepted));
   window.dispatchEvent(new CustomEvent(OPTIMIZATION_PREFERENCE_EVENT, { detail: accepted }));
+  if(explicitSolvent)window.dispatchEvent(new CustomEvent(OPTIMIZATION_SOLVATION_EVENT,{detail:workspaceOptimizationAlpb(accepted)}));
   return accepted;
 }
 

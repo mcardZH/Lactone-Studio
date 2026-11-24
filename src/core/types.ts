@@ -64,13 +64,13 @@ export interface StructureLibraryProvenance {
  * provenance and from process/session handles. Missing versions stay unknown. */
 export interface MDPreparationProvenance {
   schema: 1;
-  driver: 'native-xtb-md' | 'ase-rdkit';
+  driver: 'native-xtb-md' | 'ase-rdkit' | 'ase-bussi';
   method: string;
   software: { name: string; version?: string }[];
   documentId: string; sourceRevision: number;
   frameSeq: number; step: number; timeFs: number;
   native?: {
-    dtFs: number; thermostat: 'Berendsen'; hydrogenMassAmu: 4 | null; shakeHydrogenBonds: boolean;
+    dtFs: number; thermostat: 'Berendsen'; hydrogenMassAmu: 1 | 4 | null; shakeHydrogenBonds: boolean;
     protection: 'none' | 'pairwise-distance'; protectedAtomIds: string[]; forceConstantKJMolNm2: number;
     segment: number; velocityInitialization: 'fresh' | 'restart';
     /** Actual run evidence; absent on historical executions remains unknown. */
@@ -84,6 +84,7 @@ export interface MDPreparationProvenance {
     restartInputSha256?: string;
     rawPotential?: { value: number; unit: 'hartree'; definition: 'native-total-including-protection' | 'native-physical-potential'; includesProtection: boolean; sourceArtifact: 'xtb.trj'; sourceStep: number; sourceTimeFs: number; segment: number };
   };
+  ase?: Omit<import('../modeling/dynamics/contracts').AseMDEvidence,'nativeClosed'>;
 }
 
 /** Accepted modeling xTB geometry. A stopped frame has no final native

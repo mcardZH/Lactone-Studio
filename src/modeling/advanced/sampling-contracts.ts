@@ -3,13 +3,15 @@ import type { DocumentStamp } from '../../core/modeling/contracts';
 import {minimumEnclosingSphere} from './sampling-sphere';
 import {conformerAlpbPresets,type ConformerNativeSolvationEvidence} from './conformer-solvation';
 import {XTB_METHOD_IDS,supportsXtbOperation,type XtbNativeMethod} from '../../core/xtb-capabilities';
+import {isPesNetMethod,type PesNetMethod} from '../pes/contracts';
 
 export type ConformerSamplingOperation = 'md' | 'anneal' | 'metadynamics' | 'spherical-md';
 export type ConformerNativeSamplingMethod = XtbNativeMethod;
-export type ConformerSamplingMethod = 'MMFF94' | 'MMFF94s' | 'UFF' | ConformerNativeSamplingMethod;
+export type ConformerSamplingMethod = 'MMFF94' | 'MMFF94s' | 'UFF' | ConformerNativeSamplingMethod | PesNetMethod;
+export type ConformerSamplingIntegrator = 'xtb' | 'ase';
 export const NATIVE_CONFORMER_SEED_MAX = 0x7fffffff;
-export type ConformerSamplingDriver = 'ase-langevin' | 'native-xtb-md';
-export type ConformerSamplingDriverReason = 'native-ordinary-md' | 'native-rmsd-metadynamics' | 'ase-forcefield-or-temperature-bias-route';
+export type ConformerSamplingDriver = 'ase-bussi' | 'ase-langevin' | 'native-xtb-md';
+export type ConformerSamplingDriverReason = 'ase-bussi-ordinary-md' | 'native-ordinary-md' | 'native-rmsd-metadynamics' | 'ase-forcefield-or-temperature-bias-route';
 /** Supported native relative-distance restraint routes, not a claim that all
  * routes were remeasured for the dev4 default. The dev4 representative checks
  * select 500,000 at 2 fs; saved explicit 5,000,000 remains a legacy profile.
@@ -18,16 +20,25 @@ export const NATIVE_CONFORMER_CORE_PROTECTION = Object.freeze({
   forceConstantKJMolNm2: 500_000, legacyForceConstantKJMolNm2: 5_000_000, maxRmsdAngstrom: .2, dtFs: 2,
   supportedRoutes: XTB_METHOD_IDS.flatMap(method=>(['md','metadynamics'] as const).filter(operation=>supportsXtbOperation(method,operation)).map(operation=>`${method}:${operation}`)) as readonly string[],
 });
-/** Ordinary xTB MD never silently switches integrator to provide a protection. */
-export function getConformerSamplingCapability(request: { operation: ConformerSamplingOperation; method: ConformerSamplingMethod }) {
+type SamplingRoute = { operation: ConformerSamplingOperation; method: ConformerSamplingMethod;
+  integrator?: ConformerSamplingIntegrator; periodic?: boolean; structure?: Pick<Structure,'cell'> };
+export function getConformerSamplingCapability(request: SamplingRoute) {
+  const periodic = request.periodic ?? Boolean(request.structure?.cell?.pbc.some(Boolean));
+  const net = isPesNetMethod(request.method);
   const native = NATIVE_CONFORMER_CORE_PROTECTION.supportedRoutes.includes(`${request.method}:${request.operation}`);
-  const shake = !(native && request.method === 'gfnff');
-  return { driver: native ? 'native-xtb-md' as const : 'ase-langevin' as const,
-    shakeSupported: shake, shakeDefaultEnabled: shake,
-    coreProtectionSupported: true, sphereSupported: true, xyzFreezeSupported: !native };
+  const bussi = request.operation === 'md' && request.method !== 'gxtb'
+    && (periodic || net || request.integrator === 'ase');
+  const driver: ConformerSamplingDriver = bussi ? 'ase-bussi' : native ? 'native-xtb-md' : 'ase-langevin';
+  const integrator: ConformerSamplingIntegrator = driver === 'native-xtb-md' ? 'xtb' : 'ase';
+  const shakeSupported = request.method !== 'gfnff';
+  const legacyShakeDefault = driver === 'native-xtb-md' && request.integrator === undefined;
+  return { driver, integrator, shakeSupported, shakeDefaultEnabled: shakeSupported && legacyShakeDefault,
+    coreProtectionSupported: !periodic, sphereSupported: !periodic, xyzFreezeSupported: driver !== 'native-xtb-md' };
 }
-export function selectConformerSamplingDriver(request: { operation: ConformerSamplingOperation; method: ConformerSamplingMethod; coreProtection?: unknown; sphere?: unknown; frozenAtomIds?: readonly string[] }): { driver: ConformerSamplingDriver; reason: ConformerSamplingDriverReason } {
-  if (getConformerSamplingCapability(request).driver === 'native-xtb-md') return { driver: 'native-xtb-md', reason: request.operation === 'metadynamics' ? 'native-rmsd-metadynamics' : 'native-ordinary-md' };
+export function selectConformerSamplingDriver(request: SamplingRoute & { coreProtection?: unknown; sphere?: unknown; frozenAtomIds?: readonly string[] }): { driver: ConformerSamplingDriver; reason: ConformerSamplingDriverReason } {
+  const {driver} = getConformerSamplingCapability(request);
+  if (driver === 'native-xtb-md') return { driver, reason: request.operation === 'metadynamics' ? 'native-rmsd-metadynamics' : 'native-ordinary-md' };
+  if (driver === 'ase-bussi') return { driver, reason: 'ase-bussi-ordinary-md' };
   return { driver: 'ase-langevin', reason: 'ase-forcefield-or-temperature-bias-route' };
 }
 export interface ConformerSamplingRunIdentity { taskId: string; runId: string }
@@ -79,22 +90,26 @@ export interface ConformerNativeProtectionEvidence {
   sharedForceConstantHartreePerBohr2?:number;
 }
 export interface ConformerSamplingCoordinateConstraint {
-  id: string; objectId?: string; type: 'B'|'A'|'D'; atomIds: string[]; value: number;
+  id: string; objectId?: string; type: 'B'|'A'|'D'; atomIds: string[]; value: number; images?: Vector3[];
 }
 interface ConformerSamplingRequestBase {
   schema: 1; stamp: DocumentStamp & { activationEpoch?: number }; runIdentity: ConformerSamplingRunIdentity;
-  structure: Structure; method: ConformerSamplingMethod; charge: number; uhf: number;
+  structure: Structure; method: ConformerSamplingMethod; charge: number;
+  /** Solver spin. GFN-FF omits it, while saved requests can contain a legacy 0. */
+  uhf?: number;
+  integrator?: ConformerSamplingIntegrator;
+  device?: 'cpu'|'gpu';
   /** A fresh integration segment from the explicitly supplied source geometry. */
   segment?:ConformerSamplingSegment;
   frozenAtomIds?: string[];
-  /** Native harmonic B/A/D potentials share the atom-group force constant. */
+  /** ASE integrates B/A/D as equalities; native MD uses its documented soft potentials. */
   constraints?: ConformerSamplingCoordinateConstraint[];
   threads?: number; maxSteps?: number; maxEvaluations?: number; maxWallTimeSeconds?: number;
   maxFrames?: number; seed?: number; dtFs?: number; frictionPerFs?: number; reportEvery?: number;
   /** SHAKE/RATTLE constrains X-H distances, not hydrogen Cartesian coordinates. */
   shakeHydrogenBonds?: boolean;
-  /** Absolute mass in amu, only for ordinary native GFN-FF MD. Omitted means natural masses, including legacy requests. */
-  hydrogenMassAmu?: 4;
+  /** New ordinary MD uses 1 amu with X–H constraints, 4 without; old records may carry natural masses. */
+  hydrogenMassAmu?: 1 | 4;
   /** Host-granted soft budget, not a claim that a kernel hard limit is active. */
   memoryBudgetBytes?: number;
   /** Derived capability route, validated again by the host and worker. */
@@ -132,7 +147,7 @@ export interface ConformerNativeMDFrameEvidence {
   shakeHydrogenBonds: boolean;
   /** Legacy natural-mass evidence; never emitted for fixed-mass runs. */
   hydrogenMassScaling?: 1;
-  hydrogenMassAmu?: 4 | null; hydrogenMassMode?: 'natural' | 'fixed-amu';
+  hydrogenMassAmu?: 1 | 4 | null; hydrogenMassMode?: 'natural' | 'fixed-amu';
   sourceArtifact: 'xtb.trj' | 'mdrestart'; rawIndex: number;
   frameTiming: 'pre-step' | 'restart-final'; velocityPhase: 'half-step' | 'restart' | 'unavailable';
   nativeClosed: boolean;
@@ -159,6 +174,27 @@ export interface ConformerSamplingEffectiveResources {
   actual?: { threads: number; memoryBudgetBytes?: number };
   reservedBytes?: number; threadLimitReason?: string;
 }
+export interface ConformerAseCalculatorEvidence {
+  engine: 'libxtb'|'tblite'|'net';
+  method: ConformerSamplingMethod;
+  version: string;
+  evaluations: number;
+  [key: string]: unknown;
+}
+export interface ConformerAseMDFrameEvidence {
+  driver: 'ase-bussi';
+  method: ConformerSamplingMethod;
+  backend: ConformerAseCalculatorEvidence['engine'];
+  thermostat: 'Bussi';
+  thermostatTimeConstantFs: 500;
+  dtFs: 2;
+  hydrogenMassAmu: 1 | 4;
+  shakeHydrogenBonds: boolean;
+  fixedPositionResidualAngstrom: number;
+  fixedVelocityResidualAngstromPerFs: number;
+  calculatorEvidence: ConformerAseCalculatorEvidence;
+  [key: string]: unknown;
+}
 export interface ConformerSamplingFramePayload extends ConformerSamplingSegmentProgress {
   stageId: string; collectionId: 'sampled-candidates' | 'sampling-trajectory';
   frameIndex: number; role: 'sampled-candidate' | 'trajectory'; step: number; timeFs: number;
@@ -173,8 +209,9 @@ export interface ConformerSamplingFramePayload extends ConformerSamplingSegmentP
       algorithm: 'ASE-RATTLE' | 'native-X-H' | 'native-xTB-SHAKE'; actualConstraintCount?: number;
       reference?: 'input-geometry'; observedBondLengthsAngstrom?: number[] } };
   nativeMD?: ConformerNativeMDFrameEvidence;
+  aseMD?: ConformerAseMDFrameEvidence;
   requiresUnbiasedOptimization: boolean; optimizationPerformed: false; cycleIndex?: number;
-  calculatorEvidence?: { engine: 'native-xtb'; method: 'gfnff' | 'gfn0'; version: string; forceFieldTopologySha256?: string;
+  calculatorEvidence?: ConformerAseCalculatorEvidence | { engine: 'native-xtb'; method: 'gfnff' | 'gfn0'; version: string; forceFieldTopologySha256?: string;
     evaluations: number; spinTreatment: 'not-supported' | 'native-uhf'; coordinateTransform: { kind: 'identity'; offsetAngstrom: [0, 0, 0] };
     lastEvaluation: { evaluation: number; inputSha256: string; engradSha256: string; energyHartree: number;
       forceFieldTopologySha256?: string; topologyReadFromOwnedSeed: boolean; nativeClosed: true } };
@@ -198,9 +235,10 @@ export interface ConformerSamplingStageEvent extends ConformerSamplingEventBase 
   event: 'stage'; stageId: string; status: 'started' | 'completed'; step: number;
   configuration?: ConformerSamplingRequest; seed?: number; cycleIndex?: number;
   steps?: number; startTemperatureK?: number; endTemperatureK?: number; skipped?: boolean; candidates?: number;
-  integration?: { driver: 'ASE-Langevin' | 'native-xtb-md'; aseVersion?: string; fixcm?: false; dtFs: number; frictionPerFs?: number;
-    shakeHydrogenBonds?: boolean; constraintAlgorithm?: 'ASE-RATTLE' | 'native-X-H'; thermostat?: 'Berendsen';
-    hydrogenMassAmu?: 4 | null; hydrogenMassMode?: 'natural' | 'fixed-amu';
+  integration?: { driver: 'ASE-Bussi' | 'ASE-Langevin' | 'native-xtb-md'; aseVersion?: string; fixcm?: false; dtFs: number; frictionPerFs?: number;
+    shakeHydrogenBonds?: boolean; constraintAlgorithm?: 'ASE-RATTLE' | 'native-X-H'; thermostat?: 'Berendsen'|'Bussi';
+    thermostatTimeConstantFs?: 500;
+    hydrogenMassAmu?: 1 | 4 | null; hydrogenMassMode?: 'natural' | 'fixed-amu';
     seedTreatment?: 'native-internal-initialization' | 'native-controlled' | 'native-program-random'; requestedSeed?: number; effectiveSeed?: number | null;
     frictionTreatment?: 'not-applicable-native-Berendsen' };
   coordinateTransform?: { kind: 'identity' | 'translation'; offsetAngstrom: Vector3 };
@@ -219,7 +257,7 @@ export interface ConformerSamplingCompletionEvent extends ConformerSamplingEvent
   event: 'completed'; workerSettled: true; samplingCompleted: true; optimizationPerformed: false;
   requiresUnbiasedOptimization: true; candidateCount: number; frameCount: number; step: number;
   evaluations: number | null; driver?: ConformerSamplingDriver;
-  evaluationCountSource?: 'observed-physical-calculator' | 'not-reported-native-md'; budgetEvaluationUpperBound?: number;
+  evaluationCountSource?: 'observed-ase-md' | 'observed-physical-calculator' | 'not-reported-native-md'; budgetEvaluationUpperBound?: number;
   seed?: number; lastFrame: ConformerSamplingFramePayload;
   biasHistory: ConformerBiasHistoryEntry[]; postSamplingPotentials: { core: false; metadynamics: false; sphere: false };
   exit?: { code: number | null; signal: string | null };
@@ -249,7 +287,8 @@ export interface ConformerSamplingErrorEvent extends ConformerSamplingEventBase 
 export type ConformerSamplingEvent = ConformerSamplingFrameEvent | ConformerSamplingStageEvent
   | ConformerSamplingBiasEvent | ConformerSamplingCompletionEvent | ConformerSamplingStopEvent
   | ConformerSamplingErrorEvent | (ConformerSamplingEventBase & { event: 'started'; status: 'running' })
-  | (ConformerSamplingEventBase & { event: 'progress'; phase: 'native-md'; step: number; frameCount: number; candidateCount?: number });
+  | (ConformerSamplingEventBase & { event: 'native-started' })
+  | (ConformerSamplingEventBase & { event: 'progress'; phase: 'ase-bussi'|'native-md'; step: number; frameCount: number; candidateCount?: number });
 export interface ConformerSamplingBridge {
   readConformerSamplingResult?(handleId:string,offset:number,limit:number):Promise<{frames:ConformerSamplingFrameEvent[];offset:number;total:number;done:boolean}>;
   releaseConformerSamplingResult?(handleId:string):Promise<unknown>;
@@ -269,7 +308,7 @@ export function suggestConformerSamplingSphere(structure: Pick<Structure, 'atoms
 
 /** These are candidate capabilities until each route/method's native fixture gate passes. */
 export const CONFORMER_SAMPLING_CAPABILITIES = Object.freeze({
-  implementedMethods: ['MMFF94', 'MMFF94s', 'UFF', ...XTB_METHOD_IDS] as readonly ConformerSamplingMethod[],
+  implementedMethods: XTB_METHOD_IDS as readonly ConformerSamplingMethod[],
   nativeRouteValidation: 'not-run' as const,
   gfnff: { status: 'implemented-unverified' as const, solvation: 'native-md-alpb' as const,aseSolvation:'not-enabled' as const,
     nativeMDSolvation:{model:'alpb' as const,solvents:conformerAlpbPresets('gfnff').map(row=>row.id)},

@@ -1,7 +1,7 @@
 import { copyPlainText } from './clipboard-text';
 import {DismissibleNotice} from './DismissibleNotice';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type SetStateAction } from 'react';
-import {createPortal} from 'react-dom';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type SetStateAction } from 'react';
+import {createPortal,flushSync} from 'react-dom';
 import {useTrajectoryObservationController} from './results/trajectory-observation';
 import {snapshotAdvancedInputTemplate} from './advanced/input-template-snapshot';
 import { ArrowRight, Atom as AtomIcon, BookOpen, Check, CheckCheck, ChevronDown, ChevronRight, CircleHelp, Code2, Cpu, FileCode2, FileText, FlaskConical, Info, Leaf, Monitor, Plus, RotateCcw, Settings2, ShieldCheck, Sparkles, Upload, X } from 'lucide-react';
@@ -50,7 +50,8 @@ import { isXtb,defaultXtb,XTB_TASKS,xtbNeedsFrequency } from '../core/xtb';
 import { defaultTaskOptions,isOptimizationTask,isEnergyTask,isZindo,supportsConstraints,coordinateAction,usesEfficientGrid,taskRecommendation } from '../core/tasks';
 import type { TaskOptions } from '../core/types';
 import { excitedFrequencyOnly,excitedOptimizationFrequency,excitedTarget,isExcitedOptimization,isUksOptimization } from '../core/excited-state';
-import { sectionDefaults,SCF_ADVANCED_FIELDS,type DefaultSection } from '../core/section-defaults';
+import { sectionDefaults,type DefaultSection } from '../core/section-defaults';
+import { applyGaussianField,changedGaussianConditions as changedConditions } from './application/gaussian-input-fields';
 import { fragmentRegions } from '../core/regions';
 import ResourceControls,{type ResourcePatch} from './ResourceControls';
 import './workspace-eight.css';
@@ -95,13 +96,22 @@ import './desktop-shell.css';
 import { SolventControls, type SolventDraftMemory } from './SolventControls';
 import { pausedGaussianCapability, pausedOrcaCapability } from './input-capabilities';
 import { defaultOniomSettings } from '../core/oniom';
-import OrcaWorkbench from './orca/OrcaWorkbench';
-import { gaussianExternalInputDraft, type ExternalInputDraft } from '../task-system/integration/input-draft';
+import OrcaWorkbench, { type OrcaAgentEditor } from './orca/OrcaWorkbench';
+import { gaussianExternalInputDraft } from '../task-system/integration/input-draft';
 import { ORCA_TASKS } from './orca/task-catalog';
 import { orcaTaskStem } from '../core/orca/naming';
 import { projectOrcaImportedNaming, orcaImportSystemStem, type OrcaNamingPolicy } from '../modeling/application/orca-import-naming';
 import OrcaInputSummary from './orca/OrcaInputSummary';
-import { createOrcaCommonSettings, type OrcaJobRequest } from '../core/orca';
+import { buildOrcaCommon, createOrcaCommonSettings, type OrcaJobRequest } from '../core/orca';
+import { createOrcaGeneratedDraft, editOrcaGeneratedFile, orcaGeneratedSource } from '../modeling/application/orca-generated-draft';
+import { publishLiveInputVersion, registerLiveInput, type InputDraftConfiguration, type InputDraftView, type LiveInputPort } from './mcp/input-drafts';
+import { changedInputConfiguration, mergeInputPatch, writableInputConfiguration } from './mcp/input-arguments';
+import { toolError } from './mcp/types';
+import { electronicStateInputError } from '../core/elements';
+import { orcaNebOrderContext } from '../core/orca/neb';
+import { ircStartContext } from '../core/orca/hessian-path';
+import { defaultMixedBasis } from '../core/mixed-basis';
+import { editOrcaInputAsset, gaussianParameterDraftPatch, gaussianScanOptions, gaussianScanRead, orcaInputAssetDetails, orcaParameterDraftPatch, orcaScanSettings } from './mcp/input-specialized';
 import './integration-twelve.css';
 import { WorkflowHeader, WorkflowSteps, WorkflowContentCard, WorkflowNavigation, WORKFLOW_STEPS } from './WorkflowPresentation';
 import './workflow-presentation.css';
@@ -111,7 +121,7 @@ import { WorkbenchLayoutProvider, useWorkbenchLayout } from './modeling/Workbenc
 import WorkspaceShell,{type DocumentWorkspaceSurface} from './modeling/WorkspaceShell';
 import type {WorkspaceActivationStamp,WorkspaceInputTaskStamp,WorkspaceDesktopBridge,WorkspaceMembership} from '../modeling/workspace-contracts';
 import SharedModelWindow from './modeling/SharedModelWindow';
-import {projectGaussianTaskStructure} from '../modeling/application/task-structure-projection';
+import {projectGaussianTaskStructure,projectOrcaTaskStructure} from '../modeling/application/task-structure-projection';
 import './modeling-v0202.css';
 import { defaultTitle, foldPreviewCoordinates, gaussianReplacementConfirmation, jobSignature } from './application/input-presentation';
 import { capturePausedGaussianRequest, capturePausedOrcaRequest, inputExportConditions } from './application/input-requests';
@@ -119,7 +129,6 @@ import { importAppStructures } from './application/structure-import';
 import { inputSourceRoleKey, inputSourceRoles } from './application/input-sources';
 import { inputCoordinateFold, inputFormWidth, isMultiDocumentMode, sharedWindowMembership, sharedWorkspacePresentation as projectWorkspacePresentation } from './application/app-layout';
 import {applicationVersion} from '../application-version';
-import type {ConfigureCalculationResult} from './mcp/calculation-config';
 export { gaussianReplacementConfirmation } from './application/input-presentation';
 
 const STEP_NAMES = WORKFLOW_STEPS;
@@ -140,6 +149,7 @@ export default function App() {
 
 function AppContent({workspaceSurface}:{workspaceSurface?:DocumentWorkspaceSurface}) {
   const batchInputSession=workspaceSurface?.batchInputSession;
+  const inputPresentationActive = workspaceSurface?.inputActive ?? true;
   const batchSavingRef=useRef(false);
   const delivery=useInputDeliveryOperation();
   const applicationRoot=useRef<HTMLDivElement>(null);
@@ -159,7 +169,9 @@ function AppContent({workspaceSurface}:{workspaceSurface?:DocumentWorkspaceSurfa
   const initialInput=useRef(workspaceSurface?.entry.initialInput);
   // Immutable source-to-ID anchor. Edited coordinates never redefine source
   // center numbers; newly added atoms cannot steal a deleted source center.
-  const importedStructure=useRef<Structure|null>(initialStructure.current?structuredClone(initialStructure.current):null);
+  const [importedStructure] = useState<{ current: Structure | null }>(() => ({
+    current: initialStructure.current ? structuredClone(initialStructure.current) : null,
+  }));
   const workspaceLive=useRef(workspaceSurface);workspaceLive.current=workspaceSurface;
   const [captureRequest,setCaptureRequest]=useState<SelectionCaptureRequest>();
   const [layerDraftRevision,setLayerDraftRevision]=useState(0);
@@ -186,8 +198,6 @@ function AppContent({workspaceSurface}:{workspaceSurface?:DocumentWorkspaceSurfa
   const [orcaStep,setOrcaStep]=useState(savedOrca?.step??(initialInput.current?.engine==='orca'?2:0));
   const orcaNavigation=useRef<((step:number)=>void)|null>(null);
   const acceptOrcaNavigation=useCallback((navigate:((step:number)=>void)|null)=>{orcaNavigation.current=navigate;},[]);
-  const orcaDraftCapture=useRef<(()=>ExternalInputDraft|null)|null>(null);
-  const acceptOrcaDraftCapture=useCallback((capture:(()=>ExternalInputDraft|null)|null)=>{orcaDraftCapture.current=capture;},[]);
   const [toolHost,setToolHost]=useState<HTMLDivElement|null>(null);
   const Workspace = ModelWorkspace;
   const [structures, setStructures] = useState<Structure[]>(initialStructure.current?[initialStructure.current]:[]);
@@ -280,7 +290,8 @@ function AppContent({workspaceSurface}:{workspaceSurface?:DocumentWorkspaceSurfa
   const captureExternalValueRef=useRef(captureExternalValue);captureExternalValueRef.current=captureExternalValue;
   const captureExternalKey=JSON.stringify(captureExternalValue);
   const captureExternalConditions=useRef(captureExternalKey);captureExternalConditions.current=captureExternalKey;
-  const signature = jobSignature(request);
+  const signature = useMemo(() => inputPresentationActive && output ? jobSignature(request) : '',
+    [inputPresentationActive, output, request]);
   const latestGaussian = useRef({ request, output, generatedName, generatedSignature, editorDirty });
   latestGaussian.current = { request, output, generatedName, generatedSignature, editorDirty };
 const highlights:ViewerHighlights=useMemo(()=>({fragments:regions,basis:basisDisplayRegions(structure,settings),layers:settings.oniom?.enabled&&structure?[{id:'oniom-high',label:'QM',color:fragmentColor(10),atomIndices:structure.atoms.flatMap((atom,i)=>settings.oniom!.qmAtomIds.includes(atom.id!)?[i]:[]),style:'ball' as const},{id:'oniom-low',label:'UFF',color:fragmentColor(11),atomIndices:structure.atoms.flatMap((atom,i)=>settings.oniom!.qmAtomIds.includes(atom.id!)?[]:[i]),style:'stick' as const}]:[],frozenAtoms:activeFrozenAtoms(request).map(i=>i-1),scan:activeCoordinates(request).filter(c=>coordinateAction(c,settings.task)==='scan').map((c,i)=>({id:'scan-'+i,type:c.type,atoms:c.atoms.map(n=>n-1)})),frozenCoordinates:activeCoordinates(request).filter(c=>coordinateAction(c,settings.task)==='freeze').map((c,i)=>({id:'freeze-'+i,type:c.type,atoms:c.atoms.map(n=>n-1)}))}),[regions,settings.mixedBasis,settings.oniom,settings.taskOptions,settings.task,structure]);
@@ -585,10 +596,11 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
   }
   function updateSolvent(change:{solvent:string;solvation?:GaussianSettings['solvation']}){update('solvent',change.solvent==='gas'?'':change.solvent);update('solvation',change.solvation);}
   function update5D(enabled:boolean){touched.current.add('use5D');setSettings(previous=>changedConditions(setUse5D(previous,enabled),['use5D']));setFiles(previous=>({...previous,compatibilityConfirmed:false}));setFrequencyConfirmed(false);setErrors([]);}
-  function changedConditions(previous:GaussianSettings,keys:string[]):GaussianSettings{const options=previous.taskOptions??defaultTaskOptions();const scientific=keys.some(key=>['method','basis','mixedBasis','dispersion','grid','integral','scf','solvent','solvation','solventModel','use5D','oniom','unrestricted','advanced','nosymm','xtb'].includes(key));if(!scientific)return previous;return {...previous,...(previous.oniom&& !keys.includes('oniom')?{oniom:{...previous.oniom,statesConfirmed:false}}:{}),taskOptions:{...options,irc:{...options.irc,confirmed:false},stable:{...options.stable,confirmed:false},fragmentStatesConfirmed:false}};}
-  function update<K extends keyof GaussianSettings>(key: K, value: GaussianSettings[K]) { if(key==='xtb'&&external&&!nameTouched.current)setJobName(taskStem(sourceName,settings.task,settings.method,(value as GaussianSettings['xtb'])?.level,settings));touched.current.add(key); setSettings(previous => {const changesConditions=key!=='xtb'||(['scriptPath','executable','level','entryBasis'] as const).some(field=>(previous.xtb??defaultXtb())[field]!==((value as GaussianSettings['xtb'])??defaultXtb())[field]);const inherited={...previous.inheritedRoute};const scfChanged=key==='advanced'&&SCF_ADVANCED_FIELDS.some(field=>previous.advanced?.[field]!==((value as GaussianSettings['advanced'])??defaultAdvanced(previous.task))[field]);if(key==='unrestricted')delete inherited.methodKeyword;if(key==='scf'||scfChanged)delete inherited.scf;if(key==='grid'||key==='integral')delete inherited.integration;if(key==='solvent'||key==='solvation'||key==='solventModel')delete inherited.solvent;if(key==='basis'||key==='mixedBasis'){delete inherited.basisTail;delete inherited.basisKeyword;}return { ...changedConditions(previous,changesConditions?[key]:[]), [key]: value,inheritedRoute:inherited,inheritanceIssues:previous.inheritanceIssues?.filter(issue=>issue.field!==key&&!(key==='taskOptions'&&issue.field==='freeze')&&!(scfChanged&&issue.field==='scf')) };}); setErrors([]); setFiles(previous => ({ ...previous, compatibilityConfirmed: false })); if (settings.task === 'freq') setFrequencyConfirmed(false); }
-
-
+  function update<K extends keyof GaussianSettings>(key:K,value:GaussianSettings[K]){
+    if(key==='xtb'&&external&&!nameTouched.current)setJobName(taskStem(sourceName,settings.task,settings.method,(value as GaussianSettings['xtb'])?.level,settings));
+    touched.current.add(key);setSettings(previous=>applyGaussianField(previous,key,value));
+    setErrors([]);setFiles(previous=>({...previous,compatibilityConfirmed:false}));if(settings.task==='freq')setFrequencyConfirmed(false);
+  }
   function defaultsForTask(task:TaskId,preserveMethod=true){const next=defaultSettings(task);if(preserveMethod&&isXtb(settings.method)){Object.assign(next,methodDefaults('gfn2-xtb',task));return next;}if(!isEnergyTask(task))next.scf='default';return next;}
   function clearStructureOptions(previous:GaussianSettings):GaussianSettings{const options=previous.taskOptions??defaultTaskOptions();return {...previous,oniom:previous.oniom?{...previous.oniom,qmAtomIds:[],boundaries:[],atomTypes:{},partialCharges:{},statesConfirmed:false,topologyConfirmed:false}:undefined,mixedBasis:undefined,inheritedRoute:undefined,inheritanceIssues:undefined,taskOptions:{...options,constraintsEnabled:false,coordinates:[],coordinateDrafts:[],frozenAtoms:[],inactiveFrozenAtoms:[],fragments:defaultTaskOptions().fragments,fragmentStatesConfirmed:false,irc:{...options.irc,confirmed:false},stable:{...options.stable,confirmed:false}}};}
   function commitInputFreezes(definitions:SharedModelConstraints){
@@ -759,10 +771,10 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
     setErrors([]);notify('已恢复当前任务默认；任务名、结构电子态和共有冻结保留。');
   }
   function chooseTask(task: TaskId) {
-    if(batchInputSession&&!batchInputTaskAllowed('gaussian',task))return;
-    if(task===settings.task){setStep(2);return;}
+    if(batchInputSession&&!batchInputTaskAllowed('gaussian',task))return false;
+    if(task===settings.task){setStep(2);return true;}
     const next=projectCanonicalGaussianFreezes(structure,defaultsForTask(task,false),sessionStore.getSnapshot().sharedConstraints??{frozenAtomIds:[],coordinates:[]});
-    try{resetInputModelContexts(sessionStore,{gaussian:next},'gaussian');}catch(cause){setErrors([cause instanceof Error?cause.message:String(cause)]);return;}
+    try{resetInputModelContexts(sessionStore,{gaussian:next},'gaussian');}catch(cause){setErrors([cause instanceof Error?cause.message:String(cause)]);return false;}
     cancelInputDraftOperations();inputDraftTouched.current=true;
     gaussianTaskDrafts.current.clear();inputResetPast.current=[];inputResetFuture.current=[];
     touched.current.clear();excitedResolution.current.clear();nameTouched.current=!!batchInputSession;titleTouched.current=false;solventDraft.current=null;
@@ -771,6 +783,7 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
     setJobName(batchInputSession?orcaImportSystemStem(sourceName):taskStem(sourceName,task,next.method,next.xtb?.level,next));setTitle(defaultTitle(sourceName,task,next.method,next));setStep(2);
     setImportTarget(task);
     if(task==='irc')notify('IRC须与实际过渡态保持相同的方法、基组、色散、溶剂、电子态及数值条件；可在导入面板拖入TS的GJF、OUT或FCHK。');
+    return true;
   }
 
   function chooseMethod(method: MethodId) {
@@ -825,11 +838,7 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
     notify('已恢复本任务核心参数默认；方法、扫描成员、共有冻结和片段定义保留。');
   }
 
-  function updateFile<K extends keyof FileSettings>(key: K, value: FileSettings[K], discardDraft=false) {
-    if(key==='geometry'&&value!==files.geometry&&builderDirty&&!discardDraft){setModal({title:'建模草稿尚未应用',text:'切换几何来源会放弃当前建模草稿，已提交结构保留。',action:()=>{setBuilderDirty(false);updateFile(key,value,true);},label:'放弃草稿并切换'});return;}
-    if (key === 'geometry') setStateConfirmed(false);
-    if (key === 'geometry' || key === 'hessian' || key === 'oldCheckpoint') setFrequencyConfirmed(false);
-    setFiles(previous => {
+  function applyGaussianFileField<K extends keyof FileSettings>(previous:FileSettings,key:K,value:FileSettings[K],task:TaskId):FileSettings{
       const next = { ...previous, [key]: value };
       if (!['saveCheckpoint', 'checkpointName', 'writeMemory', 'writeCores', 'compatibilityConfirmed'].includes(key)) next.compatibilityConfirmed = false;
       if (key === 'geometry') {
@@ -837,35 +846,42 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
           next.readCheckpoint = true;
         }
       }
-      if (key === 'hessian' && value === 'readfc' && settings.task === 'freq') next.guessRead = false;
+      if (key === 'hessian' && value === 'readfc' && task === 'freq') next.guessRead = false;
       if (key === 'hessian' && ['readfc','rcfc'].includes(String(value))) next.readCheckpoint=true;
       if (key === 'readCheckpoint' && !value) { next.guessRead = false; next.basisFromCheckpoint=false;if(['readfc','rcfc'].includes(next.hessian)) next.hessian = 'none'; }
       return next;
-    });
+  }
+  function updateFile<K extends keyof FileSettings>(key: K, value: FileSettings[K], discardDraft=false) {
+    if(key==='geometry'&&value!==files.geometry&&builderDirty&&!discardDraft){setModal({title:'建模草稿尚未应用',text:'切换几何来源会放弃当前建模草稿，已提交结构保留。',action:()=>{setBuilderDirty(false);updateFile(key,value,true);},label:'放弃草稿并切换'});return;}
+    if (key === 'geometry') setStateConfirmed(false);
+    if (key === 'geometry' || key === 'hessian' || key === 'oldCheckpoint') setFrequencyConfirmed(false);
+    setFiles(previous=>applyGaussianFileField(previous,key,value,settings.task));
     setErrors([]);
   }
 
-  function exportGuard(target:'gaussian'|'orca'){
+  function exportGuard(target:'gaussian'|'orca', allowInactive=false){
     exportLifetime.current.generation++;
     return createInputExportGuard<WorkspaceInputTaskStamp>(()=>{
       const document=sessionStore.getSnapshot(),workspace=workspaceLive.current;
       const base=target==='gaussian'?latestGaussian.current.request:orcaEffectiveLive.current;
       const req=workspace?{...base,inputSources:workspace.getCurrentSources()}:base;
-      return {...exportLifetime.current,runtimeOwner:runtimeController.current,runtimeSessionId:runtimeController.current?.getSnapshot().sessionId,active:(workspace?.inputActive??true)&&engineLive.current===target,documentId:document.id,revision:document.revision,structure:desktopMode?document.draft.structure:req.structure,
+      return {...exportLifetime.current,runtimeOwner:runtimeController.current,runtimeSessionId:runtimeController.current?.getSnapshot().sessionId,active:(allowInactive||workspace?.inputActive!==false)&&engineLive.current===target,documentId:document.id,revision:document.revision,structure:desktopMode?document.draft.structure:req.structure,
         conditions:inputExportConditions(target,req,document.sharedConstraints,target==='gaussian'&&latestGaussian.current.editorDirty?latestGaussian.current.output:null),
-        activationStamp:workspace?.inputStamp,assertIdentityCurrent:workspace?.assertInputIdentityCurrent};
+        activationStamp:allowInactive?undefined:workspace?.inputStamp,assertIdentityCurrent:workspace?.assertInputIdentityCurrent};
     });
   }
   function captureRuntimeSnapshot(){const controller=runtimeController.current;return controller?.getSnapshot().mode==='md'?controller.captureSnapshot():controller?.pauseAndSnapshot();}
-  async function pausedGaussianRequest():Promise<GuardedInputRequest<JobRequest>> {
-    return capturePausedGaussianRequest({createGuard:()=>exportGuard('gaussian'),readRequest:()=>latestGaussian.current.request,readSettings:()=>formalModel.current.settings,readSharedConstraints:()=>sessionStore.getSnapshot().sharedConstraints,pauseAndSnapshot:captureRuntimeSnapshot,layerCapabilityFor,currentSources:()=>workspaceLive.current?.getCurrentSources()});
+  async function pausedGaussianRequest(allowInactive=false):Promise<GuardedInputRequest<JobRequest>> {
+    return capturePausedGaussianRequest({createGuard:()=>exportGuard('gaussian',allowInactive),readRequest:()=>latestGaussian.current.request,readSettings:()=>formalModel.current.settings,readSharedConstraints:()=>sessionStore.getSnapshot().sharedConstraints,pauseAndSnapshot:captureRuntimeSnapshot,layerCapabilityFor,currentSources:()=>workspaceLive.current?.getCurrentSources()});
   }
-  async function pausedOrcaRequest(initial:OrcaJobRequest):Promise<GuardedInputRequest<OrcaJobRequest>> {
-    return capturePausedOrcaRequest(initial,{createGuard:()=>exportGuard('orca'),readSharedConstraints:()=>sessionStore.getSnapshot().sharedConstraints,pauseAndSnapshot:captureRuntimeSnapshot,layerCapabilityFor,currentSources:()=>workspaceLive.current?.getCurrentSources()});
+  async function pausedOrcaRequest(initial:OrcaJobRequest,allowInactive=false):Promise<GuardedInputRequest<OrcaJobRequest>> {
+    return capturePausedOrcaRequest(initial,{createGuard:()=>exportGuard('orca',allowInactive),readSharedConstraints:()=>sessionStore.getSnapshot().sharedConstraints,pauseAndSnapshot:captureRuntimeSnapshot,layerCapabilityFor,currentSources:()=>workspaceLive.current?.getCurrentSources()});
   }
   const generatingInput=useRef(false);
   const [generationBusy,setGenerationBusy]=useState(false);
   const submittingExternal=useRef(false);
+  const orcaAgentEditor=useRef<OrcaAgentEditor|null>(null);
+  const acceptOrcaAgentEditor=useCallback((value:typeof orcaAgentEditor.current)=>{orcaAgentEditor.current=value;},[]);
   const [externalSubmitBusy,setExternalSubmitBusy]=useState(false);
   const [externalSubmitError,setExternalSubmitError]=useState<{message:string}|null>(null);
   async function submitExternalInput() {
@@ -893,11 +909,15 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
     catch (cause) { setErrors([cause instanceof Error ? cause.message : String(cause)]); return; }
     setErrors([]);const invalid=validateJob(captured);if(inheritanceOpen&&step===3){if(invalid.length){notify(humanizeValidation(invalid[0],captured),'error');return;}}else if(validation.report('full',invalid))return;
     if(batchInputSession){try{await deliverBatchInputs({engine:'gaussian',request:captured},guard);}catch(cause){setErrors([cause instanceof Error?cause.message:String(cause)]);}return;}
-    const commitCaptured=(accepted:JobRequest)=>{setOutput(buildGaussian(accepted));setGeneratedName(accepted.name);setGeneratedSignature(jobSignature(accepted));setEditorDirty(false);setErrors([]);validation.reset();setStep(3);notify('已生成完整输入模板，可继续编辑。');};
-    const confirmation=gaussianReplacementConfirmation({request:captured,assertCurrent:guard},commitCaptured,message=>setErrors([message]));
+    const confirmation=gaussianReplacementConfirmation({request:captured,assertCurrent:guard},commitGaussianCapture,message=>setErrors([message]));
     if(latestGaussian.current.editorDirty&&workflowSteps.current.gaussian===3){setModal(confirmation);return;}
     confirmation.action();
     } finally {generatingInput.current=false;setGenerationBusy(false);}
+  }
+  function commitGaussianCapture(accepted:JobRequest){
+    inputDraftTouched.current=true;
+    setOutput(buildGaussian(accepted));setGeneratedName(accepted.name);setGeneratedSignature(jobSignature(accepted));
+    setEditorDirty(false);setErrors([]);validation.reset();setStep(3);notify('已生成完整输入模板，可继续编辑。');
   }
 
   async function deliverBatchInputs(template:AdvancedInputTemplate,assertCurrent:()=>void){
@@ -934,36 +954,40 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
     }
   }
 
-  function inheritImportedSource(){
+  function applyImportedGaussianLevel(){
     const anchor=importedStructure.current,source=anchor?.gaussianSource,current=formalModel.current;
-    if(!source||!anchor||!current.structure)return;
-    try {
-      cancelTaskSelection();
-      const mapped=remapSourceLevelToCurrent(source,anchor,current.structure);
-      const inherited=inheritGaussianSourceLevel(mapped,current.settings,{basisIdentityMapped:true});
-      if(!inherited.applied){setErrors(inherited.issues.map(issue=>issue.message));notify('来源计算级别不能完整应用，请核对提示。','error');return;}
-      const next=changedConditions(inherited.settings,['method','basis','dispersion','solvent']);
-      if(desktopMode){
-        sessionStore.synchronizeGaussianBasisState?.(captureGaussianBasisState(current.settings),captureDesktopAssignments(current.structure,current.settings).basis);
-        if(JSON.stringify(captureGaussianBasisState(current.settings))!==JSON.stringify(captureGaussianBasisState(next)))
-          sessionStore.execute({type:'set-gaussian-basis-state',state:captureGaussianBasisState(next),assignments:captureDesktopAssignments(current.structure,next).basis});
-      }
-      formalModel.current={...formalModel.current,settings:next};setSettings(next);
-      for(const key of ['method','basis','dispersion','solvent','solventModel'] as const)touched.current.add(key);
-      setFrequencyConfirmed(false);setFiles(previous=>({...previous,compatibilityConfirmed:false}));
-      setInheritanceOpen(false);setErrors([]);validation.reset();
-      notify('已继承方法、基组、色散和溶剂；任务、资源、冻结、扫描、层与片段仍按当前配置。');
-    } catch(cause){setErrors([cause instanceof Error?cause.message:String(cause)]);}
+    if(!source||!anchor||!current.structure)throw Error('当前模型缺少可继承的 Gaussian 来源级别。');
+    cancelTaskSelection();
+    const mapped=remapSourceLevelToCurrent(source,anchor,current.structure);
+    const inherited=inheritGaussianSourceLevel(mapped,current.settings,{basisIdentityMapped:true});
+    if(!inherited.applied)throw toolError('INPUT_SOURCE_LEVEL','来源计算级别不能完整应用。',{issues:inherited.issues});
+    const next=changedConditions(inherited.settings,['method','basis','dispersion','solvent']);
+    if(desktopMode){
+      sessionStore.synchronizeGaussianBasisState?.(captureGaussianBasisState(current.settings),captureDesktopAssignments(current.structure,current.settings).basis);
+      if(JSON.stringify(captureGaussianBasisState(current.settings))!==JSON.stringify(captureGaussianBasisState(next)))
+        sessionStore.execute({type:'set-gaussian-basis-state',state:captureGaussianBasisState(next),assignments:captureDesktopAssignments(current.structure,next).basis});
+    }
+    formalModel.current={...formalModel.current,settings:next};setSettings(next);
+    for(const key of ['method','basis','dispersion','solvent','solventModel'] as const)touched.current.add(key);
+    setFrequencyConfirmed(false);setFiles(previous=>({...previous,compatibilityConfirmed:false}));
+    setInheritanceOpen(false);setErrors([]);validation.reset();
+    notify('已继承方法、基组、色散和溶剂；任务、资源、冻结、扫描、层与片段仍按当前配置。');
   }
-  function inheritOrcaLevel(){
-    const source=importedStructure.current?.orcaSource;if(!source)return;
+  function applyImportedOrcaLevel(){
+    const source=importedStructure.current?.orcaSource;if(!source)throw Error('当前模型缺少可继承的 ORCA 来源级别。');
     cancelTaskSelection();
     const inherited=inheritOrcaSourceLevel(source,orcaLive.current.settings);
-    if(!inherited.applied){setErrors(inherited.issues.map(issue=>issue.message));notify('来源计算级别不能由当前ORCA预设准确表达。','error');return;}
+    if(!inherited.applied)throw toolError('INPUT_SOURCE_LEVEL','来源计算级别不能由当前 ORCA 预设准确表达。',{issues:inherited.issues});
     const next={...orcaLive.current,settings:inherited.settings};
     orcaLive.current=next;setOrcaRequest(next);setErrors([]);
     notify('已继承方法、基组、色散和溶剂；任务、资源、冻结、扫描、层与片段仍按当前配置。');
   }
+  function showSourceLevelResult(apply:()=>void){
+    try{apply();}catch(cause){const error=cause as Error&{data?:{issues?:{message:string}[]}};const message=error.message??String(error);
+      setErrors(error.data?.issues?.map(issue=>issue.message)??[message]);if(error.data?.issues)notify(message,'error');}
+  }
+  function inheritImportedSource(){showSourceLevelResult(applyImportedGaussianLevel);}
+  function inheritOrcaLevel(){showSourceLevelResult(applyImportedOrcaLevel);}
   function updateMixedBasis(value:GaussianSettings['mixedBasis']){
     if(desktopMode&&committingCapture.current?.intent.purpose==='basis'){
       const live=formalModel.current,next={...live.settings,mixedBasis:value};
@@ -1021,9 +1045,15 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
     useCurrentText(() => {void delivery.run('正在复制输入文件',async()=>{captured.assertCurrent();await copyPlainText(captured.text);captured.assertCurrent();workspaceSurface?.onPreparedInput({engine:'gaussian',name:`${captured.name||'gaussian_input'}.gjf`,text:captured.text,outcome:'copied'});notify('输入文件已复制。');}).catch(cause=>{try{captured.assertCurrent();}catch{return;}setErrors([cause instanceof Error?cause.message:'剪贴板不可用，请在编辑器全选复制，或直接下载GJF。']);});},captured.text,captured.stale);
   }
 
-  const previewResult=gaussianLayerError||sharedGaussian.errors.length?{text:'',errors:[...(gaussianLayerError?[gaussianLayerError]:[]),...sharedGaussian.errors]}:previewGaussian(request);
-  const previewText=humanizeValidation(previewResult.text,request);
-  const preview=foldCoordinates&&files.geometry==='explicit'?foldPreviewCoordinates(previewText,structure?.atoms.length??0):previewText;
+  const previewResult = useMemo(() => {
+    if (!inputPresentationActive || engine !== 'gaussian') return { text: '', errors: [] };
+    const issues = [...(gaussianLayerError ? [gaussianLayerError] : []), ...sharedGaussian.errors];
+    return issues.length ? { text: '', errors: issues } : previewGaussian(request);
+  }, [inputPresentationActive, engine, gaussianLayerError, sharedGaussian.errors, request]);
+  const previewText = useMemo(() => previewResult.text ? humanizeValidation(previewResult.text, request) : '', [previewResult.text, request]);
+  const preview = useMemo(() => foldCoordinates && files.geometry === 'explicit'
+    ? foldPreviewCoordinates(previewText, structure?.atoms.length ?? 0) : previewText,
+  [foldCoordinates, files.geometry, previewText, structure?.atoms.length]);
   const progress = Math.round((step + 1) / 4 * 100);
 
   function chooseSystemName(value:string){systemNameTouched.current=true;setSourceName(value);if(!nameTouched.current)setJobName(taskStem(value,settings.task,settings.method,settings.xtb?.level,settings));if(!titleTouched.current)setTitle(defaultTitle(value,settings.task,settings.method,settings));}
@@ -1122,59 +1152,336 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
     setOutput('');setGeneratedName('');setGeneratedSignature('');setEditorDirty(false);setOrcaDirty(false);setErrors([]);setNotice(null);setPickerRequest(null);setInheritanceOpen(false);setSourcePanelDismissed(false);validation.reset();setInputResetSerial(value=>value+1);
     return true;
   }
-  function applyMcpConfiguration(configured:ConfigureCalculationResult){
-    cancelInputDraftOperations();
-    inputDraftTouched.current=true;
-    if(configured.engine==='gaussian'&&configured.gaussianDraft){
-      const g=configured.gaussianDraft;
-      setEngine('gaussian');engineLive.current='gaussian';
-      setSettings(structuredClone(g.settings));
-      setFiles(structuredClone(g.files));
-      setCharge(g.charge);setMultiplicity(g.multiplicity);setStateConfirmed(g.stateConfirmed);
-      setFrequencyConfirmed(g.frequencyConfirmed);
-      setCores(g.cores);setMemory(g.memory);setResourcesConfirmed(g.resourcesConfirmed);
-      setSourceName(g.sourceName);setJobName(g.jobName);setTitle(g.title);
-      nameTouched.current=Boolean(g.naming?.nameTouched);
-      titleTouched.current=Boolean(g.naming?.titleTouched);
-      systemNameTouched.current=Boolean(g.naming?.systemNameTouched);
-      touched.current=new Set(g.touched??[]);
-      setOutput(g.output);setGeneratedName(g.generatedName);setGeneratedSignature(g.generatedSignature);
-      setEditorDirty(false);setStep(g.step);setErrors([]);validation.reset();
-      formalModel.current={...formalModel.current,settings:structuredClone(g.settings),files:structuredClone(g.files),charge:g.charge,multiplicity:g.multiplicity,stateConfirmed:g.stateConfirmed,frequencyConfirmed:g.frequencyConfirmed};
-    }else if(configured.engine==='orca'&&configured.orcaDraft){
-      const o=configured.orcaDraft;
-      const restoredReq=restoredOrcaProjectRequest(o,formalInputStructure(sessionStore.getSnapshot().draft.structure));
-      orcaInitialized.current=true;
-      setEngine('orca');engineLive.current='orca';
-      orcaLive.current=restoredReq;setOrcaRequest(restoredReq);
-      orcaEffectiveLive.current=restoredReq;setOrcaEffectiveRequest(restoredReq);
-      orcaNamingPolicy.current={...(o.naming??{systemNameTouched:false,outputNameTouched:false,titleTouched:false})};
-      setOrcaGeneratedDrafts(structuredClone(configured.orcaGeneratedDrafts??{}));
-      setOrcaDirty(false);setOrcaStep(o.step);
-      setCharge(o.charge);setMultiplicity(o.multiplicity);setStateConfirmed(o.electronicStateConfirmed);
-      setErrors([]);validation.reset();
-    }
-  }
   const getAdvancedInputTemplate=()=>{if(inputRecoveryIssues[engineLive.current])throw Error('当前输入草稿尚未恢复，请返回输入页处理。');return snapshotAdvancedInputTemplate({hasInputTask:Boolean(workspaceLive.current?.inputTaskId),engine:engineLive.current,gaussian:latestGaussian.current.request,orca:orcaEffectiveLive.current});};
+  const [mcpDraftOwner]=useState(()=>crypto.randomUUID());
+  const mcpDraftStamp=useRef({version:0,gaussian:'',orca:'',task:workspaceSurface?.inputTaskId});
+  const mcpStamp=mcpDraftStamp.current;
+  if(mcpStamp.gaussian!==gaussianDraftSignature||mcpStamp.orca!==orcaDraftSignature||mcpStamp.task!==workspaceSurface?.inputTaskId){
+    mcpStamp.gaussian=gaussianDraftSignature;mcpStamp.orca=orcaDraftSignature;mcpStamp.task=workspaceSurface?.inputTaskId;mcpStamp.version++;
+  }
+  function inputVersion(){return `${mcpDraftOwner}:${sessionStore.getSnapshot().revision}:${mcpDraftStamp.current.version}`;}
+  const agentWriting=useRef(false),agentPersistence=useRef(()=>{}),renderInputVersion=inputVersion();
+  agentPersistence.current=()=>{
+    const workspace=workspaceLive.current;
+    if(workspace&&!inputRecoveryIssues.gaussian)workspace.onDraftState('gaussian',JSON.parse(gaussianDraftSignature),
+      editorDirty||initialDraftSignatures.current.gaussian!==gaussianDraftSignature,true);
+    if(workspace&&!inputRecoveryIssues.orca)workspace.onDraftState('orca',JSON.parse(orcaDraftSignature),
+      orcaDirty||initialDraftSignatures.current.orca!==orcaDraftSignature,true);
+    publishLiveInputVersion(sessionStore,inputVersion());
+  };
+  useLayoutEffect(()=>{if(!agentWriting.current)publishLiveInputVersion(sessionStore,renderInputVersion);},[sessionStore,renderInputVersion]);
+  function commitAgentDraft(action:()=>void){
+    const startingVersion=inputVersion();
+    agentWriting.current=true;
+    try{action();}
+    finally{agentWriting.current=false;if(inputVersion()!==startingVersion)agentPersistence.current();}
+  }
+  function assertAgentDraft(expected?:string,writing=false){
+    const current=inputVersion();
+    if(expected!==undefined&&expected!==current)throw toolError('DRAFT_CONFLICT','输入草稿有新变化，请重新读取后重试。',{draftVersion:current});
+    if(inputRecoveryIssues[engineLive.current])throw Error(inputRecoveryIssues[engineLive.current]?.message);
+    if(writing&&(busy||builderDirty||captureIntent.current||modal||generatingInput.current||submittingExternal.current||orcaAgentEditor.current?.busy()||delivery.isBusy()||batchSavingRef.current||sessionStore.hasTransaction?.()))
+      throw toolError('INPUT_BUSY','当前有输入操作或模型草稿正在处理。');
+  }
+  function agentTemplate(expected?:string):AdvancedInputTemplate{
+    assertAgentDraft(expected);
+    const sources=workspaceLive.current?.getCurrentSources();
+    if(engineLive.current==='gaussian')return {engine:'gaussian',request:{...latestGaussian.current.request,inputSources:sources}};
+    const raw=projectOrcaTaskStructure({...orcaLive.current,inputSources:sources});
+    const projected=applySharedOrcaConstraints(raw.structure,raw.settings,sessionStore.getSnapshot().sharedConstraints);
+    return {engine:'orca',request:{...raw,settings:projected.settings}};
+  }
+  function readAgentDraft():InputDraftView{
+    const document=sessionStore.getSnapshot(),engine=engineLive.current;
+    const base={draftVersion:inputVersion(),documentId:document.id,documentRevision:document.revision};
+    if(engine==='gaussian'){
+      const {request,output,generatedName,generatedSignature,editorDirty}=latestGaussian.current;
+      const {structure:_structure,inputSources:_sources,title:_title,...parameters}=request;
+      const filename=`${generatedName||request.name}.gjf`;
+      return {...base,engine,parameters,configuration:writableInputConfiguration(engine,parameters),step,files:output?[{name:filename,text:output,role:'input'}]:[],
+        editedFiles:editorDirty?[filename]:[],stale:!!output&&jobSignature(request)!==generatedSignature,issues:inputRecoveryIssues.gaussian};
+    }
+    const raw=projectOrcaTaskStructure(orcaLive.current),draft=orcaGeneratedDrafts[raw.settings.task];
+    const projection=applySharedOrcaConstraints(raw.structure,raw.settings,document.sharedConstraints);
+    const {structure:_structure,inputSources:_sources,title:_title,...parameters}={...raw,settings:projection.settings};
+    return {...base,engine,parameters,configuration:writableInputConfiguration(engine,parameters),step:orcaStep,files:draft?.files??[],editedFiles:draft?.editedNames??[],
+      stale:!!draft&&draft.sourceSignature!==orcaGeneratedSource({...raw,settings:projection.settings}),issues:inputRecoveryIssues.orca??draft?.issues};
+  }
+  function requireAgentReplacement(replaceEdited:boolean){
+    const view=readAgentDraft();
+    if(view.editedFiles.length&&view.step===3&&!replaceEdited)
+      throw toolError('INPUT_EDITED','当前输入有手工改动。请明确指定 replaceEdited 后再替换。',{files:view.editedFiles});
+  }
+  const agentApply=useRef<(configuration:InputDraftConfiguration)=>void>(()=>{});
+  agentApply.current=(configuration)=>{
+    const {electronicState,settings:patch}=configuration;
+    inputDraftTouched.current=true;
+    if(electronicState){
+      const {charge:q,multiplicity:m,confirmed}=electronicState;
+      sharedElectronicDraft.replace({charge:q,multiplicity:m},confirmed);
+      if(!acceptBaseElectronicEdit(q,m))throw Error('当前模型的电子态未提交。');
+      setCharge(q);setMultiplicity(m);setStateConfirmed(confirmed);spinLocked.current=true;
+      if(q!==charge||m!==multiplicity){invalidateElectronicConditions();setFrequencyConfirmed(false);setFiles(previous=>({...previous,compatibilityConfirmed:false}));}
+    }
+    if(configuration.engine==='gaussian'){
+      const gaussianPatch=patch as Partial<GaussianSettings>|undefined;
+      if(gaussianPatch?.mixedBasis){
+        const next={...settings,basis:gaussianPatch.basis??settings.basis,mixedBasis:mergeInputPatch(settings.mixedBasis??defaultMixedBasis(),gaussianPatch.mixedBasis)};
+        const before=captureGaussianBasisState(settings),after=captureGaussianBasisState(next);
+        if(JSON.stringify(before)!==JSON.stringify(after)){
+          sessionStore.synchronizeGaussianBasisState?.(before,captureDesktopAssignments(structure,settings).basis);
+          sessionStore.execute({type:'set-gaussian-basis-state',state:after,assignments:captureDesktopAssignments(structure,next).basis});
+        }
+      }else if(gaussianPatch?.basis!==undefined){
+        // The next electronic-state publication can revisit the Store's basis.
+        // Commit this native basis choice before its projection runs.
+        const next=applyGaussianBasisTransition(sessionStore,structure,settings,{type:'basis',basis:gaussianPatch.basis});
+        setSettings(changedConditions(next,['basis','mixedBasis']));
+      }
+      if(gaussianPatch?.method!==undefined&&gaussianPatch.method!==settings.method)chooseMethod(gaussianPatch.method);
+      if(gaussianPatch){
+        const {taskOptions,...level}=gaussianPatch;
+        const keys=(Object.keys(level) as (keyof typeof level)[]).sort((a,b)=>Number(b==='parameterDrafts')-Number(a==='parameterDrafts'));
+        for(const key of keys)touched.current.add(key);
+        if(taskOptions)touched.current.add('taskOptions');
+        setSettings(previous=>{
+          let next=previous;
+          for(const key of keys){
+            if(key==='solvation'){next=applyGaussianField(next,key,level.solvation);continue;}
+            if(key==='parameterDrafts'&&level.parameterDrafts){
+              const effective=gaussianParameterDraftPatch(next,level.parameterDrafts);
+              for(const field of Object.keys(effective) as (keyof GaussianSettings)[])next=applyGaussianField(next,field,effective[field]);
+              continue;
+            }
+            const base={...next,advanced:next.advanced??defaultAdvanced(next.task),mixedBasis:next.mixedBasis??defaultMixedBasis(),xtb:next.xtb??defaultXtb()};
+            if(key==='xtb'&&level.xtb?.scriptConfirmed===undefined&&['scriptPath','executable','level','entryBasis'].some(field=>Object.hasOwn(level.xtb??{},field))){
+              next=applyGaussianField(next,'xtb',{...base.xtb,...level.xtb,scriptConfirmed:false});continue;
+            }
+            const value=mergeInputPatch(base,{[key]:level[key]})[key];next=applyGaussianField(next,key,value);
+          }
+          if(level.solvent!==undefined&&level.solvation===undefined)next=applyGaussianField(next,'solvation',undefined);
+          else if(level.solventModel!==undefined&&level.solventModel!==previous.solventModel)
+            next=applyGaussianField(next,'solvation',solventSelectionForModelChange({engine:'gaussian',selection:previous.solvation,currentModel:previous.solventModel,nextModel:level.solventModel}));
+          if(taskOptions)next=applyGaussianField(next,'taskOptions',mergeInputPatch(next.taskOptions??defaultTaskOptions(),taskOptions));
+          return next;
+        });
+        setFiles(previous=>({...previous,compatibilityConfirmed:false}));setFrequencyConfirmed(false);
+      }
+      if(configuration.files){
+        const {compatibilityConfirmed,readCheckpoint,...filePatch}=configuration.files;
+        if(filePatch.geometry!==undefined&&!electronicState)setStateConfirmed(false);
+        if(filePatch.geometry!==undefined||filePatch.hessian!==undefined||filePatch.oldCheckpoint!==undefined)setFrequencyConfirmed(false);
+        setFiles(previous=>{
+          let next=previous;
+          if(readCheckpoint===true)next=applyGaussianFileField(next,'readCheckpoint',true,settings.task);
+          // Apply Hessian after guess flags; Freq=ReadFC follows the normal editor transition.
+          const {hessian,...fields}=filePatch;
+          for(const key of Object.keys(fields) as (keyof typeof fields)[])next=applyGaussianFileField(next,key,fields[key],settings.task);
+          if(hessian!==undefined)next=applyGaussianFileField(next,'hessian',hessian,settings.task);
+          if(readCheckpoint===false)next=applyGaussianFileField(next,'readCheckpoint',false,settings.task);
+          if(compatibilityConfirmed!==undefined)next=applyGaussianFileField(next,'compatibilityConfirmed',compatibilityConfirmed,settings.task);
+          return next;
+        });
+      }
+      if(configuration.name!==undefined){nameTouched.current=true;setJobName(configuration.name);}
+      if(configuration.cores!==undefined)setCores(configuration.cores);
+      if(configuration.memoryGB!==undefined)setMemory(configuration.memoryGB);
+      if(configuration.resourcesConfirmed!==undefined||configuration.cores!==undefined||configuration.memoryGB!==undefined)setResourcesConfirmed(configuration.resourcesConfirmed===true);
+      if(configuration.frequencyConditionsConfirmed!==undefined)setFrequencyConfirmed(configuration.frequencyConditionsConfirmed);
+      if(step===0||step===1)setStep(2);
+      return;
+    }
+    const current=orcaLive.current,orcaPatch=patch as Partial<OrcaJobRequest['settings']>|undefined;
+    const nextSettings=orcaPatch?mergeInputPatch(current.settings,orcaPatch):current.settings;
+    if(orcaPatch?.parameterDrafts){
+      const effective=orcaParameterDraftPatch(current.settings,orcaPatch.parameterDrafts);
+      Object.assign(nextSettings,{...effective,...(orcaPatch.scf?{scf:mergeInputPatch(effective.scf??current.settings.scf??{},orcaPatch.scf)}:{}),
+        ...(orcaPatch.grid?{grid:orcaPatch.grid}:{})});
+    }
+    if(orcaPatch?.md&&orcaPatch.md.restartConfirmed===undefined)nextSettings.md={...nextSettings.md,restartConfirmed:false};
+    if(orcaPatch?.solvation!==undefined)nextSettings.solvation=orcaPatch.solvation;
+    else if(orcaPatch?.solvent!==undefined)nextSettings.solvation=undefined;
+    else if(orcaPatch?.solventModel!==undefined&&orcaPatch.solventModel!==current.settings.solventModel)
+      nextSettings.solvation=solventSelectionForModelChange({engine:'orca',version:'common',selection:current.settings.solvation,currentModel:current.settings.solventModel,nextModel:orcaPatch.solventModel});
+    const scientific=!!orcaPatch&&['version','method','basis','solvent','solventModel','unrestricted'].some(key=>key in orcaPatch);
+    if(configuration.name!==undefined)orcaNamingPolicy.current={...orcaNamingPolicy.current,outputNameTouched:true};
+    const next:OrcaJobRequest={...current,settings:nextSettings,
+      name:configuration.name??(orcaNamingPolicy.current.outputNameTouched?current.name:orcaTaskStem(current.systemName??orcaImportSystemStem(sourceName),nextSettings)),
+      cores:configuration.cores??current.cores,memoryGB:configuration.memoryGB??current.memoryGB,
+      resourcesConfirmed:configuration.resourcesConfirmed??(configuration.cores!==undefined||configuration.memoryGB!==undefined?false:current.resourcesConfirmed),
+      ...(electronicState?{charge:electronicState.charge,multiplicity:electronicState.multiplicity,electronicStateConfirmed:electronicState.confirmed}:{}),
+      assets:scientific?current.assets.map(asset=>asset.orbitalEvidence?{...asset,orbitalEvidence:{...asset.orbitalEvidence,compatibilityConfirmed:false}}:asset):current.assets};
+    if(configuration.confirmIrcStart!==undefined)next.settings={...next.settings,ircStartEvidence:{confirmed:configuration.confirmIrcStart,context:ircStartContext(projectOrcaTaskStructure(next))}};
+    changeOrca(next);
+    if(orcaStep===0||orcaStep===1)setOrcaStep(2);
+  };
+  const liveAgent=useRef<LiveInputPort>(null!);
+  liveAgent.current={
+    read:readAgentDraft,
+    inherit(expected){
+      assertAgentDraft(expected,true);
+      commitAgentDraft(()=>flushSync(()=>{
+        inputDraftTouched.current=true;
+        if(engineLive.current==='gaussian')applyImportedGaussianLevel();else applyImportedOrcaLevel();
+      }));
+      return liveAgent.current.read();
+    },
+    binaryOutputs(expected){
+      assertAgentDraft(expected);
+      return engineLive.current==='orca'?orcaAgentEditor.current?.binaryOutputs()??[]:[];
+    },
+    configure(submitted,expected,replaceEdited){
+      assertAgentDraft(expected,true);
+      const configuration=changedInputConfiguration(readAgentDraft().configuration,submitted);
+      if(Object.keys(configuration).length===1)return liveAgent.current.read();
+      if(configuration.confirmIrcStart!==undefined&&(configuration.task??orcaLive.current.settings.task)!=='irc')throw Error('请选择 ORCA IRC 任务后确认当前路径起点。');
+      if(configuration.electronicState&&structure){const error=electronicStateInputError(structure.atoms,configuration.electronicState.charge,configuration.electronicState.multiplicity);if(error)throw Error(error);}
+      const switching=configuration.engine!==engineLive.current;
+      if(switching||configuration.task&&configuration.task!==(configuration.engine==='gaussian'?settings.task:orcaLive.current.settings.task))requireAgentReplacement(replaceEdited);
+      if(batchInputSession&&configuration.task&&!batchInputTaskAllowed(configuration.engine,configuration.task))throw Error('当前批量输入工作台不支持选定任务。');
+      commitAgentDraft(()=>{
+        if(switching){let ok=false;flushSync(()=>{ok=switchEngine(configuration.engine);});if(!ok)throw Error('工作台无法切换输入引擎，请查看窗口。');}
+        if(configuration.task){
+          const task=configuration.task;
+          if(configuration.engine==='gaussian'&&task!==formalModel.current.settings.task){if(!agentChooseGaussianTask.current(task as TaskId))throw Error('工作台未切换任务。');}
+          if(configuration.engine==='orca'&&task!==orcaLive.current.settings.task){agentChooseOrcaTask.current(task as OrcaJobRequest['settings']['task']);if(task!==orcaLive.current.settings.task)throw Error('工作台未切换任务。');}
+        }
+        flushSync(()=>agentApply.current(configuration));
+      });
+      return liveAgent.current.read();
+    },
+    preview(expected){
+      const template=agentTemplate(expected),document=sessionStore.getSnapshot(),engine=template.engine;
+      const capability=layerCapabilityFor(engine,template.request.structure);
+      const errors=engine==='gaussian'?sharedGaussian.errors:sharedOrca.errors;
+      const generated=capability||errors.length?{files:[],errors:[...(capability?[capability]:[]),...errors]}:
+        template.engine==='gaussian'?previewGaussian(template.request):buildOrcaCommon(template.request);
+      return {documentId:document.id,documentRevision:document.revision,draftVersion:inputVersion(),engine,...generated};
+    },
+    async generate(expected,replaceEdited){
+      assertAgentDraft(expected,true);requireAgentReplacement(replaceEdited);
+      if(batchInputSession)throw Error('请使用 input_batch 为明确选择的结构分别生成输入。');
+      generatingInput.current=true;setGenerationBusy(true);
+      try{
+        if(engineLive.current==='gaussian'){
+          const prepared=await pausedGaussianRequest(true);
+          const problems=validateJob(prepared.request);
+          if(problems.length)throw toolError('INPUT_VALIDATION','Gaussian 输入需要补充或修正。',{issues:problems});
+          prepared.assertCurrent();commitAgentDraft(()=>flushSync(()=>commitGaussianCapture(prepared.request)));
+        }else{
+          const prepared=await pausedOrcaRequest(projectOrcaTaskStructure(orcaLive.current),true),built=buildOrcaCommon(prepared.request);
+          if(!built.files.length||built.issues.some(issue=>issue.severity==='error'))throw toolError('INPUT_VALIDATION','ORCA 输入需要补充或修正。',{issues:built.issues});
+          prepared.assertCurrent();commitAgentDraft(()=>flushSync(()=>{
+            acceptOrcaGeneratedDraft(prepared.request.settings.task,createOrcaGeneratedDraft(prepared.request,built));setOrcaStep(3);
+          }));
+        }
+        return liveAgent.current.read();
+      }finally{generatingInput.current=false;setGenerationBusy(false);}
+    },
+    edit(expected,fileName,text){
+      assertAgentDraft(expected,true);
+      if(batchInputSession)throw Error('当前批量工作台生成的文件按独立结构编辑。');
+      const view=readAgentDraft(),index=view.files.findIndex(file=>file.name===fileName&&file.role==='input');
+      if(index<0)throw Error('当前草稿没有指定的可编辑主输入文件。');
+      commitAgentDraft(()=>flushSync(()=>{
+        inputDraftTouched.current=true;
+        if(view.engine==='gaussian'){setOutput(text);setEditorDirty(true);setStep(3);}
+        else{const task=orcaLive.current.settings.task;acceptOrcaGeneratedDraft(task,editOrcaGeneratedFile(orcaGeneratedDrafts[task]!,index,text));setOrcaStep(3);}
+      }));
+      return liveAgent.current.read();
+    },
+    bindEndpoints(expected,endpoints){
+      assertAgentDraft(expected,true);
+      const current=orcaLive.current;
+      if(engineLive.current!=='orca'||current.settings.task!=='neb')throw Error('请选择 ORCA NEB 输入任务。');
+      const sources=workspaceLive.current?.getCurrentSources()??[];
+      const exact=(binding:typeof endpoints.reactant)=>{
+        const source=sources.find(item=>item.documentId===binding.modelRef&&item.revision===binding.revision);
+        if(!source)throw toolError('SOURCE_CHANGED','端点没有匹配的当前模型版本。',{modelRef:binding.modelRef,revision:binding.revision});
+        return source;
+      };
+      const reactant=exact(endpoints.reactant),product=exact(endpoints.product),guess=endpoints.tsGuess?exact(endpoints.tsGuess):null;
+      const neb:OrcaJobRequest['settings']['neb']={...current.settings.neb,reactantSource:reactant,productSource:product,product:product.structure,
+        tsGuessSource:guess,tsGuess:guess?.structure??null,mapping:[],mappingConfirmed:endpoints.confirm===true,tsGuessMapping:[],
+        tsGuessMappingConfirmed:endpoints.confirm===true&&!!guess,productOrderContext:undefined,tsGuessOrderContext:undefined};
+      const next={...current,settings:{...current.settings,neb}};
+      if(endpoints.confirm){
+        const writer=projectOrcaTaskStructure({...next,inputSources:sources});
+        next.settings.neb={...neb,productOrderContext:orcaNebOrderContext(writer,'product'),
+          tsGuessOrderContext:guess?orcaNebOrderContext(writer,'tsGuess'):undefined};
+        writer.settings=next.settings;
+        const errors=buildOrcaCommon(writer).issues.filter(issue=>issue.severity==='error'&&/neb\.(mapping|reactant|product|tsGuess)/.test(issue.field));
+        if(errors.length)throw toolError('ENDPOINT_VALIDATION','端点对应关系或电子态需要核对。',{issues:errors});
+      }
+      commitAgentDraft(()=>flushSync(()=>{inputDraftTouched.current=true;changeOrca(next);setOrcaStep(2);}));
+      return liveAgent.current.read();
+    },
+    scan(expected,rows){
+      assertAgentDraft(expected,rows!==undefined);
+      if(rows===undefined){
+        const engine=engineLive.current,settings=engine==='gaussian'?formalModel.current.settings:orcaLive.current.settings;
+        return {engine,task:settings.task,draftVersion:inputVersion(),rows:engine==='gaussian'?gaussianScanRead(formalModel.current.settings,structure):
+          orcaLive.current.settings.constraints.filter(row=>row.action==='scan').map(row=>({...row,...(row.values===undefined?{points:row.steps}:{})}))};
+      }
+      if(!structure)throw Error('扫描坐标需要当前模型的完整结构。');
+      if(engineLive.current==='gaussian'){
+        const options=gaussianScanOptions(formalModel.current.settings,structure,rows);
+        commitAgentDraft(()=>flushSync(()=>{inputDraftTouched.current=true;updateTaskOptions(options);setStep(2);}));
+      }else{
+        const current=orcaLive.current,next=orcaScanSettings(current.settings,structure,rows);
+        commitAgentDraft(()=>flushSync(()=>{inputDraftTouched.current=true;changeOrca({...current,settings:next});setOrcaStep(2);}));
+      }
+      return liveAgent.current.read();
+    },
+    assets(expected,edit){
+      assertAgentDraft(expected,!!edit);
+      if(engineLive.current!=='orca')throw Error('ORCA 的 HESS、GBW 和重启依赖须在 ORCA 输入工作台设置。');
+      if(edit){
+        const current=orcaLive.current,next=editOrcaInputAsset(current,edit),editor=orcaAgentEditor.current;
+        const releaseUnusedBinary=(id:string)=>{
+          if(!Object.values(orcaGeneratedDrafts).some(draft=>draft?.assets.some(asset=>asset.id===id)))editor?.removeBinary(id);
+        };
+        if(edit.action==='import'&&edit.asset.kind==='gbw'&&!editor)throw Error('ORCA 编辑器暂未准备好接收二进制文件。');
+        commitAgentDraft(()=>flushSync(()=>{
+          inputDraftTouched.current=true;changeOrca(next);setOrcaStep(2);
+          if(edit.action==='import'&&edit.asset.kind==='gbw')editor?.storeBinary(edit.asset.id,edit.file);
+          if(edit.action==='import'&&edit.replace){const prior=current.assets.find(asset=>asset.name.toLowerCase()===edit.asset.name.toLowerCase());if(prior)releaseUnusedBinary(prior.id);}
+          if(edit.action==='remove')releaseUnusedBinary(edit.assetId);
+        }));
+      }
+      const current=orcaLive.current,editor=orcaAgentEditor.current;
+      return {draftVersion:inputVersion(),documentId:sessionStore.getSnapshot().id,engine:'orca',task:current.settings.task,
+        assets:orcaInputAssetDetails(projectOrcaTaskStructure(current)).map(asset=>({...asset,retainedBinary:editor?.hasBinary(asset.id)===true}))};
+    },
+    template:agentTemplate,
+    external(expected,fileName){
+      assertAgentDraft(expected,true);
+      if(batchInputSession)throw Error('批量文件需要逐个选择主输入。');
+      if(engineLive.current==='orca'){
+        if(!orcaAgentEditor.current)throw Error('ORCA 编辑器暂未就绪。');
+        return orcaAgentEditor.current.external(fileName);
+      }
+      const current=latestGaussian.current,name=`${current.generatedName||current.request.name}.gjf`;
+      if(fileName!==undefined&&fileName!==name)throw Error('当前草稿没有指定的主输入文件。');
+      return gaussianExternalInputDraft(current.output,name);
+    }
+  };
+  const agentChooseGaussianTask=useRef((_task:TaskId)=>false);
+  agentChooseGaussianTask.current=(task)=>{let ok=false;flushSync(()=>{ok=chooseTask(task);});return ok;};
+  const agentChooseOrcaTask=useRef((_task:OrcaJobRequest['settings']['task'])=>{});
+  agentChooseOrcaTask.current=(task)=>flushSync(()=>{const current=orcaLive.current;changeOrca({...current,settings:{...current.settings,task}});setOrcaStep(2);});
+  useEffect(()=>registerLiveInput(sessionStore,{
+    read:()=>liveAgent.current.read(),configure:(...args)=>liveAgent.current.configure(...args),preview:(...args)=>liveAgent.current.preview(...args),
+    inherit:(...args)=>liveAgent.current.inherit(...args),binaryOutputs:(...args)=>liveAgent.current.binaryOutputs(...args),
+    generate:(...args)=>liveAgent.current.generate(...args),edit:(...args)=>liveAgent.current.edit(...args),bindEndpoints:(...args)=>liveAgent.current.bindEndpoints(...args),
+    scan:(...args)=>liveAgent.current.scan(...args),assets:(...args)=>liveAgent.current.assets(...args),
+    template:(...args)=>liveAgent.current.template(...args),external:(...args)=>liveAgent.current.external(...args)
+  }),[sessionStore]);
   // Shell calls this only after beginInputTask has archived the damaged drafts.
   const resetStartedInputTask=()=>resetInputDraft('gaussian','new-task');
-  function captureMcpSubmissionDraft(preferredEngine?:'gaussian'|'orca'):ExternalInputDraft|null{
-    if(!workspaceLive.current?.inputTaskId||batchInputSession||builderDirty)return null;
-    const activeEng=engineLive.current;
-    if(preferredEngine&&preferredEngine!==activeEng)return null;
-    if(inputRecoveryIssues[activeEng])return null;
-    if(activeEng==='gaussian'){
-      if(step!==3)return null;
-      const current=latestGaussian.current;
-      if(!current.output.trim()||stale)return null;
-      return gaussianExternalInputDraft(current.output,current.generatedName||current.request.name);
-    }
-    if(orcaStep!==3||orcaDirty)return null;
-    return orcaDraftCapture.current?.()??null;
-  }
-  const inputController=useRef({history:inputResetHistory,canUndo:()=>canResetHistory('undo'),canRedo:()=>canResetHistory('redo'),reset:resetStartedInputTask,cancel:cancelInputDraftOperations,isBusy:()=>busy||batchSavingRef.current||delivery.isBusy(),hasUnappliedBuilderDraft:()=>builderDirty,getAdvancedInputTemplate,applyMcpConfiguration,captureMcpSubmissionDraft});
-  inputController.current={history:inputResetHistory,canUndo:()=>canResetHistory('undo'),canRedo:()=>canResetHistory('redo'),reset:resetStartedInputTask,cancel:cancelInputDraftOperations,isBusy:()=>busy||batchSavingRef.current||delivery.isBusy(),hasUnappliedBuilderDraft:()=>builderDirty,getAdvancedInputTemplate,applyMcpConfiguration,captureMcpSubmissionDraft};
-  useEffect(()=>{const publish=workspaceLive.current?.onInputController;if(!publish)return;publish({history:kind=>inputController.current.history(kind),canUndo:()=>inputController.current.canUndo(),canRedo:()=>inputController.current.canRedo(),reset:()=>inputController.current.reset(),cancel:()=>inputController.current.cancel(),isBusy:()=>inputController.current.isBusy(),hasUnappliedBuilderDraft:()=>inputController.current.hasUnappliedBuilderDraft(),getAdvancedInputTemplate:()=>inputController.current.getAdvancedInputTemplate(),applyMcpConfiguration:configured=>inputController.current.applyMcpConfiguration(configured),captureMcpSubmissionDraft:eng=>inputController.current.captureMcpSubmissionDraft(eng)});return()=>publish(null);},[workspaceSurface?.onInputController]);
+  const inputController=useRef({history:inputResetHistory,canUndo:()=>canResetHistory('undo'),canRedo:()=>canResetHistory('redo'),reset:resetStartedInputTask,cancel:cancelInputDraftOperations,isBusy:()=>busy||batchSavingRef.current||delivery.isBusy(),getAdvancedInputTemplate});
+  inputController.current={history:inputResetHistory,canUndo:()=>canResetHistory('undo'),canRedo:()=>canResetHistory('redo'),reset:resetStartedInputTask,cancel:cancelInputDraftOperations,isBusy:()=>busy||batchSavingRef.current||delivery.isBusy(),getAdvancedInputTemplate};
+  useEffect(()=>{const publish=workspaceLive.current?.onInputController;if(!publish)return;publish({history:kind=>inputController.current.history(kind),canUndo:()=>inputController.current.canUndo(),canRedo:()=>inputController.current.canRedo(),reset:()=>inputController.current.reset(),cancel:()=>inputController.current.cancel(),isBusy:()=>inputController.current.isBusy(),getAdvancedInputTemplate:()=>inputController.current.getAdvancedInputTemplate()});return()=>publish(null);},[workspaceSurface?.onInputController]);
   const atSoftwareChoice=(engine==='orca'?orcaStep:step)===0;
   const workflowFooter=<>{desktopMode&&!atSoftwareChoice&&<EngineInputPreview engine="gaussian" exportPage={step===3} gaussianRequest={step===3?undefined:request} capabilityError={step===3?undefined:gaussianLayerError} text={step===3?output:previewText} atomCount={files.geometry==='explicit'?structure?.atoms.length??0:0} issues={step===3?[]:previewResult.errors.map(issue=>humanizeValidation(issue,request))} foldCoordinates={foldCoordinates} onFoldCoordinates={setFoldCoordinates} manualText={editorDirty}/>}
 {!atSoftwareChoice&&<WorkflowNavigation engine="gaussian" step={step} busy={generationBusy} onBack={()=>{validation.reset();setStep(previous=>Math.max(0,previous-1));setErrors([]);}} onNext={proceed} onGenerate={()=>void generate()}/>} </>;
@@ -1223,7 +1530,7 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
 
         <WorkbenchShell desktop={desktopMode} onToolHost={setToolHost} externalToolHost={workspaceSurface?.sharedLayout}>
           {inputSurface(<>
-          {desktopMode&&<div className="shared-orca-form" hidden={engine!=='orca'||atSoftwareChoice} style={engine!=='orca'||atSoftwareChoice?{display:'none'}:undefined}><OrcaWorkbench electronicRawText={sharedElectronicDraft.present?{charge:sharedElectronicDraft.draft.chargeText,multiplicity:sharedElectronicDraft.draft.multiplicityText}:{charge:Number.isFinite(charge)?String(charge):'',multiplicity:Number.isFinite(multiplicity)?String(multiplicity):''}} onElectronicRawTextChange={editSharedElectronicField} onElectronicRawTextCommit={commitSharedElectronicField} onBeforeElectronicStateConfirm={confirmSharedElectronicPair} runInputDelivery={delivery.run} active={engine==='orca'&&(workspaceSurface?.inputActive??true)} generatedDraft={orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]} onGeneratedDraftChange={acceptOrcaGeneratedDraft} onSubmitExternalInput={workspaceSurface?.onSubmitExternalInput} onCaptureExternalDraft={acceptOrcaDraftCapture} onPreparedInput={workspaceSurface?.onPreparedInput} onResetElectronicState={resetElectronicState} onBeforeLocalReset={recordLocalReset} onGenerateBatch={batchInputSession?(request,guard)=>deliverBatchInputs({engine:'orca',request},guard):undefined} onFreezeEnabledChange={setModelFreezesEnabled} key={inputResetSerial} onExitMultiscale={exitOrcaMultiscale} namingPolicy={orcaNamingPolicy.current} onNamingPolicyChange={acceptOrcaNamingPolicy} embedded onInheritLevel={inheritOrcaLevel} canInheritLevel={!!importedStructure.current?.orcaSource} onResetTask={resetCurrentTask} sharedConstraints={sharedConstraints} sourceCandidates={workspaceSurface?.sources} onRequestSourcePick={workspaceSurface?.onRequestSourcePick} onImportSources={workspaceSurface?.onImportSources} request={workspaceOrcaRequest} capabilityError={orcaLayerError} inputLayerEditor={engine==='orca'?layerEditor():null} onRequestSelection={requestTaskSelection} workflowStep={orcaStep} onWorkflowStep={setOrcaStep} onNavigationReady={acceptOrcaNavigation} inputPreview={<EngineInputPreview engine="orca" exportPage={orcaStep===3} capabilityError={orcaStep===3?undefined:orcaLayerError||sharedOrca.errors.join('\n')||null} orcaRequest={orcaStep===3?undefined:orcaEffectiveRequest} snapshotFiles={orcaStep===3?orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.files:undefined} minimumVersionLabel={orcaStep===3&&!orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.editedNames.length?(orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.minimumVersion==='5'?'5.0.3+':orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.minimumVersion?'≥'+orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.minimumVersion:undefined):undefined} atomCount={structure?.atoms.length??0} foldCoordinates={foldCoordinates} onFoldCoordinates={setFoldCoordinates}/>} selected={atomSelection} onSelectionChange={setAtomSelection} onChange={changeOrca} onGaussian={()=>void switchEngine('gaussian')} onDirtyChange={setOrcaDirty} onEffectiveRequest={acceptOrcaEffectiveRequest} beforeExport={pausedOrcaRequest}/></div>}
+          {desktopMode&&<div className="shared-orca-form" hidden={engine!=='orca'||atSoftwareChoice} style={engine!=='orca'||atSoftwareChoice?{display:'none'}:undefined}><OrcaWorkbench electronicRawText={sharedElectronicDraft.present?{charge:sharedElectronicDraft.draft.chargeText,multiplicity:sharedElectronicDraft.draft.multiplicityText}:{charge:Number.isFinite(charge)?String(charge):'',multiplicity:Number.isFinite(multiplicity)?String(multiplicity):''}} onElectronicRawTextChange={editSharedElectronicField} onElectronicRawTextCommit={commitSharedElectronicField} onBeforeElectronicStateConfirm={confirmSharedElectronicPair} runInputDelivery={delivery.run} active={engine==='orca'&&(workspaceSurface?.inputActive??true)} generatedDraft={orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]} onGeneratedDraftChange={acceptOrcaGeneratedDraft} onAgentEditor={acceptOrcaAgentEditor} onSubmitExternalInput={workspaceSurface?.onSubmitExternalInput} onPreparedInput={workspaceSurface?.onPreparedInput} onResetElectronicState={resetElectronicState} onBeforeLocalReset={recordLocalReset} onGenerateBatch={batchInputSession?(request,guard)=>deliverBatchInputs({engine:'orca',request},guard):undefined} onFreezeEnabledChange={setModelFreezesEnabled} key={inputResetSerial} onExitMultiscale={exitOrcaMultiscale} namingPolicy={orcaNamingPolicy.current} onNamingPolicyChange={acceptOrcaNamingPolicy} embedded onInheritLevel={inheritOrcaLevel} canInheritLevel={!!importedStructure.current?.orcaSource} onResetTask={resetCurrentTask} sharedConstraints={sharedConstraints} sourceCandidates={workspaceSurface?.sources} onRequestSourcePick={workspaceSurface?.onRequestSourcePick} onImportSources={workspaceSurface?.onImportSources} request={workspaceOrcaRequest} capabilityError={orcaLayerError} inputLayerEditor={engine==='orca'?layerEditor():null} onRequestSelection={requestTaskSelection} workflowStep={orcaStep} onWorkflowStep={setOrcaStep} onNavigationReady={acceptOrcaNavigation} inputPreview={<EngineInputPreview engine="orca" exportPage={orcaStep===3} capabilityError={orcaStep===3?undefined:orcaLayerError||sharedOrca.errors.join('\n')||null} orcaRequest={inputPresentationActive&&engine==='orca'&&orcaStep!==3?orcaEffectiveRequest:undefined} snapshotFiles={orcaStep===3?orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.files:undefined} minimumVersionLabel={orcaStep===3&&!orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.editedNames.length?(orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.minimumVersion==='5'?'5.0.3+':orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.minimumVersion?'≥'+orcaGeneratedDrafts[workspaceOrcaRequest.settings.task]?.minimumVersion:undefined):undefined} atomCount={structure?.atoms.length??0} foldCoordinates={foldCoordinates} onFoldCoordinates={setFoldCoordinates}/>} selected={atomSelection} onSelectionChange={setAtomSelection} onChange={changeOrca} onGaussian={()=>void switchEngine('gaussian')} onDirtyChange={setOrcaDirty} onEffectiveRequest={acceptOrcaEffectiveRequest} beforeExport={pausedOrcaRequest}/></div>}
           <WorkflowContentCard fitContent={atSoftwareChoice||step===1} hidden={engine!=='gaussian'&&!atSoftwareChoice} style={engine!=='gaussian'&&!atSoftwareChoice?{display:'none'}:undefined} className={!atSoftwareChoice && step === 3 ? 'editor-card' : ''} title={STEP_NAMES[gaussianDisplayStep]} step={gaussianDisplayStep} footer={workflowFooter}>
             {errors.length > 0 && <DismissibleNotice className="error-box" identity={errors}><Info size={16} /><div>{errors.map((error, i) => <p key={i}>{error}</p>)}</div></DismissibleNotice>}
 
@@ -1289,8 +1596,8 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
               {!desktopMode&&structure&&<StructureSummary structure={structure} reference={files.geometry!=='explicit'}/>}
               <div className="structure-visual-content">
                 {(desktopMode||files.geometry==='explicit')?
-                  <Workspace {...sharedWorkspacePresentation} {...(desktopMode?{store:sessionStore,realtime:true,toolHost:workspaceSurface?.sharedLayout?workspaceSurface.toolHost:toolHost,sharedLayout:workspaceSurface?.sharedLayout,toolbarHost:workspaceSurface?.toolbarHost,documentName:workspaceSurface?.entry.label,documentNameOrigin:workspaceSurface?.entry.labelOrigin,onSavedName:workspaceSurface?.onSavedName,onActivate:workspaceSurface?.onActivate,onViewportState:workspaceSurface?.onViewportState,initialCameraView:workspaceSurface?.initialCameraView,initialViewTransform:workspaceSurface?.initialViewTransform,onViewportController:workspaceSurface?.onViewportController,onXtbController:workspaceSurface?.onXtbController,viewportDockTarget:workspaceSurface?.viewportDockTarget,displaySettings:workspaceSurface?.displaySettings,onDisplaySettingsChange:workspaceSurface?.onDisplaySettingsChange,onOpenSettings:workspaceSurface?.onOpenSettings,sharedShowAxes:workspaceSurface?.sharedShowAxes,onSharedShowAxesChange:workspaceSurface?.onSharedShowAxesChange,toolIntent:workspaceSurface?.toolIntent,workspaceModule:workspaceSurface?.module,onToolIntentChange:workspaceSurface?.onToolIntentChange,viewportActive:workspaceSurface?.viewportActive,legendVisible:workspaceSurface?.legendVisible,layoutActions:workspaceSurface?.layoutActions,inputFreezeDisplay:workspaceSurface?.module==='modeling'?undefined:engine==='gaussian'?gaussianInputFreezeDisplay(structure,settings,sharedConstraints):orcaInputFreezeDisplay(structure,orcaRequest.settings,sharedConstraints),jobRequest:engine==='gaussian'?privateRequest:undefined,orcaJobRequest:engine==='orca'?privateOrcaModelRequest:undefined,captureRequest,onCaptureRebase:rebaseTaskSelection,onCaptureConfirm:confirmTaskSelection,onCapturePreview:previewTaskSelection,onCaptureCancel:cancelTaskSelection,onDynamicsController:acceptRuntimeController,documentRuntime:workspaceSurface?.documentRuntime,active:workspaceSurface?.active??true,activationStamp:workspaceSurface?.stamp,assertActivation:workspaceSurface?.assertCurrent,assertActivationIdentity:workspaceSurface?.assertIdentityCurrent,assertRuntimeCurrent:workspaceSurface?.assertRuntimeCurrent,onNewDocument:workspaceSurface?.onNewDocument,onImportFiles:workspaceSurface?.onImportFiles,onImportTwoDFiles:workspaceSurface?.onImportTwoDFiles,onOpenTwoD:workspaceSurface?.onOpenTwoD,twoDActive:workspaceSurface?.twoDActive}:{})} structure={structure} assignments={engine==='orca'?{...captureOrcaAssignments(structure,orcaRequest.settings),layers:layersFor('orca')}:builderAssignments} selected={atomSelection} highlights={engine==='gaussian'?highlights:undefined} openRequest={builderOpenRequest}
-                    {...(desktopMode?{freezeEditingAllowed:workspaceSurface?.freezeEditingAllowed,onOpenStructureLibrary:workspaceSurface?.onOpenStructureLibrary,samplingSphereDraft:workspaceSurface?.samplingSphereDraft,onSamplingSphereRadiusChange:workspaceSurface?.onSamplingSphereRadiusChange,onDisplayProjection:workspaceSurface?.onDisplayProjection,onCipLabelsUsed:workspaceSurface?.onCipLabelsUsed,onLeftToolSurfaceChange:workspaceSurface?.onLeftToolSurfaceChange,advancedModelingRoute:workspaceSurface?.advancedModelingRoute,onAdvancedModelingRouteChange:workspaceSurface?.onAdvancedModelingRouteChange,onAdvancedModelingBack:workspaceSurface?.onAdvancedModelingBack,onDeriveStructure:workspaceSurface?.onDeriveStructure,onWorkspaceHistory:workspaceSurface?.onWorkspaceHistory,workspaceCanUndo:workspaceSurface?.workspaceCanUndo,workspaceCanRedo:workspaceSurface?.workspaceCanRedo,...(workspaceSurface?.entry.pesGroup?{observationOnly:workspaceSurface.pesObservation===true,allowModelEditing:workspaceSurface.pesObservation!==true}:workspaceSurface?.module==='advanced'&&workspaceSurface.entry.conformerGroup?.role!=='initial'||workspaceSurface?.entry.trajectory&&workspaceSurface?.analysisCanvas?{observationOnly:true}:{})}:{})}
+                  <Workspace {...sharedWorkspacePresentation} {...(desktopMode?{store:sessionStore,realtime:true,toolHost:workspaceSurface?.sharedLayout?workspaceSurface.toolHost:toolHost,sharedLayout:workspaceSurface?.sharedLayout,toolbarHost:workspaceSurface?.toolbarHost,documentName:workspaceSurface?.entry.label,documentNameOrigin:workspaceSurface?.entry.labelOrigin,onSavedName:workspaceSurface?.onSavedName,onActivate:workspaceSurface?.onActivate,onViewportState:workspaceSurface?.onViewportState,initialCameraView:workspaceSurface?.initialCameraView,initialViewTransform:workspaceSurface?.initialViewTransform,onViewportController:workspaceSurface?.onViewportController,onViewportImageCapture:workspaceSurface?.onViewportImageCapture,viewportDockTarget:workspaceSurface?.viewportDockTarget,displaySettings:workspaceSurface?.displaySettings,onDisplaySettingsChange:workspaceSurface?.onDisplaySettingsChange,onOpenSettings:workspaceSurface?.onOpenSettings,sharedShowAxes:workspaceSurface?.sharedShowAxes,onSharedShowAxesChange:workspaceSurface?.onSharedShowAxesChange,toolIntent:workspaceSurface?.toolIntent,workspaceModule:workspaceSurface?.module,onToolIntentChange:workspaceSurface?.onToolIntentChange,viewportActive:workspaceSurface?.viewportActive,legendVisible:workspaceSurface?.legendVisible,layoutActions:workspaceSurface?.layoutActions,inputFreezeDisplay:workspaceSurface?.module==='modeling'?undefined:engine==='gaussian'?gaussianInputFreezeDisplay(structure,settings,sharedConstraints):orcaInputFreezeDisplay(structure,orcaRequest.settings,sharedConstraints),jobRequest:engine==='gaussian'?privateRequest:undefined,orcaJobRequest:engine==='orca'?privateOrcaModelRequest:undefined,captureRequest,onCaptureRebase:rebaseTaskSelection,onCaptureConfirm:confirmTaskSelection,onCapturePreview:previewTaskSelection,onCaptureCancel:cancelTaskSelection,onDynamicsController:acceptRuntimeController,documentRuntime:workspaceSurface?.documentRuntime,active:workspaceSurface?.active??true,activationStamp:workspaceSurface?.stamp,assertActivation:workspaceSurface?.assertCurrent,assertActivationIdentity:workspaceSurface?.assertIdentityCurrent,assertRuntimeCurrent:workspaceSurface?.assertRuntimeCurrent,onNewDocument:workspaceSurface?.onNewDocument,onImportFiles:workspaceSurface?.onImportFiles,onImportTwoDFiles:workspaceSurface?.onImportTwoDFiles,onOpenTwoD:workspaceSurface?.onOpenTwoD,twoDActive:workspaceSurface?.twoDActive}:{})} structure={structure} assignments={engine==='orca'?{...captureOrcaAssignments(structure,orcaRequest.settings),layers:layersFor('orca')}:builderAssignments} selected={atomSelection} highlights={engine==='gaussian'?highlights:undefined} openRequest={builderOpenRequest}
+                    {...(desktopMode?{freezeEditingAllowed:workspaceSurface?.freezeEditingAllowed,onOpenStructureLibrary:workspaceSurface?.onOpenStructureLibrary,samplingSphereDraft:workspaceSurface?.samplingSphereDraft,onSamplingSphereRadiusChange:workspaceSurface?.onSamplingSphereRadiusChange,onDisplayProjection:workspaceSurface?.onDisplayProjection,onCipLabelsUsed:workspaceSurface?.onCipLabelsUsed,onLeftToolSurfaceChange:workspaceSurface?.onLeftToolSurfaceChange,advancedModelingRoute:workspaceSurface?.advancedModelingRoute,onAdvancedModelingRouteChange:workspaceSurface?.onAdvancedModelingRouteChange,onAdvancedModelingBack:workspaceSurface?.onAdvancedModelingBack,onDeriveStructure:workspaceSurface?.onDeriveStructure,onWorkspaceHistory:workspaceSurface?.onWorkspaceHistory,workspaceCanUndo:workspaceSurface?.workspaceCanUndo,workspaceCanRedo:workspaceSurface?.workspaceCanRedo,...(workspaceSurface?.entry.pesGroup?{observationOnly:workspaceSurface.pesObservation===true||workspaceSurface.analysisCanvas?.observeResultGeometry===true,allowModelEditing:workspaceSurface.pesObservation!==true}:workspaceSurface?.module==='advanced'&&workspaceSurface.entry.conformerGroup?.role!=='initial'||workspaceSurface?.entry.trajectory&&workspaceSurface?.analysisCanvas?{observationOnly:true}:{})}:{})}
                     derivedSupercellSource={workspaceSurface?.entry.derivation?.operation==='supercell'?workspaceSurface.entry.derivation.sourceStructure:undefined}
                     onApply={applyBuilderModel} onDraftChange={setBuilderDirty} onExtract={()=>guardedStructureChange(extractModel)} onCopied={notify}/>
                   :structure?<MoleculeViewer atoms={structure.atoms} bonds={structure.bonds} cell={structure.cell} regions={regions} highlights={highlights} selected={atomSelection}

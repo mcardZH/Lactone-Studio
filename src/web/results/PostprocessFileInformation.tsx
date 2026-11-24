@@ -1,8 +1,9 @@
 import type {ResultDiagnostic,TrajectoryResult} from '../../results/contracts';
-import {useMemo,useState,type ReactNode} from 'react';
+import {useMemo,useState} from 'react';
 import type {ScientificData,ScientificDiagnostics} from '../../results/scientific-contracts';
 import {postprocessFileJob} from '../../results/postprocess-sources';
 import type {PostprocessScientificFileDocument} from '../../results/postprocess-document';
+import {ProjectUiScope,useProjectUiScope} from '../../projects/ui-state';
 import {SourceFields} from './PostprocessNumericBook';
 import {ScientificDataTable} from './ScientificDataTable';
 import {ScientificPlot} from './ScientificPlot';
@@ -11,13 +12,67 @@ import {decimalEnergyValue} from '../../results/numeric-format';
 import {excitedStateTable,vibrationModeTable} from './spectroscopy-presentation';
 import {projectVibrationModes} from '../../results/spectroscopy';
 import {createFilePathPlotSnapshot,filePathPlotProjection,type FilePathPlotSnapshot} from './file-path-plot';
+import {convertEnergy,defaultFrameEnergyDisplay,type EnergyUnit} from '../../results/energy';
+import type {OptimizationEnergyDisplay} from '../../results/scientific-plot-editing';
+import {EnergyPlotUnit,EnergyPlotZero,energyPlotUnits} from './EnergyPlotControls';
+import {settingEnum} from './analysis-mcp-settings';
+import {objectSchema} from '../mcp/types';
+import {usePlotFigure} from './scientific-plot-figure';
 
-export function FilePathEnergyPlot({snapshot,toolbar}:{snapshot:FilePathPlotSnapshot;toolbar?:ReactNode}) {
- const projection=useMemo(()=>filePathPlotProjection(snapshot),[snapshot]);
- return <ScientificPlot title={snapshot.title} xLabel="源节点" yLabel={projection.yLabel}
-  series={projection.series} toolbar={toolbar} appearanceKey={snapshot.id}
+type FilePathEnergyPlotProps={snapshot:FilePathPlotSnapshot};
+export function FilePathEnergyPlot(props:FilePathEnergyPlotProps) {
+ const project=useProjectUiScope();
+ const plot=<FilePathEnergyPlotBody {...props}/>;
+ // The internal deck is mounted outside the owning file's workspace scope.
+ return project ? <ProjectUiScope store={project.store} scope={['scientific-file',props.snapshot.fileOwnerId]}>{plot}</ProjectUiScope> : plot;
+}
+function FilePathEnergyPlotBody({snapshot}:FilePathEnergyPlotProps) {
+ const appearance=JSON.stringify([snapshot.fileOwnerId,snapshot.source.id,snapshot.source.sha256,snapshot.jobId,snapshot.reference]);
+ const record=usePlotFigure(appearance), [picking,setPicking]=useState(false);
+ const display=record.figure.energy??defaultFrameEnergyDisplay;
+ const update=(patch:Partial<OptimizationEnergyDisplay>)=>record.replace(previous=>({...previous,energy:{...display,...patch}}));
+ const tsIndices=snapshot.nodes.flatMap((node,index)=>node.isTs?[index]:[]);
+ const tsIndex=tsIndices.length===1?tsIndices[0]:undefined;
+ const zeroIndex=display.relative
+   ? display.reference==='ts'?tsIndex:display.reference==='last'?snapshot.nodes.length-1:
+     display.reference==='point'?snapshot.nodes.findIndex(row=>row.sourceNode===record.figure.energy?.zeroPoint?.frameId):0
+   :undefined;
+ const projection=useMemo(()=>filePathPlotProjection(snapshot,{unit:display.unit,zeroIndex}),[snapshot,display.unit,zeroIndex]);
+ const setZero=(choice:string)=>{
+   setPicking(choice==='pick');
+   if(choice==='original')update({relative:false,zeroPoint:undefined});
+   if(choice==='first'||choice==='last'||choice==='ts')update({relative:true,reference:choice,zeroPoint:undefined});
+ };
+ const energyToolbar=<><EnergyPlotUnit unit={display.unit} onChange={unit=>update({unit})}/>
+   <EnergyPlotZero value={display.relative?display.reference:'original'} choices={[
+     {value:'first',label:'首节点'},{value:'last',label:'末节点'},...(tsIndex===undefined?[]:[{value:'ts',label:'TS'}]),
+   ]} selecting={picking} canSelect={snapshot.nodes.length>0} onChange={setZero}
+     pointLabel={projection.zeroNode?String(projection.zeroNode.sourceNode):undefined}/></>;
+ const referenceValue=convertEnergy(projection.zeroNode ? {value:projection.zeroNode.energy,unit:projection.zeroNode.unit}:null,display.unit);
+ return <ScientificPlot title={projection.title} xLabel={projection.xLabel} yLabel={projection.yLabel}
+  ariaLabel={snapshot.title} testId="file-path-energy-svg"
+  series={projection.series} toolbar={energyToolbar} appearanceKey={appearance} figureRecord={record}
+  mcpConfiguration={{schema:objectSchema({unit:settingEnum(energyPlotUnits),zero:settingEnum(['original','first','last',...(tsIndex===undefined?[]:['ts']),'point']),sourceNode:{type:'number'}}),
+   read:()=>({kind:'file-path-energy',unit:display.unit,zero:display.relative?display.reference:'original',sourceNode:projection.zeroNode?.sourceNode,referenceValue}),
+   apply(values){
+    if(picking)throw new Error('请先结束路径曲线的交互式零点选择。');
+    const {unit,zero,sourceNode}=values as {unit?:EnergyUnit;zero?:'original'|'first'|'last'|'ts'|'point';sourceNode?:number};
+    const target=zero??(sourceNode===undefined?undefined:'point');
+    if(sourceNode!==undefined&&target!=='point')throw new Error('仅点参考使用来源节点。');
+    if(target==='point'&&(sourceNode===undefined||snapshot.nodes.filter(row=>row.sourceNode===sourceNode&&Number.isFinite(row.energy)).length!==1))
+     throw new Error('当前路径没有唯一匹配的来源节点能量。');
+    update({...(unit===undefined?{}:{unit}),...(target===undefined?{}:target==='original'?{relative:false,zeroPoint:undefined}:
+      {relative:true,reference:target,zeroPoint:target==='point'?{frameId:sourceNode!}:undefined})});
+   }}}
+  pointReadout={{kind:'Source Node',yUnit:projection.unitLabel}} selectingZero={picking}
+  onSetZeroPoint={point=>{
+    if(typeof point.readoutId!=='number')return;
+    update({relative:true,reference:'point',zeroPoint:{frameId:point.readoutId}});setPicking(false);
+  }}
+  axisTransforms={{y:{scale:convertEnergy({value:1,unit:'hartree'},display.unit)!,offset:-(referenceValue??0)}}}
   exportFileName="Ester-Studio-path-energy" exportText={{fileName:'Ester-Studio-path-energy.txt',text:projection.text}}
-  metadata={{source:snapshot.source,jobId:snapshot.jobId,jobIndex:snapshot.jobIndex,reference:snapshot.reference}}/>;
+  metadata={{source:snapshot.source,jobId:snapshot.jobId,jobIndex:snapshot.jobIndex,reference:snapshot.reference,
+    display:{...display,referenceNode:projection.zeroNode?.sourceNode,referenceValue}}}/>;
 }
 
 const termination={normal:'正常结束',error:'错误终止','not-observed':'未观察到终止标记'};
@@ -60,7 +115,7 @@ export function postprocessStructureSourceLabel(document:PostprocessScientificFi
  if(displayed&&job&&displayed.id===job.id&&displayed.source.id===job.source.id&&displayed.frames.length)return '计算输出结构';
  return job?.scientific?.inputGeometry?'输入 / 起始结构':'未输出可用结构';
 }
-export default function PostprocessFileInformation({document,mode='all',onJob,onOpenFilePathPlot}:{document:PostprocessScientificFileDocument;mode?:'summary'|'numbers'|'all';onJob?(id:string):void;onOpenFilePathPlot?(snapshot:FilePathPlotSnapshot):void}){
+export default function PostprocessFileInformation({document,mode='all',onJob}:{document:PostprocessScientificFileDocument;mode?:'summary'|'numbers'|'all';onJob?(id:string):void}){
  const [decimals,setDecimals]=useState(2);
  const pathPlots=useMemo(()=>mode==='summary'?[]:(['absolute','relative-to-ts'] as const).flatMap(reference=>{
   const snapshot=createFilePathPlotSnapshot(document,reference);
@@ -81,7 +136,7 @@ export default function PostprocessFileInformation({document,mode='all',onJob,on
      <ScientificDataTable title={snapshot.title} projection={projection} selectionScope={snapshot.id}
       format={{decimals:2,onDecimalsChange:keepSourcePrecision,locked:true}}
       rowBindings={row=>{const node=snapshot.nodes[projection.rows.indexOf(row)];return{title:`${job.source.name} · 第 ${node.sourceLine} 行${node.stageId?` · ${node.stageId}`:''}`};}}/>
-     <FilePathEnergyPlot snapshot={snapshot} toolbar={onOpenFilePathPlot&&<button type="button" className="shared-input-action" onClick={()=>onOpenFilePathPlot(snapshot)}>在内部图窗打开 ↗</button>}/>
+     <FilePathEnergyPlot snapshot={snapshot}/>
     </section>;
    })}
    {!!data.thermochemistry.length&&<SourceFields fields={data.thermochemistry} fallbackSource={job.source} tableLabel="已打印热化学量" fullPrecision/>}

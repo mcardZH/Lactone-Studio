@@ -15,5 +15,6 @@ export interface StructureExportPort {
   available:boolean;
   busy:boolean;
   save():Promise<void>;
+  capture?():CapturedStructureExportSource;
   exportImage?():void;
 }

@@ -29,6 +29,7 @@ interface RetainedSourceText {
 const retainedSourceText = new WeakMap<PostprocessFileSource, RetainedSourceText>();
 const retainedSourceInputs = new WeakMap<PostprocessFileSource, ResultInputFile>();
 const retiredByteSources = new WeakSet<PostprocessFileSource>();
+const selectedFileOwners = new WeakMap<PostprocessScientificFileSource, PostprocessScientificFileSource>();
 const projectedByteOwners = new WeakMap<PostprocessSource, PostprocessSource>();
 function sourceBytesRetired(source: PostprocessSource): boolean {
   return retiredByteSources.has(projectedByteOwners.get(source) ?? source);
@@ -65,12 +66,18 @@ export function retainPostprocessFileSourceBytes<T extends PostprocessFileAttach
   if (!isScientificFileSource(attachment.source)) { retainPostprocessSourceBytes(attachment as PostprocessAttachment, input); return attachment; }
   const source = attachment.source, identity = source.identity;
   if (identity.id !== input.id || identity.name !== input.name || identity.size !== input.size) throw Error('文件来源原始字节身份不一致。');
-  if (retiredByteSources.has(source)) throw Error('文件来源已关闭。');
+  if (retiredByteSources.has(selectedFileOwners.get(source) ?? source)) throw Error('文件来源已关闭。');
   const existing = retainedSourceInputs.get(source);
   if (existing && existing !== input) throw Error('文件来源读取租约不能被替换。');
   if (!existing) {
     const dispose = source.dispose.bind(source);
-    source.dispose = async () => { await dispose(); retiredByteSources.add(source); };
+    const text = retainOutputText(source, input, () => source.identity);
+    source.dispose = async () => {
+      text.closed = true;
+      text.snapshot = null;
+      retiredByteSources.add(source);
+      await dispose();
+    };
   }
   retainedSourceInputs.set(source, input); return attachment;
 }
@@ -78,19 +85,22 @@ export async function readPostprocessFileSourceBytes(attachment: PostprocessFile
   if (!isScientificFileSource(attachment.source)) return readPostprocessSourceBytes(attachment as PostprocessAttachment, start, end, signal);
   assertResultNotAborted(signal);
   const source = attachment.source, input = retainedSourceInputs.get(source), identity = source.identity;
-  if (retiredByteSources.has(source) || !input || input.id !== identity.id || input.size !== identity.size || input.name !== identity.name) throw Error('无法取得文件来源原始读取租约。');
+  const owner = selectedFileOwners.get(source) ?? source;
+  if (retiredByteSources.has(owner) || !input || input.id !== identity.id || input.size !== identity.size || input.name !== identity.name) throw Error('无法取得文件来源原始读取租约。');
   if (![start, end].every(Number.isSafeInteger) || start < 0 || end < start || end > identity.size) throw Error('文件来源字节范围无效。');
   const bytes = await input.readRange(start, end, signal); assertResultNotAborted(signal);
-  if (retiredByteSources.has(source) || bytes.length !== end - start) throw Error('文件来源已变化或关闭。');
+  if (retiredByteSources.has(owner) || bytes.length !== end - start) throw Error('文件来源已变化或关闭。');
   return bytes;
 }
 
 /** Select a job while retaining the entire file and its original lease. */
 export function selectPostprocessFileJob(attachment: PostprocessScientificFileAttachment, jobId: string): PostprocessScientificFileAttachment {
   if (!attachment.source.jobs.some(job => job.id === jobId)) throw Error('所选job不属于当前文件。');
-  if (retiredByteSources.has(attachment.source)) throw Error('文件来源已关闭。');
+  const owner = selectedFileOwners.get(attachment.source) ?? attachment.source;
+  if (retiredByteSources.has(owner)) throw Error('文件来源已关闭。');
   const job = attachment.source.jobs.find(job => job.id === jobId)!;
   const source: PostprocessScientificFileSource = { ...attachment.source, selectedJobId: jobId, tasks: job.scientific?.tasks ?? [] };
+  selectedFileOwners.set(source, owner);
   const input = retainedSourceInputs.get(attachment.source); if (input) retainedSourceInputs.set(source, input);
   return { ...attachment, source };
 }
@@ -178,7 +188,23 @@ export function retainPostprocessOutputSourceText(attachment: PostprocessAttachm
   if (!['gaussian-output', 'orca-output'].includes(source.kind) || source.result.source.id !== input.id
     || source.result.source.name !== input.name || source.result.source.size !== input.size) throw new Error('原始OUT读取器与已导入来源不对应。');
   const existing = retainedSourceText.get(source);
-  if (existing) return { ...attachment, readSourceText: existing.read, ...(existing.readCompanionSourceToken ? { readCompanionSourceToken: existing.readCompanionSourceToken } : {}) };
+  if (existing) return { ...attachment, ...outputTextReaders(existing) };
+  const state = retainOutputText(source, input, () => source.result.source);
+  for (const result of new Set([source.result, ...source.results])) {
+    const originalDispose = result.dispose.bind(result); let disposed: Promise<void> | undefined;
+    result.dispose = () => { state.closed = true; state.snapshot = null;
+      if (!disposed) { try { disposed = Promise.resolve(originalDispose()); } catch (error) { disposed = Promise.reject(error); } }
+      return disposed;
+    };
+  }
+  return { ...attachment, ...outputTextReaders(state) };
+}
+
+function outputTextReaders(state: RetainedSourceText) {
+  return { readSourceText: state.read, ...(state.readCompanionSourceToken ? { readCompanionSourceToken: state.readCompanionSourceToken } : {}) };
+}
+
+function retainOutputText(source: PostprocessFileSource, input: ResultInputFile, identity: () => TrajectoryResult['source']): RetainedSourceText {
   let pending: Promise<Readonly<PostprocessSourceText>> | undefined;
   const live = () => { if (state.closed) throw new Error('原始OUT来源已关闭。'); };
   const state: RetainedSourceText = { snapshot: null, closed: false,
@@ -190,7 +216,8 @@ export function retainPostprocessOutputSourceText(attachment: PostprocessAttachm
         if (!pending) pending = (async () => {
           const descriptor = await input.readCompanionSourceDescriptor?.(signal); live();
           if (descriptor) {
-            if (descriptor.name !== input.name || descriptor.size !== input.size || !/^[a-f0-9]{64}$/.test(descriptor.revision)) throw new Error('受管OUT与已读取来源不对应。');
+            if (descriptor.name !== input.name || descriptor.size !== input.size || !/^[a-f0-9]{64}$/.test(descriptor.revision)
+              || identity().sha256 && descriptor.revision !== identity().sha256) throw new Error('受管OUT与已读取来源不对应。');
             state.snapshot = Object.freeze({ name: input.name, sourceToken: descriptor.token, sourceId: input.id, sourceRevision: descriptor.revision });
             return state.snapshot;
           }
@@ -202,18 +229,19 @@ export function retainPostprocessOutputSourceText(attachment: PostprocessAttachm
           }
           const bytes = new Uint8Array(input.size); let offset = 0; for (const part of parts) { bytes.set(part, offset); offset += part.length; }
           if (bytes.byteLength !== input.size) throw new Error('原始OUT文本读取不完整。');
-          const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-          const encoded = new TextEncoder().encode(text);
+          const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
           if (!text) throw new Error('原始OUT文本为空。');
-          const digest = await crypto.subtle.digest('SHA-256', encoded); live();
+          const digest = await crypto.subtle.digest('SHA-256', bytes); live();
           const sourceRevision = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+          if (identity().sha256 && sourceRevision !== identity().sha256) throw new Error('原始OUT内容与已读取来源不对应。');
           state.snapshot = Object.freeze({ name: input.name, text, sourceId: input.id, sourceRevision });
           return state.snapshot;
         })().finally(() => { pending = undefined; });
         await pending;
       }
       assertResultNotAborted(signal); live();
-      if (source.result.source.id !== input.id || source.result.source.name !== input.name || source.result.source.size !== input.size || !state.snapshot) throw new Error('原始OUT来源已失效。');
+      const current = identity();
+      if (current.id !== input.id || current.name !== input.name || current.size !== input.size || !state.snapshot) throw new Error('原始OUT来源已失效。');
       return state.snapshot;
     },
   };
@@ -222,14 +250,7 @@ export function retainPostprocessOutputSourceText(attachment: PostprocessAttachm
     const token = await input.readCompanionSourceToken!(signal); assertResultNotAborted(signal); live(); return token;
   };
   retainedSourceText.set(source, state);
-  for (const result of new Set([source.result, ...source.results])) {
-    const originalDispose = result.dispose.bind(result); let disposed: Promise<void> | undefined;
-    result.dispose = () => { state.closed = true; state.snapshot = null;
-      if (!disposed) { try { disposed = Promise.resolve(originalDispose()); } catch (error) { disposed = Promise.reject(error); } }
-      return disposed;
-    };
-  }
-  return { ...attachment, readSourceText: state.read, ...(state.readCompanionSourceToken ? { readCompanionSourceToken: state.readCompanionSourceToken } : {}) };
+  return state;
 }
 
 /** Bind the exact text sent to the inspected wavefunction backend, not a new
@@ -309,9 +330,21 @@ export function composePostprocessFileDocument(id: string, output: PostprocessFi
   if (!isScientificFileSource(output.source)) return composePostprocessDocument(id, output as PostprocessAttachment, wavefunction, undefined, options);
   const job = postprocessFileJob(output.source), displayed = options.displayedResult;
   if (options.pair && (!wavefunction || options.pair.conflicts.length || postprocessMetadataConflict(options.pair) || options.pair.wavefunction !== wavefunction.source || options.pair.primary.result !== job || !postprocessFileJobSource(output.source) || !options.pair.primary.result.frames.some(frame => frame.index === options.pair!.frameIndex))) throw Error('文件配对证明与当前job或波函数来源不一致。');
-  if (displayed && (!job || displayed.scientific?.ircEvidence?.outputId !== job.id && displayed !== job || !displayed.frames.length)) throw Error('显示轨迹没有所选job的真实配套证明。');
+  if (displayed && (!job || displayed.scientific?.ircEvidence?.outputId !== job.id && displayed !== job
+    && !isHessEnrichedFileJob(job, displayed, options.companions) || !displayed.frames.length)) throw Error('显示轨迹没有所选job的真实配套证明。');
   return { kind: 'scientific-file', id, output: output as PostprocessScientificFileAttachment, wavefunction, ...(options.pair ? { pair: options.pair } : {}), ...(options.companions ? { companions: options.companions } : {}), ...(displayed ? { displayResult: displayed } : {}), ...(options.sourceWarnings ? { sourceWarnings: options.sourceWarnings } : {}), ...(options.extraSources?.length ? { extraSources: options.extraSources } : {}) };
 }
+
+function isHessEnrichedFileJob(job: ReturnType<typeof postprocessFileJob>, displayed: TrajectoryResult, companions?: readonly PostprocessAttachment[]): boolean {
+  return !!job && 'frames' in job && job.engine === 'orca' && displayed.engine === 'orca'
+    && displayed.id === job.id && displayed.jobIndex === job.jobIndex && displayed.source.id === job.source.id
+    && displayed.source.name === job.source.name && displayed.source.size === job.source.size && displayed.source.sha256 === job.source.sha256
+    && displayed.frames.length === job.frames.length
+    && (displayed.frames === job.frames || displayed.frames.every((frame, index) => frame.index === job.frames[index].index && frame.sourceLine === job.frames[index].sourceLine))
+    && (companions ?? []).some(item => item.source.kind === 'hess' && displayed.scientific?.vibrationSets?.some(group =>
+      group.sourceId === item.source.result.source.id && group.sourceName === item.source.result.source.name));
+}
+
 /** A computed-job view borrows its file owner. Companion paths never inherit
  * an OUT frame binding; input echoes and special centers stay separate. */
 export function postprocessFileDisplayDocument(document: PostprocessScientificFileDocument): PostprocessDocument | null {
@@ -319,8 +352,16 @@ export function postprocessFileDisplayDocument(document: PostprocessScientificFi
   if (!displayed) return null;
   const selected = postprocessFileJob(document.output.source), source = postprocessFileJobSource(document.output.source);
   if (!source || displayed.id !== selected?.id) return { id: document.id, result: displayed, wavefunction: document.wavefunction, wavefunctionFrameIndex: null };
-  const pair = document.pair?.primary.result === selected && document.pair.wavefunction === document.wavefunction?.source ? document.pair : undefined;
-  return composePostprocessDocument(document.id, { source: pair?.primary ?? source }, document.wavefunction, pair);
+  let pair = document.pair?.primary.result === selected && document.pair.wavefunction === document.wavefunction?.source ? document.pair : undefined;
+  let primary = pair?.primary ?? source;
+  if (isHessEnrichedFileJob(selected, displayed, document.companions)) {
+    primary = { ...primary, result: displayed };
+    if (pair) pair = { ...pair, primary };
+  }
+  const file = document.output.source, owner = selectedFileOwners.get(file) ?? file;
+  const text = retainedSourceText.get(owner);
+  const output = { source: primary, ...(text ? outputTextReaders(text) : {}) };
+  return composePostprocessDocument(document.id, output, document.wavefunction, pair);
 }
 export async function disposePostprocessFileDocument(document: PostprocessFileDocument, closeNative: (id: string) => Promise<void>): Promise<void> {
   const issues: unknown[] = [];
@@ -423,15 +464,16 @@ function continuedWavefunctionFrame(document:PostprocessDocument,result:Trajecto
 }
 
 /** Pair ownership and projected frame identity are separate and both verified. */
-export function postprocessExcitationWavefunctionBinding(document:PostprocessDocument):{frameIndex:number;sourceFrameIndex:number;pairFrameIndex:number}|null{
+export function postprocessPairedWavefunctionBinding(document:PostprocessDocument):{frameIndex:number;sourceFrameIndex:number;pairFrameIndex:number}|null{
  const pair=document.pair,output=document.output?.source,frameIndex=postprocessWavefunctionFrame(document);
- if(!pair||!output||pair.primary!==output||pair.wavefunction!==document.wavefunction?.source||pair.conflicts.length||frameIndex===null||!document.result.frames[frameIndex])return null;
+ if(!pair||!output||pair.primary!==output||pair.wavefunction!==document.wavefunction?.source||pair.conflicts.length||postprocessMetadataConflict(pair)||frameIndex===null||!document.result.frames[frameIndex])return null;
  const sourceFrameIndex=document.result.frames[frameIndex].sourceFrameIndex??frameIndex;
- if(document.result.source.id!==output.result.source.id)return null;
+ if(document.result.source.id!==output.result.source.id || document.result.source.sha256!==output.result.source.sha256)return null;
  const original=document.result.jobIndex===output.result.jobIndex&&sourceFrameIndex===pair.frameIndex;
  if(!original&&continuedWavefunctionFrame(document,document.result)!==frameIndex)return null;
  return{frameIndex,sourceFrameIndex,pairFrameIndex:pair.frameIndex};
 }
+export const postprocessExcitationWavefunctionBinding=postprocessPairedWavefunctionBinding;
 
 /** A stage changes observation indices, never the attachment or native-session owner. */
 export function projectPostprocessStage(document: PostprocessDocument, result: TrajectoryResult): PostprocessDocument {

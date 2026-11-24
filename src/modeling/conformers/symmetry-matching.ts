@@ -1,7 +1,7 @@
 import type { Structure } from '../../core/types';
 import type { SharedModelConstraints } from '../../core/modeling/contracts';
-import { assertBuilderStereoPreserved, builderDoubleBondGeometry, builderTetrahedralParity } from '../../core/builder-stereo';
-import { superposeViewAtoms } from '../view-superposition';
+import { assertBuilderStereoPreserved, builderDoubleBondConfiguration, builderDoubleBondGeometry, builderTetrahedralParity } from '../../core/builder-stereo';
+import { superposeViewAtoms, type AtomPair } from '../view-superposition';
 
 /** Exact labelled graph isomorphism, with geometric fits evaluated only for
  * chemical mappings. No element-only permutations, search cap or fixed-ID
@@ -142,6 +142,30 @@ function search(left:Graph,right:Graph,visit:(mapping:readonly number[])=>boolea
     return extension;
   };
   walk(0);return found;
+}
+/** Only require a chemical extension of a geometric witness when either
+ * structure has defined stereo. The heavy-atom witness remains the same one
+ * used by the fit, and equivalent hydrogens may be reassigned. */
+export function createEquivalenceStereoCheck(){
+  const cache=new WeakMap<Structure,{graph:Graph;defined:boolean}|null>();
+  const prepare=(structure:Structure)=>{
+    if(cache.has(structure))return cache.get(structure);
+    if(conformerSymmetryConnectivityIssue(structure)){cache.set(structure,null);return null;}
+    const value=graph(structure);
+    const defined=tetrahedralCenters(value).some(i=>builderTetrahedralParity(structure,structure.atoms[i].id!)!==0)
+      ||structure.bonds!.some(bond=>bond.order===2&&bond.kind!=='coordination'&&!bond.aromatic
+        &&bond.orderKnown!==false&&builderDoubleBondConfiguration(structure,structure.atoms[bond.a].id!,structure.atoms[bond.b].id!)!=='undefined');
+    const prepared={graph:value,defined};cache.set(structure,prepared);return prepared;
+  };
+  return(moving:Structure,reference:Structure,pairs:readonly AtomPair[])=>{
+    const left=prepare(moving),right=prepare(reference);
+    if(!left?.defined&&!right?.defined)return true;
+    if(!left?.defined||!right?.defined)return false;
+    const pin=(value:Graph,ids:ReadonlyMap<string,number>):Graph=>({...value,
+      labels:value.labels.map((label,i)=>JSON.stringify([label,ids.get(value.structure.atoms[i].id!)??null]))});
+    return search(pin(left.graph,new Map(pairs.map((pair,i)=>[pair.movingAtomId,i]))),
+      pin(right.graph,new Map(pairs.map((pair,i)=>[pair.referenceAtomId,i]))),()=>false,true,true);
+  };
 }
 export function symmetryGraphsEquivalent(moving:Structure,reference:Structure,movingConstraints?:SharedModelConstraints,referenceConstraints?:SharedModelConstraints):boolean {
   if(conformerSymmetryConnectivityIssue(moving)||conformerSymmetryConnectivityIssue(reference))return false;

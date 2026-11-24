@@ -1,15 +1,38 @@
+import type { PeriodicCell } from '../../../core/types';
+
 /** Opt-in observation only. A completed GPU command stream is a renderer proxy,
  * never proof of compositor presentation or physical monitor scan-out. */
 export interface ViewportRenderIdentity {
   sourceId: string; sourceRevision: string; frameIndex: number;
   jobIndex?: number | null; generation?: number; requestId?: string;
 }
+export function sameViewportRenderIdentity(a:ViewportRenderIdentity|undefined,b:ViewportRenderIdentity|undefined):boolean {
+  return !!(a&&b&&a.sourceId===b.sourceId&&a.sourceRevision===b.sourceRevision&&a.frameIndex===b.frameIndex&&
+    a.jobIndex===b.jobIndex&&a.generation===b.generation&&a.requestId===b.requestId);
+}
 export type ViewportRenderReason = 'draw' | 'camera-pan' | 'camera-rotate' | 'zoom' | 'set-view' | 'step' | 'orient' | 'resize' | 'orbital-layer' | 'nto-layer' | 'surface-layer' | 'surface-layers' | 'surface-extrema' | 'reset-view' | 'interface-background';
+export interface ViewportRenderGeometrySample {
+  atomCount: number;
+  /** First two primary atoms in adapter-transformed scene coordinates. */
+  atoms: Array<{ id?: string; element: string; x: number; y: number; z: number }>;
+  tailAtoms?: ViewportRenderGeometrySample['atoms'];
+  /** Time at which the camera pose was prepared for this same frame draw. */
+  cameraPreparedAt?: number;
+  molecularMeshBuilds: number;
+  residentCoordinateFrames: number;
+  coordinateGpuUpdates: number;
+  coordinateGpuBytes: number;
+  /** Graph and cell accepted for this draw, before display-only projection. */
+  bondCount?: number;
+  bondGraphSha256?: string;
+  cell?: Pick<PeriodicCell,'vectors'|'pbc'|'origin'>;
+}
 export interface ViewportRenderSubmission {
   renderReason: ViewportRenderReason;
   /** Actual renderer.render invocations, not pointer/RAF/API call counts. */
   rendererSubmissions: number;
   renderViewport?: { cssWidth: number; cssHeight: number; bufferWidth: number; bufferHeight: number; contextKind: 'webgl2' | 'webgl1' | 'unknown' };
+  renderGeometry?: ViewportRenderGeometrySample;
 }
 export interface ViewportRenderCompletion {
   identity: ViewportRenderIdentity; documentId: string; geometryRevision: number; sequence: number;
@@ -22,6 +45,7 @@ export interface ViewportRenderCompletion {
   renderReason?: ViewportRenderReason;
   rendererSubmissions?: number;
   renderViewport?: ViewportRenderSubmission['renderViewport'];
+  renderGeometry?: ViewportRenderGeometrySample;
 }
 export type ViewportRenderObserver = (event: ViewportRenderCompletion) => void;
 
@@ -128,7 +152,7 @@ export interface ViewportRenderTarget { identity: ViewportRenderIdentity; docume
  * No hook, clocks, counters or completion queue while observation is disabled.
  */
 export function createRendererSubmissionObserver(viewer: any, completion: ReturnType<typeof createRenderCompletionObserver>,
-  viewport?: () => ViewportRenderSubmission['renderViewport']) {
+  viewport?: () => ViewportRenderSubmission['renderViewport'], geometry?: () => ViewportRenderGeometrySample) {
   let target: ViewportRenderTarget | null = null, disposed = false, depth = 0, submissions = 0;
   const hooks = new Map<any, () => void>();
   const unhook = () => { for(const release of hooks.values()){try{release();}catch{/* Diagnostics cannot interrupt disposal. */}}hooks.clear(); };
@@ -165,9 +189,11 @@ export function createRendererSubmissionObserver(viewer: any, completion: Return
         try{ensure();}catch{/* Observe the next available renderer only. */}
         if(!failed&&target===captured&&submissions>0){
           let renderViewport: ViewportRenderSubmission['renderViewport'];
+          let renderGeometry: ViewportRenderGeometrySample | undefined;
           try{renderViewport=viewport?.();}catch{/* Missing size metadata must not fail the draw. */}
+          try{if(reason==='draw')renderGeometry=geometry?.();}catch{/* Missing geometry metadata must not fail the draw. */}
           try{completion.observe(captured.identity,captured.documentId,captured.geometryRevision,started,captured.observer,
-            {renderReason:reason,rendererSubmissions:submissions,...(renderViewport?{renderViewport}: {})});}catch{/* Diagnostic-only consumer. */}
+            {renderReason:reason,rendererSubmissions:submissions,...(renderViewport?{renderViewport}: {}),...(renderGeometry?{renderGeometry}: {})});}catch{/* Diagnostic-only consumer. */}
         }
       }
     },

@@ -3,28 +3,63 @@
   "sourceFiles": [
     {
       "path": "desktop/chemistry/engine.py",
-      "bytes": 70902,
-      "sha256": "678b5efd665d58d953c82e34d0246d0dcadd52e5b167fa1c559661fb0b9f9bd0"
+      "bytes": 58738,
+      "sha256": "39d0b122cde55bf859340470a511c212ea13586688db8f3b0c6db35544ca4998"
     },
     {
       "path": "desktop/chemistry/dynamics.py",
-      "bytes": 22874,
-      "sha256": "df3b622ea50caf8e3fccc00e34bcf2dfe0c9fa1e61a9493ba3975a84591ce726"
+      "bytes": 6532,
+      "sha256": "bdcaccc603e149af2f2a2cdb1b81fd0963890653af17c1b93b63cca71a5c4b08"
     },
     {
       "path": "desktop/chemistry/dynamics_native_md.py",
-      "bytes": 23562,
-      "sha256": "15392231bbe4d15216d931548fd7d3ca311457713c00a21680a4b65f425e7829"
+      "bytes": 24292,
+      "sha256": "f2bd87dcea09b518ef480e20886b46e8bb370865dfd3be3bc78d8da62cddc3b9"
     },
     {
       "path": "desktop/chemistry/dynamics_checkpoint_files.py",
-      "bytes": 6160,
-      "sha256": "00408a2b9f19eb2d19e96ed095766a992093f24542c9c31bf615988297d3598f"
+      "bytes": 7001,
+      "sha256": "5b2078cd272d1c2ed3288fe8e07a553812e92e435a657718ba98824a3784c795"
     },
     {
-      "path": "desktop/chemistry/geometry_clean.py",
-      "bytes": 42989,
-      "sha256": "6b5e62c66cdc483660061952bb674e2f9bd8028daa843312255c7004ca943627"
+      "path": "desktop/chemistry/dynamics_errors.py",
+      "bytes": 272,
+      "sha256": "577a4ac6ccd76ac742a0c5180dd3d37ee53d46094a48b0a7cd08ed6b648e3053"
+    },
+    {
+      "path": "desktop/chemistry/ase_md.py",
+      "bytes": 29471,
+      "sha256": "07abcba5b71d3dab27c5b7ad5b9276ecab10ab7997efd12b4fca4e01bd6705fb"
+    },
+    {
+      "path": "desktop/chemistry/ase_md_provider.py",
+      "bytes": 5570,
+      "sha256": "5325d9756a0efa94802474ee2656ff6d951273570b7713c929e94fee1e650e4e"
+    },
+    {
+      "path": "desktop/chemistry/pes_core.py",
+      "bytes": 41084,
+      "sha256": "7a5992146660f7306b90496c992f7ce82d9ecb4d96d4b06d5a6d53cdf61468cf"
+    },
+    {
+      "path": "desktop/chemistry/pes_coordinates.py",
+      "bytes": 23754,
+      "sha256": "302fc9860c41f49c9d42b39e3beeb87ebc986dd0be49abb35393b3bf62e0c74e"
+    },
+    {
+      "path": "desktop/chemistry/pes_periodic.py",
+      "bytes": 3513,
+      "sha256": "a1b84b9bb3cb6c4ce3b0d861881341cefa39c228018389397d09e42e5427eb86"
+    },
+    {
+      "path": "desktop/chemistry/pes_opt_evaluator.py",
+      "bytes": 11788,
+      "sha256": "8d7f71d915a44fba1e170a4e4fdabe37ea90c5ce0d5a8cdadc622fd1f5cfae07"
+    },
+    {
+      "path": "desktop/chemistry/pes_libxtb.py",
+      "bytes": 37888,
+      "sha256": "77bf92d873b0f9c17e80b0c8730123eb7f8ed5d6e3789928e5f0f9cffaf6dedf"
     },
     {
       "path": "desktop/chemistry/runtime_launcher.py",
@@ -33,23 +68,23 @@
     },
     {
       "path": "desktop/chemistry/diagnostics.py",
-      "bytes": 2799,
-      "sha256": "c9ccc3b60a97b83e835cc0c8f3fbdb7234f4d0712a643c073ab92455bf838797"
-    },
-    {
-      "path": "desktop/chemistry/hybrid_geometry.py",
-      "bytes": 36931,
-      "sha256": "64951c9a9ceaa1ffbbd48e436ce4713a163a31a98581762b46fc16b09250a1fb"
+      "bytes": 1958,
+      "sha256": "a6861b42ed3dcd1bb83f3628b120d18bf1dd7650a0e53f9ad74a6690a527e96d"
     },
     {
       "path": "desktop/chemistry/bond_perception.py",
-      "bytes": 39620,
-      "sha256": "efea9e680278e88a818b2a36abe1999de7fd20cd5d81b9d26a8924bfa5dde104"
+      "bytes": 46712,
+      "sha256": "047bc3b8d8fe23ca8316be0a0ed662001724399505803275d31cac2d9630a814"
+    },
+    {
+      "path": "desktop/chemistry/finite_empirical.py",
+      "bytes": 10729,
+      "sha256": "84096c470d48cc99a47019839f52897f197d6c793b764333ce3a5130105eb7c1"
     },
     {
       "path": "desktop/chemistry/orbitals.py",
-      "bytes": 41900,
-      "sha256": "abc08ece3348a2d91bad08870f8c2d126d5dabb993979374670846a07c466d01"
+      "bytes": 42907,
+      "sha256": "e4bd80068a819af6449a5f443d9dfd46480129ba28d4d6bfde0b772185cd4a13"
     },
     {
       "path": "desktop/chemistry/gxtb_molden.py",
@@ -58,13 +93,13 @@
     },
     {
       "path": "desktop/chemistry/orbitals_worker.py",
-      "bytes": 19874,
-      "sha256": "ceb09b89875a05fd3bae6a60703a113ff2515dc7f50aa18808baf6c921af3ea9"
+      "bytes": 20169,
+      "sha256": "2f1e95dcb48e2d568a25d9776d08bfad20a0816124fd8df655f6dfd20b111237"
     },
     {
       "path": "desktop/chemistry/analysis_result_wire.py",
-      "bytes": 2209,
-      "sha256": "f233b87f61cfe92c5d8755fd8b6012a12283ad83c39a651b70cce5815403f21f"
+      "bytes": 8807,
+      "sha256": "eaa86c51531002304210bda04ea132575f5d4ed6e7128e20984756bedd0e0d9c"
     },
     {
       "path": "desktop/chemistry/wavefunction_analysis.py",
@@ -83,8 +118,8 @@
     },
     {
       "path": "desktop/chemistry/empirical_worker.py",
-      "bytes": 1719,
-      "sha256": "503ec06b679740aa64a146c5252e59b0f8ce288afdb19c45ac01dc5cde94d263"
+      "bytes": 4010,
+      "sha256": "584123bf1dcfd662748710baaa302e5cdbdc56b5f116b5a3a19f8fd77853f433"
     },
     {
       "path": "desktop/chemistry/surface_worker.py",
@@ -93,13 +128,13 @@
     },
     {
       "path": "desktop/chemistry/surface_analysis.py",
-      "bytes": 89187,
-      "sha256": "7281255edbfaa2e881f301774cd46b6770269008a0ebc88cecd31ea27ee56a89"
+      "bytes": 90663,
+      "sha256": "6a515a62e27a2c4218f1670ac05d7515d978a2edfdb30580772f7cc9b0c15be8"
     },
     {
       "path": "desktop/chemistry/interaction_analysis.py",
-      "bytes": 45096,
-      "sha256": "2c61326a1ae0803778e0b361853a15967cf9286103a6e3fac8cd1de23bf6eb0b"
+      "bytes": 45142,
+      "sha256": "cf6c6e871b7fdba1e7dfce1b6f2a3ef086ca6b0836261aa3fe8b4758c0b3cc8e"
     },
     {
       "path": "desktop/chemistry/interaction_worker.py",
@@ -113,8 +148,8 @@
     },
     {
       "path": "desktop/chemistry/excitation_analysis.py",
-      "bytes": 59088,
-      "sha256": "caf561f1c82ff701984f1fde46206305e7fdcc3e53379e7c4bc69de2d1af6aab"
+      "bytes": 59482,
+      "sha256": "76719f884614a023e62a2963cbe8fa81c54f599d0993178ead61512c40958ea2"
     },
     {
       "path": "desktop/chemistry/reactivity_analysis.py",
@@ -128,8 +163,8 @@
     },
     {
       "path": "desktop/chemistry/orca_excitation.py",
-      "bytes": 29466,
-      "sha256": "aa41488d039f7e36eb62387a1424b85e177510dfd95119dd8bb5d29f3fa78e4f"
+      "bytes": 29448,
+      "sha256": "1d4c626b544637accae72e670894eefa4b291faca5c6d98dd9fd9c7410fd92c0"
     },
     {
       "path": "desktop/chemistry/xtb_periodic.py",
@@ -158,18 +193,18 @@
     },
     {
       "path": "desktop/chemistry/native_stdin.py",
-      "bytes": 1937,
-      "sha256": "19eb55f32e413609611b116a9af1b6f68d1b15af742096cfec51bae6c004eaca"
+      "bytes": 3444,
+      "sha256": "2754ad6be54c191d9e3c5b9ff3010b79abec6a276574ddeb8be78f24fa373fed"
     },
     {
       "path": "desktop/chemistry/conformer_sampling.py",
-      "bytes": 49482,
-      "sha256": "9fb7c0dd65230473cf734f8df4c5845369fb5e53b5e4b90518a55ad1e78950b6"
+      "bytes": 32043,
+      "sha256": "9b67efc2b56127381bab76f83ed2e1322808d0dee954712714f501e49fdc55f8"
     },
     {
       "path": "desktop/chemistry/conformer_gfnff.py",
-      "bytes": 13453,
-      "sha256": "d955e759b836453df07934208f8614fd651508ddae1f93bd0fbaa3a55772a900"
+      "bytes": 13509,
+      "sha256": "e3ee9b5ae9c62b151e5f2a7f4ef9a963e3597f48f3f61cf08675b63d925cf60e"
     },
     {
       "path": "desktop/chemistry/conformer_gfn0.py",
@@ -178,8 +213,8 @@
     },
     {
       "path": "desktop/chemistry/conformer_native_md.py",
-      "bytes": 74849,
-      "sha256": "65641b22848cee38d666961e3a7fdedbbac132f41bc9279e3dacd7a4c588469d"
+      "bytes": 75622,
+      "sha256": "ddb84aad1d30a027aa952ffbbfae469c0756f6bdb074cfd7929ef04a72454a1e"
     },
     {
       "path": "desktop/chemistry/conformer_native_metadynamics.py",
@@ -188,8 +223,8 @@
     },
     {
       "path": "desktop/chemistry/conformer_solvation.py",
-      "bytes": 3964,
-      "sha256": "bcac72d36d1f4cbba757a3268100d64c989ef50d9eab05f8c8df7b6c73e33dab"
+      "bytes": 4067,
+      "sha256": "55a50d75e5294c99d4446cbd06e6242e9dc2228cfebc0c2353b762ed599f7990"
     },
     {
       "path": "desktop/chemistry/task_files.py",
@@ -213,35 +248,35 @@
     },
     {
       "path": "desktop/chemistry/hirshfeld_session.py",
-      "bytes": 27234,
-      "sha256": "94219ef879e1963381690bb65e313cfb662c144420159021493dd786313d6ee0"
+      "bytes": 27126,
+      "sha256": "1dcbf43c267298a4db2730eaf93ca30a19b715b45bf4e21bae67a4aa202cef5c"
     }
   ],
   "builderSources": [
     {
       "path": "scripts/native/build.py",
-      "bytes": 29786,
-      "sha256": "437f12e050b5fb33643842f0901671f0318cf6027b3bdd28eb306e397f4adf68"
+      "bytes": 31628,
+      "sha256": "c8077776119d566a1de72c0da164d6c78b34c662de201ad1b7146deaa559b783"
     },
     {
       "path": "scripts/native/common.py",
-      "bytes": 11908,
-      "sha256": "42373459cf055c66fca3cb6144ef42315435e2ee51aa2b5ab9f60b92b38bcee6"
+      "bytes": 12359,
+      "sha256": "361c31cf8dd8fdc11a03a12efb7fa0f39341e7098da9c75cba1be60c27e42378"
     },
     {
       "path": "scripts/native/prepare.py",
-      "bytes": 18405,
-      "sha256": "29886b8a093995d17776010240bda9b3940981da55eef5bcc164393c4394cd1f"
+      "bytes": 18510,
+      "sha256": "38341a712126944f4e184d561ca84900e00cb81f5c9f90a0a75a63ce44b0be2e"
     },
     {
       "path": "desktop/packaging/native-engine.spec",
-      "bytes": 3764,
-      "sha256": "6d91c3030801c61bb6f26e064d5f06c167ef2306a348d76018126ff71a83fd85"
+      "bytes": 4094,
+      "sha256": "235f1774f33c9974d3b81fedece11e8267e72ffd0a248a0db4f10c1f85d54221"
     },
     {
       "path": "scripts/native/runtime_pruning.py",
-      "bytes": 16907,
-      "sha256": "a9242387aa86165b532659e5085305a019ea5c65564657c8acf4b079076bbd81"
+      "bytes": 16951,
+      "sha256": "cf2c04965040ae881663f8da81b2bc6d6eeb2c3420a16c88eb86fdaa90bf222a"
     },
     {
       "path": "desktop/packaging/native-runtime-win11-recipe.json",
@@ -252,6 +287,16 @@
       "path": "src/data/conformer-solvation.json",
       "bytes": 6511,
       "sha256": "3ec19d6830e475761f3d84885cbdce4cf80cadeee9b3c6eb2d965e36a1e6b7a8"
+    },
+    {
+      "path": "scripts/native/finite_empirical_extension.py",
+      "bytes": 2972,
+      "sha256": "247b81eefbd706a886d895d207135b6c31c24dec0fcf21a8fae8a6c61e844eaf"
+    },
+    {
+      "path": "desktop/chemistry/finite_empirical_accel.c",
+      "bytes": 12957,
+      "sha256": "f8747a4ae49692a880ae3a10f3ef8941076cc7766fee661b63e7ce99a9cc6a50"
     }
   ],
   "xtbPatchSources": [

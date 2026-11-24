@@ -3,8 +3,7 @@ import { assertResultNotAborted, type ResultInputFile } from './contracts';
 import { scientificNumber, scientificRoundingInterval } from './scientific-contracts';
 import type { CubeAtom, SurfaceFieldPrecision, SurfaceGrid, SurfaceLengthUnit, SurfaceScalarField, SurfaceValidDomain } from './surface-contracts';
 
-/** Same point/export ceilings as the existing desktop field transport. The
- * owner must still check its actual live memory/render budget before accepting. */
+/** Bounds on exact indexing. Allocation failures are reported separately. */
 export const CUBE_READ_LIMITS = Object.freeze({ points: Number.MAX_SAFE_INTEGER, bytes: Number.MAX_SAFE_INTEGER, atoms: Number.MAX_SAFE_INTEGER, line: Number.MAX_SAFE_INTEGER });
 export class CubeReadError extends Error {
   constructor(readonly code: 'invalid' | 'truncated' | 'multiple-datasets' | 'ambiguous-unit' | 'limit', message: string) { super(message); this.name = 'CubeReadError'; }
@@ -14,11 +13,14 @@ export interface CubeReadOptions {
    * header: implementations disagree about its unit convention. No rescaling. */
   coordinateUnit?: SurfaceLengthUnit; coordinateUnitEvidence?: string;
   maxPoints?: number;
+  /** Use one shared authoritative field where the renderer can borrow it. */
+  sharedValues?: boolean;
 }
-export interface ParsedMolecularCube {
-  comments: [string, string]; grid: SurfaceGrid; atoms: CubeAtom[]; values: Float64Array;
+export interface MolecularCubeHeader {
+  comments: [string, string]; grid: SurfaceGrid; atoms: CubeAtom[];
   precision: SurfaceFieldPrecision; datasetId?: number; coordinateUnitEvidence: string;
 }
+export interface ParsedMolecularCube extends MolecularCubeHeader { values: Float64Array }
 const fail = (code: CubeReadError['code'], message: string): never => { throw new CubeReadError(code, message); };
 function integer(token: string): number {
   if (!/^[+-]?\d+$/.test(token)) return fail('invalid', 'Cube整数头字段无效。');
@@ -34,8 +36,7 @@ function vector(tokens: string[]): Vector3 { return tokens.map(number) as Vector
 function rounding(tokens: string[]): Vector3 { return tokens.map(token => scientificRoundingInterval(token) ?? 0) as Vector3; }
 const det = (axes: readonly Vector3[]) => axes[0][0] * (axes[1][1] * axes[2][2] - axes[1][2] * axes[2][1]) - axes[0][1] * (axes[1][0] * axes[2][2] - axes[1][2] * axes[2][0]) + axes[0][2] * (axes[1][0] * axes[2][1] - axes[1][1] * axes[2][0]);
 
-/** Streaming line consumer shared by text and file APIs. Values are never
- * reordered, converted, padded or silently reduced to the first dataset. */
+/** Only the header is line-oriented. Scalar fields can have arbitrary record widths. */
 class CubeParser {
   private lineNumber = 0;
   private comments: [string, string] = ['', ''];
@@ -43,13 +44,16 @@ class CubeParser {
   private origin: Vector3 = [0, 0, 0]; private originRounding: Vector3 = [0, 0, 0];
   private axes: Vector3[] = []; private axisRounding: Vector3[] = []; private signedDimensions: number[] = [];
   private atoms: CubeAtom[] = []; private atomRounding: Vector3[] = []; private nuclearRounding: number[] = [];
-  private values: Float64Array | null = null; private filled = 0; private datasetId: number | undefined;
+  private values: Float64Array | null = null; private points = 0; private filled = 0; private datasetId: number | undefined;
   private datasetPending = false; private datasetHeader = false; private unit: SurfaceLengthUnit = 'bohr';
+  private pendingLine = ''; private pendingToken = ''; private skipLf = false;
   constructor(private options: CubeReadOptions) {
     if (options.maxPoints !== undefined && (!Number.isSafeInteger(options.maxPoints) || options.maxPoints < 1)) fail('limit', 'Cube点数预算须为可精确表示的正整数。');
     if (options.coordinateUnit && (!['bohr', 'angstrom'].includes(options.coordinateUnit) || !options.coordinateUnitEvidence?.trim())) fail('ambiguous-unit', '显式Cube空间单位需要来源依据。');
   }
-  consume(raw: string): void {
+  get headerComplete() { return this.count > 0 && this.atoms.length === this.count && !this.datasetPending; }
+  private get atData() { return this.count > 0 && this.atoms.length === this.count; }
+  private headerLine(raw: string): void {
     if (raw.length > CUBE_READ_LIMITS.line) fail('limit', 'Cube单行超过整数表示范围。');
     this.lineNumber++;
     if (this.lineNumber <= 2) { this.comments[this.lineNumber - 1] = raw.replace(/^\uFEFF/, ''); return; }
@@ -75,81 +79,131 @@ class CubeParser {
         if (!normalized.flat().every(Number.isFinite) || det(normalized) === 0) fail('invalid', 'Cube网格仿射矩阵退化。');
         const points = this.signedDimensions.reduce((product, count) => product * Math.abs(count), 1);
         if (!Number.isSafeInteger(points) || points > (this.options.maxPoints ?? CUBE_READ_LIMITS.points)) fail('limit', 'Cube点数超出本次预算或现有传输上限。');
-        this.values = new Float64Array(points);
+        this.points = points;
       }
       return;
     }
-    if (this.atoms.length < this.count) {
-      if (tokens.length !== 5) fail('invalid', 'Cube逐原子行须含原子序数、有效核电荷及三个坐标。');
-      const z = integer(tokens[0]); if (z < 1 || z > 118) fail('invalid', '本期Cube不支持ghost/dummy或未知元素。');
-      this.atoms.push({ sourceIndex: this.atoms.length + 1, atomicNumber: z, nuclearCharge: number(tokens[1]), position: vector(tokens.slice(2)) });
-      this.atomRounding.push(rounding(tokens.slice(2))); this.nuclearRounding.push(scientificRoundingInterval(tokens[1]) ?? 0);
-      this.datasetPending = this.atoms.length === this.count && this.negativeAtoms;
-      return;
-    }
-    let data = tokens;
+    if (tokens.length !== 5) fail('invalid', 'Cube逐原子行须含原子序数、有效核电荷及三个坐标。');
+    const z = integer(tokens[0]); if (z < 1 || z > 118) fail('invalid', '本期Cube不支持ghost/dummy或未知元素。');
+    this.atoms.push({ sourceIndex: this.atoms.length + 1, atomicNumber: z, nuclearCharge: number(tokens[1]), position: vector(tokens.slice(2)) });
+    this.atomRounding.push(rounding(tokens.slice(2))); this.nuclearRounding.push(scientificRoundingInterval(tokens[1]) ?? 0);
+    this.datasetPending = this.atoms.length === this.count && this.negativeAtoms;
+  }
+  private scalar(token: string): void {
     if (this.datasetPending) {
       if (!this.datasetHeader) {
-        if (integer(data[0]) !== 1) fail('multiple-datasets', 'Cube声明多个数据集；本期不自动选择第一组。');
-        this.datasetHeader = true; data = data.slice(1);
+        if (integer(token) !== 1) fail('multiple-datasets', 'Cube声明多个数据集；本期不自动选择第一组。');
+        this.datasetHeader = true;
+      } else {
+        this.datasetId = integer(token);
+        this.datasetPending = false;
       }
-      if (!data.length) return;
-      this.datasetId = integer(data[0]); this.datasetPending = false; data = data.slice(1);
+      return;
     }
-    for (const token of data) {
-      if (this.filled >= this.values!.length) fail('invalid', 'Cube数值多于网格声明，可能含未支持的数据集或尾部字段。');
-      this.values![this.filled++] = number(token);
+    if (this.filled >= this.points) fail('invalid', 'Cube数值多于网格声明，可能含未支持的数据集或尾部字段。');
+    if (!this.values) {
+      try { this.values = this.options.sharedValues && typeof SharedArrayBuffer === 'function'
+        ? new Float64Array(new SharedArrayBuffer(this.points*Float64Array.BYTES_PER_ELEMENT)) : new Float64Array(this.points); }
+      catch (error) { if (!(error instanceof RangeError)) throw error; fail('limit', '无法分配完整精度的 Cube 数组，原始来源仍保留。'); }
+    }
+    this.values![this.filled++] = number(token);
+  }
+  push(part: string, headerOnly: boolean, final = false): void {
+    if (!this.atData) {
+      if (this.skipLf && part.length) { if (part.startsWith('\n')) part = part.slice(1); this.skipLf = false; }
+      const lineEnd = /\r\n|[\r\n]/g;
+      while (!this.atData) {
+        const start = lineEnd.lastIndex, end = lineEnd.exec(part);
+        if (!end) {
+          this.pendingLine += part.slice(start);
+          if (final && this.pendingLine) this.headerLine(this.pendingLine);
+          return;
+        }
+        this.headerLine(this.pendingLine + part.slice(start, end.index));
+        this.pendingLine = '';
+        if (end[0] === '\r' && lineEnd.lastIndex === part.length) this.skipLf = true;
+      }
+      part = part.slice(lineEnd.lastIndex);
+    }
+    if (headerOnly && this.headerComplete) return;
+    const text = this.pendingToken + part, tokens = /\S+/g;
+    this.pendingToken = '';
+    let match: RegExpExecArray | null;
+    while ((match = tokens.exec(text)) !== null) {
+      if (!final && tokens.lastIndex === text.length) { this.pendingToken = match[0]; break; }
+      this.scalar(match[0]);
+      if (headerOnly && this.headerComplete) return;
     }
   }
-  finish(): ParsedMolecularCube {
-    if (!this.values || this.atoms.length !== this.count || this.datasetPending || this.filled !== this.values.length) return fail('truncated', 'Cube头部、原子或标量数据截断；未补零。');
+  header(): MolecularCubeHeader {
+    if (!this.headerComplete) return fail('truncated', 'Cube头部或原子记录截断。');
     return { comments: this.comments, grid: { coordinateUnit: this.unit, origin: this.origin, axes: this.axes as SurfaceGrid['axes'], dimensions: this.signedDimensions.map(Math.abs) as SurfaceGrid['dimensions'], ordering: 'z-fastest' },
-      atoms: this.atoms, values: this.values, precision: { origin: this.originRounding, axes: this.axisRounding as SurfaceGrid['axes'], atomCoordinates: this.atomRounding, nuclearCharges: this.nuclearRounding },
+      atoms: this.atoms, precision: { origin: this.originRounding, axes: this.axisRounding as SurfaceGrid['axes'], atomCoordinates: this.atomRounding, nuclearCharges: this.nuclearRounding },
       ...(this.datasetId === undefined ? {} : { datasetId: this.datasetId }), coordinateUnitEvidence: this.options.coordinateUnitEvidence ?? 'Gaussian-style Cube on-disk atomic-coordinate convention (Bohr)' };
+  }
+  finish(): ParsedMolecularCube {
+    const header = this.header();
+    if (!this.values || this.filled !== this.points) return fail('truncated', 'Cube标量数据截断；未补零。');
+    return { ...header, values: this.values };
   }
 }
 export function parseMolecularCube(text: string, options: CubeReadOptions = {}): ParsedMolecularCube {
-  if (text.length > CUBE_READ_LIMITS.bytes) fail('limit', 'Cube文本超过128 MiB读取上限。');
   const parser = new CubeParser(options);
-  for (const line of text.split(/\r\n|\r|\n/)) parser.consume(line);
+  parser.push(text, false, true);
   return parser.finish();
 }
-export async function readMolecularCube(file: ResultInputFile, options: CubeReadOptions & { signal?: AbortSignal } = {}): Promise<ParsedMolecularCube> {
+export interface DisplayCubeRead { text: string; bytes: number; keepOriginal: boolean }
+export interface DisplayCubeData { parsed: ParsedMolecularCube; originalBytes?: Uint8Array }
+/** Keep the exact UTF-8 payload for project archival when the file is new. */
+export function parseDisplayCube({text, bytes, keepOriginal}: DisplayCubeRead): DisplayCubeData {
+  const originalBytes = new TextEncoder().encode(text);
+  if (originalBytes.byteLength !== bytes) fail('invalid', 'Cube快照字节数与可信来源不符。');
+  return { parsed: parseMolecularCube(text), ...(keepOriginal ? {originalBytes} : {}) };
+}
+type CubeStreamSource = Pick<ResultInputFile, 'size' | 'stream'>;
+export type CubeStreamOptions = CubeReadOptions & { signal?: AbortSignal; yieldToHost?: boolean };
+async function readCubeParser(file: CubeStreamSource, options: CubeStreamOptions, headerOnly: boolean): Promise<CubeParser> {
   assertResultNotAborted(options.signal);
-  if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > CUBE_READ_LIMITS.bytes) fail('limit', 'Cube文件须非空且不超过128 MiB。');
+  if (!Number.isSafeInteger(file.size) || file.size < 1) fail('limit', 'Cube文件须非空且字节数可精确表示。');
   const parser = new CubeParser(options), reader = file.stream().getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
-  let pending = '', bytes = 0, complete = false, skipLf = false;
+  let bytes = 0, complete = false, lastYield = performance.now();
   const abort = () => { void reader.cancel().catch(() => {}); };
   options.signal?.addEventListener('abort', abort, { once: true });
   try {
     while (true) {
       assertResultNotAborted(options.signal);
       const next = await reader.read(); assertResultNotAborted(options.signal);
-      if (next.done) { complete = true; pending += decoder.decode(); break; }
-      bytes += next.value.byteLength; if (bytes > CUBE_READ_LIMITS.bytes) fail('limit', 'Cube来源读取中超限。');
+      if (next.done) { complete = true; parser.push(decoder.decode(), headerOnly, true); break; }
+      bytes += next.value.byteLength; if (bytes > file.size) fail('invalid', 'Cube来源超过声明字节数。');
       for (let offset = 0; offset < next.value.length; offset += 65536) {
-        let part = decoder.decode(next.value.subarray(offset, offset + 65536), { stream: true });
-        if (skipLf && part.length) { if (part.startsWith('\n')) part = part.slice(1); skipLf = false; }
-        pending += part; let end: number;
-        while ((end = pending.search(/[\r\n]/)) >= 0) {
-          const cr = pending[end] === '\r'; parser.consume(pending.slice(0, end)); pending = pending.slice(end + 1);
-          if (cr) { if (pending.startsWith('\n')) pending = pending.slice(1); else if (!pending.length) skipLf = true; }
+        parser.push(decoder.decode(next.value.subarray(offset, offset + 65536), { stream: true }), headerOnly);
+        if (headerOnly && parser.headerComplete) return parser;
+        if (options.yieldToHost && performance.now() - lastYield >= 10) {
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
+          assertResultNotAborted(options.signal);
+          lastYield = performance.now();
         }
-        if (pending.length > CUBE_READ_LIMITS.line) fail('limit', 'Cube单行超过1 MiB读取上限。');
       }
     }
-    if (pending) parser.consume(pending);
     if (bytes !== file.size) fail('invalid', 'Cube来源大小与导入时声明不一致。');
-    return parser.finish();
+    return parser;
   } finally {
     options.signal?.removeEventListener('abort', abort);
     if (!complete) await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
 }
+export async function readMolecularCube(file: CubeStreamSource, options: CubeStreamOptions = {}): Promise<ParsedMolecularCube> {
+  return (await readCubeParser(file, options, false)).finish();
+}
+/** Verify just the molecular header. The scalar data may be unavailable or
+ * incomplete; callers must never claim a usable field from this result. */
+export async function readMolecularCubeHeader(file: CubeStreamSource, options: CubeStreamOptions = {}): Promise<MolecularCubeHeader> {
+  return (await readCubeParser(file, options, true)).header();
+}
 /** Binding metadata is explicit; comments and filename do not define a field's
  * physical quantity, producer, electronic state or valid calculation domain. */
-export interface KnownCubeDomain { sourceRevision: string; validDomain: SurfaceValidDomain }
+export interface KnownCubeDomain { sourceRevision: string; validDomain: SurfaceValidDomain; coordinateUnit?: SurfaceLengthUnit }
 export function molecularCubeField(parsed: ParsedMolecularCube, metadata: Omit<SurfaceScalarField, 'grid' | 'atoms' | 'values' | 'precision'>, knownDomain?: KnownCubeDomain): SurfaceScalarField {
   if (knownDomain && knownDomain.sourceRevision !== metadata.source.revision) throw new Error('已知Cube有效域记录与本次内容身份不一致。');
   // An owner that recognizes an exported/reimported content revision must pass

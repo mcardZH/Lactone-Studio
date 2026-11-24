@@ -2,10 +2,35 @@ import type { Atom, Bond, Structure, Vector3 } from './types';
 import { builderPosition, builderRotate, builderUnit, builderVector, inferBuilderBonds } from './builder-geometry';
 import { assertBuilderStereoPreserved, updateBuilderStereo } from './builder-stereo';
 import { minimumImage } from './periodic';
+import { constructionBondLength } from './modeling/connection-length';
+import organicSeeds from './organic-fragment-seeds.json';
 
 export type BuilderTemplateCategory = 'functional' | 'ring' | 'chain';
 export type BuilderTemplateFamily = 'O' | 'N' | 'S' | 'P' | 'B' | 'Si' | 'halogen' | 'charged' | 'conjugated';
-export interface BuilderTemplate {id:string;label:string;atoms:Atom[];bonds:Bond[];anchor:number;connectionAnchor:number;category?:BuilderTemplateCategory;family?:BuilderTemplateFamily}
+export interface BuilderTemplate {
+  id: string; label: string; atoms: Atom[]; bonds: Bond[]; anchor: number; connectionAnchor: number;
+  category?: BuilderTemplateCategory; family?: BuilderTemplateFamily;
+  /** Contiguous heavy-atom indices in the seed, following the same graph order. */
+  depiction?: readonly (readonly [number, number])[];
+  depictionWedges?: readonly (readonly [number, number, number])[];
+  /** Unit vector from the default connection atom into the covalent vacancy. */
+  attachmentDirection?: Vector3;
+  independentOnly?: boolean;
+}
+
+const additionalTemplates: BuilderTemplate[] = organicSeeds.map(seed => ({
+  id: seed.id, label: seed.label, anchor: 0, connectionAnchor: 0,
+  category: seed.category as BuilderTemplateCategory, family: seed.family as BuilderTemplateFamily | undefined,
+  atoms: seed.atoms.map(row => {
+    const [element, x, y, z, formalCharge, aromaticHydrogen] = row as [string, number, number, number, number?, boolean?];
+    return { element, x, y, z, ...(formalCharge ? { formalCharge } : {}), ...(aromaticHydrogen ? { aromaticHydrogen } : {}) };
+  }),
+  bonds: seed.bonds.map(([a, b, order]) => ({ a, b, order, ...(order === 1.5 ? { aromatic: true } : {}) })),
+  depiction: seed.depiction.map(([x, y]) => [x, y]),
+  ...(seed.depictionWedges ? { depictionWedges: seed.depictionWedges.map(([a, b, sense]) => [a, b, sense] as const) } : {}),
+  ...(seed.attachmentDirection ? { attachmentDirection: seed.attachmentDirection as Vector3 } : {}),
+  ...(seed.independentOnly ? { independentOnly: true } : {}),
+}));
 export interface BuilderTemplateOptions {templateId:string;anchorId?:string;replaceAtomIds?:string[];position?:Vector3;direction?:Vector3}
 const atom=(element:string,x:number,y=0,z=0,formalCharge?:number):Atom=>({element,x,y,z,...(formalCharge?{formalCharge}:{})});
 const make=(id:string,label:string,atoms:Atom[],bonds:Bond[],anchor=0,family?:BuilderTemplateFamily):BuilderTemplate=>({id,label,atoms,bonds,anchor,connectionAnchor:anchor,...(family?{category:'functional' as const,family}:{})});
@@ -79,7 +104,8 @@ export const BUILDER_TEMPLATES:BuilderTemplate[]=[
   make('vinyl','乙烯基 CH=CH₂',[atom('C',0),atom('C',1.34)],[bond(0,1,2)],0,'conjugated'),
   make('ethynyl','乙炔基 C≡CH',[atom('C',0),atom('C',1.2)],[bond(0,1,3)],0,'conjugated'),
   make('allyl','烯丙基 CH₂CH=CH₂',[atom('C',0),atom('C',1.28,.83),atom('C',2.49,.25)],[bond(0,1),bond(1,2,2)],0,'conjugated'),
-  ...[3,4,5,6,7,8].map(n=>ring(n)),...[3,4,5,6,8,10].map(alkyl),
+  ...[3,4,5,6,7,8].map(n=>ring(n)),...[3,4,5,6,8,10,12,16,20].map(alkyl),
+  ...additionalTemplates,
 ];
 const aliases:Record<string,string>={oh:'OH',nh2:'NH2',no2:'NO2',cn:'CN',cooh:'COOH',coo:'COO-',cho:'CHO',ome:'OMe',cf3:'CF3',benzene:'phenyl',cyclopropyl:'cyclo3',cyclobutyl:'cyclo4',cyclopentyl:'cyclo5',cyclohexyl:'cyclo6',propyl:'alkyl3',butyl:'alkyl4'};
 export function getBuilderTemplate(id:string):BuilderTemplate|undefined{
@@ -91,6 +117,7 @@ export function getBuilderTemplate(id:string):BuilderTemplate|undefined{
 export function attachBuilderTemplate(structure:Structure,options:BuilderTemplateOptions):{structure:Structure;touchedIds:string[];createdFrom:Record<string,string>;removedIds:string[]}{
   const template=getBuilderTemplate(options.templateId);
   if(!template)throw new Error('未知片段模板。');
+  if (template.independentOnly && (options.anchorId || options.replaceAtomIds?.length)) throw new Error('三苯基膦请在画布空白处独立放置。');
   const s=inferBuilderBonds(structure),replace=new Set(options.replaceAtomIds??[]),removedIds=[...replace];
   for(const id of replace)if(!s.atoms.some(a=>a.id===id))throw new Error('待替换原子不存在。');
   const boundary=(s.bonds??[]).filter(b=>replace.has(s.atoms[b.a].id!)!==replace.has(s.atoms[b.b].id!));
@@ -111,18 +138,28 @@ export function attachBuilderTemplate(structure:Structure,options:BuilderTemplat
   direction=builderUnit(direction??[1,0,0]);
   const pair=[anchor?.element??'C',template.atoms[template.anchor].element].sort().join('-');
   const lengths:Record<string,number>={'C-C':1.53,'C-N':1.47,'C-O':1.43,'C-F':1.35,'C-Cl':1.77,'C-Br':1.94,'C-I':2.14,'H-O':.97,'H-N':1.01,'C-H':1.09,'N-N':1.45,'N-O':1.4,'O-O':1.48};
-  const bondLength=lengths[pair]??1.53;
+  const bondLength = anchor && template.attachmentDirection ? constructionBondLength(anchor.element, template.atoms[template.anchor].element, boundary[0]?.order ?? 1) : lengths[pair] ?? 1.53;
   const position=options.position??(anchor?builderVector.add(builderPosition(anchor),builderVector.scale(direction,bondLength)):[0,0,0]);
   if(!position.every(Number.isFinite))throw new Error('模板放置位置无效。');
   const keep=s.atoms.map((a,i)=>({a,i})).filter(({a})=>!replace.has(a.id!)),mapping=new Map(keep.map(({i},j)=>[i,j]));
   const atoms=keep.map(({a})=>a),bonds=(s.bonds??[]).filter(b=>mapping.has(b.a)&&mapping.has(b.b)).map(b=>({...b,a:mapping.get(b.a)!,b:mapping.get(b.b)!}));
   const createdFrom:Record<string,string>={};const touchedIds:string[]=[];
-  const base=atoms.length,origin=builderPosition(template.atoms[template.anchor]),from:Vector3=[1,0,0],axis=builderVector.cross(from,direction),cos=builderVector.dot(from,direction);
-  const align=(p:Vector3)=>Math.hypot(...axis)>1e-9?builderRotate(p,[0,0,0],axis,Math.acos(Math.max(-1,Math.min(1,cos)))):cos<0?[-p[0],p[1],-p[2]] as Vector3:p;
+  const base=atoms.length,origin=builderPosition(template.atoms[template.anchor]);
+  const from: Vector3 = anchor && template.attachmentDirection ? builderVector.scale(template.attachmentDirection, -1) : [1,0,0];
+  const axis = builderVector.cross(from, direction), cos = builderVector.dot(from, direction);
+  const align = (p: Vector3) => Math.hypot(...axis) > 1e-9 ? builderRotate(p, [0,0,0], axis, Math.acos(Math.max(-1, Math.min(1, cos))))
+    : cos < 0 ? builderRotate(p, [0,0,0], builderVector.cross(from, Math.abs(from[2]) < .8 ? [0,0,1] : [1,0,0]), Math.PI) : p;
   for(const a of template.atoms){const id=`builder-t-${crypto.randomUUID()}`;let p=builderVector.add(align(builderVector.sub(builderPosition(a),origin)),position);
     if(s.cell&&boundaryImage)boundaryImage.forEach((v,k)=>{p=builderVector.sub(p,builderVector.scale(s.cell!.vectors[k],v));});
     atoms.push({...a,id,x:p[0],y:p[1],z:p[2],hydrogenMode:'auto'});touchedIds.push(id);const parent=boundaryInside!==undefined?s.atoms[boundaryInside].id:anchorId??removedIds[0];if(parent)createdFrom[id]=parent;}
   template.bonds.forEach(b=>bonds.push({...b,a:base+b.a,b:base+b.b}));
+  if (!anchor && template.attachmentDirection) {
+    const xyz = builderVector.add(builderPosition(atoms[base + template.anchor]),
+      align(builderVector.scale(template.attachmentDirection, constructionBondLength(template.atoms[template.anchor].element, 'H', 1))));
+    const id = `builder-t-${crypto.randomUUID()}`;
+    bonds.push({ a: base + template.anchor, b: atoms.length, order: 1 });
+    atoms.push({ ...atom('H', ...xyz), id, hydrogenMode: 'auto' }); touchedIds.push(id);
+  }
   if(anchorId){const i=atoms.findIndex(a=>a.id===anchorId);bonds.push({a:i,b:base+template.anchor,order:boundary[0]?.order??1,...(boundary[0]?.image?{image:boundary[0].a===s.atoms.findIndex(a=>a.id===anchorId)?boundary[0].image:boundary[0].image.map(v=>-v) as Vector3}:{})});touchedIds.push(anchorId);}
   const layout2D=s.layout2D?Object.fromEntries(Object.entries(s.layout2D).filter(([id])=>!replace.has(id))):undefined;
   const result={...s,atoms,bonds,layout2D,molfile:undefined,dimension:3 as const};assertBuilderStereoPreserved(s,result);

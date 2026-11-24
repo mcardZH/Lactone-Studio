@@ -8,7 +8,7 @@ const { randomUUID, createHash } = require('node:crypto');
 const security = require('./security.cjs');
 const { chemistryRuntime } = require('./runtime.cjs');
 const { createChemistryJob } = require('./chemistry-job.cjs');
-const { packagedBackendInfo, currentRuntimeEnvironment } = require('./current-runtime.cjs');
+const { packagedBackendInfo, currentRuntimeEnvironment, resolveMdTblite } = require('./current-runtime.cjs');
 const { createFileReader } = require('./file-read.cjs');
 const { createLaunchSources } = require('./launch-sources.cjs');
 const { createTaskSystemComposition } = require('./task-system-composition.cjs');
@@ -20,7 +20,7 @@ const { createXtbHost } = require('./xtb-host.cjs');
 const { createAdvancedPathHost } = require('./advanced-path-host.cjs');
 const { createPesHost } = require('./pes-host.cjs');
 const { attachTwoDPointerActivation, readTwoDPointerSettings } = require('./two-d-pointer-platform.cjs');
-const { resolvePesRuntime } = require('./pes-runtime.cjs');
+const { resolvePesRuntime, resolveMdResidentLibrary } = require('./pes-runtime.cjs');
 const { createConformerSamplingHost } = require('./conformer-sampling-host.cjs');
 const { createConformerOptimizationBatch } = require('./conformer-optimization-batch.cjs');
 const { createConformerBatchAdapter } = require('./conformer-batch-adapter.cjs');
@@ -29,6 +29,8 @@ const { createOcrHost } = require('./ocr-host.cjs');
 const { createAissHost } = require('./aiss-host.cjs');
 const { createAdvancedOutputStore } = require('./advanced-output.cjs');
 const { createBinaryExportStore } = require('./binary-export-store.cjs');
+const { createBinaryAssetStore } = require('./binary-asset-store.cjs');
+const { describeFile, fileChunks, currentStreamFile, atomicWriteStream } = require('./stream-file-publication.cjs');
 const { createManagedResultTransfers } = require('./managed-result-transfer.cjs');
 const { createFrontendWorkAdmission } = require('./frontend-work-admission.cjs');
 const { createSyProjectStore, isProjectIndexPath } = require('./sy-project-store.cjs');
@@ -65,7 +67,7 @@ const {createCitationExport}=require('./citation-export.cjs');
 const { assertExportDestination, assertUnmanagedDestination } = require('./portable-export.cjs');
 const { createNativeProcessTracker } = require('./native-process.cjs');
 const { createPostExitCleanup } = require('./post-exit-cleanup.cjs');
-const { createEmpiricalChemistryHost } = require('./empirical-chemistry-host.cjs');
+const { createEmpiricalChemistryHost, FRAME_REPLY_MODE } = require('./empirical-chemistry-host.cjs');
 const { createCrystalModelingHost } = require('./crystal-modeling.cjs');
 const { createSurfaceSourceFiles } = require('./surface-source-files.cjs');
 const { createMultiwfnScheduler } = require('./multiwfn-scheduler.cjs');
@@ -75,6 +77,11 @@ const { createWorkspaceDocuments } = require('./workspace-documents.cjs');
 const { createAnalysisWindowHost } = require('./analysis-window-host.cjs');
 const { createMcpLiveHost, createMcpLiveClient } = require('./mcp/live-bridge.cjs');
 const { buildMcpLaunchSpec, buildMcpClientConfigs, buildMcpHttpClientConfigs, createMcpPreferencesStore } = require('./mcp/connection-config.cjs');
+const { createMcpHost } = require('./mcp/host.cjs');
+const { errorRecord: mcpErrorRecord } = require('./mcp/wire.cjs');
+const { discoveryDirectory: mcpDiscoveryDirectory, MCP_CONNECT_LAUNCH } = require('./mcp/identity.cjs');
+const { createMcpFiles } = require('./mcp-files.cjs');
+const { registerMcpAgentPanel } = require('./mcp-agent-panel.cjs');
 const { assert, plain, string, boundedJSON, within, validateClipboard, validateChemistry, validateSaveRequest, formatForPath, allowedURL, createNavigationGuard } = security;
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true } }]);
@@ -121,6 +128,7 @@ function readLaunchRequest(argv, cwd) {
 app.on('second-instance', (_event, argv, cwd) => {
   if (!ownsProfile) return;
   const request = readLaunchRequest(argv, cwd);
+  if (argv.includes(MCP_CONNECT_LAUNCH) && !request.paths.length && !request.error) return;
   if (app.isReady() && hostWindowsReady) {
     const window = restoreHiddenWorkspaceOwner() || createModelWindow();
     if (request.paths.length || request.error) enqueueLaunch(window, request);
@@ -139,6 +147,56 @@ const computeResources = createComputeResources({profileRoot:app.getPath('userDa
 const firstRunLicense = createFirstRunLicense({profileRoot:portableProfile?.paths?.data??app.getPath('userData'),licensePath:path.join(portableProfile?.layout?.distributionRoot??appPath,'LICENSE.txt')});
 const taskCache = createTaskCache({root:path.join(portableProfile?.paths.cache ?? app.getPath('userData'), 'tasks'),report:entry=>console.info('TASK_CACHE',JSON.stringify(entry))});
 const windows = new Map();
+const retiredRendererOwners = new Set();
+const mcpDiscoveryRoot = isolatedIO ? path.join(isolatedRoot, 'mcp-discovery') : mcpDiscoveryDirectory(process.env);
+const mcpHost = createMcpHost({
+  profileRoot: app.getPath('userData'),
+  discoveryDir: mcpDiscoveryRoot,
+  executable: process.execPath,
+  entry: path.join(__dirname, 'mcp', 'stdio.cjs'),
+  send(owner, channel, payload) {
+    const window = ownerWindow(owner);
+    assert(allowedURL(window.webContents.mainFrame.url, development), 'Untrusted ES MCP recipient');
+    window.webContents.send(`sciyue:${channel}`, payload);
+    return true;
+  },
+  async confirm(owner, clientName, signal) {
+    const window = ownerWindow(owner);
+    if (headless) return (await readTestDialogConfig()).mcpConnectionChoice ?? 'deny';
+    const answer = await dialog.showMessageBox(window, {
+      type: 'question', title: '连接 Lactone Studio', message: '允许本机 Agent 连接这个窗口？',
+      detail: `客户端：${clientName}\n连接后可调用本窗口开放的 LS/ES 操作。可在 Agent 面板查看和断开连接。`,
+      buttons: ['拒绝', '仅本次', '记住此客户端'], defaultId: 0, cancelId: 0, noLink: true, signal,
+    });
+    return ['deny', 'once', 'remember'][answer.response];
+  },
+  show(owner, request) {
+    ownerWindow(owner);
+    assert(plain(request) && Object.keys(request).every(key => ['foreground', 'documentId'].includes(key)) &&
+      (request.foreground === undefined || typeof request.foreground === 'boolean'), 'Invalid ES window display request');
+    const presentation = request.documentId === undefined ? undefined : workspaceDocuments.presentationTarget(owner, request.documentId);
+    const viewOwner = presentation?.target ?? owner;
+    const window = ownerWindow(viewOwner);
+    const view = (presentation?.detached ?? detachedWorkspaceWindows.has(viewOwner)) ? 'detached' : 'workbench';
+    const { instanceId, windowId } = mcpHost.state(viewOwner);
+    const document = presentation && {
+      documentId: presentation.documentId,
+      ownerWindowId: mcpHost.state(presentation.owner).windowId,
+    };
+    if (request.foreground && !headless) {
+      if (window.isMinimized()) window.restore();
+      window.show();
+      if (hiddenWorkspaceOwners.delete(viewOwner)) window.webContents.send('sciyue:workspace-document-event', {
+        kind: 'owner-view-restored', schema: 'sciyue-workspace-document', version: 1, ownerWindowId: String(viewOwner),
+      });
+      window.focus();
+    }
+    return { instanceId, windowId, view, ...document,
+      visible: window.isVisible(), focused: window.isFocused(), minimized: window.isMinimized() };
+  },
+  log: code => logEvent('warning', `MCP_${code}`),
+});
+const binaryAssets = createBinaryAssetStore({ root: path.join(taskCache.root, 'binary-assets'), ownerAlive: ownerWindow, ready: () => taskCache.ready() });
 const workbenchFileStates = new Map(); let workbenchMenu = null;
 const refreshNativeMenu = () => { if (workbenchMenu) refreshWorkbenchMenu(workbenchMenu, BrowserWindow.getFocusedWindow?.()); };
 const runtimeModelDisplay = createRuntimeModelDisplayStore({ scopeFor(owner) {
@@ -230,7 +288,7 @@ async function admitAdvancedScience(owner, request, { signal, resolveResources }
 }
 function localResources(domain,owner,request={}) {
   const cpu=cpuResourceSnapshot(),cores=cpu.physicalCoreCount??cpu.logicalCpuCount;
-  if(domain==='forcefield')return computeResources.resolveForRun(owner,{...request,method:request.forcefield??'UFF'},{maxThreads:1,reason:'当前力场实现为单线程'});
+  if(domain==='structure-generation')return computeResources.resolveForRun(owner,request,{maxThreads:1,reason:'三维结构生成使用单线程'});
   const maxThreads=domain==='aiss'?Math.min(2,cores):cpu.logicalCpuCount;
   return computeResources.resolveForRun(owner,request,{maxThreads,reason:domain==='aiss'?'既有aISS接口上限2线程':'本机可用逻辑处理器'});
 }
@@ -279,13 +337,27 @@ const crystalModeling = createCrystalModelingHost({
 });
 let maintenanceBusy = false, fileOperations = 0;
 const pendingFileOperations = new Set(), runtimeChecks = new Map();
-function exportRoots() { return { root: portableProfile?.layout?.distributionRoot ?? portableProfile?.root ?? appPath, layout: portableProfile?.layout, managedRoots: [app.getPath('userData')], applicationRoots: [path.join(appPath, 'desktop'), path.join(appPath, 'dist')] }; }
+function portableExportPath(name = '') {
+  const root = portableProfile?.layout?.distributionRoot ?? portableProfile?.root;
+  return root ? path.join(root, 'harness', 'exports', path.basename(name)) : name || undefined;
+}
+function exportRoots() { return { root: portableProfile?.layout?.distributionRoot ?? portableProfile?.root ?? appPath, layout: portableProfile?.layout, managedRoots: [app.getPath('userData'), mcpDiscoveryRoot].filter(Boolean), applicationRoots: [path.join(appPath, 'desktop'), path.join(appPath, 'dist')] }; }
 const gxtbBackend = createGxtbBackendStore(app.getPath('userData'),{spawn:nativeProcesses.spawn});
+async function resolveAseMdContext(request, resources, workspacePath, signal) {
+  signal?.throwIfAborted();
+  const location = { packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath };
+  const grant = { workspacePath, threads: resources.threads, memoryBudgetBytes: resources.memoryBudgetBytes };
+  if (request.structure.cell?.pbc.some(Boolean) && ['gfn1', 'gfn2'].includes(request.method)) {
+    return { ...grant, backend: 'tblite', tblite: resolveMdTblite(location) };
+  }
+  return { ...grant, backend: 'libxtb', libxtb: resolveMdResidentLibrary(location) };
+}
 const dynamics = createDynamicsHost({
   spawn: nativeProcesses.spawn,
-  admit:(owner,request,options)=>localAdmission(request.method?'xtb':'forcefield')(owner,request,options),
-  resolveResources:(owner,request)=>localResources(request.method?'xtb':'forcefield',owner,request),
-  resolveXtbRuntime:request=>xtbRuntime({externalGxtb:gxtbBackend,signal:request.signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:request.method,operation:request.operation,periodic:Boolean(request.structure?.cell)}),
+  resolveAseContext: resolveAseMdContext,
+  admit:(owner,request,options)=>localAdmission('xtb')(owner,request,options),
+  resolveResources:(owner,request)=>localResources('xtb',owner,request),
+  resolveXtbRuntime:request=>xtbRuntime({externalGxtb:gxtbBackend,signal:request.signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:request.method,operation:request.operation,periodic:request.structure?.cell?.pbc.some(Boolean)===true}),
   jobRoot:path.join(taskCache.root,'dynamics'),
   sendToWindow(owner, event) {
     const window = windows.get(owner);
@@ -323,7 +395,31 @@ function enqueueLaunch(window, request) {
   catch (error) { if (!headless) dialog.showErrorBox?.('启动文件导入失败', error.message); }
 }
 const syProjectStore=createSyProjectStore({appVersion:appDisplayVersion});
-const projectIPC=createSyProjectIPC({store:syProjectStore,dialog,ownerWindow:window=>window,createWindow:()=>createModelWindow(),appVersion:appDisplayVersion,executablePath:portableProfile?.layout?.layoutVersion===2?path.join(portableProfile.layout.distributionRoot,path.basename(process.execPath).toLowerCase()==='ester-studio-host.exe'?'Ester-Studio.exe':'SY-Studio.exe'):process.execPath});
+const projectIPC=createSyProjectIPC({store:syProjectStore,dialog,ownerWindow:window=>window,createWindow:()=>createModelWindow(),appVersion:appDisplayVersion,executablePath:process.platform==='win32'&&portableProfile?.layout?.distributionRoot?path.join(portableProfile.layout.distributionRoot,path.basename(process.execPath).toLowerCase()==='ester-studio-host.exe'?'Ester-Studio.exe':'SY-Studio.exe'):process.execPath});
+const mcpFiles = createMcpFiles({
+  assertRequest: mcpHost.assertRequest, launchSources, projectIPC,
+  bundleRoot: () => portableProfile?.layout?.distributionRoot ?? portableProfile?.root,
+  copyTaskFile: (owner, payload, options) => taskSystem.request(owner, { requestId: randomUUID(), command: 'file.save-copy', input: payload }, options),
+  takeBinaryAsset: (owner, id) => binaryAssets.takeOwned(owner, id),
+  saveAnalysisCube: saveOwnedSurfaceCube,
+  createWindow: () => createModelWindow(undefined, undefined, { inactive: true }),
+  publicTarget(owner) {
+    const { instanceId, windowId } = mcpHost.state(owner);
+    return { instanceId, windowId };
+  },
+  requestClose(window, requestId) {
+    const owner = window.webContents.id, projectId = projectIPC.projectIdOf(owner);
+    mcpHost.afterReply(owner, requestId, () => {
+      if (window.isDestroyed() || retiredRendererOwners.has(owner) || projectIPC.projectIdOf(owner) !== projectId ||
+          pendingShellCloses.has(owner) || requestedMcpCloses.has(owner)) return;
+      requestedMcpCloses.add(owner);
+      try { window.close(); }
+      finally { void windowClosePolicy.settle().finally(() => requestedMcpCloses.delete(owner)); }
+    });
+  },
+  assertDestination: destination => assertUnmanagedDestination(destination, exportRoots()),
+});
+const requestedMcpCloses = new Set();
 const projectCompanionSources=createProjectCompanionSources({root:path.join(portableProfile?.paths.temp??app.getPath('temp'),'project-companions'),openLaunchSources:(owner,paths,options)=>launchSources.open(owner,paths,options),closeLaunchSource:(owner,token)=>launchSources.close(owner,token)});
 const xtbElectronicSources = createXtbElectronicArtifacts({ root: path.join(app.getPath('userData'), 'xtb-electronic-sources') });
 const xtb = createXtbHost({
@@ -334,7 +430,7 @@ const xtb = createXtbHost({
   retainElectronicArtifacts: (owner, value) => xtbElectronicSources.retain(owner, value),
   prepareElectronicArtifacts: createGxtbElectronicArtifactPreparation({spawn:nativeProcesses.spawn,
     resolveRuntime(){const runtime=chemistryRuntime({packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath});return {...runtime,args:[...runtime.args,'--orbitals']};}}),
-  resolveRuntime: request => xtbRuntime({externalGxtb:gxtbBackend, signal:request.signal, packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath, method:request.method, operation:request.calculation, periodic:Boolean(request.structure?.cell) }),
+  resolveRuntime: request => xtbRuntime({externalGxtb:gxtbBackend, signal:request.signal, packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath, method:request.method, operation:request.calculation, periodic:request.structure?.cell?.pbc.some(Boolean)===true }),
   resolvePeriodicRuntime() { const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath }); return { ...runtime, args: [...runtime.args, '--xtb-periodic'] }; },
   sendToWindow(owner, event) {
     if(event.event==='error')logEvent('error',/^[A-Z0-9_-]{1,80}$/.test(event.error?.code??'')?event.error.code:'XTB_TASK_FAILED');
@@ -351,16 +447,23 @@ const advancedPath = createAdvancedPathHost({
   sendToWindow(owner, event) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:advanced-path-event', event); },
 });
 const pes = createPesHost({
-  spawn:nativeProcesses.spawn,fs,jobRoot:path.join(taskCache.root,'pes'),
+  pagedTerminalFrames: true,
+  registerBinaryAsset: (owner,file,options) => binaryAssets.registerOwned(owner,file,options),
+  adoptBinaryAsset: (owner,file) => binaryAssets.adoptVerifiedFile(owner,file),
+  spawn:nativeProcesses.spawn,spawnResident:nativeProcesses.spawnRetainedAnalysis,fs,jobRoot:path.join(taskCache.root,'pes'),
   resultRoot:path.join(app.getPath('userData'),'pes-path-records'),
   admit:(owner,request,options)=>localAdmission('path')(owner,{...request,stamp:{documentId:request.sourceDocumentId}},options),
+  admitCandidate:(owner,request,options)=>candidatePoolAdmission.admit(owner,request,options),
   resolveResources:async(owner,request)=>{await readCpuResources();return computeResources.resolveForRun(owner,request);},
   resolveRuntime:request=>resolvePesRuntime({packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,request}),
-  resolveXtbRuntime:request=>xtbRuntime({externalGxtb:gxtbBackend,signal:request.signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:request.method,operation:'singlepoint',periodic:false}),
+  // The ES driver owns geometry steps. The native xTB route supplies physical
+  // derivatives, so fixed-cell OPT uses the official tblite-capable evaluator.
+  resolveXtbRuntime:(request,signal)=>xtbRuntime({externalGxtb:gxtbBackend,signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:request.method,operation:request.operation==='opt'?'gradient':'singlepoint',periodic:request.structure?.cell?.pbc.some(Boolean)??false}),
   sendToWindow(owner,event){const window=windows.get(owner);if(window&&!window.isDestroyed()&&!window.webContents.isDestroyed())window.webContents.send('sciyue:pes-event',event);},
 });
 const conformerSampling = createConformerSamplingHost({
   spawn: nativeProcesses.spawn, admit: localAdmission('sampling'), fs,
+  resolveAseContext: resolveAseMdContext,
   resolveResources:(owner,request)=>computeResources.resolveForRun(owner,request),
   jobRoot: path.join(taskCache.root, 'sampling'),
   resultRoot: path.join(app.getPath('userData'), 'conformer-results', 'sampling'),
@@ -376,16 +479,8 @@ const conformerBatch = createConformerOptimizationBatch({
   onRunStart: (owner, request) => candidatePoolAdmission.hold(owner,request.identity,request.resources),
   sendToOwner(owner,event) { const window=windows.get(owner); if(window&&!window.isDestroyed()&&!window.webContents.isDestroyed())window.webContents.send('sciyue:conformer-batch-progress',event); },
   captureRuntime:(_owner,request,options)=>request.method?.backend==='xtb'&&request.method.options.method==='gxtb'?xtbRuntime({externalGxtb:gxtbBackend,signal:options.signal,packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath,method:'gxtb',periodic:false}):undefined,
-  launchCandidate: createConformerBatchAdapter({xtb,
+  launchCandidate: createConformerBatchAdapter({pes,
     assertCurrent(owner,source) { ownerWindow(owner); assert(!maintenanceBusy&&!quitting,'NATIVE_CANCELLED: 构象后台任务已取消'); workspaceDocuments.assertRuntimeOwner(owner,source.stamp.documentId); },
-    runChemistry: (owner,request,id,lifecycle) => runChemistry(ownerWindow(owner),request,id,lifecycle),
-    cancelChemistry: (owner,id) => jobs.get(`${owner}:${id}`)?.abort('CHEMISTRY_CANCELLED: 用户取消任务'),
-    async preserveFailure(owner,evidence) {
-      const root=path.join(app.getPath('userData'),'conformer-results','diagnostics');await fs.mkdir(root,{recursive:true});await directoryIdentity(root);
-      const directory=await fs.mkdtemp(path.join(root,'forcefield-'));await directoryIdentity(directory);
-      const file=await fs.open(path.join(directory,'failure.json'),'wx');try{await file.writeFile(JSON.stringify({...evidence,owner})+'\n','utf8');await file.sync();}finally{await file.close();}
-      console.warn('CONFORMER_FORCEFIELD_DIAGNOSTIC_RETAINED',directory);
-    },
   }),
 });
 let conformerBatchDisposal;
@@ -397,6 +492,7 @@ const aiss = createAissHost({
   sendToWindow(owner, event) { const window = windows.get(owner); if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('sciyue:aiss-event', event); },
 });
 const advancedOutputs = createAdvancedOutputStore({
+  takeBinaryAsset: (owner,id) => binaryAssets.takeOwned(owner,id),
   ownerAlive: owner => { ownerWindow(owner); return true; },
   assertDestination: destination => assertUnmanagedDestination(destination, exportRoots()),
   async chooseDestination(owner, request) {
@@ -417,13 +513,15 @@ const binaryExports = createBinaryExportStore({
   async chooseDestination(owner,request) {
     const window=ownerWindow(owner);
     if(isolatedIO){const config=await readTestDialogConfig();return config.savePath?{path:await testPath(config.savePath,false),overwriteConfirmed:config.confirmOverwrite===true}:null;}
-    const choice=await dialog.showSaveDialog(window,{title:'导出文件',defaultPath:request.name,filters:[{name:request.extension.toUpperCase(),extensions:[request.extension]}],properties:['showOverwriteConfirmation']});
+    const choice=await dialog.showSaveDialog(window,{title:'导出文件',defaultPath:portableExportPath(request.name),filters:[{name:request.extension.toUpperCase(),extensions:[request.extension]}],properties:['showOverwriteConfirmation']});
     return choice.canceled||!choice.filePath?null:{path:choice.filePath,overwriteConfirmed:true};
   },
 });
 const personalFragments = createPersonalFragmentStore({ root: app.getPath('userData') });
 const orbitalBackend = createOrbitalBackendStore(app.getPath('userData'));
 const orbitals = createOrbitalHost({
+  adoptResultFile: adoptAnalysisBinaryFile,
+  releaseResultFile: (owner,id)=>binaryAssets.release(owner,id),
   snapshotSource: (owner,token,options) => launchSources.snapshotSource(owner,token,options),
   scheduler: multiwfnScheduler,
   resolveResources:(owner,request)=>computeResources.resolveForRun(owner,request),
@@ -450,6 +548,9 @@ function sendAnalysisEvent(owner, channel, value) {
   const window = windows.get(owner);
   if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send(channel, value);
 }
+async function adoptAnalysisBinaryFile(owner, file, options) {
+  return { binaryAsset:await binaryAssets.adoptVerifiedFile(owner,file),encoding:options.kind };
+}
 function lazyMultiwfnAnalysis({ label, reservation, directory, flag, create, ports }) {
   let service;
   return {
@@ -464,6 +565,8 @@ function lazyMultiwfnAnalysis({ label, reservation, directory, flag, create, por
         resolveBackend: () => orbitalBackend.info(),
         captureResources: owner => computeResources.resolveForRun(owner),
         resolveResources: (owner, _overrides, captured, backend) => orbitals.resources(owner, undefined, captured, backend),
+        adoptResultFile: adoptAnalysisBinaryFile,
+        releaseResultFile: (owner, id) => binaryAssets.release(owner, id),
         resolveRuntime() {
           const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath });
           return { ...runtime, args: [...runtime.args, flag] };
@@ -500,28 +603,28 @@ const surfaces = surfaceHost.get, interactions = interactionHost.get, electronic
 const multiwfnAnalysisHosts = [surfaceHost, interactionHost, electronicHost];
 multiwfnScheduler.addReservationProvider('orbital', context => orbitals.reservedMemoryBytes?.(context) ?? 0);
 for (const host of multiwfnAnalysisHosts) multiwfnScheduler.addReservationProvider(host.reservation, context => host.current()?.reservedMemoryBytes?.(context) ?? 0);
-const hasUnretainedNativeProcesses = () => nativeProcesses.count() > orbitals.workerCount() + empiricalChemistry.workerCount() +
+const hasUnretainedNativeProcesses = () => nativeProcesses.count() > orbitals.workerCount() + empiricalChemistry.workerCount() + pes.workerCount() +
   multiwfnAnalysisHosts.reduce((count, host) => count + (host.current()?.workerCount() ?? 0), 0) + crystalModeling.workerCount();
 const hasActiveAnalysis = () => orbitals.activeCount() > 0 || multiwfnAnalysisHosts.some(host => (host.current()?.activeCount() ?? 0) > 0);
 const portableLog = portableProfile && ownsProfile ? createPortableLog({ profile: portableProfile }) : null;
 const closeDiagnostics = createCloseDiagnostics({ directory: portableProfile?.paths.logs ?? app.getPath('userData'), identity: portableProfile?.identities.logs });
 const logEvent = (level, code) => { void portableLog?.append({ level, code }).catch(() => {}); };
 const hostBusy = () => hasUnretainedNativeProcesses() || crystalModeling.activeCount() > 0 || orbitals.sessionCount() > 0 || hasActiveAnalysis() || surfaceCloseTasks.size > 0 || xtbSourceCloseTasks.size > 0 || jobs.size > 0 || dynamics.workerCount() > 0 || xtb.activeCount() > 0 || conformerBatch.activeCount() > 0 || advancedPath.activeCount() > 0 || pes.activeCount() > 0 || conformerSampling.activeCount() > 0 || ocr.activeCount() > 0 || aiss.activeCount() > 0 || fileOperations > 0 || fileReader.activeCount() > 0;
-function ownerWindow(owner) { const window = windows.get(owner); assert(window && !window.isDestroyed() && !window.webContents.isDestroyed(), 'Owned window closed'); return window; }
+function ownerWindow(owner) { const window = windows.get(owner); assert(window && !retiredRendererOwners.has(owner) && !window.isDestroyed() && !window.webContents.isDestroyed(), 'Owned window closed'); return window; }
 function resolveMcpTargetWindow(requestedWindowId) {
   if (Number.isInteger(requestedWindowId)) {
     const requested = windows.get(requestedWindowId);
-    if (requested && !requested.isDestroyed() && !requested.webContents.isDestroyed()) return requested;
+    if (requested && !retiredRendererOwners.has(requestedWindowId) && !requested.isDestroyed() && !requested.webContents.isDestroyed()) return requested;
   }
   if (primaryWorkbenchWindowId !== null) {
     const primary = windows.get(primaryWorkbenchWindowId);
-    if (primary && !primary.isDestroyed() && !primary.webContents.isDestroyed()) return primary;
+    if (primary && !retiredRendererOwners.has(primaryWorkbenchWindowId) && !primary.isDestroyed() && !primary.webContents.isDestroyed()) return primary;
   }
   for (const [id, win] of windows.entries()) {
-    if (!detachedWorkspaceWindows.has(id) && !win.isDestroyed() && !win.webContents.isDestroyed()) return win;
+    if (!retiredRendererOwners.has(id) && !detachedWorkspaceWindows.has(id) && !win.isDestroyed() && !win.webContents.isDestroyed()) return win;
   }
-  for (const win of windows.values()) {
-    if (!win.isDestroyed() && !win.webContents.isDestroyed()) return win;
+  for (const [id, win] of windows.entries()) {
+    if (!retiredRendererOwners.has(id) && !win.isDestroyed() && !win.webContents.isDestroyed()) return win;
   }
   return null;
 }
@@ -555,6 +658,21 @@ const mcpLiveHost = createMcpLiveHost({
     primaryWorkbenchWindowId,
     detachedWindowCount: detachedWorkspaceWindows.size,
   }),
+  dynamicTools: {
+    listTools: () => {
+      const target = resolveMcpTargetWindow();
+      if (!target || target.isDestroyed()) return [];
+      return mcpHost.listTools(target.webContents.id);
+    },
+    callTool: (name, args, { signal } = {}) => {
+      const target = resolveMcpTargetWindow();
+      if (!target || target.isDestroyed()) {
+        throw Object.assign(new Error('No active Lactone Studio workbench window is available'), { code: 'MCP_NO_TARGET_WINDOW' });
+      }
+      return mcpHost.callExternal(target.webContents.id, { clientName: 'Lactone Studio MCP Server' }, name, args, { signal });
+    },
+    subscribe: listener => mcpHost.onCatalogChanged(listener),
+  },
 });
 let mcpToggleQueue = Promise.resolve();
 function mcpConnectionInfo() {
@@ -739,7 +857,7 @@ const entryURL = development ? 'http://127.0.0.1:4181/' : 'app://studio/index.ht
 
 function senderWindow(event) {
   const window = windows.get(event.sender.id);
-  assert(window && !window.isDestroyed() && event.senderFrame === event.sender.mainFrame && allowedURL(event.senderFrame.url, development), 'Untrusted desktop IPC sender');
+  assert(window && !retiredRendererOwners.has(event.sender.id) && !window.isDestroyed() && event.senderFrame === event.sender.mainFrame && allowedURL(event.senderFrame.url, development), 'Untrusted desktop IPC sender');
   return window;
 }
 const fileChannels = new Set(['export-citations', 'sy-project', 'describe-excitation-project-companions', 'read-excitation-project-companion', 'release-excitation-project-companions', 'begin-project-companion-bundle', 'append-project-companion-bundle', 'commit-project-companion-bundle', 'abort-project-companion-bundle', 'close-project-companion-bundle', 'open-files', 'claim-launch-import', 'read-launch-source', 'register-selected-output-source', 'pick-reference-file', 'read-file-chunk', 'choose-save-path', 'write-chosen-file', 'choose-gxtb-backend', 'set-gxtb-backend-path', 'detect-gxtb-backend', 'choose-orbital-backend', 'choose-multiwfn-work-directory', 'reset-multiwfn-work-directory', 'import-personal-fragments', 'export-personal-fragments', 'open-surface-session', 'import-surface-cube', 'register-surface-cube', 'read-registered-surface-cube', 'release-surface-cube', 'export-surface-cube', 'export-registered-surface-cube', 'open-interaction-session', 'export-interaction-cube', 'open-excitation-session', 'open-reactivity-session', 'export-excitation-cube', 'choose-advanced-output', 'write-advanced-output', 'abandon-advanced-output', 'open-hirshfeld-session', 'export-hirshfeld-cube', 'open-xtb-orbital-session']);
@@ -761,6 +879,31 @@ function handle(channel, listener) {
 }
 const managedResultChannels = new Set(['read-xtb-electronic-artifacts','analyze-wavefunction','read-orbital-field','analyze-surface','generate-surface','surface-restore-fields','surface-distribution','generate-interaction','interaction-contributions','restore-interaction-fields','run-excitation','restore-excitation-fields','analyze-reactivity','analyze-hirshfeld','restore-hirshfeld-fields','read-registered-surface-cube','import-surface-cube','open-orbital-session','open-xtb-orbital-session']);
 managedResultChannels.add('task-system-request');
+fileChannels.add('mcp-file');
+handle('mcp-file', async (window, spec) => {
+  try { return await mcpFiles.invoke(window, spec); }
+  catch (error) { return { mcpFileError: mcpErrorRecord(error) }; }
+});
+handle('mcp-publish', (window, catalog) => mcpHost.publish(window.webContents.id, catalog));
+handle('mcp-reply', (window, reply) => mcpHost.reply(window.webContents.id, reply));
+handle('mcp-state', window => mcpHost.state(window.webContents.id));
+handle('mcp-disconnect', (window, sessionId) => mcpHost.disconnect(window.webContents.id, sessionId));
+handle('mcp-forget', (window, clientId) => mcpHost.forget(window.webContents.id, clientId));
+handle('mcp-show', (window, request) => mcpHost.show(window.webContents.id, request));
+handle('mcp-connection-config', window => mcpHost.connectionConfig(window.webContents.id));
+const mcpAgentPanel = registerMcpAgentPanel({
+  handle, safeStorage, userDataPath: app.getPath('userData'),
+  getWindowContext(window) {
+    const owner = window.webContents.id;
+    return {
+      get connectionConfig() { return mcpHost.connectionConfig(owner); },
+      get projectIndexPath() { return projectIPC.indexPathOf(owner); },
+      getState: () => mcpHost.state(owner),
+      listTools: () => mcpHost.listTools(owner),
+      callTool: (name, args, options) => mcpHost.callLocal(owner, name, args, options),
+    };
+  },
+});
 handle('task-system-request',(window,request)=>taskSystem.request(window.webContents.id,request));
 handle('task-system-cancel',(window,requestId)=>taskSystem.cancel(window.webContents.id,requestId));
 handle('mcp-frontend-reply',(window,response)=>mcpLiveHost.handleFrontendReply(window.webContents.id,response));
@@ -770,6 +913,12 @@ handle('mcp-connection-rotate-token',()=>rotateMcpConnectionToken());
 handle('mcp-connection-test',()=>testMcpConnection());
 handle('two-d-pointer-settings',()=>readTwoDPointerSettings());
 for(const channel of ['begin-binary-export','append-binary-export','commit-binary-export','abort-binary-export','describe-launch-source'])fileChannels.add(channel);
+for (const channel of ['begin-binary-asset','append-binary-asset','seal-binary-asset','read-binary-asset','release-binary-asset']) fileChannels.add(channel);
+handle('begin-binary-asset', (window, bytes) => binaryAssets.begin(window.webContents.id, bytes));
+handle('append-binary-asset', (window, id, bytes) => binaryAssets.append(window.webContents.id, id, bytes));
+handle('seal-binary-asset', (window, id) => binaryAssets.seal(window.webContents.id, id));
+handle('read-binary-asset', (window, id, offset, length) => binaryAssets.read(window.webContents.id, id, offset, length));
+handle('release-binary-asset', (window, id) => binaryAssets.release(window.webContents.id, id));
 handle('managed-result-transfer',(window,request)=>{assert(plain(request)&&['read','release'].includes(request.action),'Invalid managed result action');return request.action==='read'?managedResults.read(window.webContents.id,request.token,request.start):managedResults.release(window.webContents.id,request.token);});
 handle('acquire-worker-resources',(window,request)=>frontendWorkAdmission.acquire(window.webContents.id,request));
 handle('cancel-worker-resources',async(window,id)=>{await frontendWorkAdmission.cancel(window.webContents.id,id);});
@@ -810,7 +959,7 @@ function requestCitations(window){
 }
 const exportCitations=createCitationExport({fs,assertOwner:ownerWindow,roots:exportRoots,select:async(window,format)=>{
   if(isolatedIO){const config=await readTestDialogConfig();return {cancelled:!config.savePath,path:config.savePath?await testPath(config.savePath,false):undefined,overwriteConfirmed:config.confirmOverwrite===true};}
-  const result=await dialog.showSaveDialog(window,{title:'导出文献',defaultPath:`Ester-Studio-citations.${format}`,filters:[{name:format==='bib'?'BibTeX':format.toUpperCase(),extensions:[format]}],properties:['showOverwriteConfirmation']});
+  const result=await dialog.showSaveDialog(window,{title:'导出文献',defaultPath:portableExportPath(`Ester-Studio-citations.${format}`),filters:[{name:format==='bib'?'BibTeX':format.toUpperCase(),extensions:[format]}],properties:['showOverwriteConfirmation']});
   return {cancelled:result.canceled,path:result.filePath,overwriteConfirmed:true};
 }});
 handle('export-citations',exportCitations);
@@ -830,6 +979,8 @@ handle('commit-project-companion-bundle',(window,id)=>projectCompanionSources.co
 handle('abort-project-companion-bundle',(window,id)=>projectCompanionSources.abort(window.webContents.id,id));
 handle('close-project-companion-bundle',(window,id)=>projectCompanionSources.close(window.webContents.id,id));
 function cancelWindowJobs(webContentsId) {
+  mcpHost.disposeOwner(webContentsId);
+  void Promise.resolve(mcpAgentPanel.closeOwner(webContentsId)).catch(() => logEvent('warning', 'MCP_AGENT_OWNER_CLOSE_FAILED'));
   imageClipboard.cancel(webContentsId);
   // Forced exit preserves incomplete transactions and source directories.
   if (forcingExit) return;
@@ -838,8 +989,17 @@ function cancelWindowJobs(webContentsId) {
   managedResults.disposeOwner(webContentsId);
   preparedMemoryEstimates.delete(webContentsId);
   void frontendWorkAdmission.disposeOwner(webContentsId).catch(error=>logEvent('warning','WORKER_RESOURCE_CLOSE_FAILED',error.message));
-  const exportsClosing=binaryExports.disposeOwner(webContentsId);pendingFileOperations.add(exportsClosing);exportsClosing.catch(error=>logEvent('warning','EXPORT_CLOSE_FAILED',error.message)).finally(()=>pendingFileOperations.delete(exportsClosing));
-  void projectIPC.disposeOwner(webContentsId).catch(error=>console.warn('PROJECT_CLOSE',error.message));
+  const track = (promise, code) => {
+    pendingFileOperations.add(promise);
+    void promise.then(() => {}, error => logEvent('warning', code, error.message)).finally(() => pendingFileOperations.delete(promise));
+    return promise;
+  };
+  track(binaryExports.disposeOwner(webContentsId), 'EXPORT_CLOSE_FAILED');
+  track(binaryAssets.closeOwner(webContentsId), 'BINARY_ASSET_CLOSE_FAILED');
+  const projectClosing = track(projectIPC.disposeOwner(webContentsId).then(receipt => {
+    for (const failure of receipt?.failures ?? []) logEvent('warning','PROJECT_CLOSE_FAILED',failure.code);
+    return receipt;
+  }), 'PROJECT_CLOSE_FAILED');
   runtimeModelDisplay.disposeOwner(webContentsId);
   const openings = [...multiwfnOpenings.values()].filter(value => value.owner === webContentsId);
   for (const opening of openings) opening.controller.abort(new Error('MULTIWFN_OPEN_CANCELLED: 模型窗口已关闭'));
@@ -882,6 +1042,7 @@ function cancelWindowJobs(webContentsId) {
   surfaceCloseTasks.add(surfaceClosing); surfaceClosing.catch(() => logEvent('warning', 'SURFACE_SOURCE_CLOSE_FAILED')).finally(() => surfaceCloseTasks.delete(surfaceClosing));
   for (const job of jobs.values()) if (job.owner === webContentsId) job.abort('CHEMISTRY_CANCELLED: 模型窗口已关闭');
   for (const [token, value] of tokens) if (value.owner === webContentsId) tokens.delete(token);
+  return { projectClosing, batchOwnerClosing };
 }
 const windowClosePolicy = createWindowClosePolicy({
   prepareApplicationExit:prepareExternalTaskExit,
@@ -924,17 +1085,40 @@ const windowClosePolicy = createWindowClosePolicy({
   },
   async forceQuit() {
     forcingExit = true; quitting = true; nativeProcesses.closeAdmission(); refreshNativeMenu();
+    void mcpLiveHost.dispose();
+    void mcpHost.close().catch(() => {});
+    void Promise.resolve(mcpAgentPanel.close()).catch(() => {});
     logEvent('warning', 'APPLICATION_FORCE_EXIT');
     await forcedShutdown.shutdown();
   },
 });
-function createModelWindow(workspaceOpen) {
+async function recoverWorkspaceRenderer(window, owner, detached, restartAttempt, closed) {
+  const [project] = await Promise.allSettled([closed.projectClosing, closed.batchOwnerClosing, conformerSampling.settle(owner)]);
+  if (quitting || forcingExit || window.isDestroyed()) return;
+  if (detached) { closeDetachedShell(owner); return; }
+  if (restartAttempt && !headless) {
+    const choice = await dialog.showMessageBox(window, {
+      type: 'warning', title: '重新打开工作台', message: '工作台再次意外关闭。',
+      detail: '已写入磁盘的计算结果可在新窗口的「恢复计算结果」中打开。',
+      buttons: ['重新打开', '保留此窗口'], defaultId: 0, cancelId: 1, noLink: true,
+    });
+    if (choice.response !== 0 || quitting || window.isDestroyed()) return;
+  } else if (restartAttempt) return;
+  const bounds = window.getNormalBounds(), visible = window.isVisible(), maximized = window.isMaximized();
+  const paths = project.status === 'fulfilled' ? project.value?.closedProjects ?? [] : [];
+  const next = createModelWindow(undefined, { bounds, visible, maximized, restartAttempt: restartAttempt + 1, projectPath: paths.length === 1 ? paths[0] : undefined });
+  if (primaryWorkbenchWindowId === owner) primaryWorkbenchWindowId = next.webContents.id;
+  approvedShellCloses.add(owner);
+  window.destroy();
+}
+function createModelWindow(workspaceOpen, recovery, { inactive = false } = {}) {
   const detached = workspaceOpen?.detached === true;
-  const window = new BrowserWindow({ icon:path.join(appPath,'dist','brand-icon.png'), width: detached ? 1000 : 1500, height: detached ? 760 : 940, minWidth: detached ? 640 : 800, minHeight: detached ? 480 : 600, ...workspaceOpen?.placement, show: !headless && workspaceOpen?.restorePlacement !== true, title: `${appMetadata.productName || 'Lactone Studio'} v${appVersionLabel}${appBuildRevision ? ' (' + appBuildRevision + ')' : ''}（非官方修改版） · 分子建模`,
+  const window = new BrowserWindow({ icon:path.join(appPath,'dist','brand-icon.png'), width: detached ? 1000 : 1500, height: detached ? 760 : 940, minWidth: detached ? 640 : 800, minHeight: detached ? 480 : 600, ...workspaceOpen?.placement, ...recovery?.bounds, show: !headless && !inactive && !recovery && workspaceOpen?.restorePlacement!==true, title: `${appMetadata.productName || 'Lactone Studio'} v${appVersionLabel}${appBuildRevision ? ' (' + appBuildRevision + ')' : ''}（非官方修改版） · 分子建模`,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, allowRunningInsecureContent: false, spellcheck: false, devTools: !app.isPackaged },
   });
   const id = window.webContents.id;
   windows.set(id, window);
+  mcpHost.attach(id);
   attachTwoDPointerActivation(window);
   if (!workspaceOpen && primaryWorkbenchWindowId === null) primaryWorkbenchWindowId = id;
   workspaceDocuments.attachWindow(id);
@@ -942,6 +1126,11 @@ function createModelWindow(workspaceOpen) {
   if (detached) detachedWorkspaceWindows.set(id, workspaceOpen.request.documentId);
   analysisWindows.attachOwner(window);
   const navigationGuard = createNavigationGuard(development);
+  window.webContents.on('did-start-navigation', (details, url, isSameDocument, isMainFrame) => {
+    if (quitting || !(details.isMainFrame ?? isMainFrame) || (details.isSameDocument ?? isSameDocument) || !allowedURL(details.url ?? url, development)) return;
+    mcpHost.resetOwner(id);
+    void Promise.resolve(mcpAgentPanel.closeOwner(id)).catch(() => logEvent('warning', 'MCP_AGENT_OWNER_CLOSE_FAILED'));
+  });
   window.webContents.on('will-navigate', navigationGuard);
   window.webContents.on('will-frame-navigate', navigationGuard);
   window.webContents.on('will-attach-webview', event => event.preventDefault());
@@ -967,9 +1156,24 @@ function createModelWindow(workspaceOpen) {
   window.on('responsive', () => { windowClosePolicy.rendererResponsive(id); refreshNativeMenu(); });
   window.webContents.on('console-message', (_event, details, oldMessage) => { const message = typeof details === 'object' ? details.message : oldMessage; const level = typeof details === 'object' ? details.level : details; if (level === 'error' || level === 3) void closeDiagnostics.record('renderer-error', { owner: id, error: String(message ?? '') }); });
   window.webContents.on('did-fail-load', (_event, code, description, _url, mainFrame) => { if (mainFrame !== false) { workbenchFileStates.delete(id); refreshNativeMenu(); windowClosePolicy.rendererUnavailable(id, 'renderer-load-failed'); void closeDiagnostics.record('renderer-load-failed', { owner: id, error: description, exitCode: code }); } });
-  window.webContents.on('render-process-gone', (_event, details) => { workbenchFileStates.delete(id); refreshNativeMenu(); windowClosePolicy.rendererUnavailable(id, 'renderer-gone'); void closeDiagnostics.record('renderer-gone', { owner: id, reason: details?.reason, exitCode: details?.exitCode }); if (!forcingExit) { workspaceDocuments.detachWindow(id); cancelWindowJobs(id); } });
-  window.on('closed', () => { workbenchFileStates.delete(id); if (!forcingExit) workspaceDocuments.detachWindow(id); detachedWorkspaceWindows.delete(id); approvedShellCloses.delete(id); hiddenWorkspaceOwners.delete(id); cancelWindowJobs(id); windows.delete(id); refreshNativeMenu(); });
-  if(!headless&&workspaceOpen?.restorePlacement===true)window.once('ready-to-show',()=>{if(!window.isDestroyed())window.showInactive();});
+  window.webContents.on('render-process-gone', (_event, details) => {
+    workbenchFileStates.delete(id); refreshNativeMenu(); windowClosePolicy.rendererUnavailable(id, 'renderer-gone');
+    void closeDiagnostics.record('renderer-gone', { owner: id, reason: details?.reason, exitCode: details?.exitCode });
+    if (forcingExit || retiredRendererOwners.has(id)) return;
+    retiredRendererOwners.add(id);
+    workspaceDocuments.detachWindow(id);
+    const closed = cancelWindowJobs(id);
+    if (details?.reason !== 'clean-exit') void recoverWorkspaceRenderer(window, id, detached, recovery?.restartAttempt ?? 0, closed)
+      .catch(error => { logEvent('warning','WORKSPACE_RECOVERY_FAILED',error.message); void closeDiagnostics.record('workspace-recovery-failed',{owner:id,error:error.message}); });
+  });
+  window.on('closed', () => { workbenchFileStates.delete(id); if (!retiredRendererOwners.delete(id)) { if (!forcingExit) workspaceDocuments.detachWindow(id); cancelWindowJobs(id); } detachedWorkspaceWindows.delete(id); approvedShellCloses.delete(id); hiddenWorkspaceOwners.delete(id); windows.delete(id); refreshNativeMenu(); });
+  if(!headless&&(inactive||workspaceOpen?.restorePlacement===true))window.once('ready-to-show',()=>{if(!window.isDestroyed())window.showInactive();});
+  if (recovery?.projectPath) projectIPC.enqueue(window, recovery.projectPath);
+  if (!headless && recovery?.visible) window.once('ready-to-show', () => {
+    if (window.isDestroyed()) return;
+    if (recovery.maximized) window.maximize();
+    else window.showInactive();
+  });
   void window.loadURL(entryURL);
   return window;
 }
@@ -1052,6 +1256,7 @@ handle('open-model-window', (window, request) => {
 });
 handle('prepare-analysis-window', (window, request) => analysisWindows.prepare(window.webContents.id, request));
 handle('release-analysis-window', (window, request) => analysisWindows.release(window.webContents.id, request));
+handle('move-workbench-float', (window, request) => analysisWindows.moveWorkbenchFloat(window.webContents.id, request));
 handle('detach-workspace-document', (window, raw) => {
   assert(plain(raw) && Object.keys(raw).every(key => ['documentId', 'membershipNonce', 'placement','restorePlacement'].includes(key)) && (raw.restorePlacement===undefined||raw.restorePlacement===true), 'Invalid workspace detach fields');
   let placement;
@@ -1249,7 +1454,7 @@ handle('choose-save-path', async (window, request) => {
     selectedPath = await testPath(config.savePath, false);
     overwriteConfirmed = config.confirmOverwrite === true;
   } else {
-    const selection = await dialog.showSaveDialog(window, { title: '保存模型', defaultPath: request.name, filters: request.formats.map(format => ({ name: format.label, extensions: format.extensions })), properties: ['showOverwriteConfirmation'] });
+    const selection = await dialog.showSaveDialog(window, { title: '保存模型', defaultPath: portableExportPath(request.name), filters: request.formats.map(format => ({ name: format.label, extensions: format.extensions })), properties: ['showOverwriteConfirmation'] });
     if (selection.canceled || !selection.filePath) return { status: 'cancelled' };
     selectedPath = selection.filePath;
     // Electron's native dialog owns confirmation for a selected existing filename.
@@ -1283,11 +1488,19 @@ handle('write-advanced-output', async (window, token) => {
   try { return await advancedOutputs.write(window.webContents.id, token); }
   catch (error) { return { status: 'failed', error: { code: error.code ?? 'ADVANCED_OUTPUT_FAILED', message: String(error.message ?? error), ...(error.advancedOutput ? { advancedOutput: error.advancedOutput } : {}) } }; }
 });
-async function runChemistry(window, request, jobId, lifecycle) {
+async function runChemistry(window, request, jobId, replyMode) {
   assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 维护操作尚未结束，请稍后启动计算');
-  validateChemistry(request);
-  const resourceManaged=['optimize','generate3d'].includes(request.operation);
-  const displayAuthorization=pes.authorizeEmpiricalDisplay(window.webContents.id,request);
+  assert(replyMode === undefined || replyMode === FRAME_REPLY_MODE, 'Invalid chemistry reply mode');
+  const frameReply = replyMode === FRAME_REPLY_MODE;
+  // The resident host validates the detached frame once before queueing.
+  // This shape check only makes the shared admission reads below safe.
+  if (frameReply) {
+    assert(plain(request) && request.operation === 'perceive-bonds' && plain(request.stamp) &&
+      string(request.stamp.documentId) && plain(request.structure) && Array.isArray(request.structure.atoms),
+      'Invalid empirical frame request');
+  } else validateChemistry(request);
+  const resourceManaged=request.operation==='generate3d';
+  const displayAuthorization=pes.activeCount()?pes.authorizeEmpiricalDisplay(window.webContents.id,request):undefined;
   if(!displayAuthorization)legacyScienceAdmission(request,resourceManaged);
   workspaceDocuments.assertRuntimeOwner(window.webContents.id, request.stamp.documentId);
   assert(string(jobId, 100) && /^[a-zA-Z0-9_-]+$/.test(jobId), 'Invalid chemistry job identity');
@@ -1298,32 +1511,29 @@ async function runChemistry(window, request, jobId, lifecycle) {
     const beforeEmpirical=()=>{
       assert(!maintenanceBusy&&!quitting,'PORTABLE_BUSY: 维护或退出操作尚未结束');
       ownerWindow(owner);workspaceDocuments.assertRuntimeOwner(owner,request.stamp.documentId);
-      const current=pes.authorizeEmpiricalDisplay(owner,request);
+      const current=displayAuthorization&&pes.authorizeEmpiricalDisplay(owner,request);
       if(displayAuthorization&&current&&JSON.stringify(current.runIdentity)===JSON.stringify(displayAuthorization.runIdentity)){
         workspaceDocuments.assertRuntimeOwner(owner,current.sourceDocumentId);
       }else legacyScienceAdmission(request);
     };
     beforeEmpirical();
-    const promise = empiricalChemistry.start(owner, request, jobId,beforeEmpirical);
+    const promise = empiricalChemistry.start(owner, request, jobId,beforeEmpirical,frameReply);
     jobs.set(key, { owner, advanced:Boolean(displayAuthorization), abort: reason => empiricalChemistry.cancel(owner, jobId, reason) });
     return promise.finally(() => jobs.delete(key));
   }
   const pending = new AbortController();
   let release;
-  jobs.set(key, { owner, advanced: Boolean(request.runIdentity),resourceManaged, abort: () => pending.abort() });
+  jobs.set(key, { owner, advanced: false,resourceManaged, abort: () => pending.abort() });
   try {
-  if (resourceManaged||request.runIdentity)release = await localAdmission('forcefield')(owner, request, { signal: pending.signal });
+  if (resourceManaged)release = await localAdmission('structure-generation')(owner, request, { signal: pending.signal });
   assert(!pending.signal.aborted && !maintenanceBusy && !quitting, 'CHEMISTRY_CANCELLED: 等待中的原生化学任务已取消');
   ownerWindow(owner); workspaceDocuments.assertRuntimeOwner(owner, request.stamp.documentId);
   legacyScienceAdmission(request,resourceManaged);
   const runtime = chemistryRuntime({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath });
-  lifecycle?.onNativeEvidence?.({request,runtime:{executable:runtime.executable,args:runtime.args,cwd:runtime.cwd},resourceGrant:release?.resources});
   const child = nativeProcesses.spawn(runtime.executable, runtime.args, { cwd: runtime.cwd, windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1', OMP_NUM_THREADS: '1', OPENBLAS_NUM_THREADS: '1' } });
-  lifecycle?.onStarted?.();
   const job = createChemistryJob(child, {
     timeoutMs: request.maxWallTimeSeconds === undefined ? undefined : request.maxWallTimeSeconds * 1000,
     parse(stdout, stderr, code, signal) {
-        lifecycle?.onNativeEvidence?.({stdout,stderr,code,signal,request,runtime:{executable:runtime.executable,args:runtime.args,cwd:runtime.cwd}});
         assert(signal === null, `CHEMISTRY_INTERRUPTED: 原生引擎被信号 ${signal} 中断`);
         assert(stdout.trim().length > 0, `CHEMISTRY_STARTUP_FAILED: 原生引擎未返回数据（exit ${code}）。请保留完整便携目录；过长安装路径也可能阻止Windows加载原生库。`);
         const result = JSON.parse(stdout.trim());
@@ -1334,13 +1544,12 @@ async function runChemistry(window, request, jobId, lifecycle) {
         return release?.resources?{...result,resourceGrant:release.resources}:result;
     },
   });
-  jobs.set(key, { owner, child, advanced: Boolean(request.runIdentity),resourceManaged, abort: job.abort });
+  jobs.set(key, { owner, child, advanced: false,resourceManaged, abort: job.abort });
   child.stdin.end(`${boundedJSON(request)}\n`);
-  const result=await job.promise; await lifecycle?.onResult?.(result); return result;
-  } catch(error) { await lifecycle?.onError?.(error); throw error;
+  return await job.promise;
   } finally { await release?.(); jobs.delete(key); }
 }
-handle('run-chemistry', (window,request,jobId) => runChemistry(window,request,jobId));
+handle('run-chemistry', (window,request,jobId,replyMode) => runChemistry(window,request,jobId,replyMode));
 handle('cancel-chemistry', (window, jobId) => {
   assert(string(jobId, 100), 'Invalid chemistry job identity');
   jobs.get(`${window.webContents.id}:${jobId}`)?.abort('CHEMISTRY_CANCELLED: 用户取消任务');
@@ -1385,7 +1594,11 @@ handle('release-xtb-optimization-caches', (window, sessionIds) => xtb.releaseOpt
 handle('conformer-batch-command',async(window,command,payload)=>{
   const owner=window.webContents.id;
   assert(['begin','upload','seal','start','stop','status','read','restore','destroy'].includes(command)&&plain(payload),'Invalid conformer batch command');
-  if(command==='begin'){assert(!maintenanceBusy&&!quitting,'PORTABLE_BUSY: 请等待维护结束');await readCpuResources();return conformerBatch.begin(owner,payload);}
+  if(command==='begin'){
+    assert(!maintenanceBusy&&!quitting,'PORTABLE_BUSY: 请等待维护结束');await readCpuResources();ownerWindow(owner);
+    const projectId=projectIPC.projectIdOf(owner);
+    return conformerBatch.begin(owner,payload,projectId?{projectId}:undefined);
+  }
   assert(string(payload.batchId,100),'Invalid conformer batch handle');
   if(command==='upload')return conformerBatch.upload(owner,payload.batchId,{offset:payload.offset,inputs:payload.inputs});
   if(command==='read')return conformerBatch.read(owner,payload.batchId,{offset:payload.offset,limit:payload.limit});
@@ -1393,9 +1606,59 @@ handle('conformer-batch-command',async(window,command,payload)=>{
 });
 handle('read-conformer-sampling-result',(window,id,offset,limit)=>conformerSampling.readResult(window.webContents.id,id,offset,limit));
 handle('release-conformer-sampling-result',(window,id)=>conformerSampling.releaseResult(window.webContents.id,id));
-handle('start-pes',async(window,request)=>{
-  const beforeStart=()=>{assert(!maintenanceBusy&&!quitting,'PORTABLE_BUSY: 维护或退出操作尚未结束');assert(plain(request)&&typeof request.sourceDocumentId==='string','Invalid PES source identity');workspaceDocuments.assertRuntimeOwner(window.webContents.id,request.sourceDocumentId);};
-  beforeStart();return pes.start(window.webContents.id,request,beforeStart);
+const recoveryHosts = new Map([['sampling', conformerSampling], ['optimization', conformerBatch]]);
+function recoveryHost(kind) {
+  const host = recoveryHosts.get(kind);
+  assert(host && typeof host.openRecovery === 'function', 'CONFORMER_RECOVERY_UNAVAILABLE: 计算恢复来源不可用。');
+  return host;
+}
+for (const channel of ['list-conformer-recovery','open-conformer-recovery','read-conformer-recovery','close-conformer-recovery','discard-conformer-recovery','read-pes-terminal-frames','release-pes-terminal-frames']) fileChannels.add(channel);
+handle('list-conformer-recovery', async () => {
+  const recoveries = [], issues = [];
+  const rows = await Promise.allSettled([...recoveryHosts].map(async ([kind]) => recoveryHost(kind).listRecovery()));
+  for (const row of rows) {
+    if (row.status === 'fulfilled') { recoveries.push(...row.value.recoveries); issues.push(...row.value.issues); }
+    else { issues.push({ code: 'CONFORMER_RECOVERY_UNAVAILABLE' }); logEvent('warning','CONFORMER_RECOVERY_UNAVAILABLE',row.reason.message); }
+  }
+  return { recoveries, issues };
+});
+handle('open-conformer-recovery', async (window, kind, id) => {
+  const { terminal, biasHistory, ...lease } = await recoveryHost(kind).openRecovery(window.webContents.id,id);
+  const biasDeposits = (terminal?.biasHistory??biasHistory)?.length;
+  return { ...lease, ...(biasDeposits===undefined?{}:{biasDeposits}) };
+});
+handle('read-conformer-recovery', (window, kind, token, offset, limit, summaryOnly) =>
+  recoveryHost(kind).readRecovery(window.webContents.id,token,offset,limit,{summaryOnly:summaryOnly===true}));
+handle('close-conformer-recovery', (window, kind, token) => recoveryHost(kind).closeRecovery(window.webContents.id,token));
+handle('discard-conformer-recovery', async (window, kind, id) => {
+  const owner = window.webContents.id, host = recoveryHost(kind);
+  const record = await host.openRecovery(owner,id);
+  try {
+    if (headless) return { discarded: false };
+    const answer = await dialog.showMessageBox(window,{type:'warning',title:'清除计算恢复副本',message:'永久清除此批计算的恢复副本？',
+      detail:`运行 ${record.identity.runId} · ${record.recoverableCount} 条记录。请确认所需结果已经保存。`,
+      buttons:['取消','清除恢复副本'],defaultId:0,cancelId:0,noLink:true});
+    if (answer.response !== 1) return { discarded: false };
+    ownerWindow(owner);
+    return await host.discardRecovery(owner,record.token);
+  } finally { await host.closeRecovery(owner,record.token); }
+});
+handle('read-pes-terminal-frames',(window,request)=>pes.readTerminalFrames(window.webContents.id,request));
+handle('release-pes-terminal-frames',(window,identity)=>pes.releaseTerminalFrames(window.webContents.id,identity));
+function assertPesOwner(owner, request) {
+  assert(!maintenanceBusy && !quitting, 'PORTABLE_BUSY: 维护或退出操作尚未结束');
+  assert(plain(request) && typeof request.sourceDocumentId === 'string', 'Invalid PES source identity');
+  workspaceDocuments.assertRuntimeOwner(owner, request.sourceDocumentId);
+}
+handle('prepare-pes', (window, request) => {
+  const owner = window.webContents.id;
+  return pes.prepare(owner, request, () => assertPesOwner(owner, request));
+});
+handle('start-pes', (window, request) => {
+  const owner = window.webContents.id;
+  const beforeStart = () => assertPesOwner(owner, request);
+  beforeStart();
+  return pes.start(owner, request, beforeStart);
 });
 handle('stop-pes',(window,identity)=>pes.stop(window.webContents.id,identity));
 handle('read-pes-path-record',(window,request)=>pes.readPathRecord(window.webContents.id,request));
@@ -1409,7 +1672,9 @@ for (const [channel, host] of [['advanced-path', advancedPath], ['conformer-samp
       if (channel === 'aiss' && Array.isArray(request.sources)) for (const source of request.sources) workspaceDocuments.assertRuntimeOwner(window.webContents.id, source?.stamp?.documentId);
       };
     beforeStart(); await readCpuResources(); beforeStart();
-    return host.start(window.webContents.id, request, sessionId, beforeStart);
+    const owner=window.webContents.id,projectId=channel==='conformer-sampling'?projectIPC.projectIdOf(owner):undefined;
+    if(channel==='conformer-sampling')return host.start(owner, request, sessionId, beforeStart,{documentId:request.stamp.documentId,...(projectId?{projectId}:{})});
+    return host.start(owner, request, sessionId, beforeStart);
   });
   handle(`command-${channel}`, (window, sessionId, command) => host.command(window.webContents.id, sessionId, command));
 }
@@ -1427,6 +1692,19 @@ function assertMultiwfnSettingsOwner(owner) {
   ownerWindow(owner);
   assert(!maintenanceBusy && !quitting,'PORTABLE_BUSY: 应用正在维护或关闭');
 }
+async function mcpAuthorizedSettingsPath(owner, request, pathField, toolName, argumentName) {
+  const value = request?.[pathField];
+  const verify = () => {
+    const operation = mcpHost.assertRequest(owner, request?.mcpRequestId);
+    assert(operation.name === toolName && operation.arguments[argumentName] === value &&
+      typeof value === 'string' && path.isAbsolute(value), 'ES_MCP_SCOPE: 配置路径须来自本次已授权的 ES 操作。');
+  };
+  verify();
+  if (!isolatedIO) return value;
+  const target = await testPath(value, true);
+  verify();
+  return target;
+}
 function broadcastGxtbBackend(info) {
   for(const owner of windows.keys())try{sendAnalysisEvent(owner,'sciyue:gxtb-configuration-changed',info);}catch{}
   return info;
@@ -1443,19 +1721,25 @@ handle('choose-gxtb-backend',async window=>{
 handle('detect-gxtb-backend',async window=>{assertMultiwfnSettingsOwner(window.webContents.id);return broadcastGxtbBackend(await gxtbBackend.detect());});
 handle('open-gxtb-download',async window=>{assertMultiwfnSettingsOwner(window.webContents.id);await shell.openExternal(GXTB_DOWNLOAD_URL);return {opened:true};});
 handle('orbital-backend-info', async () => publicMultiwfnBackend(await orbitalBackend.info()));
-handle('choose-orbital-backend', async window => {
+handle('choose-orbital-backend', async (window, request) => {
   const owner=window.webContents.id;
   assertMultiwfnSettingsOwner(owner);
+  if (request?.directory !== undefined) {
+    const directory = await mcpAuthorizedSettingsPath(owner, request, 'directory', 'multiwfn_configure', 'programDirectory');
+    return broadcastMultiwfnBackend(await orbitalBackend.select(directory));
+  }
   const choice=await dialog.showOpenDialog(window,{title:'选择 Multiwfn 所在文件夹',properties:['openDirectory']});
   assertMultiwfnSettingsOwner(owner);
   if(choice.canceled||choice.filePaths.length!==1)return publicMultiwfnBackend(await orbitalBackend.info());
   return broadcastMultiwfnBackend(await orbitalBackend.select(choice.filePaths[0]));
 });
-handle('choose-multiwfn-work-directory', async window => {
+handle('choose-multiwfn-work-directory', async (window, request) => {
   const owner=window.webContents.id;
   assertMultiwfnSettingsOwner(owner);
   let selected;
-  if(isolatedIO){
+  if (request?.directory !== undefined) {
+    selected = await mcpAuthorizedSettingsPath(owner, request, 'directory', 'multiwfn_configure', 'workDirectory');
+  } else if(isolatedIO){
     const configured=(await readTestDialogConfig()).multiwfnWorkDirectory;
     if(configured)selected=await testPath(configured,true);
   }else{
@@ -1505,6 +1789,8 @@ handle('reserve-orbital-views', (window, sessionId, viewCount) => { assert(!main
 handle('command-orbitals', (window, sessionId, request, progressIdentity) => { assert(!maintenanceBusy, 'PORTABLE_BUSY: 维护操作尚未结束'); return orbitals.command(window.webContents.id, sessionId, request, progressIdentity); });
 handle('read-orbital-field', (window, sessionId, key) => orbitals.field(window.webContents.id, sessionId, key));
 handle('export-orbital-cube', (window, sessionId, key) => orbitals.cube(window.webContents.id, sessionId, key));
+fileChannels.add('save-orbital-cube');
+handle('save-orbital-cube',(window,sessionId,key)=>orbitals.cube(window.webContents.id,sessionId,key,{stream:true}).then(payload=>saveSurfaceCube(window,payload)));
 handle('analyze-wavefunction', (window, sessionId, request, progressIdentity) => { assert(!maintenanceBusy, 'PORTABLE_BUSY: 维护操作尚未结束'); return orbitals.analyze(window.webContents.id, sessionId, request, progressIdentity); });
 handle('cancel-wavefunction-analysis', (window, sessionId) => orbitals.cancelAnalysis(window.webContents.id, sessionId));
 
@@ -1657,6 +1943,16 @@ handle('export-excitation-cube', async (window, sessionId, request) => { assertS
 handle('release-surface-cube', (window, token) => surfaceSources.release(window.webContents.id, token));
 handle('register-surface-cube', (window, request) => surfaceSources.register(window.webContents.id, request));
 handle('read-registered-surface-cube', (window, token) => surfaceSources.read(window.webContents.id, token));
+for (const channel of ['register-surface-cube-asset','describe-registered-surface-cube','read-registered-surface-cube-page','save-owned-surface-cube']) fileChannels.add(channel);
+for (const channel of ['register-surface-cube-asset','describe-registered-surface-cube']) managedResultChannels.add(channel);
+handle('register-surface-cube-asset', async (window, request) => {
+  assert(plain(request) && Object.keys(request).every(key=>['name','assetId','sourceRevision'].includes(key)), 'Invalid Cube binary source');
+  const owner = window.webContents.id, lease = await binaryAssets.takeOwned(owner, request.assetId);
+  try { return await surfaceSources.registerAsset(owner, request, lease); }
+  catch (error) { await lease.close(); throw error; }
+});
+handle('describe-registered-surface-cube',(window,token)=>surfaceSources.describe(window.webContents.id,token));
+handle('read-registered-surface-cube-page',(window,token,offset,length)=>surfaceSources.readPage(window.webContents.id,token,offset,length));
 handle('import-surface-cube', async (window, selected) => {
   const owner = window.webContents.id;
   if (selected === undefined) {
@@ -1671,26 +1967,104 @@ handle('import-surface-cube', async (window, selected) => {
   if (sidecar) await surfaceSources.rememberDomain(text, sidecar.bytes.toString('utf8'));
   ownerWindow(owner); return surfaceSources.register(owner, { name: path.basename(selected), text }, selected);
 });
-async function saveSurfaceCube(window, payload) {
+function cubePublicationSource(value) {
+  if (value.file) return { ...value.file, chunks: fileChunks(value.file) };
+  assert(typeof value.text === 'string', 'Invalid completed Cube export');
+  const bytes = Buffer.from(value.text, 'utf8');
+  return { bytesLength:bytes.byteLength, chunks:[bytes] };
+}
+const cubePublications = new Map();
+function serializeCubePublication(selected, publish) {
+  const resolved = path.resolve(selected);
+  const key = process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+  const publication = (cubePublications.get(key) ?? Promise.resolve()).catch(() => {}).then(publish);
+  cubePublications.set(key, publication);
+  return publication.finally(() => { if (cubePublications.get(key) === publication) cubePublications.delete(key); });
+}
+async function saveSurfaceCube(window, payload, destination) {
+  try { return await publishSurfaceCube(window,payload,destination); }
+  finally {
+    const files = [payload?.file,payload?.domain?.file].filter(file=>typeof file?.cleanup==='function');
+    for (const file of files) try { await file.cleanup(); } catch (error) { logEvent('warning','CUBE_EXPORT_SOURCE_CLOSE_FAILED',error.message); }
+  }
+}
+async function publishSurfaceCube(window, payload, destination) {
   const owner = window.webContents.id;
-  assert(plain(payload) && string(payload.name, 256) && !/[\\/]/.test(payload.name) && typeof payload.text === 'string' && Buffer.byteLength(payload.text) <= Number.MAX_SAFE_INTEGER, 'Invalid completed Cube export');
-  if (payload.domain) { assert(plain(payload.domain) && typeof payload.domain.text === 'string' && Buffer.byteLength(payload.domain.text) <= Number.MAX_SAFE_INTEGER, 'Invalid Cube domain export'); await surfaceSources.rememberDomain(payload.text, payload.domain.text); }
+  const active = () => { ownerWindow(owner); destination?.active(); };
+  assert(plain(payload) && string(payload.name, 256) && !/[\\/]/.test(payload.name) && (typeof payload.text === 'string' || plain(payload.file)), 'Invalid completed Cube export');
+  if (payload.domain) {
+    assert(plain(payload.domain) && (typeof payload.domain.text === 'string' || plain(payload.domain.file)), 'Invalid Cube domain export');
+    if (typeof payload.text === 'string' && typeof payload.domain.text === 'string') await surfaceSources.rememberDomain(payload.text, payload.domain.text);
+  }
   let selected, confirmed;
-  if (isolatedIO) { const config = await readTestDialogConfig(); if (!config.savePath) return { cancelled: true }; selected = await testPath(config.savePath, false); confirmed = config.confirmOverwrite === true; }
-  else { const choice = await dialog.showSaveDialog(window, { title: '导出 Cube', defaultPath: payload.name, filters: [{ name: 'Cube', extensions: ['cube'] }], properties: ['showOverwriteConfirmation'] }); if (choice.canceled || !choice.filePath) return { cancelled: true }; selected = choice.filePath; confirmed = true; }
-  if (!path.extname(selected)) selected += '.cube';
+  if (destination) { active(); selected = destination.destination; confirmed = destination.overwrite; }
+  else if (isolatedIO) { const config = await readTestDialogConfig(); if (!config.savePath) return { cancelled: true }; selected = await testPath(config.savePath, false); confirmed = config.confirmOverwrite === true; }
+  else { const choice = await dialog.showSaveDialog(window, { title: '导出 Cube', defaultPath: portableExportPath(payload.name), filters: [{ name: 'Cube', extensions: ['cube'] }], properties: ['showOverwriteConfirmation'] }); if (choice.canceled || !choice.filePath) return { cancelled: true }; selected = choice.filePath; confirmed = true; }
+  if (!destination && !path.extname(selected)) selected += '.cube';
   assert(/\.(cube|cub)$/i.test(selected), 'Cube export requires a .cube or .cub filename');
-  const outputs = [{ path: selected, text: payload.text }, ...(payload.domain ? [{ path: selected + '.sciyue-domain.json', text: payload.domain.text }] : [])];
-  for (const output of outputs) { ownerWindow(owner); assertUnmanagedDestination(output.path, exportRoots()); surfaceSources.assertExport(owner, output.path); output.parent = await directoryIdentity(path.dirname(output.path)); output.previous = await currentFile(output.path, fs, Number.MAX_SAFE_INTEGER); assert(!output.previous || confirmed, 'Existing export requires overwrite confirmation'); }
-  if (outputs[1]?.previous && !isolatedIO) { const answer = await dialog.showMessageBox(window, { type: 'question', title: '替换 Cube 域记录', message: '同名的 Cube 域记录已存在，是否替换？', buttons: ['替换', '取消'], defaultId: 1, cancelId: 1 }); ownerWindow(owner); if (answer.response !== 0) return { cancelled: true }; }
-  ownerWindow(owner); assert(!quitting, 'Application closing');
-  let published = false;
+  return serializeCubePublication(selected, async () => {
+  const outputs = [{ path: selected, value: payload }, ...(payload.domain ? [{ path: selected + '.sciyue-domain.json', value: payload.domain }] : [])];
+  for (const output of outputs) { active(); assertUnmanagedDestination(output.path, exportRoots()); surfaceSources.assertExport(owner, output.path); output.parent = await directoryIdentity(path.dirname(output.path)); output.previous = await currentStreamFile(output.path); assert(!output.previous || confirmed, 'Existing export requires overwrite confirmation'); }
+  if (outputs[1]?.previous && !destination && !isolatedIO) { const answer = await dialog.showMessageBox(window, { type: 'question', title: '替换 Cube 域记录', message: '同名的 Cube 域记录已存在，是否替换？', buttons: ['替换', '取消'], defaultId: 1, cancelId: 1 }); ownerWindow(owner); if (answer.response !== 0) return { cancelled: true }; }
+  active(); assert(!quitting, 'Application closing');
   // After accepting the complete publication, renderer loss/quit must not
   // interrupt the second file. The global file-operation settle owns its life.
-  try { for (const output of [...outputs].reverse()) { assertUnmanagedDestination(output.path, exportRoots()); surfaceSources.assertExport(owner, output.path); await atomicWrite(output.path, Buffer.from(output.text, 'utf8'), output.previous, output.parent, fs, Number.MAX_SAFE_INTEGER); published = true; } }
-  catch (error) { if (published) { error.publicationPerformed = true; error.message = 'Cube/域记录保存未全部确认，请核对目标文件；' + error.message; } throw error; }
-  return { cancelled: false, path: selected, ...(payload.domain ? { domainPath: outputs[1].path } : {}) };
+  try {
+    for (const output of [...outputs].reverse()) {
+      assertUnmanagedDestination(output.path, exportRoots());
+      surfaceSources.assertExport(owner, output.path);
+      try { output.saved = await atomicWriteStream(output.path,cubePublicationSource(output.value),output.previous,output.parent); }
+      catch (error) { if (error.publicationPerformed) output.published = true; throw error; }
+    }
+  } catch (error) {
+    const publishedFiles = outputs.filter(output => output.saved || output.published).map(output => ({
+      path: output.path, verified: Boolean(output.saved),
+      ...(output.saved ? { bytes: output.saved.bytesLength, sha256: output.saved.sha256 } : {}),
+    }));
+    if (publishedFiles.length) {
+      error.publicationPerformed = true;
+      error.publishedFiles = publishedFiles;
+      error.message = 'Cube/域记录保存未全部确认，请核对已发布成员。' + error.message;
+    }
+    throw error;
+  }
+  return { cancelled: false, path: selected, ...(payload.domain ? { domainPath: outputs[1].path } : {}),
+    ...(destination ? { written: true, bytes: outputs[0].saved.bytesLength, sha256: outputs[0].saved.sha256,
+      ...(payload.domain ? { domainBytes: outputs[1].saved.bytesLength, domainSha256: outputs[1].saved.sha256 } : {}) } : {}) };
+  });
 }
+async function verifyMcpCubeDomain(cube, domain) {
+  const expected = Buffer.from(`{"schema":"sciyue-surface-domain/v1","sourceRevision":"${cube.sha256}",`);
+  const header = Buffer.alloc(expected.length);
+  let read = 0;
+  for await (const bytes of fileChunks(domain)) {
+    const copied = bytes.copy(header, read, 0, Math.min(bytes.length, header.length - read));
+    read += copied;
+    if (read === header.length) break;
+  }
+  assert(read === header.length && header.equals(expected), 'Cube domain does not bind the actual exported Cube SHA-256');
+}
+async function saveOwnedSurfaceCube(window, request, destination) {
+  assert(plain(request) && Object.keys(request).every(key=>['name','assetId','domainAssetId'].includes(key)), 'Invalid Cube export request');
+  const owner = window.webContents.id, leases = [];
+  async function take(id) {
+    destination?.active();
+    const lease = await binaryAssets.takeOwned(owner,id); leases.push(lease);
+    const file = await describeFile(lease.path);
+    assert(file.parent === lease.parent && file.bytesLength === lease.bytesLength, 'Cube export asset changed');
+    return { ...file, sha256:lease.sha256 };
+  }
+  try {
+    const file = await take(request.assetId);
+    const domain = request.domainAssetId ? { file:await take(request.domainAssetId) } : undefined;
+    if (destination && domain) await verifyMcpCubeDomain(file, domain.file);
+    return await saveSurfaceCube(window,{name:request.name,file,domain},destination);
+  } finally {
+    const closed = await Promise.allSettled(leases.map(lease=>lease.close()));
+    for (const result of closed) if (result.status === 'rejected') logEvent('warning','CUBE_EXPORT_SOURCE_CLOSE_FAILED',result.reason.message);
+  }
+}
+handle('save-owned-surface-cube', (window, request) => saveOwnedSurfaceCube(window, request));
 handle('export-surface-cube', async (window, sessionId, request) => saveSurfaceCube(window, await surfaces().exportCube(window.webContents.id, sessionId, request)));
 handle('export-hirshfeld-cube', async (window, sessionId, request) => {
   assertSurfaceOperation(window.webContents.id, request);
@@ -1702,7 +2076,7 @@ handle('export-interaction-cube', async (window, sessionId, request) => {
   const result = await saveSurfaceCube(window, await interactions().exportCube(window.webContents.id, sessionId, request));
   return { saved: !result.cancelled, cancelled: result.cancelled };
 });
-handle('export-registered-surface-cube', async (window, request) => saveSurfaceCube(window, await surfaceSources.exportRegistered(window.webContents.id, request)));
+handle('export-registered-surface-cube', async (window, request) => saveSurfaceCube(window, await surfaceSources.exportRegistered(window.webContents.id, request,{stream:true})));
 
 if (ownsProfile) app.whenReady().then(async () => {
   await taskCache.ready();
@@ -1727,12 +2101,20 @@ if (ownsProfile) app.whenReady().then(async () => {
   }
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
+  session.defaultSession.on('will-download', (_event, item, contents) => {
+    if (!portableProfile || !contents || contents.isDestroyed() || !allowedURL(contents.getURL(), development)) return;
+    if (!item.getURL().startsWith('blob:') || typeof item.setSaveDialogOptions !== 'function') return;
+    item.setSaveDialogOptions({ title: '导出文件', defaultPath: portableExportPath(item.getFilename()),
+      properties: ['showOverwriteConfirmation'] });
+  });
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     let allowed = allowedURL(details.url, development) || details.url.startsWith('blob:') || details.url.startsWith('data:');
     if (development && details.url.startsWith('ws://127.0.0.1:4181/')) allowed = true;
     callback({ cancel: !allowed });
   });
-  const initialWindow = createModelWindow();
+  const initialWindow = createModelWindow(undefined, undefined, { inactive: process.argv.includes(MCP_CONNECT_LAUNCH) });
+  void mcpHost.start();
+  void pes.prewarm();
   hostWindowsReady = true;
   if (mcpPreferences.read().enabled) {
     await mcpLiveHost.start()
@@ -1757,6 +2139,8 @@ app.on('before-quit', event => {
   if (!windowClosePolicy.isQuitApproved()) { event?.preventDefault?.(); windowClosePolicy.requestQuit(); return; }
   event?.preventDefault?.(); if (closingTask) return;
   quitting = true; void mcpLiveHost.dispose(); nativeProcesses.closeAdmission?.(); analysisWindows.dispose(); workspaceDocuments.dispose(); clearInterval(expireFileStreams);
+  const mcpClosing = mcpHost.close();
+  const mcpPanelClosing = Promise.resolve().then(() => mcpAgentPanel.close());
   refreshNativeMenu(); windowClosePolicy.beginShutdown();
   for (const controller of runtimeChecks.values()) controller.abort();
   conformerBatchDisposal=conformerBatch.dispose();void conformerBatchDisposal.catch(()=>{});
@@ -1798,7 +2182,8 @@ app.on('before-quit', event => {
     const hostsSettled = childrenSettled.then(() => settleGroup(hostEntries));
     let timeout;
     const storageSettled = Promise.allSettled([
-      () => closeCpuResources(), () => fileReader.dispose(), async () => { await taskSystem.dispose(); await launchImports.dispose(); }, () => portableServices?.settle(), () => personalFragments.settle(), () => workbenchPreferences.settle(), () => modelDisplayPreferences.settle(), () => surfaceDisplayPreferences.settle(), () => modelHoldKeyPreferences.settle(), () => computeResources.settle(), () => firstRunLicense.settle(), () => Promise.allSettled([...pendingFileOperations]),
+      () => mcpClosing, () => mcpPanelClosing,
+      () => closeCpuResources(), () => fileReader.dispose(), () => binaryAssets.dispose(), async () => { await taskSystem.dispose(); await launchImports.dispose(); }, () => portableServices?.settle(), () => personalFragments.settle(), () => workbenchPreferences.settle(), () => modelDisplayPreferences.settle(), () => surfaceDisplayPreferences.settle(), () => modelHoldKeyPreferences.settle(), () => computeResources.settle(), () => firstRunLicense.settle(), () => Promise.allSettled([...pendingFileOperations]),
     ].map(settle => Promise.resolve().then(settle)));
     let storageResults = await Promise.race([
       storageSettled,

@@ -123,7 +123,7 @@ export function buildWindowsChemistryBootstrapScript() {
 
 export function buildWindowsInstallGuideText({
   productName = 'Lactone Studio',
-  version = '2.0.3',
+  version = '2.1.3',
   arch = 'x64',
 } = {}) {
   return [
@@ -132,7 +132,7 @@ export function buildWindowsInstallGuideText({
     `适用架构 (Target Architecture): Windows 10 / 11 64-bit (win32-${arch})`,
     '================================================================================',
     '',
-    '【一、非官方修改版重要声明（遵循 LICENSE.txt 第七条）】',
+    '【一、非官方修改版重要声明（遵循 LICENSE.txt 第三条）】',
     `- 本软件（${productName}）是基于 Ester Studio (ES) v${version} 源码改造的「非官方修改版」`,
     '  (Unofficial Modified Version)。',
     '- 修改者与维护仓库：mcardZH (https://github.com/mcardZH/Lactone-Studio)',
@@ -166,8 +166,8 @@ export function buildWindowsInstallGuideText({
     '--------------------------------------------------------------------------------',
     '【四、科研引用与许可协议提示（遵循 LICENSE.txt）】',
     '',
-    '- 科研引用（第八条）：发表论文时须明确引用原作者 Zixuan Zhang 的 Ester Studio。',
-    '- 禁止商业售卖（第四条）：严禁以任何名义销售本软件或修改版的源码、程序及安装包副本。',
+    '- 科研引用（第四条）：发表论文时须明确引用原作者 Zixuan Zhang 的 Ester Studio。',
+    '- 禁止商业售卖（第二条）：严禁以任何名义销售本软件或修改版的源码、程序及安装包副本。',
     '================================================================================',
     '',
   ].join('\r\n');

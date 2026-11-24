@@ -2,7 +2,7 @@ import type {MeasurementRecord,ModelCoordinate,SharedModelConstraints} from '../
 import type {Structure} from '../../core/types';
 import type {PesGeometry,PesGroup} from '../../modeling/pes/contracts';
 import {modelCoordinateKey} from '../../modeling/constraints';
-import {cardSource} from '../../modeling/pes/request';
+import {cardSource,projectPesConstraintDefinitions} from '../../modeling/pes/request';
 import {sharedScanCard} from '../../modeling/pes/expressions';
 import {scanSourceKey} from '../../modeling/pes/scan-source';
 import {pickerStructureIdentity} from '../../core/geometry-guides';
@@ -35,7 +35,7 @@ export function frozenCoordinateAnnotations(constraints:SharedModelConstraints,s
 }
 /** A card projects only into its actual source; equal atom ordinals are insufficient. */
 export function pesCoordinateAnnotations(group:PesGroup,geometry:PesGeometry,sourceKey:string):MeasurementRecord[]{
-  const records=frozenCoordinateAnnotations(group.constraints,geometry.structure,sourceKey);
+  const records=frozenCoordinateAnnotations(projectPesConstraintDefinitions(group,geometry.structure).constraints,geometry.structure,sourceKey);
   const run=geometry.source?.runId?group.runs[geometry.source.runId]:undefined;
   if(run?.request.operation==='scan'&&run.nodeId===geometry.source?.nodeId){
     for(const row of run.request.coordinates)records.push(coordinateAnnotation(row,`annotation:${sourceKey}:run:${run.request.id}:${row.id}`,row.name,sourceKey));

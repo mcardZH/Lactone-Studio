@@ -9,6 +9,10 @@ import { fchkCharacterRecord,fchkNumericRecordTokens,streamFchkRecords,type Fchk
 import { fchkWavefunctionFields } from './fchk-wavefunction-capability';
 
 interface Field { values: number[]; sourceLine: number;rawValue?:string }
+export interface FchkPrintedToken { token: string; sourceLine: number }
+const printedArrays = new Set(['Current cartesian coordinates', 'Alpha Orbital Energies', 'Beta Orbital Energies',
+  'Mulliken Charges', 'ESP Charges', 'NPA Charges']);
+const printedScalars = new Set(['SCF Energy', 'MP2 Energy']);
 const arrays = new Set(['Nuclear charges', 'Shell types', 'Alpha Orbital Energies', 'Beta Orbital Energies', 'Alpha Orbital Occupation Numbers', 'Beta Orbital Occupation Numbers',
   'Mulliken Charges', 'ESP Charges', 'NPA Charges', 'Real atomic weights', 'Dipole Moment', 'Quadrupole Moment', 'Vib-E2', 'Vib-Modes']);
 const scalars = new Set(['Charge', 'Multiplicity', 'Number of alpha electrons', 'Number of beta electrons', 'Number of electrons',
@@ -25,6 +29,7 @@ export async function* streamSavedResultLines(file: ResultInputFile, options: Re
 
 class SavedFields {
   readonly numeric = new Map<string, Field>();
+  readonly printed = new Map<string, readonly FchkPrintedToken[]>();
   readonly characters = new Map<string, { value: string; sourceLine: number }>();
   readonly notices: string[] = [];
   readonly diagnostics: FchkFieldDiagnostic[] = [];
@@ -34,7 +39,8 @@ class SavedFields {
   private number = 0;
   private invalid = new Set<string>();
   private seen = new Set<string>();
-  private active: { label: string; type: string; remaining: number; capture: boolean; values: number[]; text: string; sourceLine: number } | null = null;
+  private active: { label: string; type: string; remaining: number; capture: boolean; values: number[]; text: string; sourceLine: number; printed?: FchkPrintedToken[] } | null = null;
+  constructor(private readonly capturePrinted: boolean) {}
   private fieldIssue(field:string,code:'duplicate'|'invalid-type',message:string):void{
     this.diagnostics.push({field,code,message,sourceLine:this.number,boundaryReliable:true,
       affectedCapabilities:[field==='Real atomic weights'?'atomic-masses':'saved-field']});
@@ -57,7 +63,7 @@ class SavedFields {
       if (label === 'Current cartesian coordinates') this.geometryLine = this.number;
       if (this.seen.has(label) && wanted) {
         if (['Atomic numbers','Number of atoms','Current cartesian coordinates'].includes(label)) throw new Error(`FCHK科学字段 ${label} 重复，不能静默选值。`);
-        this.invalid.add(label); this.numeric.delete(label); this.characters.delete(label);
+        this.invalid.add(label); this.numeric.delete(label); this.characters.delete(label); this.printed.delete(label);
         this.fieldIssue(label,'duplicate',`FCHK ${label} 重复；未采用该歧义字段（源行 ${this.number}）。`);
       }
       this.seen.add(label);
@@ -68,7 +74,9 @@ class SavedFields {
         if ((arrays.has(label)||characters.has(label))&&!capture||scalars.has(label)) {
           this.fieldIssue(label,'invalid-type',`FCHK ${label} 字段类型或记录形状无效（源行 ${this.number}）。`);
         }
-        this.active = { label, type, remaining: count, capture, values: [], text: '', sourceLine: this.number };
+        const retainPrinted = this.capturePrinted && type === 'R' && printedArrays.has(label);
+        this.active = { label, type, remaining: count, capture, values: [], text: '', sourceLine: this.number,
+          ...(retainPrinted ? { printed: [] } : {}) };
         if (count === 0) this.complete();
       } else {
         this.active = null;
@@ -78,7 +86,10 @@ class SavedFields {
         if (scalars.has(label)) {
           const value = fchkNumber(match[4]);
           if (!['I', 'R'].includes(type) || value === null || ((type === 'I'||['Charge','Multiplicity'].includes(label)) && !Number.isSafeInteger(value)) || label==='Multiplicity'&&value<1) { this.incomplete=true; this.notices.push(`FCHK科学标量 ${label} 无效（源行${this.number}）；未采用。`); return; }
-          if (!this.invalid.has(label)) this.numeric.set(label, { values: [value], sourceLine: this.number,...(/^(?:SCF|Total|MP2) Energy$/.test(label)?{rawValue:match[4]}:{}) });
+          if (!this.invalid.has(label)) {
+            this.numeric.set(label, { values: [value], sourceLine: this.number,...(/^(?:SCF|Total|MP2) Energy$/.test(label)?{rawValue:match[4]}:{}) });
+            if (this.capturePrinted && printedScalars.has(label)) this.printed.set(label, [{ token: match[4], sourceLine: this.number }]);
+          }
         }
       }
       return;
@@ -91,10 +102,11 @@ class SavedFields {
         this.incomplete=true;this.notices.push(`FCHK ${active.label} 超过声明长度；未使用该损坏字段。`);this.active=null;return;
       }
       active.remaining -= parts.length;
-      if (active.capture) for (const part of parts) {
+      if (active.capture || active.printed) for (const part of parts) {
         const value = fchkNumber(part);
         if (value === null || (active.type === 'I' && !Number.isSafeInteger(value))) { this.incomplete=true;this.notices.push(`FCHK ${active.label} 包含无效数值（源行${this.number}）；未采用该字段。`); this.active=null; return; }
-        active.values.push(value);
+        if (active.capture) active.values.push(value);
+        active.printed?.push({ token: part, sourceLine: this.number });
       }
     }
     if (!active.remaining) this.complete();
@@ -104,6 +116,7 @@ class SavedFields {
   }
   private complete(): void {
     const active = this.active!;
+    if (active.printed && !this.invalid.has(active.label)) this.printed.set(active.label, active.printed);
     if (active.capture && !this.invalid.has(active.label)) {
       if (['C', 'H'].includes(active.type)) this.characters.set(active.label, { value: active.text.trim(), sourceLine: active.sourceLine });
       else this.numeric.set(active.label, { values: active.values, sourceLine: active.sourceLine });
@@ -271,13 +284,13 @@ function savedScience(saved: SavedFields, structure: TrajectoryResult['initialSt
 }
 
 /** One read-only saved calculation and the record evidence needed for wavefunction admission. */
-export async function readFchkSavedResult(file: ResultInputFile, options: ResultReadOptions = {}) {
+export async function readFchkSavedResult(file: ResultInputFile, options: ResultReadOptions & { capturePrintedFields?: boolean } = {}) {
   let closed = false;
   const close = async () => { if (!closed) { closed = true; await file.close?.(); } };
   try {
     assertResultNotAborted(options.signal);
     if (!Number.isSafeInteger(file.size) || file.size < 1) throw new Error('FCHK字节数须为正安全整数。');
-    const geometry = new FchkReader(fchkWavefunctionFields), saved = new SavedFields();
+    const geometry = new FchkReader(fchkWavefunctionFields), saved = new SavedFields(options.capturePrintedFields === true);
     let interruption: unknown, consuming = false;
     let sourceLine = 1;
     try {
@@ -295,7 +308,10 @@ export async function readFchkSavedResult(file: ResultInputFile, options: Result
     saved.finish();
     const initial = (() => { try { return geometry.finish(file.name,!!interruption)[0]; } catch (error) { throw interruption ?? error; } })(), id = `${file.id}:fchk:0`;
     for (const issue of geometry.diagnostics) {
-      if (issue.affectedCapabilities.includes('wavefunction') && !geometry.validatedFields.has(issue.field)) saved.numeric.delete(issue.field);
+      if (!geometry.validatedFields.has(issue.field)) {
+        if (issue.affectedCapabilities.includes('wavefunction')) saved.numeric.delete(issue.field);
+        saved.printed.delete(issue.field);
+      }
     }
     if (initial.charge !== null && !Number.isSafeInteger(initial.charge)) throw new Error('FCHK电荷须为整数。');
     if (initial.multiplicity !== null && (!Number.isSafeInteger(initial.multiplicity) || initial.multiplicity < 1)) throw new Error('FCHK多重度须为正整数。');
@@ -323,7 +339,7 @@ export async function readFchkSavedResult(file: ResultInputFile, options: Result
       async getFrame(index, signal) { assertResultNotAborted(signal); if (closed) throw new Error('FCHK结果已关闭。'); if (index !== 0) throw new Error('FCHK只含一个已保存结构。'); return structuredClone(initial); },
       dispose: close,
     };
-    return {result, diagnostics, validatedFields:geometry.validatedFields};
+    return {result, diagnostics, validatedFields:geometry.validatedFields, printedFields:saved.printed as ReadonlyMap<string, readonly FchkPrintedToken[]>};
   } catch (error) { await close(); throw error; }
 }
 

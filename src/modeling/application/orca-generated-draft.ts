@@ -1,7 +1,19 @@
-import type { OrcaAsset, OrcaJobRequest, OrcaOutputFile, OrcaIssue } from '../../core/orca';
+import { getOrcaCommonCompatibility, type OrcaAsset, type OrcaBuildResult, type OrcaJobRequest, type OrcaOutputFile, type OrcaIssue } from '../../core/orca';
+import { dependencyFile, referencedOrcaAssets } from '../../core/orca/assets';
 
 export interface OrcaGeneratedDraft {sourceSignature:string;files:OrcaOutputFile[];editedNames:string[];assets:OrcaAsset[];minimumVersion?:string;issues?:OrcaIssue[]}
 export type OrcaGeneratedDrafts=Partial<Record<OrcaJobRequest['settings']['task'],OrcaGeneratedDraft>>;
+export function createOrcaGeneratedDraft(request:OrcaJobRequest,built:OrcaBuildResult):OrcaGeneratedDraft {
+  const assets=referencedOrcaAssets(request),names=new Set(built.files.map(file=>file.name.toLowerCase()));
+  const files=[...built.files];
+  for(const asset of assets){
+    const name=asset.name.toLowerCase(),file=dependencyFile(asset);
+    if(file&&!names.has(name)){files.push(file);names.add(name);}
+  }
+  return {sourceSignature:orcaGeneratedSource(request),files:structuredClone(files),
+    minimumVersion:getOrcaCommonCompatibility(request).minimumVersion,issues:structuredClone(built.issues),
+    editedNames:[],assets:structuredClone(assets)};
+}
 export function orcaGeneratedSource(request:OrcaJobRequest):string {
   // Engine projection increments its local revision and adds display groups and
   // layers. Scientific memberships are retained in the engine settings; these

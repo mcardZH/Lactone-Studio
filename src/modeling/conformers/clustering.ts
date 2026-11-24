@@ -1,3 +1,6 @@
+import { isPeriodic, minimumImage, requireConfirmedPeriodicity } from '../../core/periodic';
+import { effectiveSharedFreezes } from '../constraints';
+import { sameFixedConformerCell } from './sampling-preparation';
 import type { Structure } from '../../core/types';
 import type { SharedModelConstraints } from '../../core/modeling/contracts';
 import { compareSymmetryConformerGeometry, createSymmetryConformerGeometryComparer, conformerSymmetryConnectivityIssue, symmetryGraphBucket, symmetryGraphsEquivalent } from './symmetry-matching';
@@ -60,7 +63,7 @@ export interface ConformerClusterGroup {
   /** New element-only postprocessing pool; ordinary groups retain old identity. */
   comparisonSemantics?:'element-geometry';
   id: string; comparisonKey: string; identity: ConformerCalculationIdentity;
-  atomIds: string[]; fitAtomIds: string[]; fitScope: 'heavy-atoms' | 'all-atoms';
+  atomIds: string[]; fitAtomIds: string[]; fitScope: 'heavy-atoms' | 'all-atoms' | 'periodic-mobile';
   clusters: ConformerCluster[];
   rmsdMatching?: 'fixed' | 'symmetry';
 }
@@ -120,7 +123,12 @@ function rejection(record: ConformerOptimizationResult,rmsdMatching:'fixed'|'sym
   if (!s || !s.atoms?.length || s.atoms.some(a => !nonblank(a.id) || !nonblank(a.element)
     || ![a.x, a.y, a.z].every(Number.isFinite)) || new Set(s.atoms.map(a => a.id)).size !== s.atoms.length) return 'invalid-geometry';
   if (s.charge !== record.identity.charge || s.multiplicity !== record.identity.multiplicity) return 'electronic-state-mismatch';
-  if (s.dimension === 2 || s.cell?.pbc.some(Boolean) || s.periodicSource || s.bonds?.some(b => b.image?.some(Boolean))) return 'unsupported-geometry';
+  if (s.dimension === 2) return 'unsupported-geometry';
+  if (isPeriodic(s)) {
+    try { requireConfirmedPeriodicity(s); } catch { return 'unsupported-geometry'; }
+    return;
+  }
+  if (s.periodicSource || s.bonds?.some(b => b.image?.some(Boolean))) return 'unsupported-geometry';
   if (!Array.isArray(s.bonds)&&!(rmsdMatching==='symmetry'&&s.atoms.length===1)) return 'missing-connectivity';
   const edges = new Set<string>();
   for (const b of s.bonds??[]) {
@@ -139,11 +147,41 @@ function rejection(record: ConformerOptimizationResult,rmsdMatching:'fixed'|'sym
  * Proper rotation alone is insufficient: shallow mirror pairs can lie within
  * a finite RMSD cutoff, so defined tetrahedral/E/Z states are guarded as well. */
 type GeometryComparison =
-  { comparable: true; rmsdAngstrom: number; fitAtomIds: string[]; fitScope: 'heavy-atoms' | 'all-atoms' }
+  { comparable: true; rmsdAngstrom: number; fitAtomIds: string[]; fitScope: ConformerClusterGroup['fitScope'] }
   | { comparable: false; reason: 'atom-correspondence' | 'connectivity' | 'stereochemistry' | 'alignment'; detail?: string;message?:string };
 type ComparisonIdentity = { atoms: string; graph: string; fitAtomIds: string[] };
 const comparisonIdentity=(structure:Structure):ComparisonIdentity=>({atoms:atomKey(structure),graph:graphKey(structure),fitAtomIds:selectedFitAtomIds(structure)});
+function mobileAtomIds(structure: Structure, constraints?: SharedModelConstraints): string[] {
+  const frozen = new Set(constraints ? effectiveSharedFreezes(constraints).frozenAtomIds : []);
+  return structure.atoms.filter(atom => !frozen.has(atom.id!)).map(atom => atom.id!).sort(compareText);
+}
+
+function fixedCellKey(structure: Structure) {
+  const cell = structure.cell!;
+  return [cell.vectors, cell.pbc, cell.origin ?? [0, 0, 0]];
+}
+
+function compareFixedCellGeometry(moving: Structure, reference: Structure, movingConstraints?: SharedModelConstraints,
+  referenceConstraints?: SharedModelConstraints): GeometryComparison {
+  if (!sameFixedConformerCell(moving, reference)) return { comparable: false, reason: 'alignment', detail: 'fixed-cell-mismatch' };
+  const candidate = new Map(moving.atoms.map(atom => [atom.id, atom]));
+  const ids = mobileAtomIds(reference, referenceConstraints);
+  if (candidate.size !== reference.atoms.length || moving.atoms.length !== reference.atoms.length
+    || reference.atoms.some(atom => candidate.get(atom.id)?.element !== atom.element)
+    || JSON.stringify(ids) !== JSON.stringify(mobileAtomIds(moving, movingConstraints))) return { comparable: false, reason: 'atom-correspondence' };
+  const mobile = new Set(ids);
+  try {
+    let squared = 0;
+    for (const atom of reference.atoms) if (mobile.has(atom.id!)) {
+      squared += minimumImage(reference, atom, candidate.get(atom.id)!).distance ** 2;
+    }
+    return { comparable: true, rmsdAngstrom: ids.length ? Math.sqrt(squared / ids.length) : 0,
+      fitAtomIds: ids, fitScope: 'periodic-mobile' };
+  } catch { return { comparable: false, reason: 'alignment', detail: 'invalid-fixed-cell-coordinate' }; }
+}
+
 export function compareConformerGeometry(moving:Structure,reference:Structure,rmsdMatching:'fixed'|'symmetry'='fixed',movingConstraints?:SharedModelConstraints,referenceConstraints?:SharedModelConstraints):GeometryComparison {
+  if (isPeriodic(moving) || isPeriodic(reference)) return compareFixedCellGeometry(moving, reference, movingConstraints, referenceConstraints);
   if(rmsdMatching==='symmetry'){
     const issue=conformerSymmetryConnectivityIssue(moving)??conformerSymmetryConnectivityIssue(reference);
     if(issue)return{comparable:false,reason:'connectivity',detail:issue.reason,message:issue.message};
@@ -157,10 +195,14 @@ export function compareConformerGeometry(moving:Structure,reference:Structure,rm
 /** One immutable batch only. Cache the graph/ID/fit selection once per frame;
  * coordinate-dependent stereo and proper rigid fits are still checked per pair. */
 export function createConformerGeometryComparer(rmsdMatching:'fixed'|'symmetry'='fixed',onFixedAlignment?:()=>void) {
-  if(rmsdMatching==='symmetry')return createSymmetryConformerGeometryComparer();
+  const symmetry = rmsdMatching === 'symmetry' ? createSymmetryConformerGeometryComparer() : undefined;
   const cache=new WeakMap<Structure,ComparisonIdentity>();
   const prepare=(structure:Structure)=>{let value=cache.get(structure);if(!value){value=comparisonIdentity(structure);cache.set(structure,value);}return value;};
-  return (moving:Structure,reference:Structure,_movingConstraints?:SharedModelConstraints,_referenceConstraints?:SharedModelConstraints)=>comparePreparedGeometry(moving,reference,prepare,onFixedAlignment);
+  return (moving: Structure, reference: Structure, movingConstraints?: SharedModelConstraints, referenceConstraints?: SharedModelConstraints) => {
+    if (isPeriodic(moving) || isPeriodic(reference)) return compareFixedCellGeometry(moving, reference, movingConstraints, referenceConstraints);
+    return symmetry ? symmetry(moving, reference, movingConstraints, referenceConstraints)
+      : comparePreparedGeometry(moving, reference, prepare, onFixedAlignment);
+  };
 }
 function comparePreparedGeometry(moving: Structure, reference: Structure,prepare:(structure:Structure)=>ComparisonIdentity,onFixedAlignment?:()=>void):GeometryComparison {
   let referenceIdentity:ComparisonIdentity;
@@ -187,6 +229,10 @@ export interface ConformerClusteringProgress {phase:'cluster'|'eliminate-equival
 export function clusterConformerResults(records: readonly ConformerOptimizationResult[],
   options: Partial<ConformerClusteringPolicy> = {},onProgress?:(progress:ConformerClusteringProgress)=>void): ConformerClusterSet {
   const policy = { ...DEFAULT_CONFORMER_CLUSTERING_POLICY, ...options };
+  if (records.some(record => isPeriodic(record.structure))) {
+    policy.eliminateEquivalent = false;
+    policy.rmsdMatching = 'fixed';
+  }
   if(policy.eliminateEquivalent)policy.rmsdMatching='fixed';
   let ordinaryAlignmentPairCount=0;
   const compareGeometry=createConformerGeometryComparer(policy.rmsdMatching,()=>ordinaryAlignmentPairCount++);
@@ -203,11 +249,13 @@ export function clusterConformerResults(records: readonly ConformerOptimizationR
   const result: ConformerClusterSet = { groups: [], rejected: [], memberToCluster: [], acceptedCount: 0, policy };
   for (const input of records) {
     const reason = counts.get(input.candidateId)! > 1 ? 'duplicate-candidate-id' : rejection(input,policy.rmsdMatching)
-      ??(policy.rmsdMatching==='symmetry'?conformerSymmetryConnectivityIssue(input.structure)?.reason:undefined);
+      ??(policy.rmsdMatching==='symmetry'&&!isPeriodic(input.structure)?conformerSymmetryConnectivityIssue(input.structure)?.reason:undefined);
     if (reason) { result.rejected.push({ record: structuredClone(input), reason }); continue; }
     const record = structuredClone(input) as ConformerOptimizationResult & { energyHartree: number; converged: true };
-    const symmetric=policy.rmsdMatching==='symmetry';
-    let key = JSON.stringify([conformerCalculationIdentityKey(record.identity),symmetric?symmetryGraphBucket(record.structure,record.constraints):[atomKey(record.structure),graphKey(record.structure),record.constraints??null]]);
+    const periodic = isPeriodic(record.structure), symmetric = !periodic && policy.rmsdMatching === 'symmetry';
+    const geometryKey = periodic ? [atomKey(record.structure), fixedCellKey(record.structure), record.constraints ?? null]
+      : symmetric ? symmetryGraphBucket(record.structure, record.constraints) : [atomKey(record.structure), graphKey(record.structure), record.constraints ?? null];
+    let key = JSON.stringify([conformerCalculationIdentityKey(record.identity), geometryKey]);
     // A graph invariant is only a bucket. Resolve any collision by complete
     // isomorphism before assigning one scientific comparison group.
     if(symmetric){const bucket=key;let suffix=0;
@@ -217,10 +265,11 @@ export function clusterConformerResults(records: readonly ConformerOptimizationR
   }
   for (const [key, groupRecords] of [...accepted.entries()].sort(([a], [b]) => compareText(a, b))) {
     groupRecords.sort(byEnergy);
-    const first = groupRecords[0], fitAtomIds = selectedFitAtomIds(first.structure);
+    const first = groupRecords[0], periodic = isPeriodic(first.structure);
+    const fitAtomIds = periodic ? mobileAtomIds(first.structure, first.constraints) : selectedFitAtomIds(first.structure);
     const group: ConformerClusterGroup = { id: `group-${result.groups.length + 1}`, comparisonKey: key,
       identity: { ...first.identity }, atomIds: first.structure.atoms.map(a => a.id!).sort(compareText), fitAtomIds,
-      fitScope: first.structure.atoms.some(a => a.element !== 'H') ? 'heavy-atoms' : 'all-atoms', clusters: [],...(policy.rmsdMatching?{rmsdMatching:policy.rmsdMatching}:{}) };
+      fitScope: periodic ? 'periodic-mobile' : first.structure.atoms.some(a => a.element !== 'H') ? 'heavy-atoms' : 'all-atoms', clusters: [],...(policy.rmsdMatching?{rmsdMatching:policy.rmsdMatching}:{}) };
     for (const record of groupRecords) {
       let found: ConformerCluster | undefined, matchedRmsd = 0;
       // Representative-centred greedy clustering, not transitive single linkage.
@@ -267,11 +316,16 @@ function validateClusterGroup(group: ConformerClusterGroup): void {
   if (!identityValid(group.identity)) throw new Error('构象可比组科学身份无效。');
   const key = conformerCalculationIdentityKey(group.identity), clusters = new Set<string>(), members = new Set<string>();
   const first = group.clusters[0]?.representative.structure;
-  const firstConstraints=first?elementConstraintProfile(first,group.clusters[0].representative.constraints):undefined;
+  const periodic = first && isPeriodic(first);
+  const firstConstraints = first && !periodic ? elementConstraintProfile(first, group.clusters[0].representative.constraints) : undefined;
   for (const cluster of group.clusters) {
     const rep = cluster.representative;
     if (clusters.has(cluster.id) || rejection(rep,group.rmsdMatching) || conformerCalculationIdentityKey(rep.identity) !== key
-      || (group.comparisonSemantics==='element-geometry'
+      || (periodic ? !sameFixedConformerCell(rep.structure, first!)
+        || atomKey(rep.structure) !== atomKey(first!) || group.fitScope !== 'periodic-mobile'
+        || JSON.stringify(mobileAtomIds(rep.structure, rep.constraints)) !== JSON.stringify(group.fitAtomIds)
+        || JSON.stringify(rep.constraints ?? null) !== JSON.stringify(group.clusters[0].representative.constraints ?? null)
+        : group.comparisonSemantics==='element-geometry'
         ?elementCompositionKey(rep.structure)!==elementCompositionKey(first!)||elementConstraintProfile(rep.structure,rep.constraints).key!==firstConstraints!.key
         :(group.rmsdMatching==='symmetry'?!symmetryGraphsEquivalent(rep.structure,first!,rep.constraints,group.clusters[0].representative.constraints):atomKey(rep.structure) !== atomKey(first!) || graphKey(rep.structure) !== graphKey(first!))
           ||group.rmsdMatching!=='symmetry'&&JSON.stringify(rep.constraints??null)!==JSON.stringify(group.clusters[0].representative.constraints??null))

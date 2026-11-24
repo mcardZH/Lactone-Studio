@@ -1,5 +1,5 @@
 import type { Atom, Structure, Vector3 } from '../../../core/types';
-import { add, centroid, coordinates, cross, dot, point, scale, subtract } from './geometry';
+import { add, centroid, coordinates, cross, dot, scale, subtract } from './geometry';
 
 export type Rotation = [Vector3, Vector3, Vector3];
 export interface RigidTransform { rotation: Rotation; translation: Vector3; anchorIds: string[] }
@@ -8,7 +8,14 @@ export const rotate = (r: Rotation, p: Vector3): Vector3 => r.map(row => dot(row
 export const inverseRotate = (r: Rotation, p: Vector3): Vector3 => [0, 1, 2].map(k => r.reduce((sum, row, i) => sum + row[k] * p[i], 0)) as Vector3;
 export const transformPoint = (t: RigidTransform, p: Vector3): Vector3 => add(rotate(t.rotation, p), t.translation);
 export const inversePoint = (t: RigidTransform, p: Vector3): Vector3 => inverseRotate(t.rotation, subtract(p, t.translation));
-export const transformAtoms = (atoms: Atom[], t: RigidTransform): Atom[] => atoms.map(atom => ({ ...atom, ...point(transformPoint(t, coordinates(atom))) }));
+export function transformAtoms(atoms: Atom[], t: RigidTransform): Atom[] {
+  const {rotation: [r0,r1,r2], translation} = t;
+  const component = (row:Vector3,x:number,y:number,z:number) => (0 + row[0]*x) + row[1]*y + row[2]*z;
+  return atoms.map(atom => {
+    const {x,y,z}=atom;
+    return {...atom,x:component(r0,x,y,z)+translation[0],y:component(r1,x,y,z)+translation[1],z:component(r2,x,y,z)+translation[2]};
+  });
+}
 /** Composition keeps a new session's raw reference at its existing displayed
  * pose, while the new relative fit still acts on untouched physical XYZ. */
 export function composeTransforms(outer: RigidTransform, inner: RigidTransform): RigidTransform {

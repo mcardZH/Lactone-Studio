@@ -23,6 +23,10 @@ import { normalizeAnalysisColorbarLayout, type AnalysisColorbarLayout } from './
 import {generatedXtbMethodAllowed,type GeneratedXtbAnalysisPolicy} from '../../results/generated-xtb-policy';
 import type {WavefunctionMetadata} from '../../results/orbital-contracts';
 import { sortAnalysisTable, type AnalysisTableSort } from './analysis-table-sort';
+import {ResultsMcpPortRegistration} from './results-mcp-context';
+import {patchColorbarLayout,settingBool,settingColorbarLayout,settingColorRange,settingDecimals,settingEnum,settingText,validateColorRange} from './analysis-mcp-settings';
+import {analysisText as analysisTextAsset} from './analysis-mcp-assets';
+import {objectSchema} from '../mcp/types';
 export type {AnalysisDisplaySettings} from './analysis-display';
 
 export interface AnalysisBridge {
@@ -44,6 +48,7 @@ export interface AnalysisHighlightProps {
 }
 export interface AnalysisControlsProps extends AnalysisHighlightProps {
   ownerId?:string;
+  observationStamp?:string;
   context?: AnalysisControlsContext; kind: WavefunctionAnalysisRequest['kind']; orbitalKey?: string | null;
   active?:boolean; cancelOnInactive?:boolean; defaultMethod?:OrbitalCompositionMethod; autoCalculate?:boolean;
   decimals?:number;onDecimalsChange?(value:number):void;hidePrecisionControl?:boolean;
@@ -334,6 +339,57 @@ function MultiAnalysisControls(p: AnalysisControlsProps) {
     if (issue) showNotice(issue);
     else if (state.selected.includes(method) && state.errors.has(method) && analysisMethodAvailable(p.kind,method,p.context)) queue.current!.retry(true,[method]);
   }
+  const reflectQueue=()=>{
+    const snapshot=queue.current!.snapshot();
+    return {kind:p.kind,selected:snapshot.selected,running:snapshot.running,states:Object.fromEntries(snapshot.states),
+      errors:Object.fromEntries(snapshot.errors),results:Object.fromEntries(snapshot.results),
+      printed:professionalColumns?.filter(column=>originals.some(original=>original.key===column.key)),
+      reason:contextIssue()||undefined};
+  };
+  const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.ownerId??null} port={{
+    sourceRevision:JSON.stringify([p.observationStamp,p.context?.sourceRevision,display,sort,activeMethod,state.selected]),
+    methods:contextIssue()?[]:options.filter(option=>analysisMethodAvailable(p.kind,option.value,p.context)).map(option=>option.value),
+    read:reflectQueue,
+    execution:()=>{
+      const current=queue.current!.snapshot(),progress=progressRun.current?.handle.tracker.getSnapshot()??taskProgress;
+      return {status:stopping?'stopping':current.running?'running':current.selected.some(method=>current.states.get(method)==='queued')?'queued':progress?.phase??'idle',
+        requestId:progress?.identity.runId,stoppable:current.running!==null&&!stopping,progress};
+    },
+    stop:()=>queue.current!.cancel(),
+    assets:()=>p.active!==false&&table.rows.length?[
+      analysisTextAsset(`${p.kind}-table`,()=>scientificTableText(table),{sourceId:p.context?.sourceId??p.sourceContext?.result.source.id,
+        sourceRevision:p.context?.sourceRevision,frameIndex:p.sourceContext?.frameIndex,methods:state.selected}),
+    ]:[],
+    configuration:{schema:objectSchema({color:settingBool,labels:settingBool,decimals:settingDecimals,
+      ...(!p.context?.generatedXtb&&!p.sourceContext?.generatedXtb&&p.kind==='charges'?{spin:settingBool}:{})}),read:()=>display,
+      apply:patch=>{if(p.active===false)throw new Error('请先激活此分析页。');setDisplay({...display,...patch});}},
+    presentation:{schema:objectSchema({color:settingBool,labels:settingBool,palette:settingEnum(['blue-red','purple-green','viridis']),
+      range:settingColorRange,colorbarLayout:settingColorbarLayout,valueMethod:settingText}),
+      read:()=>({...display,range:display.range??null,colorbarLayout:normalizeAnalysisColorbarLayout(display.colorbarLayout),
+        valueMethod:professional?.activeMethod??result?.method,valueMethods:displayMethods.map(method=>({id:method.key,label:method.label}))}),
+      apply(values){
+        if(p.active===false||!(result||activeColumn))throw new Error('当前分析没有可显示的数据列。');
+        const {range,colorbarLayout,valueMethod,...patch}=values as Omit<Partial<AnalysisDisplaySettings>,'range'> &
+          {range?:AnalysisDisplaySettings['range']|null;valueMethod?:string};
+        validateColorRange(range);
+        if(valueMethod!==undefined&&!displayMethods.some(column=>column.key===valueMethod))throw new Error('色标依据必须是当前表中的数据列。');
+        if(valueMethod!==undefined)setActiveMethod(valueMethod);
+        setDisplay({...display,...patch,...(range!==undefined&&{range:range??undefined}),
+          ...(colorbarLayout!==undefined&&{colorbarLayout:patchColorbarLayout(display.colorbarLayout,colorbarLayout)})});
+      }},
+    run(method,retry,parameters){
+      if(Object.keys(parameters).length)throw new Error('此分析方法使用面板当前来源，无额外参数。');
+      if(p.active===false)throw new Error('请先激活此分析页。');
+      const issue=contextIssue();if(issue)throw new Error(issue);
+      if(!analysisMethodAvailable(p.kind,method,p.context))throw new Error('此来源尚未开放该分析方法。');
+      const owner=queue.current!,before=owner.snapshot();
+      if(!before.selected.includes(method)||!before.states.has(method))owner.select(method,true,order);
+      else if(retry&&before.states.get(method)!=='running')owner.retry(true,[method]);
+      if(p.sourceContext)sourceSelections.current.set(sourceOwnerIdentity,{manual:true,methods:owner.snapshot().selected});
+      const after=owner.snapshot();
+      return {status:after.states.get(method)??'unavailable',result:after.states.get(method)==='ready'?after.results.get(method):undefined,error:after.errors.get(method)};
+    },
+  }}/>;
   const methodLabel = (method: string) => options.find(option => option.value === method)?.label ?? originals.find(column=>column.key===method)?.label??method;
   const statusLabel = (method: string) => state.states.has(method)?({ queued: '排队中', running: '计算中', ready: '', error: '失败', cancelled: '已取消' }[state.states.get(method)!]):'未输出';
   const interaction=(key:string)=>({'aria-selected':current===key,onPointerEnter:()=>setHover(key),onPointerLeave:()=>setHover(null)});
@@ -357,7 +413,7 @@ function MultiAnalysisControls(p: AnalysisControlsProps) {
     return <><span className="scientific-table-heading">{column.heading ?? column.label}</span>{p.kind!=='charges'&&<span className="scientific-table-unit">{column.quantityLabel??column.headerUnit}</span>}{status&&<span className="analysis-method-status">{status}</span>}</>;
   };
   const progress=taskProgress?<MultiwfnProgress progress={taskProgress} showFailureReason={!state.errors.has(taskProgress.identity.operation.split(':')[1])} operationLabel={`Multiwfn · ${methodLabel(taskProgress.identity.operation.split(':')[1])}`} onStop={()=>queue.current!.cancel()}/>:stopping?<p role="status">正在停止…</p>:state.running?<div role="status">正在计算 {methodLabel(state.running)}… <InputSettingsAction onClick={()=>queue.current!.cancel()}>停止</InputSettingsAction></div>:null;
-  return <InputSettingsLayout className="analysis-controls analysis-comparison">{feedback}<AnalysisTaskLayout variant="card" methodDetails title={p.kind === 'charges' ? '原子电荷' : '连续键级'} progress={progress} setup={<>
+  return <InputSettingsLayout className="analysis-controls analysis-comparison">{mcpPort}{feedback}<AnalysisTaskLayout variant="card" methodDetails title={p.kind === 'charges' ? '原子电荷' : '连续键级'} progress={progress} setup={<>
     <div className="analysis-method-chips" role="group" aria-label={`${p.kind}分析方法`}>{[...options,...originals.filter(column=>!/gfn.*xtb|xtb/i.test(column.label)&&!options.some(option=>option.value===column.key)).map(column=>({value:column.key,label:column.label}))].map(option => <button type="button" key={option.value} className="shared-input-action analysis-method-chip" role="checkbox" aria-checked={state.selected.includes(option.value)} disabled={!originals.some(column=>column.key===option.value)&&!analysisMethodAvailable(p.kind,option.value,p.context)||undefined} data-unavailable={!analysisMethodAvailable(p.kind,option.value,p.context)||undefined} onClick={() => chooseMethod(option.value)}><span className="analysis-method-check" aria-hidden="true">{state.selected.includes(option.value) ? '✓' : ''}</span>{option.label}</button>)}</div>
     </>}>
     {state.selected.filter(method => state.errors.has(method)).map(method => <MultiwfnErrorNotice key={method} message={state.errors.get(method)!} label={methodLabel(method)} onRetry={state.running?undefined:()=>retryMethod(method)}/>)}

@@ -1,13 +1,14 @@
 'use strict';
 const {isDeepStrictEqual:same}=require('node:util');
-const {assert,plain,boundedJSON,validateStructure,MAX_FINGERPRINT_BYTES}=require('./security.cjs');
+const {assert,plain,boundedJSON,validateStructure}=require('./security.cjs');
+const {validSourceStampFingerprints}=require('./native-source-stamp.cjs');
 const {sessionIdentity,SOLVATION_SOLVENTS}=require('./xtb-security.cjs');
 const {cpuResourceSnapshot}=require('./cpu-resources.cjs');
 const {nativeAlpbSupported,validateNativeSolvationEvidence}=require('./conformer-solvation.cjs');
 const {XTB_METHOD_IDS,supportsXtbOperation}=require('./xtb-capabilities.cjs');
 const ELEMENTS='H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn'.split(' ');
-const METHODS=Object.freeze(['MMFF94','MMFF94s','UFF',...XTB_METHOD_IDS]);
-const OPERATIONS=Object.freeze(['md','metadynamics','spherical-md']);
+const METHODS=Object.freeze([...XTB_METHOD_IDS]);
+const OPERATIONS=Object.freeze(['md','metadynamics']);
 const DEFAULTS=Object.freeze({threads:2,maxSteps:100000,maxEvaluations:200001,maxFrames:2000,seed:731,dtFs:2,frictionPerFs:.01,reportEvery:20,shakeHydrogenBonds:true});
 const ANNEAL_DEFAULTS=Object.freeze({lowTemperatureK:0,highTemperatureK:600,cycleDurationFs:10000,cycles:5});
 const META_DEFAULTS=Object.freeze({temperatureK:300,durationFs:50000,sampleEveryFs:100,depositEveryFs:100,heightEV:.01,sigmaAngstrom:.5,maxHistory:1000});
@@ -45,29 +46,65 @@ function validateSegmentProgress(value,request){
   for(const key of ['segment','velocityInitialization','biasInitialization','localStep','localTimeFs','cumulativeStep','cumulativeTimeFs'])assert(same(value[key],expected[key]),'Sampling segment/source progress differs from its fresh-run request');
 }
 function annealingSegments(a){const lo=a.lowTemperatureK,hi=a.highTemperatureK;return a.cycleDurationFs===undefined?[['heating',a.heatingFs,lo,hi],['high-hold',a.highHoldFs,hi,hi],['cooling',a.coolingFs,hi,lo],['low-hold',a.lowHoldFs,lo,lo]]:[['heating',a.cycleDurationFs*.1,lo,hi],['high-hold',a.cycleDurationFs*.7,hi,hi],['cooling',a.cycleDurationFs*.2,hi,lo]];}
-function samplingDriver(request){if(['md','metadynamics'].includes(request.operation)&&supportsXtbOperation(request.method,request.operation))return{driver:'native-xtb-md',reason:request.operation==='metadynamics'?'native-rmsd-metadynamics':'native-ordinary-md'};return{driver:'ase-langevin',reason:'ase-forcefield-or-temperature-bias-route'};}
-function requiresXtbRuntime(request){return samplingDriver(request).driver==='native-xtb-md'||['gfnff','gfn0'].includes(request.method);}
+function isPeriodic(request){return Boolean(request.structure?.cell?.pbc.some(Boolean));}
+function samplingDriver(request){
+  if(request.operation==='md'&&(request.integrator==='ase'||isPeriodic(request)))
+    return {driver:'ase-bussi',reason:'ase-bussi-ordinary-md'};
+  if(['md','metadynamics'].includes(request.operation)&&supportsXtbOperation(request.method,request.operation))
+    return {driver:'native-xtb-md',reason:request.operation==='metadynamics'?'native-rmsd-metadynamics':'native-ordinary-md'};
+  return {driver:'ase-langevin',reason:'ase-forcefield-or-temperature-bias-route'};
+}
+function requiresXtbRuntime(request){
+  const {driver}=samplingDriver(request);
+  return driver==='native-xtb-md'||driver==='ase-langevin'&&['gfnff','gfn0'].includes(request.method);
+}
+function samplingBackend(request){
+  return isPeriodic(request)&&['gfn1','gfn2'].includes(request.method)?'tblite':'libxtb';
+}
 function validateStart(raw,cpu=cpuResourceSnapshot()){
-  boundedJSON(raw);keys(raw,['schema','stamp','runIdentity','segment','operation','structure','method','charge','uhf','frozenAtomIds','constraints','calculator','solvation','annealing','metadynamics','molecularMD','sphericalMD','sphere','coreProtection','nativeProtection','memoryBudgetBytes','driver','driverReason','hydrogenMassAmu','maxWallTimeSeconds',...Object.keys(DEFAULTS)]);
+  boundedJSON(raw);keys(raw,['schema','stamp','runIdentity','segment','operation','structure','method','integrator','device','charge','uhf','frozenAtomIds','constraints','calculator','solvation','annealing','metadynamics','molecularMD','sphericalMD','sphere','coreProtection','nativeProtection','memoryBudgetBytes','driver','driverReason','hydrogenMassAmu','maxWallTimeSeconds',...Object.keys(DEFAULTS)]);
   assert(raw.schema===1&&OPERATIONS.includes(raw.operation)&&METHODS.includes(raw.method),'Unsupported sampling operation/method');
   if(raw.segment!==undefined){keys(raw.segment,['id','previousSegmentId','completedStepsBefore']);assert(['md','metadynamics'].includes(raw.operation),'Fresh continuation segments belong only to MD/MTD');sessionIdentity(raw.segment.id);if(raw.segment.previousSegmentId!==undefined){sessionIdentity(raw.segment.previousSegmentId);assert(raw.segment.previousSegmentId!==raw.segment.id,'Sampling segment cannot be its own predecessor');}assert(integer(raw.segment.completedStepsBefore,0,Number.MAX_SAFE_INTEGER),'Invalid previously completed integration steps');}
   const stamp=raw.stamp;keys(stamp,['documentId','revision','activationEpoch','graphFingerprint','coordinatesFingerprint','constraintsFingerprint']);
-  assert(typeof stamp.documentId==='string'&&stamp.documentId.length>0&&integer(stamp.revision,0,Number.MAX_SAFE_INTEGER)&&['graphFingerprint','coordinatesFingerprint','constraintsFingerprint'].every(k=>typeof stamp[k]==='string'&&Buffer.byteLength(stamp[k])<=MAX_FINGERPRINT_BYTES)&&(stamp.activationEpoch===undefined||integer(stamp.activationEpoch,0,Number.MAX_SAFE_INTEGER)),'Invalid sampling source stamp');
+  assert(typeof stamp.documentId==='string'&&stamp.documentId.length>0&&integer(stamp.revision,0,Number.MAX_SAFE_INTEGER)&&validSourceStampFingerprints(stamp)&&(stamp.activationEpoch===undefined||integer(stamp.activationEpoch,0,Number.MAX_SAFE_INTEGER)),'Invalid sampling source stamp');
   keys(raw.runIdentity,['taskId','runId']);sessionIdentity(raw.runIdentity.taskId);sessionIdentity(raw.runIdentity.runId);
   const ids=validateStructure(raw.structure),atoms=raw.structure.atoms;
-  assert(ids.size>0&&(raw.structure.dimension??3)===3&&!raw.structure.periodicSource&&!raw.structure.cell?.pbc.some(Boolean)&&!raw.structure.bonds?.some(b=>b.image?.some(Boolean)),'Sampling requires an isolated three-dimensional structure');
+  const periodic=isPeriodic(raw),route=samplingDriver(raw);
+  const ordinaryNative=route.driver==='native-xtb-md',bussi=route.driver==='ase-bussi';
+  assert(ids.size>0&&(raw.structure.dimension??3)===3&&raw.structure.periodicSource?.completeness!=='partial','Sampling requires complete 3D source geometry');
+  assert(raw.integrator===undefined||raw.integrator===(bussi?'ase':'xtb'),'Sampling integrator differs from the available route');
+  if(periodic){
+    assert(bussi&&raw.structure.cell.pbc.every(Boolean)&&raw.structure.cell.pbcProvenance?.kind!=='unconfirmed','Periodic MD uses ASE with a confirmed fixed XYZ cell');
+    assert(raw.sphere===undefined&&raw.solvation===undefined&&raw.nativeProtection===undefined&&raw.coreProtection===undefined,'Periodic MD only uses fixed-cell geometry and its exact freezes');
+  }else assert(!raw.structure.bonds?.some(b=>b.image?.some(Boolean)),'Nonperiodic sampling cannot use image connections');
+  assert(raw.device===undefined,'This sampling method uses its CPU evaluator');
   assert(atoms.every(a=>ELEMENTS.includes(a.element)&&integer(a.formalCharge??0,-100,100)&&[a.x,a.y,a.z].every(v=>finite(v,-1e6,1e6))),'Invalid sampling atom');
   assert(integer(raw.charge,-100,100),'Explicit integer sampling charge required');const electrons=atoms.reduce((s,a)=>s+ELEMENTS.indexOf(a.element)+1,0)-raw.charge;
-  assert(electrons>0&&integer(raw.uhf,0,electrons)&&(electrons-raw.uhf)%2===0,'Sampling UHF/electron parity mismatch');
-  if(raw.method==='gfnff')assert(raw.uhf===0,'GFN-FF has no spin Hamiltonian');
-  assert((raw.structure.charge===undefined||raw.structure.charge===raw.charge)&&(raw.structure.multiplicity===undefined||raw.structure.multiplicity===raw.uhf+1),'Source charge/multiplicity differ from sampling request');
+  const {charge:sourceCharge,multiplicity}=raw.structure;
+  assert(sourceCharge===undefined||sourceCharge===raw.charge,'Source charge differs from sampling request');
+  if(raw.method==='gfnff'){
+    assert(raw.uhf===undefined||raw.uhf===0,'GFN-FF has no spin Hamiltonian');
+    assert(electrons>0&&(multiplicity===undefined||integer(multiplicity,1,electrons+1)
+      &&(electrons-(multiplicity-1))%2===0),'Sampling source multiplicity/electron parity mismatch');
+  }else{
+    assert(integer(raw.uhf,0,Number.MAX_SAFE_INTEGER-1),'Invalid sampling UHF');
+    assert(false||electrons>0&&raw.uhf<=electrons&&(electrons-raw.uhf)%2===0,
+      'Sampling UHF/electron parity mismatch');
+    assert(multiplicity===undefined||multiplicity===raw.uhf+1,'Source multiplicity differs from sampling request');
+  }
   if(raw.operation==='spherical-md'){const neighbours=atoms.map(()=>new Set());for(const b of raw.structure.bonds??[]){neighbours[b.a].add(b.b);neighbours[b.b].add(b.a);}const pending=new Set(atoms.map((_,i)=>i));let fragments=0;while(pending.size){fragments++;const first=pending.values().next().value;pending.delete(first);const stack=[first];while(stack.length)for(const i of neighbours[stack.pop()])if(pending.delete(i))stack.push(i);}assert(fragments>=2,'Spherical multi-molecule sampling requires at least two connected components');}
   const value={...DEFAULTS,...structuredClone(raw),frozenAtomIds:raw.frozenAtomIds??[],constraints:raw.constraints??[]};
-  if(value.method==='gfnff'&&raw.shakeHydrogenBonds===undefined)value.shakeHydrogenBonds=false;
-  const ordinaryNative=samplingDriver(value).driver==='native-xtb-md';
+  const explicitMd=bussi||raw.integrator!==undefined;
+  if((explicitMd||value.method==='gfnff')&&raw.shakeHydrogenBonds===undefined)value.shakeHydrogenBonds=false;
+  if(explicitMd){
+    if(bussi||!value.segment||value.nativeProtection?.core||value.coreProtection)assert(value.dtFs===2,'Ordinary MD, ASE-Bussi and protected native core use a 2 fs timestep');
+    value.integrator=bussi?'ase':'xtb';
+    const mass=value.shakeHydrogenBonds?1:4;
+    assert(value.hydrogenMassAmu===undefined||value.hydrogenMassAmu===mass,'Hydrogen mass must match the X–H constraint choice');
+    value.hydrogenMassAmu=mass;
+  }else assert(value.hydrogenMassAmu===undefined||(value.hydrogenMassAmu===4&&value.method==='gfnff'),'Invalid legacy hydrogen mass');
   if(value.method==='gxtb'){assert(ordinaryNative&&raw.seed===undefined&&atoms.every(atom=>ELEMENTS.indexOf(atom.element)<103),'g-xTB requires the native MD/MTD route, supported elements and program-random initialization');delete value.seed;}
-  assert(value.hydrogenMassAmu===undefined||(value.hydrogenMassAmu===4&&value.method==='gfnff'),'Fixed hydrogen mass is supported only as 4 amu for GFN-FF sampling');
-  if(ordinaryNative&&value.method==='gfnff'){if(raw.shakeHydrogenBonds===undefined)value.shakeHydrogenBonds=false;assert(value.shakeHydrogenBonds===false,'Locked native GFN-FF MD does not apply SHAKE; explicitly enable only a supported method');}
+  if(value.method==='gfnff')assert(value.shakeHydrogenBonds===false,'GFN-FF uses unrestrained X–H with 4 amu for new MD');
   if(ordinaryNative)assert(value.coreProtection===undefined&&value.sphere===undefined&&value.frozenAtomIds.length===0,'Ordinary xTB MD stays native; core/sphere/XYZ protection requires an explicitly supported native definition');
   if(value.nativeProtection!==undefined){
     assert(ordinaryNative,'Native protection belongs only to ordinary native xTB MD');const p=value.nativeProtection;keys(p,['core','sphere']);assert(p.core!==undefined||p.sphere!==undefined,'Empty native protection is not a scientific definition');
@@ -75,24 +112,35 @@ function validateStart(raw,cpu=cpuResourceSnapshot()){
     if(p.sphere!==undefined){const s=p.sphere;keys(s,['kind','centerAngstrom','radiusAngstrom','exponent']);assert(s.kind==='polynomial'&&s.exponent===30&&Array.isArray(s.centerAngstrom)&&s.centerAngstrom.length===3&&s.centerAngstrom.every(v=>finite(v,-1e6,1e6))&&finite(s.radiusAngstrom,.01,10000),'Invalid native polynomial sphere definition');}
   }
   assert(Array.isArray(value.frozenAtomIds)&&new Set(value.frozenAtomIds).size===value.frozenAtomIds.length&&value.frozenAtomIds.every(id=>ids.has(id))&&value.frozenAtomIds.length<atoms.length,'Invalid or fully frozen sampling atoms');
-  assert(Array.isArray(value.constraints)&&(ordinaryNative||value.constraints.length===0),'B/A/D harmonic constraints require native MD/MTD');
+  assert(Array.isArray(value.constraints)&&(ordinaryNative||bussi||value.constraints.length===0),'The selected MD driver does not consume B/A/D definitions');
   const constraintIds=new Set();
   for(const row of value.constraints){
-    keys(row,['id','objectId','type','atomIds','value']);
+    keys(row,['id','objectId','type','atomIds','value','images']);
     const size={B:2,A:3,D:4}[row.type];
     assert(size&&typeof row.id==='string'&&row.id.length>0&&!constraintIds.has(row.id)&&(row.objectId===undefined||typeof row.objectId==='string')
-      &&selected(row.atomIds,ids,size)&&row.atomIds.length===size&&finite(row.value,row.type==='D'?-180:0,row.type==='B'?1e6:180)
-      &&(row.type==='D'||row.value>0)&&(row.type!=='A'||row.value<180),'Invalid native B/A/D constraint');
+      &&Array.isArray(row.atomIds)&&row.atomIds.length===size&&row.atomIds.every(id=>ids.has(id))
+      &&finite(row.value,row.type==='D'?-180:0,row.type==='B'?1e6:180)
+      &&(row.type==='D'||row.value>0)&&(row.type!=='A'||row.value<180),'Invalid B/A/D constraint');
+    if(row.images!==undefined)assert(periodic&&bussi&&Array.isArray(row.images)&&row.images.length===size
+      &&row.images.every(image=>Array.isArray(image)&&image.length===3&&image.every(Number.isSafeInteger))
+      &&!row.images[0].some(Boolean),'Invalid fixed-cell B/A/D image references');
+    const endpoints=row.atomIds.map((id,index)=>JSON.stringify([id,row.images?.[index]??[0,0,0]]));
+    assert(new Set(endpoints).size===size,'Repeated B/A/D endpoint');
     constraintIds.add(row.id);
   }
   assert(typeof value.shakeHydrogenBonds==='boolean'&&(value.memoryBudgetBytes===undefined||integer(value.memoryBudgetBytes,1,Number.MAX_SAFE_INTEGER)),'Invalid SHAKE/host memory budget');
-  if(value.shakeHydrogenBonds){const fixed=new Set(value.frozenAtomIds),pairs=(value.structure.bonds??[]).filter(b=>atoms[b.a].element==='H'||atoms[b.b].element==='H');assert(pairs.every(b=>Math.hypot(atoms[b.a].x-atoms[b.b].x,atoms[b.a].y-atoms[b.b].y,atoms[b.a].z-atoms[b.b].z)>1e-8),'SHAKE requires nonzero source X-H bond lengths');assert(3*(atoms.length-fixed.size)>pairs.filter(b=>!fixed.has(atoms[b.a].id)||!fixed.has(atoms[b.b].id)).length,'SHAKE leaves no free physical degrees of freedom');}
+  if(ordinaryNative&&value.shakeHydrogenBonds){const fixed=new Set(value.frozenAtomIds),pairs=(value.structure.bonds??[]).filter(b=>atoms[b.a].element==='H'||atoms[b.b].element==='H');assert(pairs.every(b=>Math.hypot(atoms[b.a].x-atoms[b.b].x,atoms[b.a].y-atoms[b.b].y,atoms[b.a].z-atoms[b.b].z)>1e-8),'SHAKE requires nonzero source X-H bond lengths');assert(3*(atoms.length-fixed.size)>pairs.filter(b=>!fixed.has(atoms[b.a].id)||!fixed.has(atoms[b.b].id)).length,'SHAKE leaves no free physical degrees of freedom');}
   assert((value.method==='gxtb'||integer(value.seed,0,ordinaryNative?0x7fffffff:0xffffffff))&&integer(value.maxSteps,1,Number.MAX_SAFE_INTEGER)&&integer(value.maxEvaluations,1,Number.MAX_SAFE_INTEGER)&&(value.maxWallTimeSeconds===undefined||finite(value.maxWallTimeSeconds,.01,Number.MAX_VALUE))&&integer(value.maxFrames,1,Number.MAX_SAFE_INTEGER)&&integer(value.reportEvery,1,Number.MAX_SAFE_INTEGER)&&finite(value.dtFs,.01,2)&&finite(value.frictionPerFs,1e-6,1),'Invalid sampling integration/resource budget');
   const cores=cpu.logicalCpuCount;assert(integer(cores,1,Number.MAX_SAFE_INTEGER)&&integer(value.threads,1,cores),'Invalid sampling CPU budget');
-  const calc={accuracy:1,maxIterations:250,electronicTemperatureK:300,...raw.calculator};keys(calc,['accuracy','maxIterations','electronicTemperatureK']);
+  const calc={accuracy:2,maxIterations:250,electronicTemperatureK:300,...raw.calculator,...(explicitMd?{accuracy:2}:{})};keys(calc,['accuracy','maxIterations','electronicTemperatureK']);
   assert(finite(calc.accuracy,.001,10)&&integer(calc.maxIterations,1,2000)&&finite(calc.electronicTemperatureK,0,10000),'Invalid sampling calculator settings');value.calculator=calc;
-  if(value.solvation!==undefined){const sol=value.solvation;keys(sol,['model','solvent']);assert(ordinaryNative?sol.model==='alpb'&&nativeAlpbSupported(value.method,value.operation,sol.solvent):['gfn1','gfn2'].includes(value.method)&&SOLVATION_SOLVENTS[sol.model]?.[value.method]?.includes(sol.solvent),'Unsupported sampling solvation model/solvent');}
-  if(['MMFF94','MMFF94s','UFF'].includes(value.method))assert(atoms.reduce((s,a)=>s+(a.formalCharge??0),0)===value.charge,'Force-field formal charges differ from total charge');
+  if(value.solvation!==undefined){
+    const sol=value.solvation;keys(sol,['model','solvent']);
+    assert(ordinaryNative||bussi
+      ? !periodic&&sol.model==='alpb'&&nativeAlpbSupported(value.method,value.operation,sol.solvent)
+      : ['gfn1','gfn2'].includes(value.method)&&SOLVATION_SOLVENTS[sol.model]?.[value.method]?.includes(sol.solvent),
+    'Unsupported sampling solvation model/solvent');
+  }
   if(value.coreProtection!==undefined){const c=value.coreProtection;keys(c,['atomIds','forceConstantEVPerAngstrom2']);assert(selected(c.atomIds,ids),'Invalid protected core identity');c.forceConstantEVPerAngstrom2??=10;assert(finite(c.forceConstantEVPerAngstrom2,1e-6,1000),'Invalid core protection strength');}
   const op=value.operation,dt=value.dtFs;
   for(const [operation,field] of [['md','molecularMD'],['anneal','annealing'],['metadynamics','metadynamics'],['spherical-md','sphericalMD']])assert(op===operation||raw[field]===undefined,'Configuration belongs to another sampling route');
@@ -116,7 +164,43 @@ function validateStart(raw,cpu=cpuResourceSnapshot()){
   if(value.driver==='native-xtb-md')assert(value.maxEvaluations>=steps((value.operation==='metadynamics'?value.metadynamics:value.molecularMD).durationFs,dt)+2,'Native MD requires the locked N+2 upper-bound energy/gradient budget (actual count is not reported)');
   boundedJSON(value);return structuredClone(value);
 }
-function validateCoordinates(values,request){const atoms=request.structure.atoms;assert(Array.isArray(values)&&values.length===atoms.length,'Incomplete sampling frame');for(let i=0;i<atoms.length;i++){const a=atoms[i],b=values[i];assert(b&&a.id===b.id&&a.element===b.element&&[b.x,b.y,b.z].every(v=>finite(v,-1e6,1e6))&&(a.formalCharge??0)===(b.formalCharge??0),'Sampling atom/charge identity changed');if(request.frozenAtomIds.includes(a.id))assert(['x','y','z'].every(k=>a[k]===b[k]),'Sampling moved an XYZ freeze');}}
+function validateCoordinates(values,request){
+  const atoms=request.structure.atoms,frozen=new Set(request.frozenAtomIds);
+  assert(Array.isArray(values)&&values.length===atoms.length,'Incomplete sampling frame');
+  for(let i=0;i<atoms.length;i++){
+    const a=atoms[i],b=values[i];
+    assert(b&&a.id===b.id&&a.element===b.element&&[b.x,b.y,b.z].every(v=>finite(v,-1e6,1e6))&&(a.formalCharge??0)===(b.formalCharge??0),'Sampling atom/charge identity changed');
+    if(frozen.has(a.id))assert(['x','y','z'].every(k=>a[k]===b[k]),'Sampling moved an XYZ freeze');
+  }
+  return frozen;
+}
+function validateAseFrame(value,request){
+  const evidence=value.aseMD,calculator=value.calculatorEvidence,backend=samplingBackend(request);
+  assert(value.driver==='ase-bussi'&&plain(evidence)&&evidence.driver==='ase-bussi'&&evidence.method===request.method
+    &&evidence.backend===backend&&evidence.dtFs===2&&evidence.thermostat==='Bussi'&&evidence.thermostatTimeConstantFs===500
+    &&evidence.hydrogenMassAmu===request.hydrogenMassAmu&&evidence.shakeHydrogenBonds===request.shakeHydrogenBonds,
+    'ASE MD driver, parameters or provider evidence differ');
+  assert(plain(calculator)&&same(calculator,evidence.calculatorEvidence)&&calculator.engine===backend&&calculator.method===request.method
+    &&typeof calculator.version==='string'&&calculator.version.length>0&&integer(calculator.evaluations,1,request.maxEvaluations),
+    'Missing task-owned ASE calculator evidence');
+  if(request.method==='gfnff')assert(typeof calculator.identity?.ffModelId==='string'&&calculator.identity.ffModelId.length>0,
+    'Missing fixed GFN-FF model identity');
+  assert(finite(evidence.fixedPositionResidualAngstrom,0,1e-6)&&finite(evidence.fixedVelocityResidualAngstromPerFs,0,1e-7),
+    'ASE fixed atom residuals differ');
+  const definitions=request.constraints,observed=evidence.internalConstraints??[];
+  assert(Array.isArray(observed)&&observed.length===definitions.length,'Missing ASE B/A/D residuals');
+  for(const [index,wanted] of definitions.entries()){
+    const actual=observed[index],distance=wanted.type==='B';
+    assert(plain(actual)&&actual.id===wanted.id&&actual.type===wanted.type&&same(actual.atomIds,wanted.atomIds)
+      &&actual.target===wanted.value&&actual.unit===(distance?'angstrom':'degree')&&finite(actual.actual)
+      &&finite(Math.abs(actual.residual),0,distance?1e-5:1e-3)&&finite(Math.abs(actual.velocityResidual),0,distance?1e-6:1e-4),
+      'Invalid ASE B/A/D target or residual');
+  }
+  const shake=value.diagnostics.shake;
+  assert(plain(shake)&&shake.algorithm==='ASE-RATTLE'&&shake.enabled===request.shakeHydrogenBonds
+    &&integer(shake.hydrogenBondCount,0,Number.MAX_SAFE_INTEGER)
+    &&finite(shake.maxBondResidualAngstrom,0,1e-5),'Missing or invalid ASE X–H constraint evidence');
+}
 function validateNativeProtectionEvidence(evidence,request){
   const wanted=request.nativeProtection,coordinates=request.constraints??[];if(!wanted&&!coordinates.length&&evidence===undefined)return;
   keys(evidence,['core','sphere','coordinateTransform','constraints','sharedForceConstantHartreePerBohr2']);const near=(a,b)=>finite(a)&&Math.abs(a-b)<=1e-9*Math.max(1,Math.abs(b)),bohr=.529177210903,hartree=27.211386024367243,atoms=request.structure.atoms;
@@ -153,18 +237,20 @@ function validateFrame(value,request){
       &&e.depositTiming==='pre-step'&&e.instantaneousBiasEnergy==='not-reported'&&value.metaBiasEV===null&&value.physicalEnergyEV===null,
       'Native MTD parameter/identity/energy evidence differs');
   }
-  validateCoordinates(value.coordinates,request);assert(['trajectory','sampled-candidate'].includes(value.role)&&integer(value.frameIndex,0,request.maxFrames-1)&&integer(value.step,0,request.maxSteps)&&finite(value.timeFs,0)&&Math.abs(value.timeFs-value.step*request.dtFs)<1e-9,'Invalid sampling frame role/time');
+  const bussi=request.driver==='ase-bussi',frozen=validateCoordinates(value.coordinates,request);
+  assert(['trajectory','sampled-candidate'].includes(value.role)&&integer(value.frameIndex,0,request.maxFrames-1)&&integer(value.step,0,request.maxSteps)&&finite(value.timeFs,0)&&Math.abs(value.timeFs-value.step*request.dtFs)<1e-9,'Invalid sampling frame role/time');
   assert(typeof value.stageId==='string'&&value.stageId.length<=100&&value.collectionId===(value.role==='sampled-candidate'?'sampled-candidates':'sampling-trajectory')&&integer(value.biasHistoryCount,0,request.metadynamics?.maxHistory??0),'Invalid sampling stage/collection/bias identity');
   assert(native&&value.velocitiesAngstromPerFs===null||Array.isArray(value.velocitiesAngstromPerFs)&&value.velocitiesAngstromPerFs.length===request.structure.atoms.length&&value.velocitiesAngstromPerFs.every(v=>Array.isArray(v)&&v.length===3&&v.every(x=>finite(x))),'Invalid sampled velocities');
-  request.structure.atoms.forEach((a,i)=>{if(request.frozenAtomIds.includes(a.id))assert(value.velocitiesAngstromPerFs?.[i].every(v=>v===0),'Frozen atom acquired velocity');});
+  request.structure.atoms.forEach((a,i)=>{if(frozen.has(a.id))assert(value.velocitiesAngstromPerFs?.[i].every(v=>v===0),'Frozen atom acquired velocity');});
   for(const field of ['physicalEnergyEV','coreBiasEV','metaBiasEV','sphereBiasEV','sampledPotentialEV','kineticEnergyEV','temperatureK','targetTemperatureK'])assert(native&&['physicalEnergyEV','coreBiasEV','metaBiasEV','sphereBiasEV','sampledPotentialEV','kineticEnergyEV','temperatureK'].includes(field)&&value[field]===null||finite(value[field],field==='physicalEnergyEV'||field==='sampledPotentialEV'?-1e12:0),'Invalid sampled energy/temperature');
   if([value.physicalEnergyEV,value.coreBiasEV,value.metaBiasEV,value.sphereBiasEV,value.sampledPotentialEV].every(v=>v!==null)){const total=value.physicalEnergyEV+value.coreBiasEV+value.metaBiasEV+value.sphereBiasEV;assert(Math.abs(total-value.sampledPotentialEV)<=1e-9*Math.max(1,Math.abs(total)),'Biased and physical energy identities differ');}
   assert(value.optimizationPerformed===false&&value.requiresUnbiasedOptimization===(value.role==='sampled-candidate'),'Sampling cannot claim optimized candidates');
   assert(plain(value.diagnostics)&&finite(value.diagnostics.maxWallPenetrationAngstrom,0),'Missing sphere penetration diagnostic');
+  if(bussi)validateAseFrame(value,request);
   if(request.coreProtection){const c=value.diagnostics.core;assert(plain(c)&&finite(c.rmsdAngstrom,0)&&finite(c.maxResidualAngstrom,0)&&integer(c.rank,0,3)&&c.orientationUnique===(c.rank>=2)&&['none','single-atom','collinear-or-coincident'].includes(c.degeneracy),'Invalid core relative-geometry diagnostic');}
   const internal=request.constraints??[];
   if(native&&(request.nativeProtection||internal.length)){assert(value.physicalEnergyEV===null&&value.coreBiasEV===(request.nativeProtection?.core?null:0)&&value.sphereBiasEV===(request.nativeProtection?.sphere?null:0),'Native total potential cannot be relabelled physical energy or split into invented bias components');}
-  if(internal.length){
+  if(native&&internal.length){
     const rows=value.diagnostics.nativeConstraintResiduals;
     assert(Array.isArray(rows)&&rows.length===internal.length,'Missing native B/A/D frame residuals');
     for(const [index,wanted] of internal.entries()){
@@ -176,12 +262,12 @@ function validateFrame(value,request){
     }
   }
   if(!request.coreProtection&&!request.nativeProtection?.core)assert(value.coreBiasEV===0,'Unexpected core bias');if(request.operation!=='metadynamics')assert(value.metaBiasEV===0,'Unexpected metadynamics bias');if(!request.sphere&&!request.nativeProtection?.sphere)assert(value.sphereBiasEV===0&&value.diagnostics.maxWallPenetrationAngstrom===0,'Unexpected sphere bias');
-  if(native){const c=value.nativeMD;assert(plain(c)&&c.method===request.method&&typeof c.version==='string'&&c.version.length>0&&/^[a-f0-9]{64}$/.test(c.inputSha256??'')&&c.shakeHydrogenBonds===request.shakeHydrogenBonds&&['xtb.trj','mdrestart'].includes(c.sourceArtifact)&&integer(c.rawIndex,0,Number.MAX_SAFE_INTEGER)&&['pre-step','restart-final'].includes(c.frameTiming)&&['half-step','restart','unavailable'].includes(c.velocityPhase)&&typeof c.nativeClosed==='boolean','Missing native MD phase/parameter/source evidence');assert(request.hydrogenMassAmu===4?c.hydrogenMassAmu===4&&c.hydrogenMassMode==='fixed-amu'&&c.hydrogenMassScaling===undefined:c.hydrogenMassScaling===1&&(c.hydrogenMassAmu===undefined||c.hydrogenMassAmu===null)&&(c.hydrogenMassMode===undefined||c.hydrogenMassMode==='natural'),'Native hydrogen mass evidence differs from request');assert((c.sourceArtifact==='mdrestart')===(c.frameTiming==='restart-final'),'Native MD source phase changed');if(c.sourceArtifact==='mdrestart')assert(value.step===steps((request.operation==='metadynamics'?request.metadynamics:request.molecularMD).durationFs,request.dtFs)&&c.nativeClosed===true&&value.physicalEnergyEV===null&&value.sampledPotentialEV===null&&value.kineticEnergyEV===null&&value.temperatureK===null,'Final native restart cannot borrow another frame energy/temperature');}
+  if(native){const c=value.nativeMD;assert(plain(c)&&c.method===request.method&&typeof c.version==='string'&&c.version.length>0&&/^[a-f0-9]{64}$/.test(c.inputSha256??'')&&c.shakeHydrogenBonds===request.shakeHydrogenBonds&&['xtb.trj','mdrestart'].includes(c.sourceArtifact)&&integer(c.rawIndex,0,Number.MAX_SAFE_INTEGER)&&['pre-step','restart-final'].includes(c.frameTiming)&&['half-step','restart','unavailable'].includes(c.velocityPhase)&&typeof c.nativeClosed==='boolean','Missing native MD phase/parameter/source evidence');assert(request.hydrogenMassAmu!==undefined?c.hydrogenMassAmu===request.hydrogenMassAmu&&c.hydrogenMassMode==='fixed-amu'&&c.hydrogenMassScaling===undefined:c.hydrogenMassScaling===1&&(c.hydrogenMassAmu===undefined||c.hydrogenMassAmu===null)&&(c.hydrogenMassMode===undefined||c.hydrogenMassMode==='natural'),'Native hydrogen mass evidence differs from request');assert((c.sourceArtifact==='mdrestart')===(c.frameTiming==='restart-final'),'Native MD source phase changed');if(c.sourceArtifact==='mdrestart')assert(value.step===steps((request.operation==='metadynamics'?request.metadynamics:request.molecularMD).durationFs,request.dtFs)&&c.nativeClosed===true&&value.physicalEnergyEV===null&&value.sampledPotentialEV===null&&value.kineticEnergyEV===null&&value.temperatureK===null,'Final native restart cannot borrow another frame energy/temperature');}
   if(value.diagnostics.shake)assert(value.diagnostics.shake.enabled===request.shakeHydrogenBonds,'Observed SHAKE toggle differs from the request');
   if(native){const e=value.nativeMD;validateNativeSolvationEvidence(e.nativeSolvation,request);validateInitialVelocityCorrection(e.initialVelocityCorrection);assert(request.nativeProtection||internal.length||request.operation==='metadynamics'?e.energyDefinition==='native-total-including-sampling-potentials':e.energyDefinition===undefined||e.energyDefinition==='native-physical-potential','Native potential-energy definition differs');validateNativeProtectionEvidence(e.nativeProtection,request);if(request.nativeProtection?.sphere){const s=request.nativeProtection.sphere,penetration=Math.max(0,...value.coordinates.map(a=>Math.hypot(a.x-s.centerAngstrom[0],a.y-s.centerAngstrom[1],a.z-s.centerAngstrom[2])-s.radiusAngstrom));assert(Math.abs(penetration-value.diagnostics.maxWallPenetrationAngstrom)<=1e-6,'Native sphere penetration differs from source-frame coordinates');}}
-  if(!native&&request.shakeHydrogenBonds){const s=value.diagnostics.shake,pairs=(request.structure.bonds??[]).filter(b=>request.structure.atoms[b.a].element==='H'||request.structure.atoms[b.b].element==='H');assert(plain(s)&&s.enabled===true&&s.algorithm==='ASE-RATTLE'&&s.hydrogenBondCount===pairs.length&&finite(s.maxBondResidualAngstrom,0,1e-6),'Requested SHAKE lacks its actual constraint residual');const length=(atoms,b)=>Math.hypot(atoms[b.a].x-atoms[b.b].x,atoms[b.a].y-atoms[b.b].y,atoms[b.a].z-atoms[b.b].z),residual=Math.max(0,...pairs.map(b=>Math.abs(length(value.coordinates,b)-length(request.structure.atoms,b))));assert(residual<=1e-6&&Math.abs(residual-s.maxBondResidualAngstrom)<=1e-9,'Sampled X-H distances do not satisfy the selected SHAKE constraint');}
-  if(!native&&request.method==='gfnff'){const c=value.calculatorEvidence;assert(plain(c)&&c.engine==='native-xtb'&&c.method==='gfnff'&&typeof c.version==='string'&&/^[a-f0-9]{64}$/.test(c.forceFieldTopologySha256??'')&&integer(c.evaluations,1,request.maxEvaluations)&&c.spinTreatment==='not-supported'&&same(c.coordinateTransform,{kind:'identity',offsetAngstrom:[0,0,0]})&&c.lastEvaluation?.nativeClosed===true,'Invalid fixed-topology native GFN-FF identity');}
-  if(!native&&request.method==='gfn0'){const c=value.calculatorEvidence;assert(plain(c)&&c.engine==='native-xtb'&&c.method==='gfn0'&&typeof c.version==='string'&&c.forceFieldTopologySha256===undefined&&integer(c.evaluations,1,request.maxEvaluations)&&c.spinTreatment==='native-uhf'&&same(c.coordinateTransform,{kind:'identity',offsetAngstrom:[0,0,0]})&&c.lastEvaluation?.nativeClosed===true&&c.lastEvaluation.topologyReadFromOwnedSeed===false,'Invalid isolated native GFN0 identity');}
+  if(!native&&!bussi&&request.shakeHydrogenBonds){const s=value.diagnostics.shake,pairs=(request.structure.bonds??[]).filter(b=>request.structure.atoms[b.a].element==='H'||request.structure.atoms[b.b].element==='H');assert(plain(s)&&s.enabled===true&&s.algorithm==='ASE-RATTLE'&&s.hydrogenBondCount===pairs.length&&finite(s.maxBondResidualAngstrom,0,1e-6),'Requested SHAKE lacks its actual constraint residual');const length=(atoms,b)=>Math.hypot(atoms[b.a].x-atoms[b.b].x,atoms[b.a].y-atoms[b.b].y,atoms[b.a].z-atoms[b.b].z),residual=Math.max(0,...pairs.map(b=>Math.abs(length(value.coordinates,b)-length(request.structure.atoms,b))));assert(residual<=1e-6&&Math.abs(residual-s.maxBondResidualAngstrom)<=1e-9,'Sampled X-H distances do not satisfy the selected SHAKE constraint');}
+  if(!native&&!bussi&&request.method==='gfnff'){const c=value.calculatorEvidence;assert(plain(c)&&c.engine==='native-xtb'&&c.method==='gfnff'&&typeof c.version==='string'&&/^[a-f0-9]{64}$/.test(c.forceFieldTopologySha256??'')&&integer(c.evaluations,1,request.maxEvaluations)&&c.spinTreatment==='not-supported'&&same(c.coordinateTransform,{kind:'identity',offsetAngstrom:[0,0,0]})&&c.lastEvaluation?.nativeClosed===true,'Invalid fixed-topology native GFN-FF identity');}
+  if(!native&&!bussi&&request.method==='gfn0'){const c=value.calculatorEvidence;assert(plain(c)&&c.engine==='native-xtb'&&c.method==='gfn0'&&typeof c.version==='string'&&c.forceFieldTopologySha256===undefined&&integer(c.evaluations,1,request.maxEvaluations)&&c.spinTreatment==='native-uhf'&&same(c.coordinateTransform,{kind:'identity',offsetAngstrom:[0,0,0]})&&c.lastEvaluation?.nativeClosed===true&&c.lastEvaluation.topologyReadFromOwnedSeed===false,'Invalid isolated native GFN0 identity');}
   assert(same(value.units,{coordinates:'angstrom',velocity:'angstrom/fs',energy:'eV',time:'fs',temperature:'K'}),'Sampling units changed');
 }
 function expectedBiasHistoryCount(request){
@@ -203,10 +289,14 @@ function expectedFrames(request){
   return frames;
 }
 function validateEvent(value,session){
-  validateSegmentProgress(value,session.request);
   assert(plain(value)&&value.schema===1&&value.sessionId===session.id&&same(value.stamp,session.request.stamp)&&same(value.runIdentity,session.request.runIdentity)&&value.operation===session.request.operation&&value.method===session.request.method&&value.seq===session.workerSeq+1,'Sampling worker identity/sequence changed');
+  // A worker can reject admission before it has a validated segment or any
+  // scientific output. Preserve that exact error without claiming a step.
+  const admissionError=value.kind==='error'&&value.seq===0&&value.nativeClosed===true&&value.lastFrame==null&&
+    ['segment','velocityInitialization','biasInitialization','localStep','localTimeFs','cumulativeStep','cumulativeTimeFs','step'].every(key=>value[key]===undefined);
+  if(!admissionError)validateSegmentProgress(value,session.request);
   assert(['stage','frame','progress','bias','native-started','native-closed',...TERMINAL].includes(value.kind),'Unknown sampling event');
-  if(value.kind==='progress')assert(session.request.driver==='native-xtb-md'&&value.phase==='native-md'&&integer(value.step,0,session.request.maxSteps)&&integer(value.frameCount,0,session.request.maxFrames)&&(value.candidateCount===undefined||integer(value.candidateCount,0,value.frameCount)),'Invalid observed native MD progress');
+  if(value.kind==='progress')assert(value.phase===(session.request.driver==='ase-bussi'?'ase-bussi':'native-md')&&integer(value.step,0,session.request.maxSteps)&&integer(value.frameCount,0,session.request.maxFrames)&&(value.candidateCount===undefined||integer(value.candidateCount,0,value.frameCount)),'Invalid observed MD progress');
   if(value.kind.startsWith('native-'))assert(requiresXtbRuntime(session.request)&&integer(value.pid,1,Number.MAX_SAFE_INTEGER)&&(value.kind==='native-started'||Number.isSafeInteger(value.code)),'Invalid native sampling child event');
   if(value.kind==='frame')validateFrame(value,session.request);
   const resolved=session.xtbRuntime,actual=value.nativeMD??value.lastFrame?.nativeMD;
@@ -219,8 +309,21 @@ function validateEvent(value,session){
   if(value.nativeMD?.initialVelocityCorrection!=null)validateInitialVelocityCorrection(value.nativeMD.initialVelocityCorrection);
   if(value.lastFrame?.nativeMD?.initialVelocityCorrection!=null)validateInitialVelocityCorrection(value.lastFrame.nativeMD.initialVelocityCorrection);
   if(value.kind==='stage'&&value.stageId==='sampling'&&value.status==='started'){
-    if(value.configuration)assert(value.configuration.hydrogenMassAmu===session.request.hydrogenMassAmu&&value.configuration.shakeHydrogenBonds===session.request.shakeHydrogenBonds&&value.configuration.dtFs===session.request.dtFs,'Sampling configuration mass, constraint or timestep changed');
-    if(value.integration)assert(session.request.hydrogenMassAmu===4?value.integration.hydrogenMassAmu===4&&value.integration.hydrogenMassMode==='fixed-amu':value.integration.hydrogenMassAmu==null&&(value.integration.hydrogenMassMode===undefined||value.integration.hydrogenMassMode==='natural'),'Sampling integration mass evidence differs from request');
+    if(value.configuration){
+      const {configuration:c}=value,{request:r}=session;
+      assert(c.hydrogenMassAmu===r.hydrogenMassAmu&&c.shakeHydrogenBonds===r.shakeHydrogenBonds&&c.dtFs===r.dtFs,'Sampling configuration mass, constraint or timestep changed');
+      assert(c.method===r.method&&c.charge===r.charge&&c.uhf===r.uhf&&c.structure?.charge===r.structure.charge
+        &&c.structure?.multiplicity===r.structure.multiplicity,'Sampling configuration electronic state changed');
+    }
+    if(value.integration){
+      const {hydrogenMassAmu,hydrogenMassMode,shakeHydrogenBonds,dtFs,driver}=value.integration;
+      const mass=session.request.hydrogenMassAmu;
+      assert(session.request.driver==='ase-bussi'
+        ? driver==='ASE-Bussi'&&hydrogenMassAmu===mass&&shakeHydrogenBonds===session.request.shakeHydrogenBonds&&dtFs===session.request.dtFs
+        : mass!==undefined?hydrogenMassAmu===mass&&hydrogenMassMode==='fixed-amu'
+          : hydrogenMassAmu==null&&(hydrogenMassMode===undefined||hydrogenMassMode==='natural'),
+      'Sampling integration mass evidence differs from request');
+    }
   }
   if(value.kind==='completed'&&session.request.driver==='native-xtb-md'){
     if(session.request.method==='gxtb')assert(value.seed===undefined&&value.seedTreatment==='native-program-random'&&value.effectiveSeed===null,'g-xTB cannot claim a controlled numerical seed');
@@ -248,4 +351,4 @@ function validateEvent(value,session){
   if(value.kind==='error')assert(plain(value.error)&&typeof value.error.code==='string'&&typeof value.error.message==='string'&&value.error.message.length<=8192&&(value.error.details===undefined||plain(value.error.details)),'Invalid sampling error');
   if(TERMINAL.has(value.kind))assert(value.workerSettled===true,'Sampling worker did not settle');return value;
 }
-module.exports={METHODS,OPERATIONS,DEFAULTS,ANNEAL_DEFAULTS,META_DEFAULTS,SPHERE_DEFAULTS,MD_DEFAULTS,TERMINAL,sessionIdentity,validateStart,validateEvent,validateFrame,expectedFrames,expectedBiasHistoryCount,annealingSegments,samplingDriver,requiresXtbRuntime,samplingSegmentFields,validateInitialVelocityCorrection};
+module.exports={METHODS,OPERATIONS,DEFAULTS,ANNEAL_DEFAULTS,META_DEFAULTS,SPHERE_DEFAULTS,MD_DEFAULTS,TERMINAL,sessionIdentity,validateStart,validateEvent,validateFrame,expectedFrames,expectedBiasHistoryCount,annealingSegments,samplingDriver,samplingBackend,requiresXtbRuntime,samplingSegmentFields,validateInitialVelocityCorrection};

@@ -271,6 +271,14 @@ export interface SnapshotLeaseView {
 	snapshotId: string;
 	leaseId: string;
 }
+/** Click-time observation of a monitor source, independent of the task's latest Run. */
+export interface MonitorSnapshotTarget {
+	runId: string | null;
+	sourceSetId?: string;
+	sourceVersion?: string;
+	source?: { artifactId: string; revision: number; boundary: SourceBoundary; observedSha256?: string };
+	frame?: { jobIndex: number; stageId: string; sourceFrameIndex: number; sourceLine: number };
+}
 export interface SnapshotDescriptionView extends SnapshotLeaseView {
 	taskId: string;
 	runId: string | null;
@@ -482,13 +490,24 @@ export interface TaskDetailView {
 	}[];
 	scientificStates?: TaskScientificStateView[];
 }
-/** Complete frame publications only. Same revision => empty delta; reset includes all frames. */
+export interface TaskMonitorFramePage {
+	taskId: string;
+	collectionId: string;
+	revision: string;
+	token: string;
+	offset: number;
+	nextOffset: number;
+	count: number;
+	framesDelta: { index: number; frame: MonitorGeometry }[];
+}
+/** Same revision has an empty delta. A paged delta becomes visible only after all pages arrive. */
 export interface TaskMonitorView extends TaskDetailView {
 	collectionId: string | null;
 	revision: string | null;
 	baseRevision: string | null;
 	frameCount: number;
-	framesDelta: { index: number; frame: MonitorGeometry }[];
+	framesDelta: TaskMonitorFramePage["framesDelta"];
+	framePage?: { token: string; count: number };
 	reset: boolean;
 	prepared: boolean;
 	cards: MonitorCardData[];
@@ -497,6 +516,7 @@ export interface TaskMonitorView extends TaskDetailView {
 	sourceGeneration?: number;
 	sourceRevision?: number;
 	sourceBoundary?: SourceBoundary;
+	observedSha256?: string;
 	sourceIdentity?: {
 		sourceId: string;
 		taskId: string;
@@ -637,6 +657,23 @@ export interface PostprocessCacheSaveResult {
 	byteSize: number;
 	state: "complete";
 }
+interface SubmissionEnvironmentIdentity {
+	environmentId: string;
+	revision: number;
+	engineId: EnvironmentView["engineId"];
+	connectionKind: EnvironmentView["connectionKind"];
+	schedulerKind: EnvironmentView["schedulerKind"];
+}
+interface SubmissionReceiptView {
+	taskId: string;
+	runId: string;
+	operationId: string;
+	projectId?: string | null;
+	executionEnvironment?: SubmissionEnvironmentIdentity;
+	workingPath?: string;
+	archivePath?: string | null;
+	directoryMode?: "single" | "dual";
+}
 export interface TaskSystemCommands {
 	"reminder.dismiss": { input: { reminderId: string }; result: void };
 	"center.enter": { input: { entryId: string }; result: TaskCenterView };
@@ -644,6 +681,7 @@ export interface TaskSystemCommands {
 	"center.read": { input: {}; result: TaskCenterView };
 	"manager.acquire": { input: { entryId: string }; result: TaskManagerView };
 	"task.details": { input: { taskId: string }; result: TaskDetailView };
+	"task.submission-receipt": { input:{submissionIntentId:string;includeOwnership?:boolean}; result:SubmissionReceiptView|null };
 	"task.execution-evidence": {
 		input: {
 			taskId: string;
@@ -716,10 +754,14 @@ export interface TaskSystemCommands {
 		result: TaskOperationStart;
 	};
 	"monitor.read": {
-		input: { taskId: string; refresh: boolean; knownRevision: string | null };
+		input: { taskId: string; refresh: boolean; knownRevision: string | null; pagedFrames?: boolean; pageOwner?:string };
 		result: TaskMonitorView;
 	};
-	"monitor.release": { input: { taskId: string }; result: void };
+	"monitor.frames": {
+		input: { taskId: string; collectionId: string; revision: string; token: string; offset: number; pageOwner?:string };
+		result: TaskMonitorFramePage;
+	};
+	"monitor.release": { input: { taskId: string; pageOwner?:string }; result: void };
 	"monitor.layout": { input: { taskId: string; cards: MonitorCardKind[] }; result: void };
 	"monitor.settings": { input: MonitoringSettings; result: MonitoringSettings };
 	"preview.read": {
@@ -748,7 +790,7 @@ export interface TaskSystemCommands {
 	"preview.release": { input: { ownerId: string }; result: void };
 	"file.save-copy": {
 		input: { artifactId: string; expectedSourceIdentity?: PreviewSourceIdentity };
-		result: { saved: boolean; path?: string };
+		result: { saved: boolean; path?: string;bytes?:number;sha256?:string };
 	};
 	"clipboard.write": { input: { text: string }; result: void };
 	"library.associate": {
@@ -760,7 +802,7 @@ export interface TaskSystemCommands {
 		input: { candidateId: string; choices: Record<string, string> };
 		result: { operationId: string };
 	};
-	"library.migrate": { input: {}; result: { operationId: string; message: string } };
+	"library.migrate": { input: {target?:string}; result: { operationId: string; message: string } };
 	"library.self-check": {
 		input: { repair: boolean; checkId?: string };
 		result: LibraryDiagnosticView;
@@ -775,7 +817,7 @@ export interface TaskSystemCommands {
 		};
 		result: EnvironmentView;
 	};
-	"environment.delete": { input: { environmentId: string }; result: void };
+	"environment.delete": { input: { environmentId: string;expectedRevision?:number }; result: void };
 	"environment.import": { input: {}; result: EnvironmentView[] };
 	"environment.import-preview": {
 		input: { text?: string };
@@ -794,6 +836,7 @@ export interface TaskSystemCommands {
 		result: EnvironmentBrowseResult | null;
 	};
 	"environment.export": { input: { environmentId: string }; result: { saved: boolean } };
+	"environment.export-text": { input: { environmentId: string }; result: { text:string } };
 	"environment.check": {
 		input: { environment: EnvironmentView; secret?: EnvironmentSecretPayload };
 		result: {
@@ -808,7 +851,7 @@ export interface TaskSystemCommands {
 		result: void;
 	};
 	"submission.preview": {
-		input: SubmitTaskRequest;
+		input: SubmitTaskRequest & { includeDiagnostics?: boolean };
 		result: {
 			workingPath: string;
 			directoryMode?: "single" | "dual";
@@ -819,16 +862,22 @@ export interface TaskSystemCommands {
 			executable?: string | null;
 			softwareVersion?: string | null;
 			taskKind?: string | null;
+			executionEnvironment?: SubmissionEnvironmentIdentity;
 			calculationScript?: CalculationScript;
 			calculationScriptIdentity?: CalculationScriptIdentity;
 			resources: ResourceSummaryView[];
 			restrictions: string[];
 			restrictionDetails?: Array<{
 				code: string;
+				stage?: string;
 				field?: string;
 				expected?: string;
 				actual?: string;
 				reason?: string;
+				nativeCode?: string;
+				operation?: string;
+				variable?: string;
+				exitCode?: number;
 			}>;
 		};
 	};
@@ -870,10 +919,10 @@ export interface TaskSystemCommands {
 	"submission.stage-abort": { input: { token: string }; result: void };
 	"submission.release-dependencies": { input: { sourceRefs: string[] }; result: void };
 	"submission.submit": {
-		input: SubmitTaskRequest;
-		result: { taskId: string; runId: string; operationId: string };
+		input: SubmitTaskRequest & {includeOwnership?:boolean};
+		result: SubmissionReceiptView;
 	};
-	"snapshot.open": { input: { taskId: string }; result: SnapshotLeaseView };
+	"snapshot.open": { input: { taskId: string; target?: MonitorSnapshotTarget }; result: SnapshotLeaseView };
 	"snapshot.describe": {
 		input: { snapshotId: string; leaseId?: string };
 		result: SnapshotDescriptionView;

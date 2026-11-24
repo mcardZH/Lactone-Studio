@@ -10,7 +10,7 @@ const ELEMENTS = new Set(('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc
 const FLAGS = ['atomNumbers', 'elementNames', 'legend', 'regionHighlights', 'regionLabels', 'frozenMarks', 'scanMarks', 'measurementMarks', 'cell'];
 const REQUIRED = ['representation', 'colorMode', ...FLAGS, 'fontSize'];
 const OPTIONAL = ['alignment', 'elementColors', 'atomScale', 'bondScale', 'elementScales', 'depthFade', 'structurePreset', 'structureFinish', 'structureLighting', 'structureSizing', 'vdwShell', 'periodicDisplay','showBonds','backgroundColor','bondStyle','cellStyle','axisDisplay','stereochemistry','rotationSpeedPercent'];
-const STRUCTURE_FIELDS=['representation','structurePreset','structureFinish','structureLighting','structureSizing','vdwShell','elementColors','elementScales','atomScale','bondScale','depthFade','showBonds','backgroundColor','bondStyle'];
+const STRUCTURE_FIELDS=['representation','structurePreset','structureFinish','structureLighting','structureSizing','vdwShell','elementColors','elementScales','atomScale','bondScale','depthFade','showBonds','backgroundColor','bondStyle','cell','cellStyle','periodicDisplay','axisDisplay'];
 function validateNamedStructurePresets(value){
   assert(Array.isArray(value)&&value.length<=64,'At most 64 named structure presets');const names=new Set();
   return value.map(item=>{exact(item,['name','appearance']);assert(typeof item.name==='string'&&item.name.trim()===item.name&&item.name.length>0&&item.name.length<=80&&!names.has(item.name),'Invalid or duplicate structure preset name');names.add(item.name);
@@ -39,8 +39,8 @@ function validateModelDisplay(value) {
   assert(typeof value.fontSize === 'number' && Number.isFinite(value.fontSize) && value.fontSize >= 8 && value.fontSize <= 24, 'Model display font size must be in [8, 24]');
   if (Object.hasOwn(value, 'alignment')) assert(['auto', 'heavy', 'off'].includes(value.alignment), 'Invalid observation alignment');
   if (Object.hasOwn(value, 'depthFade')) assert(typeof value.depthFade === 'number' && Number.isFinite(value.depthFade) && value.depthFade >= 0 && value.depthFade <= 1, 'Depth fade must be in [0, 1]');
-  if(Object.hasOwn(value,'structurePreset')) assert(['original','pastel','muted','cpk','vmd-glossy','flat','macaron','outlined','vdw-shell','gallery-line-art','gallery-cpk-glossy','gallery-pastel','gallery-vmd-glossy','custom'].includes(value.structurePreset),'Invalid structure appearance preset');
-  if(Object.hasOwn(value,'structureLighting')) assert(['pymol-soft','pymol-cpk','vmd'].includes(value.structureLighting),'Invalid structure lighting');
+  if(Object.hasOwn(value,'structurePreset')) assert(['original','pastel','muted','cpk','vmd-glossy','flat','macaron','outlined','vdw-shell','gallery-line-art','gallery-cpk-glossy','gallery-pastel','gallery-vmd-glossy','gallery-vesta-pearl','gallery-space-filling','custom'].includes(value.structurePreset),'Invalid structure appearance preset');
+  if(Object.hasOwn(value,'structureLighting')) assert(['pymol-soft','pymol-cpk','vmd','vesta-pearl'].includes(value.structureLighting),'Invalid structure lighting');
   if(Object.hasOwn(value,'structureFinish')) {
     const f=value.structureFinish;
     assert(validFinish(f),'Invalid structure finish');

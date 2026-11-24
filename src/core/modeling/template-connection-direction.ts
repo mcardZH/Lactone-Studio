@@ -15,6 +15,7 @@ const unit = (v: Vector3): Vector3 => {
  * frame. Angles reuse the ordinary builder H policy, not an equilibrium fit.
  * The caller rotates this vacancy onto the actual active-to-host bond. */
 export function templateConnectionDirection(template: BuilderTemplate, active: number, exteriorOrder: number): Vector3 | undefined {
+  if (active === template.connectionAnchor && exteriorOrder === 1 && template.attachmentDirection) return template.attachmentDirection;
   const atom = template.atoms[active], anchor = builderPosition(atom);
   const edges = template.bonds.filter(b => b.a === active || b.b === active);
   if (!edges.length) return undefined;

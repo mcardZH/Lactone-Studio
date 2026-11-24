@@ -5,6 +5,7 @@ import math
 import copy
 from pathlib import Path
 import traceback
+from types import FunctionType, SimpleNamespace
 
 import numpy as np
 from ase import Atoms, __version__ as ase_version, units
@@ -74,14 +75,35 @@ def _anchors(request, space, count):
             raise PathInputError('Keyframe positions must preserve order and leave room for automatic positions')
         for i in range(ia + 1, ib):
             labels[i] = a + (i - ia) * (b - a) // (ib - ia)
-    coordinates = []
-    for snapshot in snapshots:
+    coordinates, used_images = [], []
+    image_choices = options.get('periodicPath', {}).get('endpointImages', [None] * len(snapshots))
+    if not isinstance(image_choices, list) or len(image_choices) != len(snapshots):
+        raise PathInputError('Periodic endpoint images must follow the path snapshots in order')
+    for index, (snapshot, choice) in enumerate(zip(snapshots, image_choices)):
         xyz = _positions(snapshot, identities)
+        if space.geometry is not None:
+            try:
+                space.geometry.assert_same(snapshot)
+                if choice is not None:
+                    xyz += space.geometry.cartesian_offsets(choice, len(identities))
+                    images = choice
+                elif index:
+                    base = coordinates[-1]
+                    displacement, shifts = space.geometry.minimum_image(xyz - base)
+                    xyz = base + displacement
+                    images = shifts.tolist()
+                else:
+                    images = np.zeros_like(xyz, dtype=int).tolist()
+            except ValueError as error:
+                raise PathInputError(str(error)) from error
+            used_images.append(images)
+            if np.allclose(xyz[space.frozen], space.reference[space.frozen], atol=1e-8, rtol=0.):
+                xyz[space.frozen] = space.reference[space.frozen]
         if (not np.array_equal(xyz[space.frozen], space.reference[space.frozen])
                 or np.max(np.abs(space.project(xyz) - xyz)) > 1e-8):
             raise PathInputError('A path snapshot conflicts with the global freezes or exact coordinates')
         coordinates.append(xyz)
-    return list(identities.values()), list(zip((label - 1 for label in labels), coordinates))
+    return list(identities.values()), list(zip((label - 1 for label in labels), coordinates)), used_images
 
 
 def _normalize(vector, message):
@@ -120,10 +142,17 @@ def _sidpp_segment(first, last, count, ctx, steps_left, growth_tol, final_tol, r
     left, right = 1, 1
     steps = 0
     trace = []
-    initial_distances = np.linalg.norm(first[:, None] - first[None, :], axis=2)
-    final_distances = np.linalg.norm(last[:, None] - last[None, :], axis=2)
+    geometry = space.geometry
+    def distances(xyz):
+        if geometry is not None:
+            return geometry.pair_distances(xyz)
+        return np.linalg.norm(xyz[:, None] - xyz[None, :], axis=2)
+
+    initial_distances = distances(first)
+    final_distances = distances(last)
     calculators = {label: IDPP(initial_distances + (final_distances - initial_distances) * label / (count - 1),
-                               mic=False) for label in range(1, count - 1)}
+                               mic=geometry is not None) for label in range(1, count - 1)}
+    cell = dict(cell=geometry.reduced, pbc=geometry.pbc) if geometry is not None else {}
     distinct_pairs = np.triu_indices(len(first), 1)
     last_force = None
 
@@ -141,9 +170,9 @@ def _sidpp_segment(first, last, count, ctx, steps_left, growth_tol, final_tol, r
             ctx.check_cancelled()
             energies, forces = [0.], []
             for label, xyz in zip(labels[1:-1], images[1:-1]):
-                if np.any(np.linalg.norm(xyz[:, None] - xyz[None, :], axis=2)[distinct_pairs] <= 1e-8):
+                if np.any(distances(xyz)[distinct_pairs] <= 1e-8):
                     raise PathInputError('A S-IDPP bead contains coincident atoms')
-                bead = Atoms('H' * len(xyz), positions=xyz)
+                bead = Atoms('H' * len(xyz), positions=xyz, **cell)
                 bead.calc = calculators[label]
                 energies.append(float(bead.get_potential_energy()))
                 forces.append(bead.get_forces())
@@ -237,10 +266,18 @@ class _PathResult:
         self.physical = values
         self.last_phase = phase
         if self.recorder:
+            step = max(row[2] for row in values.values())
+            # FSM initialization can already have recorded physical rounds.
+            # The first actual CI-NEB band still owns its own energy milestone.
             self.recorder.consider(self.make_frames(values, phase, 'path', 'accepted'), phase,
-                                   max(row[2] for row in values.values()))
+                                   step, first_physical=step == 0 and phase in ('ci-neb-ordinary', 'ci-neb-climb'))
         else:
             self.history.extend(self.make_frames(values, phase, 'path-iterations', 'accepted'))
+
+    def remember_partial(self, values, phase):
+        if values:
+            self.recorder.consider_partial(self.make_frames(values, phase, 'path', 'partial'), phase,
+                                           max(row[2] for row in values.values()))
 
     def finish(self, ctx, status, **details):
         if self.recorder:
@@ -382,7 +419,7 @@ def _fsm(reference, ctx, options, result, *, anchors=None, growth=None, phase='f
                 {'role': 'endpoint' if index in (0, len(reference) - 1) else 'keyframe', 'nodeId': identity})
         except Exception:
             if result.physical:
-                result.remember_band(dict(result.physical), phase + '-interrupted')
+                result.remember_partial(dict(result.physical), phase + '-interrupted')
             raise
         finally:
             ctx.release_node(identity)
@@ -421,7 +458,7 @@ def _fsm(reference, ctx, options, result, *, anchors=None, growth=None, phase='f
                     result.physical[index] = (xyz, energy, growth_round,
                         {'role': 'frozen-node', 'nodeId': identity, 'segmentIndex': segment_index, **evidence})
                 except Exception:
-                    result.remember_band(dict(result.physical), phase + '-interrupted')
+                    result.remember_partial(dict(result.physical), phase + '-interrupted')
                     raise
                 finally:
                     ctx.release_node(identity)
@@ -500,8 +537,17 @@ def pygsm_molecule(request, ctx, initial, drives=None, *, topology_geometries=()
     class ConstrainedDLC(DelocalizedInternalCoordinates):
         def newCartesian(self, xyz, dQ, frozen_atoms=None, verbose=True):
             ctx.check_cancelled()
-            moved = super().newCartesian(xyz, dQ, frozen_atoms=frozen or frozen_atoms, verbose=verbose)
-            return space.project(np.asarray(moved).reshape(-1, 3))
+            # The DLC step can pass through a singular periodic B/A/D geometry.
+            # Backtrack the proposal in its own DLC space before evaluating E/G.
+            scales = (1.,) if ctx.geometry is None else (1., .5, .25, .125, .0625, .03125)
+            for scale in scales:
+                ctx.check_cancelled()
+                moved = super().newCartesian(xyz, scale * dQ, frozen_atoms=frozen or frozen_atoms, verbose=verbose)
+                try:
+                    return space.project(np.asarray(moved).reshape(-1, 3))
+                except CoordinateError:
+                    if scale == scales[-1]:
+                        raise
 
     def primitives_at(xyz, extra_bonds=()):
         topology = Topology.build_topology(xyz=xyz, atoms=element_data, extra_bonds=list(extra_bonds))
@@ -509,9 +555,18 @@ def pygsm_molecule(request, ctx, initial, drives=None, *, topology_geometries=()
 
     initial = space.project(initial)
     primitives = primitives_at(initial, added_bonds)
+    def single_primitive_block(basis):
+        # An endpoint union can introduce a primitive crossing the original
+        # fragment windows. Every derivative in this block sees all atoms.
+        basis.block_info = [(0, len(initial), 0, len(basis.Internals), 'reg')]
+
+    if topology_geometries or drives:
+        single_primitive_block(primitives)
     for geometry in topology_geometries:
         ctx.check_cancelled()
-        primitives.add_union_primitives(primitives_at(geometry))
+        other = primitives_at(geometry)
+        single_primitive_block(other)
+        primitives.add_union_primitives(other)
     for drive in drives:
         kind = drive[0]
         if kind in ('ADD', 'BREAK'):
@@ -520,6 +575,19 @@ def pygsm_molecule(request, ctx, initial, drives=None, *, topology_geometries=()
             primitives.add(Angle(*(int(atom) - 1 for atom in drive[1:4])))
         elif kind in ('TORSION', 'DIHEDRAL'):
             primitives.add(Dihedral(*(int(atom) - 1 for atom in drive[1:5])))
+    if ctx.geometry is not None:
+        from coordinate_systems.slots import CartesianX, CartesianY, CartesianZ
+        # A fragment split across a cell face can have no local-distance
+        # primitives in pyGSM's molecular topology. Include the active
+        # Cartesian directions in the same DLC basis so an ICTAN node still
+        # has independent transverse directions on the fixed-cell surface.
+        frozen_indices = set(frozen)
+        for index in range(len(initial)):
+            if index not in frozen_indices:
+                for coordinate in (CartesianX, CartesianY, CartesianZ):
+                    primitives.add(coordinate(index, w=1.0))
+    if drives or ctx.geometry is not None:
+        single_primitive_block(primitives)
     coordinates = ConstrainedDLC.from_options(xyz=initial, atoms=element_data, connect=True, primitives=primitives)
     geometry = [[symbol, *xyz] for symbol, xyz in zip(symbols, initial)]
     lot = ContextLot(geometry)
@@ -528,23 +596,55 @@ def pygsm_molecule(request, ctx, initial, drives=None, *, topology_geometries=()
                                  frozen_atoms=frozen or None)
 
 
-def pygsm_optimizer(ctx, *, rms, gmax, dmax, climb):
-    """Use the native DLC optimizer with task-owned per-node output paths."""
+def _write_gsm_diagnostic_xyz(filename, geometries, energies, *, scale, metadata, scope):
+    from utilities import manage_xyz
+
+    filename = Path(filename)
+    try:
+        filename.parent.mkdir(parents=True, exist_ok=True)
+        manage_xyz.write_xyzs_w_comments(str(filename), geometries, energies, scale=scale)
+    except OSError as error:
+        warning = metadata.setdefault('xyzDiagnosticWriteFailures', {'count': 0, 'byScope': {}})
+        warning['count'] += 1
+        warning['byScope'][scope] = warning['byScope'].get(scope, 0) + 1
+        warning['last'] = dict(filename=filename.name, message=str(error))
+
+
+def pygsm_optimizer(ctx, *, rms, gmax, dmax, climb, metadata):
+    """Use the native DLC optimizer with task-owned optional per-node output."""
     import pyGSM
     from optimizers import eigenvector_follow
+
+    def write_node_xyz(filename, geometries, energies, *, scale):
+        if ctx.workspace is not None:
+            _write_gsm_diagnostic_xyz(filename, geometries, energies, scale=scale, metadata=metadata, scope='node')
+
+    # The locked optimizer writes optional XYZ through its own module global,
+    # separately from the whole-round writer hook. Bind this invocation's
+    # writer without changing the imported dependency or its shared globals.
+    native_optimize = eigenvector_follow.optimize
+    globals_with_writer = {**native_optimize.__globals__, 'manage_xyz': SimpleNamespace(
+        write_xyzs_w_comments=write_node_xyz)}
+    optimize = FunctionType(native_optimize.__code__, globals_with_writer, native_optimize.__name__,
+                            native_optimize.__defaults__, native_optimize.__closure__)
+    optimize.__kwdefaults__ = native_optimize.__kwdefaults__
 
     class ContextOptimizer(eigenvector_follow):
         def optimize(self, molecule, *args, **kwargs):
             ctx.check_cancelled()
             if ctx.workspace is not None:
                 token = str(molecule.PES.lot.electronic_node_id).replace(':', '_')
-                directory = Path(ctx.workspace) / 'pygsm' / f'{molecule.node_id}-{token}'
-                directory.mkdir(parents=True, exist_ok=True)
-                kwargs['path'] = str(directory)
-            return super().optimize(molecule, *args, **kwargs)
+                kwargs['path'] = str(Path(ctx.workspace) / 'pygsm' / f'{molecule.node_id}-{token}')
+            return optimize(self, molecule, *args, **kwargs)
 
     return ContextOptimizer.from_options(OPTTHRESH=rms, conv_gmax=gmax, DMAX=dmax, opt_climb=climb,
                                          update_hess_in_bg=not climb, print_level=0)
+
+
+def _gsm_observation(lot, xyz, *, evaluate):
+    if lot.hasRanForCurrentCoords and np.array_equal(xyz, lot.currentCoords):
+        return lot.observation
+    return lot.evaluate(xyz) if evaluate else None
 
 
 def _de_gsm_segment(reference, ctx, options, result, *, offset=0, segment_index=0,
@@ -557,8 +657,17 @@ def _de_gsm_segment(reference, ctx, options, result, *, offset=0, segment_index=
     growth_rounds = _int(options, 'gsmGrowthRounds', 50) if growth_budget is None else growth_budget
     optimization_rounds = _int(options, 'gsmOptimizationRounds', 50)
     node_steps = _int(options, 'gsmNodeSteps', 3)
-    rms = _positive(options, 'gsmRmsGradient', .0005)
-    maximum = _positive(options, 'gsmMaxGradient', .001)
+    has_gradient_limits = 'gsmRmsGradient' in options or 'gsmMaxGradient' in options
+    preset = options.get('gsmConvergencePreset', 'custom' if has_gradient_limits else 'loose')
+    defaults = {'loose': (.002, .001), 'normal': (.001, .0005),
+                'medium': (.001, .0005), 'tight': (.0005, .00025)}
+    if options.get('policyVersion') == 'v212' and preset != 'custom':
+        if preset not in defaults:
+            raise PathInputError('Unknown GSM convergence preset')
+        maximum, rms = defaults[preset]
+    else:
+        rms = _positive(options, 'gsmRmsGradient', .0005)
+        maximum = _positive(options, 'gsmMaxGradient', .001)
     add_node = _positive(options, 'gsmAddNodeTolerance', .1)
     climb = _bool(options, 'gsmClimb', True)
     dmax = _positive(options, 'gsmDmax', .1)
@@ -585,26 +694,36 @@ def _de_gsm_segment(reference, ctx, options, result, *, offset=0, segment_index=
         reactant, product = endpoint_nodes
         reactant.node_id, product.node_id = 0, count - 1
     metadata['optimizationScope'] = 'complete-string' if prepared_nodes is not None else 'segment'
-    optimizer = pygsm_optimizer(ctx, rms=rms, gmax=maximum, dmax=dmax, climb=climb)
+    optimizer = pygsm_optimizer(ctx, rms=rms, gmax=maximum, dmax=dmax, climb=climb, metadata=metadata)
 
     def snapshot(gsm, stage, *, evaluate=False, interrupted=False):
         stage_step = metadata['growthRounds'] if stage == 'growth' else metadata['optimizationRounds']
         step = global_metadata['growthRounds'] + global_metadata['optimizationRounds']
         states = dict(result.physical)
         observed = False
+        incomplete = interrupted
         for index, node in enumerate(gsm.nodes):
             if node is None:
                 continue
             xyz = node.xyz.copy()
             lot = node.PES.lot
-            if evaluate:
-                observation = lot.evaluate(xyz)
-            elif lot.hasRanForCurrentCoords and np.array_equal(xyz, lot.currentCoords):
-                observation = lot.observation
-            else:
-                if not interrupted:
-                    return False
+            try:
+                observation = _gsm_observation(lot, xyz, evaluate=evaluate)
+            except PesCancelled:
+                raise
+            except Exception as error:
+                incomplete = True
                 observation = None
+                warning = metadata.setdefault('pathObservationFailures', {'count': 0})
+                warning['count'] += 1
+                warning['last'] = dict(bead=offset + index + 1, step=step, stage=stage,
+                                       code=getattr(error, 'code', type(error).__name__), message=str(error))
+                # A node outside the exact geometry contract cannot be indexed.
+                if isinstance(error, (PathInputError, CoordinateError)):
+                    states.pop(offset + index, None)
+                    continue
+            if observation is None and not evaluate and not interrupted:
+                return False
             observed |= observation is not None
             role = 'endpoint' if index in (0, count - 1) else 'grown-node'
             details = {'role': role, 'stageStep': stage_step, 'nodeId': lot.electronic_node_id,
@@ -619,7 +738,11 @@ def _de_gsm_segment(reference, ctx, options, result, *, offset=0, segment_index=
         if not observed:
             return False
         phase = f'de-gsm-segment-{segment_index + 1}-{stage}' if segmented else f'de-gsm-{stage}'
-        result.remember_band(states, phase)
+        if incomplete or any(row[1] is None for row in states.values()):
+            result.physical = states
+            result.remember_partial(states, phase if interrupted else phase + '-incomplete')
+        else:
+            result.remember_band(states, phase)
         return True
 
     class DE_GSM(NativeDEGSM):
@@ -705,10 +828,9 @@ def _de_gsm_segment(reference, ctx, options, result, *, offset=0, segment_index=
         # The product stores exact-coordinate/evaluator result series. Native
         # rounded XYZ diagnostics are optional; keep them in the run workspace.
         if ctx.workspace is not None:
-            from utilities import manage_xyz
             directory = Path(ctx.workspace) / 'pygsm' / ('complete-string' if prepared_nodes is not None else f'segment-{segment_index + 1}')
-            directory.mkdir(parents=True, exist_ok=True)
-            manage_xyz.write_xyzs_w_comments(str(directory / Path(name).name), geometries, energies, scale=1.)
+            _write_gsm_diagnostic_xyz(directory / Path(name).name, geometries, energies, scale=1.,
+                                      metadata=metadata, scope='round')
 
     gsm = DE_GSM.from_options(reactant=reactant, product=product, nnodes=count, optimizer=optimizer,
                               CONV_TOL=rms, CONV_gmax=maximum, ADD_NODE_TOL=add_node,
@@ -874,7 +996,10 @@ def run(request, ctx):
     result = _PathResult(request, ctx)
     try:
         ctx.check_cancelled()
-        symbols, anchors = _anchors(request, ctx.constraints, count)
+        symbols, anchors, anchor_images = _anchors(request, ctx.constraints, count)
+        if anchor_images:
+            result.provenance['periodicPath'] = dict(endpointImages=anchor_images,
+                                                      anchorBeads=[index + 1 for index, _ in anchors])
         native_gsm = (algorithm == 'de-gsm' and options.get('gsmGrowth',
                       'native' if options.get('executionProfile') == 'pes-v222' else 'sidpp') == 'native')
         initializer = options.get('pathInitializer', 'sidpp') if algorithm == 'ci-neb' else None

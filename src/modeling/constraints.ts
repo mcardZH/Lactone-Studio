@@ -7,6 +7,28 @@ export const emptySharedConstraints=():SharedModelConstraints=>({frozenAtomIds:[
 export function effectiveSharedFreezes(shared:SharedModelConstraints):SharedModelConstraints {
   return shared.enabled===false?{...shared,frozenAtomIds:[],coordinates:[]}:shared;
 }
+
+/** A visible atom number is its one-based position. Each structure owns the IDs at those positions. */
+export function projectSharedConstraintsByAtomNumber(definitions:SharedModelConstraints,reference:Structure,target:Structure){
+  if(!definitions.frozenAtomIds.length&&!definitions.coordinates.length)return {constraints:definitions,unmatchedAtomIds:[],unmatchedCoordinates:[]};
+  const compatible=reference.atoms.length===target.atoms.length&&reference.atoms.every((atom,index)=>atom.element===target.atoms[index].element);
+  const ids=new Map<string,string>();
+  if(compatible)reference.atoms.forEach((atom,index)=>{
+    const destination=target.atoms[index].id;
+    if(atom.id&&destination)ids.set(atom.id,destination);
+  });
+  const frozenAtomIds:string[]=[],unmatchedAtomIds:string[]=[];
+  for(const id of definitions.frozenAtomIds){
+    const mapped=ids.get(id);
+    if(mapped)frozenAtomIds.push(mapped);else unmatchedAtomIds.push(id);
+  }
+  const coordinates:SharedModelConstraints['coordinates']=[],unmatchedCoordinates:SharedModelConstraints['coordinates']=[];
+  for(const row of definitions.coordinates){
+    const atomIds=row.atomIds.map(id=>ids.get(id));
+    if(atomIds.every((id):id is string=>id!==undefined))coordinates.push({...row,atomIds});else unmatchedCoordinates.push(row);
+  }
+  return {constraints:{...definitions,frozenAtomIds,coordinates},unmatchedAtomIds,unmatchedCoordinates};
+}
 /** A single master switch cannot represent two contradictory source states.
  * Empty targets adopt the copied definitions' switch; populated targets must
  * agree, so paste never silently enables or disables either frozen set. */

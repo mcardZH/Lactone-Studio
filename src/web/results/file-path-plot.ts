@@ -1,7 +1,9 @@
 import {decimalEnergyValue} from '../../results/numeric-format';
 import type {PostprocessScientificFileDocument} from '../../results/postprocess-document';
 import type {ScientificData} from '../../results/scientific-contracts';
+import type {ScientificPlotSeries} from '../../results/scientific-plot';
 import {postprocessFileJob} from '../../results/postprocess-sources';
+import {convertEnergy,type EnergyUnit} from '../../results/energy';
 
 export interface FilePathPlotScope {
   fileOwnerId: string;
@@ -68,17 +70,24 @@ export function createFilePathPlotSnapshot(document:PostprocessScientificFileDoc
   };
 }
 
-export function filePathPlotProjection(snapshot:FilePathPlotSnapshot) {
-  const energyToken=(row:FilePathPlotSnapshot['nodes'][number])=>decimalEnergyValue(row.rawEnergy??row.energy);
-  const series=[{id:snapshot.reference,label:snapshot.title,points:snapshot.nodes.map(row=>({
-    x:row.sourceNode,y:row.energy,
-    tooltip:`源节点 ${row.sourceNode}${row.isTs?' · TS':''} · ${energyToken(row)} Eh · 第 ${row.sourceLine} 行`,
-  }))}];
+export function filePathPlotProjection(snapshot:FilePathPlotSnapshot,display?:{unit:EnergyUnit;zeroIndex?:number}) {
+  const energyToken=(row:FilePathPlotSnapshot['nodes'][number])=>row.rawEnergy??decimalEnergyValue(row.energy);
+  const zeroNode=display?.zeroIndex === undefined ? undefined : snapshot.nodes[display.zeroIndex];
+  const relativeToTs=!zeroNode&&snapshot.reference==='relative-to-ts';
+  const title=relativeToTs?'Path Energy Relative to TS':'Path Energy Profile';
+  const unit=display?.unit;
+  const unitLabel=unit&&unit!=='hartree'?unit:'Eh';
+  const series:ScientificPlotSeries[]=[{id:snapshot.reference,kind:'line',label:'Energy',showPoints:true,points:snapshot.nodes.map(row=>{
+    const y=unit ? convertEnergy({value:row.energy-(zeroNode?.energy??0),unit:row.unit},unit) : row.energy;
+    return {x:row.sourceNode,y,readoutId:row.sourceNode,markerLabel:row.isTs?'TS':undefined,
+      tooltip:`Source Node ${row.sourceNode}${row.isTs?' · TS':''} · Line ${row.sourceLine}\nX ${row.sourceNode}\nY ${unit&&y!==null?decimalEnergyValue(y):energyToken(row)} ${unit?unitLabel:row.rawUnit??'Eh'}`};
+  })}];
   const text=[
     `# ${snapshot.title}`,
     `# ${JSON.stringify({source:snapshot.source,jobId:snapshot.jobId,jobIndex:snapshot.jobIndex,reference:snapshot.reference})}`,
     'source_node\tenergy\tunit\tmarker\tsource_line\tstage',
     ...snapshot.nodes.map(row=>[row.sourceNode,energyToken(row),row.rawUnit??row.unit,row.isTs?'TS':'',row.sourceLine,row.stageId??''].join('\t')),
   ].join('\n')+'\n';
-  return {series,text,yLabel:snapshot.reference==='relative-to-ts'?'相对 TS 能量 / Eh':'能量 / Eh'};
+  return {title,series,text,zeroNode,unitLabel,xLabel:'Source Node',
+    yLabel:`${relativeToTs?'Energy Relative to TS':zeroNode?'Relative Energy':'Energy'} / ${unitLabel}`};
 }

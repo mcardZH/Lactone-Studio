@@ -131,6 +131,9 @@ export interface NativeMDPolicy {
   dtFs: 2;
   protectedAtomIds: AtomId[];
   forceConstantKJMolNm2: number;
+  /** Explicit new native request only; old runs keep the observed defaults. */
+  hydrogenMassAmu?: 1 | 4;
+  shakeHydrogenBonds?: boolean;
   periodic?:true;
   internalConstraintMode?:'native-harmonic';
 }

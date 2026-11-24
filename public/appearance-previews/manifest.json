@@ -16,7 +16,7 @@
       "atoms": 24,
       "bonds": 25,
       "coordinateUnit": "angstrom",
-      "identity": "Retained source coordinates, elements and original bond orders; not a SY-optimized geometry. Original retained PNG bytes are unchanged."
+      "identity": "Retained source coordinates, elements and original bond orders. All current structure thumbnails share the same orthographic camera and a transparent background."
     },
     "water-orbital": {
       "title": "Self-authored water HOMO amplitude, retained original GFN2-xTB calculation",
@@ -144,6 +144,20 @@
       ],
       "displacementDefinition": "O fixed; H1 tangent proportional to (.504284,0,-.758602), H2 tangent proportional to (-.504284,0,-.758602). Jointly normalized, displayed at .8 Angstrom scale.",
       "identity": "Geometric illustration only; no calculated frequency or quantum normal mode is claimed."
+    },
+    "coumarin-homo": {
+      "title": "Retained ES drawing example, coumarin HOMO amplitude",
+      "sourceFormat": "Gaussian Cube from Multiwfn",
+      "sourceSha256": "6c6a92c3388352937c3faa92fbdbac20a7778250f1ea4fe3d9895156345899c2",
+      "atoms": 17,
+      "grid": [
+        100,
+        100,
+        100
+      ],
+      "identity": "Same original field and cutoff used in the VESTA raster comparison. ES renders the preview with the paired PubChem CID 323 bond orders.",
+      "orbitalAmplitudeIsovalue": 0.0260203,
+      "orbitalAmplitudeUnit": "bohr^-3/2"
     }
   },
   "images": [
@@ -151,29 +165,43 @@
       "file": "structure-original.png",
       "source": "caffeine",
       "preset": "original",
-      "bytes": 60422,
-      "sha256": "93b126dbb64169ae75ea176b08386699c6be0a3f247af9821ab73a42728eb685"
+      "bytes": 73710,
+      "sha256": "1f3ba5da5b1ef6f83fb276b628a2e5c29e17d69084b9086b22d1912d92d81166"
     },
     {
       "file": "structure-gallery-pastel.png",
       "source": "caffeine",
       "preset": "gallery-pastel",
-      "bytes": 72281,
-      "sha256": "fe4d06896dda3b5c9411f77375499096a4503d79f0090d975af2849ae1cf687e"
+      "bytes": 88508,
+      "sha256": "a9f17c67030467b3f4e906b9e221befa24bb84796d0d53765fce5bac1d385cc5"
     },
     {
       "file": "structure-gallery-cpk-glossy.png",
       "source": "caffeine",
       "preset": "gallery-cpk-glossy",
-      "bytes": 54158,
-      "sha256": "9951463d58f7fd0fdc10e7cc135ef58652729532d33fabef00bf2fb216cd4822"
+      "bytes": 67716,
+      "sha256": "548d99fd9ba7781a128498d00464cd0876cbe4fedd0ca0f6483047900b61a27d"
     },
     {
       "file": "structure-gallery-vmd-glossy.png",
       "source": "caffeine",
       "preset": "gallery-vmd-glossy",
-      "bytes": 46344,
-      "sha256": "2e6636c46afb00ba047a1a9f6320cad37d44915598f7e4eb94be9277539419f6"
+      "bytes": 79184,
+      "sha256": "c4860c62b749f2c70b29e29c071916c958d41348e555839b0e3c31453f88de6c"
+    },
+    {
+      "file": "structure-gallery-vesta-pearl.png",
+      "source": "caffeine",
+      "preset": "gallery-vesta-pearl",
+      "bytes": 73291,
+      "sha256": "7bd40b816576dfbd6c02372cf98289aad2ec778ef4f1faf017b6c4a484d1c67f"
+    },
+    {
+      "file": "structure-gallery-space-filling.png",
+      "source": "caffeine",
+      "preset": "gallery-space-filling",
+      "bytes": 126097,
+      "sha256": "df617a5753fe9e850529d7b7e25d38aa196a8304bd9228f59c2d98c997b49d26"
     },
     {
       "file": "surface-gallery-orbital.png",
@@ -181,6 +209,13 @@
       "preset": "gallery-orbital",
       "bytes": 57833,
       "sha256": "9f253b9228f3b07d3e921cb21170fa25f6ca52265ae667ebd4093238ca60c9a3"
+    },
+    {
+      "file": "surface-gallery-vesta-cyan-yellow.png",
+      "source": "coumarin-homo",
+      "preset": "gallery-vesta-cyan-yellow",
+      "bytes": 213227,
+      "sha256": "8f89461a676d7d9fd786c05e060a2fe5670eb4ec952f7e799123740ed6e8c726"
     },
     {
       "file": "surface-gallery-density.png",

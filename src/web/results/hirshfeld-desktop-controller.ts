@@ -6,8 +6,9 @@ import { sameSurfaceContext } from '../../results/surface-field';
 import type { OrbitalResourceInfo } from '../../results/orbital-contracts';
 import type { HirshfeldControlsState } from './hirshfeld-controls-contracts';
 import type {ComputeResourcePreferencesBridge} from '../../modeling/resource-preferences';
+import { materializeCubeFields, type CubeAssetDesktop } from './cube-asset-bridge';
 
-export interface HirshfeldDesktopApi extends Partial<ComputeResourcePreferencesBridge> {
+export interface HirshfeldDesktopApi extends Partial<ComputeResourcePreferencesBridge>, CubeAssetDesktop {
   openHirshfeldSession?(request: HirshfeldOpenRequest): Promise<HirshfeldSessionInfo>;
   analyzeHirshfeld?(sessionId: string, request: HirshfeldAnalyzeRequest): Promise<HirshfeldAnalysisResult>;
   restoreHirshfeldFields?(sessionId: string, request: HirshfeldRestoreRequest): Promise<HirshfeldAnalysisResult>;
@@ -40,6 +41,7 @@ export function createHirshfeldRun(desktop: HirshfeldDesktopApi, cluster: Hirshf
   analysisId: string, sessionId: string, request: HirshfeldAnalyzeRequest,
   options?: { resources?: { threads: number; memoryBudgetBytes: number }; onSessionInfo?(info: HirshfeldSessionInfo): void }) {
   let stopped = false, opening = false, opened = false, settled = false, running:Promise<HirshfeldCompletedSession>|undefined, closePromise: Promise<void> | null = null;
+  const fieldRead=new AbortController();
   const close = () => closePromise ??= (async () => { if (opened) { await desktop.closeSurfaceSession?.(sessionId); opened = false; } })().catch(error=>{closePromise=null;throw error;});
   async function run(): Promise<HirshfeldCompletedSession> {
       validateHirshfeldCluster(cluster, request);
@@ -51,7 +53,7 @@ export function createHirshfeldRun(desktop: HirshfeldDesktopApi, cluster: Hirshf
         if (stopped) throw aborted();
         if (info.sessionId !== sessionId || info.family !== 'hirshfeld' || info.atomCount !== cluster.atoms.length || !sameSurfaceContext(info.context, context)) throw new Error('Hirshfeld会话来源不匹配。');
         assertHirshfeldResourceInfo(info, 'open-grant'); options?.onSessionInfo?.(info);
-        const result = await desktop.analyzeHirshfeld(sessionId, request);
+        const result = await materializeCubeFields(await desktop.analyzeHirshfeld(sessionId, request),desktop,fieldRead.signal);
         if (stopped) throw aborted();
         validateHirshfeldAnalysisResult(result, request);
         if (result.sessionInfo.sessionId !== sessionId || !sameSurfaceContext(result.sessionInfo.context, context)) throw new Error('Hirshfeld实际运行资源回执属于其他会话。');
@@ -71,6 +73,7 @@ export function createHirshfeldRun(desktop: HirshfeldDesktopApi, cluster: Hirshf
     run:()=>running??=run(),
     async cancel() {
       stopped=true;
+      fieldRead.abort();
       try{if((opening||opened)&&!settled)await desktop.cancelSurface?.(sessionId);}
       finally{await running?.catch(()=>{});if(opened)await close();}
     },

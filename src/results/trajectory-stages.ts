@@ -10,13 +10,13 @@ function isClimbingFrame(frame: ResultFrameSummary, iteration: number | undefine
     && frame.geometryAssociation?.iteration === iteration && frame.geometryAssociation.image === proof.image - proof.imageBase;
 }
 
-export function confirmedStageCiFrame(result: TrajectoryResult, stage: ResultStage | undefined): number | undefined {
+export function confirmedStageCiFrame(result: Pick<TrajectoryResult, 'frames'>, stage: ResultStage | undefined): number | undefined {
   if (stage?.kind !== 'neb-path' || stage.ciFrameIndex === undefined) return undefined;
   const candidates = stage.frameIndices.filter(index => result.frames[index] && isClimbingFrame(result.frames[index], stage.sourceIteration));
   return candidates.length === 1 && candidates[0] === stage.ciFrameIndex ? candidates[0] : undefined;
 }
 
-export function confirmedStageTsFrame(result: TrajectoryResult, stage: ResultStage | undefined): number | undefined {
+export function confirmedStageTsFrame(result: Pick<TrajectoryResult, 'frames'>, stage: ResultStage | undefined): number | undefined {
   const index = stage?.tsFrameIndex;
   if (stage?.kind !== 'irc' || index === undefined || !result.frames[index] || !stage.frameIndices.includes(index)) return undefined;
   const marked = stage.frameIndices.filter(frameIndex => result.frames[frameIndex]?.pathDirection === 'ts');

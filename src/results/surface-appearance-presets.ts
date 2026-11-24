@@ -1,6 +1,6 @@
 import type { MeshFinishSettings } from './mesh-appearance';
 export type SurfaceAppearanceFamily='esp'|'orbital'|'dual'|'iri'|'igmh'|'density'|'hirshfeld';
-export type SurfaceAppearancePresetId=SurfaceAppearanceFamily|`gallery-${SurfaceAppearanceFamily}`;
+export type SurfaceAppearancePresetId=SurfaceAppearanceFamily|`gallery-${SurfaceAppearanceFamily}`|'gallery-vesta-cyan-yellow';
 export interface SurfaceAppearancePreset {id:SurfaceAppearancePresetId;family?:SurfaceAppearanceFamily;label:string;source:string;positiveColor:string;negativeColor:string;lowColor:string;middleColor:string;highColor:string;finish:MeshFinishSettings;opacity?:number}
 /** Appearance references only: no threshold, range, unit or field identity.
  * Legacy rows remain readable for saved appearances, but are not new choices. */
@@ -14,6 +14,9 @@ export const SURFACE_APPEARANCE_PRESETS:readonly SurfaceAppearancePreset[]=Objec
   {id:'hirshfeld',label:'Hirshfeld标准',source:'existing native dnorm RWB appearance',positiveColor:'#275ce6',negativeColor:'#e53131',lowColor:'#e53131',middleColor:'#ffffff',highColor:'#275ce6',finish:{preset:'soft',specular:.3,exponent:48}},
   {id:'gallery-esp',family:'esp',label:'图库·ESP柔光',source:'fig-155',positiveColor:'#ff0000',negativeColor:'#0000ff',lowColor:'#0000ff',middleColor:'#ffffff',highColor:'#ff0000',finish:{preset:'custom',specular:.3,exponent:42,ambient:.42,diffuse:.58},opacity:.9},
   {id:'gallery-orbital',family:'orbital',label:'图库·轨道高光',source:'fig-061',positiveColor:'#66cc4d',negativeColor:'#00b0d4',lowColor:'#00b0d4',middleColor:'#ffffff',highColor:'#66cc4d',finish:{preset:'custom',specular:.5,exponent:86,ambient:.16,diffuse:.78},opacity:.96},
+  {id:'gallery-vesta-cyan-yellow',family:'orbital',label:'VESTA 青蓝·黄',source:'VESTA signed surface raster comparison on retained coumarin HOMO',
+    positiveColor:'#ffff00',negativeColor:'#00ffff',lowColor:'#00ffff',middleColor:'#ffffff',highColor:'#ffff00',
+    finish:{preset:'custom',specular:0,exponent:127,ambient:.235,diffuse:.69,facingOpacity:true},opacity:.76},
   {id:'gallery-dual',family:'dual',label:'图库·双色场',source:'fig-158; appearance only, scientific density identity retained',positiveColor:'#00b0d4',negativeColor:'#66cc4d',lowColor:'#66cc4d',middleColor:'#ffffff',highColor:'#00b0d4',finish:{preset:'custom',specular:.45,exponent:80,ambient:.16,diffuse:.72},opacity:.94},
   {id:'gallery-iri',family:'iri',label:'图库·IRI柔光',source:'fig-064',positiveColor:'#00ff00',negativeColor:'#0000ff',lowColor:'#0000ff',middleColor:'#00ff00',highColor:'#ff0000',finish:{preset:'custom',specular:.2,exponent:40,ambient:.4,diffuse:.6},opacity:1},
   {id:'gallery-igmh',family:'igmh',label:'图库·IGMH高光',source:'fig-156',positiveColor:'#00ff00',negativeColor:'#0000ff',lowColor:'#0000ff',middleColor:'#00ff00',highColor:'#ff0000',finish:{preset:'custom',specular:.3,exponent:48,ambient:.35,diffuse:.65},opacity:1},

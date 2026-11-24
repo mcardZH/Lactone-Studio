@@ -3,7 +3,7 @@ import { coordinatesFingerprint, graphFingerprint } from '../core/modeling/graph
 import type { Bond, Structure } from '../core/types';
 import { perceivePeriodicConnections } from '../core/periodic';
 import { empiricalBondAdmission } from '../modeling/empirical-bond-admission';
-import type { ChemistryJob, ChemistryPort, ChemistryRequest, ChemistryResult, DocumentStamp } from '../modeling/contracts';
+import type { ChemistryPort, ChemistryRequest, ChemistryResult, DocumentStamp, EmpiricalFrameBondJob, EmpiricalFrameBondResult } from '../modeling/contracts';
 import { traceTrajectoryOperation, type TrajectoryOperationContext } from './trajectory-operations';
 
 export interface EmpiricalFrameBondOptions {
@@ -17,6 +17,10 @@ export interface EmpiricalFrameBondOptions {
 }
 export interface EmpiricalFrameBondReadOptions {
   signal?: AbortSignal;
+  /** Input topology carried alongside new coordinates is not same-frame evidence. */
+  inheritedSourceGraph?: boolean;
+  /** The trajectory owner has already validated and recursively frozen this frame. */
+  immutableSource?: boolean;
   /** Caller checks its document/activation epoch; this module never owns a store. */
   guard?(): void;
 }
@@ -47,7 +51,8 @@ function frameKey(source: Structure, index: number): string {
     source.charge, source.multiplicity, source.bonds ?? null, source.bondSource ?? null]);
 }
 function atomOnly(source: Structure): Structure {
-  const structure = structuredClone(source);
+  // The source is already the private snapshot for this call.
+  const structure = { ...source };
   delete structure.bonds; delete structure.bondSource; delete structure.bondPerceptionIssues; delete structure.molfile;
   return structure;
 }
@@ -76,22 +81,37 @@ export function empiricalFrameBondDisplayStructure(value: EmpiricalFrameBondProj
     return structure;
   } catch { return empty(); }
 }
-function accepted(source: Structure, result: ChemistryResult, request: ChemistryRequest): Structure {
-  const candidate = result.structure, summary = result.bondPerceptionSummary;
+function sameSerializedAtoms(left: Structure['atoms'], right: Structure['atoms']): boolean {
+  if (left === right) return true;
+  if (left.length !== right.length) return false;
+  return left.every((atom,index)=>{
+    const other=right[index];
+    const keys=Object.keys(atom),otherKeys=Object.keys(other);
+    if (keys.length === otherKeys.length && keys.every((key,i)=>
+      key === otherKeys[i] && atom[key as keyof typeof atom] === other[key as keyof typeof other])) return true;
+    return JSON.stringify(atom) === JSON.stringify(other);
+  });
+}
+function accepted(source: Structure, result: ChemistryResult | EmpiricalFrameBondResult, request: ChemistryRequest): Structure {
+  const candidate = 'structure' in result ? result.structure : result;
+  const summary = result.bondPerceptionSummary;
   if (result.operation !== 'perceive-bonds' || result.bondPerceptionPolicy !== 'composite-v1'
+      || !('structure' in result) && result.kind !== 'empirical-frame-graph-v1'
       || !result.stamp || STAMP_KEYS.some(key => result.stamp[key] !== request.stamp[key])
-      || JSON.stringify(result.movableAtomIds) !== JSON.stringify(request.movableAtomIds)
+      || !Array.isArray(result.movableAtomIds) || result.movableAtomIds.length !== request.movableAtomIds.length
+      || request.movableAtomIds.some((id, index) => id !== result.movableAtomIds[index])
       || !summary || summary.method !== 'empirical' || summary.evidenceCount !== 0
       || SUMMARY_COUNTS.some(key => !Number.isSafeInteger(summary[key]) || summary[key] < 0))
     throw new Error('经验判断回执的方法、身份或来源不匹配。');
-  if (!candidate || candidate.id !== source.id || candidate.charge !== source.charge || candidate.multiplicity !== source.multiplicity
-      || JSON.stringify(candidate.atoms) !== JSON.stringify(source.atoms)
-      || JSON.stringify(candidate.cell ?? null) !== JSON.stringify(source.cell ?? null)
-      || !Array.isArray(candidate.bonds) || summary.bondCount !== candidate.bonds.length
-      || summary.coordinationCount !== candidate.bonds.filter(bond => bond.kind === 'coordination').length)
+  if (!candidate || !Array.isArray(candidate.bonds) || summary.bondCount !== candidate.bonds.length
+      || 'structure' in result && (result.structure.id !== source.id || result.structure.charge !== source.charge
+        || result.structure.multiplicity !== source.multiplicity || !Array.isArray(result.structure.atoms)
+        || !sameSerializedAtoms(result.structure.atoms, source.atoms)
+        || JSON.stringify(result.structure.cell ?? null) !== JSON.stringify(source.cell ?? null)))
     throw new Error('经验判断改变了来源原子、几何、电子态或连接回执。');
   const seen = new Set<string>();
-  const bonds = candidate.bonds.map(bond => {
+  let coordinationCount = 0;
+  for (const bond of candidate.bonds) {
     if (!Number.isSafeInteger(bond.a) || !Number.isSafeInteger(bond.b) || bond.a < 0 || bond.b < 0
         || bond.a >= source.atoms.length || bond.b >= source.atoms.length || bond.a === bond.b
         || ![1, 1.5, 2, 3].includes(bond.order) || bond.fractional === true
@@ -103,14 +123,20 @@ function accepted(source: Structure, result: ChemistryResult, request: Chemistry
     const key = `${Math.min(bond.a, bond.b)}:${Math.max(bond.a, bond.b)}`;
     if (seen.has(key)) throw new Error('经验判断重复连接同一原子对。');
     seen.add(key);
-    return structuredClone(bond);
-  });
-  validateBondPerceptionIssues({ ...source, bonds, bondPerceptionIssues: candidate.bondPerceptionIssues });
+    if (bond.kind === 'coordination') coordinationCount++;
+  }
+  if (summary.coordinationCount !== coordinationCount) throw new Error('经验判断改变了来源原子、几何、电子态或连接回执。');
+  validateBondPerceptionIssues({ ...source, bonds: candidate.bonds, bondPerceptionIssues: candidate.bondPerceptionIssues });
   const structure = atomOnly(source);
-  structure.bonds = bonds; structure.bondSource = 'inferred';
-  if (candidate.bondPerceptionIssues?.length) structure.bondPerceptionIssues = structuredClone(candidate.bondPerceptionIssues);
+  const graphReply = !('structure' in result);
+  structure.bonds = graphReply ? candidate.bonds : structuredClone(candidate.bonds);
+  structure.bondSource = 'inferred';
+  if (candidate.bondPerceptionIssues?.length)
+    structure.bondPerceptionIssues = graphReply ? candidate.bondPerceptionIssues : structuredClone(candidate.bondPerceptionIssues);
   return structure;
 }
+
+type CachedGraph = Pick<EmpiricalFrameBondProjection, 'warnings' | 'preview'> & Pick<Structure, 'bonds' | 'bondPerceptionIssues'>;
 
 /** Finite sources use the modeler's composite-v1 empirical operation;
  * periodic sources use the common local image-resolved connectivity rules.
@@ -118,7 +144,7 @@ function accepted(source: Structure, result: ChemistryResult, request: Chemistry
  * Native jobs are serialized per provider; completed exact frames use an LRU of 8.
  */
 export class EmpiricalFrameBonds {
-  private cache = new Map<string, EmpiricalFrameBondProjection>();
+  private cache = new Map<string, CachedGraph>();
   private tail: Promise<void> = Promise.resolve();
   private lifetime = new AbortController();
   private closed = false;
@@ -128,46 +154,54 @@ export class EmpiricalFrameBonds {
   cancel(): void { this.lifetime.abort(); this.lifetime = new AbortController(); }
   dispose(): void { this.closed = true; this.cancel(); this.cache.clear(); }
 
+  private retain(key: string | null, { structure, warnings, preview }: EmpiricalFrameBondProjection): void {
+    if (key === null || this.options.retainCache === false) return;
+    this.cache.set(key, structuredClone({ bonds: structure.bonds, bondPerceptionIssues: structure.bondPerceptionIssues, warnings, preview }));
+    if (this.cache.size > 8) this.cache.delete(this.cache.keys().next().value!);
+  }
+
   resolve(source: Structure, index: number, options: EmpiricalFrameBondReadOptions = {}): Promise<EmpiricalFrameBondProjection> {
-    const reference = structuredClone(source), key = frameKey(reference, index);
+    const reference = options.immutableSource ? source : structuredClone(source);
+    const key = options.immutableSource && this.options.retainCache === false ? null : frameKey(reference, index);
     const signal = AbortSignal.any([this.lifetime.signal, ...(options.signal ? [options.signal] : [])]);
-    const projection = (status: EmpiricalFrameBondProjection['status'], warnings: string[] = []): EmpiricalFrameBondProjection => ({
-      status, structure: atomOnly(reference), warnings,
-      ...(reference.bonds !== undefined ? { sourceBonds: { bonds: structuredClone(reference.bonds), bondSource: reference.bondSource,
-        ...(reference.bondPerceptionIssues?{bondPerceptionIssues:structuredClone(reference.bondPerceptionIssues)}:{}) } } : {}),
+    const projection = (status: EmpiricalFrameBondProjection['status'], warnings: string[] = [], structure = atomOnly(reference)): EmpiricalFrameBondProjection => ({
+      status, structure, warnings,
+      ...(reference.bonds !== undefined && !options.inheritedSourceGraph ? { sourceBonds: { bonds: reference.bonds, bondSource: reference.bondSource,
+        ...(reference.bondPerceptionIssues?{bondPerceptionIssues:reference.bondPerceptionIssues}:{}) } } : {}),
     });
     const current = () => {
       if (this.closed || signal.aborted) return 'cancelled' as const;
       try { options.guard?.(); } catch { return 'stale' as const; }
-      if (frameKey(source, index) !== key) return 'stale' as const;
+      if (!options.immutableSource && frameKey(source, index) !== key) return 'stale' as const;
       return null;
     };
     const run = async (): Promise<EmpiricalFrameBondProjection> => {
       let stale = current(); if (stale) return projection(stale);
       if (!Number.isSafeInteger(index) || index < 0) return projection('failed', ['经验判断帧序号无效。']);
       const message = empiricalBondAdmission(reference); if (message) return projection('unavailable', [message]);
-      const cached = this.cache.get(key);
-      if (cached) {
+      const cached = key === null ? undefined : this.cache.get(key);
+      if (key !== null && cached) {
         this.cache.delete(key); this.cache.set(key, cached);
         // Only reuse the derived graph. Labels/source metadata belong to the
         // current caller snapshot even when its scientific geometry is equal.
         const structure = atomOnly(reference);
-        structure.bonds = structuredClone(cached.structure.bonds); structure.bondSource = 'inferred';
-        if (cached.structure.bondPerceptionIssues) structure.bondPerceptionIssues = structuredClone(cached.structure.bondPerceptionIssues);
-        return { ...projection('inferred'), structure, warnings: [...cached.warnings], ...(cached.preview!==undefined?{preview:cached.preview}:{}) };
+        structure.bonds = structuredClone(cached.bonds); structure.bondSource = 'inferred';
+        if (cached.bondPerceptionIssues) structure.bondPerceptionIssues = structuredClone(cached.bondPerceptionIssues);
+        return { ...projection('inferred', [...cached.warnings], structure), ...(cached.preview!==undefined?{preview:cached.preview}:{}) };
       }
       if(reference.cell?.pbc.some(Boolean)){
         try{
-          const perceived=perceivePeriodicConnections(reference,{allowUnconfirmedPreview:true});
+          const perceived=traceTrajectoryOperation('empirical', { sourceId: this.options.sourceId, ...this.options.operationContext, sourceFrameIndex: index },
+            () => perceivePeriodicConnections(reference,{allowUnconfirmedPreview:true,preserveExisting:false}));
           stale=current();if(stale)return projection(stale);
           const structure=atomOnly(reference);structure.bonds=perceived.bonds;structure.bondSource='inferred';
           if(perceived.issues.length)structure.bondPerceptionIssues=perceived.issues;
-          const result={...projection('inferred'),structure,warnings:perceived.warnings,preview:perceived.preview};
-          if(this.options.retainCache!==false){this.cache.set(key,structuredClone(result));while(this.cache.size>8)this.cache.delete(this.cache.keys().next().value!);}
+          const result={...projection('inferred',perceived.warnings,structure),preview:perceived.preview};
+          this.retain(key, result);
           return result;
         }catch(error){stale=current();if(stale)return projection(stale);return projection('failed',['周期经验连接未接受：'+(error instanceof Error?error.message:String(error))]);}
       }
-      let job: ChemistryJob | undefined, abort: (() => void) | undefined;
+      let job: EmpiricalFrameBondJob | undefined, abort: (() => void) | undefined;
       try {
         let capabilities = await Promise.race([this.options.port.capabilities(), new Promise<null>(resolve => {
           abort = () => resolve(null); signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort();
@@ -198,21 +232,20 @@ export class EmpiricalFrameBonds {
         const stamp: DocumentStamp = { documentId: this.options.sourceId, revision: reference.revision ?? index,
           graphFingerprint: graphFingerprint(structure), coordinatesFingerprint: coordinatesFingerprint(structure),
           constraintsFingerprint: JSON.stringify([this.options.sourceRevision ?? null, index]) };
-        const request: ChemistryRequest = { operation: 'perceive-bonds', structure, stamp,
+        const request: ChemistryRequest = { operation: 'perceive-bonds', structure: options.immutableSource ? structure : structuredClone(structure), stamp,
           movableAtomIds: reference.atoms.map(atom => atom.id!), aggression: 'standard', bondPerceptionPolicy: 'composite-v1' };
         const result = await traceTrajectoryOperation('empirical', { sourceId: this.options.sourceId, ...this.options.operationContext, sourceFrameIndex: index }, async (): Promise<EmpiricalFrameBondProjection> => {
-          job = this.options.port.start(request);
+          job = options.immutableSource && Object.isFrozen(reference)
+            ? this.options.port.startEmpiricalFrame?.(request) ?? this.options.port.start(request)
+            : this.options.port.start(request);
           const response = await Promise.race([job.promise, new Promise<null>(resolve => {
             abort = () => { try { job?.cancel(); } catch { /* invalidation still wins */ } finally { resolve(null); } };
             signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort();
           })]);
           if (current() || !response) throw new DOMException('经验判断已取消。', 'AbortError');
-          return { ...projection('inferred'), structure: accepted(reference, response, request), warnings: [...response.warnings] };
+          return projection('inferred', [...response.warnings], accepted(reference, response, request));
         });
-        if (this.options.retainCache !== false) {
-          this.cache.set(key, structuredClone(result));
-          while (this.cache.size > 8) this.cache.delete(this.cache.keys().next().value!);
-        }
+        this.retain(key, result);
         return result;
       } catch (error) {
         stale = current(); if (stale) return projection(stale);

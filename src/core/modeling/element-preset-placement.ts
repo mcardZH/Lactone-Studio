@@ -123,7 +123,7 @@ export function prepareElementPreset(input: Structure, command: ElementPresetPla
       const direction = norm(sub(add(position(target), imageOffset(structure, edge, parentIndex)), position(parent)));
       // Validate a matching single connection before removing anything.
       occupySlots(preset, [{ order: 1, direction: scale(direction, -1) }]);
-      const oldId = centerId, image = edge.image?.map(v => v * (edge.a === parentIndex ? 1 : -1)) as Vector3 | undefined;
+      const oldId = centerId, image = edge.image?.map(v => v === 0 ? 0 : v * (edge.a === parentIndex ? 1 : -1)) as Vector3 | undefined;
       const point = sub(add(position(parent), scale(direction, attachmentLength(parent.element, preset.element,1,preset.attachmentLengthPolicy))), imageOffset(structure, edge, parentIndex));
       structure = removeAtoms(structure, new Set([oldId])); centerId = newId();
       structure.atoms.push({ id: centerId, element: preset.element, x: point[0], y: point[1], z: point[2], hydrogenMode: 'explicit' });

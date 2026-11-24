@@ -1,78 +1,308 @@
 'use strict';
-const path=require('node:path');
-const {randomUUID}=require('node:crypto');
-const {assert}=require('./security.cjs');
 
-/** Host-owned immutable terminal results. Each disk shard and each read are
- * limited to 64 frames; renderer transport never carries the complete set. */
-function createConformerSamplingStore({fs,root}){
-  const entries=new Map(),pageSize=64;
-  async function ordinary(target){const stat=await fs.lstat(target),actual=await fs.realpath(target);assert(stat.isDirectory()&&!stat.isSymbolicLink()&&(process.platform==='win32'?path.resolve(actual).toLowerCase()===path.resolve(target).toLowerCase():path.resolve(actual)===path.resolve(target)),'Unsafe sampling result directory');}
-  async function durableWrite(target,text){const file=await fs.open(target,'wx');try{await file.writeFile(text,'utf8');await file.sync();}finally{await file.close();}}
-  async function create(owner){
-    await fs.mkdir(root,{recursive:true});await ordinary(root);
-    const id=randomUUID(),directory=path.join(root,id);await fs.mkdir(directory);await ordinary(directory);
-    await fs.writeFile(path.join(directory,'.retain-recovery.json'),JSON.stringify({schema:1,owner,id,kind:'sampling-results'})+'\n',{flag:'wx'});
-    const entry={id,owner,directory,count:0,pending:[],shards:[],tail:Promise.resolve(),committed:false,reads:new Set()};entries.set(id,entry);
+const path = require('node:path');
+const { randomUUID } = require('node:crypto');
+const { isDeepStrictEqual:same } = require('node:util');
+const { assert, plain } = require('./security.cjs');
+const { validateFrame } = require('./conformer-sampling-security.cjs');
+const {
+  captureScope, checkedDirectory, contentHash, createRecoveryAccess, fileIdentity, ordinaryFile, readRecord, recoveryIds, writeRecord,
+} = require('./conformer-recovery-store.cjs');
+
+const idPattern = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/;
+const frameName = index => 'frames-' + String(index).padStart(6, '0') + '.json';
+const jsonBytes = value => Buffer.from(JSON.stringify(value) + '\n');
+const pageSize = 64;
+const transferTarget = 8 * 1024 ** 2;
+
+/** This store owns one immutable copy of canonical frames, plus a small
+ * publication index. Renderer delivery and an explicit discard are separate. */
+function createConformerSamplingStore({ fs, root }) {
+  const entries = new Map();
+  assert(path.isAbsolute(root), 'Absolute private sampling result root required');
+
+  function directoryFor(id) {
+    assert(typeof id === 'string' && idPattern.test(id), 'Invalid sampling recovery identity');
+    return path.join(root, id);
+  }
+
+  function recoveryIdentity(request) {
+    return request?.runIdentity && { ...request.runIdentity, ...(request.segment ? { segmentId: request.segment.id } : {}) };
+  }
+
+  async function publish(entry, next) {
+    entry.manifestIdentity = await writeRecord(fs, entry.directory, 'manifest.json', jsonBytes(next), entry.manifestIdentity);
+    entry.manifest = next;
+  }
+
+  async function create(owner, metadata = {}) {
+    const { request, expectedCount, scope: rawScope } = metadata;
+    const scope = captureScope(rawScope);
+    await fs.mkdir(root, { recursive: true });
+    await checkedDirectory(fs, root);
+    const id = randomUUID(), directory = directoryFor(id), createdAt = new Date().toISOString();
+    await fs.mkdir(directory);
+    await writeRecord(fs, directory, '.retain-recovery.json', jsonBytes({ schema: 1, owner, id, kind: 'sampling-results' }));
+    const requestBytes = request ? jsonBytes(request) : undefined;
+    let requestRef;
+    if (requestBytes) {
+      await writeRecord(fs, directory, 'request.json', requestBytes);
+      requestRef = { bytes: requestBytes.length, sha256: contentHash(requestBytes) };
+    }
+    const entry = { id, owner, directory, request, count: 0, pending: [], pendingBias: [], pendingBytes: 0, tail: Promise.resolve(), committed: false, reads: new Set() };
+    await publish(entry, { schema: 2, id, owner, createdAt, updatedAt: createdAt, frameCount: 0, shards: [], state: 'recording',
+      ...(requestRef ? { requestRef, source: request.stamp, identity: recoveryIdentity(request) } : {}),
+      ...(Number.isSafeInteger(expectedCount) ? { expectedCount } : {}), ...(scope ? { scope } : {}) });
+    entries.set(id, entry);
     return entry;
   }
-  async function flush(entry){
-    if(!entry.pending.length)return;
-    const rows=entry.pending;entry.pending=[];const name=`frames-${String(entry.shards.length).padStart(6,'0')}.json`;
-    await durableWrite(path.join(entry.directory,name),JSON.stringify(rows)+'\n');
-    entry.shards.push({name,offset:entry.count-rows.length,count:rows.length});
+
+  async function flush(entry) {
+    if (!entry.pending.length && !entry.pendingBias.length) return;
+    const name = frameName(entry.manifest.shards.length), offset = entry.manifest.frameCount;
+    const frames = '[' + entry.pending.join(',') + ']', count = entry.pending.length, biasCount = entry.pendingBias.length;
+    const bytes = Buffer.from((biasCount ? '{"frames":' + frames + ',"biasHistory":[' + entry.pendingBias.join(',') + ']}' : frames) + '\n');
+    await writeRecord(fs, entry.directory, name, bytes);
+    await publish(entry, { ...entry.manifest, frameCount: offset + count, updatedAt: new Date().toISOString(),
+      ...(biasCount ? { biasCount: (entry.manifest.biasCount ?? 0) + biasCount } : {}),
+      shards: [...entry.manifest.shards, { name, offset, count, bytes: bytes.length, sha256: contentHash(bytes), ...(biasCount ? { biasCount } : {}) }] });
+    entry.pending = [];
+    entry.pendingBias = [];
+    entry.pendingBytes = 0;
   }
-  function append(entry,frame){
-    assert(!entry.committed&&entries.get(entry.id)===entry,'Sampling result is already sealed');
-    entry.tail=entry.tail.then(async()=>{entry.pending.push(frame);entry.count++;if(entry.pending.length===pageSize)await flush(entry);});
+
+  function append(entry, frame) {
+    assert(!entry.committed && entries.get(entry.id) === entry, 'Sampling result is already sealed');
+    entry.tail = entry.tail.then(async () => {
+      const text = JSON.stringify(frame), bytes = Buffer.byteLength(text);
+      // A large singleton is admitted intact. Packet sizes control in-flight
+      // copies only; every frame and its scientific fields remain available.
+      if (entry.pendingBytes && entry.pendingBytes + bytes > transferTarget) await flush(entry);
+      entry.pending.push(text);
+      entry.pendingBytes += bytes + 1;
+      entry.count++;
+      if (entry.pending.length === pageSize || entry.pendingBytes >= transferTarget) await flush(entry);
+    });
     return entry.tail;
   }
-  async function commit(entry,metadata){
-    await entry.tail;await flush(entry);await ordinary(entry.directory);
-    await durableWrite(path.join(entry.directory,'manifest.json'),JSON.stringify({schema:1,id:entry.id,owner:entry.owner,frameCount:entry.count,shards:entry.shards,...metadata})+'\n');
-    entry.committed=true;return{id:entry.id,frameCount:entry.count};
+
+  function appendBias(entry, history) {
+    assert(!entry.committed && entries.get(entry.id) === entry && entry.request?.operation === 'metadynamics', 'Sampling bias is not owned by this producer');
+    entry.tail = entry.tail.then(async () => {
+      const text = JSON.stringify(history), bytes = Buffer.byteLength(text);
+      if (entry.pendingBytes && entry.pendingBytes + bytes > transferTarget) await flush(entry);
+      assert(history.index === (entry.manifest.biasCount ?? 0) + entry.pendingBias.length, 'Sampling recovery bias sequence changed');
+      entry.pendingBias.push(text);
+      entry.pendingBytes += bytes + 1;
+      if (entry.pendingBytes >= transferTarget) await flush(entry);
+    });
+    return entry.tail;
   }
-  function owned(owner,id){assert(typeof id==='string'&&entries.has(id),'Unknown sampling result');const entry=entries.get(id);assert(entry.owner===owner&&entry.committed,'Sampling result owner/commit mismatch');return entry;}
-  async function readPage(owner,id,offset,limit=64){
-    const entry=owned(owner,id);assert(Number.isSafeInteger(offset)&&offset>=0&&offset<=entry.count&&Number.isSafeInteger(limit)&&limit>=1&&limit<=pageSize,'Invalid sampling result page');
-    await ordinary(entry.directory);const frames=[],end=Math.min(entry.count,offset+limit);
-    for(const shard of entry.shards){if(shard.offset>=end)break;if(shard.offset+shard.count<=offset)continue;
-      const target=path.join(entry.directory,shard.name),stat=await fs.lstat(target);assert(stat.isFile()&&!stat.isSymbolicLink()&&stat.nlink===1,'Unsafe sampling result shard');
-      const rows=JSON.parse(await fs.readFile(target,'utf8'));assert(Array.isArray(rows)&&rows.length===shard.count,'Sampling result shard changed');
-      frames.push(...rows.slice(Math.max(0,offset-shard.offset),Math.min(rows.length,end-shard.offset)));
+
+  async function commit(entry, metadata) {
+    await entry.tail;
+    await flush(entry);
+    if (entry.request && metadata.request && entry.request !== metadata.request) assert(same(entry.request, metadata.request), 'Sampling result source changed during producer finalization');
+    const terminal = entry.manifest.biasCount && metadata.terminal ? { ...metadata.terminal, biasHistory: undefined } : metadata.terminal;
+    await publish(entry, { ...entry.manifest, ...(!entry.manifest.requestRef && metadata.request ? { request: metadata.request } : {}),
+      terminal, state: 'sealed', updatedAt: new Date().toISOString() });
+    entry.committed = true;
+    return { id: entry.id, frameCount: entry.count };
+  }
+
+  function owned(owner, id) {
+    const entry = entries.get(id);
+    assert(entry, 'Unknown sampling result');
+    assert(entry.owner === owner && entry.committed, 'Sampling result owner/commit mismatch');
+    return entry;
+  }
+
+  async function readShard(directory, shard) {
+    const record = await readRecord(fs, path.join(directory, shard.name));
+    if (shard.sha256 !== undefined) assert(record.sha256 === shard.sha256 && record.bytes === shard.bytes, 'Sampling result shard digest changed');
+    const frames = shard.biasCount ? record.value?.frames : record.value, bias = shard.biasCount ? record.value?.biasHistory : [];
+    assert(Array.isArray(frames) && frames.length === shard.count && Array.isArray(bias) && bias.length === (shard.biasCount ?? 0), 'Sampling result shard counts changed');
+    return { ...record, value: frames, bias };
+  }
+
+  async function framesFrom(directory, shards, offset, limit) {
+    if (!limit) return [];
+    await checkedDirectory(fs, directory);
+    const frames = [], end = offset + limit;
+    let bytes = 0;
+    for (const shard of shards) {
+      if (shard.offset >= end) break;
+      if (shard.offset + shard.count <= offset) continue;
+      if (frames.length && shard.bytes !== undefined && bytes + shard.bytes > transferTarget) break;
+      const record = await readShard(directory, shard);
+      const next = record.value.slice(Math.max(0, offset - shard.offset), Math.min(shard.count, end - shard.offset));
+      frames.push(...next);
+      bytes += record.bytes;
     }
-    assert(frames.length===end-offset,'Incomplete sampling result page');return{frames,offset,total:entry.count,done:end===entry.count};
+    return frames;
   }
-  async function read(owner,id,offset,limit=64){
-    const entry=owned(owner,id);assert(!entry.releasing&&!entry.closing,'Sampling result is being released or its owner is closing');
-    const pending=readPage(owner,id,offset,limit);entry.reads.add(pending);pending.finally(()=>entry.reads.delete(pending)).catch(()=>{});return pending;
+
+  async function read(owner, id, offset, limit = pageSize) {
+    const entry = owned(owner, id);
+    assert(!entry.closing, 'Sampling result owner is closing');
+    assert(Number.isSafeInteger(offset) && offset >= 0 && offset <= entry.count && Number.isSafeInteger(limit) && limit >= 1 && limit <= pageSize, 'Invalid sampling result page');
+    const pending = framesFrom(entry.directory, entry.manifest.shards, offset, Math.min(limit, entry.count - offset)).then(frames => {
+      assert(offset === entry.count || frames.length > 0, 'Incomplete sampling result page');
+      return { frames, offset, total: entry.count, done: offset + frames.length === entry.count };
+    });
+    entry.reads.add(pending);
+    void pending.then(() => entry.reads.delete(pending), () => entry.reads.delete(pending));
+    return pending;
   }
-  async function release(owner,id){
-    const entry=owned(owner,id);assert(!entry.releasing&&!entry.closing,'Sampling result is already being released or its owner is closing');entry.releasing=true;
-    // This is the explicit adoption acknowledgement. Owner close is separate
-    // and must never infer acknowledgement from a renderer's disappearance.
-    entry.releaseTask=(async()=>{try{await Promise.allSettled([...entry.reads]);await ordinary(entry.directory);
-    // Exact owned manifest, never a recursive directory deletion. A failed
-    // unlink retains the handle for a later retry and reports its real error.
-    const names=[...entry.shards.map(s=>s.name),'manifest.json','.retain-recovery.json'];
-    for(const name of names){const target=path.join(entry.directory,name);let stat;try{stat=await fs.lstat(target);}catch(error){if(error.code==='ENOENT')continue;throw error;}assert(stat.isFile()&&!stat.isSymbolicLink()&&stat.nlink===1,'Sampling result member changed');await fs.unlink(target);}
-    await fs.rmdir(entry.directory);entries.delete(id);return{released:true};
-    }finally{entry.releasing=false;}})();return entry.releaseTask;
+
+  function detach(entry) {
+    return entry.closeTask ??= (async () => {
+      entry.closing = true;
+      await Promise.allSettled([entry.tail, ...entry.reads]);
+      entry.pending = [];
+      entry.pendingBias = [];
+      if (entries.get(entry.id) === entry) entries.delete(entry.id);
+      return { released: true, recoveryRetained: true };
+    })();
   }
-  async function closeOwner(owner){
-    await Promise.all([...entries.values()].filter(e=>(owner===undefined||e.owner===owner)&&e.committed).map(async entry=>{
-      if(entry.releasing){await entry.releaseTask;return;}
-      if(entry.closing){await entry.closeTask;return;}
-      entry.closing=true;
-      entry.closeTask=(async()=>{
-        await Promise.allSettled([...entry.reads]);
-        // Successful raw may already be gone. Keep the immutable canonical
-        // shards, source manifest and recovery marker until an explicit ack;
-        // only abandon the dead renderer's in-memory ownership here.
-        if(entries.get(entry.id)===entry)entries.delete(entry.id);
-      })();await entry.closeTask;
-    }));
+
+  async function release(owner, id) {
+    const entry = owned(owner, id);
+    assert(!entry.closing, 'Sampling result owner is closing');
+    return detach(entry);
   }
-  return{create,append,commit,read,release,closeOwner};
+
+  async function recoveryManifest(id) {
+    await checkedDirectory(fs, root);
+    const directory = directoryFor(id), directoryId = await checkedDirectory(fs, directory);
+    const marker = await readRecord(fs, path.join(directory, '.retain-recovery.json'));
+    const headline = await readRecord(fs, path.join(directory, 'manifest.json')), manifest = headline.value;
+    assert(marker.value.schema === 1 && marker.value.id === id && marker.value.owner === manifest.owner && marker.value.kind === 'sampling-results', 'Sampling recovery marker differs from its manifest');
+    assert([1, 2].includes(manifest.schema) && manifest.id === id && Number.isSafeInteger(manifest.frameCount) && manifest.frameCount >= 0
+      && Array.isArray(manifest.shards) && (manifest.schema === 1 || ['recording', 'sealed'].includes(manifest.state)), 'Invalid sampling recovery manifest');
+    return { directory, directoryId, marker, headline, manifest };
+  }
+
+  async function summarizeRecovery(id) {
+    const { manifest } = await recoveryManifest(id);
+    const source = manifest.source ?? manifest.request?.stamp, identity = manifest.identity ?? recoveryIdentity(manifest.request);
+    if (!plain(source) || !plain(identity)) return { id, recoverableCount: 0, issues: [{ message: 'Sampling manifest does not identify its source' }] };
+    const terminal = manifest.terminal, scope = captureScope(manifest.scope);
+    const completeIndex = manifest.schema === 1 || manifest.state === 'sealed';
+    const phase = completeIndex && terminal?.kind === 'completed' ? 'completed'
+      : completeIndex && terminal?.kind === 'stopped' ? 'stopped' : 'partial';
+    const bytes = manifest.shards.every(shard => Number.isSafeInteger(shard.bytes) && shard.bytes > 0)
+      ? manifest.shards.reduce((total, shard) => total + shard.bytes, 0) : undefined;
+    return { id, kind: 'sampling', identity, source, phase, recoverableCount: manifest.frameCount,
+      expectedCount: manifest.expectedCount ?? manifest.frameCount, verification: 'manifest-only',
+      ...(Number.isSafeInteger(bytes) ? { bytesLength: bytes } : {}), ...(scope ? { scope } : {}),
+      ...(manifest.createdAt ? { createdAt: manifest.createdAt } : {}), ...(manifest.updatedAt ? { updatedAt: manifest.updatedAt } : {}) };
+  }
+
+  async function loadRecovery(id) {
+    const { directory, directoryId, marker, headline, manifest } = await recoveryManifest(id);
+    const requestRecord = manifest.requestRef ? await readRecord(fs, path.join(directory, 'request.json')) : undefined;
+    if (requestRecord) assert(requestRecord.sha256 === manifest.requestRef.sha256 && requestRecord.bytes === manifest.requestRef.bytes, 'Sampling recovery request digest changed');
+    const request = requestRecord?.value ?? manifest.request;
+    assert(plain(request?.stamp) && typeof request.stamp.documentId === 'string' && Number.isSafeInteger(request.stamp.revision)
+      && plain(request.runIdentity) && typeof request.runIdentity.taskId === 'string' && typeof request.runIdentity.runId === 'string'
+      && typeof request.operation === 'string' && typeof request.method === 'string' && Array.isArray(request.structure?.atoms) && request.structure.atoms.length > 0, 'Sampling recovery source identity is missing');
+    const shards = [], issues = [], summaries = [];
+    const legacyBias = manifest.biasCount === undefined ? manifest.terminal?.biasHistory : undefined;
+    const retainedBias = Array.isArray(legacyBias) ? [...legacyBias] : [];
+    assert(retainedBias.every((entry, index) => plain(entry) && entry.index === index), 'Invalid retained sampling bias sequence');
+    let recoverableCount = 0, originalSession;
+    let visibleBiasCount = 0;
+    for (const [index, shard] of manifest.shards.entries()) {
+      try {
+        assert(shard.name === frameName(index) && shard.offset === recoverableCount && Number.isSafeInteger(shard.count) && shard.count >= 0
+          && (shard.count > 0 || Number.isSafeInteger(shard.biasCount) && shard.biasCount > 0)
+          && recoverableCount + shard.count <= manifest.frameCount
+          && (manifest.schema === 1 || Number.isSafeInteger(shard.bytes) && shard.bytes > 0 && /^[a-f0-9]{64}$/.test(shard.sha256)), 'Invalid sampling recovery shard identity');
+        const record = await readShard(directory, shard);
+        assert(record.bias.every((entry, ordinal) => plain(entry) && entry.index === retainedBias.length + ordinal), 'Sampling recovery bias identity changed');
+        for (let ordinal = 0; ordinal < record.value.length; ordinal++) {
+          const frame = record.value[ordinal];
+          originalSession ??= frame.sessionId;
+          assert(frame.event === 'frame' && frame.schema === 1 && typeof frame.sessionId === 'string' && frame.sessionId === originalSession
+            && frame.frameIndex === shard.offset + ordinal && same(frame.runIdentity, request.runIdentity)
+            && same(frame.stamp, request.stamp) && frame.operation === request.operation && frame.method === request.method
+            && frame.biasHistoryCount <= retainedBias.length + record.bias.length, 'Sampling recovery frame or its bias belongs to another source');
+          validateFrame(frame, request);
+        }
+        for (const entry of record.bias) retainedBias.push(entry);
+        if (record.value.length) visibleBiasCount = record.value.at(-1).biasHistoryCount;
+        for (const frame of record.value) summaries.push({ index: frame.frameIndex, step: frame.step, timeFs: frame.timeFs,
+          ...(Number.isFinite(frame.physicalEnergyEV) ? { physicalEnergyEV: frame.physicalEnergyEV } : {}),
+          ...(Number.isFinite(frame.temperatureK) ? { temperatureK: frame.temperatureK } : {}), role: frame.role });
+        shards.push({ ...shard, bytes: record.bytes, sha256: record.sha256, identity: record.identity });
+        recoverableCount += shard.count;
+      } catch (error) {
+        issues.push({ index, message: String(error.message).slice(0, 2048) });
+        break; // An ordered sampling trajectory cannot jump over a damaged interval.
+      }
+    }
+    if (!issues.length && (recoverableCount !== manifest.frameCount || manifest.biasCount !== undefined && manifest.biasCount !== retainedBias.length))
+      issues.push({ message: 'Sampling recovery index has an incomplete frame or bias count' });
+    const terminal = manifest.terminal;
+    const sealed = (manifest.schema === 1 || manifest.state === 'sealed') && terminal;
+    if (sealed && (terminal.frameCount !== manifest.frameCount || terminal.sessionId !== originalSession
+      || !same(terminal.stamp,request.stamp) || !same(terminal.runIdentity,request.runIdentity)
+      || terminal.operation !== request.operation || terminal.method !== request.method)) issues.push({ message: 'Sampling terminal evidence differs from its source or frame count' });
+    const phase = !issues.length && sealed && terminal.kind === 'completed' ? 'completed'
+      : !issues.length && sealed && terminal.kind === 'stopped' ? 'stopped' : 'partial';
+    const identity = recoveryIdentity(request);
+    assert((manifest.identity === undefined || same(manifest.identity,identity)) && (manifest.source === undefined || same(manifest.source,request.stamp)), 'Sampling recovery source does not match the published index');
+    const scope = captureScope(manifest.scope);
+    assert(await checkedDirectory(fs, directory) === directoryId, 'Sampling recovery directory changed');
+    const descriptor = { id, kind: 'sampling', identity, source: request.stamp, phase, recoverableCount,
+      bytesLength: shards.reduce((total, shard) => total + shard.bytes, 0), verification: 'verified',
+      expectedCount: manifest.expectedCount ?? (Number.isSafeInteger(terminal?.frameCount) ? terminal.frameCount : manifest.frameCount),
+      ...(manifest.createdAt ? { createdAt: manifest.createdAt } : {}), ...(manifest.updatedAt ? { updatedAt: manifest.updatedAt } : {}),
+      ...(scope ? { scope } : {}), ...(issues.length ? { issues } : {}) };
+    const biasHistory = retainedBias.slice(0, phase === 'partial' ? visibleBiasCount : retainedBias.length);
+    return { directory, directoryId, descriptor, manifest, request, requestRecord, marker, headline, shards, summaries, biasHistory };
+  }
+
+  async function discard(value) {
+    const { directory, directoryId, manifest, shards, headline, marker, requestRecord } = value;
+    assert(!value.descriptor.issues?.length && shards.length === manifest.shards.length
+      && value.descriptor.recoverableCount === manifest.frameCount, 'Damaged sampling records were retained');
+    assert(await checkedDirectory(fs, directory) === directoryId, 'Sampling recovery directory changed');
+    const files = [...shards, ...(requestRecord ? [{ name: 'request.json', identity: requestRecord.identity }] : []),
+      { name: 'manifest.json', identity: headline.identity }, { name: '.retain-recovery.json', identity: marker.identity }];
+    const names = new Set(await fs.readdir(directory));
+    assert(names.size === files.length && files.every(item => names.has(item.name)), 'Unrecognized sampling recovery members were retained');
+    for (const item of files) {
+      const stat = await fs.lstat(path.join(directory, item.name), { bigint: true });
+      assert(ordinaryFile(stat) && fileIdentity(stat) === item.identity, 'Sampling recovery member changed');
+    }
+    for (const item of files) {
+      const file = path.join(directory, item.name), stat = await fs.lstat(file, { bigint: true });
+      assert(await checkedDirectory(fs, directory) === directoryId && ordinaryFile(stat) && fileIdentity(stat) === item.identity, 'Sampling recovery member changed');
+      await fs.unlink(file);
+    }
+    await fs.rmdir(directory);
+  }
+
+  const recovery = createRecoveryAccess({
+    listIds: () => recoveryIds(fs, root, idPattern),
+    available: id => typeof id === 'string' && idPattern.test(id) && !entries.has(id),
+    summarize: summarizeRecovery,
+    load: loadRecovery,
+    read: (value, offset, limit, summaryOnly) => summaryOnly ? value.summaries.slice(offset, offset + limit) : framesFrom(value.directory, value.shards, offset, limit),
+    describeOpen: ({ manifest, request, descriptor, biasHistory }) => ({ request,
+      ...(descriptor.phase === 'partial' ? { biasHistory } : { terminal: { ...manifest.terminal, biasHistory } }),
+      initial: { structure: request.structure, stamp: descriptor.source } }),
+    discard,
+  });
+
+  async function closeOwner(owner) {
+    await Promise.all([recovery.closeRecoveryOwner(owner), ...[...entries.values()]
+      .filter(entry => (owner === undefined || owner === entry.owner) && entry.committed).map(detach)]);
+  }
+
+  return { create, append, appendBias, commit, read, release, abandon: detach, closeOwner, ...recovery };
 }
-module.exports={createConformerSamplingStore};
+
+module.exports = { createConformerSamplingStore };

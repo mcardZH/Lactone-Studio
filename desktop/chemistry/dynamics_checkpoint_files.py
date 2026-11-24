@@ -1,5 +1,6 @@
 """Bounded retention for this session's closed, accepted MD checkpoints only."""
 from __future__ import annotations
+import errno
 import json
 import os
 from pathlib import Path
@@ -42,6 +43,8 @@ class CheckpointFiles:
         self.workspace_identity = manifest(self.workspace)['directoryIdentity']
         self.completed = []
         self.completed_count = self.reclaimed_count = self.reclaimed_bytes = 0
+        self.deferred_cleanup_count = 0
+        self.last_cleanup_warning = None
         for name, key in (('initial.coord', 'initialInput'), ('initial-md.inp', 'initialControl')):
             with (self.workspace/name).open('x', encoding='ascii', newline='\n') as handle:
                 handle.write(source[key])
@@ -72,6 +75,8 @@ class CheckpointFiles:
             completedCheckpoints=self.completed_count, reclaimedCheckpoints=self.reclaimed_count,
             reclaimedLogicalBytes=self.reclaimed_bytes, latest=latest,
             retained=[item['directory'].name for item in self.completed])
+        if self.last_cleanup_warning is not None:
+            value.update(deferredCleanupCount=self.deferred_cleanup_count, lastCleanupWarning=self.last_cleanup_warning)
         with pending.open('x', encoding='utf-8') as handle:
             json.dump(value, handle, allow_nan=False, separators=(',', ':')); handle.flush(); os.fsync(handle.fileno())
         # Recheck the old exact slot after writing, before atomic replacement.
@@ -99,7 +104,18 @@ class CheckpointFiles:
         self._progress(latest)
         while len(self.completed) > 2:
             old = self.completed[0]
-            clean_evaluation(old['directory'], expected_members=old['members'], expected_directory_identity=old['directoryIdentity'])
-            self.completed.pop(0); self.reclaimed_count += 1
-            self.reclaimed_bytes += sum(identity[2] for identity in old['members'].values())
+            try:
+                clean_evaluation(old['directory'], expected_members=old['members'], expected_directory_identity=old['directoryIdentity'])
+            except OSError as error:
+                if not isinstance(error, PermissionError) and error.errno != errno.EBUSY:
+                    raise
+                # A partially removed directory needs a new cleanup audit.
+                # The newest restart has already been independently committed.
+                self.deferred_cleanup_count += 1
+                self.last_cleanup_warning = dict(segment=old['directory'].name,
+                    errno=error.errno, winerror=getattr(error, 'winerror', None))
+            else:
+                self.reclaimed_count += 1
+                self.reclaimed_bytes += sum(identity[2] for identity in old['members'].values())
+            self.completed.pop(0)
         self._progress(latest)

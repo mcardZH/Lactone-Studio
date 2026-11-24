@@ -1,26 +1,16 @@
 /** Versioned stateful native protocol. No DOM, Electron or process imports. */
-import type { Structure, Vector3 } from '../../core/types';
+import type { Structure } from '../../core/types';
 import type { AttachmentPort, DocumentStamp, ForcefieldChoice, ModelCoordinate } from '../contracts';
 import type { XtbNativeMethod } from '../../core/xtb-capabilities';
 import type { XtbConstraintResult, XtbSolvation, XtbSolvationEvidence } from '../xtb/contracts';
 
-export type DynamicsOperation = 'md' | 'optimize' | 'geometry';
+export type DynamicsOperation = 'md';
 export type DynamicsMethod = XtbNativeMethod;
-export type MDMethod = ForcefieldChoice | DynamicsMethod;
-export interface GeometryDistanceTarget {
-  atomIds: [string, string]; image?: Vector3; distanceAngstrom: number;
-}
-export interface GeometryTargetStatus {
-  status: 'targeted' | 'partial-targets' | 'no-targets' | 'collision-only';
-  targetedConnectionCount: number; movableConnectionTargetCount: number;
-  untargetedCoordinationCount: number; weakConnectionCount: number;
-  unresolvedImmovableConnectionCount: number;
-  angleTargetCount: number; planeTargetCount: number; activeCollisionCount: number;
-  connectionTargets: {
-    atomIds: [string, string]; image: Vector3; targetAngstrom: number | null;
-    source: 'user-distance' | 'typical-covalent' | 'covalent-radii' | 'unavailable-coordination' | 'weak-relation';
-    orderKnown: boolean;
-  }[];
+export type MDMethod = DynamicsMethod;
+export type MDIntegrator = 'xtb' | 'ase';
+export interface MDHydrogenSettings {
+  shakeHydrogenBonds: boolean;
+  hydrogenMassAmu: 1 | 4;
 }
 export interface DynamicsRequest {
   stamp: DocumentStamp;
@@ -30,6 +20,10 @@ export interface DynamicsRequest {
   constraints?: ModelCoordinate[];
   forcefield?: ForcefieldChoice;
   method?: DynamicsMethod;
+  /** An omitted integrator identifies a legacy native request. */
+  integrator?: MDIntegrator;
+  shakeHydrogenBonds?: boolean;
+  hydrogenMassAmu?: 1 | 4;
   untilStopped?: true;
   /** Runtime soft protection; the editor's XYZ freezes remain unchanged. */
   protectedAtomIds?: string[];
@@ -42,15 +36,38 @@ export interface DynamicsRequest {
   frictionPerFs?: number;
   dtFs?: 1 | 2;
   reportEvery?: 10;
-  /** Geometry-clean construction hints, not virtual force-field particles. */
   attachmentPorts?: AttachmentPort[];
-  /** Explicit distances for existing connections in pure mechanical mode only.
-   * Never populated from current coordinates or frozen-coordinate values. */
-  geometryDistanceTargets?: GeometryDistanceTarget[];
-  geometryMode?: 'hybrid-local';
-  hybridScalePolicy?: 'uff-bond-stiffness-v1';
-  /** Explicit AUTO permission; never a fallback for numerical/identity failures. */
-  allowPureGeometryFallback?: true;
+}
+export interface AseMDEvidence extends MDHydrogenSettings {
+  driver: 'ase-bussi';
+  method: Exclude<MDMethod, 'gxtb'>;
+  backend: string;
+  aseVersion: string;
+  dtFs: 2;
+  thermostat: 'Bussi';
+  thermostatTimeConstantFs: 500;
+  periodic: boolean;
+  frozenAtomIds: string[];
+  internalConstraints?: (Pick<XtbConstraintResult,'id'|'type'|'atomIds'|'target'|'actual'|'residual'|'unit'> & {
+    images?: ModelCoordinate['images']; action: 'freeze'; mode: 'ase-rattle'; velocityResidual: number;
+  })[];
+  degreesOfFreedom: number;
+  fixedPositionResidualAngstrom?: number;
+  fixedVelocityResidualAngstromPerFs?: number;
+  shake?: {
+    enabled: boolean; algorithm: 'ASE-RATTLE'; hydrogenBondCount: number;
+    maxBondResidualAngstrom: number; maxBondVelocityResidualAngstromPerFs: number;
+    observedBondLengthsAngstrom: number[];
+  };
+  effectiveSeed: number;
+  seedTreatment: 'specified' | 'program-random';
+  calculatorEvidence?: Record<string,unknown>;
+  solvation?: XtbSolvation;
+  nativeClosed: boolean;
+  physicalEnergyEV?: number;
+  sphereBiasEV?: number;
+  sampledPotentialEV?: number;
+  maxWallPenetrationAngstrom?: number;
 }
 export type DynamicsCommand = { command: 'pause' | 'resume' | 'stop' }
   | { command: 'set-temperature'; temperatureK: number };
@@ -59,7 +76,7 @@ export type DynamicsEventName = 'ready' | 'started' | 'heartbeat' | 'frame' | 'p
 /** Optional native evidence only. Never inferred from a human-readable message. */
 export interface DynamicsErrorDiagnostic {
   schema: 1;
-  phase: 'sanitization' | 'parameterization' | 'hybrid-partition';
+  phase: 'sanitization' | 'parameterization';
   /** Exact stable IDs in the request graph, not native indices or element names. */
   atomIds?: string[];
 }
@@ -100,35 +117,24 @@ export interface DynamicsEvent {
   schema: 1; sessionId: string; event: DynamicsEventName; seq: number;
   stamp?: DocumentStamp; operation?: DynamicsOperation; step?: number; timeFs?: number;
   structure?: Structure; forcefield?: string; engine?: string; engineVersion?: string; aseVersion?: string;
-  /** Host-owned bounded presentation batch. Removed before scientific writes. */
+  /** Host-owned earlier presentation samples. The top-level event is the latest sample. */
   displayFrames?: DynamicsFrame[];
-  nativeMD?: { method: DynamicsMethod; dtFs: number; thermostat: 'Berendsen'; hydrogenMassAmu: 4 | null; shakeHydrogenBonds: boolean; protection: 'none' | 'pairwise-distance'; protectedAtomIds: string[]; forceConstantKJMolNm2: number; segment: number; velocityInitialization: 'fresh' | 'restart'; nativeClosed: boolean;
+  /** UTF-8 length of the validated worker record, supplied by the host. */
+  displayByteLength?: number;
+  nativeMD?: { method: DynamicsMethod; dtFs: number; thermostat: 'Berendsen'; hydrogenMassAmu: 1 | 4 | null; shakeHydrogenBonds: boolean; protection: 'none' | 'pairwise-distance'; protectedAtomIds: string[]; forceConstantKJMolNm2: number; segment: number; velocityInitialization: 'fresh' | 'restart'; nativeClosed: boolean;
     periodic?:true; internalConstraints?:XtbConstraintResult[]; solvation?:Omit<XtbSolvationEvidence,'temperatureKelvin'> & {temperatureKelvin:number;dielectricConstant?:number};
     seedTreatment?:'verified'|'program-random'|'native-internal-initialization'; effectiveSeed?:number; engineIdentity?:Record<string,unknown>;
     degreesOfFreedom?:number; restartInputSha256?:string;
     /** Independently sourced raw observation; may precede a final restart geometry. */
     rawPotential?: { value:number; unit:'hartree'; definition:'native-total-including-protection'|'native-physical-potential'; includesProtection:boolean; sourceArtifact:'xtb.trj'; sourceStep:number; sourceTimeFs:number; segment:number };
+    energyObservationWarning?: 'missing' | 'invalid';
   };
+  aseMD?: AseMDEvidence;
   energyEV?: number; kineticEnergyEV?: number; temperatureK?: number; targetTemperatureK?: number;
-  /** Mechanical geometry objective, explicitly not physical molecular energy. */
-  geometryObjective?: number;
-  geometryTargetStatus?: GeometryTargetStatus;
-  hybridGeometry?: HybridGeometryMetadata;
   converged?: boolean;
   /** Native terminal reason; completed values are bounded by protocol validation. */
   reason?: string;
-  constraintResiduals?: { type: 'B' | 'A' | 'D'; id?: string; target: number; actual: number; residual: number; unit: 'angstrom' | 'radian' | 'degree' }[];
   error?: DynamicsError;
-}
-export interface HybridGeometryMetadata {
-  schema: 1; mode: 'partial-uff-local' | 'geometry-only'; triggerCode: string;
-  problemAtomIds: string[]; mechanicalAtomIds: string[]; uffAtomIds: string[]; boundaryAtomIds: string[];
-  uffEnergyKcalMol: number; localMechanicalObjective: number; energyScaleKcalMol: number;
-  scalePolicy: 'uff-bond-stiffness-v1' | 'pure-geometry-v1'; termCounts: Record<string, number>;
-  objective: 'partialUFF(kcal/mol)/energyScale(kcal/mol)+localMechanical' | 'mechanicalGeometry';
-  regionsOverlap: boolean; physicalPotential: false;
-  fallbackReason?: 'no-uff-region';
-  typingProof?: 'bounded-neutral-saturated-CH-chain-v1' | 'bounded-neutral-saturated-CHF-chain-v2' | 'native-null-typing-mask-v3'; typingIsolationAtomIds?: string[];
 }
 export interface DynamicsFrame extends DynamicsEvent {
   event: 'frame' | 'stopped' | 'completed'; stamp: DocumentStamp;

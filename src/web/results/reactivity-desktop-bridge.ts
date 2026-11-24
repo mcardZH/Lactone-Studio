@@ -5,7 +5,7 @@ import type { ReactivitySessionInfo } from '../../results/reactivity-contracts';
 import type { WavefunctionMetadata } from '../../results/orbital-contracts';
 import type { SurfaceContext } from '../../results/surface-contracts';
 import { sameSurfaceContext, sameSurfaceStamp } from '../../results/surface-field';
-import { postprocessWavefunctionFrame, type PostprocessDocument } from '../../results/postprocess-document';
+import { postprocessPairedWavefunctionBinding, postprocessWavefunctionFrame, type PostprocessDocument } from '../../results/postprocess-document';
 import { createMultiwfnProgressTracker, type MultiwfnProgressSnapshot } from '../../results/multiwfn-progress';
 import type { ReactivityControlsBridge } from './reactivity-controls-contracts';
 import { releaseOrbitalSession } from './useOrbitalField';
@@ -37,10 +37,12 @@ export function createReactivityDesktopBridge(options: ReactivityDesktopBridgeOp
   const current = (op: Operation) => { if (disposed || !active || epoch !== op.epoch || operation !== op || op.abort.signal.aborted) throw abortError(); };
   function bound() {
     assert(document.result.source.id === context.sourceId && document.wavefunction?.source.metadata?.sourceRevision === context.sourceRevision && document.result.jobIndex === context.jobIndex, '反应性来源/作业已改变。');
-    const frame = postprocessWavefunctionFrame(document), original = frame === null ? null : document.result.frames.find(row => row.index === frame)?.sourceFrameIndex ?? frame;
+    const frame = postprocessWavefunctionFrame(document);
+    const displayed = document.result.frames.find(row => row.index === frame);
+    const original = displayed?.sourceFrameIndex ?? displayed?.index;
     const attachment = document.wavefunction;
     assert(attachment?.source.metadata && attachment.readSourceText && original === context.sourceFrameIndex, '本原帧没有可靠配对的原始波函数。');
-    if (document.output) assert(document.pair && document.pair.primary === document.output.source && document.pair.wavefunction === attachment.source && document.pair.frameIndex === frame && !document.pair.conflicts.length, '波函数与OUT配对未知或身份冲突。');
+    if (document.output) assert(postprocessPairedWavefunctionBinding(document)?.sourceFrameIndex === original, '波函数与OUT配对未知或身份冲突。');
     return attachment;
   }
   async function closeFork(id: string) { assert(desktop.closeOrbitalSession,'当前环境缺少轨道会话关闭入口。');await desktop.closeOrbitalSession(id);releaseOrbitalSession(desktop,id);orphanForks.delete(id); }

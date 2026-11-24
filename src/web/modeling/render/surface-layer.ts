@@ -1,4 +1,5 @@
 import type { Vector3 } from '../../../core/types';
+import {addPackedNativeMesh} from './native-packed-mesh';
 import type { ModelDocument } from '../../../modeling/contracts';
 import type { SurfaceFieldPair, SurfaceScalarField } from '../../../results/surface-contracts';
 import type { InteractionFieldPair } from '../../../results/interaction-contracts';
@@ -12,11 +13,10 @@ import { createSurfaceFieldSampler, sameSurfaceContext, validateSurfaceScalarFie
 import { composeTransforms, identityTransform, inversePoint, rotate, transformPoint, type RigidTransform } from './alignment';
 import { point } from './geometry';
 import { createShapeLayer } from './shape-layer';
+import { retainNativeShapeRoot } from './shape-resource-lifecycle';
 import { MODEL_HOVER_COLOR } from '../modeling-interaction-policy';
-import { createSurfaceMesh, type SurfaceMesh } from './surface-mesh';
-import { meshGeometryChunks } from './mesh-geometry';
+import { createSurfaceMeshJob } from './surface-mesh-job';
 import { updateCustomMeshAppearance } from './mesh-appearance';
-import { createScalarGradientNormals } from './field-gradient-normals';
 import { attachLocalMeshFinish, updateLocalMeshFinish } from './mesh-finish';
 import { meshFinishKey, type MeshFinishSettings } from '../../../results/mesh-appearance';
 import {unionRenderBounds} from './depth-envelope';
@@ -142,45 +142,43 @@ function interactionPair(pair:ViewportSurfaceLayer['pair']):pair is InteractionF
 function excitationPair(pair:ViewportSurfaceLayer['pair']):pair is ExcitationDensityFieldPair{return 'kind' in pair&&pair.kind==='excitation-density';}
 function hirshfeldPair(pair:ViewportSurfaceLayer['pair']):pair is HirshfeldFieldPair{return 'kind' in pair&&pair.kind==='hirshfeld';}
 function pairGeometryKey(pair:ViewportSurfaceLayer['pair']){return [interactionPair(pair)?[pair.kind,pair.method,pair.component,pair.inside]:excitationPair(pair)?[pair.kind,pair.shape.excitationRole,pair.shape.state]:null,fieldGeometryKey(pair.shape),fieldGeometryKey(pair.mapping)];}
-function validCell(field:SurfaceScalarField,cell:Vector3){
-  const domain=field.validDomain;if(domain.kind==='unknown')return false;if(domain.kind==='full-grid')return true;
-  const [,ny,nz]=field.grid.dimensions;
-  for(let x=0;x<2;x++)for(let y=0;y<2;y++)for(let z=0;z<2;z++)if(domain.mask[((cell[0]+x)*ny+cell[1]+y)*nz+cell[2]+z]!==1)return false;
-  return true;
-}
 export function surfaceMeshKey(layer: ViewportSurfaceLayer, transform: RigidTransform): string {
   return JSON.stringify([layer.documentId, layer.geometryRevision, layer.pair.shape.context, layer.pair.shape.id, layer.pair.shape.source.revision,
     layer.pair.mapping?.id, layer.pair.mapping?.source.revision, pairGeometryKey(layer.pair), layer.sourceToDocument, layer.pair.isovalue, layer.opacity, layer.color, layer.solidColor, layer.contactFocus?.contact, transform.rotation, transform.translation,meshFinishKey(layer.finish)]);
 }
 const emptyMeshState = (): SurfaceMeshState => ({ status: 'empty', attemptKey: null, committedKey: null, shapeCount: 0, vertexCount: 0, triangleCount: 0, colored: false, submitted: false });
 
-/** Pre-sampled colors survive 3Dmol's Float32 upload. Chunk below its splitMesh
- * threshold (whose colorArr propagation is not reliable in the locked version). */
-function customSurfaceChunks(mesh: SurfaceMesh, pose: RigidTransform, factor: number, color?: SurfaceColorMapping, normalAt?: (position: Vector3) => Vector3 | null, focus?: ViewportSurfaceLayer['contactFocus']) {
-  const colors = color && mesh.values ? mesh.values.map((value, index) => {
-    const hex = focusedColor(value, color, mesh.vertices[index].map(value => value * factor) as Vector3, focus); return { r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 };
-  }) : undefined;
-  return meshGeometryChunks(mesh, pose, factor, colors, mesh.values !== null, normalAt);
-}
 function focusedColor(value: number, color: SurfaceColorMapping, position?: Vector3, focus?: ViewportSurfaceLayer['contactFocus']) {
   return focus?.contact && position && !hirshfeldPositionMatches(position, focus.source, focus.contact) ? '#dbe2e8' : surfaceColor(value, color);
 }
 
 /** Owned native GLShapes, shared by visible and offscreen adapters. */
-export function createSurfaceLayer(viewer: any, mol: any) {
+export function createSurfaceLayer(viewer: any, mol: any, notify?: () => void) {
+  const preparation = createSurfaceMeshJob(mol.MarchingCube, notify);
   let surfaceShapes = createShapeLayer(viewer);
   const extremaShapes = createShapeLayer(viewer);
   let shapeField: SurfaceScalarField | null = null, mappingField: SurfaceScalarField | null = null, surfaceSignature = '', extremaSignature = '';
   let geometrySignature = '', colorSignature = '', finishSignature = '', materialOpacity = 0;
   // Only current native handles and their one necessary scalar sample array.
   // No full source mesh or source-index array survives a completed build.
-  let materials: { handle: any; vertices: number; samples: number[] | null; sourcePositions?: Vector3[] }[] = [];
+  let materials: { handle: any; vertices: number; samples: Float64Array | null; sourcePositions?: Float64Array }[] = [];
   let meshState = emptyMeshState();
   let points: { id: string; position: Vector3 }[] = [];
+  let meshVisible=true;
+  const sourcePoint=(values:Float64Array|undefined,index:number):Vector3|undefined=>values?[values[3*index],values[3*index+1],values[3*index+2]]:undefined;
   return {
     bounds:()=>unionRenderBounds(surfaceShapes.bounds(),extremaShapes.bounds()),
+    pending:preparation.pending,
+    setDisplayReady(ready:boolean){
+      if(meshVisible===ready)return false;
+      meshVisible=ready;
+      for(const material of materials)material.handle.hidden=!ready;
+      if(!ready&&meshState.submitted)meshState={...meshState,submitted:false};
+      return materials.length>0;
+    },
     sync(layer: ViewportSurfaceLayer | null, document: ModelDocument | null, transform: RigidTransform): boolean {
       if (!surfaceLayerCurrent(layer, document)) {
+        preparation.cancel();
         const changed = surfaceShapes.size > 0; surfaceShapes.clear(); materials = []; shapeField = mappingField = null; surfaceSignature = geometrySignature = colorSignature = finishSignature = ''; meshState = emptyMeshState(); return changed;
       }
       const current = layer!, { pair } = current;
@@ -189,7 +187,7 @@ export function createSurfaceLayer(viewer: any, mol: any) {
       const color = pair.mapping ? current.color : undefined, solidColor = current.solidColor ?? '#d5dfdf', nextColorSignature = JSON.stringify([color, solidColor, current.contactFocus?.contact]);
       const nextFinishSignature=meshFinishKey(current.finish);
       const geometryKey = JSON.stringify([current.documentId, current.geometryRevision, pair.shape.context, pair.shape.id, pair.shape.source.revision,
-        pair.mapping?.id, pair.mapping?.source.revision, pairGeometryKey(pair), current.sourceToDocument, pair.isovalue, Boolean(color), transform.rotation, transform.translation]);
+        pair.mapping?.id, pair.mapping?.source.revision, pairGeometryKey(pair), current.sourceToDocument, pair.isovalue, Boolean(color), Boolean(current.contactFocus), transform.rotation, transform.translation]);
       meshState = { ...meshState, status: 'pending', attemptKey: key, sourceId: pair.shape.context.sourceId, sourceRevision: pair.shape.context.sourceRevision, shapeId: pair.shape.id, mappingId: pair.mapping?.id ?? null, submitted: false, error: undefined };
       const next = createShapeLayer(viewer);
       try {
@@ -199,7 +197,7 @@ export function createSurfaceLayer(viewer: any, mol: any) {
         if (shapeField === pair.shape && mappingField === pair.mapping && geometrySignature === geometryKey) {
           const recolor = colorSignature !== nextColorSignature;
           for (const entry of materials) {
-            const colors = recolor ? color && entry.samples ? entry.samples.map((value, index) => focusedColor(value, color, entry.sourcePositions?.[index], current.contactFocus)) : solidColor : undefined;
+            const colors = recolor ? color && entry.samples ? Array.from(entry.samples,(value,index)=>focusedColor(value,color,sourcePoint(entry.sourcePositions,index),current.contactFocus)) : solidColor : undefined;
             if (colors || materialOpacity !== current.opacity) updateCustomMeshAppearance(entry.handle, entry.vertices, current.opacity, colors);
             if (finishSignature!==nextFinishSignature) updateLocalMeshFinish(entry.handle,current.finish);
           }
@@ -209,27 +207,30 @@ export function createSurfaceLayer(viewer: any, mol: any) {
         }
         const interaction=interactionPair(pair),inside=interaction?pair.inside:'above';
         const validation = interaction ? validateInteractionFieldPair(pair) : excitationPair(pair) ? validateExcitationDensityFieldPair(pair) : hirshfeldPair(pair) ? validateHirshfeldFieldPair(pair) : validateSurfaceFieldPair(pair); if (!validation.compatible) throw new Error(validation.reasons.join('；'));
-        const pose = surfaceDisplayTransform(current, transform);
-        const sampler = pair.mapping && color ? createSurfaceFieldSampler(pair.mapping) : undefined, sameGrid = pair.mapping && sameSurfaceGrid(pair.shape, pair.mapping);
-        const mesh = createSurfaceMesh(pair.shape, pair.isovalue, mol.MarchingCube, sampler ? (position, cell) => {
-          const value = sampler(position, sameGrid ? cell : undefined);
-          if (value === null&&!interaction) throw new Error('表面着色采样或插值邻点超出有效域，不能将域外填充值当作物理值。');
-          return value;
-        } : undefined,inside,interaction?{cell:cell=>validCell(pair.shape,cell)&&(!sampler||!sameGrid||validCell(pair.mapping!,cell)),invalidSample:'skip-cell'}:undefined);
-        if (!mesh.faces.length) throw new Error('当前标量等值及有效域没有可提交的表面三角形。');
-        const gradientNormal=createScalarGradientNormals(pair.shape);
-        const factor = pair.shape.grid.coordinateUnit === 'bohr' ? BOHR_TO_ANGSTROM : 1;
-        const chunks = customSurfaceChunks(mesh, pose, factor, color, position=>gradientNormal(position,inside==='below'?1:-1), current.contactFocus);
+        const chunks = preparation.read(geometryKey, { kind: 'surface', shape: pair.shape, mapping: color ? pair.mapping : null, inside, restricted: interaction,
+          sameGrid: !!pair.mapping && sameSurfaceGrid(pair.shape, pair.mapping), positions: !!current.contactFocus, isovalue: pair.isovalue,
+          pose: surfaceDisplayTransform(current, transform), factor: pair.shape.grid.coordinateUnit === 'bohr' ? BOHR_TO_ANGSTROM : 1 });
+        if (!chunks) {
+          const changed = surfaceShapes.size > 0;
+          if (changed) surfaceShapes.clear();
+          materials = []; shapeField = mappingField = null; surfaceSignature = geometrySignature = colorSignature = finishSignature = '';
+          meshState = { ...meshState, committedKey: null, shapeCount: 0, vertexCount: 0, triangleCount: 0, colored: false };
+          return changed;
+        }
         let vertexCount = 0, triangleCount = 0;
         const nextMaterials: typeof materials = [];
         for (const chunk of chunks) {
-          const { sourceIndices, ...geometry } = chunk;
-          if (mesh.values && !sourceIndices) throw new Error('映射网格缺少原始采样值对应。');
-          const handle: any = viewer.addCustom({ ...geometry, color: solidColor, opacity: current.opacity, clickable: false, hoverable: false });
+          const {samples,sourcePositions}=chunk;
+          const colorArr = color && samples ? Array.from(samples,(value,index) => {
+            const hex = focusedColor(value, color, sourcePoint(sourcePositions,index), current.contactFocus);
+            return { r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 };
+          }) : undefined;
+          const handle: any = addPackedNativeMesh(viewer,mol,chunk,{color:solidColor,opacity:current.opacity,clickable:false,hoverable:false},colorArr);
+          if(!meshVisible)handle.hidden=true;
           next.keep(handle);
           attachLocalMeshFinish(handle,current.finish);
-          nextMaterials.push({ handle, vertices: chunk.vertexArr.length, samples: mesh.values ? sourceIndices!.map(index => mesh.values![index]) : null,
-            ...(current.contactFocus && sourceIndices ? { sourcePositions: sourceIndices.map(index => mesh.vertices[index].map(value => value * factor) as Vector3) } : {}) });
+          retainNativeShapeRoot(handle);
+          nextMaterials.push({ handle, vertices: chunk.vertices.length/3, samples: samples ?? null, sourcePositions });
           // Locked GLShape.globj reapplies handle.color on every render. Its
           // own volumetric-color path deletes it too; retain our uploaded RGB.
           if (color) delete handle.color;
@@ -240,9 +241,10 @@ export function createSurfaceLayer(viewer: any, mol: any) {
         if (!(vertexCount > 0 && triangleCount > 0)) throw new Error('分子表面实际渲染几何为空。');
         surfaceShapes.clear(); surfaceShapes = next; materials = nextMaterials; shapeField = pair.shape; mappingField = pair.mapping; surfaceSignature = key;
         geometrySignature = geometryKey; colorSignature = nextColorSignature; finishSignature=nextFinishSignature; materialOpacity = current.opacity;
-        meshState = { ...meshState, status: 'committed', committedKey: key, shapeCount: next.size, vertexCount, triangleCount, colored: Boolean(color && sampler), error: undefined };
+        meshState = { ...meshState, status: 'committed', committedKey: key, shapeCount: next.size, vertexCount, triangleCount, colored: Boolean(color && pair.mapping), error: undefined };
         return true;
       } catch (error) {
+        preparation.cancel();
         next.clear(); surfaceShapes.clear(); materials = []; shapeField = mappingField = null; surfaceSignature = geometrySignature = colorSignature = finishSignature = '';
         meshState = { ...meshState, status: 'failed', committedKey: null, shapeCount: 0, vertexCount: 0, triangleCount: 0, colored: false, submitted: false, error: error instanceof Error ? error.message : String(error) };
         throw error;
@@ -268,23 +270,24 @@ export function createSurfaceLayer(viewer: any, mol: any) {
     },
     points: () => points,
     meshState: (): Readonly<SurfaceMeshState> => ({ ...meshState }),
-    markSubmitted() { if (meshState.status === 'committed') meshState = { ...meshState, submitted: true }; },
+    markSubmitted() { if (meshVisible&&meshState.status === 'committed') meshState = { ...meshState, submitted: true }; },
     failSubmission(error: unknown) {
       if (meshState.status !== 'committed') return;
       surfaceShapes.clear(); materials = []; shapeField = mappingField = null; surfaceSignature = geometrySignature = colorSignature = finishSignature = '';
       meshState = { ...meshState, status: 'failed', committedKey: null, submitted: false, shapeCount: 0, vertexCount: 0, triangleCount: 0, colored: false, error: error instanceof Error ? error.message : String(error) };
     },
-    dispose() { surfaceShapes.clear(); extremaShapes.clear(); materials = []; shapeField = mappingField = null; surfaceSignature = geometrySignature = colorSignature = finishSignature = extremaSignature = ''; points = []; meshState = emptyMeshState(); },
+    dispose() { preparation.cancel(); surfaceShapes.clear(); extremaShapes.clear(); materials = []; shapeField = mappingField = null; surfaceSignature = geometrySignature = colorSignature = finishSignature = extremaSignature = ''; points = []; meshState = emptyMeshState(); },
   };
 }
 
 /** One active analysis owns at most the two true e/h density meshes. Each uses
  * the same single-field builder as Main-12; no retained historical managers. */
-export function createSurfaceLayers(viewer: any, mol: any) {
-  const legacy = createSurfaceLayer(viewer, mol);
+export function createSurfaceLayers(viewer: any, mol: any, notify?: () => void) {
+  const legacy = createSurfaceLayer(viewer, mol, notify);
   const layers = new Map<string, ReturnType<typeof createSurfaceLayer>>();
   const clearLayers = () => { for (const layer of layers.values()) layer.dispose(); layers.clear(); };
   return {
+    pending:()=>legacy.pending()||[...layers.values()].some(layer=>layer.pending()),
     bounds:()=>unionRenderBounds(legacy.bounds(),...[...layers.values()].map(layer=>layer.bounds())),
     sync(layer: ViewportSurfaceLayer | null, document: ModelDocument | null, transform: RigidTransform) {
       const removed = layers.size > 0; clearLayers(); return legacy.sync(layer, document, transform) || removed;
@@ -306,9 +309,11 @@ export function createSurfaceLayers(viewer: any, mol: any) {
         for (const [id, layer] of layers) if (!ids.has(id)) { layer.dispose(); layers.delete(id); changed = true; }
         for (const layer of current) {
           let manager = layers.get(layer.id!);
-          if (!manager) { manager = createSurfaceLayer(viewer, mol); layers.set(layer.id!, manager); }
+          if (!manager) { manager = createSurfaceLayer(viewer, mol, notify); layers.set(layer.id!, manager); }
           changed = manager.sync(layer, document, transform) || changed;
         }
+        const ready=[...layers.values()].every(layer=>layer.meshState().status==='committed');
+        for(const layer of layers.values())changed=layer.setDisplayReady(ready)||changed;
         return changed;
       } catch (error) {
         // A failed partner must never leave a plausible half-complete overlay.

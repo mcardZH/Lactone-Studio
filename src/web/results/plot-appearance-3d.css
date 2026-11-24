@@ -1,0 +1,29 @@
+.plot-appearance-3d {
+  container: plot-appearance-3d / inline-size;
+  display:grid;
+  gap:8px;
+  min-width:0;
+}
+.plot-surface-presets {
+  display:grid;
+  grid-template-columns:minmax(180px,1fr) minmax(0,1.3fr);
+  align-items:start;
+  gap:10px;
+}
+.plot-appearance-model .settings-display-pages {
+  grid-template-columns:minmax(0,1.45fr) minmax(220px,1fr);
+}
+.plot-appearance-model .settings-appearance-preview { grid-row:auto; position:sticky; }
+.plot-surface-preview,
+.plot-surface-controls { display:grid; gap:8px; min-width:0; }
+.plot-surface-preview { position:sticky; top:0; }
+.plot-surface-preview img { width:100%; max-height:286px; object-fit:contain; }
+.plot-surface-colors { display:flex; gap:2px; height:12px; }
+.plot-surface-colors > span { flex:1; }
+.plot-surface-controls > label { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+@container plot-appearance-3d (max-width:650px) {
+  .plot-surface-presets,
+  .plot-appearance-model .settings-display-pages { grid-template-columns:minmax(0,1fr); }
+  .plot-appearance-model .settings-appearance-preview { grid-row:1; position:static; }
+  .plot-surface-preview { position:static; }
+}

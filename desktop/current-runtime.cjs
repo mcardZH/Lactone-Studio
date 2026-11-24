@@ -873,6 +873,114 @@ function currentRuntimeEnvironment({
   }
   return result;
 }
+function readTblitePackageVersion(sitePackagesDir, fallbackVersion) {
+  try {
+    if (sitePackagesDir && fs.existsSync(sitePackagesDir)) {
+      const distInfo = fs
+        .readdirSync(sitePackagesDir)
+        .find(name => /^tblite-.*\.dist-info$/i.test(name));
+      if (distInfo) {
+        const meta = fs.readFileSync(path.join(sitePackagesDir, distInfo, 'METADATA'), 'utf8');
+        const match = /^Version:\s*([^\r\n]+)/m.exec(meta);
+        if (match && match[1].trim()) return match[1].trim();
+      }
+    }
+  } catch {
+    // Fall through to fallbackVersion
+  }
+  return fallbackVersion;
+}
+
+function resolveMdTblite({
+  packaged,
+  resourcesPath,
+  appPath,
+  platform = process.platform,
+  arch = process.arch,
+  platformId: explicitPlatformId
+}) {
+  const platformId = explicitPlatformId || defaultPlatformId(platform, arch);
+  if (platformId === 'win32-x64') {
+    if (packaged) {
+      const member = 'chemistry/_internal/libtblite-0.dll';
+      const manifest = json(path.dirname(resourcesPath), 'provenance/dependencies.json');
+      assert(
+        manifest.schema === 'sciyue-portable-dependency-summary/v1' &&
+          typeof manifest.native?.versions?.tblite === 'string',
+        'Packaged tblite declaration missing'
+      );
+      return {
+        library: admitted(resourcesPath, member).target,
+        sha256: identity(resourcesPath, member).sha256,
+        version: manifest.native.versions.tblite
+      };
+    }
+    const selected = lock(
+      appPath,
+      'desktop/packaging/native-runtime.lock.json',
+      'sciyue-native-runtime-lock-v1',
+      '.local/dependencies/win-x64',
+      'win32-x64'
+    );
+    const member = 'python/Library/bin/libtblite-0.dll';
+    return {
+      library: lockedFile(appPath, selected, member),
+      sha256: selected.files.find(row => row.path === member).sha256,
+      version: selected.value.versions.tblite
+    };
+  }
+
+  const candidateLibNames = platformId.startsWith('darwin-')
+    ? ['libtblite.0.dylib', 'libtblite.dylib']
+    : ['libtblite.so.0', 'libtblite.so'];
+
+  if (packaged) {
+    const member = candidateLibNames
+      .map(name => `chemistry/deps/lib/${name}`)
+      .find(rel => fs.existsSync(path.join(resourcesPath, rel)));
+    assert(member, `Packaged tblite shared library missing for ${platformId}`);
+    const sitePackages = path.join(resourcesPath, 'chemistry/deps/lib/python3.12/site-packages');
+    let manifestVersion;
+    try {
+      const manifestPath = path.join(path.dirname(resourcesPath), 'provenance/dependencies.json');
+      if (fs.existsSync(manifestPath)) {
+        const manifest = json(path.dirname(resourcesPath), 'provenance/dependencies.json');
+        manifestVersion = manifest.native?.versions?.tblite;
+      }
+    } catch {
+      manifestVersion = undefined;
+    }
+    const version = manifestVersion || readTblitePackageVersion(sitePackages, null);
+    assert(typeof version === 'string' && version.length > 0, 'Packaged tblite declaration missing');
+    return {
+      library: admitted(resourcesPath, member).target,
+      sha256: identity(resourcesPath, member).sha256,
+      version
+    };
+  }
+
+  const layout = resolvePlatformLayout(platformId);
+  const profile = resolveProfile(appPath, platformId);
+  const selected = lock(
+    appPath,
+    profile.runtimeLock,
+    'sciyue-native-runtime-lock-v1',
+    layout.dependenciesParent,
+    platformId
+  );
+  const member = candidateLibNames
+    .map(name => `python/lib/${name}`)
+    .find(rel => selected.files.some(row => row.path === rel));
+  assert(member, `Required current runtime member absent: ${candidateLibNames[0]}`);
+  const sitePackages = path.join(appPath, selected.value.root, 'python/lib/python3.12/site-packages');
+  const version = selected.value.versions?.tblite || readTblitePackageVersion(sitePackages, null);
+  assert(typeof version === 'string' && version.length > 0, 'Development tblite version missing');
+  return {
+    library: lockedFile(appPath, selected, member),
+    sha256: selected.files.find(row => row.path === member).sha256,
+    version
+  };
+}
 
 function packagedBackendInfo({ packaged, resourcesPath, provenanceRoot, platform = process.platform }) {
   if (!packaged) return { name: 'unknown', verified: false, source: 'development-or-test' };
@@ -893,7 +1001,6 @@ function packagedBackendInfo({ packaged, resourcesPath, provenanceRoot, platform
     return { name: 'openblas', verified: true, source: 'package-provenance-not-live-DLL-observation' };
   } catch { return { name: 'unknown', verified: false, source: 'missing-or-invalid-package-provenance' }; }
 }
-
 module.exports = {
   PLATFORM_LAYOUTS,
   SUPPORTED_PLATFORMS,
@@ -905,5 +1012,6 @@ module.exports = {
   developmentNative,
   developmentXtb,
   currentRuntimeEnvironment,
-  packagedBackendInfo
+  packagedBackendInfo,
+  resolveMdTblite
 };

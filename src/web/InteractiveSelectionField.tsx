@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MousePointer2, Check, Plus, Trash2 } from 'lucide-react';
 import type { Structure, Vector3 } from '../core/types';
 import { inputSelectionIndices } from '../core/input-selection';
+import { validatePeriodicEndpointImages } from '../core/periodic';
 import { pickerStructureIdentity } from '../core/geometry-guides';
 import { formatAtomSelection } from '../core/structures';
 import type { TaskSelectionHandle, TaskSelectionIntent } from '../modeling/contracts';
@@ -15,6 +16,7 @@ import {InputSettingsCardHeader} from './InputSettingsFields';
 interface SelectionFieldBase {
   structure: Structure | null; label: string; rowId: string;
   kind?: TaskSelectionIntent['kind']; atomIds: readonly string[]; contextKey?: string; disabled?: boolean;
+  coordinateImages?:readonly Vector3[];
   onConfirm(ids: string[], assertCurrent: () => void, overwrite: boolean, images?:Vector3[]): void;
   onDraftChange?(ids: string[], images?:Vector3[]): void; onEnd?(result: 'confirmed' | 'cancelled'): void;
   remainingAtomIds?: readonly string[];
@@ -64,16 +66,23 @@ export function SelectionAddButton({label,onClick,disabled,testId}:{label:string
 }
 const causeText = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 const selectionOwner = (props: SelectionFieldProps) => props.captureOwner ? JSON.stringify(['analysis', props.captureOwner.id, props.rowId, props.analysisPurpose ?? 'surface-region', props.kind ?? 'atoms']) : JSON.stringify([props.engine, props.taskId, props.rowId, props.purpose, props.kind ?? 'atoms']);
-function formatSelection(props: SelectionFieldProps, ids: readonly string[]) {
+function formatSelection(props: SelectionFieldProps, ids: readonly string[], images?:readonly Vector3[]) {
   if (!props.structure) return '';
-  try { const indices = inputSelectionIndices(props.structure, ids); return (props.kind ?? 'atoms') === 'atoms' ? formatAtomSelection(indices) : indices.map(index => index + 1).join(','); }
+  try {
+    if(props.kind==='coordinate'&&images){
+      validatePeriodicEndpointImages(props.structure,ids,images);
+      return ids.map(id=>props.structure!.atoms.findIndex(atom=>atom.id===id)+1).join(',');
+    }
+    const indices = inputSelectionIndices(props.structure, ids);
+    return (props.kind ?? 'atoms') === 'atoms' ? formatAtomSelection(indices) : indices.map(index => index + 1).join(',');
+  }
   catch { return ids.length ? '失效原子身份' : ''; }
 }
 export default function InteractiveSelectionField(props: SelectionFieldProps) {
   const kind = props.kind ?? 'atoms';
   const identity = props.structure ? pickerStructureIdentity(props.structure) : '';
-  const members = JSON.stringify(props.atomIds);
-  const owner = selectionOwner(props), canonical = formatSelection(props, props.atomIds);
+  const members = JSON.stringify([props.atomIds,props.coordinateImages]);
+  const owner = selectionOwner(props), canonical = formatSelection(props, props.atomIds,props.coordinateImages);
   const [localText, setLocalText] = useState(canonical), [error, setError] = useState(''), [picking, setPicking] = useState(false);
   const text=props.numberText??localText;
   function setText(value:string){setLocalText(value);latest.current.props.onNumberTextChange?.(value);}
@@ -111,7 +120,7 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
       if ((!ownHandle || strictSnapshot) && (current.identity !== captured.identity || current.members !== captured.members || current.props.contextKey !== captured.props.contextKey)) throw new Error('模型、区域或输入条件已变化，请重新选择。');
     };
   }
-  function draft(ids: string[], images?:Vector3[]) { const changed=JSON.stringify(draftIds.current)!==JSON.stringify(ids)||JSON.stringify(draftImages.current)!==JSON.stringify(images); draftIds.current = [...ids];draftImages.current=images; if(!typing.current)setText(formatSelection(latest.current.props, ids)); if(changed){setError(''); setPending(null); overwritePermit.current = null;} latest.current.props.onDraftChange?.([...ids],images); }
+  function draft(ids: string[], images?:Vector3[]) { const changed=JSON.stringify(draftIds.current)!==JSON.stringify(ids)||JSON.stringify(draftImages.current)!==JSON.stringify(images); draftIds.current = [...ids];draftImages.current=images; if(!typing.current)setText(formatSelection(latest.current.props, ids, images)); if(changed){setError(''); setPending(null); overwritePermit.current = null;} latest.current.props.onDraftChange?.([...ids],images); }
   function updateNumbers(value:string){
     manualDraftText.current=value;
     setText(value);setError('');setPending(null);
@@ -128,18 +137,30 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
     }else try{current.onDraftChange?.(parseInteractiveSelection(value,structure,kind));}catch{current.onDraftChange?.([]);}
   }
   function accept(ids: string[], assertCurrent = guard(), overwrite = false, propagateError = false, images?:Vector3[]) {
-    try { assertCurrent(); const current = latest.current.props; if (!current.structure) throw new Error('请先提供结构。'); inputSelectionIndices(current.structure, ids); current.onConfirm([...ids], assertCurrent, overwrite, images); setPending(null); setError(''); return true; }
+    try {
+      assertCurrent();
+      const current = latest.current.props;
+      if (!current.structure) throw new Error('请先提供结构。');
+      if (current.kind==='coordinate'&&images)validatePeriodicEndpointImages(current.structure,ids,images);
+      else inputSelectionIndices(current.structure, ids);
+      current.onConfirm([...ids], assertCurrent, overwrite, images); setPending(null); setError(''); return true;
+    }
     catch (cause) { if (cause instanceof RegionSelectionConflict) { const snapshotGuard = guard(true); setPending({ ids: [...ids], guard: () => { assertCurrent(); snapshotGuard(); }, conflict: cause }); setError(''); } else { setPending(null); setError(causeText(cause)); if (propagateError) throw cause; } return false; }
   }
   function confirm() {
     try {
       if (picking && handle.current) {
         handle.current.assertCurrent();
-        if(props.liveNumberDraft&&handle.current.setAtomIds&&props.structure)handle.current.setAtomIds(parseInteractiveSelection(text,props.structure,kind));
+        if(props.liveNumberDraft&&handle.current.setAtomIds&&props.structure&&
+          (!draftImages.current||text!==formatSelection(props,draftIds.current,draftImages.current)))handle.current.setAtomIds(parseInteractiveSelection(text,props.structure,kind));
         handle.current.confirm();return;
       }
-      if (!latest.current.props.structure) throw new Error('请先提供结构。');
-      const ids = parseInteractiveSelection(text, latest.current.props.structure, kind);
+      const current=latest.current.props;
+      if (!current.structure) throw new Error('请先提供结构。');
+      if(current.coordinateImages&&text===formatSelection(current,current.atomIds,current.coordinateImages)){
+        accept([...current.atomIds],guard(true),false,false,current.coordinateImages.map(image=>[...image]));return;
+      }
+      const ids = parseInteractiveSelection(text, current.structure, kind);
       // The manual-number path acquires the same owner/activation seal too.
       // Main's handle can confirm its initial draft synchronously; it does not
       // require a mounted viewport or a fabricated pointer gesture.
@@ -159,7 +180,7 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
       handle.current?.cancel(); handle.current = null; epoch.current++;
       const assertLocal = guard(), captureEpoch = epoch.current;
       if (current.onRequestSelection || current.onRequestAnalysisSelection) {
-        captureOwner.current = selectionOwner(current); draftIds.current = [...initial]; overwritePermit.current = null;
+        captureOwner.current = selectionOwner(current); draftIds.current = [...initial]; draftImages.current=undefined; overwritePermit.current = null;
         const callbacks: Omit<AnalysisSelectionIntent, 'owner' | 'purpose' | 'kind' | 'contextKey'> = { rowId: current.rowId, origin: immediate ? 'text' : 'interactive', initialAtomIds: initial,
           onDraftChange: (ids, images?:Vector3[]) => { if (alive.current && epoch.current === captureEpoch && latest.current.owner === captureOwner.current) draft(ids,images); },
           onConfirm: (ids, images?:Vector3[]) => {
@@ -170,7 +191,7 @@ export default function InteractiveSelectionField(props: SelectionFieldProps) {
             const confirmed = !immediate && current.purpose === 'frozen-atoms' ? [...new Set([...latest.current.props.atomIds, ...ids])] : ids;
             return accept(confirmed, guard(), Boolean(permit), true, images);
           },
-          onEnd: result => { if (!alive.current || epoch.current !== captureEpoch) return; epoch.current++; handle.current = null; captureOwner.current = null; overwritePermit.current = null; setPicking(false); if (result === 'cancelled') { setPending(null); if(latest.current.props.preserveNumberDraftOnCancel){if(manualDraftText.current!==null)setText(manualDraftText.current);}else{setText(formatSelection(latest.current.props, latest.current.props.atomIds)); latest.current.props.onDraftChange?.([...latest.current.props.atomIds]);} } latest.current.props.onEnd?.(result); },
+          onEnd: result => { if (!alive.current || epoch.current !== captureEpoch) return; epoch.current++; handle.current = null; captureOwner.current = null; overwritePermit.current = null; setPicking(false); if (result === 'cancelled') { setPending(null); if(latest.current.props.preserveNumberDraftOnCancel){if(manualDraftText.current!==null)setText(manualDraftText.current);}else{setText(formatSelection(latest.current.props, latest.current.props.atomIds,latest.current.props.coordinateImages)); latest.current.props.onDraftChange?.([...latest.current.props.atomIds]);} } latest.current.props.onEnd?.(result); },
         };
         const returned = current.captureOwner
           ? current.onRequestAnalysisSelection({ ...callbacks, owner: current.captureOwner, contextKey: current.contextKey, purpose: current.analysisPurpose ?? 'surface-region', kind: current.kind==='coordinate'?'coordinate':'atoms' })

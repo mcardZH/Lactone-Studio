@@ -59,18 +59,21 @@ function validate(structure: Structure): void {
     if (![atom.x, atom.y, atom.z].every(Number.isFinite)) throw new Error('原子坐标必须是有限数值。');
     if (atom.formalCharge != null && !Number.isInteger(atom.formalCharge)) throw new Error('形式电荷必须是整数。');
   }
+  validateExplicitBonds(structure);
+  validateBondPerceptionIssues(structure);
+  for (const [id, point] of Object.entries(structure.layout2D ?? {})) {
+    if (!idSet.has(id) || ![point.x, point.y].every(Number.isFinite)) throw new Error('二维布局含无效身份或坐标。');
+  }
+}
+export function validateExplicitBonds(structure: Structure): void {
   const seen = new Set<string>();
   for (const bond of structure.bonds ?? []) {
-    if (![bond.a, bond.b].every(i => Number.isInteger(i) && i >= 0 && i < ids.length) || (bond.a === bond.b && !bond.image?.some(Boolean))) throw new Error('键端点无效。');
+    if (![bond.a, bond.b].every(i => Number.isInteger(i) && i >= 0 && i < structure.atoms.length) || (bond.a === bond.b && !bond.image?.some(Boolean))) throw new Error('键端点无效。');
     validateBondSemantics(bond,structure);
     if (bond.image && (bond.image.length!==3||bond.image.some((value,index)=>!Number.isSafeInteger(value)||value!==0&&(!structure.cell||!structure.cell.pbc[index])))) throw new Error('周期键平移必须是有效周期轴上的整数晶胞向量。');
     const key = bondIdentity(structure, bond, false);
     if (seen.has(key)) throw new Error('同一对原子存在重复键。');
     seen.add(key);
-  }
-  validateBondPerceptionIssues(structure);
-  for (const [id, point] of Object.entries(structure.layout2D ?? {})) {
-    if (!idSet.has(id) || ![point.x, point.y].every(Number.isFinite)) throw new Error('二维布局含无效身份或坐标。');
   }
 }
 function requireIds(structure: Structure, ids: string[]): number[] {

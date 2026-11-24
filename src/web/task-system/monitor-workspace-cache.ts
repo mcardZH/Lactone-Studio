@@ -46,6 +46,11 @@ export class TaskMonitorWorkspaceCache {
 			.filter((entry) => entry.taskId === taskId && !entry.retired)
 			.sort((a, b) => b.lastUsed - a.lastUsed)[0];
 	}
+	findPublication(taskId: string, revision: string) {
+		return [...this.entries.values()].find(entry =>
+			entry.taskId === taskId && entry.view.revision === revision && !entry.retired
+		);
+	}
 	publish(
 		taskId: string,
 		view: TaskMonitorView,

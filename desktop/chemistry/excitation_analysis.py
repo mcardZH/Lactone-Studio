@@ -4,7 +4,6 @@ The original wavefunction and output snapshots remain immutable. NTO eigenvalues
 never enter the ordinary MO-energy model. Restore/export read completed artifacts.
 """
 from __future__ import annotations
-import base64
 import copy
 import hashlib
 import json
@@ -12,12 +11,12 @@ import math
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import tempfile
 import threading
 import time
 import numpy as np
+from analysis_result_wire import packed_values, sha256_file, cube_export_file
 from orbitals import OrbitalError, MultiwfnSession, inspect_wavefunction, _windows_owned_job
 from multiwfn_resources import resolve_resources, require_native_binary_grant, start_multiwfn
 from multiwfn_progress import NativeProgressScanner
@@ -49,6 +48,30 @@ def _snapshot(path,revision=None):
     raw=source.read_bytes();actual=_sha(raw)
     if revision is not None and revision!=actual: raise OrbitalError('source-changed','Excitation snapshot revision changed.')
     return source,raw,actual
+
+def _native_output(raw):
+    if raw.startswith((b'\xff\xfe', b'\xfe\xff')):
+        try:
+            text = raw.decode('utf-16')
+        except UnicodeDecodeError as error:
+            raise OrbitalError('excitation-source-encoding', 'Invalid UTF-16 excitation output.') from error
+        return text, text.encode('utf-8')
+    return raw.decode('utf-8-sig', errors='replace'), raw
+
+
+def _copy_wavefunction(source, destination, revision, check_cancelled):
+    digest = hashlib.sha256()
+    try:
+        with source.open('rb') as incoming, destination.open('xb') as outgoing:
+            while chunk := incoming.read(1024 * 1024):
+                check_cancelled()
+                digest.update(chunk)
+                outgoing.write(chunk)
+    except FileNotFoundError as error:
+        raise OrbitalError('excitation-source', 'Excitation snapshot is absent.') from error
+    if digest.hexdigest() != revision:
+        raise OrbitalError('source-changed', 'Excitation snapshot revision changed.')
+
 
 def parse_excitation_source(text,engine,job_index=None):
     """Index raw printed blocks; never reconstruct from a UI transition table."""
@@ -116,7 +139,7 @@ def select_state(blocks,final,expected,context):
     if expected.get('label') and expected['label'].strip()!=block['label'] and block['label']!='ORCA printed state': raise OrbitalError('excitation-state','Selected state label disagrees with its original printed state.')
     return block
 
-def validate_gaussian_wavefunction(text,block,metadata,wavefunction_text):
+def validate_gaussian_wavefunction(text,block,metadata):
     prefix='\n'.join(text.splitlines()[:block['sourceLine']])
     basis=re.findall(r'NBasis=\s*(\d+)',prefix)
     electrons=re.findall(r'(\d+) alpha electrons\s+(\d+) beta electrons',prefix)
@@ -127,22 +150,20 @@ def validate_gaussian_wavefunction(text,block,metadata,wavefunction_text):
     if not electrons or abs(int(electrons[-1][0])-actual_alpha)>1e-5 or abs(int(electrons[-1][1])-actual_beta)>1e-5:raise OrbitalError('excitation-electrons','Output and wavefunction alpha/beta electron populations disagree.')
     # FCHK SCF Energy is distinct from Total Energy (the latter can be E_TD).
     # Compare only these explicitly equivalent ground-reference quantities.
-    saved_scf=re.search(r'^SCF Energy\s+R\s+('+NUMBER+r')',wavefunction_text,re.M)
+    saved = metadata.get('excitationEvidence', {})
+    saved_scf = saved.get('scfEnergyToken')
     printed_scf=re.findall(r'SCF Done:.*?=\s*('+NUMBER+r')\s+A\.U\.',prefix,re.I)
-    if saved_scf and printed_scf:
-        a,b=saved_scf[1],printed_scf[-1]
+    if saved_scf and _finite(saved_scf) is not None and printed_scf:
+        a,b=saved_scf,printed_scf[-1]
         if abs(_num(a)-_num(b))>_rounding(a)+_rounding(b)+1e-11:raise OrbitalError('excitation-reference-energy','Explicit SCF reference energies disagree between the excitation output and wavefunction.')
     geometries=re.findall(r'(?:Standard|Input) orientation:\s*\n\s*-+\n[^\n]*\n[^\n]*\n\s*-+\n(.*?)\n\s*-+',prefix,re.S)
     if not geometries:raise OrbitalError('excitation-geometry','No complete source orientation precedes the selected excitation.')
     rows=[line.split() for line in geometries[-1].splitlines() if line.strip()]
     if len(rows)!=len(metadata['atoms']) or any(int(row[1])!=atom['atomicNumber'] for row,atom in zip(rows,metadata['atoms'])):raise OrbitalError('excitation-atoms','Output/wavefunction atom order or atomic numbers disagree.')
     target=np.array([[_num(t) for t in row[3:6]] for row in rows]);moving=np.array([a['positionBohr'] for a in metadata['atoms']])*.529177210903
-    out_precision=max(_rounding(t) for row in rows for t in row[3:6]);wf_precision=0.
-    match=re.search(r'Current cartesian coordinates\s+R\s+N=\s*(\d+)\s*\n(.*?)(?=\n[^ \d+\-.]|\Z)',wavefunction_text,re.S)
-    if match:
-        tokens=match[2].split()[:int(match[1])]
-        wf_precision=max(_rounding(t) for t in tokens)*.529177210903
-    else:wf_precision=1e-8
+    out_precision = max(_rounding(t) for row in rows for t in row[3:6])
+    tokens = saved.get('coordinateTokens', ())
+    wf_precision = max((_rounding(t) * .529177210903 for t in tokens), default=1e-8)
     a=moving-moving.mean(axis=0);b=target-target.mean(axis=0);u,_,vt=np.linalg.svd(a.T@b);rotation=u@np.diag([1.,1.,np.linalg.det(u@vt)])@vt
     residual=float(np.max(np.linalg.norm(a@rotation-b,axis=1)));tolerance=2*math.sqrt(3)*(out_precision+wf_precision)+1e-11
     if residual>tolerance:raise OrbitalError('excitation-geometry','The selected excitation geometry does not match the immutable wavefunction within printed coordinate precision.')
@@ -269,19 +290,13 @@ def parse_metrics(output):
     return metrics
 
 def read_density_cube(path):
-    lines=Path(path).read_text(encoding='ascii').splitlines()
-    if len(lines)<6: raise OrbitalError('excitation-cube','Native Cube header is incomplete.')
-    first=lines[2].split();n=int(first[0]);origin=[_num(t) for t in first[1:4]];dims=[];axes=[];axisprecision=[]
-    if n<=0 or len(first)!=4: raise OrbitalError('excitation-cube','Expected a scalar, atomic-unit native Cube.')
-    for line in lines[3:6]:
-        parts=line.split();dims.append(int(parts[0]));axes.append([_num(t) for t in parts[1:4]]);axisprecision.append([_rounding(t) for t in parts[1:4]])
-    if any(d<2 for d in dims): raise OrbitalError('excitation-cube','Native Cube dimensions are unsupported.')
-    atoms=[];precision=[];charges=[]
-    for ordinal,line in enumerate(lines[6:6+n],1):
-        row=line.split();atoms.append(dict(sourceIndex=ordinal,atomicNumber=int(row[0]),nuclearCharge=_num(row[1]),position=[_num(t) for t in row[2:5]]));precision.append([_rounding(t) for t in row[2:5]]);charges.append(_rounding(row[1]))
-    values=np.fromstring(' '.join(lines[6+n:]).replace('D','E').replace('d','e'),sep=' ',dtype=np.float64)
-    if len(values)!=math.prod(dims) or not np.isfinite(values).all() or not np.isfinite(np.array(origin+sum(axes,[]))).all(): raise OrbitalError('excitation-cube','Native Cube values/grid are incomplete or non-finite.')
-    return dict(grid=dict(coordinateUnit='bohr',origin=origin,axes=axes,dimensions=dims,ordering='z-fastest'),atoms=atoms,precision=dict(origin=[_rounding(t) for t in first[1:4]],axes=axisprecision,atomCoordinates=precision,nuclearCharges=charges)),values
+    # Deferred import keeps the established orbital/resource loading order.
+    from surface_analysis import read_scalar_cube, SurfaceError
+    try: cube=read_scalar_cube(path)
+    except SurfaceError as exc: raise OrbitalError('excitation-cube',str(exc)) from exc
+    if cube['datasetId'] is not None or any(d<2 for d in cube['grid']['dimensions']):
+        raise OrbitalError('excitation-cube','Native Cube dimensions or scalar dataset are unsupported.')
+    return {key:cube[key] for key in ('grid','atoms','precision')},cube['values']
 
 def _terminate_confirmed(process,job):
     """Release ownership only after wait AND poll confirm the real process exit."""
@@ -337,7 +352,7 @@ class ExcitationAnalysisService:
         results=sum(len(json.dumps(r,separators=(',',':'))) for r in self.results.values())
         # Companions stay path-only; the parsed JSON and amplitude scratch are
         # transient run-local values and never retained across context switches.
-        source_bytes=len(getattr(self,'wavefunction_raw',b''))+len(getattr(self,'output_raw',b''))
+        source_bytes=len(getattr(self,'output_raw',b''))
         analysis=getattr(self,'analysis_output_raw',None)
         if analysis is not None and analysis is not self.output_raw:source_bytes+=len(analysis)
         return results+source_bytes
@@ -361,7 +376,7 @@ class ExcitationAnalysisService:
     def cancel(self): self.cancelled.set();self.stop_native()
     def close(self):
         self.closed=True;self.cancel();self.results.clear();self.fields.clear();self.field_owners.clear();self.ntos.clear()
-        self.analysis_output_raw=b'';self.output_raw=b'';self.wavefunction_raw=b'';self.output_text='';self.blocks=[];self.final=[]
+        self.analysis_output_raw=b'';self.output_raw=b'';self.output_text='';self.blocks=[];self.final=[]
     def apply_resources(self,resources):
         if self.process is not None or self.native_session is not None: raise OrbitalError('excitation-busy','Cannot change resources during an active native calculation.')
         resources=resources or {}
@@ -379,11 +394,16 @@ class ExcitationAnalysisService:
         _integer(self.context.get('generation'),'generation')
         if self.context.get('jobIndex') is not None:_integer(self.context['jobIndex'],'jobIndex')
         _integer(self.context.get('sourceFrameIndex'),'sourceFrameIndex')
-        self.source,self.wavefunction_raw,self.source_revision=_snapshot(source.get('sourcePath') or request.get('ownedSourcePath'),source.get('sourceRevision'))
+        self.source = Path(source.get('sourcePath') or request.get('ownedSourcePath')).resolve()
         self.output,self.output_raw,self.output_revision=_snapshot(output.get('path') or request.get('outputPath'),output.get('revision'))
-        self.metadata=inspect_wavefunction(self.source);self.executable=Path(request['executable']).resolve()
+        self.metadata = inspect_wavefunction(self.source, excitation_evidence=True)
+        self.source_revision = self.metadata['sourceSha256']
+        if source.get('sourceRevision') is not None and source['sourceRevision'] != self.source_revision:
+            raise OrbitalError('source-changed','Excitation snapshot revision changed.')
+        self.executable=Path(request['executable']).resolve()
         if not self.executable.is_file(): raise OrbitalError('backend-missing','Select an existing Multiwfn executable.')
-        self.output_text=self.output_raw.decode('utf-8',errors='replace');self.engine='gaussian' if 'Gaussian' in self.output_text and GAUSSIAN_STATE.search(self.output_text) else 'orca' if 'O   R   C   A' in self.output_text or 'ORCA' in self.output_text else 'unknown'
+        self.output_text, native_output = _native_output(self.output_raw)
+        self.engine='gaussian' if 'Gaussian' in self.output_text and GAUSSIAN_STATE.search(self.output_text) else 'orca' if 'O   R   C   A' in self.output_text or 'ORCA' in self.output_text else 'unknown'
         if self.engine=='unknown': raise OrbitalError('excitation-engine','Excitation source must identify Gaussian or ORCA by contents.')
         self.blocks,self.final=parse_excitation_source(self.output_text,self.engine,self.context.get('jobIndex'))
         self.json_path=None;self.json_revision=None;self.json_source=None;self.cis_source=None;self.notices=[];self.reasons=[]
@@ -403,7 +423,7 @@ class ExcitationAnalysisService:
             elif not any(block['coefficients'] for block in self.final):self.reasons.append('The current Gaussian TD batch contains no printed configuration amplitudes.')
             if not re.search(r'IOp\s*\(\s*9\s*/\s*40\s*=\s*[3456789]',self.output_text,re.I):self.notices.append('Gaussian output may use the default coefficient print threshold; actual normalization is retained without automatic correction.')
             if self.final and not any(row['direction']=='<-' for block in self.final for row in block['coefficients']):self.notices.append('The selected Gaussian batch prints no de-excitation coefficients; a zero printed sum does not prove the physical Y amplitudes are zero.')
-        self.analysis_output_raw=gaussian_analysis_output(self.output_raw,self.final) if self.engine=='gaussian' and self.final else self.output_raw
+        self.analysis_output_raw=gaussian_analysis_output(native_output,self.final) if self.engine=='gaussian' and self.final else native_output
         spins={o['spin'] for o in self.metadata['orbitals']};self.expected=.5 if spins=={'restricted'} and all(o['occupation'] in (0,2) for o in self.metadata['orbitals']) else 1.
         self.opened=True
         states=[dict(index=b['index'],sourceLine=b['sourceLine'],frameIndex=self.context['sourceFrameIndex'],energyEv=b['energyEv'],label=b['label'],**(dict(multiplicity=b['multiplicity']) if 'multiplicity' in b else {})) for b in self.final if self.context.get('jobIndex') in (None,b['jobIndex'])]
@@ -415,9 +435,10 @@ class ExcitationAnalysisService:
         if not stamp.get('requestId') or not stamp.get('analysisId') or any(stamp.get(k)!=self.context.get(k) for k in CONTEXT_KEYS if k!='activationEpoch'): raise OrbitalError('excitation-context','Excitation request belongs to a different immutable source/context.')
     def _work(self,prefix):
         self._check_cancel();work=Path(tempfile.mkdtemp(prefix=prefix,dir=self.root))
-        _snapshot(self.source,self.source_revision)
         verify_companion(self.json_source);verify_companion(self.cis_source)
-        suffix='.fchk' if self.metadata['format']=='fchk' else '.molden';shutil.copyfile(self.source,work/('source'+suffix));(work/'source.out').write_bytes(getattr(self,'analysis_output_raw',self.output_raw))
+        suffix='.fchk' if self.metadata['format']=='fchk' else '.molden'
+        _copy_wavefunction(self.source,work/('source'+suffix),self.source_revision,self._check_cancel)
+        (work/'source.out').write_bytes(getattr(self,'analysis_output_raw',self.output_raw))
         (work/'settings.ini').write_bytes(self.settings)
         return work,'source'+suffix
     def _native(self,work,source,answers):
@@ -486,17 +507,25 @@ class ExcitationAnalysisService:
         metadata,values=read_density_cube(path)
         if role!='nto' and np.any(values<0):raise OrbitalError('excitation-density','Native total density contains negative nodes; the density field was not silently clipped.')
         key=request['stamp']['requestId']+':'+role+(':'+pair['spin']+':'+str(pair['index'])+':'+request['side'] if pair else '')
-        field=dict(id=key,context={k:request['stamp'][k] for k in CONTEXT_KEYS if k in request['stamp']},state=copy.deepcopy(request['state']),**metadata,validDomain=dict(kind='full-grid',evidence='Native full-system grid, all Cube nodes calculated.'),valuesBase64=base64.b64encode(values.astype('<f8',copy=False).tobytes()).decode('ascii'),valueEncoding='float64-le')
+        field=dict(id=key,context={k:request['stamp'][k] for k in CONTEXT_KEYS if k in request['stamp']},state=copy.deepcopy(request['state']),**metadata,validDomain=dict(kind='full-grid',evidence='Native full-system grid, all Cube nodes calculated.'),valuesBinary=packed_values(values))
         if role=='nto':field.update(pairIndex=pair['index'],spin=pair['spin'],side=request['side'],eigenvalue=pair['eigenvalue'],valueUnit='bohr^-3/2')
-        else:field.update(excitationRole=role,function='electron-density',functionLabel='Total hole density' if role=='hole-density' else 'Total excited electron density',valueUnit='bohr^-3',definitionEvidence=dict(kind='native-output',description='Multiwfn total (local + cross term) excitation '+role),source=dict(id=key,name=path.name,revision=_sha(path.read_bytes()),kind='generated-cube',producer='multiwfn'))
+        else:field.update(excitationRole=role,function='electron-density',functionLabel='Total hole density' if role=='hole-density' else 'Total excited electron density',valueUnit='bohr^-3',definitionEvidence=dict(kind='native-output',description='Multiwfn total (local + cross term) excitation '+role),source=dict(id=key,name=path.name,revision=sha256_file(path),kind='generated-cube',producer='multiwfn'))
         return field
+    def _retain_result(self,result,paths):
+        cached=dict(result)
+        for role,path in paths.items():
+            field={key:value for key,value in result[role].items() if key!='valuesBinary'}
+            self.fields[field['id']]=(path,field.get('source',{}).get('revision') or sha256_file(path))
+            self.field_owners[field['id']]=result['stamp']['analysisId']
+            cached[role]=field
+        self.results[result['stamp']['requestId']]=copy.deepcopy(cached)
     def _run(self,request):
         self._stamp(request['stamp']);self._check_cancel()
         if self.reasons:raise OrbitalError('excitation-prerequisite',' '.join(self.reasons))
         block=select_state(self.blocks,self.final,request['state'],self.context)
         if self.engine=='orca' and self.json_source:
             budget_companions(self.json_source,self.cis_source,self.metadata,self.resources['memoryBudgetBytes'],self.retained_memory_bytes())
-        geometry=validate_gaussian_wavefunction(self.output_text,block,self.metadata,self.wavefunction_raw.decode('utf-8',errors='replace')) if self.engine=='gaussian' else validate_orca_wavefunction(self.output_text,block,self.metadata,self.wavefunction_raw.decode('utf-8',errors='replace'),self.json_source,self.final)
+        geometry=validate_gaussian_wavefunction(self.output_text,block,self.metadata) if self.engine=='gaussian' else validate_orca_wavefunction(self.output_text,block,self.metadata,self.json_source,self.final)
         if self.engine=='gaussian' and not block['coefficients']:raise OrbitalError('excitation-coefficients','Selected printed state contains no usable raw configuration coefficients.')
         if self.engine=='gaussian' and not block['terminated']:raise OrbitalError('excitation-truncated-block','The selected coefficient block reaches end-of-file without a complete boundary; no derived result was fabricated.')
         operation=request['operation']
@@ -560,10 +589,7 @@ class ExcitationAnalysisService:
             if 'jsonRevision' in reference:result['provenance']['parameters']['referenceJsonRevision']=reference['jsonRevision']
         self._check_cancel()
         if operation=='nto':self.ntos[request['stamp']['requestId']]=(work,result)
-        else:
-            for role,name in [('hole','hole.cub'),('electron','electron.cub')]:
-                field=result[role];self.fields[field['id']]=(work/name,field);self.field_owners[field['id']]=request['stamp']['analysisId']
-        self.results[request['stamp']['requestId']]=copy.deepcopy(result);return result
+        self._retain_result(result,{} if operation=='nto' else {'hole':work/'hole.cub','electron':work/'electron.cub'});return result
 
     def _nto_field(self,request):
         generation=request.get('generationId');saved=self.ntos.get(generation)
@@ -584,15 +610,16 @@ class ExcitationAnalysisService:
             target=next(o for o in session.metadata['orbitals'] if o['multiwfnIndex']==pair[side]['nativeIndex'])
             generated=list(session.generate([target['id']],selected_only=True));self._check_cancel()
             if len(generated)!=1:raise OrbitalError('nto-field','NTO field did not complete.')
-            destination=work/('field-'+request['stamp']['requestId'].encode('utf-8').hex()+'.cub');cube=session.export_cube(target['id']).splitlines();cube[0]=f"Ester Studio NTO pair {pair['index']} {side}; eigenvalue={pair['eigenvalue']:.12g}; psi [bohr^-3/2]";destination.write_text('\n'.join(cube)+'\n',encoding='ascii')
+            destination=work/('field-'+request['stamp']['requestId'].encode('utf-8').hex()+'.cub')
+            session.write_cube(target['id'],destination,f"Ester Studio NTO pair {pair['index']} {side}; eigenvalue={pair['eigenvalue']:.12g}; psi [bohr^-3/2]")
             field=self._field(destination,request,'nto',pair);provenance=copy.deepcopy(result['provenance']);provenance['parameters'].update(fieldKind='signed-nto-wavefunction',gridDimensions=grid['dimensions'],gridOriginBohr=grid['originBohr'],gridAxesBohr=sum(grid['axesBohr'],[]))
             provenance['parameters'].update(ntoTransformationBackendVersion=provenance['backend']['version'],ntoTransformationThreads=provenance['backend']['threads'],fieldNativeMenu='5/4 signed NTO amplitude')
             provenance['backend']=dict(name='Multiwfn',version=session.backend['version'],threads=session.backend['threads'])
-            artifact=destination.read_bytes();provenance['rawArtifacts'].append(dict(role='nto-signed-cube',name=destination.name,revision=_sha(artifact),bytes=len(artifact)))
+            provenance['rawArtifacts'].append(dict(role='nto-signed-cube',name=destination.name,revision=sha256_file(destination),bytes=destination.stat().st_size))
             self._check_cancel();response=dict(stamp=request['stamp'],operation='nto-field',state=request['state'],field=field,provenance=provenance)
         finally:session.close();self.native_session=None
         self._check_cancel()
-        self.fields[field['id']]=(destination,field);self.field_owners[field['id']]=request['stamp']['analysisId'];self.results[request['stamp']['requestId']]=copy.deepcopy(response);return response
+        self._retain_result(response,{'field':destination});return response
 
     def handle(self,payload):
         command=payload.get('command');request=payload.get('request',payload)
@@ -610,11 +637,17 @@ class ExcitationAnalysisService:
             if result['stamp']['analysisId']!=request['stamp']['analysisId']:raise OrbitalError('excitation-context','Cached result belongs to a different analysis.')
             response=copy.deepcopy(result);response['stamp']=request['stamp']
             for key in ('field','hole','electron'):
-                if key in response:response[key]['context']={k:request['stamp'][k] for k in CONTEXT_KEYS if k in request['stamp']}
+                if key in response:
+                    field=response[key]; path,revision=self.fields[field['id']]
+                    if sha256_file(path)!=revision:raise OrbitalError('excitation-cube','The completed Cube changed before restore.')
+                    _,values=read_density_cube(path);field['valuesBinary']=packed_values(values)
+                    field['context']={k:request['stamp'][k] for k in CONTEXT_KEYS if k in request['stamp']}
             return response
         if command in ('export','export-cube'):
             self._stamp(request['stamp']);saved=self.fields.get(request.get('fieldId'))
             if saved is None:raise OrbitalError('excitation-pending','Requested field has not completed; export never recalculates.')
             if self.field_owners.get(request['fieldId'])!=request['stamp']['analysisId']:raise OrbitalError('excitation-context','Field export belongs to a different analysis instance.')
-            path,field=saved;return dict(stamp=request['stamp'],fieldId=field['id'],name=path.name,text=path.read_text(encoding='ascii'))
+            path,revision=saved
+            if sha256_file(path)!=revision:raise OrbitalError('excitation-cube','The completed Cube changed before export.')
+            return dict(stamp=request['stamp'],fieldId=request['fieldId'],**cube_export_file(path.name,path,revision))
         raise OrbitalError('excitation-command','Unsupported excitation service command.')

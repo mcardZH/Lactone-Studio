@@ -13,8 +13,8 @@ def _resolve_capability_path():
         return Path(sys._MEIPASS) / 'conformer-solvation.json'
     here = Path(__file__).resolve()
     for candidate in (
-        here.parents[2] / 'src/data/conformer-solvation.json',
         here.parent / 'conformer-solvation.json',
+        here.parents[2] / 'src/data/conformer-solvation.json',
         here.parents[1] / 'app/src/data/conformer-solvation.json',
     ):
         if candidate.is_file():

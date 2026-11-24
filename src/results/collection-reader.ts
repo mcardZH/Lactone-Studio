@@ -4,8 +4,9 @@ import type { Structure } from '../core/types';
 import { withAtomIds } from '../core/structures';
 import { assertResultNotAborted, type ResultFrameSummary, type ResultInputFile, type ResultReadOptions, type TrajectoryResult } from './contracts';
 import { abortableResultRead } from './xyz-reader';
+import { readPdbCollection } from './pdb-collection-reader';
 
-interface RecordText { text: string; line: number; incomplete?: boolean }
+interface RecordText { text: string; line: number }
 function records(text: string, extension: string): RecordText[] {
   const lines = text.split('\n');
   if (extension === 'sdf' || extension === 'mol') {
@@ -25,31 +26,19 @@ function records(text: string, extension: string): RecordText[] {
     if (!starts.length) return [{ text, line: 1 }];
     return starts.map((start, i) => ({ text: lines.slice(start, starts[i + 1] ?? lines.length).join('\n'), line: start + 1 }));
   }
-  const firstModel = lines.findIndex(line => /^MODEL\s/.test(line));
-  if (firstModel < 0) return [{ text, line: 1 }];
-  const prefix = lines.slice(0, firstModel).join('\n');
-  const out: RecordText[] = []; let start = -1;
-  for (let i = firstModel; i < lines.length; i++) {
-    if (/^MODEL\s/.test(lines[i])) {
-      if (start >= 0) out.push({ text: lines.slice(start, i).join('\n'), line: start + 1, incomplete: true });
-      start = i;
-    } else if (/^ENDMDL\b/.test(lines[i]) && start >= 0) {
-      out.push({ text: `${prefix}\n${lines.slice(start, i + 1).join('\n')}`, line: start + 1 }); start = -1;
-    }
-  }
-  if (start >= 0) out.push({ text: lines.slice(start).join('\n'), line: start + 1, incomplete: true });
-  return out;
+  return [{ text, line: 1 }];
 }
 
 /** Bounded single-file collection; its record order never implies physical time. */
 export async function readStructureCollection(file: ResultInputFile, options: ResultReadOptions = {}): Promise<TrajectoryResult[]> {
+  const extension = file.name.split('.').at(-1)?.toLowerCase() ?? '';
+  if (extension === 'pdb') return readPdbCollection(file, options);
   let closePromise: Promise<void> | undefined;
   const close = () => closePromise ??= Promise.resolve().then(() => file.close?.()).then(() => undefined);
   try {
     assertResultNotAborted(options.signal);
     if (!Number.isSafeInteger(file.size) || file.size < 0) throw new Error('结构集合文件字节数无效。');
-    const extension = file.name.split('.').at(-1)?.toLowerCase() ?? '';
-    if (!['sdf', 'mol', 'pdb', 'cif'].includes(extension)) throw new Error('结构集合仅支持SDF/MOL、PDB MODEL和CIF数据块。');
+    if (!['sdf', 'mol', 'cif'].includes(extension)) throw new Error('结构集合仅支持SDF/MOL、PDB MODEL和CIF数据块。');
     const bytes = await abortableResultRead(readResultSourceRange(file, 0, file.size, options.signal), options.signal);
     assertResultNotAborted(options.signal);
     if (bytes.length !== file.size) throw new Error('结构集合来源长度发生变化。');
@@ -72,29 +61,21 @@ export async function readStructureCollection(file: ResultInputFile, options: Re
       structures.push(identified);
       frames.push({ index, sourceStep: null, time: null, energy: null, convergence: [], sourceLine, label: structure.format });
     };
-    // For valid files use the parser's original whole-file result, preserving its
-    // generated MODEL labels, atom IDs, bonds, notes and provenance exactly.
+    // Keep rich MOL/SDF and CIF parser metadata on the existing path.
     let whole: Structure[] | undefined;
-    if (!entries.some(entry => entry.incomplete)) {
-      try { whole = parseStructures(text, file.name); } catch { /* Recover only a visibly reported complete prefix below. */ }
-    }
+    try { whole = parseStructures(text, file.name); } catch { /* Recover only a visibly reported complete prefix below. */ }
     if (whole) {
-      const sourceLines = entries.flatMap(entry => {
-        if (extension !== 'pdb') return [entry.line];
-        const alternates = new Set(entry.text.split('\n').filter(line => /^(ATOM  |HETATM)/.test(line)).map(line => line[16]?.trim()).filter(Boolean));
-        return Array.from({ length: Math.max(1, alternates.size) }, () => entry.line);
-      });
+      const sourceLines = entries.map(entry => entry.line);
       whole.forEach((structure, index) => append(structure, sourceLines.length === whole.length ? sourceLines[index] : 1));
     }
     for (const record of whole ? [] : entries) {
       assertResultNotAborted(options.signal);
       try {
-        if (record.incomplete) throw new Error('PDB MODEL缺少ENDMDL，模型截断。');
         const parsed = parseStructures(record.text, file.name);
         for (const structure of parsed) append(structure, record.line);
       } catch (error) {
         if (!structures.length) throw error;
-        status = record.incomplete || /截断|缺少M END|未闭合|不完整/.test(String(error)) ? 'incomplete' : 'failed';
+        status = /截断|缺少M END|未闭合|不完整/.test(String(error)) ? 'incomplete' : 'failed';
         messages.push(`第${record.line}行开始的记录未读取；保留此前${structures.length}个完整结构：${error instanceof Error ? error.message : String(error)}`);
         break;
       }

@@ -17,7 +17,8 @@
   flex:none; overflow:visible; scrollbar-gutter:auto;
 }
 .advanced-workflow-navigation{min-width:0}.advanced-workflow-current{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;min-height:round(up,calc(44px * var(--ui-font-scale,1)),1px);padding:6px 8px;box-sizing:border-box;font:600 var(--ui-primary-size,16px)/1.5 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}.advanced-workflow-current strong{font-weight:inherit}
-.advanced-configuration .input-settings-layout .shared-input-field.conformer-choice-field{flex:0 1 auto;max-width:100%;min-width:0}.advanced-configuration .conformer-choice-field>.shared-input-field-control{flex:0 1 auto;min-inline-size:0}.advanced-configuration .conformer-choice-field>.shared-input-field-control>select{width:auto;inline-size:auto;max-width:100%}
+.advanced-configuration .conformer-configuration-surface.input-settings-layout .shared-input-field.conformer-choice-field{flex:0 1 auto;flex-wrap:nowrap;max-width:100%;min-width:0}.advanced-configuration .conformer-choice-field>.shared-input-field-control{flex:0 1 auto;min-inline-size:0}.advanced-configuration .conformer-choice-field>.shared-input-field-control>select{width:auto;inline-size:auto;max-width:100%;field-sizing:content}
+.conformer-choice-field>.shared-input-field-label{flex:none;white-space:nowrap}
 .input-settings-layout.input-settings-surface .mixed-sampling-card{margin:0;background:#fff;min-width:0}
 .mixed-sampling-card>summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;cursor:pointer;list-style:none}
 .mixed-sampling-card>summary::before{content:'▸';flex:0 0 auto}.mixed-sampling-card[open]>summary::before{content:'▾'}
@@ -31,6 +32,8 @@
 .conformer-progress-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 .conformer-progress-row>p{margin:0}
 .conformer-equivalence-description{padding-inline-start:24px;min-width:0}.conformer-equivalence-description p{margin:0;overflow-wrap:anywhere}.conformer-stage-progress{display:grid;gap:8px}
+.conformer-inline-fact{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.conformer-clustering-row>.shared-input-checkbox{margin:0;white-space:nowrap}
 .conformer-run-error details{margin-top:6px}.conformer-run-error summary{cursor:pointer}.conformer-run-error pre{white-space:pre-wrap;overflow-wrap:anywhere;max-block-size:20em;overflow:auto;font:inherit}
 .conformer-manual-protection{display:grid;gap:8px;margin:0;padding:0;border:0;min-width:0}
 .advanced-coordinate-definition{min-width:0;border-block-start:1px solid var(--input-card-border);padding-block-start:var(--input-gap,8px)}

@@ -18,7 +18,18 @@ const physicalFrame = (frame: PesFrame, atoms: number) =>
 const supported: Readonly<Partial<Record<PesRun['request']['operation'], readonly string[]>>> = {
   scan: ['slsqp', 'sella-scan'], ts: ['prfo', 'rfo', 'qn', 'dimer', 'climb'], hessian: ['numeric'],
   path: ['ci-neb', 'de-gsm', 'fsm'], explore: ['se-gsm', 'afir'],
+  opt: ['lbfgs', 'fire2', 'sella-xyz', 'sella-ric'], irc: ['sella-irc'],
 };
+
+function retainedFinalFrame(run: PesRun): PesFrame | undefined {
+  const observation = record(run.result?.finalObservation);
+  const atoms = rows(record(run.result?.finalStructure)?.atoms).map(record);
+  const source = run.request.structure.atoms;
+  if (!observation || atoms.length !== source.length || !atoms.every((atom,index) =>
+    atom && atom.id === source[index].id && atom.element === source[index].element &&
+    [atom.x,atom.y,atom.z].every(value => typeof value === 'number' && Number.isFinite(value)))) return;
+  return { ...observation, positions: atoms.map(atom => [atom!.x,atom!.y,atom!.z]) } as unknown as PesFrame;
+}
 
 /** CALC observes the existing optimizer. Its receipt, not the selected menu,
  * identifies the method and software; no PES solver is inferred from its page. */
@@ -28,11 +39,7 @@ function collectOrdinaryOptimization(run: PesRun, output: CitationFact[]) {
       !['completed','stopped','failed','interrupted'].includes(run.status)) return;
   const provenance = result.provenance;
   if (provenance.coordinateUnit !== 'angstrom' || provenance.energyUnit !== 'hartree') return;
-  const finalObservation=record(result.finalObservation),finalAtoms=rows(record(result.finalStructure)?.atoms).map(record);
-  const finalFrame=finalObservation&&finalAtoms.length===request.structure.atoms.length&&finalAtoms.every((atom,index)=>
-    atom&&atom.id===request.structure.atoms[index].id&&atom.element===request.structure.atoms[index].element&&
-    [atom.x,atom.y,atom.z].every(value=>typeof value==='number'&&Number.isFinite(value)))
-    ?{...finalObservation,positions:finalAtoms.map(atom=>[atom!.x,atom!.y,atom!.z])} as unknown as PesFrame:undefined;
+  const finalFrame=retainedFinalFrame(run);
   const valid = [...result.frames,...(finalFrame?[finalFrame]:[])].filter(frame => physicalFrame(frame, request.structure.atoms.length));
   const fact = (frame: PesFrame, method: string, software: string | undefined, version: unknown, detail: unknown) => {
     const sourceId = `pes:${request.runIdentity.groupId}:${request.id}`;
@@ -74,7 +81,7 @@ function collectOrdinaryOptimization(run: PesRun, output: CitationFact[]) {
 }
 
 function collectRun(run: PesRun, output: CitationFact[]) {
-  if(run.request.operation==='opt'){collectOrdinaryOptimization(run,output);return;}
+  if(run.request.operation==='opt'&&supported.opt?.includes(run.request.algorithm)!==true){collectOrdinaryOptimization(run,output);return;}
   const { request, result, source } = run;
   if (!result || !['completed', 'stopped', 'failed', 'interrupted'].includes(run.status) ||
       !Object.hasOwn(supported, request.operation) || !supported[request.operation]?.includes(request.algorithm) ||
@@ -91,7 +98,8 @@ function collectRun(run: PesRun, output: CitationFact[]) {
   // and stage evidence without reading or inventing lazy XYZ coordinates.
   const indexed = pathRecords.filter(path => path.kind !== 'initial').flatMap(path => path.frames.filter(frame => count > 0 &&
     frame.phase !== 's-idpp' && frame.seriesId !== 's-idpp' && Number.isFinite(frame.energyHartree)));
-  const evidenceFrames: EvidenceFrame[] = [...result.frames.filter(frame => physicalFrame(frame, count)), ...indexed];
+  const finalOpt = request.operation==='opt' ? retainedFinalFrame(run) : undefined;
+  const evidenceFrames: EvidenceFrame[] = [...[...result.frames,...(finalOpt?[finalOpt]:[])].filter(frame => physicalFrame(frame, count)), ...indexed];
   const findFrame = (match: (frame: EvidenceFrame) => boolean) => evidenceFrames.find(match);
   const first = findFrame(() => true);
   if (!first) return;
@@ -120,6 +128,7 @@ function collectRun(run: PesRun, output: CitationFact[]) {
   const resident = provenance.engine === 'libxtb' && ['gfn0', 'gfn1', 'gfn2', 'gfnff'].includes(request.method)
     && record(provenance.engineIdentity)?.provider === 'libxtb' && positiveCount(provenance.libxtbEvaluations);
   const native = provenance.engine === 'native-xtb' && positiveCount(provenance.physicalEvaluations);
+  const gx = provenance.engine === 'g-xTB' && request.method === 'gxtb' && positiveCount(provenance.physicalEvaluations);
   if ((native || resident) && provenance.method === request.method) {
     const evidence = { physicalEvaluations: provenance.physicalEvaluations, engine: provenance.engine,
       engineIdentity: provenance.engineIdentity, libxtbEvaluations: provenance.libxtbEvaluations,
@@ -131,6 +140,27 @@ function collectRun(run: PesRun, output: CitationFact[]) {
       || resident && solvation.sourceField === 'libxtb:xtb_setSolvent') && text(solvation.solvent)) {
       add('solvation', 'alpb', first, solvation, 'PES 实际 xTB 输出或成功库求值确认的 ALPB 溶剂模型', 'xTB', provenance.version);
     }
+    if(provenance.provider==='tblite')dependency('tblite',provenance.tbliteVersion,first,evidence,'固定晶胞 OPT 使用 tblite 计算能量和梯度');
+  }
+  if(gx){
+    const evidence={physicalEvaluations:provenance.physicalEvaluations,engineIdentity:provenance.engineIdentity};
+    add('method','g-xtb',first,evidence,'使用外部 g-xTB 求值','g-xTB',provenance.gxtbRelease);
+    add('software','g-xTB',first,evidence,'实际调用的外部 g-xTB','g-xTB',provenance.gxtbRelease);
+  }
+  const engine=text(provenance.engine),sha=text(provenance.weightSha256),netCalls=record(provenance.netCalls);
+  if(engine&&sha&&/^[a-f0-9]{64}$/i.test(sha)&&Object.values(netCalls??{}).some(positiveCount)&&
+    (request.method===engine||request.method==='aimnet2-auto'&&['aimnet2','aimnet2-nse'].includes(engine))){
+    const name=engine==='orbmol-v2'?'orb-models':'AIMNet2';
+    add('method',engine,first,{weightSha256:sha,device:provenance.device,netCalls},'使用已核对权重的神经网络势',name,provenance.version);
+  }
+  if(request.operation==='irc'&&provenance.optimizer==='sella-irc'){
+    const stepped=findFrame(frame=>frame.phase==='irc'&&positiveCount(frame.step));
+    if(stepped)dependency('Sella',provenance.sellaVersion,stepped,{optimizer:provenance.optimizer},'由 Sella 追踪 IRC 或下坡路径');
+  }
+  if(request.operation==='opt'&&positiveCount(provenance.acceptedSteps)){
+    const optimizer=record(provenance.optimizer),name=text(optimizer?.name);
+    if(name==='sella-xyz'||name==='sella-ric')dependency('Sella',optimizer?.version??provenance.sellaVersion,first,{optimizer},'由 Sella 执行几何优化');
+    if(name==='fire2')method('fire2',first,{optimizer},'用 FIRE2 更新几何');
   }
 
   if (request.operation === 'scan' && provenance.optimizer === 'scipy-slsqp') {
@@ -161,7 +191,8 @@ function collectRun(run: PesRun, output: CitationFact[]) {
   }
   const hessian = record(result.hessian);
   if (hessian && (hessian.derivativeMethod === 'central-unprojected-physical-gradient-difference' ||
-      hessian.derivativeMethod === 'native-xtb-unprojected-hessian.out') && Array.isArray(result.frequencies)) {
+      hessian.derivativeMethod === 'native-xtb-unprojected-hessian.out' ||
+      hessian.derivativeMethod === 'net-autograd-full') && Array.isArray(result.frequencies)) {
     const harmonic = findFrame(frame => frame.id === hessian.frameId);
     if (harmonic) {
       const evidence = { derivativeMethod: hessian.derivativeMethod, displacementBohr: hessian.displacementBohr };

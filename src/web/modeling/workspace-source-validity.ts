@@ -23,6 +23,10 @@ export function workspaceRetainedSourceGeometryMatches(original:AdvancedFrameSou
  * geometry. Display fitting/preview remains untouched; other frames keep their
  * own immutable protection rather than inheriting the working document's. */
 export function workspaceCurrentProtectionDocument(observed:ModelDocument,current:ModelDocument,scientificStructure:Structure=observed.draft.structure):ModelDocument{
- if(observed.id!==current.id||workspaceSourceGeometryKey(scientificStructure)!==workspaceSourceGeometryKey(current.draft.structure))return observed;
+ if(observed.id!==current.id||observed.sharedConstraints===current.sharedConstraints)return observed;
+ const owner=current.draft.structure;
+ if(scientificStructure!==owner&&(scientificStructure.atoms.length!==owner.atoms.length||scientificStructure.atoms.some((atom,index)=>{
+  const source=owner.atoms[index];return atom.id!==source.id||atom.element!==source.element||atom.x!==source.x||atom.y!==source.y||atom.z!==source.z;
+ })||workspaceSourceGeometryKey(scientificStructure)!==workspaceSourceGeometryKey(owner)))return observed;
  return{...observed,sharedConstraints:current.sharedConstraints};
 }

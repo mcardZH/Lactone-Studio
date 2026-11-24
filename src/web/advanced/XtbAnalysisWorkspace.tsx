@@ -120,7 +120,9 @@ export default function XtbAnalysisWorkspace(p:XtbAnalysisWorkspaceProps){
  const hostFor=(id:string)=>{let value=hostRefs.current.get(id);if(!value){value=node=>setToolHosts(previous=>previous[id]===node?previous:{...previous,[id]:node});hostRefs.current.set(id,value);}return value;};
  const canvasFor=(id:string,document:PostprocessDocument,preview:boolean)=>{const key=JSON.stringify([id,document.id,document.result.id,preview]);let value=canvasCallbacks.current.get(key);if(!value){value=canvas=>{
   const current=currentViewCanvasKeys.current.get(id);if(current!==key&&(canvas!==null||current!==undefined))return;
-  latest.current.onCanvas(id,canvas&&preview?{...canvas,displayOnlySourcePreview:true,controls:undefined,trajectoryPlayback:undefined}:canvas);
+  latest.current.onCanvas(id,canvas&&(preview
+    ? {...canvas,displayOnlySourcePreview:true,controls:undefined,trajectoryPlayback:undefined}
+    : {...canvas,observeResultGeometry:true}));
  };canvasCallbacks.current.set(key,value);}return value;};
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;captureEpoch.current++;};},[]);
  useEffect(()=>{

@@ -18,6 +18,8 @@ import type { FirstRunLicenseBridge } from './first-run-license';
 import type { WorkbenchPreferences, WorkbenchPreferenceSnapshot, WorkbenchPreferenceUpdate } from './workbench-layout';
 import type { CopiedFragmentPlacement, WorkspaceDesktopBridge, WorkspaceMemberAuth } from './workspace-contracts';
 import type { PortableDesktopBridge } from './portable-contracts';
+import type { ConformerRecoveryBridge } from './advanced/conformer-recovery';
+import type { SurfaceCubeAssetRegisterRequest, SurfaceCubeReceipt } from '../results/surface-contracts';
 import type { EmpiricalBondPerceptionParameters } from '../core/bond-perception-parameters';
 import type { StructureTransformCandidate } from '../core/modeling/contracts';
 import type { CrystalRequest, CrystalResult } from './crystal-contracts';
@@ -74,6 +76,7 @@ export type ModelCommand =
   | { type: 'break-bond'; atomIds: [AtomId, AtomId]; image?: Vector3 }
   | { type: 'transform-fragment'; atomIds: AtomId[]; delta?: Vector3; rotation?: { axis: Vector3; degrees: number; pivot: Vector3 }; unwrapPeriodic?: boolean }
   | { type: 'manual-coordinates'; atoms: { id: AtomId; position: Vector3 }[]; documentId: string; expectedRevision: number }
+  | { type: 'apply-optimization-geometry'; structure: Structure; documentId: string; expectedRevision: number }
   | { type: 'infer-bonds'; mode: BondPerceptionMode; aggression: BondAggression; perceivedBonds?: Bond[]; perceivedIssues?: Structure['bondPerceptionIssues']; stamp?: DocumentStamp }
   | { type: 'replace-structure'; structure: Structure; assignments?: Partial<BuilderAssignments> }
   | { type: 'replace-document'; fragment: FragmentSnapshot; electronicState?: 'new-source' }
@@ -147,7 +150,7 @@ export interface ModelStore {
   stamp(movableAtomIds?: AtomId[]): DocumentStamp;
   /** Register an MD-only snapshot permission without changing editor freezes. */
   stampNativeMD(policy: NativeMDPolicy): DocumentStamp;
-  acceptCoordinates(result: ChemistryResult): ModelDocument;
+  acceptCoordinates(result: ChemistryResult, sourceStereo?: TwoDStereoSource): ModelDocument;
   acceptXtbCoordinates(result:XtbCoordinateResult,sourceDocument?:ModelDocument,optimizedBonds?:ChemistryResult):ModelDocument;
   acceptXtbStoppedCoordinates(result:XtbStoppedCoordinateResult,sourceDocument?:ModelDocument):ModelDocument;
   publishBondOrders(result:XtbCoordinateResult,stamp:DocumentStamp,runId:string):ModelDocument;
@@ -156,6 +159,8 @@ export interface ModelStore {
   endTransaction(): void;
   cancelTransaction(): void;
   synchronizeContext(assignments: BuilderAssignments, coordinates: ModelCoordinate[], scope?: 'gaussian' | 'orca'): void;
+  /** Mirror confirmed task-owned freezes across a member without creating a local edit. */
+  synchronizeSharedConstraints?(constraints: SharedModelConstraints): void;
   synchronizeGaussianBasisState?(state: GaussianBasisState, assignments?: BuilderAssignments['basis']): void;
   getContext(scope: 'gaussian' | 'orca'): { assignments: BuilderAssignments; coordinates: ModelCoordinate[] } | undefined;
   /** Mirrors complete object-bound task rows without enabling them or adding a form-edit Undo step. */
@@ -254,16 +259,12 @@ export interface ModelInteractionPort {
 }
 
 export type ForcefieldChoice = 'auto' | 'MMFF94' | 'MMFF94s' | 'UFF';
-export type ChemistryOperation = 'generate3d' | 'optimize' | 'perceive-bonds' | 'convert';
+export type ChemistryOperation = 'generate3d' | 'perceive-bonds' | 'convert';
 export interface ChemistryRequest {
   /** Original 2D stereo source for this generation, independent of the staged H coordinates. */
   sourceStereo?: TwoDStereoSource;
-  optimizationPool?: { stageId: string; candidateId: string };
-  /** Conformer invocation only: use the selected backend's actual default. */
-  optimizationStepPolicy?: 'native-default';
   stamp: DocumentStamp; operation: ChemistryOperation; structure: Structure;
-  runIdentity?: { taskId: string; runId: string };
-  movableAtomIds: AtomId[]; forcefield?: ForcefieldChoice; steps?: number;
+  movableAtomIds: AtomId[];
   /** Explicit user deadline; omission does not impose a scientific total cutoff. */
   maxWallTimeSeconds?: number;
   /** Requested runtime budget; the trusted host returns the actual grant. */
@@ -279,21 +280,28 @@ export interface ChemistryRequest {
 export interface ChemistryResult {
   stamp: DocumentStamp; operation: ChemistryOperation; structure: Structure;
   movableAtomIds: AtomId[]; engine: string; engineVersion: string;
-  forcefield?: string; before?: number; after?: number; unit?: string;
-  optimizer?: 'rdkit-minimize' | 'scipy-slsqp';
-  /** The actual native bound, when reported; not a customer override. */
-  maxSteps?: number;
-  converged?: boolean; warnings: string[]; text?: string; format?: ModelFormat;
+  warnings: string[]; text?: string; format?: ModelFormat;
   resourceGrant?: ComputeResourceEvidence;
   /** Explicit acknowledgement: old native implementations cannot silently satisfy import inference. */
   bondPerceptionPolicy?: 'coordinate-import' | 'composite-v1';
   bondPerceptionSummary?: { method: 'empirical' | 'gfn2-assisted'; bondCount: number; coordinationCount: number; evidenceCount: number; conflictCount: number; rdkitComponentCount: number; fallbackComponentCount: number };
-  constraintResiduals?: { type: 'B' | 'A' | 'D'; id?: string; target: number; actual: number; residual: number; unit: 'angstrom' | 'radian' | 'degree' }[];
 }
+export interface EmpiricalFrameBondReceipt extends Pick<ChemistryResult,
+  'operation' | 'engine' | 'engineVersion' | 'warnings' | 'bondPerceptionPolicy' | 'bondPerceptionSummary'> {
+  kind: 'empirical-frame-graph-v1';
+  jobId: string;
+  documentId: string;
+  revision: number;
+  bonds: NonNullable<Structure['bonds']>;
+  bondPerceptionIssues?: Structure['bondPerceptionIssues'];
+}
+export type EmpiricalFrameBondResult = EmpiricalFrameBondReceipt & Pick<ChemistryResult, 'stamp' | 'movableAtomIds'>;
 export interface ChemistryJob { promise: Promise<ChemistryResult>; cancel(): void }
+export interface EmpiricalFrameBondJob { promise: Promise<ChemistryResult | EmpiricalFrameBondResult>; cancel(): void }
 export interface ChemistryPort {
   capabilities(): Promise<{ engine: string; native: boolean; operations: ChemistryOperation[] }>;
   start(request: ChemistryRequest): ChemistryJob;
+  startEmpiricalFrame?(request: ChemistryRequest): EmpiricalFrameBondJob;
 }
 
 export type ModelFormat = 'sciyue' | 'gjf' | 'com' | 'inp' | 'xyz' | 'extxyz' | 'mol' | 'sdf' | 'pdb' | 'cif' | 'poscar';
@@ -310,7 +318,7 @@ export interface AnalysisWindowBounds { x?: number; y?: number; width?: number; 
 export interface AnalysisWindowLease { leaseId: string; target: string; instanceId: string; expiresAt: number }
 export interface AnalysisWindowEvent {
   leaseId: string; instanceId: string; seq: number;
-  kind: 'opened' | 'closed' | 'focus' | 'blur' | 'geometry';
+  kind: 'opened' | 'closed' | 'focus' | 'blur' | 'geometry' | 'dock-requested';
   bounds?: AnalysisWindowBounds;
   reason?: 'user' | 'released' | 'expired' | 'owner-closed' | 'renderer-gone' | 'unsafe-child';
 }
@@ -321,7 +329,12 @@ export interface RuntimeDisplayBridge {
   updateRuntimeModelDisplay(request: { baseRevision: number; display: DisplaySettings }): Promise<RuntimeModelDisplayUpdate>;
   onRuntimeModelDisplay(listener: (snapshot: RuntimeModelDisplaySnapshot) => void): () => void;
 }
-export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesktopBridge>, Partial<PortableDesktopBridge>, Partial<RuntimeDisplayBridge>, Partial<AdvancedPathBridge>, Partial<ConformerSamplingBridge>, Partial<AissBridge>, Partial<OcrBridge>, Partial<AdvancedOutputBridge>, Partial<SurfaceDisplayPreferencesBridge>, Partial<ComputeResourcePreferencesBridge>, Partial<FirstRunLicenseBridge>, ProjectCompanionBridge {
+export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesktopBridge>, Partial<PortableDesktopBridge>, Partial<RuntimeDisplayBridge>, Partial<AdvancedPathBridge>, Partial<ConformerSamplingBridge>, Partial<ConformerRecoveryBridge>, Partial<AissBridge>, Partial<OcrBridge>, Partial<AdvancedOutputBridge>, Partial<SurfaceDisplayPreferencesBridge>, Partial<ComputeResourcePreferencesBridge>, Partial<FirstRunLicenseBridge>, ProjectCompanionBridge {
+  beginBinaryAsset?(expectedBytes?:number):Promise<{id:string}>;
+  appendBinaryAsset?(id:string, bytes:ArrayBuffer|Uint8Array):Promise<{size:number}>;
+  sealBinaryAsset?(id:string):Promise<{size:number;sha256?:string}>;
+  readBinaryAsset?(id:string,offset:number,length:number):Promise<ArrayBuffer>;
+  releaseBinaryAsset?(id:string):Promise<void>;
   onTwoDPointerActivation?(listener: () => void): () => void;
   twoDPointerSettings?(): Promise<{ doubleClickMs: number; doubleClickWidth: number; doubleClickHeight: number; source: 'win32' | 'platform-default' }>;
   taskSystemRequest?(request:{requestId:string;command:string;input:unknown}):Promise<unknown>;
@@ -343,6 +356,7 @@ export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesk
   openModelWindow(request?:WorkspaceMemberAuth): Promise<string>;
   prepareAnalysisWindow?(request: { instanceId: string; title: string; bounds?: AnalysisWindowBounds }): Promise<AnalysisWindowLease>;
   releaseAnalysisWindow?(request: { leaseId: string }): Promise<{ closed: boolean }>;
+  moveWorkbenchFloat?(request: { leaseId: string; x: number; y: number }): Promise<void>;
   onAnalysisWindowEvent?(listener: (event: AnalysisWindowEvent) => void): () => void;
   readClipboard(): Promise<ClipboardPayload | null>;
   writeClipboard(payload: ClipboardPayload): Promise<void>;
@@ -381,6 +395,7 @@ export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesk
   chooseSavePath(request: { name: string; formats: FormatDescriptor[]; defaultFormat?:ModelFormat }): Promise<SaveSelection>;
   writeChosenFile(request: { token: string; text: string }): Promise<{ status: 'saved'; path: string }>;
   runChemistry(request: ChemistryRequest, jobId: string): Promise<ChemistryResult>;
+  runEmpiricalFrameBonds?(request: ChemistryRequest, jobId: string): Promise<EmpiricalFrameBondReceipt>;
   cancelChemistry(jobId: string): Promise<void>;
   startDynamics?(request: DynamicsRequest, sessionId: string): Promise<void>;
   commandDynamics?(sessionId: string, command: DynamicsCommand): Promise<void>;
@@ -399,8 +414,8 @@ export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesk
   openGxtbDownload?():Promise<{opened:boolean}>;
   onGxtbConfigurationChanged?(listener:(value:import('./xtb/contracts').GxtbBackendInfo)=>void):()=>void;
   orbitalBackendInfo?():Promise<OrbitalBackendInfo>;
-  chooseOrbitalBackend?():Promise<OrbitalBackendInfo>;
-  chooseMultiwfnWorkDirectory?(): Promise<OrbitalBackendInfo>;
+  chooseOrbitalBackend?(request?:{directory?:string;mcpRequestId?:string}):Promise<OrbitalBackendInfo>;
+  chooseMultiwfnWorkDirectory?(request?:{directory?:string;mcpRequestId?:string}): Promise<OrbitalBackendInfo>;
   resetMultiwfnWorkDirectory?(): Promise<OrbitalBackendInfo>;
   analyzeWavefunction?(sessionId:string,request:WavefunctionAnalysisRequest,progressIdentity?:MultiwfnProgressIdentity):Promise<WavefunctionAnalysisResult>;
   cancelWavefunctionAnalysis?(sessionId:string):Promise<void>;
@@ -414,6 +429,7 @@ export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesk
   commandOrbitals?(sessionId:string,command:OrbitalCommand,progressIdentity?:MultiwfnProgressIdentity):Promise<unknown>;
   readOrbitalField?(sessionId:string,orbitalKey:string):Promise<OrbitalField>;
   exportOrbitalCube?(sessionId:string,orbitalKey:string):Promise<string>;
+  saveOrbitalCube?(sessionId:string,orbitalKey:string):Promise<{cancelled:boolean}>;
   onOrbitalEvent?(listener:(event:OrbitalBackendEvent)=>void):()=>void;
   surfaceCapabilities?(sessionId?: string): Promise<readonly SurfaceCapability[]>;
   openSurfaceSession?(request: SurfaceOpenRequest): Promise<SurfaceSessionInfo>;
@@ -431,6 +447,10 @@ export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesk
   importSurfaceCube?(file?: File): Promise<SurfaceImportedCube | null>;
   registerSurfaceCube?(request: SurfaceCubeRegisterRequest): Promise<SurfaceImportedCube>;
   readRegisteredSurfaceCube?(token: string): Promise<SurfaceImportedCube>;
+  registerSurfaceCubeAsset?(request:SurfaceCubeAssetRegisterRequest):Promise<SurfaceCubeReceipt>;
+  describeRegisteredSurfaceCube?(token:string):Promise<SurfaceCubeReceipt>;
+  readRegisteredSurfaceCubePage?(token:string,offset:number,length:number):Promise<ArrayBuffer>;
+  saveOwnedSurfaceCube?(request:{name:string;assetId:string;domainAssetId?:string}):Promise<{cancelled:boolean;path?:string;domainPath?:string}>;
   releaseSurfaceCube?(token: string): Promise<{ released: boolean }>;
   exportSurfaceCube?(sessionId: string, request: SurfaceCubeExportRequest): Promise<{ cancelled: boolean; path?: string; domainPath?: string }>;
   exportRegisteredSurfaceCube?(request: SurfaceCubeSourceRef): Promise<{ cancelled: boolean; path?: string; domainPath?: string }>;

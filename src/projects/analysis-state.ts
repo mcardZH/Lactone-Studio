@@ -58,6 +58,10 @@ function markRestored(value: unknown): void {
 export function isRestoredAnalysisData(value: unknown): boolean { return !!value && typeof value === 'object' && restoredData.has(value); }
 export function markRestoredAnalysisData<T>(value: T): T { markRestored(value); return value; }
 export interface AnalysisOriginalCube { name: string; originalBytes: Uint8Array; sourceRevision: string; fieldMetadata: Omit<SurfaceScalarField, 'values'> }
+export interface AnalysisOriginalCubeSource extends Omit<AnalysisOriginalCube, 'originalBytes'> {
+  bytes: number;
+  readRange(offset: number, length: number): Promise<Uint8Array>;
+}
 export const analysisOriginalCubeKey = (analysisId: string, context: SurfaceContext, fieldId: string) => `cube-source:${JSON.stringify([context.documentId, analysisId, context.sourceId, context.sourceRevision, fieldId])}`;
 export async function captureAnalysisOriginalSources(scope: AnalysisProjectScope): Promise<{ key: string; source: AnalysisOriginalCube }[]> {
   const keys = new Set([...retained.keys(), ...lazy.keys()]); const result: { key: string; source: AnalysisOriginalCube }[] = [];
@@ -122,12 +126,26 @@ async function decode(value: Encoded, reader: ProjectAssetReader): Promise<unkno
   if (value.$sy === 'number') return value.value === '-0' ? -0 : Number(value.value);
   if (value.$sy === 'bigint') return BigInt(value.value as string);
   if (value.$sy === 'buffer') {
-    const bytes = await reader.read(value.assetId as string);
-    if (bytes.byteLength !== value.bytes) throw new Error('项目分析格点字节长度不符。');
-    const buffer = bytes.slice().buffer;
+    const assetId=value.assetId as string, length=value.bytes;
+    if(typeof length!=='number'||!Number.isSafeInteger(length)||length<0)throw new Error('项目分析格点字节长度无效。');
+    let buffer: ArrayBufferLike;
+    if(reader.readRange&&length>0&&value.role==='grid'){
+      buffer=value.type==='Float64Array'&&globalThis.crossOriginIsolated&&typeof SharedArrayBuffer==='function'?new SharedArrayBuffer(length):new ArrayBuffer(length);
+      const output=new Uint8Array(buffer), chunk=64*1024;
+      for(let offset=0;offset<length;offset+=chunk){
+        const page=await reader.readRange(assetId,offset,Math.min(chunk,length-offset),length);
+        if(page.byteLength!==Math.min(chunk,length-offset))throw new Error('项目分析格点分页长度不符。');
+        output.set(page,offset);
+      }
+    }else{
+      const bytes=await reader.read(assetId);
+      if(bytes.byteLength!==length)throw new Error('项目分析格点字节长度不符。');
+      buffer=bytes.slice().buffer;
+    }
     if (value.type === 'ArrayBuffer') return buffer;
     const ctor = typed[value.type as keyof typeof typed];
     if (!ctor || buffer.byteLength % ctor.BYTES_PER_ELEMENT) throw new Error('项目分析格点类型或长度无效。');
+    if (!(buffer instanceof ArrayBuffer)) return new Float64Array(buffer);
     return new ctor(buffer);
   }
   if (!Array.isArray(value.values)) throw new Error('项目分析结果索引无效。');
@@ -162,6 +180,36 @@ async function load(key: string): Promise<unknown> {
   return entry.pending;
 }
 export async function loadAnalysisProjectSnapshot<T>(key: string): Promise<T | undefined> { return await load(key) as T | undefined; }
+
+/** Read the archived source by its existing asset reference. Leave the lazy
+ * entry intact so a later save can retain the original without materializing it. */
+export async function openAnalysisOriginalCube(key: string): Promise<AnalysisOriginalCubeSource | undefined> {
+  const entry = lazy.get(key);
+  if (!entry) {
+    const value = retained.get(key) as AnalysisOriginalCube | undefined;
+    if (!value) return undefined;
+    const { originalBytes, ...metadata } = value;
+    if (!(originalBytes instanceof Uint8Array)) throw new Error('项目 Cube 原始来源字段无效。');
+    return { ...metadata, bytes: originalBytes.byteLength, readRange: async (offset, length) => originalBytes.subarray(offset, offset + length) };
+  }
+  const encoded = JSON.parse(text.decode(await entry.reader.read(entry.assetId))) as Encoded;
+  if (!encoded || typeof encoded !== 'object' || Array.isArray(encoded) || encoded.$sy !== 'object' || !Array.isArray(encoded.values)) throw new Error('项目 Cube 来源索引无效。');
+  const values = encoded.values as [string, Encoded][];
+  const original = values.find(([key]) => key === 'originalBytes')?.[1];
+  if (!original || typeof original !== 'object' || Array.isArray(original) || original.$sy !== 'buffer' || original.type !== 'Uint8Array'
+    || typeof original.assetId !== 'string' || typeof original.bytes !== 'number' || !Number.isSafeInteger(original.bytes) || original.bytes < 1) throw new Error('项目 Cube 原件引用无效。');
+  const { assetId, bytes } = original;
+  const metadata = await decode({ ...encoded, values: values.filter(([key]) => key !== 'originalBytes') }, entry.reader) as Omit<AnalysisOriginalCube, 'originalBytes'>;
+  if (lazy.get(key) !== entry) throw new Error('项目 Cube 来源所属的快照已更改。');
+  let complete: Promise<Uint8Array> | undefined;
+  return { ...metadata, bytes, async readRange(offset, length) {
+    if (lazy.get(key) !== entry) throw new Error('项目 Cube 来源所属的快照已更改。');
+    if (entry.reader.readRange) return entry.reader.readRange(assetId, offset, length, bytes);
+    const originalBytes = await (complete ??= entry.reader.read(assetId));
+    if (originalBytes.byteLength !== bytes) throw new Error('项目 Cube 原件长度与索引不符。');
+    return originalBytes.subarray(offset, offset + length);
+  } };
+}
 function decodeCitationMetadata(value:Encoded):unknown {
  if(!value||typeof value!=='object')return value;if(Array.isArray(value))return value.map(decodeCitationMetadata);
  if(value.$sy==='buffer'||value.$sy==='undefined')return undefined;if(value.$sy==='number')return Number(value.value);
@@ -221,11 +269,13 @@ export function registerAnalysisProjectSnapshot(key: string, owner: Owner): () =
     if(owner.citationMetadata)retainedCitationMetadata.set(key,analysisCitationMetadata(owner.citationMetadata()));
     if (!loading.has(key) && !lazy.has(key)) {
       try {
+        // A replacement view has a new native lease, just like a reopened project.
+        const retain = (snapshot: unknown) => markRestoredAnalysisData(freeze(snapshot, key));
         const value = owner.capture();
         if (value instanceof Promise) {
-          const pending = trackAnalysisPromise(value.then(snapshot => freeze(snapshot, key))); retained.set(key, pending);
+          const pending = trackAnalysisPromise(value.then(retain)); retained.set(key, pending);
           void pending.then(snapshot => { if (retained.get(key) === pending) retained.set(key, snapshot); }, error => owner.onError?.(error instanceof Error ? error.message : String(error)));
-        } else retained.set(key, freeze(value, key));
+        } else retained.set(key, retain(value));
       } catch (error) { const failed = trackAnalysisPromise(Promise.reject(error)); void failed.catch(() => {}); retained.set(key, failed); owner.onError?.(error instanceof Error ? error.message : String(error)); }
     }
     owners.delete(key);

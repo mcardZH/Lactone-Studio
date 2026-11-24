@@ -63,6 +63,8 @@ export function conformerSamplingProtectionOptions(options:AdvancedSamplingTaskO
     }
     if(definition.sphere)native.sphere={kind:'polynomial',centerAngstrom:[...definition.sphere.centerAngstrom],radiusAngstrom:definition.sphere.radiusAngstrom,exponent:30};
     if(native.core||native.sphere)result.nativeProtection=native;
+  }else if (getConformerSamplingCapability(result).driver === 'ase-bussi') {
+    result.sphere = structuredClone(definition.sphere);
   }else{
     if(protection.softProtectedAtomIds.length)result.coreProtection={...structuredClone(definition.coreProtection),atomIds:[...protection.softProtectedAtomIds],
       ...(definition.coreProtection?.forceConstantEVPerAngstrom2!==undefined?{forceConstantEVPerAngstrom2:definition.coreProtection.forceConstantEVPerAngstrom2}:{})};

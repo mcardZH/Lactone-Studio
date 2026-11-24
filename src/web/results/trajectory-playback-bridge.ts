@@ -3,13 +3,15 @@ import type {PlaybackDirection,PlaybackMode} from '../../results/playback';
 import {getPreparedTrajectoryFrame,registerPreparedTrajectoryProjection,type PreparationSnapshot} from '../../results/prepared-trajectory';
 import type {PlaybackCollection,PlaybackCollectionIdentity} from '../../results/playback-collection';
 import type {PlaybackOverlayControlsProps} from '../MultiframeDisplayControls';
+import type {ViewportRenderIdentity} from '../modeling/render/render-completion';
 export type PlaybackOverlayPresentation=Omit<PlaybackOverlayControlsProps,'onToggle'|'onFitAtoms'|'onReference'|'onReferenceIndex'|'onCurrentReference'|'onCancelCenter'>;
 
 /** Pure view state; the owning TrajectoryWorkspace keeps the only timer. */
 export interface TrajectoryPlaybackState {
-  resultId:string;count:number;index:number;playing:boolean;busy:boolean;disabled:boolean;
+  resultId:string;count:number;index:number;requestedIndex?:number;playing:boolean;busy:boolean;disabled:boolean;seekDisabled?:boolean;
   fps:number;direction:PlaybackDirection;mode:PlaybackMode;range:TrajectoryRange;endpointPauseMs:number;
   projectionKey?:string;
+  sourceOrder?:readonly (number|undefined)[];
   collectionIdentity?:PlaybackCollectionIdentity;frameId?:string;targets?:PlaybackCollection['targets'];overlay?:PlaybackOverlayPresentation;
   preparation?:PreparationSnapshot|null;loading?:boolean;loadCancelled?:boolean;loadFailed?:boolean;silentLoading?:boolean;
 }
@@ -24,7 +26,13 @@ type BaseTrajectoryPlaybackCommand =
 export type PlaybackDisplayCommand={action:'seek-target';kind:'ts'|'ci'}|{action:'overlay-toggle'|'overlay-current-reference'|'center-cancel'}|{action:'overlay-atoms';value:'heavy'|'all'}|{action:'overlay-reference';kind:string}|{action:'overlay-reference-index';index:number};
 export type TrajectoryPlaybackCommand=BaseTrajectoryPlaybackCommand|PlaybackDisplayCommand;
 export type PublicTrajectoryPlaybackCommand=TrajectoryPlaybackCommand;
-export interface TrajectoryPlaybackBridge {state:TrajectoryPlaybackState;dispatch(command:PublicTrajectoryPlaybackCommand,intent?:'workflow'):void}
+export interface TrajectoryPlaybackBridge {
+  state:TrajectoryPlaybackState;
+  dispatch(command:PublicTrajectoryPlaybackCommand,intent?:'workflow'):void;
+  readScene?():ViewportRenderIdentity|undefined;
+  readNavigation?():Readonly<import('../../results/opt-playback').PlaybackNavigation>|undefined;
+  routeFrame?(source:TrajectoryResult,index:number):{resultId:string;current():boolean}|undefined;
+}
 /** A playback projection maps visible positions to immutable source ordinals. */
 export function trajectoryFrameOrder(count:number,order?:readonly number[]):readonly number[]{
   if(!order)return Array.from({length:count},(_,index)=>index);
@@ -53,11 +61,11 @@ export function trajectoryOverlayControlCallbacks(dispatch:(command:PublicTrajec
  onReferenceIndex:(index:number)=>dispatch({action:'overlay-reference-index',index}),onCurrentReference:()=>dispatch({action:'overlay-current-reference'}),onCancelCenter:()=>dispatch({action:'center-cancel'}),
 };}
 export function playbackOverlayPresentation(value:PlaybackOverlayControlsProps):PlaybackOverlayPresentation{
- const {enabled,busy,disabled,total,fitAtoms,referenceKind,referenceIndex,initialAvailable,centerAvailable,centerReason,centerBusy,centerProgress,centerError,meanRmsd,error}=value;
- return{enabled,busy,disabled,total,fitAtoms,referenceKind,referenceIndex,initialAvailable,centerAvailable,centerReason,centerBusy,centerProgress,centerError,meanRmsd,error};
+ const {enabled,busy,disabled,fixedCellView,total,fitAtoms,referenceKind,referenceIndex,initialAvailable,centerAvailable,centerReason,centerBusy,centerProgress,centerError,meanRmsd,error}=value;
+ return{enabled,busy,disabled,fixedCellView,total,fitAtoms,referenceKind,referenceIndex,initialAvailable,centerAvailable,centerReason,centerBusy,centerProgress,centerError,meanRmsd,error};
 }
 /** IPC snapshots contain data only; callbacks belong to the owning view. */
 export function trajectoryPlaybackState(value:import('./TrajectoryControls').TrajectoryControlsProps):Omit<TrajectoryPlaybackState,'resultId'>{
- const {count,index,playing,busy,disabled=false,fps,direction,mode,range,endpointPauseMs=0,preparation,loading,loadCancelled,loadFailed,silentLoading,targets}=value;
- return{count,index,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,preparation,loading,loadCancelled,loadFailed,silentLoading,targets};
+ const {count,index,requestedIndex,playing,busy,disabled=false,seekDisabled,fps,direction,mode,range,endpointPauseMs=0,preparation,loading,loadCancelled,loadFailed,silentLoading,targets}=value;
+ return{count,index,requestedIndex,playing,busy,disabled,seekDisabled,fps,direction,mode,range,endpointPauseMs,preparation,loading,loadCancelled,loadFailed,silentLoading,targets};
 }

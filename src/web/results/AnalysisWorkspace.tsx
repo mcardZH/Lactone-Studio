@@ -11,12 +11,13 @@ import type {AnalysisWindowLease,AnalysisWindowBounds} from '../../modeling/cont
 import {bootstrapWindowVisuals} from '../window-visual-bootstrap';
 import WorkspaceTab from '../modeling/WorkspaceTab';
 import {resolveWorkspaceTabDropIntent,workspaceTabDragMoved,workspaceTabTargetContains} from '../modeling/workspace-tab-drag';
+import {ResultsMcpInlinePlotDisplay,ResultsMcpPortRegistration,type ResultStageIdentity} from './results-mcp-context';
 import './analysis-workspace.css';
 const MIME='application/x-sciyue-analysis';
 type Popup={window:Window;lease:AnalysisWindowLease|null;header:HTMLElement;released:boolean;restoring:boolean;disposeVisuals():void};
 type AnalysisTabDrag={id?:string;kind?:AnalysisPage;source:string;handled:boolean;cancelled:boolean;x:number;y:number;release():void};
 function Slot({container,parking}:{container:HTMLElement;parking:HTMLElement|null}){const ref=useRef<HTMLDivElement>(null);useLayoutEffect(()=>{ref.current?.appendChild(container);return()=>{if(container.parentNode===ref.current)parking?.appendChild(container);};},[container,parking]);return <div className="analysis-pane-slot" ref={ref}/>;}
-function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:AnalysisPage;requestedPage?:{id:string;kind:AnalysisPage};mcpRequestedPage?:{serial:number;page:AnalysisPage};startEmpty?:boolean;allowedPages?:readonly AnalysisPage[];unavailableReason?(page:AnalysisPage):string|undefined;onActive(id:string|null):void;onActivate():void;onRequest?(kind:AnalysisPage):void;onError(message:string):void;render(instance:AnalysisInstance,active:boolean):ReactNode}){
+function AnalysisWorkspaceInner(p:{sourceId:string;mcpKey?:string;mcpRunId?:string;stageFor?(page:AnalysisPage):ResultStageIdentity|undefined;active:boolean;initialPage?:AnalysisPage;requestedPage?:{id:string;kind:AnalysisPage};startEmpty?:boolean;allowedPages?:readonly AnalysisPage[];unavailableReason?(page:AnalysisPage):string|undefined;onActive(id:string|null):void;onActivate():void;onRequest?(kind:AnalysisPage):void;onError(message:string):void;render(instance:AnalysisInstance,active:boolean):ReactNode}){
  const [savedState,setState]=useProjectState<AnalysisWorkspaceState>('state',()=>{
   const page=p.initialPage&&(!p.allowedPages||p.allowedPages.includes(p.initialPage))?p.initialPage:p.allowedPages?.[0];
   return initialAnalysisWorkspace(`analysis-${crypto.randomUUID()}`,p.startEmpty?null:page);
@@ -62,13 +63,33 @@ function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:A
   callbacks.current.onRequest?.(kind);
   if(external)void detach(instance.id);callbacks.current.onActivate();return instance.id;
  },[detach,focus,p.allowedPages]);
+ const availablePages=()=>[...(p.allowedPages??Object.keys(ANALYSIS_TITLES) as AnalysisPage[])].filter(page=>!callbacks.current.unavailableReason?.(page));
+ const activateForMcp=(id:string,kind:AnalysisPage)=>{callbacks.current.onRequest?.(kind);dispatch({type:'activate',id});};
+ const mcpPort=<ResultsMcpPortRegistration kind="analysisViews" id={p.mcpKey??null} port={{
+  read:()=>({state:stateRef.current,active:callbacks.current.active,availablePages:availablePages(),runId:callbacks.current.mcpRunId}),
+  stageFor:page=>callbacks.current.stageFor?.(page),
+  unavailableReason:page=>callbacks.current.unavailableReason?.(page),
+  control:action=>{
+   if(!callbacks.current.active)throw new Error('请先定位当前分析工作区。');
+   if(action.action==='layout'){dispatch({type:'layout',mode:action.mode});return;}
+   const item=stateRef.current.instances.find(row=>row.id===action.panelId);
+   if(!item)throw new Error('当前分析工作区没有这个面板。');
+   if(action.action==='close')close(item.id);
+   else if(action.action==='dock')dock(item.id,item.group);
+   else if(action.action==='detach')return detach(item.id);
+   else activateForMcp(item.id,item.kind);
+  },
+  open:page=>{
+   if(!callbacks.current.active)throw new Error('请先定位当前分析工作区。');
+   const reason=callbacks.current.unavailableReason?.(page);
+   if(reason||!availablePages().includes(page))throw new Error(reason??'当前来源未开放此分析。');
+   const existing=stateRef.current.instances.find(row=>row.kind===page);
+   if(!existing)return add(page);
+   activateForMcp(existing.id,page);
+   return existing.id;
+  },
+ }}/>;
  const select=(kind:AnalysisPage)=>{add(kind);};
- const handledRequestedSerial=useRef(0);
- useEffect(()=>{
-  if(!p.mcpRequestedPage||p.mcpRequestedPage.serial===handledRequestedSerial.current)return;
-  handledRequestedSerial.current=p.mcpRequestedPage.serial;
-  add(p.mcpRequestedPage.page);
- },[p.mcpRequestedPage?.serial,p.mcpRequestedPage?.page,add]);
  const startDrag=(event:DragEvent,id?:string,kind?:AnalysisPage)=>{drag.current?.release();const owner=event.currentTarget.ownerDocument.defaultView??window;const value:AnalysisTabDrag={id,kind,source:p.sourceId,handled:false,cancelled:false,x:event.screenX,y:event.screenY,release:()=>owner.removeEventListener('keydown',cancel,true)};const cancel=(event:KeyboardEvent)=>{if(event.key==='Escape')value.cancelled=true;};drag.current=value;owner.addEventListener('keydown',cancel,true);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData(MIME,JSON.stringify({source:p.sourceId,id,kind}));};
  const dragEnd=(event:DragEvent)=>{const value=drag.current;drag.current=null;value?.release();if(!value||value.handled||event.dataTransfer.dropEffect!=='none')return;const owner=event.currentTarget.ownerDocument.defaultView??window,x=event.screenX,y=event.screenY;if(!Number.isFinite(x)||!Number.isFinite(y)||x===0&&y===0)return;const intent=resolveWorkspaceTabDropIntent({moved:workspaceTabDragMoved(value.x,value.y,x,y),cancelled:value.cancelled,source:value.source,expectedSource:p.sourceId,detached:!!value.id&&!!stateRef.current.instances.find(item=>item.id===value.id)?.detached,insideTarget:workspaceTabTargetContains({x:owner.screenX,y:owner.screenY,width:owner.outerWidth,height:owner.outerHeight},x,y)});if(intent==='detach'){if(value.id)void detach(value.id);else if(value.kind)add(value.kind,true);}};
  const receive=(event:DragEvent,group:string,before?:string)=>{try{const value=JSON.parse(event.dataTransfer.getData(MIME));if(!value||typeof value.source!=='string')return;const item=stateRef.current.instances.find(row=>row.id===value.id),gesture=drag.current;const intent=resolveWorkspaceTabDropIntent({moved:gesture?workspaceTabDragMoved(gesture.x,gesture.y,event.screenX,event.screenY):true,cancelled:gesture?.cancelled,source:value.source,expectedSource:p.sourceId,detached:!!item?.detached,insideTarget:true,itemId:item?.id,before});if(value.source===p.sourceId){event.preventDefault();event.stopPropagation();if(gesture)gesture.handled=true;}if(intent==='none')return;if(item)dock(item.id,group,before);else if(typeof value.kind==='string'&&Object.hasOwn(ANALYSIS_TITLES,value.kind)){const id=add(value.kind as AnalysisPage);dock(id,group,before);}}catch{}};
@@ -97,7 +118,7 @@ function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:A
  const compact=size.width<640,docked=state.instances.filter(row=>!row.detached),active=activeDockedAnalysis(state);
  const tab=(item:AnalysisInstance,group:string)=><WorkspaceTab key={item.id} className="analysis-tab" label={ANALYSIS_TITLES[item.kind]} active={active?.id===item.id} onActivate={()=>focus(item.id)} containerProps={{draggable:true,onDragStart:event=>startDrag(event,item.id),onDragEnd:dragEnd,onDragOver:event=>{if(event.dataTransfer.types.includes(MIME))event.preventDefault();},onDrop:event=>receive(event,group,item.id)}} actions={<><button aria-label={`弹出${ANALYSIS_TITLES[item.kind]}窗口`} onClick={()=>void detach(item.id)}>↗</button><button aria-label={`关闭${ANALYSIS_TITLES[item.kind]}窗口`} onClick={()=>close(item.id)}>×</button></>}/>;
  return <section ref={root} className="analysis-workspace" data-testid="analysis-workspace" data-active-instance={state.activeId??''} data-docked-active-instance={active?.id??''} data-compact={compact} data-layout={state.mode} onDragEnd={dragEnd}>
-  <AnalysisCardDeck allowedPages={p.allowedPages} activeId={active?.kind} unavailableReason={p.unavailableReason} onSelect={select} onAdd={kind=>add(kind)} onCardDrag={(kind,event)=>startDrag(event,undefined,kind)}/>{!p.allowedPages&&<MultiwfnPathControl/>}
+  {mcpPort}<AnalysisCardDeck allowedPages={p.allowedPages} activeId={active?.kind} unavailableReason={p.unavailableReason} onSelect={select} onAdd={kind=>add(kind)} onCardDrag={(kind,event)=>startDrag(event,undefined,kind)}/>{!p.allowedPages&&<MultiwfnPathControl/>}
   <div className="analysis-workspace-toolbar"><output className="analysis-workspace-status">当前显示：{active?ANALYSIS_TITLES[active.kind]:'分子结构'}</output><button type="button" className="analysis-tile-toggle" aria-label="平铺分析面板" aria-pressed={state.mode!=='tabs'} onClick={()=>dispatch({type:'layout',mode:state.mode==='tabs'?'tiled':'tabs'})}>平铺</button>{state.mode!=='tabs'&&<><select aria-label="分析排列方式" value={state.mode} onChange={event=>dispatch({type:'layout',mode:event.target.value as 'tiled'|'free'})}><option value="tiled">规整平铺</option><option value="free">自由排布</option></select><button type="button" className="analysis-tile-toggle" onClick={()=>setArrangeRequest(value=>value+1)}>重新排列</button></>}</div>
   {state.mode==='tabs'&&docked.length>0&&<nav className="analysis-tabs" role="tablist">{docked.map(item=>tab(item,'main'))}</nav>}
   <div ref={deck} className="analysis-groups" onDragOver={event=>{if(event.dataTransfer.types.includes(MIME))event.preventDefault();}} onDrop={event=>receive(event,'main')}>
@@ -105,7 +126,7 @@ function AnalysisWorkspaceInner(p:{sourceId:string;active:boolean;initialPage?:A
    {!docked.length&&<p className="analysis-workspace-empty">选择分析卡片打开面板，或将独立窗口标签拖回。</p>}
   </div>
   <div ref={parking} hidden data-testid="analysis-parking"/>
-  {state.instances.map(item=>createPortal(<AnalysisCitationContext.Provider value={{documentId:citationDocumentId,sourceId:typeof citationSource[1]==="string"?citationSource[1]:undefined,sourceRevision:typeof citationSource[2]==="string"?citationSource[2]:typeof citationSource[1]==="string"?citationSource[1]:undefined,analysisId:item.id}}>{p.render(item,p.active&&state.activeId===item.id)}</AnalysisCitationContext.Provider>,element(item.id),item.id))}
+  {state.instances.map(item=>createPortal(<AnalysisCitationContext.Provider value={{documentId:citationDocumentId,sourceId:typeof citationSource[1]==="string"?citationSource[1]:undefined,sourceRevision:typeof citationSource[2]==="string"?citationSource[2]:typeof citationSource[1]==="string"?citationSource[1]:undefined,analysisId:item.id}}><ResultsMcpInlinePlotDisplay display={{eligible:p.active&&availablePages().includes(item.kind),visible:p.active&&state.activeId===item.id,active:p.active&&state.activeId===item.id,activate:()=>activateForMcp(item.id,item.kind)}}>{p.render(item,p.active&&state.activeId===item.id)}</ResultsMcpInlinePlotDisplay></AnalysisCitationContext.Provider>,element(item.id),item.id))}
   {[...popups.current].map(([id,popup])=>createPortal(<div draggable onDragStart={event=>startDrag(event,id)} onDragEnd={dragEnd} onPointerDown={()=>activate(id)}><strong>{ANALYSIS_TITLES[state.instances.find(item=>item.id===id)?.kind??'energy']}</strong><button onClick={()=>dock(id,'main')}>停靠</button><button onClick={()=>close(id)}>关闭</button></div>,popup.header,`${id}:${popupsVersion}`))}
   <output hidden data-testid="analysis-workspace-state">{JSON.stringify(state)}</output>
  </section>;

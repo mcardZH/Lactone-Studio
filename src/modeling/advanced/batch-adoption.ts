@@ -1,14 +1,26 @@
 import type { Structure } from '../../core/types';
 import { graphFingerprint } from '../../core/modeling/graph';
-import { effectiveSharedFreezes } from '../constraints';
-import { XTB_METHOD_LABELS, type XtbRequest } from '../xtb/contracts';
-import type { AdvancedCalculationResult, AdvancedOptimizationMethod } from './contracts';
+import { XTB_METHOD_LABELS } from '../xtb/contracts';
+import type { AdvancedCalculationResult, AdvancedOptimizationMethod, AdvancedStageRun } from './contracts';
 import type { AdvancedFrameSource } from './frame-source';
-import { assertAdvancedForcefieldConstraints, assertAdvancedForcefieldGrant } from './forcefield-adapter';
 import { validateAdvancedXtbResult } from './xtb-result';
+import { acceptConformerPesResult, restoreConformerPesFrame, type ConformerOptimizationRequest } from './conformer-shared-optimization';
 import type { ConformerBatchBridge, ConformerBatchEntry, ConformerBatchIdentity, ConformerBatchProgress } from './batch-contracts';
 
 export class ConformerBatchIntegrityError extends Error {}
+
+export function isLegacyConformerFixedAtomRejection(error: ConformerBatchProgress['error']): boolean {
+  return error?.code === 'XTB_RESULT_REJECTED' && error.message === 'Strictly fixed atom moved in xTB output';
+}
+export function uncommittedConformerBatchRecord(message: string) {
+  return /^(?:Error invoking remote method ['"]sciyue:conformer-batch-command['"]: (?:Error: )?)?(?:CONFORMER_BATCH_RECORD\[(\d+)\]: )?CONFORMER_BATCH_UNCOMMITTED:/.exec(message);
+}
+export function isRetainedNativeFixedAtomRejection(stage: AdvancedStageRun): boolean {
+  const method = stage.configuration?.method, error = stage.batchProgress?.error;
+  if (method?.backend !== 'xtb' || method.optimizer || !isLegacyConformerFixedAtomRejection(error)) return false;
+  const message = stage.adoptionError?.message ?? '', record = uncommittedConformerBatchRecord(message);
+  return !!record && message.slice(record[0].length).trim() === error?.message;
+}
 
 export function isConformerBatchTerminal(progress: ConformerBatchProgress): boolean {
   return ['completed', 'stopped', 'error'].includes(progress.phase);
@@ -31,6 +43,9 @@ export async function readConformerBatch(
 ): Promise<void> {
   const observed = { succeeded: 0, discarded: 0, pending: 0 };
   let rowError: unknown;
+  const retainError = (error: unknown) => {
+    if (!rowError || error instanceof ConformerBatchIntegrityError && !(rowError instanceof ConformerBatchIntegrityError)) rowError = error;
+  };
   for (let offset = 0; offset < candidateIds.length;) {
     const limit = Math.min(64, candidateIds.length - offset);
     let page: Awaited<ReturnType<ConformerBatchBridge['read']>>;
@@ -38,8 +53,10 @@ export async function readConformerBatch(
     catch (error) {
       // The host proves this exact record failed and keeps it untouched.
       // A generic transport error cannot identify a record to skip.
-      if (!(error instanceof Error) || !error.message.includes(`CONFORMER_BATCH_RECORD[${offset}]:`)) throw error;
-      rowError ??= new ConformerBatchIntegrityError(error.message);
+      const recordPrefix = `CONFORMER_BATCH_RECORD[${offset}]:`;
+      if (!(error instanceof Error) || !error.message.includes(recordPrefix)) throw error;
+      retainError(error.message.includes(`${recordPrefix} CONFORMER_BATCH_UNCOMMITTED:`)
+        ? error : new ConformerBatchIntegrityError(error.message));
       offset++;
       continue;
     }
@@ -50,12 +67,12 @@ export async function readConformerBatch(
     for (const [position, entry] of page.entries.entries()) {
       if (entry?.index !== offset + position || entry.candidateId !== candidateIds[offset + position]
         || !['succeeded', 'discarded', 'pending'].includes(entry.status)) {
-        rowError ??= new ConformerBatchIntegrityError(`后台批终态候选 ${offset + position} 的顺序、状态或身份不符。`);
+        retainError(new ConformerBatchIntegrityError(`后台批终态候选 ${offset + position} 的顺序、状态或身份不符。`));
         continue;
       }
       observed[entry.status]++;
       try { adopt(entry); }
-      catch (error) { rowError ??= error; }
+      catch (error) { retainError(error); }
     }
     offset += page.entries.length;
   }
@@ -67,25 +84,23 @@ export async function readConformerBatch(
 const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
 
 export function validateConformerBatchEntry(entry: ConformerBatchEntry, source: AdvancedFrameSource, stageId: string,
-  method: AdvancedOptimizationMethod, expectedRequest?: XtbRequest, expectsGrant = false, originalInput=source):
+  method: AdvancedOptimizationMethod, expectedRequest?: ConformerOptimizationRequest, originalInput=source):
   (AdvancedCalculationResult & { structure?: Structure }) | undefined {
   try {
     if (!same(entry.source, source) || !same(entry.originalInput ?? entry.source, originalInput)) throw Error('后台批终态的执行或原始来源不符。');
     if (entry.status === 'pending') return;
     const result: AdvancedCalculationResult = { candidateId: entry.candidateId, stageId, input: source,
       originalInput, status: 'failed', error: entry.reason?.message ?? '候选优化未完成。' };
-    let native: XtbRequest | undefined;
-    if (method.backend === 'xtb') {
-      native = entry.request?.backend === 'xtb' ? entry.request.request : undefined;
-      if (!native || !same(native, expectedRequest))
-        throw Error('落盘执行请求的方法、候选或来源不符。');
-    }
-    const unconverged=entry.status==='discarded'&&(native!==undefined&&entry.reason?.code==='XTB_STEP_LIMIT'
-      &&entry.result?.metadata?.converged===false&&entry.result.metadata.convergenceStatus==='step-limit'
-      ||method.backend==='forcefield'&&entry.reason?.code==='FORCEFIELD_NOT_CONVERGED'&&entry.result!==undefined);
+    if (method.backend === 'forcefield') throw Error('此优化方法已停用。');
+    const native = entry.request?.backend === method.backend ? entry.request.request : undefined;
+    if (!native || !same(native, expectedRequest)) throw Error('落盘执行请求的方法、候选或来源不符。');
+    const unconverged = entry.status === 'discarded' && (entry.reason?.code === 'XTB_STEP_LIMIT'
+      && entry.result?.metadata?.converged === false && entry.result.metadata.convergenceStatus === 'step-limit'
+      || !!method.optimizer && entry.reason?.code === 'PES_OPT_NOT_CONVERGED' && entry.result?.sharedOptimization?.converged === false);
     if (entry.status === 'discarded'&&!unconverged) return result;
     const raw = entry.result;
-    if (!raw || !raw.structure || graphFingerprint(raw.structure) !== graphFingerprint(source.structure))
+    if (!raw || !raw.structure || graphFingerprint(raw.structure) !== graphFingerprint(source.structure)
+      || !same(raw.structure.cell, source.structure.cell))
       throw Error('后台结果缺少原始连接或电子态。');
     const atomOrderMatches = raw.structure.atoms.length === source.structure.atoms.length && raw.structure.atoms.every((atom, index) => {
       const expected = source.structure.atoms[index];
@@ -96,7 +111,18 @@ export function validateConformerBatchEntry(entry: ConformerBatchEntry, source: 
     if (raw.structure.atoms.some(atom => ![atom.x, atom.y, atom.z].every(Number.isFinite)))
       return { ...result, error: '本候选优化没有有效的有限坐标，已丢弃。' };
     let structure = raw.structure, identity = raw.identity;
-    if (native) {
+    if (method.optimizer) {
+      const evidence=raw.sharedOptimization;
+      if(!evidence||!raw.sessionId||!raw.resourceGrant||evidence.converged!==!unconverged)
+        throw Error('后台结果缺少共用优化终态或资源回执。');
+      const accepted=acceptConformerPesResult(native,method.optimizer,raw.sessionId,
+        restoreConformerPesFrame(structure,raw.energyHartree,evidence),evidence.provenance,evidence.converged,raw.resourceGrant,true);
+      if(!same(identity,accepted.identity))throw Error('后台共用优化结果的计算身份不符。');
+      structure=accepted.structure;
+      identity=accepted.identity;
+    } else {
+      if (entry.request?.backend !== 'xtb') throw Error('后台优化缺少共用求解器设置。');
+      const native = entry.request.request;
       if(raw.metadata?.converged!==!unconverged)throw Error('后台优化状态与原生收敛回执不一致。');
       const zero = (value: number) => value === 0 ? 0 : value;
       const coordinates = structure.atoms.map(atom => ({ id: atom.id!, element: atom.element, x: zero(atom.x), y: zero(atom.y), z: zero(atom.z) }));
@@ -108,31 +134,9 @@ export function validateConformerBatchEntry(entry: ConformerBatchEntry, source: 
         charge: native.charge, multiplicity: structure.multiplicity!, settingsKey: JSON.stringify({ constraints: native.constraints, frozenAtomIds: native.frozenAtomIds, runtime:raw.metadata!.engineIdentity }) };
       if (identity && !same(identity, expected)) throw Error('后台结果的计算身份不符。');
       identity = expected;
-    } else if (method.backend === 'forcefield') {
-      const constraints = effectiveSharedFreezes(source.constraints), fixed = new Set(constraints.frozenAtomIds);
-      const actualForcefield = identity?.method.split(':').at(-1);
-      const settingsKey = JSON.stringify({ energyKind: 'forcefield-potential', actualForcefield, constraints: constraints.coordinates, frozenAtomIds: [...fixed] });
-      if (!identity || !['UFF', 'MMFF94', 'MMFF94s'].includes(actualForcefield ?? '')
-        || method.forcefield !== 'auto' && method.forcefield !== actualForcefield || identity.solvent !== 'none'
-        || identity.energyKind !== 'forcefield-potential' || identity.charge !== structure.charge || identity.multiplicity !== structure.multiplicity
-        || identity.settingsKey !== undefined && identity.settingsKey !== settingsKey)
-        throw Error('后台力场方法、电子态或冻结设置不符。');
-      if (structure.atoms.some((atom, index) => {
-        const original = source.structure.atoms[index];
-        return fixed.has(atom.id!) && (atom.x !== original.x || atom.y !== original.y || atom.z !== original.z);
-      })) throw Error('后台力场结果改变了固定原子。');
-      assertAdvancedForcefieldConstraints(source.structure, structure, constraints.coordinates);
-      if (method.optimizationStepPolicy === 'native-default') {
-        const optimizer = constraints.coordinates.length ? 'scipy-slsqp' : 'rdkit-minimize';
-        if (raw.forcefieldOptimization?.optimizer !== optimizer
-          || raw.forcefieldOptimization.maxSteps !== (optimizer === 'scipy-slsqp' ? 100 : 200))
-          throw Error('后台力场结果缺少实际优化器或原生默认步数回执。');
-      }
-      if (expectsGrant && !raw.resourceGrant) throw Error('后台力场结果缺少原生资源授权回执。');
-      assertAdvancedForcefieldGrant(raw.resourceGrant);
     }
     return { ...result, status: unconverged?'unconverged':'completed', error: unconverged?result.error:undefined, energyHartree: raw.energyHartree,
-      metadata: raw.metadata, forcefieldOptimization: raw.forcefieldOptimization, sessionId: raw.sessionId, identity, structure };
+      metadata: raw.metadata, sharedOptimization: raw.sharedOptimization, sessionId: raw.sessionId, identity, structure };
   } catch (error) {
     throw new ConformerBatchIntegrityError(error instanceof Error ? error.message : String(error));
   }

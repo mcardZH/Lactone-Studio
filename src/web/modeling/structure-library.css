@@ -12,7 +12,7 @@
 .structure-library-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:9px;align-content:start}
 .structure-library-group{grid-column:1/-1;font-size:13px;line-height:1.4;font-weight:600;margin:5px 0 0;color:var(--ui-control-ink)}
 .structure-library-card{display:flex;flex-direction:column;align-items:stretch;min-width:0;overflow:hidden;text-align:left;padding:0!important;border-radius:7px}
-.structure-library-thumb{display:block;height:100px;background:var(--ui-surface-bg);border-bottom:1px solid var(--ui-surface-border)}.structure-library-thumb svg{width:100%;height:100%;display:block}.structure-library-thumb-state{height:100%;display:grid;place-items:center;color:var(--ui-control-muted);font-size:12px}
+.structure-library-thumb{display:block;height:100px;background:var(--ui-surface-bg);border-bottom:1px solid var(--ui-surface-border)}.structure-library-thumb .library-model-thumbnail{width:100%;height:100%;display:block;object-fit:contain}.structure-library-thumb-state{height:100%;display:grid;place-items:center;color:var(--ui-control-muted);font-size:12px}
 .structure-library-card-copy{display:flex;flex-direction:column;gap:3px;padding:7px 8px;overflow-wrap:anywhere}.structure-library-card-copy strong{font-size:13px;font-weight:600}.structure-library-card-copy>span{font-size:12px;color:var(--ui-control-muted)}
 .structure-library-detail{min-width:0;padding:12px;border-left:1px solid var(--ui-surface-border);overflow-y:auto}.structure-library-detail header{margin-bottom:8px}.structure-library-detail h3{margin:0 0 2px;font-size:16px;font-weight:600}.structure-library-detail header>span{font-size:12px;color:var(--ui-control-muted)}
 .structure-library-preview{min-height:246px}.structure-library-preview>p{min-height:218px;display:grid;place-items:center;color:var(--ui-control-muted)}.structure-library-preview .fragment-3d-preview p{font-size:11px;line-height:1.4;margin:5px 0}.structure-library-preview .fragment-3d-stage{border-color:var(--ui-surface-border);background:var(--ui-surface-bg)}
@@ -36,3 +36,6 @@
 .structure-library-properties dt { color:var(--ui-label-ink); }
 .structure-library-detail-actions button { font-size:var(--ui-control-font); }
 .structure-library-pagination button { min-block-size:var(--ui-control-height); }
+
+.structure-library-card-copy>span { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.structure-library-card-copy>.structure-library-card-source { -webkit-line-clamp:1; }

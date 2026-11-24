@@ -16,6 +16,8 @@
 .xtb-optimization-panel .optimization-panel-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;min-width:0}
 .xtb-optimization-panel .optimization-panel-header>strong{font-size:12px}
 .xtb-run-settings-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%, 8rem),1fr)); gap:4px 8px; margin-top:4px; }
+.xtb-run-settings-fields.optimization-limit-row {grid-template-columns:repeat(auto-fit,minmax(min(100%, 7rem),1fr));}
+.net-device-warning { color:#775b16; background:#fff6da; border-color:#e2cb82; }
 :is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields)>label{display:flex;flex-direction:column;align-items:stretch;min-width:0;gap:2px}
 :is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields)>label>span{font-size:var(--ui-small-size,12px)}
 :is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields) :is(select,input[type=number]){width:100%;min-width:0;padding-inline:3px}
@@ -37,10 +39,7 @@
 .xtb-optimization-panel .xtb-optimization-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; }
 .xtb-optimization-panel .xtb-optimization-buttons { display: inline-flex; align-items: stretch; flex: 0 0 auto; gap: 3px; }
 .xtb-optimization-panel .xtb-optimization-buttons > button { min-width: 34px; min-height: 27px; padding: 2px 4px; font-size: 12px; font-weight: 600; }
-.xtb-optimization-panel .model-space-default { margin-left: auto; font-size: 11px; padding-inline: 5px; }
-.xtb-optimization-panel .model-space-default[aria-pressed=true] { background: #ddecdf; border-color: #81ab91; }
 .xtb-optimization-panel .xtb-optimization-buttons > button:last-child:not(:disabled) { color: #923c35; border-color: #c89c96; }
-.model-preopt-unified.xtb-optimization-panel { display: block; margin-top: 0; }
 .xtb-optimization-panel button { cursor: pointer; }
 .xtb-optimization-panel :disabled { opacity: .55; cursor: default; }
 .xtb-optimization-panel input[type=checkbox] { width: 14px; height: 14px; min-height: 0; padding: 0; margin: 0; accent-color: #548f74; }
@@ -68,7 +67,6 @@
 .model-bond-perception-notice p { margin: 6px 0; line-height: 1.5; }
 .model-bond-perception-notice > div { display: grid; gap: 4px; max-height: 160px; overflow: auto; }
 .model-bond-perception-notice button { text-align: left; font-size: 12px; }
-.model-preoptimization-cards { display:grid; gap:6px; min-width:0; }
 .model-simulation-card {
   --ui-control-font:calc(12px * var(--ui-font-scale,1));
   --ui-control-line:calc(18px * var(--ui-font-scale,1));
@@ -110,7 +108,7 @@
 }
 .dynamics-panel .model-simulation-heading { margin-bottom:0; }
 .model-simulation-footer { margin-top:12px; }
-.model-simulation-card.xtb-optimization-panel :is(select,input:not([type=checkbox]),.model-space-default) {
+.model-simulation-card.xtb-optimization-panel :is(select,input:not([type=checkbox])) {
   min-height:var(--ui-control-height);
   border-color:var(--ui-control-border);
   border-radius:var(--ui-control-radius);
@@ -146,7 +144,6 @@
 }
 .model-simulation-card.xtb-optimization-panel .xtb-run-settings-fields,
 .model-simulation-card.xtb-optimization-panel .xtb-optimization-actions { margin-top:4px; gap:4px; }
-.model-simulation-card.xtb-optimization-panel .model-space-default { font-size:var(--ui-control-font); }
 .model-simulation-card .xtb-electronic-fields {
   display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; margin-top:4px; min-width:0;
 }
@@ -185,3 +182,10 @@
     flex-direction:column; align-items:flex-start;
   }
 }
+.model-simulation-card:not(.dynamics-panel) .optimization-primary-row .model-simulation-actions>button {
+  width:calc(88px * var(--ui-font-scale,1));
+  min-inline-size:0;
+  height:var(--ui-control-primary-height);
+}
+.model-simulation-card.xtb-optimization-panel .xtb-electronic-fields>label {flex-direction:row;align-items:center;}
+.model-simulation-card.xtb-optimization-panel .xtb-electronic-fields>label select {width:auto;}

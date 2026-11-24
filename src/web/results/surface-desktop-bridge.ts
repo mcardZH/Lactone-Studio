@@ -2,18 +2,21 @@ import { atomicNumber } from '../../core/elements';
 import { registerAnalysisRuntimeOwner } from '../../modeling/application/analysis-runtime-owners';
 import type { Structure } from '../../core/types';
 import type { DesktopBridge } from '../../modeling/contracts';
-import { CUBE_READ_LIMITS, molecularCubeField, parseMolecularCube, type KnownCubeDomain } from '../../results/cube-reader';
+import { CUBE_READ_LIMITS, molecularCubeField, type KnownCubeDomain } from '../../results/cube-reader';
+import { readDisplayCube } from './cube-display-reader';
+import { cubeOptions, materializeCubeFields, readRegisteredCubeAsset, restoreOriginalCubeAsset, type CubeAssetDesktop } from './cube-asset-bridge';
+import { exportSavedCube } from './export-saved-cube';
 import { postprocessWavefunctionFrame, type PostprocessDocument } from '../../results/postprocess-document';
-import { sameSurfaceContext, sameSurfaceStamp, validateSurfaceAreaDistribution, validateSurfaceFieldPair, validateSurfaceScalarField } from '../../results/surface-field';
+import { sameSurfaceContext, sameSurfaceStamp, validateSurfaceAnalysisResult, validateSurfaceAreaDistribution, validateSurfaceFieldPair, validateSurfaceScalarField } from '../../results/surface-field';
 import type { SurfaceAnalysisResult, SurfaceCapability, SurfaceContext, SurfaceCubeQuality, SurfaceCubeSourceRef, SurfaceImportedCube, SurfaceScalarField, SurfaceSourceRequest, SurfaceStamp, SurfaceValidDomain } from '../../results/surface-contracts';
 import type { SurfaceAnalysisInvocation, SurfaceCapabilityRequest, SurfaceControlsBridge } from './surface-controls-contracts';
 import { traceTrajectoryOperation } from '../../results/trajectory-operations';
 import {surfaceCapabilityKey} from './surface-capability';
-import { analysisOriginalCubeKey, loadAnalysisProjectSnapshot, markRestoredAnalysisData, notifyAnalysisProjectStateChanged, rebindAnalysisContext, retainAnalysisProjectSnapshot, type AnalysisOriginalCube } from '../../projects/analysis-state';
+import { analysisOriginalCubeKey, openAnalysisOriginalCube, isRestoredAnalysisData, markRestoredAnalysisData, notifyAnalysisProjectStateChanged, rebindAnalysisContext, retainAnalysisProjectSnapshot, type AnalysisOriginalCube } from '../../projects/analysis-state';
 
 export type SurfaceDesktopApi = Pick<DesktopBridge,
   'surfaceCapabilities' | 'openSurfaceSession' | 'analyzeSurface' | 'surfaceRegion' | 'surfaceDistribution' | 'generateSurface' | 'surfaceRestoreFields'
-  | 'cancelSurface' | 'closeSurfaceSession' | 'importSurfaceCube' | 'registerSurfaceCube' | 'readRegisteredSurfaceCube' | 'releaseSurfaceCube' | 'exportSurfaceCube' | 'exportRegisteredSurfaceCube'> & Partial<Pick<DesktopBridge, 'orbitalResourceInfo'>> & Partial<import('../../results/multiwfn-progress').MultiwfnProgressBridge>;
+  | 'cancelSurface' | 'closeSurfaceSession' | 'importSurfaceCube' | 'registerSurfaceCube' | 'readRegisteredSurfaceCube' | 'releaseSurfaceCube' | 'exportSurfaceCube' | 'exportRegisteredSurfaceCube'> & CubeAssetDesktop & Partial<Pick<DesktopBridge, 'orbitalResourceInfo'>> & Partial<import('../../results/multiwfn-progress').MultiwfnProgressBridge>;
 export interface SurfaceDesktopBridgeOptions {
   desktop: SurfaceDesktopApi; analysisId: string; context: SurfaceContext; document: PostprocessDocument;
   /** Actual current source geometry, before camera/accepted wavefunction display fits. */
@@ -21,7 +24,7 @@ export interface SurfaceDesktopBridgeOptions {
   onCleanupError?(message: string): void;
 }
 interface SourceSession { id: string; key: string; function: 'esp' | 'alie'; analysis: SurfaceAnalysisResult | null; capabilities: readonly SurfaceCapability[] }
-interface Operation { requestId: string; epoch: number; abort: AbortController; sessionId?: string; cancel?: Promise<unknown>; settlement?: Promise<unknown>; readOnly: boolean }
+interface Operation { requestId: string; epoch: number; abort: AbortController; sessionId?: string; cancel?: Promise<unknown>; settlement?: Promise<unknown>; candidate?: SourceSession; readOnly: boolean }
 interface ImportedField { ref: SurfaceCubeSourceRef; revision: string; signature: string; projectRestored?: boolean }
 interface GeneratedField { session: SourceSession; stamp: SurfaceStamp; revision: string }
 interface GeneratedArtifact { session: SourceSession; stamp: SurfaceStamp; quality: SurfaceCubeQuality; shape: string; mapping: string | null }
@@ -115,6 +118,11 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
     for(const[id,owner]of artifacts)if(owner.session===session)artifacts.delete(id);
     if (sessions.get(session.function) === session) sessions.delete(session.function);
   }
+  function releaseReplacedSession(session: SourceSession) {
+    const cleanup = closeSession(session).catch(error => { orphanSessions.add(session.id); report(error); })
+      .finally(() => inFlight.delete(cleanup));
+    inFlight.add(cleanup);
+  }
   function run<T>(requestId: string, signal: AbortSignal, execute: (op: Operation) => Promise<T>, readOnly = false): Promise<T> {
     if (disposed || !active && !readOnly || signal.aborted) return Promise.reject(abortError());
     if (operation) return Promise.reject(new Error('当前表面操作尚未结束，请先完成或取消。'));
@@ -122,16 +130,36 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
     const op: Operation = { requestId, epoch, abort: new AbortController(), readOnly }; operation = op;
     const abort = () => { void cancelOperation(op).catch(report); };
     signal.addEventListener('abort', abort, { once: true });
-    const promise = Promise.resolve().then(async () => { current(op); const value = await execute(op); current(op); if(!op.readOnly)notifyAnalysisProjectStateChanged(); return value; })
-      .finally(async () => { await op.cancel?.catch(()=>{}); signal.removeEventListener('abort', abort); if (operation === op) operation = null; inFlight.delete(promise); });
+    const promise = Promise.resolve().then(async () => {
+      current(op); const value = await execute(op); current(op);
+      if (op.candidate) {
+        const candidate = op.candidate, previous = sessions.get(candidate.function);
+        sessions.set(candidate.function, candidate); op.candidate = undefined;
+        if (previous && previous !== candidate) releaseReplacedSession(previous);
+      }
+      if (!op.readOnly) notifyAnalysisProjectStateChanged();
+      return value;
+    }).finally(async () => {
+      await op.cancel?.catch(()=>{});
+      const candidate = op.candidate;
+      if (candidate) await closeSession(candidate).catch(error => { orphanSessions.add(candidate.id); report(error); });
+      signal.removeEventListener('abort', abort);
+      if (operation === op) operation = null;
+      inFlight.delete(promise);
+    });
     op.settlement=promise; inFlight.add(promise); return promise;
+  }
+  function matchingAnalysisSession(analysis: SurfaceAnalysisResult) {
+    if(!sameSurfaceContext(analysis.stamp,context)||analysis.stamp.analysisId!==options.analysisId)return undefined;
+    const session = sessions.get(analysis.function as 'esp' | 'alie');
+    return session?.analysis && sameSurfaceStamp(session.analysis.stamp, analysis.stamp)
+      && session.analysis.function === analysis.function && session.analysis.isovalue === analysis.isovalue ? session : undefined;
   }
   function acceptedAnalysis(analysis: SurfaceAnalysisResult): SourceSession {
     checkedContext(analysis.stamp);
     assert(analysis.stamp.analysisId === options.analysisId, '表面结果属于另一个分析实例。');
-    const session = sessions.get(analysis.function as 'esp' | 'alie');
-    assert(session?.analysis && sameSurfaceStamp(session.analysis.stamp, analysis.stamp)
-      && session.analysis.function === analysis.function && session.analysis.isovalue === analysis.isovalue, '表面分析已被替换或会话已关闭，请显式重新分析。');
+    const session=matchingAnalysisSession(analysis);
+    assert(session,'表面分析已被替换或会话已关闭，请显式重新分析。');
     return session;
   }
   function sourceRef(field: SurfaceScalarField): SurfaceCubeSourceRef {
@@ -141,23 +169,26 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
     assert(entry.ref.fieldMetadata.function === field.function && entry.ref.fieldMetadata.valueUnit === field.valueUnit, '已导入Cube的物理量或单位已改变，请重新明确导入元数据。');
     return entry.ref;
   }
-  async function restoreImported(fieldId: string): Promise<ImportedField | undefined> {
-    const existing=imported.get(fieldId);if(existing)return existing;
-    const original=await loadAnalysisProjectSnapshot<AnalysisOriginalCube>(analysisOriginalCubeKey(options.analysisId,context,fieldId));
+  async function restoreImported(fieldId: string, signal: AbortSignal): Promise<{ entry: ImportedField; field?: SurfaceScalarField } | undefined> {
+    const existing=imported.get(fieldId);if(existing)return { entry: existing };
+    const original=await openAnalysisOriginalCube(analysisOriginalCubeKey(options.analysisId,context,fieldId));
     if(!original)return undefined;
-    assert(!disposed&&desktop.registerSurfaceCube,'当前环境缺少项目Cube原始素材注册入口。');
-    const raw=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(original.originalBytes),value=await desktop.registerSurfaceCube({name:original.name,text:raw});
-    if(disposed){await desktop.releaseSurfaceCube?.(value.token);throw abortError();}
-    if(value.sourceRevision!==original.sourceRevision){await desktop.releaseSurfaceCube?.(value.token);throw new Error('项目Cube原始素材内容身份不一致。');}
-    const fieldMetadata=rebindAnalysisContext(original.fieldMetadata,context),field=molecularCubeField(parseMolecularCube(raw),fieldMetadata,{sourceRevision:original.sourceRevision,validDomain:fieldMetadata.validDomain});
-    const entry={ref:{token:value.token,fieldMetadata:metadata(field)},revision:value.sourceRevision,signature:fieldArtifactSignature(field),projectRestored:true};
-    imported.set(fieldId,entry);tokens.add(value.token);retainDomain(value.sourceRevision,field.validDomain);return entry;
+    const { receipt, parsed }=await restoreOriginalCubeAsset(desktop, original, signal);
+    let accepted=false;
+    try {
+      if(disposed||signal.aborted)throw abortError();
+      const fieldMetadata=rebindAnalysisContext(original.fieldMetadata,context);
+      const known=fieldMetadata.validDomain.kind==='full-grid'&&receipt.knownDomain?receipt.knownDomain:{sourceRevision:original.sourceRevision,validDomain:fieldMetadata.validDomain};
+      const field=molecularCubeField(parsed,fieldMetadata,known);validateSurfaceScalarField(field);
+      const entry={ref:{token:receipt.token,fieldMetadata:metadata(field)},revision:receipt.sourceRevision,signature:fieldArtifactSignature(field),projectRestored:true};
+      imported.set(fieldId,entry);tokens.add(receipt.token);retainDomain(receipt.sourceRevision,field.validDomain);accepted=true;return {entry,field};
+    } finally {if(!accepted)await desktop.releaseSurfaceCube?.(receipt.token).catch(report);}
   }
   async function sourceRequest(request: SurfaceAnalysisInvocation, op: Operation): Promise<SurfaceSourceRequest> {
     if (request.input.kind === 'cubes') {
       const pair = request.input.pair, validation = validateSurfaceFieldPair(pair);
       assert(validation.compatible && pair.isovalue === request.isovalue, validation.reasons.join('；') || 'Cube表面等值与本次请求不一致。');
-      await restoreImported(pair.shape.id);if(pair.mapping)await restoreImported(pair.mapping.id);current(op);
+      await restoreImported(pair.shape.id,op.abort.signal);if(pair.mapping)await restoreImported(pair.mapping.id,op.abort.signal);current(op);
       const shape = sourceRef(pair.shape), mapping = pair.mapping ? sourceRef(pair.mapping) : null;
       assertSurfaceCubeSourceGeometry(shape.fieldMetadata, structure, options.coordinateRoundingAngstrom);
       if (pair.mapping) {
@@ -179,29 +210,39 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
   async function ensureSession(request: SurfaceAnalysisInvocation, op: Operation): Promise<SourceSession> {
     const key = surfaceCapabilityKey(request), existing = sessions.get(request.function);
     assert(desktop.openSurfaceSession && desktop.closeSurfaceSession, '当前环境没有独立表面会话入口。');
-    // Validate source/geometry before closing a previously valid session.
+    // Keep the accepted native analysis and its artifacts available while a replacement runs.
     const source = await sourceRequest(request, op); current(op);
-    if (existing?.key === key) { op.sessionId = existing.id; return existing; }
-    if (existing) { await closeSession(existing); current(op); }
+    if (existing?.key === key && !existing.analysis) { op.sessionId = existing.id; return existing; }
+    if (existing && !existing.analysis) { await closeSession(existing); current(op); }
     const session: SourceSession = { id: `surface-${crypto.randomUUID()}`, key, function: request.function, analysis: null, capabilities: [] };
     op.sessionId = session.id;
     try {
       const opened = await desktop.openSurfaceSession({ sessionId: session.id, source }); current(op);
       assert(opened.sessionId === session.id && sameSurfaceContext(opened.context, context), '表面会话回执的来源身份不一致。');
       session.capabilities = opened.capabilities;
-      sessions.set(request.function, session); return session;
+      if (existing?.analysis) op.candidate = session;
+      else sessions.set(request.function, session);
+      return session;
     } catch (error) { await desktop.closeSurfaceSession(session.id).catch(reason=>{orphanSessions.add(session.id);report(reason);}); throw error; }
   }
   const ports: SurfaceControlsBridge = {
+    analysisSession(analysis) {
+      if(disposed||!active)return {status:'inactive'};
+      const session=matchingAnalysisSession(analysis);
+      return session?{status:'ready',sessionId:session.id}:{status:'reanalysis_required'};
+    },
     onProgress(listener){if(disposed)return()=>{};const off=desktop.onMultiwfnProgress?.(snapshot=>{const id=snapshot.identity;if(!disposed&&id.analysisId===options.analysisId&&id.ownerId===options.analysisId&&id.sourceId===context.sourceId&&id.sourceRevision===context.sourceRevision&&id.jobIndex===context.jobIndex&&id.sourceFrameIndex===context.sourceFrameIndex&&id.generation===context.generation)listener(snapshot);})??(()=>{});progressSubscriptions.add(off);return()=>{if(progressSubscriptions.delete(off))off();};},
     analyze(request, signal) { return run(request.requestId, signal, async op => {
       checkedContext(request.context); assert(desktop.analyzeSurface, '当前环境没有表面分析入口。');
       const session = await ensureSession(request, op); current(op);
-      session.analysis = null;
       const expected = stamp(request.requestId), result = await traceTrajectoryOperation('surface',traceContext,()=>desktop.analyzeSurface!(session.id, { stamp: expected, function: request.function, isovalue: request.isovalue,
         quantitativeGrid: request.quantitativeGrid, regions: [{ id: 'molecule', kind: 'molecule', label: '全分子', atomIndices: [] }] }));
       current(op); assert(sameSurfaceStamp(result.stamp, expected) && result.function === request.function && result.isovalue === request.isovalue
-        && result.route === (request.input.kind === 'cubes' ? 'cube-interpolation' : 'wavefunction-direct'), '表面分析回执不属于本次请求。');
+        && result.route === (request.input.kind === 'cubes' ? 'cube-interpolation' : 'wavefunction-direct')
+        && result.quantitativeGrid.mode === request.quantitativeGrid.mode
+        && (request.quantitativeGrid.mode !== 'spacing' || result.quantitativeGrid.spacingBohr === request.quantitativeGrid.spacingBohr), '表面分析回执不属于本次请求。');
+      validateSurfaceAnalysisResult(result);
+      assert(result.regions.some(region => region.selection.kind === 'molecule'), '原生分析未返回全分子表面结果。');
       session.analysis = result; return result;
     }); },
     analyzeRegion(request, signal) { return run(request.requestId, signal, async op => {
@@ -221,13 +262,17 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
     generate(request, signal) { return run(request.requestId, signal, async op => {
       const session = acceptedAnalysis(request.analysis); op.sessionId = session.id;
       assert(desktop.generateSurface && request.analysis.function !== 'external', '当前环境没有此函数的表面生成入口。');
-      const expected = stamp(request.requestId), result = await traceTrajectoryOperation('surface',traceContext,()=>desktop.generateSurface!(session.id, { stamp: expected, function: request.analysis.function as 'esp'|'alie',
+      const expected = stamp(request.requestId), packed = await traceTrajectoryOperation('surface',traceContext,()=>desktop.generateSurface!(session.id, { stamp: expected, function: request.analysis.function as 'esp'|'alie',
         isovalue: request.analysis.isovalue, quality: request.quality }));
+      const result = await materializeCubeFields(packed, desktop, op.abort.signal);
       current(op); assert(sameSurfaceStamp(result.stamp, expected) && JSON.stringify(result.quality) === JSON.stringify(request.quality), '表面格点生成回执身份或质量档不一致。');
       const validation = validateSurfaceFieldPair(result.pair); assert(validation.compatible, validation.reasons.join('；'));
       assert(result.pair.isovalue === request.analysis.isovalue && result.pair.mapping?.function === request.analysis.function, '生成格点物理量或表面等值与当前分析不一致。');
-      for (const field of [result.pair.shape, ...(result.pair.mapping ? [result.pair.mapping] : [])]) {
-        checkedContext(field.context); generated.set(field.id, { session, stamp: result.stamp, revision: field.source.revision }); retainDomain(field.source.revision, field.validDomain);
+      const fields = [result.pair.shape, result.pair.mapping];
+      for (const field of fields) checkedContext(field.context);
+      for (const field of fields) {
+        generated.set(field.id, { session, stamp: result.stamp, revision: field.source.revision });
+        retainDomain(field.source.revision, field.validDomain);
       }
       artifacts.set(request.requestId,{session,stamp:result.stamp,quality:result.quality,shape:fieldArtifactSignature(result.pair.shape),mapping:result.pair.mapping?fieldArtifactSignature(result.pair.mapping):null});
       return result;
@@ -237,7 +282,7 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
       const artifact=artifacts.get(request.generationId);
       assert(artifact&&sessions.get(artifact.session.function)===artifact.session,'原表面格点artifact已释放，不能用新会话冒恢复。');
       assert(desktop.surfaceRestoreFields,'当前环境没有只读表面格点恢复入口。');op.sessionId=artifact.session.id;
-      const expected=stamp(request.requestId),result=await desktop.surfaceRestoreFields(artifact.session.id,{stamp:expected,generationId:request.generationId});current(op);
+      const expected=stamp(request.requestId),result=await materializeCubeFields(await desktop.surfaceRestoreFields(artifact.session.id,{stamp:expected,generationId:request.generationId}),desktop,op.abort.signal);current(op);
       assert(sameSurfaceStamp(result.stamp,expected)&&JSON.stringify(result.quality)===JSON.stringify(artifact.quality),'表面格点恢复回执身份或质量档不一致。');
       const validation=validateSurfaceFieldPair(result.pair);assert(validation.compatible,validation.reasons.join('；'));
       assert(fieldArtifactSignature(result.pair.shape)===artifact.shape&&(result.pair.mapping?fieldArtifactSignature(result.pair.mapping):null)===artifact.mapping,'恢复格点与原artifact的格点数据身份、网格或有效域不一致。');
@@ -247,14 +292,18 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
       return result;
     },true);},
     restoreCube(request,signal){return run(request.requestId,signal,async op=>{
-      checkedContext(request.context);const entry=await restoreImported(request.fieldId);current(op);
+      checkedContext(request.context);const restored=await restoreImported(request.fieldId,op.abort.signal),entry=restored?.entry;current(op);
       assert(entry&&entry.revision===request.sourceRevision&&entry.ref.fieldMetadata.source.id===request.sourceId,'Cube恢复不属于当前owner的可信来源。');
-      assert(desktop.readRegisteredSurfaceCube,'当前环境没有只读Cube来源恢复入口。');
-      const value=await desktop.readRegisteredSurfaceCube(entry.ref.token);current(op);
-      assert(value.token===entry.ref.token&&value.sourceRevision===entry.revision&&value.bytes>0&&value.bytes<=SOURCE_BYTES_LIMIT&&new TextEncoder().encode(value.text).byteLength===value.bytes,'Cube快照内容或身份已改变。');
-      const known=value.knownDomain??domains.get(value.sourceRevision)??remembered!.get(value.sourceRevision);
+      if(restored?.field)return markRestoredAnalysisData(restored.field);
+      const describe=desktop.describeRegisteredSurfaceCube??desktop.readRegisteredSurfaceCube;
+      assert(describe,'当前环境没有只读Cube来源恢复入口。');
+      const value=await describe(entry.ref.token);current(op);
+      assert(value.token===entry.ref.token&&value.sourceRevision===entry.revision&&value.bytes>0&&value.bytes<=SOURCE_BYTES_LIMIT,'Cube快照内容或身份已改变。');
+      const retained=domains.get(value.sourceRevision)??remembered!.get(value.sourceRevision);
+      const known=retained?.validDomain.kind==='full-grid'?value.knownDomain??retained:retained??value.knownDomain;
       if(known)assert(known.sourceRevision===value.sourceRevision,'Cube有效域记录与快照不一致。');
-      const field=molecularCubeField(parseMolecularCube(value.text),entry.ref.fieldMetadata,known);
+      const parsed=await readRegisteredCubeAsset(desktop,value,cubeOptions(entry.ref.fieldMetadata.grid.coordinateUnit),op.abort.signal);
+      const field=molecularCubeField(parsed,entry.ref.fieldMetadata,known);
       validateSurfaceScalarField(field);assert(fieldArtifactSignature(field)===entry.signature,'Cube恢复缺少原有完整身份、网格或有效域说明。');current(op);
       entry.ref={token:entry.ref.token,fieldMetadata:metadata(field)};retainDomain(field.source.revision,field.validDomain);return entry.projectRestored?markRestoredAnalysisData(field):field;
     },true);},
@@ -269,8 +318,8 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
       try {
         current(op);
         assert(value.token && value.sourceRevision && value.name && value.bytes > 0 && value.bytes <= SOURCE_BYTES_LIMIT
-          && value.bytes === request.file.size && new TextEncoder().encode(value.text).byteLength === value.bytes, 'Cube可信导入回执无效。');
-        const parsed = parseMolecularCube(value.text);
+          && value.bytes === request.file.size, 'Cube可信导入回执无效。');
+        const {parsed,originalBytes}=await readDisplayCube({text:value.text,bytes:value.bytes,keepOriginal:true},op.abort.signal,value.knownDomain?.coordinateUnit?cubeOptions(value.knownDomain.coordinateUnit):{});current(op);
         const sharedDomain = remembered!.get(value.sourceRevision), localDomain = domains.get(value.sourceRevision);
         if (sharedDomain && sharedDomain.validDomain.kind !== 'full-grid' && (!localDomain || localDomain.validDomain.kind === 'full-grid')) domains.set(value.sourceRevision, sharedDomain);
         if (value.knownDomain) {
@@ -287,12 +336,16 @@ export function createSurfaceDesktopBridge(options: SurfaceDesktopBridgeOptions)
           validDomain: { kind: 'full-grid', evidence: '外部单标量Cube完整网格；未发现已有受限内容记录' } }, known);
         validateSurfaceScalarField(field); current(op);
         imported.set(field.id, { ref: { token: value.token, fieldMetadata: metadata(field) }, revision: value.sourceRevision,signature:fieldArtifactSignature(field) }); retainDomain(value.sourceRevision, field.validDomain);
-        retainAnalysisProjectSnapshot(analysisOriginalCubeKey(options.analysisId,context,field.id),{name:value.name,originalBytes:new TextEncoder().encode(value.text),sourceRevision:value.sourceRevision,fieldMetadata:metadata(field)} satisfies AnalysisOriginalCube);
+        retainAnalysisProjectSnapshot(analysisOriginalCubeKey(options.analysisId,context,field.id),{name:value.name,originalBytes:originalBytes!,sourceRevision:value.sourceRevision,fieldMetadata:metadata(field)} satisfies AnalysisOriginalCube);
         tokens.add(value.token); accepted = true; return field;
       } finally { if (!accepted && value.token) await releaseToken(value.token).catch(report); }
     }); },
     exportCube(field, signal) { return run(`surface-export-${crypto.randomUUID()}`, signal, async op => {
       validateSurfaceScalarField(field); checkedContext(field.context);
+      if(field.source.kind==='external-cube'&&isRestoredAnalysisData(field)){
+        const original=await openAnalysisOriginalCube(analysisOriginalCubeKey(options.analysisId,context,field.id));current(op);
+        if(original){assert(original.sourceRevision===field.source.revision,'归档 Cube 与显示格点的来源身份不符。');await exportSavedCube(field,original.name,{desktop,signal:op.abort.signal,original});return;}
+      }
       const external = imported.get(field.id);
       if (external) {
         assert(desktop.exportRegisteredSurfaceCube, '当前环境没有受保护的已导入Cube导出入口。');

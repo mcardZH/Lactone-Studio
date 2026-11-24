@@ -1,0 +1,33 @@
+{
+  "gfn0": {
+    "opt": ["lbfgs", "fire2"],
+    "scan": ["lbfgs-scan", "fire2-scan"],
+    "path": ["ci-neb", "fsm", "de-gsm"],
+    "hessian": ["numeric"],
+    "ts": ["prfo", "dimer"],
+    "irc": ["sella-irc"]
+  },
+  "gfn1": {
+    "opt": ["lbfgs", "fire2", "precon-exp"],
+    "scan": ["lbfgs-scan", "fire2-scan"],
+    "path": ["ci-neb", "fsm", "de-gsm"],
+    "hessian": ["numeric"],
+    "irc": ["sella-irc"],
+    "ts": ["prfo", "dimer"]
+  },
+  "gfn2": {
+    "opt": ["lbfgs", "fire2", "precon-exp"],
+    "scan": ["lbfgs-scan", "fire2-scan"],
+    "path": ["ci-neb", "fsm", "de-gsm"],
+    "hessian": ["numeric"],
+    "ts": ["prfo", "dimer"],
+    "irc": ["sella-irc"]
+  },
+  "gfnff": {
+    "opt": ["lbfgs", "fire2"],
+    "scan": ["lbfgs-scan", "fire2-scan"],
+    "path": ["ci-neb", "fsm", "de-gsm"],
+    "hessian": ["numeric"],
+    "ts": ["prfo", "dimer"]
+  }
+}

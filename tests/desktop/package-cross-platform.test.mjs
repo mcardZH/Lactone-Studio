@@ -928,5 +928,15 @@ test('Linux OCR runtime, Multiwfn orbital candidates, and Unified GitHub Actions
     assert.equal(fs.existsSync(path.join(appDir, 'AppRun')), true);
     assert.equal(fs.existsSync(path.join(appDir, 'lactone-studio.desktop')), true);
     assert.equal(fs.existsSync(path.join(appDir, '.DirIcon')), true);
+
+    // 6. Install guides for Windows & Linux default to v2.1.3 and match updated LICENSE.txt clause numbering
+    const winGuide = buildWindowsInstallGuideText();
+    const linuxGuide = buildLinuxInstallGuideText();
+    for (const guide of [winGuide, linuxGuide]) {
+      assert.match(guide, /Lactone Studio v2\.1\.3/);
+      assert.match(guide, /LICENSE\.txt 第三条/);
+      assert.match(guide, /科研引用（第四条）/);
+      assert.match(guide, /禁止商业售卖（第二条）/);
+    }
   });
 });

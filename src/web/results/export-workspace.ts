@@ -1,10 +1,32 @@
-import { createStoredZip, exportResultData, exportTrajectoryXYZ } from '../../results/export';
+import { createStoredZip, exportResultData, exportTrajectoryXYZ, type ResultExportOptions } from '../../results/export';
 import { automaticStem } from '../../core/naming';
 import { captureTrajectoryViewportPng, createOffscreenCapture, exportBlob, exportFrameImages, openBinaryExportSink } from './export-image';
 import type { TrajectoryExportRequest } from './TrajectoryWorkspace';
-import { assertResultNotAborted } from '../../results/contracts';
+import { assertResultNotAborted, type TrajectoryRange, type TrajectoryResult } from '../../results/contracts';
+import type { EnergySeries } from '../../results/energy';
 import { vibrationExportResult } from './vibration-export';
 import { captureVibrationGif } from './vibration-gif-capture';
+
+export const scientificTrajectoryFormats = ['xyz', 'extxyz', 'txt', 'txt-json'] as const;
+export type ScientificTrajectoryFormat = typeof scientificTrajectoryFormats[number];
+
+/** Shared native writer used by the workspace file menu and the MCP export. */
+export async function exportWorkspaceTrajectoryData(
+  result: TrajectoryResult, range: TrajectoryRange, format: ScientificTrajectoryFormat,
+  options: ResultExportOptions & { energySeries?: EnergySeries; filenameStem?: string } = {},
+): Promise<{ blob: Blob; filename: string }> {
+  const name = options.filenameStem ?? automaticStem(result.label, { fallback: 'trajectory' });
+  if (format === 'xyz' || format === 'extxyz')
+    return { blob: await exportTrajectoryXYZ(result, range, { ...options, format }), filename: `${name}.${format}` };
+  assertResultNotAborted(options.signal);
+  const data = exportResultData(result, range, options.energySeries, options.origins);
+  if (format === 'txt') return { blob: new Blob([data.txt], { type:'text/plain;charset=utf-8' }), filename: `${name}.txt` };
+  const encode = new TextEncoder();
+  return {
+    blob: createStoredZip([{ name:`${name}.txt`, bytes:encode.encode(data.txt) }, { name:`${name}.json`, bytes:encode.encode(data.json) }]),
+    filename: `${name}-data.zip`,
+  };
+}
 
 export async function exportWorkspaceResult(request: TrajectoryExportRequest): Promise<void> {
   const {signal,format}=request;
@@ -35,18 +57,11 @@ export async function exportWorkspaceResult(request: TrajectoryExportRequest): P
   const result = vibration ? vibrationExportResult(request.result, vibration, animation) : request.result;
   const range = vibration ? { start: 0, end: result.frames.length - 1, stride: 1 } : request.range;
   assertResultNotAborted(signal);
-  if (format==='xyz'||format==='extxyz') {
+  if (format==='xyz'||format==='extxyz'||format==='txt'||format==='txt-json') {
     const comment=vibration?`derived="vibration-display" parent_frame=${vibration.frameIndex + 1} mode=${vibration.mode.index} frequency=${vibration.mode.frequency} frequency_unit="cm^-1" mode_source_line=${vibration.mode.sourceLine} amplitude=${vibration.amplitude} amplitude_unit="angstrom" display_phase=${vibration.phase}`:undefined;
-    const output=await exportTrajectoryXYZ(result,range,{format,signal,comment,sink:sink??undefined});
-    await complete(output,`${name}.${format}`); return;
-  }
-  if (format==='txt') {
-    const data=exportResultData(result,range,vibration ? undefined : request.energySeries);
-    await complete(new Blob([data.txt],{type:'text/plain;charset=utf-8'}),`${name}.txt`);return;
-  }
-  if (format==='txt-json') {
-    const data=exportResultData(result,range,vibration ? undefined : request.energySeries),encode=new TextEncoder();
-    await complete(createStoredZip([{name:`${name}.txt`,bytes:encode.encode(data.txt)},{name:`${name}.json`,bytes:encode.encode(data.json)}]),`${name}-data.zip`); return;
+    const output=await exportWorkspaceTrajectoryData(result,range,format,{signal,comment,sink:sink??undefined,
+      filenameStem:name,energySeries:vibration?undefined:request.energySeries});
+    await complete(output.blob,output.filename); return;
   }
   const selected = format==='png'?{start:vibration ? 0 : request.currentIndex,end:vibration ? 0 : request.currentIndex,stride:1}:range;
   const imageFormat=format==='png-sequence'?'png-sequence':format;

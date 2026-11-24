@@ -2,6 +2,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { assert } = require('./security.cjs');
+const { contentHash, recoveryIds } = require('./conformer-recovery-store.cjs');
 const idPattern = /^cb-[a-f0-9]{32}$/;
 
 /** Private canonical records. No renderer path is accepted and every operation
@@ -26,6 +27,7 @@ function createConformerBatchStore({ root, io = fs }) {
     try { const old = await io.lstat(file); assert(old.isFile() && !old.isSymbolicLink() && old.nlink === 1, 'Batch record changed'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
     await io.rename(temp, file);
+    return contentHash(bytes.subarray(0, bytes.length - 1));
   }
   async function read(id, name) {
     const dir = location(id); await directory(root); await directory(dir); recordName(name);
@@ -63,6 +65,6 @@ function createConformerBatchStore({ root, io = fs }) {
       });
     }
   }
-  return { create, read, write, destroy };
+  return { create, read, write, destroy, list: () => recoveryIds(io, root, idPattern) };
 }
 module.exports = { createConformerBatchStore };

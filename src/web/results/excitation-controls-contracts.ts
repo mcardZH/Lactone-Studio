@@ -18,6 +18,7 @@ export interface ExcitationProjection extends CalculationRangeFeedback {
  holeElectron:HoleElectronResult|null;densityFields:readonly ExcitationDensityField[];densityDisplay:ExcitationDensityDisplay;decimals:number;
 }
 export interface ExcitationAnalysisControlsProps {
+ analysisId?:string;
  structure?:Structure;context:SurfaceContext;state:ExcitationStateRef|null;active:boolean;available?:boolean;wavefunctionAvailable:boolean;
  unavailableReason?:string;
  /** NTO and density targets may be changed independently after a table click. */

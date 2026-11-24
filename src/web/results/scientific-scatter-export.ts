@@ -1,6 +1,7 @@
 import type { ScientificScatterData } from '../../results/scatter-data';
 import type { ScientificPlotViewport } from '../../results/scientific-plot';
-import type { scientificPlotLayout } from '../../results/scientific-plot-layout';
+import type { PlotPointStyle } from '../../results/scientific-plot-editing';
+import type { ScatterPlotBounds } from '../../results/scatter-data';
 import { appendScatterVectorPoints } from './scientific-scatter-canvas';
 import { serializeOptimizationSvg } from './optimization-export';
 let nextSnapshotId = 0;
@@ -19,9 +20,10 @@ export function waitForScatterFrame(win: Pick<Window, 'requestAnimationFrame' | 
 
 /** Captures the actual axes/metadata and the complete current point layer. No download. */
 export function scatterSvgSnapshot(source: SVGSVGElement, pixels: HTMLCanvasElement, options: {
-  data: ScientificScatterData; range: ScientificPlotViewport; layout: ReturnType<typeof scientificPlotLayout>;
+  data: ScientificScatterData; range: ScientificPlotViewport; layout: ScatterPlotBounds & {width:number;height:number};
   colorForX(value: number): string; colorForPoint?(index: number, x: number, y: number): string;
   size: number; alpha: number; raster: boolean;
+  appearance?(index: number): PlotPointStyle;
 }): string {
   const { data, range, layout, colorForX, colorForPoint, size, alpha, raster } = options;
   const copy = source.cloneNode(true) as SVGSVGElement, doc = source.ownerDocument;
@@ -35,7 +37,7 @@ export function scatterSvgSnapshot(source: SVGSVGElement, pixels: HTMLCanvasElem
     clip.setAttribute('id', clipId);
     for (const [name, value] of Object.entries({ x: layout.left, y: layout.top, width: layout.right - layout.left, height: layout.bottom - layout.top })) area.setAttribute(name, String(value));
     clip.appendChild(area); defs.appendChild(clip); copy.insertBefore(defs, background.nextSibling);
-    appendScatterVectorPoints(points, data, range, layout, colorForX, size, alpha, colorForPoint);
+    appendScatterVectorPoints(points, data, range, layout, colorForX, size, alpha, colorForPoint, options.appearance);
     copy.insertBefore(points, defs.nextSibling);
   } else {
     const png = pixels.toDataURL('image/png');

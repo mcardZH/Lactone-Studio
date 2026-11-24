@@ -8,19 +8,19 @@ import {readMdAuxiliary,type MdAuxiliarySource} from '../../results/md-aux-reade
 import {VibronicSha256} from '../../core/gaussian-vibronic/sha256-stream';
 import {postprocessSourceExtras,retainPostprocessSourceExtras,type PostprocessSourceExtra} from '../../projects/postprocess-extra-sources';
 import { composePostprocessDocument,composePostprocessFileDocument,postprocessFileDisplayDocument,selectPostprocessFileJob,projectPostprocessAttachment,retainPostprocessFileSourceBytes,createPostprocessReleaseQueue, disposePostprocessAttachments, retainPostprocessManagedSource, retainPostprocessOutputSourceText,retainPostprocessSourceBytes, observePostprocessSource, projectPostprocessStage, type PostprocessAttachment, type PostprocessDocument,type PostprocessScientificFileDocument,type PostprocessScientificFileAttachment,type PostprocessFileExtraSource } from '../../results/postprocess-document';
-import type { PostprocessEngine, PostprocessTask,PostprocessSlotKey } from './PostprocessSidebar';
+import {postprocessDocumentFileSlots,type PostprocessEngine,type PostprocessTask,type PostprocessSlotKey} from './PostprocessSidebar';
 import {releaseOrbitalSession} from './useOrbitalField';
-import {describePostprocessSource,matchingImportTargetForFrames,resolvePostprocessImportTarget,postprocessDocumentEngine,postprocessDocumentTask,preparePostprocessIncoming,preparePostprocessFileIncoming,defaultPostprocessCompanion,unaugmentedPostprocessOutput} from './postprocess-import-policy';
+import {describePostprocessSource,matchingImportTargetForFrames,resolvePostprocessImportTarget,postprocessDocumentEngine,postprocessDocumentTask,preparePostprocessIncoming,preparePostprocessFileIncoming,defaultPostprocessCompanion,unaugmentedPostprocessOutput,type PostprocessImportMatch} from './postprocess-import-policy';
 import DialogShell from '../DialogShell';
 import type { XtbElectronicArtifactBundle } from '../../modeling/xtb/contracts';
 import { readGeneratedXtbSource, validateGeneratedXtbBundle, type GeneratedXtbExpected, type GeneratedXtbSourcePackage } from '../../results/xtb-generated-source';
 import { createPostprocessRetirement } from '../../modeling/application/postprocess-retirement';
-import { readPreparedTrajectoryFrame } from './usePreparedTrajectory';
+import {readScientificTrajectoryFrame,scientificFrameForModel} from '../modeling/scientific-frame-source';
 import {getPostprocessTaskAssociation,setPostprocessTaskAssociation} from '../../projects/postprocess-task-association';
 import {resultStageChoices} from './PostprocessResultView';
 import {projectTrajectoryStage,attachTrajectoryStages} from '../../results/trajectory-stages';
 import {notifyAnalysisProjectStateChanged} from '../../projects/analysis-state';
-import {isExcitationSlot,updatePostprocessExcitationSlot,type ExcitationSlotKey} from './postprocess-excitation-slots';
+import {isExcitationSlot,postprocessExcitationSlots,updatePostprocessExcitationSlot,type ExcitationSlotKey} from './postprocess-excitation-slots';
 import {resultFrameBondSource,resultFrameBondIdentity,initialResultFrameBondIdentity} from '../../results/frame-bond-identity';
 import type {FrameBondIdentity} from '../../core/modeling/frame-bond-overrides';
 
@@ -36,10 +36,9 @@ export function initialPostprocessFrameBondIdentity(document:PostprocessDocument
 }
 export async function readInitialPostprocessFrame(document:PostprocessDocument,signal?:AbortSignal):Promise<{structure:Structure;identity:FrameBondIdentity|undefined}>{
   const selected=resultStageChoices(document)[0];
-  if(!selected)return{structure:await readPreparedTrajectoryFrame(document.result,0,signal),identity:initialResultFrameBondIdentity(document.result)};
+  if(!selected)return{structure:scientificFrameForModel(await readScientificTrajectoryFrame(document.result,0,signal)),identity:initialResultFrameBondIdentity(document.result)};
   const result=await projectTrajectoryStage(selected.result,selected.stageId,signal);
-  const projected=projectPostprocessStage(observePostprocessSource(document,selected.result),result);
-  return{structure:await readPreparedTrajectoryFrame(projected.result,0,signal),identity:resultFrameBondIdentity(resultFrameBondSource(selected.result,selected.stageId,undefined,selected.sourceResultId??selected.result.id),projected.result.frames[0].sourceFrameIndex??0)};
+  return{structure:scientificFrameForModel(result.initialStructure),identity:resultFrameBondIdentity(resultFrameBondSource(selected.result,selected.stageId,undefined,selected.sourceResultId??selected.result.id),result.frames[0].sourceFrameIndex??0)};
 }
 export async function readInitialPostprocessStructure(document:PostprocessDocument,signal?:AbortSignal):Promise<Structure>{return(await readInitialPostprocessFrame(document,signal)).structure;}
 /** A non-owning view of proven computed geometry. The file document continues
@@ -72,6 +71,22 @@ interface Pending {
   resolve(value: string): void;
 }
 const textError = (error: unknown) => error instanceof Error ? error.message : String(error);
+export interface DirectPostprocessAttachment {
+  role?:PostprocessSlotKey|'companions';
+  replace:boolean;
+  onAttached?(slots:ReturnType<typeof postprocessDocumentFileSlots>,warnings:string):void;
+}
+function directAttachmentSlots(before:PostprocessDocument|PostprocessScientificFileDocument,after:PostprocessDocument|PostprocessScientificFileDocument,
+  inputIds:ReadonlySet<string>,request:DirectPostprocessAttachment,warning:string){
+  const slots=postprocessDocumentFileSlots(after).filter(slot=>slot.sourceId);
+  const supplied=slots.filter(slot=>slot.sourceId&&inputIds.has(slot.sourceId));
+  const selected=supplied.filter(slot=>request.role===undefined||slot.role===request.role||slot.slotKey===request.role);
+  if(!selected.length)throw Error(warning||'该文件未能核对为目标分析的指定来源角色。');
+  const ids=new Set(slots.map(slot=>slot.sourceId));
+  if(!request.replace&&postprocessDocumentFileSlots(before).some(slot=>slot.sourceId&&!ids.has(slot.sourceId)))
+    throw Object.assign(Error('目标文件槽已有来源，明确选择替换后可继续。'),{code:'SOURCE_SLOT_OCCUPIED'});
+  return selected;
+}
 const isMdExtra = (extra: PostprocessSourceExtra) => extra.format === 'orca-md-log' || extra.format === 'orca-md-statistics';
 function extraInput(extra:PostprocessSourceExtra,signal?:AbortSignal):ResultInputFile {
   return {id:extra.sourceId,name:extra.name,size:extra.byteSize,readRange:extra.readRange,stream(){
@@ -194,8 +209,8 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
   }; }, []);
   useEffect(()=>{const owner=readOwnerRef.current;if(!owner||owner.transferred||owner.controller.signal.aborted)return;try{owner.validate?.();}catch(error){void stopReadOwner(owner,error);}},[documents,generated,activeDocumentId,ports]);
 
-  async function read(files: ScientificSourceFile[], targetId?: string | null, expectedEngine?: PostprocessEngine, mode:'smart'|'replace'='smart',newDocument?:{guard?():void;beforeCommit?(document:PostprocessDocument):Promise<void>;beforeFileCommit?(document:PostprocessScientificFileDocument):Promise<void>;onCreated?(id:string):void;canNavigate?():boolean;throwOnFailure?:boolean;signal?:AbortSignal;reuseParsedOutput?(file:ScientificSourceFile,input:ResultInputFile):PostprocessParsedResultsLease|null},replacementSlot?:{slotKey?:PostprocessSlotKey;sourceId?:string},automation?:{strictTargetId?:string;autoConfirmReplace?:boolean;throwOnFailure?:boolean;beforeCommit?(document:PostprocessDocument):Promise<void>|void;beforeFileCommit?(document:PostprocessScientificFileDocument):Promise<void>|void;onCommitted?(id:string):void}) {
-    if (!files.length || busyRef.current) { if(newDocument?.throwOnFailure||automation?.throwOnFailure)throw Error(busyRef.current?'后处理正在读取其他来源，请稍后重试。':'没有可接入的完整来源。');return; }
+  async function read(files: ScientificSourceFile[], targetId?: string | null, expectedEngine?: PostprocessEngine, mode:'smart'|'replace'='smart',newDocument?:{guard?():void;beforeCommit?(document:PostprocessDocument):Promise<void>;beforeFileCommit?(document:PostprocessScientificFileDocument,directSlots?:ReturnType<typeof postprocessDocumentFileSlots>):Promise<void>;onCreated?(id:string):void;canNavigate?():boolean;throwOnFailure?:boolean;signal?:AbortSignal;reuseParsedOutput?(file:ScientificSourceFile,input:ResultInputFile):PostprocessParsedResultsLease|null;attachToTarget?:DirectPostprocessAttachment},replacementSlot?:{slotKey?:PostprocessSlotKey;sourceId?:string}) {
+    if (!files.length || busyRef.current) { if(newDocument?.throwOnFailure)throw Error(busyRef.current?'后处理正在读取其他来源，请稍后重试。':'没有可接入的完整来源。');return; }
     busyRef.current = true; setBusy(true);setReadState('reading'); setNotice(''); const epoch = ++requestEpoch.current;
     let finish!:()=>void;const done=new Promise<void>(resolve=>finish=resolve),owner:ImportReadOwner={controller:new AbortController(),inputs:new Map(),sessions:new Map(),extras:new Map(),targets:new Set(targetId?[targetId]:[]),settled:false,transferred:false,done,finish};readOwnerRef.current=owner;
     const signal=owner.controller.signal,externalAbort=()=>{void stopReadOwner(owner,newDocument?.signal?.reason);};newDocument?.signal?.addEventListener('abort',externalAbort,{once:true});if(newDocument?.signal?.aborted)externalAbort();
@@ -208,13 +223,23 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
     const initialFileBase=fileBase;
     const nebAuxiliaries:NebAuxiliarySource[]=[],mdAuxiliaries:MdAuxiliarySource[]=[],nebExtras:PostprocessSourceExtra[]=[],mdExtras:PostprocessSourceExtra[]=[];
     let nebDiagnosticsCommitted=false;
-    const sourceReadWarnings: string[] = [];
-    let readNotice='';const recordNotice=(next:string|((previous:string)=>string))=>{readNotice=typeof next==='function'?next(readNotice):next;};
+    const sourceReadWarnings = new Map<string,string>();
+    const warn = (code:string, sourceId:string, message:string) => {
+      const key=sourceId+'\0'+code;
+      if(!sourceReadWarnings.has(key))sourceReadWarnings.set(key,message);
+    };
+    const readNotice = () => [...sourceReadWarnings.values()].join('；');
     const diagnostics: ResultDiagnostic[] = []; let diagnosticsCommitted = false;
     let committed = false;
     let forceNew:{forceNew:true;onCreated(id:string):void}|undefined;
     const initialBase = targetId ? documentsRef.current[targetId] : undefined;
     let base = initialBase;
+    const direct=newDocument?.attachToTarget;
+    const validateDirect=(before:PostprocessDocument|PostprocessScientificFileDocument|undefined,after:PostprocessDocument|PostprocessScientificFileDocument)=>{
+      if(!direct)return undefined;
+      if(!before)throw Error('主输出类型与目标分析身份不相容。');
+      return directAttachmentSlots(before,after,new Set([...owner.inputs.keys()].map(input=>input.id)),direct,readNotice());
+    };
     // Registry view IDs and scientific document IDs are deliberately different.
     const snapshot = (id:string,value:PostprocessDocument) => {
       const output=value.output,wave=value.wavefunction,result=value.result,metadata=wave?.source.metadata,revision=metadata?.sourceRevision;
@@ -234,10 +259,8 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       if(!forceNew)initialGuard?.();selectedGuard?.(); };
     owner.validate=guard;
     try {
-      if(automation?.strictTargetId&&!initialBase&&!initialFileBase){
-        throw Object.assign(new Error(`Target document "${automation.strictTargetId}" does not contain an active Result Analysis output to pair onto.`),{code:'MCP_ANALYSIS_UNAVAILABLE'});
-      }
-      const preparation=newDocument?{forceNew:true as const,onCreated:(id:string)=>{newDocument.onCreated?.(id);if(newDocument.canNavigate?.()!==false){portsRef.current.activate(id);portsRef.current.analyze();}}}:(fileBase||automation?.strictTargetId)?undefined:await portsRef.current.prepareRead?.(targetId??activeDocumentId);
+      if(direct&&!initialBase&&!initialFileBase)throw Error('当前工作区没有指定的分析来源。');
+      const preparation=direct?undefined:newDocument?{forceNew:true as const,onCreated:(id:string)=>{newDocument.onCreated?.(id);if(newDocument.canNavigate?.()!==false){portsRef.current.activate(id);portsRef.current.analyze();}}}:fileBase?undefined:await portsRef.current.prepareRead?.(targetId??activeDocumentId);
       if(preparation===null)return;
       if(preparation?.forceNew){forceNew=preparation;base=undefined;fileBase=undefined;targetId=null;owner.targets.clear();expectedEngine=undefined;mode='smart';}
       guard();
@@ -278,7 +301,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
             continue;
           } else throw new Error(identity.message ?? '请选择支持的OUT、XYZ、HESS、FCHK或Molden。');
           owner.inputs.get(input)!.adopted=true;
-        } catch (error) { if (nativeSessionId&&owner.sessions.has(nativeSessionId)) await closeImportSession(owner,nativeSessionId).catch(() => {}); await closeImportInput(owner,input); guard(); if (error instanceof DOMException && error.name === 'AbortError') throw error; if (automation?.throwOnFailure) throw error; sourceReadWarnings.push(`${file.name}：${textError(error)}`); }
+        } catch (error) { if (nativeSessionId&&owner.sessions.has(nativeSessionId)) await closeImportSession(owner,nativeSessionId).catch(() => {}); await closeImportInput(owner,input).catch(() => {}); guard(); if (error instanceof DOMException && error.name === 'AbortError') throw error; warn('source-read',input.id,`${file.name}：${textError(error)}`); }
       }
       guard();
       if(fileIncoming.length||fileBase&&!incoming.some(item=>item.source.kind.endsWith('-output'))){
@@ -286,43 +309,52 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         const replacingOutput=fileIncoming.length>0&&!!fileBase;
         const replacingWave=incoming.some(item=>['fchk','molden'].includes(item.source.kind))&&!!fileBase?.wavefunction;
         let useBase=fileBase;
-        if(replacingOutput||replacingWave){
-          const answer=automation?.autoConfirmReplace?'replace':await ask('文件槽已有来源','替换当前文件来源？其他原始来源保留；新建分析可保留原分析。',[{label:'替换当前文件',value:'replace'},{label:'新建分析',value:'new'},{label:'取消',value:'cancel'}]);guard();
+        if(!direct&&(replacingOutput||replacingWave)){
+          const answer=await ask('文件槽已有来源','替换当前文件来源？其他原始来源保留；新建分析可保留原分析。',[{label:'替换当前文件',value:'replace'},{label:'新建分析',value:'new'},{label:'取消',value:'cancel'}]);guard();
           if(answer==='cancel')return;if(answer==='new')useBase=undefined;
         }
-        let prepared=await preparePostprocessFileIncoming([...fileIncoming,...incoming],useBase??base,guard,{nebAuxiliaries,mdAuxiliaries,signal});guard();
-        if(automation?.strictTargetId){
-          if(incoming.some(item=>['fchk','molden'].includes(item.source.kind))&&(!prepared.wavefunction||prepared.sourceWarnings.length>0)){
-            throw Object.assign(new Error(prepared.sourceWarnings.map(w=>w.message).join('；')||'波函数未能与当前文件分析来源可靠配对。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
-          }
-          if(incoming.some(item=>['xyz','hess'].includes(item.source.kind))&&prepared.sourceWarnings.length>0){
-            throw Object.assign(new Error(prepared.sourceWarnings.map(w=>w.message).join('；')||'配套文件未能与当前文件分析来源可靠配对。'),{code:'MCP_FILE_IMPORT_FAILED'});
-          }
+        const newHess = incoming.filter(item => item.source.kind === 'hess');
+        const selectedHess = mode === 'replace' && !fileIncoming.length && replacementSlot?.slotKey === 'hess' && newHess.length === 1
+          ? useBase?.companions?.find(item=>item.source.kind==='hess' && item.source.result.source.id===replacementSlot.sourceId) : undefined;
+        const policyOptions={nebAuxiliaries,mdAuxiliaries,signal};
+        const policyBase=selectedHess&&useBase?{...useBase,companions:useBase.companions?.filter(item=>item!==selectedHess)}:useBase??base;
+        const sources=[...fileIncoming,...incoming];
+        let prepared=await preparePostprocessFileIncoming(sources,policyBase,guard,policyOptions);guard();
+        const verifiedHess=selectedHess && prepared.displayedResult?.scientific?.vibrationSets?.some(group=>group.sourceId===newHess[0].source.result.source.id);
+        if(selectedHess && !verifiedHess){
+          const candidateId = newHess[0].source.result.source.id;
+          const issue = prepared.sourceWarnings.find(warning => warning.sourceId === candidateId);
+          prepared=await preparePostprocessFileIncoming(sources,useBase,guard,policyOptions);guard();
+          if (issue) prepared.sourceWarnings = [...prepared.sourceWarnings.filter(warning => warning.sourceId !== candidateId), issue];
         }
         if(mode==='replace'&&useBase&&!fileIncoming.length){
           const role=(item:PostprocessAttachment)=>item.role??item.source.result.scientific?.ircEvidence?.role??(item.source.kind==='hess'?'hess':item.source.result.role);
           const ids=new Set(incoming.map(item=>item.source.result.source.id));
           const verified=prepared.companions.filter(item=>ids.has(item.source.result.source.id)&&!prepared.sourceWarnings.some(warning=>warning.sourceId===item.source.result.source.id)&&Boolean(role(item))&&role(item)!=='unknown');
           const targets=(useBase.companions??[]).filter(item=>replacementSlot?.sourceId?item.source.result.source.id===replacementSlot.sourceId:verified.length===1&&role(item)===role(verified[0]));
-          if(verified.length===1&&targets.length===1&&role(verified[0])===role(targets[0])&&(!replacementSlot?.slotKey||role(verified[0])===replacementSlot.slotKey)){
-            const answer=automation?.autoConfirmReplace?'replace':await ask('配套文件槽已有来源','新文件已取得相同任务角色的科学配对，替换已选择的配套来源？',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();if(answer!=='replace')return;
-            const companions=prepared.companions.filter(item=>item.source.result.source.id!==targets[0].source.result.source.id);
-            prepared=await preparePostprocessFileIncoming([],{...useBase,companions},guard,{nebAuxiliaries,mdAuxiliaries,signal});guard();
+          if(verifiedHess || verified.length===1&&targets.length===1&&role(verified[0])===role(targets[0])&&(!replacementSlot?.slotKey||role(verified[0])===replacementSlot.slotKey)){
+            if(!direct){const answer=await ask('配套文件槽已有来源','新文件已取得相同任务角色的科学配对，替换已选择的配套来源？',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();if(answer!=='replace')return;}
+            if(!verifiedHess){
+              const companions=prepared.companions.filter(item=>item.source.result.source.id!==targets[0].source.result.source.id);
+              prepared=await preparePostprocessFileIncoming([],{...useBase,companions},guard,policyOptions);guard();
+            }
           }
         }
         if(!prepared.output||!isScientificFileSource(prepared.output.source))throw Error('文件来源未得到可靠主 OUT，当前分析保留。');
         const value=composePostprocessFileDocument(useBase?.id??`analysis-file-${crypto.randomUUID()}`,prepared.output,prepared.wavefunction,prepared) as PostprocessScientificFileDocument;
         if(mdExtras.length)value.extraSources=[...value.extraSources??[],...mdExtras.map(extra=>({...extra,dispose(){}}))];
         pendingFileDocument=value;
-        await newDocument?.beforeFileCommit?.(value);await automation?.beforeFileCommit?.(value);guard();
+        const directSlots=validateDirect(useBase,value);
+        await newDocument?.beforeFileCommit?.(value,directSlots);guard();
         fileDocumentsRef.current={...fileDocumentsRef.current,[value.id]:value};setFileDocuments(fileDocumentsRef.current);
         // Source-specific restrictions are shown once beside their own slot.
-        sourceNotices.current[value.id]=sourceReadWarnings.join('；');
+        sourceNotices.current[value.id]=readNotice();
         committed=true;owner.transferred=true;
         for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
         const canNavigate=newDocument?newDocument.canNavigate?.()!==false:fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
         if(canNavigate){selectFile(value.id);portsRef.current.onFileDocument?.(value);portsRef.current.analyze();}
-        newDocument?.onCreated?.(value.id);automation?.onCommitted?.(value.id);
+        newDocument?.onCreated?.(value.id);
+        if(directSlots)direct?.onAttached?.(directSlots,readNotice());
         if(useBase){
           const retained=new Set([value.output.source,...value.companions?.map(item=>item.source)??[],value.wavefunction?.source]);
           const retainedIds=new Set(value.companions?.map(item=>item.source.result.source.id));
@@ -335,53 +367,72 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       const mdAuxiliaryOnly=auxiliaryOnly&&mdAuxiliaries.length>0;
       const auxiliaryDiagnostics=[...nebAuxiliaries,...mdAuxiliaries].map(source=>source.diagnostic);
       if(!incoming.length&&!auxiliaryOnly)diagnostics.push(...auxiliaryDiagnostics);
-      if(!incoming.length&&diagnostics.length&&!auxiliaryOnly){if(!portsRef.current.onDiagnostics)throw new Error('当前入口无法接管文件级诊断。');portsRef.current.onDiagnostics(diagnostics);diagnosticsCommitted=true;nebDiagnosticsCommitted=auxiliaryDiagnostics.length>0;for(const input of owner.inputs.keys())if(auxiliaryDiagnostics.some(source=>source.source.id===input.id))owner.inputs.delete(input);return;}
-      if (!incoming.length&&!auxiliaryOnly) throw Error(sourceReadWarnings.join('；') || '没有可用的完整来源。');
+      if(!direct&&!incoming.length&&diagnostics.length&&!auxiliaryOnly){if(!portsRef.current.onDiagnostics)throw new Error('当前入口无法接管文件级诊断。');portsRef.current.onDiagnostics(diagnostics);diagnosticsCommitted=true;nebDiagnosticsCommitted=auxiliaryDiagnostics.length>0;for(const input of owner.inputs.keys())if(auxiliaryDiagnostics.some(source=>source.source.id===input.id))owner.inputs.delete(input);return;}
+      if (!incoming.length&&!auxiliaryOnly) throw Error(readNotice() || '没有可用的完整来源。');
       // Reuse only already-selected retained extra bytes, never discover a path
       // mentioned by OUT. New same-name versions remain separate candidates.
       if(base?.output?.source.nebOutputContext)for(const extra of postprocessSourceExtras(base)){
         if(!['orca-neb-log','neb-interpolation'].includes(extra.format)||nebExtras.some(selected=>selected.name===extra.name&&selected.revision===extra.revision))continue;
-        const file:ResultInputFile={id:extra.sourceId,name:extra.name,size:extra.byteSize,readRange:extra.readRange,stream(){let offset=0;return new ReadableStream<Uint8Array>({async pull(controller){try{if(offset===extra.byteSize){controller.close();return;}const end=Math.min(extra.byteSize,offset+1024**2),bytes=await extra.readRange(offset,end,signal);offset=end;controller.enqueue(bytes);}catch(error){controller.error(error);}}});}};
-        const source=await readPostprocessNebAuxiliary(file,{signal});guard();if(source){if(source.data.source.sha256!==extra.revision)throw Error('已保留NEB辅助原始来源版本不一致。');nebAuxiliaries.push(source);}
+        let source:NebAuxiliarySource|null=null;
+        try {
+          source=await readPostprocessNebAuxiliary(extraInput(extra,signal),{signal});guard();
+          if(!source||source.data.source.sha256!==extra.revision)throw Error('已保留NEB辅助来源无法核对。');
+          nebAuxiliaries.push(source);
+        } catch (error) {
+          await Promise.resolve(source?.diagnostic.dispose()).catch(()=>{}); guard();
+          if(error instanceof DOMException&&error.name==='AbortError')throw error;
+          warn('retained-companion',extra.sourceId,extra.name+'：'+textError(error));
+        }
       }
       let retainedExtras=base?postprocessSourceExtras(base):[];
       const replacedExtra=mode==='replace'&&replacementSlot?.slotKey==='md-log'&&mdExtras.length===1
         ?retainedExtras.find(extra=>extra.sourceId===replacementSlot.sourceId&&extra.format===mdExtras[0].format):undefined;
       if(replacedExtra){
-        const answer=automation?.autoConfirmReplace?'replace':await ask('配套文件槽已有来源','替换选中的 MD 辅助原始文件？新文件仍须核对其实际作业和单位。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);
-        guard();if(answer!=='replace')return;
+        if(!direct){const answer=await ask('配套文件槽已有来源','替换选中的 MD 辅助原始文件？新文件仍须核对其实际作业和单位。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();if(answer!=='replace')return;}
         retainedExtras=retainedExtras.filter(extra=>extra!==replacedExtra);
       }
       const needsMdRebind=mdExtras.length>0||incoming.some(item=>item.source.kind==='xyz'||item.source.kind==='orca-output');
       for(const extra of needsMdRebind?retainedExtras.filter(isMdExtra):[]){
         if(mdExtras.some(selected=>selected.name===extra.name&&selected.revision===extra.revision))continue;
-        const source=await readMdAuxiliary(extraInput(extra,signal),{signal});
-        if(source)mdAuxiliaries.push(source);guard();
-        if(!source||source.sha256!==extra.revision)throw Error('已保留MD辅助原始来源版本不一致。');
+        let source:MdAuxiliarySource|null=null;
+        try {
+          source=await readMdAuxiliary(extraInput(extra,signal),{signal});guard();
+          if(!source||source.sha256!==extra.revision)throw Error('已保留MD辅助来源无法核对。');
+          mdAuxiliaries.push(source);
+        } catch (error) {
+          await Promise.resolve(source?.diagnostic.dispose()).catch(()=>{}); guard();
+          if(error instanceof DOMException&&error.name==='AbortError')throw error;
+          warn('retained-companion',extra.sourceId,extra.name+'：'+textError(error));
+        }
       }
       const policyIncoming=auxiliaryOnly&&!mdAuxiliaryOnly?[...(base?.companions??[])]:incoming;
       const {output,enrichedOutput,wavefunction,companions,sourceWarnings}=await preparePostprocessIncoming(policyIncoming,base,guard,{nebAuxiliaries,mdAuxiliaries:needsMdRebind?mdAuxiliaries:undefined,signal});guard();
-      recordNotice([...sourceReadWarnings, ...sourceWarnings.map(item => item.message)].join('；'));
+      for (const warning of sourceWarnings)warn(warning.code,warning.sourceId,warning.message);
       const actualEngine = output ? postprocessDestination(output.source).engine : wavefunction?.source.kind==='fchk'?'gaussian':wavefunction?.source.software??'unknown';
       const destination = output ? postprocessDestination(output.source) : null;
       if (destination && !isUnifiedPostprocessSource(output!.source)) throw new Error(`识别为 ${describePostprocessSource(output!.source)}；此任务尚未接入当前统一工作区。`);
-      let matching=await matchingImportTargetForFrames(base,output,wavefunction);guard();
-      let useTarget = base && (mode==='replace'||matching.reuse||(companions.length>0||auxiliaryOnly)&&!output) ? targetId! : null;
       const ordinary=incoming.length>0&&incoming.every(row=>['gaussian-output','orca-output','fchk','molden'].includes(row.source.kind));
-      if(!forceNew&&!automation?.strictTargetId&&mode==='smart'&&ordinary&&Boolean(output)!==Boolean(wavefunction)){
+      const autoTarget=!direct&&!forceNew&&mode==='smart'&&ordinary&&Boolean(output)!==Boolean(wavefunction);
+      let matching:PostprocessImportMatch=autoTarget?{reuse:false}:await matchingImportTargetForFrames(base,output,wavefunction,signal);guard();
+      let useTarget = base && (direct||mode==='replace'||matching.reuse||(companions.length>0||auxiliaryOnly)&&!output) ? targetId! : null;
+      if(autoTarget){
         const candidates=Object.entries(documentsRef.current).filter(([id])=>!closingIds.current.has(id)&&portsRef.current.exists(id)&&portsRef.current.available?.(id)!==false);
         const checks=new Map(candidates.map(([id,value])=>[id,snapshot(id,value)]));
         const ids=new Map<string,typeof candidates>();
         for(const entry of candidates)ids.set(entry[1].id,[...(ids.get(entry[1].id)??[]),entry]);
         // An aliased/duplicated document identity cannot be picked by order.
         const unique=candidates.filter(([,value])=>ids.get(value.id)?.length===1);
-        const resolved=await resolvePostprocessImportTarget(unique.map(([,value])=>value),output,wavefunction,initialBase?.id);guard();
-        for(const check of checks.values())check();
+        const compared=new Map<PostprocessDocument,PostprocessImportMatch>();
+        const resolved=await resolvePostprocessImportTarget(unique.map(([,value])=>value),output,wavefunction,initialBase?.id,{signal,onCompared:(value,match)=>compared.set(value,match)});guard();
         let chosen=resolved.targetId;
-        const reasons=resolved.reasons.map(reason=>reason.message).filter((message,index,all)=>all.indexOf(message)===index).join('；');
-        if(reasons)recordNotice(previous=>`${previous}；${reasons}`);
+        if(resolved.status==='unmatched'&&initialBase){
+          const reason=compared.get(initialBase)?.reason;
+          const selected=(wavefunction??output)?.source.result.source.id;
+          if(selected&&reason&&!['occupied-slot','no-target','missing-counterpart','independent-import'].includes(reason.code))
+            warn('pairing-conflict',selected,reason.message);
+        }
         if(resolved.status==='ambiguous'){
-          const answer=await ask('选择配对分析',`多个已加载分析与此来源可靠匹配，请选择接入对象。${reasons?` ${reasons}`:''}`,[
+          const answer=await ask('选择配对分析','多个已加载分析与此来源可靠匹配，请选择接入对象。',[
             ...resolved.candidateIds.map(id=>({label:`接入 ${ids.get(id)![0][1].result.label}（${id}）`,value:`target:${id}`})),
             {label:'新建分析',value:'new'},{label:'取消',value:'cancel'}]);guard();
           if(answer==='cancel')return;
@@ -391,80 +442,47 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         if(chosen){
           const entries=ids.get(chosen);if(entries?.length!==1)throw new Error('分析来源身份不唯一，未自动接入。');
           const [key,value]=entries[0];selectedGuard=checks.get(key);owner.targets.add(key);guard();base=value;useTarget=key;
-          matching=await matchingImportTargetForFrames(base,output,wavefunction);guard();
+          matching=compared.get(value)??{reuse:false};
           if(!matching.reuse)throw new Error(matching.reason?.message??'所选来源已不能可靠配对。');
         }
       }
-      if(automation?.strictTargetId){
-        if(!base)throw Object.assign(new Error(`Analysis document not found: ${automation.strictTargetId}`),{code:'MCP_ANALYSIS_UNAVAILABLE'});
-        if(wavefunction&&!output){
-          if(!base.output)throw Object.assign(new Error('目标分析页缺少主输出文件，无法挂载波函数。'),{code:'MCP_FILE_IMPORT_FAILED'});
-          let strictPair;
-          try{
-            strictPair=await pairPostprocessSourcesForFrames(base.output.source,wavefunction.source,{signal});guard();
-          }catch(error){
-            throw Object.assign(new Error(textError(error)),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
-          }
-          const conflict=postprocessMetadataConflict(strictPair);
-          if(conflict||strictPair.conflicts.length||strictPair.frameIndex===undefined){
-            throw Object.assign(new Error(conflict??'波函数与目标输出文档电子态或几何不一致，拒绝配对。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
-          }
-          matching={reuse:true,pair:strictPair};
-        }else if(output&&!wavefunction&&base.wavefunction){
-          let strictPair;
-          try{
-            strictPair=await pairPostprocessSourcesForFrames((enrichedOutput??output).source,base.wavefunction.source,{signal});guard();
-          }catch(error){
-            throw Object.assign(new Error(textError(error)),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
-          }
-          const conflict=postprocessMetadataConflict(strictPair);
-          if(conflict||strictPair.conflicts.length){
-            throw Object.assign(new Error(conflict??'新输出与已挂载波函数不一致，拒绝替换。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
-          }
-          matching={reuse:true,pair:strictPair};
-        }else if(!output&&!wavefunction){
-          if(!base.output||(!companions.length&&!auxiliaryOnly)||sourceWarnings.length>0){
-            throw Object.assign(new Error(sourceWarnings.map(w=>w.message).join('；')||readNotice||'配套来源未能与目标输出文档可靠配对。'),{code:'MCP_FILE_IMPORT_FAILED'});
-          }
-        }
-        useTarget=automation.strictTargetId;
-      }
       const companionOnly=companions.length>0&&!output;
-      const occupiedCompanion=companions.some(next=>base?.companions?.some(old=>old.source.result.role===next.source.result.role));
+      const verifiedCompanions=companions.filter(item=>!sourceWarnings.some(warning=>warning.sourceId===item.source.result.source.id));
+      const occupiedCompanion=verifiedCompanions.some(next=>base?.companions?.some(old=>old.source.result.role===next.source.result.role));
       // Unknown Molden may use the counterpart's pairing proof, never a renamed
       // producer. Explicitly conflicting producer metadata still fails pairing.
       let counterpartProof=false,counterpartReason:string|undefined;
       if(mode==='replace'&&base&&(output||wavefunction)){
         const counterpart={...base,...(output?{output:undefined}:{wavefunction:undefined})};
-        const proof=await matchingImportTargetForFrames(counterpart,output,wavefunction);guard();
+        const proof=await matchingImportTargetForFrames(counterpart,output,wavefunction,signal);guard();
         counterpartProof=proof.reuse;counterpartReason=proof.reason?.message;
       }
       const unknownMoldenPair=counterpartProof&&(actualEngine==='unknown'&&wavefunction?.source.kind==='molden'
         ||expectedEngine==='unknown'&&base?.wavefunction?.source.kind==='molden'&&(!base.wavefunction.source.software||base.wavefunction.source.software==='unknown'));
       if (!mdAuxiliaryOnly && mode==='replace' && expectedEngine && actualEngine !== expectedEngine && !unknownMoldenPair) {
         const name=actualEngine==='gaussian'?'Gaussian':actualEngine==='orca'?'ORCA':actualEngine==='cp2k'?'CP2K':'生产软件未确认的Molden';
-        if(automation?.strictTargetId)throw Object.assign(new Error(counterpartReason??`识别为 ${name} 来源，与当前页软件不一致。`),{code:'MCP_FILE_IMPORT_FAILED'});
         const answer = await ask('来源软件与当前页不同', `识别为 ${name} 来源。${counterpartReason??'与当前页软件不一致。'}原分析保持不变。`, [{ label: '新建对应分析', value: 'new' }, { label: '取消', value: 'cancel' }]); guard();
         if (answer !== 'new') return; useTarget = null;
       }
-      if(!mdAuxiliaryOnly&&companionOnly&&(mode==='replace'&&base?.companions?.length||occupiedCompanion)){
-        const answer=automation?.autoConfirmReplace?'replace':await ask('配套文件槽已有来源','替换已选择的配套来源？其他来源及原始文件保留。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();
+      if(!direct&&!mdAuxiliaryOnly&&companionOnly&&(mode==='replace'&&base?.companions?.length&&verifiedCompanions.length||occupiedCompanion)){
+        const answer=await ask('配套文件槽已有来源','替换已选择的配套来源？其他来源及原始文件保留。',[{label:'替换配套来源',value:'replace'},{label:'取消',value:'cancel'}]);guard();
         if(answer!=='replace')return;
       }
-      if (mode==='replace' && useTarget && base && (output && base.output || wavefunction && base.wavefunction)) {
-        const answer = automation?.autoConfirmReplace ? 'replace' : await ask('文件槽已有来源', '替换会释放被替换波函数的本次内存缓存；已打开图窗仍保留其来源快照。', [{ label: '替换当前文件', value: 'replace' }, { label: '新建分析', value: 'new' }, { label: '取消', value: 'cancel' }]); guard();
+      if (!direct&&mode==='replace' && useTarget && base && (output && base.output || wavefunction && base.wavefunction)) {
+        const answer = await ask('文件槽已有来源', '替换会释放被替换波函数的本次内存缓存；已打开图窗仍保留其来源快照。', [{ label: '替换当前文件', value: 'replace' }, { label: '新建分析', value: 'new' }, { label: '取消', value: 'cancel' }]); guard();
         if (answer === 'cancel') return; if (answer === 'new') useTarget = null;
       }
       if(companionOnly&&!useTarget)throw new Error('这些配套来源已与当前主OUT核对；独立新建时请一同提供主OUT，当前分析未改变。');
       let nextOutput = enrichedOutput??output ?? (useTarget ? base?.output : undefined), nextWave = wavefunction ?? (useTarget ? base?.wavefunction : undefined);
       let nextCompanions:readonly PostprocessAttachment[]=useTarget
-        ?[...(base?.companions??[]).filter(old=>!companions.some(next=>next.source.result.role===old.source.result.role)),...companions]:companions;
+        ?[...(base?.companions??[]).filter(old=>!companions.some(next=>next.source.result.source.id===old.source.result.source.id)
+          &&!verifiedCompanions.some(next=>next.source.result.role===old.source.result.role)),...companions]:companions;
       // A new OUT replaces only its own slot. Revalidate retained auxiliary
       // slots against it before committing; a failure leaves the old document intact.
       if(useTarget&&output&&nextCompanions.length){
         const retained=await preparePostprocessIncoming([output,...nextCompanions],undefined,guard,{nebAuxiliaries,mdAuxiliaries,signal});guard();
         nextOutput=retained.enrichedOutput??output;nextCompanions=retained.companions;
-        if(retained.sourceWarnings.length)recordNotice(previous=>[previous,...retained.sourceWarnings.map(item=>item.message)].filter(Boolean).join('；'));
+        for (const warning of retained.sourceWarnings)warn(warning.code,warning.sourceId,warning.message);
       }
       let pair=!enrichedOutput&&useTarget&&matching.reuse?matching.pair:undefined;
       if(nextOutput&&nextWave&&!pair){
@@ -472,35 +490,32 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
           const conflict=postprocessMetadataConflict(pair);if(conflict)throw new Error(conflict);
         }catch(error){
           guard(); if(error instanceof DOMException&&error.name==='AbortError')throw error;
-          if(automation?.strictTargetId)throw Object.assign(new Error(textError(error)),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
-          pair=undefined; recordNotice(previous=>[previous,`${textError(error)} 波函数保留为独立来源，依赖可靠配对的分析暂不可用。`].filter(Boolean).join('；'));
+          pair=undefined; warn('pairing-conflict',nextWave.source.result.source.id,`${textError(error)} 波函数保留为独立来源，依赖可靠配对的分析暂不可用。`);
         }
       }
-      if(pair?.conflicts.length){
-        if(automation?.strictTargetId)throw Object.assign(new Error('几何身份已核对，但打印数值存在电子态冲突，拒绝自动配对。'),{code:'MCP_WAVEFUNCTION_UNPAIRED'});
-        recordNotice(previous=>`${previous}；几何身份已核对，${pair.conflicts.length}项打印数值不一致；两槽及各自数值保留，依赖一致电子态的分析不可用。`);
-      }
+      if(pair?.conflicts.length)warn('pairing-conflict',pair.wavefunction.result.source.id,`几何身份已核对，${pair.conflicts.length}项打印数值不一致；两槽及各自数值保留，依赖一致电子态的分析不可用。`);
       if(wavefunction?.nativeSessionId)await portsRef.current.reserveViews?.(wavefunction.nativeSessionId,useTarget);
       guard();
       const displayedResult=await defaultPostprocessCompanion(nextOutput,nextCompanions);guard();
       const value = composePostprocessDocument(useTarget ? base!.id : `analysis-${crypto.randomUUID()}`, nextOutput, nextWave, pair,{companions:nextCompanions,displayedResult});
       const extras=[...(useTarget?retainedExtras:[]),...nebExtras,...mdExtras];if(extras.length)retainPostprocessSourceExtras(value,extras.filter((extra,index)=>extras.findIndex(other=>other.sourceId===extra.sourceId&&other.revision===extra.revision)===index));
+      const directSlots=validateDirect(base,value);
       const {structure,identity:frameBondIdentity} = await readInitialPostprocessFrame(value,signal); guard();
-      await newDocument?.beforeCommit?.(value);await automation?.beforeCommit?.(value);guard();
+      await newDocument?.beforeCommit?.(value);guard();
       const canNavigate=newDocument?newDocument.canNavigate?.()!==false:fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
       const documentId = useTarget ?? portsRef.current.add(value.result, value, { structure,frameBondIdentity,...(!canNavigate||forceNew?{activate:false}:{}),...(forceNew?{initialModule:'analysis' as const}:{}) });
       if (useTarget) portsRef.current.replace(documentId, value.result, value, structure,frameBondIdentity);
       if(canNavigate)selectFile(null);
       const priorAssociation=useTarget&&base?getPostprocessTaskAssociation(base):undefined;
       if(priorAssociation)setPostprocessTaskAssociation(value,priorAssociation);
-      sourceNotices.current[documentId]=readNotice;
+      sourceNotices.current[documentId]=readNotice();
       documentsRef.current = { ...documentsRef.current, [documentId]: value }; setDocuments(documentsRef.current);
-      if(canNavigate){setEngine(sourceEngine(value));setTask(postprocessDocumentTask(value));setStage('files');setNotice(readNotice);}committed = true;owner.transferred=true;for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
+      if(canNavigate){setEngine(sourceEngine(value));setTask(postprocessDocumentTask(value));setStage('files');setNotice(readNotice());}committed = true;owner.transferred=true;for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
       if(diagnostics.length){portsRef.current.onDiagnostics?.(diagnostics);diagnosticsCommitted=Boolean(portsRef.current.onDiagnostics);}
       if(forceNew)forceNew.onCreated(documentId);else if(canNavigate){portsRef.current.activate(documentId);portsRef.current.analyze();}
-      automation?.onCommitted?.(documentId);
+      if(directSlots)direct?.onAttached?.(directSlots,readNotice());
       if (useTarget && base) {const retained=new Set(nextCompanions.map(value=>value.source.result.source.id));const issues=await dispose([output ? base.output : undefined, wavefunction ? base.wavefunction : undefined,...(base.companions??[]).filter(value=>!retained.has(value.source.result.source.id))],useTarget);if(issues.length)portsRef.current.onError(`新来源已接入；旧来源释放提示：${issues.join('；')}`);}
-    } catch (error) { if(newDocument?.throwOnFailure||automation?.throwOnFailure)throw error;if (alive.current) portsRef.current.onError(textError(error)); }
+    } catch (error) { if(newDocument?.throwOnFailure)throw error;if (alive.current) portsRef.current.onError(textError(error)); }
     finally {
       newDocument?.signal?.removeEventListener('abort',externalAbort);
       if(!committed)for(const extra of pendingFileDocument?.extraSources??[])if(!retainedFileExtras.has(extra)&&!owner.extras.has(extra))owner.extras.set(extra,{closed:false});
@@ -602,17 +617,25 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       let companions=role==='output'?[]:role==='companions'?(value.companions??[]).filter(item=>!outgoing.includes(item)):value.companions??[];
       const remainingExtras=role==='output'?[]:extras.filter(item=>!outgoingExtras.includes(item));
       let preparedOutput=output;
+      const retainedWarnings=new Map<string,string>();
       const guard=()=>{if(!alive.current||closingIds.current.has(id)||documentsRef.current[id]!==value||!portsRef.current.exists(id))throw Error('分析来源已关闭或替换，未重放移除操作。');};
       if(role==='companions'&&output){
         for(const extra of remainingExtras){
-          if(isMdExtra(extra)){
-            const auxiliary=await readMdAuxiliary(extraInput(extra));if(auxiliary)temporaryMdAuxiliaries.push(auxiliary);guard();
-            if(!auxiliary||auxiliary.sha256!==extra.revision)throw Error('已保留MD辅助原始来源版本不一致。');
-            continue;
+          const md=isMdExtra(extra);
+          if(!md&&!['orca-neb-log','neb-interpolation'].includes(extra.format))continue;
+          let auxiliary:MdAuxiliarySource|NebAuxiliarySource|null=null;
+          try {
+            auxiliary=md?await readMdAuxiliary(extraInput(extra)):await readPostprocessNebAuxiliary(extraInput(extra));
+            guard();
+            if(!auxiliary||('data' in auxiliary?auxiliary.data.source.sha256:auxiliary.sha256)!==extra.revision)
+              throw Error('已保留辅助来源无法核对。');
+            if('data' in auxiliary)temporaryAuxiliaries.push(auxiliary);
+            else temporaryMdAuxiliaries.push(auxiliary);
+          } catch (error) {
+            await Promise.resolve(auxiliary?.diagnostic.dispose()).catch(()=>{});guard();
+            if(error instanceof DOMException&&error.name==='AbortError')throw error;
+            retainedWarnings.set(extra.sourceId,extra.name+'：'+textError(error));
           }
-          if(!['orca-neb-log','neb-interpolation'].includes(extra.format))continue;
-          const input:ResultInputFile={id:extra.sourceId,name:extra.name,size:extra.byteSize,readRange:extra.readRange,stream(){let offset=0;return new ReadableStream<Uint8Array>({async pull(controller){try{if(offset===extra.byteSize){controller.close();return;}const end=Math.min(extra.byteSize,offset+1024**2),bytes=await extra.readRange(offset,end);offset=end;controller.enqueue(bytes);}catch(error){controller.error(error);}}});}};
-          const auxiliary=await readPostprocessNebAuxiliary(input);guard();if(auxiliary)temporaryAuxiliaries.push(auxiliary);
         }
         const originals=companions.map(item=>projectPostprocessAttachment(item,item.source.results[0]??item.source.result,item.source.results));
         const prepared=await preparePostprocessIncoming(originals,{...value,output:unaugmentedPostprocessOutput(output),companions:originals},guard,{nebAuxiliaries:temporaryAuxiliaries,mdAuxiliaries:temporaryMdAuxiliaries});guard();
@@ -631,21 +654,28 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       {
         portsRef.current.replace(id, next.result, next, structure,frameBondIdentity); documentsRef.current = { ...documentsRef.current, [id]: next }; setDocuments(documentsRef.current);
       }
+      if(retainedWarnings.size){
+        const notice=[...retainedWarnings.values()].join('；');
+        sourceNotices.current[id]=notice;setNotice(notice);
+      }
       const issues=await dispose([...outgoing,...(role==='output'?value.companions??[]:[])],id);
       if(issues.length)portsRef.current.onError(`来源已移除；native释放提示：${issues.join('；')}`);
     } catch (error) { portsRef.current.onError(textError(error)); }
     finally { await Promise.allSettled([...temporaryAuxiliaries,...temporaryMdAuxiliaries].map(item=>item.diagnostic.dispose()));setBusy(false); busyRef.current = false; }
   }
-  async function readExcitationFiles(files:ScientificSourceFile[],slotKey:ExcitationSlotKey,targetId?:string|null){
+  async function readExcitationFiles(files:ScientificSourceFile[],slotKey:ExcitationSlotKey,targetId?:string|null,direct?:{replace:boolean;signal:AbortSignal;guard?():void}){
     const id=targetId??ownerId,before=id?documentsRef.current[id]:undefined;
-    if(busyRef.current)return;
-    if(!id||!before?.output||before.output.source.kind!=='orca-output'||!before.output.source.tasks.includes('td')){portsRef.current.onError('请先读取可关联波函数的 ORCA TD 主 OUT；已有跃迁数据保持可读。');return;}
-    if(files.length>1){portsRef.current.onError('每个振幅角色请选择一个原始候选文件；未按导入顺序覆盖。');return;}
-    try{portsRef.current.guardRemove?.(id);}catch(error){portsRef.current.onError(textError(error));return;}
+    const fail=(error:unknown)=>{if(direct)throw error;portsRef.current.onError(textError(error));};
+    if(busyRef.current){if(direct)fail(Error('后处理正在读取其他来源，请稍后重试。'));return;}
+    if(!id||!before?.output||before.output.source.kind!=='orca-output'||!before.output.source.tasks.includes('td')){fail(Error('请先读取可关联波函数的 ORCA TD 主 OUT；已有跃迁数据保持可读。'));return;}
+    if(files.length>1){fail(Error('每个振幅角色请选择一个原始候选文件；未按导入顺序覆盖。'));return;}
+    if(direct&&!direct.replace&&postprocessExcitationSlots(before.output).some(slot=>slot.slotKey===slotKey&&slot.name))throw Object.assign(Error('目标文件槽已有来源，明确选择替换后可继续。'),{code:'SOURCE_SLOT_OCCUPIED'});
+    try{direct?.signal.throwIfAborted();portsRef.current.guardRemove?.(id);}catch(error){fail(error);return;}
     busyRef.current=true;setBusy(true);setReadState('reading');
     const epoch=++requestEpoch.current;let finish!:()=>void;const done=new Promise<void>(resolve=>finish=resolve);
     const owner:ImportReadOwner={controller:new AbortController(),inputs:new Map(),sessions:new Map(),extras:new Map(),targets:new Set([id]),settled:false,transferred:false,done,finish};readOwnerRef.current=owner;
-    const guard=()=>{owner.controller.signal.throwIfAborted();if(!alive.current||epoch!==requestEpoch.current||documentsRef.current[id]!==before||closingIds.current.has(id)||!portsRef.current.exists(id))throw Error('振幅来源已关闭或替换，本次文件未接入。');};owner.validate=guard;
+    const cancel=()=>{void stopReadOwner(owner,direct?.signal.reason);};direct?.signal.addEventListener('abort',cancel,{once:true});
+    const guard=()=>{owner.controller.signal.throwIfAborted();direct?.guard?.();if(!alive.current||epoch!==requestEpoch.current||documentsRef.current[id]!==before||closingIds.current.has(id)||!portsRef.current.exists(id))throw Error('振幅来源已关闭或替换，本次文件未接入。');};owner.validate=guard;
     let adopted=false;
     try{
       guard();const input=files.length?resultFile(files[0]):null;if(input)owner.inputs.set(input,{closed:false});
@@ -653,8 +683,10 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       if(input)owner.inputs.delete(input);
       const next={...before};const extras=postprocessSourceExtras(before);if(extras.length)retainPostprocessSourceExtras(next,[...extras]);
       documentsRef.current={...documentsRef.current,[id]:next};setDocuments(documentsRef.current);notifyAnalysisProjectStateChanged();owner.transferred=true;owner.targets.clear();
-    }catch(error){if(alive.current)portsRef.current.onError(textError(error));}
+      if(direct)return postprocessExcitationSlots(before.output).filter(slot=>slot.slotKey===slotKey&&slot.name);
+    }catch(error){if(direct)throw error;if(alive.current)portsRef.current.onError(textError(error));}
     finally{
+      direct?.signal.removeEventListener('abort',cancel);
       const outcomes=await Promise.allSettled([...owner.inputs.keys()].map(input=>closeImportInput(owner,input)));owner.settled=true;finishReadOwner(owner);
       if(!adopted&&outcomes.some(result=>result.status==='rejected')&&alive.current)portsRef.current.onError('未接入振幅来源的读取租约仍待实际关闭，可重试停止。');
     }

@@ -1,7 +1,43 @@
 'use strict';
 const { StringDecoder } = require('node:string_decoder');
-const { assert, plain, string, validateChemistry, validateStructure, MAX_BYTES } = require('./security.cjs');
-const INPUT_LIMIT = 8 * 1024 * 1024;
+const { assert, plain, string, validateChemistry, validateStampedChemistryModel, validateStructure } = require('./security.cjs');
+const PROJECTION_MODE = 'bond-projection-v1';
+const FRAME_REPLY_MODE = 'empirical-frame-graph-v1';
+const frameRequestFields = new Set(['operation', 'bondPerceptionPolicy', 'aggression', 'stamp', 'structure', 'movableAtomIds']);
+
+function validateFrameRequest(request) {
+  assert(Object.keys(request).every(key => frameRequestFields.has(key)) &&
+    request.bondPerceptionPolicy === 'composite-v1' && request.aggression === 'standard',
+    'Frame reply requires standard empirical composite perception');
+  validateStampedChemistryModel(request);
+  const { structure, movableAtomIds } = request;
+  assert(structure.atoms.length && structure.cell === undefined && structure.dimension !== 2 &&
+    structure.periodicSource === undefined && structure.bonds === undefined && structure.bondSource === undefined &&
+    structure.bondPerceptionIssues === undefined && structure.molfile === undefined &&
+    movableAtomIds.length === structure.atoms.length && structure.atoms.every((atom,index) => atom.id === movableAtomIds[index]),
+    'Frame reply requires an atom-only finite source with its ordered movable identities');
+}
+
+function workerRequest(id, request, compact) {
+  if (!compact) return { id, request };
+  const { stamp: _stamp, structure, ...payload } = request;
+  const atoms = structure.atoms.map(({ id, element, x, y, z, ...attributes }) =>
+    Object.keys(attributes).length ? [id, element, x, y, z, attributes] : [id, element, x, y, z]);
+  return { id, mode: PROJECTION_MODE, request: { ...payload, structure: { ...structure, atoms } } };
+}
+
+function workerResult(result, job) {
+  if (!job.compact) return result;
+  const { projection, ...metadata } = result;
+  assert(!Object.hasOwn(metadata, 'structure') && !Object.hasOwn(metadata, 'stamp') &&
+    !Object.hasOwn(metadata, 'movableAtomIds') && metadata.bondPerceptionPolicy === 'composite-v1' &&
+    plain(projection) && Object.keys(projection).every(key => ['bonds', 'bondSource', 'bondPerceptionIssues', 'notes'].includes(key)) &&
+    Array.isArray(projection.bonds) && projection.bondSource === 'inferred' && Array.isArray(projection.notes), 'Invalid empirical projection');
+  const structure = { ...job.request.structure, ...projection };
+  if (!Object.hasOwn(projection, 'bondPerceptionIssues')) delete structure.bondPerceptionIssues;
+  return { ...metadata, structure, stamp: job.request.stamp, movableAtomIds: job.request.movableAtomIds };
+}
+
 /** One serial reusable worker; only the existing perceive-bonds operation is accepted. */
 function createEmpiricalChemistryHost({ spawn, resolveRuntime, canSpawn = () => true, limits = {} }) {
   const policy = { closeMs: 6000, idleMs: 30000, ...limits };
@@ -40,10 +76,25 @@ function createEmpiricalChemistryHost({ spawn, resolveRuntime, canSpawn = () => 
           assert(job && job.worker === w && plain(response) && response.id === job.transportId && typeof response.ok === 'boolean', 'Invalid empirical worker response identity');
           if (!response.ok) { assert(plain(response.error) && string(response.error.code) && string(response.error.message, 8192)); finish(job, new Error(response.error.code + ': ' + response.error.message)); }
           else {
-            const result = response.result;
-            assert(plain(result) && result.operation === job.request.operation && JSON.stringify(result.stamp) === JSON.stringify(job.request.stamp) && Array.isArray(result.warnings) && string(result.engine) && typeof result.engineVersion === 'string', 'Invalid chemistry engine response');
-            validateStructure(result.structure); assert(JSON.stringify(result.movableAtomIds) === JSON.stringify(job.request.movableAtomIds), 'Chemistry response movable identities changed');
-            if (result.error) finish(job, new Error(`${result.error.code || 'CHEMISTRY_FAILED'}: ${result.error.message || '经验成键失败'}`)); else finish(job, null, result);
+            assert(plain(response.result), 'Invalid chemistry engine response');
+            const result = workerResult(response.result, job);
+            assert(result.operation === job.request.operation && Array.isArray(result.warnings) && string(result.engine) && typeof result.engineVersion === 'string', 'Invalid chemistry engine response');
+            if (!job.compact) {
+              assert(JSON.stringify(result.stamp) === JSON.stringify(job.request.stamp), 'Chemistry response stamp changed');
+              assert(JSON.stringify(result.movableAtomIds) === JSON.stringify(job.request.movableAtomIds), 'Chemistry response movable identities changed');
+            }
+            validateStructure(result.structure);
+            if (result.error) finish(job, new Error(`${result.error.code || 'CHEMISTRY_FAILED'}: ${result.error.message || '经验成键失败'}`));
+            else if (job.frameReply) {
+              const { structure, stamp, operation, engine, engineVersion, warnings, bondPerceptionPolicy, bondPerceptionSummary } = result;
+              assert(plain(bondPerceptionSummary) && bondPerceptionSummary.method === 'empirical' &&
+                bondPerceptionSummary.evidenceCount === 0 && bondPerceptionSummary.bondCount === structure.bonds.length,
+                'Invalid empirical frame summary');
+              finish(job, null, { kind: FRAME_REPLY_MODE, jobId: job.jobId,
+                documentId: stamp.documentId, revision: stamp.revision, operation, engine, engineVersion, warnings,
+                bondPerceptionPolicy, bondPerceptionSummary, bonds: structure.bonds,
+                ...(structure.bondPerceptionIssues === undefined ? {} : { bondPerceptionIssues: structure.bondPerceptionIssues }) });
+            } else finish(job, null, result);
           }
           schedule();
         }
@@ -74,14 +125,22 @@ function createEmpiricalChemistryHost({ spawn, resolveRuntime, canSpawn = () => 
       w.child.stdin.write(job.payload + '\n');
     } catch (error) { finish(job, error); schedule(); }
   }
-  function start(owner, request, jobId, beforeStart) {
+  function start(owner, request, jobId, beforeStart, frameReply = false) {
     assert(!disposed && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner), 'Empirical owner closed');
     assert(string(jobId, 100) && /^[a-zA-Z0-9_-]+$/.test(jobId), 'Invalid chemistry job identity');
-    assert(plain(request) && request.operation === 'perceive-bonds', 'Reusable worker accepts empirical perception only'); validateChemistry(request);
+    assert(plain(request) && request.operation === 'perceive-bonds', 'Reusable worker accepts empirical perception only');
+    if (frameReply) validateFrameRequest(request);
+    else validateChemistry(request);
     assert(!jobs.has(key(owner, jobId)) && (policy.maxPending === undefined || jobs.size < policy.maxPending), 'Empirical pending budget reached');
-    const snapshot = structuredClone(request), transportId = `empirical-${++serial}`, payload = JSON.stringify({ id: transportId, request: snapshot });
+    const compact = request.bondPerceptionPolicy === 'composite-v1' && request.bondOrderEvidence === undefined;
+    // Frame requests are detached IPC objects held exclusively by the trusted
+    // host. The payload is sealed before queueing; no full structure is echoed.
+    // Keep the legacy response's JSON semantics for old callers.
+    const snapshot = frameReply ? request : compact ? JSON.parse(JSON.stringify(request)) : structuredClone(request);
+    const transportId = `empirical-${++serial}`;
+    const payload = JSON.stringify(workerRequest(transportId, snapshot, compact));
     assert(beforeStart === undefined || typeof beforeStart === 'function', 'Invalid empirical dispatch guard');
-    return new Promise((resolve, reject) => { const job = { owner, key: key(owner, jobId), request: snapshot, payload, transportId, beforeStart, resolve, reject, settled: false }; jobs.set(job.key, job); pending.push(job); schedule(); });
+    return new Promise((resolve, reject) => { const job = { owner, jobId, key: key(owner, jobId), request: snapshot, payload, compact, frameReply, transportId, beforeStart, resolve, reject, settled: false }; jobs.set(job.key, job); pending.push(job); schedule(); });
   }
   function cancel(owner, jobId, reason = 'CHEMISTRY_CANCELLED: 用户取消任务') {
     const job = jobs.get(key(owner, jobId)); if (!job) return;
@@ -98,4 +157,4 @@ function createEmpiricalChemistryHost({ spawn, resolveRuntime, canSpawn = () => 
   }
   return { start, cancel, closeOwner, dispose, settle: () => worker?.closedPromise ?? Promise.resolve(), workerCount: () => worker && !worker.closed ? 1 : 0, activeCount: () => jobs.size };
 }
-module.exports = { createEmpiricalChemistryHost };
+module.exports = { createEmpiricalChemistryHost, FRAME_REPLY_MODE };

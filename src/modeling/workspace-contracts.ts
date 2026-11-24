@@ -90,6 +90,8 @@ export type WorkspaceDocumentEvent =
   | {kind:'command';schema:'sciyue-workspace-document';version:1;documentId:string;requestId:string;requesterWindowId:string;expectedRevision:number;command:WorkspaceCommand}
   | {kind:'unavailable';schema:'sciyue-workspace-document';version:1;documentId:string;reason:'owner-closed'|'document-closed'};
 export interface WorkspaceMemberAuth {documentId:string;membershipNonce:string}
+export interface WorkspacePublicationRequest extends WorkspaceMemberAuth {expectedRevision:number;revision:number;snapshot:WorkspaceDocumentSnapshot}
+export interface WorkspacePublicationReceipt {documentId:string;documentEpoch:string;revision:number;publicationSerial:number}
 export interface WorkspaceDesktopBridge {
   workspaceWindowGeometry?():Promise<{x:number;y:number;width:number;height:number}>;
   detachWorkspaceDocument?(request:WorkspaceMemberAuth&{placement?:{x?:number;y?:number;width?:number;height?:number};restorePlacement?:true}):Promise<{windowId:string}>;
@@ -105,9 +107,10 @@ export interface WorkspaceDesktopBridge {
   restoreWorkspaceOwner?(request:WorkspaceMemberAuth):Promise<{status:'shown'|'restored-headless';windowId:string}>;
   registerWorkspaceDocument(request:{documentId:string;revision:number;snapshot:WorkspaceDocumentSnapshot}):Promise<WorkspaceMembership>;
   readWorkspaceDocuments():Promise<WorkspaceMembership[]>;
-  publishWorkspaceDocument(request:WorkspaceMemberAuth&{expectedRevision:number;revision:number;snapshot:WorkspaceDocumentSnapshot}):Promise<WorkspaceMembership>;
+  publishWorkspaceDocument(request:WorkspacePublicationRequest):Promise<WorkspaceMembership>;
+  publishWorkspaceDocumentReceipt?(request:WorkspacePublicationRequest):Promise<WorkspacePublicationReceipt>;
   commandWorkspaceDocument(request:WorkspaceMemberAuth&{expectedRevision:number;command:WorkspaceCommand}):Promise<WorkspaceMembership&{status:'committed'}>;
-  replyWorkspaceDocumentCommand(request:WorkspaceMemberAuth&({requestId:string;status:'committed';revision:number;snapshot:WorkspaceDocumentSnapshot}|{requestId:string;status:'rejected';error:string})):Promise<unknown>;
+  replyWorkspaceDocumentCommand(request:WorkspaceMemberAuth&({requestId:string;status:'committed';revision:number;snapshot:WorkspaceDocumentSnapshot}|(WorkspacePublicationReceipt&{requestId:string;status:'committed'})|{requestId:string;status:'rejected';error:string})):Promise<unknown>;
   leaveWorkspaceDocument(request:WorkspaceMemberAuth):Promise<unknown>;
   closeWorkspaceDocument(request:WorkspaceMemberAuth):Promise<unknown>;
   onWorkspaceDocumentEvent(listener:(event:WorkspaceDocumentEvent)=>void):()=>void;

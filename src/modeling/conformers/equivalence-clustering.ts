@@ -3,6 +3,7 @@ import {createElementGeometryComparer,ELEMENT_GEOMETRY_ALGORITHM} from './elemen
 import {elementCompositionKey,elementConstraintProfile,elementConstraintsMatch} from './element-constraints';
 import {convertEnergy} from '../../results/energy';
 import {superposeViewAtoms} from '../view-superposition';
+import {createEquivalenceStereoCheck} from './symmetry-matching';
 export interface ConformerEquivalenceSummary{
  algorithmVersion:typeof ELEMENT_GEOMETRY_ALGORITHM;energyThresholdKcalMol:0.03;
  poolingVersion:'composition-identity-v1';
@@ -17,6 +18,7 @@ export interface ConformerEquivalenceSummary{
  * Entire original membership is retained. No permutation is persisted. */
 export function eliminateEquivalentClusters(result:ConformerClusterSet,records:readonly ConformerOptimizationResult[],onProgress?:(p:ConformerClusteringProgress)=>void){
  const started=performance.now(),matcher=createElementGeometryComparer(),threshold=convertEnergy({value:.03,unit:'kcal/mol'},'hartree')!;
+ const stereoMatches=createEquivalenceStereoCheck();
  const ordinaryClusterCount=result.groups.reduce((n,g)=>n+g.clusters.length,0);
  const summary:ConformerEquivalenceSummary={algorithmVersion:ELEMENT_GEOMETRY_ALGORITHM,poolingVersion:'composition-identity-v1',energyThresholdKcalMol:.03,ordinaryClusterCount,finalClusterCount:0,eligiblePairCount:0,radialRejectedPairCount:0,fixedEvidencePairCount:0,assignmentPairCount:0,unresolvedPairCount:0,unresolvedClusterCount:0,
  ordinaryClusters:result.groups.flatMap(group=>group.clusters.map(cluster=>({groupId:group.id,clusterId:cluster.id,representativeCandidateId:cluster.representative.candidateId,memberCandidateIds:cluster.members.map(member=>member.candidateId)}))),ordinaryToFinal:[],elapsedMs:0,preparationMs:0};
@@ -60,7 +62,8 @@ export function eliminateEquivalentClusters(result:ConformerClusterSet,records:r
     try{fit=entry.constraints.kind==='unresolved'||candidate.constraints.kind==='unresolved'
       ?{matched:false,rmsdAngstrom:null,route:'incompatible',iterations:0}
       :matcher.compare(ordinary.representative.structure,candidate.cluster.representative.structure,result.policy.rmsdThresholdAngstrom,
-        pairs=>elementConstraintsMatch(entry.constraints,candidate.constraints,pairs));}
+        pairs=>elementConstraintsMatch(entry.constraints,candidate.constraints,pairs)
+          &&stereoMatches(ordinary.representative.structure,candidate.cluster.representative.structure,pairs));}
     catch{fit={matched:false,rmsdAngstrom:null,route:'unresolved',iterations:0};}
     if(fit.route==='radial-rejected')summary.radialRejectedPairCount++;
     else if(fit.route==='fixed')summary.fixedEvidencePairCount++;

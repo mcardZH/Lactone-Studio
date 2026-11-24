@@ -1,7 +1,6 @@
 """Owned main-20 native adapter. No upstream QM, cropped WF or silent approximation."""
 from __future__ import annotations
 
-import base64
 import copy
 import hashlib
 import json
@@ -15,10 +14,11 @@ import threading
 import time
 
 import numpy as np
+from analysis_result_wire import packed_values, packed_mask, write_domain_record, read_domain_record, sha256_file, cube_export_file
 from multiwfn_progress import report_progress
 from multiwfn_resources import resolve_resources, _values, require_native_binary_grant
 from orbitals import inspect_wavefunction
-from surface_analysis import (SurfaceError, NativeSurfaceProcess, read_scalar_cube,
+from surface_analysis import (SurfaceError, NativeSurfaceProcess, read_scalar_cube, packed_cube_domain,
                               require_cube_pair, retained_size, number, half_last_digit, NUMBER, MAIN_MENU, BOHR_TO_ANGSTROM, target_grid_dimensions)
 
 METHODS = {'iri': '4', 'rdg': '1', 'igmh': '11', 'migm': '-10', 'igm': '10'}
@@ -166,7 +166,7 @@ def density_domain(method, signed_density, parameters, intervals=None):
     # magnitude rho. Zero/threshold-print-boundary nodes cannot establish rho
     # eligibility and are conservatively excluded, never inferred from fills.
     mask = ((rho - error > threshold) if method == 'iri' else (rho + error < threshold)) & (rho > 0)
-    return dict(kind='node-mask', maskBase64=base64.b64encode(mask.astype(np.uint8).tobytes()).decode('ascii'),
+    return dict(kind='node-mask', maskBinary=packed_mask(mask),
                 evidence=f'Native {key}={threshold}; abs(nonzero sign(lambda2)rho)=rho by native function definition. '
                          'Original Cube decimal-print intervals wholly outside the shielding predicate are admitted; '
                          'zero signed-density/threshold-overlap nodes are excluded. Mask is not inferred from method sentinels or zero fill.')
@@ -439,7 +439,7 @@ class InteractionAnalysisSession:
         for role, name in [('native-output', native.log.name), ('native-menu', native.menu_log.name), ('effective-settings', 'settings.ini'), *roles]:
             path = native.work / name
             if path.is_file():
-                artifacts.append(dict(role=role, name=name, revision=hashlib.sha256(path.read_bytes()).hexdigest()))
+                artifacts.append(dict(role=role, name=name, revision=sha256_file(path)))
         return dict(backend=self.backend, sourceIds=[self.context['sourceId']], parameters=dict(threads=self.resources['threads'],
                     memoryBudgetBytes=self.resources['memoryBudgetBytes'], settingsRevision=self.resources['settingsRevision'],
                     **(getattr(native, 'source_prerequisites', None) or {}), **self.parameters, **parameters), rawArtifacts=artifacts,
@@ -457,7 +457,7 @@ class InteractionAnalysisSession:
                      functionLabel={'mapping': 'sign(λ₂)ρ', 'inter': 'δg_inter', 'intra': 'δg_intra', 'total': 'δg'}.get(component, component.upper()),
                      valueUnit='a.u.', definitionEvidence=dict(kind='native-output', description='Actual Multiwfn main-20 method, native output role and unmodified original Cube.'),
                      grid=cube['grid'], atoms=cube['atoms'], precision=cube['precision'], validDomain=domain,
-                     valuesBase64=base64.b64encode(cube['values'].astype('<f8', copy=False).tobytes()).decode('ascii'))
+                     valuesBinary=packed_values(cube['values']))
         return field, cube
 
     def generate(self, request):
@@ -509,13 +509,13 @@ class InteractionAnalysisSession:
             result = dict(stamp=copy.deepcopy(request['stamp']), method=method, fragments=fragments, quality=copy.deepcopy(request['quality']), fields=fields, mapping=mapping, integrals=integrals, provenance=provenance)
             descriptors = {}
             for field in [mapping, *fields.values()]:
-                descriptor = {key: value for key, value in field.items() if key != 'valuesBase64'}
+                descriptor = {key: value for key, value in field.items() if key not in ('valuesBinary', 'validDomain')}
                 sidecar = dict(schema='sciyue-surface-domain/v1', sourceRevision=field['source']['revision'], validDomain=field['validDomain'], context=self.context,
                                function=field['function'], valueUnit=field['valueUnit'], method=method, fragments=fragments, parameters=provenance['parameters'])
                 path = native.work / field['source']['name']; meta = path.with_name(path.name + '.domain.json')
-                meta.write_text(json.dumps(sidecar, allow_nan=False, separators=(',', ':')), encoding='utf-8')
+                write_domain_record(meta, sidecar)
                 descriptors[field['id']] = dict(path=str(path), revision=field['source']['revision'], metadataPath=str(meta), metadataBytes=meta.stat().st_size,
-                                              metadataRevision=hashlib.sha256(meta.read_bytes()).hexdigest(), descriptor=descriptor, analysisId=request['stamp']['analysisId'])
+                                              metadataRevision=sha256_file(meta), descriptor=descriptor, analysisId=request['stamp']['analysisId'])
             saved = {key: value for key, value in result.items() if key not in ('fields', 'mapping', 'stamp')}
             saved.update(analysisId=request['stamp']['analysisId'], fieldIds={key: field['id'] for key, field in fields.items()}, mappingId=mapping['id'])
             with self.lock:
@@ -579,14 +579,14 @@ class InteractionAnalysisSession:
         if path.is_symlink() or metadata_path.is_symlink() or metadata_path.stat().st_size != item['metadataBytes']:
             reject('field-changed', 'Owned Cube/domain artifacts were replaced or their bounded size changed.')
         cube = read_scalar_cube(path, self.resources['memoryBudgetBytes'])
-        raw_metadata = metadata_path.read_bytes()
-        if cube['revision'] != item['revision'] or hashlib.sha256(raw_metadata).hexdigest() != item['metadataRevision']:
+        if cube['revision'] != item['revision']:
             reject('field-changed', 'Completed Cube or bound domain metadata changed; no cached result was restored.')
-        metadata = json.loads(raw_metadata)
+        try: metadata = read_domain_record(metadata_path, item['metadataRevision'], cube['values'].size)
+        except (ValueError, OSError): reject('field-changed', 'Completed bound domain metadata changed; no cached result was restored.')
         if metadata.get('sourceRevision') != cube['revision'] or metadata.get('context') != self.context:
             reject('domain', 'Cached domain/source identity is inconsistent.')
-        field = copy.deepcopy(item['descriptor']); field['validDomain'] = metadata['validDomain']
-        field['valuesBase64'] = base64.b64encode(cube['values'].astype('<f8', copy=False).tobytes()).decode('ascii')
+        field = copy.deepcopy(item['descriptor']); field['validDomain'] = packed_cube_domain(metadata['validDomain'], cube['values'].size)
+        field['valuesBinary'] = packed_values(cube['values'])
         return field, cube
 
     def restore_fields(self, request):
@@ -608,9 +608,10 @@ class InteractionAnalysisSession:
         item = self.fields.get(request.get('fieldId'))
         if item is None or item['analysisId'] != request['stamp']['analysisId']:
             reject('field', 'Only a completed field owned by this analysis can be exported.')
-        self._restore_field(request.get('fieldId'), request['stamp']['analysisId'])
-        item = self.fields[request['fieldId']]; path = Path(item['path'])
-        return dict(name=path.name, text=path.read_bytes().decode('utf-8'), domain=dict(name=path.name + '.sciyue-domain.json', text=Path(item['metadataPath']).read_bytes().decode('utf-8')))
+        path = Path(item['path']); metadata = Path(item['metadataPath'])
+        if sha256_file(path) != item['revision'] or sha256_file(metadata) != item['metadataRevision']:
+            reject('field-changed', 'Completed Cube or bound domain metadata changed; no export was produced.')
+        return cube_export_file(path.name, path, item['revision'], (metadata, item['metadataRevision']))
 
     def evidence(self):
         native = self.native; process = native.process if native else None

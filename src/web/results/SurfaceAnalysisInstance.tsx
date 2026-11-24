@@ -6,7 +6,7 @@ import type { SurfaceCapability, SurfaceContext, SurfaceScalarField } from '../.
 import { sameSurfaceContext } from '../../results/surface-field';
 import type { AnalysisSelectionPort } from '../analysis-selection-intent';
 import { MULTIWFN_CONFIGURATION_CHANGED } from './MultiwfnPathControl';
-import SurfaceAnalysisControls from './SurfaceAnalysisControls';
+import SurfaceAnalysisControls, { electronicSurfacePairKey, type ElectronicSurfaceMeshReceipt } from './SurfaceAnalysisControls';
 import SurfaceRegionSelection from './SurfaceRegionSelection';
 import { assertSurfaceCubeSourceGeometry, type SurfaceDesktopApi, type SurfaceDesktopController } from './surface-desktop-bridge';
 import type { SurfaceCapabilityRequest, SurfaceControlsBridge, SurfaceInteractionPort, SurfaceProjection } from './surface-controls-contracts';
@@ -20,6 +20,7 @@ import { InputSettingsField, InputSettingsRow } from '../InputSettingsFields';
 import type { SurfaceMeshState } from '../modeling/render/surface-layer';
 import type { AnalysisColorbarLayout } from './analysis-colorbar-layout';
 import { isRestoredAnalysisData, useAnalysisProjectSnapshot } from '../../projects/analysis-state';
+import {ResultsMcpAnalysisFamily} from './results-mcp-context';
 
 export interface SurfaceAnalysisInstanceProps {
   analysisId: string; context: SurfaceContext; document: PostprocessDocument; structure: Structure; modelDocument: ModelDocument;
@@ -35,9 +36,10 @@ export interface SurfaceAnalysisInstanceProps {
   onExportImage?(): void | Promise<void>;
   onHirshfeldProjection?(value: HirshfeldProjection | null): void;
   onSurfaceFamilyChange?(family: 'electronic' | 'hirshfeld'): void;
-  onOpenHirshfeldFingerprint?(snapshot: HirshfeldFingerprintSnapshot): void;
+  onOpenHirshfeldFingerprint?(snapshot: HirshfeldFingerprintSnapshot): string|void;
   onHirshfeldColorbarLayoutReady?(setter: ((layout: AnalysisColorbarLayout) => void) | null): void;
   onHirshfeldMeshObserverReady?(observer: ((state: Readonly<SurfaceMeshState>, document: Pick<ModelDocument, 'id' | 'revision'>) => void) | null): void;
+  onElectronicMeshObserverReady?(observer: ((state: Readonly<SurfaceMeshState>, document: Pick<ModelDocument, 'id' | 'revision'>) => void) | null): void;
   onError(message: string): void;
 }
 const missingPorts: SurfaceControlsBridge = {};
@@ -79,12 +81,40 @@ export function surfaceInstanceProjection(projection: SurfaceProjection | null, 
     colorbar: admission ? null : projection.colorbar };
 }
 
+export function electronicSurfaceMeshReceipt(projection: SurfaceProjection | null, state: Readonly<SurfaceMeshState>,
+  actual: Pick<ModelDocument, 'id' | 'revision'>): ElectronicSurfaceMeshReceipt | null {
+  const layer = projection?.surfaceLayer;
+  if (!projection?.fields || !layer?.visible || actual.id !== layer.documentId || actual.revision !== layer.geometryRevision || !state.attemptKey
+    || layer.pair.shape.id !== state.shapeId || (layer.pair.mapping?.id ?? null) !== state.mappingId
+    || projection.context.sourceId !== state.sourceId || projection.context.sourceRevision !== state.sourceRevision) return null;
+  const receipt = { pairKey: electronicSurfacePairKey(projection.fields), attemptKey: state.attemptKey };
+  if (state.status === 'failed') return { ...receipt, status: 'failed', error: state.error };
+  if (state.status === 'committed' && state.submitted && state.committedKey === state.attemptKey) {
+    return { ...receipt, status: state.vertexCount > 0 && state.triangleCount > 0 ? 'drawn' : 'failed' };
+  }
+  return { ...receipt, status: 'pending' };
+}
+
 /** A UI lifetime shell. Native compute stays exclusively behind explicit ports;
  * hidden/unavailable views preserve completed Controls state and native caches. */
 function ElectronicSurfaceAnalysisInstance(p: SurfaceAnalysisInstanceProps) {
   const desktop = p.desktop === undefined ? (typeof window === 'undefined' ? null : window.sciyueDesktop ?? null) : p.desktop;
   const key = `${p.analysisId}:${surfaceScientificContextKey(p.context)}`, lifetimeKey = surfaceSourceLifetimeKey(p.analysisId,p.context);
   const latest = useRef({ props: p, key }); latest.current = { props: p, key };
+  const displayedProjection = useRef<SurfaceProjection | null>(null);
+  const [meshReceipt, setMeshReceipt] = useState<ElectronicSurfaceMeshReceipt | null>(null);
+  const meshObserver = useCallback((state: Readonly<SurfaceMeshState>, actual: Pick<ModelDocument, 'id' | 'revision'>) => {
+    const props = latest.current.props, projection = displayedProjection.current;
+    if (!props.active || props.available === false || !projection || !sameSurfaceContext(projection.context, props.context)) return;
+    const receipt = electronicSurfaceMeshReceipt(projection, state, actual);
+    if (receipt) setMeshReceipt(previous => previous?.pairKey === receipt.pairKey && previous.attemptKey === receipt.attemptKey &&
+      previous.status === receipt.status && previous.error === receipt.error ? previous : receipt);
+  }, []);
+  useEffect(() => {
+    const register = latest.current.props.onElectronicMeshObserverReady;
+    register?.(meshObserver);
+    return () => register?.(null);
+  }, [meshObserver, p.onElectronicMeshObserverReady]);
   const rounding = p.coordinateRoundingAngstrom === undefined ? surfaceSourceRounding(p.document, p.context) : p.coordinateRoundingAngstrom;
   const [owned, setOwned] = useState<{ key: string; controller: SurfaceDesktopController } | null>(null);
   const [poolState,setPoolState]=useState<{key:string;pool:SurfaceContextPool}|null>(null);
@@ -149,7 +179,8 @@ function ElectronicSurfaceAnalysisInstance(p: SurfaceAnalysisInstanceProps) {
   const publish = useCallback((projection: SurfaceProjection | null) => {
     const state = latest.current;
     if (state.key !== key) return;
-    state.props.onProjection(surfaceInstanceProjection(projection,state.props.context,state.props.document,admitCube));
+    displayedProjection.current = surfaceInstanceProjection(projection,state.props.context,state.props.document,admitCube);
+    state.props.onProjection(displayedProjection.current);
     if (!projection || !sameSurfaceContext(projection.context, state.props.context)) return;
     const query=projection.capabilityRequest;currentCapabilityQuery.current=query??null;
     const queryKey=query?surfaceCapabilityKey(query):'',requestKey = `${key}:${queryKey}:${projection.analysis?.stamp.requestId ?? ''}`;
@@ -168,11 +199,11 @@ function ElectronicSurfaceAnalysisInstance(p: SurfaceAnalysisInstanceProps) {
     restoreFields:async(request,signal)=>{const target=poolState?.pool.get(request.context);if(!target?.ports.restoreFields)throw new Error('原表面格点owner不可用，无法完整保存。');return target.ports.restoreFields(request,signal);},
     restoreCube:async(request,signal)=>{const target=poolState?.pool.get(request.context);if(!target?.ports.restoreCube)throw new Error('原表面Cube owner不可用，无法完整保存。');return target.ports.restoreCube(request,signal);},
   }),[controller,poolState]);
-  return <SurfaceAnalysisControls key={lifetimeKey} context={p.context} structure={p.structure} active={p.active} available={p.available}
+  return <SurfaceAnalysisControls key={lifetimeKey} analysisId={p.analysisId} context={p.context} structure={p.structure} active={p.active} available={p.available}
     wavefunctionAvailable={p.wavefunctionAvailable} allowedWavefunctionMethods={p.electronicSurfaceMethods} capabilities={capabilities.key === key ? capabilities.values : []} capabilitiesKey={capabilities.key===key?capabilities.requestKey??'':''} bridge={controller?projectPorts:missingPorts}
     cubeGeometryError={admitCube} sourceAtomOrder={sourceAtomOrder} resourceBudgetBytes={resourceBudget}
     renderRegionSelection={p.capturePort ? props => <SurfaceRegionSelection {...props} structure={p.structure} capture={p.capturePort!}/> : undefined}
-    onProjection={publish} onInteractionReady={interaction} onExportImage={p.onExportImage} onError={p.onError}/>;
+    onProjection={publish} meshReceipt={meshReceipt} onInteractionReady={interaction} onExportImage={p.onExportImage} onError={p.onError}/>;
 }
 
 /** One workspace entry with independent scientific families. After first entry,
@@ -187,13 +218,16 @@ export default function SurfaceAnalysisInstance(p: SurfaceAnalysisInstanceProps)
   const electronicProjection = useCallback((value: SurfaceProjection | null) => { if (latest.current.family === 'electronic') latest.current.props.onProjection(value); }, []);
   const hsProjection = useCallback((value: HirshfeldProjection | null) => { if (latest.current.family === 'hirshfeld') latest.current.props.onHirshfeldProjection?.(value); }, []);
   useEffect(() => { latest.current.props.onSurfaceFamilyChange?.(family); if (family === 'hirshfeld') { setHirshfeldCreated(true); latest.current.props.onProjection(null); } }, [family]);
-  return <><InputSettingsLayout><InputSettingsRow><InputSettingsField label="分析任务"><select aria-label="分子表面类型" value={family} onChange={event => {
-    const value = event.currentTarget.value === 'hirshfeld' ? 'hirshfeld' : 'electronic';
+  function chooseFamily(value:'hirshfeld'|'electronic') {
     if (value === 'electronic' && !electronicAllowed) return;
     if (value === 'hirshfeld') setHirshfeldCreated(true); setFamily(value); p.onProjection(null); p.onHirshfeldProjection?.(null); p.onSurfaceFamilyChange?.(value);
-  }}><option value="electronic" disabled={!electronicAllowed}>定量分析分子表面</option><option value="hirshfeld">Hirshfeld表面分析</option></select></InputSettingsField></InputSettingsRow></InputSettingsLayout>
+  }
+  return <ResultsMcpAnalysisFamily family={{current:family,available:electronicAllowed?['electronic','hirshfeld']:['hirshfeld'],choose:value=>{
+    if(!p.active||p.available===false)throw new Error('当前分子表面面板尚未激活。');
+    chooseFamily(value==='hirshfeld'?'hirshfeld':'electronic');
+  }}}><InputSettingsLayout><InputSettingsRow><InputSettingsField label="分析任务"><select aria-label="分子表面类型" value={family} onChange={event=>chooseFamily(event.currentTarget.value==='hirshfeld'?'hirshfeld':'electronic')}><option value="electronic" disabled={!electronicAllowed}>定量分析分子表面</option><option value="hirshfeld">Hirshfeld表面分析</option></select></InputSettingsField></InputSettingsRow></InputSettingsLayout>
     <div hidden={family !== 'electronic'}><ElectronicSurfaceAnalysisInstance {...p} active={p.active && electronicAllowed && family === 'electronic'} onProjection={electronicProjection}/></div>
-    {(hirshfeldCreated || family === 'hirshfeld') && <div hidden={family !== 'hirshfeld'}><HirshfeldAnalysisInstance analysisId={p.analysisId + ':hirshfeld'} context={p.context} structure={p.structure}
+    {(hirshfeldCreated || family === 'hirshfeld') && <div hidden={family !== 'hirshfeld'}><HirshfeldAnalysisInstance analysisId={p.analysisId + ':hirshfeld'} mcpOwnerId={p.analysisId} context={p.context} structure={p.structure}
       active={p.active && family === 'hirshfeld'} available={p.available} capturePort={p.capturePort} onProjection={hsProjection} desktop={p.desktop as HirshfeldDesktopApi | null | undefined}
-      onExportImage={p.onExportImage} onOpenFingerprint={p.onOpenHirshfeldFingerprint} onColorbarLayoutReady={p.onHirshfeldColorbarLayoutReady} onMeshObserverReady={p.onHirshfeldMeshObserverReady} onError={p.onError}/></div>}</>;
+      onExportImage={p.onExportImage} onOpenFingerprint={p.onOpenHirshfeldFingerprint} onColorbarLayoutReady={p.onHirshfeldColorbarLayoutReady} onMeshObserverReady={p.onHirshfeldMeshObserverReady} onError={p.onError}/></div>}</ResultsMcpAnalysisFamily>;
 }

@@ -1,7 +1,12 @@
 import {DismissibleNotice} from '../DismissibleNotice';
 import MultiwfnErrorNotice from './MultiwfnErrorNotice';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
-import {useAnalysisProjectSnapshot,rebindAnalysisContext,isRestoredAnalysisData,analysisProjectCubeArtifacts} from '../../projects/analysis-state';
+import {analysisOriginalCubeKey,openAnalysisOriginalCube,useAnalysisProjectSnapshot,rebindAnalysisContext,isRestoredAnalysisData} from '../../projects/analysis-state';
+import { exportSavedCube } from './export-saved-cube';
+import {ResultsMcpPortRegistration} from './results-mcp-context';
+import {patchColorbarLayout,patchMeshFinish,settingArray,settingBool,settingColor,settingColorbarLayout,settingColorRange,settingDecimals,settingEnum,settingMeshFinish,settingPositive,settingText,spatialGridSetting,validateColorRange} from './analysis-mcp-settings';
+import {analysisCube,analysisText} from './analysis-mcp-assets';
+import {objectSchema} from '../mcp/types';
 import {matchingSliderRange} from '../numeric-step';
 import NumericInput from '../NumericInput';
 import {SelectionGroupHeader,SelectionAddButton,SelectionRemoveButton} from '../InteractiveSelectionField';
@@ -82,6 +87,7 @@ import { SpatialGridSummary, AnalysisTaskLayout, AnalysisTaskSection, Calculatio
 import { INTERACTION_QUALITY_OPTIONS, interactionQualityIssue, interactionQualityPreset, interactionQualityTier } from './interaction-quality';
 import { surfaceGridPreview } from './surface-quality';
 import AnalysisColorbarLayoutControls from './AnalysisColorbarLayoutControls';
+import { interactionSurfaceColorbar } from './interaction-controls-contracts';
 import { normalizeAnalysisColorbarLayout, type AnalysisColorbarLayout } from './analysis-colorbar-layout';
 import { interactionUsesStructure } from '../../results/interaction-structure-context';
 
@@ -162,6 +168,7 @@ const message = (cause: unknown) => (cause instanceof Error ? cause.message : St
 
 /** Instance-local state; no model writes and no automatic scientific requests. */
 function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
+	const [colorbarOwner] = useState(() => crypto.randomUUID());
 	const appearanceDefaults=useSurfaceAppearanceDefaults();
 	const { notify, feedback } = useAnalysisFeedback();
 	const sourceDraft = p.draftState?.current;
@@ -207,11 +214,12 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
   return snapshot;
  },saved=>{const value=rebindAnalysisContext(saved,p.context);setMethod(value.method);setDecimals(value.decimals);setScatterDecimals(value.scatterDecimals);setContributionDecimals(value.contributionDecimals);setStates(value.states);setRecords(value.records);setContributions(value.contributions);setAppearanceSeeds(value.appearanceSeeds??{});setBusy(null);setFailure(null);},undefined,()=>({records,contributions}));
 	if (p.draftState) p.draftState.current = { contextKey, method, decimals, scatterDecimals, contributionDecimals, states, records, contributions, appearanceSeeds };
-	const fallback = useMemo(() => {
-		const initial = initialState(method, p), configured = p.methodDefaults?.[method], seed = appearanceSeeds[stateKey];
+	function initialMethodState(nextMethod:InteractionMethod) {
+		const nextKey=`${contextKey}:${nextMethod}`,initial = initialState(nextMethod, p), configured = p.methodDefaults?.[nextMethod], seed = appearanceSeeds[nextKey];
 		const legacyAppearance = configured?.color !== undefined || configured?.finish !== undefined;
 		return seed && !legacyAppearance ? { ...initial, display: restoreInteractionAppearance(initial.display, seed) } : initial;
-	}, [contextKey, method, p.methodDefaults, appearanceSeeds, stateKey]);
+	}
+	const fallback = useMemo(() => initialMethodState(method), [contextKey, method, p.methodDefaults, appearanceSeeds, stateKey]);
 	const state = states[stateKey] ?? fallback;
 	useEffect(() => {
 		if (!appearanceDefaults.ready || appearanceDefaults.error || !appearanceDefaults.snapshot || appearanceDefaults.snapshot.error || states[stateKey] || Object.hasOwn(appearanceSeeds, stateKey)) return;
@@ -355,23 +363,10 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 		if (stamp.requestId !== requestId || !sameSurfaceContext(stamp, p.context))
 			throw Error("结果与本次来源、帧或请求不一致。");
 	};
+	const computeIssue = membershipError || (!interactionUsesStructure(method) && !p.wavefunctionAvailable ? "当前帧缺少匹配波函数。"
+		: !p.methods.includes(method) || !p.bridge.generate ? "当前来源尚不能计算此方法。" : qualityIssue);
 	const compute = () => {
-		if (membershipError) {
-			notify(membershipError);
-			return;
-		}
-		if (!interactionUsesStructure(method) && !p.wavefunctionAvailable) {
-			notify("当前帧缺少匹配波函数。");
-			return;
-		}
-		if (!p.methods.includes(method) || !p.bridge.generate) {
-			notify("当前来源尚不能计算此方法。");
-			return;
-		}
-		if (qualityIssue) {
-			notify(qualityIssue);
-			return;
-		}
+		if (computeIssue) { notify(computeIssue); return; }
 		void run(`生成 ${INTERACTION_METHOD_LABELS[method]} 格点`, async (signal, requestId) => {
 			const request = {
 					context: p.context,
@@ -390,25 +385,16 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 			}));
 		});
 	};
-	const computeContributions = () => {
-		if (
+	const contributionIssue =
 			!interactionHasContributions(method) ||
 			!p.methods.includes(method) ||
 			state.input === "external" ||
 			(method !== "migm" && !p.wavefunctionAvailable) ||
 			!p.bridge.contributions
-		) {
-			notify(method === "migm" ? "mIGM 贡献分析需要当前结构及内部片段定义。" : "贡献分析需要当前帧可靠绑定的波函数及内部片段定义。");
-			return;
-		}
-		if (
-			membershipError ||
-			state.pair[0] === state.pair[1] ||
-			state.pair.some((id) => !state.fragments.some((row) => row.id === id))
-		) {
-			notify(membershipError || "请选择两个不同片段。");
-			return;
-		}
+		? method === "migm" ? "mIGM 贡献分析需要当前结构及内部片段定义。" : "贡献分析需要当前帧可靠绑定的波函数及内部片段定义。"
+		: membershipError || (state.pair[0] === state.pair[1] || state.pair.some(id => !state.fragments.some(row => row.id === id)) ? "请选择两个不同片段。" : "");
+	const computeContributions = () => {
+		if (contributionIssue) { notify(contributionIssue); return; }
 		void run("计算片段贡献", async (signal, requestId) => {
 			const request = {
 					context: p.context,
@@ -425,13 +411,97 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 			setContributions((previous) => ({ ...previous, [contributionKey]: result }));
 		});
 	};
+	const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.analysisId??null} port={{
+		sourceRevision:JSON.stringify([contextKey,definitionKey,contributionKey,state.input,state.fragments,state.role,state.display,state.showRange,decimals,scatterDecimals,generated?.stamp.requestId]),
+		methods:p.active&&p.available!==false&&state.input==='internal'?[...(computeIssue?[]:['interaction-grid']),...(contributionIssue?[]:['interaction-contributions'])]:[],
+		plots:():Record<string,{sourceKey:string;open():string|void}>=>p.active&&p.available!==false&&scatterSnapshot&&p.onOpenScatter?
+			{'interaction-scatter':{sourceKey:scatterSnapshot.analysisSourceKey,open:()=>p.onOpenScatter!(scatterSnapshot)}}:{},
+		assets:()=>{
+			if(!p.active||p.available===false)return [];
+			const cube=(id:string,field:SurfaceScalarField)=>analysisCube(id,field,{source:field.source,context:field.context,function:field.function,method},
+				field.source.kind==='external-cube'&&p.analysisId?async()=>{
+					const original=await openAnalysisOriginalCube(analysisOriginalCubeKey(p.analysisId!,field.context,field.id));
+					if(!original||original.sourceRevision!==field.source.revision)throw new Error('当前外部 Cube 缺少已核对的原始字节。');
+					return original;
+				}:undefined);
+			return [...(shape?[cube('interaction-shape',shape)]:[]),...(mapping?[cube('interaction-mapping',mapping)]:[]),
+				...(generated?.integrals.length?[analysisText('interaction-integrals',()=>scientificTableText(interactionIntegralTable(generated,decimals)),{stamp:generated.stamp,method})]:[]),
+				...(contribution?[analysisText('interaction-contributions',()=>JSON.stringify(contribution,null,2),{stamp:contribution.stamp,method},'json')]:[])];
+		},
+		read:()=>({kind:'interaction',method,fragments:state.fragments,pair:state.pair,quality:state.quality,integrationQuality:state.integrationQuality,
+			busy:currentBusy,progress:p.progress,error:failure?.owner===contextKey?failure.value:undefined,
+			field:generated&&{stamp:generated.stamp},contribution}),
+		execution:()=>({status:currentBusy?.stopping?'stopping':taskProgress?.phase??(running.current?'running':'idle'),
+			requestId:running.current?.id??taskProgress?.identity.runId,stoppable:Boolean(running.current&&!running.current.controller.signal.aborted),progress:taskProgress}),
+		stop:cancel,
+		configuration:{schema:objectSchema({method:settingEnum(p.methods),quality:spatialGridSetting,
+			fragments:settingArray(objectSchema({id:settingText,label:settingText,atomIds:settingArray(settingText)},['id','label','atomIds'])),
+			pair:settingArray(settingText,2,2),integrationQuality:settingEnum([2,3,4]),isovalue:settingPositive,showRange:settingBool,decimals:settingDecimals}),
+			read:()=>({method,quality:state.quality,fragments:state.fragments,pair:state.pair,integrationQuality:state.integrationQuality,
+				isovalue:state.display.isovalue,showRange:state.showRange,decimals}),
+			apply(values){
+				if(!p.active||p.available===false||running.current)throw new Error('当前相互作用设置不可编辑。');
+				const patch=values as Partial<{method:InteractionMethod;quality:InteractionGridQuality;fragments:InteractionFragment[];
+					pair:MethodState['pair'];integrationQuality:MethodState['integrationQuality'];isovalue:number;showRange:boolean;decimals:number}>;
+				const nextMethod=patch.method??method,nextKey=`${contextKey}:${nextMethod}`,before=states[nextKey]??initialMethodState(nextMethod);
+				if(patch.quality){const issue=interactionQualityIssue(patch.quality,nextMethod,p.resourceBudgetBytes);if(issue)throw new Error(issue);}
+				const fragments=patch.fragments??before.fragments;
+				const knownAtoms=new Set(p.sourceAtomOrder.map(row=>row.atomId)),knownFragments=new Set(fragments.map(row=>row.id));
+				if(patch.fragments&&(!interactionHasFragments(nextMethod)||knownFragments.size!==fragments.length||fragments.some(row=>!row.id||!row.label||row.atomIds.some(id=>!knownAtoms.has(id)))))
+					throw new Error('片段需要当前方法和来源的有效原子及独立标识。');
+				if(patch.pair&&(patch.pair[0]===patch.pair[1]||patch.pair.some(id=>!knownFragments.has(id))))throw new Error('请选择两个不同的已有片段。');
+				const {method:chosen,decimals:precision,isovalue,...rest}=patch;
+				if(Object.keys(rest).length||isovalue!==undefined)setStates(previous=>({...previous,[nextKey]:{...before,...rest,
+					...(patch.quality?{qualityTier:interactionQualityTier(patch.quality)}:{}),...(isovalue===undefined?{}:{display:{...before.display,isovalue}})}}));
+				if(chosen!==undefined)setMethod(chosen);
+				if(precision!==undefined)setDecimals(precision);
+			}},
+		presentation:{
+			schema:objectSchema({visible:settingBool,component:settingEnum(interactionComponents(method)),isovalue:settingPositive,
+				opacity:{type:'number',minimum:.05,maximum:1},range:settingColorRange,colors:settingArray(settingColor,2),reverse:settingBool,
+				colorbarLayout:settingColorbarLayout,finish:settingMeshFinish}),
+			read:()=>({visible:state.display.visible,component:state.display.component,isovalue:state.display.isovalue,opacity:state.display.opacity,
+				range:colors&&Number.isFinite(colors.min)&&Number.isFinite(colors.max)&&colors.min<colors.max?{min:colors.min,max:colors.max}:null,
+				colors:colors?.colors,reverse:colors?.reverse??false,unit:mapping?.valueUnit,
+				colorbarLayout:normalizeAnalysisColorbarLayout(state.display.colorbarLayout),finish:patchMeshFinish(state.display.finish,{})}),
+			apply(values){
+				if(!p.active||p.available===false)throw new Error('当前相互作用显示不可编辑。');
+				const {range,colors:stops,reverse,colorbarLayout,finish,...display}=values as Pick<Partial<InteractionDisplaySettings>,'visible'|'component'|'isovalue'|'opacity'> &
+					{range?:{min:number;max:number}|null;colors?:string[];reverse?:boolean;colorbarLayout?:unknown;finish?:unknown};
+				validateColorRange(range);
+				const base=initialInteractionDisplay(method,p.methodDefaults).color;
+				const selected=state.display.color??base;
+				const limits=range===null?base:range??selected;
+				const color={min:limits?.min??NaN,max:limits?.max??NaN,colors:stops??selected?.colors??['#0000ff','#00ff00','#ff0000'],
+					reverse:reverse??selected?.reverse,zeroCentered:true};
+				patchDisplay({...display,
+					...((range!==undefined||stops!==undefined||reverse!==undefined)&&{color,appearancePreset:'custom'}),
+					...(colorbarLayout!==undefined&&{colorbarLayout:patchColorbarLayout(state.display.colorbarLayout,colorbarLayout)}),
+					...(finish!==undefined&&{finish:patchMeshFinish(state.display.finish,finish)}),
+				});
+			},
+		},
+		run(operation,retry,parameters){
+			if(Object.keys(parameters).length)throw new Error('相互作用分析使用当前面板的片段和精度。');
+			if(!p.active||p.available===false||state.input!=='internal')throw new Error('当前分析未激活或没有内部分析来源。');
+			if(running.current)throw new Error('已有相互作用分析正在运行。');
+			if(operation==='interaction-grid'){
+				if(generated&&!retry)return {status:'ready',stamp:generated.stamp};
+				if(computeIssue)throw new Error(computeIssue);compute();
+			}else if(operation==='interaction-contributions'){
+				if(contribution&&!retry)return {status:'ready',stamp:contribution.stamp};
+				if(contributionIssue)throw new Error(contributionIssue);computeContributions();
+			}else throw new Error('当前相互作用操作不可用。');
+			return {status:'submitted',method,fragments:source.fragments,quality:state.quality,integrationQuality:state.integrationQuality};
+		},
+	}}/>;
 	const shape =
 			state.input === "external"
 				? null
 				: (generated?.fields[state.display.component] ?? null),
 		mapping = state.input === "external" ? null : (generated?.mapping ?? null);
-	const fieldView = useMemo(() => {
-		if (!shape || !mapping) return { pair: null, scatter: null, error: "" };
+	const fieldData = useMemo(() => {
+		if (!shape || !mapping) return { draft: null, scatter: null, error: "" };
 		try {
 			if (
 				!sameSurfaceContext(shape.context, p.context) ||
@@ -453,17 +523,9 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 				mapping,
 				inside: method === "iri" || method === "rdg" ? ("below" as const) : ("above" as const)
 			};
-			const scatter = interactionScatterData(draft);
-			const pair =
-				state.display.isovalue !== null ? { ...draft, isovalue: state.display.isovalue } : null;
-			if (pair) {
-				const validation = validateInteractionFieldPair(pair);
-				if (!validation.compatible)
-					return { pair: null, scatter, error: validation.reasons.join("；") };
-			}
-			return { pair, scatter, error: "" };
+			return { draft, scatter: interactionScatterData(draft), error: "" };
 		} catch (error) {
-			return { pair: null, scatter: null, error: message(error) };
+			return { draft: null, scatter: null, error: message(error) };
 		}
 	}, [
 		shape,
@@ -472,9 +534,15 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 		p.cubeGeometryError,
 		method,
 		state.input,
-		state.display.component,
-		state.display.isovalue
+		state.display.component
 	]);
+	const fieldView = useMemo(() => {
+		const { draft, scatter, error } = fieldData;
+		if (!draft || state.display.isovalue === null) return { pair: null, scatter, error };
+		const pair = { ...draft, isovalue: state.display.isovalue };
+		const validation = validateInteractionFieldPair(pair);
+		return validation.compatible ? { pair, scatter, error } : { pair: null, scatter, error: validation.reasons.join("；") };
+	}, [fieldData, state.display.isovalue]);
 	const highlights = useMemo(
 		() =>
 			({ atoms: interactionContributionHighlights(
@@ -513,7 +581,8 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 			generated,
 			contributions: contribution,
 			highlights,
-			decimals
+			decimals,
+			colorbarSourceKey: fieldView.pair ? JSON.stringify([colorbarOwner, contextKey, method, fieldView.pair.shape.id, fieldView.pair.mapping.id]) : undefined
 		}),
 		[
 			p.context,
@@ -524,7 +593,9 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 			generated,
 			contribution,
 			highlights,
-			decimals
+			decimals,
+			colorbarOwner,
+			contextKey
 		]
 	);
 	useEffect(() => {
@@ -701,7 +772,10 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 		</>
 	);
 	const exportField = (field: SurfaceScalarField | null) => {
-    if(field&&isRestoredAnalysisData(field)){try{const files=analysisProjectCubeArtifacts(field);exportBlob(new Blob([files.cube],{type:'text/plain'}),'Ester-Studio-interaction.cube');exportBlob(new Blob([files.metadata],{type:'application/json'}),'Ester-Studio-interaction.sciyue-domain.json');}catch(error){notify(message(error));}return;}
+    if(field&&isRestoredAnalysisData(field)&&field.source.kind!=='external-cube'){
+      void run('导出 Cube',async signal=>{await exportSavedCube(field,'Ester-Studio-interaction.cube',{desktop:window.sciyueDesktop,signal});});
+      return;
+    }
 		if (field && p.bridge.exportCube)
 			void run("导出 Cube", async (signal,requestId) => {
 				try{
@@ -729,6 +803,8 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 	const sourceColors=state.display.color,paletteKey=JSON.stringify(sourceColors?.colors??null);
 	const colors = useMemo(()=>sourceColors?{...sourceColors,colors:[...sourceColors.colors],zeroCentered:true}:null,[sourceColors?.min,sourceColors?.max,sourceColors?.reverse,paletteKey]);
 	const scatterColorForX=useCallback((value:number)=>colors&&Number.isFinite(colors.min)&&Number.isFinite(colors.max)&&colors.min<colors.max?surfaceColor(value,colors):"#64748b",[colors]);
+	const scatterColorLegend=useMemo(()=>colors&&Number.isFinite(colors.min)&&Number.isFinite(colors.max)&&colors.min<colors.max
+		?{...colors,colors:colors.reverse?[...colors.colors].reverse():colors.colors}:undefined,[colors]);
 	const gridPreview = useMemo(() => prepareCalculationRange(() => qualityTier === 'custom' && state.quality.mode !== 'spacing' && state.quality.mode !== 'dimensions'
 		? surfaceGridPreview(state.quality, p.structure, 1.5, generated?.mapping.grid)
 		: null), [qualityTier, state.quality, p.structure, generated?.mapping.grid]);
@@ -743,7 +819,8 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 				xLabel: `sign(λ₂)ρ / ${mapping?.valueUnit ?? "单位未确认"}`,
 				yLabel: `${INTERACTION_COMPONENT_LABELS[state.display.component]} / ${shape?.valueUnit ?? "单位未确认"}`,
 				display: effectiveDisplay,
-				decimals: scatterDecimals
+				decimals: scatterDecimals,
+				analysisSourceKey:JSON.stringify(['interaction-scatter',contextKey,method,state.display.component,shape?.id,shape?.source.revision,mapping?.id,mapping?.source.revision])
 			}
 		: null;
 	const colorControls = () => <InputSettingsRow>
@@ -753,7 +830,8 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
     </div>
 		{(!state.display.appearancePreset?.startsWith('gallery-'))&&<><InputSettingsField label="配色"><select aria-label="相互作用配色" value={JSON.stringify(colors?.colors ?? ['#0000ff', '#00ff00', '#ff0000'])} onChange={event => patchColors({ min: colors?.min ?? NaN, max: colors?.max ?? NaN, colors: JSON.parse(event.target.value), reverse: colors?.reverse })}>
 			{colors&&!Object.values(ANALYSIS_PALETTES).some(value=>JSON.stringify(value)===JSON.stringify(colors.colors))&&JSON.stringify(colors.colors)!==JSON.stringify(['#0000ff','#00ff00','#ff0000'])&&<option value={JSON.stringify(colors.colors)} disabled>自定义色带</option>}<option value={JSON.stringify(['#0000ff', '#00ff00', '#ff0000'])}>蓝–绿–红</option>{Object.entries(ANALYSIS_PALETTES).map(([id, values]) => <option key={id} value={JSON.stringify(values)}>{id === 'blue-red' ? '蓝–白–红' : id === 'purple-green' ? '紫–白–绿' : 'Viridis'}</option>)}
-		</select></InputSettingsField><InputSettingsCheckbox label="反转色标" checked={!!colors?.reverse} onChange={reverse => { if (colors) patchColors({ ...colors, reverse }); }}/>{colors?.colors.map((color,index)=><InputSettingsField key={index} label={['低值','中值','高值'][index]??String(index+1)}><input type="color" aria-label={`相互作用色带${index+1}颜色`} value={color} onChange={event=>patchColors({...colors,colors:colors.colors.map((old,position)=>position===index?event.target.value:old)})}/></InputSettingsField>)}</>}
+		</select></InputSettingsField></>}
+		{colors && <InputSettingsCheckbox label="反转色标" checked={!!colors.reverse} onChange={reverse => patchDisplay({ color: { ...colors, reverse }, appearancePreset: 'custom' })}/>}
 	</InputSettingsRow>;
 	return (
 		<section
@@ -774,6 +852,7 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 			data-source-id={p.context.sourceId}
 			data-source-frame={p.context.sourceFrameIndex ?? ""}
 		>
+			{mcpPort}
 			<InputSettingsLayout>
 				{feedback}
 				{failure?.owner === contextKey && <MultiwfnErrorNotice message={failure.value} identity={lastRun?.id}/>}
@@ -1083,7 +1162,9 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 									<AnalysisColorbarLayoutControls
 										layout={state.display.colorbarLayout}
 										onChange={setColorbarLayout}
-										colorbar={colors&&shape&&mapping?{...colors,zeroCentered:true,palette:'blue-red',decimals,label:'sign(λ₂)ρ / a.u.',layout:state.display.colorbarLayout}:null}
+										colorbar={interactionSurfaceColorbar(projection)}
+										disabled={p.available === false}
+										palette={colors ? { ...colors, labelPrefix: '相互作用', onChange: next => patchDisplay({ color: { ...colors, colors: next }, appearancePreset: 'custom' }) } : undefined}
 									/>
 									</div>
 								</AnalysisTaskSection>
@@ -1106,19 +1187,10 @@ function InteractionAnalysisControlsInner(p: InteractionAnalysisControlsProps) {
 												yLabel={scatterSnapshot.yLabel}
 												data={scatterSnapshot.data}
 												colorForX={scatterColorForX}
-												colorLegend={
-													colors &&
-													Number.isFinite(colors.min) &&
-													Number.isFinite(colors.max) &&
-													colors.min < colors.max
-														? colors
-														: undefined
-												}
+												colorLegend={scatterColorLegend}
 												decimals={scatterDecimals}
 												pointSize={state.display.scatterPointSize}
-												onPointSizeChange={(scatterPointSize) => patchDisplay({ scatterPointSize })}
 												opacity={state.display.scatterOpacity}
-												onOpacityChange={(scatterOpacity) => patchDisplay({ scatterOpacity })}
 												viewport={state.display.scatterViewport}
 												initialViewport={interactionScatterInitialViewport(
 													method,

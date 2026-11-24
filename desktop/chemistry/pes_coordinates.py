@@ -30,13 +30,15 @@ def dot(a, da, b, db):
     return a @ b, b @ da + a @ db
 
 
-def primitive(positions, kind, indices):
+def primitive(positions, kind, indices, offsets=None):
     """Return a value and Cartesian derivative in Å or degrees.
 
     The signed dihedral follows the existing modeling and xTB convention.
     """
     points = np.asarray(positions, dtype=float)
     local = points[list(indices)]
+    if offsets is not None:
+        local += offsets
     derivatives = np.eye(3 * len(indices)).reshape(len(indices), 3, -1)
     a, da = local[0] - local[1], derivatives[0] - derivatives[1]
     if kind == 'B':
@@ -66,7 +68,8 @@ def primitive(positions, kind, indices):
             value = math.degrees(math.atan2(y, x))
             row = np.rad2deg((x * dy - y * dx) / denominator)
     gradient = np.zeros_like(points)
-    gradient[list(indices)] = row.reshape(-1, 3)
+    # Images share their base atom's Cartesian displacement in a fixed cell.
+    np.add.at(gradient, list(indices), row.reshape(-1, 3))
     return float(value), gradient
 
 
@@ -85,28 +88,53 @@ def unit_name(dimension):
 
 
 class CoordinateSet:
-    def __init__(self, atom_ids, definitions=()):
+    def __init__(self, atom_ids, definitions=(), *, geometry=None):
         self.indices = {atom_id: index for index, atom_id in enumerate(atom_ids)}
         self.definitions = {}
         self.names = {}
+        self.offsets = {}
+        self.geometry = geometry
         for row in definitions:
             identity, kind = row.get('id'), row.get('type')
             name = row.get('name', identity)
             require(isinstance(identity, str) and identity, 'Coordinate IDs must be nonempty')
             require(isinstance(name, str) and name, 'Coordinate names must be nonempty')
-            definition = (kind, self.resolve_atoms(row))
-            require(identity not in self.definitions or self.definitions[identity] == definition,
+            indices, offsets = self.resolve_endpoints(row)
+            definition = (kind, indices)
+            require(identity not in self.definitions or (self.definitions[identity] == definition
+                    and np.array_equal(self.offsets.get(identity), offsets)),
                     f'Coordinate ID {identity!r} has conflicting definitions')
             self.definitions[identity] = definition
+            if offsets is not None:
+                self.offsets[identity] = offsets
             self.names.setdefault(name, set()).add(identity)
 
-    def resolve_atoms(self, row):
+    def resolve_endpoints(self, row):
         kind, atoms = row.get('type'), row.get('atomIds')
         require(kind in _ARITY and isinstance(atoms, (list, tuple)) and len(atoms) == _ARITY[kind],
                 'The coordinate has the wrong number of ordered atoms')
-        require(len(set(atoms)) == len(atoms) and all(atom_id in self.indices for atom_id in atoms),
+        require(all(isinstance(atom_id, str) and atom_id in self.indices for atom_id in atoms),
                 f'Invalid or missing atom in coordinate {row.get("id", "")}')
-        return tuple(self.indices[atom_id] for atom_id in atoms)
+        indices = tuple(self.indices[atom_id] for atom_id in atoms)
+        images = row.get('images')
+        if images is None:
+            require(len(set(indices)) == len(indices), 'Repeated atoms require distinct lattice images')
+            return indices, None
+        try:
+            shifts = np.asarray(images)
+        except ValueError as error:
+            raise CoordinateError('Lattice images must be integer triples') from error
+        require(shifts.shape == (len(indices), 3) and shifts.dtype.kind in 'iu',
+                'Lattice images must be integer triples')
+        endpoints = {(index, *image) for index, image in zip(indices, shifts)}
+        require(len(endpoints) == len(indices), 'Duplicate coordinate image endpoint')
+        if self.geometry is None:
+            require(not np.any(shifts), 'Lattice images require a periodic cell')
+            return indices, None
+        try:
+            return indices, self.geometry.cartesian_offsets(shifts, len(indices))
+        except ValueError as error:
+            raise CoordinateError(str(error)) from error
 
     def compile(self, expression, reference=None):
         require(isinstance(expression, str) and bool(expression.strip()), 'Coordinate expression is empty')
@@ -114,7 +142,8 @@ class CoordinateSet:
         # Direct IDs can contain punctuation, and labels can contain spaces.
         if expression in self.definitions or expression in self.names:
             identity = self.resolve_reference(expression)
-            compiled = CoordinateExpression(('ref', identity), _DIMENSION[self.definitions[identity][0]], self.definitions)
+            compiled = CoordinateExpression(('ref', identity), _DIMENSION[self.definitions[identity][0]],
+                                            self.definitions, offsets=self.offsets)
         else:
             compiled = self._parse(expression.translate(_NORMALIZE))
         return compiled.rebase(reference) if reference is not None else compiled
@@ -181,13 +210,14 @@ class CoordinateSet:
         except RecursionError as error:
             raise CoordinateError('Coordinate expression nesting exceeds available recursion') from error
         require(current is None, 'Unexpected text after coordinate expression')
-        return CoordinateExpression(root, dimension, self.definitions)
+        return CoordinateExpression(root, dimension, self.definitions, offsets=self.offsets)
 
 
 class CoordinateExpression:
-    def __init__(self, root, dimension, definitions, anchors=None):
+    def __init__(self, root, dimension, definitions, anchors=None, *, offsets=None):
         self.root, self.dimension, self.definitions = root, dimension, definitions
         self.anchors = anchors or {}
+        self.offsets = offsets or {}
         self._sella_adapter = None
 
     @property
@@ -207,7 +237,7 @@ class CoordinateExpression:
                 identity = node[1]
                 if identity not in observations:
                     kind, indices = self.definitions[identity]
-                    value, gradient = primitive(positions, kind, indices)
+                    value, gradient = primitive(positions, kind, indices, self.offsets.get(identity))
                     if kind == 'D' and identity in self.anchors:
                         anchor = self.anchors[identity]
                         value = anchor + wrap_degrees(value - anchor)
@@ -244,7 +274,7 @@ class CoordinateExpression:
     def rebase(self, positions):
         _, _, observations = self._evaluate(positions)
         anchors = {key: value for key, (value, _) in observations.items() if self.definitions[key][0] == 'D'}
-        rebased = CoordinateExpression(self.root, self.dimension, self.definitions, anchors)
+        rebased = CoordinateExpression(self.root, self.dimension, self.definitions, anchors, offsets=self.offsets)
         rebased._sella_adapter = self._sella_adapter
         return rebased
 
@@ -289,6 +319,8 @@ class CoordinateExpression:
                         if identity not in observed:
                             kind, atoms = definitions[identity]
                             p = points[jnp.array(atoms)]
+                            if identity in self.offsets:
+                                p += self.offsets[identity]
                             a = p[0] - p[1]
                             if kind == 'B':
                                 current = jnp.linalg.norm(a)
@@ -332,20 +364,22 @@ class CoordinateExpression:
 class ConstraintSpace:
     """Holonomic equalities. Fixed coordinates are eliminated exactly."""
 
-    def __init__(self, reference, atom_ids, definitions=None, *, equations=()):
+    def __init__(self, reference, atom_ids, definitions=None, *, equations=(), geometry=None):
         self.reference = np.asarray(reference, dtype=float).copy()
         self.atom_ids = tuple(atom_ids)
         definitions = definitions or {}
-        coordinates = CoordinateSet(atom_ids)
+        self.geometry = geometry
+        coordinates = CoordinateSet(atom_ids, geometry=geometry)
         frozen = set(definitions.get('frozenAtomIds', ()))
         require(frozen.issubset(coordinates.indices), 'Frozen atom is missing from the source frame')
         self.frozen = np.array([atom_id in frozen for atom_id in atom_ids], dtype=bool)
         self.free = np.flatnonzero(np.repeat(~self.frozen, 3))
         self.equations = list(equations)
         for row in definitions.get('coordinates', ()):
-            kind, indices = row['type'], coordinates.resolve_atoms(row)
-            identity = row['id']
-            expression = CoordinateExpression(('ref', identity), _DIMENSION[kind], {identity: (kind, indices)})
+            kind, identity = row['type'], row['id']
+            indices, offsets = coordinates.resolve_endpoints(row)
+            expression = CoordinateExpression(('ref', identity), _DIMENSION[kind], {identity: (kind, indices)},
+                                              offsets={identity: offsets} if offsets is not None else None)
             target = float(row['value'])
             require(np.isfinite(target), f'Constraint {identity} has a nonfinite target')
             require(kind != 'B' or target > 0, f'Constraint {identity} requires a positive distance')
@@ -364,7 +398,7 @@ class ConstraintSpace:
     def with_equations(self, equations):
         return ConstraintSpace(self.reference, self.atom_ids, {'frozenAtomIds': [
             atom_id for atom_id, fixed in zip(self.atom_ids, self.frozen) if fixed
-        ]}, equations=[*self.equations, *equations])
+        ]}, equations=[*self.equations, *equations], geometry=self.geometry)
 
     def expand(self, free_positions):
         result = self.reference.ravel().copy()

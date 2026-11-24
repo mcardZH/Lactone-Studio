@@ -1,14 +1,14 @@
 import type { ResultConvergence, ResultFrameSummary, TrajectoryResult } from '../../results/contracts';
 import { convertEnergy, type EnergyUnit } from '../../results/energy';
 import { emptyScientificData, type VibrationMode } from '../../results/scientific-contracts';
-import type { PesFrame, PesRun, PesScanPoint } from './contracts';
+import type { PesFrame, PesFrameIndex, PesPathRecord, PesRun, PesScanPoint } from './contracts';
 import { structureForPesFrame } from './controller';
 import {registerPreparedTrajectoryFrameIdentities} from '../../results/prepared-trajectory';
 import {attachTrajectoryStages} from '../../results/trajectory-stages';
 import type {TrajectoryEnergyGap} from '../../results/trajectory-energy-extension';
 
 interface FrameSeries { id: string; rawSeriesId: string; label: string; frames: readonly PesFrame[] }
-const seriesLabels: Record<string, string> = { opt:'几何优化',scan: '扫描点', ts: 'TS优化', hessian: 'Hessian几何', path: '最终路径', 's-idpp': 'S-IDPP初始路径' };
+const seriesLabels: Record<string, string> = { opt:'几何优化',scan: '扫描点', ts: 'TS优化', hessian: 'Hessian几何', irc: 'IRC 路径', path: '最终路径', 's-idpp': 'S-IDPP初始路径' };
 const frameGroups = new WeakMap<readonly PesFrame[], {labels:unknown;groups:FrameSeries[]}>();
 const convergedScans = new WeakMap<readonly PesFrame[], readonly PesFrame[]>();
 
@@ -40,7 +40,7 @@ export function pesScanPlotGaps(run:PesRun):TrajectoryEnergyGap[]{
     const actual=point.actual?.[0],target=point.targets[0];
     const hasActual=typeof actual==='number'&&Number.isFinite(actual),x=hasActual?actual:typeof target==='number'&&Number.isFinite(target)?target:null;
     const next=frames.findIndex(frame=>frame.step>point.pointIndex);
-    return[{beforeIndex:next<0?frames.length:next,x,label:`扫描点 ${point.pointIndex+1} · ${point.status} · ${hasActual?'实际 q':'目标 q'} ${x??'缺失'}`}];
+    return[{beforeIndex:next<0?frames.length:next,x,scanPoint:point.pointIndex+1,label:`扫描点 ${point.pointIndex+1} · ${point.status} · ${hasActual?'实际 q':'目标 q'} ${x??'缺失'}`}];
   });
 }
 
@@ -111,6 +111,9 @@ export function projectPesScanGrid(run:PesRun,unit:EnergyUnit) {
 }
 
 const convergenceLabels = {
+  energyDifferenceHartree: ['相邻步能量差', 'Eh'],
+  stationaryEnergyVerificationHartree: ['驻点复核能量差', 'Eh'],
+  gradientNormHartreePerBohr: ['可动空间梯度范数', 'Eh/Bohr'],
   sellaMaxAtomForceHartreePerBohr: ['最大投影原子力', 'Eh/Bohr'],
   maxForceHartreePerBohr: ['最大力', 'Eh/Bohr'], rmsForceHartreePerBohr: ['RMS 力', 'Eh/Bohr'],
   maxAtomForceHartreePerBohr: ['最大原子力（诊断）', 'Eh/Bohr'],
@@ -119,15 +122,22 @@ const convergenceLabels = {
   sellaNativeConstraintResidualNorm: ['约束残差范数（诊断）', '原生单位'],
 } as const;
 
-function convergence(run: PesRun, frame: PesFrame): ResultConvergence[] {
+function convergence(run: PesRun, frame: PesFrameIndex): ResultConvergence[] {
   const observed = frame.convergence;
   if (!observed || typeof observed !== 'object') return [];
   const metrics = observed as Record<string, unknown>;
+  const returned=run.result?.provenance.convergenceThresholds as Record<string,unknown>|undefined;
+  const optEnergyLimit=returned?.energyDifferenceHartree??run.request.parameters.energyDifferenceHartree;
   return Object.entries(convergenceLabels).flatMap(([key, [label, unit]]) => {
     const value = metrics[key];
     if (typeof value !== 'number' || !Number.isFinite(value)) return [];
     const nativeSella=typeof metrics.sellaMaxAtomForceHartreePerBohr==='number';
-    const thresholdValue=key==='sellaMaxAtomForceHartreePerBohr'?metrics.fmaxHartreePerBohr??run.request.parameters.fmaxHartreePerBohr:nativeSella?null:run.request.parameters[key];
+    const unified=run.request.parameters.policyVersion==='v212';
+    const thresholdValue=key==='stationaryEnergyVerificationHartree'?optEnergyLimit:
+      key==='energyDifferenceHartree'?(typeof metrics.stationaryEnergyVerificationHartree==='number'?null:optEnergyLimit):
+      key==='gradientNormHartreePerBohr'?returned?.[key]??run.request.parameters[key]:
+      key==='sellaMaxAtomForceHartreePerBohr'?(returned?.fmaxHartreePerBohr??(unified&&run.request.parameters.fmaxHartreePerBohr===undefined?null:metrics.fmaxHartreePerBohr??run.request.parameters.fmaxHartreePerBohr)):
+      nativeSella&&!unified?null:run.request.parameters[key];
     const threshold = typeof thresholdValue==='number'&&Number.isFinite(thresholdValue)?thresholdValue:null;
     return [{ label, unit, value, threshold, converged: threshold === null ? null : key==='sellaMaxAtomForceHartreePerBohr'?value<threshold:value<=threshold }];
   });
@@ -185,6 +195,57 @@ export function pesPathTrajectory(run:PesRun,record:{id:string;seriesId:string;p
   return adaptPesSeries(run,group,true);
 }
 const pathGroups=new WeakMap<readonly PesFrame[],Map<string,FrameSeries>>();
+const frameSummaries=new WeakMap<PesRun['request'],WeakMap<PesFrame,ResultFrameSummary>>();
+
+function pesResultFrameSummary(run:PesRun, frame:PesFrameIndex, index:number, recordId?:string):ResultFrameSummary {
+  const {operation}=run.request;
+  const axes=Array.isArray(run.request.parameters.axes)?run.request.parameters.axes:[];
+  return {
+    index, sourceStep:frame.step, time:null, sourceLine:0, label:frame.status,
+    pesOrigin:{groupId:run.request.runIdentity.groupId,nodeId:run.nodeId,taskId:run.request.runIdentity.taskId,
+      runId:run.request.runIdentity.runId,
+      ...(recordId?{recordId}:{}),seriesId:frame.seriesId,frameId:frame.id},
+    energy:frame.energyHartree==null?null:{value:frame.energyHartree,unit:'hartree'},
+    energyQuantity:'electronic',convergence:convergence(run,frame),
+    ...(operation==='scan'&&axes.length===1&&frame.cv?.length===1?{
+      coordinate:{value:frame.cv[0],unit:axes[0].unit,label:axes[0].name,sourceValue:frame.cv[0]},
+    }:{}),
+    ...(operation==='irc'&&frame.cv?.length===1?{
+      coordinate:{value:frame.cv[0],unit:'Å·√amu',label:'质量加权路径距离',sourceValue:frame.cv[0]},
+      pathDirection:frame.ircDirection==='origin'?'ts':frame.ircDirection==='reverse'?'reverse':'forward',
+      ...(typeof frame.ircStep==='number'&&Number.isSafeInteger(frame.ircStep)&&frame.ircStep>0?{pathNode:frame.ircStep}:{}),
+    }:{}),
+    ...(typeof frame.bead==='number'?{sourcePathImage:frame.bead,pathImage:frame.bead}:{}),
+  };
+}
+
+/** One snapshot of the record metadata, with each geometry read from its native lease. */
+export function pesRecordedTrajectory(run:PesRun, record:PesPathRecord, first:PesFrame,
+  read:(frameId:string,seriesId:string,signal?:AbortSignal)=>Promise<PesFrame>):TrajectoryResult {
+  function matches(frame:PesFrame,index:PesFrameIndex|undefined) {
+    if(!index||frame.id!==index.id||frame.seriesId!==index.seriesId)throw Error('路径几何与所选原生帧身份不符。');
+    return frame;
+  }
+  const {structure,operation,algorithm}=run.request;
+  const id=`${run.request.id}:${record.id}`,label=record.kind==='initial'?'初始路径':`${record.phase} · 第${record.step}轮`;
+  const scientific=emptyScientificData();
+  scientific.route=[run.request.method,algorithm,run.request.solvation?.solvent].filter(Boolean).join(' / ');
+  scientific.tasks=operation==='path'?['neb']:['unknown'];
+  return attachTrajectoryStages({
+    id,label,kind:'trajectory',engine:'structure', role:operation==='path'?'neb-path':'unknown',
+    source:{id,name:label,size:0,nativeJobName:algorithm},jobIndex:0,scientific,
+    status:run.status==='completed'&&['completed','converged'].includes(run.result?.status??'')?'completed':'incomplete',
+    messages:run.error?[run.error.message]:[],frames:record.frames.map((frame,index)=>pesResultFrameSummary(run,frame,index,record.id)),
+    initialStructure:structureForPesFrame(structure,matches(first,record.frames[0])),
+    async getFrame(index,signal) {
+      signal?.throwIfAborted();
+      const frame=record.frames[index];
+      if(!frame)throw Error('所选路径轮没有此帧。');
+      return structureForPesFrame(structure,matches(await read(frame.id,frame.seriesId,signal),frame));
+    },
+    dispose(){ /* The controller retains and releases the scientific record. */ },
+  });
+}
 
 function adaptPesSeries(run:PesRun,group:FrameSeries,pathRecord=false):PesTrajectoryView {
   const cached = views.get(group);
@@ -192,24 +253,25 @@ function adaptPesSeries(run:PesRun,group:FrameSeries,pathRecord=false):PesTrajec
   const { operation, structure, id: runId, algorithm } = run.request;
   const id = `${runId}:${group.id}`;
   const status = run.status === 'completed' && ['completed','converged'].includes(run.result?.status??'') ? 'completed' : run.status === 'failed' && !group.frames.length ? 'failed' : 'incomplete';
-  const axes = Array.isArray(run.request.parameters.axes) ? run.request.parameters.axes : [];
-  const frames = group.frames.map((frame, index): ResultFrameSummary => ({
-    index, sourceStep: frame.step, time: null, sourceLine: 0,
-    label: frame.status,
-    energy: frame.energyHartree == null ? null : { value: frame.energyHartree, unit: 'hartree' },
-    energyQuantity: 'electronic', convergence: convergence(run, frame),
-    ...(operation === 'scan' && axes.length === 1 && frame.cv?.length === 1 ? {
-      coordinate: { value: frame.cv[0], unit: axes[0].unit, label: axes[0].name, sourceValue: frame.cv[0] },
-    } : {}),
-    ...(typeof frame.bead === 'number' ? { sourcePathImage: frame.bead, pathImage: frame.bead } : {}),
-  }));
+  let summaries=frameSummaries.get(run.request);
+  if(!summaries){summaries=new WeakMap();frameSummaries.set(run.request,summaries);}
+  const cachedSummaries=summaries;
+  const frames = group.frames.map((frame, index): ResultFrameSummary => {
+    const cached=cachedSummaries.get(frame);
+    const recordId=pathRecord?group.id:undefined;
+    if(cached?.index===index&&cached.pesOrigin?.recordId===recordId)return cached;
+    const summary=pesResultFrameSummary(run,frame,index,recordId);
+    cachedSummaries.set(frame,summary);
+    return summary;
+  });
   const scientific = emptyScientificData();
   scientific.route = [run.request.method, algorithm, run.request.solvation?.solvent].filter(Boolean).join(' / ');
-  scientific.tasks = operation === 'scan' ? ['scan'] : operation === 'path' ? ['neb'] : operation === 'hessian' ? ['freq'] : operation === 'ts' ? ['ts'] : operation==='opt'?['opt']:['unknown'];
+  scientific.tasks = operation === 'scan' ? ['scan'] : operation === 'path' ? ['neb'] : operation === 'hessian' ? ['freq'] : operation === 'ts' ? ['ts'] : operation==='opt'?['opt']:operation==='irc'?['irc']:['unknown'];
+  const net = ['aimnet2-auto','aimnet2-rxn','orbmol-v2'].includes(run.request.method);
   const vibration = vibrationModes(run, group);
   if (vibration?.modes.length) {
     scientific.vibrations = { sourceId: id, sourceName: group.label, frameIndex: vibration.index, modes: vibration.modes,
-      atomBinding: 'geometry-bound', convention: 'GFN 数值 Hessian · Cartesian' };
+      atomBinding: 'geometry-bound', convention: net ? 'NET 自动微分 Hessian · Cartesian' : 'xTB 数值 Hessian · Cartesian' };
     if (operation === 'ts') scientific.tasks.push('freq');
   }
   // A path round is owned by its active read lease. Never retain its frames
@@ -221,8 +283,8 @@ function adaptPesSeries(run:PesRun,group:FrameSeries,pathRecord=false):PesTrajec
   const view: PesTrajectoryView = { frameIds: group.frames.map(frame => frame.id), seriesId: group.id, rawSeriesId: group.rawSeriesId,
     revision:`pes-publication-${++publication}`,baseRevision:incremental?previous!.view.revision:null,incremental,
     result: { id, label: group.label, kind: operation === 'ts'||operation==='opt' ? 'optimization' : 'trajectory', engine: 'structure',
-      role: operation === 'scan' ? 'scan-point-set' : operation === 'path' ? 'neb-path' : operation === 'ts' ? 'ts-optimization-trajectory' : operation==='opt'?'optimization-trajectory':'unknown',
-      source: { id, name: group.label, size: 0, software: operation==='opt'&&algorithm==='workspace-forcefield'?'unknown':'xtb', nativeJobName: algorithm }, jobIndex: 0, status,
+      role: operation === 'scan' ? 'scan-point-set' : operation === 'path' ? 'neb-path' : operation === 'ts' ? 'ts-optimization-trajectory' : operation==='opt'?'optimization-trajectory':operation==='irc'?'irc-full':'unknown',
+      source: { id, name: group.label, size: 0, software: net || operation==='opt'&&algorithm==='workspace-forcefield'?'unknown':'xtb', nativeJobName: algorithm }, jobIndex: 0, status,
       messages: run.error ? [run.error.message] : [], scientific, frames,
       initialStructure: structureForPesFrame(structure, group.frames[0]),
       async getFrame(index, signal) {

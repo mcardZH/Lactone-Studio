@@ -71,7 +71,7 @@ function halfPrintedDigit(token: string): number {
 export function orcaAuCenters(table: OrcaAuTable): OrcaNativeCenter[] {
   return table.rows.map(row => ({ sourceIndex: row.sourceIndex, sourceLine: row.sourceLine, kind: row.element === null ? 'dummy' : row.za === 0 ? 'ghost' : 'real', element: row.element, nuclearCharge: row.element === null || row.ecpMarked ? null : row.za, coordinates: row.coordinates, coordinateUnit: 'bohr' }));
 }
-export function pairOrcaCenterTables(angstrom: OrcaAngCenter[], table: OrcaAuTable): { matched: boolean; centers: OrcaNativeCenter[]; special: boolean; independentReal?: boolean; message: string } {
+export function pairOrcaCenterTables(angstrom: OrcaAngCenter[], table: OrcaAuTable): { matched: boolean; centers: OrcaNativeCenter[]; special: boolean; independentReal?: boolean; nativePrintConversion?: boolean; message: string } {
   const fallback = orcaAuCenters(table), special = fallback.some(center => center.kind !== 'real');
   if (!table.complete || !angstrom.length || angstrom.length !== table.rows.length) return { matched: false, centers: fallback, special, message: 'Å/A.U.中心表未完整同数配对；只保独立A.U.证据，不补普通原子。' };
   for (let index = 0; index < angstrom.length; index++) {
@@ -82,14 +82,23 @@ export function pairOrcaCenterTables(angstrom: OrcaAngCenter[], table: OrcaAuTab
   // This is not a coordinate match: two complete all-real source inventories
   // may remain independent without revoking the valid Angstrom geometry.
   const independentReal = angstrom.every(ang => ang.kind === 'real' && ang.element !== null) && table.rows.every(au => au.za > 0 && au.mass > 0 && !/:$/.test(au.label));
-  for (let index = 0; index < angstrom.length; index++) {
-    const ang = angstrom[index], au = table.rows[index];
-    for (let axis = 0; axis < 3; axis++) {
-      const converted = au.coordinates[axis] * ORCA_BOHR_ANGSTROM;
-      const tolerance = halfPrintedDigit(ang.coordinateTokens[axis]) + halfPrintedDigit(au.coordinateTokens[axis]) * ORCA_BOHR_ANGSTROM + 4 * Number.EPSILON * (Math.abs(ang.coordinates[axis]) + Math.abs(converted));
-      if (Math.abs(ang.coordinates[axis] - converted) > tolerance) return { matched: false, centers: fallback, special, independentReal, message: 'Å/A.U.坐标不在各自原打印精度/单位换算区间内，未强配核角色。' };
-    }
-  }
+  const matchesPrinted = (factor: number) => angstrom.every((ang, index) => {
+    const au = table.rows[index];
+    return ang.coordinates.every((value, axis) => {
+      const converted = au.coordinates[axis] * factor;
+      const tolerance = halfPrintedDigit(ang.coordinateTokens[axis]) + halfPrintedDigit(au.coordinateTokens[axis]) * factor
+        + 4 * Number.EPSILON * (Math.abs(value) + Math.abs(converted));
+      return Math.abs(value - converted) <= tolerance;
+    });
+  });
+  // ORCA emits adjacent representations of the same native geometry using
+  // its own rounded conversion. Both constants must satisfy the full printed
+  // precision proof; the alternate is limited to adjacent native tables.
+  const adjacent = table.sourceLine === angstrom.at(-1)!.sourceLine + 3;
+  const standardMatch = matchesPrinted(ORCA_BOHR_ANGSTROM);
+  const nativePrintConversion = !standardMatch && adjacent && matchesPrinted(0.5291772083);
+  if (!standardMatch && !nativePrintConversion)
+    return { matched: false, centers: fallback, special, independentReal, message: 'Å/A.U.坐标不在各自原打印精度/单位换算区间内，未强配核角色。' };
   const centers = angstrom.map((ang, index): OrcaNativeCenter => ({ sourceIndex: ang.sourceIndex, sourceLine: ang.sourceLine, kind: ang.kind === 'dummy' ? 'dummy' : table.rows[index].za === 0 ? 'ghost' : 'real', element: ang.element, nuclearCharge: ang.kind === 'dummy' || table.rows[index].ecpMarked ? null : table.rows[index].za, coordinates: ang.coordinates, coordinateUnit: 'angstrom' }));
-  return { matched: true, centers, special: centers.some(center => center.kind !== 'real'), message: 'Å/A.U.同job中心表按数目、原序、元素及打印精度配对；核角色来自原ZA/MASS。' };
+  return { matched: true, centers, special: centers.some(center => center.kind !== 'real'), ...(nativePrintConversion ? { nativePrintConversion } : {}), message: 'Å/A.U.同job中心表按数目、原序、元素及打印精度配对；核角色来自原ZA/MASS。' };
 }

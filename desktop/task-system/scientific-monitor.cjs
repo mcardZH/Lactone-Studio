@@ -2,9 +2,32 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { isDeepStrictEqual } = require("node:util");
 const { createLocalTransport } = require("./transports/local.cjs");
 const { fail, noLinks } = require("./platform/global-settings.cjs");
 const { scientificStates } = require("./scientific-states.cjs");
+const { sameFile } = require("./assets/io.cjs");
+
+function snapshotReadBounds(prepared, expected, artifactId) {
+	const boundary = prepared.sourceBoundary;
+	if (!expected || expected.artifactId === artifactId && expected.revision === prepared.sourceRevision &&
+		isDeepStrictEqual(expected.boundary, boundary) &&
+		(!expected.observedSha256 || expected.observedSha256 === prepared.observedSha256))
+		return { boundary, revision: prepared.sourceRevision };
+	const observed = expected.boundary;
+	const end = observed?.readByteRange?.end;
+	// A newer read can stage the previous frame's exact prefix if the bytes
+	// known to that observation are still wholly present and their SHA matches.
+	if (expected.artifactId !== artifactId || !observed?.fileIdentity?.fileId || !sameFile(observed.fileIdentity, boundary.fileIdentity) ||
+		!Number.isSafeInteger(expected.revision) || expected.revision > prepared.sourceRevision ||
+		observed.readByteRange?.start !== 0 ||
+		observed.publishedByteRange?.start !== 0 || !Number.isSafeInteger(end) ||
+		!Number.isSafeInteger(observed.publishedByteRange.end) || observed.publishedByteRange.end <= 0 ||
+		observed.publishedByteRange.end > end || end > boundary.publishedByteRange.end ||
+		!/^[a-f0-9]{64}$/.test(expected.observedSha256 || ""))
+		throw fail("SNAPSHOT_SOURCE_VERSION_CHANGED", "监控页面显示的来源版本已变化，请刷新后重试。");
+	return { boundary: observed, revision: expected.revision, observedSha256: expected.observedSha256, proveThrough: end };
+}
 function cardsFor(jobs) {
 	const rows = [],
 		points = [],
@@ -167,7 +190,8 @@ async function createHostScientificMonitor({
 		const last = prepared.jobs.at(-1);
 		const archiveFailure = selection?.archiveFailure;
 		return { scientificState: scientificStates(prepared), collectionId: prepared.collectionId, revision: prepared.revision,
-			sourceRevision: prepared.sourceRevision, sourceGeneration: prepared.sourceGeneration, sourceBoundary: prepared.sourceBoundary, sourceIdentity: prepared.sourceIdentity,
+			sourceRevision: prepared.sourceRevision, sourceGeneration: prepared.sourceGeneration, sourceBoundary: prepared.sourceBoundary,
+			sourceIdentity: prepared.sourceIdentity, observedSha256: prepared.observedSha256,
 			actualReadLocation: selection?.location || location, ...(archiveFailure ? { archiveFailure } : {}),
 			prepared: true, frames: prepared.frames, results: lastView.results,
 			resultsComplete: prepared.jobs.length > 0 && lastView.results.length === prepared.jobs.length, cards: lastView.cards,
@@ -270,17 +294,17 @@ async function createHostScientificMonitor({
 			if (selection?.sha256 && prepared.observedSha256 && selection.sha256 !== prepared.observedSha256) { prepared.release(); throw fail("ARCHIVED_SOURCE_CONTENT_CHANGED"); }
 			return publication(prepared, true);
 		},
-		async snapshotSources({ signal } = {}) {
+		async snapshotSources({ signal, expected } = {}) {
 			if (!snapshotDirectory) throw fail("SNAPSHOT_DESTINATION_UNAVAILABLE");
+			const fixedSelection = selection, fixedLocation = location;
 			const prepared = await provider?.retainPrepared();
 			if (!prepared) throw fail("SNAPSHOT_SOURCE_NOT_PREPARED");
-			if (selection?.sha256 && prepared.observedSha256 !== selection.sha256) { prepared.release(); throw fail("SNAPSHOT_SOURCE_CONTENT_NOT_VERIFIED"); }
-			const boundary = prepared.sourceBoundary,
-				revision = prepared.sourceRevision;
+			if (fixedSelection?.sha256 && prepared.observedSha256 !== fixedSelection.sha256) { prepared.release(); throw fail("SNAPSHOT_SOURCE_CONTENT_NOT_VERIFIED"); }
 			const directory = path.join(snapshotDirectory, "source-staging-" + crypto.randomUUID());
 			const file = path.join(directory, "output-source.asset"),
 				sha = crypto.createHash("sha256");
 			let fd,
+				bounds,
 				ownedDirectory,
 				ownedFile,
 				primaryError,
@@ -288,23 +312,32 @@ async function createHostScientificMonitor({
 				closed = false;
 			const cleanupErrors = [];
 			try {
+				bounds = snapshotReadBounds(prepared, expected, artifact.artifactId);
 				noLinks(path.dirname(directory));
 				await fs.mkdir(snapshotDirectory, { recursive: true });
 				await fs.mkdir(directory);
 				ownedDirectory = await fs.lstat(directory, { bigint: true });
 				fd = await fs.open(file, "wx", 0o600);
 				ownedFile = await fd.stat({ bigint: true });
-				const end = boundary.publishedByteRange.end;
-				for (let start = 0; start < end; start += 1024 * 1024) {
+				const end = bounds.boundary.publishedByteRange.end;
+				const proof = bounds.proveThrough === undefined ? null : crypto.createHash("sha256");
+				const readEnd = bounds.proveThrough ?? end;
+				for (let start = 0; start < readEnd; start += 1024 * 1024) {
 					signal?.throwIfAborted();
 					const bytes = await prepared.readSourceRange(
 						start,
-						Math.min(end, start + 1024 * 1024),
+						Math.min(readEnd, start + 1024 * 1024),
 						signal
 					);
-					await fd.writeFile(bytes);
-					sha.update(bytes);
+					proof?.update(bytes);
+					if (start < end) {
+						const published = bytes.subarray(0, Math.min(end - start, bytes.length));
+						await fd.writeFile(published);
+						sha.update(published);
+					}
 				}
+				if (proof && proof.digest("hex") !== bounds.observedSha256)
+					throw fail("SNAPSHOT_SOURCE_VERSION_CHANGED", "监控页面所见的源字节已变化，请刷新后重试。");
 				await fd.sync();
 			} catch (error) {
 				failed = true;
@@ -406,13 +439,13 @@ async function createHostScientificMonitor({
 						formatVersion: artifact.formatVersion ?? null,
 						stable: true,
 						originalName:
-							selection?.originalName || artifact.originalName || path.basename(location.path),
+							fixedSelection?.originalName || artifact.originalName || path.basename(fixedLocation.path),
 						provenance: {
-							...(selection?.provenance || {}),
-							originalLocation: selection?.originalLocation || location,
-							actualReadLocation: location,
-							sourceBoundary: boundary,
-							sourceRevision: revision
+							...(fixedSelection?.provenance || {}),
+							originalLocation: fixedSelection?.originalLocation || fixedLocation,
+							actualReadLocation: fixedLocation,
+							sourceBoundary: bounds.boundary,
+							sourceRevision: bounds.revision
 						}
 					}
 				],

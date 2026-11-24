@@ -190,14 +190,17 @@ function modelingMDFacts(structure:Structure,documentId:string,output:CitationFa
   if(md.schema!==1 || !str(md.documentId) || !Number.isSafeInteger(md.sourceRevision) || md.sourceRevision<0
     || !Number.isSafeInteger(md.frameSeq) || md.frameSeq<0 || !Number.isSafeInteger(md.step) || md.step<0 || !Number.isFinite(md.timeFs) || md.timeFs<0
     || !Array.isArray(md.software))return true;
-  const native=md.driver==='native-xtb-md',ase=md.driver==='ase-rdkit';
-  if(!native&&!ase)return true;
+  const native=md.driver==='native-xtb-md',rdkit=md.driver==='ase-rdkit',ase=md.driver==='ase-bussi';
+  if(!native&&!rdkit&&!ase)return true;
   const raw=md.native?.rawPotential;
   const rawExecuted=Boolean(raw&&Number.isFinite(raw.value)&&raw.unit==='hartree'&&raw.sourceArtifact==='xtb.trj'
     &&Number.isSafeInteger(raw.sourceStep)&&raw.sourceStep>=0&&raw.sourceStep<=md.step&&raw.sourceTimeFs===raw.sourceStep*2);
   if(native && (!['gfn0','gfn1','gfn2','gfnff','gxtb'].includes(md.method) || md.native?.dtFs!==2 || md.timeFs!==md.step*2 || md.step===0&&!rawExecuted))return true;
-  if(ase && (md.step<=0 || !['mmff94','mmff94s','uff'].includes(md.method.toLowerCase())))return true;
-  const software=native?'xTB':'RDKit',observed=md.software.find(item=>item?.name===software);
+  if(rdkit && (md.step<=0 || !['mmff94','mmff94s','uff'].includes(md.method.toLowerCase())))return true;
+  if(ase && (!['gfn0','gfn1','gfn2','gfnff'].includes(md.method) || md.ase?.method!==md.method || md.ase?.driver!=='ase-bussi'
+    || md.ase?.thermostat!=='Bussi' || md.ase.dtFs!==2 || md.timeFs!==md.step*2 || !Number.isFinite(md.ase.physicalEnergyEV)))return true;
+  const software=rdkit?'RDKit':md.ase?.backend==='tblite'?'tblite':'xTB';
+  const observed=md.software.find(item=>item?.name===software);
   if(!observed)return true;
   const base={documentId,sourceId:`md:${md.documentId}:${md.sourceRevision}`,frameId:String(md.frameSeq),stage:'modeling-md',kind:'model-operation' as const,
     software,version:str(observed.version),evidence:[{kind:'metadata' as const,locator:`${structure.id}:preparation:md`,detail:JSON.stringify(md)}],purpose:'保留的建模MD实际运行帧；方法、版本与原始输入来源分别记录'};
@@ -208,9 +211,11 @@ function modelingMDFacts(structure:Structure,documentId:string,output:CitationFa
    if(solvation?.sourceField==='stdout:solvation-model'&&solvation.model==='alpb'&&solvation.solvent)
     addFact(output,{...base,parameters:{solvent:solvation.solvent,temperatureKelvin:solvation.temperatureKelvin}},'solvation','alpb',suffix);
   }
+  if(ase&&md.ase?.solvation?.model==='alpb')
+    addFact(output,{...base,parameters:{solvent:md.ase.solvation.solvent}},'solvation','alpb',suffix);
   // The driver determines which observed producers did scientific work. Native
   // xTB does not gain an ASE integrator citation from importing unit constants.
-  for(const name of native?['xTB']:['RDKit','ASE']){
+  for(const name of native?[software]:[software,'ASE']){
     const actual=md.software.find(item=>item?.name===name);if(!actual)continue;
     const source={...base,software:name,version:str(actual.version)};
     addFact(output,source,'software',name,suffix);
@@ -296,7 +301,7 @@ export function collectWorkspaceCitationFacts(options: WorkspaceCitationFactsOpt
   const analysisSources=new Map<string,AnalysisCitationSource>();
   for (const entry of options.documents) {
     const model = entry.store.getSnapshot();
-    const valid={ids:new Set<string>(),revisions:new Set<string>(),pairs:new Set<string>(),revision:model.revision,available:!entry.analysisBinding||model.analysisBindingId===entry.analysisBinding.id,trajectory:Boolean(entry.trajectory),bound:Boolean(entry.analysisBinding&&model.analysisBindingId===entry.analysisBinding.id)};analysisSources.set(entry.id,valid);
+    const valid={ids:new Set<string>(),revisions:new Set<string>(),pairs:new Set<string>(),retainedXtbPairs:new Set<string>(),revision:model.revision,available:!entry.analysisBinding||model.analysisBindingId===entry.analysisBinding.id,trajectory:Boolean(entry.trajectory),bound:Boolean(entry.analysisBinding&&model.analysisBindingId===entry.analysisBinding.id)};analysisSources.set(entry.id,valid);
     structureSourceFacts(model.draft.structure, entry.id, output);
     if (model.bondOrderObservation) {
       const b = model.bondOrderObservation, software = producer(b.engine);
@@ -306,7 +311,16 @@ export function collectWorkspaceCitationFacts(options: WorkspaceCitationFactsOpt
       if (software) addFact(output, { ...base, kind: 'runtime-dependency' }, 'runtime-dependency', software);
     }
     if (entry.derivation?.sourceStructure) structureSourceFacts(entry.derivation.sourceStructure, entry.id, output, 'ancestor');
-    const posts = [options.postprocessDocuments?.[entry.id],...(options.additionalPostprocessDocuments??[]).filter(row=>row.documentId===entry.id).map(row=>row.document)].filter((post):post is PostprocessDocument=>Boolean(post));
+    const additionalPosts = (options.additionalPostprocessDocuments??[]).filter(row=>row.documentId===entry.id).map(row=>row.document);
+    const posts = [options.postprocessDocuments?.[entry.id],...additionalPosts].filter((post):post is PostprocessDocument=>Boolean(post));
+    // The workspace supplies additional generated results after checking their
+    // retained owner and run. Their wavefunction belongs to the original frame.
+    for (const post of additionalPosts) {
+      const wavefunction = post.wavefunction?.source, metadata = wavefunction?.metadata;
+      const generated = wavefunction?.generatedXtb;
+      if (wavefunction && generated?.runIdentity && generated.stamp.documentId === entry.id && metadata?.sourceRevision && metadata.sourceId === wavefunction.result.source.id)
+        valid.retainedXtbPairs.add(JSON.stringify([metadata.sourceId, metadata.sourceRevision]));
+    }
     for(const post of posts){documentAliases.set(post.id,entry.id);const revision=post.wavefunction?.source.metadata?.sourceRevision??post.result.source.id;valid.pairs.add(JSON.stringify([post.result.source.id,revision]));}
     const sources = posts.flatMap(post=>[post.output?.source, post.wavefunction?.source, ...(post.companions?.map(a => a.source) || [])]).filter((s): s is PostprocessSource => Boolean(s));
     for (const attachment of posts.flatMap(post=>[post.output,post.wavefunction,...(post.companions||[])])) if (attachment) {
@@ -361,7 +375,7 @@ export function collectWorkspaceCitationFacts(options: WorkspaceCitationFactsOpt
   return [...new Map(output.map(f => [f.id, f])).values()];
 }
 
-interface AnalysisCitationSource {ids:Set<string>;revisions:Set<string>;pairs:Set<string>;revision:number;available:boolean;trajectory:boolean;bound:boolean;fileOwner?:boolean}
+interface AnalysisCitationSource {ids:Set<string>;revisions:Set<string>;pairs:Set<string>;retainedXtbPairs?:Set<string>;revision:number;available:boolean;trajectory:boolean;bound:boolean;fileOwner?:boolean}
 function collectAnalysisFacts(root: unknown, documents: Set<string>, sourceOwners: Map<string, Set<string>>,sources:Map<string,AnalysisCitationSource>,instances:readonly RetainedCitationAnalysisInstance[]|undefined,aliases:Map<string,string>,models:Map<string,ModelDocument>,output: CitationFact[]) {
   const visited = new WeakSet<object>();
   const skipped = new Set(['values', 'vertices', 'atoms', 'coordinates', 'originalBytes', 'precision', 'grid', 'mask', 'rawArtifacts', 'pairs', 'frontier', 'points', 'bins', 'metrics']);
@@ -398,12 +412,14 @@ function collectAnalysisFacts(root: unknown, documents: Set<string>, sourceOwner
       const owners = resolvedDocument ? documents.has(resolvedDocument) ? [resolvedDocument] : [] : [...new Set([...(sourceOwners.get(sourceId || '') || []), ...(populationResult ? sourceOwners.get(`revision:${str(context.sourceRevision)}`) || [] : [])])];
       for (const documentId of owners) {
         const valid=sources.get(documentId),revision=str(context.sourceRevision),analysisId=str(context.analysisId);
-        const sourceMatches=valid?.pairs.has(JSON.stringify([sourceId,revision]))||populationResult&&sourceOwners.get(`revision:${revision}`)?.has(documentId);
+        const sourcePair=JSON.stringify([sourceId,revision]);
+        const sourceMatches=valid?.pairs.has(sourcePair)||populationResult&&sourceOwners.get(`revision:${revision}`)?.has(documentId);
         const structureSource=sourceId===`model:${documentId}`&&interactionUsesStructure(method);
         if(structureSource){const model=models.get(documentId);if(!model)continue;try{assertStructureInteractionContext(context as unknown as SurfaceContext,model.draft.structure);}catch{continue;}
          if(instances&&!instances.some(instance=>instance.structureOnly&&instance.documentId===documentId&&instance.analysisId===analysisId&&instance.sourceId===sourceId&&instance.sourceRevision===revision))continue;
         }else{
-         if(!valid?.available||!revision||!valid.revisions.has(revision)||!sourceMatches||typeof context.documentRevision==='number'&&resolvedDocument===ownDocument&&!valid.trajectory&&!valid.bound&&context.documentRevision!==valid.revision)continue;
+         const staleEditableModel=typeof context.documentRevision==='number'&&resolvedDocument===ownDocument&&!valid?.trajectory&&!valid?.bound&&context.documentRevision!==valid?.revision;
+         if(!valid?.available||!revision||!valid.revisions.has(revision)||!sourceMatches||staleEditableModel&&!valid.retainedXtbPairs?.has(sourcePair))continue;
          if(instances&&!instances.some(instance=>instance.documentId===documentId&&instance.analysisId===analysisId&&valid.ids.has(instance.sourceId)&&instance.sourceRevision===revision))continue;
         }
         const software = producer(str(backend?.name));
@@ -539,6 +555,28 @@ function collectAdvancedFacts(root: unknown, documents: readonly WorkspaceDocume
       }
       for (const branch of ['path', 'sampling', 'docking']) {
         const terminal = bag(bag(run[branch])?.terminal), backend = bag(terminal?.backend);
+        const samplingFrame = branch === 'sampling' ? bag(terminal?.lastFrame) : undefined;
+        const ase = bag(samplingFrame?.aseMD), calculator = bag(ase?.calculatorEvidence);
+        if (ase?.driver === 'ase-bussi' && typeof samplingFrame?.physicalEnergyEV === 'number'
+          && Number.isFinite(samplingFrame.physicalEnergyEV) && typeof calculator?.evaluations === 'number' && calculator.evaluations > 0) {
+          const provider = str(calculator.engine), identity = bag(calculator.identity);
+          const method = provider === 'net' ? str(identity?.engine) : str(calculator.method);
+          const software = provider === 'tblite' ? 'tblite' : provider === 'libxtb' ? 'xTB' : undefined;
+          for (const owner of owners) {
+            const base = { documentId: owner.id, taskId, stage: `${str(run.id)}:sampling`, kind: 'retained-result' as const,
+              evidence: [{ kind: 'metadata' as const, locator: `advanced:${taskId}:${str(run.id)}:sampling:ase-md`,
+                detail: JSON.stringify({ calculator, thermostat: ase.thermostat, dtFs: ase.dtFs, solvation: ase.solvation }) }],
+              purpose: '实际 ASE Bussi 采样帧及其求值来源' };
+            if (method && (software || /^[a-f0-9]{64}$/.test(str(identity?.weightSha256) ?? '')))
+              addFact(output, { ...base, software, version: str(calculator.version) }, 'method', method);
+            if (software) addFact(output, { ...base, software, version: str(calculator.version), kind: 'runtime-dependency' }, 'runtime-dependency', software);
+            if (str(ase.aseVersion)) addFact(output, { ...base, software: 'ASE', version: str(ase.aseVersion), kind: 'runtime-dependency' }, 'runtime-dependency', 'ASE');
+            const solvent = bag(ase.solvation);
+            if (solvent?.model === 'alpb' && str(solvent.solvent))
+              addFact(output, { ...base, software, parameters: { solvent: str(solvent.solvent)! } }, 'solvation', 'alpb');
+          }
+          continue;
+        }
         if (!terminal || !['completed', 'stopped', 'search-checkpoint'].includes(str(terminal.event) || '')) continue;
         if (branch === 'sampling') {
           const frame = bag(terminal.lastFrame), native = bag(frame?.nativeMD) || bag(frame?.calculatorEvidence);

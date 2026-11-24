@@ -7,6 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PROFILE = 'desktop/packaging/native-profile.json'
+# An isolated source worktree can consume the exact same read-only input locks.
+INPUT_ROOT_ENV = 'SCIYUE_NATIVE_INPUT_ROOT'
 DLL_HANDLES = []
 
 
@@ -73,18 +75,21 @@ def inventory(root):
 def configuration():
     profile = read(ROOT / PROFILE)
     require(profile['schema'] == 'sciyue-native-profile-v1' and profile['platform'] == 'win32-x64', 'Unsupported native profile')
-    result = {'profile': profile, 'profileIdentity': identity(ROOT / PROFILE)}
+    input_root = Path(os.environ.get(INPUT_ROOT_ENV, ROOT))
+    require(input_root.is_absolute() and input_root.is_dir(), 'Existing absolute locked native input root required')
+    input_root = safe(Path(input_root.anchor), input_root)
+    result = {'profile': profile, 'profileIdentity': identity(ROOT / PROFILE), 'inputRoot': input_root}
     for name, parent, schema in (('runtimeLock', '.local/dependencies/win-x64', 'sciyue-native-runtime-lock-v1'),
                                   ('toolchainLock', '.local/toolchains/win-x64', 'sciyue-native-toolchain-lock-v1'),
                                   ('xtbLock', '.local/dependencies/win-x64', 'sciyue-xtb-lock-v1')):
         path = safe(ROOT, ROOT / profile[name])
         value = read(path)
         require(value['schema'] == schema and value['platform'] == 'win32-x64', 'Wrong dependency/toolchain lock')
-        root = safe(ROOT / parent, ROOT / value['root'])
-        safe(ROOT, root)
-        require(root != ROOT / parent, 'Content-specific dependency root required')
+        root = safe(input_root / parent, input_root / value['root'])
+        safe(input_root, root)
+        require(root != input_root / parent, 'Content-specific dependency root required')
         if 'inventory' in value:
-            inventory_path = check(value['inventory'])
+            inventory_path = check(value['inventory'], input_root)
             safe(root, inventory_path)
             inventory_value = read(inventory_path)
             require(inventory_value['schema'] == schema and inventory_value['root'] == value['root'] and inventory_value['lockId'] == value['lockId'], 'Stable inventory belongs to another lock/root')
@@ -103,7 +108,7 @@ def activate(config, require_interpreter=True):
     require(sys.version_info[:3] == tuple(map(int, config['toolchainLock']['pythonVersion'].split('.'))), 'Python version drift')
     if sys.platform == 'win32':
         for path in (runtime / 'python/Library/bin', python, python / 'DLLs'):
-            DLL_HANDLES.append(os.add_dll_directory(str(safe(ROOT, path))))
+            DLL_HANDLES.append(os.add_dll_directory(str(safe(config['inputRoot'], path))))
     sys.path[:] = [str(toolchain / 'tools'), str(runtime / 'python/Lib/site-packages'), str(ROOT / 'scripts/native'),
                    str(python / 'Lib'), str(python / 'DLLs'), str(python)]
     return config
@@ -158,7 +163,7 @@ def initialize_pyinstaller_children(config, evidence_directory):
     require(isolated.Python is _parent.Python, 'PyInstaller isolated entrypoint aliases drifted')
     original = _parent.Python
     require(not getattr(original, '_sciyue_scoped_initializer', False), 'Isolated initializer is already installed')
-    directories = [str(safe(ROOT, path)) for path in (config['runtimeLockRoot'] / 'python/Library/bin',
+    directories = [str(safe(config['inputRoot'], path)) for path in (config['runtimeLockRoot'] / 'python/Library/bin',
                    config['toolchainLockRoot'] / 'python', config['toolchainLockRoot'] / 'python/DLLs')]
     evidence_directory = safe(ROOT, evidence_directory)
     require(not evidence_directory.exists(), 'Isolated evidence directory is immutable')

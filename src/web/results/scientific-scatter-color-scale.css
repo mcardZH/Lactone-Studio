@@ -1,0 +1,18 @@
+.scatter-color-scale-fields{display:grid;gap:8px;min-width:0}
+.scatter-color-scale-fields .plot-edit-fields{align-items:end}
+.scatter-color-scale-fields .plot-edit-position>.plot-edit-fields{margin-top:5px}
+.scatter-color-scale-colors{display:grid;grid-template-columns:repeat(auto-fit,minmax(33px,1fr));gap:5px}
+.scatter-color-scale-colors label{display:grid;gap:3px;min-width:0;white-space:normal}
+.scatter-color-scale-colors input[type=color]{inline-size:100%;min-inline-size:0;padding:2px}
+.scatter-color-scale-wide{grid-column:1/-1}
+.scatter-color-scale{touch-action:none;user-select:none}
+.scatter-color-scale [data-scatter-scale-part=move],.scatter-color-scale [data-scatter-scale-part=title]{cursor:move}
+.scatter-color-scale[data-scatter-scale-direction=horizontal] [data-scatter-legend-handle]{cursor:ew-resize}
+.scatter-color-scale[data-scatter-scale-direction=vertical] [data-scatter-legend-handle]{cursor:ns-resize}
+.scatter-color-scale[data-scatter-scale-direction=horizontal] [data-scatter-scale-side]{cursor:ns-resize}
+.scatter-color-scale[data-scatter-scale-direction=vertical] [data-scatter-scale-side]{cursor:ew-resize}
+.scatter-color-scale-edge-ink{stroke:var(--plot-grip-stroke);stroke-width:1.6;pointer-events:none;opacity:0}
+.scatter-color-scale [data-scatter-scale-part]:is(:hover,[data-dragging=true])>.scatter-color-scale-edge-ink{opacity:1}
+.scatter-color-scale text[data-plot-hit=text]:hover,.scatter-color-scale text[data-plot-current=true]{
+  paint-order:stroke fill;stroke:#cde2d8;stroke-width:.9
+}

@@ -1,6 +1,6 @@
 import type { ResultDiagnostic, ResultInputFile, TrajectoryResult } from '../../results/contracts';
 import type { ScientificData, ScientificParserSnapshot } from '../../results/scientific-contracts';
-import { recognizeSourceText, type SourceRecognition } from '../../results/source-recognition';
+import { inspectResultSource, SOURCE_RECOGNITION_BYTES } from '../../results/source-recognition';
 import { readHessScientificResult } from '../../results/hess-scientific-reader';
 import { assessHessCompanion } from '../../results/hess-companion';
 import { readXyzTrajectory } from '../../results/xyz-reader';
@@ -111,7 +111,6 @@ export interface CandidateAssessment {
   inspection: { prefixByteEnd: number; fullStreams: number; streamedBytes: number };
 }
 
-const PREFIX_BYTES = 1024 * 1024;
 function fieldFamilies(data: ScientificData | undefined, sourceId: string): CandidateFieldFamily[] {
   if (!data) return [];
   const families: CandidateFieldFamily[] = [];
@@ -170,34 +169,30 @@ export async function classifyScientificCandidate(input: ScientificCandidateInpu
     for (const key of ['environmentId', 'path', 'fileId'] as const) if (Object.hasOwn(p.sourceBoundary.fileIdentity, key) && p.sourceBoundary.fileIdentity[key] !== p.fileIdentity[key]) {
       sourceChanged = true; throw new Error('候选byte边界与文件身份不一致。');
     }
-    let end = Math.min(source.size, PREFIX_BYTES);
-    const prefix = await source.readRange(0, end, signal); signal?.throwIfAborted();
-    if (prefix.length !== end) { sourceChanged = true; throw new Error('候选前缀读取长度改变。'); }
-    report.inspection.prefixByteEnd = end;
-    let text = '', isText = true;
-    const decoder = new TextDecoder('utf-8', { fatal: true });
-    try { text = decoder.decode(prefix, { stream: end < source.size }); } catch { isText = false; }
-    let recognized: SourceRecognition = isText ? recognizeSourceText(text) : { format: 'unknown', software: 'unknown', status: 'unknown', evidence: [] };
-    while (isText && recognized.status === 'unknown' && !text.includes('\0') && end < source.size) {
-      signal?.throwIfAborted();
-      const nextEnd = Math.min(source.size, end + PREFIX_BYTES), bytes = await source.readRange(end, nextEnd, signal);
-      signal?.throwIfAborted();
-      if (bytes.length !== nextEnd - end) { sourceChanged = true; throw new Error('候选识别读取长度改变。'); }
-      end = nextEnd; report.inspection.prefixByteEnd = end;
-      try { text += decoder.decode(bytes, { stream: end < source.size }); } catch { isText = false; break; }
-      recognized = recognizeSourceText(text);
-      // Yield to cancellation and the owning source revision between blocks.
-      await new Promise<void>(resolve => setTimeout(resolve, 0));
-    }
-    const opaqueFchk = recognized.format === 'fchk';
-    report.identity.representation = !isText || text.includes('\0') && !opaqueFchk ? 'binary' : 'text';
+    const prefixEnd = Math.min(source.size, SOURCE_RECOGNITION_BYTES);
+    const prefix = await source.readRange(0, prefixEnd, signal); signal?.throwIfAborted();
+    if (prefix.length !== prefixEnd) { sourceChanged = true; throw new Error('候选前缀读取长度改变。'); }
+    let energy = false, gradient = false, coordinates = false;
+    const inspected = await inspectResultSource({ ...source, async readRange(start, end, readSignal) {
+      if (start === 0 && end === prefixEnd) return prefix;
+      const bytes = await source.readRange(start, end, readSignal);
+      if (bytes.length !== end - start) { sourceChanged = true; throw new Error('候选识别读取长度改变。'); }
+      return bytes;
+    } }, { signal }, text => {
+      energy ||= /The current total energy in Eh/.test(text);
+      gradient ||= /The current gradient in Eh\/bohr/.test(text);
+      coordinates ||= /current coordinates in Bohr/i.test(text);
+    });
+    const recognized = inspected.identity;
+    report.inspection.prefixByteEnd = inspected.byteEnd;
+    report.identity.representation = inspected.text ? 'text' : 'binary';
     report.identity.format = recognized.format === 'unknown' ? null : recognized.format;
     report.identity.formatState = recognized.status === 'conflict' ? 'conflict' : recognized.format === 'unknown' ? 'unknown' : 'known';
     report.identity.software = recognized.software === 'unknown' ? null : recognized.software;
     report.identity.softwareState = recognized.status === 'conflict' ? 'conflict' : recognized.software === 'unknown' ? 'unknown' : 'known';
     report.identity.evidence = recognized.evidence.map(item => ({ ...item }));
     let companionKind = p.discovery.companionKind;
-    if (!companionKind && isText && /The current total energy in Eh/.test(text) && /The current gradient in Eh\/bohr/.test(text) && /current coordinates in Bohr/i.test(text)) companionKind = 'engrad';
+    if (!companionKind && inspected.text && energy && gradient && coordinates) companionKind = 'engrad';
     if (companionKind) {
       report.identity.formatCandidate = companionKind;
       if (report.identity.formatState === 'unknown') report.identity.formatState = 'candidate';

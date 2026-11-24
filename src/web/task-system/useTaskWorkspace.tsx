@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
 	SubmitTaskInput,
+	MonitorSnapshotTarget,
 	SubmitTaskRequest,
 	TaskLibraryView
 } from "../../task-system/application-contracts";
@@ -27,7 +28,8 @@ export function useTaskWorkspace(ports: {
 		taskId: string,
 		snapshotId: string,
 		leaseId: string,
-		canNavigate: () => boolean
+		canNavigate: () => boolean,
+		target?: MonitorSnapshotTarget
 	): Promise<void>;
 	extractStructure?(structure: Structure): void;
 	onError(message: string): void;
@@ -50,6 +52,8 @@ export function useTaskWorkspace(ports: {
 		[]
 	);
 	const [monitorCache] = useState(() => new TaskMonitorWorkspaceCache());
+	const currentTaskSelection=useRef<{taskId:string|null;checked:string[]}>({taskId:null,checked:[]});
+	const recordTaskSelection=useCallback((value:{taskId:string|null;checked:string[]})=>{currentTaskSelection.current=value;},[]);
 	const openedRef = useRef(false),
 		isOpen = useCallback(() => openedRef.current, []);
 	const current = useRef(ports);
@@ -186,7 +190,7 @@ export function useTaskWorkspace(ports: {
 		[bridge, closeSubmission, releaseEntry]
 	);
 	const openSnapshot = useCallback(
-		(taskId: string, snapshotId: string, leaseId: string, canNavigate?: () => boolean) => {
+		(taskId: string, snapshotId: string, leaseId: string, canNavigate?: () => boolean, target?: MonitorSnapshotTarget) => {
 			const epoch = revision.current;
 			return current.current.openSnapshot(
 				taskId,
@@ -196,7 +200,8 @@ export function useTaskWorkspace(ports: {
 					alive.current &&
 					document.hasFocus() &&
 					revision.current === epoch &&
-					canNavigate?.() !== false
+					canNavigate?.() !== false,
+				target
 			);
 		},
 		[]
@@ -205,6 +210,7 @@ export function useTaskWorkspace(ports: {
 		bridge,
 		opened,
 		isOpen,
+		currentSelection:()=>currentTaskSelection.current,
 		open,
 		openTask,
 		leave,
@@ -229,6 +235,7 @@ export function useTaskWorkspace(ports: {
 						}
 						onDismissPreview={previewErrors.dismiss}
 						bridge={bridge}
+						onSelection={recordTaskSelection}
 						initialTaskId={initialTask}
 						operationIds={operationIds}
 						onOperationStarted={(id) =>

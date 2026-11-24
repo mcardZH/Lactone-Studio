@@ -1,10 +1,12 @@
 import type { DisplaySettings } from './contracts';
 import { MESH_FINISH_LIMITS, normalizeMeshFinish, type MeshFinishSettings } from '../results/mesh-appearance';
 import { PYMOL_ELEMENT_COLORS, VMD_NAME_COLORS } from './gallery-element-colors';
+import { VESTA_PEARL_COLORS, VESTA_PEARL_SCALES } from './vesta-element-appearance';
 
-export type StructureAppearancePresetId = 'original' | 'pastel' | 'muted' | 'cpk' | 'vmd-glossy' | 'flat' | 'macaron' | 'outlined' | 'vdw-shell' | 'gallery-line-art' | 'gallery-cpk-glossy' | 'gallery-pastel' | 'gallery-vmd-glossy';
+export type StructureAppearancePresetId = 'original' | 'pastel' | 'muted' | 'cpk' | 'vmd-glossy' | 'flat' | 'macaron' | 'outlined' | 'vdw-shell' | 'gallery-line-art' | 'gallery-cpk-glossy' | 'gallery-pastel' | 'gallery-vmd-glossy' | 'gallery-vesta-pearl' | 'gallery-space-filling';
 /** Explicit structural lighting only. Absence preserves all legacy shaders. */
-export type StructureLighting = 'pymol-soft' | 'pymol-cpk' | 'vmd';
+export const STRUCTURE_LIGHTING = ['pymol-soft', 'pymol-cpk', 'vmd', 'vesta-pearl'] as const;
+export type StructureLighting = typeof STRUCTURE_LIGHTING[number];
 export interface VdwShellAppearance { color: string; opacity: number; /** Preserve an older mixed core/shell material without adding another editor. */ finish?: MeshFinishSettings }
 /** Display geometry, never chemical radii or a change of representation. The
  * existing global/element multipliers remain independent and are not rewritten. */
@@ -24,6 +26,8 @@ export type StructureLightingKey=keyof typeof MESH_FINISH_LIMITS;
 export interface StructureAppearancePreset {
   id: StructureAppearancePresetId; label: string; source: string;
   colors: Readonly<Record<string, string>>; finish: Readonly<MeshFinishSettings>; shell?: Readonly<VdwShellAppearance>; sizing?:Readonly<StructureSizingAppearance>; lighting?:StructureLighting;
+  representation?: DisplaySettings['representation'];
+  elementScales?: Readonly<Record<string, number>>;
 }
 const cpk = { C:'#909090', H:'#fafafa', N:'#1f3dcc', O:'#d91414', S:'#f2c20d', P:'#ff8000', F:'#26bf33', Cl:'#26a626', Br:'#8c1a0d', I:'#731aa6' };
 const finish = (specular: number, exponent: number, ambient: number, diffuse: number, outline = 0): MeshFinishSettings => ({preset:'custom',specular,exponent,ambient,diffuse,outline});
@@ -61,12 +65,29 @@ export const STRUCTURE_APPEARANCE_PRESETS:readonly StructureAppearancePreset[]=O
   {id:'gallery-pastel',label:'图库·粉彩球棍',source:'plot-mol fig-062 / PyMOL template 10; user-approved natural shading without added black contour',colors:{...PYMOL_ELEMENT_COLORS,...LEGACY_STRUCTURE_APPEARANCE_PRESETS[1].colors},finish:finish(.25,60,.45,.70),lighting:'pymol-soft',sizing:{ballScale:.30,hydrogenBallScale:.18,bondRadiusAngstrom:.22,bondColorLightening:0}},
   {id:'gallery-cpk-glossy',label:'图库·CPK球棍',source:'plot-mol fig-153 / PyMOL template 13; user-approved natural shading without added black contour',colors:{...PYMOL_ELEMENT_COLORS,...cpk,F:'#00ff00',Cl:'#00ff00',Br:'#b22121',I:'#ff80ff'},finish:finish(.30,35,.55,.70),lighting:'pymol-cpk',sizing:{ballScale:.25,hydrogenBallScale:.16,bondRadiusAngstrom:.15,bondColorLightening:0}},
   {id:'gallery-vmd-glossy',label:'图库·青碳高光',source:'plot-mol fig-013 / VMD CPK Name Opaque',colors:VMD_NAME_COLORS,finish:finish(.50,40,0,.65),lighting:'vmd',sizing:{ballScale:.25,hydrogenBallScale:.25,bondRadiusAngstrom:.10,bondColorLightening:0}},
+  {
+    id: 'gallery-vesta-pearl', label: '铜棕珠光', source: 'VESTA raster comparison on caffeine and three crystals',
+    colors: VESTA_PEARL_COLORS, elementScales: VESTA_PEARL_SCALES, representation: 'ball-stick',
+    finish: finish(.67168, 25.33, .26689, .61835), lighting: 'vesta-pearl',
+    sizing: {ballScale: .20, hydrogenBallScale: .15333, bondRadiusAngstrom: .10, bondColorLightening: 0},
+  },
+  {
+    id: 'gallery-space-filling', label: '空间填充', source: 'NIH 3D 3DPX-010639, space-filled caffeine',
+    colors: {...VESTA_PEARL_COLORS, C:'#9f9f9f', H:'#e5e5e5', N:'#3353ff', O:'#ff0a0a'},
+    elementScales: {N: 1.045, O: .955}, representation: 'vdw',
+    finish: finish(.16, 31, .22, .90),
+  },
 ] satisfies StructureAppearancePreset[]);
 export function isSelectableStructureAppearancePreset(id:unknown):id is StructureAppearancePresetId{return STRUCTURE_APPEARANCE_PRESETS.some(row=>row.id===id);}
 export function structureAppearancePreset(id: unknown): StructureAppearancePreset | undefined { return STRUCTURE_APPEARANCE_PRESETS.find(row=>row.id===id)??LEGACY_STRUCTURE_APPEARANCE_PRESETS.find(row=>row.id===id); }
 export function applyStructureAppearancePreset(display: DisplaySettings, id: StructureAppearancePresetId): DisplaySettings {
   const preset=structureAppearancePreset(id); if(!preset) throw new Error('未知结构风格。');
   const next:DisplaySettings={...display,structurePreset:id,elementColors:{...preset.colors},structureFinish:{...preset.finish}};
+  const previous = structureAppearancePreset(display.structurePreset);
+  if (preset.representation) next.representation = preset.representation;
+  else if (previous?.representation) next.representation = 'ball-stick';
+  if (preset.elementScales) next.elementScales = {...preset.elementScales};
+  else if (previous?.elementScales) delete next.elementScales;
   if(preset.lighting)next.structureLighting=preset.lighting;else delete next.structureLighting;
   // Absence preserves the exact native palette/material route, including the
   // renderer's imposters. The gallery's CPK adaptation is a different style.

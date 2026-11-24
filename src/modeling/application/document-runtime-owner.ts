@@ -27,9 +27,6 @@ export function createDocumentRuntimeOwner(store: ModelStore, options: DocumentR
   let closed = false;
   // A cancelled preflight can clear the presentation session before an older worker closes.
   let lastDynamicsSessionId: string | undefined;
-  let phaseSource: ModelDocument | undefined;
-  let phaseDeferApplication=false;
-  let optimizationSource: { document: ModelDocument; sessionId: string } | undefined;
 
   function assertCurrent() {
     if (closed || store.getSnapshot().id !== documentId) throw new Error('运行所属文档已关闭或已变化。');
@@ -60,48 +57,7 @@ export function createDocumentRuntimeOwner(store: ModelStore, options: DocumentR
     assertCanStart();
     lastDynamicsSessionId = sessionId;
     return dynamicsPort.start(request, sessionId);
-  } }, createStoreDynamicsDependencies(store, { isolated: true,deferApplication:()=>phaseDeferApplication, captureSource() {
-    const source = phaseSource;
-    phaseSource = undefined;
-    return source ?? captureSource();
-  } }));
-
-  async function startOptimizationPhase(mode: 'optimize' | 'geometry', config: Parameters<DynamicsController['start']>[1] = {},capturedSource?:ModelDocument,options?:{deferApplication?:boolean}) {
-    assertCanStart();
-    const fallback = mode === 'geometry' && config.geometryMode === 'hybrid-local' && config.allowPureGeometryFallback === true;
-    const previous = optimizationSource;
-    optimizationSource = undefined;
-    const view = activePresentation();
-    let source: ModelDocument;
-    if(capturedSource){
-      const current=store.getSnapshot();
-      if(capturedSource.id!==current.id||capturedSource.revision!==current.revision)throw Error('封存的优化来源已不属于当前文档修订。');
-      source=structuredClone(capturedSource);
-    }
-    else if (view) source = view.captureSource();
-    else {
-      const owner = store.getSnapshot(), state = dynamics.getSnapshot();
-      if (!fallback || !hasActivity() || !previous || previous.sessionId !== state.sessionId || state.status !== 'error' ||
-          previous.document.id !== owner.id || previous.document.revision !== owner.revision || previous.document.analysisBindingId !== owner.analysisBindingId) {
-        throw new Error('当前文档没有可用于继续预优化的有效来源。');
-      }
-      source = structuredClone(previous.document);
-    }
-    const saved = mode === 'optimize' && config.forcefield === 'auto' && hasActivity() ? structuredClone(source) : undefined;
-    const priorSessionId = lastDynamicsSessionId;
-    // Dynamics captures its immutable operation synchronously before preflight awaits.
-    phaseSource = source;
-    phaseDeferApplication=options?.deferApplication===true;
-    try {
-      return dynamics.start(mode, config).then(() => {
-        const state = dynamics.getSnapshot(), sessionId = lastDynamicsSessionId;
-        if (saved && sessionId && sessionId !== priorSessionId && state.sessionId === sessionId &&
-            state.workingSource?.documentId === saved.id && state.workingSource.revision === saved.revision) {
-          optimizationSource = { document: saved, sessionId };
-        }
-      });
-    } finally { phaseSource = undefined;phaseDeferApplication=false; }
-  }
+  } }, createStoreDynamicsDependencies(store, { isolated: true, captureSource }));
 
   function isBusy() {
     const state = dynamics.getSnapshot();
@@ -131,7 +87,6 @@ export function createDocumentRuntimeOwner(store: ModelStore, options: DocumentR
           closing = undefined;
           presentations.clear();
           activities.clear();
-          optimizationSource = undefined;
           xtb.disconnect();
           dynamics.dispose();
         },
@@ -146,7 +101,6 @@ export function createDocumentRuntimeOwner(store: ModelStore, options: DocumentR
   return {
     xtb,
     dynamics,
-    startOptimizationPhase,
     isBusy,
     attachPresentation(capture: () => ModelDocument, isActive = () => true) {
       assertCurrent();

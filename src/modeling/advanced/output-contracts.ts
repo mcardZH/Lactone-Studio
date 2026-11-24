@@ -1,4 +1,5 @@
 export type AdvancedOutputRequest = { directoryName: string; files: readonly { name: string; text: string }[] }
+  | { mode: 'sealed-trajectory'; directoryName: string; files: readonly { name: string; assetId: string }[] }
   | { mode:'existing-directory'; files:readonly {name:string;text:string}[]; reservedNames?:readonly string[] };
 export interface AdvancedOutputManifest {
   schema: 'sciyue-advanced-output'; version: 1;
@@ -15,7 +16,13 @@ export type AdvancedOutputSelection = { status: 'cancelled' } | {
 export type AdvancedOutputWriteResult = { status: 'saved'; directory: string; manifest: AdvancedOutputManifest } | {
   status: 'failed'; error: { code: string; message: string; advancedOutput?: AdvancedOutputPartial };
 };
-export interface AdvancedOutputBridge {
+export interface AdvancedOutputBinaryBridge {
+  beginBinaryAsset(expectedBytes?: number): Promise<{ id: string }>;
+  appendBinaryAsset(id: string, bytes: ArrayBuffer | Uint8Array): Promise<{ size: number }>;
+  sealBinaryAsset(id: string): Promise<{ size: number; sha256?: string }>;
+  releaseBinaryAsset(id: string): Promise<void>;
+}
+export interface AdvancedOutputBridge extends Partial<AdvancedOutputBinaryBridge> {
   chooseAdvancedOutput(request: AdvancedOutputRequest): Promise<AdvancedOutputSelection>;
   writeAdvancedOutput(token: string): Promise<AdvancedOutputWriteResult>;
   abandonAdvancedOutput(token: string): Promise<{ released: boolean }>;

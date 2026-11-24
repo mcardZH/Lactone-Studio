@@ -16,6 +16,9 @@ import {DEFAULT_RESULT_DECIMALS} from '../../results/numeric-format';
 import type {AnalysisColorbarLayout} from './analysis-colorbar-layout';
 import {generatedXtbMethodAllowed} from '../../results/generated-xtb-policy';
 import {useAnalysisProjectSnapshot} from '../../projects/analysis-state';
+import {ResultsMcpPortRegistration} from './results-mcp-context';
+import {objectSchema} from '../mcp/types';
+import {settingBool} from './analysis-mcp-settings';
 export interface AnalysisProjection {
  id:string;kind:AnalysisPage;sessionId:string|null;selectedKey:string|null;field:OrbitalField|null;frameIndex:number|null;
  /** Compatibility alias for orbital-list precision only; other tables publish
@@ -71,7 +74,18 @@ export function AnalysisPanelInstance(p:{id:string;kind:AnalysisPage;document:Po
  useEffect(()=>()=>p.onDispose(p.id),[p.id,p.onDispose]);
  const analysis=useMemo(()=>session?{sessionId:session.id,sourceId:session.metadata.sourceId,sourceRevision:session.metadata.sourceRevision,sourceName:session.metadata.name,format:metadata?.format===session.metadata.format?session.metadata.format:undefined,generatedXtb:!!generated,
   analysisPolicy:generated?(metadata?.sourceRevision===session.metadata.sourceRevision&&JSON.stringify(metadata.analysisPolicy)===JSON.stringify(session.metadata.analysisPolicy)?session.metadata.analysisPolicy:undefined):session.metadata.analysisPolicy}:undefined,[session,generated,metadata?.sourceRevision,metadata?.format,metadata?.analysisPolicy]);
- return <>{p.available===false&&<p className="postprocess-note">当前结构已修改，撤销后可恢复此分析。</p>}<div className="analysis-instance-body" hidden={p.available===false}>{error&&<DismissibleNotice role="alert">{error}</DismissibleNotice>}
+ const dipole=postprocessDipole(projection.scientific,currentIndex);
+ const energyPort=p.kind==='energy'?<ResultsMcpPortRegistration kind="runs" id={p.active&&p.available!==false?p.id:null} port={{
+  sourceRevision:JSON.stringify([projection.result.id,projection.result.source.sha256,currentIndex,dipoleVisible]),
+  methods:[],read:()=>({kind:'energy',dipoleAvailable:Boolean(dipole),dipoleVisible:Boolean(dipole)&&dipoleVisible}),
+  run(){throw new Error('能量页读取当前结果中的打印值。');},
+  presentation:dipole?{
+   schema:objectSchema({dipoleVisible:settingBool}),
+   read:()=>({dipoleVisible}),
+   apply(patch){if(patch.dipoleVisible!==undefined)setDipoleVisible(patch.dipoleVisible===true);},
+  }:undefined,
+ }}/>:null;
+ return <>{energyPort}{p.available===false&&<p className="postprocess-note">当前结构已修改，撤销后可恢复此分析。</p>}<div className="analysis-instance-body" hidden={p.available===false}>{error&&<DismissibleNotice role="alert">{error}</DismissibleNotice>}
   <PostprocessDisplayPanel result={projection.result} structure={p.structure} currentIndex={currentIndex} analysisPage={p.kind} hideEntries active={p.active&&p.available!==false} cancelOnInactive={p.available===false} wavefunctionAvailable={projection.wavefunctionAvailable} trajectoryControls={p.trajectoryControls} surfaceControls={p.surfaceControls} interactionControls={p.interactionControls} excitationControls={p.excitationControls?.(excitationDecimals,setExcitationDecimals)} reactivityControls={p.reactivityControls} sourceContext={sourceContext} onProfessionalCharges={setSourceChargeDisplay}
    unavailableReason={page=>generatedXtbAnalysisReason(generated,page)} atomicDisplay={{property:null,color:false,labels:false}} onAtomicDisplay={()=>{}}
    vibrationControls={{onProjection:setVibration,onExtractStructure:p.onExtractStructure,onExportGif:p.onExportGif,onError:p.onError}}
@@ -79,7 +93,7 @@ export function AnalysisPanelInstance(p:{id:string;kind:AnalysisPage;document:Po
    onAtomHighlight={(ids,values)=>setHighlights({ids,values})} onBondsHighlight={setPairs}
    onPrintedAtomHighlight={(ids,values)=>setPrintedHighlights({sourceId:p.document.result.source.id,frameIndex:currentIndex,ids,values})}
    getBondLength={ids=>metadata&&projection.wavefunctionAvailable?analysisBondLength(ids,metadata,p.structure):undefined}
-   dipoleAvailable={!!postprocessDipole(projection.scientific,currentIndex)} dipoleVisible={dipoleVisible} onDipoleVisible={setDipoleVisible}
-   onOpenPlot={p.onOpenPlot} orbitalControls={<OrbitalControls metadata={session?.metadata??null} nativeSessionId={session?.id??null} sourceResult={projection.result} sourceFrameIndex={currentIndex} sourcePair={p.document.pair} wavefunctionAvailable={projection.wavefunctionAvailable} onDecimalsChange={setOrbitalDecimals} selectedKey={selectedKey} onSelectedKey={setSelectedKey} onField={setField} onLayerSettings={setLayer} active={p.active&&p.available!==false} cancelOnInactive={p.available===false} analysis={analysis} onAtomHighlight={(ids,values)=>setHighlights({ids,values})} onError={p.onError} onExportImage={p.active&&p.available!==false&&projection.wavefunctionAvailable?p.onExport:undefined}/>}/>
+   dipoleAvailable={!!dipole} dipoleVisible={dipoleVisible} onDipoleVisible={setDipoleVisible}
+   onOpenPlot={p.onOpenPlot} orbitalControls={<OrbitalControls ownerId={p.kind==='orbitals'?p.id:undefined} metadata={session?.metadata??null} nativeSessionId={session?.id??null} sourceResult={projection.result} sourceFrameIndex={currentIndex} sourcePair={p.document.pair} sourceDocument={p.document} wavefunctionAvailable={projection.wavefunctionAvailable} onDecimalsChange={setOrbitalDecimals} selectedKey={selectedKey} onSelectedKey={setSelectedKey} onField={setField} onLayerSettings={setLayer} active={p.active&&p.available!==false} cancelOnInactive={p.available===false} analysis={analysis} onAtomHighlight={(ids,values)=>setHighlights({ids,values})} onError={p.onError} onExportImage={p.active&&p.available!==false&&projection.wavefunctionAvailable?p.onExport:undefined}/>}/>
  </div></>;
 }

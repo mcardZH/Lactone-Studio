@@ -7,19 +7,28 @@ export function serializeOptimizationSvg(svg: SVGSVGElement): string {
   const copy = svg.cloneNode(true) as SVGSVGElement;
   copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   const viewBox = svg.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
-  copy.setAttribute('width', String(viewBox?.[2] || Number(svg.getAttribute('width')) || 900));
-  copy.setAttribute('height', String(viewBox?.[3] || Number(svg.getAttribute('height')) || 330));
+  const pxFromMm = (field: string) => {
+    const mm = Number(svg.getAttribute(field));
+    return mm > 0 && Number.isFinite(mm) ? Math.max(1, Math.round(mm * 96 / 25.4)) : 0;
+  };
+  copy.setAttribute('width', String(pxFromMm('data-plot-page-mm') || viewBox?.[2] || Number(svg.getAttribute('width')) || 900));
+  copy.setAttribute('height', String(pxFromMm('data-plot-page-height-mm') || viewBox?.[3] || Number(svg.getAttribute('height')) || 330));
   copy.removeAttribute('class'); copy.removeAttribute('data-testid');
   if (!svg.getAttribute('font-family')) copy.setAttribute('font-family', 'Arial, Microsoft YaHei, sans-serif');
-  if (/(?:SciYue|Ester Studio) DejaVu Sans/.test(svg.getAttribute('font-family') ?? '')) {
-    copy.setAttribute('font-family', copy.getAttribute('font-family')!.replaceAll('SciYue DejaVu Sans', 'Ester Studio DejaVu Sans'));
+  const fontNodes = Array.from(copy.querySelectorAll('[font-family]'));
+  const font = /(?:SciYue|Ester Studio) DejaVu Sans/;
+  if (font.test(svg.getAttribute('font-family') ?? '') || fontNodes.some(node => font.test(node.getAttribute('font-family') ?? ''))) {
+    for (const node of [copy, ...fontNodes]) {
+      const family = node.getAttribute('font-family');
+      if (family?.includes('SciYue DejaVu Sans')) node.setAttribute('font-family', family.replaceAll('SciYue DejaVu Sans', 'Ester Studio DejaVu Sans'));
+    }
     const style = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'style');
     style.textContent = plotFontCss; copy.insertBefore(style, copy.firstChild);
   }
   copy.querySelectorAll('[tabindex], [role], [aria-pressed]').forEach(node => {
     node.removeAttribute('tabindex'); node.removeAttribute('role'); node.removeAttribute('aria-pressed');
   });
-  copy.querySelectorAll('[data-plot-interaction]').forEach(node => node.remove());
+  copy.querySelectorAll('[data-plot-interaction], [data-export-exclude]').forEach(node => node.remove());
   const Serializer = svg.ownerDocument.defaultView?.XMLSerializer ?? XMLSerializer;
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new Serializer().serializeToString(copy);
 }

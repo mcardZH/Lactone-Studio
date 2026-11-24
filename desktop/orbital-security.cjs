@@ -73,15 +73,19 @@ function commandRequest(value, keys) {
   return { operation: value.operation, priorityIds: [...priorityKeys],...(value.operation==='generate-one'?{orbitalId:value.orbitalKey}:{}) };
 }
 function decodeField(value, session, orbitalKey) {
-  assert(value.orbitalId === orbitalKey && value.encoding === 'float64-le-base64' && value.valueUnit === 'bohr^-3/2', 'Invalid orbital field identity/units');
+  assert(value.orbitalId === orbitalKey && ['float64-le-base64','float64-le'].includes(value.encoding) && value.valueUnit === 'bohr^-3/2', 'Invalid orbital field identity/units');
   const expectedGrid = { originBohr: session.plan.grid.origin, axesBohr: session.plan.grid.axes, dimensions: session.plan.grid.dimensions };
   assert(plain(value.grid) && ['originBohr','axesBohr','dimensions'].every(key => JSON.stringify(value.grid[key]) === JSON.stringify(expectedGrid[key])), 'Orbital field grid changed');
   const byteLength = expectedGrid.dimensions.reduce((a,b) => a*b,1)*8;
-  assert(value.dataBase64 instanceof Uint8Array?value.dataBase64.byteLength===byteLength:typeof value.dataBase64 === 'string' && value.dataBase64.length === Math.ceil(byteLength/3)*4 && /^[A-Za-z0-9+/]*={0,2}$/.test(value.dataBase64), 'Invalid orbital field encoding/length');
-  const bytes = typeof value.dataBase64==='string'?Buffer.from(value.dataBase64, 'base64'):value.dataBase64; assert(bytes.length === byteLength, 'Orbital field byte count changed');
+  const base={sessionId:session.sessionId,sourceRevision:session.sourceRevision,gridKey:session.plan.gridKey,orbitalKey,grid:session.plan.grid,valueUnit:'bohr^-3/2'};
+  const data=value.encoding==='float64-le'?value.valuesBinary:value.dataBase64;
+  const packedLength=require('./analysis-result-wire.cjs').packedFieldLength(data,'float64-le');
+  if(packedLength!==undefined){assert(packedLength===byteLength,'Orbital field byte count changed');return {...base,values:data};}
+  assert(data instanceof Uint8Array?data.byteLength===byteLength:typeof data === 'string' && data.length === Math.ceil(byteLength/3)*4 && /^[A-Za-z0-9+/]*={0,2}$/.test(data), 'Invalid orbital field encoding/length');
+  const bytes = typeof data==='string'?Buffer.from(data, 'base64'):data; assert(bytes.length === byteLength, 'Orbital field byte count changed');
   assert(require('node:os').endianness() === 'LE', 'Unsupported orbital field host byte order');
   const array = bytes.byteOffset%8===0?new Float64Array(bytes.buffer,bytes.byteOffset,byteLength/8):new Float64Array(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+byteLength));
   for (const number of array) assert(Number.isFinite(number), 'Nonfinite orbital field');
-  return { sessionId: session.sessionId, sourceRevision: session.sourceRevision, gridKey: session.plan.gridKey, orbitalKey, grid: session.plan.grid, valueUnit: 'bohr^-3/2', values: array };
+  return {...base, values:array};
 }
 module.exports = { MAX_SOURCE_BYTES, MAX_POINTS, MAX_CUBE_BYTES, rendererReserveBytes, cubeExportUpperBound, identity, nativeDiagnostics, resourceInfo, sourceRequest, planRequest, commandRequest, decodeField };

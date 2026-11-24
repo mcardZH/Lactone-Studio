@@ -4,6 +4,7 @@
 const readline = require('node:readline');
 const packageMeta = require('../../package.json');
 const {
+  isPlainObject,
   createMcpToolRegistry,
   registerAllMcpTools,
   createMcpProtocolProcessor,
@@ -17,9 +18,11 @@ function createMcpStdioServer({
   errorOutput = process.stderr,
   sessionFilePath,
   dispatchToHost,
-  serverName = 'ester-studio-mcp',
-  serverVersion = packageMeta.version || '2.0.3',
-  registerExtraTools
+  serverName = 'lactone-studio-mcp',
+  serverVersion = packageMeta.version || '2.1.3',
+  registerExtraTools,
+  listDynamicTools,
+  callDynamicTool
 } = {}) {
   const client = typeof dispatchToHost === 'function'
     ? null
@@ -36,10 +39,37 @@ function createMcpStdioServer({
     registerExtraTools
   });
 
+  const resolveDynamicTools = typeof listDynamicTools === 'function'
+    ? listDynamicTools
+    : async () => {
+        try {
+          const response = await dispatch('tools.list', {});
+          return Array.isArray(response?.tools) ? response.tools : [];
+        } catch (error) {
+          if (error?.code === 'MCP_DESKTOP_OFFLINE' || error?.code === 'UNSUPPORTED_MCP_ACTION' || error?.statusCode === 404) {
+            return [];
+          }
+          throw error;
+        }
+      };
+
+  const invokeDynamicTool = typeof callDynamicTool === 'function'
+    ? callDynamicTool
+    : async (name, args) => {
+        const response = await dispatch('tools.call', {
+          name,
+          arguments: isPlainObject(args) ? args : {}
+        });
+        return response?.mcpToolResult ?? response;
+      };
+
   const processor = createMcpProtocolProcessor({
     registry,
     serverName,
-    serverVersion
+    serverVersion,
+    listDynamicTools: resolveDynamicTools,
+    callDynamicTool: invokeDynamicTool,
+    listChanged: true
   });
 
   let rl = null;
@@ -68,7 +98,7 @@ function createMcpStdioServer({
         writeMessage(response);
       }
     } catch (error) {
-      errorOutput?.write?.(`[ester-studio-mcp] Unhandled error: ${error?.stack || error}\n`);
+      errorOutput?.write?.(`[lactone-studio-mcp] Unhandled error: ${error?.stack || error}\n`);
       if (parsed && parsed.id !== undefined) {
         writeMessage(jsonRpcError(parsed.id, -32603, error instanceof Error ? error.message : String(error)));
       }

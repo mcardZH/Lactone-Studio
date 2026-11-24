@@ -3,6 +3,10 @@ import { confirmCoordinateSelection } from '../application/coordinate-selection'
 import type { PesAxis, PesCard, PesCoordinate, PesExpressionDraft } from './contracts';
 
 const namePattern = /^[\p{L}_][\p{L}\p{N}_]*$/u;
+export function pesCoordinateNameIssue(name: string, used: { has(name: string): boolean }) {
+  if (!namePattern.test(name)) return 'invalid-name';
+  if (used.has(name)) return 'duplicate-name';
+}
 const tokenPattern = /\s*(?:(\d+(?:\.\d*)?|\.\d+)([eE][+-]?\d+)?|([\p{L}_][\p{L}\p{N}_]*)|([+\-*/()×÷−]))/uy;
 const operator = (token: string) => ({ '×': '*', '÷': '/', '−': '-' } as Record<string, string>)[token] ?? token;
 
@@ -85,7 +89,8 @@ export function compilePesExpression(draft: PesExpressionDraft, structure: Struc
   const coordinates = new Map<string, PesCoordinate>();
   for (const coordinate of draft.coordinates) {
     if (coordinate.nameDraft !== undefined && coordinate.nameDraft !== coordinate.name) throw Error('请确认或修正已编辑的内坐标名称。');
-    if (!namePattern.test(coordinate.name) || coordinates.has(coordinate.name)) throw Error('请修正无效或重复的内坐标名称。');
+    const issue=pesCoordinateNameIssue(coordinate.name,coordinates);
+    if(issue)throw Error(issue==='duplicate-name'?`内坐标名称重复：${coordinate.name}（${coordinate.id}）。`:`内坐标名称无效：${coordinate.name}（${coordinate.id}）。`);
     coordinates.set(coordinate.name, coordinate);
   }
   const tokens: string[] = [];
@@ -121,7 +126,7 @@ export function compilePesExpression(draft: PesExpressionDraft, structure: Struc
     }
     const coordinate = coordinates.get(token);
     if (coordinate) {
-      const geometry = confirmCoordinateSelection(structure, coordinate.atomIds);
+      const geometry = confirmCoordinateSelection(structure, coordinate.atomIds, coordinate.images);
       if (geometry.type !== coordinate.type) throw Error(`${coordinate.name} 的原子与内坐标类型不符。`);
       return { value: geometry.value, length: coordinate.type === 'B' ? 1 : 0, angle: coordinate.type === 'B' ? 0 : 1,
         wire: `{${coordinate.id}}`, directCoordinate: coordinate, references: new Set([coordinate.id]) };

@@ -15,8 +15,7 @@ export class BoundedDisplayQueue<T> {
   get count():number { return this.entries.length; }
   get byteLength():number { return this.bytes; }
   get oldestReceivedAt():number|undefined { return this.entries[0]?.receivedAt; }
-  push(value:T,receivedAt:number):boolean {
-    const bytes=serializedFrameBytes(value);
+  push(value:T,receivedAt:number,bytes=serializedFrameBytes(value)):boolean {
     if(bytes>this.maxBytes)return false;
     while(this.entries.length && (this.entries.length>=this.maxFrames || this.bytes+bytes>this.maxBytes))this.shift();
     this.entries.push({value,bytes,receivedAt});this.bytes+=bytes;return true;

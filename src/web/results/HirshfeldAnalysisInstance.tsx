@@ -5,11 +5,11 @@ import { sameSurfaceContext } from '../../results/surface-field';
 import { hirshfeldClusterFromStructure, hirshfeldSelection } from '../../results/hirshfeld-presentation';
 import type { AnalysisSelectionPort } from '../analysis-selection-intent';
 import { ANALYSIS_PALETTES } from './analysis-display';
-import { initialHirshfeldState, type HirshfeldControlsState, type HirshfeldProjection, type HirshfeldFingerprintSnapshot } from './hirshfeld-controls-contracts';
+import { hirshfeldFingerprintSourceKey, initialHirshfeldState, type HirshfeldControlsState, type HirshfeldProjection, type HirshfeldFingerprintSnapshot } from './hirshfeld-controls-contracts';
 import { createHirshfeldRun, type HirshfeldCompletedSession, type HirshfeldDesktopApi } from './hirshfeld-desktop-controller';
 import { surfaceScientificContextKey, surfaceSourceLifetimeKey } from './surface-context-pool';
 import { createMultiwfnProgressTracker, type MultiwfnProgressSnapshot } from '../../results/multiwfn-progress';
-import type { AnalysisColorbarLayout } from './analysis-colorbar-layout';
+import {normalizeAnalysisColorbarLayout,type AnalysisColorbarLayout} from './analysis-colorbar-layout';
 import type { ModelDocument } from '../../modeling/contracts';
 import type { SurfaceMeshState } from '../modeling/render/surface-layer';
 import HirshfeldAnalysisControls from './HirshfeldAnalysisControls';
@@ -19,13 +19,17 @@ import { MULTIWFN_CONFIGURATION_CHANGED } from './MultiwfnPathControl';
 import { useSurfaceAppearanceDefaults } from './useSurfaceAppearanceDefaults';
 import { restoreHirshfeldAppearance } from './surface-appearance-defaults';
 import {useComputeResources} from '../useComputeResources';
-import { analysisProjectCubeArtifacts, notifyAnalysisProjectStateChanged, rebindAnalysisContext, useAnalysisProjectSnapshot } from '../../projects/analysis-state';
-import { exportBlob } from './export-image';
+import { notifyAnalysisProjectStateChanged, rebindAnalysisContext, useAnalysisProjectSnapshot } from '../../projects/analysis-state';
+import { exportSavedCube } from './export-saved-cube';
 import {prepareHirshfeldDisplayRanges} from './hirshfeld-range-display';
+import {ResultsMcpPortRegistration} from './results-mcp-context';
+import {patchColorbarLayout,patchMeshFinish,settingArray,settingBool,settingColor,settingColorbarLayout,settingColorRange,settingDecimals,settingEnum,settingMeshFinish,settingText,validateColorRange} from './analysis-mcp-settings';
+import {analysisCube,analysisText} from './analysis-mcp-assets';
+import {objectSchema} from '../mcp/types';
 
-export interface HirshfeldAnalysisInstanceProps { analysisId: string; context: SurfaceContext; structure: Structure; active: boolean; available?: boolean;
+export interface HirshfeldAnalysisInstanceProps { analysisId: string; mcpOwnerId?:string; context: SurfaceContext; structure: Structure; active: boolean; available?: boolean;
   capturePort?: AnalysisSelectionPort; desktop?: HirshfeldDesktopApi | null; sourceError?: string;
-  onProjection(value: HirshfeldProjection | null): void; onExportImage?(): void | Promise<void>; onOpenFingerprint?(snapshot: HirshfeldFingerprintSnapshot): void; onError(message: string): void;
+  onProjection(value: HirshfeldProjection | null): void; onExportImage?(): void | Promise<void>; onOpenFingerprint?(snapshot: HirshfeldFingerprintSnapshot): string|void; onError(message: string): void;
   onColorbarLayoutReady?(setter: ((layout: AnalysisColorbarLayout) => void) | null): void;
   onMeshObserverReady?(observer: ((state: Readonly<SurfaceMeshState>, document: Pick<ModelDocument, 'id' | 'revision'>) => void) | null): void }
 export function hirshfeldProjection(state: HirshfeldControlsState, context: SurfaceContext, structure?: Structure,
@@ -48,7 +52,8 @@ export function hirshfeldProjection(state: HirshfeldControlsState, context: Surf
     surfaceLayer: context.documentId && context.documentRevision !== undefined ? { pair, documentId: context.documentId, geometryRevision: context.documentRevision,
       visible: state.display.visible, opacity: state.display.opacity, finish: state.display.finish,
       color: { ...range, colors, zeroCentered: true, reverse: state.display.reverse }, contactFocus: { source: result.source, contact: state.selectedContact } } : null,
-    colorbar: { ...range, colors, zeroCentered: true, palette: 'blue-red', decimals: 2, label: 'dnorm', reverse: state.display.reverse, layout: state.display.colorbarLayout } };
+    colorbar: { ...range, colors, zeroCentered: true, palette: 'blue-red', decimals: 2, label: 'dnorm', reverse: state.display.reverse, layout: state.display.colorbarLayout,
+      sourceKey: JSON.stringify([result.stamp.analysisId, surfaceScientificContextKey(context), pair.shape.id, pair.mapping.id]) } };
 }
 
 /** Per-source/frame scientific results and Local display state. Only the
@@ -140,7 +145,9 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
   }, [key]);
   useEffect(() => { latest.current.onMeshObserverReady?.(meshObserver); return () => latest.current.onMeshObserverReady?.(null); }, [meshObserver]);
   const displayRanges = useMemo(() => prepareHirshfeldDisplayRanges(current, p.context, p.structure), [current, p.context, p.structure]);
-  useEffect(() => { latest.current.onProjection(p.active && p.available !== false ? hirshfeldProjection(current, p.context, p.structure, displayRanges) : null); }, [current, p.active, p.available, key, p.context.activationEpoch, p.structure, displayRanges]);
+  const projection = useMemo(() => p.active && p.available !== false ? hirshfeldProjection(current, p.context, p.structure, displayRanges) : null,
+    [current, p.active, p.available, p.context, p.structure, displayRanges]);
+  useEffect(() => { latest.current.onProjection(projection); }, [projection]);
   const calculate = async () => {
     if (!desktop || !admission.cluster || admission.error || resourceReadError || !resourceDefaults || !p.active || p.available === false || activeRun.current) return;
     const token = `hs-${Date.now()}-${++serial.current}`, context = { ...p.context }, sessionId = `${p.analysisId}:${token}`;
@@ -165,12 +172,74 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
   };
   const exportCube = (role: 'shape' | 'mapping') => { const owner = completed.current.get(key); if (!owner) {
     const field = stores.current.get(key)?.result?.pair[role]; if (!field) { p.onError('当前Hirshfeld格点不可用。'); return; }
-    try { const saved = analysisProjectCubeArtifacts(field, `Hirshfeld ${role}`); exportBlob(new Blob([saved.cube], { type: 'text/plain;charset=utf-8' }), `hirshfeld-${role}.cube`); exportBlob(new Blob([saved.metadata], { type: 'application/json' }), `hirshfeld-${role}.metadata.json`); } catch (error) { p.onError(error instanceof Error ? error.message : String(error)); }
+    void exportSavedCube(field,`hirshfeld-${role}.cube`,{ desktop:window.sciyueDesktop, title:`Hirshfeld ${role}` }).catch(error=>p.onError(error instanceof Error?error.message:String(error)));
     return;
   }
     void owner.exportField(role).catch(error => latest.current.onError(String(error instanceof Error ? error.message : error))); };
-  return <HirshfeldAnalysisControls structure={p.structure} context={p.context} state={current} displayRanges={displayRanges} disabled={!p.active || p.available === false || !desktop}
+  const analyzeIssue=!p.active||p.available===false?'当前分析尚未激活。':admission.error||resourceReadError||(!desktop||!admission.cluster||!resourceDefaults?'Hirshfeld 来源或本机资源尚未准备完成。':'');
+  const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.active?p.mcpOwnerId??p.analysisId:null} port={{
+    sourceRevision:JSON.stringify([key,current.targetIds,current.mode,current.spacingBohr,current.showRange,current.decimals,current.merged,current.selectedContact,current.plotDisplay,current.display,current.result?.stamp.requestId]),
+    methods:!analyzeIssue&&current.targetIds.length>0&&current.targetIds.length<p.structure.atoms.length?['hirshfeld-surface']:[],
+    plots:():Record<string,{sourceKey:string;open():string|void}>=>{
+      if(!p.active||p.available===false||!current.result||!p.onOpenFingerprint)return {};
+      const {stamp,source,vertices,contacts}=current.result;
+      const snapshot={result:{stamp,source,vertices,contacts},focus:current.selectedContact,decimals:current.decimals,merged:current.merged,plotDisplay:current.plotDisplay};
+      const sourceKey=hirshfeldFingerprintSourceKey(snapshot);
+      return {'hirshfeld-fingerprint':{sourceKey,open:()=>p.onOpenFingerprint!({...snapshot,analysisSourceKey:sourceKey})}};
+    },
+    assets:()=>{
+      const result=current.result;
+      if(!p.active||p.available===false||!result)return [];
+      return [analysisCube('hirshfeld-weight',result.pair.shape,{stamp:result.stamp,source:result.pair.shape.source,definition:result.definition}),
+        analysisCube('hirshfeld-dnorm',result.pair.mapping,{stamp:result.stamp,source:result.pair.mapping.source,definition:result.definition}),
+        ...(result.contacts?[analysisText('hirshfeld-contacts',()=>JSON.stringify({contacts:result.contacts,summary:result.quantitativeSummary,definition:result.definition},null,2),
+          {stamp:result.stamp,source:result.source},'json')]:[])];
+    },
+    read:()=>({kind:'hirshfeld',targetIds:current.targetIds,mode:current.mode,spacingBohr:current.spacingBohr,busy:runningKey===key,progress,
+      error:current.error||analyzeIssue,result:current.result&&{stamp:current.result.stamp,source:current.result.source,contacts:current.result.contacts,vertexCount:current.result.vertices.length}}),
+    execution:()=>({status:activeRun.current?.stopping?'stopping':progress?.phase??(activeRun.current?'running':'idle'),requestId:activeRun.current?.token??progress?.identity.runId,
+      stoppable:Boolean(activeRun.current&&!activeRun.current.stopping),progress}),
+    stop,
+    configuration:{schema:objectSchema({targetIds:settingArray(settingText),mode:settingEnum(['closed','open-preview']),
+      spacingBohr:{type:'number',minimum:.05,maximum:1},showRange:settingBool,decimals:settingDecimals}),
+      read:()=>({targetIds:current.targetIds,mode:current.mode,spacingBohr:current.spacingBohr,showRange:current.showRange,decimals:current.decimals}),
+      apply(values){
+        if(!p.active||p.available===false||activeRun.current)throw new Error('当前 Hirshfeld 设置不可编辑。');
+        const patch=values as Pick<Partial<HirshfeldControlsState>,'targetIds'|'mode'|'spacingBohr'|'showRange'|'decimals'>;
+        if(patch.targetIds){
+          if(new Set(patch.targetIds).size!==patch.targetIds.length||patch.targetIds.some(id=>!p.structure.atoms.some(atom=>atom.id===id)))throw new Error('目标片段包含失效或重复原子。');
+          change({...patch,error:''});
+        }else change(patch);
+      }},
+    presentation:{
+      schema:objectSchema({visible:settingBool,showEnvironment:settingBool,opacity:{type:'number',minimum:.05,maximum:1},
+        range:settingColorRange,colors:settingArray(settingColor,2),reverse:settingBool,colorbarLayout:settingColorbarLayout,finish:settingMeshFinish}),
+      read:()=>({...current.display,colors:current.display.colors??ANALYSIS_PALETTES['blue-red'],
+        colorbarLayout:normalizeAnalysisColorbarLayout(current.display.colorbarLayout),finish:patchMeshFinish(current.display.finish,{}),
+        effectiveRange:projection?.colorbar?{min:projection.colorbar.min,max:projection.colorbar.max}:null}),
+      apply(values){
+        if(!p.active||p.available===false)throw new Error('当前 Hirshfeld 显示不可编辑。');
+        const {colorbarLayout,finish,...display}=values as Partial<HirshfeldControlsState['display']>;
+        validateColorRange(display.range);
+        change({display:{...current.display,...display,
+          ...((display.colors!==undefined||display.reverse!==undefined)&&{appearancePreset:'custom'}),
+          ...(colorbarLayout!==undefined&&{colorbarLayout:patchColorbarLayout(current.display.colorbarLayout,colorbarLayout)}),
+          ...(finish!==undefined&&{finish:patchMeshFinish(current.display.finish,finish)}),
+        }});
+      },
+    },
+    run(method,retry,parameters){
+      if(Object.keys(parameters).length)throw new Error('Hirshfeld 表面分析使用当前面板的目标原子和格距。');
+      if(method!=='hirshfeld-surface'||analyzeIssue||!admission.cluster)throw new Error(analyzeIssue||'当前方法不可用。');
+      if(activeRun.current)return {status:'running',requestId:activeRun.current.token};
+      const selection=hirshfeldSelection(admission.cluster,current.targetIds);
+      if(current.result&&current.grantPresentation==='current'&&!retry)return {status:'ready',stamp:current.result.stamp};
+      void calculate();
+      return {status:'submitted',requestId:(activeRun.current as {token:string}|null)?.token,selection,mode:current.mode,spacingBohr:current.spacingBohr};
+    },
+  }}/>;
+  return <>{mcpPort}<HirshfeldAnalysisControls structure={p.structure} context={p.context} state={current} displayRanges={displayRanges} colorbar={projection?.colorbar} disabled={!p.active || p.available === false || !desktop}
     running={runningKey === key} sourceError={admission.error} capturePort={p.capturePort} progress={progress?.identity.sourceFrameIndex === p.context.sourceFrameIndex ? progress : null}
     resourceDefaults={resourceDefaults} resourceError={resourceReadError} sessionInfo={runningKey === key ? openInfo?.key === key ? openInfo.info : null : current.result?.sessionInfo ?? null}
-    onChange={change} onCalculate={() => { void calculate(); }} onStop={stop} onExportCube={exportCube} onExportImage={p.onExportImage} onOpenFingerprint={p.onOpenFingerprint}/>;
+    onChange={change} onCalculate={() => { void calculate(); }} onStop={stop} onExportCube={exportCube} onExportImage={p.onExportImage} onOpenFingerprint={p.onOpenFingerprint}/></>;
 }

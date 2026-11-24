@@ -2,6 +2,11 @@ import { useState } from "react";
 import type { MonitorCardData } from "../../task-system/application-contracts";
 import { ProjectUiScope, ProjectUiStore } from "../../projects/ui-state";
 import ScientificPlot from "../results/ScientificPlot";
+
+const chartTitles = {
+  energy: "Energy Monitor", trajectory: "Trajectory Monitor", vibrations: "Vibration Monitor",
+  excited: "Excited-State Monitor", atomic: "Atomic Property Monitor",
+};
 /** Display-only chart/table from already printed values; owns a private UI scope. */
 export default function MonitorCard({ data, taskId }: { data: MonitorCardData; taskId: string }) {
 	const [store] = useState(() => new ProjectUiStore()),
@@ -12,15 +17,17 @@ export default function MonitorCard({ data, taskId }: { data: MonitorCardData; t
 		<ProjectUiScope store={store} scope={["task-monitor", taskId, data.kind]}>
 			{data.plot && (
 				<ScientificPlot
-					title={data.title}
+					title={chartTitles[data.kind]}
 					xLabel={data.plot.xLabel}
 					yLabel={data.plot.yLabel}
 					series={data.plot.series}
 					appearanceKey={`task:${taskId}:${data.kind}`}
 					resetKey={`${taskId}:${data.kind}`}
-					plotStyle="plain"
-					height={260}
+					plotStyle="numeric"
 					exportFileName={`Ester-Studio-${data.kind}`}
+					exportText={{fileName:`Ester-Studio-${data.kind}.txt`,text:()=>[
+						`# ${data.sourceLabel}`, data.columns.join("\t"), ...data.rows.map(row=>row.join("\t")), "",
+					].join("\n")}}
 				/>
 			)}
 			<div className="task-table-scroll">

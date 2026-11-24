@@ -1,5 +1,4 @@
-import type { Structure } from '../../core/types';
-import type { PesGeometry, PesGroup, PesNode } from './contracts';
+import type { PesGeometry, PesGroup, PesNode, PesRun } from './contracts';
 
 // A confirmation is scoped to its PES group. Rendering a result or projecting
 // the same source into a different workspace tab must not revoke it.
@@ -17,32 +16,29 @@ export function pesElectronicConfirmed(group: PesGroup, geometry: PesGeometry): 
   return false;
 }
 
-export function pesComposition(structure: Structure): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const { element } of structure.atoms) counts[element] = (counts[element] ?? 0) + 1;
-  return counts;
-}
-
-export function pesCompositionDifference(previous: Record<string, number>, next: Record<string, number>) {
-  const differences: string[] = [];
-  for (const element of new Set([...Object.keys(previous), ...Object.keys(next)])) {
-    const delta = (next[element] ?? 0) - (previous[element] ?? 0);
-    if (delta) differences.push(`${delta > 0 ? '多' : '少'} ${Math.abs(delta)} 个 ${element}`);
-  }
-  return differences.join('、');
+export function hasSuccessfulWorkbenchResult(run: Pick<PesRun, 'request' | 'status' | 'result' | 'error'> | undefined): boolean {
+  if (!run || run.status !== 'completed' || run.error || !run.result ||
+    !['completed', 'converged'].includes(run.result.status) || !['ts', 'hessian'].includes(run.request.operation)) return false;
+  const hessian = run.result.hessian as {frameId?:string; projectedDegreesOfFreedom?:number; vibrationalDegreesOfFreedom?:number} | undefined;
+  const frequencies = run.result.frequencies;
+  const frequencyResult = Array.isArray(frequencies) && (frequencies.length > 0 || hessian?.vibrationalDegreesOfFreedom === 0 ||
+    hessian?.projectedDegreesOfFreedom === 0 && hessian.vibrationalDegreesOfFreedom === undefined);
+  return frequencyResult && !!hessian?.frameId && run.result.frames.some(frame => frame.id === hessian.frameId);
 }
 
 export class PesCompositionChange extends Error {
-  constructor(difference: string, readonly continueInNewGroup: () => PesNode) {
-    super(`比首次提交的结构${difference}。用当前结构在新的势能面页继续？`);
+  constructor(readonly groupId: string, readonly atomCount: number, readonly existingAtomCounts: readonly number[],
+    readonly conflictingResults: readonly { atomCount: number; label: string }[],
+    readonly continueInNewGroup: () => PesNode) {
+    const results = conflictingResults.map(result => `${result.label}（${result.atomCount} 个原子）`).join('、');
+    super(`本次输入有 ${atomCount} 个原子。本组已有结果 ${results}。是否在新势能面组继续本次计算？`);
     this.name = 'PesCompositionChange';
   }
 }
 
-/** The requested new group exists; keep its editable initial selected on a validation failure. */
-export class PesBranchInputError extends Error {
-  constructor(readonly initial: PesNode, detail: string) {
-    super(detail);
-    this.name = 'PesBranchInputError';
+export class PesSubmissionChanged extends Error {
+  constructor() {
+    super('输入或任务已变化，请从当前计算卡或结构重新提交。');
+    this.name = 'PesSubmissionChanged';
   }
 }

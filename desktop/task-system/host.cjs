@@ -46,6 +46,7 @@ const COMMANDS = new Set([
 	"center.read",
 	"manager.acquire",
 	"task.details",
+	"task.submission-receipt",
 	"task.execution-evidence",
 	"task.rename",
 	"group.save",
@@ -65,6 +66,7 @@ const COMMANDS = new Set([
 	"operation.plan",
 	"operation.execute",
 	"monitor.read",
+	"monitor.frames",
 	"monitor.release",
 	"monitor.layout",
 	"monitor.settings",
@@ -81,6 +83,7 @@ const COMMANDS = new Set([
 	"environment.delete",
 	"environment.import",
 	"environment.export",
+	"environment.export-text",
 	"environment.check",
 	"environment.trust-host-key",
 	"submission.preview",
@@ -1578,6 +1581,7 @@ function createTaskSystemHost(dependencies) {
 				signal: options.signal
 			});
 		if (command === "manager.acquire") return acquire(context, input.entryId, true);
+		if(command==="task.submission-receipt")return context.submission.submissionReceipt(input);
 		if (command === "task.details") {
 			const detail = taskDetail(
 				context.store,
@@ -1628,8 +1632,9 @@ function createTaskSystemHost(dependencies) {
 		if (command === "operation.execute") {
 			return context.management.execute(input);
 		}
+		if (command === "monitor.frames") return context.monitoring.readFramePage(input, options.signal);
 		if (command === "monitor.read") {
-			const cancel = () => context.monitoring.cancel(input.taskId);
+			const cancel = () => input.pageOwner===undefined?context.monitoring.cancel(input.taskId):context.monitoring.release(input.taskId,input.pageOwner);
 			options.signal?.addEventListener("abort", cancel, { once: true });
 			try {
 				const detail = await context.monitoring.read(input);
@@ -1639,6 +1644,7 @@ function createTaskSystemHost(dependencies) {
 			}
 		}
 		if (command === "monitor.release") {
+			if(input.pageOwner!==undefined)return context.monitoring.release(input.taskId,input.pageOwner);
             const [result] = await Promise.all([context.monitoring.release(input.taskId), cancelFileObservations(context, input.taskId)]);
             return result;
         }
@@ -1700,6 +1706,7 @@ function createTaskSystemHost(dependencies) {
 		if (command === "environment.delete") {
 			const old = context.store.read("environment", input.environmentId);
 			if (!old) throw fail("ENVIRONMENT_NOT_FOUND");
+			if(input.expectedRevision!==undefined&&old.revision!==input.expectedRevision)throw fail("ENVIRONMENT_REVISION_CONFLICT");
 			context.store.commit({
 				manager: activeManager(context),
 				mutations: [
@@ -1767,18 +1774,16 @@ function createTaskSystemHost(dependencies) {
 			activeManager(context);
 			return hostKeys.trust(input);
 		}
-		if (command === "environment.export") {
+		if (command === "environment.export" || command === "environment.export-text") {
 			const record = context.store.read("environment", input.environmentId);
 			if (!record) throw fail("ENVIRONMENT_NOT_FOUND");
+			const text=JSON.stringify(require("./environment-document.cjs").encodeEnvironmentDocument(record),null,2);
+			if(command==="environment.export-text")return {text};
 			const target = await dependencies.chooseSaveFile?.({ purpose: "environment", ownerId });
 			if (!target) return { saved: false };
 			await fs.promises.writeFile(
 				target,
-				JSON.stringify(
-					require("./environment-document.cjs").encodeEnvironmentDocument(record),
-					null,
-					2
-				),
+				text,
 				{ encoding: "utf8", flag: "wx" }
 			);
 			return { saved: true };
@@ -1876,12 +1881,12 @@ function createTaskSystemHost(dependencies) {
 			return { opened: true, path: target, openedParent };
 		}
 		if (command === "snapshot.open") {
-			const frozenRun = context.store.read(
-				"run",
-				context.store.read("task", input.taskId)?.latestRunId
-			);
+			const task = context.store.read("task", input.taskId);
+			const target = input.target ?? { runId: task?.latestRunId ?? null,
+				sourceSetId: task?.sourceSetId, sourceVersion: task?.sourceVersion };
+			const frozenRun = target.runId == null ? null : context.store.read("run", target.runId);
 			return context.fileContext.run(frozenRun, () =>
-				context.ioAdmission.run("read", () => context.snapshots.open(ownerId, input, options))
+				context.ioAdmission.run("read", () => context.snapshots.open(ownerId, { ...input, target }, options))
 			);
 		}
 		const snapshotGateway =
@@ -1907,7 +1912,7 @@ function createTaskSystemHost(dependencies) {
 		if (command === "file.save-copy") {
 			const artifact = context.store.read("artifact", input.artifactId),
 				frozenRun = artifact && context.store.read("run", artifact.runId);
-			return context.fileContext.run(frozenRun, () => saveCopy(context, input));
+			return context.fileContext.run(frozenRun, () => saveCopy(context, input, options));
 		}
 		if (command === "library.migrate") {
 			activeManager(context);
@@ -1918,6 +1923,7 @@ function createTaskSystemHost(dependencies) {
 				protocol,
 				probe,
 				jobs: new Set(jobs),
+				targetOverride:input.target,
 				owners,
 				localEnvironmentId
 			});
@@ -1983,18 +1989,19 @@ function createTaskSystemHost(dependencies) {
 		}
 		throw fail("TASK_COMMAND_UNSUPPORTED");
 	}
-	async function saveCopy(context, { artifactId, expectedSourceIdentity }) {
+	async function saveCopy(context, { artifactId, expectedSourceIdentity }, {approvedDestination,signal}={}) {
 		const resolved = await context.resolveArtifactSource({ artifactId });
 		require("./preview.cjs").assertPreviewSourceIdentity(resolved, expectedSourceIdentity);
-		const artifact = resolved.artifact,
-			location = resolved.location;
+		const location = resolved.location;
 		if (!location) throw fail("ARTIFACT_NOT_FOUND");
-		const target = await dependencies.chooseSaveFile?.({
+		const target = approvedDestination ?? await dependencies.chooseSaveFile?.({
 			purpose: "artifact-copy",
 			artifactId,
 			ownerId: context.ownerId
 		});
 		if (!target) return { saved: false };
+		if(!path.isAbsolute(target))throw fail("ABSOLUTE_PATH_REQUIRED");
+		if(signal?.aborted)throw fail("TASK_REQUEST_CANCELLED");
 		noLinks(target);
 		const ioLease = context.ioAdmission.acquire("read");
 		context.activeReads ||= new Map();
@@ -2006,37 +2013,9 @@ function createTaskSystemHost(dependencies) {
 				{ ...resolved, identity },
 				expectedSourceIdentity || require("./preview.cjs").previewSourceIdentity(resolved)
 			);
-			const range = { offset: 0, length: identity.byteSize },
-				before = await transport.hash({
-					path: location.path,
-					identity,
-					algorithm: "sha256",
-					range
-				}),
-				fd = await fs.promises.open(target, "wx", 0o600),
-				hash = crypto.createHash("sha256");
-			try {
-				for (let offset = 0; offset < identity.byteSize; offset += 1024 * 1024) {
-					const length = Math.min(1024 * 1024, identity.byteSize - offset),
-						result = await transport.readRange({ path: location.path, identity, offset, length }),
-						bytes = Buffer.from(result.bytes || result);
-					if (bytes.length !== length) throw fail("SAVE_COPY_SHORT_READ");
-					await fd.write(bytes);
-					hash.update(bytes);
-				}
-				const after = await transport.hash({
-					path: location.path,
-					identity: await transport.stat(location.path),
-					algorithm: "sha256",
-					range
-				});
-				if (hash.digest("hex") !== before.hash || before.hash !== after.hash)
-					throw fail("SAVE_COPY_SOURCE_CHANGED");
-				await fd.sync();
-			} finally {
-				await fd.close();
-			}
-			return { saved: true, path: target };
+			return await require("./artifact-copy.cjs").copyTaskArtifact({
+				owner:context.ownerId,target,sourcePath:location.path,transport,identity,signal,assertDestination:noLinks
+			});
 		} finally {
 			ioLease.release();
 			const remaining = context.activeReads.get(artifactId) - 1;
@@ -2346,6 +2325,7 @@ function createTaskSystemHost(dependencies) {
 				"center.read",
 				"task.details",
 				"monitor.read",
+				"monitor.frames",
 				"preview.read",
 				"preview.find",
 				"snapshot.describe",

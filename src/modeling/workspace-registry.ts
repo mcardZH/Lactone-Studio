@@ -1,4 +1,4 @@
-import { createModelStore,getModelStoreProjectLinkGroups,restoreModelStoreProjectLinks } from '../core/modeling/model-store';
+import { createModelStore,getModelStoreProjectLinkGroups,isSelectionOnlyModelChange,restoreModelStoreProjectLinks } from '../core/modeling/model-store';
 import {createLinkedModels,type LinkedModels} from './application/linked-models';
 import { newModelId } from '../core/modeling/hydrogen-policy';
 import type { Structure } from '../core/types';
@@ -17,6 +17,7 @@ import type {FrameBondIdentity} from '../core/modeling/frame-bond-overrides';
 import type { ResultInputIntent } from '../results/continuation';
 import type { PesNode } from './pes/contracts';
 import type { JsonValue, WorkspaceActivationStamp, WorkspaceDocumentSnapshot, WorkspaceInputTask, WorkspaceInputTaskStamp, WorkspaceModule, WorkspaceTaskSource, WorkspaceViewKind, WorkspaceTrajectoryIdentity, WorkspaceTrajectoryBinding, WorkspaceConformerGroup, WorkspaceDiscardPlan, WorkspaceDiscardTransaction } from './workspace-contracts';
+import {copyWorkspaceSnapshotJSON} from '../../desktop/workspace-snapshot-codec.mjs';
 
 type RuntimePhase='idle'|'starting'|'running'|'pausing'|'paused'|'stopping'|'completed'|'stopped'|'error';
 const busyPhases=new Set<RuntimePhase>(['starting','running','pausing','paused','stopping']);
@@ -111,6 +112,7 @@ export function createWorkspaceRegistry() {
   }
   let restoredLinkedModels:LinkedModels|null=null;
   const trajectoryBaselines=new WeakMap<WorkspaceDocumentEntry,{revision:number;content:string}>();
+  const publicationModels=new WeakMap<WorkspaceDocumentEntry,{model:ModelDocument;protected:boolean;document:ModelDocument;contexts:WorkspaceDocumentSnapshot['contexts']}>();
   const quarantinedDrafts=new WeakMap<WorkspaceDocumentEntry,ReadonlySet<ProjectInputEngine>>();
   type Creation={entry:WorkspaceDocumentEntry;views:WorkspaceViewEntry[];parentViewId:string;parentId:string;parentEpoch:string;baseline:string;contexts:string;parentContent:string};
   const creations:Creation[]=[],creationRedo:Creation[]=[];
@@ -127,9 +129,18 @@ export function createWorkspaceRegistry() {
   function emit(mutated=true){if(mutated)mutationVersion++;if(batchDepth){batchPending=true;return;}publish();}
   function batch<T>(operation:()=>T):T{batchDepth++;try{return operation();}finally{if(--batchDepth===0&&batchPending){batchPending=false;publish();}}}
   function subscribeDocument(entry:WorkspaceDocumentEntry){
-    const sourceKey=()=>{const value=entry.store.getSnapshot();return JSON.stringify([value.id,value.revision,value.draft.structure.charge,value.draft.structure.multiplicity,value.electronicStateConfirmed===true]);};
-    let previousSourceKey=sourceKey();
-    unsubscribers.set(entry.id,entry.store.subscribe(()=>{const nextKey=sourceKey();if(nextKey!==previousSourceKey){previousSourceKey=nextKey;entry.sourceEpoch++;}emit();}));
+    let previous=entry.store.getSnapshot();
+    unsubscribers.set(entry.id,entry.store.subscribe(()=>{
+      const next=entry.store.getSnapshot(), before=previous;
+      previous=next;
+      // Document subscribers own selection presentation. Still invalidate a
+      // pending project replacement that would overwrite this interaction.
+      if(isSelectionOnlyModelChange(before,next)){mutationVersion++;return;}
+      if(next.id!==before.id||next.revision!==before.revision
+        ||next.draft.structure.charge!==before.draft.structure.charge||next.draft.structure.multiplicity!==before.draft.structure.multiplicity
+        ||(next.electronicStateConfirmed===true)!==(before.electronicStateConfirmed===true))entry.sourceEpoch++;
+      emit();
+    }));
   }
   function document(id:string){const found=documents.get(id);if(!found)throw new Error('模型文档已关闭或不存在。');return found;}
   function availableDocumentLabel(label:string,exceptId?:string){
@@ -250,10 +261,10 @@ export function createWorkspaceRegistry() {
     const fragment=clone(input);fragment.structure=periodicWorkingStructure(fragment.structure);
     const store=createModelStore(fragment.structure,fragment.assignments,fragment.internalCoordinates,fragment);
     const id=store.getSnapshot().id;let phase:'prepared'|'committed'|'cancelled'='prepared';
-    return {id,
-      commit(){
+    return {id,store,
+      commit(activateNew=true){
         if(phase!=='prepared')throw new Error('待提交模型已发布或取消。');
-        const entry=batch(()=>addDocument(fragment.structure,label,fragment,undefined,undefined,true,undefined,store));
+        const entry=batch(()=>addDocument(fragment.structure,label,fragment,undefined,undefined,activateNew,undefined,store));
         phase='committed';return entry;
       },
       cancel(){if(phase==='committed')throw new Error('已发布模型不能按临时草稿取消。');phase='cancelled';},
@@ -588,11 +599,19 @@ export function createWorkspaceRegistry() {
   function releaseRuntime(id:string,ownerId:string){const entry=document(id);if(entry.runtime.ownerId!==ownerId||busyPhases.has(entry.runtime.phase))throw new Error('运行尚未结束或协调者不匹配。');entry.runtime.ownerId=null;emit(false);}
   function nextPublication(id:string):WorkspaceDocumentSnapshot{
     const entry=document(id);if(legacyReadOnlyResult(entry))throw new Error('结果文档不能作为可编辑模型发布。');
-    const snapshot=clone(entry.store.getSnapshot());snapshot.draft.past=[];snapshot.draft.future=[];
-    if(protectedPesDocument(entry)){snapshot.canUndo=false;snapshot.canRedo=false;}
-    const contexts={gaussian:entry.store.getContext('gaussian'),orca:entry.store.getContext('orca')};
-    // Native transport forbids undefined and functions; omission is explicit JSON.
-    return JSON.parse(JSON.stringify({schema:'sciyue-workspace-document',version:1,documentEpoch:entry.epoch,publicationSerial:++entry.publicationSerial,document:snapshot,contexts,metadata:{label:entry.label,labelOrigin:entry.labelOrigin,electronicStateConfirmed:entry.electronicStateConfirmed,sourceEpoch:entry.sourceEpoch,inputDirty:entry.inputDirty},ui:entry.drafts,runtime:entry.runtime})) as WorkspaceDocumentSnapshot;
+    const model=entry.store.getSnapshot(),protectedView=protectedPesDocument(entry);
+    let modelPublication=publicationModels.get(entry);
+    if(modelPublication?.model!==model||modelPublication.protected!==protectedView){
+      const projection={...model,draft:{...model.draft,past:[],future:[]},canUndo:!protectedView&&model.canUndo,canRedo:!protectedView&&model.canRedo};
+      const gaussian=entry.store.getContext('gaussian'),orca=entry.store.getContext('orca');
+      const copied=copyWorkspaceSnapshotJSON({document:projection,contexts:{gaussian,orca}},'snapshot');
+      modelPublication={model,protected:protectedView,document:freezeJSON(copied.document),contexts:freezeJSON(copied.contexts)};
+      publicationModels.set(entry,modelPublication);
+    }
+    return {schema:'sciyue-workspace-document',version:1,documentEpoch:entry.epoch,publicationSerial:++entry.publicationSerial,
+      document:modelPublication.document,contexts:modelPublication.contexts,
+      metadata:{label:entry.label,...entry.labelOrigin!==undefined?{labelOrigin:entry.labelOrigin}:{},electronicStateConfirmed:entry.electronicStateConfirmed,sourceEpoch:entry.sourceEpoch,inputDirty:{...entry.inputDirty}},
+      ui:{...entry.drafts},runtime:{...entry.runtime}};
   }
   function exportProjectState(options?:{saved?:boolean}):WorkspaceProjectState{
     retainInputTask();
@@ -718,7 +737,7 @@ export function createWorkspaceRegistry() {
     namePesInitial(id:string,label:string){const entry=document(id);if(entry.pesGroup?.kind==='initial'&&entry.labelOrigin!=='manual'){entry.label=automaticDocumentLabel(label,id);emit();}},
     pendingDiscardResources:()=>[...pendingDiscards].map(([id,value])=>({id,documentIds:value.documentIds,pendingResults:[...value.remaining].map(result=>result.id)})),
     releasePendingDiscards:()=>Promise.all([...pendingDiscards.values()].map(value=>value.release())).then(()=>undefined),
-    addSourceDocument(structure:Structure){const entry=addDocument(structure,undefined,undefined,undefined,undefined,false),initial=initialBaseElectronicState(structure);entry.store.setElectronicState(initial.charge,initial.multiplicity,false);return entry;},addPreparedInput(structure:Structure,intent:ResultInputIntent,label?:string){return addDocument(structure,label,undefined,undefined,intent);},addResultDocument(result:TrajectoryResult){return addDocument(null,resultDocumentLabel(result),undefined,result);},addFragmentDocument(fragment:FragmentSnapshot,label?:string){return addDocument(fragment.structure,label,fragment);},prepareFragmentDocument,addView,activate,closeView,closeDocument,document,view,stamp,assertCurrent,assertIdentityCurrent,source,sourceIsCurrent,setDraft,claimRuntime,runtimePhase,releaseRuntime,nextPublication,
+    addSourceDocument(structure:Structure){const entry=addDocument(structure,undefined,undefined,undefined,undefined,false),initial=initialBaseElectronicState(structure);entry.store.setElectronicState(initial.charge,initial.multiplicity,false);return entry;},addPreparedInput(structure:Structure,intent:ResultInputIntent,label?:string){return addDocument(structure,label,undefined,undefined,intent);},addResultDocument(result:TrajectoryResult){return addDocument(null,resultDocumentLabel(result),undefined,result);},addFragmentDocument(fragment:FragmentSnapshot,label?:string,activateNew=true){return addDocument(fragment.structure,label,fragment,undefined,undefined,activateNew);},prepareFragmentDocument,addView,activate,closeView,closeDocument,document,view,stamp,assertCurrent,assertIdentityCurrent,source,sourceIsCurrent,setDraft,claimRuntime,runtimePhase,releaseRuntime,nextPublication,
     beginInputTask,borrowInputTask,releaseBorrowedInputTask,ensureInputTask,inputStamp,assertInputIdentityCurrent,assertInputCurrent,assertCurrentInputTaskIdle,replaceResultDocument,addAnalysisDocument,addEditableResultDocument,openTrajectoryDocument,selectTrajectoryFrame,replaceAnalysisDocument,analysisAvailable,bindExistingAnalysis,
     setModule(next:WorkspaceModule){
       const previousModule=module,hadTask=inputTask!==null,created=next==='input'?ensureInputTaskInternal(false):null;

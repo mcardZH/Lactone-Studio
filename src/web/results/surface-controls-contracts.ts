@@ -32,6 +32,7 @@ export interface SurfaceCubeImportInvocation {
 }
 export interface SurfaceControlsBridge {
   onProgress?(listener:(progress:import('../../results/multiwfn-progress').MultiwfnProgressSnapshot)=>void):()=>void;
+  analysisSession?(analysis:SurfaceAnalysisResult):{status:'ready';sessionId:string}|{status:'inactive'|'reanalysis_required'};
   analyze?(request: SurfaceAnalysisInvocation, signal: AbortSignal): Promise<SurfaceAnalysisResult>;
   analyzeRegion?(request: SurfaceRegionInvocation, signal: AbortSignal): Promise<SurfaceRegionResponse>;
   distribution?(request: SurfaceDistributionInvocation, signal: AbortSignal): Promise<SurfaceAreaDistribution>;
@@ -74,6 +75,7 @@ export interface SurfaceRegionSelectionProps {
   onConfirm(ids: string[], assertCurrent: () => void): void;
 }
 export interface SurfaceAnalysisControlsProps {
+  analysisId?:string;
   context: SurfaceContext; structure: Structure; active: boolean; available?: boolean;
   wavefunctionAvailable: boolean; capabilities: readonly SurfaceCapability[]; bridge: SurfaceControlsBridge;
   allowedWavefunctionMethods?: readonly SurfaceFunction[];

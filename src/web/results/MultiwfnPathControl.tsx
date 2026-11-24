@@ -40,18 +40,35 @@ export default function MultiwfnPathControl({ showPath = false }: { showPath?: b
     ? <section className="analysis-environment-control" aria-label="Multiwfn 环境"><button type="button" className="analysis-environment-button" onClick={openGlobalSettings}>前往全局设置</button></section>
     : null;
   const failure = error || (info.status && info.status !== 'ready' && info.status !== 'unconfigured' ? multiwfnBackendFailure(info,'ORBITAL') : '');
-  return <section className="analysis-environment-control" aria-label="Multiwfn 环境">
-    <div className="analysis-environment-row analysis-environment-setting">
-      <strong>Multiwfn程序</strong>
-      <output className="analysis-environment-path" aria-label="Multiwfn程序">{info.path ?? '未配置'}{info.configured && <span className="sr-only">已配置</span>}</output>
-      <button type="button" aria-label="选择 Multiwfn 路径" className="analysis-environment-button" onClick={() => void update(desktop?.chooseOrbitalBackend)} disabled={busy || !desktop?.chooseOrbitalBackend}>选择…</button>
-    </div>
-    <div className="analysis-environment-row analysis-environment-setting">
-      <strong>临时运行目录</strong>
-      <output className="analysis-environment-path" aria-label="临时运行目录">{info.workDirectory ?? '自动（程序内短目录）'}</output>
-      <button type="button" className="analysis-environment-button" onClick={() => void update(desktop?.chooseMultiwfnWorkDirectory)} disabled={busy || !desktop?.chooseMultiwfnWorkDirectory}>选择文件夹</button>
-      <button type="button" className="analysis-environment-button" onClick={() => void update(desktop?.resetMultiwfnWorkDirectory)} disabled={busy || !desktop?.resetMultiwfnWorkDirectory || !info.workDirectory}>恢复默认</button>
-    </div>
-    {failure && <MultiwfnErrorNotice message={failure} />}
-  </section>;
+  const states = {
+    ready: '已配置',
+    unconfigured: '未配置',
+    'configuration-invalid': '配置无法读取',
+    'program-unavailable': '已配置的程序不可用',
+    'work-directory-unavailable': '临时运行目录不可用',
+  };
+  const state = busy ? '正在更新…' : error ? '配置读取或更新失败' : states[info.status ?? (info.configured ? 'ready' : 'unconfigured')];
+  return <details className="analysis-environment-control settings-tool-disclosure">
+    <summary className="settings-tool-row">
+      <strong className="settings-tool-title">Multiwfn</strong>
+      <output className="settings-tool-status" data-state={failure ? 'error' : info.configured && !busy ? 'ready' : undefined} aria-label="Multiwfn 程序状态">{state}</output>
+      <span className="settings-tool-reveal" aria-hidden="true"><span>配置</span><span>收起</span></span>
+    </summary>
+    <section className="settings-tool-detail" aria-label="Multiwfn 环境">
+      <div className="settings-tool-file">
+        <strong>程序路径</strong>
+        <output className="analysis-environment-path" aria-label="Multiwfn程序">{info.path ?? '未选择'}</output>
+        <button type="button" aria-label="选择 Multiwfn 路径" className="analysis-environment-button" onClick={() => void update(desktop?.chooseOrbitalBackend)} disabled={busy || !desktop?.chooseOrbitalBackend}>浏览…</button>
+      </div>
+      <div className="settings-tool-file">
+        <strong>临时运行目录</strong>
+        <output className="analysis-environment-path" aria-label="临时运行目录">{info.workDirectory ?? '自动（程序内短目录）'}</output>
+        <div className="settings-tool-actions">
+          <button type="button" className="analysis-environment-button" onClick={() => void update(desktop?.chooseMultiwfnWorkDirectory)} disabled={busy || !desktop?.chooseMultiwfnWorkDirectory}>选择文件夹</button>
+          <button type="button" className="analysis-environment-button" onClick={() => void update(desktop?.resetMultiwfnWorkDirectory)} disabled={busy || !desktop?.resetMultiwfnWorkDirectory || !info.workDirectory}>恢复默认</button>
+        </div>
+      </div>
+      {failure && <MultiwfnErrorNotice message={failure} />}
+    </section>
+  </details>;
 }

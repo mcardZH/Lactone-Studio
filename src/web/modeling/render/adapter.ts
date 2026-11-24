@@ -1,4 +1,4 @@
-import type { Atom, Vector3, PeriodicCell, Structure } from '../../../core/types';
+import type { Atom, Bond, Vector3, PeriodicCell, Structure } from '../../../core/types';
 import type { DisplaySettings, MeasurementRecord, MeasurementState, ModelDocument, PickResult, ScreenPoint, SelectionCaptureRequest } from '../../../modeling/contracts';
 import { FREEZE_COLOR, SCAN_COLOR, type ViewerHighlights } from '../../../core/display-highlights';
 import { modelAtomLabel } from '../viewport-overlays';
@@ -10,16 +10,16 @@ import { membershipColor, regionMembership } from '../../../core/regions';
 import { captureViewerListeners } from './compat';
 import {retainViewerFramebuffers,captureNativeResizeListeners} from './framebuffer-lifecycle';
 import {physicalViewportSize,samePhysicalViewportSize,createViewportResizeSettler,VIEWPORT_LAYOUT_RESIZE_EVENT} from './resize-lifecycle';
-import { rotateObjectView, principalInertiaFrame, cellViewFrame, orientObjectView, rotateObjectViewStep, projectPhysicalAxes } from './camera';
+import { rotateObjectView, principalInertiaFrame, cellViewFrame, orientObjectView, rotateObjectViewStep, projectPhysicalAxes, type ViewFrame } from './camera';
 import { colorRegions, modelHighlights } from './display';
 import { elementColor } from './element-colors';
 import { DEFAULT_BACKGROUND_COLOR, cellEdgeStrokesWork } from './display-settings';
 import { viewportDefaultBackgroundColor, observeCanvasBackground } from './viewport-background';
 import {finishRenderWork,runRenderWork,type RenderWork} from './render-work';
-import {carbonCipSource,createCarbonCipRequests,emptyCarbonCip,prepareCarbonCipLabels,preparedCarbonCipUsage,type CipDisplayUsage,type CipLabelWarning} from './stereochemistry';
+import {carbonCipSource,cipStructureForDisplay,createCarbonCipRequests,emptyCarbonCip,prepareCarbonCipLabels,preparedCarbonCipUsage,type CipDisplayUsage,type CipLabelWarning} from './stereochemistry';
 import type {CarbonCipLabel} from '../../../core/stereochemistry-cip';
 import {createSamplingSphereLayer} from './sampling-sphere-layer';
-import { attachLocalMeshFinish, attachStructureModelFinish } from './mesh-finish';
+import { attachLocalMeshFinish, attachStructureModelFinish, attachStructureShapeFinish } from './mesh-finish';
 import { applyResolvedAtomStyles } from './atom-style-batch';
 import { createSceneSequence, type SceneShapeMethod } from './scene-sequence';
 import { translateNativeArrow } from './translated-arrow';
@@ -27,11 +27,16 @@ import { structureShellFinish } from '../../../modeling/appearance-presets';
 import { normalizeVibrationVectorAppearance } from '../../../results/surface-appearance-presets';
 import { bondDisplayRadius, displayScale, structureAtomRadius, structureAtomStyle } from '../structure-display';
 import { createPeriodicBondGlyphExporter, periodicGlyphRequired,periodicBondGlyphContext,periodicBondGlyphTopology } from './periodic-bond-glyph';
+import { bindNativeCoordinateBuffers, updateNativePickCylinder } from './native-coordinate-buffers';
+import { retainNativeCoordinateUpload } from './native-coordinate-upload';
+import { createPickBroadPhase } from './pick-broad-phase';
+import { poseNativeFlatCylinder } from './posed-cylinder';
 export { atomDisplayScale } from '../structure-display';
 import { identityTransform, inversePoint, inverseRotate, rotate, transformAtoms, transformPoint, composeTransforms, type RigidTransform } from './alignment';
-import { createTrajectoryLayer, frameModelAtoms, createFrameBondPainter, displayHiddenAtomIds } from './trajectory-layer';
+import { createTrajectoryLayer, frameModelAtoms, isNativeFrameBond, createFrameBondPainter, displayHiddenAtomIds } from './trajectory-layer';
+import { sha256Utf8 } from '../../../core/file-identity';
 import { validateMultiframeDisplayPlan, validateSamplingSphereDisplay, type MultiframeDisplayPlan, type SamplingSphereDisplay } from '../../../modeling/view-multiframe';
-import { add, attachmentPortEndpoint, bondConnectionOnly, bondRefKey, bondSegments, bondPathSectionsWork, dashedBondSectionsWork, cellSegments, centroid, coordinates, cross, dragPlane, measurementGeometryGuide, planePoint, point, scale, rotateVector, ViewportProjectionError, type DragPlane } from './geometry';
+import { add, attachmentPortEndpoint, bondConnectionOnly, bondRefKey, bondSegments, bondPathSectionsWork, dashedBondSectionsWork, cellSegments, centroid, coordinates, cross, dragPlane, measurementGeometryGuide, planePoint, point, scale, subtract, rotateVector, ViewportProjectionError, type DragPlane } from './geometry';
 import { depthFadeAmount, depthFadeFog } from './depth-fade';
 import { calculationRangeLines, CALCULATION_RANGE_STYLE, type CalculationRangeFeedback } from '../../../results/calculation-range';
 import {includeRenderPoint,unionRenderBounds,retainViewerDepthEnvelope,type RenderBounds} from './depth-envelope';
@@ -40,6 +45,7 @@ import type { ViewportOrbitalLayer } from '../../../results/orbital-contracts';
 import { createShapeLayer } from './shape-layer';
 import { createLabelLayer } from './label-layer';
 import { retainViewerShapeResources } from './shape-resource-lifecycle';
+import { createNativePrimitiveBatch, nativePrimitiveBatchesAvailable, type NativeBatchArrow, type NativeBatchRod, type NativeBatchSphere } from './native-primitive-batch';
 import { createOrbitalLayer, type ViewportNtoLayer, type NtoMeshState } from './orbital-layer';
 import { createSurfaceLayers, type ViewportSurfaceLayer, type ViewportSurfaceExtrema, type SurfaceMeshState, type SurfaceLayerMeshState } from './surface-layer';
 import { createRenderCompletionObserver, createRendererSubmissionObserver, type ViewportRenderIdentity, type ViewportRenderObserver } from './render-completion';
@@ -50,7 +56,6 @@ import { cellPresentationEdges, type CellPresentationOptions } from '../../../co
 
 export const SELECTION_COLOR = '#f0c62e';
 export const MEASUREMENT_COLOR = '#277fdf';
-export const PROBLEM_ATOM_COLOR = '#d83b3b';
 export const VIBRATION_ARROW_COLOR = '#277fdf';
 export const ATOM_SCALAR_COLORS = { low: '#2166ac', middle: '#ffffff', high: '#b2182b' } as const;
 export function sameNativeCoordinates(atoms:readonly Atom[],snapshot:readonly Vector3[]):boolean {
@@ -71,6 +76,8 @@ export interface RenderFeedbackOptions extends CalculationRangeFeedback {
   isCipCurrent?():boolean;
   liveCip?:boolean;
   cipGeometryPreview?:boolean;
+  /** Exact frame science used only for labels. Null disables fallback. */
+  cipStructure?: Structure | null;
   /** Trusted caller's live document/activation/revision guard; never serialized. */
   isCurrent?():boolean;
   /** Verified document lifetime, supplied only by its owning workspace. */
@@ -86,6 +93,8 @@ export interface RenderFeedbackOptions extends CalculationRangeFeedback {
   displayFrozenAtomIds?: readonly string[];
   hiddenAtomIds?:readonly string[];
   multiframeDisplay?: MultiframeDisplayPlan;
+  fixedCellView?: boolean;
+  initialFixedCellCamera?: readonly number[];
   samplingSphere?: SamplingSphereDisplay;
   /** Explicit preview purpose only; never persisted or inferred from PBC. */
   cellPresentation?: import('./geometry').CellFramePresentation;
@@ -97,7 +106,6 @@ export interface RenderFeedbackOptions extends CalculationRangeFeedback {
   displayHighlightAtomIds?:readonly string[];
   displayMeasurementRecords?:readonly MeasurementRecord[];
   linkedAtomsActive?:boolean;
-  problemAtomIds?: readonly string[];
   capturePurpose?: SelectionCaptureRequest['purpose'];
   vibrationVectors?: readonly ViewportVibrationVector[];
   atomScalarValues?: readonly ViewportAtomScalarValue[];
@@ -153,12 +161,66 @@ export function atomLabelFontColor(color: unknown): '#000000' | '#ffffff' {
   return (luminance + .05) / .05 >= 1.05 / (luminance + .05) ? '#000000' : '#ffffff';
 }
 
-export interface RenderAdapter {
+interface MolecularLayout {
+  documentId: string;
+  atoms: readonly Atom[];
+  bonds: readonly Bond[] | undefined;
+  periodic: boolean;
+  sourceBonds: readonly Bond[] | undefined;
+  indices: ReadonlyMap<string, number>;
+}
+interface MolecularMaterial {
+  layout: MolecularLayout;
+  appearance: string;
+  styles: any[];
+}
+
+function sameBondImage(a: Bond['image'], b: Bond['image']): boolean {
+  return a===b||Boolean(a&&b&&a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2]);
+}
+function sameModelBonds(a: readonly Bond[]|undefined, b: readonly Bond[]|undefined):boolean{
+  return a===b||Boolean(a&&b&&a.length===b.length&&a.every((bond,index)=>{
+    const other=b[index];
+    return bond.a===other.a&&bond.b===other.b&&bond.order===other.order&&bond.aromatic===other.aromatic&&bond.stereo===other.stereo&&
+      bond.kind===other.kind&&bond.orderKnown===other.orderKnown&&bond.fractional===other.fractional&&
+      bond.perception===other.perception&&bond.mbo===other.mbo&&sameBondImage(bond.image,other.image);
+  }));
+}
+function molecularLayout(previous:MolecularLayout|undefined,documentId:string,atoms:readonly Atom[],structure:Structure):MolecularLayout{
+  const sourceBonds=structure.bonds,periodic=Boolean(structure.cell?.pbc.some(Boolean));
+  const bonds=periodic
+    ? previous?.periodic&&previous.sourceBonds===sourceBonds?previous.bonds:sourceBonds?.filter(bond=>isNativeFrameBond(structure,bond))
+    : sourceBonds;
+  if(previous?.documentId===documentId&&previous.periodic===periodic&&sameModelBonds(previous.bonds,bonds)&&
+    (previous.atoms===atoms||previous.atoms.length===atoms.length&&atoms.every((atom,index)=>atom.id===previous.atoms[index].id&&atom.element===previous.atoms[index].element))){
+    previous.sourceBonds=sourceBonds;
+    return previous;
+  }
+  return {documentId,atoms,bonds,periodic,sourceBonds,indices:new Map(atoms.map((atom,index)=>[atom.id!,index]))};
+}
+
+export interface CameraZoomReceipt {
+  requestedFactor:number;
+  appliedFactor:number;
+  limited:boolean;
+  previousDistance:number;
+  perceivedDistance:number;
+  previousView:number[];
+  view:number[];
+}
+export interface CameraZoomControls {
+  getZoomDistance():number;
+  zoomByFactor(factor:number):CameraZoomReceipt;
+}
+export interface RenderAdapter extends CameraZoomControls {
   drawAsync?(document: ModelDocument, display: DisplaySettings, highlights?: ViewerHighlights, preview?: Atom[], transform?: RigidTransform, measurement?: MeasurementState, feedback?: RenderFeedbackOptions,signal?:AbortSignal):Promise<void>;
   cancelDraw?():void;
+  observeScene?(document:Pick<ModelDocument,'id'|'revision'>,identity:ViewportRenderIdentity|undefined,observer:ViewportRenderObserver|undefined):void;
+  awaitMeshes?(signal?:AbortSignal):Promise<void>;
   cooperativeDisplay?():boolean;
   /** Published scene can accept pointer interaction; staging never exposes partial picks. */
   presentationReady?():boolean;
+  cameraInputReady?(documentId: string): boolean;
   draw(document: ModelDocument, display: DisplaySettings, highlights?: ViewerHighlights, preview?: Atom[], transform?: RigidTransform, measurement?: MeasurementState, feedback?: RenderFeedbackOptions): void;
   setOrbitalLayer(layer: ViewportOrbitalLayer | null): void;
   setNtoLayer(layer: ViewportNtoLayer | null): void;
@@ -172,15 +234,19 @@ export interface RenderAdapter {
   /** Spatial result target, deliberately outside the model's PickResult. */
   surfaceExtremumAt(screen: ScreenPoint): string | null;
   project(position: Vector3): ScreenPoint;
+  projectMany?(positions:readonly Vector3[]):ScreenPoint[];
   /** Analytic circle only for an actual orthographic camera; null uses the projection fallback. */
   projectSphere?(sphere:SamplingSphereDisplay):{center:ScreenPoint;radius:number}|null;
+  /** Retry a temporary CIP failure for the current owned scene. */
+  retryCip?(): void;
   /** Current-source overlay only, without rebuilding molecular or CIP content. */
   updateSamplingSphere?(sphere:SamplingSphereDisplay|undefined,owner?:Pick<ModelDocument,'id'|'revision'>):boolean;
   /** Exact display envelope from this renderer's radius table and style. */
   atomRadius(element: string, display: DisplaySettings): number;
   plane(origin: Vector3): DragPlane;
-  /** Object identity only. A blank hit has no fabricated scientific point. */
-  hitTest(screen: ScreenPoint): PickResult;
+  /** Object identity only. Modeling can distinguish a visible, read-only image
+   * from blank canvas. Other observers retain the existing selectable objects. */
+  hitTest(screen: ScreenPoint, includeReadOnlyImages?:boolean): PickResult;
   /** Resolve a real blank placement only when an edit actually requires it. */
   worldPoint(screen: ScreenPoint): Vector3;
   /** Synchronize a positive viewport and inspect finite projected view axes. */
@@ -189,7 +255,7 @@ export interface RenderAdapter {
   nearestAtom(screen: ScreenPoint, maxPixels?: number): string | null;
   getView(): number[];
   setView(view: number[]): void;
-  camera(view: number[], dx: number, dy: number, kind: 'rotate' | 'pan'): void;
+  camera(view: number[], dx: number, dy: number, kind: 'rotate' | 'pan', commitWithFrame?: boolean): void;
   zoom(delta: number): void;
   resetView(): void;
   /** Only a successful empty-document pointer placement may retain its exact camera. */
@@ -209,7 +275,19 @@ export interface RenderAdapter {
   previewFragment?(atoms:readonly Atom[]|null,context?:FragmentRenderPreviewContext):void;
   dispose(): void;
 }
-export function requiresCooperativeDisplay(document:ModelDocument,display:DisplaySettings,feedback?:RenderFeedbackOptions):boolean{return !!(display.stereochemistry&&!feedback?.liveCip||document.draft.structure.cell?.pbc.some(Boolean)||document.draft.structure.bonds?.some(b=>b.order===.5)||document.auxiliaryRelations.length||display.cell&&display.cellStyle?.lineStyle==='dashed'||feedback?.multiframeDisplay);}
+export function requiresCooperativeDisplay(document:ModelDocument,display:DisplaySettings,feedback?:RenderFeedbackOptions):boolean{
+  const structure=document.draft.structure;
+  const periodic=periodicDisplaySettings(display),showsBonds=display.showBonds!==false&&display.representation!=='vdw';
+  const bonds=structure.bonds??[];
+  let glyphWork=0;
+  // Compact native glyph work can finish on the current frame. Queueing it on
+  // a worker would stage the entire cell and delay camera presentation.
+  const periodicPreparation=structure.cell?.pbc.some(Boolean)&&(periodic.images||showsBonds&&bonds.some(bond=>{
+    if(periodicGlyphRequired(structure,bond))glyphWork+=structure.atoms.length+bonds.length;
+    return glyphWork>1024;
+  }));
+  return !!(display.stereochemistry&&!feedback?.liveCip||periodicPreparation||showsBonds&&structure.bonds?.some(b=>b.order===.5)||document.auxiliaryRelations.length||display.cell&&display.cellStyle?.lineStyle==='dashed'||feedback?.multiframeDisplay);
+}
 export interface FragmentRenderPreviewContext {
   documentId:string;revision:number;
   gestureId?:number;sampleGeneration?:number;
@@ -219,14 +297,16 @@ export interface FragmentRenderPreviewContext {
 /** A window owns one persistent adapter. Model/style switches update that
  * instance. Electron windows must load their own renderer realm, not Portal a
  * canvas into a foreign document: locked 3Dmol uses ambient document/window. */
-export async function createRenderAdapter(container: HTMLDivElement, options: { orthographic?: boolean; backgroundAlpha?:0|1 } = {}): Promise<RenderAdapter> {
+interface RenderAdapterOptions {orthographic?:boolean;backgroundAlpha?:0|1;asyncMeshes?:boolean;onAsyncMeshState?():void;onAsyncMeshError?(error:unknown):void}
+
+export async function createRenderAdapter(container: HTMLDivElement, options: RenderAdapterOptions = {}): Promise<RenderAdapter> {
   if (container.ownerDocument !== globalThis.document) throw new Error('建模视口需要独立窗口自身的渲染环境。');
   const mol = await import('3dmol');
   return buildRenderAdapter(container, mol, options);
 }
 
 /** Exported for renderer-independent unit checks with a purpose-built fake. */
-export function buildRenderAdapter(container: HTMLDivElement, mol: any, options: { orthographic?: boolean; backgroundAlpha?:0|1 } = {}): RenderAdapter {
+export function buildRenderAdapter(container: HTMLDivElement, mol: any, options: RenderAdapterOptions = {}): RenderAdapter {
   const realm = container.ownerDocument.defaultView!;
   const initialBackground=viewportDefaultBackgroundColor(container);
   const nativeSizing=captureNativeResizeListeners(realm,()=>captureViewerListeners(container.ownerDocument.body, () => mol.createViewer(container, { backgroundColor: initialBackground, backgroundAlpha:options.backgroundAlpha??1, disableFog:true, antialias: true, nomouse: true, orthographic: options.orthographic ?? true })));
@@ -235,36 +315,81 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   if (!viewer) { captured.release(); throw new Error('无法初始化WebGL结构视图。'); }
   const atomRadius = (element: string, display: DisplaySettings) => structureAtomRadius(display, element, mol.GLModel?.vdwRadii?.[element] ?? 1.5);
   const framebufferLifecycle=retainViewerFramebuffers(viewer);
+  const nativeCoordinateUpload=retainNativeCoordinateUpload(viewer.getRenderer?.());
   const shapeResources=retainViewerShapeResources(viewer);
+  let shapeSlotCompactions=0;
+  const compactOwnedShapeSlots=()=>{
+    if(typeof mol.GLViewer==='function'&&viewer instanceof mol.GLViewer&&typeof mol.GLShape==='function'&&shapeResources.compactSlots(shape=>shape instanceof mol.GLShape))shapeSlotCompactions++;
+  };
   let labels=createLabelLayer(viewer);
   const periodicBondGlyphs=createPeriodicBondGlyphExporter(mol);
   const trajectoryLayer = createTrajectoryLayer(viewer, shapeResources, periodicBondGlyphs, atomRadius);
   const samplingSphereShapes = createSamplingSphereLayer(viewer);
   const calculationRangeShapes = createShapeLayer(viewer);
   const renderCompletion=createRenderCompletionObserver(()=>viewer.getCanvas?.(),realm,()=>viewer.getRenderer?.()?.getContext?.());
+  const observedGraphs=new WeakMap<readonly Bond[],string>();
+  let cameraPreparedAt:number|undefined;
   const renderSubmissions=createRendererSubmissionObserver(viewer,renderCompletion,()=>{
     const bounds=container.getBoundingClientRect(),gl=viewer.getRenderer?.()?.getContext?.(),canvas=viewer.getCanvas?.();
     return {cssWidth:bounds.width,cssHeight:bounds.height,bufferWidth:gl?.drawingBufferWidth??canvas?.width??0,bufferHeight:gl?.drawingBufferHeight??canvas?.height??0,
       contextKind:gl?(typeof gl.fenceSync==='function'?'webgl2' as const:'webgl1' as const):'unknown' as const};
+  },()=>{
+    const structure=currentDocument?.draft.structure,bonds=structure?.bonds,cell=structure?.cell;
+    let bondGraphSha256=bonds&&observedGraphs.get(bonds);
+    if(bonds&&!bondGraphSha256){
+      bondGraphSha256=sha256Utf8(JSON.stringify(bonds));
+      observedGraphs.set(bonds,bondGraphSha256);
+    }
+    return {atomCount:positions.length,atoms:positions.slice(0,2).map(({id,element,x,y,z})=>({id,element,x,y,z})),
+      tailAtoms:positions.slice(-2).map(({id,element,x,y,z})=>({id,element,x,y,z})),
+      ...(cameraPreparedAt===undefined?{}:{cameraPreparedAt}),
+      molecularMeshBuilds,residentCoordinateFrames,...nativeCoordinateUpload.statistics(),
+      ...(bonds?{bondCount:bonds.length,bondGraphSha256}:{}),
+      ...(cell?{cell:{vectors:cell.vectors,pbc:cell.pbc,origin:cell.origin}}:{})};
   });
   let disposed = false, initialized = false, currentId: string | null = null;
   let drawController:AbortController|null=null,drawTail:Promise<void>=Promise.resolve(),lastDrawCooperative=false;
-  let fragmentSamples=0,scenePreparations=0,sceneAborts=0;
+  let fragmentSamples=0,scenePreparations=0,sceneAborts=0,molecularMeshBuilds=0,fragmentRigidPresents=0,coordinateBufferUpdates=0;
+  const nativeBufferBindings=new WeakMap<object,ReturnType<typeof bindNativeCoordinateBuffers>>();
   let fragmentRetirementBatches=0,fragmentPartialPresents=0,fragmentFullPresents=0,fragmentFallbackCode=0;
+  let residentCoordinateFrames=0;
   let background = initialBackground;
   let fadeStrength=0;
-  let currentDocument: ModelDocument | null = null, positions: Atom[] = [], proxies: any[] = [], mirrorInstances: PeriodicDisplayInstance[] = [];
+  let currentDocument: ModelDocument | null = null, positions: Atom[] = [], proxies: any[] = [], imageProxies: any[] = [], mirrorInstances: PeriodicDisplayInstance[] = [];
+  const basePicking = createPickBroadPhase<any>(), imagePicking = createPickBroadPhase<any>();
+  let atomPickProxies = new Map<number,any>();
+  let fixedViewCell: PeriodicCell | undefined;
+  let centroidSource: Atom[] | undefined, positionCentroid: Vector3;
+  const displayedCentroid = () => {
+    if(centroidSource!==positions){centroidSource=positions;positionCentroid=centroid(positions);}
+    return positionCentroid;
+  };
+  const viewPivot = (): Vector3 => fixedViewCell ? fixedViewCell.vectors.reduce((center,v)=>add(center,scale(v,.5)),fixedViewCell.origin??[0,0,0]) : displayedCentroid();
   let baseAtomStyles: any[] = [], hoverKey = '';
   const hoverShapes = createShapeLayer(viewer);
   const displayHoverKeys=new Set<string>();
-  let renderedModel: any = null, modelMaterialKey = '';
+  let renderedModel: any = null, modelMaterial: MolecularMaterial | undefined;
+  type ResidentBond = { a:number; b:number; shape:any; visual:BondVisual };
+  let residentScene: { signature:string; model:any; root:object; bonds:ResidentBond[]; radii:Float64Array; xyz:Vector3[]; pickSpheres:any[][] }|undefined;
+  function createOwnedMolecularModel(settings:DisplaySettings){
+    const model=attachStructureModelFinish(viewer.addModel('','xyz'),settings.structureFinish,settings.structureLighting,settings.representation==='stick');
+    const globj=model.globj;
+    if(typeof globj==='function')model.globj=function(this:any,...args:any[]){
+      const before=this.renderedMolObj,result=globj.apply(this,args);
+      if(this.renderedMolObj&&this.renderedMolObj!==before)molecularMeshBuilds++;
+      return result;
+    };
+    return shapeResources.keepModel(model);
+  }
   let nativeCoordinates: Vector3[] | null = null, nativeCoordinateEpoch: string | undefined;
-  let atomicDraw:{commit():void;rollback():void;retire(model:any):void;publishedProxies:any[]}|null=null;
+  let atomicDraw:{commit():void;rollback():void;retire(model:any):void;publishedProxies:any[];publishedImageProxies:any[];
+    cameraOwner:string|null;publishedView:number[];publishedPivot:Vector3;manualView?:number[]}|null=null;
+  function rememberCamera(){if(atomicDraw?.cameraOwner)atomicDraw.manualView=[...viewer.getView()];}
   const clearNativeCoordinates=()=>{nativeCoordinates=null;nativeCoordinateEpoch=undefined;};
   function removeOwnedModel() {
     clearNativeCoordinates();
     if(!renderedModel)return;
-    const model=renderedModel;renderedModel=null;modelMaterialKey='';
+    const model=renderedModel;renderedModel=null;modelMaterial=undefined;
     if(atomicDraw){atomicDraw.retire(model);return;}
     shapeResources.retireModel(model,()=>{
       // The adapter owns this one atom model, not arbitrary foreign models.
@@ -274,12 +399,69 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     });
   }
   let displayTransform = identityTransform();
-  const sceneShapes = createShapeLayer(viewer), orbitals = createOrbitalLayer(viewer, mol), surfaces = createSurfaceLayers(viewer, mol);
+  const meshNotify=options.asyncMeshes?scheduleAsyncMeshes:undefined;
+  const sceneShapes = createShapeLayer(viewer), orbitals = createOrbitalLayer(viewer, mol, meshNotify), surfaces = createSurfaceLayers(viewer, mol, meshNotify);
+  const nativeBatches = nativePrimitiveBatchesAvailable(viewer, mol);
+  const createPrimitiveLayers = () => ({
+    rods: createNativePrimitiveBatch(viewer, mol, nativeCoordinateUpload),
+    spheres: createNativePrimitiveBatch(viewer, mol),
+    arrows: createNativePrimitiveBatch(viewer, mol),
+  });
+  const mainPrimitives = createPrimitiveLayers(), movingPrimitives = createPrimitiveLayers();
+  const clearMovingPrimitives = () => { for (const layer of Object.values(movingPrimitives)) layer.clear(); };
   let orbitalLayer: ViewportOrbitalLayer | null = null;
   let ntoLayer: ViewportNtoLayer | null = null;
   let surfaceLayer: ViewportSurfaceLayer | null = null, surfaceExtrema: ViewportSurfaceExtrema | null = null;
   let surfaceLayers: readonly ViewportSurfaceLayer[] | undefined;
+  let meshRefreshQueued=false;
+  const meshWaiters=new Set<()=>void>();
+  function wakeMeshes(){for(const wake of meshWaiters)wake();}
+  async function awaitMeshes(signal?:AbortSignal):Promise<void>{
+    while(!disposed&&(meshRefreshQueued||orbitals.pending()||surfaces.pending())){
+      if(signal?.aborted)throw new DOMException('表面显示已取消。','AbortError');
+      await new Promise<void>(resolve=>{
+        const wake=()=>{meshWaiters.delete(wake);signal?.removeEventListener('abort',wake);resolve();};
+        meshWaiters.add(wake);signal?.addEventListener('abort',wake,{once:true});
+        if(signal?.aborted)wake();
+      });
+    }
+    if(disposed||signal?.aborted)throw new DOMException('表面显示已取消。','AbortError');
+  }
+  function scheduleAsyncMeshes(){
+    if(disposed||meshRefreshQueued)return;
+    meshRefreshQueued=true;
+    queueMicrotask(function refresh(){
+      if(disposed)return;
+      if(drawController){void drawTail.then(refresh);return;}
+      meshRefreshQueued=false;
+      try {
+        renderSubmissions.run('surface-layer',()=>{
+          let orbitalChanged=false;
+          try{orbitalChanged=orbitals.sync(ntoLayer??orbitalLayer,currentDocument,displayTransform);}
+          catch(error){if(orbitalLayer&&!ntoLayer)options.onAsyncMeshError?.(error);else orbitals.failSubmission(error);}
+          const surfaceChanged=surfaceLayers===undefined?surfaces.sync(surfaceLayer,currentDocument,displayTransform):surfaces.syncLayers(surfaceLayers,currentDocument,displayTransform);
+          if(orbitalChanged||surfaceChanged)viewer.render();
+          surfaces.markSubmitted();orbitals.markSubmitted();
+        });
+      }catch(error){surfaces.failSubmission(error);orbitals.failSubmission(error);}
+      try{options.onAsyncMeshState?.();}finally{wakeMeshes();}
+    });
+  }
   type ShapeTask={indices:readonly number[];paint:(raw:Atom[],preview:boolean)=>void;handles:Set<any>};
+  type OwnedPrimitive<T> = { primitive: T; task: ShapeTask };
+  type PrimitiveRows = { rods: OwnedPrimitive<NativeBatchRod>[]; spheres: OwnedPrimitive<NativeBatchSphere>[]; arrows: OwnedPrimitive<NativeBatchArrow>[] };
+  function emptyPrimitiveRows(): PrimitiveRows { return { rods: [], spheres: [], arrows: [] }; }
+  let publishedPrimitives = emptyPrimitiveRows();
+  let collectingMovingPrimitives: PrimitiveRows | null = null;
+  function* preparePrimitiveRows(rows: PrimitiveRows, settings: DisplaySettings, layers = mainPrimitives) {
+    const key = JSON.stringify([settings.structureFinish, settings.structureLighting]);
+    const rods = yield* layers.rods.prepareRods(rows.rods.map(row => row.primitive), key,
+      shape => attachStructureShapeFinish(shape, settings.structureFinish, settings.structureLighting));
+    const spheres = yield* layers.spheres.prepareSpheres(rows.spheres.map(row => row.primitive), key,
+      shape => attachLocalMeshFinish(shape, settings.structureFinish, settings.structureLighting));
+    const arrows = layers.arrows.prepareArrows(rows.arrows.map(row => row.primitive));
+    return () => { rods(); spheres(); arrows(); };
+  }
   let shapeTasks:ShapeTask[]=[],activeShapeTask:ShapeTask|null=null;
   let atomLabelHandles=new Map<number,any[]>(),regionLabelMoves:{indices:readonly number[];label:any;center:Vector3}[]=[];
   let lastDraw:{document:ModelDocument;settings:DisplaySettings;incoming:ViewerHighlights;preview?:Atom[];transform:RigidTransform;measurement?:MeasurementState;feedback:RenderFeedbackOptions}|null=null;
@@ -287,12 +469,14 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   let paintedCip=emptyCarbonCip.labels;
   let paintAtomLabels:(index:number,cip?:CarbonCipLabel)=>void=()=>{};
   const cipRequests=createCarbonCipRequests();
-  let fragmentPreview:{documentId:string;revision:number;gestureId?:number;sampleGeneration:number;indices:number[];ids:Set<string>;raw:Atom[];tasks:ShapeTask[];staticProxyCount:number;model:any;cpu:any;baseModelSynced:boolean;periodic:Map<unknown,ReturnType<typeof periodicBondGlyphContext>>;instances:PeriodicDisplayInstance[];connections?:PeriodicDisplayConnectionContext;rotation?:FragmentRenderPreviewContext['rotation']}|null=null;
+  let fragmentPreview:{documentId:string;revision:number;gestureId?:number;sampleGeneration:number;indices:number[];ids:Set<string>;raw:Atom[];tasks:ShapeTask[];staticProxyCount:number;model:any;cpu:any;baseModelSynced:boolean;periodic:Map<unknown,ReturnType<typeof periodicBondGlyphContext>>;instances:PeriodicDisplayInstance[];connections?:PeriodicDisplayConnectionContext;rotation?:FragmentRenderPreviewContext['rotation'];meshReference?:{coordinates:Vector3[];orientation:any;root:any}}|null=null;
   let atomBounds:RenderBounds|null=null;
-  const depthEnvelope=retainViewerDepthEnvelope(viewer,()=>unionRenderBounds(atomBounds,sceneShapes.bounds(),hoverShapes.bounds(),orbitals.bounds(),surfaces.bounds(),trajectoryLayer.bounds(),samplingSphereShapes.bounds(),calculationRangeShapes.bounds()));
+  const primitiveLayers = [...Object.values(mainPrimitives), ...Object.values(movingPrimitives)];
+  const depthEnvelope=retainViewerDepthEnvelope(viewer,() => unionRenderBounds(atomBounds,sceneShapes.bounds(),hoverShapes.bounds(),orbitals.bounds(),surfaces.bounds(),trajectoryLayer.bounds(),samplingSphereShapes.bounds(),calculationRangeShapes.bounds(),...primitiveLayers.map(layer => layer.bounds())));
   const keepScene=(shape:any)=>{if(!sceneShapes.has(shape))sceneShapes.keep(shape);if(shape)activeShapeTask?.handles.add(shape);return shape;};
-  const sceneSequence=createSceneSequence({create:(method,spec)=>viewer[method](spec),translateArrow:translateNativeArrow,clear:()=>sceneShapes.clear(),remove:handles=>sceneShapes.remove(handles),handles:()=>sceneShapes.handles(),size:()=>sceneShapes.size,inventory:()=>Array.isArray(viewer.shapes)?viewer.shapes:undefined,refreshBounds:()=>sceneShapes.refreshBounds()});
-  const constructScene=(method:SceneShapeMethod,spec:any)=>sceneSequence.create(method,spec);
+  const sceneSequence=createSceneSequence({create:(method,spec)=>viewer[method](spec),translateArrow:translateNativeArrow,poseCylinder:poseNativeFlatCylinder,clear:()=>sceneShapes.clear(),remove:handles=>sceneShapes.remove(handles),handles:()=>sceneShapes.handles(),size:()=>sceneShapes.size,inventory:()=>Array.isArray(viewer.shapes)?viewer.shapes:undefined,refreshBounds:()=>sceneShapes.refreshBounds(),
+    separateOpaqueBatch: shape => primitiveLayers.some(layer => layer.owns(shape)) });
+  const constructScene=(method:SceneShapeMethod,spec:any,poseCylinder=false)=>sceneSequence.create(method,spec,false,poseCylinder);
   const sceneShape = (method: SceneShapeMethod, spec: any) => keepScene(constructScene(method,spec));
   type BondVisual={start:Vector3;end:Vector3;colors:[any,any];radius:number;cellClip?:{start:Vector3;end:Vector3;cell:PeriodicCell}};
   const bondVisuals = new Map<string,BondVisual[]>();
@@ -349,6 +533,18 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     return { x: result.x - realm.scrollX, y: result.y - realm.scrollY };
   };
   const project = (position: Vector3) => screenProject(transformPoint(displayTransform, position));
+  const projectMany = (points:readonly Vector3[]):ScreenPoint[] => {
+    if(!points.length)return [];
+    if(points.some(value=>!value.every(Number.isFinite)))throw new ViewportProjectionError('invalid-projection','投影坐标必须是有限数值。');
+    if(!synchronizeSize())throw new ViewportProjectionError('viewport-unavailable','视口尚未具备可用尺寸，请在视口显示后重试。');
+    const coordinates=points.map(value=>point(transformPoint(displayTransform,value)));
+    let results=viewer.modelToScreen(coordinates);
+    if(!Array.isArray(results))return points.map(project);
+    const complete=(rows:ScreenPoint[])=>rows.length===points.length&&rows.every(value=>Number.isFinite(value.x)&&Number.isFinite(value.y));
+    if(!complete(results)){synchronizeSize(true);results=viewer.modelToScreen(coordinates);}
+    if(!Array.isArray(results)||!complete(results))throw new ViewportProjectionError('invalid-projection','当前视角的屏幕投影无效。');
+    return results.map(value=>({x:value.x-realm.scrollX,y:value.y-realm.scrollY}));
+  };
   const plane = (origin: Vector3): DragPlane => {
     let displayed: DragPlane;
     try { displayed = dragPlane(screenProject, transformPoint(displayTransform, origin), viewer.getView().slice(4, 8)); }
@@ -360,18 +556,26 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     }
     return { ...displayed, origin: [...origin], right: inverseRotate(displayTransform.rotation, displayed.right), up: inverseRotate(displayTransform.rotation, displayed.up) };
   };
-  const origin = () => centroid(positions.filter(a => currentDocument?.selection.atomIds.includes(a.id!)).length ? positions.filter(a => currentDocument?.selection.atomIds.includes(a.id!)) : positions);
+  const origin = () => {
+    const ids=currentDocument?.selection.atomIds;
+    if(!ids?.length)return displayedCentroid();
+    const selected=new Set(ids),atoms=positions.filter(atom=>selected.has(atom.id!));
+    return atoms.length?centroid(atoms):displayedCentroid();
+  };
   const inside = (screen: ScreenPoint) => {
     const bounds = container.getBoundingClientRect();
     return [screen.x, screen.y, bounds.width, bounds.height].every(Number.isFinite) && bounds.width > 0 && bounds.height > 0 && screen.x >= bounds.left && screen.x <= bounds.right && screen.y >= bounds.top && screen.y <= bounds.bottom;
   };
-  const hitTest = (screen: ScreenPoint): PickResult => {
+  const hitTest = (screen: ScreenPoint, includeReadOnlyImages=false): PickResult => {
     assertLive();
     resizeSettler.flush();
     if(layoutResizing)synchronizeSize(true);
     if (!inside(screen) || !synchronizeSize()) return { kind: 'none' };
     const bounds = container.getBoundingClientRect();
-    const hits = viewer.targetedObjects((screen.x - bounds.left) * 2 / bounds.width - 1, 1 - (screen.y - bounds.top) * 2 / bounds.height, atomicDraw?.publishedProxies??proxies);
+    const targets=atomicDraw?.publishedProxies??proxies, images=atomicDraw?.publishedImageProxies??imageProxies;
+    const x=(screen.x - bounds.left) * 2 / bounds.width - 1, y=1 - (screen.y - bounds.top) * 2 / bounds.height;
+    const candidates=basePicking.candidates(targets,viewer,x,y);
+    const hits = viewer.targetedObjects(x,y,includeReadOnlyImages&&images.length?candidates.concat(imagePicking.candidates(images,viewer,x,y)):candidates);
     const hit = hits.find((entry: any) => Number.isFinite(entry.distance) && entry.distance >= 0 && entry.clickable?.ref);
     return hit ? hit.clickable.ref : { kind: 'none' };
   };
@@ -404,7 +608,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     hoverShapes.clear(); hoverKey = '';
   }
   function atomOutline(index:number) {
-    const radii=(proxies.find(proxy=>proxy.ref.kind==='atom'&&proxy.ref.atomId===positions[index].id)?.intersectionShape.sphere??[]).map((sphere:any)=>sphere.radius);
+    const radii=(atomPickProxies.get(index)?.intersectionShape.sphere??[]).map((sphere:any)=>sphere.radius);
     const radius=radii.length?Math.max(...radii):.17;
     return {center:point(coordinates(positions[index])),radius:radius+.045,color:MODEL_HOVER_COLOR,opacity:.8,wireframe:true,linewidth:2.6};
   }
@@ -422,8 +626,8 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     // only another target, never a second shell over the same atom/bond.
     if(displayHoverKeys.has(key)){viewer.render();return;}
     if (pick.kind === 'atom') {
-      const index = positions.findIndex(a => a.id === pick.atomId);
-      if (index >= 0 && baseAtomStyles[index]) {
+      const index = modelMaterial?.layout.indices.get(pick.atomId);
+      if (index !== undefined && baseAtomStyles[index]) {
         // A translucent shell supplies a visible silhouette without changing
         // the native model style, rendered sphere bounds or ray-pick proxies.
         hoverShapes.keep(viewer.addSphere(atomOutline(index)));
@@ -438,19 +642,32 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   function resetViewContent() {
     assertLive();
     emptyPlacement = null;
-    viewer.setView([...emptyView]);
-    // Fit the current owned atom model, not cell/vacuum, measurement or
-    // analysis shapes. Those layers never define a different model scale.
-    if (positions.length) { viewer.zoomTo({ model: renderedModel }); viewer.rotate(15, 'x'); viewer.rotate(-12, 'y'); viewer.zoom(positions.length < 20 ? 1.45 : 1.05); }
+    if (fixedViewCell) {
+      const center=viewPivot(), bounds=container.getBoundingClientRect();
+      const radius=Math.max(...cellSegments(fixedViewCell).flatMap(edge=>edge.map(corner=>Math.hypot(...subtract(corner,center)))));
+      // Locked 3Dmol orthographic half-width is viewing distance × tan(FOV).
+      // Fit the fixed cell once, using room for the complete cell at any angle.
+      const aspect=bounds.height>0?bounds.width/bounds.height:1;
+      const halfWidth=1.1*radius*Math.max(1,aspect);
+      const fov=(viewer.camera?.fov??20)*Math.PI/180;
+      const z=(viewer.camera?.position?.z??150)-Math.max(1,halfWidth/Math.tan(fov));
+      const view=rotateObjectView([...scale(center,-1),z,...emptyView.slice(4)],-30,37.5,center);
+      viewer.setView(view);
+    } else {
+      viewer.setView([...emptyView]);
+      // Fit the current owned atom model. Analysis layers do not set its scale.
+      if (positions.length) { viewer.zoomTo({ model: renderedModel }); viewer.rotate(15, 'x'); viewer.rotate(-12, 'y'); viewer.zoom(positions.length < 20 ? 1.45 : 1.05); }
+    }
     if (currentId && positions.length) { framedDocuments.add(currentId); cachedViews.set(currentId, [...viewer.getView()]); }
     viewer.render();
   }
   const resetView=()=>renderSubmissions.run('reset-view',resetViewContent);
   function* drawContent(document: ModelDocument, settings: DisplaySettings, incoming: ViewerHighlights = {}, preview?: Atom[], transform = identityTransform(), measurement?: MeasurementState, feedback: RenderFeedbackOptions = {},cooperative=false):RenderWork<void> {
     assertLive();
-    const cipSource=document.draft.structure;
-    if(settings.stereochemistry&&cooperative&&!feedback.liveCip)yield signal=>prepareCarbonCipLabels(cipSource,signal);
-    const cipLabels=settings.stereochemistry&&!feedback.cipGeometryPreview?carbonCipSource(cipSource)?.result?.labels??emptyCarbonCip.labels:emptyCarbonCip.labels;
+    const cipSource=settings.stereochemistry?cipStructureForDisplay(document.draft.structure,feedback.cipStructure):undefined;
+    if(cipSource&&cooperative&&!feedback.liveCip)yield signal=>prepareCarbonCipLabels(cipSource,signal);
+    const preparedCip=carbonCipSource(cipSource);
+    const cipLabels=settings.stereochemistry&&!feedback.cipGeometryPreview?(preparedCip?.result??preparedCip?.failure)?.labels??emptyCarbonCip.labels:emptyCarbonCip.labels;
     hiddenAtoms=displayHiddenAtomIds(feedback.hiddenAtomIds,document.draft.structure);
     const nextBackground = feedback.capturePurpose ? CAPTURE_BACKGROUND_COLOR : feedback.linkedAtomsActive ? LINKED_BACKGROUND_COLOR : settings.backgroundColor??viewportDefaultBackgroundColor(container);
     if (background !== nextBackground) {
@@ -464,20 +681,28 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     const priorView = initialized ? viewer.getView() : null;
     if (currentId && initialized) cachedViews.set(currentId, priorView!);
     const switched = currentId !== document.id;
+    if(switched){basePicking.dispose();imagePicking.dispose();}
+    else {basePicking.invalidate();imagePicking.invalidate();}
     const retainPlacement = !switched && positions.length === 0 && emptyPlacement?.documentId === document.id && currentDocument?.revision === emptyPlacement.baseRevision && document.revision === emptyPlacement.nextRevision;
     const placementView = retainPlacement ? emptyPlacement!.view : null;
     emptyPlacement = null;
     currentId = document.id; currentDocument = document;
+    const sourceCell=document.draft.structure.cell;
+    fixedViewCell=feedback.fixedCellView&&sourceCell?.pbc.some(Boolean)?sourceCell:undefined;
+    if(fixedViewCell)transform=identityTransform();
     let activeTransform = identityTransform();
     if (feedback.multiframeDisplay) {
       try {
         validateMultiframeDisplayPlan(feedback.multiframeDisplay);
         const active = feedback.multiframeDisplay.frames.find(frame => frame.key === feedback.multiframeDisplay!.activeFrameKey)!;
-        const byId = new Map(active.structure.atoms.map(atom => [atom.id, atom]));
-        if (active.structure.atoms.length !== document.draft.structure.atoms.length || document.draft.structure.atoms.some(atom => {
-          const source = byId.get(atom.id); return !source || atom.element !== source.element || atom.x !== source.x || atom.y !== source.y || atom.z !== source.z;
-        })) throw new Error('当前帧与叠合计划不一致，请更新当前显示帧；未改用其他帧。');
-        activeTransform = active.transform;
+        const activeAtoms=active.structure.atoms, shownAtoms=document.draft.structure.atoms;
+        if(activeAtoms!==shownAtoms){
+          const byId = new Map(activeAtoms.map(atom => [atom.id, atom]));
+          if (activeAtoms.length !== shownAtoms.length || shownAtoms.some(atom => {
+            const source = byId.get(atom.id); return !source || atom.element !== source.element || atom.x !== source.x || atom.y !== source.y || atom.z !== source.z;
+          })) throw new Error('当前帧与叠合计划不一致，请更新当前显示帧；未改用其他帧。');
+        }
+        if(!fixedViewCell)activeTransform = active.transform;
       } catch (error) { trajectoryLayer.clear(); samplingSphereShapes.clear(); throw error; }
     }
     displayTransform = composeTransforms(transform, activeTransform);
@@ -485,96 +710,108 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     positions = transformAtoms(rawPositions, displayTransform);
     atomBounds=null;for(const atom of positions)atomBounds=includeRenderPoint(atomBounds,coordinates(atom),atomRadius(atom.element,settings));
     const highlights = modelHighlights(document, incoming, feedback.displayFrozenAtomIds), regions = colorRegions(settings, highlights), colored = settings.regionHighlights ? regions : [];
-    const memberships = regionMembership(positions.length, colored).memberships;
     // A vibration is an explicit display-only projection of this document.
     // Standalone analysis windows do not carry the modeling registry epoch.
     const sceneOwner=feedback.sceneOwnerEpoch??(feedback.vibrationVectors?.length?'vibration-display':null);
-    sceneSequence.begin(sceneOwner?JSON.stringify([document.id,sceneOwner]):null,settings,Boolean(atomicDraw)); labels.clear(); proxies = [];
+    sceneSequence.begin(sceneOwner?JSON.stringify([document.id,sceneOwner]):null,settings,Boolean(atomicDraw)); labels.clear(); proxies = [];imageProxies=[];atomPickProxies=new Map();
     shapeTasks=[];atomLabelHandles=new Map();regionLabelMoves=[];
     const structure = document.draft.structure;
-    const periodicInstances = yield* periodicDisplayInstancesWork(structure, rawPositions, settings, hiddenAtoms);
-    const periodicConnections=structure.cell?.pbc.some(Boolean)&&(periodicDisplaySettings(settings).images||structure.bonds?.some(bond=>bond.image?.some(Boolean)))
-      ?yield* preparePeriodicDisplayConnectionsWork(structure,rawPositions,periodicInstances,settings):undefined;
+    const primitiveRows = emptyPrimitiveRows();
+    // A compact unit cell can have hundreds of opaque boundary rods. Use the
+    // same native batch regardless of atom count, retaining the matching picks.
+    const batchPeriodic = nativeBatches && structure.cell?.pbc.some(Boolean);
+    const batchVibration = nativeBatches && (feedback.vibrationVectors?.length ?? 0) >= 128;
+    const periodicSettings=periodicDisplaySettings(settings);
+    const periodicLayout=structure.cell?.pbc.some(Boolean)&&(periodicSettings.images||periodicSettings.showCrossBoxBonds&&settings.showBonds!==false&&settings.representation!=='vdw'&&structure.bonds?.some(bond=>bond.image?.some(Boolean)));
+    const periodicInstances=periodicLayout?yield* periodicDisplayInstancesWork(structure,rawPositions,settings,hiddenAtoms):[];
+    const periodicConnections=periodicLayout?yield* preparePeriodicDisplayConnectionsWork(structure,rawPositions,periodicInstances,settings):undefined;
     mirrorInstances = periodicInstances.filter(instance=>!instance.base);
-    const atomIndices=new Map(rawPositions.map((atom,index)=>[atom.id!,index]));
-    const scalarValues = validScalarValues(feedback.atomScalarValues ?? [], positions.length);
-    const scalarRange = feedback.atomScalarColor === false ? null : viewportAtomScalarRange(feedback.atomScalarValues ?? [], positions.length);
-    const scalarLabels = new Map(feedback.atomScalarLabels ? (feedback.atomScalarValues ?? []).filter(row => scalarValues.has(row.atomIndex) && row.label?.trim()).map(row => [row.atomIndex, row.label!.trim()]) : []);
-    const scalarColors = new Map((feedback.atomScalarValues ?? []).filter(row=>scalarValues.has(row.atomIndex)&&/^#[0-9a-f]{6}$/i.test(row.color??'')).map(row=>[row.atomIndex,row.color!]));
-    const atomBaseColor = (index: number) => scalarRange && scalarValues.has(index) ? scalarColors.get(index) ?? scalarColor(scalarValues.get(index)!, scalarRange) : (feedback.atomScalarValues === undefined || feedback.atomScalarColor === false) && memberships[index].length ? membershipColor(memberships[index]) : elementColor(positions[index].element, settings.elementColors);
-    const atomStyles: any[] = positions.map((atom, i) => structureAtomStyle(settings, atom.element, atomBaseColor(i)));
-    const captureActive=feedback.displayCaptureAtomIds!==undefined;
-    const selected = feedback.displayCaptureAtomIds??document.selection.atomIds, selectedBonds = new Set(captureActive?[]:document.selection.bonds.map(bondRefKey));
+    const layout=molecularLayout(modelMaterial?.layout,document.id,rawPositions,structure);
+    const atomIndices=layout.indices, captureActive=feedback.displayCaptureAtomIds!==undefined;
+    const selectedIds=feedback.displayCaptureAtomIds??document.selection.atomIds;
+    const selectedBonds = new Set(captureActive?[]:document.selection.bonds.map(bondRefKey));
     const userMeasurementRecords=settings.measurementMarks?measurement?.records??[]:[];
-    const measuredIds = new Set([...(settings.measurementMarks&&measurement?.mode?measurement.atomIds:[]),...userMeasurementRecords.flatMap(record=>record.atomIds)]);
-    // Independent blue measurement is display-only; yellow edit selection wins
-    // for an atom in both sets. Neither state changes its actual sphere radius.
-    for (let i = 0; i < positions.length; i++) if (measuredIds.has(positions[i].id!)) {
-      const color = atomBaseColor(i);
-      const measurementColor = userMeasurementRecords.find(record => record.atomIds.includes(positions[i].id!))?.color ?? MEASUREMENT_COLOR;
-      atomStyles[i] = structureAtomStyle(settings, positions[i].element, color, measurementColor);
+    const frozenIndices=settings.frozenMarks?highlights.frozenAtoms:undefined;
+    const scalarValues = validScalarValues(feedback.atomScalarValues ?? [], positions.length);
+    const scalarLabels = new Map(feedback.atomScalarLabels ? (feedback.atomScalarValues ?? []).filter(row=>scalarValues.has(row.atomIndex) && row.label?.trim()).map(row=>[row.atomIndex,row.label!.trim()]) : []);
+    // Styles and native adjacency belong to the topology and appearance.
+    // Coordinate-only frames reuse them even with new immutable atom objects.
+    const appearance=JSON.stringify([settings.representation,settings.atomScale,settings.elementScales,settings.elementColors,
+      settings.bondScale,settings.bondStyle,settings.structureSizing,settings.structureFinish,settings.structureLighting,settings.showBonds!==false,
+      colored,frozenIndices,selectedIds,[...hiddenAtoms],feedback.previewGuides?.dimAtomIds,feedback.atomScalarColor,feedback.atomScalarValues,
+      userMeasurementRecords.map(row=>[row.atomIds,row.color]),settings.measurementMarks&&measurement?.mode?measurement.atomIds:undefined]);
+    let nextMaterial=modelMaterial;
+    if(nextMaterial?.layout!==layout||nextMaterial.appearance!==appearance){
+      const memberships=colored.length?regionMembership(positions.length,colored).memberships:undefined;
+      const scalarRange=feedback.atomScalarColor===false?null:viewportAtomScalarRange(feedback.atomScalarValues??[],positions.length);
+      const scalarColors=new Map((feedback.atomScalarValues??[]).filter(row=>scalarValues.has(row.atomIndex)&&/^#[0-9a-f]{6}$/i.test(row.color??'')).map(row=>[row.atomIndex,row.color!]));
+      const measurementColors=new Map<string,string>();
+      for(const record of userMeasurementRecords)for(const id of record.atomIds)if(!measurementColors.has(id))measurementColors.set(id,record.color??MEASUREMENT_COLOR);
+      if(settings.measurementMarks&&measurement?.mode)for(const id of measurement.atomIds)if(!measurementColors.has(id))measurementColors.set(id,MEASUREMENT_COLOR);
+      const selected=new Set(selectedIds),frozen=new Set(frozenIndices),dimmed=new Set(feedback.previewGuides?.dimAtomIds);
+      const styles=positions.map((atom,index)=>{
+        if(hiddenAtoms.has(atom.id!))return {};
+        const members=memberships?.[index];
+        const color=scalarRange&&scalarValues.has(index)?scalarColors.get(index)??scalarColor(scalarValues.get(index)!,scalarRange)
+          :(feedback.atomScalarValues===undefined||feedback.atomScalarColor===false)&&members?.length?membershipColor(members):elementColor(atom.element,settings.elementColors);
+        const mark=selected.has(atom.id!)?SELECTION_COLOR:frozen.has(index)?FREEZE_COLOR:measurementColors.get(atom.id!);
+        const style=structureAtomStyle(settings,atom.element,color,mark);
+        if(dimmed.has(atom.id!))for(const value of Object.values(style))Object.assign(value,{opacity:.22});
+        return style;
+      });
+      nextMaterial={layout,appearance,styles};
     }
-    // Frozen atom material is solid blue at the existing radius. Selection is
-    // applied last, so a selected/frozen atom stays yellow with a blue SVG badge.
-    if (settings.frozenMarks) for (const index of highlights.frozenAtoms ?? []) if (positions[index]) {
-      const color = atomBaseColor(index);
-      atomStyles[index] = structureAtomStyle(settings, positions[index].element, color, FREEZE_COLOR);
-    }
-    for (let i = 0; i < positions.length; i++) if (selected.includes(positions[i].id!)) {
-      const color = atomBaseColor(i);
-      atomStyles[i] = structureAtomStyle(settings, positions[i].element, color, SELECTION_COLOR);
-    }
-    // Temporary failure material wins over selection, at the same geometry.
-    // A draw without feedback restores the original frozen/selected materials.
-    const problemIds = new Set(feedback.problemAtomIds ?? []);
-    for (let i = 0; i < positions.length; i++) if (positions[i].id && problemIds.has(positions[i].id!)) {
-      const color = atomBaseColor(i);
-      atomStyles[i] = structureAtomStyle(settings, positions[i].element, color, PROBLEM_ATOM_COLOR);
-    }
-    // Coordinates are the only reusable part. Stable IDs/order, graph and final
-    // materials must match; every overlay and physical pick proxy is refreshed.
-    const dimmed=new Set(feedback.previewGuides?.dimAtomIds);
-    for(let i=0;i<positions.length;i++){
-      if(dimmed.has(positions[i].id!))for(const style of Object.values(atomStyles[i]) as any[])if(style&&typeof style==='object')style.opacity=.22;
-      if(hiddenAtoms.has(positions[i].id!))atomStyles[i]={};
-    }
-    const nextMaterialKey = JSON.stringify([document.id, positions.map(atom => [atom.id, atom.element]), structure.bonds ?? [], structure.cell, atomStyles,[...hiddenAtoms],settings.structureFinish,settings.structureLighting,settings.showBonds!==false]);
-    const reuseCoordinates = positions.length > 0 && renderedModel && nextMaterialKey === modelMaterialKey && typeof renderedModel.setCoordinates === 'function' && typeof renderedModel.setFrame === 'function';
+    const atomStyles=nextMaterial.styles;
+    const reuseCoordinates=positions.length>0&&renderedModel&&nextMaterial===modelMaterial&&typeof renderedModel.setCoordinates==='function'&&typeof renderedModel.setFrame==='function';
     let coordinatesUnchanged=false;
+    let updateNativeBuffers:(()=>boolean)|undefined;
+    let nextNativeCoordinates:Vector3[]|undefined;
     if (reuseCoordinates) {
       coordinatesUnchanged=Boolean(feedback.sceneOwnerEpoch)&&nativeCoordinateEpoch===feedback.sceneOwnerEpoch&&nativeCoordinates!==null&&sameNativeCoordinates(positions,nativeCoordinates);
       if(!coordinatesUnchanged){
-        renderedModel.setCoordinates([positions.map(atom => [atom.x, atom.y, atom.z])], 'array');
-        // The locked local-array setFrame branch updates synchronously; its
-        // promise wraps only the public trajectory API (no fetch in this path).
-        void renderedModel.setFrame(0);
+        const coords=nextNativeCoordinates=positions.map(coordinates),mesh=renderedModel.renderedMolObj;
+        if(mesh&&typeof mesh==='object'){
+          if(!nativeBufferBindings.has(mesh))nativeBufferBindings.set(mesh,bindNativeCoordinateBuffers(renderedModel,nativeCoordinateUpload));
+          const update=nativeBufferBindings.get(mesh);
+          if(update)updateNativeBuffers=()=>update(coords);
+        }
+        if(!updateNativeBuffers){renderedModel.setCoordinates([coords], 'array');void renderedModel.setFrame(0);}
       }
     } else {
       // Connectivity is material metadata. A coordinate-only frame does not
       // consume or change it, so build native adjacency only with the model.
-      removeOwnedModel(); renderedModel = shapeResources.keepModel(attachStructureModelFinish(viewer.addModel('', 'xyz'),settings.structureFinish,settings.structureLighting));
+      removeOwnedModel(); renderedModel = createOwnedMolecularModel(settings);
       renderedModel.addAtoms(frameModelAtoms(structure, positions,hiddenAtoms,settings.showBonds!==false,settings));
       applyResolvedAtomStyles(renderedModel, atomStyles, (index, style) => {
         if(typeof renderedModel.setStyle==='function')renderedModel.setStyle({index},style);
         else viewer.setStyle({index,model:renderedModel},style);
       });
     }
-    if(feedback.sceneOwnerEpoch){if(!coordinatesUnchanged)nativeCoordinates=positions.map(atom=>[atom.x,atom.y,atom.z]);nativeCoordinateEpoch=feedback.sceneOwnerEpoch;}else clearNativeCoordinates();
-    modelMaterialKey = nextMaterialKey;
+    if(feedback.sceneOwnerEpoch){if(!coordinatesUnchanged)nativeCoordinates=nextNativeCoordinates??positions.map(coordinates);nativeCoordinateEpoch=feedback.sceneOwnerEpoch;}else clearNativeCoordinates();
+    modelMaterial = nextMaterial;
     // Explicit clickability rebuilds the locked backend's actual sphere bounds.
-    if(!coordinatesUnchanged){
+    const setNativeClickable=()=>{
       if(typeof renderedModel.setClickable==='function')renderedModel.setClickable({},true,()=>{});
       else viewer.setClickable({model:renderedModel},true,()=>{});
       for(let i=0;i<positions.length;i++)if(hiddenAtoms.has(positions[i].id!)){if(typeof renderedModel.setClickable==='function')renderedModel.setClickable({index:i},false,()=>{});else viewer.setClickable({model:renderedModel,index:i},false,()=>{});}
-    }
+    };
+    if(!coordinatesUnchanged&&!updateNativeBuffers)setNativeClickable();
     const model = renderedModel;
     const mirrorGroups=new Map<number,PeriodicDisplayInstance[]>();for(const instance of mirrorInstances){const group=mirrorGroups.get(instance.sourceIndex)??[];group.push(instance);mirrorGroups.set(instance.sourceIndex,group);}
-    for(const index of periodicDisplaySettings(settings).images?rawPositions.map((_,index)=>index):mirrorGroups.keys()){yield;
-      renderTask([index],raw=>{
-        for(const instance of fragmentPreview?.instances.filter(instance=>!instance.base&&instance.sourceIndex===index)??mirrorGroups.get(index)??[]){
+    for(const index of periodicSettings.images&&structure.cell?.pbc.some(Boolean)?rawPositions.map((_,index)=>index):mirrorGroups.keys()){yield;
+      renderTask([index],(raw,preview)=>{
+        const movedImages=preview?fragmentPreview?.connections?.bySource.get(index):undefined;
+        const instances=preview?movedImages?.map(entry=>entry.instance)??[]:mirrorGroups.get(index)??[];
+        for(const instance of instances){
+        if(instance.base)continue;
         const position=transformPoint(displayTransform,add(coordinates(raw[index]),fractionalToCartesian(structure.cell!,instance.image,false)));
         const style=atomStyles[index].sphere??atomStyles[index].stick;
-        attachLocalMeshFinish(sceneShape('addSphere',{center:point(position),radius:atomRadius(raw[index].element,settings),color:style.color,opacity:style.opacity??1,clickable:false,hoverable:false}),settings.structureFinish,settings.structureLighting);
+        const spec = {center:point(position),radius:atomRadius(raw[index].element,settings),color:style.color,opacity:style.opacity??1,clickable:false,hoverable:false};
+         if(!preview&&spec.opacity>0)imageProxies.push(proxy({kind:'atom',atomId:raw[index].id!,image:instance.image},{sphere:[sphere(position,spec.radius)]}));
+        const target = preview ? collectingMovingPrimitives : batchPeriodic ? primitiveRows : null;
+        if (target && spec.opacity === 1 && activeShapeTask) {
+          target.spheres.push({ primitive: spec, task: activeShapeTask });
+        } else attachLocalMeshFinish(sceneShape('addSphere', spec), settings.structureFinish, settings.structureLighting);
         if(settings.vdwShell)attachLocalMeshFinish(sceneShape('addSphere',{center:point(position),radius:mol.GLModel?.vdwRadii?.[raw[index].element]??1.5,color:settings.vdwShell.color,opacity:settings.vdwShell.opacity,clickable:false,hoverable:false}),structureShellFinish(settings));
         }
       },rawPositions);
@@ -585,9 +822,8 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       yield;
       renderTask([i],()=>attachLocalMeshFinish(sceneShape('addSphere',{center:point(coordinates(positions[i])),radius:mol.GLModel?.vdwRadii?.[positions[i].element]??1.5,color:settings.vdwShell!.color,opacity:settings.vdwShell!.opacity,clickable:false,hoverable:false}),structureShellFinish(settings)),rawPositions);
     }
-    const rendered = model.selectedAtoms({});
+    let rendered = Array.isArray(model.atoms)&&model.atoms.length===positions.length?model.atoms:model.selectedAtoms({});
     if (!reuseCoordinates) baseAtomStyles = rendered.map((atom: any) => structuredClone(atom.style));
-    const atomProxies=new Map<number,any>();
     paintedCip=cipLabels;
     paintAtomLabels=(i,cip)=>{
       const atom=positions[i];if(!atom||hiddenAtoms.has(atom.id!))return;
@@ -600,22 +836,24 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     };
     for(const [i,atom] of positions.entries()) {
       yield;if(hiddenAtoms.has(atom.id!))continue;
-      const target=proxy({ kind: 'atom', atomId: atom.id! }, { sphere: [sphere(coordinates(atom), atomRadius(atom.element, settings))] });proxies.push(target);atomProxies.set(i,target);
+      const target=proxy({ kind: 'atom', atomId: atom.id! }, { sphere: [sphere(coordinates(atom), atomRadius(atom.element, settings))] });proxies.push(target);atomPickProxies.set(i,target);
       paintAtomLabels(i,cipLabels.get(i));
     }
     // Native scene shapes rotate/project/capture with the molecule. They have
     // no editable atom, pick proxy or playback phase of their own.
-    const vibrationAtomIndices = new Map(positions.map((atom, index) => [atom.id, index]));
     const vibrationAtoms = new Set<number>();
     for (const row of feedback.vibrationVectors ?? []) {
-      const atomIndex = row.atomId !== undefined ? vibrationAtomIndices.get(row.atomId) : row.atomIndex;
+      const atomIndex = row.atomId !== undefined ? atomIndices.get(row.atomId) : row.atomIndex;
       if (atomIndex === undefined || !Number.isInteger(atomIndex) || atomIndex < 0 || atomIndex >= positions.length || vibrationAtoms.has(atomIndex) || !Array.isArray(row.vector) || row.vector.length !== 3 || !row.vector.every(Number.isFinite)) continue;
-      renderTask([atomIndex],()=>{
+      renderTask([atomIndex],(_raw, preview)=>{
       const start = coordinates(positions[atomIndex]), displacement = rotate(displayTransform.rotation, row.vector), end = add(start, displacement);
       if (![...start, ...end].every(Number.isFinite) || Math.hypot(...displacement) < 1e-10) return;
       vibrationAtoms.add(atomIndex);
       const look=normalizeVibrationVectorAppearance(row.appearance);
-      keepScene(sceneSequence.create('addArrow', { start: point(start), end: point(end), ...look, clickable: false, hoverable: false },true));
+      const target = preview ? collectingMovingPrimitives : batchVibration ? primitiveRows : null;
+      if (target && activeShapeTask) {
+        target.arrows.push({ primitive: { start: point(start), displacement, ...look }, task: activeShapeTask });
+      } else keepScene(sceneSequence.create('addArrow', { start: point(start), end: point(end), ...look, clickable: false, hoverable: false },true));
       },rawPositions);
     }
     const dipole = feedback.dipoleVector;
@@ -624,7 +862,13 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       sceneShape('addArrow', { start: point(start), end: point(end), radius: .045, radiusRatio: 2.5, mid: .78, color: dipole.color ?? '#bd4f96', clickable: false, hoverable: false });
     }
     const displayCell=(cell:PeriodicCell):PeriodicCell=>({...cell,vectors:cell.vectors.map(v=>rotate(displayTransform.rotation,v)) as [Vector3,Vector3,Vector3],origin:transformPoint(displayTransform,cell.origin??[0,0,0])});
-    const { drawCappedRod, drawColoredRod, paintSpecialBondWork } = createFrameBondPainter(viewer, keepScene, periodicBondGlyphs,()=>settings.structureFinish,constructScene,()=>settings.structureLighting);
+    const { drawCappedRod, drawColoredRod, paintSpecialBondWork } = createFrameBondPainter(viewer, keepScene, periodicBondGlyphs,()=>settings.structureFinish,constructScene,()=>settings.structureLighting,
+      spec => {
+        const target = fragmentPreview ? collectingMovingPrimitives : batchPeriodic ? primitiveRows : null;
+        if (!target || !activeShapeTask || spec.opacity !== 1) return false;
+        target.rods.push({ primitive: spec, task: activeShapeTask });
+        return true;
+      });
     if(cooperative&&!preview&&settings.representation!=='vdw'&&settings.showBonds!==false)yield signal=>periodicBondGlyphs.prepareBatchAsync(structure,rawPositions,atomStyles,periodicDisplaySettings(settings).images,signal);
     for (const bond of structure.bonds ?? [])yield* renderTaskWork([bond.a,bond.b],function*(rawPositions,preview){
       // Space filling hides bond presentation only, never scientific graph or
@@ -673,11 +917,10 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       }
       bondVisuals.set(bondRefKey(ref), visuals);
     },rawPositions);
-    const atomMap = new Map(positions.map(a => [a.id!, a]));
     let existingIssueBondKeys: Set<string> | undefined;
     for (const issue of settings.showBonds===false?[]:structure.bondPerceptionIssues ?? []) {
       if(issue.kind==='weak-contact')continue;
-      const a = atomMap.get(issue.atomIds[0]), b = atomMap.get(issue.atomIds[1]);
+      const a = positions[atomIndices.get(issue.atomIds[0])??-1], b = positions[atomIndices.get(issue.atomIds[1])??-1];
       if (!a || !b) continue;
       existingIssueBondKeys ??= new Set((structure.bonds ?? []).map(bond => bondRefKey({atomIds:[structure.atoms[bond.a]?.id!,structure.atoms[bond.b]?.id!],image:bond.image})));
       const existing = existingIssueBondKeys.has(bondRefKey({atomIds:issue.atomIds,image:issue.image}));
@@ -802,13 +1045,18 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     const restored = framedDocuments.has(document.id) ? (switched ? cachedViews.get(document.id) : priorView) : positions.length === 0 && switched ? cachedViews.get(document.id) : null;
     if (placementView && positions.length) { viewer.setView(placementView); framedDocuments.add(document.id); cachedViews.set(document.id, [...placementView]); }
     else if (restored) { if (switched) viewer.setView(restored); }
-    else if (positions.length) resetView();
+    else if (positions.length) {
+      const view=fixedViewCell?feedback.initialFixedCellCamera:undefined;
+      if(view?.length===8&&view.every(Number.isFinite)&&Math.hypot(...view.slice(4))>=1e-10){
+        viewer.setView([...view]);framedDocuments.add(document.id);cachedViews.set(document.id,[...view]);
+      } else resetView();
+    }
     else if (switched) viewer.setView([...emptyView]);
     orbitals.sync(ntoLayer ?? orbitalLayer, currentDocument, displayTransform);
     if (surfaceLayers !== undefined) surfaces.syncLayers(surfaceLayers, currentDocument, displayTransform);
     else surfaces.sync(surfaceLayer, currentDocument, displayTransform);
     surfaces.syncExtrema(surfaceExtrema, currentDocument, displayTransform);
-    yield* trajectoryLayer.syncWork(feedback.multiframeDisplay, settings, transform,feedback.hiddenAtomIds,cooperative);
+    yield* trajectoryLayer.syncWork(feedback.multiframeDisplay, settings, transform,feedback.hiddenAtomIds,cooperative,!!fixedViewCell);
     calculationRangeShapes.clear();
     for (const range of feedback.calculationRanges ?? []) {
       for (const [start, end] of calculationRangeLines(range)) calculationRangeShapes.keep(viewer.addLine({
@@ -817,17 +1065,25 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       }));
     }
     samplingSphereShapes.sync(feedback.samplingSphere,displayTransform,JSON.stringify([document.id,feedback.sceneOwnerEpoch??null]));
+    const publishPrimitives = yield* preparePrimitiveRows(primitiveRows, settings);
     initialized = true;
     // No asynchronous yield remains after this boundary. Published geometry,
     // labels and native models transfer together before the first submission.
     sceneSequence.beforeFirstRender();
+    publishPrimitives();
+    publishedPrimitives = primitiveRows;
     atomicDraw?.commit();
+    compactOwnedShapeSlots();
+    if(updateNativeBuffers){
+      if(updateNativeBuffers())coordinateBufferUpdates++;
+      else {renderedModel.setCoordinates([positions.map(coordinates)],'array');void renderedModel.setFrame(0);setNativeClickable();rendered=renderedModel.selectedAtoms({});}
+    }
     try { renderSubmissions.run('draw',()=>viewer.render()); surfaces.markSubmitted(); orbitals.markSubmitted(); } catch (error) { surfaces.failSubmission(error); orbitals.failSubmission(error); throw error; }
     // One material build/present supplies exact native bounds after every
     // coordinate update. Snapshot them so hover never changes pick geometry.
     for (let i = 0; i < positions.length; i++) {
       const actual = rendered[i]?.intersectionShape?.sphere ?? [];
-      const target=atomProxies.get(i);if (target&&actual.length) target.intersectionShape.sphere = actual.map((s: any) => sphere([s.center.x, s.center.y, s.center.z], s.radius));
+      const target=atomPickProxies.get(i);if (target&&actual.length) target.intersectionShape.sphere = actual.map((s: any) => sphere([s.center.x, s.center.y, s.center.z], s.radius));
     }
     const displayHighlights=new Set(feedback.displayHighlightAtomIds??feedback.displaySelectionAtomIds??[]);
     for(let i=0;i<positions.length;i++)if(displayHighlights.has(positions[i].id!)){renderTask([i],()=>{sceneShape('addSphere',atomOutline(i));for(const instance of mirrorInstances)if(instance.sourceIndex===i)sceneShape('addSphere',{...atomOutline(i),center:point(transformPoint(displayTransform,instance.position))});},rawPositions);displayHoverKeys.add('atom:'+positions[i].id);}
@@ -857,22 +1113,26 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   }
   function cancelCip(){cipLease=undefined;cipRequestKey=undefined;cipRequests.cancel();}
   function cancelObsoleteCip(document:ModelDocument,settings:DisplaySettings,feedback:RenderFeedbackOptions){
-    if(cipRequestKey&&(!settings.stereochemistry||feedback.cipGeometryPreview||cipRequestKey!==carbonCipSource(document.draft.structure)))cancelCip();
+    if(cipRequestKey&&(!settings.stereochemistry||feedback.cipGeometryPreview||
+      cipRequestKey!==carbonCipSource(cipStructureForDisplay(document.draft.structure,feedback.cipStructure))))cancelCip();
   }
   function syncCip(scene:NonNullable<typeof lastDraw>,scientificPreview?:()=>Structure){
-    const {document,settings,feedback}=scene,structure=document.draft.structure;
-    const source=settings.stereochemistry?carbonCipSource(structure):undefined;
-    const preview=scientificPreview??(feedback.cipGeometryPreview&&scene.preview?()=>({...structure,atoms:[...scene.preview!]}):undefined);
+    const {document,settings,feedback}=scene;
+    const structure=settings.stereochemistry?cipStructureForDisplay(document.draft.structure,feedback.cipStructure):undefined;
+    const source=carbonCipSource(structure);
+    const preview=structure&&feedback.cipStructure===undefined?
+      scientificPreview??(feedback.cipGeometryPreview&&scene.preview?()=>({...structure,atoms:[...scene.preview!]}):undefined):undefined;
     const token={},key=source&&(preview?token:source);cipLease=token;cipRequestKey=key;
     const current=()=>!disposed&&cipLease===token&&(feedback.isCipCurrent??feedback.isCurrent)?.()!==false;
     const announce=(result:typeof emptyCarbonCip)=>{
       if(!current())return;
       feedback.onCipWarning?.(result.warning??null);
-      if(!preview&&result.labels.size){const usage=preparedCarbonCipUsage(structure,feedback.hiddenAtomIds);if(usage)feedback.onCipLabelsUsed?.(usage);}
+      if(!preview&&structure&&result.labels.size){const usage=preparedCarbonCipUsage(structure,feedback.hiddenAtomIds);if(usage)feedback.onCipLabelsUsed?.(usage);}
     };
-    if(!key||(!preview&&source?.result)){
+    const retained=source?.result??source?.failure;
+    if(!key||(!preview&&retained)){
       cipRequests.cancel();
-      const result=source?.result??emptyCarbonCip;
+      const result=retained??emptyCarbonCip;
       if(current()&&replaceCipLabels(result.labels))viewer.setView(viewer.getView(),true);
       announce(result);return;
     }
@@ -880,7 +1140,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     // work. Clear prior descriptors before the moving geometry is presented.
     if(preview)replaceCipLabels(emptyCarbonCip.labels);
     announce(emptyCarbonCip);
-    cipRequests.request({key,structure:preview??(()=>structure),source:preview?undefined:source,publish:async result=>{
+    cipRequests.request({key,structure:preview??(()=>structure!),source:preview?undefined:source,publish:async result=>{
       while(drawController)await drawTail;
       if(!current())return;
       if(replaceCipLabels(result.labels))viewer.setView(viewer.getView(),true);
@@ -891,6 +1151,95 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       feedback.onCipWarning?.({identity:'cip-render:'+reason,reason});
     }});
   }
+  // Reuse native imposters when all other presentation layers either stay
+  // static or are absent. Specialized layers use the full existing draw.
+  function residentSignature(document:ModelDocument,settings:DisplaySettings,incoming:ViewerHighlights,transform:RigidTransform,measurement:MeasurementState|undefined,feedback:RenderFeedbackOptions):string|undefined{
+    const {structure,assignments}=document.draft;
+    if(!feedback.sceneOwnerEpoch||!structure.atoms.length||settings.atomNumbers||settings.elementNames||settings.stereochemistry||settings.regionLabels||settings.vdwShell||
+      (structure.cell&&settings.cell)||periodicDisplaySettings(settings).images||
+      document.selection.atomIds.length||document.selection.bonds.length||document.attachmentPorts?.length||document.auxiliaryRelations.length||
+      settings.showBonds!==false&&structure.bondPerceptionIssues?.length||assignments.layers.length||assignments.basis.length||assignments.fragments.length||
+      document.sharedConstraints?.coordinates.length||document.internalCoordinates?.length||document.coordinateObjects?.length||document.gaussianBoundCoordinates?.length||
+      measurement?.atomIds.length||measurement?.records?.length||
+      orbitalLayer||ntoLayer||surfaceLayer||surfaceLayers?.length||surfaceExtrema||
+      feedback.previewGuides||feedback.previewCell||feedback.cellGuides||feedback.displayCaptureAtomIds||feedback.hiddenAtomIds?.length||
+      feedback.multiframeDisplay||feedback.samplingSphere||feedback.cellPresentation||feedback.calculationRanges?.length||feedback.displaySelectionAtomIds?.length||
+      feedback.displayHighlightAtomIds?.length||feedback.displayMeasurementRecords?.length||feedback.linkedAtomsActive||feedback.capturePurpose||
+      feedback.vibrationVectors?.length||feedback.atomScalarValues?.length||feedback.dipoleVector||Object.values(incoming).some(value=>value?.length))return undefined;
+    return JSON.stringify([document.id,feedback.sceneOwnerEpoch,structure.cell??null,settings,transform,
+      feedback.fixedCellView,assignments.frozenAtomIds,document.sharedConstraints,feedback.displayFrozenAtomIds]);
+  }
+
+  function rememberResidentScene(signature:string|undefined,document:ModelDocument,settings:DisplaySettings) {
+    const root=renderedModel?.renderedMolObj;
+    if(!signature||!root||sceneShapes.size||imageProxies.length||atomPickProxies.size!==positions.length){residentScene=undefined;return;}
+    const graph=settings.showBonds===false||settings.representation==='vdw'?[]:document.draft.structure.bonds??[];
+    if(proxies.length!==positions.length+graph.length){residentScene=undefined;return;}
+    const bonds:ResidentBond[]=[];
+    for(const [index,bond] of graph.entries()){
+      if(bond.order!==1||bond.aromatic||bond.image?.some(Boolean)||bondConnectionOnly(bond)){residentScene=undefined;return;}
+      const target=proxies[positions.length+index],a=positions[bond.a],b=positions[bond.b];
+      if(target.ref.kind!=='bond'||target.ref.atomIds[0]!==a.id||target.ref.atomIds[1]!==b.id){residentScene=undefined;return;}
+      const shape=target.intersectionShape.cylinder[0],visual=bondVisuals.get(bondRefKey(target.ref))?.[0];
+      if(!shape||!visual){residentScene=undefined;return;}
+      bonds.push({a:bond.a,b:bond.b,shape,visual});
+    }
+    residentScene={signature,model:renderedModel,root,bonds,radii:Float64Array.from(positions,atom=>atomRadius(atom.element,settings)),
+      xyz:positions.map(coordinates),pickSpheres:positions.map((_,index)=>atomPickProxies.get(index).intersectionShape.sphere)};
+  }
+
+  function advanceResidentScene(signature:string|undefined,document:ModelDocument,preview:Atom[]|undefined,feedback:RenderFeedbackOptions):boolean{
+    const scene=residentScene,layout=modelMaterial?.layout,structure=document.draft.structure;
+    if(!scene||scene.signature!==signature||scene.model!==renderedModel||scene.root!==renderedModel.renderedMolObj||!layout||
+      viewer.getRenderer?.()?.supportedExtensions?.()?.regen||
+      !sameModelBonds(layout.bonds,structure.bonds))return false;
+    const raw=preview??structure.atoms;
+    if(raw.length!==positions.length)return false;
+    for(const bond of scene.bonds){const a=raw[bond.a],b=raw[bond.b];if(Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z)<1e-12)return false;}
+    if(!nativeBufferBindings.has(scene.root))nativeBufferBindings.set(scene.root,bindNativeCoordinateBuffers(renderedModel,nativeCoordinateUpload));
+    const update=nativeBufferBindings.get(scene.root);
+    if(!update)return false;
+    const coords=scene.xyz,{rotation:[r0,r1,r2],translation}=displayTransform;
+    const transformComponent=(row:Vector3,x:number,y:number,z:number)=>((0+row[0]*x)+row[1]*y)+row[2]*z;
+    for(let i=0;i<raw.length;i++){
+      const atom=raw[i];
+      if(atom.id!==positions[i].id||atom.element!==positions[i].element){clearNativeCoordinates();return false;}
+      const {x,y,z}=atom,position=coords[i];
+      position[0]=transformComponent(r0,x,y,z)+translation[0];
+      position[1]=transformComponent(r1,x,y,z)+translation[1];
+      position[2]=transformComponent(r2,x,y,z)+translation[2];
+    }
+    if(!update(coords)){clearNativeCoordinates();return false;}
+
+    clearHover();basePicking.invalidate();centroidSource=undefined;
+    currentDocument=document;nativeCoordinates=coords;nativeCoordinateEpoch=feedback.sceneOwnerEpoch;
+    let minX=Infinity,minY=Infinity,minZ=Infinity,maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
+    const native=renderedModel.atoms;
+    for(let i=0;i<raw.length;i++){
+      const [x,y,z]=coords[i],r=scene.radii[i],target=scene.pickSpheres[i],atom=positions[i];
+      atom.x=x;atom.y=y;atom.z=z;
+      const actual=native[i].intersectionShape?.sphere;
+      if(actual?.length)for(let j=0;j<actual.length;j++){
+        const center=target[j].center,source=actual[j].center;
+        center.x=source.x;center.y=source.y;center.z=source.z;
+      }
+      else {const center=target[0].center;center.x=x;center.y=y;center.z=z;}
+      minX=Math.min(minX,x-r);minY=Math.min(minY,y-r);minZ=Math.min(minZ,z-r);
+      maxX=Math.max(maxX,x+r);maxY=Math.max(maxY,y+r);maxZ=Math.max(maxZ,z+r);
+    }
+    atomBounds={min:[minX,minY,minZ],max:[maxX,maxY,maxZ]};
+    for(const {a,b,shape,visual} of scene.bonds){
+      const start=coords[a],end=coords[b];
+      shape.c1.set(start[0],start[1],start[2]);shape.c2.set(end[0],end[1],end[2]);updateNativePickCylinder(shape);
+      visual.start=start;visual.end=end;
+    }
+    coordinateBufferUpdates++;residentCoordinateFrames++;
+    // All owned objects are already attached and clickability/material did
+    // not change. The locked present seam still applies slab, fog and view.
+    if(typeof viewer.show==='function'&&!viewer.stateChangeCallback)viewer.show();else viewer.render();
+    return true;
+  }
+
   function draw(document: ModelDocument, settings: DisplaySettings, incoming: ViewerHighlights = {}, preview?: Atom[], transform = identityTransform(), measurement?: MeasurementState, feedback: RenderFeedbackOptions = {}) {
     assertLive();
     scenePreparations++;
@@ -898,11 +1247,20 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     cancelObsoleteCip(document,settings,feedback);
     if(fragmentPreview)clearFragmentPreview(false);
     renderSubmissions.configure(feedback.renderIdentity&&feedback.onRenderComplete?{identity:feedback.renderIdentity,documentId:document.id,geometryRevision:document.revision,observer:feedback.onRenderComplete}:null);
-    try{renderSubmissions.run('draw',()=>finishRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback)));lastDraw={document,settings,incoming,preview,transform,measurement,feedback};syncCip(lastDraw);}
-    catch(error){clearNativeCoordinates();renderSubmissions.configure(null);try{sceneSequence.abort();}catch{/* Preserve the original draw failure. */}throw error;}
+    try{
+      const signature=residentSignature(document,settings,incoming,transform,measurement,feedback);
+      renderSubmissions.run('draw',()=>{
+        if(advanceResidentScene(signature,document,preview,feedback))return;
+        finishRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback));
+        rememberResidentScene(signature,document,settings);
+      });
+      lastDraw={document,settings,incoming,preview,transform,measurement,feedback};syncCip(lastDraw);
+    }
+    catch(error){residentScene=undefined;clearNativeCoordinates();renderSubmissions.configure(null);try{sceneSequence.abort();}catch{/* Preserve the original draw failure. */}throw error;}
+    finally{cameraPreparedAt=undefined;}
   }
-  function beginAtomicDraw(){
-    const previous={labels,renderedModel,modelMaterialKey,nativeCoordinates,nativeCoordinateEpoch,currentDocument,currentId,positions,proxies,mirrorInstances,baseAtomStyles,displayTransform,atomBounds,shapeTasks,atomLabelHandles,regionLabelMoves,hiddenAtoms,initialized,fragmentPreview,paintAtomLabels,paintedCip,
+  function beginAtomicDraw(documentId: string){
+    const previous={labels,renderedModel,modelMaterial,nativeCoordinates,nativeCoordinateEpoch,currentDocument,currentId,fixedViewCell,positions,proxies,imageProxies,atomPickProxies,mirrorInstances,baseAtomStyles,displayTransform,atomBounds,shapeTasks,atomLabelHandles,regionLabelMoves,hiddenAtoms,initialized,fragmentPreview,paintAtomLabels,paintedCip,
       bondVisuals:new Map(bondVisuals),displayHoverKeys:new Set(displayHoverKeys),view:viewer.getView(),background,fadeStrength};
     const deferred=new Set<any>(),renderer=viewer.getRenderer?.(),nativeRender=renderer?.render,viewerRender=viewer.render;
     const suppressed=()=>viewer,suppressNative=()=>{};
@@ -913,65 +1271,97 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     let finished=false;
     const restoreRendering=()=>{if(viewer.render===suppressed)viewer.render=viewerRender;if(renderer?.render===suppressNative)renderer.render=nativeRender;};
     const retireModel=(model:any)=>shapeResources.retireModel(model,()=>{if(typeof viewer.removeModel==='function')viewer.removeModel(model);else viewer.removeAllModels();});
-    const releasePreview=()=>{const preview=previous.fragmentPreview;if(preview){retireModel(preview.model);preview.cpu?.removeAtoms(preview.cpu.selectedAtoms({}));}};
+    const releasePreview=()=>{const preview=previous.fragmentPreview;if(preview){clearMovingPrimitives();retireModel(preview.model);preview.cpu?.removeAtoms(preview.cpu.selectedAtoms({}));}};
     const transaction={
-      publishedProxies:previous.proxies,
+      publishedProxies:previous.proxies,publishedImageProxies:previous.imageProxies,
+      cameraOwner:previous.initialized&&previous.currentId===documentId?documentId:null,
+      publishedView:[...previous.view],publishedPivot:viewPivot(),manualView:undefined as number[]|undefined,
       retire(model:any){deferred.add(model);},
-      commit(){if(finished)return;finished=true;try{previous.labels.clear();for(const model of deferred)if(model!==renderedModel)retireModel(model);releasePreview();}finally{restoreRendering();atomicDraw=null;}},
+      commit(){if(finished)return;finished=true;try{previous.labels.clear();for(const model of deferred)if(model!==renderedModel)retireModel(model);releasePreview();if(transaction.manualView)viewer.setView(transaction.manualView,true);}finally{restoreRendering();atomicDraw=null;}},
       rollback(){if(finished)return;finished=true;try{
+        const view=transaction.manualView??previous.view;
         try{sceneSequence.abort(true);}finally{labels.clear();}
         if(renderedModel&&renderedModel!==previous.renderedModel)retireModel(renderedModel);
-        labels=previous.labels;renderedModel=previous.renderedModel;modelMaterialKey=previous.modelMaterialKey;
+        labels=previous.labels;renderedModel=previous.renderedModel;modelMaterial=previous.modelMaterial;
         nativeCoordinates=previous.nativeCoordinates;nativeCoordinateEpoch=previous.nativeCoordinateEpoch;
-        currentDocument=previous.currentDocument;currentId=previous.currentId;positions=previous.positions;proxies=previous.proxies;mirrorInstances=previous.mirrorInstances;baseAtomStyles=previous.baseAtomStyles;displayTransform=previous.displayTransform;atomBounds=previous.atomBounds;
+        currentDocument=previous.currentDocument;currentId=previous.currentId;fixedViewCell=previous.fixedViewCell;positions=previous.positions;proxies=previous.proxies;imageProxies=previous.imageProxies;atomPickProxies=previous.atomPickProxies;mirrorInstances=previous.mirrorInstances;baseAtomStyles=previous.baseAtomStyles;displayTransform=previous.displayTransform;atomBounds=previous.atomBounds;
         shapeTasks=previous.shapeTasks;atomLabelHandles=previous.atomLabelHandles;regionLabelMoves=previous.regionLabelMoves;hiddenAtoms=previous.hiddenAtoms;initialized=previous.initialized;fragmentPreview=previous.fragmentPreview;
         paintAtomLabels=previous.paintAtomLabels;paintedCip=previous.paintedCip;
         bondVisuals.clear();for(const [key,value]of previous.bondVisuals)bondVisuals.set(key,value);displayHoverKeys.clear();for(const key of previous.displayHoverKeys)displayHoverKeys.add(key);
-        if(!disposed){if(renderedModel?.setCoordinates){renderedModel.setCoordinates([positions.map(atom=>[atom.x,atom.y,atom.z])],'array');void renderedModel.setFrame(0);}viewer.setView(previous.view);if(background!==previous.background)viewer.setBackgroundColor(previous.background,options.backgroundAlpha??1);if(fadeStrength!==previous.fadeStrength)viewer.enableFog?.(depthFadeFog(previous.fadeStrength));}
+        if(!disposed){if(renderedModel?.setCoordinates){renderedModel.setCoordinates([positions.map(atom=>[atom.x,atom.y,atom.z])],'array');void renderedModel.setFrame(0);}viewer.setView(view);if(background!==previous.background)viewer.setBackgroundColor(previous.background,options.backgroundAlpha??1);if(fadeStrength!==previous.fadeStrength)viewer.enableFog?.(depthFadeFog(previous.fadeStrength));}
         background=previous.background;fadeStrength=previous.fadeStrength;
-      }finally{restoreRendering();atomicDraw=null;}},
+      }finally{restoreRendering();atomicDraw=null;}
+      if(!disposed&&transaction.manualView){renderSubmissions.configure(null);viewer.setView(transaction.manualView);}},
     };
     return transaction;
   }
   async function drawAsync(document:ModelDocument,settings:DisplaySettings,incoming:ViewerHighlights={},preview?:Atom[],transform=identityTransform(),measurement?:MeasurementState,feedback:RenderFeedbackOptions={},signal?:AbortSignal){
-    if(preview)preview=preview.map(atom=>({...atom}));
+    if(signal?.aborted)throw new DOMException('显示准备已取消。','AbortError');
+    residentScene=undefined;
+    if(preview&&!Object.isFrozen(preview))preview=preview.map(atom=>({...atom}));
+    const requestedFragment = fragmentPreview;
+    const requestedSample = requestedFragment?.sampleGeneration;
     assertLive();cancelObsoleteCip(document,settings,feedback);drawController?.abort();const controller=new AbortController();drawController=controller;const previous=drawTail;
     let release!:()=>void;drawTail=new Promise(resolve=>{release=resolve;});const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
-    try{await previous;if(controller.signal.aborted||disposed)throw new DOMException('显示准备已取消。','AbortError');
+    try{
+      await previous;
+      const held = fragmentPreview;
+      const superseded = held?.documentId === document.id && held.revision === document.revision
+        && (held !== requestedFragment || held.sampleGeneration !== requestedSample);
+      if (controller.signal.aborted || disposed || superseded) throw new DOMException('显示准备已取消。','AbortError');
       lastDrawCooperative=true;
       scenePreparations++;
       renderSubmissions.configure(feedback.renderIdentity&&feedback.onRenderComplete?{identity:feedback.renderIdentity,documentId:document.id,geometryRevision:document.revision,observer:feedback.onRenderComplete}:null);
-      atomicDraw=beginAtomicDraw();const transaction=atomicDraw;
+      atomicDraw=beginAtomicDraw(document.id);const transaction=atomicDraw;
       try{await runRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback,true),controller.signal,feedback.isCurrent);lastDraw={document,settings,incoming,preview,transform,measurement,feedback};syncCip(lastDraw);}
       catch(error){sceneAborts++;try{transaction.rollback();}catch{/* Preserve original preparation error; adapter still owns final release. */}renderSubmissions.configure(null);throw error;}
     }finally{signal?.removeEventListener('abort',abort);if(drawController===controller)drawController=null;release();if(backgroundRefreshPending)refreshInterfaceBackground();}
   }
   function clearFragmentPreview(restore:boolean){
     const state=fragmentPreview;if(!state)return;fragmentPreview=null;
+    clearMovingPrimitives();
     shapeResources.retireModel(state.model,()=>viewer.removeModel(state.model));state.cpu?.removeAtoms(state.cpu.selectedAtoms({}));
     if(restore&&lastDraw){const value=lastDraw;draw(value.document,value.settings,value.incoming,value.preview,value.transform,value.measurement,value.feedback);}
   }
   function previewFragment(atoms:readonly Atom[]|null,context?:FragmentRenderPreviewContext){
+    residentScene=undefined;
     assertLive();clearNativeCoordinates();if(atoms===null){clearFragmentPreview(true);return;}
     const source=lastDraw;if(!source||!currentDocument||!renderedModel)throw new Error('片段显示预览需要已完成的当前模型。');
     try{
+      let repartitioned = false;
       if(context&&(context.documentId!==source.document.id||context.revision!==source.document.revision))throw new Error('片段显示预览的文档版本已过期。');
       if(!atoms.length||new Set(atoms.map(atom=>atom.id)).size!==atoms.length||atoms.some(atom=>!atom.id||![atom.x,atom.y,atom.z].every(Number.isFinite)))throw new Error('片段显示预览的稳定原子或坐标无效。');
       if(!fragmentPreview){
-        const raw=(source.preview??source.document.draft.structure.atoms).map(atom=>({...atom})),indices=atoms.map(atom=>raw.findIndex(base=>base.id===atom.id&&base.element===atom.element));
+        const raw=(source.preview??source.document.draft.structure.atoms).map(atom=>({...atom})),indexById=new Map(raw.map((atom,index)=>[atom.id,index]));
+        const indices=atoms.map(atom=>{const index=indexById.get(atom.id)??-1;return raw[index]?.element===atom.element?index:-1;});
         if(indices.some(index=>index<0))throw new Error('片段显示预览与当前原子身份不一致。');
         sceneSequence.invalidateMetadata();
         const moving=new Set(indices),ids=new Set(atoms.map(atom=>atom.id!)),tasks=shapeTasks.filter(task=>task.indices.some(index=>moving.has(index)));
-        const native=renderedModel.selectedAtoms({}).map((atom:any)=>({elem:atom.elem,x:atom.x,y:atom.y,z:atom.z,index:atom.index,serial:atom.serial,bonds:[...(atom.bonds??[])],bondOrder:[...(atom.bondOrder??[])],style:structuredClone(atom.style)}));
+        const affected = new Set(tasks);
+        const staticPrimitives = {
+          rods: publishedPrimitives.rods.filter(row => !affected.has(row.task)),
+          spheres: publishedPrimitives.spheres.filter(row => !affected.has(row.task)),
+          arrows: publishedPrimitives.arrows.filter(row => !affected.has(row.task)),
+        };
+        const publishStaticPrimitives = (staticPrimitives.rods.length !== publishedPrimitives.rods.length ||
+          staticPrimitives.spheres.length !== publishedPrimitives.spheres.length ||
+          staticPrimitives.arrows.length !== publishedPrimitives.arrows.length)
+          ? finishRenderWork(preparePrimitiveRows(staticPrimitives, source.settings)) : undefined;
+        const native=renderedModel.selectedAtoms({}).map((atom:any)=>({elem:atom.elem,x:atom.x,y:atom.y,z:atom.z,index:atom.index,serial:atom.serial,bonds:[...(atom.bonds??[])],bondOrder:[...(atom.bondOrder??[])],bondStyles:atom.bondStyles,style:atom.style}));
         let cpu:any=null;if(tasks.some(task=>task.indices.length===2)&&typeof mol.GLModel==='function'){cpu=new mol.GLModel(-1);cpu.addAtoms(native);}
-        removeOwnedModel();renderedModel=shapeResources.keepModel(attachStructureModelFinish(viewer.addModel('','xyz'),source.settings.structureFinish,source.settings.structureLighting));
-        renderedModel.addAtoms(native.map((atom:any,index:number)=>{const kept=atom.bonds.flatMap((other:number,at:number)=>moving.has(index)||moving.has(other)?[]:[at]);return{...atom,bonds:kept.map((at:number)=>atom.bonds[at]),bondOrder:kept.map((at:number)=>atom.bondOrder[at])};}));
-        for(let index=0;index<native.length;index++)renderedModel.setStyle({index},moving.has(index)?{}:native[index].style);
-        const model=shapeResources.keepModel(attachStructureModelFinish(viewer.addModel('','xyz'),source.settings.structureFinish,source.settings.structureLighting));model.addAtoms(indices.map(index=>({...native[index],bonds:[],bondOrder:[]})));
-        for(let index=0;index<indices.length;index++)model.setStyle({index},native[indices[index]].style);
+        removeOwnedModel();renderedModel=createOwnedMolecularModel(source.settings);
+        renderedModel.addAtoms(native.map((atom:any,index:number)=>{const kept=atom.bonds.flatMap((other:number,at:number)=>moving.has(index)||moving.has(other)?[]:[at]);return{...atom,bonds:kept.map((at:number)=>atom.bonds[at]),bondOrder:kept.map((at:number)=>atom.bondOrder[at]),bondStyles:atom.bondStyles&&kept.map((at:number)=>atom.bondStyles[at])};}));
+        applyResolvedAtomStyles(renderedModel,native.map((atom:any,index:number)=>moving.has(index)?{}:atom.style),(index,style)=>renderedModel.setStyle({index},style));
+        const model=createOwnedMolecularModel(source.settings);model.addAtoms(indices.map(index=>({...native[index],bonds:[],bondOrder:[],bondStyles:undefined})));
+        applyResolvedAtomStyles(model,indices.map(index=>native[index].style),(index,style)=>model.setStyle({index},style));
         proxies=proxies.filter(item=>item.ref.kind==='atom'?!ids.has(item.ref.atomId):item.ref.kind==='bond'?!item.ref.atomIds.some((id:string)=>ids.has(id)):item.ref.kind==='auxiliary'?!source.document.auxiliaryRelations.some(relation=>relation.id===item.ref.relationId&&(ids.has(relation.a)||ids.has(relation.b))):item.ref.kind==='port'?!source.document.attachmentPorts?.some(port=>port.id===item.ref.portId&&ids.has(port.hostAtomId)):true);
         const periodic=new Map<unknown,ReturnType<typeof periodicBondGlyphContext>>(),topology=periodicBondGlyphTopology(source.document.draft.structure);for(const bond of source.document.draft.structure.bonds??[])if((moving.has(bond.a)||moving.has(bond.b))&&periodicGlyphRequired(source.document.draft.structure,bond))periodic.set(bond,periodicBondGlyphContext(source.document.draft.structure,bond,raw,topology));
         fragmentPreview={documentId:source.document.id,revision:source.document.revision,gestureId:context?.gestureId,sampleGeneration:-1,indices,ids,raw,tasks,staticProxyCount:proxies.length,model,cpu,baseModelSynced:false,periodic,instances:[]};
+        if (publishStaticPrimitives) {
+          publishStaticPrimitives();
+          publishedPrimitives = staticPrimitives;
+          repartitioned = true;
+        }
         clearHover();
       }
       const state=fragmentPreview;
@@ -988,21 +1378,42 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         return {...structure,atoms};
       });
       fragmentSamples++;
-      state.instances=finishRenderWork(periodicDisplayInstancesWork(source.document.draft.structure,state.raw,source.settings,hiddenAtoms));
-      state.connections=finishRenderWork(preparePeriodicDisplayConnectionsWork(source.document.draft.structure,state.raw,state.instances,source.settings));
-      mirrorInstances=state.instances.filter(instance=>!instance.base);
-      const coords=state.indices.map(index=>[positions[index].x,positions[index].y,positions[index].z]);state.model.setCoordinates([coords],'array');void state.model.setFrame(0);
+      const structure=source.document.draft.structure;
+      if(structure.cell?.pbc.some(Boolean)&&(periodicDisplaySettings(source.settings).images||state.periodic.size||structure.bonds?.some(bond=>bond.image?.some(Boolean)))){
+        state.instances=finishRenderWork(periodicDisplayInstancesWork(structure,state.raw,source.settings,hiddenAtoms));
+        state.connections=finishRenderWork(preparePeriodicDisplayConnectionsWork(structure,state.raw,state.instances,source.settings));
+        mirrorInstances=state.instances.filter(instance=>!instance.base);
+      }
+      const coords=state.indices.map(index=>coordinates(positions[index]));
       if(state.cpu){const native=state.cpu.selectedAtoms({});for(const index of state.indices){native[index].x=positions[index].x;native[index].y=positions[index].y;native[index].z=positions[index].z;}}
       proxies.length=state.staticProxyCount;
-      for(const index of state.indices)proxies.push(proxy({kind:'atom',atomId:positions[index].id!},{sphere:[sphere(coordinates(positions[index]),atomRadius(positions[index].element,source.settings))]}));
+      basePicking.invalidate(); imagePicking.invalidate(); centroidSource=undefined;
+      for(const index of state.indices){const target=proxy({kind:'atom',atomId:positions[index].id!},{sphere:[sphere(coordinates(positions[index]),atomRadius(positions[index].element,source.settings))]});proxies.push(target);atomPickProxies.set(index,target);}
       // Remove the complete affected tail before appending replacements. One
       // owner collect/flush per sample, never once per bond. Native removeShape
-      // alone reclaims empty tail slots; no private shape-array compaction.
+      // already reclaims the affected tail in the usual gesture path.
       const retired=new Set<any>();for(const task of state.tasks)for(const handle of task.handles)retired.add(handle);
       if(retired.size){sceneShapes.remove(retired);fragmentRetirementBatches++;}
-      for(const task of state.tasks){task.handles.clear();activeShapeTask=task;try{task.paint(state.raw,true);}finally{activeShapeTask=null;}}
+      const dynamicPrimitives = nativeBatches && (state.indices.length >= 128 || state.tasks.length >= 128) ? emptyPrimitiveRows() : null;
+      collectingMovingPrimitives = dynamicPrimitives;
+      try {
+        for (const task of state.tasks) {
+          task.handles.clear();
+          activeShapeTask = task;
+          task.paint(state.raw, true);
+        }
+      } finally {
+        activeShapeTask = null;
+        collectingMovingPrimitives = null;
+      }
+      if (dynamicPrimitives) finishRenderWork(preparePrimitiveRows(dynamicPrimitives, source.settings, movingPrimitives))();
       for(const marker of regionLabelMoves){const center=[...marker.center] as Vector3;for(const index of state.indices)if(marker.indices.includes(index)){const before=transformPoint(displayTransform,coordinates((source.preview??source.document.draft.structure.atoms)[index]));for(let axis=0;axis<3;axis++)center[axis]+=(coordinates(positions[index])[axis]-before[axis])/marker.indices.length;}labels.move(marker.label,point(center));}
       const changed=new Set<any>();for(const task of state.tasks)for(const handle of task.handles)changed.add(handle);
+      const availableBatches = [...(repartitioned ? Object.values(mainPrimitives) : []), ...(dynamicPrimitives ? Object.values(movingPrimitives) : [])];
+      for (const batch of availableBatches) {
+        const handle = batch.handle();
+        if (handle) changed.add(handle);
+      }
       const renderer=viewer.getRenderer?.(),group=viewer.modelGroup;
       // These are the same owned globj methods and extension values used by
       // GLViewer.render. Static shape/model objects and all other layer owners
@@ -1013,6 +1424,19 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         :[...changed].some(handle=>typeof handle.globj!=='function')?4:0;
       const extensions=fragmentFallbackCode?undefined:renderer.supportedExtensions();
       if(extensions?.regen)fragmentFallbackCode=5;
+      const orientation=!fragmentFallbackCode&&typeof mol.Quaternion==='function'?fragmentMeshOrientation(state.rotation):undefined;
+      const reference=state.meshReference,root=state.model.renderedMolObj;
+      let rigid=false;
+      if(reference&&orientation&&root===reference.root&&root.matrixAutoUpdate===true&&typeof root.position?.set==='function'&&typeof root.quaternion?.set==='function'){
+        const relative=new mol.Quaternion().multiplyQuaternions(orientation,reference.orientation.clone().inverse());
+        const quaternion=[relative.x,relative.y,relative.z,relative.w];
+        const translation=subtract(coords[0],rotateVector(reference.coordinates[0],quaternion));
+        // A source image change or non-rigid update takes the coordinate path.
+        rigid=coords.every((position,index)=>add(rotateVector(reference.coordinates[index],quaternion),translation).every((value,axis)=>
+          Number.isFinite(value)&&Math.abs(position[axis]-value)<=Number.EPSILON*64*Math.max(1,Math.abs(position[axis]),Math.abs(value))));
+        if(rigid){root.position.set(...translation);root.useQuaternion=true;root.quaternion.set(...quaternion);fragmentRigidPresents++;}
+      }
+      if(!rigid){state.model.setCoordinates([coords],'array');void state.model.setFrame(0);state.meshReference=undefined;}
       const feedback=source.feedback;
       renderSubmissions.configure(feedback.renderIdentity&&feedback.onRenderComplete?{identity:feedback.renderIdentity,documentId:source.document.id,geometryRevision:source.document.revision,observer:feedback.onRenderComplete}:null);
       renderSubmissions.run('set-view',()=>{
@@ -1024,8 +1448,16 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
           viewer.setView(viewer.getView());fragmentPartialPresents++;
         }
       });
+      if(!rigid&&orientation&&state.model.renderedMolObj)state.meshReference={coordinates:coords,orientation,root:state.model.renderedMolObj};
       state.baseModelSynced=true;
     }catch(error){clearFragmentPreview(true);throw error;}
+  }
+  function fragmentMeshOrientation(rotation:FragmentRenderPreviewContext['rotation']){
+    const axis=rotation&&rotate(displayTransform.rotation,rotation.axis);
+    const length=axis?Math.hypot(...axis):0;
+    if(!axis||length===0)return new mol.Quaternion();
+    const angle=rotation!.degrees*Math.PI/360;
+    return new mol.Quaternion(...scale(axis,Math.sin(angle)/length),Math.cos(angle));
   }
   let backgroundRefreshPending=false;
   function refreshInterfaceBackground(){
@@ -1043,7 +1475,16 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   }
   const releaseBackgroundObserver=container.closest?.('.model-viewport')?observeCanvasBackground(container.ownerDocument,refreshInterfaceBackground):()=>{};
   return {
-    draw,drawAsync,cancelDraw:()=>{drawController?.abort();cancelCip();},cooperativeDisplay:()=>lastDrawCooperative,presentationReady:()=>!atomicDraw, project, atomRadius, plane, hitTest, worldPoint, projectionReady,previewFragment,
+    draw,drawAsync,awaitMeshes,cancelDraw:()=>{drawController?.abort();cancelCip();},
+    observeScene(document,identity,observer){renderSubmissions.configure(identity&&observer?{identity,observer,documentId:document.id,geometryRevision:document.revision}:null);},
+    retryCip(){
+      if(!lastDraw||!lastDraw.settings.stereochemistry||drawController||fragmentPreview)return;
+      const {document,feedback}=lastDraw;
+      const source=carbonCipSource(cipStructureForDisplay(document.draft.structure,feedback.cipStructure));
+      if(source)source.failure=undefined;
+      syncCip(lastDraw);
+    },
+    cooperativeDisplay:()=>lastDrawCooperative,presentationReady:()=>!atomicDraw, cameraInputReady:documentId=>!atomicDraw||atomicDraw.cameraOwner===documentId, project, projectMany, atomRadius, plane, hitTest, worldPoint, projectionReady,previewFragment,
     projectSphere(sphere){
       const orthographic=typeof viewer.camera?.ortho==='boolean'?viewer.camera.ortho:(options.orthographic??true);
       if(!orthographic)return null;
@@ -1092,9 +1533,17 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       return hit.kind !== 'none' || !inside(screen) ? hit : { kind: 'none', worldPoint: worldPoint(screen) };
     },
     nearestAtom(screen, maxPixels = 30) { let best = maxPixels, chosen: string | null = null; for (const atom of positions) { if(hiddenAtoms.has(atom.id!))continue;const p = screenProject(coordinates(atom)), distance = Math.hypot(screen.x - p.x, screen.y - p.y); if (distance < best) { best = distance; chosen = atom.id!; } } return chosen; },
-    getView: () => { const view = [...viewer.getView()]; viewPivots.set(view, centroid(positions)); return view; },
-    setView(view) { assertLive(); if (view.length !== 8 || !view.every(Number.isFinite) || Math.hypot(...view.slice(4)) < 1e-10) throw new Error('观察姿态需要8个有限数值和有效四元数。'); renderSubmissions.run('set-view',()=>viewer.setView([...view])); },
-    camera(view, dx, dy, kind) { assertLive(); renderSubmissions.run(kind==='pan'?'camera-pan':'camera-rotate',()=>{
+    getView: () => {
+      const pending=atomicDraw?.cameraOwner?atomicDraw:null;
+      const view=[...(pending?.manualView??pending?.publishedView??viewer.getView())];
+      viewPivots.set(view,pending?.publishedPivot??viewPivot());return view;
+    },
+    setView(view) { assertLive(); if (view.length !== 8 || !view.every(Number.isFinite) || Math.hypot(...view.slice(4)) < 1e-10) throw new Error('观察姿态需要8个有限数值和有效四元数。'); renderSubmissions.run('set-view',()=>{viewer.setView([...view]);rememberCamera();}); },
+    camera(view, dx, dy, kind, commitWithFrame=false) {
+      assertLive();
+      if(atomicDraw&&!atomicDraw.cameraOwner)return;
+      const apply=()=>{
+      if(atomicDraw?.cameraOwner)viewer.setView(atomicDraw.manualView??atomicDraw.publishedView,true);
       if(kind==='pan'){
         const current=viewer.getView();
         // screenOffsetToModel uses the current projection/zoom and quaternion.
@@ -1103,12 +1552,48 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         // zoom/rotation inputs retain the original two-step endpoint fallback.
         if(typeof viewer.screenOffsetToModel==='function'&&view.length>=8&&view.every(Number.isFinite)&&view.slice(3,8).every((value,index)=>value===current[index+3])){
           const offset=viewer.screenOffsetToModel(dx,dy),delta=[offset.x,offset.y,offset.z];
-          if(delta.every(Number.isFinite)){const next=[...view];for(let i=0;i<3;i++)next[i]+=delta[i];viewer.setView(next);return;}
+          if(delta.every(Number.isFinite)){const next=[...view];for(let i=0;i<3;i++)next[i]+=delta[i];viewer.setView(next);rememberCamera();return;}
         }
         viewer.setView([...view]);viewer.translateScene(dx,dy);
-      }else viewer.setView(rotateObjectView(view,dx,dy,viewPivots.get(view)??centroid(positions)));
+      }else viewer.setView(rotateObjectView(view,dx,dy,viewPivots.get(view)??viewPivot()));
+      rememberCamera();
+      };
+      const renderer=commitWithFrame&&!atomicDraw?viewer.getRenderer?.():undefined;
+      if(renderer&&typeof renderer.render==='function'){
+        // Apply the camera matrices now. The matching structure draw presents
+        // them in the same submission instead of repainting the old frame.
+        const original=renderer.render;
+        renderer.render=()=>{};
+        try{apply();cameraPreparedAt=renderCompletion.now();}
+        finally{renderer.render=original;}
+      }else renderSubmissions.run(kind==='pan'?'camera-pan':'camera-rotate',apply);
+    },
+    zoom(delta) { assertLive(); if(atomicDraw&&!atomicDraw.cameraOwner)return; renderSubmissions.run('zoom',()=>{
+      if(atomicDraw?.cameraOwner)viewer.setView(atomicDraw.manualView??atomicDraw.publishedView,true);
+      viewer.zoom(Math.exp(-Math.max(-300, Math.min(300, delta)) * .0015));rememberCamera();
     }); },
-    zoom(delta) { assertLive(); renderSubmissions.run('zoom',()=>viewer.zoom(Math.exp(-Math.max(-300, Math.min(300, delta)) * .0015))); },
+    getZoomDistance(){
+      assertLive();
+      if(typeof viewer.getPerceivedDistance!=='function')throw Object.assign(new Error('当前原生视口没有缩放距离读取接口。'),{code:'CAMERA_ZOOM_UNAVAILABLE'});
+      return viewer.getPerceivedDistance();
+    },
+    zoomByFactor(factor){
+      assertLive();
+      if(!Number.isFinite(factor)||factor<=0)throw Object.assign(new Error('缩放 factor 需要有限正数；1.2 表示相对当前画面放大 20%。'),{code:'INVALID_ZOOM_FACTOR'});
+      if(atomicDraw&&!atomicDraw.cameraOwner)throw Object.assign(new Error('视口正在提交新场景，请等待该场景就绪后缩放。'),{code:'CAMERA_BUSY'});
+      if(typeof viewer.getPerceivedDistance!=='function')throw Object.assign(new Error('当前原生视口没有缩放距离读取接口。'),{code:'CAMERA_ZOOM_UNAVAILABLE'});
+      return renderSubmissions.run('zoom',()=>{
+        if(atomicDraw?.cameraOwner)viewer.setView(atomicDraw.manualView??atomicDraw.publishedView,true);
+        const previousView=[...viewer.getView()],previousDistance=viewer.getPerceivedDistance();
+        if(!Number.isFinite(previousDistance)||previousDistance<=0)throw Object.assign(new Error('当前相机距离无效，请先恢复有效视角再缩放。'),{code:'CAMERA_ZOOM_UNAVAILABLE'});
+        // Validate the native arithmetic, rather than imposing a UI-sized cap.
+        if(!Number.isFinite(previousDistance/factor)||!Number.isFinite(previousView[3]+previousDistance-previousDistance/factor))throw Object.assign(new Error('缩放倍率使原生相机距离超出有限数值范围，原视角已保留。'),{code:'INVALID_ZOOM_FACTOR'});
+        viewer.zoom(factor);rememberCamera();
+        const perceivedDistance=viewer.getPerceivedDistance(),view=[...viewer.getView()];
+        const appliedFactor=previousDistance/perceivedDistance;
+        return {requestedFactor:factor,appliedFactor,limited:Math.abs(appliedFactor-factor)>1e-10*Math.max(1,Math.abs(factor)),previousDistance,perceivedDistance,previousView,view};
+      });
+    },
     resetView,
     preserveEmptyPlacementView(documentId, baseRevision, nextRevision) {
       assertLive();
@@ -1117,12 +1602,12 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     },
     orient(kind, preset) {
       assertLive(); if (!currentDocument) throw new Error('请先建立结构。');
-      const frame = kind === 'standard' ? principalInertiaFrame(currentDocument.draft.structure.atoms) : currentDocument.draft.structure.cell && preset ? cellViewFrame(currentDocument.draft.structure.cell, preset) : null;
+      const frame:ViewFrame|null = kind === 'standard' ? (fixedViewCell?{right:[1,0,0],up:[0,1,0],toward:[0,0,1]}:principalInertiaFrame(currentDocument.draft.structure.atoms)) : currentDocument.draft.structure.cell && preset ? cellViewFrame(currentDocument.draft.structure.cell, preset) : null;
       if (!frame) throw new Error('当前结构没有有效晶胞。');
       const displayed = { right: rotate(displayTransform.rotation, frame.right), up: rotate(displayTransform.rotation, frame.up), toward: rotate(displayTransform.rotation, frame.toward) };
-      renderSubmissions.run('orient',()=>viewer.setView(orientObjectView([...viewer.getView()], displayed, centroid(positions))));
+      renderSubmissions.run('orient',()=>viewer.setView(orientObjectView([...viewer.getView()], displayed, viewPivot())));
     },
-    step(direction) { assertLive(); renderSubmissions.run('step',()=>viewer.setView(rotateObjectViewStep([...viewer.getView()], direction, centroid(positions)))); },
+    step(direction) { assertLive(); renderSubmissions.run('step',()=>viewer.setView(rotateObjectViewStep([...viewer.getView()], direction, viewPivot()))); },
     axes() { assertLive(); return projectPhysicalAxes([...viewer.getView()], displayTransform.rotation); },
     hover,
     resize(deferred=false,onComplete) {
@@ -1140,13 +1625,14 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       const sequence=sceneSequence.state(),owned=shapeResources.stats(),memory=disposed?undefined:viewer.getRenderer?.()?.info?.memory;
       const count=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?value:null;
       const glyph=periodicBondGlyphs.diagnostics();
-      return {...samplingSphereShapes.diagnostics(),fragmentSamples,fragmentRetirementBatches,fragmentPartialPresents,fragmentFullPresents,fragmentFallbackCode,scenePreparations,sceneAborts,glyphRegistrations:glyph.registrations,glyphBatches:glyph.batches,glyphBonds:glyph.bonds,glyphWorkerStarts:glyph.workerStarts,glyphWorkerStops:glyph.workerStops,glyphCancellations:glyph.cancellations,glyphAdjacencyBuilds:glyph.adjacencyBuilds,glyphPending:glyph.pending,
+      return {...samplingSphereShapes.diagnostics(),...nativeCoordinateUpload.statistics(),residentCoordinateFrames,fragmentSamples,fragmentRetirementBatches,fragmentPartialPresents,fragmentFullPresents,fragmentRigidPresents,molecularMeshBuilds,coordinateBufferUpdates,shapeSlotCompactions,fragmentFallbackCode,scenePreparations,sceneAborts,glyphRegistrations:glyph.registrations,glyphBatches:glyph.batches,glyphBonds:glyph.bonds,glyphWorkerStarts:glyph.workerStarts,glyphWorkerStops:glyph.workerStops,glyphCancellations:glyph.cancellations,glyphAdjacencyBuilds:glyph.adjacencyBuilds,glyphPending:glyph.pending,
         sceneCreated:sequence.created,sceneReused:sequence.reused,sceneRetired:sequence.retired,sceneCommands:sequence.retainedCommands,sceneMetadataBytes:sequence.metadataBytes,
         ownedShapes:owned.shapes,ownedModels:owned.models,ownedResources:owned.resources,shapeSlots:Array.isArray(viewer.shapes)?viewer.shapes.length:null,modelSlots:Array.isArray(viewer.models)?viewer.models.length:null,
         gpuGeometries:count(memory?.geometries),gpuTextures:count(memory?.textures),gpuPrograms:count(memory?.programs)};
     },
     dispose() {
       if (disposed) return; disposed = true;
+      wakeMeshes();
       releaseBackgroundObserver();
       drawController?.abort();cancelCip();
       let failure: unknown;
@@ -1159,8 +1645,10 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       for(const owner of resizeOwners)release(() => owner.removeEventListener(VIEWPORT_LAYOUT_RESIZE_EVENT,acceptLayoutResize));
       release(() => captured.release()); release(() => orbitals.dispose()); release(() => surfaces.dispose());
       release(() => sceneSequence.dispose()); release(() => hoverShapes.clear());
+      for (const layer of primitiveLayers) release(() => layer.clear());
       release(()=>periodicBondGlyphs.dispose()); release(removeOwnedModel); release(() => viewer.removeAllShapes()); release(() => labels.clear());
-      release(() => shapeResources.dispose()); release(() => framebufferLifecycle.dispose());
+      release(() => shapeResources.dispose()); release(() => framebufferLifecycle.dispose()); release(() => nativeCoordinateUpload.dispose());
+      basePicking.dispose(); imagePicking.dispose(); centroidSource=undefined; atomPickProxies.clear(); residentScene=undefined;
       // Locked WebGL2 shares a module-level OffscreenCanvas/context between
       // viewers. Only a context owned by this front canvas may be force-lost;
       // a shared Offscreen context outlives this viewer's explicit resources.
@@ -1169,7 +1657,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         const context = viewer.getRenderer?.()?.getContext?.() ?? canvas?.getContext('webgl2') ?? canvas?.getContext('webgl') ?? canvas?.getContext('experimental-webgl');
         if (context?.canvas === canvas) context.getExtension('WEBGL_lose_context')?.loseContext();
       });
-      release(() => canvas?.remove()); proxies = []; positions = []; currentDocument = null; renderedModel = null; modelMaterialKey = ''; cachedViews.clear(); framedDocuments.clear();
+      release(() => canvas?.remove()); proxies = []; imageProxies=[]; positions = []; currentDocument = null; renderedModel = null; modelMaterial = undefined; cachedViews.clear(); framedDocuments.clear();
       if (failure) throw failure;
     },
   };

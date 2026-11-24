@@ -12,7 +12,12 @@ import AnalysisControls, { type AnalysisControlsContext, type AnalysisHighlightP
 import { useAnalysisFeedback } from './AnalysisFeedback';
 import OrbitalList, { type OrbitalListProps } from './OrbitalList';
 import { ORBITAL_QUALITY_LEVELS, orbitalElectronMark } from './orbital-list-presentation';
-import { DEFAULT_ORBITAL_SAMPLING, orbitalGridFor, useOrbitalField, projectOrbitalCubeArtifacts, type OrbitalBridge, type OrbitalSampling } from './useOrbitalField';
+import { DEFAULT_ORBITAL_SAMPLING, orbitalGridFor, useOrbitalField, projectOrbitalCubeField, type OrbitalBridge, type OrbitalSampling } from './useOrbitalField';
+import {ResultsMcpPortRegistration} from './results-mcp-context';
+import {patchMeshFinish,settingBool,settingColor,settingDecimals,settingEnum,settingFraction,settingMeshFinish,settingPositive} from './analysis-mcp-settings';
+import {analysisCube,analysisText} from './analysis-mcp-assets';
+import {objectSchema} from '../mcp/types';
+import { exportSavedCube } from './export-saved-cube';
 import { MULTIWFN_CONFIGURATION_CHANGED } from './MultiwfnPathControl';
 import {useComputeResources} from '../useComputeResources';
 import type {ComputeResourcePreferencesBridge} from '../../modeling/resource-preferences';
@@ -31,9 +36,12 @@ import { useSurfaceAppearanceDefaults } from './useSurfaceAppearanceDefaults';
 import SaveSurfaceAppearanceDefault from './SaveSurfaceAppearanceDefault';
 import { captureOrbitalAppearance, restoreOrbitalAppearance } from './surface-appearance-defaults';
 import {SpatialGridSummary,AnalysisTaskLayout,AnalysisTaskSection,AnalysisPlotSettings,CalculationQualityControl,type CalculationQualityTier} from './AnalysisTaskLayout';
+import PostprocessPlot from './PostprocessPlot';
+import {createPostprocessPlotSnapshot} from './PostprocessPresentation';
 
 export type { OrbitalLayerSettings } from './orbital-display';
 export interface OrbitalControlsProps extends AnalysisHighlightProps {
+  ownerId?:string;
   metadata: WavefunctionMetadata | null; nativeSessionId: string | null;
   selectedKey?: string | null; onSelectedKey?(key: string | null): void;
   onField(field: OrbitalField | null): void; onError(message: string): void;
@@ -41,6 +49,7 @@ export interface OrbitalControlsProps extends AnalysisHighlightProps {
   active?: boolean; cancelOnInactive?: boolean; bridge?: OrbitalBridge & Pick<DesktopBridge, 'orbitalResourceInfo'> & Partial<ComputeResourcePreferencesBridge>; analysis?: AnalysisControlsContext;
   sourceResult?:TrajectoryResult|null;sourceFrameIndex?:number;wavefunctionAvailable?:boolean;
   sourcePair?:PostprocessSourcePair;
+  sourceDocument?:import('../../results/postprocess-document').PostprocessDocument;
   decimals?:number;onDecimalsChange?(value:number):void;
 }
 const DEFAULT_LAYER = DEFAULT_ORBITAL_LAYER;
@@ -122,14 +131,20 @@ function OrbitalControlsInner(props: OrbitalControlsProps) {
   const { notify, feedback } = useAnalysisFeedback();
   const [localDecimals,setLocalDecimals]=useProjectState('OrbitalControls.localDecimals', 2),decimals=props.decimals??localDecimals;
   const setDecimals=(value:number)=>{setLocalDecimals(value);props.onDecimalsChange?.(value);};
-  const bridge = props.bridge ?? (typeof window === 'undefined' ? null : window.sciyueDesktop ?? null);
+  const bridge: OrbitalControlsProps['bridge'] | null = props.bridge ?? (typeof window === 'undefined' ? null : window.sciyueDesktop ?? null);
   const canCompute=Boolean(props.nativeSessionId&&props.metadata&&props.wavefunctionAvailable!==false);
   const printed=useMemo(()=>printedOrbitalList(props.sourceResult??null,props.sourceFrameIndex??0),[props.sourceResult,props.sourceFrameIndex]);
   const list=printed??(canCompute?props.metadata:null);
+  const levelSnapshot=useMemo(()=>{
+    if(!props.sourceResult||!printed)return null;
+    const snapshot=createPostprocessPlotSnapshot(props.sourceResult,props.sourceFrameIndex??0,'levels');
+    const orbitals=[...new Map(snapshot.orbitals.map(channel=>[channel.spin,channel])).values()];
+    return orbitals.some(channel=>channel.orbitals.some(row=>Number.isFinite(row.energy)))?{...snapshot,orbitals,decimals}:null;
+  },[props.sourceResult,props.sourceFrameIndex,printed,decimals]);
   const identity = JSON.stringify([props.nativeSessionId,list?.sourceId,list?.sourceRevision]);
   const selectionIdentity = JSON.stringify([list?.sourceId,list?.sourceRevision,props.sourceFrameIndex??0]);
   const [selection,setSelection] = useProjectState<{identity:string;key:string|null}>('OrbitalControls.selection', {identity:selectionIdentity,key:null});
-  const nativeKey=(key:string|null)=>canCompute?resolveNativeOrbitalKey({metadata:props.metadata,list,printed:!!printed,key,sourceResult:props.sourceResult,sourceFrameIndex:props.sourceFrameIndex,sourcePair:props.sourcePair}):null;
+  const nativeKey=(key:string|null)=>canCompute?resolveNativeOrbitalKey({metadata:props.metadata,list,printed:!!printed,key,sourceResult:props.sourceResult,sourceFrameIndex:props.sourceFrameIndex,sourcePair:props.sourcePair,sourceDocument:props.sourceDocument}):null;
   // Older projects can have null or a named appearance in the row slot.
   const localSelected=useMemo(()=>selection?.identity===selectionIdentity && typeof selection.key==='string'
     && list?.orbitals.some(row=>row.key===selection.key) ? selection.key : null,[selection,selectionIdentity,list]);
@@ -195,20 +210,95 @@ function OrbitalControlsInner(props: OrbitalControlsProps) {
     if(computeKey){if(key!==selected||!field)requestCompute(computeKey);}
     else if(key&&canCompute)notify('此轨道只有来源数值，未找到匹配的已保存系数。');
   }
+  const projectedField=field?{gridKey:field.gridKey,grid:field.grid,orbitalKey:field.orbitalKey,valueUnit:field.valueUnit}:null;
+  const mcpPort=<ResultsMcpPortRegistration kind="runs" id={props.ownerId??null} port={{
+    sourceRevision:JSON.stringify([selectionIdentity,props.sourceResult?.id,selected,sampling,quality,unit,decimals,layer,field?.gridKey]),
+    methods:props.active!==false&&canCompute&&resourceReady&&!backendFailure&&!gridResult.error?['orbital-grid']:[],
+    read:()=>({kind:'orbitals',selectedKey:selected,orbitals:list?.orbitals,field:projectedField,progress:state.taskProgress,error:taskError,sampling,
+      parameters:{orbitalKey:'Optional key from the current orbital list. Omission uses the currently selected orbital.'}}),
+    execution:()=>({status:state.taskProgress?.phase??(state.planning?'preparing':state.progress?.status??'idle'),
+      requestId:state.taskProgress?.identity.runId,stoppable:Boolean(controller&&busy&&state.taskProgress?.phase!=='stopping'),progress:state.taskProgress??state.progress}),
+    stop,
+    assets:()=>props.active===false?[]:[
+      ...(field&&props.metadata&&field.orbitalKey===selectedKey?[analysisCube('orbital-grid',projectOrbitalCubeField(field,props.metadata),{
+        sourceId:props.metadata.sourceId,sourceRevision:field.sourceRevision,orbitalKey:field.orbitalKey,gridKey:field.gridKey,
+      })]:[]),
+      ...(list?.orbitals.length?[analysisText('orbital-values',()=>JSON.stringify(list.orbitals,null,2),{sourceId:list.sourceId,sourceRevision:list.sourceRevision,frameIndex:props.sourceFrameIndex},'json')]:[]),
+    ],
+    configuration:{schema:objectSchema({unit:settingEnum(['eV','hartree']),decimals:settingDecimals,show:settingBool,
+      ...(canCompute?{quality:settingEnum([...ORBITAL_QUALITY_LEVELS.map(level=>level.id),'custom']),spacingAngstrom:settingPositive,
+        isovalue:settingPositive,opacity:{type:'number',minimum:0,maximum:1},phase:settingEnum(['both','positive','negative'])}:{})}),
+      read:()=>({unit,decimals,quality,spacingAngstrom:spacing,show:layer.visible,isovalue:layer.isovalue,opacity:layer.opacity,phase:layer.phase??'both'}),
+      apply(values){
+        if(props.active===false)throw new Error('请先激活轨道面板。');
+        const patch=values as Partial<{unit:typeof unit;decimals:number;quality:OrbitalQuality;spacingAngstrom:number;show:boolean;isovalue:number;opacity:number;phase:OrbitalLayerSettings['phase']}>;
+        if(patch.quality&&patch.quality!=='custom'&&patch.spacingAngstrom!==undefined)throw new Error('仅自定义质量使用显式格距。');
+        if(patch.unit!==undefined)setUnit(patch.unit);
+        if(patch.decimals!==undefined)setDecimals(patch.decimals);
+        if(patch.quality!==undefined||patch.spacingAngstrom!==undefined){const next=patch.quality??'custom';setQuality(next);setCustomSpacing(patch.spacingAngstrom??orbitalQualitySpacing(next,spacing));}
+        if(patch.show!==undefined||patch.isovalue!==undefined||patch.opacity!==undefined||patch.phase!==undefined)
+          changeLayer({...layer,visible:patch.show??layer.visible,isovalue:patch.isovalue??layer.isovalue,opacity:patch.opacity??layer.opacity,phase:patch.phase??layer.phase});
+      }},
+    presentation:{
+      schema:objectSchema({visible:settingBool,isovalue:settingPositive,opacity:settingFraction,
+        phase:settingEnum(['both','positive','negative']),positiveColor:settingColor,negativeColor:settingColor,finish:settingMeshFinish}),
+      read:()=>({...layer,phase:layer.phase??'both',finish:patchMeshFinish(layer.finish,{}),fieldAvailable:Boolean(field)}),
+      apply(values){
+        if(props.active===false)throw new Error('请先激活轨道面板。');
+        const {finish,...display}=values as Partial<OrbitalLayerSettings>;
+        changeLayer({...layer,...display,...(finish!==undefined&&{finish:patchMeshFinish(layer.finish,finish)})});
+      },
+    },
+    run(method,retry,parameters){
+      if(method!=='orbital-grid'||props.active===false||!canCompute||!resourceReady||backendFailure||gridResult.error)
+        throw new Error(backendFailure||gridResult.error||resourceError||'当前轨道格点入口未准备好。');
+      if(Object.keys(parameters).some(key=>key!=='orbitalKey')||parameters.orbitalKey!==undefined&&typeof parameters.orbitalKey!=='string')throw new Error('orbitalKey 必须是当前轨道表中的键。');
+      const key=(parameters.orbitalKey as string|undefined)??selected;
+      const computeKey=key?nativeKey(key):null;
+      if(!key||!computeKey||!list?.orbitals.some(row=>row.key===key))throw new Error('当前来源没有此轨道的可靠系数。');
+      if(busy){if(key!==selected)throw new Error('已有轨道格点正在计算。');return {status:'running',orbitalKey:key,progress:state.taskProgress};}
+      if(key===selected&&field&&field.orbitalKey===computeKey&&!retry)return {status:'ready',orbitalKey:key,field:projectedField};
+      if(key!==selected)choose(key);else requestCompute(computeKey);
+      return {status:'requested',orbitalKey:key,sampling};
+    },
+  }}/>;
   function stop(){if(controller){beginAction();void controller.stop().catch(error=>setLocalError(message(error)));}}
-  async function exportCube(){if(exporting)return;beginAction();if(field&&isRestoredAnalysisData(field)&&props.metadata){try{const files=projectOrbitalCubeArtifacts(field,props.metadata);exportBlob(new Blob([files.cube],{type:'text/plain'}),'Ester-Studio-orbital.cube');exportBlob(new Blob([files.metadata],{type:'application/json'}),'Ester-Studio-orbital.sciyue-domain.json');}catch(error){setLocalError(message(error));}return;}if(!field||!props.nativeSessionId||!selectedKey){notify('请先选择并计算轨道');return;}if(!bridge?.exportOrbitalCube){notify('当前环境不支持 Cube 导出');return;}const started=identity;setExporting(true);try{const text=await bridge.exportOrbitalCube(props.nativeSessionId,selectedKey);if(!mounted.current||liveIdentity.current!==started)return;if(!text?.trim())throw new Error('轨道 Cube 导出回执为空。');exportBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),`${safeName(props.metadata?.name??'wavefunction')}-${safeName(selectedKey)}.cube`);}catch(error){if(mounted.current&&liveIdentity.current===started)setLocalError(message(error));}finally{if(mounted.current)setExporting(false);}}
+  async function exportCube(){
+    if(exporting)return;
+    beginAction();
+    const started=identity;setExporting(true);
+    try {
+      if(field&&isRestoredAnalysisData(field)&&props.metadata){
+        await exportSavedCube(projectOrbitalCubeField(field,props.metadata),'Ester-Studio-orbital.cube',{desktop:window.sciyueDesktop,title:props.metadata.name+' '+field.orbitalKey});
+        return;
+      }
+      if(!field||!props.nativeSessionId||!selectedKey){notify('请先选择并计算轨道');return;}
+      if(bridge?.saveOrbitalCube){await bridge.saveOrbitalCube(props.nativeSessionId,selectedKey);return;}
+      if(!bridge?.exportOrbitalCube){notify('当前环境不支持 Cube 导出');return;}
+      const text=await bridge.exportOrbitalCube(props.nativeSessionId,selectedKey);
+      if(!mounted.current||liveIdentity.current!==started)return;
+      if(!text?.trim())throw new Error('轨道 Cube 导出回执为空。');
+      exportBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),`${safeName(props.metadata?.name??'wavefunction')}-${safeName(selectedKey)}.cube`);
+    } catch(error){if(mounted.current&&liveIdentity.current===started&&!(error instanceof DOMException&&error.name==='AbortError'))setLocalError(message(error));}
+    finally{if(mounted.current)setExporting(false);}
+  }
   const diagnostics=canCompute&&<details className="orbital-diagnostics"><summary>采样与后端详情</summary>
     <p>当前来源：{props.metadata?.name}</p><p>状态：{backendFailure?'Multiwfn 暂不可用':state.backend?.configured?'Multiwfn 已配置':'等待后端检查'}</p>{state.backend?.path&&<p className="orbital-backend-path">{state.backend.path}</p>}
     <div className="orbital-resource-grid"><label>边界留白 / Å<NumericInput aria-label="轨道边界留白"  min={.01} step={.5} value={resources.paddingAngstrom} onChange={event=>{const value=Number(event.target.value);if(Number.isFinite(value)&&value>0&&value!==resources.paddingAngstrom){setResources(old=>({...old,paddingAngstrom:value}));}}}/></label></div>
     {(state.progress?.resources??state.plan?.resources??resourceInfo)&&<OrbitalResourceSummary info={(state.progress?.resources??state.plan?.resources??resourceInfo)!}/>}
     {gridResult.grid&&<p>网格 {gridResult.grid.dimensions.join(' × ')}；内存预算 {bytes(resources.memoryBudgetBytes)}</p>}{state.plan&&<p>当前内存估计 {bytes(state.plan.totalBytes)}</p>}
   </details>;
-  return <InputSettingsLayout><section className="orbital-controls" data-testid="orbital-controls" aria-label="轨道">
+  return <InputSettingsLayout><section className="orbital-controls" data-testid="orbital-controls" aria-label="轨道">{mcpPort}
     <AnalysisTaskLayout variant="card" title={props.analysis?.generatedXtb?'空间分子轨道':'分子轨道'} onRestoreQuality={canCompute?()=>{setQuality('normal');setCustomSpacing(.15);}:undefined} qualityDisabled={busy}
       quality={canCompute&&<><OrbitalCalculationQuality quality={quality} spacing={spacing} onChange={(next,value)=>{setQuality(next);setCustomSpacing(value);}}/>{(gridResult.grid||field?.grid)&&<OrbitalSpatialGridSummary planned={gridResult.grid} actual={field?.grid}/>}{selectedKey&&computeRequest?.identity===identity&&JSON.stringify(computeRequest.sampling)!==JSON.stringify(sampling)&&<InputSettingsAction disabled={!resourceReady||busy||!!gridResult.error} onClick={()=>requestCompute()}>应用质量</InputSettingsAction>}</>}
       progress={canCompute&&<><MultiwfnProgress progress={failedProgress&&taskError?{...failedProgress,message:undefined}:state.taskProgress??null} operationLabel="轨道格点生成" onStop={stop}/>{busy&&!state.taskProgress&&<div className="orbital-planning-progress"><output role="status">{status}</output><InputSettingsAction onClick={stop}>停止</InputSettingsAction></div>}</>}
       >
     {list&&<AnalysisTaskSection title="轨道列表"><OrbitalList metadata={list} selectedKey={selected} unit={unit} decimals={decimals} onDecimalsChange={setDecimals} onUnit={setUnit} onChoose={choose} active={props.active!==false} readOnly={!canCompute}/></AnalysisTaskSection>}
+    {levelSnapshot&&<AnalysisTaskSection title="轨道能级">
+      <PostprocessPlot key={levelSnapshot.id} compact snapshot={levelSnapshot}
+        orbitalDisplayOffset={props.sourceResult?.engine==='orca'?1:0}
+        onSelectOrbital={({spin,index})=>choose(`printed:${spin}:${index}`)}/>
+    </AnalysisTaskSection>}
     {canCompute&&<AnalysisTaskSection title="轨道绘图" onRestore={()=>{const saved=appearanceDefaults.snapshot?.value.orbital,base={...DEFAULT_LAYER,phase:layer.phase,isovalue:layer.isovalue};changeLayer(saved && 'colors' in saved ? restoreOrbitalAppearance(base,saved):base);}}><OrbitalDrawOptions embedded value={layer} onChange={changeLayer}/><details className="orbital-export-menu"><summary>导出</summary><InputSettingsAction disabled={exporting||!field} onClick={()=>void exportCube()}>当前轨道 Cube</InputSettingsAction>{props.onExportImage&&<InputSettingsAction disabled={!field} onClick={()=>void props.onExportImage?.()}>当前视图图片</InputSettingsAction>}</details></AnalysisTaskSection>}
     {!canCompute?<p className="postprocess-note">{list?'当前帧缺少匹配波函数，轨道数值仍可查看；轨道格点与组成计算不可用。':'当前帧没有可靠轨道数值；请补入来源或匹配波函数。'}</p>:<>
       {taskError&&<MultiwfnErrorNotice message={taskError} identity={errorRevision}/>}{gridResult.error&&<DismissibleNotice role="alert">{gridResult.error}</DismissibleNotice>}

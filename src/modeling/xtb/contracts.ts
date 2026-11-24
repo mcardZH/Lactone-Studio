@@ -97,8 +97,8 @@ export interface XtbMetadata {
   engineIdentity?: Record<string,unknown>;
   ffModelRuntime?: Record<string,unknown>;
   charge: number; uhf: number | null; spinTreatment: string;
-  /** Omitted for advanced runs with no wall-clock deadline. */
-  threads: number; maxSteps: number; maxWallTimeSeconds?: number;
+  /** Single points have no geometry step limit. Advanced runs have no wall deadline. */
+  threads: number; maxSteps?: number; maxWallTimeSeconds?: number;
   resourceGrant?: XtbResourceGrant;
   frozenAtomIds: string[]; internalConstraintMode: 'native-harmonic' | 'none';
   internalConstraints: XtbConstraintResult[];

@@ -42,16 +42,15 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
     const isBrowser = (file: ScientificSourceFile | OpenedModelFile) => typeof file?.text === 'function' && typeof (file as ScientificSourceFile).size === 'number';
     const browser = sources.every(isBrowser), desktop = sources.every(file => !isBrowser(file) && Number.isSafeInteger((file as OpenedModelFile).bytes));
     if (!browser && !desktop) throw new Error('不能混合浏览器 File 与桌面来源；请重新完整选择。');
-    const names = new Set<string>(), tokens = new Set<string>();
+    const selected = new Set<ScientificSourceFile | OpenedModelFile>(), tokens = new Set<string>();
     const files: StructureImportFile[] = sources.map(source => {
       if (typeof source.name !== 'string' || !source.name || source.name.includes('\0')) throw new Error('模型文件名无效。');
-      const key = normalized(source.name).toLowerCase();
-      if (names.has(key)) throw new Error('来源文件名重复，不能唯一确定依赖：' + source.name);
-      names.add(key);
       if (!browser) {
         const token = (source as OpenedModelFile).streamToken;
         if (token) { if (tokens.has(token)) throw new Error('桌面来源重复使用同一文件流 token。'); tokens.add(token); }
       }
+      if (selected.has(source)) throw new Error('重复选择同一模型来源：' + source.name);
+      selected.add(source);
       return browser ? browserFile(source as ScientificSourceFile, signal) : desktopFile(source as OpenedModelFile, bridge ?? {} as DesktopBridge, signal);
     });
     const textCache = new Map<number, string>();
@@ -143,11 +142,16 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
       } else {
         for (const name of new Set(referencedXyz(candidate.text))) {
           const matches = files.flatMap((file, index) => index !== candidate.index && file.name.toLowerCase() === name.toLowerCase() ? [index] : []);
-          if (matches.length !== 1) throw new Error('请将INP唯一引用的XYZ一起选择：' + name);
+          if (!matches.length) throw new Error('请将INP引用的XYZ一起选择：' + name);
+          if (matches.length > 1) throw new Error('INP引用的XYZ有同名歧义，请单独选择对应文件：' + name);
           if (claimed.has(matches[0])) throw new Error('INP依赖被多个主文件引用，分组有歧义：' + name);
           await read(matches[0]); indices.push(matches[0]);
         }
         const structures = await importStructureFiles(indices.map(coreFile)); aborted(signal);
+        const sourceId = crypto.randomUUID();
+        for (const structure of structures) {
+          if (structure.orcaSource) structure.orcaSource.id = `${sourceId}:orca:${structure.orcaSource.jobIndex}`;
+        }
         claim(indices, main.name); results.push({ index: candidate.index, fragments: modelFragmentsFromStructures(structures) });
       }
       } catch (error) { failed(indices, error); }

@@ -2,11 +2,12 @@ import NumericInput from '../NumericInput';
 import { useCallback, useEffect, useLayoutEffect,useMemo, useRef, useState, useSyncExternalStore, type SetStateAction } from 'react';
 import {createPortal} from 'react-dom';
 import type { Structure } from '../../core/types';
+import { isPeriodic } from '../../core/periodic';
 import { DEFAULT_DISPLAY, type DisplaySettings, type InteractionState, type MeasurementState, type ModelDocument } from '../../modeling/contracts';
 import type { TrajectoryRange, TrajectoryResult } from '../../results/contracts';
 import type { EnergySeries } from '../../results/energy';
 import type { AtomicProperty } from '../../results/scientific-contracts';
-import { displacedVibrationStructure } from '../../results/vibrations';
+import { displacedVibrationStructure, prepareCartesianVibration } from '../../results/vibrations';
 import { atomicScalars, traceInternalCoordinate, type CoordinateTrace } from '../../results/scientific-analysis';
 import { playbackRange, trajectoryViewDocument, type PlaybackDirection, type PlaybackMode } from '../../results/playback';
 import {playbackOwners,playbackScopeIdentity} from '../../results/playback-owner';
@@ -27,8 +28,9 @@ import ScientificResultPanels, { type VibrationDisplay } from './ScientificResul
 import CoordinatePlot from './CoordinatePlot';
 import { initialScientificFrame } from './scientific-presentation';
 import {pauseVibrationProjection,type VibrationAnalysisProjection,type VibrationGifRequest} from './VibrationControls';
+import {presentedVibrationStructure,vibrationAnimationFor} from './vibration-animation';
 import type {AnalysisCanvas} from './analysis-canvas';
-import { signedVibrationStructure } from '../../results/spectroscopy';
+import {useSubmittedScientificFrame} from './useSubmittedScientificFrame';
 import './trajectory.css';
 import {trajectoryControlCallbacks,trajectoryFrameOrder,trajectoryPlaybackExport,playbackOverlayPresentation,type TrajectoryPlaybackBridge,type TrajectoryPlaybackCommand} from './trajectory-playback-bridge';
 import {usePreparedTrajectory,empiricalFramePreparationState} from './usePreparedTrajectory';
@@ -41,6 +43,7 @@ import { captureTrajectoryViewportPng, type OffscreenCaptureSnapshot } from './e
 import {captureViewportLegend} from './viewport-legend-export';
 import {applyFrameBondOverride,type FrameBondIdentity} from '../../core/modeling/frame-bond-overrides';
 import {trajectoryFrameBondIdentity} from '../../results/frame-bond-identity';
+import {scientificFrameForModel} from '../modeling/scientific-frame-source';
 
 export type TrajectoryExportFormat = 'xyz' | 'extxyz' | 'txt' | 'txt-json' | 'png' | 'gif' | 'png-sequence';
 export interface TrajectoryExportRequest {
@@ -50,6 +53,7 @@ export interface TrajectoryExportRequest {
   document: ModelDocument;
   viewBonds: ViewBondSnapshot; resultKind: TrajectoryResult['kind'];
   display: DisplaySettings; showAxes: boolean; measurement: MeasurementState;
+  cipStructure?:Structure|null;
   energySeries?: EnergySeries; signal: AbortSignal;
   displayedStructure?: Structure;
   vibration?: VibrationDisplay & { frameIndex: number; baseStructure: Structure };
@@ -57,6 +61,7 @@ export interface TrajectoryExportRequest {
   vibrationVectors?: readonly { atomIndex: number; vector: [number, number, number]; appearance?: import('../../results/surface-appearance-presets').VibrationVectorAppearance }[];
   atomScalarValues?: readonly { atomIndex: number; value: number }[];
   atomProperty?: AtomicProperty;
+  fixedCellView?:boolean;
   currentViewportImage?: { snapshot: OffscreenCaptureSnapshot; ownerDocument: Document };
 }
 export interface TrajectoryWorkspaceProps {
@@ -70,6 +75,8 @@ export interface TrajectoryWorkspaceProps {
   /** Conformer result cards supply their own tools; publish only the common canvas. */
   canvasOnly?:boolean;
   onCanvas?(canvas:AnalysisCanvas|null):void;
+  /** Observe the native player without replacing the workspace's own viewport. */
+  onPlaybackCanvas?(canvas:AnalysisCanvas|null):void;
   onCipLabelsUsed?(receipt:CipViewportUsage):void;
   onError?(message: string): void; onExport?(request: TrajectoryExportRequest): void | Promise<void>;
   onPrepareIrc?(structure: Structure): void;
@@ -80,6 +87,10 @@ export interface TrajectoryWorkspaceProps {
 }
 const interaction: InteractionState = { element: null, box: false, alt: false, gesture: 'none' };
 const noEdit = () => undefined;
+export function fixedCellConformerPlayback(result:TrajectoryResult):boolean {
+  const conformer=result as Partial<ConformerTrajectoryResult>;
+  return !!conformer.identity&&!!conformer.frameIds&&isPeriodic(result.initialStructure);
+}
 const DISPLAY_IDENTITY:import('../../modeling/view-superposition').ViewRigidTransform={rotation:[[1,0,0],[0,1,0],[0,0,1]],translation:[0,0,0],anchorIds:[]};
 const statusLabel = { completed: '已完成', incomplete: '未完成', failed: '异常结束', unknown: '状态未知' };
 interface TrajectoryUiSnapshot {
@@ -111,7 +122,8 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   // Background optimization republishes an unchanged sampling projection.
   // Retain its object for every consumer/effect, so neither lease cleanup nor
   // repeated environment setup can pause/restart the same playback timer.
-  const collectionVersion=playbackCollectionVersion(proposedCollection),retainedCollection=useRef({version:collectionVersion,value:proposedCollection});
+  const collectionVersion = useMemo(() => playbackCollectionVersion(proposedCollection), [proposedCollection]);
+  const retainedCollection = useRef({version:collectionVersion,value:proposedCollection});
   if(retainedCollection.current.version!==collectionVersion)retainedCollection.current={version:collectionVersion,value:proposedCollection};
   const collection=retainedCollection.current.value;
   const committedPlayback=useRef<{session:OptPlaybackSession;collection:PlaybackCollection;active:boolean}|null>(null);
@@ -127,14 +139,22 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const {frame,playing,busy,fps,direction,mode,range,endpointPauseMs}=snapshot;
   const [initialFrameResolved,setInitialFrameResolved]=useState(false);
   const currentFrame=useRef(frame);currentFrame.current=frame;
-  const playbackIndex=frameOrder.indexOf(frame.index);
+  const playbackPositions=useMemo(()=>new Map(frameOrder.map((sourceIndex,index)=>[sourceIndex,index])),[frameOrder]);
+  const playbackMembers=useMemo(()=>new Map(collection.frames.map(member=>[member.sourceFrameIndex,member])),[collection]);
+  const projectionKey=useMemo(()=>frameOrder.join(','),[frameOrder]);
+  const playbackIndex=playbackPositions.get(frame.index)??0;
+  const requestedIndex=snapshot.seekTargetIndex===undefined?undefined:playbackPositions.get(snapshot.seekTargetIndex);
   const [localError,setError]=useState(''),error=localError||snapshot.error;
   const setDirection=session.setDirection,setFps=session.setFps,setMode=session.setMode,setRange=session.setRange,setEndpointPauseMs=session.setEndpointPause;
   const [vibration, setVibrationState] = useState<VibrationDisplay | null>(null);
   const [vibrationProjection, setVibrationProjection] = useState<VibrationAnalysisProjection | null>(null);
+  const vibrationSession = useRef<VibrationAnalysisProjection | null>(null);
   const setVibration = useCallback((value: SetStateAction<VibrationDisplay | null>) => { setVibrationState(value); if (value === null) setVibrationProjection(null); }, []);
   const publishVibration = useCallback((value: VibrationAnalysisProjection | null) => {
-    setVibrationProjection(value); session.pause();
+    const previous = vibrationSession.current;
+    vibrationSession.current = value;
+    if (previous?.sourceId !== value?.sourceId || previous?.frameIndex !== value?.frameIndex || previous?.jobIndex !== value?.jobIndex) session.pause();
+    setVibrationProjection(value);
     const manual = value?.phase === 0 && !value.playing;
     setVibrationState(value ? { mode: value.mode, displayIndex: value.displayIndex, frameIndex: value.frameIndex,
       amplitude: manual ? Math.abs(value.manualDisplacementAngstrom) : value.amplitude,
@@ -166,19 +186,32 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const onError = useRef(props.onError); onError.current = props.onError; activeRef.current = active;
   const playbackDisplay=useMemo(()=>conformerPlaybackDisplay(result,frame.index,frame.structure),[result,frame.index,frame.structure]);
   const finalDisplayFrame=useCallback((index:number,structure:Structure)=>conformerPlaybackDisplay(result,index,structure).structure,[result]);
-  const fixedCoreDisplay=conformerDisplayRestorationRequiresFormat5(result);
+  const fixedCellView=fixedCellConformerPlayback(result);
+  const fixedCoreDisplay=!fixedCellView&&conformerDisplayRestorationRequiresFormat5(result);
+  const projectedVibration = vibrationProjection?.sourceId === result.source.id && vibrationProjection.jobIndex === result.jobIndex && vibrationProjection.frameIndex === frame.index ? vibrationProjection : null;
+  const projectionVectors = projectedVibration?.vectors, projectionArrows = projectedVibration?.arrows;
+  const arrowAmplitude = projectedVibration?.arrowAmplitude, arrowAppearance = projectedVibration?.arrowAppearance;
+  const projectedArrows = useMemo(() => projectionArrows && projectionVectors && arrowAmplitude !== undefined ? projectionVectors.map((vector, atomIndex) => ({
+    atomIndex, vector: vector.map(value => value * arrowAmplitude) as [number, number, number], appearance: arrowAppearance,
+  })) : undefined, [projectionArrows, projectionVectors, arrowAmplitude, arrowAppearance]);
+  const localMode = !projectedVibration && vibration?.frameIndex === frame.index ? vibration.mode : null;
+  const preparedLocal = useMemo(() => {
+    if (!localMode) return { playback:null, error:'' };
+    try { return { playback:prepareCartesianVibration(frame.structure, localMode), error:'' }; }
+    catch (cause) { return { playback:null, error:cause instanceof Error ? cause.message : String(cause) }; }
+  }, [frame.structure, localMode]);
+  const localAmplitude = vibration?.amplitude, showLocalArrows = vibration?.arrows;
+  const localArrows = useMemo(() => preparedLocal.playback && showLocalArrows && localAmplitude !== undefined ? preparedLocal.playback.vectors.map((vector, atomIndex) => ({
+    atomIndex, vector: vector.map(value => value * localAmplitude) as [number, number, number],
+  })) : undefined, [preparedLocal, showLocalArrows, localAmplitude]);
   const displacement = useMemo(() => {
-    if (vibrationProjection?.sourceId === result.source.id && vibrationProjection.frameIndex === frame.index) return {
-      structure: vibrationProjection.structure, vectors: vibrationProjection.arrows ? vibrationProjection.vectors.map((vector, atomIndex) => ({ atomIndex, vector: vector.map(value => value * vibrationProjection.arrowAmplitude) as [number, number, number], appearance:vibrationProjection.arrowAppearance })) : undefined, error: '',
-    };
+    if (projectedVibration) return { structure: projectedVibration.structure, vectors: projectedArrows, error: '' };
     if (!vibration || vibration.frameIndex !== frame.index) return { structure: playbackDisplay.structure, vectors: undefined, error: '' };
+    if (!preparedLocal.playback) return { structure: frame.structure, vectors: undefined, error: preparedLocal.error };
     try {
-      const structure = displacedVibrationStructure(frame.structure, vibration.mode, vibration.amplitude, vibration.phase);
-      const positive = displacedVibrationStructure(frame.structure, vibration.mode, vibration.amplitude, 1);
-      const vectors = vibration.arrows ? positive.atoms.map((atom, atomIndex) => ({ atomIndex, vector: [atom.x - frame.structure.atoms[atomIndex].x, atom.y - frame.structure.atoms[atomIndex].y, atom.z - frame.structure.atoms[atomIndex].z] as [number, number, number] })) : undefined;
-      return { structure, vectors, error: '' };
+      return { structure: preparedLocal.playback.derive(vibration.amplitude, vibration.phase), vectors: localArrows, error: '' };
     } catch (cause) { return { structure: frame.structure, vectors: undefined, error: cause instanceof Error ? cause.message : String(cause) }; }
-  }, [frame, vibration, vibrationProjection, result,playbackDisplay]);
+  }, [frame, vibration, projectedVibration, projectedArrows, playbackDisplay, preparedLocal, localArrows]);
   const view = useMemo(() => frame.structure.bonds!==undefined||bondCache.has(frame.structure,frame.index)?bondCache.resolve(frame.structure, frame.index):{structure:{...frame.structure,bonds:[]},source:'unavailable' as const,message:'显示连接尚未准备；当前仅显示原子。'}, [bondCache, frame.structure, frame.index, bondEpoch]);
   const frameBondIdentity=useMemo<FrameBondIdentity>(()=>trajectoryFrameBondIdentity(result,frame.index),[result,frame.index]);
   const viewDocument = useMemo(() => {
@@ -186,27 +219,34 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     return{...document,draft:{...document.draft,structure:{...document.draft.structure,atoms:playbackDisplay.structure.atoms}}};
   }, [result, view, frame.index,props.modelDocument,frameBondIdentity,playbackDisplay.structure]);
   const staticDocument=useMemo(()=>{const document=trajectoryViewDocument(result,{...frame.structure,bonds:frame.structure.bonds??[]},frame.index);return props.modelDocument?{...document,id:props.modelDocument.id}:document;},[result,frame,props.modelDocument?.id]);
-  const frameListener=useRef(props.onScientificFrame);frameListener.current=props.onScientificFrame;
-  const notifiedFrame=useRef<number|undefined>(undefined);
-  useEffect(()=>{if(active&&initialFrameResolved&&notifiedFrame.current!==frame.index){notifiedFrame.current=frame.index;frameListener.current?.({resultId:result.id,frameIndex:frame.index});}},[active,initialFrameResolved,result.id,frame.index]);
+  const preparedFrame=props.prepared.get(frame.index);
+  const rawStructure=preparedFrame?.structure===frame.structure?preparedFrame.raw:undefined;
+  const scientificDocument=useMemo(()=>{
+    if(!rawStructure)return undefined;
+    const document=trajectoryViewDocument(result,rawStructure,frame.index);
+    return props.modelDocument?{...document,id:props.modelDocument.id}:document;
+  },[result,rawStructure,frame.index,props.modelDocument?.id]);
+  const cipStructure=useMemo(()=>rawStructure
+    ?playbackDisplay.aligned?{...rawStructure,atoms:playbackDisplay.structure.atoms}:rawStructure
+    :null,[rawStructure,playbackDisplay.aligned,playbackDisplay.structure.atoms]);
   const atomScalarValues = useMemo(() => atomProperty ? atomicScalars(atomProperty, frame.structure, frame.index) : undefined, [atomProperty, frame]);
   const onViewReady = useCallback((getter: (() => number[]) | null) => { getView.current = getter; setViewReady(Boolean(getter)); }, []);
   useEffect(()=>{lease.reacquire();return()=>lease.release();},[lease]);
-  useEffect(()=>{session.onError=message=>onError.current?.(message);lease.setEnvironment(active&&!playbackCollectionRestriction(collection),true);},[session,lease,active,collection]);
+  useEffect(()=>{session.onError=message=>onError.current?.(message);session.setSceneSubmissionRequired(collection.fixed&&viewReady);lease.setEnvironment(active&&!playbackCollectionRestriction(collection),true);},[session,lease,active,collection,viewReady]);
   useEffect(()=>session.setFrameOrder(frameOrder),[session,frameOrder]);
   const firstMeasurementFrame=useRef(true);
-  useEffect(()=>{if(props.prepared.get(frame.index)?.structure===frame.structure){const keepRestored=firstMeasurementFrame.current&&Boolean(restored?.measurement);setInitialFrameResolved(true);setVibration(null);setMeasurement(value=>result.kind==='collection'&&!keepRestored?emptyMeasurement(value.mode):retainMeasurement(value,frame.structure.atoms.map(atom=>atom.id!)));firstMeasurementFrame.current=false;}},[frame,busy,result.kind]);
+  useEffect(()=>{if(props.prepared.get(frame.index)?.structure===frame.structure){const keepRestored=firstMeasurementFrame.current&&Boolean(restored?.measurement);setInitialFrameResolved(true);setVibration(null);setMeasurement(value=>!value.atomIds.length&&!value.images?value:result.kind==='collection'&&!keepRestored?emptyMeasurement(value.mode):retainMeasurement(value,frame.structure.atoms.map(atom=>atom.id!)));firstMeasurementFrame.current=false;}},[frame,busy,result.kind]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; lease.release(); exportController.current?.abort(); traceController.current?.abort();rebuildController.current?.abort(); }; }, [session,lease]);
   useEffect(()=>{
     const index=props.selectedFrameIndex;
-    if(!active||!initialFrameResolved||index===undefined||index===currentFrame.current.index)return;
+    if(!active||index===undefined||index===currentFrame.current.index&&props.prepared.get(index)?.structure===currentFrame.current.structure)return;
     session.seek(index);
   },[active,props.selectedFrameIndex,session]);
   useEffect(() => { if (!active) { setVibration(null); exportController.current?.abort(); traceController.current?.abort(); } }, [active]);
   function seek(index: number) { session.seek(index); }
   function pause() { session.pause(); }
   function play() {
-    if (!active || exporting) return;
+    if (!active || exporting || (collection.fixed&&!viewReady)) return;
     setVibration(null);
     session.play();
   }
@@ -251,15 +291,18 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
         ? trajectoryImageSnapshot(viewport.current.ownerDocument) : undefined;
       const bounds = viewport.current?.querySelector('.model-viewport-canvas')?.getBoundingClientRect();
       const limits = playbackRange(range, result.frames.length);
-      await props.onExport({ result: currentViewportImage ? result : await trajectoryPlaybackExport(visual?conformerVisualTrajectory(result):result,frameOrder,controller.signal), range: direction === 1 ? { ...range } : { start: limits.last, end: limits.first, stride: range.stride }, fps, currentIndex: playbackIndex, direction, mode, format, currentViewportImage,
+      const shownPose = vibrationAnimationFor(displacement.structure.atoms)?.readPresented();
+      const displayedStructure = vibration || visual&&playbackDisplay.aligned
+        ? structuredClone(presentedVibrationStructure(displacement.structure)) : undefined;
+      await props.onExport({ result: currentViewportImage ? result : await trajectoryPlaybackExport(visual&&!vibration&&!vibrationRequest?conformerVisualTrajectory(result,props.modelDocument):result,frameOrder,controller.signal), range: direction === 1 ? { ...range } : { start: limits.last, end: limits.first, stride: range.stride }, fps, currentIndex: playbackIndex, direction, mode, format, currentViewportImage,fixedCellView,
         width: exportSize.width, height: exportSize.height,
         viewportWidth: Math.max(1, Math.round(bounds?.width ?? 800)), viewportHeight: Math.max(1, Math.round(bounds?.height ?? 600)), document: structuredClone(viewDocument),
         viewBonds: structuredClone(bondCache.snapshot(viewDocument.draft.structure, frame.index)), resultKind: result.kind,
-        cameraView: getView.current ? [...getView.current()] : [], display: structuredClone(display), showAxes,
+        cameraView: getView.current ? [...getView.current()] : [], display: structuredClone(display), showAxes, cipStructure,
         measurement: structuredClone(measurement), energySeries, signal: controller.signal,
-        displayedStructure: vibration || visual&&playbackDisplay.aligned ? structuredClone(displacement.structure) : undefined,
+        displayedStructure,
         vibration: vibrationRequest ? { mode: vibrationRequest.mode, displayIndex: vibrationRequest.displayIndex, frameIndex: vibrationRequest.frameIndex, amplitude: vibrationRequest.amplitude, phase: 0, playing: false, arrows: vibration?.arrows ?? true, baseStructure: structuredClone(vibrationRequest.baseStructure) }
-          : vibration ? { ...structuredClone(vibration), amplitude: format === 'gif' && vibrationProjection ? vibrationProjection.amplitude : vibration.amplitude, playing: false, frameIndex: frame.index, baseStructure: structuredClone(frame.structure) } : undefined,
+          : vibration ? { ...structuredClone(vibration), amplitude: format === 'gif' && vibrationProjection ? vibrationProjection.amplitude : vibration.amplitude, phase: shownPose ? Math.sin(shownPose.angle) : vibration.phase, playing: false, frameIndex: frame.index, baseStructure: structuredClone(frame.structure) } : undefined,
         vibrationGif: vibrationRequest ? { periodMs: vibrationRequest.periodMs, durationSeconds: vibrationRequest.durationSeconds }
           : format === 'gif' && vibrationProjection ? { periodMs: vibrationProjection.periodMs, durationSeconds: vibrationProjection.gifDurationSeconds } : undefined,
         vibrationVectors: displacement.vectors, atomScalarValues, atomProperty: atomProperty ?? undefined });
@@ -272,11 +315,27 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const empiricalState=empiricalFramePreparationState(props.prepared,frame.index),bondWarning=empiricalState&&empiricalState.status!=='inferred'?empiricalState.warnings.join('；')||'当前帧经验成键未完成，已保留原几何。':'';
   const bondWarningIdentity=JSON.stringify([frameBondIdentity,bondWarning,bondAttempts.get(JSON.stringify(frameBondIdentity))??0]);
   const bondWarningControl=useMemo(()=>bondWarning&&!dismissedBondWarnings.has(bondWarningIdentity)?<details className="trajectory-bond-warning"><summary title="当前帧显示连接提示" aria-label="当前帧显示连接提示">⚠</summary><DismissibleNotice role="status" identity={bondWarningIdentity} onDismiss={()=>setDismissedBondWarnings(value=>new Set([...value,bondWarningIdentity]))}>{bondWarning}<button disabled={bondRetrying||playing||busy||!active} onClick={()=>void retryEmpiricalConnections()}>{bondRetrying?'重试中':'重试当前帧成键'}</button></DismissibleNotice></details>:null,[bondWarningIdentity,bondRetrying,playing,busy,active,dismissedBondWarnings,frame,session,props.prepared]);
-  const summary = result.frames[frame.index], disabled = !!collectionRestriction||exporting||!playbackCapabilities(snapshot,result.frames.length,active).navigation;
+  const capabilities=playbackCapabilities(snapshot,result.frames.length,active);
+  const summary = result.frames[frame.index], disabled = !!collectionRestriction||exporting||!capabilities.navigation||(collection.fixed&&!viewReady);
+  const seekDisabled=!!collectionRestriction||exporting||!capabilities.seek;
   const sourceRevision=collection.identity.revision;
-  const scientificFrameReady=initialFrameResolved&&!collectionRestriction&&!busy&&!snapshot.loading&&!snapshot.loadCancelled
-    &&props.prepared.get(frame.index)?.structure===frame.structure;
-  const multiframe=usePostprocessMultiframe({result,prepared:props.prepared,documentId:props.modelDocument?.id??result.id,sourceRevision:collection.identity.revision,stageId:collection.identity.stageId,currentIndex:frame.index,active:active&&!vibration&&!vibrationProjection,collection,centerResources:props.centerResources,...(fixedCoreDisplay?{projectDisplayFrame:finalDisplayFrame}: {})});
+  const navigation=session.readNavigation();
+  const {renderIdentity,onSceneSubmitted,readSubmittedScientificFrame,readScene,submittedFrame,scientificFrameReady}=useSubmittedScientificFrame({
+    active:active&&initialFrameResolved,result,index:frame.index,raw:rawStructure,display:frame.structure,collection:collection.identity,
+    member:playbackMembers.get(frame.index),stageId:summary?.stageId,sceneRevision:sourceRevision,sceneGeneration:collection.identity.sourceGeneration,
+    requestId:snapshot.sceneRequest?.requestId??(navigation?.status==='selected'&&navigation.index===frame.index?navigation.id:undefined),
+    onPlaybackSubmitted:session.acknowledgeSceneSubmission,
+  });
+  const frameListener=useRef(props.onScientificFrame);frameListener.current=props.onScientificFrame;
+  const notifiedFrame=useRef<{result:TrajectoryResult;index:number}|undefined>(undefined);
+  useEffect(()=>{
+    if(!submittedFrame||!frameListener.current)return;
+    const {result,index}=submittedFrame;
+    if(notifiedFrame.current?.result===result&&notifiedFrame.current.index===index)return;
+    notifiedFrame.current={result,index};
+    frameListener.current({resultId:result.id,frameIndex:index});
+  },[submittedFrame]);
+  const multiframe=usePostprocessMultiframe({result,prepared:props.prepared,documentId:props.modelDocument?.id??result.id,sourceRevision:collection.identity.revision,stageId:collection.identity.stageId,currentIndex:frame.index,active:active&&!vibration&&!vibrationProjection,fixedCellView,collection,centerResources:props.centerResources,...(fixedCoreDisplay?{projectDisplayFrame:finalDisplayFrame}: {})});
   function trajectoryImageSnapshot(ownerDocument: Document) {
     const node = viewport.current?.querySelector('.model-viewport-stage');
     const bounds = node?.getBoundingClientRect(), camera = getView.current;
@@ -285,15 +344,16 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
       throw new Error('当前轨迹视口尚未准备好。');
     const modeDisplay = vibrationProjection?.frameIndex === frame.index && vibrationProjection.sourceId === result.source.id
       ? vibrationProjection : vibration?.frameIndex === frame.index ? vibration : undefined;
-    const structure = { ...viewDocument.draft.structure, atoms: displacement.structure.atoms };
+    const structure = { ...viewDocument.draft.structure, atoms: presentedVibrationStructure(displacement.structure).atoms };
+    const shownPose = vibrationAnimationFor(displacement.structure.atoms)?.readPresented();
     const annotation = modeDisplay
-      ? `Mode ${modeDisplay.mode.index} | ${modeDisplay.mode.frequency} cm^-1 | display amplitude ${modeDisplay.amplitude} A | phase ${modeDisplay.phase.toFixed(4)} | source line ${modeDisplay.mode.sourceLine}${atomProperty ? ` | parent frame ${frame.index + 1} ${atomProperty.scheme} ${atomProperty.kind}` : ''}`
+      ? `Mode ${modeDisplay.mode.index} | ${modeDisplay.mode.frequency} cm^-1 | display amplitude ${modeDisplay.amplitude} A | phase ${(shownPose ? Math.sin(shownPose.angle) : modeDisplay.phase).toFixed(4)} | source line ${modeDisplay.mode.sourceLine}${atomProperty ? ` | parent frame ${frame.index + 1} ${atomProperty.scheme} ${atomProperty.kind}` : ''}`
       : undefined;
     const image: OffscreenCaptureSnapshot = {
       ...exportSize, viewportWidth: Math.max(1, Math.round(bounds.width)), viewportHeight: Math.max(1, Math.round(bounds.height)),
       document: { ...viewDocument, draft: { ...viewDocument.draft, structure } },
-      display, showAxes, cameraView: [...camera()], measurement, legend:captureViewportLegend(node,viewDocument.id),
-      multiframeDisplay: multiframe.plan, viewTransform: playbackDisplay.aligned ? DISPLAY_IDENTITY : undefined,
+      display, showAxes, cameraView: [...camera()], measurement, cipStructure, legend:captureViewportLegend(node,viewDocument.id),
+      multiframeDisplay: multiframe.plan, fixedCellView, viewTransform: playbackDisplay.aligned ? DISPLAY_IDENTITY : undefined,
       displayGeometry: modeDisplay ? 'vibration' : undefined, vibrationBaseStructure: modeDisplay ? view.structure : undefined,
       vibrationVectors: displacement.vectors, atomScalarValues, annotation
     };
@@ -305,12 +365,13 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   };
   const overlayKey=JSON.stringify(playbackOverlayPresentation(multiframe));
   const overlayControls=useMemo(()=><>{fixedCoreDisplay&&<small>运行快照核心固定；参考选择不改变显示坐标。</small>}<PlaybackOverlayControls {...multiframe} disabled={disabled||!!vibration||!!vibrationProjection}/></>,[overlayKey,fixedCoreDisplay,disabled,!!vibration,!!vibrationProjection,multiframe.onToggle,multiframe.onFitAtoms,multiframe.onReference,multiframe.onReferenceIndex,multiframe.onCurrentReference,multiframe.onCancelCenter]);
-  const editObservation=useRef({frame:staticDocument.draft.structure,vibration:vibrationProjection,pause});editObservation.current={frame:staticDocument.draft.structure,vibration:vibrationProjection,pause};
-  const prepareModelEdit=useCallback(()=>{const own=editObservation.current;own.pause();pauseVibrationProjection(own.vibration);setVibration(value=>value?{...value,playing:false,phase:0,amplitude:0}:null);return structuredClone(own.frame);},[]);
+  const editObservation=useRef({vibration:vibrationProjection,pause});editObservation.current={vibration:vibrationProjection,pause};
+  const prepareModelEdit=useCallback(()=>{const own=editObservation.current,frame=readSubmittedScientificFrame();if(!frame)throw Error('当前科学帧尚未准备完整。');own.pause();pauseVibrationProjection(own.vibration);setVibration(value=>value?{...value,playing:false,phase:0,amplitude:0}:null);return structuredClone(scientificFrameForModel(frame.structure));},[readSubmittedScientificFrame]);
   const playbackCommand=useRef<(command:TrajectoryPlaybackCommand)=>void>(()=>undefined);
   playbackCommand.current=command=>{
     if(!active||exporting||collectionRestriction)return;
-    if(disabled&&!['prepare','cancel-preparation','silent-loading','pause'].includes(command.action))return;
+    const frameLookup=command.action==='seek'||command.action==='step'||command.action==='seek-target';
+    if(frameLookup?seekDisabled:disabled&&!['prepare','cancel-preparation','silent-loading','pause'].includes(command.action))return;
     if(command.action==='prepare')session.prepare();else if(command.action==='cancel-preparation')session.cancelPreparation();else if(command.action==='silent-loading')session.setSilentLoading(command.value);
     else if(command.action==='play')play();else if(command.action==='pause')pause();
     else if(command.action==='seek'){if(!Number.isSafeInteger(command.index)||command.index<0||command.index>=result.frames.length)throw new Error('帧号超出范围。');seek(frameOrder[command.index]);}
@@ -323,21 +384,25 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     else if(command.action==='overlay-toggle')multiframe.onToggle();else if(command.action==='overlay-atoms')multiframe.onFitAtoms(command.value);else if(command.action==='overlay-reference')multiframe.onReference(command.kind);else if(command.action==='overlay-reference-index')multiframe.onReferenceIndex(command.index);else if(command.action==='overlay-current-reference')multiframe.onCurrentReference();else if(command.action==='center-cancel')multiframe.onCancelCenter();
   };
   const dispatchPlayback=useCallback((command:TrajectoryPlaybackCommand)=>playbackCommand.current(command),[]);
-  const trajectoryPlayback=useMemo<TrajectoryPlaybackBridge>(()=>({state:{resultId:result.id,projectionKey:frameOrder.join(','),collectionIdentity:collection.identity,frameId:collection.frames.find(entry=>entry.sourceFrameIndex===frame.index)?.frameId,targets:collection.targets,overlay:playbackOverlayPresentation({...multiframe,disabled}),count:collection.frames.length,index:playbackIndex,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,preparation:snapshot.preparation,loading:snapshot.loading,loadCancelled:snapshot.loadCancelled,loadFailed:snapshot.loadFailed,silentLoading:snapshot.silentLoading},dispatch:dispatchPlayback}),[result.id,collection,frame.index,overlayKey,frameOrder,playbackIndex,playing,busy,disabled,fps,direction,mode,range,endpointPauseMs,snapshot.preparation,snapshot.loading,snapshot.loadCancelled,snapshot.loadFailed,snapshot.silentLoading,dispatchPlayback]);
+  const trajectoryPlayback=useMemo<TrajectoryPlaybackBridge>(()=>({state:{resultId:result.id,projectionKey,collectionIdentity:collection.identity,frameId:playbackMembers.get(frame.index)?.frameId,targets:collection.targets,overlay:playbackOverlayPresentation({...multiframe,disabled}),count:collection.frames.length,index:playbackIndex,sourceOrder:frameOrder,requestedIndex,playing,busy,disabled,seekDisabled,fps,direction,mode,range,endpointPauseMs,preparation:snapshot.preparation,loading:snapshot.loading,loadCancelled:snapshot.loadCancelled,loadFailed:snapshot.loadFailed,silentLoading:snapshot.silentLoading},dispatch:dispatchPlayback,readScene,readNavigation:session.readNavigation}),[result.id,collection,overlayKey,projectionKey,playbackIndex,playbackMembers,frame.index,frameOrder,requestedIndex,playing,busy,disabled,seekDisabled,fps,direction,mode,range,endpointPauseMs,snapshot.preparation,snapshot.loading,snapshot.loadCancelled,snapshot.loadFailed,snapshot.silentLoading,dispatchPlayback,readScene,session]);
   const playbackControls=useMemo(()=><div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...trajectoryPlayback.state} {...trajectoryControlCallbacks(dispatchPlayback)} detailsContent={overlayControls}/>{bondWarningControl}{playbackDisplay.restored&&<small role="status">显示已恢复运行快照核心；能量来自原始MD。</small>}{playbackDisplay.restriction&&<small role="status">{playbackDisplay.restriction}</small>}</div>,[trajectoryPlayback,dispatchPlayback,overlayControls,bondWarningControl,playbackDisplay.restored,playbackDisplay.restriction]);
   const exportOwner=useRef(exportResult);exportOwner.current=exportResult;
   const exportCanvas=useCallback(()=>void exportOwner.current(),[]);
-  const modelEditingBlocked=!scientificFrameReady||playing||snapshot.previewing||Boolean(vibration?.playing)||Boolean(vibrationProjection?.playing);
-  const onCipLabelsUsed=useCurrentCipUsage(viewDocument,active&&initialFrameResolved,props.onCipLabelsUsed);
+  const modelEditingBlocked=!scientificFrameReady||playing||snapshot.previewing&&!snapshot.loading||Boolean(vibration?.playing)||Boolean(vibrationProjection?.playing);
+  const cipDocument=useMemo(()=>cipStructure&&{...viewDocument,draft:{...viewDocument.draft,structure:cipStructure}},[viewDocument,cipStructure]);
+  const onCipLabelsUsed=useCurrentCipUsage(cipDocument??undefined,active&&initialFrameResolved,props.onCipLabelsUsed);
   const exportStructure=scientificFrameReady?(vibrationProjection?.sourceId===result.source.id&&vibrationProjection.frameIndex===frame.index||vibration?.frameIndex===frame.index?displacement.structure:frame.structure):undefined;
-  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,exportStructure,prepareModelEdit,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,bondEditingBlocked:modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{...(playbackDisplay.aligned?{viewTransform:DISPLAY_IDENTITY}:{}),displayAtoms:displacement.structure.atoms,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&scientificFrameReady,exporting}),[viewDocument,staticDocument,exportStructure,prepareModelEdit,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,result,frame.index,playbackControls,props.canvasOnly,trajectoryPlayback,displacement.structure.atoms,displacement.vectors,atomScalarValues,multiframe.plan,playbackDisplay.aligned,onViewReady,exportCanvas,active,exporting]);
+  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,scientificDocument,exportStructure,prepareModelEdit,readSubmittedScientificFrame,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,bondEditingBlocked:modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly||props.onPlaybackCanvas?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{...(playbackDisplay.aligned?{viewTransform:DISPLAY_IDENTITY}:{}),displayAtoms:displacement.structure.atoms,cipStructure,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan,fixedCellView,renderIdentity,onSceneSubmitted},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&scientificFrameReady,exporting}),[viewDocument,staticDocument,scientificDocument,exportStructure,prepareModelEdit,readSubmittedScientificFrame,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,result,frame.index,playbackControls,props.canvasOnly,props.onPlaybackCanvas,trajectoryPlayback,displacement.structure.atoms,cipStructure,displacement.vectors,atomScalarValues,multiframe.plan,fixedCellView,renderIdentity,onSceneSubmitted,playbackDisplay.aligned,onViewReady,exportCanvas,active,exporting]);
   useLayoutEffect(()=>{props.onCanvas?.(active&&initialFrameResolved?canvas:null);},[props.onCanvas,active,initialFrameResolved,canvas]);
-  const canvasOwner=useRef(props.onCanvas);canvasOwner.current=props.onCanvas;
-  useEffect(()=>()=>canvasOwner.current?.(null),[]);
+  useLayoutEffect(()=>{props.onPlaybackCanvas?.(active?canvas:null);},[props.onPlaybackCanvas,active,canvas]);
+  const canvasOwner=useRef({canvas:props.onCanvas,player:props.onPlaybackCanvas});
+  canvasOwner.current={canvas:props.onCanvas,player:props.onPlaybackCanvas};
+  useLayoutEffect(()=>()=>canvasOwner.current.player?.(null),[]);
+  useEffect(()=>()=>canvasOwner.current.canvas?.(null),[]);
   const content=<section className="trajectory-workspace" data-testid="trajectory-workspace" data-result-id={result.id} data-frame-index={frame.index} data-playing={playing} aria-label={result.kind === 'collection' ? '结构集合浏览' : '只读轨迹结果'}>
     {props.available===false&&<p role="status">结构已修改，此结果暂不可用；撤销相关修改可恢复</p>}
     <header className="trajectory-heading"><strong title={result.label}>{result.label}</strong><span>{result.kind === 'collection' ? '结构集合 · 无时间对应' : result.scientific ? '计算结果' : result.kind === 'optimization' ? 'OPT结果' : '轨迹'} · {statusLabel[result.status]}</span>
-      <button disabled={disabled || busy} onClick={() => { pause(); setVibration(value => value ? { ...value, playing: false } : null); props.onExtract(vibrationProjection ? signedVibrationStructure(frame.structure, vibrationProjection.mode, vibrationProjection.manualDisplacementAngstrom) : structuredClone(vibration ? displacement.structure : frame.structure)); }}>{vibration ? '提取手动位移为新模型' : '提取当前帧为新模型'}</button>
+      <button disabled={exporting||!submittedFrame} onClick={() => { if(readSubmittedScientificFrame())props.onExtract(prepareModelEdit()); }}>提取当前帧为新模型</button>
       {!props.onCanvas&&<details className="trajectory-view-options"><summary>显示</summary><div>
         <label><input type="checkbox" checked={display.atomNumbers} onChange={e => changeDisplay('atomNumbers', e.target.checked)}/>编号</label>
         <label><input type="checkbox" checked={showAxes} onChange={e => setShowAxes(e.target.checked)}/>坐标轴</label>
@@ -360,19 +425,20 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     <div className="trajectory-main">{!props.onCanvas&&<div className="trajectory-viewport-column" data-testid="trajectory-viewport-column" style={{display:'flex',flexDirection:'column',flex:'1 1 auto',minWidth:0,minHeight:0}}>
       {playbackControls}
       <div className="trajectory-viewport" ref={viewport}><ModelViewport onCipLabelsUsed={onCipLabelsUsed} document={viewDocument} display={display} interaction={interaction}
-      readOnly structureLocked active={active&&initialFrameResolved} observationFixedFrame observationTool="rotate" showAxes={showAxes} resetViewRequest={resetView}
-      viewTransform={playbackDisplay.aligned?DISPLAY_IDENTITY:undefined} displayAtoms={displacement.structure.atoms} vibrationVectors={displacement.vectors} atomScalarValues={atomScalarValues} multiframeDisplay={multiframe.plan}
+      readOnly structureLocked active={active&&initialFrameResolved} observationFixedFrame fixedCellView={fixedCellView} observationTool="rotate" showAxes={showAxes} resetViewRequest={resetView}
+      viewTransform={playbackDisplay.aligned?DISPLAY_IDENTITY:undefined} displayAtoms={displacement.structure.atoms} cipStructure={cipStructure} vibrationVectors={displacement.vectors} atomScalarValues={atomScalarValues} multiframeDisplay={multiframe.plan}
+       renderIdentity={renderIdentity} onSceneSubmitted={onSceneSubmitted}
       measurement={measurement} onMeasurementPick={id => setMeasurement(value => id ? pickMeasurement(value, id) : emptyMeasurement(value.mode))}
       onViewReady={onViewReady} onHover={noEdit} onGestureStart={noEdit} onGestureEnd={noEdit} onSelection={noEdit} onCommand={noEdit} onError={props.onError}/>{vibration && <div className="trajectory-vibration-badge">模式 {vibration.mode.index} · {vibration.mode.frequency} cm⁻¹ · 只读位移</div>}</div></div>}
-      {result.scientific && <ScientificResultPanels result={result} structure={frame.structure} currentIndex={frame.index} disabled={disabled || busy} onSelectFrame={seek}
+      {result.scientific && <ScientificResultPanels result={result} structure={rawStructure??frame.structure} currentIndex={frame.index} disabled={disabled || !scientificFrameReady} seekDisabled={seekDisabled} onSelectFrame={seek}
         vibration={vibration} onVibration={value => { pause(); setVibration(value); }} onAtomProperty={setAtomProperty} onVibrationProjection={publishVibration} onExtractStructure={props.onExtract} onExportVibrationGif={props.onExport ? request => exportResult(request) : undefined} onError={props.onError}
-        onDisplacedModel={sign => { if (!vibration || disabled) return; pause(); setVibration(value => value ? { ...value, playing: false } : null); try { props.onExtract(displacedVibrationStructure(frame.structure, vibration.mode, vibration.amplitude, sign)); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } }}
-        onPrepareIrc={props.onPrepareIrc ? () => { pause(); setVibration(null); props.onPrepareIrc?.(structuredClone(frame.structure)); } : undefined}/>}</div>
+        onDisplacedModel={sign => { if (!vibration || disabled || !scientificFrameReady || !rawStructure) return; pause(); setVibration(value => value ? { ...value, playing: false } : null); try { props.onExtract(displacedVibrationStructure(rawStructure, vibration.mode, vibration.amplitude, sign)); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); } }}
+        onPrepareIrc={props.onPrepareIrc ? () => { if(scientificFrameReady)props.onPrepareIrc?.(prepareModelEdit()); } : undefined}/>}</div>
     <footer className="trajectory-footer"><div className="trajectory-frame-info"><span>{summary?.label ?? `帧 ${frame.index + 1}`}</span>{summary?.sourceStep != null && <span>步骤 {summary.sourceStep}</span>}{summary?.time && <span>时间 {summary.time.value} {summary.time.unit}</span>}{summary?.energy && <span>{vibration ? '母几何能量' : playbackDisplay.restored ? '原始MD能量' : '能量'} {summary.energy.value} {summary.energy.unit}</span>}<span>{frame.structure.atoms.length} 原子</span><span title="显示键不写入源结构、取帧结果或原始XYZ导出">{view.message}</span></div>
       {result.kind !== 'collection' && <div className="trajectory-trace-controls"><button disabled={disabled || tracing || vibration != null || measurement.atomIds.length < 2 || measurement.atomIds.length > 4} onClick={() => void traceMeasurement()}>追踪所选 B/A/D 内坐标</button>{tracing && <><span>读取来源帧…</span><button onClick={() => traceController.current?.abort()}>取消追踪</button></>}{coordinateTrace && <button onClick={() => setCoordinateTrace(null)}>关闭内坐标曲线</button>}</div>}
     </footer>
-    {coordinateTrace && <CoordinatePlot trace={coordinateTrace} currentIndex={frame.index} onSelectFrame={index => { if (!disabled) seek(index); }}/>}
-    {(result.kind === 'optimization' || result.scientific?.tasks.some(task => ['opt', 'ts', 'irc', 'scan'].includes(task))) && <OptimizationPlot result={result} currentIndex={frame.index} onSelectFrame={index => { if (!disabled) seek(index); }} onSeriesChange={setEnergySeries}/>}
+    {coordinateTrace && <CoordinatePlot trace={coordinateTrace} currentIndex={frame.index} onSelectFrame={index => { if (!seekDisabled) seek(index); }}/>}
+    {(result.kind === 'optimization' || result.scientific?.tasks.some(task => ['opt', 'ts', 'irc', 'scan'].includes(task))) && <OptimizationPlot result={result} currentIndex={frame.index} onSelectFrame={index => { if (!seekDisabled) seek(index); }} onSeriesChange={setEnergySeries}/>}
   </section>;
   if(props.canvasOnly)return null;
   return props.onCanvas&&props.toolHost?(props.active?createPortal(content,props.toolHost):null):content;

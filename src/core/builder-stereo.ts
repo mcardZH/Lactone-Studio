@@ -1,4 +1,5 @@
-import type { Structure, Vector3 } from './types';
+import type { Bond, Structure, TwoDStereoSource, Vector3 } from './types';
+import { isCipCovalentBond } from './stereochemistry-cip';
 import { minimumImage } from './periodic';
 import { atomicNumber } from './elements';
 
@@ -6,8 +7,16 @@ const sub = (a: Vector3, b: Vector3): Vector3 => [a[0]-b[0],a[1]-b[1],a[2]-b[2]]
 const cross = (a: Vector3,b: Vector3): Vector3 => [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 const dot = (a: Vector3,b: Vector3) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 const xyz = (a: Structure['atoms'][number]): Vector3 => [a.x,a.y,a.z];
-function distinguishableNeighbours(s:Structure,center:number):boolean{
-  const edges=(s.bonds??[]).filter(b=>b.kind!=='coordination'),neighbours=edges.filter(b=>b.a===center||b.b===center).map(b=>b.a===center?b.b:b.a);
+function incidentBonds(count:number,bonds:readonly Bond[]):Bond[][]{
+  const indices:Bond[][]=Array.from({length:count},()=>[]);
+  for(const bond of bonds){
+    indices[bond.a]?.push(bond);
+    if(bond.b!==bond.a)indices[bond.b]?.push(bond);
+  }
+  return indices;
+}
+function distinguishableNeighbours(s:Structure,center:number,edges:readonly Bond[][]):boolean{
+  const neighbours=edges[center].map(b=>b.a===center?b.b:b.a);
   if(neighbours.length!==4)return false;
   // Rooted graph refinement distinguishes substituent graphs rather than their
   // Cartesian directions. Four equivalent H atoms must never create a chiral C.
@@ -18,14 +27,15 @@ function distinguishableNeighbours(s:Structure,center:number):boolean{
   // and all specified-parity/wedge handling in the callers unchanged.
   const terminalHydrogenLabels=new Set<string>();
   for(const neighbour of new Set(neighbours)){
-    if(neighbour===center||s.atoms[neighbour]?.element!=='H'||edges.some(b=>(b.a===neighbour||b.b===neighbour)&&b.a!==center&&b.b!==center))continue;
+    if(neighbour===center||s.atoms[neighbour]?.element!=='H'||edges[neighbour].some(b=>b.a!==center&&b.b!==center))continue;
     const label=labels[neighbour];
     if(terminalHydrogenLabels.has(label))return false;
     terminalHydrogenLabels.add(label);
   }
   for(let step=0;step<Math.min(s.atoms.length,32);step++){
-    const keys=s.atoms.map((_,i)=>i===center?'CENTER':`${labels[i]}|${edges.filter(b=>(b.a===i||b.b===i)&&b.a!==center&&b.b!==center).map(b=>`${b.aromatic?1.5:b.order}:${labels[b.a===i?b.b:b.a]}`).sort().join(',')}`);
-    const dictionary=[...new Set(keys)].sort();const next=keys.map(k=>`${dictionary.indexOf(k)}`);
+    const keys=s.atoms.map((_,i)=>i===center?'CENTER':`${labels[i]}|${edges[i].filter(b=>b.a!==center&&b.b!==center).map(b=>`${b.aromatic?1.5:b.order}:${labels[b.a===i?b.b:b.a]}`).sort().join(',')}`);
+    const dictionary=new Map([...new Set(keys)].sort().map((key,index)=>[key,String(index)]));
+    const next=keys.map(key=>dictionary.get(key)!);
     if(next.every((v,i)=>v===labels[i]))break;labels=next;
   }
   return new Set(neighbours.map(i=>labels[i])).size===4;
@@ -34,12 +44,15 @@ function distinguishableNeighbours(s:Structure,center:number):boolean{
 export function builderTetrahedralParity(structure: Structure, atomId: string): -1|0|1 {
   const i=structure.atoms.findIndex(a=>a.id===atomId);
   if(i<0) throw new Error('手性中心不存在。');
-  const neighbours=(structure.bonds??[]).filter(b=>b.kind!=='coordination'&&(b.a===i||b.b===i)).map(b=>b.a===i?b.b:b.a)
+  return tetrahedralParityAt(structure,i,(structure.bonds??[]).filter(b=>b.a===i||b.b===i));
+}
+function tetrahedralParityAt(structure:Structure,i:number,bonds:readonly Bond[]):-1|0|1 {
+  const neighbours=bonds.filter(b=>b.kind!=='coordination').map(b=>b.a===i?b.b:b.a)
     .sort((a,b)=>{const aa=structure.atoms[a].id??`${a}`,bb=structure.atoms[b].id??`${b}`;return aa<bb?-1:aa>bb?1:0;});
   if(neighbours.length!==4) return 0;
   const p=neighbours.map(n=>{
     if(!structure.cell)return xyz(structure.atoms[n]);
-    const b=structure.bonds?.find(b=>(b.a===i&&b.b===n)||(b.b===i&&b.a===n));
+    const b=bonds.find(b=>(b.a===i&&b.b===n)||(b.b===i&&b.a===n));
     if(!b?.image)return minimumImage(structure,i,n).delta;
     const delta=sub(xyz(structure.atoms[n]),xyz(structure.atoms[i]));
     b.image.forEach((v,j)=>structure.cell!.vectors[j].forEach((c,k)=>{delta[k]+=c*v*(b.a===i?1:-1);}));
@@ -101,15 +114,23 @@ export function builderDoubleBondConfiguration(s:Structure,aId:string,bId:string
   const reference=builderDoubleBondStereoReference(s,aId,bId);if(!reference)return 'undefined';
   const geometry=builderDoubleBondGeometry(s,reference);return geometry==='same'?'Z':geometry==='opposite'?'E':'undefined';
 }
-export function updateBuilderStereo(structure:Structure, affectedAtomIds?: readonly string[]): {structure:Structure;touchedIds:string[]} {
+interface NativeStereoRefresh {
+  recheckGraph:boolean;
+  unresolved:ReadonlySet<string>;
+}
+
+export function updateBuilderStereo(structure:Structure, affectedAtomIds?: readonly string[], native?:NativeStereoRefresh): {structure:Structure;touchedIds:string[]} {
   const affected=affectedAtomIds ? new Set(affectedAtomIds) : undefined;
   const atoms=structure.atoms.map(a=>({...a}));
   const bonds=(structure.bonds??[]).map(b=>({...b}));
+  const incident=incidentBonds(atoms.length,bonds), covalent=incident.map(edges=>edges.filter(b=>b.kind!=='coordination'));
   const touchedIds:string[]=[];
-  for(const atom of atoms){
+  for(const [i,atom] of atoms.entries()){
     if(!atom.id || affected && !affected.has(atom.id)) continue;
-    const i=atoms.indexOf(atom),specified=atom.stereoParity!==undefined||bonds.some(b=>(b.a===i||b.b===i)&&(b.stereo===1||b.stereo===6));
-    const parity=specified||distinguishableNeighbours(structure,i)?builderTetrahedralParity(structure,atom.id):0;
+    const specified=atom.stereoParity!==undefined||incident[i].some(b=>b.stereo===1||b.stereo===6);
+    const usable=!native||(!native.unresolved.has(atom.id)&&covalent[i].every(bond=>bond.order===1&&isCipCovalentBond(bond)));
+    const hasStereo=usable&&(!native?.recheckGraph&&specified||distinguishableNeighbours(structure,i,covalent));
+    const parity=hasStereo?tetrahedralParityAt(structure,i,incident[i]):0;
     if(atom.stereoParity!==parity&&(parity!==0||atom.stereoParity!==undefined)){atom.stereoParity=parity;touchedIds.push(atom.id);}
   }
   // Wedges belong to the independent diagram projection, not global XYZ z.
@@ -118,7 +139,7 @@ export function updateBuilderStereo(structure:Structure, affectedAtomIds?: reado
   bonds.forEach(b=>{if((b.stereo===1||b.stereo===6)&&(!affected||affected.has(atoms[b.a].id!)||affected.has(atoms[b.b].id!)))b.stereo=0;});
   for(let i=0;i<atoms.length;i++){
     if(!atoms[i].stereoParity || affected && !affected.has(atoms[i].id!))continue;
-    const candidates=bonds.filter(b=>b.order===1&&b.kind!=='coordination'&&(b.a===i||b.b===i)&&!(b.stereo===1||b.stereo===6))
+    const candidates=covalent[i].filter(b=>b.order===1&&!(b.stereo===1||b.stereo===6))
       .sort((a,b)=>Number(!!atoms[a.a===i?a.b:a.a].stereoParity)-Number(!!atoms[b.a===i?b.b:b.a].stereoParity));
     for(const candidate of candidates){
       const trial=bonds.map(b=>b===candidate?{...b,a:i,b:b.a===i?b.b:b.a,stereo:1}:{...b,stereo:b.a===i||b.b===i?0:b.stereo});
@@ -129,14 +150,63 @@ export function updateBuilderStereo(structure:Structure, affectedAtomIds?: reado
   }
   return {structure:{...structure,atoms,bonds:structure.bonds?bonds:undefined},touchedIds};
 }
+/** An OPT/rebond result updates existing geometric annotations in the Store.
+ * The source drawing, if any, lives with its own provenance. */
+export function refreshBuilderStereoAfterNativeChange(before:Structure,after:Structure,hasGraphChange?:()=>boolean):Structure {
+  if(after.dimension===2)return after;
+  const ids=new Set<string>();
+  for(const structure of [before,after]){
+    for(const atom of structure.atoms)if(atom.id&&atom.stereoParity!==undefined)ids.add(atom.id);
+    for(const bond of structure.bonds??[])if(bond.stereo===1||bond.stereo===6){
+      for(const index of [bond.a,bond.b]){
+        const id=structure.atoms[index]?.id;if(id)ids.add(id);
+      }
+    }
+  }
+  if(!ids.size)return after;
+  const unresolved=new Set((after.bondPerceptionIssues??[]).filter(issue=>issue.kind!=='weak-contact').flatMap(issue=>issue.atomIds));
+  return updateBuilderStereo(after,[...ids],{recheckGraph:hasGraphChange?.()??false,unresolved}).structure;
+}
+
+/** Mirror the native group policy at adoption using the locally expressible
+ * ordered parity. The native graph check owns centres and E/Z beyond it. */
+export function assertBuilder2DStereoPreserved(before:Structure,after:Structure,source?:TwoDStereoSource):void {
+  const groups=new Map<string,string>();
+  for(const group of source?.stereoGroups??[])if(group.type!=='ABS'){
+    for(const id of group.atomIds)groups.set(id,`${group.type}:${group.id}`);
+  }
+  const inversions=new Map<string,boolean>();
+  for(const atom of before.atoms){
+    if(!atom.stereoParity)continue;
+    const parity=builderTetrahedralParity(after,atom.id!);
+    const group=groups.get(atom.id!);
+    if(!parity||!group&&parity!==atom.stereoParity)throw new Error('生成坐标没有保持二维图中指定的四面体构型。');
+    if(!group)continue;
+    const flipped=parity!==atom.stereoParity;
+    if(inversions.has(group)&&inversions.get(group)!==flipped)throw new Error('生成坐标没有保持二维图中立体组内的相对构型。');
+    inversions.set(group,flipped);
+  }
+  // Native generation with an authoritative source uses the original graph to
+  // determine E/Z, including branches indistinguishable in a shallow ranking.
+  if(source)return;
+  for(const bond of before.bonds??[]){
+    if(bond.order!==2)continue;
+    const reference=builderDoubleBondStereoReference(before,before.atoms[bond.a].id!,before.atoms[bond.b].id!);
+    if(!reference)continue;
+    const expected=builderDoubleBondGeometry(before,reference);
+    if(expected!=='undefined'&&builderDoubleBondGeometry(after,reference)!==expected)throw new Error('生成坐标没有保持二维图中指定的双键构型。');
+  }
+}
+
 export function assertBuilderStereoPreserved(before:Structure,after:Structure,preserveDoubleBonds=true):void{
   // XYZ imports may have no wedge/parity annotation. The actual starting
   // geometry of four distinguishable substituent graphs is still the automatic
   // baseline. Equivalent neighbours (e.g. CH4) do not acquire a stereo guard.
   // Derive from `before` on each check: a deliberate manual edit has already
   // become that reference, while an explicitly planar baseline stays undefined.
-  for(const [index,atom]of before.atoms.entries()){if(!atom.id||!atom.stereoParity&&!distinguishableNeighbours(before,index))continue;
-    const previous=builderTetrahedralParity(before,atom.id),next=builderTetrahedralParity(after,atom.id);
+  const incident=incidentBonds(before.atoms.length,before.bonds??[]), covalent=incident.map(edges=>edges.filter(b=>b.kind!=='coordination'));
+  for(const [index,atom]of before.atoms.entries()){if(!atom.id||!atom.stereoParity&&!distinguishableNeighbours(before,index,covalent))continue;
+    const previous=tetrahedralParityAt(before,index,incident[index]),next=builderTetrahedralParity(after,atom.id);
     if(previous&&next!==previous)throw new Error('局部自动几何会改变或压平当前手性；如需改变构型，请先明确手工调整。');
   }
   if(preserveDoubleBonds)for(const bond of before.bonds??[]){

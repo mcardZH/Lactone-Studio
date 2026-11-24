@@ -2,9 +2,9 @@ import type { Atom, Bond, Structure, Vector3 } from '../types';
 import { elementSymbol } from '../elements';
 import { bondEvidenceGeometryKey, clearBondEvidence } from '../bond-semantics';
 import { perceivePeriodicConnections, requireConfirmedPeriodicity } from '../periodic';
-import { createBuilderDraft, commitBuilderTransaction, executeBuilderCommand, type BuilderAssignments, type BuilderDraft } from '../builder-draft';
+import { createBuilderDraft, validateExplicitBonds, commitBuilderTransaction, executeBuilderCommand, type BuilderAssignments, type BuilderDraft } from '../builder-draft';
 import { builderCoordinateValue, builderRotate, builderVector, editBuilderGeometry, transformBuilderSelection } from '../builder-geometry';
-import { assertBuilderStereoPreserved, builderDoubleBondGeometry, builderDoubleBondStereoReference, builderTetrahedralParity, updateBuilderStereo } from '../builder-stereo';
+import { assertBuilder2DStereoPreserved, assertBuilderStereoPreserved, refreshBuilderStereoAfterNativeChange, updateBuilderStereo } from '../builder-stereo';
 import { refreshManualStereo } from '../manual-stereo';
 import type { ChemistryResult, ModelCommand, ModelStore } from '../../modeling/contracts';
 import type { ClipboardPayload, DocumentStamp, NativeMDPolicy, FragmentSnapshot, ModelCoordinate, ModelDocument, ModelSelection, PasteConflict, PastePolicy, ScientificEditGuard, ScientificEditRequest, BondOrderObservation, ModelStoreProjectState, ModelStoreProjectHistoryArchive, ModelProjectHistoryEntry, ModelProjectReplayState, ModelProjectLinkedToken, ModelProjectLinkGroup } from './contracts';
@@ -15,6 +15,7 @@ import { addSingleHydrogen, newModelId, prepare2DHydrogens } from './hydrogen-po
 import { atomIndex, bondKey, bondReference, checkedInputLayerDraft, clone, coordinatesFingerprint, emptySelection, getFrozenAtomIds, getMovableAtomIds, graphFingerprint, referenceKey, removeAtoms, subsetStructure, unique } from './graph';
 import { getInputLayerDraftRole, isInputLayerDraft } from '../input-layer-capability';
 import type { DynamicsFrame } from '../../modeling/dynamics/contracts';
+import { mdHydrogenSettings, resolveMDConstraint, supportsMDIntegrator } from '../../modeling/dynamics/md-methods';
 import { getElementPreset, prepareElementPreset } from './element-presets';
 import { rotateAttachmentDirection, transportAttachmentPorts, transportLocalAttachmentPorts, validateAttachmentPorts } from './attachment-ports';
 import { placeBuilderFragment } from './fragment-placement';
@@ -27,7 +28,6 @@ import { bindImportedSourceAtomIds, sourceModelState } from '../../modeling/appl
 import { canonicalFreezeRows, migrateCanonicalFreezes } from '../../modeling/application/canonical-freezes';
 import { applyXtbCoordinates, applyXtbStoppedCoordinates } from '../../modeling/xtb/accept-result';
 import { bondOrderObservation, bondOrderStructureKey } from '../../modeling/bond-orders';
-import { validateHybridMetadata } from '../../modeling/dynamics/hybrid-metadata';
 import { supportsXtbOperation, XTB_METHOD_LABELS } from '../xtb-capabilities';
 import { reindexStructureAtoms } from './graph-reindex';
 import { mapStructureTransformDocument, mapStructureTransformContext } from './structure-transform-document';
@@ -312,6 +312,13 @@ function freeze<T>(value: T): T {
   return value;
 }
 
+// Consecutive selection publications share their latest scientific snapshot.
+// A batched selection following a real edit must still republish workspace metadata.
+const selectionLineage = new WeakMap<ModelDocument, ModelDocument>();
+export function isSelectionOnlyModelChange(before: ModelDocument, after: ModelDocument): boolean {
+  return before !== after && (selectionLineage.get(before) ?? before) === selectionLineage.get(after);
+}
+
 function makeNativeMDStamp(document: ModelDocument, policy: NativeMDPolicy): DocumentStamp {
   const structure=document.draft.structure,periodic=Boolean(structure.cell);
   if (!policy || policy.kind !== 'native-gfn-md' || !supportsXtbOperation(policy.method,'md',periodic) || Boolean(policy.periodic)!==periodic || policy.dtFs !== 2
@@ -322,17 +329,20 @@ function makeNativeMDStamp(document: ModelDocument, policy: NativeMDPolicy): Doc
   if (unique(policy.protectedAtomIds).length !== policy.protectedAtomIds.length || policy.protectedAtomIds.length === 1
     || json([...policy.protectedAtomIds].sort()) !== json([...frozen].sort())) throw new Error('GFN MD保护原子必须恰为当前冻结集合，且为0个或至少2个。');
   if(constraints.some(row=>row.action!=='freeze'||row.images?.some(image=>image.some(Boolean)))||policy.internalConstraintMode!==(constraints.length?'native-harmonic':undefined))throw new Error('原生MD内坐标保护与当前定义或周期策略不符。');
+  const explicitHydrogen = policy.hydrogenMassAmu !== undefined || policy.shakeHydrogenBonds !== undefined;
+  const hydrogen=explicitHydrogen?mdHydrogenSettings(policy.method,policy.shakeHydrogenBonds):undefined;
+  if(hydrogen&&(policy.hydrogenMassAmu!==hydrogen.hydrogenMassAmu||policy.shakeHydrogenBonds!==hydrogen.shakeHydrogenBonds))throw new Error('原生MD氢质量与键长约束设置不一致。');
   const normalized: NativeMDPolicy = { kind:'native-gfn-md', method:policy.method, dtFs:2, protectedAtomIds:frozen, forceConstantKJMolNm2:policy.forceConstantKJMolNm2,
-    ...(periodic?{periodic:true as const}:{}),...(constraints.length?{internalConstraintMode:'native-harmonic' as const}:{}) };
+    ...hydrogen,...(periodic?{periodic:true as const}:{}),...(constraints.length?{internalConstraintMode:'native-harmonic' as const}:{}) };
   const base = makeDocumentStamp(document);
   return { ...base, constraintsFingerprint:json([base.constraintsFingerprint, normalized]), nativeMDPolicy:normalized };
 }
 
 function validateNativeMDFrame(frame: DynamicsFrame, policy: NativeMDPolicy): void {
   const metadata = frame.nativeMD;
-  if (frame.operation !== 'md' || !metadata || metadata.method !== policy.method || metadata.dtFs !== policy.dtFs
-    || metadata.thermostat !== 'Berendsen' || metadata.hydrogenMassAmu !== (policy.method === 'gfnff' ? 4 : null)
-    || metadata.shakeHydrogenBonds !== (policy.method !== 'gfnff') || !Array.isArray(metadata.protectedAtomIds)
+  if (frame.operation !== 'md' || frame.aseMD || !metadata || metadata.method !== policy.method || metadata.dtFs !== policy.dtFs
+    || metadata.thermostat !== 'Berendsen' || metadata.hydrogenMassAmu !== (policy.hydrogenMassAmu ?? (policy.method === 'gfnff' ? 4 : null))
+    || metadata.shakeHydrogenBonds !== (policy.shakeHydrogenBonds ?? (policy.method !== 'gfnff')) || !Array.isArray(metadata.protectedAtomIds)
     || unique(metadata.protectedAtomIds).length !== metadata.protectedAtomIds.length
     || json([...metadata.protectedAtomIds].sort()) !== json([...policy.protectedAtomIds].sort())
     || metadata.protection !== (policy.protectedAtomIds.length ? 'pairwise-distance' : 'none')
@@ -359,6 +369,13 @@ function runtimeMDProvenance(frame:DynamicsFrame):import('../types').MDPreparati
         ...(rawPotential?{rawPotential:clone(rawPotential)}:{}),...(periodic?{periodic}:{}),...(internalConstraints?.length?{internalConstraints:clone(internalConstraints)}:{}),
         ...(solvation?{solvation:clone(solvation)}:{}),...(seedTreatment?{seedTreatment}:{}),...(effectiveSeed===undefined?{}:{effectiveSeed}),
         ...(engineIdentity?{engineIdentity:clone(engineIdentity)}:{}),...(degreesOfFreedom===undefined?{}:{degreesOfFreedom}),...(restartInputSha256?{restartInputSha256}:{})}};
+  }
+  if (frame.aseMD && Number.isFinite(frame.energyEV)) {
+    const {nativeClosed: _nativeClosed,...ase}=frame.aseMD;
+    const providerVersion=ase.calculatorEvidence?.version;
+    const software=[{name:'ASE',version:version(ase.aseVersion)},{name:ase.backend==='tblite'?'tblite':'xTB',
+      version:typeof providerVersion==='string'?version(providerVersion):undefined}];
+    return {...base,driver:'ase-bussi',method:ase.method,software,ase:clone(ase)};
   }
   if(frame.engine==='RDKit+ASE' && frame.step>0 && Number.isFinite(frame.energyEV) && frame.forcefield){
     return {...base,driver:'ase-rdkit',method:frame.forcefield,software:[{name:'RDKit',version:version(frame.engineVersion)},{name:'ASE',version:version(frame.aseVersion)}]};
@@ -451,7 +468,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       const index = past.indexOf(own.entry); if (index >= 0) past.splice(index, 1);
       future = own.previousFuture;
     }
-    if (publish || unchanged) emit(clone(current));
+    if (publish || unchanged) publishSelection(current.selection);
   }
   let transaction: StructureHistoryEntry | null = null;
   let transactionChanged = false;
@@ -462,8 +479,12 @@ export function createModelStore(initial: Structure | null = null, assignments: 
   let runtimeIsolated = false;
   // This cache is deliberately not restored from an Undo document snapshot.
   let activeBondOrders: BondOrderObservation | undefined;
-  let runtime: { sessionId:string; stamp:DocumentStamp; nativeMDPolicy?:NativeMDPolicy; operation:DynamicsFrame['operation']; seq:number; step:number; timeFs:number; revision:number; movable:string[]; original:Structure; coordinates:ModelCoordinate[] } | null = null;
-  function snapshot(): StructureHistoryEntry { return trackHistory({ kind: 'structure', document: clone(current), contexts: clone({ ...contexts, [contextScope]: { assignments: current.draft.assignments, coordinates: current.internalCoordinates ?? [] } }) }); }
+  let runtime: { sessionId:string; stamp:DocumentStamp; nativeMDPolicy?:NativeMDPolicy; aseMethod?:NonNullable<DynamicsFrame['aseMD']>['method']; operation:DynamicsFrame['operation']; seq:number; step:number; timeFs:number; revision:number; movable:string[]; original:Structure; coordinates:ModelCoordinate[] } | null = null;
+  function snapshot(): StructureHistoryEntry {
+    // Only the selection fields on the draft shell can change before recording.
+    const document = { ...current, draft: { ...current.draft } };
+    return trackHistory({ kind: 'structure', document, contexts: clone({ ...contexts, [contextScope]: { assignments: current.draft.assignments, coordinates: current.internalCoordinates ?? [] } }) });
+  }
   function restore(entry: StructureHistoryEntry, applyContexts = true): ModelDocument {
     const next = clone(entry.document), fallback = contexts[contextScope], restoredContexts = clone(entry.contexts);
     next.frameBondOverrides=clone(current.frameBondOverrides);
@@ -490,10 +511,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     }
     transactionChanged = true;
   }
-  function restoreSelection(entry: SelectionHistoryEntry): ModelDocument {
-    const next = clone(current); next.selection = clone(entry.selection);
-    return emit(next);
-  }
+  function restoreSelection(entry: SelectionHistoryEntry): ModelDocument { return publishSelection(normalizeSelection(entry.selection)); }
   /** Remove object identities and all their bound definitions together. Never
    * interpret a coordinate's atom tuple as atoms to delete or freeze. */
   function removeCoordinateObjects(next:ModelDocument,objects:ReturnType<typeof coordinateSelectionObjects>) {
@@ -560,6 +578,54 @@ export function createModelStore(initial: Structure | null = null, assignments: 
   const listeners = new Set<() => void>();
   const stamps = new Map<string, { movable:string[]; nativeMDPolicy?:NativeMDPolicy }>();
   const sourceStamps=new WeakMap<ModelDocument,Map<string,{movable:string[];nativeMDPolicy?:NativeMDPolicy}>>();
+  let selectionAtoms: Structure['atoms'] | undefined, selectionBonds: Structure['bonds'] | undefined;
+  let selectableAtomIds = new Set<string>(), selectableBondKeys = new Set<string>();
+  function normalizeSelection(selection: ModelSelection): ModelSelection {
+    const structure = current.draft.structure;
+    if (selectionAtoms !== structure.atoms) {
+      selectionAtoms = structure.atoms;
+      selectableAtomIds = new Set(structure.atoms.map(atom => atom.id!));
+      selectionBonds = undefined;
+      selectableBondKeys = new Set();
+    }
+    if (selection.bonds.length && selectionBonds !== structure.bonds) {
+      selectionBonds = structure.bonds;
+      selectableBondKeys = new Set((structure.bonds ?? []).map(bond => referenceKey(bondReference(structure, bond))));
+    }
+    const next = clone(selection), seen = new Set<string>();
+    next.atomIds = unique(next.atomIds).filter(id => selectableAtomIds.has(id));
+    next.bonds = next.bonds.filter(reference => {
+      const key = referenceKey(reference);
+      if (!selectableBondKeys.has(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const auxiliary = next.auxiliaryIds.length ? new Set(current.auxiliaryRelations.map(relation => relation.id)) : null;
+    next.auxiliaryIds = auxiliary ? unique(next.auxiliaryIds).filter(id => auxiliary.has(id)) : [];
+    const ports = next.portIds?.length ? new Set(current.attachmentPorts?.map(port => port.id)) : null;
+    next.portIds = ports ? unique(next.portIds ?? []).filter(id => ports.has(id)) : [];
+    if (next.coordinateIds !== undefined) {
+      if (!Array.isArray(next.coordinateIds) || next.coordinateIds.some(id => typeof id !== 'string')) throw new Error('内坐标选区必须是稳定对象ID数组。');
+      if (next.coordinateIds.length) {
+        const coordinates = new Set(coordinateSelectionObjects(current).map(object => object.id));
+        next.coordinateIds = unique(next.coordinateIds).filter(id => coordinates.has(id));
+      }
+    }
+    return next;
+  }
+  function publish(next: ModelDocument): ModelDocument {
+    current = freeze(next);
+    if (publicationDepth) publicationPending = true;
+    else for (const listener of [...listeners]) listener();
+    return current;
+  }
+  function publishSelection(selection: ModelSelection): ModelDocument {
+    const next = { ...current, selection, draft: { ...current.draft, selectedIds: [...selection.atomIds] },
+      canUndo: past.length > 0 || transactionChanged, canRedo: future.length > 0 };
+    inheritRuntimePreviewLineage(current, next);
+    selectionLineage.set(next, selectionLineage.get(current) ?? current);
+    return publish(next);
+  }
   function rememberSourceStamp(result:DocumentStamp,entry:{movable:string[];nativeMDPolicy?:NativeMDPolicy}){
     let issued=sourceStamps.get(current);if(!issued){issued=new Map();sourceStamps.set(current,issued);}issued.set(json(result),clone(entry));
     if(issued.size>64)issued.delete(issued.keys().next().value!);
@@ -574,7 +640,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     if (activeBondOrders && bondOrderStructureKey(next.draft.structure) !== bondOrderStructureKey(current.draft.structure)) activeBondOrders = undefined;
     if (activeBondOrders) next.bondOrderObservation = activeBondOrders;
     else delete next.bondOrderObservation;
-    next.draft.baseStructure = clone(baseline.structure); next.draft.baseAssignments = clone(baseline.assignments);
+    next.draft.baseStructure = freeze(baseline.structure); next.draft.baseAssignments = freeze(baseline.assignments);
     next.draft.baseAtomIds = baseline.structure.atoms.map(atom => atom.id!);
     // A committed atom is now an inheritance anchor in its own right. Old
     // lineage through a deleted H must not bypass its new baseline membership.
@@ -588,10 +654,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     // Consume only at successful publication, including a commit held inside
     // an atomic batch. Metadata revisions also invalidate unused approval.
     if (scientificEditApproval && (next.id !== scientificEditApproval.documentId || next.revision !== scientificEditApproval.revision || next.analysisBindingId !== scientificEditApproval.bindingId)) scientificEditApproval = null;
-    current = freeze(next);
-    if (publicationDepth) publicationPending = true;
-    else for (const listener of [...listeners]) listener();
-    return current;
+    return publish(next);
   }
   function authorizeScientificChange(next: ModelDocument, operation: ScientificEditRequest['operation'] = 'edit') {
     const bindingId = current.analysisBindingId;
@@ -627,7 +690,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     // assigned later to that atom. Only this transaction's new lineage applies.
     input.createdFrom = {};
     const intendedCharge = next.draft.structure.charge;
-    const provenance=clone(preserveProvenance?next.draft.structure:current.draft.structure);
+    const provenance=preserveProvenance?next.draft.structure:current.draft.structure;
     const coordinatePreparation=acceptingRuntime||preservePreparation?clone(next.draft.structure.preparation):undefined;
     next.draft = commitBuilderTransaction(input, next.draft.structure, touched, createdFrom, stereochemistry,preserveProvenance);
     if(acceptingRuntime||preservePreparation)next.draft.structure.preparation=coordinatePreparation;
@@ -856,7 +919,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       if (selection) { requireIds(selection.atomIds, '当前选区'); for (const bond of selection.bonds) requireIds(bond.atomIds, '当前键选区'); }
       // Validate existing image/coordinate definitions against the new cell
       // before any cleaner could prune a dangling stable identity.
-      const projected = clone(current); projected.draft.structure = clone(structure); validateExtras(projected);
+      validateExtras({ ...current, draft: { ...current.draft, structure } });
       scientificEditBase = clone(structure); scientificEditBaseSelection = selection ? clone(selection) : null;
       if(frame)scientificEditFrame={identity:clone(frame.identity),document:clone(frame.document)};
     },
@@ -971,6 +1034,43 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       const next = clone(current); next.draft.assignments = clone(assignments); next.internalCoordinates = clone(coordinates);
       validateExtras(next); cleanDocument(next); stamps.clear(); emit(next);
     },
+    synchronizeSharedConstraints(constraints) {
+      if(runtimeActive||runtimeEditLock||transaction)throw new Error('模型正在运行或编辑，暂不能投影任务冻结。');
+      const previous=current.sharedConstraints??emptySharedConstraints();
+      const beforeIds=new Set(previous.frozenAtomIds),afterIds=new Set(constraints.frozenAtomIds);
+      const removedIds=new Set(previous.frozenAtomIds.filter(id=>!afterIds.has(id))),addedIds=constraints.frozenAtomIds.filter(id=>!beforeIds.has(id));
+      const beforeRows=new Map(previous.coordinates.map(row=>[modelCoordinateKey(row),row]));
+      const afterRows=new Map(constraints.coordinates.map(row=>[modelCoordinateKey(row),row]));
+      const removedRows=new Set([...beforeRows.keys()].filter(key=>!afterRows.has(key)));
+      const replacedRows=[...afterRows].filter(([key,row])=>json(row)!==json(beforeRows.get(key)));
+      const enabledChanged=(previous.enabled!==false)!==(constraints.enabled!==false);
+      function mirror(document:ModelDocument,exact=false):ModelDocument {
+        const shared=document.sharedConstraints??emptySharedConstraints(),structure=document.draft.structure;
+        const ids=new Set(structure.atoms.map(atom=>atom.id));
+        const rows=new Map(shared.coordinates.filter(row=>!removedRows.has(modelCoordinateKey(row))).map(row=>[modelCoordinateKey(row),row]));
+        for(const [key,row] of replacedRows){
+          if(!row.atomIds.every(id=>ids.has(id))||!structure.cell&&row.images?.some(image=>image.some(Boolean)))continue;
+          rows.set(key,{...row,objectId:undefined});
+        }
+        const coordinates=canonicalFreezeRows(structure,exact?constraints.coordinates:[...rows.values()],document.coordinateObjects);
+        const next={...document,coordinateObjects:coordinates.coordinateObjects,sharedConstraints:{...shared,canonical:true as const,
+          ...(enabledChanged?{enabled:constraints.enabled}:{}),frozenAtomIds:exact?[...constraints.frozenAtomIds]:
+            [...new Set([...shared.frozenAtomIds.filter(id=>!removedIds.has(id)),...addedIds.filter(id=>ids.has(id))])],coordinates:coordinates.coordinates}};
+        validateExtras(next);return next;
+      }
+      const next=clone(mirror(current,true));
+      if(contentKey(next)===contentKey(current))return;
+      finishSelectionTransaction();
+      const rebase=(entry:HistoryEntry):HistoryEntry=>entry.kind==='structure'?
+        trackHistory({...entry,document:mirror(entry.document)},historyEdges.get(entry)):entry;
+      const nextPast=past.map(rebase),nextFuture=future.map(rebase);
+      const wasDirty=current.draft.dirty;
+      past=nextPast;future=nextFuture;
+      next.revision=current.revision+1;
+      next.draft={...next.draft,revision:next.revision,structure:{...next.draft.structure,revision:next.revision}};
+      if(!wasDirty)baseline.content=dirtyContentKey(next);
+      scientificEditApproval=null;runtime=null;stamps.clear();emit(next);
+    },
     setElectronicState(charge, multiplicity, confirmed) {
       if (!Number.isInteger(charge) || !Number.isInteger(multiplicity) || multiplicity < 1) return;
       if (linkedGroup && !linkedBypass) {
@@ -987,25 +1087,20 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     stamp, stampNativeMD,
     select(selection) {
       if (linkedGroup && !linkedBypass) return linkedGroup.run(store, () => store.select(selection), 'selection');
-      const next = clone(current); next.selection = clone(selection); cleanDocument(next);
-      const selectedBonds=new Set<string>();
-      next.selection.bonds=next.selection.bonds.filter(reference=>{
-        const key=referenceKey(reference);if(selectedBonds.has(key))return false;selectedBonds.add(key);return true;
-      });
-      if (json(next.selection) === json(current.selection)) return current;
+      const next = normalizeSelection(selection);
+      if (json(next) === json(current.selection)) return current;
       if (!selectionTransaction) past.push(selectionSnapshot(current.selection));
       else if (!selectionTransaction.entry) {
         const entry = selectionSnapshot(selectionTransaction.initial);
         selectionTransaction.entry = entry; past.push(entry);
       }
       future = [];
-      return emit(next);
+      return publishSelection(next);
     },
     clearCaptureSelection(){
       if (linkedGroup && !linkedBypass) { linkedGroup.endSelection(); linkedGroup.run(store, () => { store.clearCaptureSelection?.(); return current; }, 'selection', false, false); return; }
-      const next=clone(current);next.selection=emptySelection();next.draft.selectedIds=[];
-      if(sameSelection(next.selection,current.selection))return;
-      emit(next);
+      const selection=emptySelection();
+      if(!sameSelection(selection,current.selection))publishSelection(normalizeSelection(selection));
     },
     executeBatch(commands, label) {
       if (!commands.length) return current;
@@ -1014,10 +1109,17 @@ export function createModelStore(initial: Structure | null = null, assignments: 
         return linkedGroup.run(store, () => store.executeBatch!(commands, label), 'structure', false, true, !commands.some(command => command.type === 'reorder-atoms'));
       }
       const owner = linkedStoreAccess.get(store)!, checkpoint = owner.checkpoint();
+      const batchDocument = current.id, batchRevision = current.revision;
       owner.batch(true); let success = false;
       try {
         store.beginTransaction(label);
-        for (const command of commands) store.execute(command);
+        for (const command of commands) {
+          // A caller can bind ordered edits to the same external snapshot. The
+          // Store advances each internal revision as the single batch runs.
+          const boundEdit=command.type==='manual-coordinates'||command.type==='reorder-atoms';
+          store.execute(boundEdit&&command.documentId===batchDocument&&command.expectedRevision===batchRevision
+            ? {...command,expectedRevision:current.revision} : command);
+        }
         store.endTransaction(); success = true;
       } catch (error) { checkpoint.rollback(); throw error; }
       finally { owner.batch(false, success); }
@@ -1027,7 +1129,12 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       try {
       if (linkedGroup && !linkedBypass) { if (command.type === 'reorder-atoms') linkedGroup.preflight(); return linkedGroup.run(store, () => store.execute(command), 'structure', false, true, command.type !== 'reorder-atoms'); }
       if(runtimeEditLock)throw new Error('动态会话未停止，不能修改结构。');
-      let next = clone(current), structure = next.draft.structure;
+      // A Cartesian drag replaces only the coordinate array, rotated port
+      // directions and stereo presentation before the shared commit validates it.
+      let next = command.type==='transform-fragment'
+        ? {...current,selection:{...current.selection},draft:{...current.draft,structure:{...current.draft.structure}}}
+        : clone(current);
+      let structure = next.draft.structure;
       let touched: string[] = [], createdFrom: Record<string, string> = {};
       let contextChanges:Record<string,Context>|undefined;
       switch (command.type) {
@@ -1248,7 +1355,8 @@ export function createModelStore(initial: Structure | null = null, assignments: 
           touched=[a.id!,b.id!];break;
         }
         case 'transform-fragment': {
-          const ids = new Set(command.atomIds); for (const id of ids) atomIndex(structure, id);
+          const ids = new Set(command.atomIds), atomsById = new Map(structure.atoms.map(atom => [atom.id, atom]));
+          for (const id of ids) if (!atomsById.has(id)) throw new Error(`原子 ${id} 已不存在。`);
           if (command.delta && !finiteVector(command.delta) || command.rotation && (!finiteVector(command.rotation.axis) || !finiteVector(command.rotation.pivot) || !Number.isFinite(command.rotation.degrees))) throw new Error('变换参数必须有限。');
           const positions=new Map<string,Vector3>(),offsets=new Map<string,Vector3>();
           if(command.unwrapPeriodic){
@@ -1256,7 +1364,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
               if(positions.has(id))continue;
               const fragment=resolveFinitePeriodicFragment(structure,id);
               if(fragment.atomIds.some(member=>!ids.has(member)))throw new Error('有限片段手势必须包含完整连接片段。');
-              for(const member of fragment.atomIds){const atom=structure.atoms[atomIndex(structure,member)],point=fragment.positions[member];positions.set(member,point);offsets.set(member,builderVector.sub(point,[atom.x,atom.y,atom.z]));}
+              for(const member of fragment.atomIds){const atom=atomsById.get(member)!,point=fragment.positions[member];positions.set(member,point);offsets.set(member,builderVector.sub(point,[atom.x,atom.y,atom.z]));}
             }
           }
           structure.atoms = structure.atoms.map(atom => {
@@ -1270,7 +1378,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
           assertFrozenCoordinatesPreserved(current, structure);
           if (command.rotation) next.attachmentPorts = (next.attachmentPorts ?? []).map(port => ids.has(port.hostAtomId) ? { ...port, direction:rotateAttachmentDirection(port.direction,command.rotation!.axis,command.rotation!.degrees) } : port);
           touched = [...ids]; next.draft.structure = refreshManualStereo(current.draft.structure, structure, touched);
-          return commit(next,touched,{},undefined,false);
+          return commit(next,touched,{}, {...current.draft},false);
         }
         case 'manual-coordinates': {
           if(command.documentId!==current.id||command.expectedRevision!==current.revision)throw new Error('手工几何结果已过期或来自其它窗口。');
@@ -1289,6 +1397,26 @@ export function createModelStore(initial: Structure | null = null, assignments: 
           next.draft.structure=refreshManualStereo(current.draft.structure,structure,touched);
           return commit(next,touched,{},undefined,false);
         }
+        case 'apply-optimization-geometry': {
+          if(command.documentId!==current.id||command.expectedRevision!==current.revision)throw new Error('优化期间原结构已变化，结果未覆盖当前结构。');
+          const result=command.structure;
+          if(result.atoms.length!==structure.atoms.length||result.atoms.some((atom,index)=>
+            atom.id!==structure.atoms[index].id||atom.element!==structure.atoms[index].element||![atom.x,atom.y,atom.z].every(Number.isFinite)))
+            throw new Error('优化结果的原子身份、顺序或坐标无效。');
+          if(json(result.cell)!==json(structure.cell))throw new Error('优化结果的固定晶胞与原结构不一致。');
+          structure.atoms=structure.atoms.map((atom,index)=>{
+            const {x,y,z}=result.atoms[index];return {...atom,x,y,z};
+          });
+          structure.bonds=clone(result.bonds);
+          structure.bondSource=result.bondSource;
+          structure.bondPerceptionIssues=clone(result.bondPerceptionIssues);
+          structure.charge=result.charge;structure.multiplicity=result.multiplicity;
+          structure.preparation=clone(result.preparation);
+          const previous=current.draft.structure;
+          next.draft.structure=refreshBuilderStereoAfterNativeChange(previous,structure,()=>graphFingerprint(previous)!==graphFingerprint(structure));
+          next.attachmentPorts=transportLocalAttachmentPorts(next.attachmentPorts??[],previous,structure).ports;
+          return commit(next,structure.atoms.map(atom=>atom.id!),{},undefined,false,false,true);
+        }
         case 'infer-bonds': {
           if (command.stamp) requireStamp(command.stamp);
           const sameXtbRun=xtbRebuild?.command===command;
@@ -1306,11 +1434,14 @@ export function createModelStore(initial: Structure | null = null, assignments: 
             const issues = perceived.issues.filter(issue => !excluded.has(referenceKey(issue)));
             if (issues.length) structure.bondPerceptionIssues = issues; else delete structure.bondPerceptionIssues;
             structure.bondSource = retained.length ? structure.bondSource ?? 'file' : 'inferred';
+            const previous=current.draft.structure;
+            next.draft.structure=refreshBuilderStereoAfterNativeChange(previous,structure,()=>graphFingerprint(previous)!==graphFingerprint(structure));
             touched = structure.atoms.map(atom => atom.id!); return commit(next, touched, {}, undefined, false);
           }
           if (!command.perceivedBonds) throw new Error('请先由化学内核提供明确成键候选；未按距离伪造键型。');
           // Validate native candidates as a complete explicit graph before using them.
-          const perceived = createBuilderDraft({ ...clone(structure), bonds: clone(command.perceivedBonds) }).structure.bonds!;
+          const perceived = clone(command.perceivedBonds);
+          validateExplicitBonds({ ...structure, bonds: perceived });
           if (command.mode === 'rebuild') { structure.bonds = perceived; next.deletedBonds = []; if(command.perceivedIssues?.length)structure.bondPerceptionIssues=clone(command.perceivedIssues);else delete structure.bondPerceptionIssues; }
           else {
             const protectedPairs = new Set([...(structure.bonds ?? []).map(bond => referenceKey(bondReference(structure, bond))), ...next.deletedBonds.map(referenceKey)]);
@@ -1322,6 +1453,8 @@ export function createModelStore(initial: Structure | null = null, assignments: 
             for(const issue of command.perceivedIssues??[])if(!deletedPairs.has(bondKey(issue.atomIds)))issues.set(bondKey(issue.atomIds),clone(issue));
             if(issues.size)structure.bondPerceptionIssues=[...issues.values()];else delete structure.bondPerceptionIssues;
           }
+          const previous=current.draft.structure;
+          next.draft.structure=refreshBuilderStereoAfterNativeChange(previous,structure,()=>graphFingerprint(previous)!==graphFingerprint(structure));
           touched = structure.atoms.map(atom => atom.id!); return commit(next, touched, {}, undefined, false, false, sameXtbRun);
         }
         case 'set-periodic-axes': {
@@ -1509,7 +1642,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       if(frameIdentity){const overrides=replayFrameBondOverride(current,current,frameIdentity,'undo');if(overrides)return emit({...clone(current),frameBondOverrides:overrides});}
       scientificEditApproval = null;
       const candidate = past[past.length - 1];
-      if (candidate?.kind === 'structure') authorizeScientificChange(restore(candidate, false), 'undo');
+      if (candidate?.kind === 'structure' && current.analysisBindingId) authorizeScientificChange(candidate.document, 'undo');
       if (linkedGroup && !linkedBypass) linkedGroup.endSelection();
       finishSelectionTransaction();
       const last = past[past.length - 1];
@@ -1533,7 +1666,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       if(frameIdentity){const overrides=replayFrameBondOverride(current,current,frameIdentity,'redo');if(overrides)return emit({...clone(current),frameBondOverrides:overrides});}
       scientificEditApproval = null;
       const candidate = future[0];
-      if (candidate?.kind === 'structure') authorizeScientificChange(restore(candidate, false), 'redo');
+      if (candidate?.kind === 'structure' && current.analysisBindingId) authorizeScientificChange(candidate.document, 'redo');
       if (linkedGroup && !linkedBypass) linkedGroup.endSelection();
       finishSelectionTransaction();
       const first = future[0];
@@ -1573,23 +1706,17 @@ export function createModelStore(initial: Structure | null = null, assignments: 
         return commit(next,movable,{},undefined,true,false,true);
       }
 
-      if(frame.schema!==1 || !frame.sessionId || !Number.isSafeInteger(frame.seq) || frame.seq<0 || !Number.isSafeInteger(frame.step) || frame.step<0 || !Number.isFinite(frame.timeFs) || frame.timeFs<0 || !['md','optimize','geometry'].includes(frame.operation))throw new Error('动态帧协议或数值身份无效。');
-      if(frame.operation==='geometry'){
-        if(!Number.isFinite(frame.geometryObjective)||!frame.hybridGeometry&&frame.geometryObjective! < 0||frame.timeFs!==0)throw new Error('几何整理必须提供有限目标值，普通机械目标须非负，且不具有物理时间。');
-        if(frame.hybridGeometry)validateHybridMetadata(frame.hybridGeometry,current.draft.structure,frame.geometryObjective);
-        if(['energyEV','kineticEnergyEV','temperatureK','targetTemperatureK','forcefield'].some(field=>field in frame))throw new Error('几何整理不能携带物理力场、能量或温度。');
-      }
+      if(frame.schema!==1 || !frame.sessionId || !Number.isSafeInteger(frame.seq) || frame.seq<0 || !Number.isSafeInteger(frame.step) || frame.step<0 || !Number.isFinite(frame.timeFs) || frame.timeFs<0 || frame.operation!=='md')throw new Error('动态帧协议或数值身份无效。');
       const nativeMDPolicy = runtime?.nativeMDPolicy ?? stamps.get(json(frame.stamp))?.nativeMDPolicy;
       if(nativeMDPolicy)validateNativeMDFrame(frame,nativeMDPolicy);
       else if(frame.nativeMD || frame.stamp.nativeMDPolicy)throw new Error('GFN MD帧缺少当前文档注册的专用许可。');
-      if(frame.operation==='md'&&frame.timeFs!==frame.step*(nativeMDPolicy?.dtFs??1))throw new Error(`MD帧时间必须对应${nativeMDPolicy?.dtFs??1}fs固定步长。`);
-      if(current.draft.structure.periodicSource?.completeness==='partial')throw new Error('部分平移矢量来源不能接受科学或机械运行结果。');
-      if(current.draft.structure.cell?.pbc.some(Boolean)&&!nativeMDPolicy?.periodic){
-        requireConfirmedPeriodicity(current.draft.structure);
-        if(frame.operation!=='geometry'||frame.hybridGeometry)throw new Error('当前周期运行通道仅接受已明确选择的固定晶胞机械整理，不冒周期分子力场。');
-        if(effectiveModelCoordinates(current).length)throw new Error('周期机械整理当前仅验证原子冻结；不会静默忽略B/A/D冻结。');
-        if(current.draft.structure.atoms.some(atom=>atom.stereoParity)||(current.draft.structure.bonds??[]).some(bond=>bond.stereo))throw new Error('周期机械整理尚未验证显式分子立体标记的镜像执行，不能静默忽略。');
-      }
+      const ase=frame.aseMD, structure=current.draft.structure;
+      if(ase&&(ase.driver!=='ase-bussi'||ase.dtFs!==2||ase.thermostat!=='Bussi'||ase.thermostatTimeConstantFs!==500
+        ||ase.periodic!==Boolean(structure.cell)||!supportsMDIntegrator(ase.method,ase.periodic,'ase')))throw new Error('ASE MD积分器、方法或固定晶胞回执无效。');
+      const dtFs=ase?.dtFs??nativeMDPolicy?.dtFs??1;
+      if(frame.timeFs!==frame.step*dtFs)throw new Error(`MD帧时间必须对应${dtFs} fs固定步长。`);
+      if(structure.periodicSource?.completeness==='partial')throw new Error('部分平移矢量来源不能接受MD结果。');
+      if(structure.cell?.pbc.some(Boolean)&&!nativeMDPolicy?.periodic&&!ase?.periodic)throw new Error('周期MD需要实际固定晶胞的运行来源。');
       if (!transaction) throw new Error('动态帧必须属于已开启的单段事务。');
       if (!runtime) {
         let movable:string[];
@@ -1597,32 +1724,47 @@ export function createModelStore(initial: Structure | null = null, assignments: 
           if(json(makeNativeMDStamp(current,nativeMDPolicy))!==json(frame.stamp))throw new Error('文档或约束已变化，过期GFN MD结果未应用。');
           movable=stamps.get(json(frame.stamp))!.movable;
         } else movable=requireStamp(frame.stamp);
-        runtime={sessionId:frame.sessionId,stamp:clone(frame.stamp),nativeMDPolicy:clone(nativeMDPolicy),operation:frame.operation,seq:-1,step:-1,timeFs:-1,revision:current.revision,movable,original:clone(current.draft.structure),coordinates:effectiveModelCoordinates(current)};
+        const coordinates=effectiveModelCoordinates(current);
+        if(ase){
+          if(structure.cell&&!requireConfirmedPeriodicity(structure).pbc.every(Boolean))throw new Error('固定晶胞 ASE MD需要工作模型启用 XYZ 三个周期轴。');
+          if(json(movable)!==json(getMovableAtomIds(current,'all'))||json(ase.frozenAtomIds)!==json(getFrozenAtomIds(current)))throw new Error('ASE MD固定原子与当前文档冻结定义不符。');
+          if(coordinates.some(row=>row.action!=='freeze'))throw new Error('ASE MD不能接管扫描定义。');
+        }
+        runtime={sessionId:frame.sessionId,stamp:clone(frame.stamp),nativeMDPolicy:clone(nativeMDPolicy),aseMethod:ase?.method,operation:frame.operation,seq:-1,step:-1,timeFs:-1,revision:current.revision,movable,original:clone(structure),coordinates:ase?coordinates.map(row=>resolveMDConstraint(structure,row)):coordinates};
       }
       const active=runtime;
-      if(active.sessionId!==frame.sessionId || json(active.stamp)!==json(frame.stamp) || frame.operation!==active.operation || frame.seq<=active.seq || frame.step<active.step || frame.timeFs<active.timeFs || current.revision!==active.revision) throw new Error('动态帧身份、操作、顺序或当前文档已失效。');
+      if(active.sessionId!==frame.sessionId || json(active.stamp)!==json(frame.stamp) || frame.operation!==active.operation || ase?.method!==active.aseMethod || frame.seq<=active.seq || frame.step<active.step || frame.timeFs<active.timeFs || current.revision!==active.revision) throw new Error('动态帧身份、操作、顺序或当前文档已失效。');
       if(frame.structure.dimension!==3 || graphFingerprint(frame.structure)!==graphFingerprint(active.original)) throw new Error('动态帧改变了原子身份、键图或电子态。');
       createBuilderDraft(frame.structure);
       const movable=new Set(active.movable), points=new Map(frame.structure.atoms.map(a=>[a.id!,a]));
       for(const atom of active.original.atoms){const point=points.get(atom.id!);if(!point || !movable.has(atom.id!) && ![Object.is(atom.x,point.x),Object.is(atom.y,point.y),Object.is(atom.z,point.z)].every(Boolean))throw new Error('动态帧改变了固定原子。');}
       const next=clone(current);next.draft.structure.atoms=next.draft.structure.atoms.map(a=>{const p=points.get(a.id!)!;return {...a,x:p.x,y:p.y,z:p.z};});
-      if(!active.nativeMDPolicy)for(const coordinate of active.coordinates){if(coordinate.action!=='freeze')continue;const before=builderCoordinateValue(active.original,coordinate.type,coordinate.atomIds,coordinate.images),after=builderCoordinateValue(next.draft.structure,coordinate.type,coordinate.atomIds,coordinate.images);const delta=coordinate.type==='D'?Math.abs(((after-before+540)%360)-180):Math.abs(after-before);if((coordinate.type==='B'?delta:delta*Math.PI/180)>(coordinate.type==='B'?MODEL_CONSTRAINT_TOLERANCE.distanceAngstrom:MODEL_CONSTRAINT_TOLERANCE.angleRadians))throw new Error('动态帧改变了明确冻结的内坐标。');}
-      if(frame.operation==='geometry'&&!active.original.cell?.pbc.some(Boolean))assertBuilderStereoPreserved(active.original,next.draft.structure);
+      if(!active.nativeMDPolicy)for(const coordinate of active.coordinates){
+        if(coordinate.action!=='freeze')continue;
+        const target=(ase?coordinate.value:undefined)??builderCoordinateValue(active.original,coordinate.type,coordinate.atomIds,coordinate.images);
+        const actual=builderCoordinateValue(next.draft.structure,coordinate.type,coordinate.atomIds,coordinate.images);
+        const delta=coordinate.type==='D'?Math.abs(((actual-target)%360+540)%360-180):Math.abs(actual-target);
+        const distance=coordinate.type==='B';
+        if((distance?delta:delta*Math.PI/180)>(distance?MODEL_CONSTRAINT_TOLERANCE.distanceAngstrom:MODEL_CONSTRAINT_TOLERANCE.angleRadians))throw new Error('动态帧改变了明确冻结的内坐标。');
+      }
       const portTransport=transportLocalAttachmentPorts(next.attachmentPorts??[],current.draft.structure,next.draft.structure);
       next.attachmentPorts=portTransport.ports;
-      if(frame.operation==='geometry')next.draft.structure.preparation={after:frame.geometryObjective,unit:'geometry-objective',status:frame.hybridGeometry?.mode==='geometry-only'?'纯几何整理（无法建立可信UFF混合目标，非物理势能）':frame.hybridGeometry?'局部机械＋外围UFF预优化':frame.converged?'机械几何整理达到收敛条件':'机械几何整理（非物理势能）'};
-      else if(active.nativeMDPolicy){
+      if(active.nativeMDPolicy){
         const md=runtimeMDProvenance(frame);
         const policy=active.nativeMDPolicy;
         next.draft.structure.preparation={...(md?{forcefield:policy.method,after:frame.energyEV,unit:'eV',md}:{}),status:`${XTB_METHOD_LABELS[policy.method]} MD${policy.periodic?'（固定晶胞）':policy.protectedAtomIds.length||policy.internalConstraintMode?'（势能含保护项）':''}`};
       }
-      else if(frame.operation==='md'&&frame.engine==='RDKit+ASE'){
+      else if(ase){
+        const md=runtimeMDProvenance(frame);
+        next.draft.structure.preparation={...(md?{forcefield:ase.method,after:frame.energyEV,unit:'eV',md}:{}),status:`${XTB_METHOD_LABELS[ase.method]} ASE MD${ase.periodic?'（固定晶胞）':''}`};
+      }
+      else if(frame.engine==='RDKit+ASE'){
         const md=runtimeMDProvenance(frame);next.draft.structure.preparation={...(md?{forcefield:frame.forcefield,after:frame.energyEV,unit:'eV',md}:{}),status:'内置力场MD'};
       }
-      else next.draft.structure.preparation={forcefield:frame.forcefield,after:frame.energyEV,unit:'eV',status:frame.operation==='md'?'内置力场MD':frame.converged?'动态力场预优化达到收敛条件':'动态力场预优化'};
+      else next.draft.structure.preparation={forcefield:frame.forcefield,after:frame.energyEV,unit:'eV',status:'内置力场MD'};
       next.draft.structure.preparation.status=portPreparationStatus(next.draft.structure.preparation.status,portTransport.ports.length,portTransport.warnings);
       acceptingRuntime=true;
-      try { const accepted=commit(next,active.movable,{},undefined,frame.operation==='geometry');active.seq=frame.seq;active.step=frame.step;active.timeFs=frame.timeFs;active.revision=accepted.revision;runtimeEditLock=true;return accepted; }
+      try { const accepted=commit(next,active.movable,{},undefined,false);active.seq=frame.seq;active.step=frame.step;active.timeFs=frame.timeFs;active.revision=accepted.revision;runtimeEditLock=true;return accepted; }
       finally { acceptingRuntime=false; }
       } catch (error) { scientificEditApproval = null; throw error; }
     },
@@ -1650,6 +1792,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
           ||structure.charge!==request.charge||structure.multiplicity!==request.uhf!+1
           ||json(structure.atoms)!==json(next.draft.structure.atoms))throw new Error('成键回执与本次xTB优化的事务、电子态或坐标不匹配。');
       }
+      next.draft.structure=refreshBuilderStereoAfterNativeChange(current.draft.structure,next.draft.structure);
       const accepted=commit(next,movable,{},undefined,false,false,true);
       if(!optimizedBonds)return accepted;
       if(current!==next||transaction!==ownerTransaction)throw new Error('xTB优化结果已变化，原成键回执未应用。');
@@ -1670,9 +1813,11 @@ export function createModelStore(initial: Structure | null = null, assignments: 
         const {movable}=requireRuntimeSourceStamp(sourceDocument,result.request.stamp);
         if(json(makeDocumentStamp(sourceDocument,movable))!==json(result.request.stamp))throw new Error('xTB停止帧的启动来源或可动范围不匹配。');
         const accepted=applyXtbStoppedCoordinates(sourceDocument,result,movable),next=clone(current);next.draft.structure=clone(accepted.draft.structure);next.attachmentPorts=clone(accepted.attachmentPorts??[]);
+        next.draft.structure=refreshBuilderStereoAfterNativeChange(current.draft.structure,next.draft.structure);
         return commit(next,movable,{},undefined,false,false,true);
       }
       const movable=requireStamp(result.request.stamp),next=applyXtbStoppedCoordinates(current,result,movable);
+      next.draft.structure=refreshBuilderStereoAfterNativeChange(current.draft.structure,next.draft.structure);
       return commit(next,movable,{},undefined,false,false,true);
       } catch (error) { scientificEditApproval = null; throw error; }
     },
@@ -1687,12 +1832,12 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       if(!activeBondOrders&&!current.bondOrderObservation)return;
       activeBondOrders=undefined;emit(clone(current));
     },
-    acceptCoordinates(result: ChemistryResult) {
+    acceptCoordinates(result: ChemistryResult, sourceStereo) {
       try {
 
       if(runtimeEditLock)throw new Error('动态会话未停止，不能提交其它化学结果。');
-      if (result.operation !== 'generate3d' && result.operation !== 'optimize') throw new Error('该化学结果不是坐标事务。');
-      if (current.draft.structure.cell?.pbc.some(Boolean)) throw new Error('周期结构不进行全体系生成三维或力场优化。');
+      if (result.operation !== 'generate3d') throw new Error('该化学结果不是坐标事务。');
+      if (current.draft.structure.cell?.pbc.some(Boolean)) throw new Error('周期结构不进行全体系三维重建。');
       const movable = requireStamp(result.stamp);
       if (json([...result.movableAtomIds].sort()) !== json([...movable].sort())) throw new Error('内核返回的可动原子集合不匹配。');
       const incoming = result.structure, original = current.draft.structure;
@@ -1708,7 +1853,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
         const point = coordinates.get(atom.id!)!; return { ...atom, x: point.x, y: point.y, z: point.z };
       });
       next.draft.structure.dimension = 3;
-      next.draft.structure.preparation = { forcefield: result.forcefield, before: result.before, after: result.after, unit: result.unit, status: result.operation==='generate3d'?'ETKDGv3 初始三维结构':result.converged ? '局部力场达到梯度阈值' : '本地力场整理完成' };
+      next.draft.structure.preparation = { status: 'ETKDGv3 初始三维结构' };
       for (const coordinate of effectiveModelCoordinates(current)) {
         if (coordinate.action !== 'freeze') continue;
         const before = builderCoordinateValue(original, coordinate.type, coordinate.atomIds);
@@ -1718,30 +1863,12 @@ export function createModelStore(initial: Structure | null = null, assignments: 
         const tolerance = coordinate.type === 'B' ? MODEL_CONSTRAINT_TOLERANCE.distanceAngstrom : MODEL_CONSTRAINT_TOLERANCE.angleRadians;
         if (residual > tolerance) throw new Error('内核改变了明确冻结的内坐标，整份结果已拒绝。');
       }
-      if(result.operation==='generate3d'){
-        if(original.dimension===2){
-          // The flat source coordinates have zero tetrahedral volume. Its
-          // specified parity is the requirement. The receipt contributes XYZ only.
-          for(const atom of original.atoms){
-            if(atom.stereoParity && builderTetrahedralParity(next.draft.structure,atom.id!)!==atom.stereoParity)
-              throw new Error('生成坐标没有保持二维图中指定的四面体构型。');
-          }
-          for(const bond of original.bonds??[]){
-            if(bond.order!==2)continue;
-            const reference=builderDoubleBondStereoReference(original,original.atoms[bond.a].id!,original.atoms[bond.b].id!);
-            if(!reference)continue;
-            const expected=builderDoubleBondGeometry(original,reference);
-            if(expected!=='undefined' && builderDoubleBondGeometry(next.draft.structure,reference)!==expected)
-              throw new Error('生成坐标没有保持二维图中指定的双键构型。');
-          }
-        }else{
-          assertBuilderStereoPreserved(original,next.draft.structure);
-        }
-      }
+      if(original.dimension===2)assertBuilder2DStereoPreserved(original,next.draft.structure,sourceStereo);
+      else assertBuilderStereoPreserved(original,next.draft.structure);
       const portTransport=transportLocalAttachmentPorts(next.attachmentPorts??[],original,next.draft.structure);
       next.attachmentPorts=portTransport.ports;
       next.draft.structure.preparation!.status=portPreparationStatus(next.draft.structure.preparation!.status,portTransport.ports.length,portTransport.warnings,result.warnings);
-      return commit(next, movable, {}, undefined, result.operation==='generate3d', result.operation==='generate3d'&&original.dimension===2, true);
+      return commit(next, movable, {}, undefined, true, original.dimension===2, true);
       } catch (error) { scientificEditApproval = null; throw error; }
     },
     copy(scope) {

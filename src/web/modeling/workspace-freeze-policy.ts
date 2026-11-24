@@ -1,10 +1,28 @@
-import type {ModelCommand} from '../../modeling/contracts';
-import type {AdvancedTaskRecord} from '../../modeling/advanced/contracts';
+import type {ModelCommand,ModelCoordinate} from '../../modeling/contracts';
+import type {AdvancedResultFrame,AdvancedTaskRecord} from '../../modeling/advanced/contracts';
 import type {AdvancedFrameSource} from '../../modeling/advanced/frame-source';
 import type {WorkspaceDocumentEntry} from '../../modeling/workspace-registry';
 import {conformerInitialDocument} from './workspace-conformer-initial-owner';
 import {workspaceSourceGeometryKey} from './workspace-source-validity';
-import {modelCoordinateKey} from '../../modeling/constraints';
+import {effectiveSharedFreezes,emptySharedConstraints,modelCoordinateKey,projectSharedConstraintsByAtomNumber,validateCoordinateObject} from '../../modeling/constraints';
+
+/** The current hard-freeze display comes from this frame's initial page.
+ * The original protection still owns trajectory fitting and run provenance. */
+export function conformerFrameFreezeDisplay(task:AdvancedTaskRecord,frame:AdvancedResultFrame,origin:AdvancedResultFrame,documents:readonly WorkspaceDocumentEntry[]){
+ const sampling=origin.samplingOrigin,protection=sampling?.protection??origin.source.protection;
+ const optimized=frame.kind==='optimized'||frame.kind==='singlepoint';
+ const frameHard=effectiveSharedFreezes(frame.source.constraints).frozenAtomIds;
+ const historical=optimized?frameHard:protection?.restorationAtomIds??sampling?.protectedAtomIds??frameHard;
+ const currentInitial=task.mixedSampling?.selectedInitialGuessId;
+ const owner=currentInitial?conformerInitialDocument(task,documents,currentInitial):sampling?conformerInitialDocument(task,documents,sampling.initialGuessId):documents.find(entry=>
+  entry.conformerGroup?.taskId===task.id&&entry.conformerGroup.role==='initial'&&entry.id===origin.parentRef.documentId);
+ if(!owner)return {displayFrozenAtomIds:historical};
+ const model=owner.store.getSnapshot();
+ const originHard=effectiveSharedFreezes((sampling?.source??origin.source).constraints).frozenAtomIds;
+ const soft=optimized?[]:protection?.softProtectedAtomIds??historical.filter(id=>!originHard.includes(id));
+ const {constraints}=projectSharedConstraintsByAtomNumber(model.sharedConstraints??emptySharedConstraints(),model.draft.structure,frame.source.structure);
+ return {displayFrozenAtomIds:soft,sharedFreezeDisplay:constraints};
+}
 
 /** Freeze commands are distinct from real geometry edits and never open a
  * result-copy prompt. The shell decides permission from the owning page role. */
@@ -60,21 +78,26 @@ export function commitConformerInitialFreezes(input:ConformerFreezeOwnerInput&{a
 }
 
 /** The sampling card edits the same B/A/D Store objects as the modeling tools. */
-export function commitConformerInitialCoordinateFreeze(input:ConformerFreezeOwnerInput&{coordinate:{type:'B'|'A'|'D';atomIds:string[]};frozen:boolean;previousCoordinate?:{type:'B'|'A'|'D';atomIds:string[]}}):boolean{
+export type ConformerFreezeCoordinate=Pick<ModelCoordinate,'type'|'atomIds'|'images'>;
+function sameCoordinateEndpoints(first:ConformerFreezeCoordinate,second:ConformerFreezeCoordinate):boolean{
+ return first.type===second.type
+  && JSON.stringify(first.atomIds)===JSON.stringify(second.atomIds)
+  && JSON.stringify(first.images??[])===JSON.stringify(second.images??[]);
+}
+export function commitConformerInitialCoordinateFreeze(input:ConformerFreezeOwnerInput&{coordinate:ConformerFreezeCoordinate;frozen:boolean;previousCoordinate?:ConformerFreezeCoordinate}):boolean{
  const {entry,document}=currentConformerFreezeOwner(input),coordinate=input.coordinate;
- const known=new Set(document.draft.structure.atoms.map(atom=>atom.id));
- if(!['B','A','D'].includes(coordinate.type)||coordinate.atomIds.length!=={B:2,A:3,D:4}[coordinate.type]
-  ||new Set(coordinate.atomIds).size!==coordinate.atomIds.length||coordinate.atomIds.some(id=>!known.has(id)))throw Error('内坐标冻结含缺失或重复原子身份。');
+ validateCoordinateObject({...coordinate,id:'conformer-coordinate'},document.draft.structure);
+ const endpoints={type:coordinate.type,atomIds:[...coordinate.atomIds],images:structuredClone(coordinate.images)};
  if(input.previousCoordinate){
   if(!input.frozen)throw Error('替换内坐标须明确提交新冻结定义。');
   const previousKey=modelCoordinateKey(input.previousCoordinate),nextKey=modelCoordinateKey(coordinate),rows=document.sharedConstraints?.coordinates??[];
   const previous=rows.find(row=>modelCoordinateKey(row)===previousKey);
-  if(!previous||previous.type!==input.previousCoordinate.type||JSON.stringify(previous.atomIds)!==JSON.stringify(input.previousCoordinate.atomIds))throw Error('原内坐标冻结已变化，请重新编辑。');
+  if(!previous||!sameCoordinateEndpoints(previous,input.previousCoordinate))throw Error('原内坐标冻结已变化，请重新编辑。');
   if(rows.some(row=>modelCoordinateKey(row)!==previousKey&&modelCoordinateKey(row)===nextKey))throw Error('该内坐标已有冻结定义，请保留或解除相应条目后再编辑。');
-  if(previous.type===coordinate.type&&JSON.stringify(previous.atomIds)===JSON.stringify(coordinate.atomIds))return true;
+  if(sameCoordinateEndpoints(previous,coordinate))return true;
   // Exact reverse keeps the same physical target. A new path gets a new
   // object and takes its own current-value freeze, without renaming old objects.
-  const replacement=nextKey===previousKey?{...previous,atomIds:[...coordinate.atomIds]}:{type:coordinate.type,atomIds:[...coordinate.atomIds],action:'freeze' as const,steps:1,increment:null};
+  const replacement=nextKey===previousKey?{...previous,...endpoints}:{...endpoints,action:'freeze' as const,steps:1,increment:null};
   const commands:ModelCommand[]=[{type:'replace-shared-coordinate-freezes',coordinates:rows.map(row=>row===previous?replacement:row)}];
   if(document.sharedConstraints?.enabled===false)commands.push({type:'set-shared-freezes-enabled',enabled:true});
   if(entry.store.executeBatch)entry.store.executeBatch(commands,'修改构象初始内坐标冻结');
@@ -84,7 +107,7 @@ export function commitConformerInitialCoordinateFreeze(input:ConformerFreezeOwne
  const key=modelCoordinateKey(coordinate),existing=document.coordinateObjects?.find(object=>modelCoordinateKey(object)===key);
  if(input.frozen&&document.sharedConstraints?.coordinates.some(row=>modelCoordinateKey(row)===key))
   throw Error(document.sharedConstraints.enabled===false?'此内坐标已有保留定义，当前模型冻结已停用；请在输入文件的冻结卡启用模型冻结后再编辑。':'该内坐标已有冻结定义，请编辑现有条目。');
- const object=existing??{id:`conformer-coordinate-${crypto.randomUUID()}`,type:coordinate.type,atomIds:[...coordinate.atomIds]};
+ const object=existing??{id:`conformer-coordinate-${crypto.randomUUID()}`,...endpoints};
  entry.store.execute({type:'set-shared-coordinate-freeze',object,frozen:input.frozen});
  return true;
 }

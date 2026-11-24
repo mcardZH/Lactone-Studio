@@ -157,7 +157,7 @@ test.describe(
       executedScenarios += 1;
     });
 
-    test('desktop/chemistry/engine.py executes generate3d, optimize, perceive-bonds, and convert on macOS', () => {
+    test('desktop/chemistry/engine.py executes generate3d, perceive-bonds, and convert on macOS', () => {
       const runtime = resolveActiveRuntime();
 
       const waterStructure = {
@@ -184,21 +184,10 @@ test.describe(
       assert.equal(gen3dRes.operation, 'generate3d');
       assert.equal(gen3dRes.structure.atoms.length, 3);
 
-      // 2. Force-field geometry optimization
-      const optRes = runEngineRequest(runtime, {
-        stamp: 'test-opt',
-        operation: 'optimize',
-        structure: gen3dRes.structure,
-        movableAtomIds: ['a1', 'a2', 'a3']
-      });
-      assert.equal(optRes.error, undefined);
-      assert.equal(optRes.operation, 'optimize');
-      assert.equal(optRes.structure.atoms.length, 3);
-
-      // 3. Coordinate-import bond perception
+      // 2. Coordinate-import bond perception
       const unbondedWater = {
         dimension: 3,
-        atoms: optRes.structure.atoms.map((a) => ({
+        atoms: gen3dRes.structure.atoms.map((a) => ({
           id: a.id,
           element: a.element,
           x: a.x,
@@ -216,12 +205,12 @@ test.describe(
       assert.equal(perceiveRes.error, undefined);
       assert.equal(perceiveRes.structure.bonds.length, 2);
 
-      // 4. Format conversion (XYZ & SDF)
+      // 3. Format conversion (XYZ & SDF)
       const xyzRes = runEngineRequest(runtime, {
         stamp: 'test-xyz',
         operation: 'convert',
         format: 'xyz',
-        structure: optRes.structure,
+        structure: gen3dRes.structure,
         movableAtomIds: ['a1', 'a2', 'a3']
       });
       assert.equal(xyzRes.error, undefined);
@@ -231,7 +220,7 @@ test.describe(
         stamp: 'test-sdf',
         operation: 'convert',
         format: 'sdf',
-        structure: optRes.structure,
+        structure: gen3dRes.structure,
         movableAtomIds: ['a1', 'a2', 'a3']
       });
       assert.equal(sdfRes.error, undefined);
@@ -302,7 +291,8 @@ test.describe(
           ].filter((p) => fs.existsSync(p))
         : [];
       const modulesToVerify = [
-        'geometry_clean',
+        'finite_empirical',
+        'empirical_worker',
         'crystal_modeling',
         'conformer_sampling',
         'conformer_solvation',

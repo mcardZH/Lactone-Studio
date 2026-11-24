@@ -1,4 +1,5 @@
 import type { AdvancedMixedSamplingCard, AdvancedTaskRecord } from '../../modeling/advanced/contracts';
+import { isRetainedNativeFixedAtomRejection } from '../../modeling/advanced/batch-adoption';
 import type {ResolvedConformerPlaybackFrame} from './conformer-playback';
 
 export interface SamplingCardProgressView {
@@ -18,8 +19,18 @@ export function samplingCardProgressView(card: CardObservation, configuration: A
     remainingTimeFs:targetTimeFs===null?null:Math.max(0,targetTimeFs-card.completedTimeFs)};
 }
 export const SAMPLING_CARD_STATUS:Record<string,string>={pending:'待执行',running:'运行中',completed:'已完成',failed:'失败',stopped:'已终止'};
+const referenceIds = new WeakMap<NonNullable<ResolvedConformerPlaybackFrame['referenceSource']>, ReadonlySet<string | undefined>>();
 export function conformerPlaybackReference(mode:'raw'|'fixed'|undefined,resolved:ResolvedConformerPlaybackFrame|undefined,coreIds:readonly string[]){
-  const available=Boolean(resolved?.referenceSource&&coreIds.length&&!resolved.warnings.length&&coreIds.every(id=>resolved.referenceSource!.structure.atoms.some(atom=>atom.id===id)));
+  const reference = resolved?.referenceSource;
+  let available = false;
+  if (reference && coreIds.length && !resolved.warnings.length) {
+    let ids = referenceIds.get(reference);
+    if (!ids) {
+      ids = new Set(reference.structure.atoms.map(atom => atom.id));
+      referenceIds.set(reference, ids);
+    }
+    available = coreIds.every(id => ids.has(id));
+  }
   return{available,mode:mode==='raw'?'raw' as const:available?'fixed' as const:'raw' as const};
 }
 export function samplingTargetFrames(configuration:AdvancedMixedSamplingCard):number|null {
@@ -39,6 +50,8 @@ export function optimizationActionView(task:AdvancedTaskRecord|undefined,stageId
   const hasWork=Boolean(stage?.progress?.total||latestStage?.results.length||latestStage&&latestStage.status!=='pending');
   const errorStage=latest?.stages.find(row=>row.status==='failed')??latest?.stages.at(-1);
   const retainedStage=latestStage?.adoptionError?latestStage:undefined;
+  const oldNativeFreezeRejection=Boolean(retainedStage&&isRetainedNativeFixedAtomRejection(retainedStage)
+    &&(task?.spec.kind==='sampling'||task?.spec.kind==='conformer-search'));
   const progress=retainedStage?retainedBatchProgress(retainedStage):stage?.progress??latestStage?.progress;
   const stageStatus=latestStage?.status;
   const status=ownsBackground?latest?.status:stageStatus==='pending'
@@ -49,7 +62,7 @@ export function optimizationActionView(task:AdvancedTaskRecord|undefined,stageId
     phase,backgroundProgress:ownsBackground?background:undefined,
     status,
     hasRunError:Boolean(latest?.error&&errorStage===latestStage&&!retainedStage),
-    retainedStage, blockedByRetainedBatch:Boolean(retainedStage),
+    retainedStage, blockedByRetainedBatch:Boolean(retainedStage)&&!oldNativeFreezeRejection,
     adoptionErrorKind:retainedStage?retainedStage.adoptionError?.kind??'read' as const:undefined,
     cleanupWarning:latestStage?.batchCleanupWarning,
     finalClusterCount:latestStage?.status==='completed'&&!ownsBackground?latestStage.clustering?.groups.reduce((count,group)=>count+group.clusters.length,0):undefined,

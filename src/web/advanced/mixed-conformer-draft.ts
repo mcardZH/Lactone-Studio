@@ -1,3 +1,4 @@
+import {isPeriodic} from '../../core/periodic';
 import type { AdvancedFrameSource } from "../../modeling/advanced/frame-source";
 import type {
 	AdvancedMixedSamplingDefinition,
@@ -11,9 +12,11 @@ import {
 	conformerTorsionCombinationCount,
 	createConformerSnapshot,
 	discoverConformerTorsionRows,
+	findRotatableTorsions,
 	inspectConformerTorsion,
 	inspectManualConformerTorsion,
-	type TorsionAtoms
+	type TorsionAtoms,
+	type TorsionRejection
 } from "../../modeling/conformers";
 import { convertEnergy } from "../../results/energy";
 import { automaticStem } from "../../core/naming";
@@ -27,11 +30,15 @@ import { initialConformerStageMethod, restoreConformerTaskDraft } from "./confor
 import type { ConformerOptimizationDraft } from "./ConformerOptimizationStages";
 import type { ConformerTorsionDraft } from "./ConformerTorsionControls";
 import {conformerSolvationDraftIssue} from './conformer-solvation-draft';
+import {validConformerOptimizer} from '../../modeling/advanced/conformer-shared-optimization';
+import {isPesNetMethod} from '../../modeling/pes/contracts';
+import {periodicPesOperationAvailable} from '../../modeling/pes/periodic-capabilities';
+import {conformerAlpbPresets} from '../../modeling/advanced/conformer-solvation';
 
 export type MixedSamplingChoice = "md" | "metadynamics" | "conformer-search";
 export const MIXED_SAMPLING_CHOICES = [
 	{ id: "md", label: "高温 MD" },
-	{ id: "metadynamics", label: "Metadynamics" },
+	{ id: "metadynamics", label: "RMSD-MTD" },
 	{ id: "conformer-search", label: "柔性键采样" }
 ] as const;
 export interface MixedSamplingCardDraft {
@@ -67,7 +74,7 @@ export const createMixedConformerDraft = (): MixedConformerDraft => ({
 	shared: {...structuredClone(initialSamplingDraft),coreProtectionEnabled:false},
 	stages: defaultMixedStages(),
 	dedupRmsdAngstrom: 0.01,
-	deduplicationEnabled: true
+	deduplicationEnabled: false
 });
 
 export function createMixedSamplingCard(
@@ -96,42 +103,54 @@ export function createMixedSamplingCard(
 		activeTorsionId: torsions[0]?.id ?? ""
 	};
 }
-export function compileConformerStageMethod(draft: ConformerOptimizationDraft["method"], threads: number): AdvancedOptimizationMethod {
-	const solventIssue = conformerSolvationDraftIssue(draft.method, draft);
-	if (solventIssue) throw Error(solventIssue);
-	if (draft.method === "MMFF94" || draft.method === "MMFF94s" || draft.method === "UFF")
-		return { backend: "forcefield", forcefield: draft.method, threads: 1, solvent: "none", optimizationStepPolicy: "native-default" };
+export function compileConformerStageMethod(draft: ConformerOptimizationDraft["method"], threads: number, periodic = false): AdvancedOptimizationMethod {
+	if (isPesNetMethod(draft.method)) throw Error('此版本提供 xTB 计算，请为此构象优化级选择可用方法。');
+	if (draft.retiredMethod) throw Error("请为此构象优化级重新选择计算级别。");
 	if (!Number.isSafeInteger(threads) || threads < 1) throw Error("线程数须为正整数。");
+	const optimizer={algorithm:draft.optimizer??'lbfgs' as const,convergencePreset:draft.convergencePreset??'loose',
+		...(draft.convergencePreset==='custom'&&draft.convergenceLimits?{convergenceLimits:draft.convergenceLimits}:{})};
+	if(!validConformerOptimizer(optimizer))throw Error('请填写有效的构象优化收敛限度。');
+	const maxSteps=draft.maxSteps??500;
+	if(!Number.isSafeInteger(maxSteps)||maxSteps<1)throw Error('最大优化步数须为正整数。');
+	if(periodic&&!periodicPesOperationAvailable(draft.method,'opt',optimizer.algorithm))throw Error('所选级别与优化算法不适用于固定晶胞。');
+	const solvationModel=periodic||!conformerAlpbPresets(draft.method).length?'none':draft.solvationModel;
+	const solventIssue=conformerSolvationDraftIssue(draft.method,{...draft,solvationModel});
+	if(solventIssue)throw Error(solventIssue);
+	const maxSccIterations=['gfn1','gfn2','gxtb'].includes(draft.method)?draft.sccIterationLimit:undefined;
+	if(maxSccIterations!==undefined&&(!Number.isSafeInteger(maxSccIterations)||maxSccIterations<1))throw Error('SCC 迭代上限须为正整数。');
 	return { backend: "xtb", options: {
-		method: draft.method, threads, optimizationStepPolicy: "native-default",
-		solvent: draft.solvationModel === "none" ? "none" : draft.solvent,
+		method: draft.method, threads, maxSteps,
+		solvent: solvationModel === "none" ? "none" : draft.solvent,
 		internalConstraintsConfirmed: draft.internalConstraintsConfirmed,
-		...(draft.solvationModel === "none" ? {} : { solvation: { model: draft.solvationModel, solvent: draft.solvent } })
-	} };
+		...(maxSccIterations!==undefined&&draft.sccIterationLimitExplicit?{maxSccIterations}:{}),
+		...(solvationModel === "none" ? {} : { solvation: { model: solvationModel, solvent: draft.solvent } })
+	}, optimizer };
 }
 export function compileMixedStages(
 	stages: readonly ConformerOptimizationDraft[],
-	threads: number
+	threads: number,
+	periodic = false
 ): AdvancedOptimizationStageConfig[] {
 	return stages.map((stage,index) => {
 		if(index&&(!Number.isSafeInteger(stage.inputClusterCount??10)||(stage.inputClusterCount??10)<1))throw Error('选取上一级簇数须为正整数。');
 		if(!index&&(!Number.isSafeInteger(stage.inputStride??1)||(stage.inputStride??1)<1))throw Error('抽帧间隔须为正整数。');
 		if (!Number.isFinite(stage.rmsdThresholdAngstrom) || stage.rmsdThresholdAngstrom <= 0)
 			throw Error("各级归簇 RMSD 须为正数。");
+		if(!Number.isFinite(stage.energyThresholdKcalMol)||stage.energyThresholdKcalMol<0)throw Error('各级归簇能量差须为非负数。');
 		return {
 			id: stage.id,
 			...(index?{inputClusterCount:stage.inputClusterCount??10}:{inputStride:stage.inputStride??1}),
 			checkpointAfter: true,
 			clustering: {
 				rmsdMatching: 'fixed',
-				eliminateEquivalent: stage.eliminateEquivalent===true,
+				eliminateEquivalent: !periodic&&stage.eliminateEquivalent===true,
 				rmsdThresholdAngstrom: stage.rmsdThresholdAngstrom,
 				maxDeltaEnergyHartree: convertEnergy(
 					{ value: stage.energyThresholdKcalMol, unit: "kcal/mol" },
 					"hartree"
 				)!
 			},
-			method: compileConformerStageMethod(stage.method, threads)
+			method: compileConformerStageMethod(stage.method, threads, periodic)
 		};
 	});
 }
@@ -141,11 +160,13 @@ export function compileMixedDefinition(
 	resources: { threads: number; memoryBudgetBytes: number }
 ): AdvancedMixedSamplingDefinition {
 	const atomIssues=mixedConformerAtomConfigurationIssues(draft,source);
-	if(atomIssues.core||Object.keys(atomIssues.cards).length)throw Error(atomIssues.core??Object.values(atomIssues.cards)[0]);
+	if(atomIssues.core||Object.keys(atomIssues.cards).length)
+		throw new MixedConformerConfigurationError(atomIssues.core??Object.values(atomIssues.cards)[0],atomIssues.details);
 	if (!Number.isFinite(draft.dedupRmsdAngstrom) || draft.dedupRmsdAngstrom <= 0)
 		throw Error("采样去重 RMSD 须为正数。");
 	const shared = draft.shared,
 		protectedSource = source;
+	const periodic=isPeriodic(source.structure);
 	const definition: AdvancedMixedSamplingDefinition = {
 		protectionMode:'shared-freeze',
 		cards: [],
@@ -155,6 +176,7 @@ export function compileMixedDefinition(
 		coreProtectionEnabled:false,
 	};
 	for (const card of draft.cards) {
+		if(periodic&&card.kind!=='md')throw Error('固定晶胞采样仅支持高温 MD。');
 		if (card.kind === "conformer-search") {
 			const snapshot = createConformerSnapshot(
 				protectedSource.structure,
@@ -175,7 +197,11 @@ export function compileMixedDefinition(
 						pointCountMode: row.pointCountMode
 					};
 				});
-			if (!torsions.length) throw Error("柔性键采样至少需要一个有效柔性键。");
+			if (!torsions.length) {
+				const { excluded } = findRotatableTorsions(snapshot);
+				throw new MixedConformerConfigurationError("柔性键采样至少需要一个有效柔性键。",
+					[{ cardId: card.id, kind: card.kind, reason: "no-enabled-torsions", excluded }]);
+			}
 			const target = card.targetText.trim() === "" ? null : Number(card.targetText);
 			const capacity = target ?? Number(BigInt(conformerTorsionCombinationCount(card.torsions)));
 			if (!Number.isSafeInteger(capacity) || capacity < 1)
@@ -229,22 +255,52 @@ export function compileMixedDefinition(
 	return definition;
 }
 
+type MixedConformerConfigurationIssue = {
+	cardId: string;
+	kind: MixedSamplingChoice;
+	reason: TorsionRejection | 'invalid-source' | 'no-enabled-torsions';
+	torsionId?: string;
+	atomIds?: readonly string[];
+	axisAtomIds?: readonly string[];
+	excluded?: ReturnType<typeof findRotatableTorsions>['excluded'];
+};
+
+export class MixedConformerConfigurationError extends Error {
+	constructor(message: string, readonly issues: readonly MixedConformerConfigurationIssue[]) { super(message); }
+}
+
 /** Preserve every stored ID/row. Invalid bindings are editing drafts until the
  * user explicitly reassigns them, never positional mappings to different atoms. */
-export function mixedConformerAtomConfigurationIssues(draft:MixedConformerDraft,source:AdvancedFrameSource):{core?:string;cards:Record<string,string>}{
+export function mixedConformerAtomConfigurationIssues(draft:MixedConformerDraft,source:AdvancedFrameSource):{
+	core?:string;cards:Record<string,string>;details:MixedConformerConfigurationIssue[];
+}{
 	const ids=new Set(source.structure.atoms.map(atom=>atom.id)),cards:Record<string,string>={};
+	const details:MixedConformerConfigurationIssue[]=[];
 	for(const card of draft.cards){
-		if(card.kind==='metadynamics'&&(card.sampling.metaScope==='selected'||card.sampling.metaScope===undefined&&card.sampling.metaIds.length>0)&&card.sampling.metaIds.some(id=>!ids.has(id)))cards[card.id]='RMSD 偏置包含已失效原子，需重新指定；原草稿已保留。';
+		if(card.kind==='metadynamics'&&(card.sampling.metaScope==='selected'||card.sampling.metaScope===undefined&&card.sampling.metaIds.length>0)){
+			const missing=card.sampling.metaIds.filter(id=>!ids.has(id));
+			if(missing.length){
+				cards[card.id]='RMSD 偏置包含已失效原子，需重新指定；原草稿已保留。';
+				details.push({cardId:card.id,kind:card.kind,reason:'missing-atoms',atomIds:missing});
+			}
+		}
 		if(card.kind!=='conformer-search')continue;
 		for(const row of card.torsions.filter(row=>row.enabled)){
-			if(row.atomIds.some(id=>!ids.has(id))){cards[card.id]='柔性键包含已失效原子，需重新指定；原草稿已保留。';break;}
-			if(row.atomIds.length!==4)continue;
-			try{const snapshot=createConformerSnapshot(source.structure,source.ref,source.constraints),value=(row.origin==='manual'?inspectManualConformerTorsion:inspectConformerTorsion)(snapshot,row.atomIds as TorsionAtoms);
-				if(!value.accepted){cards[card.id]='柔性键已不适用于当前结构，需重新指定；原草稿已保留。';break;}}
-			catch{cards[card.id]='柔性键已不适用于当前结构，需重新指定；原草稿已保留。';break;}
+			let reason:MixedConformerConfigurationIssue['reason']|undefined;
+			if(row.atomIds.length!==4||row.atomIds.some(id=>!ids.has(id)))reason='missing-atoms';
+			else try{
+				const snapshot=createConformerSnapshot(source.structure,source.ref,source.constraints);
+				const value=(row.origin==='manual'?inspectManualConformerTorsion:inspectConformerTorsion)(snapshot,row.atomIds as TorsionAtoms);
+				if(!value.accepted)reason=value.reason;
+			}catch{reason='invalid-source';}
+			if(!reason)continue;
+			details.push({cardId:card.id,kind:card.kind,reason,torsionId:row.id,atomIds:row.atomIds,axisAtomIds:row.atomIds.slice(1,3)});
+			cards[card.id]??=reason==='closed-ring'?'柔性键中心轴位于闭环内，无法独立旋转；原草稿已保留。':
+				reason==='missing-atoms'?'柔性键需要四个当前结构的有效原子；原草稿已保留。':
+				'柔性键已不适用于当前结构，需重新指定；原草稿已保留。';
 		}
 	}
-	return {cards};
+	return {cards,details};
 }
 
 /** A placeholder permits defining cards before any computation is requested. */
@@ -266,7 +322,7 @@ export function createMixedTaskSpec(
 		// A mixed task validates and runs its own cards against the captured source.
 		sampling: historicalSamplingSlot,
 		mixedSampling,
-		optimizationStages: compileMixedStages(draft.stages, resources.threads),
+		optimizationStages: compileMixedStages(draft.stages, resources.threads, isPeriodic(source.structure)),
 		checkpointAfterSampling: true
 	};
 }

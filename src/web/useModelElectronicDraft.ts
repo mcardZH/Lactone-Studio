@@ -13,7 +13,7 @@ export function useModelElectronicDraft(store:ModelStore,initial?:{charge:number
   const draft=useMemo(()=>readModelElectronicDraft(store,ui),[document,ui,version]);
   const generation=context?.generation??ui.getGeneration();
   return {draft,present:ui.has(modelElectronicDraftKey(document.id)),read:()=>readModelElectronicDraft(store,ui),has:()=>ui.has(modelElectronicDraftKey(store.getSnapshot().id)),values:modelElectronicDraftValues(draft),change:(field:'charge'|'multiplicity',text:string)=>{if(generation===ui.getGeneration())editModelElectronicDraft(store,ui,field,text,initial);},
-    replace:(values:{charge:number;multiplicity:number})=>{if(generation===ui.getGeneration())replaceModelElectronicDraft(store,ui,values);},
+    replace:(values:{charge:number;multiplicity:number},confirmed=false)=>{if(generation===ui.getGeneration())replaceModelElectronicDraft(store,ui,values,confirmed);},
     commit:(field?:ElectronicStateEditField,text?:string)=>generation===ui.getGeneration()?commitModelElectronicDraft(store,ui,field,text,atoms):null,
     flush:(confirmed=false)=>generation===ui.getGeneration()&&flushModelElectronicDraft(store,ui,confirmed)};
 }

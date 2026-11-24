@@ -4,6 +4,10 @@
 const {randomUUID}=require('node:crypto');
 const {assert,plain,string}=require('./security.cjs');
 const EVENT_CHANNEL='sciyue:analysis-window-event';
+const workbenchPanels = new Map([
+  ['workbench-agent-tools', { width: 700, height: 560 }],
+  ['workbench-model-tools', { width: 440, height: 670 }],
+]);
 const alive=window=>window&&!window.isDestroyed()&&!window.webContents.isDestroyed();
 function placement(value){
   if(value===undefined)return{};
@@ -44,9 +48,14 @@ function createAnalysisWindowHost({sendToOwner,headless=false,icon,now=Date.now,
     for(const name of ['will-navigate','will-frame-navigate','will-redirect','will-attach-webview'])child.webContents.on(name,event=>event.preventDefault());
     child.webContents.on('render-process-gone',()=>close(record,'renderer-gone'));
     child.once('closed',()=>forget(record,record.reason??'user'));
+    if (record.workbench) child.on('close', event => {
+      if (!alive(owners.get(owner))) return;
+      event.preventDefault();
+      emit(record, 'dock-requested');
+    });
     child.on('focus',()=>emit(record,'focus'));child.on('blur',()=>emit(record,'blur'));
     child.on('restore',()=>{if(owners.get(owner)?.isFocused?.())stackOwnerChildren(owner);});
-    for(const name of ['move','resize'])child.on(name,()=>emit(record,'geometry',{bounds:bounds(child)}));
+    if (!record.workbench) for(const name of ['move','resize'])child.on(name,()=>emit(record,'geometry',{bounds:bounds(child)}));
     emit(record,'opened',{bounds:bounds(child)});
     if(owners.get(owner)?.isFocused?.())stackOwnerChildren(owner);
   }
@@ -56,7 +65,8 @@ function createAnalysisWindowHost({sendToOwner,headless=false,icon,now=Date.now,
       const record=targets.get(details.frameName);
       if(!alive(window)||!record||record.owner!==owner||record.state!=='prepared'||record.expiresAt<=now()||details.url!=='about:blank'||(details.features??'')!==''||details.postBody!=null)return{action:'deny'};
       record.state='opening';
-      return{action:'allow',outlivesOpener:false,overrideBrowserWindowOptions:{...(icon?{icon}:{}),width:480,height:620,minWidth:320,minHeight:240,...record.bounds,title:record.title,show:!headless,autoHideMenuBar:true,fullscreenable:false,alwaysOnTop:false,modal:false,minimizable:true,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,allowRunningInsecureContent:false,webviewTag:false,nodeIntegrationInSubFrames:false,nodeIntegrationInWorker:false}}};
+      const workbenchOptions = record.workbench ? { ...record.workbench, frame: false, maximizable: false } : {};
+      return{action:'allow',outlivesOpener:false,overrideBrowserWindowOptions:{...(icon?{icon}:{}),width:480,height:620,minWidth:320,minHeight:240,...workbenchOptions,...record.bounds,title:record.title,show:!headless,autoHideMenuBar:true,fullscreenable:false,alwaysOnTop:false,modal:false,minimizable:true,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,allowRunningInsecureContent:false,webviewTag:false,nodeIntegrationInSubFrames:false,nodeIntegrationInWorker:false}}};
     });
     window.webContents.on('did-create-window',(child,details)=>bind(owner,child,details));
     window.on('focus',()=>stackOwnerChildren(owner));
@@ -70,9 +80,10 @@ function createAnalysisWindowHost({sendToOwner,headless=false,icon,now=Date.now,
     for(const record of [...leases.values()])if(record.owner===owner&&record.state==='prepared'&&record.expiresAt<=now())close(record,'expired');
     const owned=[...leases.values()].filter(record=>record.owner===owner);
     assert(!owned.some(record=>record.instanceId===request.instanceId),'Analysis instance already detached');
-    assert(owned.length<maxPerOwner,'最多同时打开16个独立分析窗口，请先停靠或关闭已有窗口。');
+    const workbench = workbenchPanels.get(request.instanceId);
+    if (!workbench) assert(owned.filter(record => !record.workbench).length<maxPerOwner,'最多同时打开16个独立分析窗口，请先停靠或关闭已有窗口。');
     const leaseId=uuid(),target='sciyue-analysis-'+leaseId;assert(!leases.has(leaseId)&&!targets.has(target),'Duplicate analysis lease');
-    const record={owner,instanceId:request.instanceId,title:request.title,bounds:placement(request.bounds),leaseId,target,expiresAt:now()+leaseMs,state:'prepared'};
+    const record={owner,instanceId:request.instanceId,title:request.title,bounds:placement(request.bounds),leaseId,target,expiresAt:now()+leaseMs,state:'prepared',workbench};
     record.timer=setTimeout(()=>{if(record.state!=='open')close(record,'expired');},leaseMs);record.timer.unref?.();leases.set(leaseId,record);targets.set(target,record);
     return{leaseId,target,instanceId:record.instanceId,expiresAt:record.expiresAt};
   }
@@ -80,6 +91,14 @@ function createAnalysisWindowHost({sendToOwner,headless=false,icon,now=Date.now,
     assert(plain(request)&&Object.keys(request).length===1&&string(request.leaseId,128),'Invalid analysis window release');
     const record=leases.get(request.leaseId);if(!record)return{closed:false};assert(record.owner===owner,'Analysis window belongs to another owner');close(record,'released');return{closed:true};
   }
-  return{attachOwner,prepare,release,disposeOwner,dispose(){for(const owner of [...owners.keys()])disposeOwner(owner);},count:()=>leases.size};
+  function moveWorkbenchFloat(owner, request) {
+    assert(plain(request) && Object.keys(request).length === 3 && string(request.leaseId,128), 'Invalid workbench float move');
+    const { x, y } = placement({ x: request.x, y: request.y });
+    const record = leases.get(request.leaseId);
+    if (!record) return;
+    assert(record.owner === owner && record.workbench, 'Workbench floating window belongs to another owner or panel');
+    if (alive(record.child)) record.child.setPosition(x, y);
+  }
+  return{attachOwner,prepare,release,moveWorkbenchFloat,disposeOwner,dispose(){for(const owner of [...owners.keys()])disposeOwner(owner);},count:()=>leases.size};
 }
 module.exports={createAnalysisWindowHost,EVENT_CHANNEL};

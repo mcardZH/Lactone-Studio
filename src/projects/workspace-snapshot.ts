@@ -5,7 +5,7 @@ import {encodeResult,decodeResult,encodePostprocessDocument,decodePostprocessDoc
 import {captureAnalysisProjectState,prepareAnalysisProjectRestore,type AnalysisProjectState} from './analysis-state';
 import {ProjectUiStore,type ProjectUiSnapshot} from './ui-state';
 import type {AdvancedProjectSnapshot} from './advanced-snapshot';
-import {conformerTaskRequiresExtendedSemantics,conformerTaskRequiresElementGeometrySemantics,conformerTaskRequiresNativeDefaultSemantics} from '../modeling/advanced/conformer-cluster-collection';
+import {conformerTaskRequiresExtendedSemantics,conformerTaskRequiresElementGeometrySemantics,conformerTaskRequiresNativeDefaultSemantics,conformerTaskRequiresSharedOptimizer,conformerTaskRequiresMdIntegrator} from '../modeling/advanced/conformer-cluster-collection';
 import {conformerTaskHasInitialVelocityProvenance,conformerTaskHasNativeSolvationProvenance} from '../modeling/advanced/initial-velocity-provenance';
 import {conformerTaskRequiresAlpbSemantics,conformerTaskRequiresXtbV208Semantics} from '../modeling/advanced/conformer-solvation';
 import {conformerTaskProtectionRequiresFormat5,conformerTaskSharedFreezeRequiresFormat6} from '../modeling/advanced/conformer-protection';
@@ -25,7 +25,7 @@ import {getPostprocessTaskAssociationVersion} from './postprocess-task-associati
 import {isProjectAssetId,projectWorkspaceShell,type WorkspaceRestoreIssue} from './workspace-shell-restore';
 import {projectAssetSha256,projectFormatFloor,type ProjectFormatVersion} from './desktop-bridge';
 import type {PesProjectSnapshot} from '../modeling/pes/contracts';
-import {serializePesAsset,WorkspacePesAsset,capturePesAsset} from './pes-asset-codec';
+import {preparePesIndex,WorkspacePesAsset,capturePesAsset} from './pes-asset-codec';
 import {requiresProjectFormat15} from './format15';
 import {requiresProjectFormat16} from './format16';
 export type {WorkspacePesAsset} from './pes-asset-codec';
@@ -117,6 +117,8 @@ let lastAdvancedRequiresFormat8=false;
 let unreadableRequiresFormat8=false;
 let lastAdvancedRequiresFormat10=false;
 let lastAdvancedRequiresFormat15=false;
+let lastAdvancedRequiresFormat17=false;
+let lastAdvancedRequiresFormat18=false;
 let unreadableRequiresFormat15=false;
 interface AdvancedAssetReference {assetId?:string;formatVersion?:number}
 interface AdvancedReaderState {current:AdvancedAssetReference;reader:ProjectAssetReader;retained?:RetainedAdvancedTasks}
@@ -248,8 +250,9 @@ function workspaceRequiresXtbFormat8(registry:WorkspaceProjectState,shell:unknow
   return draft?.method==='gxtb'||typeof draft?.sccIterationLimitText==='string';
  })||recordValues(uiValues[JSON.stringify(['workspace','xtb-wavefunction-confirmations'])]).some(value=>typeof value==='string'&&value.length>0))return true;
  if(checkpoint?.schema===1&&Array.isArray(checkpoint.records)&&checkpoint.records.some(row=>{
-  const native=(row as WorkspaceMDCheckpointSource|null)?.observation?.nativeMD;
-  return native?.method==='gxtb'||nativeMDRequiresFormat8(native);
+  const observation=(row as WorkspaceMDCheckpointSource|null)?.observation;
+  const native=observation?.nativeMD;
+  return !!observation?.aseMD||native?.method==='gxtb'||nativeMDRequiresFormat8(native,native?.method);
  }))return true;
  if(recordValues(fields?.advancedObservations).some(row=>structureRequiresXtbFormat8(objectRecord(row)?.structure as Structure|undefined)))return true;
  return [...registry.documents,...(Array.isArray(registry.detachedDocuments)?registry.detachedDocuments:[])].some(row=>{
@@ -258,7 +261,8 @@ function workspaceRequiresXtbFormat8(registry:WorkspaceProjectState,shell:unknow
   const bondSolvent=uiValues[JSON.stringify(['document',id,'bond-perception-solvent',id])];
   const defaultMDMethod=model?.document?.draft?.structure?.cell?.pbc?.some(Boolean)?'gfn2':'auto';
   const changedMD=mdDraft&&(typeof mdDraft.method==='string'&&mdDraft.method!==defaultMDMethod||
-   typeof mdDraft.temperature==='string'&&mdDraft.temperature!=='300'||mdDraft.solvation!==undefined);
+   typeof mdDraft.temperature==='string'&&mdDraft.temperature!=='300'||mdDraft.solvation!==undefined||
+   mdDraft.integrator==='ase'||mdDraft.shakeHydrogenBonds===true);
   return changedMD||
    typeof bondSolvent==='string'&&bondSolvent!=='none'||
    modelRequiresXtbFormat8(model?.document)||structureRequiresXtbFormat8(model?.baseline?.structure)||
@@ -274,7 +278,7 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const {writer}=input,registry=input.registry.exportProjectState({saved:true}),dependencies=new Set<string>();
  const afterCommit:(()=>void)[]=[];
  const advancedReader=restoredAdvancedReader;
- const pesBytes=input.pes===undefined?undefined:serializePesAsset(input.pes);
+ const preparedPes=input.pes===undefined?undefined:preparePesIndex(input.pes);
  for(const [id,value]of snapshots){
   const target=registry.documents.find(entry=>entry.id===id);
   if(!target||target.model.document.revision!==value.sourceRevision||value.document.id!==id)throw Error('项目保存期间MD工作源修订已变化。');
@@ -346,11 +350,11 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
   advancedData=mergeRetainedAdvancedTasks(advancedData,retained);
  }
  const advancedReferences=advancedData?.assetReferences??(input.reuse?lastAdvancedReferences:[]);
- if(advancedData)refs(advancedData,dependencies);
+ if(advancedData)for(const id of advancedReferences)dependencies.add(id);
  else for(const id of advancedReferences)retain(id);
  const advancedAsset=advancedData?await asset('advanced-tasks.json',advancedData):input.reuse?lastAdvancedAsset:undefined;
  if(advancedAsset)retain(advancedAsset);
- const pesCapture=input.pes===undefined?undefined:await capturePesAsset(input.pes,writer,input.reuse,pesBytes,input.reader);
+ const pesCapture=input.pes===undefined?undefined:await capturePesAsset(input.pes,writer,input.reuse,preparedPes,input.reader);
  const pesAsset=input.pes===undefined
   ?input.reuse?input.retainedPes?.assetId:await input.retainedPes?.copyTo(writer)
   :pesCapture?.assetId;
@@ -364,6 +368,8 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const advancedFormat8=input.advanced?input.advanced.tasks.some(advancedTaskRequiresXtbFormat8):input.reuse&&lastAdvancedRequiresFormat8;
  const advancedFormat10=input.advanced?input.advanced.tasks.some(conformerTaskRequiresNativeDefaultSemantics):input.reuse&&lastAdvancedRequiresFormat10;
  const advancedFormat15=input.advanced?requiresProjectFormat15(input.advanced):input.reuse&&lastAdvancedRequiresFormat15;
+ const advancedFormat17=input.advanced?input.advanced.tasks.some(conformerTaskRequiresSharedOptimizer):input.reuse&&lastAdvancedRequiresFormat17;
+ const advancedFormat18=input.advanced?input.advanced.tasks.some(conformerTaskRequiresMdIntegrator):input.reuse&&lastAdvancedRequiresFormat18;
  const retainedShellRefs=new Set<string>();refs(input.shell.preservedInvalidShellFields,retainedShellRefs);
  for(const id of retainedShellRefs)if(isProjectAssetId(id)){
   if(input.reuse&&projectWriter.hasAsset?.(id)===false)continue;
@@ -383,7 +389,7 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const requiresFormat15=Boolean(payloadRequiresFormat15||pesCapture?.requiresFormat15||input.pes===undefined&&input.retainedPes?.requiresFormat15||
    advancedAsset&&advancedFormat15||preservingUnreadable&&unreadableRequiresFormat15||requiresProjectFormat15([registry,shell,input.ui]));
  const requiresFormat16=Boolean(pesCapture?.requiresFormat16||input.pes===undefined&&input.retainedPes?.requiresFormat16||requiresProjectFormat16([registry,shell,input.ui]));
- const computedFormat=requiresFormat16?16:requiresFormat15?15:requiresFormat14?14:requiresFormat13?13:requiresFormat12?12:requiresFormat11?11:requiresFormat10?10:pesAsset?9:requiresFormat8?8:requiresRecoveryFormat7(registry,shell)?7:requiresFormat6?6:
+ const computedFormat=advancedAsset&&advancedFormat18?18:advancedAsset&&advancedFormat17?17:requiresFormat16?16:requiresFormat15?15:requiresFormat14?14:requiresFormat13?13:requiresFormat12?12:requiresFormat11?11:requiresFormat10?10:pesAsset?9:requiresFormat8?8:requiresRecoveryFormat7(registry,shell)?7:requiresFormat6?6:
    requiresFormat5||advancedAsset&&advancedFormat5?5:advancedAsset&&advancedFormat4?4:requiresFormat3?3:advancedAsset&&advancedFormat2?2:undefined;
  const retainedFormat=retained&&recovery?.current.formatVersion;
  const requiredProjectFormatVersion=retainedFormat&&retainedFormat>(computedFormat??1)
@@ -402,13 +408,15 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
   lastAdvancedRequiresFormat5=advancedFormat5;lastAdvancedRequiresFormat6=advancedFormat6;lastAdvancedRequiresFormat8=advancedFormat8;
   lastAdvancedRequiresFormat10=advancedFormat10;
   lastAdvancedRequiresFormat15=advancedFormat15;
+  lastAdvancedRequiresFormat17=advancedFormat17;
+  lastAdvancedRequiresFormat18=advancedFormat18;
   if(advancedReader&&advancedReader===restoredAdvancedReader&&
     (advancedReader.current.assetId!==advancedAsset||advancedReader.current.formatVersion!==data.requiredProjectFormatVersion))
    advancedReader.current={assetId:advancedAsset,formatVersion:data.requiredProjectFormatVersion};
  });
  return data;
 }
-export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetReader,options:{deferPublication?:boolean}={}){
+export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetReader,options:{deferPublication?:boolean;transientAdvancedReads?:boolean}={}){
  const data=value as SyWorkspaceSnapshot;
  const record=(candidate:unknown):boolean=>Boolean(candidate&&typeof candidate==='object'&&!Array.isArray(candidate));
  if(!data||data.schema!=='sciyue-workspace-project/v1'||typeof data.registryAsset!=='string'||!data.registryAsset||
@@ -514,6 +522,8 @@ export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetRe
   lastAdvancedRequiresFormat8=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=8);
   lastAdvancedRequiresFormat10=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=10);
   lastAdvancedRequiresFormat15=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=15);
+  lastAdvancedRequiresFormat17=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=17);
+  lastAdvancedRequiresFormat18=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=18);
   restoredAdvancedReader=advancedReader;
  })());
  if(owner&&!boundArchives.has(owner)){
@@ -530,12 +540,20 @@ export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetRe
     if(!reference.assetId)return;
     let advanced:AdvancedProjectSnapshot;
     let retained:RetainedAdvancedTasks|undefined;
-    try{advanced=await decodeAdvancedAsset(await read<unknown>(reference.assetId),reader,rows=>{retained=rows;});}
+    try{advanced=await decodeAdvancedAsset(await read<unknown>(reference.assetId),reader,rows=>{retained=rows;},{transientReads:options.transientAdvancedReads});}
     catch(error){if(advancedReader.current!==reference)continue;throw error;}
     // A read can overlap successful Save As and the router's synchronous
     // rebind. Retry only when this exact restored owner's reference changed.
     if(advancedReader.current!==reference)continue;
     const format=reference.formatVersion??0;
+    if(format<18&&advanced.tasks.some(conformerTaskRequiresMdIntegrator)){
+     if(restoredAdvancedReader===advancedReader)lastAdvancedRequiresFormat18=true;
+     throw Error('此采样配置需要项目格式 18。原始采样资产已保留。');
+    }
+    if(format<17&&advanced.tasks.some(conformerTaskRequiresSharedOptimizer)){
+     if(restoredAdvancedReader===advancedReader)lastAdvancedRequiresFormat17=true;
+     throw Error('构象共用优化缺少格式 17 写入保护声明，原资产引用已保留。');
+    }
     if(format<15&&requiresProjectFormat15(advanced)){
      if(restoredAdvancedReader===advancedReader)lastAdvancedRequiresFormat15=true;
      throw Error('外部程序任务缺少格式 15 写入保护声明，原资产引用已保留。');

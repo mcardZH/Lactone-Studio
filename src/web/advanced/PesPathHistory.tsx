@@ -10,7 +10,13 @@ import {PesSelect} from './pes-fields';
 const kindLabels={initial:'初始几何','first-energy':'首次物理能量',interval:'已记录',final:'末完整轮'};
 const phaseLabels:Record<string,string>={'initial':'初始路径','s-idpp':'初始路径','native-dlc-initial':'原生DLC初始路径','neb':'路径优化','ci-neb-ordinary':'NEB','ci-neb-climb':'CI-NEB','de-gsm-growth':'生长','se-gsm-growth':'生长','de-gsm-optimize':'路径优化','de-gsm-optimization':'路径优化','de-gsm-climb':'攀爬','de-gsm-interrupted':'中断前结果','fsm-growth':'冻结弦生长','fsm-growth-interrupted':'冻结弦生长中断','se-gsm-optimize':'路径优化','grow':'生长','growing':'生长','optimize':'路径优化','optimization':'路径优化'};
 const segmentPhaseLabels:Record<string,string>={growth:'生长',optimization:'路径优化',optimize:'路径优化',climb:'攀爬',interrupted:'中断前结果',anchors:'关键构型连接'};
-export function pesPathPhaseLabel(phase:string){const segment=/^de-gsm-segment-(\d+)-(growth|optimization|optimize|climb|interrupted|anchors)$/.exec(phase);return segment?`第 ${segment[1]} 段 · ${segmentPhaseLabels[segment[2]]}`:phaseLabels[phase]??phase;}
+export function pesPathPhaseLabel(phase:string):string{
+  if(phase.endsWith('-incomplete'))return pesPathPhaseLabel(phase.slice(0,-'-incomplete'.length))+'（未完整轮）';
+  if(phase==='ci-neb-interrupted')return 'CI-NEB 中断';
+  if(phase==='ci-neb-ordinary-interrupted')return 'NEB 中断';
+  if(phase==='ci-neb-climb-interrupted')return 'CI-NEB 中断';
+  const segment=/^de-gsm-segment-(\d+)-(growth|optimization|optimize|climb|interrupted|anchors)$/.exec(phase);return segment?`第 ${segment[1]} 段 · ${segmentPhaseLabels[segment[2]]}`:phaseLabels[phase]??phase;}
+const incompleteRound=(record:PesPathRecord)=>/-(?:interrupted|incomplete)$/.test(record.phase);
 const pathId=(record:PesPathRecord)=>record.pathId??record.seriesId;
 export const pesPathRecordLabel=(record:PesPathRecord)=>`${pathId(record)==='path'?'':`事件 ${pathId(record)} · `}${record.kind==='initial'?'初始几何':`${pesPathPhaseLabel(record.phase)} · 第 ${record.step} 轮`}`;
 const finiteEnergy=(frame:PesFrameIndex)=>typeof frame.energyHartree==='number'&&Number.isFinite(frame.energyHartree);
@@ -20,10 +26,13 @@ const bead=(frame:PesFrameIndex,index:number)=>typeof frame.bead==='number'&&Num
 export function pesPathEnergyOverlays(records:readonly PesPathRecord[],visibleIds:readonly string[],axis:'bead'|'arc'='bead'):TrajectoryEnergyOverlay[]{
   return records.filter(record=>visibleIds.includes(record.id)).map(record=>{
     const edges=record.connections&&new Set(record.connections.flatMap(([a,b])=>[`${a}\0${b}`,`${b}\0${a}`]));
-    return{id:record.id,label:pesPathRecordLabel(record),points:record.frames.map((frame,index)=>{
+    const round=record.kind==='initial'?'Initial Path':`${record.phase} · Round ${record.step}`;
+    const plotLabel=pathId(record)==='path'?round:`Event ${pathId(record)} · ${round}`;
+    return{id:record.id,label:pesPathRecordLabel(record),plotLabel,points:record.frames.map((frame,index)=>{
       const previous=record.frames[index-1],number=bead(frame,index);
       const arc=typeof frame.arcLengthAngstrom==='number'&&Number.isFinite(frame.arcLengthAngstrom)?frame.arcLengthAngstrom:null;
-      return{x:axis==='arc'?arc:number,energy:finiteEnergy(frame)?{value:frame.energyHartree!,unit:'hartree'}:null,frameId:frame.id,
+      return{x:axis==='arc'?arc:number,energy:finiteEnergy(frame)?{value:frame.energyHartree!,unit:'hartree'}:null,frameId:frame.id,frameNumber:index+1,
+        markerLabel:frame.climbingImage===true?'CI':undefined,
         breakBefore:!!previous&&(edges?!edges.has(`${previous.id}\0${frame.id}`):Math.abs(number-bead(previous,index-1))!==1)};
     })};
   });
@@ -36,7 +45,7 @@ export function PesPathHistory({run,recordId,onView,overlays=[],onOverlaysChange
   const historyPathId=paths.includes(historyPath)?historyPath:selectedPath?pathId(selectedPath):paths[0];
   const historyRecords=useMemo(()=>records.filter(record=>pathId(record)===historyPathId),[records,historyPathId]);
   const byId=new Map(historyRecords.map(record=>[record.id,record]));
-  const projection=useMemo(()=>({columns:[{key:'record',label:'路径记录'},{key:'beads',label:'实际珠子数'},{key:'kind',label:'记录类型'}],rows:historyRecords.map(record=>({key:record.id,cells:[pesPathRecordLabel(record),String(record.frames.length),kindLabels[record.kind]]}))}),[historyRecords]);
+  const projection=useMemo(()=>({columns:[{key:'record',label:'路径记录'},{key:'beads',label:'实际珠子数'},{key:'kind',label:'记录类型'}],rows:historyRecords.map(record=>({key:record.id,cells:[pesPathRecordLabel(record),String(record.frames.length),incompleteRound(record)?'未完整轮':kindLabels[record.kind]]}))}),[historyRecords]);
   return <div data-testid="pes-path-history" className="pes-path-history">
     <InputSettingsCard title="路径记录" stack>
       {paths.length>1&&<PesSelect label="路径/事件" value={historyPathId??''} options={Object.fromEntries(paths.map(id=>[id,id==='path'?'路径':`事件 ${id}`]))} onChange={setHistoryPath}/>}

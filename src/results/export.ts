@@ -1,11 +1,24 @@
 import type { Structure } from '../core/types';
 import { asciiJson, automaticStem } from '../core/naming';
-import { assertResultNotAborted, trajectoryIndices, type TrajectoryRange, type TrajectoryResult } from './contracts';
+import { assertResultNotAborted, trajectoryIndices, type ResultFrameSummary, type TrajectoryRange, type TrajectoryResult } from './contracts';
 import type { EnergySeries } from './energy';
 import {getPreparedTrajectoryFrame} from './prepared-trajectory';
 
 export interface ResultByteSink { write(bytes: Uint8Array | Blob): Promise<void>; close(): Promise<void>; abort(): Promise<void> }
-export interface ResultExportOptions { signal?: AbortSignal; sink?: ResultByteSink; comment?:string; onProgress?(completed: number, total: number): void }
+export interface TrajectoryExportOrigin {
+  resultFrameIndex: number;
+  sourceFrameIndex: number;
+  stageId?: string;
+  geometrySource?: ResultFrameSummary['geometrySource'];
+  pesOrigin?: ResultFrameSummary['pesOrigin'];
+  outputJob?: { sourceId: string; sourceRevision?: string; id: string; index: number | null };
+}
+export interface ResultExportOptions {
+  signal?: AbortSignal; sink?: ResultByteSink; comment?: string;
+  /** Scientific owner metadata, indexed by the result passed to the writer. */
+  origins?: readonly TrajectoryExportOrigin[];
+  onProgress?(completed: number, total: number): void;
+}
 const quote = (value: string) => asciiJson(value.replace(/[\r\n]/g, ' '));
 function numeric(value: number): string {
   if (!Number.isFinite(value)) throw new Error('导出包含非有限数值。');
@@ -51,6 +64,14 @@ export async function exportTrajectoryXYZ(result: TrajectoryResult, range: Traje
     if (frame.sourceStep !== null) fields.push(`step=${frame.sourceStep}`);
     if (frame.time) fields.push(`time=${numeric(frame.time.value)}`, `time_unit=${quote(frame.time.unit)}`);
     if (frame.energy) fields.push(`energy=${numeric(frame.energy.value)}`, `energy_unit=${quote(frame.energy.unit)}`);
+    const origin = options.origins?.[index];
+    if (origin) {
+      fields.push(`result_frame_index=${origin.resultFrameIndex}`, `source_frame_index=${origin.sourceFrameIndex}`);
+      if (origin.stageId) fields.push(`stage_id_uri=${encodeURIComponent(origin.stageId)}`);
+      if (origin.geometrySource) fields.push(`geometry_source_uri=${encodeURIComponent(JSON.stringify(origin.geometrySource))}`);
+      if (origin.pesOrigin) fields.push(`pes_origin_uri=${encodeURIComponent(JSON.stringify(origin.pesOrigin))}`);
+      if (origin.outputJob) fields.push(`output_job_uri=${encodeURIComponent(JSON.stringify(origin.outputJob))}`);
+    }
     if (options.format === 'extxyz') {
       fields.push('Properties=species:S:1:pos:R:3:id:S:1:source_index:I:1');
       if (structure.cell) {
@@ -68,13 +89,14 @@ export async function exportTrajectoryXYZ(result: TrajectoryResult, range: Traje
 }
 
 /** Caller passes the exact plotted series; no second energy conversion/reference calculation. */
-export function exportResultData(result: TrajectoryResult, range: TrajectoryRange, series?: EnergySeries): { txt: string; json: string } {
+export function exportResultData(result: TrajectoryResult, range: TrajectoryRange, series?: EnergySeries, origins?: readonly TrajectoryExportOrigin[]): { txt: string; json: string } {
   const indices = trajectoryIndices(range, result.frames.length);
   const points = new Map(series?.points.map(point => [point.index, point]));
   const energyDisplay = series ? { unit: series.unit, relative: series.relative, reference: series.reference,
     referenceIndex: series.referenceIndex, referenceValue: series.referenceValue } : null;
   const frames = indices.map(index => ({ ...result.frames[index], frameNumber: index + 1,
-    displayEnergy: series ? { value: points.get(index)?.value ?? null, unit: series.unit } : null }));
+    displayEnergy: series ? { value: points.get(index)?.value ?? null, unit: series.unit } : null,
+    ...(origins ? { origin: origins[index] } : {}) }));
   const document = { schema: 'sciyue-result-data', version: 1, resultId: result.id, label: result.label,
     kind: result.kind, engine: result.engine, source: result.source, jobIndex: result.jobIndex,
     status: result.status, messages: result.messages, coordinateUnit: 'angstrom', range, energyDisplay, frames,
@@ -82,13 +104,19 @@ export function exportResultData(result: TrajectoryResult, range: TrajectoryRang
   const cell = (value: unknown) => value === null || value === undefined ? '' : String(value).replace(/[\t\r\n]/g, ' ');
   const rows = frames.map(frame => [frame.frameNumber, frame.sourceStep, frame.time?.value, frame.time?.unit,
     frame.energy?.value, frame.energy?.unit, frame.displayEnergy?.value, frame.displayEnergy?.unit,
-    frame.sourceLine, JSON.stringify(frame.convergence)].map(cell).join('\t'));
+    frame.sourceLine, JSON.stringify(frame.convergence), ...(origins ? [
+      frame.origin?.resultFrameIndex, frame.origin?.sourceFrameIndex, frame.origin?.stageId,
+      frame.origin?.geometrySource && JSON.stringify(frame.origin.geometrySource),
+      frame.origin?.outputJob && JSON.stringify(frame.origin.outputJob),
+      frame.origin?.pesOrigin && JSON.stringify(frame.origin.pesOrigin),
+    ] : [])].map(cell).join('\t'));
+  const originColumns = origins ? '\tresult_frame_index\tsource_frame_index\tstage_id\tgeometry_source_json\toutput_job_json\tpes_origin_json' : '';
   const txt = [`# Ester Studio result data v1`, `# source: ${asciiJson(result.source)}`,
     `# result: ${asciiJson({ id: result.id, kind: result.kind, engine: result.engine, jobIndex: result.jobIndex, status: result.status })}`,
     `# range (zero-based inclusive): ${JSON.stringify(range)}`, `# energy_display: ${JSON.stringify(energyDisplay)}`,
     '# Missing values are empty; frame is one-based; source units are retained.',
     ...(result.scientific ? [`# scientific metadata and printed properties: see paired JSON; original source units and frame associations retained.`] : []),
-    'frame\tsource_step\ttime\ttime_unit\tenergy_raw\tenergy_raw_unit\tenergy_display\tenergy_display_unit\tsource_line\tconvergence_json', ...rows, ''].join('\n');
+    'frame\tsource_step\ttime\ttime_unit\tenergy_raw\tenergy_raw_unit\tenergy_display\tenergy_display_unit\tsource_line\tconvergence_json' + originColumns, ...rows, ''].join('\n');
   return { txt, json: JSON.stringify(document, null, 2) + '\n' };
 }
 

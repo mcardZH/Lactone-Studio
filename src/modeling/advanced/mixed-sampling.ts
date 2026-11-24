@@ -1,13 +1,20 @@
 import type { Structure } from '../../core/types';
 import { compareConformerGeometry } from '../conformers/clustering';
-import { captureAdvancedFrame, assertAdvancedIsolated, type AdvancedFrameSource } from './frame-source';
+import { captureAdvancedFrame, assertAdvancedIsolated, assertFixedCellConformerSource, type AdvancedFrameSource } from './frame-source';
 import { graphFingerprint, coordinatesFingerprint } from '../../core/modeling/graph';
+import { isPeriodic } from '../../core/periodic';
+import { sameFixedConformerCell } from '../conformers/sampling-preparation';
 import { reindexStructureAtoms } from '../../core/modeling/graph-reindex';
 
 /** Stable IDs from the same document take priority; other sources retain the
  * explicit element-order contract, never an inferred element permutation fit. */
 export function captureMixedInitial(source: AdvancedFrameSource, parent: AdvancedFrameSource, editableCanonical = false) {
-  assertAdvancedIsolated(source);
+  if (isPeriodic(parent.structure)) {
+    assertFixedCellConformerSource(source);
+    if (!sameFixedConformerCell(source.structure, parent.structure) || source.structure.atoms.length !== parent.structure.atoms.length
+      || source.structure.atoms.some((atom, index) => atom.id !== parent.structure.atoms[index].id || atom.element !== parent.structure.atoms[index].element))
+      throw new Error('固定晶胞构象搜索要求初猜沿用晶胞及逐序原子身份。');
+  } else assertAdvancedIsolated(source);
   if(editableCanonical){
     const structure={...source.structure,charge:parent.structure.charge,multiplicity:parent.structure.multiplicity};
     return {atomMapping:structure.atoms.map(atom=>({sourceAtomId:atom.id!,taskAtomId:atom.id!})),source:captureAdvancedFrame(structure,source.ref,
@@ -36,11 +43,13 @@ export function captureMixedInitial(source: AdvancedFrameSource, parent: Advance
 }
 
 /** Old records win; compare geometry and identity only, never energies across methods. */
-export function isMixedSamplingDuplicate(candidate: Structure, retained: readonly Structure[], threshold = .01,compare:(moving:Structure,reference:Structure)=>ReturnType<typeof compareConformerGeometry>=compareConformerGeometry): boolean {
+export function isMixedSamplingDuplicate(candidate: Structure, retained: readonly Structure[], threshold = .01,compare:(moving:Structure,reference:Structure)=>ReturnType<typeof compareConformerGeometry>=compareConformerGeometry, frozenAtomIds?: string[]): boolean {
   if (!Number.isFinite(threshold) || threshold < 0) throw new Error('采样去重阈值必须为有限非负数。');
   return retained.some(reference => {
     if (candidate.charge !== reference.charge || candidate.multiplicity !== reference.multiplicity) return false;
-    const fit = compare(candidate, reference);
+    const freezes = frozenAtomIds ? { frozenAtomIds, coordinates: [] } : undefined;
+    const fit = isPeriodic(candidate) || isPeriodic(reference)
+      ? compareConformerGeometry(candidate, reference, 'fixed', freezes, freezes) : compare(candidate, reference);
     return fit.comparable && fit.rmsdAngstrom < threshold;
   });
 }

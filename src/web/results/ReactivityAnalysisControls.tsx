@@ -17,6 +17,12 @@ import AnalysisColorbarLayoutControls from './AnalysisColorbarLayoutControls';
 import type {AnalysisColorbarLayout} from './analysis-colorbar-layout';
 import {normalizeAnalysisColorbarLayout} from './analysis-colorbar-layout';
 import { exportBlob } from './export-image';
+import {ResultsMcpPortRegistration} from './results-mcp-context';
+import {settingBool,settingDecimals,settingEnum,settingPositive} from './analysis-mcp-settings';
+import {analysisCube,analysisText} from './analysis-mcp-assets';
+import {projectOrbitalCubeField} from './useOrbitalField';
+import {objectSchema} from '../mcp/types';
+import {ORBITAL_QUALITY_LEVELS} from './orbital-list-presentation';
 import { reactivityAtomDisplay, reactivityAtomTable, reactivityContextKey, reactivityFrontierRows, reactivityGlobalTable, reactivityNativeOrbitalKey, reactivityText, REACTIVITY_ATOM_ALL, REACTIVITY_ATOM_LABELS, REACTIVITY_GLOBAL_ALL, REACTIVITY_GLOBAL_LABELS, reactivityMetricUnit } from './reactivity-presentation';
 import type { ReactivityAnalysisControlsProps, ReactivityAtomMetric } from './reactivity-controls-contracts';
 
@@ -122,10 +128,60 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
     } finally { if (card.request?.id === id) { card.busy = false; card.stopping = false; card.request = null; refresh(); } }
   }
   function stop() { const request = card.request; if (request) { update({ stopping: true }); cancel(request); } }
+  function selectFrontier(next:string|null){
+    update({selected:next,appliedSpacing:!gridError?spacing:card.appliedSpacing});
+    setIntent(canDraw&&!card.busy&&next&&!gridError?{key,token:{}}:null);
+  }
+  function replaceQuality(quality:OrbitalQuality,spacing:number){setIntent(null);update({quality,spacing});}
+  const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.analysisId} port={{
+    sourceRevision:JSON.stringify([key,card.selected,card.metric,card.color,card.quality,card.spacing,card.decimals,card.globalDecimals,card.result?.stamp.requestId,orbital.field?.gridKey]),
+    methods:[...(permitted&&scalarAvailable&&p.bridge.analyze?['fmo']:[]),...(canDraw&&frontier.some(row=>reactivityNativeOrbitalKey(row.orbital,p.metadata))?['fmo-orbital']:[])],
+    assets:()=>!permitted?[]:[
+      ...(card.result?[analysisText('fmo-reactivity',()=>reactivityText(card.result!,card.decimals,card.globalDecimals),{stamp:card.result.stamp})]:[]),
+      ...(orbital.field&&p.metadata&&orbital.field.orbitalKey===selectedNativeKey?[analysisCube('fmo-orbital-grid',projectOrbitalCubeField(orbital.field,p.metadata),{
+        context:p.context,sourceId:p.metadata.sourceId,sourceRevision:orbital.field.sourceRevision,orbitalKey:orbital.field.orbitalKey,gridKey:orbital.field.gridKey})]:[]),
+    ],
+    read:()=>({kind:'reactivity',busy:card.busy,progress:p.progress,error:card.error||scalarReason,result:card.result,metric:card.metric,
+      frontier:frontier.map(row=>({key:row.orbital.key,label:row.label})),selected:card.selected,grid:orbital.field?.grid,orbitalProgress:orbital.state.taskProgress}),
+    execution:()=>{
+      const progress=card.request?p.progress:orbitalBusy?orbital.state.taskProgress:p.progress;
+      return {status:card.stopping?'stopping':progress?.phase??(card.busy||orbitalBusy?'running':'idle'),requestId:card.request?.id??progress?.identity.runId,
+        stoppable:Boolean(card.request&&!card.stopping||orbitalBusy&&orbital.controller&&progress?.phase!=='stopping'),progress};
+    },
+    stop:()=>{if(card.request)stop();else void orbital.controller?.stop().catch(error=>update({error:message(error)}));},
+    configuration:{schema:objectSchema({metric:settingEnum(REACTIVITY_ATOM_ALL),color:settingBool,decimals:settingDecimals,globalDecimals:settingDecimals,
+      ...(canDraw?{quality:settingEnum([...ORBITAL_QUALITY_LEVELS.map(level=>level.id),'custom']),spacingAngstrom:settingPositive}:{})}),
+      read:()=>({metric:card.metric,color:card.color,decimals:card.decimals,globalDecimals:card.globalDecimals,quality:card.quality,spacingAngstrom:spacing,appliedSpacingAngstrom:card.appliedSpacing}),
+      apply(values){
+        if(!permitted||card.busy)throw new Error('当前反应性设置不可编辑。');
+        const {quality,spacingAngstrom,...display}=values as Partial<{quality:OrbitalQuality;spacingAngstrom:number;metric:ReactivityAtomMetric;color:boolean;decimals:number;globalDecimals:number}>;
+        if(quality&&quality!=='custom'&&spacingAngstrom!==undefined)throw new Error('仅自定义质量使用显式格距。');
+        if(quality!==undefined||spacingAngstrom!==undefined){const next=quality??'custom';replaceQuality(next,spacingAngstrom??orbitalQualitySpacing(next,spacing));}
+        if(Object.keys(display).length)update(display);
+      }},
+    run(method,retry,parameters){
+      if(method==='fmo-orbital'){
+        if(Object.keys(parameters).some(name=>name!=='orbitalKey')||parameters.orbitalKey!==undefined&&typeof parameters.orbitalKey!=='string')throw new Error('请选择当前前线轨道中的键。');
+        const next=(parameters.orbitalKey as string|undefined)??card.selected,row=frontier.find(item=>item.orbital.key===next);
+        const native=row?reactivityNativeOrbitalKey(row.orbital,p.metadata):null;
+        if(!canDraw||!next||!native||gridError||card.busy||orbitalBusy)throw new Error(gridError||'当前前线轨道格点不可计算。');
+        if(!retry&&orbital.field?.orbitalKey===native&&spacing===card.appliedSpacing)return {status:'ready',orbitalKey:next,grid:orbital.field.grid};
+        selectFrontier(next);
+        return {status:'requested',orbitalKey:next,sampling:{...sampling,spacingAngstrom:spacing}};
+      }
+      if(Object.keys(parameters).length)throw new Error('前线轨道反应性使用当前面板设置。');
+      if(method!=='fmo'||!permitted||!scalarAvailable||!p.bridge.analyze)throw new Error(scalarReason||'当前来源尚不能计算反应性。');
+      if(card.request)return {status:'running',requestId:card.request.id};
+      if(card.result&&!retry)return {status:'ready',result:card.result};
+      if(orbitalBusy)throw new Error('当前前线轨道格点仍在计算。');
+      void calculate();
+      return {status:'submitted',requestId:(card.request as CardState['request'])?.id};
+    },
+  }}/>;
   const unavailable = !p.wavefunctionAvailable || p.available === false;
   const reasons = card.result ? REACTIVITY_GLOBAL_ALL.flatMap(metric => card.result!.globalMetrics[metric]?.value == null && card.result!.globalMetrics[metric]?.reason ? [`${REACTIVITY_GLOBAL_LABELS[metric]}：${card.result!.globalMetrics[metric].reason}`] : []) : [];
   const notices = [...new Set([...(card.result?.notices ?? p.sessionInfo?.notices ?? []), ...(card.result?.capabilities.reasons ?? p.sessionInfo?.capabilities.reasons ?? [])])];
-  return <InputSettingsLayout><section className="orbital-controls" data-testid="reactivity-controls" aria-label="FMO 反应性">
+  return <InputSettingsLayout><section className="orbital-controls" data-testid="reactivity-controls" aria-label="FMO 反应性">{mcpPort}
     <AnalysisTaskLayout variant="card" title="FMO 反应性" setup={<span>冻结轨道近似 · Hirshfeld 分区</span>} actions={<>
       <button type="button" className="button button-primary" title={!scalarAvailable ? scalarReason : undefined} disabled={!permitted || !scalarAvailable || !p.bridge.analyze || card.busy || orbitalBusy} onClick={() => void calculate()}>{card.result ? '重新计算反应性' : '计算反应性'}</button>
       {card.result && <button type="button" onClick={() => card.result && exportBlob(new Blob([reactivityText(card.result, card.decimals, card.globalDecimals)], { type: 'text/plain;charset=utf-8' }), 'Ester-Studio-fmo-reactivity.txt')}>导出完整报告 TXT</button>}
@@ -152,12 +208,8 @@ function ReactivityAnalysisControlsInner(p: ReactivityAnalysisControlsProps) {
     </AnalysisTaskSection>
     </AnalysisTaskLayout>
     {frontier.length ? <>
-      <AnalysisTaskLayout variant="card" title="前线轨道" setup={<label>轨道 <select aria-label="反应性前线轨道" disabled={!canDraw || card.busy} value={card.selected ?? ''} onChange={event => {
-        const next = event.target.value || null;
-        update({ selected: next, appliedSpacing: !gridError ? spacing : card.appliedSpacing });
-        setIntent(canDraw && !card.busy && next && !gridError ? { key, token: {} } : null);
-      }}><option value="">选择前线轨道</option>{frontier.map(row => <option key={row.orbital.key} value={row.orbital.key}>{row.label}</option>)}</select></label>}
-        quality={canDraw&&<><OrbitalCalculationQuality quality={card.quality} spacing={spacing} label="反应性轨道显示质量" disabled={card.busy} onChange={(quality,spacing)=>{setIntent(null);update({quality,spacing});}}/>
+      <AnalysisTaskLayout variant="card" title="前线轨道" setup={<label>轨道 <select aria-label="反应性前线轨道" disabled={!canDraw || card.busy} value={card.selected ?? ''} onChange={event=>selectFrontier(event.target.value||null)}><option value="">选择前线轨道</option>{frontier.map(row => <option key={row.orbital.key} value={row.orbital.key}>{row.label}</option>)}</select></label>}
+        quality={canDraw&&<><OrbitalCalculationQuality quality={card.quality} spacing={spacing} label="反应性轨道显示质量" disabled={card.busy} onChange={replaceQuality}/>
           {(gridPreview.grid||orbital.field?.grid) && <OrbitalSpatialGridSummary planned={gridPreview.grid} actual={orbital.field?.grid}/>}</>}
         actions={qualityPending ? <><span role="status">网格参数待应用</span><button type="button" disabled={!canDraw || !selectedNativeKey || card.busy || !!gridError} onClick={() => {
           update({ appliedSpacing: spacing }); setIntent({ key, token: {} });

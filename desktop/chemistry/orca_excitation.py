@@ -99,7 +99,7 @@ def excitation_mode(text):
         if value in ('activated','true','on','operative'):return 'tda'
     return 'unknown'
 
-def validate_orca_wavefunction(text,block,metadata,wavefunction_text,reference_json=None,source_blocks=None):
+def validate_orca_wavefunction(text,block,metadata,reference_json=None,source_blocks=None):
     if metadata.get('format')!='molden':raise OrbitalError('orca-wavefunction','ORCA excitation analysis requires the corresponding Molden orbital source.')
     if not metadata['orbitals'] or any(o['spin']!='restricted' or o['occupation'] not in (0,2) for o in metadata['orbitals']):raise OrbitalError('orca-reference','This ORCA amplitude adapter supports a proven restricted closed-shell reference only.')
     prefix='\n'.join(text.splitlines()[:block['sourceLine']]);basis=re.findall(r'Number of basis functions\s*\.{2,}\s*(\d+)',prefix,re.I)

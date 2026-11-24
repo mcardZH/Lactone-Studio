@@ -4,6 +4,7 @@ import { geometryGuide, type GeometryGuide } from '../../core/geometry-guides';
 import { bondRefKey, centroid, coordinates, measurementGeometryGuide, unionBox } from './render/geometry';
 import { coordinateSelectionObjects } from '../../core/modeling/coordinate-selection';
 import { modelCoordinateKey } from '../../modeling/constraints';
+import { bondKey, bondReference } from '../../core/modeling/graph';
 
 export interface MeasurementLabel { record: MeasurementRecord; label: string; valueLabel: string; displayLabel?:string; detail: string; x: number; y: number; error?: string }
 export type AtomStateAction = 'select-add' | 'select-remove' | 'freeze' | 'unfreeze';
@@ -12,6 +13,7 @@ export interface ViewportStateMarker { id: string; kind: 'selection' | 'freeze' 
 /** A capture owns only this disposable presentation. It never replaces the
  * editable ModelSelection; unknown or repeated stable IDs are discarded. */
 export function captureSelectionPresentation(document:ModelDocument,atomIds?:readonly string[]){
+  if(!atomIds?.length)return {active:atomIds!==undefined,atomIds:[] as string[],markers:[] as ViewportStateMarker[]};
   const known=new Set(document.draft.structure.atoms.map(atom=>atom.id));
   const ids=[...new Set(atomIds??[])].filter(id=>known.has(id));
   const markers:ViewportStateMarker[]=ids.map(atomId=>({id:`capture-selection:${atomId}`,kind:'selection',atomIds:[atomId],label:'本次选择'}));
@@ -102,23 +104,29 @@ export function modelAtomLabel(atom: Pick<Atom, 'element'>, index: number, displ
 
 export function rightDragBondCommand(document: ModelDocument, start: { documentId: string; revision: number; atomId: string }, targetAtomId: string | null, locked: boolean): Extract<ModelCommand, { type: 'set-bond-order' }> | null {
   if (locked || start.documentId !== document.id || start.revision !== document.revision || !targetAtomId || start.atomId === targetAtomId) return null;
-  const atoms = document.draft.structure.atoms, sourceIndex = atoms.findIndex(atom => atom.id === start.atomId), targetIndex = atoms.findIndex(atom => atom.id === targetAtomId);
-  if (sourceIndex < 0 || targetIndex < 0 || document.draft.structure.cell?.pbc.some(Boolean)) return null;
-  if ((document.draft.structure.bonds ?? []).some(bond => (bond.a === sourceIndex && bond.b === targetIndex) || (bond.b === sourceIndex && bond.a === targetIndex))) return null;
-  return { type: 'set-bond-order', atomIds: [start.atomId, targetAtomId], order: 1 };
+  const structure = document.draft.structure, atomIds: [string,string] = [start.atomId, targetAtomId];
+  if (atomIds.some(id => !structure.atoms.some(atom => atom.id === id))) return null;
+  const key = bondKey(atomIds);
+  if (structure.bonds?.some(bond => bondRefKey(bondReference(structure, bond)) === key)) return null;
+  return { type: 'set-bond-order', atomIds, order: 1, ...(structure.cell?.pbc.some(Boolean) ? { image: [0,0,0] } : {}) };
 }
 /** The command keeps its old exported alias for historical callers. */
 export const controlDragBondCommand = rightDragBondCommand;
 
-export function projectStateMarkers(atoms: Atom[], markers: readonly ViewportStateMarker[], project: (position: Vector3) => ScreenPoint, offset: ScreenPoint, structure?: Structure): (ViewportStateMarker & { x: number; y: number })[] {
-  const known = new Map(atoms.map(atom => [atom.id, atom]));
+export function projectStateMarkers(atoms: Atom[], markers: readonly ViewportStateMarker[], project: (position: Vector3) => ScreenPoint, offset: ScreenPoint,
+  structure?: Structure, projectMany?: (positions: readonly Vector3[]) => ScreenPoint[]): (ViewportStateMarker & { x: number; y: number })[] {
+  if (!markers.length) return [];
+  const indices = new Map(atoms.map((atom,index)=>[atom.id,index]));
   const lanes = new Map<string, number>();
-  return markers.flatMap(marker => {
-    const members = marker.atomIds.flatMap(id => known.has(id) ? [known.get(id)!] : []);
-    if (!members.length || members.length !== marker.atomIds.length) return [];
-    let screen = project(centroid(members));
+  const rows = markers.flatMap(marker => {
+    const members=marker.atomIds.flatMap(id=>{const index=indices.get(id);return index===undefined?[]:[atoms[index]];});
+    return members.length&&members.length===marker.atomIds.length?[{marker,members,anchor:centroid(members)}]:[];
+  });
+  const projected=projectMany?.(rows.map(row=>row.anchor));
+  return rows.flatMap(({marker,members,anchor},index)=>{
+    let screen = projected?.[index] ?? project(anchor);
     if (marker.coordinateId && members.length >= 2 && members.length <= 4) {
-      const label = projectMeasurementLabels(atoms, [{ id: marker.id, mode: members.length === 2 ? 'distance' : members.length === 3 ? 'angle' : 'dihedral', atomIds: [...marker.atomIds],images:marker.images?.map(image=>[...image]), color: '' }], project, { x: 0, y: 0 }, structure)[0];
+      const label = projectMeasurementLabels(atoms, [{ id: marker.id, mode: members.length === 2 ? 'distance' : members.length === 3 ? 'angle' : 'dihedral', atomIds: [...marker.atomIds],images:marker.images?.map(image=>[...image]), color: '' }], project, { x: 0, y: 0 }, structure,indices)[0];
       if (label) screen = { x: label.x, y: label.y };
     }
     if (![screen.x, screen.y].every(Number.isFinite)) return [];
@@ -131,10 +139,11 @@ export function projectStateMarkers(atoms: Atom[], markers: readonly ViewportSta
 }
 
 /** Screen-space labels follow the same model-space guide as the native lines. */
-export function projectMeasurementLabels(atoms: Atom[], records: readonly MeasurementRecord[], project: (position: Vector3) => ScreenPoint, offset: ScreenPoint, structure?: Structure): MeasurementLabel[] {
-  const indices = new Map(atoms.map((atom, index) => [atom.id, index]));
+export function projectMeasurementLabels(atoms: Atom[], records: readonly MeasurementRecord[], project: (position: Vector3) => ScreenPoint, offset: ScreenPoint, structure?: Structure, indices?: ReadonlyMap<string|undefined, number>): MeasurementLabel[] {
+  if (!records.length) return [];
+  const atomIndices=indices??new Map(atoms.map((atom,index)=>[atom.id,index]));
   return records.flatMap(record => {
-    const path = record.atomIds.map(id => indices.get(id) ?? -1);
+    const path = record.atomIds.map(id => atomIndices.get(id) ?? -1);
     if (path.some(index => index < 0) || path.length !== (record.mode === 'distance' ? 2 : record.mode === 'angle' ? 3 : 4)) return [];
     const type=record.mode === 'distance' ? 'B' : record.mode === 'angle' ? 'A' : 'D';
     let guide:GeometryGuide;
@@ -158,6 +167,7 @@ export function captureBoxAtomIds(atoms: Atom[], project: (position: Vector3) =>
 }
 
 export function projectCaptureMarkers(atoms: Atom[], atomIds: readonly string[], project: (position: Vector3) => ScreenPoint, offset: ScreenPoint): { atomId: string; ordinal: number; x: number; y: number }[] {
+  if (!atomIds.length) return [];
   const known = new Map(atoms.map(atom => [atom.id, atom]));
   return atomIds.flatMap((atomId, index) => {
     const atom = known.get(atomId); if (!atom) return [];

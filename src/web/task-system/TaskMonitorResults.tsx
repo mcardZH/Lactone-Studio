@@ -3,7 +3,7 @@ import type { Structure } from "../../core/types";
 import { DEFAULT_DISPLAY } from "../../modeling/contracts";
 import type { TrajectoryResult } from "../../results/contracts";
 import PostprocessResultView from "../results/PostprocessResultView";
-import type { RetainedStageBrowse } from "../results/PostprocessResultView";
+import type { ObservedPostprocessFrame, RetainedStageBrowse } from "../results/PostprocessResultView";
 import PostprocessPlotDeck from "../results/PostprocessPlotDeck";
 import type { PostprocessPlotSnapshot } from "../results/PostprocessPresentation";
 import { AnalysisCardDeck, type AnalysisPage } from "../results/PostprocessDisplayPanel";
@@ -25,6 +25,7 @@ export default function TaskMonitorResults(p: {
 	taskKind: string;
 	onExtract?(structure: Structure): void;
 	onFrame?(structure: Structure | null): void;
+	onCursor?(frame: ObservedPostprocessFrame | null): void;
 	loadingHost?: HTMLElement | null;
 	continuity?: Omit<PlaybackContinuationIdentity, "stageId">;
 	collectionFixed?: boolean;
@@ -87,6 +88,7 @@ export default function TaskMonitorResults(p: {
 						playbackContinuity={p.continuity}
 						collectionFixed={p.collectionFixed===true}
 						onObservedFrame={p.onFrame}
+						onScientificCursor={p.onCursor}
 						loadingHost={p.loadingHost}
 						active
 						selected

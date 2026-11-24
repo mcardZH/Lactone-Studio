@@ -1,7 +1,8 @@
 'use strict';
-const { createHash, randomBytes } = require('node:crypto');
+const { createHash, randomBytes, randomUUID } = require('node:crypto');
 const { assert, plain } = require('./security.cjs');
 const { createConformerBatchStore } = require('./conformer-batch-store.cjs');
+const { captureScope, createRecoveryAccess } = require('./conformer-recovery-store.cjs');
 const token = value => typeof value === 'string' && /^[A-Za-z0-9_:-]{1,200}$/.test(value);
 const failure = error => ({ code: token(error?.code) ? error.code : 'CONFORMER_BATCH_FAILED', message: String(error?.message ?? error).slice(0, 8192) });
 const recordHash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -13,7 +14,7 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
   assertCurrent = () => {}, sendToOwner = () => {}, resolveResources, captureRuntime, onRunStart, now = Date.now, limits = {} }) {
   assert(typeof launchCandidate === 'function' && typeof resolveCapacity === 'function', 'Trusted batch launch and resource adapters required');
   const policy = { maxUploadBytes: 8 * 1024 ** 2, readPageTargetBytes: 8 * 1024 ** 2, maxUploadCount: 32, maxReadCount: 64, ...limits };
-  const batches = new Map(), closedOwners = new Set(), closingOwners = new Set(); let disposed = false, disposing = false;
+  const batches = new Map(), closedOwners = new Set(), closingOwners = new Set(), producerEpoch = randomUUID(); let disposed = false, disposing = false;
   function owned(owner, id) { assert(!disposed && !closedOwners.has(owner), 'Conformer batch owner closed'); const batch = batches.get(id); assert(batch && batch.owner === owner, 'Conformer batch is not owned'); return batch; }
   function counts(b) { const c = { succeeded: 0, discarded: 0, pending: 0, running: 0 }; for (const status of b.states) c[status]++; return c; }
   function snapshot(b) {
@@ -26,21 +27,23 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
   }
   function emit(b) { b.seq++; const value = snapshot(b); try { sendToOwner(b.owner, value); } catch { /* Owner shutdown calls closeOwner; event delivery cannot corrupt a commit. */ } return value; }
   function manifest(b) { return { schema: 1, id: b.id, owner: b.owner, request: b.request, received: b.received, sealed: b.sealed,
-    states: b.states, commits: b.commits, uncommitted: [...b.uncommitted],
+    states: b.states, commits: b.commits, inputHashes: b.inputHashes, uncommitted: [...b.uncommitted],
+    producerEpoch, createdAt: b.createdAt, updatedAt: new Date().toISOString(), ...(b.scope ? { scope: b.scope } : {}),
+    ...(b.recoverySource ? { recoverySource: b.recoverySource } : {}),
     phase: b.phase, seq: b.seq, elapsedMs: b.elapsedMs, error: b.error, runResources: b.runResources }; }
   const runtimeRequest = b => ({ ...structuredClone(b.request), requestedResources: structuredClone(b.request.resources), resources: structuredClone(b.runResources) });
   const save = b => store.write(b.id, 'manifest.json', manifest(b));
   // Serialize metadata publications while candidate work remains concurrent.
   function transaction(b, operation) { const task = b.io.then(operation); b.io = task.catch(() => {}); return task; }
-  async function begin(owner, request) {
+  async function begin(owner, request, rawScope) {
     assert(!disposed && !disposing && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner) && !closingOwners.has(owner) && plain(request), 'Invalid batch owner/request');
     const identity = request.identity;
     assert(plain(identity) && ['taskId', 'runId', 'stageId'].every(key => token(identity[key])) && Number.isSafeInteger(identity.revision) && identity.revision >= 0, 'Invalid batch identity');
-    assert(Number.isSafeInteger(request.total) && request.total > 0 && ['xtb', 'forcefield'].includes(request.method?.backend), 'Invalid batch input/method');
+    assert(Number.isSafeInteger(request.total) && request.total > 0 && request.method?.backend === 'xtb', 'Invalid batch input/method');
     assert(request.total <= 0xffffffff, 'Candidate count exceeds the batch index representation');
     assert(Buffer.byteLength(JSON.stringify(request)) <= policy.maxUploadBytes, 'Batch metadata exceeds bound');
     assertCurrent(owner, request);
-    const id = `cb-${randomBytes(16).toString('hex')}`, b = { id, owner, request: structuredClone(request), received: 0, sealed: false, states: Array(request.total).fill('pending'), commits: {}, uncommitted: new Set(), phase: 'registering', seq: 0, elapsedMs: 0, active: new Map(), ids: new Set(), io: Promise.resolve() };
+    const id = `cb-${randomBytes(16).toString('hex')}`, b = { id, owner, request: structuredClone(request), received: 0, sealed: false, states: Array(request.total).fill('pending'), commits: {}, inputHashes: {}, uncommitted: new Set(), phase: 'registering', seq: 0, elapsedMs: 0, active: new Map(), ids: new Set(), io: Promise.resolve(), createdAt: new Date().toISOString(), scope: captureScope(rawScope) };
     await store.create(id, manifest(b));
     if(disposed || disposing || closedOwners.has(owner) || closingOwners.has(owner)) { await store.destroy(id); throw Error('Conformer batch owner closed during registration'); }
     batches.set(id, b); return { batchId: id };
@@ -53,9 +56,24 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
       const ids = new Set();
       for (const input of inputs) { assert(plain(input) && token(input.candidateId) && !ids.has(input.candidateId) && !b.ids.has(input.candidateId) && plain(input.source) && Array.isArray(input.source.structure?.atoms) && input.source.structure.atoms.length > 0, 'Invalid or duplicate batch candidate'); ids.add(input.candidateId); }
       assertCurrent(owner, b.request);
-      for (let index = 0; index < inputs.length; index++) await store.write(id, `input-${offset + index}.json`, inputs[index]);
+      const hashes = [];
+      for (let index = 0; index < inputs.length; index++) {
+        const input = inputs[index];
+        hashes.push(await store.write(id, `input-${offset + index}.json`, input) ?? recordHash(input));
+      }
+      for (let index = 0; index < hashes.length; index++) b.inputHashes[offset + index] = hashes[index];
+      if (offset === 0) {
+        const original = inputs[0].originalInput ?? inputs[0].source;
+        b.recoverySource = original.ref ?? original.stamp;
+      }
       b.received += inputs.length;
-      try { await save(b); } catch (error) { b.received -= inputs.length; throw error; }
+      try { await save(b); }
+      catch (error) {
+        b.received -= inputs.length;
+        if (offset === 0) b.recoverySource = undefined;
+        for (let index = 0; index < hashes.length; index++) delete b.inputHashes[offset + index];
+        throw error;
+      }
       for (const value of ids) b.ids.add(value);
       return { received: b.received };
     });
@@ -156,6 +174,7 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
   async function start(owner, id) {
     const b = owned(owner, id);
     return transaction(b, async () => {
+      assert(b.request.method?.backend === 'xtb', 'This historical conformer batch is available for reading only');
       assert(!disposing && !closingOwners.has(owner) && batches.get(id) === b && b.sealed && b.received === b.request.total
         && ['ready', 'stopped', 'error'].includes(b.phase) && !b.runTask && !b.uncommitted.size && !b.states.includes('running'), 'Batch not ready to start; recover the uncommitted terminal first'); assertCurrent(owner, b.request);
       const previous = b.phase, previousError = b.error;
@@ -211,13 +230,13 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
   async function restore(owner, id) {
     if (batches.has(id)) return snapshot(owned(owner, id));
     assert(!disposed && !closedOwners.has(owner), 'Batch owner closed'); const value = await store.read(id, 'manifest.json');
-    assert(value.schema === 1 && value.id === id && value.owner === owner && value.states.length === value.request.total
+    assert(value.schema === 1 && value.id === id && value.owner === owner && value.producerEpoch === producerEpoch && value.states.length === value.request.total
       && Number.isSafeInteger(value.received) && value.received >= 0 && value.received <= value.request.total
       && value.states.every((status, index) => ['pending', 'running', 'succeeded', 'discarded'].includes(status) && (index < value.received || status === 'pending')), 'Batch recovery ownership/manifest mismatch');
     const commits = value.commits ?? {}, uncommitted = value.uncommitted ?? [];
     assert(plain(commits) && Object.entries(commits).every(([index, digest]) => /^\d+$/.test(index) && Number(index) < value.received && /^[a-f0-9]{64}$/.test(digest))
       && Array.isArray(uncommitted) && uncommitted.every(index => Number.isSafeInteger(index) && index >= 0 && index < value.received && value.states[index] === 'pending'), 'Invalid batch commit manifest');
-    const b = { ...value, commits, uncommitted: new Set(uncommitted), sealed: value.sealed ?? (value.phase !== 'registering'), active: new Map(), ids: new Set(), io: Promise.resolve() };
+    const b = { ...value, commits, inputHashes: value.inputHashes ?? {}, uncommitted: new Set(uncommitted), sealed: value.sealed ?? (value.phase !== 'registering'), active: new Map(), ids: new Set(), io: Promise.resolve() };
     assertCurrent(owner, b.request);
     // A durably closed batch is readable as stored. Leave every original
     // record intact and validate each requested entry at the read boundary.
@@ -257,17 +276,135 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     const b = owned(owner, id);
     return transaction(b, async () => {
       assert(!b.runTask && !b.active.size && batches.get(id) === b, 'Cannot destroy an active or released native batch');
-      try { await store.destroy(id); }
-      catch (error) {
-        if (error.code !== 'CONFORMER_BATCH_CLEANUP_FAILED') throw error;
-        batches.delete(id);
-        return { destroyed: false, retained: true, cleanupWarning: failure(error) };
-      }
-      batches.delete(id); return { destroyed: true };
+      batches.delete(id); return { destroyed: true, recoveryRetained: true };
     });
   }
-  async function closeOwner(owner) { if(closedOwners.has(owner))return; closingOwners.add(owner); const ownedBatches = [...batches.values()].filter(b => b.owner === owner); await Promise.all(ownedBatches.map(b => stop(owner, b.id))); closedOwners.add(owner); closingOwners.delete(owner); }
-  async function dispose() { disposing = true; await Promise.all([...new Set([...batches.values()].map(b => b.owner))].map(closeOwner)); disposed = true; }
-  return { begin, upload, seal, start, stop, read, restore, destroy, status: async (owner, id) => snapshot(owned(owner, id)), closeOwner, dispose, settle: async owner => Promise.all([...batches.values()].filter(b => owner === undefined || b.owner === owner).map(b => b.runTask)), activeCount: () => [...batches.values()].reduce((sum, b) => sum + Math.max(b.active.size,b.runTask?1:0), 0) };
+
+  async function checkedRecoveryInput(id, index, digest) {
+    const input = await store.read(id, `input-${index}.json`);
+    assert(plain(input) && token(input.candidateId) && plain(input.source) && Array.isArray(input.source.structure?.atoms)
+      && input.source.structure.atoms.length > 0 && plain(input.request), 'Invalid recovered conformer candidate source');
+    const actual = recordHash(input);
+    assert(digest === undefined || actual === digest, 'Recovered conformer candidate input differs from its registered digest');
+    return { input, digest: actual };
+  }
+
+  async function checkedRecoveryTerminal(id, index, state, candidateId, digest) {
+    const terminal = await store.read(id, `result-${index}.json`);
+    assert(plain(terminal) && terminal.index === index && terminal.candidateId === candidateId && terminal.status === state
+      && recordHash(terminal) === digest, 'Conformer recovery result differs from its committed identity');
+    if (state === 'succeeded') assert(Number.isFinite(terminal.result?.energyHartree) && Array.isArray(terminal.result?.structure?.atoms)
+      && terminal.result.structure.atoms.length > 0, 'Recovered conformer result has no accepted geometry or energy');
+    return terminal;
+  }
+
+  async function recoveryManifest(id) {
+    const value = await store.read(id, 'manifest.json'), request = value.request, identity = request?.identity;
+    assert(value.schema === 1 && value.id === id && plain(identity) && ['taskId', 'runId', 'stageId'].every(key => token(identity[key]))
+      && Number.isSafeInteger(identity.revision) && identity.revision >= 0 && ['xtb', 'net'].includes(request.method?.backend)
+      && Number.isSafeInteger(request.total) && request.total > 0 && Number.isSafeInteger(value.received) && value.received >= 0
+      && value.received <= request.total && Array.isArray(value.states) && value.states.length === request.total
+      && plain(value.commits ?? {}) && plain(value.inputHashes ?? {}), 'Invalid conformer batch recovery manifest');
+    return value;
+  }
+
+  async function summarizeRecovery(id) {
+    const value = await recoveryManifest(id), scope = captureScope(value.scope);
+    const expectedCount = value.request.total, uncommitted = new Set(value.uncommitted ?? []);
+    let recoverableCount = 0;
+    for (const [index, hash] of Object.entries(value.commits ?? {})) {
+      const ordinal = Number(index);
+      if (String(ordinal) === index && Number.isSafeInteger(ordinal) && ordinal >= 0 && ordinal < value.received
+        && !uncommitted.has(ordinal) && ['succeeded','discarded'].includes(value.states[ordinal]) && /^[a-f0-9]{64}$/.test(hash)) recoverableCount++;
+    }
+    const phase = value.phase === 'completed' && recoverableCount === expectedCount ? 'completed' : value.phase === 'stopped' ? 'stopped' : 'partial';
+    return { id, kind: 'optimization', identity: value.request.identity, source: value.recoverySource ?? null,
+      phase, expectedCount, recoverableCount, verification: 'manifest-only',
+      ...(value.createdAt ? { createdAt: value.createdAt } : {}), ...(value.updatedAt ? { updatedAt: value.updatedAt } : {}), ...(scope ? { scope } : {}) };
+  }
+
+  async function loadRecovery(id) {
+    const value = await recoveryManifest(id), request = value.request, identity = request.identity;
+    const scope = captureScope(value.scope), slots = [], issues = [];
+    const uncommitted = new Set(value.uncommitted ?? []);
+    let firstSource, firstIndex, bytesLength = 0;
+    for (let index = 0; index < value.received; index++) {
+      const status = value.states[index];
+      if (uncommitted.has(index) || !['succeeded', 'discarded'].includes(status)) continue;
+      try {
+        const resultHash = value.commits?.[index], inputHash = value.inputHashes?.[index];
+        assert(/^[a-f0-9]{64}$/.test(resultHash ?? '') && (value.inputHashes === undefined || /^[a-f0-9]{64}$/.test(inputHash ?? '')), 'Conformer recovery needs both canonical commit and candidate identity');
+        const { input, digest } = await checkedRecoveryInput(id, index, inputHash);
+        const terminal = await checkedRecoveryTerminal(id, index, status, input.candidateId, resultHash);
+        firstSource ??= input.originalInput ?? input.source;
+        firstIndex ??= index;
+        const bytes = Buffer.byteLength(JSON.stringify(input)) + Buffer.byteLength(JSON.stringify(terminal)) + 2;
+        bytesLength += bytes;
+        slots.push({ index, status, candidateId: input.candidateId, inputHash: digest, resultHash, bytes,
+          ...(Number.isFinite(terminal.result?.energyHartree) ? { energyHartree: terminal.result.energyHartree } : {}) });
+      } catch (error) { issues.push({ index, message: String(error.message).slice(0, 2048) }); }
+    }
+    const phase = !issues.length && value.phase === 'completed' && slots.length === request.total ? 'completed'
+      : !issues.length && value.phase === 'stopped' ? 'stopped' : 'partial';
+    const descriptor = { id, kind: 'optimization', identity, source: value.recoverySource ?? firstSource?.ref ?? firstSource?.stamp ?? null,
+      phase, expectedCount: request.total, recoverableCount: slots.length, bytesLength, verification: 'verified',
+      ...(value.createdAt ? { createdAt: value.createdAt } : {}), ...(value.updatedAt ? { updatedAt: value.updatedAt } : {}),
+      ...(scope ? { scope } : {}), ...(issues.length ? { issues } : {}) };
+    return { value, descriptor, slots, firstSource, firstIndex, manifestHash: recordHash(value) };
+  }
+
+  const recovery = createRecoveryAccess({
+    listIds: () => store.list?.() ?? [],
+    available: id => typeof id === 'string' && /^cb-[a-f0-9]{32}$/.test(id) && !batches.has(id),
+    summarize: summarizeRecovery,
+    load: loadRecovery,
+    async read({ descriptor, slots }, offset, limit, summaryOnly) {
+      const records = [];
+      let bytes = 0;
+      for (const slot of slots.slice(offset, offset + limit)) {
+        const { index, status, candidateId, inputHash, resultHash, energyHartree } = slot;
+        if (summaryOnly) { records.push({ index, status, ...(energyHartree === undefined ? {} : { energyHartree }) }); continue; }
+        if (records.length && bytes + slot.bytes > policy.readPageTargetBytes) break;
+        const { input } = await checkedRecoveryInput(descriptor.id, index, inputHash);
+        assert(input.candidateId === candidateId, 'Recovered conformer candidate identity changed');
+        const terminal = await checkedRecoveryTerminal(descriptor.id, index, status, candidateId, resultHash);
+        records.push({ ...input, index, status, ...(terminal.result ? { result: terminal.result } : {}), ...(terminal.reason ? { reason: terminal.reason } : {}) });
+        bytes += slot.bytes;
+      }
+      return records;
+    },
+    describeOpen: ({ value, firstSource, firstIndex }) => ({ request: value.request,
+      initial: { structure: firstSource.structure, stamp: firstSource.stamp, ref: firstSource.ref, index: firstIndex } }),
+    async discard({ descriptor, manifestHash, slots }) {
+      const current = await loadRecovery(descriptor.id);
+      assert(current.manifestHash === manifestHash && !current.descriptor.issues?.length
+        && JSON.stringify(current.slots) === JSON.stringify(slots), 'Conformer recovery changed before explicit discard');
+      await store.destroy(descriptor.id);
+    },
+  });
+  async function closeOwner(owner) {
+    if (closedOwners.has(owner)) return;
+    closingOwners.add(owner);
+    try {
+      const ownedBatches = [...batches.values()].filter(b => b.owner === owner);
+      await Promise.all([recovery.closeRecoveryOwner(owner), ...ownedBatches.map(async b => {
+        await stop(owner, b.id);
+        await b.io;
+        batches.delete(b.id);
+      })]);
+      closedOwners.add(owner);
+    } finally { closingOwners.delete(owner); }
+  }
+  async function dispose() {
+    disposing = true;
+    await Promise.all([recovery.closeRecoveryOwner(), ...[...new Set([...batches.values()].map(b => b.owner))].map(closeOwner)]);
+    disposed = true;
+  }
+  return { begin, upload, seal, start, stop, read, restore, destroy,
+    listRecovery: recovery.listRecovery, openRecovery: recovery.openRecovery, readRecovery: recovery.readRecovery,
+    closeRecovery: recovery.closeRecovery, discardRecovery: recovery.discardRecovery,
+    status: async (owner, id) => snapshot(owned(owner, id)), closeOwner, dispose,
+    settle: async owner => Promise.all([...batches.values()].filter(b => owner === undefined || b.owner === owner).map(b => b.runTask)),
+    activeCount: () => [...batches.values()].reduce((sum, b) => sum + Math.max(b.active.size,b.runTask?1:0), 0) };
 }
 module.exports = { createConformerOptimizationBatch };

@@ -61,17 +61,20 @@ function createTaskSystemComposition(options){
       companions.set(token,{owner:key,lease,host:taskHost,closed:false});return {token,...descriptor};
     }catch(error){if(token)await options.launchSources.close(owner,token);await taskHost.request(key,'snapshot.release',lease);throw error;}
   }
-  async function request(owner,envelope){
+  async function request(owner,envelope,approved={}){
     checkOwner(owner);
     if(!envelope||typeof envelope.requestId!=='string'||!/^[a-f0-9-]{36}$/i.test(envelope.requestId)||typeof envelope.command!=='string')throw Error('TASK_REQUEST_INVALID');
     const key=ownerKey(owner)+':'+envelope.requestId;if(requests.has(key))throw Error('TASK_REQUEST_DUPLICATE');
-    const controller=new AbortController();requests.set(key,controller);
+    const controller=new AbortController(),cancel=()=>controller.abort();requests.set(key,controller);
+    approved.signal?.addEventListener('abort',cancel,{once:true});
     try{
+      if(approved.signal?.aborted)throw Error('TASK_REQUEST_CANCELLED');
       if(envelope.command==='snapshot.companion-source')return await companion(owner,envelope.input,controller.signal);
       if(envelope.command==='snapshot.close-companion')return await closeCompanion(owner,envelope.input?.token);
       const taskHost=await getHost();checkOwner(owner);
-      return await taskHost.request(ownerKey(owner),envelope.command,envelope.input,{signal:controller.signal});
-    }finally{requests.delete(key);}
+      return await taskHost.request(ownerKey(owner),envelope.command,envelope.input,{signal:controller.signal,
+        ...(envelope.command==='file.save-copy'&&approved.approvedDestination!==undefined?{approvedDestination:approved.approvedDestination}:{})});
+    }finally{approved.signal?.removeEventListener('abort',cancel);requests.delete(key);}
   }
   function cancel(owner,requestId){requests.get(ownerKey(owner)+':'+requestId)?.abort();}
   async function releaseOwner(owner){

@@ -14,7 +14,8 @@ export function advancedXtbCoordinates(request: XtbRequest, coordinates: readonl
   result.atoms = request.structure.atoms.map((atom, i) => {
     const p = coordinates[i];
     requireValue(p?.id === atom.id && p.element === atom.element && [p.x, p.y, p.z].every(v => Number.isFinite(v) && Math.abs(v) <= 1e6), '高级任务帧身份、顺序或有限坐标无效。');
-    if (fixed.has(atom.id!) || singlepoint) requireValue(Object.is(p.x, atom.x) && Object.is(p.y, atom.y) && Object.is(p.z, atom.z), '高级任务改变了固定原子或单点坐标。');
+    if (singlepoint || fixed.has(atom.id!) && !request.optimizationPool)
+      requireValue(Object.is(p.x, atom.x) && Object.is(p.y, atom.y) && Object.is(p.z, atom.z), '高级任务改变了固定原子或单点坐标。');
     return { ...atom, x: p.x, y: p.y, z: p.z };
   });
   result.preparation = undefined; result.molfile = undefined;
@@ -43,9 +44,9 @@ export function validateAdvancedXtbResult(request: XtbRequest, coordinates: read
     && metadata.energyUnit === 'hartree' && metadata.coordinateUnit === 'angstrom' && Number.isFinite(metadata.energyHartree)
     && typeof metadata.version === 'string' && metadata.version.length > 0 && metadata.periodic === undefined
     && metadata.threads === (grant?.threads ?? request.threads)
-    && (request.optimizationStepPolicy === 'native-default'
-      ? request.calculation === 'optimize' && request.maxSteps === undefined && Number.isSafeInteger(metadata.maxSteps) && metadata.maxSteps > 0
-      : metadata.maxSteps === request.maxSteps)
+    && (request.calculation === 'singlepoint' || (request.optimizationStepPolicy === 'native-default'
+      ? request.maxSteps === undefined && metadata.maxSteps !== undefined && Number.isSafeInteger(metadata.maxSteps) && metadata.maxSteps > 0
+      : metadata.maxSteps === request.maxSteps))
     && (!request.optimizationPool || metadata.threads===1)
     && metadata.maxWallTimeSeconds === request.maxWallTimeSeconds, '高级任务完成方法、资源、单位或电子态回执不匹配。');
   if(request.method==='gxtb')requireValue(metadata.engineIdentity?.runtimeVariant==='gxtb'

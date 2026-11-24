@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent }
 import { Folder, MoreHorizontal, Plus } from "lucide-react";
 import type { Structure } from "../../core/types";
 import type {
+	MonitorSnapshotTarget,
 	TaskCenterView,
 	TaskBatchAction,
 	TaskOperationPlan,
@@ -41,6 +42,7 @@ export interface TaskCenterProps {
 	bridge: TaskSystemBridge;
 	onClose(): void;
 	initialTaskId?: string;
+	onSelection?(value:{taskId:string|null;checked:string[]}):void;
 	onPreview?: OpenTaskPreview;
 	onExtract?(structure: Structure): void;
 	onResubmit?(taskId: string): void;
@@ -50,7 +52,8 @@ export interface TaskCenterProps {
 		taskId: string,
 		snapshotId: string,
 		leaseId: string,
-		canNavigate?: () => boolean
+		canNavigate?: () => boolean,
+		target?: MonitorSnapshotTarget
 	): void | Promise<void>;
 }
 const GROUP_MIME = "application/x-es-task-group",
@@ -252,6 +255,7 @@ export default function TaskCenter(p: TaskCenterProps) {
 			setOperation("");
 		}
 	}, [p.initialTaskId]);
+	useEffect(()=>{p.onSelection?.({taskId:monitor||null,checked:[...checked]});},[monitor,checked,p.onSelection]);
 	useEffect(() => {
 		const id = view?.library.libraryId
 			? JSON.stringify([view.library.libraryId, view.library.path])

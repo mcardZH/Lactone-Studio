@@ -208,7 +208,7 @@ export function buildChemistryEngineLauncherScript() {
 
 export function buildMacInstallGuideText({
   productName = 'Lactone Studio',
-  version = '2.1.1',
+  version = '2.1.3',
   arch = 'arm64',
 } = {}) {
   const archLabel = arch === 'arm64' ? 'Apple Silicon (M1/M2/M3/M4, darwin-arm64)' : 'Intel (darwin-x64)';
@@ -218,7 +218,7 @@ export function buildMacInstallGuideText({
     `适用架构 (Target Architecture): ${archLabel}`,
     `================================================================================`,
     ``,
-    `【一、非官方修改版重要声明（遵循 LICENSE.txt 第七条）】`,
+    `【一、非官方修改版重要声明（遵循 LICENSE.txt 第三条）】`,
     `- 本软件（${productName}）是基于 Ester Studio (ES) v${version} 源码改造的「非官方修改版」`,
     `  (Unofficial Modified Version)。`,
     `- 修改者与维护仓库：mcardZH (https://github.com/mcardZH/Lactone-Studio)`,
@@ -262,10 +262,10 @@ export function buildMacInstallGuideText({
     `--------------------------------------------------------------------------------`,
     `【四、科研引用与许可协议提示（遵循 LICENSE.txt）】`,
     ``,
-    `- 科研引用（第八条）：使用本软件开展研究并发表论文时，须在论文正文中明确引用`,
+    `- 科研引用（第四条）：使用本软件开展研究并发表论文时，须在论文正文中明确引用`,
     `  原作者 Zixuan Zhang 的 Ester Studio（详见软件内「关于与版本」或仓库 README.md），`,
     `  并可附加说明使用了本 macOS 修改版。`,
-    `- 禁止商业售卖（第四条）：未经原始作者本人事先书面同意，严禁以任何名义销售本软件`,
+    `- 禁止商业售卖（第二条）：未经原始作者本人事先书面同意，严禁以任何名义销售本软件`,
     `  或修改版的源码、可执行程序及安装包副本。`,
     `================================================================================`,
     ``,

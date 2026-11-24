@@ -1,5 +1,5 @@
 import type { Bond, Structure, Vector3 } from '../core/types';
-import { canonicalPeriodicBond, imagesWithin, minimumImage, perceivePeriodicConnections } from '../core/periodic';
+import { canonicalPeriodicBond, imagesWithin, isPeriodic, minimumImage, perceivePeriodicConnections } from '../core/periodic';
 import { DEFAULT_EMPIRICAL_BOND_PARAMETERS, validateEmpiricalBondParameters, type EmpiricalBondPerceptionParameters } from '../core/bond-perception-parameters';
 import { validateXtbPeriodicity } from './xtb/accept-result';
 import { bondEvidenceGeometryKey } from '../core/bond-semantics';
@@ -15,7 +15,7 @@ export function validateBondOrderEvidence(value: XtbBondOrders, structure: Struc
   requireValue((aggregate||value?.definition === 'mayer-ao' && value.sourceField === 'wbo' && value.threshold === .1) && Array.isArray(value.entries), 'MBO来源定义无效。');
   const known = new Set(structure.atoms.map(atom => atom.id)), seen = new Set<string>();
   requireValue(value.entries.length <= structure.atoms.length * (structure.atoms.length - 1) / 2, 'MBO原子对数量无效。');
-  if(aggregate)requireValue(!!structure.cell&&value.entries.length===structure.atoms.length*(structure.atoms.length-1)/2,'周期原子对聚合键级必须保留完整原子对矩阵。');
+  if(aggregate)requireValue(isPeriodic(structure)&&value.entries.length===structure.atoms.length*(structure.atoms.length-1)/2,'周期原子对聚合键级必须保留完整原子对矩阵。');
   for (const row of value.entries) {
     requireValue(Array.isArray(row.atomIds) && row.atomIds.length === 2 && row.atomIds[0] !== row.atomIds[1] && row.atomIds.every(id => typeof id === 'string' && known.has(id)), 'MBO原子身份无效。');
     requireValue(Number.isFinite(row.value) && (aggregate||row.value >= .1), 'MBO值不符合原生输出。');
@@ -26,7 +26,7 @@ export function validateBondOrderEvidence(value: XtbBondOrders, structure: Struc
 export function bondOrderObservation(result: XtbCoordinateResult, current: Structure, runId: string): BondOrderObservation {
   const { request, coordinates, metadata } = result;
   requireValue(typeof runId === 'string' && runId.length > 0 && runId.length <= 100, 'MBO运行身份无效。');
-  const periodic=Boolean(request.structure.cell);
+  const periodic=isPeriodic(request.structure);
   requireValue(request.method === 'gfn2' && metadata.engine === (periodic?'tblite':'xtb') && metadata.method === 'gfn2' && metadata.converged === true, 'MBO需要成功的GFN2-xTB结果。');
   validateXtbPeriodicity(request,metadata.periodic);
   requireValue(metadata.charge === request.charge && metadata.uhf === request.uhf && Number.isSafeInteger(metadata.charge) && Number.isSafeInteger(metadata.uhf) && metadata.uhf! >= 0, 'MBO电子态来源不匹配。');

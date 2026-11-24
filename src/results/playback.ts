@@ -1,4 +1,4 @@
-import type { Structure } from '../core/types';
+import type { Atom, Structure } from '../core/types';
 import type { ModelDocument } from '../modeling/contracts';
 import type { TrajectoryRange, TrajectoryResult } from './contracts';
 
@@ -49,16 +49,40 @@ export class LatestFrameReader {
   }
 }
 
+const validatedImmutableAtoms = new WeakMap<readonly Atom[], readonly string[]>();
+const ownedImmutableAtoms = new WeakSet<readonly Atom[]>();
+
+/** Called by the preparation owner for fully frozen atom records it just constructed. */
+export function markPreparedTrajectoryViewAtoms(atoms: readonly Atom[]): void {
+  if (Object.isFrozen(atoms)) ownedImmutableAtoms.add(atoms);
+}
+
+function trajectoryAtomIds(atoms: readonly Atom[]): string[] {
+  const known = validatedImmutableAtoms.get(atoms);
+  if (known) return known.slice();
+  const ids = new Array<string>(atoms.length), seen = new Set<string>();
+  const malformed = () => new Error('轨迹帧需要唯一原子身份及有限坐标。');
+  if (!atoms.length) throw malformed();
+  for (let i = 0; i < atoms.length; i++) {
+    const { id, x, y, z } = atoms[i];
+    if (!id || seen.has(id) || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) throw malformed();
+    ids[i] = id;
+    seen.add(id);
+  }
+  if (ownedImmutableAtoms.has(atoms)) validatedImmutableAtoms.set(atoms, ids.slice());
+  return ids;
+}
+
 /** Adapt a source snapshot for viewing without a store, chemistry, Undo or input draft. */
 export function trajectoryViewDocument(result: TrajectoryResult, structure: Structure, index: number): ModelDocument {
-  const ids = structure.atoms.map(atom => atom.id);
-  if (!ids.length || ids.some(id => !id) || new Set(ids).size !== ids.length
-    || structure.atoms.some(atom => ![atom.x, atom.y, atom.z].every(Number.isFinite))) throw new Error('轨迹帧需要唯一原子身份及有限坐标。');
-  if (result.kind !== 'collection' && (structure.atoms.length !== result.initialStructure.atoms.length
-    || structure.atoms.some((atom, i) => atom.id !== result.initialStructure.atoms[i].id || atom.element !== result.initialStructure.atoms[i].element))) throw new Error('轨迹帧的原子身份或元素对应发生变化。');
+  const atoms = structure.atoms, ids = trajectoryAtomIds(atoms);
+  if (result.kind !== 'collection') {
+    const initial = result.initialStructure.atoms;
+    if (atoms.length !== initial.length || atoms.some((atom, i) => atom.id !== initial[i].id || atom.element !== initial[i].element)) throw new Error('轨迹帧的原子身份或元素对应发生变化。');
+  }
   const assignments = { layers: [], basis: [], fragments: [], frozenAtomIds: [] };
   return { id: `result:${result.id}`, revision: index, draft: { structure, assignments,
     revision: index, selectedIds: [], touchedIds: [], assignmentIssues: [], createdFrom: {}, past: [], future: [], dirty: false,
-    baseAtomIds: ids as string[], baseStructure: structure, baseAssignments: assignments },
+    baseAtomIds: ids, baseStructure: structure, baseAssignments: assignments },
     selection: { atomIds: [], bonds: [], auxiliaryIds: [], portIds: [] }, auxiliaryRelations: [], deletedBonds: [], attachmentPorts: [], canUndo: false, canRedo: false };
 }

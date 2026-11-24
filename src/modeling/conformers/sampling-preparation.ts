@@ -1,7 +1,39 @@
+import { requireConfirmedPeriodicity } from '../../core/periodic';
 import type {Structure,Vector3} from '../../core/types';
 import {superposeViewAtoms} from '../view-superposition';
 
 export class SamplingCandidatePreparationError extends Error {}
+
+export function sameFixedConformerCell(a: Structure, b: Structure): boolean {
+  const left = a.cell, right = b.cell;
+  return !!left && !!right
+    && JSON.stringify([left.vectors, left.pbc, left.origin ?? [0, 0, 0]])
+      === JSON.stringify([right.vectors, right.pbc, right.origin ?? [0, 0, 0]]);
+}
+
+/** Continue in the original Cartesian frame, including unwrapped mobile coordinates. */
+export function prepareFixedCellSamplingOptimization(raw: Structure, reference: Structure, protectedIds: readonly string[]) {
+  requireConfirmedPeriodicity(reference);
+  if (!sameFixedConformerCell(raw, reference) || raw.atoms.length !== reference.atoms.length)
+    throw new SamplingCandidatePreparationError('固定晶胞候选的晶胞或原子数与初猜不一致。');
+  const ids = new Set(protectedIds);
+  const structure = structuredClone(raw);
+  structure.preparation = undefined;
+  structure.molfile = undefined;
+  let maxResidualAngstrom = 0;
+  structure.atoms = raw.atoms.map((atom, index) => {
+    const original = reference.atoms[index];
+    if (!atom.id || atom.id !== original.id || atom.element !== original.element || ![atom.x, atom.y, atom.z].every(Number.isFinite))
+      throw new SamplingCandidatePreparationError('固定晶胞候选的原子身份、顺序或坐标无效。');
+    if (!ids.has(atom.id)) return { ...atom };
+    maxResidualAngstrom = Math.max(maxResidualAngstrom, Math.hypot(atom.x - original.x, atom.y - original.y, atom.z - original.z));
+    ids.delete(atom.id);
+    return { ...atom, x: original.x, y: original.y, z: original.z };
+  });
+  if (ids.size || new Set(protectedIds).size !== protectedIds.length)
+    throw new SamplingCandidatePreparationError('固定晶胞候选的冻结原子身份无效。');
+  return { structure, maxResidualAngstrom };
+}
 
 /** Rigidly move the entire raw candidate before restoring its protected core.
  * The returned structure is a new optimization input; raw trajectory is intact. */
